@@ -665,6 +665,10 @@ export class MemoryOS2{
     if(!previousContent||this.preferIndexRecord(m,previousContent,indexAt))this.contentIndex.set(contentKey,m.id);
     this.indexItem(m);
   }
+  // Snapshots can come from older accounting rules or be edited outside the runtime.
+  // Re-enforce the canonical limit only after rebuilding indexes, so any eviction
+  // consistently updates the store, lookup indexes, and eviction evidence.
+  this.enforceByteBudget({maxBytes:this.state.byteBudget,reason:'restore-budget'});
  }
  private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
