@@ -36,13 +36,14 @@ try {
   if (!exportRes.ok || exportRes.document?.hmx_version !== '1.7' || !Array.isArray(exportRes.document?.sections?.memories)) throw new Error('hexis-hmx-export');
   const importDocument = structuredClone(exportRes.document);
   const importExportId = importDocument.export_id;
+  const canonicalSmokeMemoryText = 'Hexis integration smoke: approved memory reaches NK1 canonical MemoryOS2.';
   importDocument.sections.memories = [
     ...(Array.isArray(importDocument.sections.memories) ? importDocument.sections.memories : []),
     {
       ref: `${importExportId}:server-smoke-canonical-memory`,
       type: 'semantic',
       status: 'active',
-      content: 'Hexis integration smoke: approved memory reaches NK1 canonical MemoryOS2.',
+      content: canonicalSmokeMemoryText,
       importance: 0.72,
       trust_level: 0.78,
       metadata: { tags: ['server-smoke', 'hexis-import'] },
@@ -63,6 +64,10 @@ try {
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
   if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted') throw new Error(`hexis-hmx-accept:${JSON.stringify({ stage: stageRes.stage, accepted: acceptRes.stage })}`);
   if (acceptRes.appliedToCanonicalMemory !== false || !String(acceptRes.note || '').includes('has not yet been mutated')) throw new Error('hexis-review-is-not-memory-application');
+  const indexAfterAccept = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=128`)).json();
+  if (!indexAfterAccept.ok || indexAfterAccept.memoryIndex?.some(memory => memory.summary === canonicalSmokeMemoryText)) {
+    throw new Error('hexis-accept-mutated-canonical-memory-before-apply');
+  }
   const applyRes = await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'apply' });
   const applyResult = await applyRes.json();
   if (!applyResult.ok || applyResult.stage?.status !== 'applied' || applyResult.appliedToCanonicalMemory !== true) {
@@ -70,6 +75,10 @@ try {
   }
   if (applyResult.application?.importedCount < 1 || !applyResult.application?.memoryIds?.length) {
     throw new Error(`hexis-canonical-memory-receipt:${JSON.stringify(applyResult.application)}`);
+  }
+  const indexAfterApply = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=128`)).json();
+  if (!indexAfterApply.ok || !indexAfterApply.memoryIndex?.some(memory => memory.summary === canonicalSmokeMemoryText && memory.source?.startsWith('hexis:'))) {
+    throw new Error('hexis-apply-did-not-persist-canonical-memory');
   }
   if (!applyResult.application?.deferredSections?.identity) throw new Error('hexis-identity-section-must-remain-explicitly-deferred');
   const goalPrepareResponse = await post('/api/organism/integration/hexis/hmx/goals/prepare', { stagingId: stageRes.stage.stagingId });
