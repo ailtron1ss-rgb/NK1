@@ -426,7 +426,7 @@ const moderateFamilyRegression = (report) => ({
     aggregate: Number(((0.7 + 0.7 + 1) / 3).toFixed(6)),
   },
 });
-const familyBaseline = {
+const validationFamilyBaseline = {
   validation: [
     trial('family-a-task-1', 'v1', 'good', 0, 'family-a'),
     trial('family-a-task-2', 'v1', 'good', 0, 'family-a'),
@@ -436,7 +436,7 @@ const familyBaseline = {
   ],
   holdout: baseline.holdout,
 };
-const familyCandidate = {
+const validationFamilyCandidate = {
   validation: [
     moderateFamilyRegression(trial('family-a-task-1', 'v1', 'good', 0, 'family-a')),
     moderateFamilyRegression(trial('family-a-task-2', 'v1', 'good', 0, 'family-a')),
@@ -446,7 +446,7 @@ const familyCandidate = {
   ],
   holdout: baseline.holdout,
 };
-const familyRegressionGate = evaluateSkillLearnBenchCandidate(familyBaseline, familyCandidate);
+const familyRegressionGate = evaluateSkillLearnBenchCandidate(validationFamilyBaseline, validationFamilyCandidate);
 assert.ok(familyRegressionGate.validationGain01 > 0.005,
   'improvements in family B should make macro validation improve');
 assert.equal(familyRegressionGate.validationTaskRegressions, 0,
@@ -456,7 +456,7 @@ assert.equal(familyRegressionGate.validationFamilyRegressions, 1);
 assert.ok(familyRegressionGate.reasons.includes('validation-family-regression-exceeds-tolerance'));
 assert.equal(familyRegressionGate.eligible, false,
   'broad regressions within one task family must not be hidden by improvements in another family');
-assert.throws(() => evaluateSkillLearnBenchCandidate(familyBaseline, familyCandidate, {
+assert.throws(() => evaluateSkillLearnBenchCandidate(validationFamilyBaseline, validationFamilyCandidate, {
   maximumValidationFamilyRegression01: Number.NaN,
 }), /candidate-maximum-validation-family-regression-invalid/);
 
