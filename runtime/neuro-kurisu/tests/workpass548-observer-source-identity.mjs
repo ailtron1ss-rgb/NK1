@@ -197,6 +197,35 @@ assert.equal(disabledRestore.realityEvidenceLedger.snapshot().externalCount, 0,
   'previous evidence from a disabled observer source must not keep external-confirmation authority');
 assert.equal(disabledRestore.realityEvidenceLedger.snapshot().recent.length, 0,
   'disabled observer evidence must be removed from the active ledger projection');
+assert.equal(disabledRestore.externalObserver.snapshot().observations.length, 0,
+  'disabled-source observations must be absent from consensus state after restore');
+
+// A valid source event can outlive the bounded observer cache. Evicting the
+// observation from the cache must not revoke its independent canonical history.
+const capacitySnapshot = structuredClone(guardedRuntime.snapshot());
+const retainedObservation = capacitySnapshot.externalObserver.observations[0];
+capacitySnapshot.externalObserver.observations = [
+  ...Array.from({ length: 256 }, (_, index) => ({
+    ...retainedObservation,
+    id: `cache-observation-${index}`,
+    evidenceEventId: `event:cache-observation-${index}`,
+    actionRef: `cache-action-${index}`,
+    claimKey: `cache_claim=${index}`,
+    observedPostcondition: `cache_claim=${index}`,
+    payloadHash: `cache-payload-${index}`,
+    observedAt: retainedObservation.observedAt + index + 1,
+    confidence01: 0.9,
+    facts: [],
+    metadata: {},
+  })),
+  retainedObservation,
+];
+const capacityRestore = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
+capacityRestore.restore(capacitySnapshot);
+assert.equal(capacityRestore.externalObserver.snapshot().observations.length, 256,
+  'observer cache remains bounded to the most recent accepted rows');
+assert.equal(capacityRestore.realityEvidenceLedger.snapshot().externalCount, 257,
+  'valid ledger evidence for a source-matched row evicted only by cache capacity must remain active');
 
 const legacySnapshot = structuredClone(guardedRuntime.snapshot());
 delete legacySnapshot.externalObserver.observations[0].independenceKey;
