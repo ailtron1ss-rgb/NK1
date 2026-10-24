@@ -1,3 +1,12 @@
+## NK1 WorkPass500 — validate unified cognitive-loop ingress
+
+- `UnifiedCognitiveLoop` now snapshots own data properties without invoking getters and rejects non-plain objects, malformed IDs, non-finite/out-of-range signals, and invalid timestamps before appending to history.
+- History capacity is normalized to a safe bounded integer, preventing invalid constructor values from disabling the retention bound.
+- Added and registered `test:unified-cognitive-loop-ingress` to cover rejection-before-mutation, hostile getters, finite signal ranges, and bounded history.
+- Test code is committed; execution is still pending, so no pass result is claimed.
+
+---
+
 ## NK1 WorkPass498 — finalize shared boundaries and restore semantics (2026-10-24)
 
 - Corrected the restored-external-outcome regression to expect zero grounded outcomes: imported evidence remains preserved for adjudication but cannot increment trusted outcome counters after restore.
