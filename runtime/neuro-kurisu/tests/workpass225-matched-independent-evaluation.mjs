@@ -38,6 +38,14 @@ assert.equal(comparison.planFingerprint, baseline.evaluation.provenance.planFing
 assert.ok(comparison.validationGain01 > 0, 'matched scoring should preserve the measured validation improvement');
 assert.ok(comparison.reasons.includes('holdout-task-coverage-insufficient'), 'one holdout task must not satisfy the existing minimum holdout gate');
 
+const insufficientSeedComparison = compareMatchedIndependentEvaluations(baseline, candidate, {
+  requireSeedGrowthGate: true,
+});
+assert.ok(insufficientSeedComparison.reasons.includes('independent-evaluation-validation-paired-seed-count-insufficient'));
+assert.ok(insufficientSeedComparison.reasons.includes('independent-evaluation-holdout-paired-seed-count-insufficient'));
+assert.ok(insufficientSeedComparison.reasons.includes('independent-evaluation-validation-confidence-lower-bound-insufficient'));
+assert.equal(insufficientSeedComparison.eligible, false, 'a single seed cannot support promotion');
+
 const differentEnvironment = await makeEvaluation({ skill: 'candidate', version: 2 }, 'b'.repeat(64), { runPrefix: 'different-env-' });
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, differentEnvironment), /environment-mismatch/);
 
