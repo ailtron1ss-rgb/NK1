@@ -14,7 +14,8 @@ import { IdentityCausalityGraphEngine } from '../system/IdentityCausalityGraph.t
 import { LongHorizonPredictionBenchmark } from '../system/LongHorizonPredictionBenchmark.ts';
 import { P38AutonomousCausalResearchEngine } from '../learning/P38AutonomousCausalResearch.ts';
 import { P53DevelopmentalSelfModificationLab } from '../developmental/P53DevelopmentalSelfModificationLab.ts';
-import { ExternalObserverFabric } from '../system/ExternalObserverFabric.ts';
+import { ExternalObserverFabric, type ExternalObservation } from '../system/ExternalObserverFabric.ts';
+import { RealityEvidenceLedger, type EvidenceRealityClass } from '../system/RealityEvidenceLedger.ts';
 import { P77RealityExperimentOS, defaultP77 } from '../system/P77RealityExperimentOS.ts';
 import { P82RealityProgressController, defaultP82 } from '../system/P82RealityProgressController.ts';
 
@@ -44,7 +45,29 @@ export class EvidenceResearchSubsystemRuntime {
   readonly longHorizonPrediction = new LongHorizonPredictionBenchmark();
   readonly p38Research = new P38AutonomousCausalResearchEngine();
   readonly p53DevelopmentalSelfModification = new P53DevelopmentalSelfModificationLab();
-  readonly externalObserver = new ExternalObserverFabric();
+  /** Canonical event-idempotent sink for observer outputs; IDs correlate events but do not grant trust. */
+  readonly realityEvidenceLedger = new RealityEvidenceLedger();
+  private recordExternalObservationEvidence(observation:ExternalObservation):void {
+    const realityClass:EvidenceRealityClass = observation.sourceClass==='user' ? 'user-reported'
+      : observation.sourceClass==='simulator' ? 'simulator'
+      : observation.sourceClass==='organism' ? 'model-generated'
+      : observation.sourceClass==='unknown' ? 'derived'
+      : observation.sourceClass==='device' ? 'device-observation'
+      : 'external-observation';
+    const claim=String(observation.observedPostcondition??observation.claimKey).replace(/[\\u0000-\\u001f\\u007f-\\u009f]/g,' ').replace(/\\s+/g,' ').trim().slice(0,240);
+    const independenceKey=String(observation.independenceKey||observation.sourceId).replace(/[\\u0000-\\u001f\\u007f-\\u009f]/g,' ').trim().slice(0,160);
+    if(!claim||!independenceKey)return;
+    const parentIds=[observation.actionRef,observation.predictionId,observation.tool]
+      .filter((value):value is string=>typeof value==='string'&&value.trim().length>0)
+      .map(value=>value.trim().slice(0,256)).slice(0,8);
+    this.realityEvidenceLedger.record({
+      eventId:observation.evidenceEventId??observation.id,
+      tick:Number.isSafeInteger(observation.tick)&&Number(observation.tick)>=0?Number(observation.tick):0,
+      at:Number.isFinite(observation.observedAt)&&observation.observedAt>=0?observation.observedAt:Date.now(),
+      realityClass,claim,confidence01:observation.confidence01,independenceKey,parentIds,
+    });
+  }
+  readonly externalObserver = new ExternalObserverFabric({onObservation:observation=>this.recordExternalObservationEvidence(observation)});
 
   snapshot() {
     return {
@@ -64,6 +87,7 @@ export class EvidenceResearchSubsystemRuntime {
       p38Research: this.p38Research.snapshot(),
       p53DevelopmentalSelfModification: this.p53DevelopmentalSelfModification.snapshot(),
       externalObserver: this.externalObserver.snapshot(),
+      realityEvidenceLedger: this.realityEvidenceLedger.snapshot(),
     };
   }
 
@@ -79,7 +103,7 @@ export class EvidenceResearchSubsystemRuntime {
       skillAcquisitionBenchmark:system?.skillAcquisitionBenchmark, selfPredictionBenchmark:system?.selfPredictionBenchmark,
       modelOlympics:system?.modelOlympics, predictionDebt:system?.predictionDebt, shadowOrganism:system?.shadowOrganism,
       identityCausality:system?.identityCausality, longHorizonPrediction:system?.longHorizonPrediction,
-      p38Research:learning?.p38, p53DevelopmentalSelfModification:advanced?.p53DevelopmentalSelfModification, externalObserver:system?.externalObserver,
+      p38Research:learning?.p38, p53DevelopmentalSelfModification:advanced?.p53DevelopmentalSelfModification, externalObserver:system?.externalObserver, realityEvidenceLedger:system?.realityEvidenceLedger,
     });
   }
 
@@ -98,6 +122,10 @@ export class EvidenceResearchSubsystemRuntime {
     this.longHorizonPrediction.restore(raw.longHorizonPrediction);
     this.p38Research.restore((raw as any).p38Research);
     this.p53DevelopmentalSelfModification.restore((raw as any).p53DevelopmentalSelfModification);
+    this.realityEvidenceLedger.restore((raw as any).realityEvidenceLedger);
     this.externalObserver.restore((raw as any).externalObserver);
+    // Reconcile observer rows into the ledger after both stores are restored. Event IDs
+    // make this idempotent and let a partial older snapshot safely backfill missing rows.
+    for(const observation of this.externalObserver.snapshot().observations) this.recordExternalObservationEvidence(observation);
   }
 }
