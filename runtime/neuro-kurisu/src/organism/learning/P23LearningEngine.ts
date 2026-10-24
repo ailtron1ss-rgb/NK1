@@ -781,6 +781,7 @@ export class P23LearningEngine {
     ledger:RealityEvidenceLedger,
     claim:string,
     candidateId:string,
+    candidatePayloadFingerprint:string,
     approval:SkillPromotionApproval,
     baseline:Parameters<typeof compareMatchedIndependentEvaluations>[0],
     evaluation:Parameters<typeof compareMatchedIndependentEvaluations>[1] & Parameters<typeof bindIndependentEvaluationToVerifiedShadowEvidence>[0],
@@ -791,6 +792,16 @@ export class P23LearningEngine {
        typeof claim!=='string' || claim.trim()!==claim || claim.length===0 || claim.length>240) {
       throw new Error('reality corroboration gate requires a canonical ledger and bounded claim');
     }
+    if(typeof candidateId!=='string' || candidateId.trim()!==candidateId || candidateId.length===0 ||
+       typeof candidatePayloadFingerprint!=='string' || !/^[a-f0-9]{64}$/.test(candidatePayloadFingerprint)) {
+      throw new Error('reality corroboration gate requires an exact candidate id and SHA-256 payload fingerprint');
+    }
+    // Bind corroboration to the exact currently staged candidate, not merely to
+    // any unrelated claim that happens to have two independent sources.
+    const staged=this.verifiedSkillStore?.snapshot().candidates.find(item=>item.candidateId===candidateId);
+    if(!staged || staged.status!=='shadow' || staged.payloadFingerprint!==candidatePayloadFingerprint) {
+      throw new Error('reality corroboration gate rejected candidate: staged payload fingerprint mismatch');
+    }
     const realityAssessment=ledger.claimAssessment(claim);
     if(realityAssessment.independentPromotionAllowed!==true ||
        !Number.isSafeInteger(realityAssessment.qualifiedIndependentExternalSources) ||
@@ -799,6 +810,9 @@ export class P23LearningEngine {
     }
     // Keep all existing independent fitness, exact-payload, signed-evidence and
     // store-level approval checks authoritative; this is an additional precondition.
+    if(evaluation?.payloadFingerprint!==candidatePayloadFingerprint) {
+      throw new Error('reality corroboration gate rejected candidate: evaluation fingerprint does not match corroborated payload');
+    }
     return this.approveIndependentlyEvaluatedSkillCandidate(
       candidateId,approval,baseline,evaluation,verifyEvidence,minShadowRuns,
     );
