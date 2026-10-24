@@ -118,6 +118,7 @@ const invalidEmotionHub = new LocalSmallModelHub({
 await assert.rejects(() => invalidEmotionHub.analyzeEmotion('test'), /schema-mismatch/);
 assert.equal(invalidEmotionHub.snapshot().metrics.emotion.failures, 1);
 assert.equal(invalidEmotionHub.snapshot().metrics.emotion.lastFailureCode, 'inference-failed');
+assert.equal(invalidEmotionHub.snapshot().models.find((row) => row.id === 'local-emotion').state, 'observed-failure', 'invalid output after a real request must not look like an unprobed model');
 
 const visionFallbackHub = new LocalSmallModelHub({
   visionProvider: { id: 'local-vision:offline', model: 'tiny-vlm', async analyze() { throw new Error('local-vision-timeout'); } },
