@@ -75,3 +75,5 @@ jobs:
         run: node runtime/neuro-kurisu/tests/local-llm-selection-workpass74.mjs
       - name: Local chat provider response-boundary regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs
+      - name: Full server smoke for integrated local models
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs
