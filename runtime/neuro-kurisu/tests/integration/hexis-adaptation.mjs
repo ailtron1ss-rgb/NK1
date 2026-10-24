@@ -96,6 +96,22 @@ assert.equal(duplicateApply?.application?.importedCount, 0);
 assert.equal(duplicateApply?.application?.deduplicatedCount, 2);
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
 
+const emptyApplyFabric = new HexisAdaptationFabric();
+emptyApplyFabric.bindCanonicalMemoryApply(candidate => canonicalProjector.apply(candidate));
+const emptyStage = emptyApplyFabric.stageHmx({
+  document: makeHmxDocument('exp_9999999999999999', { memories: [] }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(emptyStage.conflicts, []);
+emptyApplyFabric.decideHmx(emptyStage.stagingId, 'accept');
+const beforeNoopApply = canonicalMemoryRuntime.fabric.canonicalSnapshot().items.length;
+const noOpApplied = emptyApplyFabric.decideHmx(emptyStage.stagingId, 'apply');
+assert.equal(noOpApplied?.status, 'applied');
+assert.equal(noOpApplied?.application?.status, 'noop');
+assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.length, beforeNoopApply,
+  'an empty memory section must not claim or cause a canonical memory mutation');
+
 // Fault injection: if a batch write fails halfway, newly created memories are compensated
 // through MemoryFabric's canonical forget command and the accepted stage remains retryable.
 const rollbackMemoryRuntime = new MemorySubsystemRuntime();
