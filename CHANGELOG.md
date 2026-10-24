@@ -1,3 +1,9 @@
+## NK1 WorkPass524 — require confidence-qualified independent corroboration (2026-10-24)
+
+- Tightened the additive consequential-promotion signal: at least two *distinct* external independence keys must each have confidence of at least 0.75. A strong source can no longer mask a second weak source via a max-confidence aggregate.
+- Exposed `qualifiedIndependentExternalSources` and kept basic `promotionAllowed` semantics unchanged for compatibility.
+- Extended the observer-ledger integration regression to prove one strong plus one low-confidence source is insufficient, while two strong independent sources qualify. Hosted CI has not yet been confirmed for this head.
+
 ## NK1 WorkPass523 — separate basic grounding from independent promotion corroboration (2026-10-24)
 
 - Extended `RealityEvidenceLedger.claimAssessment` with `independentPromotionAllowed` and a machine-readable `promotionReason`.
