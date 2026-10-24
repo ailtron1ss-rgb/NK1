@@ -16,6 +16,7 @@ on:
       - 'runtime/neuro-kurisu/tests/import-specifier-scanner.test.mjs'
       - 'runtime/neuro-kurisu/tests/server-import-graph-audit.test.mjs'
       - 'runtime/neuro-kurisu/package.json'
+      - 'contracts/module-dependency-budgets.json'
 
 permissions:
   contents: read
@@ -46,10 +47,10 @@ jobs:
           NK1_DEPENDENCY_GRAPH_REPORT: ${{ runner.temp }}/nk1-module-dependency-graph.json
         run: npm --prefix runtime/neuro-kurisu run audit:architecture
       - name: Upload inspectable dependency graph
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: nk1-module-dependency-graph
           path: ${{ runner.temp }}/nk1-module-dependency-graph.json
           retention-days: 14
-          if-no-files-found: error
+          if-no-files-found: warn
