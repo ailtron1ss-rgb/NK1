@@ -1,3 +1,12 @@
+## NK1 WorkPass473 — make personal curriculum restore-safe and reopen contradicted goals (2026-10-24)
+
+- Replaced unchecked persisted-state spreading in `PersonalCurriculumEngine.restore()` with the shared bounded plain-data snapshot and strict validation of thread identity/family, outcome counters, context keys, timestamps and normalized [0,1] metrics. Getter-backed or malformed top-level persistence fails closed; malformed/conflicting thread rows are excluded.
+- Reconciles `completedThreads` and `suppressedThreads` from unique current thread records instead of trusting persisted totals or incrementing counters on every repeated observation.
+- A newly observed low outcome now prevents an otherwise historically successful thread from remaining `satisfied` solely on its accumulated average; contrary evidence can reopen the thread. Suppressed threads remain suppressed until an explicit lifecycle change.
+- Extended the existing personal-curriculum regression with malformed/accessor restore cases, realistic timestamps, reopening after contrary evidence, and counter reconciliation. **Exact-head test/typecheck remains unverified; no autonomy or learning-uplift claim is made.**
+
+---
+
 ## NK1 WorkPass472 — reject duplicate live goal identities before ecology updates (2026-10-24)
 
 - P68 now rejects duplicate goal IDs during its bounded, accessor-safe validation phase. Previously, two live goal objects with the same ID could collide in the token-set map and each advance lifecycle counters, creating ambiguous progress/completion evidence.
