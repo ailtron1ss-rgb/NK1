@@ -137,7 +137,8 @@ export class P65EpistemicLedger{
   if(!claim)return {accepted:false,reason:'belief-not-found',confidence01:null,independentSource:false};
   if(claim.status==='expired'||claim.status==='resolved'||claim.resolved)return {accepted:false,reason:'belief-not-revisable',confidence01:claim.confidence01,independentSource:false};
   const lineageKey=requestedLineage;
-  const evidenceKey=`${lineageKey}:${evidenceId}`;
+  // Encode as a tuple instead of delimiter concatenation: both values may contain colons.
+  const evidenceKey=JSON.stringify([lineageKey,evidenceId]);
   const evidenceKeys=claim.evidenceKeys??(claim.evidenceKeys=[]);
   if(evidenceKeys.includes(evidenceKey))return {accepted:false,reason:'evidence-already-applied',confidence01:claim.confidence01,independentSource:false};
   const sources=claim.evidenceSources??(claim.evidenceSources=[claim.source.normalize('NFKC').toLowerCase()]);
