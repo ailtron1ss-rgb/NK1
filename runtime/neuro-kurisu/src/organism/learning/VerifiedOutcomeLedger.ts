@@ -157,7 +157,7 @@ export class VerifiedOutcomeLedger {
   ): { key: string; outcome: VerifiedTaskOutcome } | { rejection: OutcomeRejection } {
     let detached: unknown;
     try {
-      detached = snapshotPlainData(rawOutcome);
+      detached = snapshotPlainData(rawOutcome, { allowNonFiniteNumbers: true });
     } catch {
       return { rejection: {
         code: 'invalid-outcome',
@@ -245,7 +245,7 @@ export class VerifiedOutcomeLedger {
   recordBatch(rawOutcomes: readonly VerifiedTaskOutcome[]): { accepted: number; rejection?: OutcomeRejection } {
     let detached: unknown;
     try {
-      detached = snapshotPlainData(rawOutcomes);
+      detached = snapshotPlainData(rawOutcomes, { allowNonFiniteNumbers: true });
     } catch {
       const rejection: OutcomeRejection = {
         code: 'invalid-outcome', taskId: '', method: '',
