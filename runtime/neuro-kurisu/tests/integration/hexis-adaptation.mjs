@@ -28,6 +28,13 @@ const nativeNk1Export = {
 const normalizedNk1Export = normalizeNk1HmxExport(nativeNk1Export);
 assert.match(normalizedNk1Export.export_id, /^exp_[a-f0-9]{16}$/);
 assert.equal(normalizedNk1Export.hmx_version, '1.7');
+assert(normalizedNk1Export.capabilities.formats.includes('json'));
+assert(normalizedNk1Export.capabilities.sections.includes('memories'));
+assert(['none', 'basic', 'strict', 'custom'].includes(normalizedNk1Export.privacy.redaction_policy));
+assert.equal(typeof normalizedNk1Export.privacy.contains_sensitive_content, 'boolean');
+assert(['backup', 'migration', 'third_party_transfer', 'unspecified'].includes(normalizedNk1Export.privacy.consent_scope));
+assert(Array.isArray(normalizedNk1Export.export_scope.include_protected));
+assert.equal(normalizedNk1Export.statistics.total_memories, 2);
 assert.equal(normalizedNk1Export.export_intent, 'port');
 assert(Number.isFinite(Date.parse(normalizedNk1Export.exported_at)));
 assert.equal(normalizedNk1Export.source.hexis_lineage_id.startsWith('nk1:'), true);
