@@ -1,3 +1,11 @@
+## NK1 WorkPass522 — align evidence-replay and durable identity regression contracts (2026-10-24)
+
+- The paired-outcome persistence fixture now uses a fresh evidence receipt when testing duplicate-attempt identity, plus a separate assertion for evidence-receipt reuse. This keeps the tests aligned with the ledger's explicit rejection precedence instead of conflating two independent invariants.
+- The causal-stream restore fixture expects rolling learning opportunity to be recomputed from trusted grounded records; imported external rows cannot preserve forged aggregate learning signals.
+- The replay-diversity fixture now builds a matching before/after decision transition, so the regression measures balanced replay selection only after the stream has accepted real action-conditioned outcomes.
+- **Verification boundary:** source/test updates are committed to `feature/learning`; final CI for the latest commit must confirm the new exact-head result.
+
+---
 ## NK1 WorkPass521 — normalize async repair errors and make regression fixtures evidence-valid (2026-10-24)
 
 - Converted `P23CompoundRepairRevisionCoordinator.reviseFromObservedRepairs()` to an `async` method so invalid skill identity is returned as a rejected promise, matching the public Promise contract and callers' `assert.rejects` semantics.
