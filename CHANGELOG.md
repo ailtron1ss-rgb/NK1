@@ -1,3 +1,13 @@
+## NK1 WorkPass490 — restore safe typing and exact cognitive-cycle semantics (2026-10-24)
+
+- Ported official Node typings into `feature/feedback`: pinned `@types/node 22.20.4`, synced lockfile, excluded the legacy shim from semantic TypeScript, and reused the typecheck script that explicitly selects official Node declarations.
+- Updated WorkPass294 workflow on feedback and perception to install locked runtime dependencies before typecheck and to rerun for lock/config/shim changes.
+- Fixed verified dataset literal narrowing, optional retrieval numeric normalization, and missing `verifiedNonHoldoutExecutions` in the compiled base skill variant.
+- Reconciled WorkPass287 assertions with the actual fail-closed boundary: malformed persisted stage arrays normalize to all required stages, inconsistent counters cannot keep `lastComplete=true`, and inherited-prototype input is rejected instead of treated as plain data.
+- Fresh workflows have been triggered; status is pending. No test pass is claimed until those runs finish.
+
+---
+
 ## NK1 WorkPass489 — record shared helper convergence and type fixes (2026-10-24)
 
 - Kept `createRealityEvidenceEventId` byte-identical on `feature/feedback` and `feature/perception`; validated input uses explicit control-code checks, and the legacy tuple hashing / output format is preserved.
