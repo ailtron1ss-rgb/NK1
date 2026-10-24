@@ -1,3 +1,10 @@
+## NK1 WorkPass543 — veto reality-ledger promotion on explicit external contradictions (2026-10-24)
+
+- Added conservative contradiction detection for claims explicitly encoded as `field=value` or `field: value`; free-form prose is not guessed into structured facts.
+- A qualified external observation asserting a different value for the same field now sets `contradictionDetected`, reports conflicting claim/source counts, and blocks both basic grounding and consequential independent promotion.
+- Extended the P23 reality-promotion regression with a two-source corroboration followed by a high-confidence contradictory observation; promotion must be vetoed. The existing P23 gate consumes this decision before the unchanged independent-evaluation and signed-approval path.
+- **Validation boundary:** code and regression are committed to `feature/feedback`; the test and hosted Actions have not yet been run/verified at this head. This does not solve semantic linkage between arbitrary skill behavior and a claim, and unstructured natural-language contradictions remain intentionally undetected.
+
 ## NK1 WorkPass525 — keep verified evidence and causal credit on the feedback branch (2026-10-24)
 
 - Mirrored the evidence-gated self-agency update boundary here beside the canonical `OutcomeVerificationService`: only the exact verifier-minted receipt, bound to a tool execution, decision and full input, can enter `learnVerifiedOutcome`.
