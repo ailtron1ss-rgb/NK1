@@ -120,7 +120,7 @@ export class CausalDomainClosureLedger {
     const evidence:CausalDomainEvidence={
       memoryChanged:false,worldChanged:false,agencyChanged:false,learningChanged:false,selfChanged:false,
       memoryWorldVerified:false,worldAgencyLearningVerified:false,causalLifeGraphChain:false,
-      replaySignaturePresent:false,durableStateAligned:false,cognitiveCycleComplete:false
+      replaySignaturePresent:false,durableStateAligned:false,cognitiveCycleComplete:previous.evidence.cognitiveCycleComplete
     };
     const after=normalizeCounters(input.counters??previous.after);
     const record:CausalDomainClosureRecord={
