@@ -1,3 +1,13 @@
+## NK1 WorkPass510 — make experience tag normalization accessor-safe (2026-10-24)
+
+- Normalizes tags by inspecting own array-index descriptors, rejecting accessor-backed, sparse, overlong, or non-plain arrays without executing getters.
+- Uses explicit C0/C1 code-point checks for tags, avoiding the malformed double-escaped regex pitfall found in another evidence-ingress path.
+- Added regressions for hostile tag-index getters, valid `user-input` labels, control-character rejection, identity duplicate prevention and zero-limit consolidation.
+- The existing bounded `AdaptiveExperienceConsolidator` remains the memory owner; no second store or new dependency was introduced.
+- **Validation boundary:** test is wired to the memory branch rebuild chain; exact-head execution and typecheck remain unconfirmed.
+
+---
+
 ## NK1 WorkPass509 — align trusted shadow rejection test with API contract (2026-10-24)
 
 - Corrected `p23-core-trusted-shadow-entry.mjs`: the canonical coordinator intentionally rejects an invalid control/baseline lane synchronously before any child process can spawn, so the regression now uses `assert.throws` rather than promise rejection assertion.
