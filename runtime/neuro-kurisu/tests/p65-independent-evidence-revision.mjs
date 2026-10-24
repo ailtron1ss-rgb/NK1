@@ -28,7 +28,7 @@ assert.equal(ledger.reviseBeliefFromEvidence({
 
 // A genuinely new source closes some uncertainty through a log-odds update.
 const corroborated = ledger.reviseBeliefFromEvidence({
-  claimId, evidenceId: 'sensor-observation-17', source: 'device',
+  claimId, evidenceId: 'sensor-observation-17', source: 'device', independenceKey: 'device:sensor-17',
   stance: 'supports', strength01: 0.9, at: 120,
 });
 assert.equal(corroborated.independentSource, true);
@@ -37,7 +37,7 @@ const afterCorroboration = corroborated.confidence01;
 
 // Contradictory evidence from another source lowers the belief confidence.
 const contradicted = ledger.reviseBeliefFromEvidence({
-  claimId, evidenceId: 'user-counterexample-4', source: 'user',
+  claimId, evidenceId: 'user-counterexample-4', source: 'user', independenceKey: 'user:counterexample-set-a',
   stance: 'contradicts', strength01: 0.95, at: 130,
 });
 assert.equal(contradicted.independentSource, true);
@@ -47,7 +47,7 @@ const beforeSameSourceContradiction = contradicted.confidence01;
 // Repeating the same source under a distinct evidence ID is retained for audit,
 // but does not receive another independent-source confidence update.
 const sameSourceContradiction = ledger.reviseBeliefFromEvidence({
-  claimId, evidenceId: 'user-counterexample-5', source: 'user',
+  claimId, evidenceId: 'user-counterexample-5', source: 'user-mirror', independenceKey: 'user:counterexample-set-a',
   stance: 'contradicts', strength01: 0.99, at: 140,
 });
 assert.equal(sameSourceContradiction.independentSource, false);
@@ -58,11 +58,31 @@ assert.equal(finalClaim.revisionHistory[0].independentSource, false);
 assert.equal(finalClaim.revisionHistory[1].independentSource, true);
 assert.ok(finalClaim.revisionHistory.every(row => row.fromConfidence01 >= 0 && row.fromConfidence01 <= 1
   && row.toConfidence01 >= 0 && row.toConfidence01 <= 1));
+assert.deepEqual(finalClaim.evidenceLineageKeys, ['web', 'device:sensor-17', 'user:counterexample-set-a']);
+assert.equal(finalClaim.revisionHistory[1].independenceKey, 'device:sensor-17');
+
+// Distinct URLs/source labels from the same story must not count as independent evidence.
+const lineageMemory = new P65EpistemicLedger();
+const lineageClaim = lineageMemory.record({tick:2,at:200,kind:'belief',content:'A syndicated story is one evidence lineage.',confidence01:.5,source:'web'});
+const lineageFirst = lineageMemory.reviseBeliefFromEvidence({claimId:lineageClaim,evidenceId:'story-a',source:'publisher-a',independenceKey:'story-family-42',stance:'supports',strength01:.95,at:210});
+assert.equal(lineageFirst.independentSource,true);
+const confidenceAfterFirstLineage = lineageFirst.confidence01;
+const mirrored = lineageMemory.reviseBeliefFromEvidence({claimId:lineageClaim,evidenceId:'mirror-copy-99',source:'mirror-b',independenceKey:' STORY-FAMILY-42 ',stance:'supports',strength01:.99,at:220});
+assert.equal(mirrored.accepted,true);
+assert.equal(mirrored.independentSource,false);
+assert.equal(mirrored.confidence01,confidenceAfterFirstLineage,'a mirror must not add a second confidence vote');
+assert.equal(lineageMemory.snapshot().claimsData.find(row=>row.id===lineageClaim).evidenceLineageKeys.length,2);
+assert.equal(lineageMemory.reviseBeliefFromEvidence({claimId:lineageClaim,evidenceId:'story-a',source:'different-host',independenceKey:'story-family-42',stance:'contradicts',strength01:.99,at:230}).reason,'evidence-already-applied','same lineage/evidence pair cannot vote again by changing source or stance');
+const roundTripLineage = new P65EpistemicLedger();
+roundTripLineage.restore(lineageMemory.snapshot());
+assert.deepEqual(roundTripLineage.snapshot().claimsData.find(row=>row.id===lineageClaim).evidenceLineageKeys,['web','story-family-42']);
+assert.equal(roundTripLineage.snapshot().claimsData.find(row=>row.id===lineageClaim).revisionHistory[1].independenceKey,'story-family-42');
 
 // V2 snapshots restore through allowlisted fields; unsupported rows are quarantined.
 const legacy = ledger.snapshot();
 delete legacy.claimsData[0].evidenceSources;
 delete legacy.claimsData[0].evidenceKeys;
+delete legacy.claimsData[0].evidenceLineageKeys;
 delete legacy.claimsData[0].revisionHistory;
 legacy.claimsData.push({
   ...legacy.claimsData[0], id: 'corrupt-confidence', confidence01: Infinity,
@@ -71,6 +91,7 @@ const restored = new P65EpistemicLedger();
 restored.restore(legacy);
 assert.equal(restored.snapshot().claimsData.length, 1);
 assert.deepEqual(restored.snapshot().claimsData[0].evidenceSources, ['web']);
+assert.deepEqual(restored.snapshot().claimsData[0].evidenceLineageKeys, ['web']);
 assert.deepEqual(restored.snapshot().claimsData[0].revisionHistory, []);
 assert.equal(restored.snapshot().claimsData[0].confidence01, finalClaim.confidence01);
 
@@ -107,4 +128,4 @@ assert.equal(ledger.record({
 }), '', 'malformed parent references must be rejected rather than silently removed');
 
 
-console.log('P65_INDEPENDENT_EVIDENCE_REVISION=PASS sourceDedup=true logOddsUpdate=true contradictionErodesConfidence=true restoreSanitized=true accessorRejected=true');
+console.log('P65_INDEPENDENT_EVIDENCE_REVISION=PASS sourceDedup=true lineageDedup=true logOddsUpdate=true contradictionErodesConfidence=true restoreSanitized=true accessorRejected=true');
