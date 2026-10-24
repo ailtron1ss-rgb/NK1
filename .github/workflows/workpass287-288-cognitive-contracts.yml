@@ -1,4 +1,4 @@
-name: WorkPass287-288 cognitive contracts
+name: WorkPass287-288 cognitive contracts and perception integrity
 
 on:
   push:
@@ -7,6 +7,10 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
+      - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
+      - "runtime/neuro-kurisu/tests/perception-engine-signal-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -21,6 +25,10 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
+      - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
+      - "runtime/neuro-kurisu/tests/perception-engine-signal-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -40,7 +48,7 @@ concurrency:
 jobs:
   cognitive-contracts:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -56,3 +64,18 @@ jobs:
       - name: Check motivation-to-goal integration
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs
+      - name: Verify simultaneous sensor changes and stale telemetry handling
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:perception-engine-integrity
+      - name: Verify strict world-context normalization
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:world-context-integrity
+      - name: Re-run active-perception runtime integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p2842:runtime
+      - name: Audit runtime scripts and tests
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass84:script-integrity
+      - name: Type-check canonical runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
