@@ -10,6 +10,16 @@ const mk=(over={})=>({
   futureMismatch01:.36, futureIdentityCoherence01:.79, regret01:.22, counterfactualGap01:.3, evidence01:.55, resource01:.7, at:Date.now(), ...over
 });
 const e=new AutonomousCognitiveLifeEngine(); e.restore(defaultAutonomousCognitiveLife());
+const hostileLifeState={...defaultAutonomousCognitiveLife()};
+let hostileLifeGetterReads=0;
+Object.defineProperty(hostileLifeState,'cycles',{enumerable:true,configurable:true,get(){hostileLifeGetterReads++;return 999;}});
+const hostileLifeRestore=new AutonomousCognitiveLifeEngine();
+hostileLifeRestore.restore(hostileLifeState);
+assert.equal(hostileLifeGetterReads,0,'restore must reject accessors without invoking them');
+assert.equal(hostileLifeRestore.snapshot().cycles,0,'invalid life state must restore to safe defaults');
+const cyclicLifeState={...defaultAutonomousCognitiveLife()}; cyclicLifeState.activeIntentions=[cyclicLifeState];
+const cyclicLifeRestore=new AutonomousCognitiveLifeEngine();cyclicLifeRestore.restore(cyclicLifeState);
+assert.equal(cyclicLifeRestore.snapshot().activeIntentions.length,0,'cyclic persistence must fail closed');
 for(let i=0;i<18;i++) {
   const t=Date.now()+i*1000;
   const c=mk({at:t,state:{...mk().state,tick:i+1,at:t}});
