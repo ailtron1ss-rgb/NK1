@@ -44,7 +44,8 @@ function failureCode(error) {
   const name = String(error?.name ?? '');
   const message = String(error?.message ?? '');
   if (/abort/i.test(name) || /abort|cancel/i.test(message)) return 'aborted';
-  if (/timeout|timed out|deadline/i.test(message)) return 'timeout';
+  if (/queue-full/i.test(message)) return 'queue-full';
+  if (/queue-timeout|timeout|timed out|deadline/i.test(message)) return 'timeout';
   const status = /HTTP\s+(\d{3})/i.exec(message)?.[1];
   if (status) return `http-${status}`;
   if (/not-configured/i.test(message)) return 'not-configured';
