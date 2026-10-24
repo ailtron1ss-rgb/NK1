@@ -2,14 +2,15 @@ import assert from 'node:assert/strict';
 import { MemorySubsystemRuntime } from '../../src/organism/core/MemorySubsystemRuntime.ts';
 
 function makeClient() {
-  const state = { createOptions: [], prompts: [], closedSessions: 0 };
+  const state = { createOptions: [], sessionOptions: [], prompts: [], closedSessions: 0 };
   const client = {
     async createAgent(options) {
       state.createOptions.push(options);
       return 'agent-lifecycle-test';
     },
-    resumeSession(agentId) {
+    resumeSession(agentId, options = {}) {
       assert.equal(agentId, 'agent-lifecycle-test');
+      state.sessionOptions.push(options);
       return {
         async ready() {},
         async send(prompt) { state.prompts.push(prompt); },
@@ -51,6 +52,9 @@ const item = runtime.fabric.encode({
 assert.ok(item?.id);
 await runtime.flushLettaMemorySync();
 assert.equal(state.createOptions.length, 1);
+assert.deepEqual(state.createOptions[0].baseTools, []);
+assert.ok(state.sessionOptions[0].allowedTools.includes('Write'));
+assert.equal(state.sessionOptions[0].filesystemConfinement, 'memory');
 assert.ok(state.prompts.some((prompt) => prompt.includes('NK1_MEMORY_RECORD_JSON:')));
 assert.ok(state.prompts.some((prompt) => prompt.includes('Kurisu retained a controlled memory lifecycle test.')));
 assert.equal(runtime.lettaBridge.snapshot().metrics.lifecycleUpserts, 1);
