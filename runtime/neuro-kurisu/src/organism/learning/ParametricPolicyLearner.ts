@@ -141,6 +141,20 @@ export class ParametricPolicyLearner{
       const bias=Number(this.state.bias[a]??0);
       this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+    // Persisted diagnostics are untrusted input too. Never let NaN, Infinity,
+    // negative counters or string flags leak back into live learning state.
+    const boundedMetric=(value:unknown,fallback:number):number =>
+      typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
+    this.state.updates=typeof raw?.updates==='number'&&Number.isSafeInteger(raw.updates)&&raw.updates>=0
+      ?raw.updates:0;
+    this.state.tdAbsMean01=boundedMetric(raw?.tdAbsMean01,0);
+    this.state.trainRewardMean01=boundedMetric(raw?.trainRewardMean01,.5);
+    this.state.explorationRate01=boundedMetric(raw?.explorationRate01,.16);
+    this.state.lastLoss01=boundedMetric(raw?.lastLoss01,0);
+    this.state.lastTrainedAt=typeof raw?.lastTrainedAt==='number'&&Number.isFinite(raw.lastTrainedAt)&&raw.lastTrainedAt>=0
+      ?raw.lastTrainedAt:0;
+    this.state.frozen=raw?.frozen===true;
+    this.state.version=1;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
