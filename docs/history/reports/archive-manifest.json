@@ -13,6 +13,18 @@
       "sourceRemovalCommit": "e87c8c390acd0f600dd3fca83b9d2c8e9639d987",
       "sourceRemoved": true,
       "reason": "Preserve a dated 2026-10-06 status snapshot whose runtime/schema claims are historical. The branch inventory reported no incoming local Markdown links and no references from scanned non-Markdown source/config/manifest files; GitHub issue and PR searches found no direct path reference. The file was verified byte-identical after copy."
+    },
+    {
+      "originalPath": "docs/INVENTORY.md",
+      "archivedPath": "docs/history/reports/STRUCTURAL-INVENTORY-2026-10-06.md",
+      "contentSha256": "49582f96c756b938186a910f09b6c4fd1021771beb505195ae6ff9a63527caaa",
+      "sizeBytes": 1501,
+      "originalGitBlobSha": "4d98729c1ad2f2ba497d67c2cb03254608d5adbc",
+      "archivedGitBlobSha": "4d98729c1ad2f2ba497d67c2cb03254608d5adbc",
+      "copyCommit": "faa1ab98d4ecdd44affe552ec6ded9e17b325e1e",
+      "sourceRemovalCommit": null,
+      "sourceRemoved": false,
+      "reason": "Preserve a dated 2026-10-06 structural inventory with stale role/count snapshots. The repository inventory reported no incoming local Markdown or scanned non-Markdown path/basename references, and GitHub issue/PR search found no direct reference to docs/INVENTORY.md. The archived copy was verified byte-identical before source removal."
     }
   ]
 }
