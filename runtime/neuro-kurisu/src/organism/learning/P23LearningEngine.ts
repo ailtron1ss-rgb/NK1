@@ -13,6 +13,7 @@ import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidat
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
+import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -772,18 +773,13 @@ export class P23LearningEngine {
 
 
   /**
-   * Consequential promotion path requiring the RealityEvidenceLedger's
-   * confidence-qualified corroboration assessment in addition to the normal
-   * independent evaluation, signed shadow evidence, and authenticated approval.
-   * The assessment is an input snapshot, not proof by itself: callers must obtain
-   * it from the canonical ledger for the candidate's target claim.
+   * Consequential promotion path requiring confidence-qualified corroboration
+   * from the ledger itself, in addition to the normal independent evaluation,
+   * signed shadow evidence, and authenticated approval.
    */
   approveRealityCorroboratedSkillCandidate(
-    realityAssessment:{
-      independentPromotionAllowed:boolean;
-      qualifiedIndependentExternalSources:number;
-      promotionReason:string;
-    },
+    ledger:RealityEvidenceLedger,
+    claim:string,
     candidateId:string,
     approval:SkillPromotionApproval,
     baseline:Parameters<typeof compareMatchedIndependentEvaluations>[0],
@@ -791,14 +787,15 @@ export class P23LearningEngine {
     verifyEvidence:SkillShadowEvidenceVerifier,
     minShadowRuns=3,
   ):ReturnType<P23LearningEngine['approveIndependentlyEvaluatedSkillCandidate']> {
-    if(!realityAssessment || typeof realityAssessment!=='object' ||
-       realityAssessment.independentPromotionAllowed!==true ||
+    if(!(ledger instanceof RealityEvidenceLedger) ||
+       typeof claim!=='string' || claim.trim()!==claim || claim.length===0 || claim.length>240) {
+      throw new Error('reality corroboration gate requires a canonical ledger and bounded claim');
+    }
+    const realityAssessment=ledger.claimAssessment(claim);
+    if(realityAssessment.independentPromotionAllowed!==true ||
        !Number.isSafeInteger(realityAssessment.qualifiedIndependentExternalSources) ||
        realityAssessment.qualifiedIndependentExternalSources<2) {
-      const reason=typeof realityAssessment?.promotionReason==='string'
-        ? realityAssessment.promotionReason.slice(0,120)
-        : 'reality-corroboration-assessment-invalid';
-      throw new Error(`reality corroboration gate rejected consequential promotion: ${reason}`);
+      throw new Error(`reality corroboration gate rejected consequential promotion: ${realityAssessment.promotionReason}`);
     }
     // Keep all existing independent fitness, exact-payload, signed-evidence and
     // store-level approval checks authoritative; this is an additional precondition.
