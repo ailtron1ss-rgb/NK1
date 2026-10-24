@@ -1,3 +1,9 @@
+## NK1 WorkPass524 — make self-agency learning respect causal evidence (2026-10-24)
+
+- Scaled policy-gradient updates, agency-error updates and ownership/authorship adaptation by the observed action/outcome causal-match signal.
+- A zero causal match now returns diagnostics without training the action policy, shifting agency calibration, changing ownership/authorship, or inflating confidence sample counts; weaker matches receive proportionally smaller updates.
+- Added regressions for zero-, partial- and full-causal-credit behavior to the self-model/personality consolidation test. Runtime execution remains unverified in this pass.
+
 ## NK1 WorkPass503 — restore relationship self-model from validated plain data (2026-10-24)
 
 - Replaced shallow relationship-state restoration with bounded, per-model plain-data snapshotting. Accessor-backed models and top-level state are dropped without getter execution.
