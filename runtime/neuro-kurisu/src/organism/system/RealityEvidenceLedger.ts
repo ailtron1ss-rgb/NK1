@@ -27,6 +27,8 @@ export interface RealityEvidenceLedgerState {
   simulatorCount:number;
   independentSources:number;
   recent:RealityEvidenceRecord[];
+  /** Bounded replay receipts outlive the active evidence window to preserve event-id idempotency. */
+  eventReceipts?:RealityEvidenceRecord[];
   /** IDs whose payload was reused with conflicting evidence content. */
   quarantinedEventIds?:string[];
 }
@@ -91,48 +93,128 @@ function sameEventPayloadExceptConfidence(a:RealityEvidenceRecord,b:RealityEvide
 
 export class RealityEvidenceLedger {
   private readonly capacity:number;
+  private readonly receiptCapacity:number;
   private records:RealityEvidenceRecord[]=[];
+  private eventReceipts=new Map<string,RealityEvidenceRecord>();
   private total=0;
   private quarantinedEventIds=new Set<string>();
 
-  constructor(capacity=384){this.capacity=Math.max(128,Math.min(2048,Math.floor(capacity)));}
+  constructor(capacity=384){
+    this.capacity=Math.max(128,Math.min(2048,Math.floor(capacity)));
+    // The replay index is bounded but wider than the active evidence window;
+    // it prevents a cached-out event from being counted again after a retry.
+    this.receiptCapacity=Math.min(2048,Math.max(512,this.capacity*4));
+  }
+
+  private rememberEvent(row:RealityEvidenceRecord):void {
+    if(!row.eventId)return;
+    this.eventReceipts.set(row.eventId,structuredClone(row));
+    while(this.eventReceipts.size>this.receiptCapacity){
+      const oldest=this.eventReceipts.keys().next().value as string|undefined;
+      if(oldest===undefined)break;
+      this.eventReceipts.delete(oldest);
+    }
+  }
 
   restore(raw?:Partial<RealityEvidenceLedgerState>|null):void{
     let detached:unknown;
     try{
       detached=snapshotPlainData(raw??{},{allowNonFiniteNumbers:true,maxDepth:24,maxNodes:100_000,maxStringUnits:4*1024*1024});
     }catch{
-      this.records=[];this.total=0;this.quarantinedEventIds=new Set();return;
+      this.records=[];this.eventReceipts=new Map();this.total=0;this.quarantinedEventIds=new Set();return;
     }
     if(!isRecord(detached)){
-      this.records=[];this.total=0;this.quarantinedEventIds=new Set();return;
+      this.records=[];this.eventReceipts=new Map();this.total=0;this.quarantinedEventIds=new Set();return;
     }
     const quarantine=new Set<string>();
     if(Array.isArray(detached.quarantinedEventIds)){
       for(const value of detached.quarantinedEventIds.slice(-2048)){const id=eventIdValue(value);if(id)quarantine.add(id);}
     }
-    const records:RealityEvidenceRecord[]=[];
-    const eventRows=new Map<string,RealityEvidenceRecord>();
-    const rawRows=Array.isArray(detached.recent)?detached.recent:[];
-    for(const value of rawRows){
+
+    const receipts=new Map<string,RealityEvidenceRecord>();
+    const mergeReceipt=(row:RealityEvidenceRecord)=>{
+      const id=row.eventId;
+      if(!id||quarantine.has(id))return;
+      const prior=receipts.get(id);
+      if(!prior){receipts.set(id,structuredClone(row));return;}
+      if(sameEventPayload(prior,row))return;
+      if(sameEventPayloadExceptConfidence(prior,row)){
+        if(row.confidence01<prior.confidence01)receipts.set(id,{...prior,confidence01:row.confidence01});
+        return;
+      }
+      quarantine.add(id);
+      receipts.delete(id);
+    };
+
+    // Snapshot receipts are newest-first. Process oldest to newest so the
+    // bounded map naturally evicts the oldest identities when over capacity.
+    const rawReceipts=Array.isArray(detached.eventReceipts)?detached.eventReceipts as unknown[]:[];
+    for(const value of rawReceipts.slice(0,this.receiptCapacity).reverse()){
       const row=parseRecord(value);
-      if(!row)continue;
-      if(row.eventId&&quarantine.has(row.eventId))continue;
+      if(row?.eventId)mergeReceipt(row);
+    }
+
+    const rawRows=Array.isArray(detached.recent)?detached.recent as unknown[]:[];
+    // Merge the active window into the receipt index too. This migrates legacy
+    // snapshots that predate eventReceipts and indexes every still-active event.
+    for(const value of rawRows.slice().reverse()){
+      const row=parseRecord(value);
+      if(row?.eventId)mergeReceipt(row);
+    }
+    while(receipts.size>this.receiptCapacity){
+      const oldest=receipts.keys().next().value as string|undefined;
+      if(oldest===undefined)break;
+      receipts.delete(oldest);
+    }
+
+    const records:RealityEvidenceRecord[]=[];
+    const activeById=new Map<string,RealityEvidenceRecord>();
+    for(const value of rawRows){
+      let row=parseRecord(value);
+      if(!row|| (row.eventId&&quarantine.has(row.eventId)))continue;
       if(row.eventId){
-        const prior=eventRows.get(row.eventId);
+        const receipt=receipts.get(row.eventId);
+        if(receipt){
+          if(sameEventPayloadExceptConfidence(receipt,row)){
+            row={...row,confidence01:Math.min(receipt.confidence01,row.confidence01)};
+          }else if(!sameEventPayload(receipt,row)){
+            quarantine.add(row.eventId);
+            receipts.delete(row.eventId);
+            continue;
+          }
+        }else{
+          mergeReceipt(row);
+        }
+        if(quarantine.has(row.eventId))continue;
+        const prior=activeById.get(row.eventId);
         if(prior){
-          if(!sameEventPayload(prior,row))quarantine.add(row.eventId);
+          if(sameEventPayload(prior,row))continue;
+          if(sameEventPayloadExceptConfidence(prior,row)){
+            const confidence01=Math.min(prior.confidence01,row.confidence01);
+            const normalized={...prior,confidence01};
+            const index=records.findIndex(record=>record.eventId===row!.eventId);
+            if(index>=0)records[index]=normalized;
+            activeById.set(row.eventId,normalized);
+            const receiptNow=receipts.get(row.eventId);
+            if(receiptNow&&sameEventPayloadExceptConfidence(receiptNow,normalized)&&confidence01<receiptNow.confidence01){
+              receipts.set(row.eventId,{...receiptNow,confidence01});
+            }
+          }else{
+            quarantine.add(row.eventId);
+            receipts.delete(row.eventId);
+          }
           continue;
         }
+        if(records.length>=this.capacity)continue;
+        activeById.set(row.eventId,row);
+        records.push(row);
+      }else if(records.length<this.capacity){
+        records.push(row);
       }
-      // Retain the first valid, most-recent records; malformed rows must not
-      // consume the budget. Keep scanning after capacity so conflicting replays
-      // of already-retained event IDs still quarantine the original evidence.
-      if(records.length>=this.capacity)continue;
-      if(row.eventId)eventRows.set(row.eventId,row);
-      records.push(row);
     }
+
     this.records=records.filter(row=>!row.eventId||!quarantine.has(row.eventId)).slice(0,this.capacity);
+    this.eventReceipts=new Map([...receipts].filter(([id])=>!quarantine.has(id)));
     this.quarantinedEventIds=quarantine;
     this.total=Math.max(this.records.length,safeCounter(detached.total,this.records.length));
   }
@@ -164,33 +246,36 @@ export class RealityEvidenceLedger {
       parentIds:[...parentIds],
     };
     if(eventId){
-      const existing=this.records.find(record=>record.eventId===eventId);
+      const existing=this.eventReceipts.get(eventId)??this.records.find(record=>record.eventId===eventId);
       if(existing){
         if(sameEventPayload(existing,row))return structuredClone(existing);
         if(sameEventPayloadExceptConfidence(existing,row)&&row.confidence01<existing.confidence01){
           // Schema-compatible projection upgrades may lower a legacy raw score
           // after source-trust calibration. A stable event ID may never elevate it.
+          const recalibrated={...existing,confidence01:row.confidence01};
           const index=this.records.findIndex(record=>record.eventId===eventId);
-          if(index>=0)this.records[index]=row;
-          return structuredClone(row);
+          if(index>=0)this.records[index]=recalibrated;
+          this.eventReceipts.set(eventId,recalibrated);
+          return structuredClone(recalibrated);
         }
         this.quarantinedEventIds.add(eventId);
         this.records=this.records.filter(record=>record.eventId!==eventId);
+        this.eventReceipts.delete(eventId);
         throw new Error('reality-evidence-event-id-conflict');
       }
     }
     this.records.unshift(row);
     if(this.records.length>this.capacity)this.records.length=this.capacity;
+    if(eventId)this.rememberEvent(row);
     this.total++;
     return structuredClone(row);
   }
 
-  /** Exact active event lookup used to keep replayed confidence monotonic. */
+  /** Exact event lookup also covers evidence evicted from the active window. */
   findByEventId(eventId:string):RealityEvidenceRecord|undefined {
-    if(typeof eventId!=='string'||!eventId)return undefined;
-    const row=this.records.find(record=>record.eventId===eventId);
-    if(!row||this.quarantinedEventIds.has(eventId))return undefined;
-    return structuredClone(row);
+    if(typeof eventId!=='string'||!eventId||this.quarantinedEventIds.has(eventId))return undefined;
+    const row=this.eventReceipts.get(eventId)??this.records.find(record=>record.eventId===eventId);
+    return row?structuredClone(row):undefined;
   }
 
   recent(limit=64){const bounded=typeof limit==='number'&&Number.isFinite(limit)?Math.max(0,Math.min(256,Math.floor(limit))):64;return structuredClone(this.records.filter(row=>!row.eventId||!this.quarantinedEventIds.has(row.eventId)).slice(0,bounded));}
@@ -243,6 +328,7 @@ export class RealityEvidenceLedger {
       simulatorCount:active.filter(r=>r.realityClass==='simulator').length,
       independentSources:independent.size,
       recent:this.recent(96),
+      eventReceipts:[...this.eventReceipts.values()].reverse().map(row=>structuredClone(row)),
       quarantinedEventIds:[...this.quarantinedEventIds].slice(-2048),
     };
   }
