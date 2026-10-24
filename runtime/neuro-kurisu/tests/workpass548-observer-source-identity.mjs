@@ -56,4 +56,18 @@ const updated = fabric.registerSource({
 assert.equal(updated.reliability01, 0.7);
 assert.equal(updated.independenceKey, 'physical-sensor-bank-a');
 
+// A caller's confidence in one sample must not mint a permanently high-trust source.
+const autoRegistered = new ExternalObserverFabric();
+autoRegistered.observe({
+  sourceId: 'api-untrusted',
+  sourceClass: 'external-api',
+  channel: 'http',
+  claimKey: 'status=ready',
+  observedPostcondition: 'status=ready',
+  confidence01: 0.99,
+});
+const mintedSource = autoRegistered.snapshot().sources.find(source => source.id === 'api-untrusted');
+assert.equal(mintedSource.reliability01, 0.84, 'new external-api sources must start from the conservative class prior');
+assert.equal(autoRegistered.snapshot().observations[0].confidence01, 0.99, 'sample confidence remains separate evidence');
+
 console.log('WorkPass548 observer source identity regression: PASS');
