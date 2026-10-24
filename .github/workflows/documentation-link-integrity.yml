@@ -20,6 +20,8 @@ on:
       - "runtime/neuro-kurisu/tests/server-import-graph-audit.test.mjs"
       - "tools/audit-markdown-links.mjs"
       - "tools/audit-markdown-links.test.mjs"
+      - "tools/audit-documentation-inventory.mjs"
+      - "tools/audit-documentation-inventory.test.mjs"
       - ".github/workflows/documentation-link-integrity.yml"
   push:
     branches:
@@ -60,6 +62,10 @@ jobs:
           esac
       - name: Run link-auditor regression tests
         run: node --test tools/audit-markdown-links.test.mjs
+      - name: Test documentation inventory
+        run: npm run test:doc-inventory
+      - name: Inventory exact duplicates and inbound links
+        run: npm run audit:doc-inventory
       - name: Verify dependency boundaries and transitive server imports
         run: |
           npm --prefix runtime/neuro-kurisu run audit:architecture
