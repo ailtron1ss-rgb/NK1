@@ -1,3 +1,11 @@
+## NK1 WorkPass523 — improve outcome-driven tool failure diagnosis (2026-10-24)
+
+- Expanded P23 reflection classification to recognize failed tool calls/invocations and adapter failures in English and Russian, so the learning curriculum can route more real execution failures into the existing typed repair loop.
+- Added regression cases for English call/invocation phrasing and Russian tool/adapter/gateway errors; safety and timeout classification precedence remains unchanged.
+- **Verification boundary:** code and regression test committed to `feature/learning`; the focused test and exact-head CI have not been run in this pass.
+
+---
+
 ## NK1 WorkPass522 — align evidence-replay and durable identity regression contracts (2026-10-24)
 
 - The paired-outcome persistence fixture now uses a fresh evidence receipt when testing duplicate-attempt identity, plus a separate assertion for evidence-receipt reuse. This keeps the tests aligned with the ledger's explicit rejection precedence instead of conflating two independent invariants.
