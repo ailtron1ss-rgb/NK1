@@ -2117,6 +2117,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
 
+- Tightened the local Node child-process shim with event callback types and `ProcessEnv`; adapted timer `unref` to both Node timers and numeric DOM timer declarations, and corrected `fs/promises.access` mode typing.
+
 - Expanded the minimal Node compatibility declarations to cover the APIs actually used by the runtime (Node crypto key objects, filesystem sync/promises, path resolution, process platform and Buffer byte operations), so type-checking can distinguish missing shim declarations from real logic/type defects.
 
 - Refined P23 restore recovery: a non-empty sanitized dedupe cache remains authoritative and newest-first; valid experience/replay rows rebuild the cache only when its stored counterpart has no usable IDs.

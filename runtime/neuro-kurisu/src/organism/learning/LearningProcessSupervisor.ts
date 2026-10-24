@@ -247,7 +247,7 @@ export async function runLearningProcess(
     if (!terminalStatus) terminalStatus = 'timed-out';
     terminateRun();
   }, timeoutMs);
-  timeout.unref?.();
+  (timeout as unknown as { unref?: () => void }).unref?.();
   const onAbort = () => {
     if (childClosed || terminalStatus) return;
     terminalStatus = 'cancelled';
