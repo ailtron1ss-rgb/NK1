@@ -12,6 +12,12 @@ on:
       - "**/*.mdx"
       - "**/*.markdown"
       - "package.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/scripts/audit-architecture.mjs"
+      - "runtime/neuro-kurisu/scripts/audit-server-imports.mjs"
+      - "runtime/neuro-kurisu/scripts/dependency-boundary-policy.mjs"
+      - "runtime/neuro-kurisu/tests/architecture-dependency-boundaries.test.mjs"
+      - "runtime/neuro-kurisu/tests/server-import-graph-audit.test.mjs"
       - "tools/audit-markdown-links.mjs"
       - "tools/audit-markdown-links.test.mjs"
       - ".github/workflows/documentation-link-integrity.yml"
@@ -37,7 +43,7 @@ concurrency:
 jobs:
   documentation-links:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -54,6 +60,10 @@ jobs:
           esac
       - name: Run link-auditor regression tests
         run: node --test tools/audit-markdown-links.test.mjs
+      - name: Verify dependency boundaries and transitive server imports
+        run: |
+          npm --prefix runtime/neuro-kurisu run audit:architecture
+          npm --prefix runtime/neuro-kurisu run audit:server-imports
       - name: Check canonical navigation pages
         run: |
           node tools/audit-markdown-links.mjs --strict --files \
