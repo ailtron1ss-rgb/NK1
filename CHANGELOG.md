@@ -1,3 +1,13 @@
+## NK1 WorkPass475 — close curriculum persistence path and guard B272 evidence (2026-10-24)
+
+- Added the shared `core/PlainDataSnapshot.ts` bounded snapshotter with configurable depth/node/string limits; `LearningTrustBoundary` now reuses it instead of owning a separate implementation. This also resolves the previously missing core import in `AutonomousCognitiveLifeEngine.ts`.
+- B272 outcome credit is now conditional on the executed action matching the generated goal action. A planner override no longer throws out the entire feedback cycle; mismatched outcomes are not falsely credited to the endogenous-goal learner.
+- Updated the core curriculum persistence regression to use Node's `--experimental-transform-types`, and to exercise the real feedback/checkpoint path while separately asserting that the saved curriculum can be restored directly.
+- **Verified on exact HEAD `c51924526daefcd28d052075c5688494bd9d6394`:** [WorkPass417 Personal Curriculum Integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40060792519) passed. Node 24 install, TypeScript typecheck, all three curriculum restore/input tests, and core restart persistence passed (`cycles=5`, `threads=7`, `persisted=true`).
+- No new external runtime dependency. `main` and the Release ZIP were not changed. Full P23 end-to-end held-out learning gain remains unproven; no empirical uplift claimed.
+
+---
+
 ## NK1 WorkPass474 — reviewed correction memory with Hexis-style escalation (2026-10-24)
 
 - Added `CorrectionRuleMemory` to the P23 learning runtime. It stores bounded, structured corrections only when a host-configured reviewer verifier accepts the record; free-form prompt/conversation content is not persisted.
