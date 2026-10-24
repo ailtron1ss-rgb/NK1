@@ -1,3 +1,13 @@
+## NK1 WorkPass503 — restore relationship self-model from validated plain data (2026-10-24)
+
+- Replaced shallow relationship-state restoration with bounded, per-model plain-data snapshotting. Accessor-backed models and top-level state are dropped without getter execution.
+- Rejects malformed social metrics, non-canonical/control-character identities, malformed project/commitment lists, and invalid timestamps; restores deduplicated models within the 64-model cap.
+- Extended the existing relationship-model regression for valid roundtrip, malformed-model filtering, duplicate identities and hostile accessor snapshots. Added it to the personality category's rebuild test chain.
+- Reuses the existing `PlainDataSnapshot` integrity helper rather than adding another sanitization implementation or dependency; preserves B288SocialPredictiveSelfOtherBrain as the documented canonical social-brain owner.
+- **Validation boundary:** code and test-chain wiring are committed; test/typecheck execution remains unconfirmed.
+
+---
+
 ## NK1 WorkPass502 — close relationship-model input and CI follow-ups
 
 - Corrected the relationship-model control-character guard to use code-point checks instead of an incorrectly escaped regular expression.
