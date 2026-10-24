@@ -2217,3 +2217,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 
 - **WorkPass333 safety hardening:** The 256-record HMX goal proposal registry now preflights capacity before mutation and refuses a new batch when full, rather than silently evicting pending/reviewed proposals. P68 pruning preserves external goals marked \`activationApproved: false\` until explicit activation is completed. Added regression coverage for full-queue atomic failure and retention during cleanup.
+
+
+- **WorkPass333 follow-up hardening:** HMX canonical memory application now fails closed unless the staged candidate uses \`intent=port\` and \`strategy=additive\`; \`analysis_only\` and \`authoritative\` candidates can be reviewed but cannot mutate MemoryOS2 through this limited projector.
+- The HMX apply error path in \`OrganismCore\` now persists the updated attempt counter before rethrowing. This keeps post-restart retries on a distinct canonical command ID after a compensated write.
+- Repaired P68's paused-goal traversal: the ecology now revisits both active and paused goals, allowing native paused goals to resume under existing conditions. External goals require \`activationApproved === true\` to reactivate, and both new and legacy unapproved external goals are protected from retention pruning.
+- Added regressions for unsupported apply strategies, restart-safe attempt advancement, P68 native-goal reactivation, external-goal activation gating, and fail-closed proposal queue capacity.
