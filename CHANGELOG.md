@@ -1,3 +1,9 @@
+## NK1 WorkPass524 — align semantic retrieval with stale-revision suppression (2026-10-24)
+
+- Current semantic-index maintenance, index diagnostics and embedding-based retrieval now exclude a damaged legacy memory whose `supersededById` exists but whose `validUntilAt` was lost.
+- Explicit `temporalMode: 'all'` remains archival and can inspect historical revisions; live semantic recall no longer gets a different validity policy from the canonical retrieval path.
+- Added a deterministic embedding-provider regression for current semantic retrieval versus archive retrieval. Test execution is not claimed in this pass.
+
 ## NK1 WorkPass516 — enforce canonical parent lineage on live P65 writes (2026-10-24)
 
 - P65 live writes now reject duplicate parent IDs, whitespace-padded IDs and control characters, matching the stricter restore contract from WorkPass515.
