@@ -28,7 +28,8 @@ function canonicalBaseUrl(raw: string | undefined): string {
 }
 
 function imageMimeType(filePath: string): string {
-  const ext = path.extname(filePath).toLowerCase();
+  const name = path.basename(filePath).toLowerCase();
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : '';
   if (ext === '.png') return 'image/png';
   if (ext === '.webp') return 'image/webp';
   if (ext === '.gif') return 'image/gif';
