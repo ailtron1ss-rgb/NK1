@@ -47,6 +47,8 @@ const nonBlank = (s: unknown): s is string => typeof s === 'string' && s.trim().
 export class AutonomousIntentLearningGovernor {
   private readonly decisions = new Map<string, AILGDecision>();
   private readonly outcomes = new Map<string, AILGOutcome>();
+  private readonly executionReceipts = new Map<string, string>();
+  private readonly approvalReceipts = new Map<string, string>();
 
   private readonly config: {
     minimumScore01?: number;
@@ -108,10 +110,33 @@ export class AutonomousIntentLearningGovernor {
     return { ...decision };
   }
 
+  /** Explicit approval transitions a gated proposal to an executable decision. */
+  authorize(intentId: string, approvalReceipt: string): { accepted: boolean; reason: string } {
+    const decision = this.decisions.get(intentId);
+    if (!decision) return { accepted: false, reason: 'unknown-intent' };
+    if (decision.status !== 'approval-required') return { accepted: false, reason: 'approval-not-required' };
+    if (!nonBlank(approvalReceipt)) return { accepted: false, reason: 'invalid-approval-receipt' };
+    this.approvalReceipts.set(intentId, approvalReceipt);
+    decision.status = 'act';
+    decision.reason = 'explicit-approval-recorded';
+    return { accepted: true, reason: 'authorized' };
+  }
+
+  /** Execution must be attested before an outcome can be attributed to the intent. */
+  recordExecution(intentId: string, executionReceipt: string): { accepted: boolean; reason: string } {
+    const decision = this.decisions.get(intentId);
+    if (!decision) return { accepted: false, reason: 'unknown-intent' };
+    if (decision.status !== 'act') return { accepted: false, reason: 'intent-not-authorized' };
+    if (!nonBlank(executionReceipt)) return { accepted: false, reason: 'invalid-execution-receipt' };
+    if (this.executionReceipts.has(intentId)) return { accepted: false, reason: 'duplicate-execution' };
+    this.executionReceipts.set(intentId, executionReceipt);
+    return { accepted: true, reason: 'execution-recorded' };
+  }
+
   recordOutcome(outcome: AILGOutcome): { accepted: boolean; reason: string } {
     const decision = this.decisions.get(outcome.intentId);
     if (!decision) return { accepted: false, reason: 'unknown-intent' };
-    if (decision.status !== 'act') return { accepted: false, reason: 'intent-not-executed' };
+    if (decision.status !== 'act' || !this.executionReceipts.has(outcome.intentId)) return { accepted: false, reason: 'intent-not-executed' };
     if (this.outcomes.has(outcome.intentId)) return { accepted: false, reason: 'duplicate-outcome' };
     if (!Number.isFinite(outcome.observedBenefit01) ||
         outcome.observedBenefit01 < 0 || outcome.observedBenefit01 > 1 ||
@@ -151,6 +176,8 @@ export class AutonomousIntentLearningGovernor {
     return {
       decisions: [...this.decisions.values()].map(v => ({ ...v })),
       outcomes: [...this.outcomes.values()].map(v => ({ ...v })),
+      executedIntentIds: [...this.executionReceipts.keys()],
+      approvedIntentIds: [...this.approvalReceipts.keys()],
       outcomeCoverage01: this.decisions.size
         ? this.outcomes.size / [...this.decisions.values()].filter(v => v.status === 'act').length || 0
         : 0,
