@@ -317,6 +317,9 @@ function focusFromState(state:OrganismState, extras:{worldError01?:number; selfE
   return (Object.entries(scores).sort((a,b)=>b[1]-a[1])[0]?.[0] ?? 'learning') as DevelopmentArea;
 }
 
+/** Reserved ActionGateway tool ID for host-owned independent P36 evaluation. */
+export const P36_EXTERNAL_EVIDENCE_TOOL_ID = 'organism.learning.p36.evaluate-evidence';
+
 export class P36AutonomousSelfDevelopmentEngine{
   private state=defaultState();
   restore(raw?:Partial<SelfDevelopmentState>|null){
