@@ -1,3 +1,13 @@
+## Latest durable checkpoint — WorkPass420 (2026-10-24)
+
+- Continue on existing `feature/learning` / draft PR #79 → `integration`; do not create a duplicate PR.
+- Restore hardening now requires canonical normalized persisted thread IDs/families and single-line context keys; it rejects impossible outcome counts where successes + failures exceed occurrences.
+- Added regression coverage for control characters and inconsistent persisted evidence. Fixed the test fixture to contain actual control characters rather than literal backslash escape text.
+- **Validation:** Node 24 setup and `npm run typecheck` passed on [run 40060149621](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40060149621). The test step then correctly exposed the faulty fixture (missing expected exception). After the fixture correction, [run 40060194767](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40060194767) is queued; corrected-head tests are not yet verified.
+- **Progress unchanged:** learning implementation 83%; confirmed production readiness ~45%. No measured learning uplift claimed.
+- `main` and the Release ZIP remain unchanged. Next: complete the corrected-head suite, then validate core restart persistence and the P23 end-to-end learning path.
+ 
+---
 ## Latest durable checkpoint — WorkPass419 (2026-10-23)
 
 - Continue on existing `feature/learning` / draft PR #79 → `integration`; do not create a duplicate PR.
