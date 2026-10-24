@@ -69,6 +69,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
       - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P36AutonomousSelfDevelopment.ts"
+      - "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
