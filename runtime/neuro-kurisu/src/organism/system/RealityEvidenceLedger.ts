@@ -107,7 +107,7 @@ export class RealityEvidenceLedger {
     }
     const records:RealityEvidenceRecord[]=[];
     const eventRows=new Map<string,RealityEvidenceRecord>();
-    const rawRows=Array.isArray(detached.recent)?detached.recent.slice(0,this.capacity*4):[];
+    const rawRows=Array.isArray(detached.recent)?detached.recent:[];
     for(const value of rawRows){
       const row=parseRecord(value);
       if(!row)continue;
@@ -118,8 +118,12 @@ export class RealityEvidenceLedger {
           if(!sameEventPayload(prior,row))quarantine.add(row.eventId);
           continue;
         }
-        eventRows.set(row.eventId,row);
       }
+      // Retain the first valid, most-recent records; malformed rows must not
+      // consume the budget. Keep scanning after capacity so conflicting replays
+      // of already-retained event IDs still quarantine the original evidence.
+      if(records.length>=this.capacity)continue;
+      if(row.eventId)eventRows.set(row.eventId,row);
       records.push(row);
     }
     this.records=records.filter(row=>!row.eventId||!quarantine.has(row.eventId)).slice(0,this.capacity);
