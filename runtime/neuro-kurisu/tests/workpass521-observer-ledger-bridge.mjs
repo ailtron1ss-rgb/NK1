@@ -131,6 +131,12 @@ assert.equal(corroborated.qualifiedIndependentExternalSources, 2, 'both strong s
 assert.equal(corroborated.independentPromotionAllowed, true, 'two high-confidence independent sources may satisfy corroboration');
 
 const persisted = runtime.snapshot();
+// Simulate a pre-calibration snapshot: the observer rows are valid, but their
+// ledger projections still carry the original unadjusted sample confidence.
+for (const row of persisted.realityEvidenceLedger.recent) {
+  const observation = persisted.externalObserver.observations.find(item => (item.evidenceEventId ?? item.id) === row.eventId);
+  if (observation) row.confidence01 = observation.confidence01;
+}
 const restored = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 restored.restore(persisted);
 const restoredLedger = restored.realityEvidenceLedger.snapshot();
@@ -140,6 +146,10 @@ assert.deepEqual(
   new Set([evidenceEventId, `outcome:${'b'.repeat(40)}`, `outcome:${'c'.repeat(40)}`]),
   'restore must preserve every verifier event identity across observer-ledger reconciliation',
 );
+assert.ok(!restoredLedger.quarantinedEventIds?.includes(evidenceEventId),
+  'conservative recalibration of a legacy event must not quarantine its stable event ID');
+assert.equal(restoredLedger.recent.find(row => row.eventId === evidenceEventId)?.confidence01, input.confidence01 * 0.8,
+  'restore must lower the legacy raw sample confidence using the registered source prior');
 
 // The raw restore array may contain more than four times capacity in malformed
 // rows. It must still locate the valid evidence after those rows are rejected.
