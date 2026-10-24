@@ -57,7 +57,7 @@ export function spawnManaged(command, args = [], options = {}) {
  */
 export function terminateChild(child, { graceMs = 1_000, forceGraceMs = 500 } = {}) {
   if (!child) return Promise.resolve({ stopped: true, alreadyExited: true, forced: false });
-  if (hasExited(child)) {
+  if (hasExited(child) && !(child.__nkProcessGroup && processGroupExists(child.pid))) {
     return Promise.resolve({ stopped: true, alreadyExited: true, forced: false, code: child.exitCode, signal: child.signalCode });
   }
 
@@ -157,6 +157,8 @@ export function runCommand(command, args = [], options = {}) {
     let timeoutTimer;
     let forceTimer;
     let finalTimer;
+    let timeoutCleanupStarted = false;
+    let closeResult = null;
 
     const finish = (code, signal) => {
       if (settled) return;
@@ -206,19 +208,22 @@ export function runCommand(command, args = [], options = {}) {
       spawnError = error;
       if (!child.pid) finish(null, null);
     });
-    child.once('close', (code, signal) => finish(code, signal));
+    child.once('close', (code, signal) => {
+      closeResult = { code, signal };
+      if (!timeoutCleanupStarted) finish(code, signal);
+    });
 
     if (Number.isFinite(timeoutMs) && timeoutMs >= 0) {
       timeoutTimer = setTimeout(() => {
+        if (settled) return;
         timedOut = true;
-        sendSignal(child, 'SIGTERM');
-        forceTimer = setTimeout(() => {
-          if (settled) return;
-          sendSignal(child, 'SIGKILL');
-          finalTimer = setTimeout(() => finish(null, 'SIGKILL'), forceGraceMs);
-          finalTimer.unref?.();
-        }, terminationGraceMs);
-        forceTimer.unref?.();
+        timeoutCleanupStarted = true;
+        void terminateChild(child, { graceMs: terminationGraceMs, forceGraceMs }).then(() => {
+          const closed = closeResult ?? { code: child.exitCode, signal: child.signalCode };
+          finish(closed.code, closed.signal);
+        });
+        finalTimer = setTimeout(() => finish(closeResult?.code ?? null, closeResult?.signal ?? 'SIGKILL'),
+          terminationGraceMs + forceGraceMs + 1_000);
       }, timeoutMs);
       timeoutTimer.unref?.();
     }
