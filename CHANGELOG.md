@@ -1,3 +1,11 @@
+## NK1 WorkPass489 — cross-seed promotion gate contract
+
+- Added `runtime/neuro-kurisu/research/WORKPASS489_CROSS_SEED_PROMOTION_GATE.md` to define a fail-closed, paired-seed promotion protocol integrated with the existing P23/Hermes evaluator and verified-outcome ledger.
+- Specifies frozen manifests, holdout isolation, per-seed and per-task-family regression budgets, deterministic reason codes, append-only evidence, and separation of proposal from activation.
+- This is a contract/planning artifact; runtime wiring and experiment results are explicitly not claimed complete.
+
+---
+
 ## NK1 WorkPass488 — preserve bounded numeric sentinels for field policy validation
 
 - Fixed the typecheck blocker introduced by the candidate-gate hardening: `PlainDataSnapshotOptions` now supports explicit `allowNonFiniteNumbers`.
