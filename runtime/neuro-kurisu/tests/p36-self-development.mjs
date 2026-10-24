@@ -68,6 +68,7 @@ const manualReceipt=await mintProof(developmentEvidenceVerificationInput(manualP
 const manualResult=guardEngine.recordExternalEvidence({...manualPayload,verification:manualReceipt});
 assert.equal(manualResult.independentCount,0,'manual observer evidence cannot enter the independent-evaluator lane');
 assert.equal(guardEngine.diagnostics().acceptedChanges,0);
+assert.equal(guardEngine.diagnostics().unverifiedEvidenceAttempts,3,'all three untrusted evidence attempts are visible in diagnostics');
 
 // A forged row must not occupy the duplicate key and block its later valid receipt.
 const campaign=new P36AutonomousSelfDevelopmentEngine();
@@ -138,6 +139,7 @@ const maturityEngine=new P36AutonomousSelfDevelopmentEngine();
 const outcome={area:'learning',outcome01:.95,delayed:true,transfer:true};
 const forgedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verified:true});
 assert.equal(forgedMaturity.verifiedOutcomeCount,0,'a caller boolean cannot certify developmental maturity');
+assert.equal(maturityEngine.diagnostics().rejectedMaturityReceipts,1,'blocked maturity assertions must be observable');
 assert.throws(()=>maturityEngine.observeDevelopmentalOutcome({...outcome,outcome01:1.1}),/invalid-developmental-outcome/,'out-of-range outcomes must be rejected');
 const outcomeProof=await mintProof(developmentalOutcomeVerificationInput(outcome));
 const measuredMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verified:false,verification:outcomeProof});
