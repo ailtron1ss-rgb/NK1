@@ -149,10 +149,18 @@ assert(canonicalImported.some(item => item.kind === 'procedural'), 'Hexis skills
 assert.equal(applyFabric.decideHmx(applyStage.stagingId, 'apply')?.application?.digest, appliedStage?.application?.digest,
   'replaying an applied stage returns the same application receipt without another mutation');
 
-// Re-importing the same lineage/ref/content is deduplicated across distinct staging sessions.
+// Re-exporting the same source lineage with a different export ID keeps stable memory identity.
+const laterNormalizedNk1Export = normalizeNk1HmxExport({
+  ...nativeNk1Export,
+  exportedAt: '2026-10-25T00:00:00.000Z',
+});
+assert.notEqual(laterNormalizedNk1Export.export_id, normalizedNk1Export.export_id);
+assert.equal(laterNormalizedNk1Export.source.hexis_lineage_id, normalizedNk1Export.source.hexis_lineage_id);
+assert.notEqual(laterNormalizedNk1Export.sections.memories[0].ref, normalizedNk1Export.sections.memories[0].ref);
+
 const duplicateApplyFabric = new HexisAdaptationFabric();
 duplicateApplyFabric.bindCanonicalMemoryApply(candidate => canonicalProjector.apply(candidate));
-const duplicateStage = duplicateApplyFabric.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
+const duplicateStage = duplicateApplyFabric.stageHmx({ document: laterNormalizedNk1Export, intent: 'port', strategy: 'additive' });
 assert.equal(duplicateApplyFabric.decideHmx(duplicateStage.stagingId, 'accept')?.status, 'accepted');
 const duplicateApply = duplicateApplyFabric.decideHmx(duplicateStage.stagingId, 'apply');
 assert.equal(duplicateApply?.application?.importedCount, 0);
