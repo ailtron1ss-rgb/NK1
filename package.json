@@ -183,6 +183,12 @@
     "test:embodiment-timeline": "npm --prefix app run test:embodiment-timeline",
     "test:workpass70": "npm run test:embodiment-timeline && npm run test:workpass69",
     "audit:workpass70": "npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:app-dependency-contract && npm run test:super-install && npm run test:workpass70 && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run verify:release-source && npm run audit:release-metadata",
+    "test:markdown-links": "node --test tools/audit-markdown-links.test.mjs",
+    "audit:markdown-links": "node tools/audit-markdown-links.mjs",
+    "audit:canonical-links": "node tools/audit-markdown-links.mjs --strict --files README.md AGENTS.md NEUROCORE_START_HERE.md docs/PROJECT_MAP_AND_ORDERING.md docs/BRANCH_INVENTORY_2026-10-24.md docs/INTEGRATION_WORKSPACE.md docs/ARCHITECTURE.md docs/RESEARCH_INTAKE_LEDGER.md",
+    "test:markdown-links": "node --test tools/audit-markdown-links.test.mjs",
+    "audit:markdown-links": "node tools/audit-markdown-links.mjs",
+    "audit:canonical-links": "node tools/audit-markdown-links.mjs --strict --files README.md AGENTS.md NEUROCORE_START_HERE.md docs/PROJECT_MAP_AND_ORDERING.md docs/BRANCH_INVENTORY_2026-10-24.md docs/INTEGRATION_WORKSPACE.md docs/ARCHITECTURE.md docs/RESEARCH_INTAKE_LEDGER.md",
     "audit:ci-reliability": "node tools/verify-ci-reliability.mjs"
   },
   "version": "35.0.0-super-workpass70",
