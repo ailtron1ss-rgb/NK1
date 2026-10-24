@@ -10,7 +10,7 @@ const mk=(over={})=>({
   futureMismatch01:.36, futureIdentityCoherence01:.79, regret01:.22, counterfactualGap01:.3, evidence01:.55, resource01:.7, at:Date.now(), ...over
 });
 const e=new AutonomousCognitiveLifeEngine(); e.restore(defaultAutonomousCognitiveLife());
-// WorkPass460: malformed external feedback is rejected before any predictor/metric mutation.
+// WorkPass524: malformed external feedback is rejected before any predictor/metric mutation.
 const beforeBadDecision=e.snapshot();
 assert.throws(()=>e.recordDecision({action:'not-an-action',predicted01:.5,confidence01:.5}),/autonomous-life-decision-action-invalid/);
 assert.deepEqual(e.snapshot(),beforeBadDecision,'invalid decision labels must not create prediction records');
