@@ -129,12 +129,42 @@ assert.equal(linked.linkedOutcomeEvents, 1, 'causal outcome must bind only throu
 assert.ok(linked.claims.find((claim) => claim.id === 'candidate-2')?.supportingEvidenceIds?.length === 1);
 assert.equal(linked.claims.find((claim) => claim.id === 'candidate-1')?.supportingEvidenceIds?.length, 0);
 assert.equal(linked.evidence[0].kind, 'outcome');
+const toolFabric = new CognitiveEventFabric();
+const planIds = toolFabric.recordOperationalCycle({
+  tick: 20,
+  observation: { source: 'observation-source', confidence01: .8, payload: { seen: true } },
+  prediction: { source: 'prediction-source', confidence01: .75, payload: { action: 'verify' } },
+  plan: { source: 'plan-source', confidence01: .85, payload: { action: 'verify' } },
+  action: { source: 'action-source', confidence01: .85, payload: { action: 'verify' } },
+  outcome: { source: 'outcome-source', external: true, confidence01: .9, payload: { success: true, reward: .9 } },
+  learning: { source: 'learning-source', confidence01: .8, payload: { learned: true } },
+  selfUpdate: { source: 'self-update-source', confidence01: .8, payload: { reviewed: true } },
+});
+toolFabric.appendToolReceiptTrace({
+  tick: 21, executionId: 'exec-internal-dialogue-1', toolId: 'device.inspect',
+  decisionId: planIds.plan, ok: true, verified: false, outcomeClass: 'executed-unverified',
+  confidence01: .68, verificationBasis: 'none', externalObservation: false,
+  observationIntegrated: false, at: 200000,
+});
+const externalObservation = toolFabric.appendToolExternalObservation({
+  tick: 22, executionId: 'exec-internal-dialogue-1', toolId: 'device.inspect',
+  observationId: 'obs-independent-1', verified: true, confidence01: .97,
+  sourceId: 'sensor-gamma', sourceClass: 'device', channel: 'sensor',
+  independenceKey: 'sensor-bus-gamma', expectedPostcondition: 'position=ready',
+  observedPostcondition: 'position=ready', at: 210000,
+});
+assert.equal(externalObservation.resolved, true);
+const toolEvidenceSnapshot = toolFabric.snapshot();
+const externalBound = bindCognitiveEventEvidence(seedClaims, [], toolEvidenceSnapshot);
+assert.equal(externalBound.linkedIndependentObservations, 1, 'late independent observation must retain its causal tool-receipt lineage');
+assert.ok(externalBound.claims.find((claim) => claim.id === 'candidate-2')?.supportingEvidenceIds?.length === 1);
+assert.equal(externalBound.evidence[0].kind, 'observation');
 const proposalPrompt = buildCognitiveProposalPrompt(
   cycle,
   'A grounded observation about two competing action hypotheses.',
   entityContext,
   '',
-  causalSnapshot,
+  toolEvidenceSnapshot,
 );
 const wholePrompt = proposalPrompt.system + '\n' + proposalPrompt.user;
 assert.match(wholePrompt, /INTERNAL DIALOGUE REVIEW/);
