@@ -51,8 +51,24 @@ const updated = memory.updateSignals('optimization-peek-cold-row', { salience: 0
 assert.equal(updated?.salience, 0.81, 'indexed signal update must reach the canonical row');
 assert.equal(memory.peek('optimization-peek-cold-row')?.salience, 0.81);
 
+// BM25 should reuse bounded token-frequency profiles rather than tokenize each
+// candidate from scratch on every query.
+const frequencyProbe = 'benchmark repeated repeated unique';
+memory.tokensFor(frequencyProbe);
+assert.equal(memory.termFrequenciesFor(frequencyProbe).get('repeated'), 2);
+for (let index = 0; index < 600; index++) {
+  memory.tokensFor(`optimization bounded-cache probe ${index}`);
+}
+assert.ok(memory.tokenCache.size <= 512, 'token cache must remain bounded');
+assert.ok(memory.termFrequencyCache.size <= 512, 'BM25 term-frequency cache must remain bounded');
+assert.equal(memory.indexDiagnostics().pass, true, 'derived lookup indexes must remain consistent');
+
 console.log('OPTIMIZATION_INDEXED_MEMORY_LOOKUP=PASS', JSON.stringify({
   peekIsReadOnly: true,
-  coldVectorMaterialized: memory.peek('optimization-peek-cold-row')?.semanticVector.length !== 0,
   indexedSignalUpdate: updated?.salience,
+  repeatedTermFrequency: memory.termFrequenciesFor(frequencyProbe).get('repeated'),
+  tokenCacheEntries: memory.tokenCache.size,
+  termFrequencyCacheEntries: memory.termFrequencyCache.size,
+  cacheLimit: 512,
+  indexesConsistent: memory.indexDiagnostics().pass,
 }));
