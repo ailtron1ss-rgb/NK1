@@ -383,12 +383,12 @@ export class HexisAdaptationFabric {
             conflicts.push({ path: '$', kind: 'schema', detail: 'HMX document must be valid JSON data' });
         }
 
-        const intent = HMX_INTENTS.has(input?.intent) ? input.intent : 'analysis';
-        const strategy = HMX_STRATEGIES.has(input?.strategy) ? input.strategy : 'analysis_only';
-        if (!HMX_INTENTS.has(input?.intent)) {
+        const intent = HMX_INTENTS.has(input.intent) ? input.intent : 'analysis';
+        const strategy = HMX_STRATEGIES.has(input.strategy) ? input.strategy : 'analysis_only';
+        if (!HMX_INTENTS.has(input.intent)) {
             conflicts.push({ path: 'intent', kind: 'schema', detail: 'unknown import intent; expected a supported HMX intent' });
         }
-        if (!HMX_STRATEGIES.has(input?.strategy)) {
+        if (!HMX_STRATEGIES.has(input.strategy)) {
             conflicts.push({ path: 'strategy', kind: 'schema', detail: 'unknown import strategy; expected a supported HMX strategy' });
         }
 
