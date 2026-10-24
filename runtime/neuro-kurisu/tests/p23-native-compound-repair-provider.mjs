@@ -187,6 +187,42 @@ test('native provider rejects a candidate with correct proposal lineage but the 
   });
 });
 
+test('native provider requires payload fingerprints on all signed baseline/source outcomes', async () => {
+  await temporary(async ({ root, stateDirectory, configDirectory }) => {
+    const dataset = buildDataset();
+    dataset.artifacts = dataset.artifacts.map(artifact => {
+      const payload = { ...artifact.payload };
+      delete payload.payloadFingerprint;
+      return signOutcomePayloadForFixture(payload, privatePem);
+    });
+    const datasetPath = path.join(configDirectory, 'missing-payload-fingerprint.json');
+    await writeFile(datasetPath, JSON.stringify(dataset), { mode: 0o600 });
+    await assert.rejects(
+      createProvider({ datasetPath, root, stateDirectory, candidateStore: new VersionedSkillCandidateStore() }),
+      /native-p23-revision-signed-payload-fingerprint-required/,
+    );
+  });
+});
+
+test('native provider rejects identical signed baseline and candidate payload fingerprints', async () => {
+  await temporary(async ({ root, stateDirectory, configDirectory }) => {
+    const dataset = buildDataset();
+    dataset.artifacts = dataset.artifacts.map(artifact => {
+      if (artifact.payload.method !== dataset.candidateMethod) return artifact;
+      return signOutcomePayloadForFixture({
+        ...artifact.payload,
+        payloadFingerprint: baselinePayloadFingerprint,
+      }, privatePem);
+    });
+    const datasetPath = path.join(configDirectory, 'identical-payload-fingerprint.json');
+    await writeFile(datasetPath, JSON.stringify(dataset), { mode: 0o600 });
+    await assert.rejects(
+      createProvider({ datasetPath, root, stateDirectory, candidateStore: new VersionedSkillCandidateStore() }),
+      /native-p23-revision-baseline-and-candidate-payload-fingerprints-identical/,
+    );
+  });
+});
+
 test('native provider rejects signed datasets whose artifact signature is invalid', async () => {
   await temporary(async ({ root, stateDirectory, configDirectory }) => {
     const dataset = buildDataset();
