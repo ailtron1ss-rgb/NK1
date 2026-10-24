@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateCiConfig } from "./verify-ci-reliability.mjs";
+import { validateCiConfig, validateWorkflowScriptReferences } from "./verify-ci-reliability.mjs";
 
 const pinnedWorkflow = `name: example
 on:
@@ -15,6 +15,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
+      - uses: actions/upload-artifact@v7
+      - uses: actions/download-artifact@v7
       - name: Verify selected Node.js matches repository pin
         run: |
           expected="$(tr -d '[:space:]' < .nvmrc)"
@@ -38,17 +40,19 @@ test("accepts current first-party Actions and an asserted repository Node pin", 
   assert.deepEqual(exactPinErrors, []);
 });
 
-test("rejects retired checkout/setup-node action majors", () => {
+test("rejects retired first-party Node-based action majors", () => {
   const errors = validateCiConfig({
-    workflows: { "old.yml": "steps:\n  - uses: actions/checkout@v4\n  - uses: actions/setup-node@v4\n" },
-    nodeVersion: "22.16.0"
+    workflows: { "old.yml": "steps:\n  - uses: actions/checkout@v4\n  - uses: actions/setup-node@v4\n  - uses: actions/upload-artifact@v4\n  - uses: actions/download-artifact@v4\n" },
+    nodeVersion: "24"
   });
-  assert.ok(errors.length >= 2, `expected action-version errors, got: ${errors.join("\n")}`);
+  assert.ok(errors.length >= 4, `expected action-version errors, got: ${errors.join("\n")}`);
   assert.match(errors.join("\n"), /checkout@v4/);
   assert.match(errors.join("\n"), /setup-node@v4/);
+  assert.match(errors.join("\n"), /upload-artifact@v4/);
+  assert.match(errors.join("\n"), /download-artifact@v4/);
   const pinnedShaErrors = validateCiConfig({
     workflows: { "sha-pinned.yml": "steps:\n  - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567\n" },
-    nodeVersion: "22.16.0"
+    nodeVersion: "24"
   });
   assert.match(pinnedShaErrors.join("\n"), /approved Node.js-24-compatible v7\+ release tag/);
 });
@@ -83,4 +87,63 @@ test("requires cognitive CI for pull requests targeting rebuild", () => {
     nodeVersion: "22.16.0"
   });
   assert.match(errors.join("\n"), /must run for pull requests targeting rebuild/);
+});
+
+
+test("maps npm run commands to the package in the actual workflow execution context", () => {
+  const errors = validateWorkflowScriptReferences({
+    workflows: {
+      "multi-package.yml": `name: context-map
+jobs:
+  test:
+    steps:
+      - name: Runtime scripts
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: App scripts selected by prefix
+        run: npm --prefix app run build
+      - name: Root scripts
+        run: npm run audit:ci-reliability
+`,
+    },
+    scriptsByContext: {
+      root: { "audit:ci-reliability": "node tools/verify-ci-reliability.mjs" },
+      app: { build: "vite build" },
+      runtime: { typecheck: "node scripts/typecheck-runtime.mjs" },
+    },
+  });
+  assert.deepEqual(errors, []);
+});
+
+test("reports undefined scripts in their correct package instead of a false root match", () => {
+  const errors = validateWorkflowScriptReferences({
+    workflows: {
+      "broken-wiring.yml": `jobs:
+  test:
+    steps:
+      - name: Runtime missing script
+        working-directory: runtime/neuro-kurisu
+        run: npm run missing-runtime-test
+      - name: Explicit runtime prefix
+        run: npm --prefix runtime/neuro-kurisu run missing-prefixed-test
+      - name: App missing script
+        run: npm --prefix app run missing-app-test
+`,
+    },
+    scriptsByContext: {
+      root: { "missing-runtime-test": "must-not-satisfy-runtime" },
+      app: { build: "vite build" },
+      runtime: { typecheck: "node scripts/typecheck-runtime.mjs" },
+    },
+  });
+  assert.equal(errors.length, 3);
+  assert.match(errors.join("\n"), /missing-runtime-test is not defined in the runtime package.json/);
+  assert.match(errors.join("\n"), /missing-prefixed-test is not defined in the runtime package.json/);
+  assert.match(errors.join("\n"), /missing-app-test is not defined in the app package.json/);
+});
+
+test("keeps legacy policy-only unit callers backward-compatible when script maps are omitted", () => {
+  assert.deepEqual(validateWorkflowScriptReferences({
+    workflows: { "old-test.yml": "run: npm run intentionally-unmapped\n" },
+  }), []);
 });

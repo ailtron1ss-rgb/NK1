@@ -5,10 +5,9 @@ import path from 'node:path';
 const root = process.cwd();
 const args = ['-p', 'tsconfig.clean.json', '--noEmit'];
 const localCompilers = [
-  { label: 'runtime-lock', path: path.join(root, 'node_modules/typescript/bin/tsc') },
-  // The canonical installer installs the app lockfile too; reuse its pinned compiler
-  // for the runtime package instead of depending on whichever global `tsc` is on PATH.
+  // Canonical installation uses the app lockfile. Prefer its pinned compiler first.
   { label: 'app-lock', path: path.resolve(root, '../../app/node_modules/typescript/bin/tsc') },
+  { label: 'runtime-lock', path: path.join(root, 'node_modules/typescript/bin/tsc') },
 ].filter(candidate => existsSync(candidate.path));
 
 try {

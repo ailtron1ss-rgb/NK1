@@ -49,9 +49,11 @@ function sameContext(a: TrustedSkillShadowRunContext, b: TrustedSkillShadowRunCo
  * Corrupt state and lock contention fail closed rather than resetting trust state.
  */
 export class AtomicFileTrustedSkillShadowRunRegistry {
+  private readonly filePath: string;
   private readonly lockPath: string;
-  constructor(private readonly filePath: string) {
+  constructor(filePath: string) {
     if (!nonEmpty(filePath)) throw new Error('trusted run registry path is required');
+    this.filePath = filePath;
     this.lockPath = `${filePath}.lock`;
   }
 

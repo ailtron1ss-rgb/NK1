@@ -1,3 +1,168 @@
+## NK1 WorkPass504 — finalize AILG fail-closed identity handling (2026-10-24)
+
+- Tightened the completed AILG iteration so every external-effect proposal requires approval, and the validated detached intent ID—not a reread of the caller object—is used as its ledger key.
+- AILG record/array parsers now require plain prototypes, complementing accessor rejection and bounded fields. Canonical approval/execution verification remains injected and fails closed when unavailable.
+- **Validation boundary:** static readback confirms the module and regression are wired in `test:rebuild-recovered`; this connector session did not expose actionable checks, so test/typecheck PASS remains unclaimed.
+
+---
+
+## NK1 WorkPass503 — close AILG input identity and trusted-receipt boundaries (2026-10-24)
+
+- Removed the caller-controlled approval bypass: every external-effect intent enters `approval-required`; approval and execution receipts need injected canonical verification callbacks, otherwise the governor fails closed.
+- Restore does not trust serialized receipt IDs alone. Persisted approval/execution identity is accepted only when the host-provided trusted registry callbacks revalidate it.
+- Input and snapshot parsing rejects accessors and non-plain prototypes, bounds identifiers/evidence strings, and prevents the governor from using the original untrusted input object as a map key after validation.
+- This is still an arbitration/evidence module, not yet connected to the production ActionGateway. Real verifier/supervisor callbacks and runtime wiring remain required.
+- **Validation boundary:** code/test registered in `test:rebuild-recovered`; no executed test, typecheck or CI PASS is claimed.
+
+---
+
+## NK1 WorkPass502 — require injected trust authorities for execution and approval (2026-10-24)
+
+- AILG no longer treats a non-empty receipt string as proof by itself: `authorize` and `recordExecution` require injected approval/execution verifier callbacks, and fail closed if those authorities are unavailable or reject the receipt.
+- Persistent approval/execution IDs are reaccepted only when canonical host-provided trust callbacks verify them; serialized flags alone cannot restore external actions as executable.
+- Expanded the regression to use explicit test-only trust authorities and to prove external action approval is refused without a trusted verifier.
+- **Integration boundary:** production callbacks still need to be wired to NK1's canonical P23 approval/evidence registry and ActionGateway supervisor. AILG does not dispatch tools itself, and no test or CI PASS is claimed in this pass.
+
+---
+
+## NK1 WorkPass501 — bind autonomous actions to approval and execution evidence (2026-10-24)
+
+- Versioned the AILG durable snapshot contract to v2 and made decision records preserve whether an intent has external side effects.
+- Restore downgrades an external-effect decision to `approval-required` when its durable approval reference is absent; execution receipts are not restored for that downgraded decision.
+- Intent, outcome and promotion-evaluation inputs now use descriptor-based plain-data reads. Getter-backed data is rejected without invoking getters, including during proposal scoring and promotion eligibility checks.
+- Added regressions for hostile intent/outcome/evaluation envelopes, invalid control characters, malformed snapshots and missing approval references. No external dependency was added.
+- **Validation boundary:** source and test are committed and registered in `test:rebuild-recovered`; exact-head test/typecheck/CI execution is not available in the current GitHub status response. Runtime ActionGateway integration is still pending.
+
+---
+
+## NK1 WorkPass500 — persist the autonomous intent/learning governor safely (2026-10-24)
+
+- Added bounded snapshot/restore for AILG decision, execution-reference and single-use outcome lineage; invalid records and accessor-backed objects are rejected without running getters.
+- Validation now rejects invalid decision timestamps and bounds intent identity, goal and evidence sizes, in addition to score/risk/cost checks.
+- Extended regression coverage for restart continuity, duplicate execution/outcome protection, malformed snapshot evidence and getter non-execution.
+- Research adaptation: GEPA's reflective trajectory→diagnosis→candidate→evaluation pattern (ICLR 2026) and Letta's versioned, persistent memory model informed the separation of durable history from host-side action authorization. No upstream implementation was copied; this is a native NK1 seam. [GEPA paper](https://arxiv.org/abs/2507.19457) · [Letta MemFS](https://docs.letta.com/configuration/memory)
+- **Validation boundary:** the test is wired into `test:rebuild-recovered`; GitHub Actions returned no checks for the inspected head, so execution/typecheck and real-runtime wiring remain unverified. No learning uplift or consciousness claim is made.
+
+---
+
+## NK1 WorkPass499 — evidence-backed autonomous intent and learning gate (2026-10-24)
+
+- Added `AutonomousIntentLearningGovernor` as a deterministic AILG seam: intents require explicit trigger evidence; score/risk/cost inputs are bounded; duplicate intent IDs are rejected; high-risk proposals fail closed; external side effects require approval by default.
+- Added explicit approval receipts for gated external effects and execution receipts before outcome attribution; outcomes are single-use. The promotion-eligibility gate requires independent holdout coverage, positive measured improvement, and regression-budget compliance. Eligibility does not activate candidate code; separate approval/activation remains required.
+- Added focused regression coverage and registered it in `test:rebuild-recovered`.
+- Design influence: Hermes/GEPA-style diagnose→candidate→evaluate loops and causal-outcome attribution. This pass adds a small native NK1 mechanism rather than copying third-party code; no new runtime dependency was introduced.
+- **Validation boundary:** code and test are committed; the GitHub connector did not execute the test or typecheck in this pass. No test PASS, measured learning uplift, runtime wiring, or consciousness claim is made.
+
+---
+
+## NK1 WorkPass498 — close Node24, trusted registration and causal-metric seams
+
+- Replaced the remaining P23 trusted-shadow scheduler constructor parameter property so runtime tests execute under Node.js 24's strip-only TypeScript runner.
+- Made Core's trusted shadow-run registration return the registry's validated, persisted context. Exact re-registration can report the canonical persisted timestamp; authority remains in the registry.
+- Added `npm ci` to the WorkPass294 typecheck workflow in the same execution directory so Node type definitions are installed on clean runners.
+- Aligned the causal-stream regression with the quarantine contract: external imports remain deduplicated and inspectable but never increment trusted runtime-outcome metrics.
+- **Validation boundary:** committed; exact-head Actions must confirm these runtime paths before considering the failures resolved.
+
+---
+
+## NK1 WorkPass495 — sanitize restored learner state and close runtime boundary gaps
+
+- P26 restore now sanitizes every persisted diagnostic and counter, restores `frozen` only from literal boolean `true`, and resets negative/invalid update counts rather than preserving NaN timestamps or diagnostic metrics.
+- Fixed the remaining Node.js 24 strip-only blocker in `AtomicFileTrustedSkillShadowRunRegistry` by replacing its constructor parameter property with an explicit readonly field.
+- Corrected the reflective payload boundary test to count canonical JSON bytes (including the two quote bytes around a string); it now verifies exact-limit acceptance and one-byte-over rejection without weakening the 256 KiB cap.
+- Updated the causal-experience integration fixture to include the observed post-action action/success fields now required for runtime-grounded learning evidence.
+- **Validation boundary:** committed to `feature/experiments`; exact-head CI will decide which remaining integration seams need repair.
+
+---
+
+## NK1 WorkPass493 — validate learning inputs and preserve replay controls
+
+- Added fail-closed validation before P26 policy updates: reject non-finite target/rate/sample weights, invalid actions, malformed needs/state features and non-finite feature vectors instead of silently clamping them into training labels.
+- Made P26 batch training preflight every sample before the first weight update, so invalid later feedback cannot partially mutate the policy.
+- Fixed P23 replay ablation controls: the configured hard batch cap and recent quota are now preserved while health-adaptive metrics continue to affect replay ranking/half-life.
+- Rebalanced B272 goal-value components to avoid early saturation at 1; confidence-weighted intrinsic drive now has observable leverage on goal valuation while confidence zero leaves the baseline unchanged.
+- **Validation boundary:** changes are committed to `feature/experiments`; new exact-head CI results are required before marking these gates passed.
+
+---
+
+## NK1 WorkPass490 — close strict runtime and evidence replay gaps
+
+- Tightened B272 needs-key iteration and boolean filtering for intrinsic/dream experiments, made cognitive dependency transition restoration explicitly record-shaped, and corrected the optional numeric fallback used by evidence-ranked skill retrieval.
+- Fixed the Node.js 24 strip-only syntax blocker in the atomic skill-store file adapter by replacing its constructor parameter property with a regular readonly class field; file naming and locking semantics stay the same.
+- Made `UnifiedCognitiveCycle.restore` require a coherent counter partition before honoring a persisted `lastComplete` flag, so corrupted over-counted history cannot masquerade as a complete cognitive cycle.
+- Fixed signed outcome ingestion replay semantics: an exact artifact may re-establish a process-local trust receipt after restore, but a second ingestion in the same process now returns `duplicate-attempt`. Added regressions for both paths.
+- **Validation boundary:** committed as runtime improvements; CI must confirm these exact-head cases. No production-readiness claim.
+
+---
+
+## NK1 WorkPass489 — repair shared cognitive runtime integration contracts
+
+- Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation and retained the strict cycle-local verifier, including optional appraisal/attention/memory/goal/plan ancestry checks.
+- Fixed the malformed control-character regex in decision-linked external outcome verification and aligned the clock-kind union with the existing opt-in P23 repair scheduler.
+- Repaired strict-TypeScript integration defects in typed replay-selection imports, retention-gap field naming, compound-skill defaults, optional policy-vector narrowing, verified-session literal schemas, and Node Buffer stream accumulators.
+- Made the versioned candidate store compatible with Node.js 24's built-in strip-only TypeScript runner by replacing constructor parameter properties with explicit class fields; persisted-store and approval semantics are unchanged.
+- Added null guards where causal-event creation can legitimately return no record, preventing learning from reading fields that were never emitted. Adjusted a corrupted-cycle regression to assert the canonical fail-closed missing-stage set.
+- **Validation boundary:** changes committed to `feature/experiments`; exact-head typecheck and affected regression suites must still run. No end-to-end learning uplift or production readiness is claimed.
+
+---
+
+## NK1 WorkPass486 — bind initiative outcomes to their decisions
+
+- Hardened the B306 autonomous-initiative evidence ledger so outcomes can be attached to an exact decision tick (and selected action when provided), including delayed/out-of-order feedback.
+- Rejects unmatched ticks, mismatched actions, malformed outcomes and duplicate outcome receipts. The legacy numeric call remains compatible but is single-use for the latest decision; it can no longer overwrite or double-count a receipt.
+- Adds a causal-outcome denominator and coverage metric so causal success is calculated from observed, decision-bound outcomes rather than silently treating every influenced decision as observed feedback.
+- Includes backward-compatible migration for saved B306 state and a focused regression integrated into `test:rebuild-recovered`.
+- **Validation:** source and regression added; execution on the GitHub runtime/Actions head has not yet been confirmed.
+
+---
+
+## NK1 WorkPass485 — make the runtime typecheck self-contained
+
+- CI runs `npm ci` inside `runtime/neuro-kurisu` only; the application lockfile is not installed in that job. Therefore pointing `tsconfig.clean.json` at `../../app/node_modules/@types` is not reproducible and produced `TS2688: Cannot find type definition file for 'node'` after the shim was excluded.
+- Added the already-used, pinned-version-range `@types/node` as a runtime development dependency and included its exact locked `22.20.4` package plus `undici-types 6.21.0` in the runtime lockfile. No runtime dependency or application dependency changed.
+- The semantic runtime typecheck now resolves Node types only from the runtime package installation, while excluding the fallback declarations so they cannot shadow the official API.
+- **Validation:** exact-head CI must confirm the type dependency installs and expose the remaining genuine TypeScript errors; no clean typecheck is claimed yet.
+
+---
+
+## NK1 WorkPass483 — use authoritative Node types for semantic runtime typecheck (2026-10-24)
+
+- The runtime typecheck was compiling `src/node-shims.d.ts` together with the real code. Those narrow fallback declarations shadowed the locked Node API surface and caused a cascade of false missing-member errors (`createPublicKey`, `realpath`, `NodeJS`, `process.platform`, `Buffer`, path/fs overloads).
+- Excluded the fallback shim from semantic `tsc`, explicitly selected the already-locked `@types/node` from `app/node_modules/@types`, and retained runtime-local types as a fallback.
+- Corrected the compiler selection to prefer the canonical app-lock TypeScript compiler, matching the existing `typecheck-runtime-compiler-selection.mjs` contract.
+- **Validation:** source and the existing compiler-selection regression are committed on `feature/experiments`; this exact head has not yet run CI. Independent application-level type errors may remain after the shadow-type cascade is removed. No dependency was added.
+
+---
+
+## NK1 WorkPass340 — extend CI runtime audit to artifact actions (2026-10-23)
+
+- Extended the existing CI compatibility audit to cover `actions/upload-artifact` and `actions/download-artifact` as well as checkout/setup-node. This closes a blind spot where artifact action downgrades could bypass the Node.js 24 runtime policy.
+- Updated fixtures so Node 24-compatible v7 action tags are accepted and v4 versions of all four actions are rejected; the generated multiline inputs use valid JavaScript newline escapes. Existing workflows on `feature/experiments` already use Node 24 / v7 where applicable; no workflow downgrade or dependency was introduced.
+- **Verification:** regression source is committed but not executed on this exact head. Recent hosted jobs stop before the first step with `runner_id=0`.
+
+---
+
+## NK1 WorkPass337 — restore missing CI script wiring (2026-10-23)
+
+- **P26 workflow fixed:** added `test:p26:learning-input-integrity`, `test:p26:learning-recovery-benchmark`, and `test:p26:learning-continual-matrix` npm aliases for their existing regression files.
+- **P23 workflow fixed:** added `test:workpass293:p23-revision`, running the existing WorkPass293 autonomous-revision test followed by the P23 coordinator/evidence-concurrency regression.
+- **Additional workflows fixed:** added the existing test-file aliases `test:workpass291:payload-budget`, `test:workpass292:evidence-lanes`, and `test:workpass294:correlated-postcondition`.
+- This is workflow-script wiring only; it does not change the underlying learning algorithm or claim test success.
+- **Validation boundary:** static workflow-to-package comparison found and corrected these missing aliases. Runtime tests remain unexecuted because recent GitHub Actions jobs fail before runner assignment (runner ID zero, no steps).
+
+## NK1 WorkPass338 — make workflow script wiring self-auditing (2026-10-23)
+
+- Extended `tools/verify-ci-reliability.mjs` to load the root, app, and runtime package manifests and compare workflow `npm run` references to the scripts available in the actual execution context.
+- The audit respects per-step `working-directory`, package prefixes such as `npm --prefix app run …` and `npm --prefix runtime/neuro-kurisu run …`, and root-level commands. It reports the workflow and package context for an undefined script instead of waiting for a hosted runner to fail.
+- Added regression tests for correct multi-package resolution, missing runtime/app aliases, and backward-compatible policy-only calls.
+- **Validation boundary:** source and tests are committed, but the audit/test suite has not been executed locally or in CI. Hosted Actions currently finishes affected jobs before runner assignment, with runner ID zero and no steps.
+
+## NK1 WorkPass336 — align P26 CI with Node.js 24 (2026-10-23)
+
+- **CI consistency:** the P26 learning-validation workflow now uses Node.js 24, matching the repository `.nvmrc` and the newer continual-learning/P23 workflows.
+- **Early failure clarity:** the workflow explicitly checks the major runtime version before installing dependencies or executing the learning suite.
+- **Validation boundary:** the workflow change is committed, but it cannot be verified until Actions obtains a hosted runner; recent failed jobs report runner ID zero and no steps.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2113,3 +2278,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass339 — runner-label fallback experiment (2026-10-23)
+
+- Changed the P26 validation workflow to explicitly request `ubuntu-24.04` rather than the moving `ubuntu-latest` label and Node.js 24 rather than 22.12.
+- Added a Node-major preflight before dependency installation. The workflow already includes `workflow_dispatch`; this commit also changes a path watched by the pull-request trigger, giving GitHub a fresh automatic scheduling attempt.
+- **Experiment, not a proven fix:** previous failures had `runner_id=0` and no steps. Pinning the runner image tests whether the moving runner label is involved; it cannot resolve an account-wide hosted-runner outage or quota restriction.
+- Runtime validation is pending the newly scheduled run; no pass is claimed.

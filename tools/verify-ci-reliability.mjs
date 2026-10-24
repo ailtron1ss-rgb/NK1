@@ -4,6 +4,50 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+/**
+ * Detect workflow commands that name npm scripts missing from the package that
+ * will actually execute them. GitHub Actions can successfully parse YAML while
+ * an unknown `npm run` command fails only after the runner starts.
+ *
+ * Contexts are loaded from the corresponding package.json files by main().
+ * Tests may omit this audit when validating only the runtime policy.
+ */
+export function validateWorkflowScriptReferences({ workflows, scriptsByContext }) {
+  if (!scriptsByContext || typeof scriptsByContext !== "object") return [];
+  const errors = [];
+  const asSet = value => value instanceof Set ? value
+    : Array.isArray(value) ? new Set(value)
+    : new Set(Object.keys(value ?? {}));
+  const contextFor = (prefix, workingDirectory, block) => {
+    const normalizedPrefix = String(prefix ?? "").replace(/^\.\//, "").replace(/\/$/, "");
+    if (normalizedPrefix === "app" || normalizedPrefix.startsWith("app/")) return "app";
+    if (normalizedPrefix === "runtime/neuro-kurisu" || normalizedPrefix.startsWith("runtime/neuro-kurisu/")) return "runtime";
+    const directory = String(workingDirectory ?? "").replace(/^\.\//, "").replace(/\/$/, "");
+    if (directory === "app" || directory.startsWith("app/")) return "app";
+    if (directory === "runtime/neuro-kurisu" || directory.startsWith("runtime/neuro-kurisu/")) return "runtime";
+    if (/\bcd\s+(?:\.\/)?app(?:\s|\/|$)/.test(block)) return "app";
+    if (/\bcd\s+(?:\.\/)?runtime\/neuro-kurisu(?:\s|\/|$)/.test(block)) return "runtime";
+    return "root";
+  };
+
+  for (const [name, source] of Object.entries(workflows ?? {})) {
+    const text = String(source ?? "");
+    const defaultDirectory = /^\s*defaults:\s*\n\s+run:\s*\n\s+working-directory:\s*['"]?([^'"\s#]+)/m.exec(text)?.[1];
+    const steps = text.split(/(?=^ {6}- )/m).filter(block => /^ {6}- /.test(block));
+    for (const step of steps) {
+      const workingDirectory = /^\s+working-directory:\s*['"]?([^'"\s#]+)/m.exec(step)?.[1] ?? defaultDirectory;
+      for (const match of step.matchAll(/\bnpm\s+(?:--prefix\s+([^\s"'\x60]+)\s+)?run\s+([A-Za-z0-9:_-]+)/g)) {
+        const context = contextFor(match[1], workingDirectory, step);
+        const available = asSet(scriptsByContext[context]);
+        if (!available.has(match[2])) {
+          errors.push(`${name}: npm run ${match[2]} is not defined in the ${context} package.json for this workflow step.`);
+        }
+      }
+    }
+  }
+  return errors;
+}
+
 export function validateCiConfig({ workflows, nodeVersion }) {
   const errors = [];
   const pinnedNode = String(nodeVersion ?? "").trim();
@@ -14,7 +58,7 @@ export function validateCiConfig({ workflows, nodeVersion }) {
 
   for (const [name, source] of Object.entries(workflows ?? {})) {
     const text = String(source ?? "");
-    const actionPattern = /^\s*(?:-\s*)?uses:\s*actions\/(checkout|setup-node)@([^\s#]+)/gm;
+    const actionPattern = /^\s*(?:-\s*)?uses:\s*actions\/(checkout|setup-node|upload-artifact|download-artifact)@([^\s#]+)/gm;
     for (const match of text.matchAll(actionPattern)) {
       const actionName = match[1];
       const ref = match[2];
@@ -68,7 +112,21 @@ async function main() {
     workflows[name] = await readFile(path.join(dir, name), "utf8");
   }
 
-  const errors = validateCiConfig({ workflows, nodeVersion });
+  const manifests = {
+    root: path.join(repoRoot, "package.json"),
+    app: path.join(repoRoot, "app", "package.json"),
+    runtime: path.join(repoRoot, "runtime", "neuro-kurisu", "package.json"),
+  };
+  const scriptsByContext = {};
+  for (const [context, manifestPath] of Object.entries(manifests)) {
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    scriptsByContext[context] = manifest.scripts ?? {};
+  }
+
+  const errors = [
+    ...validateCiConfig({ workflows, nodeVersion }),
+    ...validateWorkflowScriptReferences({ workflows, scriptsByContext }),
+  ];
   if (errors.length) {
     console.error("CI RELIABILITY AUDIT FAILED");
     for (const error of errors) console.error(`- ${error}`);
