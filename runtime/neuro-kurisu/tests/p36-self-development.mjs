@@ -163,6 +163,11 @@ assert.equal(restored.developmentalCertification().certified,false,'persisted ag
 assert.equal(restored.snapshot().developmentalMaturity.verifiedOutcomeCount,0);
 assert.equal(restored.snapshot().developmentalEvidenceReceiptIds.length,0);
 assert.equal(restored.snapshot().developmentalEvidenceObservationIds.length,6,'deduplication identities survive restore without restoring trust');
+assert.equal(restored.snapshot().acceptedChanges,0,'persisted accepted-change counters cannot outlive authenticated provenance');
+assert.equal(restored.snapshot().hypotheses.find(row=>row.id===campaignHypothesis.id).status,'awaiting-evidence','previously promoted hypotheses must return to evidence review after trust is revoked');
+assert.equal(restored.snapshot().hypotheses.find(row=>row.id===campaignHypothesis.id).evidenceGate,'none');
+assert.equal(restored.snapshot().curriculum.completedSteps,0);
+assert.deepEqual(restored.snapshot().actionBias,{respond:0,explore:0,verify:0,rest:0,reflect:0,wait:0,defer:0},'policy effects are reset when promotion proof cannot be re-authenticated');
 console.log('P36_SELF_DEVELOPMENT_PROVENANCE=PASS spoofed-flags=blocked copied-receipts=blocked manual-lane=blocked duplicate-poisoning=blocked reused-observation=blocked holdout=verified replication=verified maturity-idempotency=verified restore-demotion=verified');
 console.log('P36_SELF_DEVELOPMENT=PASS',JSON.stringify({area:h.area,delta01:x.delta01,acceptedChanges:d.acceptedChanges,focus:d.curriculum.focus}));
 
