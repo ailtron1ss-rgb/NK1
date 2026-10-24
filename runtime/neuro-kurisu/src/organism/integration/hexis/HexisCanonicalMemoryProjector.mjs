@@ -141,7 +141,10 @@ export class HexisCanonicalMemoryProjector {
       for (const item of normalized) {
         const { row, ref, type, content: memoryText, contentHash } = item;
         const nativeType = type.toLowerCase();
-        const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' + hash(ref + '\0' + contentHash).slice(0, 24);
+        // HMX refs are export-scoped. Use the stable record suffix plus lineage/content
+        // for memory identity so re-exporting the same source does not create duplicates.
+        const stableRefKey = ref.replace(/^exp_[a-f0-9]{16}:/, '');
+        const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' + hash(stableRefKey + '\0' + contentHash).slice(0, 24);
         const existingKey = source + '\0' + stableRecordContent(memoryText);
         const salience = clamp01(Number.isFinite(Number(row.importance)) ? Number(row.importance) : 0.55);
         if (existingImportKeys.has(existingKey)) {
@@ -179,7 +182,7 @@ export class HexisCanonicalMemoryProjector {
         const independenceKey = asText(row.provenance?.source_id ?? row.provenance?.sourceId ?? row.source_attribution?.source_id, 96) || ('hexis-ref:' + hash(ref).slice(0, 24));
         const commandId = 'hexis-hmx:' + hash(exportId + '\0' + ref + '\0' + contentHash + '\0' + attempt).slice(0, 48);
         const memoryInput = {
-          id: 'hexis-memory:' + hash(lineageId + '\0' + ref + '\0' + contentHash).slice(0, 48),
+          id: 'hexis-memory:' + hash(lineageId + '\0' + stableRefKey + '\0' + contentHash).slice(0, 48),
           content: memoryText,
           tags,
           context,
