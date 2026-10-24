@@ -1,0 +1,38 @@
+name: NK1 personality character regression
+
+on:
+  push:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts"
+      - "runtime/neuro-kurisu/src/organism/language/KurisuCanonProfile.ts"
+      - "runtime/neuro-kurisu/tests/p2702-persistent-personality-dynamics.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/personality-character-regression.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts"
+      - "runtime/neuro-kurisu/src/organism/language/KurisuCanonProfile.ts"
+      - "runtime/neuro-kurisu/tests/p2702-persistent-personality-dynamics.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/personality-character-regression.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-personality-character-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  personality-character:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Exercise persistent character and personality
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2702-persistent-personality-dynamics.mjs
