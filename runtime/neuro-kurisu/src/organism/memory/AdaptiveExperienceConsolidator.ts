@@ -20,6 +20,7 @@ export interface ConsolidatedExperience extends ExperienceRecord {
 }
 
 const clamp01=(v:number)=>Math.max(0,Math.min(1,Number.isFinite(v)?v:0));
+const hasControlCharacters=(value:string):boolean=>Array.from(value).some(character=>{const point=character.codePointAt(0)??0;return point<=0x1f||(point>=0x7f&&point<=0x9f);});
 
 function normalizeTags(value: unknown): string[] | null {
   if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
@@ -33,7 +34,7 @@ function normalizeTags(value: unknown): string[] | null {
     if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) return null;
     const tag = descriptor.value;
     if (typeof tag !== 'string' || !tag.trim() || tag.length > 80 ||
-        /[\\u0000-\\u001f\\u007f-\\u009f]/.test(tag)) return null;
+        hasControlCharacters(tag)) return null;
     tags.push(tag);
   }
   return tags;
