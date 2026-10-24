@@ -1,3 +1,12 @@
+## 2026-10-24 — Strict runtime TypeScript boundary repairs
+
+- [TYPES] Runtime strict checking now uses the locked `@types/node` package from the app install and excludes the repository's incomplete local Node shims from the clean semantic typecheck. The first full run reduced diagnostics from 85 to 19, showing that most apparent Node API failures came from the shims.
+- [CORE] Added null guards before external learning signals are ingested; narrowed the host-owned shadow-run registrar to its registration capability; removed a duplicate `verifyOperationalCycle` method so the richer causal-edge verifier remains active.
+- [LEARNING] Corrected the replay selection type import, optional policy-feature narrowing, forgetting-risk parameter, buffer generic and verified dataset literal types; completed the missing non-holdout verification counter on a base skill variant.
+- [CLOCK] Added `p23-compound-repair-revision` as a valid runtime clock kind plus a regression that verifies registration is accepted, observable and still rejects duplicates. Its regression has passed in hosted CI.
+- [FALLBACK] Replaced unsupported TypeScript `--check` use with Node's `stripTypeScriptTypes` parser-only path. This still exits non-zero with `TYPECHECK=PARTIAL`; the follow-up regression is wired to the matching mode name and awaits a fresh CI result.
+- [BOUNDARY] Fixes are on draft PR #102 targeting `workpass70-source`. Full runtime typecheck after the latest strict fixes, the two new cognition/security regressions, merge and Release ZIP replacement remain unverified/not done.
+
 ## 2026-10-24 — Final TypeScript patch-set checkpoint
 
 - [BOUNDARY] The app strict-JS fixes, runtime partial-check exit behavior, and matching regression assertions are now all present on the same branch head.
