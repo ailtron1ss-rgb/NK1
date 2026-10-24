@@ -68,7 +68,7 @@ assert.equal(hybridRecall.externalCandidate.evidence, 'agent-response-unverified
 assert.equal(runtime.memoryOS.size(), canonicalCountBeforeRecall, 'Letta recall must not write into canonical memory');
 assert.equal(state.prompts.length, 2);
 
-// An explicit non-event write remains native-only and does not leak to Letta.
+// Suppressing event-log output must not bypass committed-memory mirroring.
 runtime.fabric.encode({
   content: 'This deliberately suppresses lifecycle notification.',
   kind: 'episodic',
@@ -89,13 +89,15 @@ runtime.fabric.encode({
   causalLinks: [],
 }, { emitEvent: false });
 await runtime.flushLettaMemorySync();
-assert.equal(state.prompts.length, 2);
+assert.equal(state.prompts.length, 3);
+assert.equal(runtime.lettaBridge.snapshot().metrics.lifecycleUpserts, 2);
+assert.ok(state.prompts[2].includes('This deliberately suppresses lifecycle notification.'));
 
 assert.equal(runtime.fabric.forgetById(item.id, 'test-forget'), true);
 await runtime.flushLettaMemorySync();
-assert.equal(state.prompts.length, 3);
-assert.ok(state.prompts[2].includes('Canonical NK1 memory lifecycle event: FORGET.'));
-assert.ok(state.prompts[2].includes(item.id));
+assert.equal(state.prompts.length, 4);
+assert.ok(state.prompts[3].includes('Canonical NK1 memory lifecycle event: FORGET.'));
+assert.ok(state.prompts[3].includes(item.id));
 assert.equal(runtime.lettaBridge.snapshot().metrics.forgetRequests, 1);
 assert.equal(runtime.lettaBridge.snapshot().metrics.forgetResponsesReceived, 1);
 
