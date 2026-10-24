@@ -15,6 +15,8 @@ Use this document as the repository's navigation and ordering index. It does not
 | Latest continuation notes | [`NEUROCORE_START_HERE.md`](../NEUROCORE_START_HERE.md) | Useful handover ledger, but branch names, PR numbers, and test state inside it must be rechecked live |
 | Product direction and cognitive architecture | [Master strategy / brain map](NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md) | Strategic reference; not proof that each layer is implemented |
 | Remaining work | [Canonical backlog](NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md) | Planning queue; deduplicate against live code/issues before selecting work |
+| Acceptance criteria | [Definition of Done](DEFINITION-OF-DONE.md) | A checklist for integrated capabilities, not evidence that all criteria currently pass |
+| Branch/workstream intent | [Branch goals](architecture/branch-goals.md) | Describes intended roles; refresh against actual branch heads before integration |
 | Research and upstream candidates | [Research intake ledger](RESEARCH_INTAKE_LEDGER.md) | Queue only; a listed source is not automatically integrated or validated |
 | Branch reconciliation | [Dated 104-ref branch inventory](BRANCH_INVENTORY_2026-10-24.md), [cross-branch inventory](CROSS_BRANCH_INTEGRATION_INVENTORY.md) and [integration workspace notes](INTEGRATION_WORKSPACE.md) | The dated inventory is a names snapshot, not a mass-merge/delete instruction |
 | Dependency boundaries | [Module dependency contracts](architecture/module-dependency-contracts-ru.md) | Target-layer rules and audit scope; only exact-head test evidence can establish the current status |
