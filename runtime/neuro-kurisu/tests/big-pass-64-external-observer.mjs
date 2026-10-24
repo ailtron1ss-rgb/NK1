@@ -22,7 +22,12 @@ const dir=await mkdtemp(path.join(tmpdir(),'nk-p64-'));
 try {
   const core=new OrganismCore(new FileStateStore(path.join(dir,'state.json')),{enableLanguage:false});
   await core.init();
-  core.registerActionTool({id:'observer.smoke',capability:'smoke',destructive:false,execute:async()=>({ok:true,value:1})});
+  core.registerActionTool({
+    id:'observer.smoke',capability:'smoke',destructive:false,
+    observationSource:{sourceId:'device-smoke',sourceClass:'device',channel:'sensor',independenceKey:'sensor:smoke'},
+    execute:async()=>({ok:true,value:1}),
+  });
+  core.registerExternalObserverSourceForTool('observer.smoke');
   const executed=await core.executeTool('observer.smoke',{value:1},'p64-smoke');
   assert.ok(executed.executionId);
   const resolved=await core.ingestExternalObservation({sourceId:'device-smoke',sourceClass:'device',channel:'sensor',claimKey:'observer.smoke:counter',observedPostcondition:'counter=1',confidence01:.99,actionRef:executed.executionId,tool:'observer.smoke',tick:core.snapshot().state.tick,expectedPostcondition:'counter=1'});
