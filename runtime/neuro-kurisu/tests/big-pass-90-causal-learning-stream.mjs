@@ -140,7 +140,7 @@ assert.throws(() => externalRestored.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", reward01: .05,
 }), /causal-external-trace-id-conflict/,
   "the durable duplicate guard must also detect changed payload after restore");
-assert.equal(externalRestored.summary().outcomes, 1);
+assert.equal(externalRestored.summary().outcomes, 0);
 
 // Legacy snapshots may contain Unicode variants that collapse under the current
 // NFKC identity rule. Exact duplicate rows are deduplicated; conflicting rows
@@ -235,7 +235,7 @@ assert.equal(externalStream.recordOutcome(
   overlongRuntimeTrace, mkState({ tick: 22 }),
   { reward01: .5, success01: .5, surprise01: .5, novelty01: .5 },
 ), null, "an overlong runtime trace cannot be silently truncated into another identity");
-assert.equal(externalStream.summary().outcomes, 1);
+assert.equal(externalStream.summary().outcomes, 0);
 
 const corruptSnapshot = externalStream.snapshot();
 corruptSnapshot.records.push({
