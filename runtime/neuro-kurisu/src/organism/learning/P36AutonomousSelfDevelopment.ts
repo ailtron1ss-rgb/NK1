@@ -522,8 +522,6 @@ export class P36AutonomousSelfDevelopmentEngine{
     const baseline=this.baseline(state,h.area);
     const treatment=this.safeTreatment(state,h.area,seed);
     const delta=treatment-baseline;
-    const replicated=Math.abs(delta)>.045;
-    const runs=replicated?3:2;
     const informationGain=clamp(Math.abs(delta)*.82+(1-(this.state.curriculum.mastery[h.area]??.3))*.18);
     const result:DevelopmentExperiment={id:`p36-x-${hash(`${hypothesisId}:${seed}`)}-${now().toString(36)}`,hypothesisId,control01:baseline,treatment01:treatment,delta01:delta,replicated:false,safeSandbox:true,runs:1,informationGain01:informationGain,status:'insufficient',at:now(),evidenceGate:'sandbox-preview'};
     this.state.experiments=[result,...this.state.experiments].slice(0,128);
