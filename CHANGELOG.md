@@ -1,3 +1,9 @@
+## NK1 WorkPass521 — cover verifier identity at the external-observer boundary (2026-10-24)
+
+- Extended the correlated-postcondition regression to feed the actual verifier-minted event key into `ExternalObserverFabric` and replay the same observation.
+- Asserted that the observer returns the existing observation and keeps its observation count at one, guarding against duplicate evidence weight on exact retries.
+- This validates the observer boundary only. The production-wide automatic write from every observer event into `RealityEvidenceLedger` remains unproven and is not claimed as completed.
+
 ## NK1 WorkPass520 — exercise verifier identity through the reality ledger (2026-10-24)
 
 - Extended the existing correlated-postcondition regression across three existing owners: the live OutcomeVerificationService result, the canonical OutcomeCognitionFabric projection, and RealityEvidenceLedger.
