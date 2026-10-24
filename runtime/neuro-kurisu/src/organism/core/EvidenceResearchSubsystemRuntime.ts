@@ -14,7 +14,7 @@ import { IdentityCausalityGraphEngine } from '../system/IdentityCausalityGraph.t
 import { LongHorizonPredictionBenchmark } from '../system/LongHorizonPredictionBenchmark.ts';
 import { P38AutonomousCausalResearchEngine } from '../learning/P38AutonomousCausalResearch.ts';
 import { P53DevelopmentalSelfModificationLab } from '../developmental/P53DevelopmentalSelfModificationLab.ts';
-import { ExternalObserverFabric, type ExternalObservation } from '../system/ExternalObserverFabric.ts';
+import { ExternalObserverFabric, type ExternalObservation, type ExternalObserverSourceRegistrationAuthorizer } from '../system/ExternalObserverFabric.ts';
 import { RealityEvidenceLedger, type EvidenceRealityClass } from '../system/RealityEvidenceLedger.ts';
 import { P77RealityExperimentOS, defaultP77 } from '../system/P77RealityExperimentOS.ts';
 import { P82RealityProgressController, defaultP82 } from '../system/P82RealityProgressController.ts';
@@ -67,7 +67,15 @@ export class EvidenceResearchSubsystemRuntime {
       realityClass,claim,confidence01:observation.confidence01,independenceKey,parentIds,
     });
   }
-  readonly externalObserver = new ExternalObserverFabric({requireRegisteredSources:true,onObservation:observation=>this.recordExternalObservationEvidence(observation)});
+  readonly externalObserver:ExternalObserverFabric;
+
+  constructor(config:{authorizeSourceRegistration?:ExternalObserverSourceRegistrationAuthorizer}={}) {
+    this.externalObserver=new ExternalObserverFabric({
+      requireRegisteredSources:true,
+      authorizeSourceRegistration:config.authorizeSourceRegistration,
+      onObservation:observation=>this.recordExternalObservationEvidence(observation),
+    });
+  }
 
   snapshot() {
     return {
