@@ -174,9 +174,10 @@ export class CognitiveEventFabric {
         if(!key||key.length>120||/[\\u0000-\\u001f\\u007f]/.test(key)) throw new Error('invalid-cognitive-event-payload-key');
       }
     }
+    const rawId=ownData('id');
     const at=rawAt===undefined?Date.now():rawAt;
-    const suppliedId=typeof input.id==='string'?input.id.trim():'';
-    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\\u0000-\\u001f\\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
+    const suppliedId=typeof rawId==='string'?rawId.trim():'';
+    if(rawId!==undefined&&(!suppliedId||suppliedId.length>180||/[\\u0000-\\u001f\\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
     if(suppliedId){
       const prior=this.events.find(event=>event.id===suppliedId);
       if(prior){
