@@ -87,8 +87,13 @@ export class RealityEvidenceLedger {
          !REALITY_CLASSES.includes(candidate.realityClass as EvidenceRealityClass)||
          !validText(candidate.claim,240)||!validScore(candidate.confidence01)||
          !validText(candidate.independenceKey,160))continue;
-      const parentIds=Array.isArray(candidate.parentIds)
-        ?candidate.parentIds.filter((id):id is string=>typeof id==='string'&&id.length>0&&id.length<=256).slice(0,8):[];
+      // Restore must enforce the same lineage contract as live writes. Silently
+      // filtering malformed parent IDs would make corrupted evidence look like a
+      // valid root observation and sever its causal provenance.
+      const rawParentIds=candidate.parentIds;
+      if(rawParentIds!==undefined&&(!Array.isArray(rawParentIds)||rawParentIds.length>8||
+          rawParentIds.some((id)=>!validText(id,256))||new Set(rawParentIds).size!==rawParentIds.length))continue;
+      const parentIds=(rawParentIds??[]) as string[];
       parsedRecords.push({
         id:candidate.id,...(typeof candidate.eventId==='string'?{eventId:candidate.eventId}:{}),
         tick:candidate.tick,at:candidate.at,
