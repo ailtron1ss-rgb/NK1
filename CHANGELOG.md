@@ -1,3 +1,12 @@
+## NK1 WorkPass476 — repair Hermes gate execution and correction-to-curriculum wiring (2026-10-24)
+
+- Kept the Hexis-inspired correction lifecycle inside P23: reviewed correction → soft rule → reinforced rule → gate-review candidate. The P23 facade exposes assessments as Pareto-ranked repair/evidence curriculum targets; this does not activate policy gates.
+- Fixed a real parser stop in `p29-hermes-reflective-candidate-gate.mjs`: the latter family-level holdout/validation scenario redeclared `familyBaseline` and `familyCandidate` in the same module scope. Renamed only the second scenario's identifiers so both family-regression cases remain covered.
+- Shared runtime typecheck now points to the already-installed `app/node_modules/@types/node` and excludes the minimal `src/node-shims.d.ts` from semantic typechecking, avoiding the shim shadowing official Node APIs. Control-bearing correlation IDs are rejected before `trim()`.
+- **Verification:** the Hermes regression was observed failing on the earlier duplicate-declaration commit; the fix is committed. Exact-head end-to-end status is still pending/has other unrelated runtime type errors; no green CI or learning-uplift claim is made.
+
+---
+
 ## NK1 WorkPass475 — close curriculum persistence path and guard B272 evidence (2026-10-24)
 
 - Added the shared `core/PlainDataSnapshot.ts` bounded snapshotter with configurable depth/node/string limits; `LearningTrustBoundary` now reuses it instead of owning a separate implementation. This also resolves the previously missing core import in `AutonomousCognitiveLifeEngine.ts`.
