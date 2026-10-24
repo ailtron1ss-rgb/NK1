@@ -27,6 +27,7 @@
     "test:workpass292:evidence-lanes": "node --experimental-strip-types tests/workpass292-evidence-lanes.mjs",
     "test:workpass293:p23-revision": "node --experimental-strip-types tests/workpass293-autonomous-p23-revision.mjs",
     "test:workpass294:correlated-postcondition": "node --experimental-strip-types tests/workpass294-correlated-postcondition.mjs",
+    "test:p26:learning-input-integrity": "node --experimental-strip-types tests/p26-learning-input-integrity.mjs",
     "test:workpass292:motivation-to-goal": "node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs",
     "test:workpass288:intrinsic-motivation": "node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs",
     "test:workpass287:cognitive-cycle": "node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs",
