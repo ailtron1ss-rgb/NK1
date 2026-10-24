@@ -4,6 +4,7 @@
 - [INTEGRATION] Added an explicit `full` mode to the existing `UnifiedCognitiveCycle` contract. Full mode requires distinct, valid identities for all eleven stages: observation, prediction, appraisal, attention, memory, goal, plan, action, outcome, learning, and self-update.
 - [RUNTIME] Wired `OrganismRuntime` to use full mode after the existing causal-event lineage verifier. The legacy six-stage operational mode remains the default for compatible callers.
 - [STATE RESTORE] Fixed normalization of malformed persisted stage lists: retain valid entries when present, but conservatively fall back to all operational stages when every entry is invalid. This repairs an assertion exposed by the WorkPass287 CI run.
+- [STATE INTEGRITY] Restoration now invalidates `lastComplete` whenever explicitly stored aggregate counters disagree with the reconciled cycle partition, while snapshots that omit newer optional counters remain compatible. Both cases have regression assertions.
 - [REGRESSION] Added `tests/workpass332-full-cognitive-closure.mjs` covering full closure, a missing intermediate phase, duplicate stage identity, invalid mode, and production runtime wiring; registered it in the recovered regression aggregate.
 - [VALIDATION] Changes are committed on an isolated integration-based branch. Local execution and exact-head GitHub Actions are not yet verified; no green test/CI claim is made. `main` and the Release ZIP are untouched.
 
