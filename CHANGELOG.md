@@ -1,3 +1,12 @@
+## NK1 WorkPass521 — normalize async repair errors and make regression fixtures evidence-valid (2026-10-24)
+
+- Converted `P23CompoundRepairRevisionCoordinator.reviseFromObservedRepairs()` to an `async` method so invalid skill identity is returned as a rejected promise, matching the public Promise contract and callers' `assert.rejects` semantics.
+- Removed Node 24 strip-only-incompatible constructor parameter properties from `LearningLifecycleJournal` and `P23TrustedShadowLearningScheduler` (the corresponding fitness-journal/coordinator fixes are recorded in WorkPass520).
+- Rebuilt replay-diversity test fixtures with matching pre-action ticks, explicit selected-action attribution, and observed post-action success; tests now exercise real causal outcomes rather than expecting ungrounded traces to create memory.
+- Kept paired-outcome identity fixtures within the learning trust-boundary contract while still testing permitted field separators.
+- **Verification boundary:** latest hosted workflows are being re-run on the changed source. No merge to `main`, overall readiness claim, or release-asset replacement is made.
+
+---
 ## NK1 WorkPass520 — fix Node 24 journal compatibility and restore-contract regressions (2026-10-24)
 
 - Removed a TypeScript parameter property from `JsonlLearningFitnessJournal`; Node 24's built-in strip-only TypeScript loader can now import the journal without an unsupported-syntax exception.
