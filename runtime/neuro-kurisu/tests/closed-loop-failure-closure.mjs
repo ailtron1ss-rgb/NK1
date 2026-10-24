@@ -89,6 +89,29 @@ assert.equal(lateFailure.snapshot().completeCycles, 0);
 assert.equal(lateFailure.snapshot().failures, 1);
 assert.equal(lateFailure.snapshot().meanScore01, 0);
 
+// A retained FAIL may not be converted to PASS just because a later durable receipt
+// supplies aligned ticks, even when older/corrupt evidence has no failure reason.
+const terminalFailWithAlignedEvidence = new CausalDomainClosureLedger();
+terminalFailWithAlignedEvidence.restore({
+  version: 1, capacity: 8, totalCycles: 1, completeCycles: 0, degradedCycles: 0, failures: 1,
+  meanScore01: 0, lastTick: 4, lastStatus: 'FAIL', lastBehaviorHash: 'terminal-fail', lastDurableHash: '',
+  recent: [{
+    version: 1, tick: 4, at: Date.now(), status: 'FAIL', score01: 0, complete: false,
+    causalChain: ['memory','world','agency','learning','self'],
+    evidence: {
+      memoryChanged: true, worldChanged: true, agencyChanged: true, learningChanged: true, selfChanged: true,
+      memoryWorldVerified: true, worldAgencyLearningVerified: true, causalLifeGraphChain: true,
+      replaySignaturePresent: true, durableStateAligned: true, cognitiveCycleComplete: true,
+    },
+    before, after: { memoryCount: 2, worldTick: 2, identityRevision: 2, agencyDecisions: 2, learningUpdates: 2, selfChangeCount: 2, lifeGraphCompleteChains: 2 },
+    behaviorHash: 'terminal-fail',
+  }],
+});
+const terminalFailFinal = terminalFailWithAlignedEvidence.finalizeDurable({ tick: 4, stateTick: 4, replaySignature: 'aligned', continuousTick: 4, processed: 4 });
+assert.equal(terminalFailFinal?.status, 'FAIL');
+assert.equal(terminalFailFinal?.complete, false);
+assert.equal(terminalFailFinal?.score01, 0);
+
 // The causal ledger must use the unified cycle's explicit contract result as a hard gate.
 const incompleteCausal = new CausalDomainClosureLedger();
 incompleteCausal.begin({ tick: 3, counters: before });
