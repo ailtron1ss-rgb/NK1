@@ -17,6 +17,11 @@ on:
       - 'runtime/neuro-kurisu/tests/server-import-graph-audit.test.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - 'contracts/module-dependency-budgets.json'
+      - 'app/server/**'
+      - 'app/src/**'
+      - 'runtime/neuro-kurisu/tests/**'
+      - 'runtime/neuro-kurisu/scripts/**'
+      - 'runtime/neuro-kurisu/src/**'
 
 permissions:
   contents: read
