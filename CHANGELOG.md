@@ -1,3 +1,18 @@
+# NK1 integration pass — cognitive cycle, learning integrity and CI hardening (2026-10-24)
+
+- [KERNEL] Added replay-idempotent causal stage IDs (`cef:kernel:<tick>:<stage>`), conflicting-evidence rejection and full stage preflight before event writes in `CanonicalCognitiveKernel`.
+- [KERNEL] Duplicate completion deliveries reuse existing outcome/learning/self-update records and do not increment cycle counters again; malformed restored cycle counters cannot silently claim a completed cycle.
+- [LEARNING] `ParametricPolicyLearner` rejects malformed actions, targets, learning rates outside `[0,1]`, sample weights and non-finite feature inputs; batches are preflighted atomically before any weight update. Restore normalizes corrupt model diagnostics and freeze metadata.
+- [LEARNING] Causal experience tests now require grounded action/outcome transitions and ensure imported, unverified external records remain reviewable but do not count as trusted runtime outcomes or affect trusted rolling metrics.
+- [LEARNING] Intrinsic-drive confidence now contributes explicitly to endogenous goal value; previous max-based composition could erase a calibrated drive signal.
+- [RUNTIME] Added null guards around optional causal-learning records, registered the compound-repair clock kind, made the trusted-shadow run API consistently asynchronous and aligned the registrar return contract.
+- [RUNTIME] Removed Node.js strip-only-incompatible TypeScript parameter properties from P23 runtime classes and the continual replay buffer; narrowed numeric retrieval inputs and fixed Android child-process error typing.
+- [EMBODIMENT] Live2D expression application now ignores repeated unchanged expression requests instead of restarting the same expression each time.
+- [CI] Wired missing WorkPass291–294 and P26 test scripts; P26 learning validation now targets Node.js 24. Corrected stale regression expectations for fail-closed restore, adaptive replay bounds, signed rollback approval, seed-manifest verifier identity and IEEE-754 comparison boundaries.
+- [TESTS] Added replay/conflict/atomicity regressions for the kernel and malformed-sample/restore-integrity coverage for the policy learner.
+- [VALIDATION] On earlier relevant heads, WorkPass331, WorkPass287–288, WorkPass291–294, WorkPass99, WorkPass102, WorkPass105, WorkPass108 and WorkPass293 completed successfully. P26 additionally passed runtime typecheck, input-integrity, recovery/matrix, replay, forgetting/transfer and drift-detection stages before a stale malformed-input regression was corrected. Fresh whole-pass validation on this final changelog commit remains required.
+- [LIMITS] No claim of independent retrieval uplift, 24-hour autonomous operation, Android soak, production readiness or release-asset refresh is made. `main` and the published Release ZIP have not been changed.
+
 # NK1 integration hardening — CI contracts, replay and runtime boundaries (2026-10-24)
 
 - [FIXED] Wired missing WorkPass291, WorkPass292 and WorkPass293 runtime package scripts to their existing regression files.
