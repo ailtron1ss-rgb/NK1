@@ -11531,14 +11531,6 @@ export class OrganismCore {
             id: source.sourceId, sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
         });
     }
-    /** Register only a source identity already declared by a trusted ActionGateway tool definition. */
-    registerExternalObserverSourceForTool(toolId: string) {
-        const source = this.cognitiveRuntime.actionGateway.observationSourceForTool(String(toolId));
-        if (!source) throw new Error('external-observer-tool-source-not-declared');
-        return this.evidenceResearchSubsystem.externalObserver.registerSource({
-            id: source.sourceId, sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
-        });
-    }
     async ingestExternalObservation(input: Parameters<import('../system/ExternalObserverFabric.ts').ExternalObserverFabric['observe']>[0] & {
         expectedPostcondition?: string;
         /** Exact OrganismDecisionTrace.id; deliberately never inferred from actionRef/executionId. */
