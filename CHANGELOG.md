@@ -1,3 +1,10 @@
+## NK1 WorkPass525 — close memory subsystem persistence gap (2026-10-24)
+
+- The canonical memory runtime snapshot now includes retention-economy learning, causal evidence lineage, the autobiographical causal graph, and memory-to-world replay evidence.
+- Restore accepts these state records from the advanced-memory projection and compatible flat/legacy shapes, preserving old snapshots while avoiding a second memory database.
+- Added `test:memory-subsystem-runtime-persistence` to exercise all four stateful components across snapshot/restore.
+- **Validation boundary:** code and regression are committed; the runtime test and TypeScript typecheck have not been executed in this connector-only pass.
+
 ## NK1 WorkPass524 — align semantic retrieval with stale-revision suppression (2026-10-24)
 
 - Current semantic-index maintenance, index diagnostics and embedding-based retrieval now exclude a damaged legacy memory whose `supersededById` exists but whose `validUntilAt` was lost.
