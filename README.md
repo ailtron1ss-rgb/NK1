@@ -9,7 +9,7 @@
 - **Branch names:** see the [2026-10-24 branch inventory](docs/BRANCH_INVENTORY_2026-10-24.md) for the observed 104 refs and selected live comparisons; it is not a deletion list.
 - **Ordering gate:** run `npm run audit:ordering` to check link-parser regressions, canonical doc links, runtime dependency boundaries and the transitive server import graph. `npm run audit:quick` now includes it.
 - **Module boundaries:** see [the dependency contracts](docs/architecture/module-dependency-contracts-ru.md); architecture and server-import checks now have dedicated regression suites.
-- **Documentation cleanup:** use the [inventory and archive policy](docs/DOCUMENTATION_INVENTORY_AND_ARCHIVE_POLICY_2026-10-24.md); exact duplicate hashes and zero-inbound links are candidate signals, never automatic deletion decisions.
+- **Documentation cleanup:** use the [inventory and archive policy](docs/DOCUMENTATION_INVENTORY_AND_ARCHIVE_POLICY_2026-10-24.md); exact duplicate hashes and zero-inbound links are candidate signals, never automatic deletion decisions. Verified historical reports are indexed in [docs/history/reports](docs/history/reports/INDEX.md).
 - **Release warning:** the latest attached release ZIP observed on 2026-10-24 was WorkPass70 dated 2026-10-19. No later source change is part of the released binary unless the asset is rebuilt and its digest verified.
 - The continuation records below are preserved for traceability. Their status statements are historical snapshots, not a substitute for the live branch, diff, PR and Actions results.
 
