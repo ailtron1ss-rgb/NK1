@@ -97,6 +97,8 @@ test("full architecture audit enforces dependency boundaries on the current tree
     "architecture audit failed:\n" + String(result.stdout) + "\n" + String(result.stderr),
   );
   assert.match(result.stdout, /CLEAN_ARCHITECTURE=PASS/);
+  assert.match(result.stdout, /dependencyEdges=\\d+/);
+  assert.match(result.stdout, /boundaryViolations=0/);
   assert.doesNotMatch(result.stdout, /dependency boundary violations|canonical leakage|import cycles detected|missing relative imports/);
   console.log(result.stdout.trim());
 });
