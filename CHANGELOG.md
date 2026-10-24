@@ -1,4 +1,4 @@
-# WorkPass335 — paired-seed learning-growth gate (2026-10-24)
+# WorkPass336 — paired-seed learning-growth gate (2026-10-24)
 
 - [INTEGRATION] Independent candidate comparison now summarizes paired per-seed deltas, 95% t-intervals, validation seed-win rate, worst holdout-seed regression and task-coverage completeness.
 - [LEARNING] A verifier-bound failed task remains valid negative outcome evidence; it is no longer discarded solely because its verified outcome is a failure. Unbound traces and safety-violating candidates remain fail-closed.
