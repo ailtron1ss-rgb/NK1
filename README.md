@@ -6,6 +6,7 @@
 - **UI shell:** `app/`; it must not own a second organism or writable memory system.
 - **Research-only code:** `research/`; **historical/provenance sources:** `legacy/`.
 - **Branch warning:** `integration` and `operation-omega-hexis-2026-10-24` diverged in the 2026-10-24 comparison. Do not infer ancestry from pass numbers.
+- **Branch names:** see the [2026-10-24 branch inventory](docs/BRANCH_INVENTORY_2026-10-24.md) for the observed 104 refs and selected live comparisons; it is not a deletion list.
 - **Release warning:** the latest attached release ZIP observed on 2026-10-24 was WorkPass70 dated 2026-10-19. No later source change is part of the released binary unless the asset is rebuilt and its digest verified.
 - The continuation records below are preserved for traceability. Their status statements are historical snapshots, not a substitute for the live branch, diff, PR and Actions results.
 
