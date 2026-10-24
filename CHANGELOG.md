@@ -1,3 +1,10 @@
+## NK1 Architecture — focused dependency CI results (2026-10-24)
+
+- [PASS] Dedicated workflow run [40128282695](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40128282695) completed successfully on code commit `a248aabe41953a074483ebcbede923c2758fe6c2`.
+- [PASS] Transitive server import audit: 574 files, 1,868 local dependency edges, zero unresolved imports; all five combined scanner/server-audit tests passed.
+- [PASS] Full architecture audit: 2,222 source files, 630 canonical-organism files, 4,210 dependency edges; missing=0, cycles=0, legacy leakage=0, boundary violations=0; all five architecture-boundary tests passed.
+- [SCOPE] The successful run validates the code at `a248aabe`; this changelog-only evidence entry does not change audited runtime or scanner code.
+
 ## NK1 Architecture — focused dependency CI gate (2026-10-24)
 
 - [ADDED] Added `.github/workflows/nk1-module-dependency-audit.yml`, a path-filtered PR workflow using Node.js 24 and first-party Actions v7.
