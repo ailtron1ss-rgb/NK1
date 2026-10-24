@@ -2202,3 +2202,15 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Extended the canonical `MemoryFabric` encode command with `forceDistinct`, and gave HMX imports stable IDs based on source lineage, export-independent record-reference suffix, and content hash. Same-text native memories are no longer reconsolidated with foreign HMX provenance; re-exports with new `export_id` values can still deduplicate stable source records.
 - Added regressions for partial relationship projection, graph-edge idempotency, graph rollback, preserving same-text native memory fields, and cross-export deduplication. Exact-head CI for the last cross-export test remains queued; previous HEAD `c97e512b84cd25784bf6257db7bdf46051437053` passed all five Hexis workflow steps.
 - Validation boundary unchanged: the separate WorkPass110 workflow has an independent failure at `tests/big-pass-90-causal-learning-stream.mjs:18` (`record` is null). No learning uplift is claimed; structural identity and goals are still deferred.
+
+
+## 2026-10-24 — WorkPass333: HMX goal review and activation boundary
+
+- Removed the legacy \`OrganismCore.hexisDecideHmx\` auto-import branch. Review \`accept\` no longer mutates canonical memory; only explicit \`apply\` invokes the Hexis projector and persists the canonical MemoryOS2, MemoryFabric, semantic-graph and event-log snapshots.
+- Added a persistent bounded HMX goal-proposal queue in \`HexisAdaptationFabric\`, with stable source-lineage/ref/title/content identity, duplicate detection across re-exports, explicit review decisions, and proposal metrics.
+- Added core/server goal-proposal routes. Importing a goal requires explicit preparation, review approval materializes it as a paused \`source: external\` goal, and a separate \`activate\` decision is required before it can influence active planning. Activation checks active-goal capacity, duplicate active titles and identity-continuity threshold.
+- Made reviewed proposal decisions monotonic: stale conflicting decisions no longer change an approved/materialized proposal into rejected.
+- Added the \`activationApproved\` marker to \`OrganismGoal\` and a guard in P68 so externally sourced paused goals are not automatically reactivated before explicit approval.
+- Namespaced \`SemanticMemoryGraph\` nodes with an optional \`sourceKey\`; the Hexis projector looks up/reuses only matching-source graph nodes, keeping imported same-label nodes separate from native NK1 nodes.
+- Expanded unit/server tests for proposal deduplication across exports, immutable review decisions, paused-until-explicit-activation semantics, server acceptance-without-write, post-apply memory persistence, and native/imported graph node isolation.
+- Exact-head Hexis CI for WorkPass333 is queued as of this commit sequence; do not treat the new tests as passed until the latest run completes. Earlier WorkPass332 heads passed the five Hexis checks. The independent WorkPass110 causal-learning failure at \`tests/big-pass-90-causal-learning-stream.mjs:18\` remains separate; no learning-uplift claim is made.
