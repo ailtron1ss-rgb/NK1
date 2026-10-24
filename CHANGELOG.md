@@ -1,3 +1,13 @@
+## NK1 WorkPass499 — evidence-backed autonomous intent and learning gate (2026-10-24)
+
+- Added `AutonomousIntentLearningGovernor` as a deterministic AILG seam: intents require explicit trigger evidence; score/risk/cost inputs are bounded; duplicate intent IDs are rejected; high-risk proposals fail closed; external side effects require approval by default.
+- Added single-use outcome attribution and a promotion-eligibility gate requiring independent holdout coverage, positive measured improvement, and regression-budget compliance. Eligibility does not activate candidate code; separate approval/activation remains required.
+- Added focused regression coverage and registered it in `test:rebuild-recovered`.
+- Design influence: Hermes/GEPA-style diagnose→candidate→evaluate loops and causal-outcome attribution. This pass adds a small native NK1 mechanism rather than copying third-party code; no new runtime dependency was introduced.
+- **Validation boundary:** code and test are committed; the GitHub connector did not execute the test or typecheck in this pass. No test PASS, measured learning uplift, runtime wiring, or consciousness claim is made.
+
+---
+
 ## NK1 WorkPass498 — close Node24, trusted registration and causal-metric seams
 
 - Replaced the remaining P23 trusted-shadow scheduler constructor parameter property so runtime tests execute under Node.js 24's strip-only TypeScript runner.
