@@ -1,3 +1,11 @@
+## NK1 WorkPass501 — close cognitive ingress and restore-counter regressions
+
+- Fixed the unified cognitive-loop ingress implementation after CI caught an invalid control-character regex and a missed local snapshot binding; processing now validates and detaches an event before history mutation.
+- Updated the existing causal learning-stream regression to expect zero trusted outcomes for quarantined restored external evidence, matching the fail-closed restore contract already documented in WorkPass498.
+- Current-head CI on the prior revision showed the focused correlated-postcondition, replay baseline and several cognitive-contract workflows green; WorkPass110 exposed the stale assertion above. The correction is committed, and rerun results are pending.
+
+---
+
 ## NK1 WorkPass500 — validate unified cognitive-loop ingress
 
 - `UnifiedCognitiveLoop` now snapshots own data properties without invoking getters and rejects non-plain objects, malformed IDs, non-finite/out-of-range signals, and invalid timestamps before appending to history.
