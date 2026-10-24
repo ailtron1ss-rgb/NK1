@@ -732,6 +732,8 @@ export function compareMatchedIndependentEvaluations(
           !Number.isSafeInteger(binding.seed) || binding.seed < 0 ||
           typeof binding.taskId !== 'string' || !binding.taskId.trim() ||
           typeof binding.trialId !== 'string' || !binding.trialId.trim() ||
+          // A false task outcome is still usable negative evidence when the
+          // independent verifier authenticated which exact run was evaluated.
           !binding.bindingVerified ||
           !binding.runId || !binding.runId.trim() ||
           !Number.isSafeInteger(binding.safetyViolationCount) || binding.safetyViolationCount !== 0) {
@@ -765,7 +767,6 @@ export function compareMatchedIndependentEvaluations(
     { validation: candidate.evaluation.validation, holdout: candidate.evaluation.holdout },
   );
   const summarizeSeedGrowth = (split: 'validation' | 'holdout'): MatchedSeedGrowthSummary => {
-    type Report = (typeof baseline.evaluation.validation)[number];
     type RunBinding = (typeof baseline.evaluation.provenance.runBindings)[number];
     const collect = (
       envelope: typeof baseline,
@@ -843,7 +844,7 @@ export function compareMatchedIndependentEvaluations(
         2.086, 2.080, 2.074, 2.069, 2.064, 2.060, 2.056, 2.052, 2.048, 2.045, 2.042,
       ];
       const degreesOfFreedom = deltas.length - 1;
-      const critical = degreesOfFreedom <= 30 ? t95[degreesOfFreedom] : 1.96;
+      const critical = degreesOfFreedom <= 30 ? (t95[degreesOfFreedom] ?? 1.96) : 1.96;
       const margin = critical * standardError;
       lower = deltaMean - margin;
       upper = deltaMean + margin;
