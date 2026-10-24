@@ -1,3 +1,13 @@
+## WorkPass489 — общая identity-функция для reality projections (2026-10-24)
+
+- `EvidenceEventIdentity.ts` теперь одинаков по blob SHA в `feature/feedback` и `feature/perception`; `RealityEvidenceLedger.realityEvidenceEventId` вызывает общий `createRealityEvidenceEventId`.
+- Сохранён старый контракт ID `nk1-reality:<role>:<48-hex>`, чтобы не менять существующие snapshot/replay ссылки. Контрольные символы фильтруются явной проверкой code point.
+- Decision-bound outcome identity и projection identity остаются разными типами по смыслу: первый выявляет изменение результата при том же решении, второй связывает проекцию с исходным событием/ролью/дискриминатором.
+- Добавлен regression test и включён в `test:p2841`. Сам test/CI на последнем SHA не подтверждён выполненным runner; полный runtime мост до MemoryOS2/P65/P23 остаётся открытым.
+- WorkPass487 в `feature/feedback` также убрал duplicate `verifyOperationalCycle` и исправил несколько точечных type/input-validation несоответствий; тестовый прогон остаётся непроверенным.
+
+---
+
 ## WorkPass486 — текущий технический срез (2026-10-24)
 
 - Создан отдельный технический документ [NK1 project analysis](NK1_PROJECT_ANALYSIS_2026-10-24_RU.md): владельцы подсистем, степень подтверждения integration bridge, observed CI/typecheck blockers, очередность объединения веток и release gates.
