@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { collectRelativeImportSpecifiers } from "./import-specifier-scanner.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(here, "..");
@@ -40,17 +41,6 @@ function resolveImport(importer, specifier) {
   }) ?? null;
 }
 
-function collectRelativeSpecifiers(source) {
-  // Covers static imports, re-exports, literal dynamic imports and literal
-  // CommonJS requires. Bare package imports are intentionally not traversed.
-  const pattern = /(?:\bfrom\s*|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)["']([^"']+)["']/g;
-  const result = new Set();
-  for (const match of source.matchAll(pattern)) {
-    const specifier = match[1];
-    if (specifier.startsWith(".")) result.add(specifier);
-  }
-  return [...result];
-}
 
 while (queue.length > 0) {
   const file = queue.shift();
@@ -75,7 +65,7 @@ while (queue.length > 0) {
 
   const source = fs.readFileSync(file, "utf8");
   const edges = [];
-  for (const specifier of collectRelativeSpecifiers(source)) {
+  for (const specifier of collectRelativeImportSpecifiers(source)) {
     const resolved = resolveImport(file, specifier);
     if (!resolved) {
       unresolved.push({
