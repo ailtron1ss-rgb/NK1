@@ -13,10 +13,10 @@ const safeCounter=(x:unknown,fallback=0)=>typeof x==='number'&&Number.isSafeInte
 const safeText=(x:unknown,max:number)=>typeof x==='string'&&x.trim().length>0&&x.length<=max?x.trim():null;
 const validKind=(x:unknown):x is P65Kind=>x==='observation'||x==='inference'||x==='belief'||x==='prediction'||x==='counterfactual';
 const validStatus=(x:unknown):x is P65Claim['status']=>x==='active'||x==='stale'||x==='expired'||x==='resolved';
-export interface P65RevisionRecord {at:number; evidenceId:string; source:string; stance:'supports'|'contradicts'; fromConfidence01:number; toConfidence01:number; independentSource:boolean;}
+export interface P65RevisionRecord {at:number; evidenceId:string; source:string; stance:'supports'|'contradicts'; fromConfidence01:number; toConfidence01:number; independentSource:boolean; independenceKey?:string;}
 
 export type P65Kind='observation'|'inference'|'belief'|'prediction'|'counterfactual';
-export interface P65Claim {id:string;tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;resolved:boolean;parentIds:string[];predicted01?:number;actual01?:number;error01?:number;lastSupportedAt:number;supportCount:number;status:'active'|'stale'|'expired'|'resolved';evidenceSources?:string[];evidenceKeys?:string[];revisionHistory?:P65RevisionRecord[];}
+export interface P65Claim {id:string;tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;resolved:boolean;parentIds:string[];predicted01?:number;actual01?:number;error01?:number;lastSupportedAt:number;supportCount:number;status:'active'|'stale'|'expired'|'resolved';evidenceSources?:string[];evidenceKeys?:string[];evidenceLineageKeys?:string[];revisionHistory?:P65RevisionRecord[];}
 export interface P65State {version:2;claims:number;observations:number;inferences:number;beliefs:number;predictions:number;counterfactuals:number;resolvedPredictions:number;meanConfidence01:number;meanPredictionError01:number;unresolved:number;claimsData:P65Claim[];recentIds:string[];beliefHalfLifeMs:number;expiredBeliefs:number;staleBeliefs:number;}
 export const defaultP65=():P65State=>({version:2,claims:0,observations:0,inferences:0,beliefs:0,predictions:0,counterfactuals:0,resolvedPredictions:0,meanConfidence01:.5,meanPredictionError01:.5,unresolved:0,claimsData:[],recentIds:[],beliefHalfLifeMs:7*24*60*60*1000,expiredBeliefs:0,staleBeliefs:0});
 const sourceTrust=(source:string):number=>{ const s=String(source||'unknown').toLowerCase(); if(s==='os'||s==='android'||s==='termux') return .82; if(s==='device'||s==='sensor') return .76; if(s==='user') return .68; if(s==='external-api'||s==='web') return .84; if(s==='world') return .55; if(s==='simulated-world-environment') return .20; if(s==='organism') return .28; return .45; };
@@ -41,6 +41,7 @@ export class P65EpistemicLedger{
    const parentIds=Array.isArray(value.parentIds)?value.parentIds.filter((v):v is string=>typeof v==='string'&&v.length<=256).slice(0,8):[];
    const evidenceSources=Array.isArray(value.evidenceSources)?[...new Set(value.evidenceSources.filter((v):v is string=>typeof v==='string'&&v.trim().length>0&&v.length<=160).map(v=>v.trim().toLowerCase()))].slice(0,32):[source.toLowerCase()];
    const evidenceKeys=Array.isArray(value.evidenceKeys)?[...new Set(value.evidenceKeys.filter((v):v is string=>typeof v==='string'&&v.length>0&&v.length<=320))].slice(-64):[];
+    const evidenceLineageKeys=Array.isArray(value.evidenceLineageKeys)?[...new Set(value.evidenceLineageKeys.filter((v):v is string=>typeof v==='string'&&v.trim().length>0&&v.length<=130).map(v=>v.trim().normalize('NFKC').toLowerCase()))].slice(-32):[...evidenceSources];
    const revisionHistory:P65RevisionRecord[]=[];
    if(Array.isArray(value.revisionHistory)){
     for(const rev of value.revisionHistory.slice(-32)){
@@ -51,7 +52,8 @@ export class P65EpistemicLedger{
         typeof rev.fromConfidence01!=='number'||!Number.isFinite(rev.fromConfidence01)||rev.fromConfidence01<0||rev.fromConfidence01>1||
         typeof rev.toConfidence01!=='number'||!Number.isFinite(rev.toConfidence01)||rev.toConfidence01<0||rev.toConfidence01>1||
         typeof rev.independentSource!=='boolean')continue;
-     revisionHistory.push({at:rev.at,evidenceId:rev.evidenceId,source:rev.source,stance:rev.stance,fromConfidence01:rev.fromConfidence01,toConfidence01:rev.toConfidence01,independentSource:rev.independentSource});
+     const independenceKey=typeof rev.independenceKey==='string'&&rev.independenceKey.trim().length>0&&rev.independenceKey.length<=130?rev.independenceKey.trim().normalize('NFKC').toLowerCase():undefined;
+      revisionHistory.push({at:rev.at,evidenceId:rev.evidenceId,source:rev.source,stance:rev.stance,fromConfidence01:rev.fromConfidence01,toConfidence01:rev.toConfidence01,independentSource:rev.independentSource,...(independenceKey?{independenceKey}:{})});
     }
    }
    const at=value.at as number;
@@ -65,7 +67,7 @@ export class P65EpistemicLedger{
     ...(predicted!==undefined?{predicted01:predicted}:value.kind==='prediction'?{predicted01:clamp(value.confidence01)}:{}),
     ...(actual!==undefined?{actual01:actual}:{}),
     ...(error!==undefined?{error01:error}:{}),
-    evidenceSources,evidenceKeys,revisionHistory,
+    evidenceSources,evidenceKeys,evidenceLineageKeys,revisionHistory,
    });
   }
   this.state={
@@ -105,7 +107,7 @@ export class P65EpistemicLedger{
   const source=input.source.trim();
   const id=stableId(input.tick,input.kind,content,source);if(this.state.recentIds.includes(id))return id;
   const parentIds=Array.isArray(input.parentIds)?input.parentIds.filter((v):v is string=>typeof v==='string'&&v.length>0&&v.length<=256).slice(0,8):[];
-  const claim:P65Claim={id,tick:input.tick,at:input.at,kind:input.kind,content,confidence01:clamp(input.confidence01),source,resolved:false,parentIds,predicted01:input.kind==='prediction'?clamp(input.predicted01 ?? input.confidence01):undefined,lastSupportedAt:input.at,supportCount:1,status:'active',evidenceSources:[source.toLowerCase()],evidenceKeys:[],revisionHistory:[]};
+  const claim:P65Claim={id,tick:input.tick,at:input.at,kind:input.kind,content,confidence01:clamp(input.confidence01),source,resolved:false,parentIds,predicted01:input.kind==='prediction'?clamp(input.predicted01 ?? input.confidence01):undefined,lastSupportedAt:input.at,supportCount:1,status:'active',evidenceSources:[source.normalize('NFKC').toLowerCase()],evidenceKeys:[],evidenceLineageKeys:[source.normalize('NFKC').toLowerCase()],revisionHistory:[]};
   this.state.claims++;
   if(input.kind==='observation') this.state.observations++;
   else if(input.kind==='inference') this.state.inferences++;
@@ -119,12 +121,13 @@ export class P65EpistemicLedger{
   const claim=this.state.claimsData.find(c=>c.id===id);if(!claim||claim.kind!=='prediction'||claim.resolved)return null;
   const actual=clamp(actual01);const error=Math.abs(clamp(claim.predicted01 ?? claim.confidence01)-actual);claim.actual01=actual;claim.error01=error;claim.resolved=true;claim.status='resolved';claim.lastSupportedAt=Date.now();claim.supportCount+=1;this.state.resolvedPredictions++;this.state.unresolved=Math.max(0,this.state.unresolved-1);this.state.meanPredictionError01=clamp(this.state.meanPredictionError01*.9+error*.1);return {id,error01:error,actual01:actual};
  }
- reviseBeliefFromEvidence(rawInput:{claimId:string;evidenceId:string;source:string;stance:'supports'|'contradicts';strength01:number;at:number}):{accepted:boolean;reason:string;confidence01:number|null;independentSource:boolean}{
+ reviseBeliefFromEvidence(rawInput:{claimId:string;evidenceId:string;source:string;independenceKey?:string;stance:'supports'|'contradicts';strength01:number;at:number}):{accepted:boolean;reason:string;confidence01:number|null;independentSource:boolean}{
   let input:typeof rawInput;
   try{input=snapshotPlainData(rawInput,{allowNonFiniteNumbers:true,maxDepth:8,maxNodes:32,maxStringUnits:4096});}
   catch{return {accepted:false,reason:'evidence-boundary-rejected',confidence01:null,independentSource:false};}
-  const claimId=safeText(input?.claimId,256),evidenceId=safeText(input?.evidenceId,180),source=safeText(input?.source,160)?.toLowerCase();
-  if(!claimId||!evidenceId||!source||source.length===0||
+  const claimId=safeText(input?.claimId,256),evidenceId=safeText(input?.evidenceId,180),source=safeText(input?.source,160)?.normalize('NFKC').toLowerCase();
+  const requestedLineage=input?.independenceKey===undefined?source:safeText(input.independenceKey,130)?.normalize('NFKC').toLowerCase();
+  if(!claimId||!evidenceId||!source||source.length===0||!requestedLineage||requestedLineage.length===0||
      (input.stance!=='supports'&&input.stance!=='contradicts')||
      typeof input.strength01!=='number'||!Number.isFinite(input.strength01)||input.strength01<0||input.strength01>1||
      typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0){
@@ -133,11 +136,13 @@ export class P65EpistemicLedger{
   const claim=this.state.claimsData.find(row=>row.id===claimId&&row.kind==='belief');
   if(!claim)return {accepted:false,reason:'belief-not-found',confidence01:null,independentSource:false};
   if(claim.status==='expired'||claim.status==='resolved'||claim.resolved)return {accepted:false,reason:'belief-not-revisable',confidence01:claim.confidence01,independentSource:false};
-  const evidenceKey=`${source}:${evidenceId}`;
+  const lineageKey=requestedLineage;
+  const evidenceKey=`${lineageKey}:${evidenceId}`;
   const evidenceKeys=claim.evidenceKeys??(claim.evidenceKeys=[]);
   if(evidenceKeys.includes(evidenceKey))return {accepted:false,reason:'evidence-already-applied',confidence01:claim.confidence01,independentSource:false};
-  const sources=claim.evidenceSources??(claim.evidenceSources=[claim.source.toLowerCase()]);
-  const independentSource=!sources.includes(source);
+  const sources=claim.evidenceSources??(claim.evidenceSources=[claim.source.normalize('NFKC').toLowerCase()]);
+  const lineageKeys=claim.evidenceLineageKeys??(claim.evidenceLineageKeys=[...new Set(sources.map(v=>v.normalize('NFKC').toLowerCase()))]);
+  const independentSource=!lineageKeys.includes(lineageKey);
   const previous=claim.confidence01;
   let next=previous;
   if(independentSource){
@@ -158,6 +163,8 @@ export class P65EpistemicLedger{
    claim.confidence01=next;
    sources.push(source);
    claim.evidenceSources=[...new Set(sources)].slice(-32);
+   lineageKeys.push(lineageKey);
+   claim.evidenceLineageKeys=[...new Set(lineageKeys)].slice(-32);
   }else if(input.stance==='supports'){
    // Same-source observations can refresh recency but never masquerade as
    // independent corroboration or increase confidence repeatedly.
@@ -165,7 +172,7 @@ export class P65EpistemicLedger{
    claim.supportCount=Math.min(Number.MAX_SAFE_INTEGER,claim.supportCount+1);
   }
   evidenceKeys.push(evidenceKey);claim.evidenceKeys=[...new Set(evidenceKeys)].slice(-64);
-  const revision:P65RevisionRecord={at:input.at,evidenceId,source,stance:input.stance,fromConfidence01:previous,toConfidence01:claim.confidence01,independentSource};
+  const revision:P65RevisionRecord={at:input.at,evidenceId,source,stance:input.stance,fromConfidence01:previous,toConfidence01:claim.confidence01,independentSource,independenceKey:lineageKey};
   claim.revisionHistory=[...(claim.revisionHistory??[]),revision].slice(-32);
   return {accepted:true,reason:independentSource?'independent-evidence-applied':'same-source-evidence-recorded',confidence01:claim.confidence01,independentSource};
  }
