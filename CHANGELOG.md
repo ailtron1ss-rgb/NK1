@@ -4,7 +4,7 @@
 - Initialized the required `verifiedNonHoldoutExecutions` counter in newly compiled compound-skill base variants so runtime-created records match their declared schema.
 - Made the retrieval query numeric fallback accept optional `now` and `limit` values with explicit type narrowing.
 - The persistence workflow path filters are being expanded to include each file checked by its whole-runtime typecheck, so subsequent changes to this surface trigger validation.
-- The typecheck result for these changes remains pending until a run against the updated head completes.
+- CI run [#40129258693](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40129258693) on commit `ea7295cdee01` passed the official-types runtime typecheck and all four focused memory regressions.
 
 ## NK1 WorkPass534 — enforce canonical memory byte budget on restore (2026-10-24)
 
