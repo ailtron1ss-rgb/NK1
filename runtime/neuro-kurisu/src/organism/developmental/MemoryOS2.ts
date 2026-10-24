@@ -104,10 +104,22 @@ export function detectMemoryQueryIntent(query:string):MemoryQueryIntent{
  if(/\b(what is|define|definition|explain the concept)\b|что такое|определение|дай определение|объясни понятие/iu.test(q))return 'factual';
  return 'general';
 }
+function isConversationMemory(item:MemoryItem2):boolean{
+ const context=item.context??{};
+ // Strong structural markers identify a stored turn/transcript without relying on
+ // its wording. Values are inspected as plain strings; no schema inference occurs.
+ const hasConversationIdentity=Object.entries(context).some(([key,value])=>
+  /^(?:conversation|dialogue|chat|transcript|message|turn)(?:id|key|index|type|role)?$/iu.test(key)&&
+  typeof value==='string'&&value.trim().length>0
+ );
+ if(hasConversationIdentity)return true;
+ const metadata=[item.source,...Object.entries(context).flatMap(([key,value])=>[key,String(value??'')])].join(' ').normalize('NFKC');
+ return /\\b(?:conversation|dialogue|chat[-_ ]history|transcript|message[-_ ]history|discussion[-_ ]summary)\\b|разговор|диалог|чат|переписк|транскрипт|истори[яи] (?:бесед|диалог|разговор)|обсужден(?:ие|ия|ий)/iu.test(metadata);
+}
 function memoryIntentFit(intent:MemoryQueryIntent,item:MemoryItem2):number{
  const hasGoal=Boolean(String(item.context?.goalId??'').trim())||item.goalRelevance>=.65;
  switch(intent){
-  case 'episodic': return item.kind==='episodic'?(item.context?.observationId&&item.context?.decisionId?.trim()?1:.94):item.kind==='autobiographical'?.92:item.kind==='social'?.32:item.kind==='working'?.18:0;
+  case 'episodic': return item.kind==='episodic'?(item.context?.observationId&&item.context?.decisionId?.trim()?1:.94):item.kind==='autobiographical'?.92:item.kind==='social'?(isConversationMemory(item)?.90:.32):item.kind==='working'?.18:0;
   case 'procedural': return item.kind==='procedural'?1:item.kind==='episodic'?.18:item.kind==='semantic'?.08:0;
   case 'identity': return item.kind==='identity'?1:item.kind==='autobiographical'?.82:item.kind==='social'?.56:item.kind==='semantic'?.18:0;
   case 'goal': return hasGoal?.96:item.kind==='working'?.82:item.kind==='autobiographical'?.48:item.kind==='identity'?.34:item.kind==='procedural'?.28:item.kind==='episodic'?.24:0;
