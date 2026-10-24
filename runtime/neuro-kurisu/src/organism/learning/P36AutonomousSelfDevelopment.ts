@@ -344,6 +344,8 @@ export class P36AutonomousSelfDevelopmentEngine{
       curriculum:{...d.curriculum,focus:(r.curriculum?.focus??d.curriculum.focus),mastery:{...d.curriculum.mastery},plannedSteps:0,completedSteps:0},
       actionBias:{...d.actionBias},
       acceptedChanges:0,
+      unverifiedEvidenceAttempts:Number.isSafeInteger(r.unverifiedEvidenceAttempts)?Math.max(0,Math.min(1_000_000_000,r.unverifiedEvidenceAttempts!)):0,
+      rejectedMaturityReceipts:Number.isSafeInteger(r.rejectedMaturityReceipts)?Math.max(0,Math.min(1_000_000_000,r.rejectedMaturityReceipts!)):0,
     };
   }
   snapshot(){return structuredClone(this.state);}
@@ -552,7 +554,7 @@ export class P36AutonomousSelfDevelopmentEngine{
     const binding=developmentEvidenceVerificationInput(input);
     if(typeof input.control01!=='number'||!Number.isFinite(input.control01)||input.control01<0||input.control01>1||
        typeof input.treatment01!=='number'||!Number.isFinite(input.treatment01)||input.treatment01<0||input.treatment01>1||
-       typeof input.holdout!=='boolean'||typeof input.delayMs!=='number'||!Number.isFinite(input.delayMs)||input.delayMs<0||
+       typeof input.holdout!=='boolean'||typeof input.delayMs!=='number'||!Number.isSafeInteger(input.delayMs)||input.delayMs<0||input.delayMs>604_800_000||
        !binding.hypothesisId||!binding.contextKey||!binding.evaluatorVersion||
        (input.evidenceSource!=='external-evaluator'&&input.evidenceSource!=='manual-observer')||
        (input.protocolId!==undefined&&!binding.protocolId)||(input.sessionId!==undefined&&!binding.sessionId)||
