@@ -1781,7 +1781,9 @@
     "test:workpass407:learning-lifecycle-journal": "node --experimental-strip-types tests/workpass407-learning-lifecycle-journal.mjs",
     "test:workpass408:lifecycle-reconciliation": "node --experimental-strip-types tests/workpass408-lifecycle-store-reconciliation.mjs",
     "test:workpass419:retry-backoff-store": "node --experimental-strip-types tests/workpass419-p23-retry-backoff-store.mjs",
-    "test:hexis:correction-memory": "node --experimental-strip-types tests/hexis-correction-memory.mjs"
+    "test:hexis:correction-memory": "node --experimental-strip-types tests/hexis-correction-memory.mjs",
+    "test:workpass505:causal-event-identity": "node --experimental-strip-types tests/workpass505-causal-event-identity.mjs",
+    "test:workpass505": "npm run typecheck && npm run test:workpass505:causal-event-identity"
   },
   "devDependencies": {
     "@types/node": "22.20.4"
