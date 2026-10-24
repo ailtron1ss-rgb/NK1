@@ -1,3 +1,11 @@
+## NK1 WorkPass489 — verify shared ID implementation on the perception branch (2026-10-24)
+
+- Corrected the common helper's output expression and changed control filtering to explicit code-point checks; the helper file's blob now matches `feature/feedback` byte-for-byte.
+- `RealityEvidenceLedger.realityEvidenceEventId` delegates to the shared helper while preserving `nk1-reality:<role>:<48-hex>` IDs. The new regression is included in `test:p2841`.
+- This closes implementation duplication at the helper level but does not yet connect outcomes through all consumers or establish CI success.
+
+---
+
 ## NK1 WorkPass488 — adopt common reality-projection identity (2026-10-24)
 
 - `RealityEvidenceLedger.realityEvidenceEventId` now delegates to `EvidenceEventIdentity.createRealityEvidenceEventId`; public function shape and the prior deterministic `nk1-reality:<role>:<48-hex>` encoding are preserved.
