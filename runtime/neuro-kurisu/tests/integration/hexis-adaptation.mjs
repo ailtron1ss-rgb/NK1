@@ -69,6 +69,23 @@ assert.equal(oversizedSection.sectionCounts.memories, 257);
 assert.equal(oversizedSection.stagedSections.memories.length, 256,
   'oversized payloads are bounded in storage but cannot be accepted after truncation');
 
+const aggregateOverflow = fabric.stageHmx({
+  document: makeHmxDocument('exp_eeeeeeeeeeeeeeee', {
+    memories: Array.from({ length: 256 }, (_, id) => ({ id: `m${id}` })),
+    episodes: Array.from({ length: 256 }, (_, id) => ({ id: `e${id}` })),
+    relationships: Array.from({ length: 256 }, (_, id) => ({ id: `r${id}` })),
+    identity: Array.from({ length: 256 }, (_, id) => ({ id: `i${id}` })),
+    goals: Array.from({ length: 64 }, (_, id) => ({ id: `g${id}` })),
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(aggregateOverflow.conflicts.some(conflict => conflict.kind === 'size-limit'));
+const stagedArrayRecords = Object.entries(aggregateOverflow.stagedSections)
+  .reduce((sum, [name, records]) => sum + (Array.isArray(records) ? records.length : 0), 0);
+assert(stagedArrayRecords <= 1024, 'aggregate HMX record storage must be bounded, not just flagged');
+assert.equal(fabric.decideHmx(aggregateOverflow.stagingId, 'accept')?.status, 'staged');
+
 const badIntent = fabric.stageHmx({
   document: makeHmxDocument('exp_dddddddddddddddd', { memories: [] }),
   intent: 'unbounded-autonomy',
