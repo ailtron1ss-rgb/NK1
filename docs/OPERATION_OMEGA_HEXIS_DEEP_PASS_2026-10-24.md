@@ -20,6 +20,8 @@ The import boundary also needed hardening: incomplete source metadata, unknown s
 - Added bounded staging limits: 1,000,000 characters per envelope, 256 records per array section, and 1,024 aggregate stored array records. Over-limit, malformed, protected-by-intent or unsupported payloads retain explicit conflicts and cannot be accepted.
 - Added regressions for missing provenance, unknown sections, invalid intent, per-section and aggregate overflow, NK1-to-HMX export conversion, skill-to-procedural-memory mapping, reference conversion, native-extension preservation, and required HMX metadata.
 - Updated the Node 24 workflow to run the HMX adapter test plus the actual server smoke, and to trigger when the adapter or server path changes.
+- Hardened the server-side decision API: unknown decisions / missing IDs receive a 400, nonexistent stages receive a 404, and attempting to accept a conflicted stage receives 409 rather than a misleading `ok: true`. Responses explicitly say `appliedToCanonicalMemory: false`, since acceptance here is an approval record—not a memory-write operation.
+- Set `privacy.redaction_policy: none` and emit an explicit warning because this bridge does not automatically redact exported content. The operator must review the portable document before external transfer.
 
 ## Validation and remaining boundary
 
@@ -27,4 +29,4 @@ A GitHub Actions run at an intermediate commit after the server adapter was wire
 
 The separate `WorkPass110 continual learning metrics` workflow has also failed on an unrelated pre-existing `tests/big-pass-90-causal-learning-stream.mjs:18` assertion (`record` is null). That failure is not reported as a Hexis regression.
 
-The adapter is still a format/consent boundary, not an automatic replacement for NK1 identity, memory, or policy state. No measured learning uplift is claimed, and this PR remains open until the exact head's validation is green.
+The adapter is still a format/consent boundary, not an automatic replacement for NK1 identity, memory, or policy state. The HMX decision endpoint does not yet apply accepted HMX records into the canonical cognitive memory substrate; that requires a separate transactional projection/apply path with rollback and fidelity accounting. No measured learning uplift is claimed, and this PR remains open until the exact head's validation is green.
