@@ -1,3 +1,9 @@
+## NK1 WorkPass532 — run memory typecheck with locked Node typings (2026-10-24)
+
+- The memory persistence workflow now runs `npm ci --ignore-scripts --no-audit --no-fund` from the runtime lockfile before typecheck, so `typecheck-runtime.mjs` can select `tsconfig.clean.json` and the pinned `@types/node` instead of silently using fallback shims.
+- Focused memory regressions remain configured with `if: always()`, so a failing global typecheck no longer suppresses useful behavioral results.
+- Typecheck outcome under the locked environment is pending; no passing result is claimed until the next Actions run reports it.
+
 ## NK1 WorkPass531 — fix memory array-descriptor typing and keep regressions running (2026-10-24)
 
 - Fixed two runtime typecheck errors in AdaptiveExperienceConsolidator by reading an array's length through its own property descriptor, while preserving getter-safe validation of hostile arrays.
