@@ -76,9 +76,26 @@ export class MemorySubsystemRuntime {
     this.valuePlasticity.restore(memory.adaptiveValues);
     this.workspaceV2.restore(memory.workspace);
     this.semanticMemory.restore(memory.semanticGraph);
-    this.memoryOS.restore(advanced.memoryOS);
+    const canonicalMemorySnapshot=advanced.memoryOS;
+    const hasCanonicalMemorySnapshot=Boolean(
+      canonicalMemorySnapshot &&
+      typeof canonicalMemorySnapshot==='object' &&
+      Array.isArray((canonicalMemorySnapshot as any).items)
+    );
+    this.memoryOS.restore(canonicalMemorySnapshot);
     this.fabric.restore(advanced.memoryFabric);
-    this.fabric.consolidateCompatibility(this.memories.snapshot({clone:false}), 96, this.memoryLifecycleAuthority.snapshot().lastTick >= 0 ? this.memoryLifecycleAuthority.snapshot().lastTick : 0);
+    // Compatibility rows are a lossy view of MemoryOS2. Import them only for legacy
+    // checkpoints that predate the canonical snapshot; otherwise each restart would
+    // recreate derived copies and dilute canonical provenance/epistemic metadata.
+    if (!hasCanonicalMemorySnapshot) {
+      this.fabric.consolidateCompatibility(
+        this.memories.snapshot({clone:false}),
+        96,
+        this.memoryLifecycleAuthority.snapshot().lastTick >= 0
+          ? this.memoryLifecycleAuthority.snapshot().lastTick
+          : 0,
+      );
+    }
     this.unifiedMemory.restore(advanced.unifiedMemory);
     this.p47MemoryMind.restore(advanced.p47);
     this.p59MemoryOperatingSystem.restore(advanced.p59MemoryOperatingSystem);
