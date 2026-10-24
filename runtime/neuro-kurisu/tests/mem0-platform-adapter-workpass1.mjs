@@ -58,6 +58,37 @@ test('search scopes to the configured user, redacts sensitive content and labels
   assert.equal(JSON.stringify(result).includes('do-not-log-this-key'), false);
 });
 
+
+test('search query is minimized before it leaves NK1', async () => {
+  let sentQuery = '';
+  const adapter = new Mem0PlatformAdapter({
+    enabled: true,
+    apiKey: 'test-key',
+    userId: 'scope',
+    fetchImpl: async (_input, init) => {
+      sentQuery = String((JSON.parse(String(init?.body)) as Record<string, unknown>).query ?? '');
+      return jsonResponse({ results: [] });
+    },
+  });
+  const result = await adapter.search('find alice@example.com');
+  assert.equal(result.status, 'ok');
+  assert.equal(sentQuery, 'find [redacted-email]');
+});
+
+test('approved write still fails closed when the write environment gate is absent', async () => {
+  let calls = 0;
+  const adapter = new Mem0PlatformAdapter({
+    enabled: true,
+    apiKey: 'test-key',
+    userId: 'scope',
+    allowWrites: false,
+    fetchImpl: async () => { calls++; return jsonResponse({ results: [] }); },
+  });
+  const result = await adapter.addConversation([{ role: 'user', content: 'save this' }], { approved: true });
+  assert.equal(result.status, 'writes-disabled');
+  assert.equal(calls, 0);
+});
+
 test('missing user scope or an insecure endpoint fails closed before fetch', async () => {
   let calls = 0;
   const adapter = new Mem0PlatformAdapter({
