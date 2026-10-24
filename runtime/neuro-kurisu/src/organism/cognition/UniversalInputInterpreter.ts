@@ -261,7 +261,9 @@ export function buildUniversalInputInterpretation(rawInput: {
     }
   }
 
-  const observedBody = isRecord(observation.embodiment) ? observation.embodiment : {};
+  const observedBody: Record<string, unknown> = isRecord(observation.embodiment)
+    ? observation.embodiment as unknown as Record<string, unknown>
+    : {};
   const values: Array<[string, number | null]> = [
     ['energy', metric01(body.bodyEnergy01) ?? metric01(observedBody.bodyEnergy01)],
     ['capacity', metric01(body.cognitiveCapacity01) ?? metric01(observedBody.cognitiveCapacity01)],

@@ -779,7 +779,7 @@ function defaultEmbodimentFacet(): EmbodimentFacet {
         body: defaultBodyState(), bodyEvents: [], sleepSessions: [], lastSensorAt: 0, sensorFailures: 0,
         perceptionRouting: { version: 1, lastRoutedAt: 0, routedCount: 0, droppedCount: 0, lastRoute: 'none' },
         multimodal: { version: 1, events: 0, fused: 0, lastFusionAt: 0, lastConfidence: .25, lastSalience: .15,
-            modalities: { text: 0, speech: 0, vision: 0, sensor: 0, world: 0 }, recent: [], visionCaptures: 0, speechTurns: 0, fusionConflicts: 0 },
+            modalities: { text: 0, speech: 0, audio: 0, vision: 0, sensor: 0, world: 0 }, recent: [], visionCaptures: 0, speechTurns: 0, fusionConflicts: 0 },
         toolAudit: [], p35: defaultP35SemanticWorldBody(), p37: defaultP37EmbodiedSensorium(),
         p40SemanticIntelligence: defaultP40SemanticIntelligence(), p41SemanticPerception: defaultP41SemanticPerception(),
         p41NativePerception: defaultP41NativePerception(), p41TemporalPerception: defaultP41TemporalPerception(),

@@ -1,3 +1,13 @@
+## Latest durable checkpoint — WorkPass335 (2026-10-24)
+
+- Filled the new `audio` modality into both the situation-model reliability defaults and Core's initial persisted multimodal state.
+- The universal interpreter now typechecks its embodiment fallback record explicitly. Cached P41 perception remains age-bounded and current semantic data take precedence.
+- Situation-level confidence spread now increases uncertainty rather than falsely incrementing semantic conflict; only explicit conflict markers count as conflict.
+- The independent-evaluator test's duplicate declaration is repaired; the focused interpreter regression covers audio migration and conflict semantics.
+- Full runtime typecheck still reports older errors in unrelated modules; new-head targeted tests must verify this change. Release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass334 (2026-10-24)
 
 - The core CI workflow now runs the universal input interpreter regression directly before app typecheck, so its own result is visible even if a separate app check fails later.

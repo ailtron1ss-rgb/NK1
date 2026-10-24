@@ -1,3 +1,14 @@
+## NK1 WorkPass335 — complete audio migration and type-safe interpreter boundary (2026-10-24)
+
+- [FIXED] Made the interpreter's fallback embodiment record explicit as `Record<string, unknown>`, removing all eight new TypeScript property errors from the current runtime typecheck report.
+- [MIGRATION] Added the `audio` prior to `MultimodalSituationModel` defaults and the Core's initial persisted multimodal state. This closes the two old state literals that became invalid when audio was added to the modality union.
+- [CONFLICT] Updated the situation-model fusion metric: confidence dispersion contributes to uncertainty, but only explicit conflict evidence increments semantic conflict counts.
+- [REGRESSION] Extended the universal interpreter test to cover audio reliability migration and confidence-spread versus explicit-conflict behavior.
+- [CLEANUP] Renamed a duplicate variable pair in the independent-candidate evaluator regression, fixing its observed JavaScript syntax failure without changing the tested behavior.
+- [VALIDATION] Changes are committed; new-head Actions must confirm the targeted regression and remaining runtime typecheck. Other pre-existing type errors remain outside this focused repair.
+
+---
+
 ## NK1 WorkPass334 — execute interpreter regression before unrelated gates (2026-10-24)
 
 - [CI] Added a dedicated step to the core validation workflow to run `tests/universal-input-interpreter.mjs` directly before app typecheck.

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../src/organism/cognition/UniversalInputInterpreter.ts';
 import { MultimodalPerception } from '../src/organism/body/MultimodalPerception.ts';
+import { MultimodalSituationModel } from '../src/organism/body/MultimodalSituationModel.ts';
 
 const rich = buildUniversalInputInterpretation({
   userText: '  Ｈｅｌｌｏ\u0000 world  ',
@@ -152,6 +153,21 @@ explicitConflict.fuse([
   explicitConflict.observe({ modality: 'world', summary: 'ambiguous object', confidence: 0.5, salience: 0.5, evidence: ['world-object-conflict'] }),
 ]);
 assert.equal(explicitConflict.snapshot().fusionConflicts, 1);
+
+const situation = new MultimodalSituationModel();
+assert.equal(situation.snapshot().modalityReliability.audio, 0.30,
+  'new audio modality must have an explicit reliability prior after restore/migration');
+situation.fuse([
+  { modality: 'text', at: now, summary: 'claim A', confidence: 0.1, salience: 0.5, evidence: ['user-input'], contentHash: 'a' },
+  { modality: 'vision', at: now, summary: 'visual features', confidence: 0.9, salience: 0.5, evidence: ['vision-input'], contentHash: 'b' },
+]);
+assert.equal(situation.snapshot().crossModalConflicts, 0,
+  'confidence dispersion alone must not be counted as semantic conflict in the situation model');
+situation.fuse([
+  { modality: 'world', at: now, summary: 'conflicting world object', confidence: 0.6, salience: 0.5, evidence: ['world-object-conflict'], contentHash: 'c' },
+]);
+assert.equal(situation.snapshot().crossModalConflicts, 1,
+  'explicit conflict evidence should increment the situation conflict counter');
 const formatted = formatUniversalInterpretationContext(rich, fused);
 assert.match(formatted, /UNIVERSAL INPUT INTERPRETATION v1/);
 assert.match(formatted, /not instructions or independently verified facts/);
