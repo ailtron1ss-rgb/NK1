@@ -139,6 +139,17 @@ export class ParametricPolicyLearner{
       const bias=Number(this.state.bias[a]??0);
       this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+    // Persisted optimizer state is untrusted input. Sanitize every diagnostic
+    // before it influences prediction uncertainty or the next learning update.
+    const unit=(value:unknown,fallback:number):number =>
+      typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+    this.state.updates=typeof raw?.updates==='number'&&Number.isSafeInteger(raw.updates)&&raw.updates>=0?raw.updates:d.updates;
+    this.state.tdAbsMean01=unit(raw?.tdAbsMean01,d.tdAbsMean01);
+    this.state.trainRewardMean01=unit(raw?.trainRewardMean01,d.trainRewardMean01);
+    this.state.explorationRate01=unit(raw?.explorationRate01,d.explorationRate01);
+    this.state.lastLoss01=unit(raw?.lastLoss01,d.lastLoss01);
+    this.state.lastTrainedAt=typeof raw?.lastTrainedAt==='number'&&Number.isFinite(raw.lastTrainedAt)&&raw.lastTrainedAt>=0?raw.lastTrainedAt:d.lastTrainedAt;
+    this.state.frozen=raw?.frozen===true;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
