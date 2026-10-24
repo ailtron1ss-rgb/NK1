@@ -51,6 +51,7 @@ export type AILGSnapshot = {
 
 const finite01 = (n: number): number => Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
 const nonBlank = (s: unknown): s is string => typeof s === 'string' && s.trim().length > 0;
+const hasControls = (s: string): boolean => Array.from(s).some(ch => { const p = ch.codePointAt(0) ?? 0; return p <= 0x1f || (p >= 0x7f && p <= 0x9f); });
 
 const readDataRecord = (value: unknown): Record<string, unknown> | null => {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -117,10 +118,10 @@ export class AutonomousIntentLearningGovernor {
     const riskValue = raw?.risk01;
     const externalSideEffect = raw?.externalSideEffect;
     const requiresApproval = raw?.requiresApproval;
-    if (!raw || !nonBlank(idValue) || idValue.length > 180 ||
-        !nonBlank(goalValue) || goalValue.length > 500 ||
+    if (!raw || !nonBlank(idValue) || idValue.length > 180 || hasControls(idValue) ||
+        !nonBlank(goalValue) || goalValue.length > 500 || hasControls(goalValue) ||
         !evidence || evidence.length === 0 || evidence.length > 32 ||
-        !evidence.every(e => nonBlank(e) && e.length <= 240) ||
+        !evidence.every(e => nonBlank(e) && e.length <= 240 && !hasControls(e)) ||
         typeof externalSideEffect !== 'boolean' ||
         (requiresApproval !== undefined && typeof requiresApproval !== 'boolean') ||
         typeof benefitValue !== 'number' || typeof uncertaintyValue !== 'number' ||
@@ -182,7 +183,7 @@ export class AutonomousIntentLearningGovernor {
     const decision = this.decisions.get(intentId);
     if (!decision) return { accepted: false, reason: 'unknown-intent' };
     if (decision.status !== 'approval-required') return { accepted: false, reason: 'approval-not-required' };
-    if (!nonBlank(approvalReceipt)) return { accepted: false, reason: 'invalid-approval-receipt' };
+    if (!nonBlank(approvalReceipt) || approvalReceipt.length > 512) return { accepted: false, reason: 'invalid-approval-receipt' };
     this.approvalReceipts.set(intentId, approvalReceipt);
     decision.status = 'act';
     decision.reason = 'explicit-approval-recorded';
@@ -194,7 +195,7 @@ export class AutonomousIntentLearningGovernor {
     const decision = this.decisions.get(intentId);
     if (!decision) return { accepted: false, reason: 'unknown-intent' };
     if (decision.status !== 'act') return { accepted: false, reason: 'intent-not-authorized' };
-    if (!nonBlank(executionReceipt)) return { accepted: false, reason: 'invalid-execution-receipt' };
+    if (!nonBlank(executionReceipt) || executionReceipt.length > 512) return { accepted: false, reason: 'invalid-execution-receipt' };
     if (this.executionReceipts.has(intentId)) return { accepted: false, reason: 'duplicate-execution' };
     this.executionReceipts.set(intentId, executionReceipt);
     return { accepted: true, reason: 'execution-recorded' };
@@ -224,20 +225,28 @@ export class AutonomousIntentLearningGovernor {
 
   /** Promotion is eligibility only; this method never activates candidate code. */
   evaluatePromotion(e: AILGPromotionEvidence): { eligible: boolean; reason: string; delta01: number } {
-    const values = [e.baselineSuccess01, e.candidateSuccess01, e.maxRegression01, e.observedRegression01];
-    if (!values.every(Number.isFinite) ||
-        values.some(n => n < 0 || n > 1) ||
-        !Number.isSafeInteger(e.independentHoldoutCases) || e.independentHoldoutCases < 0 ||
-        (e.minimumHoldoutCases !== undefined &&
-          (!Number.isSafeInteger(e.minimumHoldoutCases) || e.minimumHoldoutCases < 1))) {
+    const raw = readDataRecord(e);
+    if (!raw) return { eligible: false, reason: 'invalid-evaluation-evidence', delta01: 0 };
+    const baseline = raw.baselineSuccess01;
+    const candidate = raw.candidateSuccess01;
+    const maximumRegression = raw.maxRegression01;
+    const observedRegression = raw.observedRegression01;
+    const holdoutCases = raw.independentHoldoutCases;
+    const configuredMinimum = raw.minimumHoldoutCases;
+    const values = [baseline, candidate, maximumRegression, observedRegression];
+    if (!values.every(n => typeof n === 'number' && Number.isFinite(n)) ||
+        values.some(n => typeof n !== 'number' || (n as number) < 0 || (n as number) > 1) ||
+        typeof holdoutCases !== 'number' || !Number.isSafeInteger(holdoutCases) || holdoutCases < 0 ||
+        (configuredMinimum !== undefined &&
+          (typeof configuredMinimum !== 'number' || !Number.isSafeInteger(configuredMinimum) || configuredMinimum < 1))) {
       return { eligible: false, reason: 'invalid-evaluation-evidence', delta01: 0 };
     }
-    const delta01 = e.candidateSuccess01 - e.baselineSuccess01;
-    const minimum = e.minimumHoldoutCases ?? 4;
-    if (e.independentHoldoutCases < minimum) {
+    const delta01 = (candidate as number) - (baseline as number);
+    const minimum = (configuredMinimum as number | undefined) ?? 4;
+    if ((holdoutCases as number) < minimum) {
       return { eligible: false, reason: 'insufficient-independent-holdout', delta01 };
     }
-    if (e.observedRegression01 > e.maxRegression01) {
+    if ((observedRegression as number) > (maximumRegression as number)) {
       return { eligible: false, reason: 'regression-budget-exceeded', delta01 };
     }
     if (delta01 <= 0) {
