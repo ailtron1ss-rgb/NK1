@@ -110,6 +110,19 @@ assert.equal(candidateAssessment.independentPromotionAllowed, true);
 assert.equal(candidateAssessment.qualifiedIndependentExternalSources, 2);
 assert.equal(candidateLedger.claimAssessment(`payload_fingerprint=${'b'.repeat(64)}`).independentPromotionAllowed, false,
   'evidence for another payload must not corroborate this candidate');
+// A qualified observation for a different fingerprint is not merely irrelevant:
+// once it conflicts with the candidate's exact claim, it must veto promotion.
+candidateLedger.record({
+  eventId: 'candidate-payload-contradiction', tick: 11, at: 11_000,
+  realityClass: 'device-observation',
+  claim: `payload_fingerprint=${'b'.repeat(64)}`, confidence01: 0.93,
+  independenceKey: 'device-c', parentIds: [],
+});
+const candidateDispute = candidateLedger.claimAssessment(candidateClaim);
+assert.equal(candidateDispute.contradictionDetected, true,
+  'a qualified external claim for another payload fingerprint must be detected as contradiction');
+assert.equal(candidateDispute.independentPromotionAllowed, false,
+  'candidate-specific promotion must be vetoed by a qualified conflicting fingerprint');
 
 const engineSource = await readFile(new URL('../src/organism/learning/P23LearningEngine.ts', import.meta.url), 'utf8');
 const start = engineSource.indexOf('approveRealityCorroboratedSkillCandidate(');
