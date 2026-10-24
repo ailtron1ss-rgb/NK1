@@ -10,9 +10,9 @@ Four paired performance runs completed successfully on the same Ubuntu 24.04 Git
 - [Run 4 — 40127276249](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40127276249), candidate commit `ccfc987d4b03bbde4645963df50f2a27b4bcbc83`, adding indexed temporal-chain lookup and chain parity validation.
 - Baseline for all four runs: `19f64b1ae985e579795b4ef054fd3fb58259a336` (pre-optimization reference commit).
 - Retrieval parity: all recorded top-five IDs matched for every query at all three corpus sizes; run 4 also returned identical eight-revision temporal chains from baseline and candidate, and index integrity passed in both.
-- Candidate cache: up to 512 token sets plus 512 term-frequency maps.
+- Candidate caches: up to 512 token sets plus 512 term-frequency maps, a bounded Unicode code-point length cache, and a revision-group index for temporal chains.
 
-The benchmark uses a deterministic synthetic bilingual corpus, not production traces. Each run measures 100 mixed queries after 16 warm-ups and 50 repetitions of a single query after 8 warm-ups, for each corpus size. The two runs vary visibly in absolute latency due to runner noise; the percentage improvements below are shown as a range across both runs, not a statistical confidence interval.
+The benchmark uses a deterministic synthetic bilingual corpus, not production traces. Each run measures 100 mixed queries after 16 warm-ups and 50 repetitions of a single query after 8 warm-ups, for each corpus size; run 4 also measures 100 calls to an eight-revision chain after 16 warm-ups. Absolute latency varies between runs due to runner noise. Results are paired within each run and are not a statistical confidence interval.
 
 ## Mixed query workload
 
@@ -48,7 +48,7 @@ All top-five rankings matched baseline and both indexes passed integrity checks.
 
 ## Run 4 — indexed temporal revision-chain lookup
 
-Run 4 measures 100 calls after 16 warm-ups to fetch the same eight-revision chain at each corpus size. The baseline used the same revision data and sequence but its `temporalChain()` implementation filtered the full corpus; the candidate reads members from `revisionGroupIndex` and `itemIndex`, with safe fallback if indexed membership is inconsistent.
+Run 4 measures 100 calls after 16 warm-ups to fetch the same eight-revision chain at each corpus size. The baseline used the same revision data and sequence but its `temporalChain()` implementation filtered the full corpus; the candidate reads members from `revisionGroupIndex` and `itemIndex`. It falls back to the canonical scan when an indexed entry is stale or points to a different group; `indexDiagnostics()` separately cross-checks group membership against the canonical corpus.
 
 | Memories in corpus | Baseline p50 / p95 | Candidate p50 / p95 | p50 change | p95 change | Throughput change |
 |---:|---:|---:|---:|---:|---:|
@@ -74,7 +74,7 @@ The post-GC RSS difference in run 2 was -2.57% at 256 records, +1.26% at 800, an
 
 ## Interpretation and limits
 
-1. In both runs, p50 and p95 improved for all three corpus sizes and both query patterns. The mixed-query p95 improvement was smaller at the largest corpus and varied on the 800-memory corpus, so larger real-world workloads still need profiling.
+1. Across the paired runs, p50 and p95 improved for all three corpus sizes and both retrieval query patterns. Absolute numbers varied between runs; larger real-world workloads still need profiling. The separate temporal-chain benchmark also improved p95 at all three sizes.
 2. All recorded top-five IDs remained identical across baseline and candidate; this change did not alter the tested ranking results.
 3. These results measure this retrieval code path only. They do not establish a global Neuro Kurisu speedup, production SLO, lower peak RAM, or better retrieval recall.
 4. The independent retrieval-quality benchmark still reports `recallDelta=0` and remains `not-promoted` because the synthetic fixture does not contain enough unanswerable holdout evidence. No retrieval-quality uplift is claimed.
