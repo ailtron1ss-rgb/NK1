@@ -1,3 +1,12 @@
+## NK1 WorkPass473 — fix stale recall starvation and restore/typecheck integrity (2026-10-24)
+
+- Retrieval's bounded 192-item seed pool now prioritizes temporal validity before lexical similarity, so a flood of expired exact matches cannot crowd a weaker but current record out before temporal filtering. The WorkPass80 regression now adds 220 expired distractors and asserts both current recall and archive-mode recall.
+- Repaired a missing mapper/object delimiter in `MemoryOS2.restore` that produced a TypeScript parse error, and removed an impossible `item.kind === 'identity'` check after the function had already narrowed the record to `'semantic'`.
+- Fixed the invalid correlation-ID regex with a direct C0/C1 code-point check performed before trimming. The typecheck script now resolves official Node types from the canonical app install and excludes fallback shims from semantic tsc.
+- **Verification:** the prior syntax failure is fixed in source. The current P26 typecheck is being rerun with the corrected type-root boundary; other pre-existing strict-type errors still need triage. Exact-head full validation is not claimed green.
+
+---
+
 ## NK1 WorkPass472 — prevent stale memories from starving current retrieval (2026-10-24)
 
 - Corrected candidate-pool ordering in canonical `MemoryOS2.retrieve`: temporal validity now ranks ahead of lexical score when truncating the bounded 192-item seed pool. Previously, many expired exact-phrase hits could crowd a weaker but valid current memory out before the later temporal filter ran.
