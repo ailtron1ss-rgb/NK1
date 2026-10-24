@@ -62,3 +62,20 @@ The rerun is authoritative. Until both the contract test and runtime typecheck s
 - Добавлен regression `workpass331-canonical-revision-baseline.mjs`, где provider намеренно передаёт ложные отчёты, а resolver отдаёт payload из canonical store. Тест проверяет, что запускаются новые независимые оценки, подложные отчёты не проходят, и изменение версии во время оценки отклоняется.
 
 Ограничение: реальные deployment-owned executables, замороженный task manifest/validation/holdout plan, подписанное shadow evidence и авторизованное одобрение по-прежнему обязательны. Даже успешно пройденные синтетические контракты не являются измеренным приростом обучения.
+
+
+## WorkPass346 — встроенный provider без отдельного plugin-модуля
+
+NK1 теперь содержит штатный `P23CompoundRepairRevisionProvider.ts`. Для его явного включения достаточно задать:
+
+- `NEURO_COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH` — путь к внешнему JSON-файлу подписанных исходов;
+- `NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON` — доверенный keyring публичных Ed25519-ключей верификаторов;
+- `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE` — отдельный host-owned evaluator config с реальными executor, verifier, safety scanner и фиксированным experiment authority.
+
+Схема dataset: `schemaVersion: 1`, `manifest`, `artifacts`, `baselineMethod`, `candidateMethod`, необязательный `gateOptions`. Артефакты повторно проверяются через `ingestSignedOutcomeArtifact`; источник доверия — только внешний keyring, не сам dataset. Модуль отклоняет недействительные подписи, неизвестные поля, отсутствие validation/holdout, небезопасные права файла и расположение dataset внутри изменяемого state-каталога. Размер ограничен 32 MiB.
+
+Provider не принимает proposal из JSON как подлинный: он самостоятельно восстанавливает его из проверенного ledger, требует `gate.accepted`, затем ищет кандидата по совпадающим `proposalId` и `proposalOutcomeFingerprint`. Нет полного соответствия — нет ревизии. Существующий generator создаёт только новый payload; активация остаётся в отдельном подписанном shadow-evidence / authenticated-approval lifecycle.
+
+Canonical resolver теперь корректно обрабатывает оба случая: pending `staged/shadow` candidate оценивается относительно текущей active версии, а активный источник — относительно сохранённой `previousActive` версии. Для active candidate без предыдущего baseline или для одинаковых payload оценка прекращается. Точные версии и fingerprints проверяются после асинхронной оценки и непосредственно перед staging.
+
+**Важно:** встроен provider, но не подменён deployment-owned evaluator. Пока host-owned processes и experiment config не предоставлены и реальные парные validation/holdout прогоны не завершены, это не production-readiness и не доказанный прирост обучения.
