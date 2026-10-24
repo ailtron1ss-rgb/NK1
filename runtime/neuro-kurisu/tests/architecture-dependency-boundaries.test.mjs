@@ -119,8 +119,9 @@ test("full architecture audit enforces dependency boundaries and exports a JSON 
     assert.match(result.stdout, /CLEAN_ARCHITECTURE=PASS/);
     assert.match(result.stdout, /dependencyEdges=\d+/);
     assert.match(result.stdout, /boundaryViolations=0/);
+    assert.match(result.stdout, /DEPENDENCY_BUDGET=PASS/);
     assert.match(result.stdout, /DEPENDENCY_GRAPH_REPORT=/);
-    assert.doesNotMatch(result.stdout, /dependency boundary violations|canonical leakage|import cycles detected|missing relative imports/);
+    assert.doesNotMatch(result.stdout, /dependency boundary violations|dependency budget violations|canonical leakage|import cycles detected|missing relative imports/);
 
     const report = JSON.parse(await readFile(reportPath, "utf8"));
     assert.equal(report.schemaVersion, 2);
@@ -132,6 +133,10 @@ test("full architecture audit enforces dependency boundaries and exports a JSON 
     assert.equal(report.summary.missingImports, 0);
     assert.equal(report.summary.cycles, 0);
     assert.equal(report.summary.boundaryViolations, 0);
+    assert.equal(report.summary.dependencyBudgetViolations, 0);
+    assert.equal(report.dependencyBudget.violations.length, 0);
+    assert.ok(report.dependencyBudget.checks.length >= 10);
+    assert.equal(report.dependencyBudget.checks.every(check => check.withinBudget && check.observed <= check.maximum), true);
     assert.equal(report.edges.every(edge => edge.from && edge.to && edge.fromLayer && edge.toLayer), true);
     assert.equal(report.nodes.reduce((total, node) => total + node.outDegree, 0), report.edges.length);
     assert.equal(report.nodes.reduce((total, node) => total + node.inDegree, 0), report.edges.length);
