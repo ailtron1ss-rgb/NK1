@@ -1773,5 +1773,8 @@
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
     "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
     "test:workpass451:reality-evidence-ledger": "node --experimental-strip-types tests/workpass451-reality-evidence-ledger.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4"
   }
 }
