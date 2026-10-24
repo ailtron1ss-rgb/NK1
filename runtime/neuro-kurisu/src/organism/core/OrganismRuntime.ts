@@ -1567,6 +1567,7 @@ export class OrganismRuntime {
   private async stopInternal(): Promise<void> {
     // Stop is a durability boundary, not merely a scheduler shutdown. Preserve
     // a terminal failure if final persistence cannot be completed.
+    this.stopping = true;
     let shutdownError: unknown;
     try {
       this.clockScheduler.stop();
