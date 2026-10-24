@@ -156,7 +156,8 @@ assert.equal(rollbackMemoryRuntime.semanticMemory.snapshot().edges.length, 1,
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
 
-const makeHmxDocument = (exportId, sections) => ({
+function makeHmxDocument(exportId, sections) {
+  return ({
   hmx_version: '1.7',
   export_id: exportId,
   export_intent: 'port',
@@ -169,7 +170,8 @@ const makeHmxDocument = (exportId, sections) => ({
     hexis_lineage_id: 'hexis-test-lineage',
   },
   sections,
-});
+  });
+}
 
 const first = fabric.reviseBelief({ memoryId:'mem-1', confidence01:.5, trust01:.6, stance:'supports', evidence:{ref:'source-a',trust01:.9}, context:'test' });
 assert.equal(first.applied, true);
