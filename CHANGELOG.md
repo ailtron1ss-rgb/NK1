@@ -1,3 +1,12 @@
+## NK1 WorkPass528 — bilingual autobiographical and conversation recall (2026-10-24)
+
+- Extended the canonical MemoryOS2 query-intent detector for Russian recollection phrases ("воспоминания", "что мы обсуждали", "прошлый разговор") and English prior-conversation prompts.
+- Explicit profile-recall questions ("что ты помнишь обо мне?" / "what do you remember about me?") route to identity recall before broader episode markers.
+- Added a bounded conversational-memory preference for social records carrying conversation/dialogue/chat/transcript/message/turn identity or explicit conversation metadata.
+- Added regressions for RU/EN phrase classification, identity-vs-semantic tie-breaking, conversation-backed social recall, and protection against generic relationship memories outranking true episodes.
+- Kept MemoryOS2 as the sole canonical writable memory owner; no second store or new dependency.
+- **Validation boundary:** code and test changes are committed. Targeted runtime test, TypeScript typecheck and exact-head CI still require execution/confirmation; no retrieval uplift is claimed.
+
 ## NK1 WorkPass527 — persist the canonical MemoryOS2 checkpoint (2026-10-24)
 
 - Fixed a checkpoint projection gap: the canonical MemoryOS2 store was not included in facets.advanced, even though compatibility records were projected and restore already expected advanced.memoryOS.
