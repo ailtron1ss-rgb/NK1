@@ -1,3 +1,11 @@
+## NK1 WorkPass527 — prioritize conversation-backed social memories (2026-10-24)
+
+- Episodic recall now recognizes social records with explicit conversation/turn/transcript IDs or conversation-specific source/context metadata.
+- Conversation-backed social memories receive a bounded event-recall preference, while generic relationship memories retain a lower preference and cannot outrank a true episodic record solely because the query says “remember”.
+- Added two ranking regressions: prior-dialogue recall selects a conversation-linked social memory over an otherwise identical semantic note; generic relationship context loses to a true episode.
+- The change stays inside canonical MemoryOS2; no additional memory store or external dependency was introduced.
+- **Validation boundary:** code and regression are committed; runtime test execution and TypeScript typecheck remain unverified in this connector-only pass.
+
 ## NK1 WorkPass526 — align bilingual autobiographical recall intent (2026-10-24)
 
 - Fixed intent routing for Russian recollection terms such as “воспоминания”, “вспомин…”, “что мы обсуждали” and “прошлый разговор”, plus English prompts about prior conversations.
