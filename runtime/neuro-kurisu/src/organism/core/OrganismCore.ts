@@ -11172,7 +11172,10 @@ export class OrganismCore {
                 throw new TypeError('multimodal-fusion-event-invalid');
             }
         }
-        return this.embodimentSubsystem.multimodal.fuse(events);
+        const fused = this.embodimentSubsystem.multimodal.fuse(events);
+        // The fusion counters are part of durable multimodal state, so persist after fusion as well as after each observation.
+        this.persisted.facets.embodiment.multimodal = this.embodimentSubsystem.multimodal.snapshot();
+        return fused;
     }
     multimodalSnapshot() { return this.embodimentSubsystem.multimodal.snapshot(); }
     skillLibrarySnapshot() { return this.cognitiveRuntime.skillLibrary.snapshot(); }

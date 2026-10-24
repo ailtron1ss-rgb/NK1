@@ -1,3 +1,13 @@
+## NK1 WorkPass329 — persist fusion state and distinguish confidence spread from contradiction (2026-10-24)
+
+- [FIXED] The canonical `OrganismCore.fuseMultimodalObservations()` owner now persists the multimodal snapshot after `fuse()`, so fusion counters and explicit conflict counts are durable instead of being lost behind the last observation snapshot.
+- [FIXED] `MultimodalPerception.fusionConflicts` no longer increments merely because modality confidence values differ. That was confidence dispersion, not proof of semantic disagreement.
+- [WIRED] Explicit world-object conflict markers now travel from `UniversalInputInterpreter` into the canonical modality evidence, where fusion can record them.
+- [REGRESSION] Added tests for explicit conflict persistence/wiring and a counterexample proving confidence spread alone does not count as a contradiction.
+- [VALIDATION] Source and regression changes are committed; exact-head test/typecheck remains unverified until Actions executes the relevant steps. No learning score increase is claimed.
+
+---
+
 ## NK1 WorkPass328 — universal input interpreter (2026-10-24)
 
 - [INTEGRATED] Added a deterministic interpretation boundary for every currently declared runtime input family: user text, vision semantics/features, audio events/samples, device telemetry, world context/events, goal/appraisal signals, and unverified outcome claims.

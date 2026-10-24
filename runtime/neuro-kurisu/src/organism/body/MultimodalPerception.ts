@@ -37,7 +37,12 @@ export class MultimodalPerception {
     const avg=(key:'confidence'|'salience')=>valid.reduce((s,x)=>s+x[key],0)/valid.length;
     const summaries=valid.map(x=>`[${x.modality}] ${x.summary}`).join(' | ');
     const spread=Math.max(...valid.map(x=>x.confidence))-Math.min(...valid.map(x=>x.confidence));
-    if(modalities.length>=2 && spread>.55) this.state.fusionConflicts++;
+    // A difference in confidence is not itself a semantic contradiction.
+    // Count only explicit conflict markers supplied by a source-specific interpreter.
+    const explicitConflict = valid.some(event => event.evidence.some(
+      marker => marker === 'world-object-conflict' || marker === 'cross-modal-conflict' || marker === 'source-conflict'
+    ));
+    if(explicitConflict) this.state.fusionConflicts++;
     this.state.fused++; return {summary:summaries.slice(0,1800),confidence:clamp(avg('confidence')-.08*spread),salience:clamp(avg('salience')),modalities};
   }
 }

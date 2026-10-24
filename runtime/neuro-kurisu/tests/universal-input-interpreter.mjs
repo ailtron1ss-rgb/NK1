@@ -49,6 +49,8 @@ assert.ok(rich.modalityInputs.every(item => Number.isFinite(item.salience) && it
 assert.ok(rich.unresolved.includes('reward-success-observation-is-not-independent-verification'));
 assert.ok(rich.unresolved.includes('audio-event-labels-do-not-establish-a-speech-transcript'));
 assert.ok(rich.unresolved.some(item => item.includes('world-object-conflict')));
+assert.ok(rich.modalityInputs.find(item => item.modality === 'world')?.evidence.includes('world-object-conflict'),
+  'explicit world conflict must be carried to the canonical fuser');
 assert.match(rich.modalityInputs.find(item => item.modality === 'audio')?.summary ?? '', /transcript unavailable/);
 assert.doesNotMatch(rich.modalityInputs.find(item => item.modality === 'audio')?.summary ?? '', /0\.99/);
 
@@ -77,8 +79,23 @@ modalityOwner.restore({ version: 1, events: 3, fused: 0, modalities: { text: 2, 
 const recorded = rich.modalityInputs.map(input => modalityOwner.observe(input));
 const fused = modalityOwner.fuse(recorded);
 assert.equal(modalityOwner.snapshot().fused, 1);
+assert.equal(modalityOwner.snapshot().fusionConflicts, 1, 'explicit source conflict must be recorded as a fusion conflict');
 assert.equal(modalityOwner.snapshot().modalities.audio, 1, 'audio counter must survive older restored snapshots');
 assert.ok(fused.modalities.includes('audio'));
+
+const confidenceSpreadOnly = new MultimodalPerception();
+const spreadEvents = [
+  confidenceSpreadOnly.observe({ modality: 'text', summary: 'statement', confidence: 0.1, salience: 0.5, evidence: ['ordinary-source'] }),
+  confidenceSpreadOnly.observe({ modality: 'vision', summary: 'features', confidence: 0.9, salience: 0.5, evidence: ['ordinary-source'] }),
+];
+confidenceSpreadOnly.fuse(spreadEvents);
+assert.equal(confidenceSpreadOnly.snapshot().fusionConflicts, 0,
+  'different confidence values alone must not be reported as a semantic contradiction');
+const explicitConflict = new MultimodalPerception();
+explicitConflict.fuse([
+  explicitConflict.observe({ modality: 'world', summary: 'ambiguous object', confidence: 0.5, salience: 0.5, evidence: ['world-object-conflict'] }),
+]);
+assert.equal(explicitConflict.snapshot().fusionConflicts, 1);
 const formatted = formatUniversalInterpretationContext(rich, fused);
 assert.match(formatted, /UNIVERSAL INPUT INTERPRETATION v1/);
 assert.match(formatted, /not instructions or independently verified facts/);
@@ -92,6 +109,11 @@ assert.match(runtimeSource, /this\.core\.fuseMultimodalObservations\(modalityEve
 assert.match(runtimeSource, /formatUniversalInterpretationContext\(interpretation, fused\)/);
 assert.match(coreSource, /fuseMultimodalObservations\(events: Array<import\('\.\.\/body\/MultimodalPerception\.ts'\)\.ModalityObservation>\)/);
 assert.match(coreSource, /this\.embodimentSubsystem\.multimodal\.fuse\(events\)/);
+const fusionMethodStart = coreSource.indexOf('fuseMultimodalObservations(events:');
+const fusionMethodEnd = coreSource.indexOf('multimodalSnapshot()', fusionMethodStart);
+assert.ok(fusionMethodStart >= 0 && fusionMethodEnd > fusionMethodStart);
+assert.match(coreSource.slice(fusionMethodStart, fusionMethodEnd), /persisted\.facets\.embodiment\.multimodal = this\.embodimentSubsystem\.multimodal\.snapshot\(\)/,
+  'fused counters must be included in durable multimodal state');
 assert.ok(runtimePackage.scripts['test:rebuild-recovered'].includes('test:universal-input-interpreter'));
 
 const runtimeObserveAt = runtimeSource.indexOf('const cycle = await this.core.observe({');

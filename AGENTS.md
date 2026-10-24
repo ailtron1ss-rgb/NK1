@@ -1,5 +1,15 @@
 # NeuroCore — repository working rules
 
+## Latest durable checkpoint — WorkPass329 (2026-10-24)
+
+- Fusion-state persistence is now explicit: `OrganismCore.fuseMultimodalObservations()` persists the owner snapshot after the canonical fuser updates its counters.
+- Confidence dispersion is no longer misreported as a semantic contradiction. Conflict metrics require explicit source/interpreter conflict evidence.
+- World objects explicitly marked conflicting preserve a `world-object-conflict` evidence marker into the fused record.
+- Regressions now cover durable fusion wiring and the confidence-spread-vs-conflict distinction.
+- Exact-head test/typecheck is still awaiting runnable Actions evidence; release ZIP remains unchanged.
+
+---
+
 ## Current source-stack checkpoint — WorkPass328 (2026-10-24)
 
 - The canonical runtime now builds a bounded interpretation digest across text, vision, audio, device telemetry, world context/events, goal/appraisal signals and unverified outcome claims.

@@ -213,6 +213,7 @@ export function buildUniversalInputInterpretation(rawInput: {
 
   const world = isRecord(observation.worldContext) ? observation.worldContext : null;
   const worldParts: string[] = [];
+  const worldEvidenceTags: string[] = [];
   if (world) {
     const location = cleanText(world.location, 120);
     if (location) worldParts.push('location=' + location);
@@ -223,7 +224,10 @@ export function buildUniversalInputInterpretation(rawInput: {
     const objects = safeRecordArray(world.objects, 8).filter(object => object.visible === true).map(object => {
       const label = cleanText(object.label, 80);
       const kind = cleanText(object.evidenceKind, 32);
-      if (kind === 'conflict' || kind === 'unresolved') addUnresolved('world-object-' + kind + (label ? ':' + label : ''));
+      if (kind === 'conflict' || kind === 'unresolved') {
+        addUnresolved('world-object-' + kind + (label ? ':' + label : ''));
+        worldEvidenceTags.push(kind === 'conflict' ? 'world-object-conflict' : 'world-object-unresolved');
+      }
       return label ? label + (kind ? ' [' + kind + ']' : '') : '';
     }).filter(Boolean);
     if (objects.length) worldParts.push('visible-objects=' + objects.join(', '));
@@ -278,7 +282,7 @@ export function buildUniversalInputInterpretation(rawInput: {
     add('world', 'world/appraisal context (fallible model evidence): ' + worldParts.join('; '),
       clamp01(0.45 + (1 - uncertainty) * 0.25),
       clamp01(0.2 + surprise * 0.35 + novelty * 0.25),
-      ['world-model-context', 'not-independent-verification']);
+      ['world-model-context', 'not-independent-verification', ...worldEvidenceTags]);
   }
 
   return {
