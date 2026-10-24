@@ -48,6 +48,8 @@ const curiosityRestKey = Object.keys(contextAfter.contextualOutcomes).find(key =
   return parsed[0] === 'rest' && parsed[1] === first.label;
 });
 assert.ok(curiosityRestKey);
+assert.equal(JSON.parse(curiosityRestKey)[2], 'low',
+  'an old episode must retain its own appraisal-time pressure band rather than inherit the current stressed band');
 assert.notEqual(curiosityRestKey, stressRestKey);
 assert.equal(contextAfter.contextualOutcomes[stressRestKey].attempts, 4,
   'outcome attributed to an earlier emotion must not mutate the current stressed-context history');
