@@ -3,6 +3,7 @@ import { sha256Stable } from '../../core/StableSerialization.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
+export type HexisHmxDecision = 'accept' | 'reject' | 'apply';
 export type HexisHmxStrategy = 'additive' | 'authoritative' | 'deliberative' | 'analysis_only';
 export type HexisOutboxStatus = 'pending' | 'publishing' | 'published' | 'failed';
 export type HexisExecutionPlacement = 'local' | 'sandbox' | 'remote' | 'companion';
@@ -96,12 +97,33 @@ export interface HexisRetentionProposal {
     status: 'proposed' | 'accepted' | 'rejected';
     createdAt: number;
 }
+export interface HexisHmxApplyReceipt {
+    version: 1;
+    exportId: string;
+    sourceLineageId: string;
+    stageId: string;
+    stageDigest: string;
+    attempt: number;
+    appliedAt: number;
+    status: 'applied' | 'partial' | 'noop';
+    complete: boolean;
+    candidateMemoryRecords: number;
+    uniqueMemoryRecords: number;
+    importedCount: number;
+    deduplicatedCount: number;
+    memoryIds: string[];
+    createdMemoryIds: string[];
+    deferredSections: Record<string, number>;
+    warnings: string[];
+    digest: string;
+}
 export interface HexisHmxStage {
     stagingId: string;
     exportId: string;
     intent: HexisHmxIntent;
     strategy: HexisHmxStrategy;
     sourceSubjectId?: string;
+    sourceLineageId?: string;
     sectionCounts: Record<string, number>;
     protectedSections: string[];
     conflicts: Array<{
@@ -109,10 +131,12 @@ export interface HexisHmxStage {
         kind: string;
         detail: string;
     }>;
-    status: 'staged' | 'accepted' | 'rejected';
+    status: 'staged' | 'accepted' | 'rejected' | 'applied';
     createdAt: number;
     digest: string;
     stagedSections: Record<string, unknown>;
+    applicationAttempts?: number;
+    application?: HexisHmxApplyReceipt;
 }
 export interface HexisOutboxEntry {
     id: string;
@@ -180,6 +204,7 @@ export interface HexisAdaptationState {
         retentionProposals: number;
         hmxStaged: number;
         hmxAccepted: number;
+        hmxApplied: number;
         outboxQueued: number;
         outboxPublished: number;
         outboxIdempotencyConflicts: number;
@@ -213,10 +238,11 @@ const isHmxText = (value: unknown, max = 256): value is string =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max &&
     !/[\u0000-\u001f\u007f]/.test(value);
 export function defaultHexisAdaptationState(): HexisAdaptationState {
-    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
+    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, hmxApplied: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
+    private canonicalMemoryApply?: (stage: HexisHmxStage) => HexisHmxApplyReceipt;
     restore(raw?: Partial<HexisAdaptationState> | null): void {
         const defaults = defaultHexisAdaptationState();
         const value = raw ?? {};
@@ -249,6 +275,10 @@ export class HexisAdaptationFabric {
         };
     }
     snapshot(): HexisAdaptationState { return structuredClone(this.state); }
+    bindCanonicalMemoryApply(handler: (stage: HexisHmxStage) => HexisHmxApplyReceipt): void {
+        if (typeof handler !== 'function') throw new TypeError('canonical-memory-apply-handler-required');
+        this.canonicalMemoryApply = handler;
+    }
     diagnostics() {
         const pendingReviews = this.state.learningReviews.filter((r) => r.status === 'pending').length;
         const pendingOutbox = this.state.outbox.filter((x) => x.status === 'pending' || x.status === 'publishing').length;
@@ -495,6 +525,7 @@ export class HexisAdaptationFabric {
             intent,
             strategy,
             sourceSubjectId: isHmxText(document.source_subject_id, 256) ? document.source_subject_id : undefined,
+            sourceLineageId: isHmxText(source?.hexis_lineage_id, 512) ? source.hexis_lineage_id : undefined,
             sectionCounts,
             protectedSections: names.filter((name) => protectedSections.has(name)),
             conflicts,
@@ -512,9 +543,27 @@ export class HexisAdaptationFabric {
         this.state.metrics.hmxStaged += 1;
         return structuredClone(stage);
     }
-    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length))
-        return stage ? structuredClone(stage) : null; stage.status = decision === 'accept' ? 'accepted' : 'rejected'; if (decision === 'accept')
-        this.state.metrics.hmxAccepted += 1; return structuredClone(stage); }
+    decideHmx(stagingId: string, decision: HexisHmxDecision): HexisHmxStage | null {
+        const stage = this.state.hmxStages.find((candidate) => candidate.stagingId === stagingId);
+        if (!stage) return null;
+        if (decision === 'apply') {
+            if (stage.status === 'applied' && stage.application) return structuredClone(stage);
+            if (stage.status !== 'accepted' || stage.conflicts.length) return structuredClone(stage);
+            if (!this.canonicalMemoryApply) throw new Error('canonical-memory-apply-not-bound');
+            stage.applicationAttempts = Math.max(0, Math.floor(Number(stage.applicationAttempts ?? 0))) + 1;
+            // The attempt counter is persisted on the stage; a compensated retry uses fresh command IDs.
+            const receipt = this.canonicalMemoryApply(structuredClone(stage));
+            stage.application = structuredClone(receipt);
+            stage.status = 'applied';
+            this.state.metrics.hmxApplied += 1;
+            return structuredClone(stage);
+        }
+        if (decision !== 'accept' && decision !== 'reject') return structuredClone(stage);
+        if (stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length)) return structuredClone(stage);
+        stage.status = decision === 'accept' ? 'accepted' : 'rejected';
+        if (decision === 'accept') this.state.metrics.hmxAccepted += 1;
+        return structuredClone(stage);
+    }
     getHmxStage(stagingId: string) { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); return stage ? structuredClone(stage) : null; }
     enqueueOutbox(input: {
         idempotencyKey: string;
