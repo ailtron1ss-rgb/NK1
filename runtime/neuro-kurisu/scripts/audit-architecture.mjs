@@ -2,7 +2,7 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { collectDependencyBoundaryViolations } from './dependency-boundary-policy.mjs';
-import { collectRelativeImportSpecifiers, stripComments } from './import-specifier-scanner.mjs';
+import { collectRelativeImportSpecifiers, collectRelativeTypeImportSpecifiers, stripComments } from './import-specifier-scanner.mjs';
 const root=process.cwd(); const files=[];
 async function walk(d){for(const e of await readdir(d,{withFileTypes:true})){const p=path.join(d,e.name); if(e.isDirectory()){if(['legacy-original','legacy','state','node_modules','history','.git','dist','coverage','.grok'].includes(e.name))continue; await walk(p)} else if(/\.(ts|tsx|mts|cts|mjs|cjs|js|jsx)$/.test(e.name)) files.push(p)}}
 // Runtime integration tests deliberately import a few canonical React/API source
@@ -12,7 +12,7 @@ async function walk(d){for(const e of await readdir(d,{withFileTypes:true})){con
 const roots=[path.join(root,'src'),path.join(root,'scripts'),path.join(root,'tests'),path.join(root,'research'),
   path.resolve(root,'../../app/src'),path.resolve(root,'../../app/scripts'),path.resolve(root,'../../app/server')].filter(p=>existsSync(p));
 for(const sourceRoot of roots) await walk(sourceRoot);
-const fileSet=new Set(files); const graph=new Map(files.map(f=>[f,[]])); const missing=[]; const canonicalRoot=path.join(root,'src','organism');
+const fileSet=new Set(files); const graph=new Map(files.map(f=>[f,[]])); const edgeKindByPair=new Map(); const missing=[]; const canonicalRoot=path.join(root,'src','organism');
 function resolve(base,spec){
   const clean=String(spec).split(/[?#]/,1)[0];
   const p=path.resolve(path.dirname(base),clean);
@@ -27,9 +27,22 @@ function resolve(base,spec){
 for(const f of files){
   const t=await readFile(f,'utf8');
   const runtimeText=stripComments(t).replace(/import\s+type\s+[^;\n]+from\s+['\"][^'\"]+['\"]\s*;?/g,'');
-  for(const spec of collectRelativeImportSpecifiers(runtimeText)){
+  const runtimeSpecs=new Set(collectRelativeImportSpecifiers(runtimeText));
+  const typeSpecs=new Set(collectRelativeTypeImportSpecifiers(runtimeText));
+  const allSpecs=new Set([...runtimeSpecs,...typeSpecs]);
+  for(const spec of allSpecs){
     const r=resolve(f,spec);
-    if(r) graph.get(f).push(r); else missing.push([path.relative(root,f),spec]);
+    if(!r){missing.push([path.relative(root,f),spec]);continue;}
+    if(!graph.get(f).includes(r)) graph.get(f).push(r);
+    const pair=f+'\0'+r;
+    const nextKind=runtimeSpecs.has(spec)&&typeSpecs.has(spec)?'runtime-and-type':runtimeSpecs.has(spec)?'runtime-import':'typescript-type-import';
+    const oldKind=edgeKindByPair.get(pair);
+    if(!oldKind) edgeKindByPair.set(pair,nextKind);
+    else{
+      const hasRuntime=[oldKind,nextKind].some(kind=>kind!=='typescript-type-import');
+      const hasType=[oldKind,nextKind].some(kind=>kind!=='runtime-import');
+      edgeKindByPair.set(pair,hasRuntime&&hasType?'runtime-and-type':hasRuntime?'runtime-import':'typescript-type-import');
+    }
   }
 }
 if(missing.length) throw new Error(`missing relative imports: ${JSON.stringify(missing.slice(0,10))}`);
