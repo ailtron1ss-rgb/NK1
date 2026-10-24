@@ -49,9 +49,12 @@ export function collectDependencyBoundaryViolations({
         }
       }
 
-      if (hasPathSegment(dep, "research")) {
+      // runtime/neuro-kurisu/src/organism/research is a canonical runtime
+      // subsystem. Reject only research trees outside that owned subtree.
+      const runtimeResearchRoot = path.join(canonicalRoot, "research");
+      if (hasPathSegment(dep, "research") && !isWithin(dep, runtimeResearchRoot)) {
         violations.push({
-          rule: "canonical-core-to-research",
+          rule: "canonical-core-to-external-research",
           from: fromPath,
           to: toPath,
         });
