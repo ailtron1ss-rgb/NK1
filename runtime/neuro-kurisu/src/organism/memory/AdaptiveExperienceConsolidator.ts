@@ -42,6 +42,8 @@ function normalizeTags(value: unknown): string[] | null {
 
 function normalizeExperience(value:unknown):ExperienceRecord|null {
   if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+  const prototype=Object.getPrototypeOf(value);
+  if(prototype!==Object.prototype&&prototype!==null)return null;
   const descriptors=Object.getOwnPropertyDescriptors(value);
   const row:Record<string,unknown>=Object.create(null);
   for(const [key,descriptor] of Object.entries(descriptors)){
