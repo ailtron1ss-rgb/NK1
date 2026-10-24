@@ -1,3 +1,13 @@
+## NK1 WorkPass335 — Restore missing loop-test wiring (2026-10-24)
+
+- [CI-SCRIPT] Added the missing `test:workpass291:payload-budget` and `test:workpass292:evidence-lanes` npm scripts referenced by their workflows. Those jobs had been failing with `npm error Missing script` before either test could run.
+- [CI-SCRIPT] The WorkPass292 target now resolves to `tests/big-pass-90-causal-learning-stream.mjs`; its untrusted external imports are asserted to remain outside trusted runtime outcome totals.
+- [NODE24-RUNTIME] Removed the last observed constructor parameter-property blocker in `TrustedSkillShadowRunRegistry.ts`, reached by the P328 runtime regression and P23 learning path.
+- [TEST-SYNTAX] Renamed the WorkPass214 evaluator variable in `workpass203-independent-candidate-evaluator.mjs` to avoid a duplicate top-level `const snapshotEvaluator` that made the regression script fail to parse.
+- [VALIDATION] These fixes are committed to the PR branch; fresh-head workflow runs must confirm the tests now actually execute and pass.
+
+---
+
 ## NK1 WorkPass334 — Align closed-loop regressions with evidence contracts (2026-10-24)
 
 - [CAUSAL-OUTCOME] Updated the WorkPass90 runtime-outcome fixture to include an explicit `lastAction` and bounded `lastActionSuccess` receipt. The stream's required state-attribution guard remains strict; it is the fixture that now models a real observed action outcome.
