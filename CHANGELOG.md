@@ -1,3 +1,11 @@
+## NK1 WorkPass519 — preserve field-level validation and grounded restore counts (2026-10-24)
+
+- `VerifiedOutcomeLedger` now snapshots non-finite numeric sentinels without invoking accessors or accepting unsafe object shapes, allowing field-specific validators to return `invalid-time`, `invalid-seed`, or `invalid-attempt` rather than collapsing every such case into `invalid-outcome`.
+- Added a batch-path regression for a non-finite timestamp so atomic batch ingestion preserves the same precise rejection contract as individual records.
+- Corrected causal-stream restore assertions: externally imported events remain ungrounded and therefore stay out of the trusted outcome count after restart; restore/retry cannot upgrade them into learning credit.
+- **Verification boundary:** code and regression updates committed; the exact post-change CI results are not yet confirmed.
+
+---
 ## NK1 WorkPass518 — block skill-bias leakage across distant contexts (2026-10-24)
 
 - Fixed a behavioral-learning regression: retrieval-augmented skill ranking admitted contexts with similarity as low as 0.5 into action bias, bypassing the legacy five-of-six bucket neighbor gate.
