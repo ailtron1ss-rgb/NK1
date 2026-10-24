@@ -510,7 +510,7 @@ export class P23LearningEngine {
     evaluateRevisedCandidate:RevisedCandidateEvaluator,
     options:SkillLearnBenchCandidateGateOptions={},
     sourceEvidenceFingerprint?: string,
-  ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
+  ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan;postRevisionPlan:SkillRevisionPlan}> {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     if(sourceEvidenceFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(sourceEvidenceFingerprint)) {
       throw new Error('repair evidence fingerprint must be a canonical SHA-256 digest');
@@ -568,7 +568,7 @@ export class P23LearningEngine {
     }
     return this.stageReflectiveSkillRevision(
       proposal,skillId,sourceCandidateId,revisedPayload,baseline,fresh.evaluation,fresh.evaluationFingerprint,options,
-      sourceEvidenceFingerprint,
+      sourceEvidenceFingerprint,plan,
     );
   }
 
@@ -588,14 +588,20 @@ export class P23LearningEngine {
     candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
     evaluationFingerprint:string,
     options:SkillLearnBenchCandidateGateOptions={},
-    sourceEvidenceFingerprint?: string,
-  ):{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan} {
+    sourceEvidenceFingerprint: string | undefined,
+    generationPlan: SkillRevisionPlan,
+  ): {candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan;postRevisionPlan:SkillRevisionPlan} {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     if(!skillId?.trim()) throw new Error('skillId must be non-empty');
     const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
-    const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
-    if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
-    if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
+    const postRevisionPlan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
+    if(postRevisionPlan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
+    // Preserve the plan that generated this exact payload. The post-revision plan may be empty
+    // when the candidate successfully fixes every source failure; that is a successful outcome,
+    // not a reason to discard the candidate or erase its repair lineage.
+    if(!generationPlan || generationPlan.blockedBySafety || generationPlan.targets.length===0) {
+      throw new Error('reflective revision provenance requires a non-empty source repair plan');
+    }
     const current=this.verifiedSkillStore.snapshot();
     const source=current.candidates.find(item=>item.candidateId===sourceCandidateId);
     if(!source || source.skillId!==skillId || source.status==='rolled-back') {
@@ -611,17 +617,17 @@ export class P23LearningEngine {
       schemaVersion:1,
       evaluationFingerprint,
       sourceCandidateId:source.candidateId,
-      planFingerprint:createHash('sha256').update(canonicalize(plan)).digest('hex'),
+      planFingerprint:createHash('sha256').update(canonicalize(generationPlan)).digest('hex'),
       datasetFingerprint:proposal.datasetFingerprint,
       ...(sourceEvidenceFingerprint ? { sourceEvidenceFingerprint } : {}),
-      dimensions:plan.targets.map(target=>target.dimension),
+      dimensions:generationPlan.targets.map(target=>target.dimension),
       createdAt:now(),
     };
     // stageCandidate validates proposal authenticity and authenticated evidence.
     // The revision lineage is persisted on the new version; shadow execution
     // and signed human approval are still required before runtime activation.
     const candidate=this.verifiedSkillStore.stageCandidate(proposal,skillId,revisedPayload,revisionProvenance);
-    return {candidate,fitness,plan};
+    return {candidate,fitness,plan:generationPlan,postRevisionPlan};
   }
 
   /**
