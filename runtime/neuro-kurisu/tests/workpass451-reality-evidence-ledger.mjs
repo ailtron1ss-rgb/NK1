@@ -142,4 +142,13 @@ assert.equal(restoreGetterCalls, 0);
 assert.equal(clean.snapshot().recent.length, 0);
 assert.equal(clean.snapshot().total, 0);
 
+// Parent lineage IDs must be canonical, non-empty and unique before any evidence is recorded.
+for (const parentIds of [['  '], ['parent\u0000id'], ['parent', 'parent']]) {
+  assert.throws(() => ledger.record({
+    tick: 9, eventId: 'invalid-parent-lineage-' + parentIds.length + '-' + parentIds[0].length,
+    realityClass: 'derived', claim: 'Malformed lineage must not enter the evidence graph.',
+    confidence01: .5, independenceKey: 'test:lineage', parentIds,
+  }), /reality-evidence-input-invalid/);
+}
+
 console.log('WORKPASS451_REALITY_EVIDENCE_LEDGER=PASS deterministicIdentity=true idempotentReplay=true realityClassSeparated=true malformedEvidenceRejected=true hostileAccessorsRejected=true restoreQuarantinesInvalidRows=true');
