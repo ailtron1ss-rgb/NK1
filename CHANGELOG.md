@@ -1,3 +1,11 @@
+# WorkPass339 — decision-time memories enter the canonical feedback loop (2026-10-24)
+
+- [INTEGRATION] Extended the existing `OrganismCore.feedback` input with a bounded `causalMemoryContext` carrying trace ID, decision-time memory IDs and grounded evidence/verification signals from the real runtime.
+- [MEMORY] Core feedback now unions those exact memory IDs with its existing retrieval/encoding IDs before applying the normal MemoryOS2 causal and reconsolidation flow; it still writes through the canonical memory subsystem only.
+- [ATTRIBUTION] When the inner-intent homeostatic gate redirected the proposed action, the explicitly consulted memory IDs are excluded from decision-level causal learning for that outcome. Emotional/surprise reconsolidation remains separate and may still occur.
+- [TEST] Runtime wiring regression now reads `OrganismCore.ts` and guards the runtime-to-feedback contract, explicit memory-ID inclusion and fail-safe attribution rule.
+- [VALIDATION] WorkPass331 and WorkPass293 passed on SHA `5fb7922a4dffddacd72cc91f72ec69260fa5a015`; this deeper Core-memory change needs fresh exact-head WorkPass331 and WorkPass110/typecheck runs.
+
 # WorkPass338 — typecheck workflow tracks inner imperative changes (2026-10-24)
 
 - [CI INTEGRATION] Added InnerImperativeController.ts to both WorkPass110 push/pull_request path filters. This ensures the full runtime TypeScript check runs when the new cognitive policy changes.

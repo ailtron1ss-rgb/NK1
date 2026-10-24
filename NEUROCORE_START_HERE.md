@@ -1,3 +1,13 @@
+## Latest durable checkpoint — WorkPass339: decision-time memory IDs wired into feedback (2026-10-24)
+
+- `OrganismRuntime` now passes `causalMemoryContext` into the same `OrganismCore.feedback` invocation that receives the observed action result. It carries the current trace ID, up to 12 exact cycle memory IDs and bounded verification/evidence signals.
+- `OrganismCore.feedback` includes those IDs in the existing canonical feedback memory set, so current-decision memories flow through the established `MemoryOS2`/memory-causal-economy lifecycle rather than merely appearing in an opaque event payload.
+- If an autonomous homeostatic gate redirected the action, the explicitly used memory IDs are excluded from decision-level causal learning for that outcome; later emotional/surprise reconsolidation remains a separate process. This prevents assigning causal credit to a memory for an action that was not executed.
+- Regression assertions now cover the runtime-to-Core contract and the memory attribution condition.
+- **Validation:** the last confirmed WorkPass331 + WorkPass293 results were on SHA `5fb7922a4dffddacd72cc91f72ec69260fa5a015`. WorkPass339 is a new change across a 1.3 MB Core source file; exact-head WorkPass331, WorkPass110/typecheck and regression completion are required before claiming this pass verified.
+
+---
+
 ## Latest checkpoint — WorkPass338 CI path coverage (2026-10-24)
 
 - Added runtime/neuro-kurisu/src/organism/cognition/InnerImperativeController.ts to WorkPass110 push and pull_request path filters, so changes to the inner-intent policy trigger the runtime typecheck suite.

@@ -839,6 +839,14 @@ export class OrganismRuntime {
       reward: learningRewardSigned,
       evidenceSource: outcomeSource,
       surprise: learningGate.surprise01,
+      causalMemoryContext: {
+        traceId: innerIntent.id,
+        memoryIds: cycle.memories.slice(0, 12).map(memory => memory.id),
+        attributionEligible: !innerIntent.overridden,
+        evidence01: clamp01(grounded.evidence01),
+        verified01: clamp01(grounded.verified01),
+        independent01: clamp01(grounded.independent01),
+      },
       worldEvent: {
         type: grounded.source === 'external' ? 'external_action_consequence' : 'environment_transition',
         importance: learningGate.surprise01,

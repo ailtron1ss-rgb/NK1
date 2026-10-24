@@ -4,6 +4,7 @@ import { deriveInnerImperative } from '../src/organism/cognition/InnerImperative
 
 // Guard the *live* orchestration path, not just the kernel in isolation.
 const runtime = await readFile(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
+const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 
 assert.match(
   runtime,
@@ -41,6 +42,16 @@ assert.match(runtime, /counterfactualBranchCount:branches\.length/,
   'the canonical future/plan stage must retain the counterfactual availability signal');
 assert.match(runtime, /innerIntentId:innerIntent\.id/,
   'the canonical causal cycle must connect the intention to later evidence');
+assert.match(runtime, /causalMemoryContext:\s*\{\s*traceId: innerIntent\.id,\s*memoryIds: cycle\.memories\.slice\(0, 12\)\.map\(memory => memory\.id\),\s*attributionEligible: !innerIntent\.overridden/s,
+  'the live runtime must pass decision-time memory IDs and attribution eligibility into Core feedback');
+assert.match(core, /causalMemoryContext\?: \{ traceId: string; memoryIds: string\[\]; attributionEligible: boolean;/,
+  'Core feedback must accept the matching causal memory context');
+assert.match(core, /const explicitCausalMemoryIds = \[\.\.\.new Set\(\(outcome\.causalMemoryContext\?\.memoryIds \?\? \[\]\)/,
+  'Core feedback must include the exact memory IDs used in this runtime decision');
+assert.match(core, /outcome\.causalMemoryContext\?\.attributionEligible === false && explicitCausalMemoryIds\.includes\(memoryId\)/,
+  'a redirected action must not assign decision-level causal credit to the current cycle memories');
+assert.match(core, /A homeostatic redirect may still update emotional salience below, but must not teach a decision-level causal link/,
+  'the no-credit rule must leave outcome/emotion reconsolidation separate from action attribution');
 assert.match(runtime, /innerIntentMemoryTrace:\s*\{/,
   'the existing experience event must preserve the intent/outcome trace for autobiographical consolidation');
 assert.match(runtime, /retrievedMemoryIds:\s*cycle\.memories\.slice\(0, 12\)\.map\(memory => memory\.id\)/,

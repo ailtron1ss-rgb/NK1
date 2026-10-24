@@ -8395,6 +8395,8 @@ export class OrganismCore {
         evidenceSource?: import('../system/ExternalEvidenceTrust.ts').EvidenceSourceClass;
         learning?: LearningProvenance;
         worldEvent?: OrganismObservation['worldEvent'];
+        /** Exact decision-time memory IDs and attribution gate from the same live runtime cycle. */
+        causalMemoryContext?: { traceId: string; memoryIds: string[]; attributionEligible: boolean; evidence01: number; verified01: number; independent01: number; };
         worldTransition?: WorldTransitionForOrganism;
         evaluationContextFamily?: string;
         evaluationPhase?: B304SemanticPhase;
@@ -8466,8 +8468,12 @@ export class OrganismCore {
         this.persisted.system.worldModelEnsemble = this.worldSubsystem.worldModelEnsemble.snapshot();
         const externalEvidenceSources = ['os', 'device', 'user', 'external-api'];
         const projectEvidenceExternal = externalEvidenceSources.includes(String(outcome.evidenceSource ?? '').toLowerCase());
-        const feedbackMemoryIds = [...(this.persisted.facets.memory.lastRetrievedMemoryIds ?? []), ...(this.persisted.system.lastEncodedMemoryIds ?? [])].filter((id, index, arr) => arr.indexOf(id) === index).slice(0, 12);
+        const explicitCausalMemoryIds = [...new Set((outcome.causalMemoryContext?.memoryIds ?? []).filter(id => typeof id === 'string' && id.length > 0))].slice(0, 12);
+        const feedbackMemoryIds = [...explicitCausalMemoryIds, ...(this.persisted.facets.memory.lastRetrievedMemoryIds ?? []), ...(this.persisted.system.lastEncodedMemoryIds ?? [])].filter((id, index, arr) => typeof id === 'string' && id.length > 0 && arr.indexOf(id) === index).slice(0, 12);
         for (const memoryId of feedbackMemoryIds) {
+            // A homeostatic redirect may still update emotional salience below, but must not teach a decision-level causal link from a memory to an action that was not executed.
+            if (outcome.causalMemoryContext?.attributionEligible === false && explicitCausalMemoryIds.includes(memoryId))
+                continue;
             const causalBefore = this.organismSystems.memory.memoryCausalEconomy.assessMemory(memoryId);
             const gatedSuccess = .5 + (success - .5) * learning.memoryPromotionScale01;
             const gatedSurprise = surprise * learning.memoryPromotionScale01;
