@@ -40,6 +40,22 @@ function normalizeTags(value: unknown): string[] | null {
   return tags;
 }
 
+function readExperienceRows(value: unknown, maxRows: number): unknown[] {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return [];
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const length = descriptors.length?.value;
+  if (!Number.isSafeInteger(length) || length < 0 || length > 100_000 ||
+      Reflect.ownKeys(value).length !== length + 1) return [];
+  const start = Math.max(0, length - maxRows);
+  const rows: unknown[] = [];
+  for (let index = start; index < length; index++) {
+    const descriptor = descriptors[String(index)];
+    if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) return [];
+    rows.push(descriptor.value);
+  }
+  return rows;
+}
+
 function normalizeExperience(value:unknown):ExperienceRecord|null {
   if(value===null||typeof value!=='object'||Array.isArray(value))return null;
   const prototype=Object.getPrototypeOf(value);
@@ -99,7 +115,7 @@ export class AdaptiveExperienceConsolidator {
 
   restore(records?: ExperienceRecord[] | null): void {
     const restored:ExperienceRecord[]=[];
-    if(Array.isArray(records))for(const raw of records.slice(-this.maxBuffer*4)){
+    for(const raw of readExperienceRows(records,this.maxBuffer*4)){
       const safe=normalizeExperience(raw);
       if(!safe)continue;
       // Persisted snapshots may contain repeated IDs after older schema migrations.
