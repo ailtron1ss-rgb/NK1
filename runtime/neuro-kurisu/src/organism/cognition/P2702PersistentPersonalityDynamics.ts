@@ -29,7 +29,7 @@ const validRelationshipId = (value: unknown): value is string =>
  * or a successful "verify" action from training guardedness merely by array position. */
 const ACTION_TRAIT_WEIGHTS: Record<ActionKind, Record<string, number>> = {
   respond: { warmth: 0.55, tenderness: 0.25, directness: 0.12, embarrassmentSensitivity: 0.08 },
-  explore: { playfulness: 0.8, sarcasm: 0.2 },
+  explore: { curiosityExpression: 0.8, playfulness: 0.2 },
   verify: { composure: 0.75, directness: 0.25 },
   rest: { composure: 0.65, guardedness: 0.35 },
   reflect: { guardedness: 0.65, composure: 0.25, sarcasm: 0.1 },
@@ -118,7 +118,7 @@ export class P2702PersistentPersonalityDynamics {
 
   restore(raw?: Partial<P2702PersonalityState> | null) {
     const d = defaultState();
-    const r = isRecord(raw) ? raw : {};
+    const r: Record<string, unknown> = isRecord(raw) ? raw : {};
     const rawRelationships = isRecord(r.relationshipTrust) ? r.relationshipTrust : {};
     const relationshipEntries: Array<[string, number]> = [];
 
@@ -176,7 +176,7 @@ export class P2702PersistentPersonalityDynamics {
     identityVector?: number[];
     relationshipId?: string;
   }) {
-    const input = isRecord(args) ? args : {};
+    const input: Record<string, unknown> = isRecord(args) ? args : {};
     const tick = boundedCounter(input.tick, this.state.tick);
     const novelty01 = boundedNumber(input.novelty01, 0.5);
     const uncertainty01 = boundedNumber(input.uncertainty01, 0.5);
@@ -195,7 +195,7 @@ export class P2702PersistentPersonalityDynamics {
     const adaptive = (name: string) => this.state.adaptiveValues[this.state.adaptiveNames.indexOf(name)] ?? 0.5;
 
     const bias: Record<ActionKind, number> = Object.fromEntries(ACTIONS.map((a) => [a, 0])) as Record<ActionKind, number>;
-    bias.explore = clamp((adaptive('curiosity') * 0.05 + canonCuriosity * 0.025) * novelty01 + adaptive('playfulness') * 0.008);
+    bias.explore = clamp((adaptive('curiosityExpression') * 0.05 + canonCuriosity * 0.025) * novelty01 + adaptive('playfulness') * 0.008);
     bias.verify = clamp((rigor * 0.05 + adaptive('composure') * 0.015) * uncertainty01);
     bias.reflect = clamp((autonomy * 0.028 + adaptive('guardedness') * 0.014) * identityGap01);
     bias.respond = clamp((adaptive('warmth') * 0.025 + adaptive('directness') * 0.018) * (1 - identityGap01));
