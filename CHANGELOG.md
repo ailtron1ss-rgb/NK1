@@ -1,3 +1,9 @@
+## NK1 Architecture — complete dependency-edge parsing (2026-10-24)
+
+- [HARDENED] Updated `runtime/neuro-kurisu/scripts/audit-architecture.mjs` to include side-effect imports and literal CommonJS requires in the dependency graph, in addition to static imports, re-exports, and literal dynamic imports.
+- [RESOLUTION] Added NodeNext-style emitted-JavaScript-to-TypeScript source resolution and indexed-file lookup via `Set` to avoid repeated linear scans during edge resolution.
+- [LIMITATION] This updates the static analysis path; the architecture audit has not been executed on the current commit in this environment.
+
 ## NK1 Architecture — transitive server dependency audit (2026-10-24)
 
 - [HARDENED] Expanded `runtime/neuro-kurisu/scripts/audit-server-imports.mjs` from checking only direct imports of `src/server/server.mjs` to traversing the reachable relative-import graph.
