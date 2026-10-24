@@ -172,6 +172,68 @@ test('remote writes need both an environment gate and per-operation approval', a
   assert.deepEqual(body.metadata, { app_id: 'nk1', source: 'neuro-kurisu' });
 });
 
+
+test('remote deletion requires explicit approval and a UUID returned within this user scope', async () => {
+  const memoryId = '00000000-0000-4000-8000-000000000001';
+  const foreignId = '00000000-0000-4000-8000-000000000002';
+  const requests = [];
+  const adapter = new Mem0PlatformAdapter({
+    enabled: true,
+    apiKey: 'test-key',
+    userId: 'scope-one',
+    allowWrites: true,
+    fetchImpl: async (input, init) => {
+      requests.push({ url: new URL(String(input)), method: init?.method, headers: init?.headers });
+      if (init?.method === 'POST') {
+        return jsonResponse({ results: [{ id: memoryId, user_id: 'scope-one', memory: 'a remembered preference' }] });
+      }
+      return jsonResponse({ message: 'Memory deleted successfully!' });
+    },
+  });
+
+  const search = await adapter.search('preference');
+  assert.equal(search.status, 'ok');
+  assert.equal(search.memories[0]?.id, memoryId);
+
+  const noConsent = await adapter.deleteMemory(memoryId);
+  assert.equal(noConsent.status, 'consent-required');
+  assert.equal(noConsent.deleted, false);
+  assert.equal(requests.length, 1);
+
+  const unknownId = await adapter.deleteMemory(foreignId, { approved: true });
+  assert.equal(unknownId.status, 'invalid-input');
+  assert.equal(unknownId.errorCode, 'memory-id-not-issued-for-configured-scope');
+  assert.equal(requests.length, 1);
+
+  const deleted = await adapter.deleteMemory(memoryId, { approved: true });
+  assert.equal(deleted.status, 'ok');
+  assert.equal(deleted.deleted, true);
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].method, 'DELETE');
+  assert.equal(requests[1].url.pathname, `/v1/memories/${memoryId}/`);
+  assert.equal(requests[1].url.searchParams.get('delete_linked'), 'false');
+  assert.equal(requests[1].headers.authorization, 'Token test-key');
+
+  const repeat = await adapter.deleteMemory(memoryId, { approved: true });
+  assert.equal(repeat.status, 'invalid-input');
+  assert.equal(requests.length, 2);
+});
+
+test('remote deletion is blocked by the write gate and does not reveal whether an ID exists', async () => {
+  let calls = 0;
+  const adapter = new Mem0PlatformAdapter({
+    enabled: true,
+    apiKey: 'test-key',
+    userId: 'scope-one',
+    allowWrites: false,
+    fetchImpl: async () => { calls++; return jsonResponse({}); },
+  });
+  const result = await adapter.deleteMemory('00000000-0000-4000-8000-000000000001', { approved: true });
+  assert.equal(result.status, 'writes-disabled');
+  assert.equal(result.deleted, false);
+  assert.equal(calls, 0);
+});
+
 test('HTTP errors are summarized without exposing provider response bodies', async () => {
   const adapter = new Mem0PlatformAdapter({
     enabled: true,
