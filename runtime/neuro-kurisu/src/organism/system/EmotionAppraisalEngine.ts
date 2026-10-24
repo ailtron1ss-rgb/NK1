@@ -15,6 +15,8 @@ export interface EmotionEpisode {
   valence01:number; arousal01:number; dominance01:number;
   appraisal:{relevance01:number; goalCongruence01:number; controllability01:number; novelty01:number; selfRelevance01:number; socialMeaning01:number; uncertainty01:number};
   interoceptiveDelta:{stress01:number; energy01:number; load01:number; attentionCapture01:number};
+  /** Homeostatic pressure captured at appraisal time; optional for older persisted episodes. */
+  regulationPressure01?:number;
   memorySalienceMultiplier01:number;
   confidence01:number;
   cause:string;
@@ -80,7 +82,8 @@ const normalizeEpisode=(value:unknown):EmotionEpisode|null=>{
      typeof value.tick!=='number'||!Number.isSafeInteger(value.tick)||value.tick<0||
      typeof value.at!=='number'||!Number.isFinite(value.at)||value.at<0||
      !EMOTION_LABELS.includes(value.label as EmotionLabel)||!ACTION_TENDENCIES.includes(value.actionTendency as EmotionActionTendency)||
-     typeof value.cause!=='string'||value.cause.length>120)return null;
+     typeof value.cause!=='string'||value.cause.length>120||
+     (value.regulationPressure01!==undefined&&(typeof value.regulationPressure01!=='number'||!Number.isFinite(value.regulationPressure01)||value.regulationPressure01<0||value.regulationPressure01>1)))return null;
   if(!unitFieldsAreValid(value.appraisal,['relevance01','goalCongruence01','controllability01','novelty01','selfRelevance01','socialMeaning01','uncertainty01'])||
      !unitFieldsAreValid(value.interoceptiveDelta,['stress01','energy01','load01','attentionCapture01'])||
      !unitFieldsAreValid(value,['valence01','arousal01','dominance01','memorySalienceMultiplier01','confidence01']))return null;
@@ -226,7 +229,8 @@ export class EmotionAppraisalEngine {
     const n=prev.attempts+1; const row={attempts:n,meanSuccess01:c(prev.meanSuccess01*(n-1)/n+c(input.success01)/n),meanSurprise01:c(prev.meanSurprise01*(n-1)/n+c(input.surprise01)/n),meanBenefit01:c(prev.meanBenefit01*(n-1)/n+benefit/n)};
     this.state.outcomes={...this.state.outcomes,[key]:row};
     if(linkedEmotion){
-      const contextualKey=contextOutcomeKey(key,linkedEmotion.label,this.state.interoception.regulationPressure01);
+      const contextualPressure=linkedEmotion.regulationPressure01??linkedEmotion.interoceptiveDelta.stress01;
+      const contextualKey=contextOutcomeKey(key,linkedEmotion.label,contextualPressure);
       const previous=Object.prototype.hasOwnProperty.call(this.state.contextualOutcomes,contextualKey)
         ?this.state.contextualOutcomes[contextualKey]
         :{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
@@ -278,7 +282,7 @@ export class EmotionAppraisalEngine {
     else if(valence<.34 && dominance>.65){label='anger';actionTendency='protect';}
     const attentionCapture=c(arousal*.55+a.relevance01*.25+a.selfRelevance01*.20);
     const n=this.state.episodes+1;
-    const episode:EmotionEpisode={id:`emo:${input.tick}:${Number(input.at??Date.now())}:${n}`,tick:input.tick,at:Number(input.at??Date.now()),label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:a,interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},memorySalienceMultiplier01:c(.8+attentionCapture*.7),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state'};
+    const episode:EmotionEpisode={id:`emo:${input.tick}:${Number(input.at??Date.now())}:${n}`,tick:input.tick,at:Number(input.at??Date.now()),label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:a,interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},regulationPressure01:this.state.interoception.regulationPressure01,memorySalienceMultiplier01:c(.8+attentionCapture*.7),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state'};
     this.state={...this.state,episodes:n,lastTick:episode.tick,lastAt:episode.at,lastLabel:episode.label,meanArousal01:c(this.state.meanArousal01*(n-1)/n+episode.arousal01/n),meanValence01:c(this.state.meanValence01*(n-1)/n+episode.valence01/n),meanStress01:c(this.state.meanStress01*(n-1)/n+stress/n),meanAttentionCapture01:c(this.state.meanAttentionCapture01*(n-1)/n+attentionCapture/n),history:[episode,...this.state.history].slice(0,128)};
     return structuredClone(episode);
   }
