@@ -61,6 +61,33 @@ const archiveHits = restored.retrieve(
 assert.ok(archiveHits.some(item => item.id === parent.id),
   'explicit archival retrieval must retain inspectability of historical revisions');
 
+// WorkPass460: semantic retrieval must apply the same damaged-revision guard as lexical recall.
+const deterministicEmbeddingProvider = {
+  providerId: 'workpass460-deterministic',
+  modelId: 'workpass460-test-model',
+  async embedBatch(texts) {
+    return texts.map(text => /obsolete|previous|codename/i.test(text) ? [1, 0.1, 0] : [0.1, 1, 0]);
+  },
+  diagnostics() {
+    return { configured:true, provider:'ollama', model:'workpass460-test-model', endpoint:'local-test', cacheEntries:0, cacheHits:0, cacheMisses:0, requests:0, failures:0, lastError:null, lastLatencyMs:0, redactedInputs:0 };
+  },
+};
+const semanticRestored = new MemoryOS2({ embeddingProvider: deterministicEmbeddingProvider });
+semanticRestored.restore(damagedSnapshot);
+const semanticCurrent = await semanticRestored.previewRetrieveWithEmbeddings(
+  'previous project codename Neuro-Kurisu obsolete identity reference',
+  8, 0, 0, { temporalMode:'current' }, { maxIndexItems:96, maxLexicalPool:64 },
+);
+assert.equal(semanticCurrent.semantic.enabled, true, 'the test must exercise semantic rather than fallback retrieval');
+assert.equal(semanticCurrent.items.some(item => item.id === parent.id), false,
+  'semantic retrieval must suppress a superseded record even if its validity end was lost');
+const semanticArchive = await semanticRestored.previewRetrieveWithEmbeddings(
+  'previous project codename Neuro-Kurisu obsolete identity reference',
+  8, 0, 0, { temporalMode:'all' }, { maxIndexItems:96, maxLexicalPool:64 },
+);
+assert.ok(semanticArchive.items.some(item => item.id === parent.id),
+  'explicit semantic archive mode must keep superseded memory inspectable');
+
 console.log('WORKPASS87_SUPERSEDED_CURRENT_RETRIEVAL=PASS', JSON.stringify({
   currentReturnedSupersededRecord: currentHits.some(item => item.id === parent.id),
   archivalContainsHistoricalRecord: archiveHits.some(item => item.id === parent.id),
