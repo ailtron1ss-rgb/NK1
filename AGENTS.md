@@ -1,13 +1,10 @@
 # NeuroCore — repository working rules
 
-> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md) and [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), then refresh the live branch head, stacked PR state, exact-head Actions status and open-work register. The active learning stack is WorkPass124 on top of WorkPass123; PR #12 is draft and unmerged. WorkPass126 hardens durable skill-store schema and payload-integrity validation; its tests and exact-head CI remain unverified. The release/metadata `main` branch is not the direct merge target for the source stack. The mission is persistent across chats; do not ask the user to restate it.
+> **New-session entry point (updated 2026-10-24):** Read [the project map and ordering policy](docs/PROJECT_MAP_AND_ORDERING.md) first, then [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) as a historical continuation ledger. Refresh the exact live branch SHA, diff, open PRs and Actions status before coding. Do not treat a WorkPass number, an old checkpoint, or a newer timestamp as proof of ancestry/completeness. The observed `integration` and `operation-omega-hexis-2026-10-24` tips diverged; compare and port deliberately rather than merging whole histories. The newest release asset observed on 2026-10-24 was still WorkPass70 dated 2026-10-19; branch commits do not refresh that ZIP.
 
-## Latest checkpoint
+## Latest checkpoint policy
 
-Read [WorkPass127 proposal authenticity report](docs/WORKPASS127_PROMOTION_PROPOSAL_AUTHENTICITY_2026-10-21.md) first. The candidate store now rejects copied or fabricated proposal objects using a module-private same-process issuance registry; successful lifecycle fixtures use signed manifest-bound artifacts. Runtime test/typecheck/CI are not yet verified, and the broader activation call-graph audit remains open.
-
-
-Read [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md), then [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), before resuming. Inspect the exact-head CI and run the owning tests. Active learning work is `workpass124-learning-evidence-hardening` (PR #12, draft/unmerged), stacked on `workpass123-authenticated-skill-lifecycle` (PR #11). The full source stack is based on `workpass70-source`; `main` is a separate release/metadata branch with no common ancestor reported by GitHub compare. Do not merge directly to `main`.
+The first checkpoint in a handover file is a navigation aid, not live GitHub state. Treat branch names, PR numbers, CI outcomes, integration claims and release status inside prior checkpoints as **unverified until refreshed against GitHub**. Work code-first, retain exact evidence, and record any blocker without inventing a test result.
 
 ## Project objective
 
@@ -17,19 +14,26 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 
 ## Canonical navigation
 
-- `README.md`: current repository status and release gates.
-- `docs/WORKPASS93_CHECKPOINT_2026-10-20.md`: latest continuation snapshot, CI evidence and prioritized unresolved queue.
-- `docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` plus its JSON manifest: exact content-duplicate audit; candidates are not deletion instructions.
-- `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: repository inventory, audit findings and open-work register.
+- [`docs/PROJECT_MAP_AND_ORDERING.md`](docs/PROJECT_MAP_AND_ORDERING.md): current repository map, branch ancestry rules, release-artifact boundaries and safe documentation/archive order.
+- `README.md`: top-level entry point; its continuation snapshots may be historical.
+- `NEUROCORE_START_HERE.md`: accumulated handovers; refresh pointers and status live before relying on them.
+- `docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md`: strategic direction and cognitive architecture.
+- `docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md`: long-term backlog; reconcile items with current code before executing.
+- `docs/RESEARCH_INTAKE_LEDGER.md`: upstream research candidates and integration decisions.
+- `docs/CROSS_BRANCH_INTEGRATION_INVENTORY.md` and `docs/INTEGRATION_WORKSPACE.md`: branch reconciliation inventory and historical integration constraints.
+- `docs/BRANCH_INVENTORY_2026-10-24.md`: dated 104-ref branch-name snapshot and selected divergence evidence; refresh before ref cleanup.
+- `docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md`: pinned Hexis source provenance and NK1 adaptation boundary.
 - `runtime/neuro-kurisu/`: canonical organism/runtime implementation.
 - `runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts`: canonical memory store and retrieval owner.
 - `runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts`: offline BM25-vs-candidate evaluation; it must not mutate or promote live state.
 - `runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts`: deterministic multi-seed bootstrap sensitivity check; seeds do not train the retriever.
 - `runtime/neuro-kurisu/tests/`: runtime regression tests.
-- `docs/RESEARCH_INTAKE_LEDGER.md`: persistent upstream research and integration queue; update it when candidates are evaluated.
-- `app/`: client/UI shell; do not implement a second organism or canonical memory owner here.
-- `research/`: isolated experiments; `legacy/`: preserved historical source and provenance.
-- `docs/history/`: archived reports and source records. Old `WORKPASS*`, `ROADMAP*`, and numbered pass files are historical unless a current status page links to them.
+- `app/`: UI and delivery shell; do not implement a second organism or canonical memory owner here.
+- `contracts/`: ownership, contracts, schemas, source provenance and SBOM.
+- `tools/` and `scripts/`: project audits, maintenance, verification and release automation.
+- `tools/audit-markdown-links.mjs` plus its regression test: local Markdown/HTML link audit; use `npm run audit:canonical-links` as the strict navigation gate.
+- `research/`: isolated research candidates; `legacy/`: preserved historical source/provenance.
+- `docs/history/` and `docs/reports/`: historical and detailed records; old pass reports are not current status unless explicitly linked from a current handover.
 
 ## Required workflow for a meaningful change
 
