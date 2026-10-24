@@ -72,11 +72,13 @@ export class UnifiedCognitiveCycle {
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
+    const restoredCountPartitionConsistent=source.incompleteCycles===incompleteCycles&&
+      completeCycles+safeCounter(source.incompleteCycles)===cycles;
     const hasMissingArray=Array.isArray(source.lastMissingStages);
     const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...REQUIRED];
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
-    const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
+    const normalizedMissing=malformedMissing&&filteredMissing.length===0?[...REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
     const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
     this.state={
@@ -88,7 +90,7 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&restoredCountPartitionConsistent&&!malformedMissing&&missing.length===0,
       lastMissingStages:missing,
     };
   }
@@ -104,6 +106,26 @@ export class UnifiedCognitiveCycle {
         maxDepth:6,maxNodes:128,maxStringUnits:16*1024,
       });
     } catch {
+      // Preserve precise scalar diagnostics without evaluating caller getters:
+      // only own data descriptors are inspected after snapshot rejection.
+      let tickValue:unknown;
+      let parentIntegrityValue:unknown;
+      try {
+        if(rawInput!==null&&typeof rawInput==='object') {
+          const tickDescriptor=Object.getOwnPropertyDescriptor(rawInput,'tick');
+          if(tickDescriptor&&'value'in tickDescriptor)tickValue=tickDescriptor.value;
+          const parentDescriptor=Object.getOwnPropertyDescriptor(rawInput,'parentIntegrity01');
+          if(parentDescriptor&&'value'in parentDescriptor)parentIntegrityValue=parentDescriptor.value;
+        }
+      } catch {
+        // Proxies/getters remain blocked by the generic trust-boundary error.
+      }
+      if(typeof tickValue==='number'&&(!Number.isSafeInteger(tickValue)||tickValue<0)) {
+        throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
+      }
+      if(typeof parentIntegrityValue==='number'&&(!Number.isFinite(parentIntegrityValue)||parentIntegrityValue<0||parentIntegrityValue>1)) {
+        throw new RangeError('parentIntegrity01 must be a finite value in [0, 1]');
+      }
       throw new TypeError('cognitive cycle input data boundary rejected');
     }
     if(input===null||typeof input!=='object'||Array.isArray(input))throw new TypeError('cognitive cycle input must be an object');
