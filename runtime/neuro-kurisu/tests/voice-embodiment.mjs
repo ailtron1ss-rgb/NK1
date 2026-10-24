@@ -175,7 +175,7 @@ const hostileEventDetail = { toString() { eventCoercions++; return 'must not ent
 continuityGuard.externalEvent(hostileEventDetail, .9, 300);
 continuityGuard.externalEvent('bad importance', Number.NaN, 300);
 continuityGuard.externalEvent('bad timestamp', .9, Number.NEGATIVE_INFINITY);
-continuityGuard.externalEvent('\\u0000hidden control', .9, 300);
+continuityGuard.externalEvent('\u0000hidden control', .9, 300);
 assert.equal(eventCoercions, 0, 'external-event validation must never coerce arbitrary objects');
 assert.deepEqual(continuityGuard.snapshot(), continuityBefore,
   'rejected external events must not update wake or continuity timestamps');
