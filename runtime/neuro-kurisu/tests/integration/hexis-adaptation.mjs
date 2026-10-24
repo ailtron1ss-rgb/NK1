@@ -63,6 +63,61 @@ const normalizedStage = importedNormalizedExport.stageHmx({
 assert.deepEqual(normalizedStage.conflicts, [], 'NK1 native export adapter must emit a conflict-free HMX 1.7 envelope');
 assert.equal(importedNormalizedExport.decideHmx(normalizedStage.stagingId, 'accept')?.status, 'accepted');
 
+// A same-text native memory must remain untouched by an external HMX import.
+const collisionRuntime = new MemorySubsystemRuntime();
+const nativeText = normalizedNk1Export.sections.memories[0].content;
+const nativeItem = collisionRuntime.fabric.encode({
+  content: nativeText,
+  tags: ['native-only'],
+  context: { nativeBoundary: 'keep-me' },
+  kind: 'semantic',
+  salience: 0.82,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.08,
+  goalRelevance: 0.03,
+  socialRelevance: 0.03,
+  predictionError: 0,
+  confidence: 0.91,
+  epistemicStatus: 'fact',
+  source: 'user',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  provenanceClass: 'user',
+  sourceAuthority01: 0.9,
+  independenceKey: 'native-source',
+});
+const nativeBeforeImport = {
+  id: nativeItem.id,
+  source: nativeItem.source,
+  tags: [...(nativeItem.tags ?? [])],
+  context: { ...(nativeItem.context ?? {}) },
+  confidence: nativeItem.confidence,
+  epistemicStatus: nativeItem.epistemicStatus,
+};
+const collisionProjector = new HexisCanonicalMemoryProjector(collisionRuntime.fabric, collisionRuntime.semanticMemory);
+const collisionHexis = new HexisAdaptationFabric();
+collisionHexis.bindCanonicalMemoryApply(candidate => collisionProjector.apply(candidate));
+const collisionStage = collisionHexis.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
+assert.deepEqual(collisionStage.conflicts, []);
+collisionHexis.decideHmx(collisionStage.stagingId, 'accept');
+const collisionApplied = collisionHexis.decideHmx(collisionStage.stagingId, 'apply');
+assert.equal(collisionApplied?.status, 'applied');
+const nativeAfterImport = collisionRuntime.fabric.canonicalSnapshot().items.find(item => item.id === nativeBeforeImport.id);
+assert.deepEqual({
+  id: nativeAfterImport?.id,
+  source: nativeAfterImport?.source,
+  tags: [...(nativeAfterImport?.tags ?? [])],
+  context: { ...(nativeAfterImport?.context ?? {}) },
+  confidence: nativeAfterImport?.confidence,
+  epistemicStatus: nativeAfterImport?.epistemicStatus,
+}, nativeBeforeImport, 'canonical same-text memory must not be reconsolidated with imported external provenance');
+const isolatedHexisDuplicate = collisionRuntime.fabric.canonicalSnapshot().items.find(item =>
+  item.source.startsWith('hexis:') && item.content === nativeText);
+assert(isolatedHexisDuplicate);
+assert.notEqual(isolatedHexisDuplicate.id, nativeBeforeImport.id, 'the Hexis memory must have a separate stable identity from the native same-text record');
+
 // Approved HMX memories enter the canonical MemoryFabric -> MemoryOS2 path only
 // through the explicit apply decision. The identity and goals sections remain deferred.
 const canonicalMemoryRuntime = new MemorySubsystemRuntime();
