@@ -1,6 +1,6 @@
 export type OutcomeVerificationBasis = 'none' | 'tool-contract' | 'external-postcondition';
 
-import { createHash } from 'node:crypto';
+import { createStableEvidenceEventId } from './EvidenceEventIdentity.ts';
 import type { WorldContext } from '../core/types.ts';
 import { normalizeWorldContext as normalizeCanonicalWorldContext } from '../core/WorldContextNormalizer.ts';
 import { stableJson } from '../core/StableSerialization.ts';
@@ -116,11 +116,7 @@ function makeEvidenceEventId(context: OutcomeVerificationContext, observationId:
       !decisionId || !observationId || observationId.length > 180) return undefined;
   // The full canonical request participates in identity. The hash is a join key,
   // not authority; the process-local WeakMap remains the trust check.
-  const digest = createHash('sha256')
-    .update(stableJson([toolId, executionId, decisionId, observationId, context.input]))
-    .digest('hex')
-    .slice(0, 40);
-  return `outcome:${digest}`;
+  return createStableEvidenceEventId('outcome', [toolId, executionId, decisionId, observationId, context.input]);
 }
 
 const clamp = (x: unknown) => typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0;
