@@ -54,12 +54,12 @@ export class EvidenceResearchSubsystemRuntime {
       : observation.sourceClass==='unknown' ? 'derived'
       : observation.sourceClass==='device' ? 'device-observation'
       : 'external-observation';
-    const claim=String(observation.observedPostcondition??observation.claimKey).replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').replace(/\s+/g,' ').trim().slice(0,240);
-    const independenceKey=String(observation.independenceKey||observation.sourceId).replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,160);
+    const claim=String(observation.observedPostcondition??observation.claimKey).normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').replace(/\s+/g,' ').trim().slice(0,240);
+    const independenceKey=String(observation.independenceKey||observation.sourceId).normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,160);
     if(!claim||!independenceKey)return;
     const parentIds=[observation.actionRef,observation.predictionId,observation.tool]
       .filter((value):value is string=>typeof value==='string'&&value.trim().length>0)
-      .map(value=>value.trim().slice(0,256)).slice(0,8);
+      .map(value=>value.normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,256)).filter(value=>value.length>0).slice(0,8);
     this.realityEvidenceLedger.record({
       eventId:observation.evidenceEventId??observation.id,
       tick:Number.isSafeInteger(observation.tick)&&Number(observation.tick)>=0?Number(observation.tick):0,
