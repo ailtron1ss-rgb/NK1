@@ -49,6 +49,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/PageHinkleyDriftDetector.ts"
       - "runtime/neuro-kurisu/tests/p26-*.mjs"
       - "runtime/neuro-kurisu/tests/p36-*.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-110-autonomous-development-cycle.mjs"
       - "runtime/neuro-kurisu/tests/p27-page-hinkley-drift-detector.mjs"
       - "runtime/neuro-kurisu/tests/p28-drift-detector-benchmark.mjs"
       - "runtime/neuro-kurisu/research/vendor/CleanRL/**"
@@ -230,6 +231,9 @@ jobs:
       - name: Run P36 performance regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p36:performance
+      - name: Run autonomous P36 end-to-end development cycle with trusted receipts
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-110
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
