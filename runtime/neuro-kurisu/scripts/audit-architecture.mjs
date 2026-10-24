@@ -10,9 +10,19 @@ async function walk(d){for(const e of await readdir(d,{withFileTypes:true})){con
 const roots=[path.join(root,'src'),path.join(root,'scripts'),path.join(root,'tests'),path.join(root,'research'),
   path.resolve(root,'../../app/src'),path.resolve(root,'../../app/scripts'),path.resolve(root,'../../app/server')].filter(p=>existsSync(p));
 for(const sourceRoot of roots) await walk(sourceRoot);
-const pat=/(?:from\s*|import\()(['\"])(\.\.?\/[^'\"]+)\1/g;
-const graph=new Map(files.map(f=>[f,[]])); const missing=[]; const canonicalRoot=path.join(root,'src','organism');
-function resolve(base,spec){const clean=String(spec).split('?')[0]; const p=path.resolve(path.dirname(base),clean); const c=[p,...['.ts','.tsx','.mts','.cts','.mjs','.cjs','.js','.jsx'].map(e=>p+e),path.join(p,'index.ts'),path.join(p,'index.tsx')]; const indexed=c.find(x=>graph.has(x)||files.includes(x)); if(indexed)return indexed; try{return statSync(p).isFile()?p:undefined}catch{return undefined}}
+const pat=/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)(['"])(\.\.?\/[^'"]+)\1/g;
+const fileSet=new Set(files); const graph=new Map(files.map(f=>[f,[]])); const missing=[]; const canonicalRoot=path.join(root,'src','organism');
+function resolve(base,spec){
+  const clean=String(spec).split(/[?#]/,1)[0];
+  const p=path.resolve(path.dirname(base),clean);
+  const extensions=['.ts','.tsx','.mts','.cts','.mjs','.cjs','.js','.jsx','.json','.css','.svg'];
+  const c=[p,...extensions.map(e=>p+e),path.join(p,'index.ts'),path.join(p,'index.tsx'),path.join(p,'index.mjs'),path.join(p,'index.js')];
+  const emittedSuffix=p.match(/\\.(mjs|cjs|js|jsx)$/i)?.[0];
+  if(emittedSuffix){const stem=p.slice(0,-emittedSuffix.length); c.push(stem+'.ts',stem+'.tsx',stem+'.mts',stem+'.cts');}
+  const indexed=c.find(x=>graph.has(x)||fileSet.has(x));
+  if(indexed)return indexed;
+  try{return statSync(p).isFile()?p:undefined}catch{return undefined}
+}
 for(const f of files){
   const t=await readFile(f,'utf8');
   const runtimeText=t.replace(/import\s+type\s+[^;\n]+from\s+['\"][^'\"]+['\"]\s*;?/g,'');
