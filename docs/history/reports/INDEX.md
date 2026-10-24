@@ -5,6 +5,7 @@ This directory preserves old status and release reports that are no longer autho
 ## Archived records
 
 - [Final internal status — 2026-10-06](FINAL-STATUS-2026-10-06.md) — preserved from `docs/FINAL-STATUS-2026-10-06.md`. It describes Neuro-Kurisu 35.40.0 / schema 223 and the 2026-10-06 state, so it must not be read as current status. The file was copied byte-for-byte and its original path was removed only after the archived copy was verified.
+- [Structural inventory — 2026-10-06](STRUCTURAL-INVENTORY-2026-10-06.md) — preserved from `docs/INVENTORY.md`; its role map and inventory references are a dated snapshot, not a current count.
 - [Archive manifest](archive-manifest.json) — records original path, archive path, SHA-256, Git blob identity, reason and move commits.
 
 ## Safe-move rule
