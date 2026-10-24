@@ -127,18 +127,18 @@ export function bindCognitiveEventEvidence(
   let ignoredUnlinkedEvents = 0;
   const linkedEventsPerClaim = new Map<string, number>();
 
-  const attach = (node: CognitiveEventNode, kind: InternalDialogueEvidence['kind'], positive: boolean, sourceGroup: string, cap: number) => {
-    const action = actionForNode(node, byId);
+  const attach = (eventNode: CognitiveEventNode, actionNode: CognitiveEventNode, kind: InternalDialogueEvidence['kind'], positive: boolean, sourceGroup: string, cap: number) => {
+    const action = actionForNode(actionNode, byId);
     const matching = action ? byAction.get(action) : undefined;
     if (!matching?.length) { ignoredUnlinkedEvents++; return; }
-    const key = identity('cef_', String(node.tick) + '_' + node.stage + '_' + node.id, 70);
+    const key = identity('cef_', String(eventNode.tick) + '_' + eventNode.stage + '_' + eventNode.id, 70);
     if (evidenceIds.has(key)) return;
     evidenceIds.add(key);
     evidence.push({
       id: key,
       kind,
-      confidence01: Math.min(cap, bounded01(node.confidence01)),
-      sourceGroup: identity('src_', sourceGroup || node.id, 72),
+      confidence01: Math.min(cap, bounded01(eventNode.confidence01)),
+      sourceGroup: identity('src_', sourceGroup || eventNode.id, 72),
     });
     for (const claim of matching) {
       const count = linkedEventsPerClaim.get(claim.id) ?? 0;
@@ -161,7 +161,7 @@ export function bindCognitiveEventEvidence(
       if (polarity === null) { ignoredUnlinkedEvents++; continue; }
       const action = actionForNode(parent, byId);
       if (!action || !byAction.has(action)) { ignoredUnlinkedEvents++; continue; }
-      attach(parent, 'outcome', polarity, 'operational-tick-' + node.tick, node.external ? 0.95 : 0.7);
+      attach(node, parent, 'outcome', polarity, 'operational-tick-' + node.tick, node.external ? 0.95 : 0.7);
       continue;
     }
 
@@ -174,7 +174,7 @@ export function bindCognitiveEventEvidence(
       }
       const action = actionForNode(parent, byId);
       if (!action || !byAction.has(action)) { ignoredUnlinkedEvents++; continue; }
-      attach(parent, 'tool', polarity, 'tool-execution-' + String(node.payload.executionId), node.payload.verified === true ? 0.72 : 0.55);
+      attach(node, parent, 'tool', polarity, 'tool-execution-' + String(node.payload.executionId), node.payload.verified === true ? 0.72 : 0.55);
       continue;
     }
 
@@ -194,7 +194,7 @@ export function bindCognitiveEventEvidence(
       if (!hasExactLineage || node.external !== true || !independent || (!verified && !contradicted) || !action) {
         ignoredUnlinkedEvents++; continue;
       }
-      attach(action, 'observation', verified, String(node.payload.independenceKey), 0.95);
+      attach(node, action, 'observation', verified, String(node.payload.independenceKey), 0.95);
     }
   }
 
