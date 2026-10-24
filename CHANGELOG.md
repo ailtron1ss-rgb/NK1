@@ -1,3 +1,12 @@
+# WorkPass335 — paired-seed learning-growth gate (2026-10-24)
+
+- [INTEGRATION] Independent candidate comparison now summarizes paired per-seed deltas, 95% t-intervals, validation seed-win rate, worst holdout-seed regression and task-coverage completeness.
+- [LEARNING] A verifier-bound failed task remains valid negative outcome evidence; it is no longer discarded solely because its verified outcome is a failure. Unbound traces and safety-violating candidates remain fail-closed.
+- [SAFETY] Canonical independent promotion now requires at least five paired validation and holdout seeds, at least 60% validation seed wins, a positive lower 95% confidence bound, full task coverage, and no single holdout seed regression below -0.15, in addition to the existing aggregate and safety gates.
+- [SAFETY] Disabled the legacy raw-report-array reflective promotion method because it cannot establish complete evaluator-envelope or matched-seed provenance. Authenticated shadow receipts and explicit approval remain required.
+- [TEST] Added multi-seed positive-growth, isolated holdout regression, insufficient-seed and legacy-bypass regressions, plus a focused Node.js 24 workflow.
+- [VALIDATION] Implementation and tests are committed on `workpass335-paired-seed-growth-2026-10-24`; they remain **unverified** until the new exact-head Actions run passes. No measured learning uplift, production readiness, or change to `main` / release assets is claimed.
+
 # WorkPass335 — preserve intent-to-outcome provenance in experience memory (2026-10-24)
 
 - [INTEGRATION] Extended the existing `core.feedback → worldEvent` experience event with a bounded `innerIntentMemoryTrace`; no second memory store or direct runtime-owned MemoryOS2 writes were added.
