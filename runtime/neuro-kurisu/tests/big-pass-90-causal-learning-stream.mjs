@@ -13,7 +13,7 @@ const trace={
 
 const stream=new CausalExperienceStream(16);
 stream.observe(trace);
-const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
+const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,lastAction:'explore',lastActionSuccess:.8,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
 
 assert.ok(record);
 assert.ok(record.causalStrength01>.3);
