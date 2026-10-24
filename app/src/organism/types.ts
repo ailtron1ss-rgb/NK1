@@ -54,6 +54,8 @@ export interface AffectiveMoodState {
 
 /** Functional self-access report anchored to one emotion and interoceptive mismatch. */
 export interface FeelingAccessState {
+  tick: number;
+  at: number;
   label: EmotionLabel;
   intensity01: number;
   interoceptiveMismatch01: number;
