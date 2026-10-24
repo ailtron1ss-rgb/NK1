@@ -3,9 +3,32 @@ import { spawn } from 'node:child_process';
 const DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024;
 
 function withTail(current, chunk, maxBytes) {
-  const next = Buffer.concat([current, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
-  if (next.length <= maxBytes) return { buffer: next, truncated: false };
-  return { buffer: next.subarray(next.length - maxBytes), truncated: true };
+  const incoming = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+  if (maxBytes <= 0) {
+    return { buffer: Buffer.alloc(0), truncated: current.length > 0 || incoming.length > 0 };
+  }
+  // A single oversized chunk already contains the complete tail we need. Copy
+  // only that suffix instead of concatenating it with older, now-useless bytes.
+  if (incoming.length >= maxBytes) {
+    return {
+      buffer: Buffer.from(incoming.subarray(incoming.length - maxBytes)),
+      truncated: incoming.length > maxBytes || current.length > 0 || incoming.length === maxBytes,
+    };
+  }
+
+  const totalLength = current.length + incoming.length;
+  if (totalLength <= maxBytes) {
+    return { buffer: Buffer.concat([current, incoming], totalLength), truncated: false };
+  }
+
+  // Retain exactly enough of the prior tail to fit the new chunk. This avoids
+  // allocating and then discarding the full oversized concatenation each time.
+  const keepCurrent = maxBytes - incoming.length;
+  const currentTail = current.subarray(Math.max(0, current.length - keepCurrent));
+  return {
+    buffer: Buffer.concat([currentTail, incoming], currentTail.length + incoming.length),
+    truncated: true,
+  };
 }
 
 function hasExited(child) {
