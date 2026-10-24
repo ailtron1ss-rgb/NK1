@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { PersonalCurriculumEngine } from '../src/organism/learning/PersonalCurriculumEngine.ts';
 
 const store=new MemoryStateStore();
 const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,enableLanguage:false});
@@ -23,6 +24,10 @@ assert.ok(d.curriculumPressure01>.25,JSON.stringify(d));
 await resumed.flush();
 const raw=await store.load();
 assert.ok(raw.facets.learning.personalCurriculum);
+const directRestore = new PersonalCurriculumEngine();
+directRestore.restore(raw.facets.learning.personalCurriculum);
+assert.ok(directRestore.diagnostics().cycles >= d.cycles,
+  JSON.stringify({persisted: raw.facets.learning.personalCurriculum, direct: directRestore.diagnostics(), before: d}));
 const restarted=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,enableLanguage:false});
 await restarted.init();
 const d2=restarted.personalCurriculumDiagnostics();
