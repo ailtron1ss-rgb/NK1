@@ -13,6 +13,7 @@ on:
       - "app/scripts/embodiment-timeline.test.mjs"
       - "app/scripts/test-live2d-expression-cache.mjs"
       - "app/scripts/test-live2d-assets.mjs"
+      - "app/scripts/test-live2d-browser.mjs"
       - "app/scripts/sync-canonical-public-assets.mjs"
       - "runtime/neuro-kurisu/public/live2d/**"
       - "contracts/inventory/canonical-public-assets-workpass42.json"
@@ -28,6 +29,7 @@ on:
       - "app/scripts/embodiment-timeline.test.mjs"
       - "app/scripts/test-live2d-expression-cache.mjs"
       - "app/scripts/test-live2d-assets.mjs"
+      - "app/scripts/test-live2d-browser.mjs"
       - "app/scripts/sync-canonical-public-assets.mjs"
       - "runtime/neuro-kurisu/public/live2d/**"
       - "contracts/inventory/canonical-public-assets-workpass42.json"
@@ -47,7 +49,7 @@ concurrency:
 jobs:
   browser-contracts:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -58,6 +60,8 @@ jobs:
       - run: npm ci --prefix app
       - run: npm --prefix app run assets:sync
       - run: npm --prefix app run test:live2d-assets
+      - run: cd app && npx playwright install --with-deps chromium
+      - run: npm --prefix app run test:live2d-browser
       - run: npm --prefix app run test:live2d-expression-cache
       - run: npm --prefix app run test:embodiment-timeline
       - run: npm --prefix app run typecheck
