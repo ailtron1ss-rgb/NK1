@@ -195,6 +195,8 @@ export class RealityEvidenceLedger {
       independentExternalSources:externalKeys.size,independentSimulationSources:simulationKeys.size,
       qualifiedIndependentExternalSources:qualifiedExternalKeys.size,
       contradictionDetected,conflictingClaims:conflictingRows.length,independentContradictionSources,
+      // Consequential promotion needs a claim shape that the contradiction scanner can actually compare.
+      contradictionCoverageAvailable:target!==null,
       // Only explicit structured field/value claims can be compared for contradiction.
       // Ambiguous free-form language is deliberately not interpreted as disagreement.
       promotionAllowed:!contradictionDetected&&external.length>0&&externalKeys.size>0&&externalConfidence>=.55,
