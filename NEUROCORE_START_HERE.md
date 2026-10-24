@@ -1,4 +1,4 @@
-> **Navigation and freshness note (2026-10-24):** Begin with [the canonical project map](docs/PROJECT_MAP_AND_ORDERING.md). This file is an accumulated handover ledger; its first WorkPass272 entry is dated 2026-10-22 and is not a live branch pointer. Recheck current branch heads, PRs, checks and source diffs before relying on any historical claims. The release asset observed on 2026-10-24 was still WorkPass70 dated 2026-10-19; later source commits are not proof that the binary archive was rebuilt.
+> **Navigation and freshness note (2026-10-24):** Begin with [the canonical project map](docs/PROJECT_MAP_AND_ORDERING.md) and [the dated branch inventory](docs/BRANCH_INVENTORY_2026-10-24.md). This file is an accumulated handover ledger; its first WorkPass272 entry is dated 2026-10-22 and is not a live branch pointer. Recheck current branch heads, PRs, checks and source diffs before relying on any historical claims. The release asset observed on 2026-10-24 was still WorkPass70 dated 2026-10-19; later source commits are not proof that the binary archive was rebuilt.
 
 ---
 
