@@ -95,8 +95,12 @@ export function deriveInnerImperative(input: InnerImperativeInput): InnerImperat
   }
   if (!isAction(input.proposedAction)) throw new TypeError('inner-imperative-proposed-action-invalid');
 
-  const needs = isRecord(input.needs) ? input.needs : {};
-  const body = isRecord(input.embodiment) ? input.embodiment : {};
+  // Preserve runtime tolerance for malformed JS callers while giving the
+  // normalized objects explicit property contracts for strict TypeScript.
+  const needs: Partial<InnerImperativeInput['needs']> =
+    (isRecord(input.needs) ? input.needs : {}) as Partial<InnerImperativeInput['needs']>;
+  const body: Partial<InnerImperativeInput['embodiment']> =
+    (isRecord(input.embodiment) ? input.embodiment : {}) as Partial<InnerImperativeInput['embodiment']>;
   const hasExternalRequest = input.hasExternalRequest === true;
   const spontaneous = input.spontaneous === true;
   const awake = body.awake === true;
