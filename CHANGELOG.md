@@ -1,3 +1,9 @@
+## NK1 WorkPass520 — exercise verifier identity through the reality ledger (2026-10-24)
+
+- Extended the existing correlated-postcondition regression across three existing owners: the live OutcomeVerificationService result, the canonical OutcomeCognitionFabric projection, and RealityEvidenceLedger.
+- The test forwards the verifier-minted event ID into the ledger and retries the same evidence with a later processing timestamp; the ledger must deduplicate it without inflating the active evidence count.
+- This proves the shared identity contract at the tested seam only. It does not claim that every production action path automatically writes to the ledger, nor that one observation alone satisfies all learning-promotion requirements.
+
 ## NK1 WorkPass519 — test the live verifier-to-causal identity handoff (2026-10-24)
 
 - Extended the existing correlated-postcondition regression to pass the actual frozen result minted by `OutcomeVerificationService` into `OutcomeCognitionFabric`, rather than proving only that a synthetic, caller-constructed receipt can be projected.
