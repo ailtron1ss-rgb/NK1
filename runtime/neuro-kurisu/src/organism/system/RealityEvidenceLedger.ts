@@ -159,7 +159,7 @@ export class RealityEvidenceLedger {
     return structuredClone(row);
   }
 
-  recent(limit=64){return structuredClone(this.records.filter(row=>!row.eventId||!this.quarantinedEventIds.has(row.eventId)).slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
+  recent(limit=64){const bounded=typeof limit==='number'&&Number.isFinite(limit)?Math.max(0,Math.min(256,Math.floor(limit))):64;return structuredClone(this.records.filter(row=>!row.eventId||!this.quarantinedEventIds.has(row.eventId)).slice(0,bounded));}
 
   claimAssessment(claim:string){
     const rows=this.records.filter(r=>r.claim===claim&&(!r.eventId||!this.quarantinedEventIds.has(r.eventId)));
