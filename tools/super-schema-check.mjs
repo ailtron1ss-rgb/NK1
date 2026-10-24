@@ -24,10 +24,12 @@ async function runCheck(label, cwd, args) {
     streamOutput: true,
   });
 
-  if (result.error || result.code !== 0 || result.timedOut) {
+  if (result.error || result.code !== 0 || result.timedOut || result.cleanupFailed) {
     const reason = result.timedOut
       ? `timeout-after-${result.durationMs}ms`
-      : result.error
+      : result.cleanupFailed
+        ? 'process-cleanup-failed'
+        : result.error
         ? 'spawn-error'
         : result.signal
           ? `signal-${result.signal}`
