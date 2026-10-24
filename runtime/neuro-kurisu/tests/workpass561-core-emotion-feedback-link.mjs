@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { EmotionAppraisalEngine } from '../src/organism/system/EmotionAppraisalEngine.ts';
+import { CausalLifeGraph } from '../src/organism/system/CausalLifeGraph.ts';
 
 const core = new OrganismCore(new MemoryStateStore(), {
   enableLanguage: false,
@@ -53,6 +54,27 @@ assert.ok(restoredAffect.outcomeCalibration(trace.selected.action), 'legacy acti
 assert.ok(restoredAffect.snapshot().history.some(e => e.id === trace.emotionEpisodeId), 'decision-time emotional provenance must persist with the affect snapshot');
 
 const after = core.snapshot();
+const lifeGraph = new CausalLifeGraph();
+lifeGraph.restore(core.systemSnapshot().causalLifeGraph);
+const outcomeRefId = `outcome:${after.state.tick}`;
+const affectPath = lifeGraph.causalPath(
+  { kind: 'emotion', refId: trace.emotionEpisodeId },
+  { kind: 'outcome', refId: outcomeRefId },
+);
+assert.ok(
+  affectPath.found,
+  'decision-time emotion must have a causal path to the observed outcome, not only to a feedback reaction',
+);
+assert.ok(affectPath.edges.some(edge => edge.kind === 'interpreted-as'), 'decision-time affect must be linked to the decision');
+assert.ok(affectPath.edges.some(edge => edge.kind === 'selected'), 'decision must be linked to the selected action');
+assert.ok(affectPath.edges.some(edge => edge.kind === 'resulted-in'), 'selected action must be linked to the outcome');
+const feedbackEmotionId = restoredAffect.snapshot().history[0]?.id;
+assert.ok(
+  feedbackEmotionId && feedbackEmotionId !== trace.emotionEpisodeId,
+  'the post-outcome emotional reaction must remain distinct from the pre-action appraisal',
+);
+const feedbackEmotionNode = lifeGraph.snapshot().nodes.find(node => node.kind === 'emotion' && node.refId === feedbackEmotionId);
+assert.ok(feedbackEmotionNode, 'causal graph must retain the outcome-time emotion separately');
 const b272Mismatch = after.facets?.memory?.eventLog?.some(e =>
   e.type === 'developmental-synthesis'
   && e.payload?.source === 'b272-outcome-credit-skipped'
@@ -64,6 +86,7 @@ console.log(JSON.stringify({
   action: trace.selected.action,
   decisionEmotion: preActionEmotion.label,
   contextualOutcomeAttempts: contextual.attempts,
+  affectToOutcomeCausalPathEdges: affectPath.edges.map(edge => edge.kind),
   b272MismatchWasSafelySkipped: Boolean(b272Mismatch),
 }, null, 2));
 
