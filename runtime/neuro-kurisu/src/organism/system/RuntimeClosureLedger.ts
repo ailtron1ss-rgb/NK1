@@ -225,9 +225,12 @@ export class RuntimeClosureLedger {
     else if (record.status === 'DEGRADED') this.state.degraded += record.checks.filter((check) => check.detail?.startsWith('degraded')).length || 1;
     else this.state.failures += record.checks.filter((check) => !check.ok).length || 1;
     this.state.lastTick = record.tick;
-    const previous = this.state.records[this.state.records.length - 1];
-    const preserveFailure = record.phase === 'durable' && previous?.phase === 'failure' && previous.tick === record.tick;
-    if (!preserveFailure) this.state.lastStatus = record.status;
+    // Keep the failed terminal status through repeated flush/durability receipts
+    // for the same tick; a later cycle's step record naturally replaces it.
+    const hasFailureForTick = record.phase === 'durable' && this.state.records.some(
+      (item) => item.phase === 'failure' && item.tick === record.tick,
+    );
+    if (!hasFailureForTick) this.state.lastStatus = record.status;
     if (updateBehavior) this.state.lastBehaviorHash = record.behaviorHash;
     this.state.records = [...this.state.records, record].slice(-24);
   }
