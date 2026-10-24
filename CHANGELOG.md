@@ -4,6 +4,7 @@
 - Pause automatic Pixi rendering while the iframe document is hidden and resume with the latest embodiment state.
 - Extend the Live2D regression harness for expression transition caching, frame-budget switching, and hidden/visible lifecycle transitions.
 - Wire Live2D expression and embodiment-timeline tests into the app test entry points; add a Node.js 24 GitHub Actions workflow for focused tests and typecheck.
+- Make the Legacy avatar preference test TypeScript-safe and model the document visibility listener in the viewer integration fixture so the new lifecycle remains covered.
 - Validation boundary: source/test/workflow changes are committed; automated workflow execution and real browser/physical-audio E2E are not claimed until confirmed on the exact head.
 
 ## NK1 WorkPass524 — validate embodiment continuity events (2026-10-24)
