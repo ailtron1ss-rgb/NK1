@@ -1,3 +1,14 @@
+## NK1 WorkPass328 — Close failed cognitive cycles explicitly (2026-10-24)
+
+- [CLOSED-LOOP] Added a terminal `failure` phase to `RuntimeClosureLedger`. A same-tick durability receipt can no longer overwrite the last cycle's failure status.
+- [CLOSED-LOOP] Added `CausalDomainClosureLedger.failPending()` for exceptions/cancellations before normal closure, preserving a bounded failure reason and denying causal success credit.
+- [CLOSED-LOOP] Added `failLatest()` so batch-finalization or emergency-checkpoint failures can downgrade an already-recorded cycle instead of leaving stale PASS evidence.
+- [INTERRUPT] `OrganismRuntime.stepInternal` now checks `AbortSignal` immediately before embodied-action dispatch; an aborted planned action fails closed before physical actuation.
+- [REGRESSION] Added `tests/closed-loop-failure-closure.mjs` and connected `test:p328:closed-loop-failure-closure` to `test:rebuild-recovered`; test execution remains unverified until CI gets a runner.
+- [LIMITATION] This is a source-branch implementation checkpoint, not a regenerated release ZIP or a production-approval claim. Existing held-out learning, Android/Live2D E2E, long soak and runner-startup gates remain open.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
