@@ -1,3 +1,10 @@
+# WorkPass332 — подключение единого когнитивного ядра к живому runtime (2026-10-24)
+
+- [INTEGRATION] Подключён `CanonicalCognitiveKernel` в `OrganismRuntime`: реальный цикл использует существующие `CognitiveEventFabric` и `UnifiedCognitiveCycle`, без параллельной ручной записи этапов и отдельного повторного вычисления полноты цикла.
+- [CONTRACT] Данные наблюдения, предсказания, оценки, внимания, памяти, цели, плана, действия, исхода, обучения и self-update остаются у прежних владельцев подсистем; kernel соединяет их причинной линией.
+- [TEST] Добавлен runtime-wiring regression и включён в WorkPass331 workflow.
+- [VALIDATION] Этот коммит не объявляет production readiness или прирост качества обучения. Приёмка ожидает точный результат GitHub Actions и последующие end-to-end/retrieval/soak проверки.
+
 # NK1 follow-up — durable identity, independent evaluator and final integration verification (2026-10-24)
 
 - [FIXED] WorkPass203 independent-candidate evaluator regression declared `snapshotEvaluator` twice in one ES module. Renamed the authority-snapshot case variables and rebound every dependent assertion to the isolated fixture so the regression parses and evaluates the intended snapshot rather than failing on a duplicate declaration or stale references.
