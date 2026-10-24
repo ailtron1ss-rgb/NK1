@@ -49,6 +49,6 @@ jobs:
           package-manager-cache: false
       - name: Compare replay selection strategies
         run: |
-          node --experimental-strip-types runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs
-          node --experimental-strip-types runtime/neuro-kurisu/tests/p23-replay-runtime-config.mjs
-          node --experimental-strip-types runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs
+          node --experimental-transform-types runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs
+          node --experimental-transform-types runtime/neuro-kurisu/tests/p23-replay-runtime-config.mjs
+          node --experimental-transform-types runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs
