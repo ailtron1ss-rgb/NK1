@@ -99,7 +99,9 @@ export function createGatewayServer({
       clearDeadline();
       if (res.destroyed || res.writableEnded) return;
       if (res.headersSent) {
-        res.destroy(error);
+        // The status and headers are immutable now; close the incomplete response
+        // without emitting an unhandled ServerResponse error into the gateway.
+        res.destroy();
         return;
       }
       const timedOut = error?.code === 'ETIMEDOUT';
