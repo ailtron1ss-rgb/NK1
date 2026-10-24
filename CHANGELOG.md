@@ -1,3 +1,10 @@
+# WorkPass331 — unified canonical cognitive kernel (2026-10-24)
+
+- [IMPLEMENTED] Added `CanonicalCognitiveKernel` as the single coordinator for observation, prediction, appraisal, attention, memory, goal, plan, action, outcome, learning and self-update event lineage.
+- [IMPLEMENTED] Wired `OrganismCore` decision and feedback paths through the kernel; asynchronous feedback closes the originating logical tick and is evaluated against the shared event and cycle ledgers.
+- [IMPLEMENTED] Added a focused causal-cycle regression test and GitHub Actions workflow. Specialized cognitive modules remain component owners; duplicated event-chain construction was removed from `OrganismCore`.
+- [VALIDATION] Focused workflow will validate this exact commit. Existing unrelated runtime/app typecheck and CI failures are not declared fixed by this pass.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

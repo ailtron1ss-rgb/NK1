@@ -1,0 +1,29 @@
+# WorkPass331 — единый когнитивный kernel NK1
+
+Дата: 2026-10-24
+
+## Что изменено
+
+- Введён `CanonicalCognitiveKernel` как единственный координатор причинного контура `observation → prediction → appraisal → attention → memory → goal → plan → action → outcome → learning → self-update`.
+- `OrganismCore` теперь делегирует создание событий решения и закрытие цикла этому координатору вместо ручного создания событий в двух отдельных участках.
+- Для каждого этапа сохраняются прежние специализированные владельцы вычислений. Kernel не дублирует память, модель мира, эмоции, мотивацию, планировщик, policy, action gateway или обучение — он связывает их доказательствами причинной последовательности.
+- Feedback, полученный позже решения, закрывает его логический `tick`; wall-clock `at` сохраняет время фактического получения результата.
+- `CognitiveEventFabric` остаётся журналом причинной линии, а `UnifiedCognitiveCycle` — агрегатором полноты. Они не становятся параллельными decision-maker.
+- Результат без валидной связи с наблюдением/предсказанием/действием не признаётся завершённым циклом.
+- Добавлен отдельный регрессионный тест и workflow для нового ядра.
+
+## Системная схема
+
+`Perceive → Predict → Appraise → Attend → Retrieve/Integrate Memory → Generate/Select Goal → Plan → Governed Action → Verify Outcome → Learn → Update SelfModel`
+
+Побочные подсистемы (память, чувства, self/world model, embodiment, skills, voice, source/evidence monitors и persistence) подключаются к этому контуру как доменные компоненты. Они не образуют независимых конкурирующих ядер.
+
+## Границы доказательств
+
+Этот проход подтверждает интеграцию кода и контракт причинных событий через тест ядра. Он не утверждает, что все внешние действия, голосовые устройства или прирост качества обучения проверены в реальном окружении. Общий runtime typecheck на рабочей ветке ранее имел отдельные ошибки; они остаются самостоятельным release gate.
+
+## Проверка
+
+`node --experimental-strip-types runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs`
+
+Workflow: `.github/workflows/workpass331-unified-cognitive-kernel.yml`.
