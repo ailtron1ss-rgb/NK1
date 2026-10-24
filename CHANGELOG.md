@@ -2117,6 +2117,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
 
+- Expanded the minimal Node compatibility declarations to cover the APIs actually used by the runtime (Node crypto key objects, filesystem sync/promises, path resolution, process platform and Buffer byte operations), so type-checking can distinguish missing shim declarations from real logic/type defects.
+
 - Refined P23 restore recovery: a non-empty sanitized dedupe cache remains authoritative and newest-first; valid experience/replay rows rebuild the cache only when its stored counterpart has no usable IDs.
 
 - Fixed P23 restore-cache precedence: persisted newest-first processed/replayed trace IDs now win over IDs reconstructed from experience/replay rows, while missing cache entries are still repaired from the rows.
