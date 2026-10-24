@@ -19,7 +19,7 @@ function sendSignal(child, signal) {
       process.kill(-child.pid, signal);
       return true;
     } catch (error) {
-      if (error?.code !== 'ESRCH') return false;
+      if (error?.code !== 'ESRCH' && error?.code !== 'EPERM') return false;
     }
   }
   try {
@@ -78,7 +78,7 @@ export function terminateChild(child, { graceMs = 1_000, forceGraceMs = 500 } = 
       child.removeListener('close', onClose);
       child.removeListener('error', onError);
       resolvePromise({
-        stopped: closed || hasExited(child),
+        stopped: child.__nkProcessGroup && processGroupExists(child.pid) ? false : (closed || hasExited(child)),
         alreadyExited: false,
         forced,
         code: closeCode ?? child.exitCode,
