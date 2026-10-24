@@ -3,6 +3,7 @@ name: Markdown link integrity
 on:
   pull_request:
     branches:
+      - workpass331-unified-cognitive-kernel-2026-10-24
       - operation-omega-hexis-2026-10-24
       - integration
       - main
@@ -10,11 +11,13 @@ on:
       - "**/*.md"
       - "**/*.mdx"
       - "**/*.markdown"
+      - "package.json"
       - "tools/audit-markdown-links.mjs"
       - "tools/audit-markdown-links.test.mjs"
       - ".github/workflows/documentation-link-integrity.yml"
   push:
     branches:
+      - workpass331-project-ordering-unified-20261024
       - operation-omega-hexis-2026-10-24
     paths:
       - "**/*.md"
