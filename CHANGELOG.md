@@ -2160,3 +2160,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - CI-driven compatibility repair: converted the canonical `VersionedSkillCandidateStore` constructor away from TypeScript parameter properties so Node's strip-only runtime can import it; moved the new filesystem adapter to plain `.mjs` to keep the TypeScript learning service free of additional filesystem type-stub requirements.
 - Validation status: code and test are committed for exact-head CI; local execution was not available through the GitHub write connector. No test pass or production acceptance is claimed. The review-inbox-to-authenticated-UI / signed-approval-request wiring remains open.
+
+
+## 2026-10-24 — WorkPass330: Hexis HMX import-boundary hardening
+
+- Tightened `HexisAdaptationFabric.stageHmx()` against the upstream HMX 1.x envelope: required version/export ID/export metadata, source lineage fields, and supported section shapes are now checked before a candidate can be accepted.
+- Added explicit size boundaries (1,000,000-character document, 256 records per array section, 1,024 total staged records); truncated/unsupported/malformed content carries conflicts and remains non-acceptable.
+- Expanded `tests/integration/hexis-adaptation.mjs` for missing provenance, unknown future sections, oversized imports, and invalid intent. Updated the HMX fixtures to provide a complete envelope.
+- Added `docs/OPERATION_OMEGA_HEXIS_DEEP_PASS_2026-10-24.md` with the source baseline, integration rationale, code changes and validation boundary.
+- Validation status: changes are committed to the dedicated continuation branch. Tests have **not** yet been run on the exact branch head; no test-pass or production-readiness claim is made.
