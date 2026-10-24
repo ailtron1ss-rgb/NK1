@@ -1,3 +1,11 @@
+## NK1 WorkPass330 — prevent cross-method evidence receipt reuse (2026-10-24)
+
+- [FIX] Skill-revision evaluation now treats a verifier/evidence receipt as globally single-use across baseline and candidate methods, rather than allowing the method name to create separate receipt identities.
+- [REGRESSION] Added a paired-holdout case proving one artifact cannot attest to both sides of the same comparison; retained the existing replayed-task protection.
+- [SCOPE] Isolated on `workpass330-independent-evidence-receipts`; no changes to `main`. Test execution is not claimed in this commit.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
