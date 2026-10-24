@@ -694,6 +694,7 @@ export class OrganismRuntime {
     const physicalAction = actionAdvice.allowed ? internalAction : 'wait';
     if (!actionAdvice.allowed && physicalAction !== internalAction) this.embodiedRecovery.noteRetry(internalAction);
     const embodiedAction = await this.embodiedActions.execute(physicalAction, {
+      decisionId:cycle.decision.id,
       spokenText: options.spontaneous ? '' : (language?.text || externalText || ''),
       speechEventId:language?.text ? stableSpeechEventId('cycle',cycle.state.tick,language.text) : undefined,
       allowCamera: process.env.NEURO_ALLOW_AUTONOMOUS_CAMERA === '1',
