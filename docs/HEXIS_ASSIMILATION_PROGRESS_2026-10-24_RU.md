@@ -1,3 +1,14 @@
+## WorkPass504 — обновление карты интеграции после WP500–503 (2026-10-24)
+
+- Пересверен текущий planning snapshot: рабочие изменения уже дошли до WorkPass503, поэтому предыдущие заметки о ранних TypeScript/test blockers трактуются как исторические наблюдения, а не как гарантированно актуальные ошибки текущих HEAD.
+- WorkPass502 синхронизировал строгую валидацию UnifiedCognitiveLoop между feedback/perception: события проверяются на границе plain-data до мутации состояния; контрольные символы фильтруются без неоднозначного regex.
+- WorkPass499/502 усилили trust boundary reality evidence: пользовательский отчёт остаётся отдельным классом и сам по себе не удовлетворяет external-grounding promotion; неподтверждённые импортированные outcomes после restore не считаются verified outcomes.
+- WorkPass503 восстановил отсутствующий npm alias test:p26:learning-input-integrity и переключил Hermes reflective diagnostics на Node 24 --experimental-transform-types для поддержки TypeScript parameter properties. Повторные CI runs отмечены как pending; это не равнозначно успешному exact-head CI.
+- Следующая цель интеграции — не добавлять ещё один параллельный Hexis/Hermes runtime, а довести один причинный конверт через action receipt → postcondition verifier → RealityEvidenceLedger → MemoryOS2/P65 → P23. На каждом переходе должны сохраняться source lineage, decision/action identity, trust class и restore/replay idempotency.
+- До закрытия прохода сравнить последние HEAD feedback/perception/learning/memory; прогнать целевые тесты на точных SHA; после этого синхронизировать интерфейс и regression contract в PR. Не сливать категории и не обновлять release ZIP без подтверждённых gates.
+
+---
+
 ## WorkPass497 — shared identity now reaches P23 causal records (2026-10-24)
 
 - `CausalExperienceStream` now uses the same deterministic projection-ID function as the reality evidence ledger. Grounded outcomes and unverified external imports are intentionally separated by role.
