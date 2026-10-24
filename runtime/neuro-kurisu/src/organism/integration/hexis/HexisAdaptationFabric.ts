@@ -650,7 +650,12 @@ export class HexisAdaptationFabric {
         const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
         if (!proposal) return null;
         if (decision !== 'approve' && decision !== 'reject') throw new Error('invalid-hmx-goal-decision');
-        if (proposal.status !== 'pending') return structuredClone(proposal);
+        if (proposal.status !== 'pending') {
+            const sameDecisionReplay = (decision === 'approve' && (proposal.status === 'approved' || proposal.status === 'materialized')) ||
+                (decision === 'reject' && proposal.status === 'rejected');
+            if (sameDecisionReplay) return structuredClone(proposal);
+            throw new Error('hmx-goal-proposal-already-reviewed');
+        }
         proposal.status = decision === 'approve' ? 'approved' : 'rejected';
         proposal.decidedAt = nowMs();
         proposal.decisionReason = decision === 'approve' ? 'explicit-review-approval' : 'explicit-review-rejection';
