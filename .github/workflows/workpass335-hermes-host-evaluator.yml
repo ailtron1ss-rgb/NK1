@@ -51,7 +51,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nk1-workpass335-hermes-${{ github.head_ref || github.ref_name }}
+  group: nk1-workpass335-hermes-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
