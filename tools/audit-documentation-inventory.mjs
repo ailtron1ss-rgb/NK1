@@ -120,7 +120,7 @@ function familyFor(relativePath) {
   if (/^INTEGRATION_MATRIX_WORKPASS/.test(name)) return "integration-matrix-snapshots";
   if (/^OPEN_SOURCE_INTEGRATION_REVIEW_WORKPASS/.test(name)) return "open-source-review-snapshots";
   if (/^PROJECT_CURRENT_STATUS/.test(name)) return "project-status";
-  const workpass = /^WORKPASS(\d+)_([A-Z0-9_]+)\.(?:MD|MDX|MARKDOWN)$/.exec(name);
+  const workpass = /^WORKPASS(\d+)_(.+)\.(?:MD|MDX|MARKDOWN)$/.exec(name);
   if (workpass) {
     const kind = workpass[2];
     if (/HANDOVER/.test(kind)) return "workpass-handovers";
