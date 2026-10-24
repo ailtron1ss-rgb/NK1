@@ -18,5 +18,5 @@ assert.ok(step.decision.selected);
 await core.flush();
 const saved=await store.load();
 assert.ok(saved.facets.learning.p36);
-assert.equal(saved.facets.learning.p36.version,5,'runtime persistence must preserve the current P36 schema version');
+assert.equal(saved.facets.learning.p36.version,6,'runtime persistence must preserve the current P36 schema version');
 console.log('P36_INTEGRATION=PASS',JSON.stringify({action:step.decision.selected.action,hypotheses:after.hypotheses.length,experiments:after.experiments.length,completedSteps:after.curriculum.completedSteps}));
