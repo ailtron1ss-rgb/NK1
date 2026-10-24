@@ -15,6 +15,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
       - "runtime/neuro-kurisu/tests/local-small-model-hub-workpass.mjs"
+      - "runtime/neuro-kurisu/tests/local-affect-appraisal-bridge-workpass.mjs"
       - "runtime/neuro-kurisu/tests/local-vision-backend-workpass.mjs"
       - "runtime/neuro-kurisu/tests/local-embedding-privacy-workpass56.mjs"
       - "runtime/neuro-kurisu/tests/local-llm-selection-workpass74.mjs"
@@ -35,6 +36,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
       - "runtime/neuro-kurisu/tests/local-small-model-hub-workpass.mjs"
+      - "runtime/neuro-kurisu/tests/local-affect-appraisal-bridge-workpass.mjs"
       - "runtime/neuro-kurisu/tests/local-vision-backend-workpass.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "app/package-lock.json"
@@ -73,6 +75,8 @@ jobs:
           runtime/neuro-kurisu/src/organism/body/LocalOpenAICompatibleVisionBackend.ts
       - name: Local small-model hub regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-small-model-hub-workpass.mjs
+      - name: Local affect-to-appraisal bridge regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-affect-appraisal-bridge-workpass.mjs
       - name: Local vision HTTP and output-boundary regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-vision-backend-workpass.mjs
       - name: Local embedding privacy regression
