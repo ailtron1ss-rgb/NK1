@@ -1,3 +1,10 @@
+## NK1 Feedback — separate evidence validity from observer-cache capacity (2026-10-24)
+
+- Strict observer restore now discards observations registered to a disabled source, keeping them out of consensus state as well as out of the canonical evidence ledger.
+- Runtime evidence reconciliation now revokes ledger events only when a persisted observer row fails source identity, enabled-state, or required-shape checks. Valid events remain in historical evidence even when the bounded observer cache cannot retain every old row.
+- Added regression coverage for disabled-source rows and for a valid ledger event whose corresponding observation is older than the observer cache's 256-row restore budget.
+- **Validation boundary:** source and regressions are committed; the hosted run for this revision is pending.
+
 ## NK1 Feedback — revoke ledger events from rejected observer rows (2026-10-24)
 
 - Runtime restore now validates the strict observer registry before accepting persisted ledger rows and removes ledger projections linked to observations discarded for missing, disabled, or mismatched source identities.
