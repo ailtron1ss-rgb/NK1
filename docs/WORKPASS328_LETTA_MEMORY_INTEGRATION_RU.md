@@ -45,12 +45,12 @@ npm run test:letta-memory-lifecycle-sync
 node --experimental-strip-types tests/integration/letta-governance-adaptation.mjs
 ```
 
-Тесты используют fake SDK-клиент и проверяют adapter contracts, redaction, tool/file confinement, restore snapshot, автоматическое зеркалирование из canonical mutation boundary, hybrid recall без повышения кандидата до canonical памяти, подавление mirror во время restore и выдачу forget request. Оба теста добавлены в `.github/workflows/workpass71-validation.yml`. Они не доказывают физическое удаление данных в Letta, доступность внешнего сервера, реальное сохранение MemFS, retrieval uplift, production build или полное поведенческое E2E.
+Тесты используют fake SDK-клиент и проверяют adapter contracts, redaction, tool/file confinement, restore snapshot, автоматическое зеркалирование из canonical mutation boundary, hybrid recall без повышения кандидата до canonical памяти, подавление mirror во время restore, checkpoint-backed outbox replay после сетевой ошибки и приоритет forget над неподтверждённым upsert. Оба теста добавлены в `.github/workflows/workpass71-validation.yml`. Они не доказывают физическое удаление данных в Letta, доступность внешнего сервера, реальное сохранение MemFS, retrieval uplift, production build или полное поведенческое E2E.
 
 ## Следующие обязательные этапы
 
 1. Закрепить SDK в `package.json` и lockfile через воспроизводимый npm install на Node 24; пройти runtime typecheck и соответствующие memory tests.
-2. Выбрать один канонический путь сохранения receipt/agent id в persisted advanced state и подтвердить restart round-trip на рабочем runtime.
+2. Проверить restart round-trip на реальном `FileStateStore` с `facets.memory.lettaBridge` и `facets.memory.lettaSyncOutbox`, включая replay после сбоя и очистку по receipt.
 3. Довести гарантию доставки до transactional post-checkpoint: связать подтверждённую запись outbox в persisted state с завершением checkpoint, проверить повторное выполнение/idempotency после crash и добавить reconciliation. Затем проверить MemFS persistence на реальном Letta local/cloud runtime: restart, duplicate record, conflicting/superseded memory, deletion and retention.
 4. Подключить `retrieveForCognitionWithLettaCandidates` к выбранному когнитивному read path через контролируемую feature flag; затем сравнить NK1 native-only baseline с native+Letta на парных seeds и независимом holdout. Не продвигать вариант, если recall uplift не доказан или latency/resource cost превышает пороги.
 5. После runtime validation — отдельный release asset и license/security review. Этот commit ничего не публикует в GitHub Releases.
