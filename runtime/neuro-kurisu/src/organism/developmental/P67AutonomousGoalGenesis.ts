@@ -86,7 +86,20 @@ export class P67AutonomousGoalGenesis {
   if(typeof input.lastMode!=='string'||input.lastMode.length>96)invalidReasons.push('lastMode');
   if(!['allow','caution','veto'].includes(input.identityDecision))invalidReasons.push('identityDecision');
   if(['motiveDominant','attractorDominant'].some(key=>(input as any)[key]!==undefined&&(typeof (input as any)[key]!=='string'||(input as any)[key].length>96)))invalidReasons.push('dominant-label');
-  if(input.valueWeights!==undefined&&(!input.valueWeights||typeof input.valueWeights!=='object'||Object.values(input.valueWeights).length>32||Object.values(input.valueWeights).some(value=>!isUnit(value))))invalidReasons.push('valueWeights');
+  if(input.valueWeights!==undefined){
+    const rawWeights=input.valueWeights as unknown;
+    const valueKeys=['curiosity','truth','autonomy','evidence','care','responsibility','social'];
+    const metadataKeys=['updatedAt','plasticityBudget'];
+    if(!rawWeights||typeof rawWeights!=='object'||Array.isArray(rawWeights)){
+      invalidReasons.push('valueWeights-shape');
+    }else{
+      const weights=rawWeights as Record<string,unknown>;
+      if(Object.keys(weights).some(key=>!valueKeys.includes(key)&&!metadataKeys.includes(key)))invalidReasons.push('valueWeights-unknown-key');
+      if(valueKeys.some(key=>weights[key]!==undefined&&!isUnit(weights[key])))invalidReasons.push('valueWeights-score');
+      if(weights.updatedAt!==undefined&&!(typeof weights.updatedAt==='number'&&Number.isSafeInteger(weights.updatedAt)&&weights.updatedAt>=0))invalidReasons.push('valueWeights-updatedAt');
+      if(weights.plasticityBudget!==undefined&&!isUnit(weights.plasticityBudget))invalidReasons.push('valueWeights-plasticityBudget');
+    }
+  }
   if(invalidReasons.length)throw new TypeError(`p67-goal-input-invalid:${invalidReasons.join(',')}`);
   this.state.cycles++;
   if(input.activeGoalCount>=4 || input.tick-this.state.lastGeneratedAt<16 || input.identityDecision==='veto') return null;
