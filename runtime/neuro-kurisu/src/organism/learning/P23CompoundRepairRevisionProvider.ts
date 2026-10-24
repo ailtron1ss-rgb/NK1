@@ -1,4 +1,4 @@
-import { createHash, createPublicKey } from 'node:crypto';
+import { createPublicKey } from 'node:crypto';
 import { lstat, readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { P23LearningEngine } from './P23LearningEngine.ts';
@@ -102,7 +102,7 @@ function parseGateOptions(value: unknown): VerifiedSkillPromotionOptions {
   }
   const output: VerifiedSkillPromotionOptions = {};
   if (value.minPairedTasks !== undefined) {
-    if (!Number.isSafeInteger(value.minPairedTasks) || (value.minPairedTasks as number) < 2 || (value.minPairedTasks as number) > 10_000) {
+    if (!Number.isSafeInteger(value.minPairedTasks as number) || (value.minPairedTasks as number) < 2 || (value.minPairedTasks as number) > 10_000) {
       throw new Error('native-p23-revision-min-paired-tasks-invalid');
     }
     output.minPairedTasks = value.minPairedTasks as number;
@@ -120,7 +120,7 @@ function parseGateOptions(value: unknown): VerifiedSkillPromotionOptions {
     output.maxFamilyRegression = value.maxFamilyRegression;
   }
   if (value.minCompleteSeeds !== undefined) {
-    if (!Number.isSafeInteger(value.minCompleteSeeds) || (value.minCompleteSeeds as number) < 3 || (value.minCompleteSeeds as number) > 1000) {
+    if (!Number.isSafeInteger(value.minCompleteSeeds as number) || (value.minCompleteSeeds as number) < 3 || (value.minCompleteSeeds as number) > 1000) {
       throw new Error('native-p23-revision-min-complete-seeds-invalid');
     }
     output.minCompleteSeeds = value.minCompleteSeeds as number;
