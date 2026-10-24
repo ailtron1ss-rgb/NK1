@@ -98,9 +98,12 @@ export class PerceptionEngine {
 
   perceive(input:PerceptionInput): PerceptionEvent {
     const b = input.body;
-    const telemetryStaleMs = b && Number.isFinite(b.telemetry?.staleMs) ? Math.max(0, b.telemetry.staleMs) : Number.POSITIVE_INFINITY;
+    const telemetryStaleMs = b && Number.isFinite(b.telemetry?.staleMs) && b.telemetry.staleMs >= 0
+      ? b.telemetry.staleMs
+      : Number.POSITIVE_INFINITY;
     const bodyTelemetryFresh = !!b && Number.isFinite(b.sensoryFreshness01)
       && b.sensoryFreshness01 >= MIN_SENSOR_FRESHNESS01
+      && b.sensoryFreshness01 <= 1
       && telemetryStaleMs <= MAX_SENSOR_STALE_MS;
     const w = input.world;
     const prev = this.lastWorld ?? input.previousWorld ?? null;
