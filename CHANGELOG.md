@@ -1,3 +1,9 @@
+## NK1 WorkPass519 — test the live verifier-to-causal identity handoff (2026-10-24)
+
+- Extended the existing correlated-postcondition regression to pass the actual frozen result minted by `OutcomeVerificationService` into `OutcomeCognitionFabric`, rather than proving only that a synthetic, caller-constructed receipt can be projected.
+- Asserted that the exact verifier event key survives the canonical projection and that the external-postcondition status remains verified at this seam.
+- This is integration coverage for the existing trust boundary, not a claim that event identity alone proves reality or that the full evidence-to-learning promotion chain is complete.
+
 ## NK1 WorkPass518 — carry verifier event identity through the causal outcome spine (2026-10-24)
 
 - Extended the existing `OutcomeCognitionFabric` projection to retain the verifier's stable `evidenceEventId` alongside the execution, observation and postcondition fields; the event key is explicitly a join/idempotency key, not proof of truth.
