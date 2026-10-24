@@ -6,8 +6,10 @@ export interface PlainDataSnapshotOptions {
   maxDepth?: number;
   maxNodes?: number;
   maxStringUnits?: number;
+  /** Preserve non-finite numeric sentinels so the owning policy can reject them field-by-field. */
+  allowNonFiniteNumbers?: boolean;
 }
-type SnapshotBudget = { nodes: number; textUnits: number; maxDepth: number; maxNodes: number; maxStringUnits: number };
+type SnapshotBudget = { nodes: number; textUnits: number; maxDepth: number; maxNodes: number; maxStringUnits: number; allowNonFiniteNumbers: boolean };
 function snapshotPlainDataInner(
   value: unknown,
   ancestors = new Set<object>(),
@@ -24,7 +26,9 @@ function snapshotPlainDataInner(
   if (value === null || typeof value === 'boolean') return value;
   if (value === undefined) return undefined;
   if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new Error('independent-evaluator-snapshot-non-finite-number');
+    if (!Number.isFinite(value) && !budget.allowNonFiniteNumbers) {
+      throw new Error('independent-evaluator-snapshot-non-finite-number');
+    }
     return value;
   }
   if (typeof value !== 'object') throw new Error('independent-evaluator-snapshot-unsupported-value');
@@ -108,8 +112,9 @@ export function snapshotPlainData<T = unknown>(
   const maxDepth = validLimit(options.maxDepth, SNAPSHOT_MAX_DEPTH, SNAPSHOT_MAX_DEPTH, 'max-depth');
   const maxNodes = validLimit(options.maxNodes, SNAPSHOT_MAX_NODES, SNAPSHOT_MAX_NODES, 'max-nodes');
   const maxStringUnits = validLimit(options.maxStringUnits, SNAPSHOT_MAX_TEXT_UNITS, SNAPSHOT_MAX_TEXT_UNITS, 'max-string-units');
+  const allowNonFiniteNumbers = options.allowNonFiniteNumbers === true;
   return snapshotPlainDataInner(value, new Set<object>(), 0, {
-    nodes: 0, textUnits: 0, maxDepth, maxNodes, maxStringUnits,
+    nodes: 0, textUnits: 0, maxDepth, maxNodes, maxStringUnits, allowNonFiniteNumbers,
   }) as T;
 }
 
