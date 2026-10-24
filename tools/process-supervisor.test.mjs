@@ -95,6 +95,8 @@ test('runCommand enforces a deadline and escalates an unresponsive process', asy
   assert.equal(result.timedOut, true);
   assert.ok(result.signal !== null || result.code !== null,
     `timed-out command should have a terminal process result; signal=${result.signal} code=${result.code}`);
+  assert.ok(result.terminationResult, 'timeout must report whether child cleanup completed');
+  assert.equal(result.cleanupFailed, false, 'the timed-out child process group should be cleaned up');
   if (process.platform !== 'win32') assert.equal(result.signal, 'SIGKILL');
 });
 
