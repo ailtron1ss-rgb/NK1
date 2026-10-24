@@ -177,6 +177,28 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
   const rawGoals = asArray(nativeSections.goals);
   const rawIdentity = asArray(nativeSections.identity);
   const rawRelationships = asArray(nativeSections.relationships);
+  const malformedNativeSections = {};
+  for (const name of ['memories', 'skills', 'goals', 'identity', 'relationships', 'episodes']) {
+    const nativeValue = nativeSections[name];
+    if (Array.isArray(nativeValue)) {
+      const invalidRows = nativeValue.filter(value => !isRecord(value));
+      if (invalidRows.length) malformedNativeSections[name + '_non_object_rows'] = cloneJson(invalidRows);
+    } else if (nativeValue !== undefined && nativeValue !== null && name !== 'identity') {
+      malformedNativeSections[name + '_invalid_section'] = cloneJson(nativeValue);
+    }
+  }
+  const invalidEpisodes = Array.isArray(nativeSections.episodes)
+    ? nativeSections.episodes.filter(row => isRecord(row) &&
+        !textValue(row.summary, row.content, row.description) &&
+        !(Array.isArray(row.memory_refs) && row.memory_refs.length) &&
+        !(Array.isArray(row.memoryRefs) && row.memoryRefs.length))
+    : [];
+  if (invalidEpisodes.length) malformedNativeSections.episodes_without_required_summary_or_refs = cloneJson(invalidEpisodes);
+  const invalidRelationships = rawRelationships.filter(row =>
+    !textValue(row.source_ref, row.sourceRef, row.source, row.sourceId, row.source_id, row.from, row.fromId) ||
+    !textValue(row.target_ref, row.targetRef, row.target, row.targetId, row.target_id, row.to, row.toId) ||
+    !textValue(row.edge_type, row.edgeType, row.type, row.relation, row.kind));
+  if (invalidRelationships.length) malformedNativeSections.relationships_without_required_endpoints = cloneJson(invalidRelationships);
 
   if (rawSkills.length) warnings.push('NK1 native skills were mapped to HMX procedural memories; native skill fields remain in memory metadata.');
   if (!process.env.NK1_HMX_EMBEDDING_MODEL) {
@@ -222,7 +244,7 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
     warnings.push('Native narrative was not an object; it was preserved under config.nk1NativeSections.');
   }
   const handled = new Set(['memories','skills','goals','identity','relationships','episodes','in_flight_work','inFlightWork','audit_records','auditRecords','config','narrative']);
-  const unsupportedNativeSections = {};
+  const unsupportedNativeSections = { ...malformedNativeSections };
   for (const [name, value] of Object.entries(nativeSections)) {
     if (!handled.has(name)) unsupportedNativeSections[name] = cloneJson(value);
   }
