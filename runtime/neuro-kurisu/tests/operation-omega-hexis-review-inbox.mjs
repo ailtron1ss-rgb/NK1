@@ -99,7 +99,7 @@ try {
   assert.equal(submitted.packet.evaluation.absoluteGain, 1);
   assert.equal(JSON.stringify(submitted.packet).includes('Omega verified task prompt'), false,
     'the human review packet must not expose raw holdout prompts');
-  assert.equal(inbox.submit(proposal, candidate, 1_800_000_000_010).packet.reviewId, submitted.packet.reviewId,
+  assert.equal(inbox.submit(proposal, candidate, 1_800_000_000_300).packet.reviewId, submitted.packet.reviewId,
     'identical evidence packet submissions must be idempotent');
   assert.throws(() => assertSkillReviewReadyForSignedPromotion(submitted, candidate),
     /completed positive human review/,
