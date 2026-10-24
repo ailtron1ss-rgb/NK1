@@ -1,3 +1,11 @@
+## NK1 WorkPass490 — Hermes self-evolution donor analysis
+
+- Added `research/WORKPASS490_HERMES_SELF_EVOLUTION_ADAPTATION.md` with upstream links, implemented-vs-planned boundaries, integration lessons, and a source-license verification rule.
+- Documents the choice to adapt failure-conditioned reflection, candidate evaluation, holdout isolation, and approval/rollback patterns into NK1's existing P23 evidence and promotion path instead of introducing a second optimizer or memory system.
+- The learning-branch implementation is separate and is not claimed merged into this planning branch or the release archive.
+
+---
+
 ## NK1 WorkPass489 — converge reality-projection identity helper (2026-10-24)
 
 - Matched `EvidenceEventIdentity.ts` byte-for-byte on feedback and perception; perception's public identity API delegates to the shared function while retaining the persisted ID shape.
