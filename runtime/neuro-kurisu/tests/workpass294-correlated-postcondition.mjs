@@ -148,6 +148,21 @@ assert.equal(isTrustedDecisionLinkedExternalPostcondition(controlBearing, {
 }), false, 'control-bearing IDs must not be normalized into a valid ticket');
 
 
+// Exercise the real verifier-to-causal-projection seam with the verifier-minted object,
+// not a hand-constructed receipt. The event key joins systems; it does not elevate trust.
+const verifierToFabric = new OutcomeCognitionFabric();
+const verifierProjection = verifierToFabric.project({
+  tick: 11,
+  tool: expected.toolId,
+  ok: true,
+  executionId: expected.executionId,
+  verification,
+});
+assert.equal(verifierProjection.verificationRecord.evidenceEventId, verification.evidenceEventId,
+  'the real verifier event identity must survive entry into the canonical causal outcome projection');
+assert.equal(verifierProjection.verifiedExternal, true,
+  'the verifier-to-projection seam should retain the independently verified external postcondition');
+
 const fabric = new OutcomeCognitionFabric();
 const eventKey = 'outcome:' + 'a'.repeat(40);
 const projected = fabric.project({
