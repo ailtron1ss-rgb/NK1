@@ -205,7 +205,10 @@ export class ExternalObserverFabric {
       }
       return existing;
     }
-    return this.registerSource({id:input.sourceId,sourceClass:input.sourceClass,channel:input.channel,independenceKey:input.independenceKey,reliability01:input.reliability01});
+    // Observation confidence describes this sample, not the source's long-term reliability.
+    // New identities start from the conservative class prior; only trusted registration
+    // or subsequent assessment may change the persistent reliability estimate.
+    return this.registerSource({id:input.sourceId,sourceClass:input.sourceClass,channel:input.channel,independenceKey:input.independenceKey});
   }
 
   observe(input:{sourceId:string;sourceClass:ExternalObservationSourceClass;channel:ExternalObservationChannel;claimKey:string;observedPostcondition?:string;facts?:string[];confidence01?:number;observedAt?:number;actionRef?:string;predictionId?:string;tool?:string;tick?:number;independenceKey?:string;worldContextAfter?:WorldContext;metadata?:Record<string,unknown>;payload?:unknown;evidenceEventId?:string}):ExternalObservation{
