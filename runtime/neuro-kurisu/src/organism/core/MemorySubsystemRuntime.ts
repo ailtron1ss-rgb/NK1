@@ -217,7 +217,9 @@ export class MemorySubsystemRuntime {
         lastError: typeof entry.lastError === 'string' ? entry.lastError.slice(0, 500) : null,
       }];
     });
-    this.lettaSyncCompletedKeys = snapshot.completedKeys?.filter(validKey).slice(-MAX_LETTA_SYNC_RECEIPTS) ?? [];
+    this.lettaSyncCompletedKeys = Array.isArray(snapshot.completedKeys)
+      ? snapshot.completedKeys.filter(validKey).slice(-MAX_LETTA_SYNC_RECEIPTS)
+      : [];
     this.lettaSyncOutboxOverflowCount = typeof snapshot.overflowCount === 'number' && Number.isSafeInteger(snapshot.overflowCount)
       ? Math.max(0, snapshot.overflowCount) : 0;
   }
@@ -236,11 +238,10 @@ export class MemorySubsystemRuntime {
       if (this.lettaSyncDrainPromise) await this.lettaSyncDrainPromise;
       return;
     }
-    if (this.lettaSyncDrainPromise) {
-      await this.lettaSyncDrainPromise;
-      return;
+    if (this.lettaSyncDrainPromise) await this.lettaSyncDrainPromise;
+    if (this.lettaSyncOutbox.length > 0 && this.lettaBridge.status().enabled) {
+      await this.drainLettaSyncOutbox();
     }
-    await this.drainLettaSyncOutbox();
   }
 
   async close(): Promise<void> {
