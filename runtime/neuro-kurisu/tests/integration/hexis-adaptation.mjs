@@ -1,5 +1,53 @@
 import assert from 'node:assert/strict';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
+import { normalizeNk1HmxExport } from '../../src/organism/integration/hexis/Nk1HmxExportAdapter.mjs';
+
+const nativeNk1Export = {
+  hmx_version: '1.7',
+  export_id: '6e2e4108-2dfc-4121-9e30-7e91f8ead86a',
+  sourceSubjectId: 'a1e70471-3d41-4826-b59d-60c0a59f8751',
+  sections: {
+    identity: [{
+      canonicalName: 'Makise Kurisu',
+      identityAssertion: 'Я — Курису Макисэ; моя история продолжается через собственный опыт, память и изменения.',
+      coreTraits: ['scientific curiosity', 'intellectual independence', 'sharp humor'],
+      coreValues: ['truth', 'autonomy', 'responsibility'],
+      originStatement: 'Искусственная личность, вдохновлённая образом Курису.',
+      createdAt: 1792870559146,
+      revision: 0,
+    }],
+    goals: [{ id: 'goal-1', title: 'Improve source attribution', description: 'Keep traceable evidence.' }],
+    memories: [{ id: 'mem-1', type: 'semantic', content: 'Evidence should remain traceable.', importance: 0.8 }],
+    relationships: [{ id: 'rel-1', sourceId: 'mem-1', targetId: 'goal-1', edgeType: 'supports' }],
+    skills: [{ id: 'skill-1', name: 'Evidence review', instructions: 'Check source quality before using a claim.' }],
+    in_flight_work: null,
+    audit_records: null,
+    nk1_private_extension: { revision: 3, note: 'must not be silently discarded' },
+  },
+};
+const normalizedNk1Export = normalizeNk1HmxExport(nativeNk1Export);
+assert.match(normalizedNk1Export.export_id, /^exp_[a-f0-9]{16}$/);
+assert.equal(normalizedNk1Export.hmx_version, '1.7');
+assert.equal(normalizedNk1Export.export_intent, 'port');
+assert(Number.isFinite(Date.parse(normalizedNk1Export.exported_at)));
+assert.equal(normalizedNk1Export.source.hexis_lineage_id.startsWith('nk1:'), true);
+assert.equal(normalizedNk1Export.sections.identity[0].key, 'Makise Kurisu');
+assert.equal(normalizedNk1Export.sections.identity[0].content, nativeNk1Export.sections.identity[0].identityAssertion);
+assert.equal(normalizedNk1Export.sections.identity[0].facets.length, 3);
+assert.equal(normalizedNk1Export.sections.memories.length, 2, 'native skills must be mapped to procedural HMX memories');
+assert.equal(normalizedNk1Export.sections.memories.find(memory => memory.metadata.nk1NativeKind === 'skill')?.type, 'procedural');
+assert.match(normalizedNk1Export.sections.relationships[0].source_ref, new RegExp('^' + normalizedNk1Export.export_id.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\const fabric = new HexisAdaptationFabric();') + ':'));
+assert(normalizedNk1Export.sections.config.nk1NativeSections.nk1_private_extension);
+assert(normalizedNk1Export.export_warnings.some(warning => warning.includes('re-embed')));
+
+const importedNormalizedExport = new HexisAdaptationFabric();
+const normalizedStage = importedNormalizedExport.stageHmx({
+  document: normalizedNk1Export,
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(normalizedStage.conflicts, [], 'NK1 native export adapter must emit a conflict-free HMX 1.7 envelope');
+assert.equal(importedNormalizedExport.decideHmx(normalizedStage.stagingId, 'accept')?.status, 'accepted');
 
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
