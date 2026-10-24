@@ -57,4 +57,24 @@ assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
   () => true,
 ), /matched independent baseline and candidate envelopes are required/);
 assert.equal(approvalCalls, 0, 'malformed envelopes must fail before approval');
-console.log('P23_HERMES_PRODUCTION_PROMOTION_GATE=PASS fitnessFailureBlocksApproval=true matchedEnvelopeRequired=true malformedEnvelopeDenied=true');
+// WorkPass527: consequential promotion has an additional reality-evidence
+// precondition. One qualified source (or a malformed assessment) must stop
+// before independent evaluation or the store's approval authority is reached.
+assert.throws(() => engine.approveRealityCorroboratedSkillCandidate(
+  { independentPromotionAllowed: false, qualifiedIndependentExternalSources: 1, promotionReason: 'awaiting-second-independent-external-source' },
+  candidate.candidateId,
+  { approvedBy: 'reviewer', approvedAt: 100, expectedActiveVersion: null },
+  { validation, holdout },
+  candidateEnvelope,
+  () => true,
+), /reality corroboration gate rejected consequential promotion/);
+assert.throws(() => engine.approveRealityCorroboratedSkillCandidate(
+  { independentPromotionAllowed: true, qualifiedIndependentExternalSources: 1, promotionReason: 'invalid-count' },
+  candidate.candidateId,
+  { approvedBy: 'reviewer', approvedAt: 100, expectedActiveVersion: null },
+  { validation, holdout },
+  candidateEnvelope,
+  () => true,
+), /reality corroboration gate rejected consequential promotion/);
+assert.equal(approvalCalls, 0, 'reality corroboration failure must block before store approval');
+console.log('P23_HERMES_PRODUCTION_PROMOTION_GATE=PASS fitnessFailureBlocksApproval=true matchedEnvelopeRequired=true malformedEnvelopeDenied=true realityCorroborationRequired=true');
