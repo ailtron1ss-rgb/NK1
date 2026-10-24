@@ -67,7 +67,7 @@ try {
   // syntax-only success just because TypeScript reports diagnostics.
   const fixtureRuntimeCompiler = path.join(fixtureRuntime, 'node_modules/typescript/bin/tsc');
   await mkdir(path.dirname(fixtureRuntimeCompiler), { recursive: true });
-  await writeFile(fixtureRuntimeCompiler, "process.stderr.write('FAKE_TSC_TYPE_ERROR\\n'); process.exit(7);\\n");
+  await writeFile(fixtureRuntimeCompiler, "process.stderr.write('FAKE_TSC_TYPE_ERROR\\n'); process.exit(7);\n");
   const compilerFailure = spawnSync(process.execPath, [path.join(fixtureRuntime, 'scripts/typecheck-runtime.mjs')], {
     cwd: fixtureRuntime,
     encoding: 'utf8',
