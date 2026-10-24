@@ -8,7 +8,7 @@ const cycleLedger = new UnifiedCognitiveCycle();
 const kernel = new CanonicalCognitiveKernel(eventFabric, cycleLedger);
 const stage = (source, payload = {}) => ({ source, confidence01: 0.8, payload });
 
-const decision = kernel.beginDecisionCycle({
+const decisionInput = () => ({
   tick: 1, at: 100,
   observation: stage('sensor.observation', { sourceKind: 'user' }),
   prediction: stage('world.predict', { selectedAction: 'explore' }),
@@ -19,8 +19,23 @@ const decision = kernel.beginDecisionCycle({
   plan: stage('planner.plan', { candidateCount: 3 }),
   action: stage('policy.action', { action: 'explore' }),
 });
+const decision = kernel.beginDecisionCycle(decisionInput());
 
 assert.equal(decision.anchors.tick, 1);
+const firstDecisionTotal = eventFabric.snapshot().total;
+const replayedDecision = kernel.beginDecisionCycle(decisionInput());
+assert.deepEqual(replayedDecision.anchors, decision.anchors);
+assert.equal(eventFabric.snapshot().total, firstDecisionTotal, 'replaying the same logical tick must not append duplicate stage events');
+assert.throws(() => kernel.beginDecisionCycle({
+  ...decisionInput(),
+  observation: stage('sensor.observation', { sourceKind: 'different-input' }),
+}), /conflict/, 'the same tick cannot silently accept different observation evidence');
+assert.equal(eventFabric.snapshot().total, firstDecisionTotal, 'conflicting replay must not mutate the ledger');
+assert.throws(() => kernel.beginDecisionCycle({
+  ...decisionInput(),
+  appraisal: { ...stage('homeostasis.appraise', { stress01: 0.2 }), confidence01: 1.01 },
+}), /confidence/, 'invalid stage input must fail before any event is appended');
+assert.equal(eventFabric.snapshot().total, firstDecisionTotal, 'preflight validation must be atomic');
 assert.equal(new Set([
   decision.anchors.observation, decision.anchors.prediction, decision.anchors.appraisal,
   decision.anchors.attention, decision.anchors.memory, decision.anchors.goal,
@@ -34,6 +49,7 @@ const completion = kernel.completeCycle({
   selfUpdate: stage('self-model.update', { continuity01: 0.92 }),
 });
 assert.equal(completion.tick, 1, 'late feedback must close the logical decision tick');
+assert.equal(completion.replayed, false, 'the first completion is not a replay');
 assert.equal(completion.cycleLineage.complete, true);
 assert.deepEqual(completion.cycleLineage.missingStages, []);
 assert.deepEqual(completion.cycleLineage.invalidStages, []);
@@ -46,6 +62,27 @@ assert.equal(completion.selfUpdateEvent.tick, 1);
 assert.equal(cycleLedger.snapshot().cycles, 1);
 assert.equal(cycleLedger.snapshot().completeCycles, 1);
 assert.equal(cycleLedger.snapshot().incompleteCycles, 0);
+const firstCompletionTotal = eventFabric.snapshot().total;
+const replayedCompletion = kernel.completeCycle({
+  anchors: decision.anchors, fallbackTick: 2, at: 200,
+  outcome: stage('outcome.verifier', { success01: 0.9, verified: true }),
+  learning: stage('learning.update', { updated: true }),
+  selfUpdate: stage('self-model.update', { continuity01: 0.92 }),
+});
+assert.equal(replayedCompletion.replayed, true);
+assert.equal(replayedCompletion.completionRecorded, true, 'replay preserves the already-recorded completion result');
+assert.equal(replayedCompletion.outcomeEvent.id, completion.outcomeEvent.id);
+assert.equal(replayedCompletion.learningEvent.id, completion.learningEvent.id);
+assert.equal(replayedCompletion.selfUpdateEvent.id, completion.selfUpdateEvent.id);
+assert.equal(eventFabric.snapshot().total, firstCompletionTotal, 'replayed feedback must not append duplicate outcome/learning events');
+assert.equal(cycleLedger.snapshot().cycles, 1, 'replayed feedback must not inflate cycle counts');
+assert.throws(() => kernel.completeCycle({
+  anchors: decision.anchors, fallbackTick: 2, at: 200,
+  outcome: stage('outcome.verifier', { success01: 0.1, verified: false }),
+  learning: stage('learning.update', { updated: true }),
+  selfUpdate: stage('self-model.update', { continuity01: 0.92 }),
+}), /conflict/, 'changed evidence for an existing tick must be rejected');
+assert.equal(eventFabric.snapshot().total, firstCompletionTotal, 'conflicting feedback must not change event totals');
 
 const byId = new Map(eventFabric.recent(64).map(event => [event.id, event]));
 assert.ok(byId.get(decision.anchors.action)?.parentIds.includes(decision.anchors.plan));
