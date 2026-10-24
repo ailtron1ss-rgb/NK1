@@ -1,59 +1,93 @@
 {
   "schemaVersion": 1,
-  "purpose": "Prevent unreviewed growth of measured high-fan-out modules while enabling gradual extraction.",
-  "metric": "relative-import edges in the architecture source graph",
+  "purpose": "Prevent unreviewed growth of central modules while separating runtime dependency coupling from compile-time type coupling.",
+  "metric": "unique relative-import graph edges; runtime and TypeScript type-only edges are classified separately",
   "baseline": {
     "branch": "architecture/dependency-contracts-2026-10-24",
-    "auditedCommit": "2a0645b002e6ecd49a1782c5b1ebda9733b80ca2",
-    "workflowRun": "40128647197"
+    "auditedCommit": "1cf4abf9ae1789ad9fc31d75e967af9ee28126de",
+    "workflowRun": "40129193611",
+    "note": "Measured on the first graph that includes explicit import type, export type and inline import-type query edges; the run correctly surfaced previous thresholds as stale."
   },
   "modules": [
     {
       "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
-      "maxOutDegree": 414,
-      "maxProductionInDegree": 8,
-      "reason": "Cognitive composition root; future integrations should be routed through owned subsystem fabrics rather than adding direct imports."
+      "maxOutDegree": 425,
+      "maxRuntimeOutDegree": 385,
+      "maxTypeOutDegree": 220,
+      "maxProductionRuntimeInDegree": 8,
+      "maxProductionTypeOnlyInDegree": 7,
+      "reason": "Cognitive composition root. Track runtime fan-out and incoming runtime ownership separately from type-only links."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts",
-      "maxOutDegree": 246,
-      "reason": "Migration/default-state hotspot; split by domain before adding more default-state dependencies."
+      "maxOutDegree": 252,
+      "maxRuntimeOutDegree": 153,
+      "maxTypeOutDegree": 117,
+      "maxProductionRuntimeInDegree": 2,
+      "maxProductionTypeOnlyInDegree": 1,
+      "reason": "Migration/default-state hotspot; split migration/default factories by domain before adding more dependencies."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/core/types.ts",
-      "maxOutDegree": 172,
-      "reason": "Shared type hotspot; avoid importing implementation modules from the common type surface."
+      "maxOutDegree": 176,
+      "maxRuntimeOutDegree": 2,
+      "maxTypeOutDegree": 176,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 235,
+      "reason": "Shared type contract hotspot; avoid importing implementation modules from the common type surface. The high incoming type-only fan-in is tracked independently."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts",
-      "maxOutDegree": 135,
+      "maxOutDegree": 139,
+      "maxRuntimeOutDegree": 138,
+      "maxTypeOutDegree": 5,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 2,
       "reason": "High fan-out runtime owner; keep composition behind narrow ports and subsystem contracts."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/cognition/index.ts",
-      "maxOutDegree": 83,
-      "maxProductionInDegree": 0,
-      "reason": "Broad cognition barrel; production modules should import narrow leaf modules rather than re-import the full barrel."
+      "maxOutDegree": 86,
+      "maxRuntimeOutDegree": 86,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 0,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Broad cognition barrel; production modules should import narrow leaf modules rather than re-importing the full barrel."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts",
-      "maxOutDegree": 67,
+      "maxOutDegree": 74,
+      "maxRuntimeOutDegree": 68,
+      "maxTypeOutDegree": 8,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 2,
       "reason": "High fan-out runtime cluster; new subsystems should use explicit interfaces and avoid growing central wiring."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/index.ts",
-      "maxOutDegree": 60,
-      "maxProductionInDegree": 0,
+      "maxOutDegree": 64,
+      "maxRuntimeOutDegree": 64,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 0,
+      "maxProductionTypeOnlyInDegree": 0,
       "reason": "Public package barrel; internal production code should not depend on the package root barrel."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/cognition/NeuralExperienceBranch.ts",
-      "maxOutDegree": 42,
+      "maxOutDegree": 45,
+      "maxRuntimeOutDegree": 44,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 2,
+      "maxProductionTypeOnlyInDegree": 2,
       "reason": "Complex cognition integration branch; isolate independent capabilities behind specific contracts."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts",
-      "maxOutDegree": 38,
+      "maxOutDegree": 45,
+      "maxRuntimeOutDegree": 38,
+      "maxTypeOutDegree": 9,
+      "maxProductionRuntimeInDegree": 4,
+      "maxProductionTypeOnlyInDegree": 2,
       "reason": "Runtime entry seam; new behavior should be delegated to existing owned runtimes."
     }
   ]
