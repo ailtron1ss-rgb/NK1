@@ -10,10 +10,12 @@ async function fixture(t) {
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(path.join(root, "docs"), { recursive: true });
   await mkdir(path.join(root, "old"), { recursive: true });
+  await mkdir(path.join(root, "scripts"), { recursive: true });
   await writeFile(path.join(root, "README.md"), "# Root\n\n[status](docs/PROJECT_CURRENT_STATUS_1.md)\n");
   await writeFile(path.join(root, "docs", "PROJECT_CURRENT_STATUS_1.md"), "# Status snapshot\n");
   await writeFile(path.join(root, "old", "PROJECT_CURRENT_STATUS_2.md"), "# Status snapshot\n");
   await writeFile(path.join(root, "docs", "unlinked-note.md"), "# Unlinked note\n");
+  await writeFile(path.join(root, "scripts", "uses-status.mjs"), 'const report = "docs/PROJECT_CURRENT_STATUS_1.md";\n');
   return root;
 }
 
@@ -38,6 +40,11 @@ test("counts known inbound links and marks zero-inbound candidates conservativel
   assert.ok(result.zeroInboundLinkCandidates.some((item) => item.path === "docs/unlinked-note.md"));
   assert.ok(result.zeroInboundLinkCandidates.some((item) => item.path === "old/PROJECT_CURRENT_STATUS_2.md"));
   assert.ok(!result.zeroInboundLinkCandidates.some((item) => item.path === "docs/PROJECT_CURRENT_STATUS_1.md"));
+  const referencedStatus = result.zeroInboundLinkCandidates.find((item) => item.path === "docs/PROJECT_CURRENT_STATUS_1.md");
+  assert.equal(referencedStatus, undefined);
+  assert.ok(result.nonMarkdownReferenceFileCount >= 1);
+  assert.ok(result.nonMarkdownReferenceHitCount >= 1);
+  assert.ok(result.zeroInboundAllLocalReferenceCandidates.some((item) => item.path === "docs/unlinked-note.md"));
 });
 
 test("does not fail silently for missing inventory inputs", async (t) => {
