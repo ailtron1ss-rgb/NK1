@@ -7,31 +7,31 @@ const markdownExtensions = new Set([".md", ".mdx", ".markdown"]);
 const ignoredDirectoryPaths = new Set([".git", "node_modules", "dist", "coverage", "legacy/input-archives", "app/.grok"]);
 
 function maskNonMarkdown(source) {
-  let masked = source.replace(/<!--[\\s\\S]*?-->/g, (match) => match.replace(/[^\\r\\n]/g, " "));
-  const lines = masked.split(/(?<=\\n)/);
+  let masked = source.replace(/<!--[\s\S]*?-->/g, (match) => match.replace(/[^\r\n]/g, " "));
+  const lines = masked.split(/(?<=\n)/);
   let fenceChar = null;
   let fenceLength = 0;
   const chunks = [];
   for (const line of lines) {
-    const bare = line.replace(/[\\r\\n]+$/, "");
-    const opener = /^ {0,3}(`{3,}|~{3,})/.exec(bare);
+    const bare = line.replace(/[\r\n]+$/, "");
+    const opener = /^ {0,3}(\x60{3,}|~{3,})/.exec(bare);
     if (fenceChar) {
-      chunks.push(line.replace(/[^\\r\\n]/g, " "));
-      const fencePattern = fenceChar === "`" ? "`" : "~";
-      if (new RegExp("^ {0,3}" + fencePattern + "{" + fenceLength + ",}[ \\t]*$").test(bare)) {
+      chunks.push(line.replace(/[^\r\n]/g, " "));
+      const fencePattern = fenceChar === "\x60" ? "\x60" : "~";
+      if (new RegExp("^ {0,3}" + fencePattern + "{" + fenceLength + ",}[ \t]*$").test(bare)) {
         fenceChar = null;
         fenceLength = 0;
       }
     } else if (opener) {
       fenceChar = opener[1][0];
       fenceLength = opener[1].length;
-      chunks.push(line.replace(/[^\\r\\n]/g, " "));
+      chunks.push(line.replace(/[^\r\n]/g, " "));
     } else {
       chunks.push(line);
     }
   }
   masked = chunks.join("");
-  return masked.replace(/(`+)[^\\n]*?\\1/g, (match) => match.replace(/[^\\r\\n]/g, " "));
+  return masked.replace(/(\x60+)[^\n]*?\1/g, (match) => match.replace(/[^\r\n]/g, " "));
 }
 
 function lineNumberAt(source, index) {
@@ -42,15 +42,15 @@ function lineNumberAt(source, index) {
 
 function scanInlineDestinations(source) {
   const links = [];
-  const pattern = /!?\\[[^\\]\\n]*\\]\\(/g;
+  const pattern = /!?\[[^\]\n]*\]\(/g;
   for (const match of source.matchAll(pattern)) {
     let i = match.index + match[0].length;
-    while (i < source.length && /\\s/.test(source[i])) i += 1;
+    while (i < source.length && /\s/.test(source[i])) i += 1;
     let destination = "";
     if (source[i] === "<") {
       i += 1;
       const start = i;
-      while (i < source.length && source[i] !== ">" && source[i] !== "\\n") i += 1;
+      while (i < source.length && source[i] !== ">" && source[i] !== "\n") i += 1;
       if (source[i] !== ">") continue;
       destination = source.slice(start, i);
     } else {
@@ -60,10 +60,10 @@ function scanInlineDestinations(source) {
       while (i < source.length) {
         const char = source[i];
         if (escaped) { escaped = false; i += 1; continue; }
-        if (char === "\\\\") { escaped = true; i += 1; continue; }
+        if (char === "\\") { escaped = true; i += 1; continue; }
         if (char === "(") { depth += 1; i += 1; continue; }
         if (char === ")") { if (depth === 0) break; depth -= 1; i += 1; continue; }
-        if (/\\s/.test(char) && depth === 0) break;
+        if (/\s/.test(char) && depth === 0) break;
         i += 1;
       }
       destination = source.slice(start, i);
@@ -76,7 +76,7 @@ function scanInlineDestinations(source) {
 
 function scanReferenceDefinitions(source) {
   const links = [];
-  const pattern = /^ {0,3}\\[[^\\]\\n]+\\]:\\s*(?:<([^>]+)>|(\\S+))/gm;
+  const pattern = /^ {0,3}\[[^\]\n]+\]:\s*(?:<([^>]+)>|(\S+))/gm;
   for (const match of source.matchAll(pattern)) {
     const destination = (match[1] ?? match[2] ?? "").trim();
     if (destination) links.push({ destination, index: match.index, kind: "reference" });
@@ -86,7 +86,7 @@ function scanReferenceDefinitions(source) {
 
 function scanHtmlDestinations(source) {
   const links = [];
-  const pattern = /\\b(?:href|src)\\s*=\\s*(["'])(.*?)\\1/gi;
+  const pattern = /\b(?:href|src)\s*=\s*(["'])(.*?)\1/gi;
   for (const match of source.matchAll(pattern)) {
     if (match[2]) links.push({ destination: match[2].trim(), index: match.index, kind: "html" });
   }
@@ -101,7 +101,7 @@ export function extractMarkdownLinks(markdown) {
 }
 
 function isExternal(destination) {
-  return /^(?:[a-z][a-z0-9+.-]*:|\\/\\/)/i.test(destination) || destination.startsWith("#") || destination.startsWith("data:");
+  return /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(destination) || destination.startsWith("#") || destination.startsWith("data:");
 }
 
 function decodedPath(rawPath) {
@@ -134,7 +134,7 @@ function isInsideRoot(root, candidate) {
 async function walkMarkdown(root, relativeDirectory = "") {
   const files = [];
   for (const entry of await readdir(path.join(root, relativeDirectory), { withFileTypes: true })) {
-    const rel = path.posix.join(relativeDirectory.split(path.sep).join("/"), entry.name).replace(/^\\.\\//, "");
+    const rel = path.posix.join(relativeDirectory.split(path.sep).join("/"), entry.name).replace(/^\.\//, "");
     if (entry.isDirectory()) {
       if ([...ignoredDirectoryPaths].some((ignored) => rel === ignored || rel.startsWith(ignored + "/"))) continue;
       files.push(...await walkMarkdown(root, path.join(relativeDirectory, entry.name)));
@@ -147,7 +147,7 @@ async function walkMarkdown(root, relativeDirectory = "") {
 
 export async function auditMarkdownLinks({ root = repoRoot, files = null } = {}) {
   const absoluteRoot = path.resolve(root);
-  const sourceFiles = files ? [...new Set(files.map((file) => path.posix.normalize(String(file).replace(/\\\\/g, "/"))))].sort() : (await walkMarkdown(absoluteRoot)).sort();
+  const sourceFiles = files ? [...new Set(files.map((file) => path.posix.normalize(String(file).replace(/\\/g, "/"))))].sort() : (await walkMarkdown(absoluteRoot)).sort();
   const issues = [];
   let scannedFiles = 0;
   for (const relativeFile of sourceFiles) {
@@ -170,7 +170,7 @@ export async function auditMarkdownLinks({ root = repoRoot, files = null } = {})
       if (!pathPart) continue;
       const decoded = decodedPath(pathPart);
       if (decoded.error) { issues.push({ source: relativeFile, line: link.line, destination: raw, reason: decoded.error }); continue; }
-      const cleanPath = decoded.value.replace(/\\\\/g, "/");
+      const cleanPath = decoded.value.replace(/\\/g, "/");
       const targetPath = cleanPath.startsWith("/") ? path.resolve(absoluteRoot, "." + cleanPath) : path.resolve(absoluteRoot, path.dirname(relativeFile), cleanPath);
       if (!isInsideRoot(absoluteRoot, targetPath)) {
         issues.push({ source: relativeFile, line: link.line, destination: raw, reason: "target escapes repository root" });
