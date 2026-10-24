@@ -1,3 +1,11 @@
+## NK1 WorkPass523 — keep quarantined evidence out of retention budget (2026-10-24)
+
+- Fixed `RealityEvidenceLedger.restore()` so identity-conflicted event rows are removed before the bounded history capacity is applied.
+- Extended the existing WorkPass479 regression with a capacity-overflow fixture: a conflicting newest event must not reduce the number of valid active rows or evict another event.
+- Validation boundary: exact-head CI must run after this commit; no local test execution is claimed by this change.
+
+---
+
 ## NK1 WorkPass510 — make evidence-ledger read limits predictable (2026-10-24)
 
 - `RealityEvidenceLedger.recent(0)` now returns an empty list instead of silently returning one evidence record; negative finite limits also return none, while non-finite/non-numeric limits safely fall back to the documented default.

@@ -55,6 +55,37 @@ restoreConflict.restore(forged);
 assert.ok(restoreConflict.snapshot().quarantinedEventIds.includes(eventId));
 assert.equal(restoreConflict.recent(100).length,0,'restored conflicting event rows must not be active evidence');
 
+// A quarantined row must not consume one of the bounded active-evidence slots.
+// Put the conflicting event first (newest) so a premature capacity slice would
+// evict a valid row at the tail of the restored window.
+const capacity=128;
+const capacityRows=Array.from({length:capacity+2},(_,index)=>({
+  id:`capacity-event-${index}`,eventId:`capacity-event-${index}`,
+  tick:index,at:300+index,realityClass:'device-observation',
+  claim:`capacity-claim-${index}`,confidence01:.8,
+  independenceKey:`device:capacity-${index}`,parentIds:[],
+}));
+const newestFirst=[...capacityRows].reverse();
+const restoreCapacityConflict=new RealityEvidenceLedger(capacity);
+restoreCapacityConflict.restore({
+  version:1,total:capacityRows.length+1,externalCount:capacityRows.length,
+  simulatorCount:0,independentSources:capacityRows.length,
+  recent:[
+    newestFirst[0],
+    {...newestFirst[0],claim:'conflicting-capacity-claim',confidence01:.1},
+    ...newestFirst.slice(1),
+  ],
+  quarantinedEventIds:[],
+});
+const activeAfterCapacityRestore=restoreCapacityConflict.recent(256);
+assert.equal(activeAfterCapacityRestore.length,capacity,
+  'restore must apply retention capacity after removing conflicting event identities');
+assert.equal(activeAfterCapacityRestore.some(row=>row.eventId===newestFirst[0].eventId),false,
+  'the conflicting event identity must remain quarantined');
+assert.equal(activeAfterCapacityRestore.some(row=>row.eventId==='capacity-event-1'),true,
+  'quarantine must not evict a valid event merely to keep an inactive conflict row');
+
+
 const executorSource=readFileSync(resolve(process.cwd(),'src/organism/body/EmbodiedActionExecutor.ts'),'utf8');
 const runtimeSource=readFileSync(resolve(process.cwd(),'src/organism/core/OrganismRuntime.ts'),'utf8');
 assert.match(executorSource,/createStableEvidenceEventId\('embodied',\[decisionId\]\)/);

@@ -114,7 +114,7 @@ export class RealityEvidenceLedger {
       }
       records.push(row);
     }
-    this.records=records.slice(0,this.capacity);
+    this.records=records.filter(row=>!row.eventId||!quarantine.has(row.eventId)).slice(0,this.capacity);
     this.quarantinedEventIds=quarantine;
     this.total=Math.max(this.records.length,safeCounter(detached.total,this.records.length));
   }
