@@ -8,6 +8,9 @@ export type ExternalObservationChannel = 'filesystem'|'http'|'process'|'device'|
 export type PostconditionAssessment = 'match'|'mismatch'|'unknown';
 export type RealityConsensusStatus = 'corroborated'|'supported'|'disputed'|'unknown';
 
+export type ExternalObserverSourceIdentity = Pick<ExternalObserverSource,'id'|'sourceClass'|'channel'|'independenceKey'>;
+export type ExternalObserverSourceRegistrationAuthorizer = (source:ExternalObserverSourceIdentity)=>boolean;
+
 export interface ExternalObserverSource {
   id:string;
   sourceClass:ExternalObservationSourceClass;
@@ -144,15 +147,17 @@ export class ExternalObserverFabric {
   private readonly maxLinks:number;
   private readonly onObservation?: (observation:ExternalObservation)=>void;
   private readonly requireRegisteredSources:boolean;
+  private readonly authorizeSourceRegistration?:ExternalObserverSourceRegistrationAuthorizer;
 
-  constructor(config:{maxObservations?:number;maxAssessments?:number;maxSources?:number;maxLinks?:number;requireRegisteredSources?:boolean;onObservation?:(observation:ExternalObservation)=>void}={}){
+  constructor(config:{maxObservations?:number;maxAssessments?:number;maxSources?:number;maxLinks?:number;requireRegisteredSources?:boolean;authorizeSourceRegistration?:ExternalObserverSourceRegistrationAuthorizer;onObservation?:(observation:ExternalObservation)=>void}={}){
     this.maxObservations=Math.max(64,Math.floor(config.maxObservations??256));
     this.maxAssessments=Math.max(64,Math.floor(config.maxAssessments??192));
     this.maxSources=Math.max(16,Math.floor(config.maxSources??48));
     this.maxLinks=Math.max(32,Math.floor(config.maxLinks??128));
     this.onObservation=config.onObservation;
-    // Production evidence sinks should only accept identities registered through
-    // the explicit registry API. Standalone adapters retain legacy auto-registration.
+    this.authorizeSourceRegistration=config.authorizeSourceRegistration;
+    // Strict runtimes separate source identity from observations. New identities
+    // must match a trusted registrar policy, not merely supply plausible labels.
     this.requireRegisteredSources=config.requireRegisteredSources??false;
   }
 
@@ -172,6 +177,7 @@ export class ExternalObserverFabric {
       if(!VALID_SOURCE_CLASSES.has(source.sourceClass)||!VALID_CHANNELS.has(source.channel))continue;
       const independenceKey=typeof source.independenceKey==='string'&&source.independenceKey.trim()
         ?source.independenceKey.trim().slice(0,120):id;
+      if(this.requireRegisteredSources&&!this.authorizeSourceRegistration?.({id,sourceClass:source.sourceClass,channel:source.channel,independenceKey}))continue;
       const reliability=Number(source.reliability01);
       restoredSources.push({
         id,sourceClass:source.sourceClass,channel:source.channel,independenceKey,
@@ -227,10 +233,6 @@ export class ExternalObserverFabric {
     if(!/^[a-z0-9._-]{2,80}$/i.test(id))throw new Error('invalid-observer-source-id');
     const now=Date.now();
     const prior=this.state.sources.find(s=>s.id===id);
-    // Never let a stream of caller-chosen IDs evict established source identities.
-    // At capacity, preserve the registry and fail closed for new identities; updates
-    // to an already registered source remain possible.
-    if(!prior && this.state.sources.length>=this.maxSources) throw new Error('observer-source-registry-capacity-exceeded');
     // A source ID is the stable trust-registry identity. Allowing a later
     // registration to rewrite its class/channel/independence key lets one
     // physical source masquerade as a second independent witness.
@@ -242,6 +244,27 @@ export class ExternalObserverFabric {
     )) {
       throw new Error('external-observer-source-identity-conflict');
     }
+
+    if(this.requireRegisteredSources){
+      // In strict mode, registerSource is not a trust-calibration API. Existing
+      // identities are immutable here, and new ones must match an allowlisted
+      // source declaration owned by the application/tool registry.
+      if(prior) return structuredClone(prior);
+      if(this.state.sources.length>=this.maxSources) throw new Error('observer-source-registry-capacity-exceeded');
+      const identity:ExternalObserverSourceIdentity={id,sourceClass:input.sourceClass,channel:input.channel,independenceKey:requestedIndependenceKey};
+      if(!this.authorizeSourceRegistration?.(identity)) throw new Error('external-observer-source-registration-not-authorized');
+      const next:ExternalObserverSource={
+        ...identity,reliability01:baseReliability(input.sourceClass),enabled:true,
+        samples:0,accepted:0,contradicted:0,lastAt:0,
+      };
+      this.state.sources=[next,...this.state.sources].slice(0,this.maxSources);
+      this.recompute();
+      return structuredClone(next);
+    }
+
+    // Standalone adapters keep legacy operational configuration semantics. Their
+    // trust prior is conservative, and a sample confidence never initializes it.
+    if(!prior && this.state.sources.length>=this.maxSources) throw new Error('observer-source-registry-capacity-exceeded');
     const next:ExternalObserverSource={
       id,sourceClass:prior?.sourceClass??input.sourceClass,channel:prior?.channel??input.channel,
       independenceKey:prior?.independenceKey??requestedIndependenceKey,
