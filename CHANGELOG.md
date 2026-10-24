@@ -1,3 +1,12 @@
+## NK1 WorkPass506 — restore deterministic replay budgets and evidence-lane CI
+
+- Corrected the production replay selector so the configured `maxBatchSize` remains the hard experiment cap; health signals continue to affect ranking, recent-sample quota and age decay rather than silently shrinking an explicitly configured batch. This restores reproducibility for replay ablations.
+- Reconnected the existing WorkPass292 causal evidence-lanes regression to its declared package command, removing a CI failure caused by a missing script rather than missing test coverage.
+- WorkPass505 in this branch adds fail-closed experience-memory ingress/restore validation and a dedicated boundary test for accessor execution, invalid metrics, restore filtering, and detached results.
+- Exact-head validation is running/required; unrelated runtime type errors still need separate fixes. No learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass505 — validate memory consolidation ingress and restore
 
 - Hardened `AdaptiveExperienceConsolidator` so malformed IDs, control characters, non-finite timestamps/scores, out-of-range utility/novelty/uncertainty, oversized tags, and accessor-backed records are rejected before ingestion.
