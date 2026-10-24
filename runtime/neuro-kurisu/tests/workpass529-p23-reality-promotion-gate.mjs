@@ -40,6 +40,10 @@ const gate = engineSource.slice(start, end);
 assert.match(gate, /ledger instanceof RealityEvidenceLedger/, 'only the canonical ledger type is accepted');
 assert.match(gate, /independentPromotionAllowed!==true/, 'the stronger independent-promotion signal is mandatory');
 assert.match(gate, /qualifiedIndependentExternalSources<2/, 'two confidence-qualified independent sources are mandatory');
+assert.match(gate, /candidatePayloadFingerprint:string/, 'the gate must require an exact candidate payload fingerprint');
+assert.match(gate, /staged\.payloadFingerprint!==candidatePayloadFingerprint/, 'unrelated or stale candidate payloads must be rejected');
+assert.match(gate, /evaluation\?\.payloadFingerprint!==candidatePayloadFingerprint/, 'the evaluated payload must equal the corroborated payload');
+assert.match(gate, /staged\.status!=='shadow'/, 'only a currently staged shadow candidate may use the gate');
 assert.ok(gate.indexOf('independentPromotionAllowed') < gate.indexOf('approveIndependentlyEvaluatedSkillCandidate('),
   'reality corroboration must be checked before the existing approval path');
 assert.match(gate, /approveIndependentlyEvaluatedSkillCandidate\(/,
