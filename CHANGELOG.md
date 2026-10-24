@@ -1,3 +1,12 @@
+## NK1 WorkPass517 — preserve causal lineage during event-fabric recovery (2026-10-24)
+
+- Hardened `CognitiveEventFabric.restore()`: persisted parent IDs are now validated as a whole. Whitespace-padded, control-character, duplicate, oversized, or malformed parent lists cause the row to be discarded rather than silently filtered, normalized, or truncated into a different causal graph.
+- Added restore regressions that preserve valid parent IDs exactly and reject malformed lineage variants.
+- This is native NK1 integration: the existing cognitive event fabric remains the single causal spine; no parallel store or dependency was introduced.
+- **Validation boundary:** code/test/changelog committed on `feature/learning`; exact-head runtime test, typecheck and hosted CI were not executed or verified in this pass.
+
+---
+
 ## NK1 WorkPass513 — finish strict CEF payload ownership and recovery checks (2026-10-24)
 
 - Deep-copy cognitive event payloads before appending them to the causal journal, using the existing bounded `PlainDataSnapshot` helper (12 levels, 2,048 nodes, 64 KiB string budget).
