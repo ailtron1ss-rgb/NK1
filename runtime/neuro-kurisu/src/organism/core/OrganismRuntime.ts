@@ -403,8 +403,26 @@ export class OrganismRuntime {
         await this.core.beginBatch();
       } catch (error: any) {
         const reason = String(error?.message || error).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 240);
-        this.runtimeClosure.fail({ at: Date.now(), tick: Number(this.core.operationalStatusSnapshot().tick) || 0, reason });
+        const tick = Number(this.core.operationalStatusSnapshot().tick) || 0;
+        this.runtimeClosure.fail({ at: Date.now(), tick, reason });
         this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        try {
+          // Admission failed before the normal batch began; still create a terminal
+          // causal record for this attempted step so it cannot disappear from totals.
+          const failedDomain = this.core.causalDomainOperationalSnapshot(Number(this.environment.snapshot().tick));
+          const failedCounters = {
+            memoryCount: failedDomain.memoryCount, worldTick: failedDomain.worldTick, identityRevision: failedDomain.identityRevision,
+            agencyDecisions: failedDomain.agencyDecisions, learningUpdates: failedDomain.learningUpdates, selfChangeCount: failedDomain.selfChangeCount,
+            lifeGraphCompleteChains: failedDomain.lifeGraphCompleteChains,
+          };
+          this.causalDomainClosureLedger.begin({ at: Date.now(), tick: Number(failedDomain.tick) + 1, counters: failedCounters });
+          const failedCausal = this.causalDomainClosureLedger.failPending({ reason: 'runtime.batch.begin.failed:' + reason, counters: failedCounters });
+          if (failedCausal) this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+        } catch (closureError: any) {
+          await this.journal.write('error', 'runtime.batch.begin.closure.failed', {
+            message: String(closureError?.message || closureError).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 180),
+          }).catch(() => {});
+        }
         await this.core.flush().catch(() => {});
         await this.journal.write('error', 'runtime.batch.begin.failed', { message: reason }).catch(() => {});
         throw error;
