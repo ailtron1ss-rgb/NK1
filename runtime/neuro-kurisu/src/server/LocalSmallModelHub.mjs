@@ -26,6 +26,10 @@ function providerConfigured(provider) {
   catch { return false; }
 }
 
+function semanticBackendAvailable(provider) {
+  return Boolean(provider && typeof provider.analyze === 'function');
+}
+
 function parseJsonObject(raw, role) {
   const text = String(raw ?? '').trim();
   if (!text || text.length > 8_000) throw new Error(`local-model-${role}-invalid-size`);
@@ -61,6 +65,8 @@ export class LocalSmallModelHub {
     embeddingProvider,
     classifierProvider,
     emotionProvider,
+    visionProvider,
+    visionFallbackProvider,
     languagePolicy,
     enableContextSignals = true,
     clock = nowDefault,
@@ -69,6 +75,9 @@ export class LocalSmallModelHub {
     this.embeddingProvider = embeddingProvider;
     this.classifierProvider = classifierProvider;
     this.emotionProvider = emotionProvider;
+    this.visionProvider = visionProvider;
+    this.visionFallbackProvider = visionFallbackProvider;
+    this.visionHealth = { local: null, fallback: null };
     this.languagePolicy = languagePolicy;
     this.enableContextSignals = Boolean(enableContextSignals);
     this.clock = clock;
@@ -79,6 +88,7 @@ export class LocalSmallModelHub {
       embeddings: this._newMetric(),
       classification: this._newMetric(),
       emotion: this._newMetric(),
+      vision: this._newMetric(),
     };
   }
 
@@ -144,6 +154,7 @@ export class LocalSmallModelHub {
     if (capability === 'embeddings' || capability === 'semantic-retrieval') return Boolean(this.embeddingProvider);
     if (capability === 'classification' || capability === 'intent') return providerConfigured(this.classifierProvider);
     if (capability === 'emotion') return providerConfigured(this.emotionProvider);
+    if (capability === 'vision') return semanticBackendAvailable(this.visionProvider) || semanticBackendAvailable(this.visionFallbackProvider);
     return false;
   }
 
@@ -231,6 +242,54 @@ export class LocalSmallModelHub {
     }
   }
 
+  setVisionFallbackProvider(provider) {
+    this.visionFallbackProvider = provider;
+    return this.hasCapability('vision');
+  }
+
+  async analyzeVision(input) {
+    let lastError;
+    if (semanticBackendAvailable(this.visionProvider)) {
+      const started = this.clock();
+      try {
+        const result = await this.visionProvider.analyze(input);
+        if (!isRecord(result) || result.semantic !== true || typeof result.backend !== 'string' || !Array.isArray(result.objects) || !Array.isArray(result.relations) || !Array.isArray(result.events)) {
+          throw new Error('local-model-vision-invalid-result');
+        }
+        this.visionHealth.local = true;
+        this._record('vision', { ok: true, latencyMs: this.clock() - started });
+        this._decision({ task: 'vision', selected: String(result.backend || this.visionProvider.id || 'local-vision').slice(0, 160), reason: 'local-vision-inference-succeeded' });
+        return result;
+      } catch (error) {
+        lastError = error;
+        this.visionHealth.local = false;
+        this._record('vision', { ok: false, latencyMs: this.clock() - started, error });
+        this._decision({ task: 'vision', selected: String(this.visionProvider.id || 'local-vision').slice(0, 160), reason: failureCode(error) });
+      }
+    }
+    // The fallback is only installed when the application explicitly enables it
+    // and has configured its cloud provider. No fallback is silently enabled here.
+    if (semanticBackendAvailable(this.visionFallbackProvider)) {
+      const started = this.clock();
+      try {
+        const result = await this.visionFallbackProvider.analyze(input);
+        if (!isRecord(result) || result.semantic !== true || typeof result.backend !== 'string' || !Array.isArray(result.objects) || !Array.isArray(result.relations) || !Array.isArray(result.events)) {
+          throw new Error('local-model-vision-fallback-invalid-result');
+        }
+        this.visionHealth.fallback = true;
+        this._record('vision', { ok: true, latencyMs: this.clock() - started });
+        this._decision({ task: 'vision', selected: String(result.backend || this.visionFallbackProvider.id || 'vision-fallback').slice(0, 160), reason: this.visionProvider ? 'explicit-cloud-fallback-after-local-failure' : 'explicitly-configured-vision-backend' });
+        return result;
+      } catch (error) {
+        lastError = error;
+        this.visionHealth.fallback = false;
+        this._record('vision', { ok: false, latencyMs: this.clock() - started, error });
+        this._decision({ task: 'vision', selected: String(this.visionFallbackProvider.id || 'vision-fallback').slice(0, 160), reason: failureCode(error) });
+      }
+    }
+    throw lastError ?? new Error('local-model-vision-not-configured');
+  }
+
   async deriveContextSignals(rawText, options = {}) {
     if (!this.enableContextSignals || options.signal?.aborted) return null;
     const text = boundedText(rawText);
@@ -282,6 +341,14 @@ export class LocalSmallModelHub {
       model('local-emotion', 'affect', providerConfigured(this.emotionProvider), ['emotion', 'valence', 'arousal'], {
         model: String(this.emotionProvider?.model || 'not-configured').slice(0, 160),
       }),
+      model('local-vision', 'vision-local', semanticBackendAvailable(this.visionProvider), ['scene-understanding', 'object-detection', 'visual-relations'], {
+        model: String(this.visionProvider?.model || this.visionProvider?.id || 'not-configured').slice(0, 160),
+        ...(this.visionHealth.local !== null ? { state: this.visionHealth.local ? 'observed-healthy' : 'observed-failure' } : {}),
+      }),
+      model('vision-fallback', 'vision-fallback', semanticBackendAvailable(this.visionFallbackProvider), ['scene-understanding', 'object-detection', 'visual-relations'], {
+        model: String(this.visionFallbackProvider?.model || this.visionFallbackProvider?.id || 'not-configured').slice(0, 160),
+        ...(this.visionHealth.fallback !== null ? { state: this.visionHealth.fallback ? 'observed-healthy' : 'observed-failure' } : {}),
+      }),
     ];
     const metrics = Object.fromEntries(Object.entries(this.metrics).map(([role, value]) => [role, { ...value }]));
     return {
@@ -294,6 +361,7 @@ export class LocalSmallModelHub {
         rawPromptsLogged: false,
         credentialsIncludedInSnapshot: false,
         remoteEmbeddingRequiresExplicitOptInAndHttps: true,
+        visionUsesLoopbackFirstAndCloudOnlyWhenExplicitlyConfigured: true,
         specialistOutputsAreHintsNotAuthority: true,
         automaticModelDownload: false,
       },
