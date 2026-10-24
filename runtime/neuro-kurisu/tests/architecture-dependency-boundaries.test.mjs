@@ -83,6 +83,18 @@ test("dependency boundary policy rejects UI imports into private runtime source"
   assert.equal(violations[0].rule, "app-source-to-runtime-private-import");
 });
 
+test("dependency boundary policy ignores similarly named directories and sibling prefixes", () => {
+  const fixture = makePolicyFixture();
+  const root = path.resolve("/fixture/repository/runtime/neuro-kurisu");
+  const nearApp = path.resolve(root, "../../app/source-archive/LegacyWidget.tsx");
+  const namedResearch = path.resolve(root, "../../research-adapter/ResearchShim.ts");
+  const namedLegacy = path.resolve(root, "../../legacy-code/OldCompat.ts");
+  const safeTarget = path.join(root, "src", "organism", "contracts", "PublicPorts.ts");
+  const violations = fixture.inspect([nearApp, namedResearch, namedLegacy, safeTarget]);
+
+  assert.deepEqual(violations, []);
+});
+
 test("full architecture audit enforces dependency boundaries on the current tree", () => {
   const result = spawnSync(process.execPath, [auditor], {
     cwd: runtimeRoot,
