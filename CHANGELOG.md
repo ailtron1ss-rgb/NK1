@@ -1,3 +1,14 @@
+## NK1 [perception] — canonical world-model evidence boundary (2026-10-24)
+
+- Added a pure perception boundary with typed modality/source metadata, timestamp validation, bounded confidence and freshness decay.
+- Added deterministic claim fusion with idempotent event-ID deduplication and explicit contradiction reporting; incompatible values are never averaged into false consensus.
+- Added regression cases for malformed provenance, stale evidence, duplicate delivery, conflicts and predicate separation.
+- Added `docs/PERCEPTION_WORLD_MODEL_PASS_2026-10-24.md` describing data flow, integration contract and acceptance gates.
+- **Integration status:** implementation and tests committed on `feature/perception`; not yet connected to the canonical runtime cycle.
+- **Validation status:** tests have not been executed in this GitHub edit pass; do not treat this as runtime-verified or production-ready.
+
+---
+
 ## NK1 WorkPass514 — fail closed on malformed restored evidence lineage (2026-10-24)
 
 - RealityEvidenceLedger restore now applies the same parent-lineage validation as live writes: malformed, duplicate, whitespace-only, or over-limit parent IDs invalidate the restored row instead of being silently filtered.
