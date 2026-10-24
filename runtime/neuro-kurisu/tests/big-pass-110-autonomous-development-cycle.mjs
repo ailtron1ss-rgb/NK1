@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { P36AutonomousSelfDevelopmentEngine, developmentEvidenceVerificationInput } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
+import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, developmentEvidenceVerificationInput } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 
 const engine=new P36AutonomousSelfDevelopmentEngine();
@@ -7,7 +7,7 @@ const gateway=new ActionGateway({live:true});
 let receiptIndex=0;
 let issuedObservationCount=0;
 gateway.registerTool({
-  id:'independent-development-evaluator',
+  id:P36_EXTERNAL_EVIDENCE_TOOL_ID,
   capability:'learning.evaluation',
   destructive:false,
   execute:async()=>({ok:true,observationId:`big-pass-110-external-receipt-${++issuedObservationCount}`}),
@@ -21,7 +21,7 @@ async function verifiedEvidence(input){
   const binding=developmentEvidenceVerificationInput(input);
   const ticket=++receiptIndex;
   const decisionId=`p36-e2e-decision-${ticket}`;
-  const result=await gateway.executeTool('independent-development-evaluator',binding,'P36 independent evidence fixture',{decisionId});
+  const result=await gateway.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,binding,'P36 independent evidence fixture',{decisionId});
   assert.equal(result.verified,true,'independent fixture must be verified through ActionGateway');
   return {toolId:result.tool,executionId:result.executionId,decisionId,verification:result.verification};
 }
