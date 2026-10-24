@@ -86,19 +86,30 @@ function safeUserId(value: unknown): string | null {
 /** Targeted minimization for outbound text, not a general-purpose PII detector. */
 export function redactMem0Text(input: string): { text: string; redacted: boolean } {
   const raw = String(input ?? '');
-  let text = raw.slice(0, MAX_MESSAGE_CHARS * 4);
-  const inputTruncated = raw.length > text.length;
+  const sliced = raw.slice(0, MAX_MESSAGE_CHARS * 4);
+  const inputTruncated = raw.length > sliced.length;
+  // Canonicalize Unicode and remove invisible controls before applying secret patterns.
+  // This also prevents bidi/zero-width characters from disguising credential strings.
+  let text = sliced.normalize('NFKC')
+    .replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g, ' ');
+  const normalizedInputChanged = text !== sliced;
   const original = text;
   text = text
     .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/gi, '[redacted-private-key]')
     .replace(/(https?:\/\/)[^\s/@:]+:[^\s/@]+@/gi, '$1[redacted]@')
     .replace(/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi, 'Bearer [redacted]')
+    .replace(/\bgithub_pat_[A-Za-z0-9_]{20,}\b/gi, '[redacted-token]')
+    .replace(/\bgh[pousr]_[A-Za-z0-9]{20,}\b/gi, '[redacted-token]')
+    .replace(/\bxox[baprs]-[A-Za-z0-9-]{12,}\b/gi, '[redacted-token]')
+    .replace(/\bAKIA[0-9A-Z]{16}\b/g, '[redacted-token]')
+    .replace(/\bAIza[0-9A-Za-z_-]{30,}\b/g, '[redacted-token]')
+    .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, '[redacted-token]')
     .replace(/\b(?:sk|pk|api|token)[_-][A-Za-z0-9_-]{16,}\b/gi, '[redacted-token]')
-    .replace(/\b(api[_-]?key|access[_-]?token|refresh[_-]?token|password|secret)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]')
+    .replace(/(["']?\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret)["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi, '$1[redacted]')
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted-email]')
     .replace(/\b\+?\d[\d\s().-]{8,}\d\b/g, '[redacted-number]');
   const output = text.slice(0, MAX_MESSAGE_CHARS);
-  return { text: output, redacted: inputTruncated || text !== original || output.length !== text.length };
+  return { text: output, redacted: inputTruncated || normalizedInputChanged || text !== original || output.length !== text.length };
 }
 
 async function readBoundedBody(response: Response, maxBytes: number): Promise<string> {
