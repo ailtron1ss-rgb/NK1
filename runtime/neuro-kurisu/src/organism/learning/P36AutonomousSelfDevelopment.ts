@@ -214,6 +214,8 @@ export interface SelfDevelopmentState {
   externalEvidence:DevelopmentEvidenceRecord[];
   /** Bounded idempotency ledger; stored IDs never grant verification authority. */
   developmentalEvidenceReceiptIds:string[];
+  /** Cross-path observation IDs prevent the same verifier observation from being counted twice. */
+  developmentalEvidenceObservationIds:string[];
   investmentDecisions:LearningInvestmentDecision[];
   learningBudget01:number;
   spentBudget01:number;
@@ -258,6 +260,7 @@ const defaultState=():SelfDevelopmentState=>({
   developmentCycles:[],
   externalEvidence:[],
   developmentalEvidenceReceiptIds:[],
+  developmentalEvidenceObservationIds:[],
   investmentDecisions:[],
   learningBudget01:.82,
   spentBudget01:0,
@@ -321,6 +324,7 @@ export class P36AutonomousSelfDevelopmentEngine{
       // Preserve observations for audit, but never restore serialized trust booleans.
       externalEvidence:Array.isArray(r.externalEvidence)?r.externalEvidence.slice(-512).map(e=>({...e,independentVerified:false,observationId:undefined})):[],
       developmentalEvidenceReceiptIds:Array.isArray((r as any).developmentalEvidenceReceiptIds)?(r as any).developmentalEvidenceReceiptIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=256).slice(-512):[],
+      developmentalEvidenceObservationIds:Array.isArray((r as any).developmentalEvidenceObservationIds)?[...new Set((r as any).developmentalEvidenceObservationIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=180))].slice(-512):[],
       investmentDecisions:Array.isArray((r as any).investmentDecisions)?(r as any).investmentDecisions.slice(-96):[],
       metrics:{...d.metrics,...(r.metrics??{})},
       curriculum:{...d.curriculum,...(r.curriculum??{}),mastery:{...d.curriculum.mastery,...(r.curriculum?.mastery??{})}},
@@ -524,11 +528,8 @@ export class P36AutonomousSelfDevelopmentEngine{
     const result:DevelopmentExperiment={id:`p36-x-${hash(`${hypothesisId}:${seed}`)}-${now().toString(36)}`,hypothesisId,control01:baseline,treatment01:treatment,delta01:delta,replicated:false,safeSandbox:true,runs:1,informationGain01:informationGain,status:'insufficient',at:now(),evidenceGate:'sandbox-preview'};
     this.state.experiments=[result,...this.state.experiments].slice(0,128);
     this.state.spentBudget01=clamp(this.state.spentBudget01+h.estimatedCost01*.04);
-    this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.97+.03*.5);
+    // A sandbox preview is not an observed organism outcome; it must not move outcome-derived metrics.
     h.completedAt=now(); h.result01=null; h.status='preview-only'; h.evidenceGate='none';
-    this.state.metrics.selfDevelopmentCoherence01=clamp(this.state.metrics.selfDevelopmentCoherence01*.98+.02*.28);
-    this.state.metrics.autonomy01=clamp(this.state.metrics.autonomy01*.995+.005*this.state.metrics.autonomy01);
-    this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.995+.005*.5);
     this.state.currentHypothesisId=null;
     return structuredClone(result);
   }
@@ -550,8 +551,9 @@ export class P36AutonomousSelfDevelopmentEngine{
       x.contextKey===binding.contextKey&&x.evaluatorVersion===binding.evaluatorVersion&&
       x.holdout===binding.holdout&&x.delayMs===binding.delayMs;
     // One observation ID cannot be reused across contexts/splits to inflate replication.
-    const receiptReused=Boolean(observationId&&this.state.externalEvidence.some(x=>
-      x.hypothesisId===binding.hypothesisId&&x.independentVerified&&x.observationId===observationId&&!sameEvidenceKey(x)));
+    const duplicateVerifiedReceipt=Boolean(observationId&&this.state.externalEvidence.some(x=>
+      sameEvidenceKey(x)&&x.independentVerified&&x.observationId===observationId));
+    const receiptReused=Boolean(observationId&&this.state.developmentalEvidenceObservationIds.includes(observationId)&&!duplicateVerifiedReceipt);
     const independentVerified=Boolean(exactReceipt&&!receiptReused);
     const row:DevelopmentEvidenceRecord={
       id:`p36-e-${hash(`${binding.hypothesisId}:${binding.contextKey}:${input.at??now()}`)}-${now().toString(36)}`,
@@ -564,10 +566,16 @@ export class P36AutonomousSelfDevelopmentEngine{
       ...(independentVerified&&observationId?{observationId}:{}),at:input.at??now(),
     };
     const duplicateIndex=this.state.externalEvidence.findIndex(sameEvidenceKey);
-    if(duplicateIndex<0)this.state.externalEvidence=[row,...this.state.externalEvidence].slice(0,512);
+    let storedOrExactDuplicate=false;
+    if(duplicateIndex<0){this.state.externalEvidence=[row,...this.state.externalEvidence].slice(0,512);storedOrExactDuplicate=independentVerified;}
     else if(independentVerified&&!this.state.externalEvidence[duplicateIndex].independentVerified){
       // A forged first attempt cannot poison the idempotency slot for a later verified receipt.
-      const next=[...this.state.externalEvidence];next[duplicateIndex]=row;this.state.externalEvidence=next;
+      const next=[...this.state.externalEvidence];next[duplicateIndex]=row;this.state.externalEvidence=next;storedOrExactDuplicate=true;
+    }else if(independentVerified&&this.state.externalEvidence[duplicateIndex].observationId===observationId){
+      storedOrExactDuplicate=true;
+    }
+    if(storedOrExactDuplicate&&observationId&&!this.state.developmentalEvidenceObservationIds.includes(observationId)){
+      this.state.developmentalEvidenceObservationIds=[...this.state.developmentalEvidenceObservationIds,observationId].slice(-512);
     }
     const rows=this.state.externalEvidence.filter(x=>x.hypothesisId===h.id&&x.independentVerified);
     const contexts=new Set(rows.map(x=>x.contextKey));
@@ -618,9 +626,11 @@ export class P36AutonomousSelfDevelopmentEngine{
     const observationId=verified?input.verification?.observationId:undefined;
     const receiptKey=observationId?`${observationId}:${hash(JSON.stringify(binding)??'')}`:undefined;
     const alreadyApplied=Boolean(receiptKey&&this.state.developmentalEvidenceReceiptIds.includes(receiptKey));
-    const applyVerified=Boolean(verified&&receiptKey&&!alreadyApplied);
+    const observationAlreadyUsed=Boolean(observationId&&this.state.developmentalEvidenceObservationIds.includes(observationId));
+    const applyVerified=Boolean(verified&&receiptKey&&!alreadyApplied&&!observationAlreadyUsed);
     if(applyVerified){
       this.state.developmentalEvidenceReceiptIds=[...this.state.developmentalEvidenceReceiptIds,receiptKey!].slice(-512);
+      if(observationId)this.state.developmentalEvidenceObservationIds=[...this.state.developmentalEvidenceObservationIds,observationId].slice(-512);
       this.state.developmentalMaturity.verifiedOutcomeCount++;
       if(delayed&&outcome>=.62)this.state.developmentalMaturity.retainedOutcomeCount++;
       if(transfer&&outcome>=.62)this.state.developmentalMaturity.transferredOutcomeCount++;
