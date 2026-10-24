@@ -86,3 +86,25 @@ All are preserved verbatim as references. SQL migrations remain inactive and mus
 | `db/migrations/0247_retention_claims_already_held.sql` | `f17ce28e8934c6ddcaf6abd121164fb31bede279` | 27176 | heartbeat and deliberation schema (inactive) |
 | `db/migrations/0249_add_evidence_candidate_recovery.sql` | `910e24b27203be351b071d0c67b92d5a0559fef9` | 32073 | skill-learning/recovery schema (inactive) |
 | `db/migrations/0252_encoder_context_and_supersession.sql` | `076640a4404122d055d8dad01c4e95061d7d41eb` | 43432 | memory provenance, retrieval, or retention schema (inactive) |
+
+
+## Additional API, model and lifecycle modules (Omega follow-up)
+
+Pinned to the same upstream commit. These remain reference-only and are not imported as an independent Hexis runtime.
+
+| Upstream path | Git blob SHA | Bytes | Purpose |
+|---|---|---:|---|
+| `core/llm.py` | `002ac55a34b8324e1af78525a602a738ee71a6cc` | 49523 | LLM provider dispatch and request orchestration (reference only) |
+| `core/execution_backends.py` | `d4ebe7d226fc718e4904549ca0417ce45402b6fc` | 41455 | execution backend abstractions and dispatch |
+| `core/cli_api.py` | `7b11520cdb19495a0db66a6b2a7afb8ebd569b20` | 62907 | operator CLI/API surface |
+| `core/init_api.py` | `bcd64588e09f7783b784bee7ea637dbfc705df02` | 30076 | instance initialization/bootstrap API |
+| `core/instance_api.py` | `237e4c9c2ed95022166e5f1dc488f5a3c1a2bbdd` | 16844 | instance lifecycle and management API |
+| `core/config.py` | `a44f27c59dc49d6cfe05b139c4fac923f1cd8678` | 8058 | runtime configuration patterns |
+| `core/llm_config.py` | `ebb9eb803b4ca9dbebd36d93c737383fe1b3ce4d` | 7748 | LLM provider configuration |
+| `core/llm_batch.py` | `89955465e8967d7e6f2b5e478dceaabe3ccb3222` | 8608 | batched model request utilities |
+| `core/llm_json.py` | `7a32af96ac4235976deafd6b782a45d0f13ff4ae` | 2370 | structured/JSON model output helpers |
+| `core/schema.py` | `1af9c382471cc779c4e560a7cc820240320a8839` | 6224 | shared schema declarations |
+| `core/migrations.py` | `78115739d592191439a573eb2da7cab7f6dcb645` | 16483 | Hexis-specific migration loader (reference only) |
+| `core/backup_restore.py` | `09ed79f94a3bbd3d06c91b2eb719c2d887872476` | 7468 | backup and restore orchestration |
+| `core/consent.py` | `d2d28e1d53161c51d8202e1f5e300957490c5c56` | 1885 | consent state and policy boundaries |
+| `core/usage.py` | `44d30b1ef20b01a698e985466a118cf69f8c9366` | 5513 | usage and budget accounting |

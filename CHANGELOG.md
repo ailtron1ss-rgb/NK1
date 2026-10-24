@@ -2117,6 +2117,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
 
+- Expanded the pinned Hexis reference archive with 14 additional model/backend, CLI/bootstrap/instance API, config/schema, consent, usage, and backup/migration modules; the source manifest now tracks 73 selected files.
+
 - Adapted Hexis memory-provenance concepts into the canonical P65 epistemic ledger with bounded source identity/fingerprint/evidence-class metadata and a source-lineage read; preserved legacy claim IDs when provenance is absent and fail-closed behavior for malformed new provenance.
 
 - Expanded the pinned Hexis reference snapshot by a further 35 files for memory exchange/retrieval, node continuity, integration reliability, self-inspection, goals/policies, backup/restore, task orchestration, and additional memory/safety/heartbeat/skill-learning SQL designs; all paths, upstream blob SHAs and byte sizes are now in the manifest, and no Hexis SQL migration is active.
