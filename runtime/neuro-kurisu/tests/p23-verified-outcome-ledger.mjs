@@ -32,6 +32,8 @@ assert.equal(ledger.record(outcome({ method:'wrong-verifier', verifierId:'forged
 assert.equal(ledger.record(outcome({ method:'no-evidence', evidenceRef:'' })).rejection.code, 'missing-evidence');
 assert.equal(ledger.record(outcome({ method:'bad-seed', seed:-1 })).rejection.code, 'invalid-seed');
 assert.equal(ledger.record(outcome({ method:'bad-time', observedAt:NaN })).rejection.code, 'invalid-time');
+assert.equal(ledger.recordBatch([outcome({ method:'bad-batch-time', seed:101, evidenceRef:'artifact://bad-batch-time', observedAt:NaN })]).rejection.code, 'invalid-time',
+  'batch validation must preserve field-specific timestamp rejection instead of collapsing NaN into invalid-outcome');
 
 for (let seed=0; seed<12; seed++) {
   ledger.record(outcome({ taskId:'task-b', method:'baseline', seed, passed:seed%2===0, evidenceRef:`artifact://b-${seed}` }));
