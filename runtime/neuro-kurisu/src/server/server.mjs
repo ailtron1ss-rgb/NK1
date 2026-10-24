@@ -544,9 +544,28 @@ async function route(req, res) {
             const candidates = (snapshot.traces?.slice(-1)?.[0]?.candidates ?? []).slice(0, 7).map((c) => ({ action: String(c.action), score: Number(c.score ?? 0), confidence: Number(c.confidence ?? 0) }));
             const lastReward01 = Number(state.lastActionSuccess ?? 0.5);
             const voiceSnapshot = runtime.embodiment.voiceSnapshot();
+            const affectState = runtime.core.emotionAppraisalSnapshot?.() ?? null;
+            const affectMood = affectState?.mood ?? null;
+            const latestFeeling = Array.isArray(affectState?.feelings) ? (affectState.feelings[0] ?? null) : null;
             return json(res, 200, { ok: true, version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, at: state.at, tick: state.tick, awake: body.awake,
                 state: { needs: { ...state.needs, sleepPressure: Number(p48?.interoception?.sleepPressure01 ?? (body.awake ? .15 : .85)) }, predictionError: state.predictionError, selfPredictionError: state.selfPredictionError, attentionBudget: state.attentionBudget, lastAction: state.lastAction, lastReward01: lastReward01, autonomyScore: state.autonomyScore, predictedNextAction: state.predictedNextAction, lastPredictionConfidence: state.lastPredictionConfidence, worldContextVersion: state.worldContextVersion },
                 emotion: { label: scoreLabel, valence: Number(field.valence01 ?? .5), arousal: Number(field.arousal01 ?? .2), dominance: Number(field.coherence01 ?? .5), tendency: String(state.lastAction), cause: String(field.rationale ?? 'cognitive-field') },
+                affect: {
+                    mood: affectMood ? {
+                        tick: Number(affectMood.tick ?? -1), at: Number(affectMood.at ?? 0),
+                        valence01: Number(affectMood.valence01 ?? .5), arousal01: Number(affectMood.arousal01 ?? .22),
+                        stress01: Number(affectMood.stress01 ?? .2), confidence01: Number(affectMood.confidence01 ?? .5),
+                        dominantLabel: String(affectMood.dominantLabel ?? 'calm'), persistence01: Number(affectMood.persistence01 ?? 0),
+                        episodes: Number(affectMood.episodes ?? 0),
+                    } : null,
+                    latestFeeling: latestFeeling ? {
+                        label: String(latestFeeling.label ?? 'calm'), intensity01: Number(latestFeeling.intensity01 ?? 0),
+                        interoceptiveMismatch01: Number(latestFeeling.interoceptiveMismatch01 ?? 0),
+                        selfAccessConfidence01: Number(latestFeeling.selfAccessConfidence01 ?? 0),
+                        bodilyFocus01: Number(latestFeeling.bodilyFocus01 ?? 0),
+                    } : null,
+                    regulationPressure01: Number(affectState?.interoception?.regulationPressure01 ?? .18),
+                },
                 identity: { subjectId: String(p33?.identity?.canonicalName ?? 'kurisu').toLowerCase().replace(/\s+/g, '-'), name: String(p33?.identity?.canonicalName ?? 'Makise Kurisu'), fingerprint: String(snapshot.facets.consciousness?.identityContinuity?.selfNarrativeFingerprint ?? ''), createdAt: Number(p33?.identity?.createdAt ?? state.at), cycles: Number(p33?.continuity?.lifeTicks ?? state.tick), traits: (snapshot.system?.neuralGerminalOrganismB270?.traitValues && typeof snapshot.system.neuralGerminalOrganismB270.traitValues === 'object') ? snapshot.system.neuralGerminalOrganismB270.traitValues : {}, trust: Number(p33?.relationship?.trust01 ?? .5), traitNames: Array.isArray(p33?.identity?.coreTraits) ? p33.identity.coreTraits : [] },
                 lastDecision: candidates.length || state.lastAction !== 'none' ? { tick: state.tick, action: String(state.lastAction), predictedNextAction: String(state.predictedNextAction), selectedScore: Number(candidates.find((x) => x.action === state.lastAction)?.score ?? 0), candidates, workspace: Array.isArray(workspace?.selected) ? workspace.selected : [], reason: `canonical action=${String(state.lastAction)} next=${String(state.predictedNextAction)}` } : null,
                 memories: (Array.isArray(memoryOS?.items) ? memoryOS.items.slice(-32) : []).map((m) => ({ id: String(m.id), kind: String(m.kind), summary: String(m.content ?? m.summary ?? ''), salience: Number(m.salience ?? 0), confidence: Number(m.confidence ?? 0), predictionError: Number(m.predictionError ?? 0), createdAt: Number(m.createdAt ?? state.at), retrievedAt: Number(m.lastAccessAt ?? 0), retrievalCount: Number(m.retrievalCount ?? 0) })),
