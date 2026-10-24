@@ -1,8 +1,4 @@
 import { createHash } from 'node:crypto';
-import {
-  closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync,
-} from 'node:fs';
-import { dirname } from 'node:path';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import type { VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
@@ -252,6 +248,12 @@ function assertSnapshot(value: unknown): asserts value is SkillReviewInboxSnapsh
   }
 }
 
+/** Stable persistence helpers shared with the plain-JavaScript filesystem adapter. */
+export function createEmptySkillReviewInboxSnapshot(): SkillReviewInboxSnapshot { return EMPTY(); }
+export function assertValidSkillReviewInboxSnapshot(value: unknown): asserts value is SkillReviewInboxSnapshot {
+  assertSnapshot(value);
+}
+
 export class InMemorySkillReviewInboxPersistence implements SkillReviewInboxPersistence {
   private state = EMPTY();
   read(): SkillReviewInboxSnapshot { return clone(this.state); }
@@ -268,63 +270,6 @@ export class InMemorySkillReviewInboxPersistence implements SkillReviewInboxPers
  * closed rather than silently overwriting each other. If the process crashes while
  * holding the lock, remove the stale .lock file only after verifying no writer runs.
  */
-export class AtomicFileSkillReviewInboxPersistence implements SkillReviewInboxPersistence {
-  private readonly filePath: string;
-
-  constructor(filePath: string) {
-    this.filePath = filePath;
-    if (!isText(filePath)) throw new Error('skill review inbox path is required');
-  }
-
-  private readDisk(): SkillReviewInboxSnapshot {
-    try {
-      const parsed: unknown = JSON.parse(readFileSync(this.filePath, 'utf8'));
-      assertSnapshot(parsed);
-      return clone(parsed);
-    } catch (error) {
-      if (isRecord(error) && error.code === 'ENOENT') return EMPTY();
-      throw error;
-    }
-  }
-
-  read(): SkillReviewInboxSnapshot { return this.readDisk(); }
-
-  compareAndSwap(expectedRevision: number, next: SkillReviewInboxSnapshot): boolean {
-    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
-        next.revision !== expectedRevision + 1) throw new Error('invalid review inbox revision transition');
-    assertSnapshot(next);
-    mkdirSync(dirname(this.filePath), { recursive: true });
-    const lockPath = this.filePath + '.lock';
-    let lockFd: number | undefined;
-    let tempPath: string | undefined;
-    try {
-      try { lockFd = openSync(lockPath, 'wx', 0o600); }
-      catch (error) {
-        if (isRecord(error) && error.code === 'EEXIST') return false;
-        throw error;
-      }
-      const current = this.readDisk();
-      if (current.revision !== expectedRevision) return false;
-      tempPath = this.filePath + '.' + process.pid + '.' + createHash('sha256')
-        .update(String(Date.now()) + ':' + String(Math.random())).digest('hex').slice(0, 12) + '.tmp';
-      const fd = openSync(tempPath, 'wx', 0o600);
-      try { writeFileSync(fd, JSON.stringify(next), 'utf8'); fsyncSync(fd); }
-      finally { closeSync(fd); }
-      renameSync(tempPath, this.filePath);
-      tempPath = undefined;
-      return true;
-    } finally {
-      if (tempPath) { try { unlinkSync(tempPath); } catch { /* best-effort temporary file cleanup */ } }
-      // Only remove a lock we successfully created. Unlink it before closing the
-      // descriptor so a writer that never acquired the lock cannot remove it.
-      if (lockFd !== undefined) {
-        try { unlinkSync(lockPath); } catch { /* preserve the original persistence error */ }
-        closeSync(lockFd);
-      }
-    }
-  }
-}
-
 export interface SkillReviewDecisionInput {
   outcome: 'approve' | 'reject';
   reviewerId: string;

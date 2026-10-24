@@ -1,18 +1,6 @@
 import assert from 'node:assert/strict';
-import { createHash, generateKeyPairSync } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
-import {
-  ingestSignedOutcomeArtifact, signOutcomePayloadForFixture,
-} from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
-import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
-import {
-  AtomicFileSkillReviewInboxPersistence, HexisSkillReviewInbox,
-  assertSkillReviewReadyForSignedPromotion,
-} from '../src/organism/learning/HexisSkillReviewInbox.ts';
-
+import { HexisSkillReviewInbox, assertSkillReviewReadyForSignedPromotion } from '../src/organism/learning/HexisSkillReviewInbox.ts';
+import { AtomicFileSkillReviewInboxPersistence } from '../src/organism/learning/AtomicFileSkillReviewInboxPersistence.mjs';
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const privatePem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
