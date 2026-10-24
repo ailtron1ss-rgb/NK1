@@ -1,3 +1,9 @@
+## NK1 WorkPass559 — stabilize Node.js 24 emotion regression setup (2026-10-24)
+
+- Investigated the first Node.js 24 workflow runs (#42 and #43): both failed at `actions/setup-node` before the regression command started, so they did not evaluate the emotion changes.
+- Removed `check-latest: true` so the runner can use its cached Node 24 where available, and set `package-manager-cache: false` because this workflow does not install npm dependencies. Official `setup-node` guidance documents the performance/network implications of `check-latest`; see [the advanced usage guide](https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#check-latest-version).
+- Retry run [#44](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40125323938) passed setup-node and entered the regression step; its final result is not yet recorded here. No test pass is claimed by this entry.
+
 ## NK1 WorkPass558 — learn action outcomes in emotional context (2026-10-24)
 
 - `EmotionAppraisalEngine.recordOutcome()` now keeps its backward-compatible action-wide calibration and, when `emotionId` resolves to an actual retained appraisal episode, also records a separate calibration for that episode's emotion label and action. Unknown or forged episode IDs cannot create contextual calibration.
