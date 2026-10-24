@@ -146,12 +146,12 @@
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/AdvancedFacetDefaults.ts",
-      "maxOutDegree": 42,
-      "maxRuntimeOutDegree": 41,
+      "maxOutDegree": 5,
+      "maxRuntimeOutDegree": 4,
       "maxTypeOutDegree": 1,
       "maxProductionRuntimeInDegree": 1,
       "maxProductionTypeOnlyInDegree": 0,
-      "reason": "Largest remaining facet builder; further split by bounded domain when the count grows, rather than expanding the migration coordinator."
+      "reason": "Stable composition facade only. Domain-specific advanced initial-state dependencies are owned by context, evolution and research builder modules."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/CognitionFacetDefaults.ts",
@@ -161,6 +161,33 @@
       "maxProductionRuntimeInDegree": 1,
       "maxProductionTypeOnlyInDegree": 0,
       "reason": "Own only the default cognition facet."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/AdvancedContextFacetDefaults.ts",
+      "maxOutDegree": 19,
+      "maxRuntimeOutDegree": 18,
+      "maxTypeOutDegree": 1,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own context, memory/governance, and future-self defaults; do not absorb evolutionary or experimental defaults."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/AdvancedEvolutionFacetDefaults.ts",
+      "maxOutDegree": 22,
+      "maxRuntimeOutDegree": 21,
+      "maxTypeOutDegree": 1,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the developmental identity/world/agency default fields P49–P79."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/AdvancedResearchFacetDefaults.ts",
+      "maxOutDegree": 5,
+      "maxRuntimeOutDegree": 4,
+      "maxTypeOutDegree": 1,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own causal experience and research/learning default fields only."
     }
   ]
 }
