@@ -62,7 +62,7 @@ try {
   });
   assert.equal(restored.registeredAt, persisted.runs[0].registeredAt);
 
-  await assert.rejects(() => core.runTrustedSkillShadowLearningProcess({
+  assert.throws(() => core.runTrustedSkillShadowLearningProcess({
     runtimeVersion: 'nk1-test-runtime-141',
     run: { ...run, runId: 'baseline-must-not-register', arm: 'control', method: 'baseline' },
     planFingerprint: 'b'.repeat(64),
