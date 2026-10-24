@@ -66,6 +66,20 @@ function bodyWith(overrides = {}) {
   assert.notEqual(staleEvent.kind, 'motion');
   assert.equal(engine.snapshot().baseline.motion01, 0.1);
 
+  const malformed = bodyWith({
+    telemetry: { motion01: 0.95, staleMs: -1 },
+  });
+  const malformedEvent = engine.perceive({ body: malformed });
+  assert.notEqual(malformedEvent.kind, 'motion', 'negative staleness must not be accepted as fresh');
+  assert.equal(engine.snapshot().baseline.motion01, 0.1);
+
+  const badFreshness = bodyWith({
+    sensoryFreshness01: 5,
+    telemetry: { motion01: 0.95, staleMs: 0 },
+  });
+  assert.notEqual(engine.perceive({ body: badFreshness }).kind, 'motion', 'out-of-range freshness must fail closed');
+  assert.equal(engine.snapshot().baseline.motion01, 0.1);
+
   const fresh = bodyWith({
     sensoryFreshness01: 1,
     telemetry: { motion01: 0.9, staleMs: 0, sampledAt: Date.now() },
