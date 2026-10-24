@@ -124,6 +124,27 @@ test("persistence default factories have one stable domain owner", async () => {
     assert.doesNotMatch(migrations, new RegExp("(?:^|\\n)\\s*(?:export\\s+)?const " + factory + "\\s*=", "m"));
   }
 
+  const advancedFacade = await readFile(new URL("state-defaults/AdvancedFacetDefaults.ts", persistenceRoot), "utf8");
+  const advancedGroups = [
+    ["defaultAdvancedContextFacet", "state-defaults/AdvancedContextFacetDefaults.ts", ["groundedWorld:", "memoryOS:", "consequenceAttribution:"]],
+    ["defaultAdvancedEvolutionFacet", "state-defaults/AdvancedEvolutionFacetDefaults.ts", ["p49TemporalLife:", "p79EmbodiedSituationModel:"]],
+    ["defaultAdvancedResearchFacet", "state-defaults/AdvancedResearchFacetDefaults.ts", ["causalExperience:", "causalDevelopmentLoop:", "cognitiveResearchBattery:"]],
+  ];
+  assert.ok(advancedFacade.includes("import { defaultAdvancedContextFacet } from './AdvancedContextFacetDefaults.ts';"));
+  assert.ok(advancedFacade.includes("import { defaultAdvancedEvolutionFacet } from './AdvancedEvolutionFacetDefaults.ts';"));
+  assert.ok(advancedFacade.includes("import { defaultAdvancedResearchFacet } from './AdvancedResearchFacetDefaults.ts';"));
+  assert.ok(advancedFacade.includes("...defaultAdvancedContextFacet()"));
+  assert.ok(advancedFacade.includes("...defaultAdvancedEvolutionFacet()"));
+  assert.ok(advancedFacade.includes("...defaultAdvancedResearchFacet()"));
+  assert.doesNotMatch(advancedFacade, /defaultMemoryOS2|defaultP49|defaultCausalExperienceStream/);
+  for (const [factory, relativePath, expectedKeys] of advancedGroups) {
+    const moduleText = await readFile(new URL(relativePath, persistenceRoot), "utf8");
+    assert.ok(moduleText.includes("export const " + factory + " ="), "missing factory owner " + factory);
+    for (const key of expectedKeys) {
+      assert.ok(moduleText.includes(key), "domain default field " + key + " missing from " + factory);
+    }
+  }
+
   for (const factory of ["defaultNeeds", ...domains.map(([name]) => name)]) {
     assert.match(migrations, new RegExp("\\b" + factory + "\\s*\\("), "migration must consume the canonical " + factory + " factory");
   }
