@@ -460,7 +460,9 @@ export function evaluateSkillLearnBenchCandidate(
   try {
     baseline=snapshotPlainData(baseline) as typeof baseline;
     candidate=snapshotPlainData(candidate) as typeof candidate;
-    options=snapshotPlainData(options) as SkillLearnBenchCandidateGateOptions;
+    // Preserve numeric sentinels long enough for field-specific policy validation below;
+    // bounds and finiteness are checked immediately after the snapshot.
+    options=snapshotPlainData(options,{allowNonFiniteNumbers:true,maxDepth:8,maxNodes:512,maxStringUnits:64*1024}) as SkillLearnBenchCandidateGateOptions;
   } catch {
     throw new Error('candidate-evaluation-data-boundary-rejected');
   }
