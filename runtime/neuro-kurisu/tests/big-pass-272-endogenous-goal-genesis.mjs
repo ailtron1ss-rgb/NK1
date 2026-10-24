@@ -57,11 +57,24 @@ const comparisonInput={
   predictionError01:0.3,autobiographicalContinuity01:0.8,identityContinuity01:0.8,
   intrinsicReward01:0.2,lastAction:null,lastReward01:0.5,
 };
-const baselineValue=baselineNet.step({...comparisonInput,intrinsicDrive01:0,intrinsicDriveConfidence01:1}).predictedFutureValue01;
-const drivenValue=drivenNet.step({...comparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:1}).predictedFutureValue01;
+// Test drive influence away from the [0,1] output ceiling: the trained snapshot
+// above often makes all candidate values saturate, masking a real calibrated drive
+// contribution even though the mathematical term is present.
+const driveComparisonInput={
+  ...comparisonInput,
+  selfLatent:new Array(16).fill(0.01),
+  worldLatent:new Array(16).fill(0.01),
+  needs:{...comparisonInput.needs,energy01:.3,uncertainty01:.9,novelty01:.1,goalPressure01:.1},
+  predictionError01:.85,
+  autobiographicalContinuity01:.3,
+  identityContinuity01:.3,
+  intrinsicReward01:0,
+};
+const baselineValue=baselineNet.step({...driveComparisonInput,intrinsicDrive01:0,intrinsicDriveConfidence01:1}).predictedFutureValue01;
+const drivenValue=drivenNet.step({...driveComparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:1}).predictedFutureValue01;
 assert.ok(drivenValue>baselineValue+0.1,'calibrated intrinsic drive did not influence endogenous goal value');
 const untrustedDriveNet=new B272EndogenousGoalGenesis(); untrustedDriveNet.restore(comparisonState);
-const untrustedValue=untrustedDriveNet.step({...comparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:0}).predictedFutureValue01;
+const untrustedValue=untrustedDriveNet.step({...driveComparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:0}).predictedFutureValue01;
 assert.ok(Math.abs(untrustedValue-baselineValue)<1e-9,'untrusted intrinsic drive bypassed confidence weighting');
 const actionCounts=new Map();
 for(const g of goals.slice(-120))actionCounts.set(g,(actionCounts.get(g)||0)+1);
