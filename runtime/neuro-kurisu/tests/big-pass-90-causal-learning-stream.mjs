@@ -361,10 +361,12 @@ const aggregateRestore = new CausalExperienceStream(64);
 aggregateRestore.restore(poisonedAggregates);
 const safeAggregateSnapshot = aggregateRestore.snapshot();
 assert.equal(safeAggregateSnapshot.observations, 0, "invalid persisted observation count must be reset");
-assert.equal(safeAggregateSnapshot.outcomes, safeAggregateSnapshot.records.length,
-  "invalid persisted outcome count must fall back to retained record count");
-assert.equal(safeAggregateSnapshot.consolidated, safeAggregateSnapshot.records.filter(row => row.consolidated).length,
-  "invalid persisted consolidation count must fall back to retained consolidated rows");
+assert.equal(safeAggregateSnapshot.records.length, 1,
+  "the sanitized imported event must remain queryable after restore");
+assert.equal(safeAggregateSnapshot.outcomes, 0,
+  "persisted outcome count must be recomputed from trusted runtime outcomes, not retained external claims");
+assert.equal(safeAggregateSnapshot.consolidated, 0,
+  "persisted consolidation count must exclude retained but ungrounded external claims");
 assert.equal(safeAggregateSnapshot.lastConsolidatedAt, 0, "invalid consolidation timestamp must be reset");
 assert.deepEqual(safeAggregateSnapshot.rolling, {
   surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0.4,

@@ -1,3 +1,11 @@
+## NK1 WorkPass531 — align replay validation with runtime contracts
+
+- Switched the P26 continual-replay regression to Node's TypeScript transform mode because its imported `ContinualReplayBuffer` uses a constructor parameter property, unsupported by strip-only mode.
+- Corrected poisoned-aggregate restore assertions: retained external events remain queryable but cannot be counted as grounded outcomes or consolidated memory. Trusted counters are recomputed from verified runtime records, not all rows.
+- Exact-head workflows will determine whether downstream learning and replay regressions are resolved.
+
+---
+
 ## NK1 WorkPass530 — make Hermes signed-receipt tamper test isolate signature integrity
 
 - The tamper fixture now changes a signed seed field rather than the binary pass result. Changing `passed` was rejected earlier by the report/outcome consistency gate, so the assertion did not reach the signed-observation verifier.
