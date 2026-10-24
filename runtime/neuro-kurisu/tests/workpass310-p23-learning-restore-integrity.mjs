@@ -56,7 +56,8 @@ assert.equal(restored.ablations.length,1);
 assert.equal(restored.evidenceDebt.length,1);
 assert.equal(restored.processedTraceIds.length,2048);
 assert.equal(restored.processedTraceIds[0],'trace-newest','retain newest trace IDs');
-assert.deepEqual(restored.replayedTraceIds,['replay-newest']);
+assert.deepEqual(restored.replayedTraceIds,['replay-newest','replay-1'],
+  'preserve the newest cached replay ID, then recover identities from durable replay rows');
 assert.equal(restored.checksum.digest,'');
 assert.equal(restored.checksum.verificationFailures,0);
 assert.equal(restored.metrics.outcomes,128,'outcome counter cannot be lower than persisted experience rows');

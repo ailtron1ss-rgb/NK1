@@ -1,3 +1,12 @@
+## NK1 WorkPass534 — preserve newest restored IDs and make metrics fixtures valid
+
+- P23 restore now prioritizes the persisted newest-first deduplication caches, then appends IDs recovered from sanitized durable experience/replay rows. This prevents old retained rows from displacing the cache's newest valid IDs while still rebuilding an empty cache after restore.
+- Extended P23 restore assertions to cover newest-cache precedence and recovery of a replay ID absent from the cache.
+- Corrected the reverse-arrival bootstrap fixture to use the manifest-authorized verifier ID (`v1`); previous `verify-v1` outcomes were rejected by the real authority gate, so the test never compared equivalent paired samples.
+- Replaced a brittle exact floating-point comparison in the stationary drift fixture with a tight tolerance. No learning-uplift or release-readiness claim is inferred from these fixes.
+
+---
+
 ## NK1 WorkPass533 — restore idempotent Live2D expressions and stable CI contracts
 
 - The runtime Live2D viewer now caches the last applied expression and skips reapplying the same expression during repeated embodiment updates, avoiding needless expression resets while mouth/gaze signals change.
