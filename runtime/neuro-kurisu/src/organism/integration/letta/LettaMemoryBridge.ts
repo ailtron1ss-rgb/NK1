@@ -127,6 +127,15 @@ function messageText(message: LettaTurnMessage): string {
   return '';
 }
 
+function indicatesExplicitProviderFailure(value: string): boolean {
+  return [
+    /\\b(?:could not|couldn't|unable to|cannot|can't)\\s+(?:write|store|save|update|delete|remove|persist)\\b/i,
+    /\\b(?:failed|failure)\\s+(?:to\\s+)?(?:write|store|save|update|delete|remove|persist)\\b/i,
+    /\\b(?:partially deleted|partial deletion|not deleted|not stored|not saved)\\b/i,
+    /\\b(?:permission denied|access denied|storage unavailable|write failed|delete failed)\\b/i,
+  ].some((pattern) => pattern.test(value));
+}
+
 function emptySnapshot(agentId: string | null = null): LettaMemoryBridgeSnapshot {
   return {
     version: 1, agentId, lastOperationAt: 0,
@@ -246,6 +255,7 @@ export class LettaMemoryBridge {
       const safeResponse = redactSecrets(response);
       if (safeResponse.redacted) this.snapshotState.metrics.redactions += 1;
       if (!safeResponse.text.trim()) return this.failed('assistant-no-response');
+      if (indicatesExplicitProviderFailure(safeResponse.text)) return this.failed('provider-forget-incomplete');
       this.snapshotState.metrics.successfulTurns += 1;
       this.snapshotState.metrics.forgetResponsesReceived += 1;
       this.snapshotState.lastOperationAt = Date.now();
@@ -321,12 +331,13 @@ export class LettaMemoryBridge {
     try {
       const response = await this.runTurn(prompt);
       if (!response.trim()) return this.failed('assistant-no-response');
+      const safeResponse = redactSecrets(response);
+      if (safeResponse.redacted) this.snapshotState.metrics.redactions += 1;
+      if (indicatesExplicitProviderFailure(safeResponse.text)) return this.failed('provider-write-explicit-failure');
       this.snapshotState.metrics.recordsSubmitted += 1;
       this.snapshotState.metrics.successfulTurns += 1;
       this.snapshotState.lastOperationAt = Date.now();
       this.snapshotState.lastError = null;
-      const safeResponse = redactSecrets(response);
-      if (safeResponse.redacted) this.snapshotState.metrics.redactions += 1;
       return { ok: true, agentId: this.agentId ?? undefined, response: safeResponse.text.slice(0, 4000), redacted: inputRedacted || safeResponse.redacted, evidence: 'agent-response-unverified' };
     } catch (error) {
       return this.failed(this.errorCode(error));
