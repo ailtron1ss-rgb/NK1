@@ -1,3 +1,10 @@
+## NK1 Architecture — module dependency contracts (2026-10-24)
+
+- [ADDED] Added `docs/architecture/module-dependency-contracts-ru.md` with a target dependency map, module ownership matrix, integration invariants, and a staged plan for enforcing boundaries.
+- [DOCUMENTED] Recorded the existing integration seams verified from the manifests and integration verifier: runtime server, UI API client, research bridge, integration manifest, server-import audit, UI/API linkage audit, runtime architecture/contract/integrity audits.
+- [BOUNDARY] Defined one cognitive-cycle owner; mandatory policy + ActionGateway path for external actions; UI/research bridge access through public contracts; single-writer ownership for persistent state; candidate/holdout/promotion separation for learning.
+- [LIMITATION] This pass added architecture contracts and a verified implementation map, not runtime refactors. The complete import graph and audit results have not yet been generated or executed on this branch; no test pass is claimed.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
