@@ -124,8 +124,22 @@ export class EvidenceResearchSubsystemRuntime {
     this.p53DevelopmentalSelfModification.restore((raw as any).p53DevelopmentalSelfModification);
     this.realityEvidenceLedger.restore((raw as any).realityEvidenceLedger);
     this.externalObserver.restore((raw as any).externalObserver);
-    // Reconcile observer rows into the ledger after both stores are restored. Event IDs
-    // make this idempotent and let a partial older snapshot safely backfill missing rows.
-    for(const observation of this.externalObserver.snapshot().observations) this.recordExternalObservationEvidence(observation);
+    // Reconcile observer rows only when their source identity is present and consistent.
+    // A persisted observation alone must not mint/impersonate a trusted source while
+    // backfilling the canonical ledger. Older rows without independenceKey inherit the
+    // registered source key rather than falling back to a potentially weaker row ID.
+    const observerState=this.externalObserver.snapshot();
+    const registeredSources=new Map(observerState.sources.map(source=>[source.id,source]));
+    for(const observation of observerState.observations){
+      const source=registeredSources.get(observation.sourceId);
+      if(!source || source.sourceClass!==observation.sourceClass || source.channel!==observation.channel) continue;
+      const rowIndependenceKey=typeof observation.independenceKey==='string'&&observation.independenceKey.trim()
+        ? observation.independenceKey
+        : undefined;
+      if(rowIndependenceKey!==undefined && rowIndependenceKey!==source.independenceKey) continue;
+      this.recordExternalObservationEvidence(rowIndependenceKey===undefined
+        ? {...observation,independenceKey:source.independenceKey}
+        : observation);
+    }
   }
 }
