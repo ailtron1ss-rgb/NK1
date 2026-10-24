@@ -4,11 +4,14 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
 const fabric = new CognitiveEventFabric(128);
 fabric.append({ id: 'obs-1', tick: 1, stage: 'observation', source: 'test', confidence01: 0.7, payload: { signal: 'x' } });
 const before = fabric.snapshot();
+const naturalSource = fabric.append({ id: 'user-obs', tick: 2, stage: 'observation', source: 'user-input', confidence01: .7, payload: { signal: 'human' } });
+assert.equal(naturalSource.source, 'user-input', 'ordinary source labels containing u must remain valid');
 for (const invalid of [
   { tick: Number.NaN, stage: 'prediction', source: 'test' },
   { tick: -1, stage: 'prediction', source: 'test' },
   { tick: 2, stage: 'not-a-stage', source: 'test' },
   { tick: 2, stage: 'prediction', source: 'test', confidence01: 2 },
+  { tick: 2, stage: 'prediction', source: 'bad\u0001source' },
   { tick: 2, stage: 'prediction', source: 'test', parentIds: ['bad\nparent'] },
   { tick: 2, stage: 'prediction', source: 'test', payload: Object.defineProperty({}, 'secret', { enumerable: true, get() { throw new Error('getter invoked'); } }) },
 ]) assert.throws(() => fabric.append(invalid), /invalid-cognitive-event|cognitive-event/);
