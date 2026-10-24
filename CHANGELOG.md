@@ -2,7 +2,7 @@
 
 - Added a Playwright/Chromium smoke test for the actual local Live2D iframe, both mobile and quality model profiles, WebGL output, local-resource responses, browser exceptions, and versioned embodiment events.
 - Added an explicit user-triggered iframe retry after Live2D initialization failure.
-- Integrated browser setup and smoke execution into the Node.js 24 Live2D workflow; the PNG screenshot-based pixel sampler remains under exact-head CI validation at `ffadcfeee8ea3d400466357edd1ff313e3287602`.
+- Integrated browser setup and smoke execution into the Node.js 24 Live2D workflow; the exact-head CI run `40127269491` passed at `ffadcfeee8ea3d400466357edd1ff313e3287602`; Chromium screenshot sampling counted 68,469 visible pixels for mobile and 68,513 for quality. Asset integrity, browser smoke, expression-cache, embodiment timeline, and typecheck all passed.
 - Evidence boundary: a preceding browser run successfully rendered both profiles using synchronous WebGL readback, and asset integrity + expression/timeline tests + typecheck passed. Do not call the screenshot-sampling refinement green until its exact-head Actions result completes. Real audio, device, and acoustic lip-sync checks remain open.
 
 ## NK1 WorkPass96 — Live2D canonical asset integrity gate (2026-10-24)
