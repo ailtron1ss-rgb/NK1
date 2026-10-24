@@ -23,6 +23,7 @@
     "restore": "node tools/super-restore.mjs",
     "migrate": "node tools/super-migrate.mjs",
     "test:super-migrate": "node --test tools/super-migrate.test.mjs",
+    "test:super-schema-check": "node --test tools/super-schema-check.test.mjs",
     "sbom": "node tools/super-sbom.mjs",
     "freeze": "node tools/super-freeze.mjs",
     "release:verify": "node tools/verify-final-release.mjs",
