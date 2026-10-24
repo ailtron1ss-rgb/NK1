@@ -92,7 +92,7 @@ export function terminateChild(child, { graceMs = 1_000, forceGraceMs = 500 } = 
       closeSignal = signal;
       // A POSIX parent may exit before its descendants. Wait through the grace
       // period so the entire detached group can be checked and cleaned up.
-      if (!child.__nkProcessGroup) finish();
+      if (!child.__nkProcessGroup || !processGroupExists(child.pid)) finish();
     };
     const onError = () => {
       if (!child.pid) finish();
