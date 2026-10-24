@@ -1,3 +1,13 @@
+## Current source-stack checkpoint — Mem0 integration WorkPass 1 (2026-10-24)
+
+- Draft PR [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100) adds a dependency-free, opt-in Mem0 Platform recall adapter on top of workpass70-source.
+- MemoryOS2 remains the only canonical NK1 memory owner. The authenticated hybrid-search route returns local records and remote, provenance-labelled, unverified candidates separately; it does not alter persistent memory or live prompts.
+- The adapter is disabled by default, requires a server-side per-user scope and key, rejects non-HTTPS endpoints, bounds request timeout/response bytes, minimizes common secrets/PII, and requires an explicit environment gate plus operation approval for conversation export. No HTTP write route or automatic export exists.
+- Unit regression harness, docs, package scripts and research-intake record are committed. Exact-head test execution/typecheck/server smoke and live Mem0 behavior remain **UNVERIFIED**; no current workflow run or combined status was reported for the base commit in this pass. No retrieval improvement or release readiness is claimed.
+- No changes to main or release assets. Do not merge PR #100 until actionable validation results and the separate live-provider / independent RU/EN holdout gates are completed.
+
+---
+
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
