@@ -14,7 +14,7 @@
     "research": "python3 research/research_bridge.py",
     "audit:assets": "node tools/audit-assets.mjs",
     "inventory": "node tools/super-inventory.mjs",
-    "audit:quick": "npm run inventory && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax",
+    "audit:quick": "npm run inventory && npm run audit:assets && npm run audit:ordering && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax",
     "doctor": "node tools/super-doctor.mjs",
     "install:all": "node tools/super-install.mjs",
     "backup": "node tools/super-backup.mjs",
@@ -189,6 +189,7 @@
     "test:markdown-links": "node --test tools/audit-markdown-links.test.mjs",
     "audit:markdown-links": "node tools/audit-markdown-links.mjs",
     "audit:canonical-links": "node tools/audit-markdown-links.mjs --strict --files README.md AGENTS.md NEUROCORE_START_HERE.md docs/PROJECT_MAP_AND_ORDERING.md docs/BRANCH_INVENTORY_2026-10-24.md docs/INTEGRATION_WORKSPACE.md docs/ARCHITECTURE.md docs/RESEARCH_INTAKE_LEDGER.md",
+    "audit:ordering": "npm run test:markdown-links && npm run audit:canonical-links && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:server-imports",
     "audit:ci-reliability": "node tools/verify-ci-reliability.mjs"
   },
   "version": "35.0.0-super-workpass70",
