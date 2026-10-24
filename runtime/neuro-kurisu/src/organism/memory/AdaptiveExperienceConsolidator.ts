@@ -49,12 +49,16 @@ export class AdaptiveExperienceConsolidator {
   ingest(exp: ExperienceRecord): void {
     const safe=normalizeExperience(exp);
     if(!safe)throw new TypeError('experience-record-invalid');
+    if(this.buffer.some(existing=>existing.id===safe.id))throw new Error('experience-id-duplicate');
     this.buffer.push(safe);
     if (this.buffer.length > this.maxBuffer) this.buffer.splice(0, this.buffer.length - this.maxBuffer);
   }
 
   consolidate(limit = this.buffer.length): ConsolidatedExperience[] {
-    const boundedLimit = Number.isFinite(limit) ? Math.max(1, Math.min(this.buffer.length, Math.floor(limit))) : this.buffer.length;
+    if(this.buffer.length===0)return [];
+    const requestedLimit=Number.isFinite(limit)?Math.floor(limit):this.buffer.length;
+    if(requestedLimit<=0)return [];
+    const boundedLimit=Math.min(this.buffer.length,requestedLimit);
     return this.buffer
       .map((e) => ({
         ...e,
@@ -75,7 +79,12 @@ export class AdaptiveExperienceConsolidator {
     const restored:ExperienceRecord[]=[];
     if(Array.isArray(records))for(const raw of records.slice(-this.maxBuffer*4)){
       const safe=normalizeExperience(raw);
-      if(safe)restored.push(safe);
+      if(!safe)continue;
+      // Persisted snapshots may contain repeated IDs after older schema migrations.
+      // Keep the last valid revision and move it to the newest position.
+      const previous=restored.findIndex(row=>row.id===safe.id);
+      if(previous>=0)restored.splice(previous,1);
+      restored.push(safe);
     }
     this.buffer=restored.slice(-this.maxBuffer);
   }
