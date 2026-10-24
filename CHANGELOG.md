@@ -3,6 +3,7 @@
 - [CLOSED-LOOP] Added a terminal `failure` phase to `RuntimeClosureLedger`. Durability/restore bookkeeping cannot erase the last cycle's `FAIL`; a later actual step can replace it.
 - [CLOSED-LOOP] Added `CausalDomainClosureLedger.failPending()` for exceptions/cancellations before normal closure, preserving a bounded failure reason and denying causal success credit.
 - [CLOSED-LOOP] Added `failLatest()` so batch-finalization or emergency-checkpoint failures can downgrade an already-recorded cycle instead of leaving stale PASS evidence.
+- [INTEGRATION] `OrganismRuntime` now supplies the current `UnifiedCognitiveCycle` result to both terminal ledgers; missing/misaligned stage closure is a hard `FAIL` with zero causal score, including after durable finalization.
 - [INTERRUPT] `OrganismRuntime.stepInternal` now checks `AbortSignal` immediately before embodied-action dispatch; an aborted planned action fails closed before physical actuation.
 - [REGRESSION] Added `tests/closed-loop-failure-closure.mjs` and connected `test:p328:closed-loop-failure-closure` to `test:rebuild-recovered`; test execution remains unverified until CI gets a runner.
 - [DOCUMENTATION] Added `docs/CLOSED_LOOP_SYSTEM_AUDIT_2026-10-24.md` with the cross-module cycle map, invariants, remaining validation gaps and release gates.
