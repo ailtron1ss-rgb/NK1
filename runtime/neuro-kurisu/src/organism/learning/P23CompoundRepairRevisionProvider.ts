@@ -51,8 +51,12 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 function isPathWithin(parent: string, candidate: string): boolean {
-  const relative = path.relative(parent, candidate);
-  return relative === '' || (relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
+  const root = path.resolve(parent);
+  const target = path.resolve(candidate);
+  const normalizedRoot = process.platform === 'win32' ? root.toLowerCase() : root;
+  const normalizedTarget = process.platform === 'win32' ? target.toLowerCase() : target;
+  const prefix = normalizedRoot.endsWith(path.sep) ? normalizedRoot : normalizedRoot + path.sep;
+  return normalizedTarget === normalizedRoot || normalizedTarget.startsWith(prefix);
 }
 
 async function canonicalPotentialPath(input: string): Promise<string> {
@@ -196,10 +200,10 @@ async function readDataset(pathSetting: string, root: string, stateDirectory: st
   if (isPathWithin(statePath, actualPath)) {
     throw new Error('native-p23-revision-dataset-must-be-outside-mutable-state-directory');
   }
-  const bytes = await readFile(actualPath);
-  if (bytes.byteLength > MAX_DATASET_BYTES) throw new Error('native-p23-revision-dataset-size-invalid');
+  const raw = await readFile(actualPath, 'utf8');
+  if (Buffer.byteLength(raw, 'utf8') > MAX_DATASET_BYTES) throw new Error('native-p23-revision-dataset-size-invalid');
   let decoded: unknown;
-  try { decoded = JSON.parse(bytes.toString('utf8')); } catch {
+  try { decoded = JSON.parse(raw); } catch {
     throw new Error('native-p23-revision-dataset-json-invalid');
   }
   return parseDataset(decoded);
@@ -250,7 +254,7 @@ export async function createNativeCompoundRepairRevisionProvider(
   await issueVerifiedProposal(datasetPath, options.root, options.stateDirectory, trustedKeys);
   return async input => {
     if (!input || !isNonEmptyString(input.skillId)) throw new Error('native-p23-revision-skill-id-required');
-    const { dataset, proposal } = await issueVerifiedProposal(datasetPath, options.root, options.stateDirectory, trustedKeys);
+    const { proposal } = await issueVerifiedProposal(datasetPath, options.root, options.stateDirectory, trustedKeys);
     const snapshot = options.candidateStore.snapshot();
     const eligible = snapshot.candidates.filter(candidate =>
       candidate.skillId === input.skillId &&
@@ -276,7 +280,6 @@ export async function createNativeCompoundRepairRevisionProvider(
       evaluateRevisedCandidate: async () => {
         throw new Error('native-p23-revision-requires-independent-evaluation-wrapper');
       },
-      options: dataset.gateOptions,
     };
   };
 }
