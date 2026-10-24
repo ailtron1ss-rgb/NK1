@@ -1776,5 +1776,8 @@
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
     "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5"
   }
 }
