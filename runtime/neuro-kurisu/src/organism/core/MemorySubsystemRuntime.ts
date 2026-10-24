@@ -1,5 +1,6 @@
 import { probeOrganismSystem, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
-import { LettaMemoryBridge, type LettaMemoryBridgeOptions } from '../integration/letta/LettaMemoryBridge.ts';
+import { createHash } from 'node:crypto';
+import { LettaMemoryBridge, type LettaCanonicalMemorySyncInput, type LettaMemoryBridgeOptions } from '../integration/letta/LettaMemoryBridge.ts';
 import { EventLog } from '../memory/EventSourcing.ts';
 import { MultiTimescaleMemory } from '../memory/MultiTimescaleMemory.ts';
 import { AutobiographicalMemory } from '../memory/AutobiographicalMemory.ts';
@@ -28,6 +29,24 @@ import { MemoryCausalEconomy, defaultMemoryCausalEconomy } from '../system/Memor
 import { CausalLifeGraph } from '../system/CausalLifeGraph.ts';
 import { MemoryWorldCausalBridge, defaultMemoryWorldCausalBridge } from '../system/MemoryWorldCausalBridge.ts';
 
+interface LettaSyncOutboxEntry {
+  key: string;
+  input: LettaCanonicalMemorySyncInput;
+  enqueuedAt: number;
+  attempts: number;
+  lastError: string | null;
+}
+
+export interface LettaSyncOutboxSnapshot {
+  version: 1;
+  entries: LettaSyncOutboxEntry[];
+  completedKeys: string[];
+  overflowCount: number;
+}
+
+const MAX_LETTA_SYNC_OUTBOX_ENTRIES = 4096;
+const MAX_LETTA_SYNC_RECEIPTS = 1024;
+
 /** BIG PASS 51: physical owner for persistent and working-memory machinery. */
 export class MemorySubsystemRuntime {
   readonly systemName='memory' as const;
@@ -36,7 +55,11 @@ export class MemorySubsystemRuntime {
   /** Optional external long-term memory provider; NK1 remains the canonical owner. */
   readonly lettaBridge: LettaMemoryBridge;
   private suppressLettaSync = false;
-  private readonly pendingLettaSyncs = new Set<Promise<void>>();
+  private lettaSyncOutbox: LettaSyncOutboxEntry[] = [];
+  private lettaSyncCompletedKeys: string[] = [];
+  private lettaSyncOutboxOverflowCount = 0;
+  private lettaSyncDrainPromise: Promise<void> | null = null;
+  private lettaSyncDraining = false;
   health(): OrganismSystemHealthSnapshot { return probeOrganismSystem(this); }
 
   readonly events = new EventLog();
@@ -80,67 +103,144 @@ export class MemorySubsystemRuntime {
 
   private onMemoryLifecycleObservation(observation: MemoryLifecycleObservation): void {
     if (this.suppressLettaSync || !this.lettaBridge.status().enabled || !observation.memoryId) return;
-    let request: Promise<unknown>;
+    let input: LettaCanonicalMemorySyncInput;
     if (observation.action === 'forget') {
-      request = this.lettaBridge.synchronizeCanonicalMemory({
-        action: 'forget',
-        id: observation.memoryId,
-        source: 'nk1-memory-fabric',
-        kind: 'canonical-memory-lifecycle',
-        reason: observation.reason ?? 'canonical-forget',
-        occurredAt: Date.now(),
-      });
+      input = {
+        action: 'forget', id: observation.memoryId, source: 'nk1-memory-fabric',
+        kind: 'canonical-memory-lifecycle', reason: observation.reason ?? 'canonical-forget', occurredAt: Date.now(),
+      };
     } else {
       const item = observation.item;
       if (!item) return;
       const summary = JSON.stringify({
-        canonicalOwner: 'NK1/MemoryFabric',
-        memoryId: item.id,
-        lifecycleAction: observation.action,
-        commandId: observation.commandId ?? null,
-        tick: observation.tick,
-        content: item.content,
-        context: item.context ?? {},
-        createdAt: item.createdAt,
-        observedAt: item.observedAt ?? null,
-        validFromAt: item.validFromAt ?? null,
-        validUntilAt: item.validUntilAt ?? null,
-        epistemicStatus: item.epistemicStatus,
-        supersedesId: item.supersedesId ?? null,
-        supersededById: item.supersededById ?? null,
-        revisionGroupId: item.revisionGroupId ?? null,
-        revisionSequence: item.revisionSequence ?? null,
-        provenanceClass: item.provenanceClass ?? 'unknown',
+        canonicalOwner: 'NK1/MemoryFabric', memoryId: item.id,
+        lifecycleAction: observation.action, commandId: observation.commandId ?? null, tick: observation.tick,
+        content: item.content, context: item.context ?? {}, createdAt: item.createdAt,
+        observedAt: item.observedAt ?? null, validFromAt: item.validFromAt ?? null, validUntilAt: item.validUntilAt ?? null,
+        epistemicStatus: item.epistemicStatus, supersedesId: item.supersedesId ?? null,
+        supersededById: item.supersededById ?? null, revisionGroupId: item.revisionGroupId ?? null,
+        revisionSequence: item.revisionSequence ?? null, provenanceClass: item.provenanceClass ?? 'unknown',
         sourceAuthority01: item.sourceAuthority01 ?? null,
       });
       const tags = [
-        ...(item.tags ?? []),
-        'nk1-canonical-memory',
-        'nk1-kind:' + item.kind,
-        'nk1-epistemic:' + item.epistemicStatus,
-        'nk1-provenance:' + (item.provenanceClass ?? 'unknown'),
+        ...(item.tags ?? []), 'nk1-canonical-memory', 'nk1-kind:' + item.kind,
+        'nk1-epistemic:' + item.epistemicStatus, 'nk1-provenance:' + (item.provenanceClass ?? 'unknown'),
         ...(item.supersedesId ? ['nk1-supersedes:' + item.supersedesId] : []),
         ...(item.supersededById ? ['nk1-superseded-by:' + item.supersededById] : []),
       ].slice(0, 24);
-      request = this.lettaBridge.synchronizeCanonicalMemory({
-        action: 'upsert',
-        id: item.id,
-        source: item.source || 'nk1-memory-fabric',
-        kind: item.kind,
-        summary,
-        occurredAt: item.observedAt ?? item.createdAt,
-        confidence01: item.confidence,
-        tags,
-      });
+      input = {
+        action: 'upsert', id: item.id, source: item.source || 'nk1-memory-fabric', kind: item.kind,
+        summary, occurredAt: item.observedAt ?? item.createdAt, confidence01: item.confidence, tags,
+      };
     }
-    const tracked = request.then(() => undefined, () => undefined);
-    this.pendingLettaSyncs.add(tracked);
-    void tracked.then(() => { this.pendingLettaSyncs.delete(tracked); });
+    this.enqueueLettaSync(input);
   }
 
-  /** Wait for best-effort external memory operations before graceful shutdown/tests. */
+  private enqueueLettaSync(input: LettaCanonicalMemorySyncInput): void {
+    const key = createHash('sha256').update(JSON.stringify(input)).digest('hex');
+    if (this.lettaSyncCompletedKeys.includes(key) || this.lettaSyncOutbox.some(entry => entry.key === key)) return;
+    if (this.lettaSyncOutbox.length >= MAX_LETTA_SYNC_OUTBOX_ENTRIES) {
+      this.lettaSyncOutboxOverflowCount += 1;
+      return;
+    }
+    this.lettaSyncOutbox.push({ key, input: structuredClone(input), enqueuedAt: Date.now(), attempts: 0, lastError: null });
+    this.scheduleLettaSyncDrain();
+  }
+
+  private scheduleLettaSyncDrain(): void {
+    if (!this.lettaBridge.status().enabled || this.lettaSyncOutbox.length === 0 || this.lettaSyncDrainPromise) return;
+    let scheduled!: Promise<void>;
+    scheduled = Promise.resolve().then(() => this.drainLettaSyncOutbox()).finally(() => {
+      if (this.lettaSyncDrainPromise === scheduled) this.lettaSyncDrainPromise = null;
+    });
+    this.lettaSyncDrainPromise = scheduled;
+  }
+
+  private async drainLettaSyncOutbox(): Promise<void> {
+    if (this.lettaSyncDraining || !this.lettaBridge.status().enabled) return;
+    this.lettaSyncDraining = true;
+    try {
+      while (this.lettaBridge.status().enabled && this.lettaSyncOutbox.length > 0) {
+        const entry = this.lettaSyncOutbox[0];
+        entry.attempts += 1;
+        try {
+          const result = await this.lettaBridge.synchronizeCanonicalMemory(entry.input);
+          if (!result.ok) {
+            entry.lastError = result.reason ?? 'letta-sync-not-confirmed';
+            break;
+          }
+          this.lettaSyncOutbox.shift();
+          this.lettaSyncCompletedKeys.push(entry.key);
+          if (this.lettaSyncCompletedKeys.length > MAX_LETTA_SYNC_RECEIPTS) {
+            this.lettaSyncCompletedKeys = this.lettaSyncCompletedKeys.slice(-MAX_LETTA_SYNC_RECEIPTS);
+          }
+        } catch (error) {
+          entry.lastError = error instanceof Error ? error.message.slice(0, 500) : 'letta-sync-failed';
+          break;
+        }
+      }
+    } finally {
+      this.lettaSyncDraining = false;
+    }
+  }
+
+  getLettaSyncOutboxSnapshot(): LettaSyncOutboxSnapshot {
+    return structuredClone({
+      version: 1 as const, entries: this.lettaSyncOutbox,
+      completedKeys: this.lettaSyncCompletedKeys, overflowCount: this.lettaSyncOutboxOverflowCount,
+    });
+  }
+
+  private restoreLettaSyncOutbox(raw: unknown): void {
+    this.lettaSyncOutbox = [];
+    this.lettaSyncCompletedKeys = [];
+    this.lettaSyncOutboxOverflowCount = 0;
+    if (!raw || typeof raw !== 'object') return;
+    const snapshot = raw as Partial<LettaSyncOutboxSnapshot>;
+    if (snapshot.version !== 1 || !Array.isArray(snapshot.entries)) return;
+    const validKey = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
+    const validOperation = (value: unknown): value is LettaCanonicalMemorySyncInput => {
+      if (!value || typeof value !== 'object') return false;
+      const operation = value as LettaCanonicalMemorySyncInput;
+      if ((operation.action !== 'upsert' && operation.action !== 'forget') || typeof operation.id !== 'string' || !operation.id.trim()) return false;
+      if (operation.action === 'upsert') return typeof operation.summary === 'string' && typeof operation.source === 'string' && typeof operation.kind === 'string';
+      return true;
+    };
+    this.lettaSyncOutbox = snapshot.entries.slice(-MAX_LETTA_SYNC_OUTBOX_ENTRIES).flatMap(rawEntry => {
+      if (!rawEntry || typeof rawEntry !== 'object') return [];
+      const entry = rawEntry as LettaSyncOutboxEntry;
+      if (!validKey(entry.key) || !validOperation(entry.input)) return [];
+      return [{
+        key: entry.key, input: structuredClone(entry.input),
+        enqueuedAt: typeof entry.enqueuedAt === 'number' && Number.isFinite(entry.enqueuedAt) ? Math.max(0, entry.enqueuedAt) : Date.now(),
+        attempts: typeof entry.attempts === 'number' && Number.isSafeInteger(entry.attempts) ? Math.max(0, Math.min(100000, entry.attempts)) : 0,
+        lastError: typeof entry.lastError === 'string' ? entry.lastError.slice(0, 500) : null,
+      }];
+    });
+    this.lettaSyncCompletedKeys = snapshot.completedKeys?.filter(validKey).slice(-MAX_LETTA_SYNC_RECEIPTS) ?? [];
+    this.lettaSyncOutboxOverflowCount = typeof snapshot.overflowCount === 'number' && Number.isSafeInteger(snapshot.overflowCount)
+      ? Math.max(0, snapshot.overflowCount) : 0;
+  }
+
+  lettaSyncOutboxStatus() {
+    return {
+      pending: this.lettaSyncOutbox.length, oldestEnqueuedAt: this.lettaSyncOutbox[0]?.enqueuedAt ?? null,
+      oldestAttempts: this.lettaSyncOutbox[0]?.attempts ?? 0, oldestLastError: this.lettaSyncOutbox[0]?.lastError ?? null,
+      completedReceipts: this.lettaSyncCompletedKeys.length, overflowCount: this.lettaSyncOutboxOverflowCount,
+      requiresReconciliation: this.lettaSyncOutboxOverflowCount > 0,
+    };
+  }
+
   async flushLettaMemorySync(): Promise<void> {
-    while (this.pendingLettaSyncs.size > 0) await Promise.all([...this.pendingLettaSyncs]);
+    if (!this.lettaBridge.status().enabled || this.lettaSyncOutbox.length === 0) {
+      if (this.lettaSyncDrainPromise) await this.lettaSyncDrainPromise;
+      return;
+    }
+    if (this.lettaSyncDrainPromise) {
+      await this.lettaSyncDrainPromise;
+      return;
+    }
+    await this.drainLettaSyncOutbox();
   }
 
   async close(): Promise<void> {
@@ -153,6 +253,7 @@ export class MemorySubsystemRuntime {
     try {
       const memory=input.memory ?? {}; const advanced=input.advanced ?? {};
     this.lettaBridge.restore(advanced.lettaBridge ?? memory.lettaBridge);
+    this.restoreLettaSyncOutbox(advanced.lettaSyncOutbox ?? memory.lettaSyncOutbox);
     this.events.restore(memory.eventLog);
     this.memories.restore(memory.autobiographicalMemories);
     this.selfModel.restore(memory.selfModel);
@@ -178,6 +279,7 @@ export class MemorySubsystemRuntime {
     } finally {
       this.suppressLettaSync = false;
     }
+    this.scheduleLettaSyncDrain();
   }
 
   /**
@@ -233,6 +335,6 @@ export class MemorySubsystemRuntime {
     workspace:this.workspaceV2.snapshot(), semanticGraph:this.semanticMemory.snapshot(), memoryOS:this.memoryOS.snapshot(),
     unifiedMemory:this.unifiedMemory.snapshot(), p47:this.p47MemoryMind.snapshot(), p59:this.p59MemoryOperatingSystem.snapshot(),
     p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
-    p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(), lettaBridge:this.lettaBridge.snapshot(),
+    p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(), lettaBridge:this.lettaBridge.snapshot(), lettaSyncOutbox:this.getLettaSyncOutboxSnapshot(),
   }; }
 }
