@@ -806,16 +806,15 @@ export function compareMatchedIndependentEvaluations(
     for (const seed of allSeeds) {
       const baselineTasks = baselineBySeed.get(seed);
       const candidateTasks = candidateBySeed.get(seed);
-      const isComplete = !!baselineTasks && !!candidateTasks &&
-        baselineTasks.size === taskIds.size && candidateTasks.size === taskIds.size &&
-        [...taskIds].every(taskId =>
-          (baselineTasks.get(taskId)?.length ?? 0) > 0 &&
-          (candidateTasks.get(taskId)?.length ?? 0) > 0);
-      if (!isComplete) {
+      if (!baselineTasks || !candidateTasks ||
+          baselineTasks.size !== taskIds.size || candidateTasks.size !== taskIds.size ||
+          ![...taskIds].every(taskId =>
+            (baselineTasks.get(taskId)?.length ?? 0) > 0 &&
+            (candidateTasks.get(taskId)?.length ?? 0) > 0)) {
         completeSeedCoverage = false;
         continue;
       }
-      deltas.push(perSeedMean(candidateTasks!) - perSeedMean(baselineTasks!));
+      deltas.push(perSeedMean(candidateTasks) - perSeedMean(baselineTasks));
     }
     const rounded = (value: number | null): number | null =>
       value === null ? null : Number(value.toFixed(6));
