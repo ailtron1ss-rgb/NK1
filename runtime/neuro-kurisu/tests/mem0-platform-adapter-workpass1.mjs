@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Mem0PlatformAdapter } from '../src/organism/integration/mem0/Mem0PlatformAdapter.ts';
+import { Mem0PlatformAdapter, redactMem0Text } from '../src/organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitivePrompt } from '../src/organism/language/LanguageOrgan.ts';
 
 function jsonResponse(value, status = 200) {
@@ -9,6 +9,30 @@ function jsonResponse(value, status = 200) {
     headers: { 'content-type': 'application/json; charset=utf-8' },
   });
 }
+
+test('redaction normalizes invisible controls and strips common credential formats', () => {
+  const secrets = [
+    'github_pat_abcdefghijklmnopqrstuvwxyz0123456789',
+    'ghp_abcdefghijklmnopqrstuvwxyz012345',
+    'xoxb-123456789012-abcdefghijk',
+    'AKIA1234567890ABCDEF',
+    'AIza1234567890abcdefghijklmnopqrstuvwxyzABCD',
+    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signatureSECRET1234',
+  ];
+  const input = [
+    ...secrets,
+    'password="space separated credential phrase"',
+    '{"api_key":"credential with spaces"}',
+    'hidden\u200btoken\u202eexample\u0000',
+  ].join(' | ');
+  const result = redactMem0Text(input);
+
+  assert.equal(result.redacted, true);
+  assert.ok((result.text.match(/\[redacted-token\]/g) ?? []).length >= secrets.length);
+  assert.doesNotMatch(result.text, /github_pat_abcdefghijklmnopqrstuvwxyz0123456789|ghp_abcdefghijklmnopqrstuvwxyz012345|xoxb-123456789012-abcdefghijk|AKIA1234567890ABCDEF|AIza1234567890abcdefghijklmnopqrstuvwxyzABCD|signatureSECRET1234/);
+  assert.doesNotMatch(result.text, /space separated credential phrase|credential with spaces/);
+  assert.doesNotMatch(result.text, /[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/);
+});
 
 
 test('external Mem0 recall enters context only as bounded, low-priority untrusted data', () => {
