@@ -1,3 +1,35 @@
+## NK1 Architecture — dependency graph observability (2026-10-24)
+
+- [OBSERVABILITY] The architecture audit success line now reports `dependencyEdges` and `boundaryViolations=0` alongside source-file and cycle/missing-import counts.
+- [REGRESSION] The full-tree test asserts the graph metrics are present and that the boundary violation count is zero.
+
+## NK1 Architecture — enforce dependency directions (2026-10-24)
+
+- [ADDED] Extracted a pure, testable dependency boundary policy in `runtime/neuro-kurisu/scripts/dependency-boundary-policy.mjs`.
+- [ENFORCED] The architecture audit now rejects canonical organism imports into UI/app source, app server routing, runtime server routing, research trees, or legacy trees. It also rejects app source imports directly into private runtime source.
+- [REGRESSION] Expanded `tests/architecture-dependency-boundaries.test.mjs` with fixture-based policy tests for allowed contract dependencies and each forbidden edge, plus a full-tree audit invocation. The existing `audit:architecture` command now runs this gate.
+- [LIMITATION] Policy fixtures and saved sources were verified, but the full source-tree audit and the integrated Node test have not been executed locally or in CI in this pass. Existing imports that violate the newly formalized target rules may still need migration.
+
+## NK1 Architecture — complete dependency-edge parsing (2026-10-24)
+
+- [HARDENED] Updated `runtime/neuro-kurisu/scripts/audit-architecture.mjs` to include side-effect imports and literal CommonJS requires in the dependency graph, in addition to static imports, re-exports, and literal dynamic imports.
+- [RESOLUTION] Added NodeNext-style emitted-JavaScript-to-TypeScript source resolution and indexed-file lookup via `Set` to avoid repeated linear scans during edge resolution.
+- [LIMITATION] This updates the static analysis path; the architecture audit has not been executed on the current commit in this environment.
+
+## NK1 Architecture — transitive server dependency audit (2026-10-24)
+
+- [HARDENED] Expanded `runtime/neuro-kurisu/scripts/audit-server-imports.mjs` from checking only direct imports of `src/server/server.mjs` to traversing the reachable relative-import graph.
+- [COVERAGE] The scanner covers static imports, re-exports, literal dynamic imports, and literal CommonJS requires; it resolves common JS/TS extensions, index modules, imported assets, and NodeNext-style `.js` specifiers mapped to local TypeScript sources.
+- [REGRESSION] Added `tests/server-import-graph-audit.test.mjs`, asserting transitive traversal, graph connectivity, and zero unresolved local edges. The existing `audit:server-imports` command now runs this regression test and the scanner.
+- [LIMITATION] The changes are committed to the architecture work branch and source-verified via GitHub; the audit/test have not been executed in a local checkout or CI in this pass, so runtime PASS is not claimed.
+
+## NK1 Architecture — module dependency contracts (2026-10-24)
+
+- [ADDED] Added `docs/architecture/module-dependency-contracts-ru.md` with a target dependency map, module ownership matrix, integration invariants, and a staged plan for enforcing boundaries.
+- [DOCUMENTED] Recorded the existing integration seams verified from the manifests and integration verifier: runtime server, UI API client, research bridge, integration manifest, server-import audit, UI/API linkage audit, runtime architecture/contract/integrity audits.
+- [BOUNDARY] Defined one cognitive-cycle owner; mandatory policy + ActionGateway path for external actions; UI/research bridge access through public contracts; single-writer ownership for persistent state; candidate/holdout/promotion separation for learning.
+- [LIMITATION] This pass added architecture contracts and a verified implementation map, not runtime refactors. The complete import graph and audit results have not yet been generated or executed on this branch; no test pass is claimed.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
