@@ -85,7 +85,7 @@ assert.equal(signals.affect.emotion, 'curiosity');
 const before = hub.snapshot();
 assert.equal(before.localFirst, true);
 assert.equal(before.models.length, 4);
-assert.equal(before.models.find((row) => row.id === 'local-embeddings').state, 'configured-unprobed');
+assert.equal(before.models.find((row) => row.id === 'local-embeddings').state, 'observed-healthy');
 assert.equal(before.metrics.classification.successes, 2);
 assert.equal(before.metrics.emotion.successes, 2);
 assert.equal(before.metrics.embeddings.successes, 1);
