@@ -14,6 +14,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
       - 'runtime/neuro-kurisu/tests/big-pass-64-external-observer.mjs'
       - 'runtime/neuro-kurisu/tests/workpass559-emotion-context-learning.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass561-core-emotion-feedback-link.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs'
       - 'runtime/neuro-kurisu/tests/workpass521-observer-ledger-bridge.mjs'
       - 'runtime/neuro-kurisu/tests/workpass529-p23-reality-promotion-gate.mjs'
       - 'runtime/neuro-kurisu/tests/workpass548-observer-source-identity.mjs'
@@ -31,6 +33,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
       - 'runtime/neuro-kurisu/tests/big-pass-64-external-observer.mjs'
       - 'runtime/neuro-kurisu/tests/workpass559-emotion-context-learning.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass561-core-emotion-feedback-link.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs'
       - 'runtime/neuro-kurisu/tests/workpass521-observer-ledger-bridge.mjs'
       - 'runtime/neuro-kurisu/tests/workpass529-p23-reality-promotion-gate.mjs'
       - 'runtime/neuro-kurisu/tests/workpass548-observer-source-identity.mjs'
@@ -56,4 +60,6 @@ jobs:
           node --experimental-strip-types tests/workpass529-p23-reality-promotion-gate.mjs
           node --experimental-strip-types tests/workpass548-observer-source-identity.mjs
           node --experimental-strip-types tests/workpass559-emotion-context-learning.mjs
+          node --experimental-strip-types --experimental-transform-types tests/workpass561-core-emotion-feedback-link.mjs
+          node --experimental-strip-types --experimental-transform-types tests/big-pass-172-emotion-interoceptive-mind.mjs
           node --experimental-strip-types --experimental-transform-types tests/big-pass-64-external-observer.mjs
