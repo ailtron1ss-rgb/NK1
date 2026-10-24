@@ -1,3 +1,13 @@
+## NK1 WorkPass491 — make the learning evidence path replay-safe and runtime-compatible
+
+- Replaced TypeScript constructor parameter properties in both skill candidate storage adapters with explicit readonly fields, retaining file-path validation, locking and injected authorization/evidence verifiers while allowing Node.js 24 strip-only tests to execute.
+- Made restored cognitive-cycle completion conditional on a coherent persisted partition of complete, incomplete and broken-lineage counters.
+- Tightened signed outcome artifact idempotency: an exact signed artifact may re-establish process-local trust after restoring a ledger, but a same-process replay is rejected as `duplicate-attempt`; conflicting outcomes remain blocked.
+- Added regression assertions covering duplicate rejection and one-time receipt re-establishment after restore.
+- **Validation boundary:** committed on `feature/learning`; exact-head CI must still confirm the P23 lifecycle and cycle-restoration paths.
+
+---
+
 ## NK1 WorkPass489 — cross-seed promotion gate contract
 
 - Added `runtime/neuro-kurisu/research/WORKPASS489_CROSS_SEED_PROMOTION_GATE.md` to define a fail-closed, paired-seed promotion protocol integrated with the existing P23/Hermes evaluator and verified-outcome ledger.

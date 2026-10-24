@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
-import { canonicalOutcomePayload, ingestSignedOutcomeArtifact, outcomePayloadFingerprint } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
+import { canonicalOutcomePayload, hasAuthenticatedOutcomeEvidence, ingestSignedOutcomeArtifact, outcomePayloadFingerprint } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
@@ -31,6 +31,16 @@ assert.equal(accepted.accepted, true);
 assert.match(accepted.artifactFingerprint, /^[a-f0-9]{64}$/);
 assert.equal(ledger.snapshot().acceptedOutcomes, 1);
 assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(validPayload), keys).rejection, 'duplicate-attempt');
+const signedEvidenceRef = `signed-artifact:${validPayload.artifactId}:sha256:${accepted.artifactFingerprint}`;
+assert.equal(hasAuthenticatedOutcomeEvidence(ledger, signedEvidenceRef), true);
+
+// Restored snapshots lose process-local trust receipts. The exact signed artifact
+// can re-establish that receipt once, after which repeated ingestion is rejected.
+const restoredLedger = VerifiedOutcomeLedger.restoreSnapshot(ledger.snapshot());
+const reauthenticated = ingestSignedOutcomeArtifact(restoredLedger, manifest, artifactFor(validPayload), keys);
+assert.equal(reauthenticated.accepted, true);
+assert.equal(hasAuthenticatedOutcomeEvidence(restoredLedger, signedEvidenceRef), true);
+assert.equal(ingestSignedOutcomeArtifact(restoredLedger, manifest, artifactFor(validPayload), keys).rejection, 'duplicate-attempt');
 
 const changed = makePayload({ artifactId: 'artifact-002', passed: false });
 const forged = artifactFor(changed);

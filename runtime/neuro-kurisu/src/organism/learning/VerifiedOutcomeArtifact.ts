@@ -138,6 +138,7 @@ export function ingestSignedOutcomeArtifact(
     row.taskId === outcome.taskId && row.method === outcome.method &&
     row.seed === outcome.seed && row.attempt === outcome.attempt,
   );
+  const authenticatedBefore = authenticatedEvidence.get(ledger);
   if (existing) {
     const exactMatch = existing.taskVersion === outcome.taskVersion &&
       existing.passed === outcome.passed && existing.authority === outcome.authority &&
@@ -146,13 +147,18 @@ export function ingestSignedOutcomeArtifact(
     if (!exactMatch) {
       return { accepted: false, artifactFingerprint: fingerprint, rejection: 'conflicting-existing-outcome' };
     }
+    // A restored ledger has no process-local trust receipt, so its exact signed
+    // artifact may re-establish trust once. Repeated ingestion in this process is a replay.
+    if (authenticatedBefore?.has(outcome.evidenceRef)) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: 'duplicate-attempt' };
+    }
   } else {
     const result = ledger.record(outcome);
     if (!result.accepted) {
       return { accepted: false, artifactFingerprint: fingerprint, rejection: result.rejection?.code ?? 'ledger-rejected' };
     }
   }
-  const evidence = authenticatedEvidence.get(ledger) ?? new Map<string, string>();
+  const evidence = authenticatedBefore ?? new Map<string, string>();
   evidence.set(outcome.evidenceRef, fingerprint);
   authenticatedEvidence.set(ledger, evidence);
   return { accepted: true, artifactFingerprint: fingerprint };
