@@ -139,34 +139,32 @@ export class EvidenceResearchSubsystemRuntime {
     // whose source identity is no longer accepted by the strict restore policy.
     // Collect both stable row IDs and verifier-minted event IDs before validation.
     const rawObserverState=(raw as any).externalObserver;
-    const persistedObserverEventIds=new Set<string>();
-    const collectObserverEventIds=(rows:unknown[])=>{
-      for(const value of rows){
-        if(!value||typeof value!=='object'||Array.isArray(value))continue;
-        const row=value as any;
-        if(typeof row.id==='string'&&row.id.trim())persistedObserverEventIds.add(row.id);
-        if(typeof row.evidenceEventId==='string'&&row.evidenceEventId.trim())persistedObserverEventIds.add(row.evidenceEventId);
-      }
-    };
-    if(Array.isArray(rawObserverState?.observations))collectObserverEventIds(rawObserverState.observations);
+    const rawObserverRows:Array<unknown>=Array.isArray(rawObserverState?.observations)?rawObserverState.observations:[];
     this.externalObserver.restore(rawObserverState);
-    // Reconcile trust before restoring the ledger. Rejected/disabled-source events
-    // are removed from the active evidence projection instead of surviving in a
-    // previously persisted ledger after their observer row has been discarded.
+    // Source identity is checked independently of the bounded observation cache.
+    // A valid but older row may have been evicted from observer memory while its
+    // canonical ledger event remains legitimate historical evidence.
     const observerState=this.externalObserver.snapshot();
-    const acceptedObserverEventIds=new Set<string>();
     const registeredSources=new Map(observerState.sources.map(source=>[source.id,source]));
-    for(const observation of observerState.observations){
-      const source=registeredSources.get(observation.sourceId);
-      if(!source||!source.enabled||source.sourceClass!==observation.sourceClass||source.channel!==observation.channel)continue;
-      const rowIndependenceKey=typeof observation.independenceKey==='string'&&observation.independenceKey.trim()
-        ?observation.independenceKey
+    const orphanedObserverEventIds=new Set<string>();
+    for(const value of rawObserverRows){
+      if(!value||typeof value!=='object'||Array.isArray(value))continue;
+      const row=value as any;
+      const rowEventIds=[
+        ...(typeof row.id==='string'&&row.id.trim()?[row.id]:[]),
+        ...(typeof row.evidenceEventId==='string'&&row.evidenceEventId.trim()?[row.evidenceEventId]:[]),
+      ];
+      if(rowEventIds.length===0)continue;
+      const source=typeof row.sourceId==='string'?registeredSources.get(row.sourceId):undefined;
+      const rowIndependenceKey=typeof row.independenceKey==='string'&&row.independenceKey.trim()
+        ?row.independenceKey.trim().slice(0,120)
         :undefined;
-      if(rowIndependenceKey!==undefined&&rowIndependenceKey!==source.independenceKey)continue;
-      if(typeof observation.id==='string'&&observation.id.trim())acceptedObserverEventIds.add(observation.id);
-      if(typeof observation.evidenceEventId==='string'&&observation.evidenceEventId.trim())acceptedObserverEventIds.add(observation.evidenceEventId);
+      const validObserverRow=typeof row.id==='string'&&typeof row.sourceId==='string'&&typeof row.claimKey==='string'&&
+        Number.isFinite(Number(row.observedAt))&&Number.isFinite(Number(row.confidence01))&&
+        Boolean(source&&source.enabled&&source.sourceClass===row.sourceClass&&source.channel===row.channel)&&
+        (rowIndependenceKey===undefined||rowIndependenceKey===source?.independenceKey);
+      if(!validObserverRow)for(const eventId of rowEventIds)orphanedObserverEventIds.add(eventId);
     }
-    const orphanedObserverEventIds=new Set([...persistedObserverEventIds].filter(id=>!acceptedObserverEventIds.has(id)));
     let ledgerToRestore=(raw as any).realityEvidenceLedger;
     if(orphanedObserverEventIds.size>0&&ledgerToRestore&&typeof ledgerToRestore==='object'&&
        !Array.isArray(ledgerToRestore)&&Array.isArray(ledgerToRestore.recent)){
