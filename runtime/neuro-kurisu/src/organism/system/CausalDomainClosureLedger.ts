@@ -94,16 +94,24 @@ export class CausalDomainClosureLedger {
     const lastStatus:CausalClosureStatus=rawStatus==='FAIL'||failedLatest?'FAIL':rawStatus;
     const rawLatest=rawRecent[0] as any;
     let completeCycles=Math.min(totalCycles,safeCount(raw?.completeCycles));
-    // If a persisted summary credited the most recent record as complete but
-    // normalization proves that record failed, remove that one stale success credit.
-    if(failedLatest&&rawLatest?.complete===true&&!latest?.complete)completeCycles=Math.max(0,completeCycles-1);
+    let degradedCycles=safeCount(raw?.degradedCycles);
+    let failures=Math.max(safeCount(raw?.failures),failedLatest?1:0);
+    // When the bounded window contains the full history, derive counters from
+    // normalized terminal records instead of trusting contradictory summaries.
+    if(recent.length===totalCycles){
+      completeCycles=recent.filter(record=>record.complete&&record.status==='PASS').length;
+      degradedCycles=recent.filter(record=>record.status==='DEGRADED').length;
+      failures=recent.filter(record=>record.status==='FAIL').length;
+    }else if(failedLatest&&rawLatest?.complete===true&&!latest?.complete){
+      completeCycles=Math.max(0,completeCycles-1);
+    }
     const rawMeanScore=clamp(Number(raw?.meanScore01??0));
     const lastScoreOverstatement=failedLatest&&latest?Math.max(0,clamp(Number(rawLatest?.score01??0))-latest.score01):0;
     const meanScore01=clamp(rawMeanScore-lastScoreOverstatement/Math.max(1,totalCycles));
     this.state={
       version:1,capacity:cap,totalCycles,completeCycles,
-      degradedCycles:safeCount(raw?.degradedCycles),
-      failures:Math.max(safeCount(raw?.failures),failedLatest?1:0),
+      degradedCycles,
+      failures:Math.max(failures,failedLatest?1:0),
       meanScore01,
       lastTick:finiteCount(raw?.lastTick),
       lastStatus,
