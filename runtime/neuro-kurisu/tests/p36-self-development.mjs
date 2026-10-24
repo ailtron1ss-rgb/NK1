@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { P36AutonomousSelfDevelopmentEngine, developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
+import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 
 const engine=new P36AutonomousSelfDevelopmentEngine();
@@ -26,7 +26,7 @@ let receiptSequence=0;
 let forcedObservationId;
 let issuedObservationCount=0;
 gateway.registerTool({
-  id:'p36-independent-fixture-verifier',
+  id:P36_EXTERNAL_EVIDENCE_TOOL_ID,
   capability:'learning.evaluation',
   destructive:false,
   execute:async()=>({ok:true,observationId:forcedObservationId??('p36-independent-proof-'+(++issuedObservationCount))}),
@@ -43,7 +43,7 @@ async function mintProof(binding, suppliedObservationId){
   const ticket=++receiptSequence;
   forcedObservationId=suppliedObservationId;
   const decisionId=`p36-development-decision-${ticket}`;
-  const result=await gateway.executeTool('p36-independent-fixture-verifier',binding,'p36-independent-development-evaluation',{decisionId});
+  const result=await gateway.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,binding,'p36-independent-development-evaluation',{decisionId});
   forcedObservationId=undefined;
   assert.equal(result.verified,true,'fixture evaluator result must pass through ActionGateway verification');
   return {toolId:result.tool,executionId:result.executionId,decisionId,verification:result.verification};
