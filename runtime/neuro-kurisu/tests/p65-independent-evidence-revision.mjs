@@ -150,7 +150,7 @@ assert.equal(ledger.record({
   confidence01: 0.7, source: 'web', parentIds: ['valid-parent', ''],
 }), '', 'malformed parent references must be rejected rather than silently removed');
 
-for (const parentIds of [['  '], ['parent\\u0000id'], ['parent:a', 'parent:a']]) {
+for (const parentIds of [['  '], ['parent\u0000id'], ['parent:a', 'parent:a']]) {
   assert.equal(ledger.record({
     tick: 2, at: 154, kind: 'belief', content: 'invalid canonical parent lineage',
     confidence01: 0.7, source: 'web', parentIds,
