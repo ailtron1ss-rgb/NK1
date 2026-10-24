@@ -18,10 +18,11 @@
 - [BACKGROUND-CYCLE] Registered and started the opt-in `p23-compound-repair-revision` clock in `RuntimeClockScheduler`; `tests/runtime-clocks.mjs` now exercises this clock, and the test is part of `test:rebuild-recovered`.
 - [COGNITIVE-LINEAGE] Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation, keeping the extended single verifier that checks both required and supplied optional-stage edges.
 - [EVIDENCE-BOUNDARY] Corrected the malformed control-character regex in `OutcomeVerificationService` which prevented TypeScript compilation.
+- [CI-ORDER] Updated `workpass71-validation.yml` so focused P328 and runtime-clock regressions run after dependencies install but before the separate App typecheck can skip all runtime checks.
 - [VALIDATION] Added `audit:p328:closed-loop-failure-closure` (`typecheck` + regression) as a single acceptance command. Current observed Actions logs are from the earlier PR head `2990f2cf…`: typecheck and unrelated P23 artifact checks failed; the new loop-specific fixes have not yet been validated on the latest head.
-- [REGRESSION] Added `tests/closed-loop-failure-closure.mjs` and connected `test:p328:closed-loop-failure-closure` to `test:rebuild-recovered`; test execution remains unverified until CI gets a runner.
+- [REGRESSION] Added `tests/closed-loop-failure-closure.mjs` and connected `test:p328:closed-loop-failure-closure` plus `test:runtime-clocks` to `test:rebuild-recovered`; new-head regression execution remains unverified.
 - [DOCUMENTATION] Added `docs/CLOSED_LOOP_SYSTEM_AUDIT_2026-10-24.md` with the cross-module cycle map, invariants, remaining validation gaps and release gates.
-- [LIMITATION] This is a source-branch implementation checkpoint, not a regenerated release ZIP or a production-approval claim. Existing held-out learning, Android/Live2D E2E, long soak and runner-startup gates remain open.
+- [LIMITATION] This is a source-branch implementation checkpoint, not a regenerated release ZIP or a production-approval claim. Exact-head targeted regressions and broad TypeScript/replay gates remain to be confirmed; held-out learning, Android/Live2D E2E and long-soak gates are still open.
 
 ---
 
