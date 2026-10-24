@@ -1,3 +1,11 @@
+## NK1 WorkPass492 — additional strict typing repairs (2026-10-24)
+
+- Replaced dynamic indexing on the restored dependency-domain map with an explicit `Record<string, unknown>` boundary.
+- Fixed dream-association string filters to return a strict boolean predicate, narrowed optional causal policy feature vectors before access, and preserved the verified dataset schema version as literal `1`.
+- These changes target real strict-mode diagnostics after installing official Node typings; workflow results remain pending/partially failing until the refreshed commit is validated.
+
+---
+
 ## NK1 WorkPass491 — regression contracts match fail-closed behavior (2026-10-24)
 
 - Added the missing `test:workpass294:correlated-postcondition` npm alias referenced by the workflow, so the postcondition regression proceeds after its semantic typecheck.
