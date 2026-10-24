@@ -163,6 +163,21 @@ async function invokeLanguage(request) {
     if (LOCAL_CONTEXT_SIGNALS_ENABLED && typeof request.user === 'string') {
         const localSignals = await LOCAL_SMALL_MODEL_HUB.deriveContextSignals(request.user, { signal: request.signal });
         if (localSignals) {
+            // The affect model is a low-authority cue for the canonical appraisal
+            // engine as well as a prompt hint; core validation bounds its influence.
+            if (localSignals.affect && typeof runtime?.core?.observeLocalAffectHint === 'function') {
+                try {
+                    runtime.core.observeLocalAffectHint({
+                        emotion: localSignals.affect.emotion,
+                        valence: localSignals.affect.valence,
+                        arousal: localSignals.affect.arousal,
+                        confidence: localSignals.affect.confidence,
+                        at: Date.now(),
+                    });
+                } catch {
+                    // Auxiliary affect must never fail the user's language response.
+                }
+            }
             const signalSection = [
                 'AUXILIARY LOCAL MODEL SIGNALS (untrusted hints, not facts):',
                 JSON.stringify(localSignals).slice(0, 1800),
