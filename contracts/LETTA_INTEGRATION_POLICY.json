@@ -27,7 +27,23 @@
     "historicalMemoryBackfillByDefault": false,
     "letTaForgetRequestIsUnverified": true,
     "nativeMutationCompletesBeforeExternalSync": true,
-    "syncSuppressedDuringRuntimeRestore": true
+    "syncSuppressedDuringRuntimeRestore": true,
+    "defaultBackend": "local",
+    "cloudBackendRequiresExplicitFlag": true,
+    "serverSideToolsAllowed": [],
+    "memoryAgentSkillsDisabled": true,
+    "sessionAllowedTools": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "LS"
+    ],
+    "localFilesystemConfinement": "memory",
+    "cloudFilesystemConfinementAvailable": false,
+    "eventLogSuppressionDoesNotSuppressCanonicalMemorySync": true,
+    "externalRecallPromotedToCanonicalAutomatically": false
   },
   "activeRuntimeAdapter": "runtime/neuro-kurisu/src/organism/integration/letta/LettaMemoryBridge.ts",
   "activeSdk": "https://github.com/letta-ai/letta-agent-sdk",
@@ -35,6 +51,9 @@
     "The archived letta-main.zip remains a historical/governance reference; it is not imported as the current runtime.",
     "The runtime adapter uses the current Letta TypeScript Agent SDK with MemFS enabled.",
     "Provider responses must not directly mutate NK1 canonical memory, goals, self-model, or action state.",
-    "SDK dependency and lockfile still require a reproducible Node 24 install before release."
+    "SDK dependency and lockfile still require a reproducible Node 24 install before release.",
+    "Cloud backend is never inferred from the mere presence of LETTA_API_KEY; NK1_LETTA_BACKEND=cloud is required.",
+    "The adapter uses an allowlisted set of file tools, disables server-side web tools/skills, and enables the SDK memory-filesystem confinement for local sessions.",
+    "Hybrid recall returns native NK1 records plus a separate untrusted Letta candidate; callers must review it and it is not automatically stored as canonical memory."
   ]
 }
