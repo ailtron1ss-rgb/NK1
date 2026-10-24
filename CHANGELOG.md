@@ -1,3 +1,10 @@
+# WorkPass345 — ground emotion source classification in learning provenance (2026-10-24)
+
+- [FIXED] EmotionAppraisalEngine feedback previously set `external` to `Boolean(outcome.evidenceSource)`. Any nonempty source label—including simulation—could therefore label an imagined/modelled outcome as `external-experience`.
+- [INTEGRATION] When authoritative `LearningProvenance` is present, the emotion episode now receives `external: true` only for `source === 'external'`. Legacy Core feedback calls without provenance retain their previous source-presence fallback.
+- [REGRESSION] Added a canonical live-Core assertion for the evidence-backed external classification.
+- [VALIDATION] On the parent SHA `6bb8d55d5b9dcf8c541ec0995c63f0a3210f336f`, WorkPass331, WorkPass110, WorkPass108, WorkPass292, WorkPass293 and WorkPass294 passed. WorkPass345 is a fresh change and needs its own exact-head regression run.
+
 # WorkPass344 — use one appraisal state for app and Live2D (2026-10-24)
 
 - [EMOTION] The UI snapshot now sources label, valence, arousal, dominance, action tendency, cause and confidence from the current `EmotionAppraisalEngine` episode when present. It no longer substitutes non-domain labels `thinking`/`focused` from the last action, which the UI normalizer silently reduced to `calm`.

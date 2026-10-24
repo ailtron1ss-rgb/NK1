@@ -1,3 +1,11 @@
+## Latest checkpoint — WorkPass345 emotion evidence-source grounding (2026-10-24)
+
+- Core feedback previously labelled any nonempty `evidenceSource` as an external emotion cause. In runtime paths that provide `LearningProvenance`, a simulated/shadow outcome could have a nonempty source name and be misclassified.
+- The emotion appraisal `external` flag now follows the authoritative provenance: only `learning.source === 'external'` is external. Callers with no provenance keep the old fallback for compatibility.
+- The WorkPass331 source regression guards this rule. Parent `6bb8d55...` passed WorkPass331/110/108/292/293/294; fresh exact-head CI remains required for WorkPass345.
+
+---
+
 ## Latest checkpoint — WorkPass344: canonical appraisal → UI + Live2D
 
 - The React app's `/api/organism/ui-snapshot` and the static Live2D shell now obtain emotion fields from the same latest `EmotionAppraisalEngine` episode, falling back to validated cognitive-field values only when no episode exists.

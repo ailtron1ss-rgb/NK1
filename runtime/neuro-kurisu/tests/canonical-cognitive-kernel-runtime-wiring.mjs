@@ -60,6 +60,8 @@ assert.match(core, /outcome\.causalMemoryContext\?\.attributionEligible === fals
   'a redirected action must not assign decision-level causal credit to the current cycle memories');
 assert.match(core, /A homeostatic redirect may still update emotional salience below, but must not teach a decision-level causal link/,
   'the no-credit rule must leave outcome/emotion reconsolidation separate from action attribution');
+assert.match(core, /success01: gatedSuccess01, external: outcome\.learning \? outcome\.learning\.source === 'external' : Boolean\(outcome\.evidenceSource\) \}\);/,
+  'emotion appraisal must use authoritative LearningProvenance so simulation outcomes are not tagged as external experiences');
 assert.match(core, /const identityInfluenceEligible = !outcome\.learning \|\|\s*\(outcome\.learning\.source === 'external' &&\s*outcome\.learning\.verified01 >= \.62 &&\s*outcome\.learning\.independent01 >= \.62\)/s,
   'authoritative runtime provenance must gate memory-to-identity influence on external, verified and independent evidence');
 assert.match(core, /if \(identityInfluenceEligible\) \{\s*const identityInfluence = this\.cognitiveRuntime\.identityTrajectory\.observeMemoryInfluence/s,
