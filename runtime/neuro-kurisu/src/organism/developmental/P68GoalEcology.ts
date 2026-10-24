@@ -58,7 +58,7 @@ export class P68GoalEcology {
   const pressure=clamp((top?.vitality01??0)*.48+Math.min(1,currentActive.length/4)*.12+input.homeostaticPressure01*.16+conflict*.12+stale*.12);
   const MAX_GOAL_RECORDS=15;
   if(goals.length>MAX_GOAL_RECORDS){
-    const removable=[...goals].filter(g=>g.status!=='active').sort((a,b)=>{
+    const removable=[...goals].filter(g=>g.status!=='active'&&!(g.source==='external'&&g.activationApproved===false)).sort((a,b)=>{
       const statusRank=(g:GoalStatus)=>g==='abandoned'?0:g==='completed'?1:g==='paused'?2:3;
       return statusRank(a.status)-statusRank(b.status) || a.importance-b.importance || a.updatedAt-b.updatedAt;
     });
