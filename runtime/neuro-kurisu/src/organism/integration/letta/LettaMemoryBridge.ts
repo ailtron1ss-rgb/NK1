@@ -129,10 +129,10 @@ function messageText(message: LettaTurnMessage): string {
 
 function indicatesExplicitProviderFailure(value: string): boolean {
   return [
-    /\\b(?:could not|couldn't|unable to|cannot|can't)\\s+(?:write|store|save|update|delete|remove|persist)\\b/i,
-    /\\b(?:failed|failure)\\s+(?:to\\s+)?(?:write|store|save|update|delete|remove|persist)\\b/i,
-    /\\b(?:partially deleted|partial deletion|not deleted|not stored|not saved)\\b/i,
-    /\\b(?:permission denied|access denied|storage unavailable|write failed|delete failed)\\b/i,
+    /\b(?:could not|couldn't|unable to|cannot|can't)\s+(?:write|store|save|update|delete|remove|persist)\b/i,
+    /\b(?:failed|failure)\s+(?:to\s+)?(?:write|store|save|update|delete|remove|persist)\b/i,
+    /\b(?:partially deleted|partial deletion|not deleted|not stored|not saved)\b/i,
+    /\b(?:permission denied|access denied|storage unavailable|write failed|delete failed)\b/i,
   ].some((pattern) => pattern.test(value));
 }
 
