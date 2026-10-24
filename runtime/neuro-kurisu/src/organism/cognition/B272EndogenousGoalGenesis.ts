@@ -248,7 +248,8 @@ export class B272EndogenousGoalGenesis {
   private generateCandidate(input:B272StepInput):B272GoalCandidate{
     const base=this.buildInternalVector(input);
     const conflict=clamp01(.28*input.predictionError01+.24*input.needs.uncertainty01+.18*(1-input.autobiographicalContinuity01)+.16*(1-input.identityContinuity01)+.14*(1-input.needs.energy01));
-    const intrinsic=Math.max(clamp01(input.intrinsicReward01),clamp01(input.intrinsicDrive01??0)*clamp01(input.intrinsicDriveConfidence01??0));
+    const intrinsicReward=clamp01(input.intrinsicReward01);
+    const calibratedIntrinsicDrive=clamp01(input.intrinsicDrive01??0)*clamp01(input.intrinsicDriveConfidence01??0);
     const candidates:number[][]=[];
     for(let k=0;k<4;k++){
       const prev=this.state.currentGoal.length?this.state.currentGoal:zeroGoal();
@@ -262,7 +263,11 @@ export class B272EndogenousGoalGenesis {
       const actionScores=this.state.actionPrototypeWeights.map(row=>clamp11(dot(row,v)/Math.max(1,norm(row)*norm(v))));
 const learned=this.learnedGoalValue(v,input.tick);
       const learnedClosure=(learned.reward01-.5)*.20 + (learned.evidence01*(.52-learned.predictionError01))*.10;
-      const predictedFutureValue=clamp01(.5+.32*dot(v,base)+.18*intrinsic+.16*(1-conflict)+.08*k+learnedClosure);
+      // Keep the calibrated drive as an explicit value component rather than
+      // folding it into max(intrinsicReward, drive). A max can erase the drive
+      // signal whenever its value is below baseline reward, while the previous
+      // weights also left the comparison test near saturation at 1.0.
+      const predictedFutureValue=clamp01(.30+.16*dot(v,base)+.12*intrinsicReward+.28*calibratedIntrinsicDrive+.12*(1-conflict)+.06*k+learnedClosure);
       const coherence=clamp01(.5+.25*cosine(v,base)+.25*(1-conflict));
       const novelty01=clamp01(.25+.45*(1-Math.abs(cosine(v,this.state.currentGoal)))+.30*(k/3));
       const internalNeed=clamp01(.5+.35*Math.abs(dot(v,base))+.15*conflict);
