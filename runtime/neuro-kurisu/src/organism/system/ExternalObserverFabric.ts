@@ -92,6 +92,10 @@ export interface ExternalObserverState {
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const norm=(x:unknown)=>String(x??'').trim().toLowerCase().replace(/\s+/g,' ').slice(0,320);
 const baseReliability=(sourceClass:ExternalObservationSourceClass)=>({os:.92,device:.80,user:.68,'external-api':.84,world:.56,organism:.25,simulator:.18,unknown:.40}[sourceClass]);
+const VALID_SOURCE_CLASSES=new Set<ExternalObservationSourceClass>(['os','device','user','external-api','world','organism','simulator','unknown']);
+const VALID_CHANNELS=new Set<ExternalObservationChannel>(['filesystem','http','process','device','camera','audio','sensor','user','world','tool','unknown']);
+const nonNegativeInteger=(value:unknown)=>Math.max(0,Math.floor(Number.isFinite(Number(value))?Number(value):0));
+const nonNegativeFinite=(value:unknown)=>Math.max(0,Number.isFinite(Number(value))?Number(value):0);
 /** Strong SHA-256 fingerprints for new observations. Existing v2 rows keep their short legacy IDs. */
 function stableHash(seed:string){return createHash('sha256').update(seed).digest('hex');}
 /** Historical 32-bit FNV fingerprint; used only to identify already-persisted rows. */
@@ -155,12 +159,61 @@ export class ExternalObserverFabric {
   restore(raw?:Partial<ExternalObserverState>|null){
     const d=defaultExternalObserver(),r=raw??{};
     this.corroboratedClaimKeys.clear();
+    const restoredSources:ExternalObserverSource[]=[];
+    const seenSourceIds=new Set<string>();
+    // Persisted source registries are state, not authority to bypass identity checks.
+    // Keep the most-recent-first order emitted by registerSource and discard malformed
+    // or duplicate IDs before observations are reconciled against them.
+    for(const value of (Array.isArray(r.sources)?r.sources.slice(0,this.maxSources):[]) as unknown[]){
+      if(!value||typeof value!=='object')continue;
+      const source=value as any;
+      const id=typeof source.id==='string'?source.id.trim().slice(0,80):'';
+      if(!/^[a-z0-9._-]{2,80}$/i.test(id)||seenSourceIds.has(id))continue;
+      if(!VALID_SOURCE_CLASSES.has(source.sourceClass)||!VALID_CHANNELS.has(source.channel))continue;
+      const independenceKey=typeof source.independenceKey==='string'&&source.independenceKey.trim()
+        ?source.independenceKey.trim().slice(0,120):id;
+      const reliability=Number(source.reliability01);
+      restoredSources.push({
+        id,sourceClass:source.sourceClass,channel:source.channel,independenceKey,
+        reliability01:Number.isFinite(reliability)?clamp(reliability):baseReliability(source.sourceClass),
+        enabled:typeof source.enabled==='boolean'?source.enabled:true,
+        samples:nonNegativeInteger(source.samples),accepted:nonNegativeInteger(source.accepted),
+        contradicted:nonNegativeInteger(source.contradicted),lastAt:nonNegativeFinite(source.lastAt),
+      });
+      seenSourceIds.add(id);
+    }
+    const restoredObservations=Array.isArray(r.observations)?r.observations.slice(-this.maxObservations) as unknown[]:[];
+    const observations:ExternalObservation[]=[];
+    const sourceById=new Map(restoredSources.map(source=>[source.id,source] as const));
+    for(const value of restoredObservations){
+      if(!value||typeof value!=='object')continue;
+      const row=value as any;
+      if(typeof row.id!=='string'||typeof row.sourceId!=='string'||typeof row.claimKey!=='string')continue;
+      if(!Number.isFinite(Number(row.observedAt))||!Number.isFinite(Number(row.confidence01)))continue;
+      if(this.requireRegisteredSources){
+        const source=sourceById.get(row.sourceId);
+        if(!source||source.sourceClass!==row.sourceClass||source.channel!==row.channel)continue;
+        const rowKey=typeof row.independenceKey==='string'&&row.independenceKey.trim()
+          ?row.independenceKey.trim().slice(0,120):undefined;
+        if(rowKey!==undefined&&rowKey!==source.independenceKey)continue;
+        observations.push({
+          ...row,independenceKey:rowKey??source.independenceKey,
+          observedAt:nonNegativeFinite(row.observedAt),confidence01:clamp(Number(row.confidence01)),
+          freshness01:clamp(Number(row.freshness01)),
+          facts:Array.isArray(row.facts)?row.facts.filter((fact:unknown)=>typeof fact==='string').slice(0,64):[],
+          metadata:row.metadata&&typeof row.metadata==='object'&&!Array.isArray(row.metadata)?row.metadata:{},
+        } as ExternalObservation);
+      } else {
+        observations.push(value as ExternalObservation);
+      }
+    }
+    const observationIds=new Set(observations.map(observation=>observation.id));
+    const assessments=(Array.isArray(r.assessments)?r.assessments.slice(-this.maxAssessments):[])
+      .filter((value:any)=>value&&typeof value==='object'&&typeof value.observationId==='string'&&observationIds.has(value.observationId));
+    const linkedActions=(Array.isArray(r.linkedActions)?r.linkedActions.slice(-this.maxLinks):[])
+      .filter((value:any)=>value&&typeof value==='object'&&typeof value.observationId==='string'&&observationIds.has(value.observationId));
     this.state={...d,...r,
-      version:2,
-      observations:Array.isArray(r.observations)?r.observations.slice(-this.maxObservations):[],
-      assessments:Array.isArray(r.assessments)?r.assessments.slice(-this.maxAssessments):[],
-      sources:Array.isArray(r.sources)?r.sources.slice(-this.maxSources):[],
-      linkedActions:Array.isArray(r.linkedActions)?r.linkedActions.slice(-this.maxLinks):[],
+      version:2,observations,assessments,sources:restoredSources,linkedActions,
     };
     this.recompute();
     for(const claimKey of new Set(this.state.observations.map(o=>o.claimKey))) this.refreshCorroboratedClaim(claimKey);
