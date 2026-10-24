@@ -1,4 +1,5 @@
 import { sha256Stable } from '../core/StableSerialization.ts';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 
 /**
  * BIG PASS 161 — Unified Cognitive Event Fabric.
@@ -72,7 +73,12 @@ export interface CognitiveEventFabricSnapshot {
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
-const cleanPayload=(x:unknown):Record<string,unknown>=>isRecord(x)?{...x}:{};
+const cleanPayload=(x:unknown):Record<string,unknown>=>{
+  try {
+    const detached=snapshotPlainData<Record<string,unknown>>(x,{maxDepth:12,maxNodes:2048,maxStringUnits:64*1024});
+    return isRecord(detached)?detached:{};
+  } catch { return {}; }
+};
 // Snapshot fields are untrusted: inspect descriptors so getters are never run during restore.
 const ownDataRecord=(value:unknown):Record<string,unknown>|null=>{
   if(!isRecord(value))return null;
@@ -197,19 +203,27 @@ export class CognitiveEventFabric {
     if(rawExternal!==undefined&&typeof rawExternal!=='boolean') throw new Error('invalid-cognitive-event-external-flag');
     const rawParents=ownData('parentIds');
     const safeParentValues=rawParents===undefined?[]:ownDataArray(rawParents);
-    if(rawParents!==undefined&&(!safeParentValues||safeParentValues.length>12||safeParentValues.some(parent=>typeof parent!=='string'||!parent.trim()||parent.length>180||/[\\u0000-\\u001f\\u007f]/.test(parent)))) throw new Error('invalid-cognitive-event-parent-ids');
+    if(rawParents!==undefined&&(!safeParentValues||safeParentValues.length>12||safeParentValues.some(parent=>typeof parent!=='string'||!parent.trim()||parent.length>180||hasControlCharacters(parent)))) throw new Error('invalid-cognitive-event-parent-ids');
     const rawPayload=ownData('payload');
+    let safePayload:Record<string,unknown>={};
     if(rawPayload!==undefined){
       if(!isRecord(rawPayload)||Object.getPrototypeOf(rawPayload)!==Object.prototype) throw new Error('invalid-cognitive-event-payload');
       for(const [key,descriptor] of Object.entries(Object.getOwnPropertyDescriptors(rawPayload))){
         if(!('value' in descriptor)) throw new Error('cognitive-event-payload-accessor-rejected');
-        if(!key||key.length>120||/[\\u0000-\\u001f\\u007f]/.test(key)) throw new Error('invalid-cognitive-event-payload-key');
+        if(!key||key.length>120||hasControlCharacters(key)) throw new Error('invalid-cognitive-event-payload-key');
+      }
+      try {
+        const detached=snapshotPlainData<Record<string,unknown>>(rawPayload,{maxDepth:12,maxNodes:2048,maxStringUnits:64*1024});
+        if(!isRecord(detached)) throw new Error('not-a-record');
+        safePayload=detached;
+      } catch {
+        throw new Error('invalid-cognitive-event-payload');
       }
     }
     const rawId=ownData('id');
     const at=rawAt===undefined?Date.now():rawAt;
     const suppliedId=typeof rawId==='string'?rawId.trim():'';
-    if(rawId!==undefined&&(!suppliedId||suppliedId.length>180||/[\\u0000-\\u001f\\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
+    if(rawId!==undefined&&(!suppliedId||suppliedId.length>180||hasControlCharacters(suppliedId))) throw new Error('invalid-cognitive-event-id');
     if(suppliedId){
       const prior=this.events.find(event=>event.id===suppliedId);
       if(prior){
@@ -223,7 +237,7 @@ export class CognitiveEventFabric {
       tick:Math.max(0,Math.floor(input.tick)), at,
       stage:input.stage, source:String(input.source||'unknown').slice(0,120),
       parentIds:[...(safeParentValues??[])].map(parent=>String(parent)).slice(0,12),
-      external:Boolean(input.external), confidence01:clamp01(input.confidence01??0.5), payload:cleanPayload(input.payload),
+      external:Boolean(input.external), confidence01:clamp01(input.confidence01??0.5), payload:safePayload,
     };
     this.events.unshift(event);
     if(this.events.length>this.capacity)this.events=this.events.slice(0,this.capacity);
