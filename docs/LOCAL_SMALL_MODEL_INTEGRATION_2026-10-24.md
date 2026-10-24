@@ -29,6 +29,14 @@ The existing visual-perception contract (`VisionSemanticBackend`) now has a loca
 - The local VLM is preferred whenever configured. A cloud Gemini fallback is created only when both `GEMINI_VISION_ENABLED=1` and `GEMINI_API_KEY` are present. If local inference fails, the hub records that failure before using the explicitly configured fallback; it never enables cloud use on its own.
 - Operational diagnostics record the selected backend and result, not image content or image file paths. Visual labels and confidence values remain model-generated evidence rather than ground truth.
 
+## Affect fusion into the cognitive core
+
+When a configured local affect model is enabled, its validated result enters two bounded paths: it is appended as an explicitly untrusted hint to the language prompt, and it is submitted to the canonical `EmotionAppraisalEngine` through `OrganismCore.observeLocalAffectHint`.
+
+The core accepts only the allowlisted affect label, valence in -1..1, arousal/confidence in 0..1 and a timestamp within a short freshness window. It stores no input text. During appraisal, the fresh signal may blend at most 18% into valence/arousal; the endogenous appraisal still chooses the authoritative emotion label and action tendency. Stale hints expire after 15 seconds, and malformed/restored values are rejected. Thus a tiny model can add a weak cue without taking over cognition or claiming to diagnose a person.
+
+`NEURO_AUTORUN_ENABLED` defaults to `1` and preserves autonomous runtime ticks. Setting it to `0` disables background autonomous ticks for deterministic maintenance/tests; it does not switch the server into this mode by default.
+
 ## Integration points
 
 - `runtime/neuro-kurisu/src/server/LocalSmallModelHub.mjs` owns capability metadata, task dispatch, schema checks and safe counters.
