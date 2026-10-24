@@ -1,3 +1,11 @@
+## NK1 WorkPass471 — align runtime validation with real Node types (2026-10-24)
+
+- Updated the canonical runtime typecheck to reuse the repository's existing `app/node_modules/@types/node` installation and explicitly exclude the narrow Node fallback shims from semantic tsc. This addresses the mismatch between the app-locked compiler/runtime environment and the runtime package's type resolution.
+- Hardened `OutcomeVerificationService` correlation IDs: NFKC normalization remains, but control characters are rejected before trimming, preventing newline/tab aliases. The implementation uses explicit code-point checks instead of a fragile regex range.
+- **Verification:** changes are committed on the perception category branch; the current branch matrix is still running and no full CI pass is claimed.
+
+---
+
 ## NK1 WorkPass468–470 — repair P26 workflow contract and learner input integrity (2026-10-23)
 
 - Added the three npm script entries missing from the P26 workflow (`test:p26:learning-input-integrity`, `test:p26:learning-recovery-benchmark`, `test:p26:learning-continual-matrix`); the corresponding test source files already existed. CI had typecheck passing but previously stopped before running any learning test because the script was missing.
