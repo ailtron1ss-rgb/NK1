@@ -491,7 +491,10 @@ async function route(req, res) {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null });
         }
         if (req.method === 'GET' && url.pathname === '/api/local-models') {
-            const affectHint = runtimeReady ? runtime.core.systemSnapshot()?.emotionAppraisal?.externalAffectHint : null;
+            const coreSystem = runtimeReady ? runtime.core.systemSnapshot() : null;
+            const affectHint = coreSystem?.emotionAppraisal?.externalAffectHint ?? null;
+            const b272 = coreSystem?.endogenousGoalGenesisB272 ?? null;
+            const mismatch = b272?.lastOutcomeActionMismatch ?? null;
             return json(res, 200, {
                 ok: true,
                 hub: LOCAL_SMALL_MODEL_HUB.snapshot(),
@@ -500,6 +503,14 @@ async function route(req, res) {
                         emotion: affectHint.emotion,
                         confidence01: affectHint.confidence01,
                         at: affectHint.at,
+                    } : null,
+                    coreActionAttribution: b272 ? {
+                        outcomeActionMismatches: Number.isSafeInteger(b272.outcomeActionMismatches) ? b272.outcomeActionMismatches : 0,
+                        lastMismatch: mismatch && Number.isSafeInteger(mismatch.tick) ? {
+                            tick: mismatch.tick,
+                            generatedAction: mismatch.generatedAction,
+                            executedAction: mismatch.executedAction,
+                        } : null,
                     } : null,
                 },
             });
