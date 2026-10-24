@@ -1,3 +1,14 @@
+## NK1 WorkPass331 — repository ordering and source-of-truth map (2026-10-24)
+
+- [DOCUMENTED] Added `docs/PROJECT_MAP_AND_ORDERING.md` as the navigation page for canonical ownership, branch ancestry, release-asset status, historical documentation, and the staged cleanup order.
+- [NAVIGATION] Refreshed `AGENTS.md`, `README.md`, and `NEUROCORE_START_HERE.md` so readers reach the map first and no longer mistake old continuation snapshots for current GitHub state.
+- [BRANCH EVIDENCE] The comparison of `integration` and `operation-omega-hexis-2026-10-24` returned divergent history (39 commits on the operation branch side and 17 on the integration side not shared by the other). No wholesale merge, branch deletion, or force-push was performed.
+- [RELEASE EVIDENCE] The latest release assets observed through GitHub were WorkPass70 archives dated 2026-10-19. No binary release asset was uploaded or replaced by this documentation change.
+- [VALIDATION] Documentation-only change. The content and change metadata were checked through GitHub file reads; runtime tests and Actions were not run, and runtime/release readiness is not claimed.
+- [SCOPE] Historical documents and branches were preserved. Bulk file moves remain gated on link/reference and provenance inventory.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
