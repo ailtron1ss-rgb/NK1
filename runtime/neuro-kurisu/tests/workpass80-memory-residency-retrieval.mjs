@@ -68,6 +68,41 @@ assert.ok(restoredHits.some(item => item.id === target.id), 'cold memory remains
 assert.equal(restoredTarget?.semanticVector.length, 0, 'restore plus retrieval must not warm the vector');
 assert.equal(restored.indexDiagnostics().pass, true);
 
+// Current retrieval must not let a dense bank of expired exact phrase hits
+// exhaust the bounded seed pool before a weaker but temporally valid memory
+// can be considered. Archival mode is intentionally different.
+const starvationMemory = new MemoryOS2();
+const starvationNow = Date.now();
+for (let i = 0; i < 220; i += 1) {
+  starvationMemory.encode(makeInput(
+    `Xylophone chronicle archived note number ${i} kept for retrieval pool isolation.`,
+    i,
+    {
+      id: `stale-starvation-${String(i).padStart(3, '0')}`,
+      validFromAt: starvationNow - 120_000,
+      validUntilAt: starvationNow - 1,
+      observedAt: starvationNow - 60_000 + i,
+    },
+  ), { clone: false });
+}
+const freshTarget = starvationMemory.encode(makeInput(
+  'Chronicle records a current verified state without the obsolete xylophone wording.',
+  999,
+  {
+    id: 'fresh-current-target',
+    validFromAt: Date.now() - 60_000,
+    observedAt: Date.now(),
+  },
+), { clone: false });
+const currentPoolHits = starvationMemory.retrieve('xylophone chronicle', 8, 0, 0, {}, false);
+assert.ok(currentPoolHits.some(item => item.id === freshTarget.id),
+  'current valid records must survive candidate-pool truncation even when expired exact phrase hits are more numerous');
+assert.equal(starvationMemory.retrievalDiagnostics().candidateCount <= 192, true,
+  'temporal priority must preserve the strict retrieval candidate budget');
+const archivePoolHits = starvationMemory.retrieve('xylophone chronicle', 8, 0, 0, { temporalMode: 'all' }, false);
+assert.ok(archivePoolHits.some(item => item.id.startsWith('stale-starvation-')),
+  'archive mode must still permit expired historical recall');
+
 console.log('WORKPASS80_MEMORY_RESIDENCY_RETRIEVAL=PASS', JSON.stringify({
   corpus: memory.size(),
   tiers: plan.tierCounts,
