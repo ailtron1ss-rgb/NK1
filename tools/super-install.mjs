@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { meetsMinimumVersion } from './runtime-requirements.mjs';
+import { runCommand } from './process-supervisor.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const requiredNodeVersion = '22.12.0';
@@ -53,51 +53,14 @@ const installEnv = {
 };
 
 function runNpmInstall({ cwd, env, timeoutMs }) {
-  return new Promise(resolve => {
-    let settled = false;
-    let timedOut = false;
-    let escalationTimer;
-    const child = spawn('npm', ['ci', '--no-audit', '--no-fund'], {
-      cwd,
-      stdio: 'inherit',
-      env,
-      detached: process.platform !== 'win32',
-      windowsHide: true,
-    });
-
-    const killProcessTree = signal => {
-      if (process.platform !== 'win32' && child.pid) {
-        try {
-          process.kill(-child.pid, signal);
-          return;
-        } catch (error) {
-          if (error?.code !== 'ESRCH') {
-            try { child.kill(signal); } catch { /* already exited */ }
-          }
-          return;
-        }
-      }
-      try { child.kill(signal); } catch { /* already exited */ }
-    };
-
-    const deadlineTimer = setTimeout(() => {
-      timedOut = true;
-      console.error(`SUPER_INSTALL=TIMEOUT workspace=${path.basename(cwd)} deadlineMs=${timeoutMs}; terminating npm process group`);
-      killProcessTree('SIGTERM');
-      escalationTimer = setTimeout(() => killProcessTree('SIGKILL'), 750);
-      escalationTimer.unref?.();
-    }, timeoutMs);
-
-    const finish = result => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(deadlineTimer);
-      if (escalationTimer) clearTimeout(escalationTimer);
-      resolve({ ...result, timedOut });
-    };
-
-    child.once('error', error => finish({ error, status: null, signal: null }));
-    child.once('close', (status, signal) => finish({ error: null, status, signal }));
+  return runCommand('npm', ['ci', '--no-audit', '--no-fund'], {
+    cwd,
+    env,
+    timeoutMs,
+    terminationGraceMs: 750,
+    forceGraceMs: 500,
+    maxOutputBytes: 24 * 1024,
+    streamOutput: true,
   });
 }
 
@@ -105,12 +68,15 @@ for (const workspace of workspaces) {
   const cwd = path.join(root, workspace.dir);
   console.log(`SUPER_INSTALL=START workspace=${workspace.name} lockfile=${path.relative(root, path.join(cwd, 'package-lock.json'))}`);
   const result = await runNpmInstall({ cwd, env: installEnv, timeoutMs });
-  if (result.error || result.status !== 0 || result.timedOut) {
-    const status = typeof result.status === 'number' ? result.status : 1;
-    const reason = result.timedOut ? 'timeout'
-      : result.error?.code ? `spawn-${result.error.code}`
+  if (result.error || result.code !== 0 || result.timedOut) {
+    const status = typeof result.code === 'number' ? result.code : 1;
+    const reason = result.timedOut ? `timeout-after-${result.durationMs}ms`
+      : result.error ? `spawn-error`
         : result.signal ? `signal-${result.signal}` : `npm-exit-${status}`;
     console.error(`SUPER_INSTALL=FAIL workspace=${workspace.name} reason=${reason} exit=${status}`);
+    if (result.error) console.error(`SUPER_INSTALL=DIAGNOSTIC ${result.error}`);
+    const tail = (result.err || result.out).trim();
+    if (tail) console.error(`SUPER_INSTALL=OUTPUT_TAIL\\n${tail}`);
     console.error('The lockfile was not rewritten. If npm reports EAI_AGAIN/ENOTFOUND, restore registry DNS/network access and rerun npm run install:all.');
     process.exit(result.timedOut ? 1 : (status || 1));
   }
