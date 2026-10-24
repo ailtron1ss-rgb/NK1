@@ -26,7 +26,7 @@
 ## Реальные изменения WorkPass328
 
 1. `RuntimeClosureLedger.fail()` записывает терминальный `FAIL`, проверку причины и fingerprint сбоя. Нормализатор состояния при restore отклоняет некорректные записи и понижает противоречивые `PASS`, если в их checks есть `ok=false`.
-2. `CausalDomainClosureLedger.failPending()` закрывает незавершённый цикл, а `failLatest()` понижает уже закрытый цикл при сбое поздней финализации (`endBatch`, аварийный checkpoint или shutdown). Любой конечный `FAIL` получает причинный score `0`.
+2. `CausalDomainClosureLedger.failPending()` закрывает незавершённый цикл, а `failLatest()` понижает уже закрытый цикл при сбое поздней финализации (`endBatch`, аварийный checkpoint или shutdown). Любой конечный `FAIL` получает причинный score `0`; уже наблюдавшиеся изменения мира/обучения сохраняются, а неподтверждённые durable claims отзываются.
 3. Повторный `CausalDomainClosureLedger.begin()` больше не затирает pending-цикл: предыдущая попытка получает `FAIL` с причиной `previous-cycle-unclosed-at-next-begin`, затем начинается новая попытка.
 4. Итог `UnifiedCognitiveCycle` соединён с `RuntimeClosureLedger` и `CausalDomainClosureLedger`. Пропущенные/рассинхронизированные обязательные стадии означают `FAIL`; aligned ticks и успешное сохранение сами по себе не могут продвинуть цикл до `PASS`.
 5. `OrganismRuntime.stepInternal` проверяет `AbortSignal` на входе, после основных awaited perception/observation/proposal-граней и непосредственно перед `embodiedActions.execute`. Регрессия проверяет раннюю отмену и отмену во время финальной генерации без передачи действия executor-у.
@@ -43,6 +43,7 @@
 - повторный `begin()` не затрагивает предыдущую pending-запись молча; прежняя попытка закрывается как `FAIL`;
 - отсутствие обязательной стадии, неверное causal ребро или tick mismatch не может получить `complete=true`;
 - любой terminal `FAIL` имеет causal score `0`; durable / restore не повышает неудачный цикл до `PASS`;
+- поздняя ошибка финализации не переписывает уже наблюдавшиеся изменения мира/обучения; она отзывает только неподтверждённые durability claims;
 - противоречивые persisted summary, stage checks и causal records нормализуются по более строгому статусу;
 - `AbortSignal` останавливает цикл до inference, после основных awaited-granей и перед embodied-action dispatch;
 - opt-in P23 repair/revision clock разрешён scheduler-ом и запускается только при включённой конфигурации;
