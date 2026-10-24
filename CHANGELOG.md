@@ -1,3 +1,43 @@
+# WorkPass336 — canonical P23 revision evidence and proposal snapshot integrity (2026-10-24)
+
+- [FIXED] Added a safe proposal snapshot function that accepts only a proposal already authenticated by the P23 issuer and rebinds its process-local digest to a detached copy. Provider/coordinator snapshots can no longer accidentally erase the issuer proof; modifying the copy still invalidates it, and fabricated objects cannot be sealed.
+- [INTEGRATION] Upgraded `P23IndependentEvaluationProvider` to the canonical matched-evaluation path. In production, baseline and source payloads are fetched by a host-owned resolver from the versioned P23 store, then independently re-evaluated against the fixed validation/holdout plan; provider-reported baseline/source metrics are ignored.
+- [CAUSALITY] Evaluation envelopes must match exact payload fingerprints, environment, task/trial/seed/split identities, experiment manifest/plans and run bindings. The host rechecks active baseline and source-candidate identities after async evaluation; changed versions fail closed.
+- [STAGING BOUNDARY] Threaded the host-owned lineage recheck into `P23LearningEngine` and made it execute synchronously after fresh evaluation validation, immediately before candidate staging. This closes the async gap in which an active/source version could change after the evaluator's last check.
+- [TEST] Added the WorkPass331 canonical revision regression to the WorkPass335 targeted workflow and extended the repair/provider contracts to check authentic snapshot preservation and actual server-to-runtime resolver wiring.
+- [REGRESSION UPDATE] Revised the older WorkPass224 production-gate fixture to assert the new canonical-source-resolver requirement separately, then supplies a resolver while testing the distinct missing-experiment-authority rejection. This retains both production guards instead of weakening either one.
+- [AUTHORITY ERROR SEMANTICS] Moved the production proposal-authenticity guard outside the serialization catch so forged proposals return `production-independent-evaluation-authentic-proposal-required`, not a misleading clone error. WorkPass224 now uses a real signed, issuer-created proposal to reach the separate missing-experiment-authority guard, and independently asserts that forged proposals stop earlier.
+- [CI WIRING] Added the Hermes integration branch to WorkPass110's push-branch filter so changes to the canonical resolver/production guard are re-run by the broader continual-learning suite, not only the targeted PR workflow.
+- [VALIDATION] WorkPass335, WorkPass108, WorkPass110, WorkPass294, P26 and WorkPass293 passed on the prior WorkPass335 head. These WorkPass336 changes are awaiting new exact-head CI; no learning uplift or production deployment readiness is claimed.
+
+
+
+
+
+
+# WorkPass335 follow-up — host-evaluator tests and exact-head CI (2026-10-24)
+
+- [FIXED] Imported Node's built-in `test` API in the host-evaluator contract suite after the first workflow showed a direct `ReferenceError: test is not defined`.
+- [BASELINE SYNC] The base branch has since corrected the defensive resource-state typing in `InnerImperativeController`; this integration branch is rebased onto that exact head so its subsequent typecheck covers the same source baseline.
+- [VALIDATION] Only the initial failure has been confirmed. The exact-head rerun must complete both host-evaluator contracts and TypeScript typecheck; production readiness and learning uplift remain unclaimed.
+
+
+
+
+
+
+# WorkPass335 — Hermes/P23 host-owned evaluator wiring (2026-10-24)
+
+- [INTEGRATION] Wired the existing P23 compound-repair revision provider through the separately configured host-owned independent-evaluation factory in the server bootstrap. The provider and evaluator config must be distinct; production requires fixed experiment authority and distinct baseline/source/revision methods.
+- [SAFETY] Keeps independent executor, verifier and safety-scanner services separate. Background revision remains opt-in; staging a candidate does not authorize activation or bypass signed shadow evidence and authenticated approval.
+- [TEST] Added the WorkPass335 host-evaluator workflow and registered `test:workpass335:hermes-host-evaluator` to exercise the host config contract and verify actual server-to-runtime wiring, followed by runtime typecheck on Node 24.
+- [LIMIT] Deployment-owned host evaluator config, real host executables, fixed task manifest/validation/holdout plans, exact-head green CI and independent paired-seed learning evaluation are still required. No production-ready or learning-uplift claim is made before those checks complete.
+
+
+
+
+
+
 # WorkPass345 — ground emotion source classification in learning provenance (2026-10-24)
 
 - [FIXED] EmotionAppraisalEngine feedback previously set `external` to `Boolean(outcome.evidenceSource)`. Any nonempty source label—including simulation—could therefore label an imagined/modelled outcome as `external-experience`.
