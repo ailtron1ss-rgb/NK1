@@ -49,4 +49,4 @@ jobs:
           node --experimental-strip-types tests/workpass521-observer-ledger-bridge.mjs
           node --experimental-strip-types tests/workpass529-p23-reality-promotion-gate.mjs
           node --experimental-strip-types tests/workpass548-observer-source-identity.mjs
-          node --experimental-strip-types tests/big-pass-64-external-observer.mjs
+          node --experimental-strip-types --experimental-transform-types tests/big-pass-64-external-observer.mjs
