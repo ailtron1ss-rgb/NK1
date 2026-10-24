@@ -16,7 +16,7 @@ const makeEvaluation = async (payload, environmentFingerprint = 'a'.repeat(64), 
   const evaluator = createIndependentSkillCandidateEvaluator({
     tasks: options.tasks ?? tasks,
     environmentFingerprint,
-    executor: { async execute({ task }) { return { runId: (options.runPrefix ?? 'run-') + task.trialId, observedStepIds: options.observed ?? ['open', 'summarize'] }; } },
+    executor: { async execute({ task }) { return { runId: (options.runPrefix ?? 'run-') + task.trialId, observedStepIds: options.observedForTask ? options.observedForTask(task) : (options.observed ?? ['open', 'summarize']) }; } },
     verifier: { async verify({ task }) {
       const failed = task.seed === options.failedSeed && task.split === (options.failedSplit ?? task.split) &&
         (!options.failedTaskIds || options.failedTaskIds.includes(task.taskId));
@@ -86,7 +86,14 @@ const growthBaseline = await makeEvaluation(
 const growthCandidate = await makeEvaluation(
   { skill: 'growth-candidate', version: 2 },
   'a'.repeat(64),
-  { tasks: growthTasks, runPrefix: 'growth-candidate-' },
+  {
+    tasks: growthTasks,
+    runPrefix: 'growth-candidate-',
+    // Keep every validation seed positive while exercising a non-zero sample variance.
+    observedForTask: task => task.seed === 31 && task.taskId === 'validation-a'
+      ? ['open', 'summarize', 'extra-observed-step']
+      : ['open', 'summarize'],
+  },
 );
 const growth = compareMatchedIndependentEvaluations(growthBaseline, growthCandidate, {
   requireSeedGrowthGate: true,
