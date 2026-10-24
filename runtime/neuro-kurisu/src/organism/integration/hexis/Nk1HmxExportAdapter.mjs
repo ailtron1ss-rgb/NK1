@@ -201,6 +201,7 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
   if (invalidRelationships.length) malformedNativeSections.relationships_without_required_endpoints = cloneJson(invalidRelationships);
 
   if (rawSkills.length) warnings.push('NK1 native skills were mapped to HMX procedural memories; native skill fields remain in memory metadata.');
+  warnings.push('No automatic redaction was applied; review this export before transferring it outside NK1.');
   if (!process.env.NK1_HMX_EMBEDDING_MODEL) {
     warnings.push('NK1 did not provide an embedding model/vector payload; embedding_model is marked text-only and imports must re-embed before vector retrieval.');
   }
@@ -302,7 +303,7 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
       embedding_dimension: source.embedding_dimension,
     },
     privacy: {
-      redaction_policy: 'basic',
+      redaction_policy: 'none',
       contains_sensitive_content: true,
       consent_scope: 'migration',
       excluded_secret_patterns: [],
