@@ -67,5 +67,5 @@ if (!output.allRankingParity) {
   console.error('PERFORMANCE_BENCHMARK_RANKING_PARITY=FAIL');
   process.exitCode = 2;
 } else {
-  console.log('PERFORMANCE_BENCHMARK_RANKING_PARITY=PASS');
+  console.error('PERFORMANCE_BENCHMARK_RANKING_PARITY=PASS');
 }
