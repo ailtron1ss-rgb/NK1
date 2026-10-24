@@ -1,0 +1,52 @@
+name: NK1 process supervision focused regression
+
+on:
+  push:
+    branches: [optimization/process-supervision-20261024]
+    paths:
+      - "tools/process-supervisor.mjs"
+      - "tools/process-supervisor.test.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/super-start.mjs"
+      - "tools/verify-integration.mjs"
+      - "package.json"
+      - ".github/workflows/process-supervision.yml"
+  pull_request:
+    paths:
+      - "tools/process-supervisor.mjs"
+      - "tools/process-supervisor.test.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/super-start.mjs"
+      - "tools/verify-integration.mjs"
+      - "package.json"
+      - ".github/workflows/process-supervision.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-process-supervision-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  process-supervision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          package-manager-cache: false
+      - name: Verify Node.js major pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          case "$expected" in
+            *.*) test "$actual" = "$expected" ;;
+            *) test "${actual%%.*}" = "$expected" ;;
+          esac
+      - name: Process supervision and readiness regressions
+        run: npm run test:process-supervisor
