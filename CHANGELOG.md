@@ -1,14 +1,20 @@
+## NK1 WorkPass560 — isolate emotional-context learning regression (2026-10-24)
+
+- Added `workpass559-emotion-context-learning.mjs`, a deterministic test covering context-specific curiosity/anxiety calibration, its effect on action bias, unknown emotion IDs, backward-compatible global calibration, and snapshot/restore.
+- Reverted the temporary test insertion into BIG PASS 172 so the unrelated `OrganismCore.feedback()` / B272 failure is not conflated with the emotion change. Updated the focused CI workflow to run the standalone test instead.
+- **Validation boundary:** the isolated regression is committed and wired into Node.js 24 CI; its new hosted Actions result is pending. BIG PASS 172 remains independently failing in its B272 feedback path and is not claimed as passed.
+
 ## NK1 WorkPass559 — stabilize Node.js 24 emotion regression setup (2026-10-24)
 
 - Investigated the first Node.js 24 workflow runs (#42 and #43): both failed at `actions/setup-node` before the regression command started, so they did not evaluate the emotion changes.
 - Removed `check-latest: true` so the runner can use its cached Node 24 where available, and set `package-manager-cache: false` because this workflow does not install npm dependencies. Official `setup-node` guidance documents the performance/network implications of `check-latest`; see [the advanced usage guide](https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#check-latest-version).
-- Retry run [#44](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40125323938) passed setup-node and entered the regression step; its final result is not yet recorded here. No test pass is claimed by this entry.
+- Retry run [#44](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40125323938) passed setup-node and exposed an unrelated failure in BIG PASS 172: `B272EndogenousGoalGenesis.learnFromOutcome()` rejected a feedback action that did not match the generated action. The broad test itself is not passing; WorkPass560 moves focused CI coverage to a standalone emotion-engine regression.
 
 ## NK1 WorkPass558 — learn action outcomes in emotional context (2026-10-24)
 
 - `EmotionAppraisalEngine.recordOutcome()` now keeps its backward-compatible action-wide calibration and, when `emotionId` resolves to an actual retained appraisal episode, also records a separate calibration for that episode's emotion label and action. Unknown or forged episode IDs cannot create contextual calibration.
 - `actionBias()` uses the emotion-context calibration after at least three observations, otherwise falls back to the global action estimate. The learned adjustment is stronger but bounded and ramps with sample count; this lets recent outcomes under anxiety differ from outcomes under curiosity without replacing the core appraisal/homeostasis signals.
-- Added regression coverage to BIG PASS 172 for distinct curiosity/anxiety outcome records, behavior-bias change, forged IDs, and snapshot/restore. Wired that regression into the Node.js 24 `Reality-to-learning regression` workflow and its push/PR path filters.
+- The context-learning behavior was initially exercised while editing BIG PASS 172, but that broader Core test reaches an independent B272 feedback/action mismatch later in execution; a clean standalone regression is committed in WorkPass560 instead.
 - **Validation boundary:** code, regression, workflow, and changelog are committed on `feature/feedback`. Hosted CI needs to run on the new workflow head before this change can be marked CI-verified; the branch's Release ZIP has not been modified.
 
 ## NK1 WorkPass557 — move reality-to-learning regression to Node.js 24 (2026-10-24)
