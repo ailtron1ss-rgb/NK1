@@ -191,7 +191,7 @@ export class AutonomousIntentLearningGovernor {
     }
 
     const decision: AILGDecision = { intentId: safeIntent.id, status, score01, reason, selectedAt: now, externalSideEffect: safeIntent.externalSideEffect };
-    this.decisions.set(intent.id, decision);
+    this.decisions.set(safeIntent.id, decision);
     return { ...decision };
   }
 
