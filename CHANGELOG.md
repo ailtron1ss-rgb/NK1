@@ -1,3 +1,11 @@
+## NK1 WorkPass482 — make decision identity fail closed and action-independent
+
+- Finalized the WorkPass481 event key as a domain-separated hash of the stable decision ID alone. Since the decision produces one embodied result per cycle, changing the action/result under the same decision now reuses the key and is caught as a payload conflict instead of minting a new event ID.
+- Replaced control-character regex handling with explicit Unicode code-point checks before normalization, consistent with NK1's identity-boundary policy. Removed the now-unused artifact identity builder.
+- Exact-head test/typecheck remains unverified.
+
+---
+
 ## NK1 WorkPass481 — bind embodied event IDs to the originating decision (2026-10-24)
 
 - Fixed a flaw in WorkPass479 identity construction: the event key no longer depends on wall-clock time, sensor values, or the action result itself.
