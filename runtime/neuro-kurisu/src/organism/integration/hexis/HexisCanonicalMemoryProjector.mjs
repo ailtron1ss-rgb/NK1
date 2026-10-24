@@ -11,7 +11,11 @@ const dateMs = value => {
 };
 const memoryKind = value => {
   const kind = String(value ?? '').toLowerCase();
-  return ['sensory', 'working', 'episodic', 'semantic', 'autobiographical', 'procedural', 'social', 'identity', 'dream'].includes(kind)
+  // Imported identity/autobiography memories stay recallable without becoming
+  // non-forgettable canonical identity records; structural identity is a separate adapter.
+  if (kind === 'identity') return 'semantic';
+  if (kind === 'autobiographical') return 'episodic';
+  return ['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream'].includes(kind)
     ? kind
     : (kind === 'relationship' ? 'social' : 'semantic');
 };
