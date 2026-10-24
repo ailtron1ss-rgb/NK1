@@ -1,3 +1,16 @@
+## Latest durable checkpoint — WorkPass526 P36 self-development evidence provenance (2026-10-24)
+
+- Continue in the existing `feature/learning` branch and draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate branch/PR. Keep `main` and the Release ZIP unchanged.
+- P36 now requires the exact immutable `OutcomeVerificationService` receipt bound to the evidence tuple before an outcome can enter the independent-evaluator lane. Caller-controlled `independentVerified: true` / `verified: true` is descriptive data only.
+- Holdout is provisional: mastery, action bias and accepted-change counts only move after replicated evidence. A sandbox preview does not move outcome-derived metrics.
+- Observation IDs cannot be reused across evidence contexts or between experiment evidence and maturity scoring. An untrusted duplicate cannot block a later properly verified row.
+- Restore demotes serialized external-proof booleans and resets cached maturity aggregates; the saved history remains non-evidentiary. Durable signed-proof re-ingestion and production call-site migration are still open.
+- Added `runtime/neuro-kurisu/tests/p36-self-development.mjs` cases and connected P36 self-development/migration/integration/performance tests to `.github/workflows/p26-learning-validation.yml`.
+- **Verification:** the GitHub API returned no PR-triggered workflow runs for current HEAD `22b777bbb7d6b3772f17f50d349f0a1321619fa8` during the pass. New tests and current typecheck are **not confirmed passing**. Do not raise learning-effectiveness/readiness estimates until exact-head CI and independent holdout experiments provide evidence.
+- Full notes: [WorkPass526 P36 self-development report](docs/WORKPASS526_P36_SELF_DEVELOPMENT_EVIDENCE_PROVENANCE_RU.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass475 (2026-10-24)
 
 - Continue on existing `feature/learning` / draft PR #79 → `integration`; do not create a duplicate PR.
