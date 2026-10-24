@@ -78,7 +78,7 @@ export class OrganismSystemFabric {
     this.willIntegration=input.willIntegration ?? new WillIntegrationBridge();
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
     this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
-    const canonicalMemoryProjector = new HexisCanonicalMemoryProjector(this.memory.fabric);
+    const canonicalMemoryProjector = new HexisCanonicalMemoryProjector(this.memory.fabric, this.memory.semanticMemory);
     this.hexisAdaptation.bindCanonicalMemoryApply(stage => canonicalMemoryProjector.apply(stage));
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
     this.conscioAdaptation=input.conscioAdaptation ?? new ConscioAdaptationFabric();
