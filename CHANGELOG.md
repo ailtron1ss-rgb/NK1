@@ -1,3 +1,11 @@
+## NK1 WorkPass500 — guard relationship-self updates
+
+- `RelationshipSelf.observe` now rejects malformed identity strings and non-finite/out-of-range social evidence before mutating trust, warmth, guardedness, or predictability.
+- Added and registered `test:relationship-self-input-boundary` to ensure invalid inputs do not create or update relationship models.
+- This protects the user/social model from corrupted or malformed observations; the test is committed but not yet executed.
+
+---
+
 ## NK1 WorkPass475 — make cycle and causal history evidence-consistent (2026-10-24)
 
 - Personal curriculum snapshots now accept only bounded plain-data threads with consistent identity/schema, counters and [0,1] metrics; completion/suppression counts are recomputed, and a newly observed poor outcome can reopen a formerly satisfied thread.
