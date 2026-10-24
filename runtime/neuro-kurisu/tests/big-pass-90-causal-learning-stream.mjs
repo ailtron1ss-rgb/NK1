@@ -13,7 +13,7 @@ const trace={
 
 const stream=new CausalExperienceStream(16);
 stream.observe(trace);
-const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
+const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,lastAction:'explore',lastActionSuccess:.8,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
 
 assert.ok(record);
 assert.ok(record.causalStrength01>.3);
@@ -87,14 +87,14 @@ const externalDuplicate = externalStream.recordExternalLearningEvent({
 });
 assert.equal(externalDuplicate?.id, externalFirst?.id,
   "NFKC-normalized upstream retry must resolve to the same recorded outcome");
-assert.equal(externalStream.summary().outcomes, 1,
-  "duplicate external evidence must not increment outcome count");
+assert.equal(externalStream.summary().outcomes, 0,
+  "untrusted external intake must not increment the trusted outcome total");
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", success01: .1,
 }), /causal-external-trace-id-conflict/,
   "reusing a trace identity with a changed outcome must surface a conflict");
-assert.equal(externalStream.summary().outcomes, 1,
-  "conflicting duplicate evidence must not mutate outcome counts");
+assert.equal(externalStream.summary().outcomes, 0,
+  "conflicting duplicate evidence must not mutate the trusted outcome total");
 
 assert.throws(() => externalStream.recordExternalLearningEvent({
   tick: Number.NaN, taskId: "bad-tick", action: "explore",

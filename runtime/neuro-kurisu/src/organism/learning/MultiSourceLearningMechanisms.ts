@@ -7,7 +7,8 @@
  * These are small TypeScript reimplementations, not copied upstream runtimes.
  * Scores are heuristics until verified task-stream experiments demonstrate uplift.
  */
-import type { LearningExperience, ReplaySelectionOptions } from './P23LearningEngine.ts';
+import type { LearningExperience } from './P23LearningEngine.ts';
+import type { ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
 export interface ReplayPriority { id:string; priority01:number; recency01:number; surprise01:number; predictionError01:number; novelty01:number; forgettingRisk01:number; reasons:string[] }
 export interface LearningHealth { predictionError01:number; recentPredictionError01:number; replayTdError01:number; evidenceDebt01:number; memoryPressure01:number; energy01:number }
 export interface CurriculumTask { id:string; uncertainty01:number; readiness01:number; transfer01:number; novelty01:number; verificationCost01:number; repairValue01:number; blocked?:boolean }
@@ -31,11 +32,19 @@ export function scoreReplayPriority(e:LearningExperience,newestTick:number,frequ
 /** Replay budget reacts to recent error, evidence debt, memory pressure and available energy. */
 export function adaptiveReplayOptions(base:ReplaySelectionOptions,h:LearningHealth,count:number):ReplaySelectionOptions{
  const cap=Math.max(1,Math.min(64,Math.floor(f(base.maxBatchSize??64,64))));
+ const available=Math.max(0,Math.floor(f(count)));
+ const requestedRecent=Math.max(0,Math.min(cap,Math.floor(f(base.recentQuota??Math.floor(cap/2),Math.floor(cap/2)))));
  const pressure=c(.35*h.recentPredictionError01+.25*h.replayTdError01+.2*h.evidenceDebt01+.2*h.memoryPressure01);
  const energy=h.energy01<.2?.5:h.energy01<.4?.75:1;
- const size=Math.max(1,Math.min(cap,Math.max(0,count),Math.round(cap*energy*(.65+.35*pressure))));
+ const adaptiveSize=Math.max(1,Math.min(cap,available,Math.round(cap*energy*(.65+.35*pressure))));
+ // A configured recent quota is a contract, not just a suggestion. Retain
+ // enough slots for that window plus at least one historical sample when one
+ // exists; adaptive sizing may still reduce the batch below its hard cap.
+ const minimumForCoverage=Math.min(cap,Math.max(1,Math.min(available,requestedRecent+(available>requestedRecent?1:0))));
+ const size=Math.max(adaptiveSize,minimumForCoverage);
  const ratio=c(.35+.25*h.recentPredictionError01+.15*h.evidenceDebt01-.15*h.memoryPressure01);
- return{maxBatchSize:size,recentQuota:Math.max(0,Math.min(size,Math.round(size*ratio))),ageHalfLifeTicks:pressure>.7?512:Number.POSITIVE_INFINITY};
+ const adaptiveRecent=Math.max(0,Math.min(size,Math.round(size*ratio)));
+ return{maxBatchSize:size,recentQuota:Math.min(size,Math.max(Math.min(requestedRecent,size),adaptiveRecent)),ageHalfLifeTicks:pressure>.7?512:Number.POSITIVE_INFINITY};
 }
 /** Clipped importance weights and update rates stop noisy/rare events dominating. */
 export function importanceWeight01(probability01:number,beta01=.4):number{return c(Math.pow(Math.max(.0001,c(probability01)),-c(beta01))/10)}

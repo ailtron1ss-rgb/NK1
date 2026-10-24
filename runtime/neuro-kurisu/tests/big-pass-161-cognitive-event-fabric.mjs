@@ -28,6 +28,7 @@ assert.ok(resumed);
 assert.ok(resumed.total>=mid.total,'cognitive event total must survive restart');
 assert.ok(resumed.buffered>=Math.min(mid.buffered,128));
 assert.equal(resumed.danglingParentLinks,0);
+
 console.log(JSON.stringify({pass:161,before:before?.total??0,after:mid,resumed:{total:resumed.total,buffered:resumed.buffered,lineageIntegrity01:resumed.lineageIntegrity01}},null,2));
 first.stop(); second.stop();
 fs.rmSync(dir,{recursive:true,force:true});

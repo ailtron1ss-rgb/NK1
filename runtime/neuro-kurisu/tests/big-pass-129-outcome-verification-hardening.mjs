@@ -120,4 +120,18 @@ const controlCharacterObservation = await service.verify(liveContext, () => ({
 assert.equal(controlCharacterObservation.verified, false, 'evidence IDs with control characters are not accepted');
 assert.equal(controlCharacterObservation.externalObservation, false);
 
+// Host-owned correlation IDs containing C0/C1 controls must be omitted from the
+// isolated verifier context instead of being trusted or truncated into aliases.
+let malformedCorrelationIdsDropped = false;
+await service.verify({
+  ...liveContext,
+  executionId: 'execution-\u0000-id',
+  decisionId: 'decision-\u009f-id',
+}, (context) => {
+  malformedCorrelationIdsDropped = !Object.hasOwn(context, 'executionId') && !Object.hasOwn(context, 'decisionId');
+  return { verified: false, basis: 'none', confidence01: 0 };
+});
+assert.equal(malformedCorrelationIdsDropped, true, 'malformed execution/decision IDs must not cross the verifier boundary');
+
+console.log('OUTCOME_VERIFICATION_CORRELATION_ID_SANITIZATION=PASS');
 console.log('BIG_PASS_129_OUTCOME_VERIFICATION_HARDENING=PASS immutable-context evidence-normalization fail-closed-exception handling external-basis-enforcement');
