@@ -10,8 +10,8 @@
       "originalGitBlobSha": "8fe759eaf898a8b7cb2496a0d7eae5bf1fb89d7b",
       "archivedGitBlobSha": "8fe759eaf898a8b7cb2496a0d7eae5bf1fb89d7b",
       "copyCommit": "608026313340758fc2b20bf4d1136a49bddb302f",
-      "sourceRemovalCommit": null,
-      "sourceRemoved": false,
+      "sourceRemovalCommit": "e87c8c390acd0f600dd3fca83b9d2c8e9639d987",
+      "sourceRemoved": true,
       "reason": "Preserve a dated 2026-10-06 status snapshot whose runtime/schema claims are historical. The branch inventory reported no incoming local Markdown links and no references from scanned non-Markdown source/config/manifest files; GitHub issue and PR searches found no direct path reference. The file was verified byte-identical after copy."
     }
   ]
