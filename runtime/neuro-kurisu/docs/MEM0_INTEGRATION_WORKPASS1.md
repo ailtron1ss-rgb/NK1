@@ -59,6 +59,12 @@ Example body:
 
 The server obtains the user scope from environment configuration, reads local canonical memories, then makes a bounded remote search if enabled. The response separates canonical.memories from externalCandidates; a disabled or unavailable Mem0 provider does not remove local memory results. The existing API authorization and rate-limit boundary applies to this route.
 
+### Explicit deletion primitive
+
+The adapter also supports an internal, explicit deletion operation using Mem0's documented `DELETE /v1/memories/{memory_id}/` endpoint ([official reference](https://docs.mem0.ai/api-reference/memory/delete-memory)). It is deliberately **not exposed as an HTTP route** in this pass.
+
+Deletion is fail-closed: it requires the write gate and per-operation approval, accepts only a valid UUID observed from an earlier scoped search/add within this adapter process, always sends `delete_linked=false`, and invalidates the in-memory authorization after success. The allow-list is bounded to 256 entries and intentionally disappears at process restart; the caller must re-search in the configured user scope before requesting deletion again. This reduces arbitrary-ID and cross-scope deletion risk, but is not a substitute for a provider-side tenant boundary.
+
 ## Privacy and integrity boundaries
 
 - Disabled by default; no network request occurs unless NK_MEM0_ENABLED=1, key and user scope are configured. Live language-context retrieval additionally requires NK_MEM0_COGNITIVE_RECALL=1.
@@ -71,7 +77,7 @@ The server obtains the user scope from environment configuration, reads local ca
 
 ## Validation and remaining work
 
-tests/mem0-platform-adapter-workpass1.mjs covers disabled-by-default behavior, fixed per-user scoping, result provenance, sensitive-text minimization, explicit write approval, HTTPS enforcement, HTTP error redaction, bounded response parsing, and the prompt boundary for remote candidates. `.github/workflows/mem0-platform-adapter.yml` runs the isolated regression and server syntax check separately from the wider suite.
+tests/mem0-platform-adapter-workpass1.mjs covers disabled-by-default behavior, fixed per-user scoping, result provenance, sensitive-text minimization, explicit write approval, HTTPS enforcement, HTTP error redaction, bounded response parsing, the prompt boundary for remote candidates, and consent/scope-bound deletion. `.github/workflows/mem0-platform-adapter.yml` runs the isolated regression and server syntax check separately from the wider suite.
 
 Run from runtime/neuro-kurisu:
 
