@@ -1,3 +1,13 @@
+# NK1 process-supervisor cleanup outcome propagation (2026-10-24)
+
+- [HARDENED] `runCommand()` reports the termination outcome and `cleanupFailed` after timeout handling, distinguishing an exited child from a process group that may still be alive.
+- [HARDENED] Install, migration, schema-check and integration verification propagate incomplete cleanup as failure; integration verification records Runtime and Research Bridge cleanup outcomes individually.
+- [HARDENED] Development and production launchers emit an explicit error and exit non-zero if shutdown cannot confirm process-group cleanup.
+- [REGRESSION] The timeout test now asserts that cleanup results are returned and that the tested process group is actually stopped.
+- [SCOPE] Does not claim improved cognitive quality or measured runtime speed. `main` and the published Release ZIP remain unchanged.
+
+---
+
 # NK1 process-supervisor log buffer optimization (2026-10-24)
 
 - [OPTIMIZED] Log-tail capture now discards old bytes before constructing the next buffer instead of concatenating an oversized combined buffer and then slicing it. This reduces intermediate allocations for high-volume subprocess output while preserving tail semantics.
