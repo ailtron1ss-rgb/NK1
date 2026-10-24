@@ -965,6 +965,58 @@ async function route(req, res) {
                         : 'HMX candidate was rejected; canonical NK1 memory has not been mutated.',
             });
         }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/goals/prepare') {
+            const input = await body(req);
+            const stagingId = String(input.stagingId || '').trim();
+            if (!stagingId) return json(res, 400, { ok: false, error: 'stagingId-required' });
+            try {
+                const result = runtime.core.hexisPrepareGoalProposals(stagingId);
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, ...result });
+            }
+            catch (error) {
+                await runtime.core.flush().catch(() => undefined);
+                return json(res, 409, { ok: false, error: String(error?.message ?? error), canonicalGoalsMutated: false });
+            }
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/hmx/goals/proposals') {
+            const allowed = new Set(['pending', 'approved', 'rejected', 'materialized']);
+            const requested = String(url.searchParams.get('status') || '').trim();
+            const status = allowed.has(requested) ? requested : undefined;
+            return json(res, 200, { ok: true, proposals: runtime.core.hexisGoalProposals(status), hexis: runtime.core.hexisDiagnostics() });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/goals/decide') {
+            const input = await body(req);
+            const proposalId = String(input.proposalId || '').trim();
+            const decision = ['approve', 'reject', 'activate'].includes(String(input.decision)) ? String(input.decision) : null;
+            if (!proposalId || !decision) return json(res, 400, { ok: false, error: 'proposalId-and-valid-goal-decision-required' });
+            let result;
+            try {
+                result = runtime.core.hexisDecideGoalProposal(proposalId, decision);
+            }
+            catch (error) {
+                await runtime.core.flush().catch(() => undefined);
+                return json(res, 409, { ok: false, error: String(error?.message ?? error), goalActivated: false });
+            }
+            await runtime.core.flush();
+            if (!result) return json(res, 404, { ok: false, error: 'hmx-goal-proposal-not-found' });
+            const goal = result.goal ?? null;
+            const activated = decision === 'activate' && goal?.status === 'active' && goal?.activationApproved === true;
+            return json(res, 200, {
+                ok: true,
+                proposal: result.proposal,
+                goal,
+                requiresExplicitActivation: Boolean(result.requiresExplicitActivation),
+                goalActivated: activated,
+                note: decision === 'approve'
+                    ? 'The proposal has been materialized as a paused external goal; it cannot enter active planning until a separate activate decision.'
+                    : decision === 'activate'
+                        ? activated
+                            ? 'The reviewed external goal is active after explicit activation and capacity/identity checks.'
+                            : 'The goal was not activated.'
+                        : 'The pending goal proposal was rejected; no canonical goal was created.',
+            });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
         }
