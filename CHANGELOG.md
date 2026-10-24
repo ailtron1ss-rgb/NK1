@@ -1,3 +1,12 @@
+## NK1 WorkPass488 — preserve bounded numeric sentinels for field policy validation
+
+- Fixed the typecheck blocker introduced by the candidate-gate hardening: `PlainDataSnapshotOptions` now supports explicit `allowNonFiniteNumbers`.
+- The default remains fail-closed. Only an explicit caller opt-in preserves NaN/Infinity long enough for the owning field-specific validator to reject the value with a precise policy error; object/accessor/cycle/size protections remain active.
+- This enables the existing Hermes candidate gate to report `candidate-minimum-validation-gain-invalid` for non-finite thresholds rather than collapsing to a generic snapshot boundary error.
+- No dependency or second snapshot implementation added. **Validation:** fix committed; exact-head Actions is still running/awaiting verification.
+
+---
+
 ## NK1 WorkPass487 — lock canonical zero in reflective candidate reports
 
 - Extended the existing Hermes/SkillLearnBench candidate-gate regression with a realistic sub-micro negative trajectory delta that rounds to zero at the public report boundary.
