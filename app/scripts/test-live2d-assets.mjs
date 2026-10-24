@@ -84,6 +84,7 @@ for (const variant of variants) {
   assert.ok(expressionRefs.length >= 7, `${variant.name}: expression coverage regressed`);
   assert.ok(motionRefs.length >= 4, `${variant.name}: motion coverage regressed`);
 
+  for (const reference of relativeRefs) {
     assert.ok(!path.isAbsolute(reference) && !reference.includes("\\"), `${variant.name}: unsafe model reference ${reference}`);
     const fromPublicRoot = path.relative(publicRoot, path.resolve(variant.dir, reference));
     const filePath = resolveSafe(publicRoot, fromPublicRoot);
