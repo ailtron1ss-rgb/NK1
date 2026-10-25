@@ -12,7 +12,7 @@ export type EmotionActionTendency = 'explore'|'engage'|'verify'|'reflect'|'rest'
 export interface EmotionEpisode {
   id:string; tick:number; at:number; label:EmotionLabel; actionTendency:EmotionActionTendency;
   valence01:number; arousal01:number; dominance01:number;
-  appraisal:{relevance01:number; goalCongruence01:number; controllability01:number; novelty01:number; selfRelevance01:number; socialMeaning01:number; uncertainty01:number; recalledAffect01:number; recalledMemoryCount:number};
+  appraisal:{relevance01:number; goalCongruence01:number; controllability01:number; novelty01:number; selfRelevance01:number; socialMeaning01:number; uncertainty01:number; recalledAffect01?:number; recalledMemoryCount?:number};
   interoceptiveDelta:{stress01:number; energy01:number; load01:number; attentionCapture01:number};
   memorySalienceMultiplier01:number;
   confidence01:number;
