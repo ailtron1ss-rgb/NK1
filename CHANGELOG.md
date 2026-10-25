@@ -1,3 +1,11 @@
+## NK1 learning validation — verify authenticated rollback lifecycle (2026-10-25)
+
+- Updated the legacy versioned-skill lifecycle fixture to use the rollback API's explicit approval identity, timestamp and compare-and-swap version.
+- Added default-deny and stale-version checks plus Ed25519 rollback signature coverage: tampering with the restore-target fingerprint is rejected without changing the active skill, while the exact signed rollback restores the declared prior state.
+- Promotion and rollback remain separate authenticated actions; audit-shaped fields alone do not authorize either transition.
+
+---
+
 ## NK1 learning validation — assert replay identity reconciliation order (2026-10-25)
 
 - Updated the P23 persistence test to verify that durable `replayUpdates` trace IDs are reconciled before cache-only `replayedTraceIds`, matching the processed-trace integrity invariant and preventing replayed outcomes from being forgotten at the bounded cache limit.
