@@ -1,30 +1,42 @@
-# WorkPass319 — unified cognitive-cycle restore consistency
+# WorkPass319 — unified cognitive-cycle and motivation integration closure
 
 **Date:** 2026-10-25  
 **Source base:** `workpass206-runtime-evaluator-wiring` at `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`  
 **Work branch:** `nk1-ready-unified-cycle-restore-integrity-20261025`  
-**Scope:** the restored `lastComplete` claim in `UnifiedCognitiveCycle`.
+**Scope:** close the focused WorkPass287/288/B272 integration gate without changing the release/metadata `main`.
 
-## Failure mode
+## Failures reproduced from live CI
 
-The restore path recomputed `incompleteCycles` from `cycles - completeCycles`, but did not require the persisted count fields to agree before trusting `lastComplete`. A snapshot such as `cycles=10, completeCycles=8, incompleteCycles=8` could therefore retain a positive last-cycle claim despite contradictory aggregate history. The existing contract test already exercises this contradiction.
+1. `UnifiedCognitiveCycle.restore()` trusted `lastComplete=true` despite contradictory persisted counters, e.g. `cycles=10, completeCycles=8, incompleteCycles=8`.
+2. A mixed `lastMissingStages` list containing a valid stage plus malformed values discarded the valid stage. The contract requires preserving recognized values; a list with no recognized stages must fail closed to all required stages.
+3. B272 computed future goal value from an unnormalized raw `dot(v, base)`. This could saturate the score at 1.0 and hide an increase in the confidence-weighted intrinsic drive. The integration regression failed with `calibrated intrinsic drive did not influence endogenous goal value`.
 
-## Change
+## Implemented
 
-- Restored `lastComplete` is retained only if all four persisted counters are non-negative safe integers, the cycle partition exactly matches the canonical normalized partition, and `brokenLineages` does not exceed the normalized incomplete count.
-- Invalid, missing, over-counted, or contradictory persisted counters fail closed for the last-cycle completion claim. Normalized aggregate counters are still preserved conservatively.
-- Extended `workpass287-unified-cycle-contract.mjs` with a coherent persisted partition that must preserve `lastComplete=true`, and a partial snapshot that must not authenticate that claim.
-- No new dependency; the existing WorkPass287-288 workflow runs the cycle contract, motivation contract, and B272 motivation-to-goal integration test on source/test changes.
+- Restored `lastComplete` now requires all four counters to be non-negative safe integers, a coherent cycle partition, and a broken-lineage count no larger than the incomplete count. Invalid/missing/inconsistent counters do not authenticate the completion flag.
+- Missing-stage restore now keeps recognized stage IDs when they coexist with malformed values; wholly unrecognized/malformed input fails closed to the full required-stage list.
+- B272 now scores bounded normalized world alignment and bounded reward/evidence signals. The trusted intrinsic drive retains measurable influence without depending on an unbounded dot product; confidence-zero drive remains unable to affect the score.
+- Added explicit restore regressions for coherent counters and incomplete snapshots; the pre-existing test also covers contradictory counts and malformed mixed-stage input.
+- Extended `.github/workflows/workpass287-288-cognitive-contracts.yml` to run `npm run typecheck` before the three behavior tests.
+- Updated `README.md`, `CHANGELOG.md`, and `NEUROCORE_START_HERE.md`. No new runtime dependency was introduced.
 
-## Verification status
+## Verification evidence
 
-The focused GitHub Actions workflow was triggered by the implementation and regression commits. Its exact run result must be checked before treating this branch as validated. Runtime typecheck, full organism E2E, real sandbox/verifier deployment, learning uplift, and release readiness are outside this narrowly scoped pass and are not claimed here.
+- [Run 40189833009](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189833009) passed all three behavior steps on code commit `be1725549a433da9172650e99d4f100603f71db3`: unified cycle, intrinsic motivation, and B272 motivation-to-goal integration.
+- [Run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) was triggered after adding the runtime typecheck step; its final result must be confirmed before this branch is treated as review-ready.
+- The earlier failed runs are retained as diagnostic history, not hidden: they exposed the malformed-stage normalization and saturated goal-value defects that are now fixed.
+
+## Scope boundary
+
+Passing these focused checks demonstrates the targeted contracts only. It does **not** establish organism-wide E2E, deployed OS/container sandbox isolation, independent learning uplift, real-device voice/Live2D behavior, production readiness, or subjective consciousness.
 
 ## Exit checklist
 
-- [x] Concrete restore inconsistency identified from the live source and existing regression.
-- [x] Canonical restore path hardened without adding a second state owner.
-- [x] Regression added for coherent and partial restore states.
-- [x] README, CHANGELOG, and session start page updated on this branch.
-- [ ] Focused Actions run succeeds on the PR head.
-- [ ] Review and merge into the source integration stack; do not target the unrelated release/metadata `main`.
+- [x] Reproduce and fix the cognitive-cycle restore inconsistency.
+- [x] Preserve recognized missing stages while failing closed on wholly malformed input.
+- [x] Restore confidence-weighted intrinsic-drive influence on B272 goal value.
+- [x] Add/retain regression coverage for each discovered defect.
+- [x] Add runtime typecheck to the focused CI gate.
+- [x] Synchronize README, CHANGELOG and session handover.
+- [ ] Confirm final workflow run and PR-head CI.
+- [ ] Request review/merge into the source integration stack; do not target the unrelated release/metadata `main`.
