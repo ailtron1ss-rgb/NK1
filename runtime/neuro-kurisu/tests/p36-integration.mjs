@@ -3,8 +3,27 @@ import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.t
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput, P36_EXTERNAL_EVIDENCE_TOOL_ID } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
 
+let coreEvidenceReceiptCount=0;
+const p36IndependentEvaluator={
+  capability:'learning.evaluation',
+  destructive:false,
+  projectAllowed:true,
+  observationSource:{
+    sourceId:'p36-host-fixture-evaluator',
+    sourceClass:'external-api',
+    channel:'tool',
+    independenceKey:'host-owned-p36-test-evaluator',
+  },
+  execute:async()=>({ok:true,observationId:'core-action-gateway-p36-receipt-'+(++coreEvidenceReceiptCount)}),
+  verify:({result})=>{
+    const observationId=String(result.observationId??'');
+    return {verified:Boolean(observationId),basis:'external-postcondition',externalObservation:true,confidence01:1,
+      observationId,expectedPostcondition:'p36-evaluation-complete:'+observationId,
+      observedPostcondition:'p36-evaluation-complete:'+observationId};
+  },
+};
 const store=new MemoryStateStore();
-const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,p36IndependentEvaluator});
 await core.init();
 const before=core.p36Snapshot();
 const step=await core.observe({text:'проверить собственное развитие',novelty:.7,worldContext:{tick:1,location:'lab',energy:.72,attention:.82,uncertainty:.78,facts:['test'],objects:[],events:[]}});
@@ -38,20 +57,13 @@ const evidenceInput=developmentEvidenceVerificationInput({
   evaluatorVersion:'core-action-gateway-fixture-v1',
   evidenceSource:'external-evaluator',
 });
-let coreEvidenceReceiptCount=0;
-core.registerActionTool({
+assert.throws(()=>core.registerActionTool({
   id:P36_EXTERNAL_EVIDENCE_TOOL_ID,
-  capability:'learning.evaluation',
-  destructive:false,
-  projectAllowed:true,
-  execute:async()=>({ok:true,observationId:'core-action-gateway-p36-receipt-'+(++coreEvidenceReceiptCount)}),
-  verify:({result})=>{
-    const observationId=String(result.observationId??'');
-    return {verified:Boolean(observationId),basis:'external-postcondition',externalObservation:true,confidence01:1,
-      observationId,expectedPostcondition:'p36-evaluation-complete:'+observationId,
-      observedPostcondition:'p36-evaluation-complete:'+observationId};
-  },
-});
+  capability:'learning.evaluation',destructive:false,projectAllowed:true,
+  execute:async()=>({ok:true,observationId:'forged-public-registry-receipt'}),
+  verify:()=>({verified:true,basis:'external-postcondition',externalObservation:true,confidence01:1,observationId:'forged-public-registry-receipt',expectedPostcondition:'ok',observedPostcondition:'ok'}),
+}),/reserved-p36-evaluator-must-be-configured-at-core-construction/,
+'generic runtime tool registration cannot seize the reserved independent-evaluator identity');
 const attemptsBeforeUnlinked=core.p36Diagnostics().unverifiedEvidenceAttempts;
 const unlinkedInput=developmentEvidenceVerificationInput({...evidenceInput,contextKey:'core-unlinked-p36-context'});
 const unlinkedResult=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,unlinkedInput,'p36-unlinked-evidence');
