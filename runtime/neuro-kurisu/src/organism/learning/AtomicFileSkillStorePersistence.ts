@@ -96,8 +96,25 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
+  const revisionProvenance = value.revisionProvenance;
+  if (revisionProvenance !== undefined) {
+    if (!isRecord(revisionProvenance) || revisionProvenance.schemaVersion !== 1 ||
+        !isFingerprint(revisionProvenance.evaluationFingerprint) ||
+        !(revisionProvenance.sourceCandidateId === null || isFingerprint(revisionProvenance.sourceCandidateId)) ||
+        !isFingerprint(revisionProvenance.planFingerprint) ||
+        !isFingerprint(revisionProvenance.datasetFingerprint) ||
+        (revisionProvenance.sourceEvidenceFingerprint !== undefined &&
+          !isFingerprint(revisionProvenance.sourceEvidenceFingerprint)) ||
+        !Array.isArray(revisionProvenance.dimensions) || revisionProvenance.dimensions.length === 0 ||
+        revisionProvenance.dimensions.some(d =>
+          !['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'].includes(String(d))) ||
+        new Set(revisionProvenance.dimensions).size !== revisionProvenance.dimensions.length ||
+        typeof revisionProvenance.createdAt !== 'number' || !Number.isFinite(revisionProvenance.createdAt) ||
+        revisionProvenance.createdAt <= 0) return false;
+  }
   const expectedId = createHash('sha256').update(JSON.stringify([
     value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+    revisionProvenance === undefined ? null : payloadFingerprint(revisionProvenance),
   ])).digest('hex');
   if (value.candidateId !== expectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
