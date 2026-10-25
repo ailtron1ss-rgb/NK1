@@ -115,7 +115,7 @@ export class P26TrueLearningEngine{
       if(evidenceById.size>=4096)break;
     }
     const verifiedHoldoutEvidence=[...evidenceById.values()];
-    const sourceMetrics=raw?.metrics??{};
+    const sourceMetrics:Partial<P26LearningMetrics>=raw?.metrics??{};
     const outcomeSamples=safeP26Count(sourceMetrics.outcomeSamples);
     const onlineUpdates=Math.min(outcomeSamples,safeP26Count(sourceMetrics.onlineUpdates));
     const replayUpdates=safeP26Count(sourceMetrics.replayUpdates);
@@ -125,7 +125,7 @@ export class P26TrueLearningEngine{
     const processedTraceIds=Array.isArray(raw?.processedTraceIds)
       ? [...new Set(raw!.processedTraceIds.filter((value):value is string=>
           typeof value==='string'&&value.length>0&&value.length<=256&&value.trim().length>0&&
-          !/[\\u0000-\\u001f\\u007f-\\u009f]/.test(value)))].slice(-4096)
+          !/[\u0000-\u001f\u007f-\u009f]/.test(value)))].slice(-4096)
       : [];
     this.state={
       version:1,

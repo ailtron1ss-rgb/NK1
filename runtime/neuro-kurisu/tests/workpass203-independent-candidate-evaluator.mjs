@@ -380,16 +380,16 @@ const snapshotAuthorityEvaluator = createIndependentSkillCandidateEvaluator({
 expectedScheduledRun.runId = 'tampered-after-construction';
 mutableAuthority.method = 'attacker-method';
 mutableAuthority.manifest[0].promptFingerprint = '0'.repeat(64);
-const snapshotResult = await snapshotAuthorityEvaluator({
+const snapshotAuthorityResult = await snapshotAuthorityEvaluator({
   payload, payloadFingerprint: digest(payload),
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
 assert.equal(snapshotContexts.find(row => row.taskId === 'authority-validation').plannedRunId, expectedScheduledRunId,
   'scheduled run identity must come from the validated authority snapshot');
-assert.equal(snapshotResult.evaluation.provenance.experimentAuthority.method, 'candidate',
+assert.equal(snapshotAuthorityResult.evaluation.provenance.experimentAuthority.method, 'candidate',
   'post-construction mutation must not change the evaluator authority label');
-assert.equal(snapshotResult.evaluation.provenance.experimentAuthority.validationPlanFingerprint, validationPlan.planFingerprint,
+assert.equal(snapshotAuthorityResult.evaluation.provenance.experimentAuthority.validationPlanFingerprint, validationPlan.planFingerprint,
   'the attested plan fingerprint must remain the plan that was validated');
 assert.equal(snapshotContexts.length, 2);
 

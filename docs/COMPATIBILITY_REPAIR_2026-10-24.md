@@ -130,3 +130,13 @@ The newest full CI matrix identified several independent issues:
 The refreshed WorkPass287 contract progressed past malformed-stage-list handling and exposed a second persistence defect: aggregate counters were reconciled, but `lastComplete=true` was still trusted even when the stored incomplete/broken-lineage counters contradicted the computed partition. Restoration now detects that inconsistency and refuses to preserve a completion claim; if no required stage was marked missing, it reinstates the required missing-stage set.
 
 Status: committed for exact-head verification. This prevents a corrupted historical snapshot from reporting a completed cognitive cycle without coherent aggregate evidence.
+
+## Twelfth follow-up — close strict typing and exact syntax issues
+
+The first rerun after the previous batch surfaced three follow-on defects in that new code:
+- TypeScript inferred the empty fallback for P26 persisted metrics as `{}`; it is now explicitly typed `Partial<P26LearningMetrics>`.
+- The generated regex contained doubled escape characters, which is invalid as a character class under Node 24. It now matches actual Unicode control characters.
+- The evaluator syntax audit found a second reused `snapshotResult` declaration after the previous duplicate evaluator was renamed. The result binding for the authority-snapshot case now has a unique name.
+- The coordinator performs two trust checks synchronously before producing the child-process promise. The tests for missing registrar and disallowed baseline/method lanes now assert the synchronous throw; failures occurring after registration are still checked as rejected promises.
+
+**Status: patch committed for fresh exact-head verification.**

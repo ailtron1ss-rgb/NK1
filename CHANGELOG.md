@@ -1,3 +1,11 @@
+## Follow-up — strict P26 restore typing and synchronous coordinator guards (2026-10-25)
+
+- [FIX] Typed restored P26 metrics as `Partial<P26LearningMetrics>` so strict TypeScript can validate field accesses.
+- [FIX] Replaced the accidentally double-escaped control-character regex in processed-trace restoration with the real Unicode control-character matcher.
+- [FIX] Completed the independent evaluator test repair by giving the second scenario a distinct `snapshotAuthorityResult` binding as well as its own evaluator identifier.
+- [TEST FIX] Updated invalid-registrar and disallowed-lane coordinator tests to use `assert.throws` for synchronous fail-closed guards; the actual child-process/register failures remain tested as rejected promises.
+- [EVIDENCE] The latest run reached runtime typecheck and found the source-level typing/regex issues above, while WorkPass79's syntax audit caught the second duplicate binding. These fixes need exact-head CI confirmation.
+
 ## Cognitive-cycle restore consistency fix (2026-10-25)
 
 - [FIX] `UnifiedCognitiveCycle.restore` now detects contradictions between persisted `incompleteCycles`, the recomputed complete/incomplete partition, and `brokenLineages`. If a snapshot claims the last cycle completed while those counters conflict, restore clears that completion claim and marks the missing-stage set as required work.
