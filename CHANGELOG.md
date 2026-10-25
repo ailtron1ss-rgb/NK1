@@ -1,3 +1,11 @@
+## [NK1][learning] Bind file-backed candidate IDs to revision provenance consistently (2026-10-25)
+
+- WorkPass110 exposed a production persistence mismatch: `VersionedSkillCandidateStore.stageCandidate` hashes a five-slot identity tuple, with a provenance fingerprint or explicit `null` as slot five, while the atomic-file adapter validated only the first four slots.
+- Updated `AtomicFileSkillStorePersistence` to calculate the same tuple. Candidates without provenance now validate with the explicit null slot; provenance-bearing candidates bind the canonical provenance fingerprint. Malformed provenance that cannot be fingerprinted is rejected.
+- This repairs file-backed staging/restart integrity rather than relaxing atomic compare-and-swap. The exact-head skill lifecycle regression and WorkPass71 still need to pass.
+
+---
+
 ## [NK1][learning] Align persisted rollback-target tamper assertion with validation order (2026-10-25)
 
 - CI confirmed the tampered persisted base version is rejected before the later signed-approval CAS check, because the stored rollback target no longer matches the prior approved version.
