@@ -1,3 +1,10 @@
+## NK1 learning validation — bind P36 outcome fixtures to the discriminant (2026-10-25)
+
+- Updated authenticated developmental-outcome fixtures to include the required `kind: 'developmental-outcome'` discriminant that the runtime verifier gate checks explicitly.
+- The changes keep production fail-closed semantics intact and ensure the self-development tests exercise receipt acceptance and cross-route observation reuse, rather than failing early for a missing discriminant.
+
+---
+
 ## NK1 learning validation — assert non-finite bootstrap rejection boundary (2026-10-25)
 
 - Updated the paired-seed confidence regression to expect the actual fail-closed plain-data boundary error for `NaN` samples. Empty and finite out-of-range samples remain covered by the dedicated invalid-values error.
