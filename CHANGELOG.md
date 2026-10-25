@@ -1,3 +1,10 @@
+## NK1 learning validation — assert non-finite bootstrap rejection boundary (2026-10-25)
+
+- Updated the paired-seed confidence regression to expect the actual fail-closed plain-data boundary error for `NaN` samples. Empty and finite out-of-range samples remain covered by the dedicated invalid-values error.
+- This preserves the security contract: non-finite data is rejected before statistical work, not normalized or silently accepted.
+
+---
+
 ## NK1 learning validation — repair trust-boundary fixture arguments (2026-10-25)
 
 - Corrected two adversarial evaluator test calls to pass `payloadFingerprint` under its actual API field name. The prior shorthand populated a non-existent field and unintentionally tested fingerprint rejection instead of accessor non-execution.
