@@ -4245,11 +4245,19 @@ export class OrganismCore {
             intensity01: clamp(Number(m.emotionalWeight ?? 0)),
             salience01: clamp(Number(m.salience ?? 0.5)),
             confidence01: clamp(Number(m.confidence ?? 0.5)),
+            // Retrieval rank alone is not enough: attenuate emotional transfer when the
+            // recalled episode shares little observable context with the current input.
+            contextRelevance01: this.cognitiveRuntime.emotionAppraisal.scoreRecallContextRelevance01(
+                String(observation.text ?? ''),
+                String(m.content ?? ''),
+                Array.isArray(m.tags) ? m.tags.map(String) : [],
+            ),
         })).filter(row => row.intensity01 > 0 && row.salience01 > 0 && row.confidence01 > 0);
         const recalledAffectWeight = recalledAffectRows.reduce((total, row) => total + row.salience01, 0);
         const recalledAffect = recalledAffectRows.length > 0 && recalledAffectWeight > 0 ? {
             intensity01: clamp(recalledAffectRows.reduce((total, row) => total + row.intensity01 * row.salience01, 0) / recalledAffectWeight),
             confidence01: clamp(recalledAffectRows.reduce((total, row) => total + row.confidence01 * row.salience01, 0) / recalledAffectWeight),
+            contextRelevance01: clamp(recalledAffectRows.reduce((total, row) => total + row.contextRelevance01 * row.salience01, 0) / recalledAffectWeight),
             evidenceCount: recalledAffectRows.length,
         } : undefined;
         const emotionEpisode = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick + 1, at: Date.now(), goalPressure01: n.goalPressure, goalCongruence01: state.lastActionSuccess ?? .5, controllability01: 1 - n.uncertainty, novelty01: n.novelty, selfRelevance01: n.identityCoherence, socialMeaning01: n.socialNeed, uncertainty01: n.uncertainty, predictionError01: state.predictionError, homeostaticPressure01: p66Homeostasis.pressure01, energy01: n.energy, success01: state.lastActionSuccess ?? .5, recalledAffect, external: hasExternalSignal });
