@@ -93,6 +93,17 @@ export class ParametricPolicyLearner{
       const bias=Number(this.state.bias[a]??0);
       this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+    const safeUnit=(value:unknown,fallback:number):number=>
+      typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+    this.state.updates=typeof raw?.updates==='number'&&Number.isSafeInteger(raw.updates)&&raw.updates>=0?raw.updates:0;
+    this.state.tdAbsMean01=safeUnit(raw?.tdAbsMean01,d.tdAbsMean01);
+    this.state.trainRewardMean01=safeUnit(raw?.trainRewardMean01,d.trainRewardMean01);
+    this.state.explorationRate01=safeUnit(raw?.explorationRate01,d.explorationRate01);
+    this.state.lastLoss01=safeUnit(raw?.lastLoss01,d.lastLoss01);
+    this.state.lastTrainedAt=typeof raw?.lastTrainedAt==='number'&&Number.isFinite(raw.lastTrainedAt)&&raw.lastTrainedAt>=0?raw.lastTrainedAt:d.lastTrainedAt;
+    // Only an explicit boolean can restore a safety freeze; malformed truthy values
+    // must not disable learning or leave a non-boolean in the persisted state.
+    this.state.frozen=raw?.frozen===true;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
