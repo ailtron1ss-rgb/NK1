@@ -1,3 +1,9 @@
+## NK1 WorkPass553 — normalize WorkPass110 TypeScript runner modes (2026-10-25)
+
+- CI showed the production runtime trusted-shadow scheduler test imports TypeScript constructor parameter properties, which Node 24.21 rejects under `--experimental-strip-types`.
+- Standardized every WorkPass110-invoked test script still using strip-only mode to `--experimental-transform-types`, including the scheduler/config/evidence and downstream promotion tests. This keeps the validation suite executable under the workflow's Node 24 runner without changing test assertions or production trust gates.
+- Latest-head WorkPass110 must rerun; other latest-head Memory Recall and P26 runs had passed before this runner-only change.
+
 ## NK1 WorkPass552 — unify durable candidate identity and provenance validation (2026-10-25)
 
 - Fixed a real mismatch between `VersionedSkillCandidateStore` and `AtomicFileSkillStorePersistence`: candidate IDs now validate against the same five-part identity input, including a provenance fingerprint or explicit `null`.
