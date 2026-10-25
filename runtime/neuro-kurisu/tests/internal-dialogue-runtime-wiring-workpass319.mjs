@@ -49,6 +49,14 @@ assert.match(runtime, /runtime\.internal-dialogue\.review/,
   'runtime must append a durable sanitized receipt to the operational journal');
 assert.match(runtime, /internalDialogueReceiptSnapshot\(\)/,
   'runtime must expose only the last bounded review receipt for diagnostics');
+assert.match(runtime, /summarizeInternalDialogueHistory\(this\.internalDialogueReceiptHistory\)/,
+  'runtime must expose a numeric summary over its bounded receipt history');
+assert.match(runtime, /internalDialogueHistorySummarySnapshot\(\)/,
+  'history trend summary must be available to runtime diagnostics');
+assert.match(runtime, /this\.rememberInternalDialogueReceipt\(request\.internalDialogueReceipt\)/,
+  'live reviews must join the same in-memory history used for restart-restored summaries');
+assert.match(runtime, /readRecent\('runtime\.internal-dialogue\.review',128\)/,
+  'restore must request enough recent rows to refill the bounded valid-receipt window');
 assert.match(server, /delete providerRequest\.internalDialogueReceipt/,
   'host-side receipt metadata must be stripped before language-provider submission');
 
