@@ -1,3 +1,11 @@
+## NK1 WorkPass343 — Restore missing workflow script aliases (2026-10-25)
+
+- [CI-WIRING] Added the missing `test:workpass294:correlated-postcondition` and `test:p26:learning-input-integrity` npm aliases referenced by their existing GitHub Actions workflows; both map directly to the committed regression files.
+- [FOLLOW-THROUGH] This removes immediate “Missing script” failures after typecheck, allowing those workflows to reach the actual behavioural checks instead of stopping at package-script resolution.
+- [VALIDATION] Exact-head runs triggered after the package change; workflow acceptance remains pending until the new runs finish.
+
+---
+
 ## NK1 WorkPass342 — Make coordinator validation failures promise-safe (2026-10-25)
 
 - [API-CONTRACT] The trusted shadow-run coordinator is now declared `async`, so invalid registrar, runtime-version and execution-lane guards reject its declared `Promise<LearningProcessResult>` instead of escaping synchronously.
