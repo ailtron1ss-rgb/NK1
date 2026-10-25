@@ -13,6 +13,8 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-routing-policy.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveRoutingPolicy.ts"
       - "tools/verify-repository-wiring.mjs"
       - "tools/verify-repository-wiring.test.mjs"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
@@ -29,6 +31,8 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-routing-policy.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveRoutingPolicy.ts"
       - "tools/verify-repository-wiring.mjs"
       - "tools/verify-repository-wiring.test.mjs"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
@@ -79,3 +83,6 @@ jobs:
 
       - name: Test live runtime graph persistence and restart continuity
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-dependency-runtime-wiring
+
+      - name: Test interrupt-aware cognitive routing budget
+        run: npm --prefix runtime/neuro-kurisu run test:cognitive-routing-policy
