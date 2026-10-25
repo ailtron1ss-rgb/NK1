@@ -1,3 +1,10 @@
+## NK1 Emotion — prevent recalled-memory salience saturation (2026-10-25)
+
+- Fixed a salience multiplier saturation bug: `c(.8 + attentionCapture * .7)` clamps values to 1, so both ordinary and recall-boosted attention could become indistinguishable despite increased arousal.
+- The multiplier now uses an explicit bounded range of 0.8–1.35, allowing emotionally salient recalled memories to boost current memory weighting without turning salience into an unbounded signal.
+- The pre-existing `workpass564-recalled-affect-appraisal` regression directly covers the expected increase while also guarding against invented valence and present-threat inference.
+- **Validation boundary:** source fix is committed; hosted regression must pass to mark it validated.
+
 ## NK1 Causal Projection — quarantine conflicting restored outcome identities (2026-10-25)
 
 - `OutcomeCognitionFabric.restore()` now checks restored projection-index identity against its record fingerprint, rejects the last-write-wins behavior for duplicate `executionId` values, and quarantines conflicting IDs in `CausalAccountabilityGraph` so the tombstone persists across restart.
