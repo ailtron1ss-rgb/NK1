@@ -122,6 +122,7 @@ test('search rejects a different user scope declared only inside metadata', asyn
     userId: 'scope-owner',
     fetchImpl: async () => jsonResponse({ results: [
       { id: 'mem-metadata-foreign', metadata: { user_id: 'other-owner' }, memory: 'foreign account preference' },
+      { id: 'mem-unscoped', memory: 'result without owner provenance' },
       { id: 'mem-metadata-owner', metadata: { user_id: 'scope-owner' }, memory: 'the configured owner preference' },
     ] }),
   });
@@ -129,8 +130,9 @@ test('search rejects a different user scope declared only inside metadata', asyn
   const result = await adapter.search('preference', 5);
   assert.equal(result.status, 'ok');
   assert.deepEqual(result.memories.map(memory => memory.id), ['mem-metadata-owner']);
-  assert.equal(result.diagnostics.scopeRejected, 1);
+  assert.equal(result.diagnostics.scopeRejected, 2);
   assert.equal(JSON.stringify(result).includes('foreign account preference'), false);
+  assert.equal(JSON.stringify(result).includes('result without owner provenance'), false);
 });
 
 test('transport timeout aborts the request and returns a bounded diagnostic', async () => {
