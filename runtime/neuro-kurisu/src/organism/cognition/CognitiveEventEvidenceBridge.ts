@@ -52,10 +52,12 @@ function actionForNode(node: CognitiveEventNode, byId: Map<string, CognitiveEven
 }
 
 function outcomePolarity(payload: Record<string, unknown>): boolean | null {
-  for (const key of ['success', 'ok', 'passed']) {
+  for (const key of ['ok', 'passed', 'success']) {
     if (typeof payload[key] === 'boolean') return payload[key] as boolean;
   }
-  for (const key of ['success01', 'reward01', 'reward']) {
+  // Core operational CEF writes success as a continuous score, whereas tool receipts
+  // commonly write ok as a boolean. Support both shapes without coercing unknowns.
+  for (const key of ['success', 'success01', 'reward01', 'reward']) {
     const value = payload[key];
     if (typeof value === 'number' && Number.isFinite(value)) {
       if (value >= 0.65) return true;
