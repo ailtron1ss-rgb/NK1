@@ -62,6 +62,23 @@ export function resolveUnifiedCognitiveWorkPolicy(
   if (requestedMaxBranches === 0) {
     return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'upstream-budget-zero' };
   }
+  if (!isRecord(state) || !isRecord(state.coupling) || !isRecord(state.provenance) ||
+      !isRecord(state.resources) || !isRecord(state.world)) {
+    return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'invalid-substrate-state' };
+  }
+  const requiredMetrics = [
+    state.coupling.actionReadiness01,
+    state.coupling.predictionGrounding01,
+    state.provenance.unknown01,
+    state.provenance.evidenceCoverage01,
+    state.resources.scarcity01,
+    state.resources.ramPressure01,
+    state.resources.thermal01,
+    state.world.conflict01,
+  ];
+  if (requiredMetrics.some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1)) {
+    return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'invalid-substrate-state' };
+  }
 
   const { actionReadiness01, predictionGrounding01 } = state.coupling;
   const unknown01 = state.provenance.unknown01;
