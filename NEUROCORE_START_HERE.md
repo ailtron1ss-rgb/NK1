@@ -1,3 +1,15 @@
+## Latest checkpoint — WorkPass321 (2026-10-25)
+
+- **Active work branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`, based on `work/node24-project-pin-rebased-20261025`; no merge into `main` or release ZIP was performed.
+- **Code checkpoint before handover docs:** `84cf83ef97ebcd631cb0e6e6c19dbc62ea17b032`.
+- **Defect fixed:** case-sensitive classification could admit one counterfactual branch for an active `RESOURCE-CRITICAL` / `THERMAL-CRITICAL` signal with priority 0.84. Routing now trims and lowercases severity labels before classification; graph restore/resolve uses the same canonical representation.
+- **Tests added:** case-variant severity labels, normalized restored state, and the previously omitted standalone dependency-graph restore test is now included in the cognitive composite suite.
+- **Validation:** tests/typecheck not executed in this pass. Verify exact-head CI and require a runner plus real steps/logs; a zero-step startup failure is not a code-test result.
+- **Next code-first actions:** (1) inspect latest Actions for this exact branch/head and run focused cognitive suite; (2) close any runtime typecheck failures without semantic downgrade to syntax-only passing; (3) trace actual interrupt producers into `CognitiveDependencyGraph` and add runtime tests that force active/critical signals through the real cycle; (4) continue memory ↔ learning ↔ verified-action integration; (5) refresh the canonical release archive only after verified source checks, if release-asset tooling allows it.
+- **Evidence rule:** no learning uplift, production-ready claim, or consciousness claim follows from this fix alone.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
