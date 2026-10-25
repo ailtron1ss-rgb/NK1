@@ -1,3 +1,11 @@
+## NK1 durable skill-store restore — validate revision provenance schema
+
+- Brought the provenance checks from the learning candidate contract into the unified runtime’s atomic JSON persistence validator, rather than validating only the hash.
+- Added a durable round-trip regression for provenance-bearing candidates and rejection of a persisted provenance mutation under compare-and-swap.
+- Candidate IDs remain bound to the same provenance digest; malformed lineage cannot enter the runtime state just because its hash was recomputed.
+
+---
+
 ## NK1 P26 snapshot restore — sanitize persisted learning diagnostics (2026-10-25)
 
 - Extended `ParametricPolicyLearner.restore()` to repair non-finite/out-of-range diagnostics, reject invalid/negative update counters and reset invalid training timestamps.
