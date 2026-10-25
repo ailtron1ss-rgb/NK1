@@ -1,3 +1,11 @@
+# WorkPass344 — attribute counterfactual error to the executed action
+
+- [FIX] B2523 previously compared every observed outcome with `lastValue01`, which represents the counterfactual leader, even when the runtime reported a different action as actually executed.
+- [FIX] Outcome calibration now selects the bounded horizon forecast for `i.action` from the existing `horizonValues`; if persisted history is missing or invalid, it falls back to neutral `0.5` rather than borrowing another action's prediction.
+- [REGRESSION] Added a test that deliberately observes a non-leading action and supplies a reward equal to that action's selected-horizon forecast. Confidence must update as a zero-error prediction for the executed action, while the separately stored leader value remains unchanged.
+- [CI] Wired the regression and B2523 owner into the broad Node 24 runtime/typecheck workflow.
+- [STATUS] Exact-head typecheck and broad runtime workflow are required before calling this behavior verified; no real-world planning uplift is claimed.
+
 # WorkPass343 — broaden canonical-runtime type and lifecycle verification
 
 - [CI] WorkPass331 now triggers when B272/B273 goal-lifecycle owners or their focused regressions change.

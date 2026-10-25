@@ -41,3 +41,8 @@ The first WorkPass287–288 run on commit `67fbc11b4a8dfc7d8f6c8ec7fbea477e0503a
 ## WorkPass343 — full runtime typecheck gate
 
 The WorkPass331 workflow now installs the pinned TypeScript compiler and runs the full runtime semantic typecheck, and it is triggered by the B272/B273 implementation/tests. The step is intentionally not recorded as passed until the exact-head Actions run produces a successful result.
+
+
+## WorkPass344 — align counterfactual scoring with the action that actually ran
+
+B2523 outcome calibration now uses the forecast at the selected horizon for the actual action, not the stored counterfactual leader. A focused test and the broad typecheck/runtime workflow were added for this contract. WorkPass344 requires a new exact-head successful run; no planning-quality uplift is inferred yet.

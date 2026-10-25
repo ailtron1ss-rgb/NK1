@@ -34,7 +34,19 @@ export class B2523MultiHorizonCounterfactualVerifier{
     -.012,
     .012);}}
   this.state.counterfactualAgreement01=clamp(this.state.counterfactualAgreement01*.92+(totalAgree/Math.max(1,total))*.08);this.state.verificationConfidence01=clamp(this.state.verificationConfidence01*.93+((1-i.predictionError01)*.40+i.modelConfidence01*.32+(1-i.routerDisagreement01)*.18+(1-canonicalUncertainty)*.10)*.07);this.state.actionBias=bias;this.state.cycles++;this.state.rollouts+=A.length*h;const best=A.slice().sort((x,y)=>(bias[y]??0)-(bias[x]??0))[0]??'wait';this.state.lastAction=best;this.state.lastValue01=clamp((i.baseUtilities[best]??.5)+(bias[best]??0));return {actionBias:{...bias},selectedHorizon:h,verificationConfidence01:this.state.verificationConfidence01,counterfactualAgreement01:this.state.counterfactualAgreement01,rollouts:A.length*h};}
- afterOutcome(i:{tick:number;action:ActionKind;reward01:number;predictionError01:number;verified01:number}){if(!this.state.enabled)return;const predicted=this.state.lastValue01;const error=Math.abs(i.reward01-predicted);this.state.verificationConfidence01=clamp(this.state.verificationConfidence01*.95+((1-error)*.6+i.verified01*.4)*.05);this.state.learningUpdates++;this.state.tick=i.tick;}
+ afterOutcome(i:{tick:number;action:ActionKind;reward01:number;predictionError01:number;verified01:number}){
+  if(!this.state.enabled)return;
+  // Score the outcome against the forecast for the action that actually ran,
+  // not the best counterfactual candidate chosen by the bias-only preview.
+  const history=this.state.horizonValues[i.action];
+  const horizonIndex=Math.max(0,Math.min(7,this.state.selectedHorizon-1));
+  const candidate=Array.isArray(history)?history[horizonIndex]:undefined;
+  const predicted=typeof candidate==='number'&&Number.isFinite(candidate)?clamp(candidate):.5;
+  const error=Math.abs(i.reward01-predicted);
+  this.state.verificationConfidence01=clamp(this.state.verificationConfidence01*.95+((1-error)*.6+i.verified01*.4)*.05);
+  this.state.learningUpdates++;
+  this.state.tick=i.tick;
+}
  diagnostics(){return structuredClone(this.state)}
  lesion(f=.5){const args={tick:this.state.tick+1,baseUtilities:Object.fromEntries(A.map(a=>[a,.5])) as Record<ActionKind,number>,uncertainty01:.7,predictionError01:.2,goalPressure01:.8,modelConfidence01:.8,routerDisagreement01:.35,computeBudget01:.9};this.setLesion(0);const on=this.beforeDecision(args).actionBias;this.setLesion(f);const off=this.beforeDecision({...args,tick:args.tick+1}).actionBias;this.setLesion(0);const effect=A.reduce((s,a)=>s+Math.abs(on[a]-off[a]),0);return {causalDrop01:clamp(effect*3),before01:this.state.verificationConfidence01,after01:clamp(this.state.verificationConfidence01-effect)};}
 }

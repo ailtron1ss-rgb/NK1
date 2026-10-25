@@ -1,3 +1,22 @@
+# WorkPass344 — action-aligned counterfactual calibration
+
+Date: 2026-10-25
+
+## Failure mode
+B2523 stored `lastValue01` for the highest-bias counterfactual leader. At outcome time, the runtime passed the actual selected/executed action. When those actions differed, calibration compared observed reward against the wrong action's forecast and attributed prediction error to the wrong scenario.
+
+## Change
+- Use the existing `horizonValues[i.action]` at `selectedHorizon - 1` as the predicted value for outcome calibration.
+- Keep `lastValue01` as the separate leader diagnostic; do not overwrite it with the observed action's forecast.
+- Use neutral `0.5` if an old/corrupt state lacks a finite selected-action forecast.
+- Add a regression that forces actual action and counterfactual leader to differ and tests the calibration math.
+- Include the B2523 owner and regression in the broad WorkPass331 workflow path filters and test steps, which now include full runtime TypeScript typecheck.
+
+## Verification
+WorkPass343 broad workflow passed on `0e7164e748bd74552072d156154a12f5a6ad66b1`, including runtime typecheck, cognitive-cycle wiring, B272/B273 regressions, autonomous action, dialogue/feedback, background initiative and restart persistence. This WorkPass344 change requires a fresh exact-head CI run before being considered validated. No production or learning-uplift claim is made.
+
+---
+
 # WorkPass343 — full runtime typecheck and lifecycle workflow
 
 Date: 2026-10-25
