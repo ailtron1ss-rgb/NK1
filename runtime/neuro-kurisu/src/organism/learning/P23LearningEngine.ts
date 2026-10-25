@@ -813,6 +813,8 @@ export class P23LearningEngine {
     // Reject malformed traces and probability-like feedback before changing any
     // state; clipping an invalid label into 0 or 1 would turn bad data into evidence.
     if(!isAdmissibleLearningTrace(trace)||!isLearningContextState(stateAfter))return;
+    const selected=trace.selected;
+    if(!selected)return;
     if(this.state.processedTraceIds.includes(trace.id))return;
     if(!isPlainRecord(outcome)||!isPersistedUnit(outcome.success)||
        typeof outcome.reward!=='number'||!Number.isFinite(outcome.reward)||
@@ -825,9 +827,9 @@ export class P23LearningEngine {
       at:trace.createdAt,
       contextKey:key,
       nextContextKey:nextKey,
-      action:trace.selected.action,
-      predictedUtility:trace.selected.predictedUtility,
-      predictedConfidence:trace.selected.confidence,
+      action:selected.action,
+      predictedUtility:selected.predictedUtility,
+      predictedConfidence:selected.confidence,
       success:outcome.success,
       reward:clamp(outcome.reward),
       surprise:outcome.surprise,

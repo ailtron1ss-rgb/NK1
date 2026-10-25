@@ -1,5 +1,6 @@
 # WorkPass340 — reject malformed P23 outcome evidence (2026-10-25)
 
+- [TYPECHECK FIX] The first exact-head run exposed that TypeScript still regards `trace.selected` as nullable after the structural admission guard. The method now binds and explicitly narrows the selected candidate before storing it; rerun the full focused workflow on the correction commit.
 - [FIXED] `P23LearningEngine.recordExperience` now rejects malformed trace identity, ticks/timestamps, action names, candidate/prediction collections, context needs, non-finite reward, and out-of-range probability-like fields before changing state. Invalid success/surprise/prediction/confidence values are no longer clipped into apparently valid training examples.
 - [FIXED] Accepted success, surprise, predicted utility, and confidence values are stored exactly after validation. The existing finite reward normalization remains unchanged.
 - [TEST] Added `workpass340-outcome-label-admission.mjs` for malformed traces, range violations, and the retry path proving that rejected feedback does not consume a trace ID.
