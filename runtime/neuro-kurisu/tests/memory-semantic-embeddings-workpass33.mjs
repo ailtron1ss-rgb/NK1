@@ -62,6 +62,12 @@ const result = await memory.previewRetrieveWithEmbeddings('I cannot authenticate
 assert.equal(result.semantic.enabled, true);
 assert.equal(result.items[0]?.id, 'credential-recovery', 'semantic search should retrieve a conceptually related row despite low lexical overlap');
 assert.ok(result.semantic.indexedItems >= 3);
+const maintenance = memory.semanticEmbeddingMaintenanceDiagnostics();
+assert.equal(maintenance.corpusItems, 3, 'maintenance diagnostics should count only eligible current memories');
+assert.equal(maintenance.indexedItems, 3, 'diagnostics should count each current provider-bound embedding');
+assert.equal(maintenance.remaining, 0);
+assert.equal(maintenance.waitingForRetry, 0);
+assert.equal(maintenance.nextRetryAt, null);
 assert.deepEqual(memory.snapshot(), before, 'semantic inspector retrieval must not mutate canonical memory state');
 
 class FailingProvider extends SemanticFixtureProvider {
