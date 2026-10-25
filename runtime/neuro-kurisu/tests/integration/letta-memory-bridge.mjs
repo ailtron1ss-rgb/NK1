@@ -22,6 +22,10 @@ function fakeClient() {
         },
         async *stream() {
           yield { type: 'user', content: 'not a final answer' };
+          if (!calls.prompts.at(-1).includes('NK1_MEMORY_QUERY_JSON:')) {
+            yield { type: 'tool_call', toolCallId: 'write-1', toolName: 'Write', toolInput: { file_path: 'memory/experience/record-1.md' } };
+            yield { type: 'tool_result', toolCallId: 'write-1', isError: false, content: 'written' };
+          }
           yield { type: 'assistant', content: nextResponse };
           yield { type: 'result', success: true, durationMs: 1, conversationId: 'conv-test' };
         },
@@ -75,6 +79,7 @@ assert.match(recalled.response, /record-1/);
 assert.ok(!recalled.response.includes('recallsecretvalue123'));
 assert.ok(recalled.response.includes('[REDACTED_SECRET]'));
 assert.equal(recalled.redacted, true);
+assert.equal(recalled.evidence, 'agent-response-unverified');
 
 const rejectedId = await bridge.recordExperience({
   id: 'api_key=secretvalue123',
