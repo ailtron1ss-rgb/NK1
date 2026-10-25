@@ -180,7 +180,7 @@ export class EmotionAppraisalEngine {
     if(rawOutcomes){
       for(const key of Object.keys(rawOutcomes).slice(0,64)){
         const item=safeRecord(rawOutcomes[key]);
-        if(!safeIdentity(key,96)||!item)continue;
+        if(!safeIdentity(key,96)||key==='__proto__'||key==='constructor'||key==='prototype'||!item)continue;
         const attempts=safeCount(item.attempts,-1);
         const meanSuccess01=safeMetric(item.meanSuccess01,-1),meanSurprise01=safeMetric(item.meanSurprise01,-1),meanBenefit01=safeMetric(item.meanBenefit01,-1);
         if(attempts<1||[meanSuccess01,meanSurprise01,meanBenefit01].some(n=>n<0))continue;
@@ -219,13 +219,13 @@ export class EmotionAppraisalEngine {
   }
 
   recordOutcome(input:{emotionId?:string;action:string;success01:number;surprise01:number;regulationCost01?:number}):EmotionOutcomeCalibration{
-    const key=String(input.action); const prev=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
+    const key=String(input.action); const prev=Object.hasOwn(this.state.outcomes,key)?this.state.outcomes[key]!:{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
     const benefit=c(input.success01*.62+(1-input.surprise01)*.24+(1-c(input.regulationCost01??0))*.14);
     const n=prev.attempts+1; const row={attempts:n,meanSuccess01:c(prev.meanSuccess01*(n-1)/n+c(input.success01)/n),meanSurprise01:c(prev.meanSurprise01*(n-1)/n+c(input.surprise01)/n),meanBenefit01:c(prev.meanBenefit01*(n-1)/n+benefit/n)};
     this.state.outcomes={...this.state.outcomes,[key]:row}; return structuredClone(row);
   }
 
-  outcomeCalibration(action:string):EmotionOutcomeCalibration|null{return this.state.outcomes[String(action)]?structuredClone(this.state.outcomes[String(action)]):null;}
+  outcomeCalibration(action:string):EmotionOutcomeCalibration|null{const key=String(action);return Object.hasOwn(this.state.outcomes,key)?structuredClone(this.state.outcomes[key]!):null;}
   appraise(input:{tick:number;at?:number;goalPressure01?:number;goalCongruence01?:number;controllability01?:number;novelty01?:number;selfRelevance01?:number;socialMeaning01?:number;uncertainty01?:number;predictionError01?:number;homeostaticPressure01?:number;energy01?:number;success01?:number;external?:boolean}):EmotionEpisode{
     if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('emotion appraisal tick must be a non-negative safe integer');
     const at=input.at??Date.now();
