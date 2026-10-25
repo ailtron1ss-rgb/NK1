@@ -1,3 +1,10 @@
+## NK1 WorkPass102 — standalone runtime uses EmbodimentIntent v1 (2026-10-25)
+
+- Unified standalone runtime's Live2D producer on the same `kurisu_embodiment_intent` v1 envelope used by React. It now publishes one message containing the active viseme, expression, gaze/body state, speech identity, runtime-TTS start clock, and motion token instead of three split producer channels.
+- Added `runtime-tts-start-anchored-monotonic` to the v1 TypeScript/JSON Schema contract, both viewer validators, and browser tests for duplicate versions, rewound clock events, and cancellation-bound mouth closure. Legacy viewer receive branches are kept temporarily; the runtime producer no longer emits split legacy messages.
+- Full CI run [40168635414](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168635414) at source SHA `5f3656b6f09054f26b3a336b87b8291bbfeeb652` was **queued** when this entry was written; verification remains pending, not assumed.
+- Report: [WORKPASS102_RUNTIME_INTENT_V1_2026-10-25.md](https://github.com/ailtron1ss-rgb/NK1/blob/feature/visual-embodiment/docs/WORKPASS102_RUNTIME_INTENT_V1_2026-10-25.md).
+
 ## NK1 WorkPass101 — preserve calibrated intrinsic drive in endogenous goal value (2026-10-25)
 
 - Fixed B272 candidate-value saturation: normalize the goal-alignment term and bound candidate novelty / learned closure so the predicted goal value cannot clamp to 1.0 before a trusted intrinsic-drive change is reflected.
