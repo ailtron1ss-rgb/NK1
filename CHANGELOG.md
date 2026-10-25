@@ -1,3 +1,12 @@
+## WorkPass328 — детерминированная политика повторов approval persistence (2026-10-25)
+
+- **Refactor:** алгоритм повторов вынесен из `server.mjs` в `src/server/transient-approval-storage-retry.mjs`; три approval endpoint используют общий протестированный helper.
+- **Strict deadline:** после истечения окна не запускается новая попытка. Параметры clock/sleep инъецируются в тесте, чтобы сценарии выполнялись детерминированно.
+- **Four regressions:** восстановление после трёх transient busy ответов; точный deadline и отсутствие лишнего вызова; отсутствие повторов для постоянной ошибки хранения; проброс неожиданного исключения.
+- **Exact-head CI:** Unified project integration suite **#55** на `9d0e1fa5d7cb94e0e252cce09bdfca4551d0ddba` завершился **SUCCESS**. Маркеры `WORKPASS327_TRANSIENT_APPROVAL_RETRY=PASS scenarios=4`, `WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=25`, `WORKPASS53_RESEARCH_BRIDGE_APPROVAL=PASS scenarios=10`, `WORKPASS53_APPROVAL_BRIDGE_E2E=PASS scenarios=20`; когнитивный frame-тест прошёл 6 сценариев, UI/runtime typecheck/build и общий research smoke прошли.
+- **Full smoke:** NeuroCore блокируется без разрешения (403), после owner approval проходит (MSE delta -0.8120257); NOMEGA registry PASS (313 modules, 0 cycles); DeepCode CPU probe PASS после явного согласования.
+- **Release boundary:** этот проход подтвердил интеграционную ветку и CI, но не закрывает production UI/Live2D/TTS, Android/Termux audio, независимую held-out оценку learning uplift, long soak, полный license review и воспроизводимую публикацию release archive. Main и release ZIP не изменялись.
+
 ## WorkPass327 — согласование с ограниченным HTTP timeout и чистые CI path filters (2026-10-25)
 
 - **Bridge timeout contract:** Python research bridge теперь даёт permission request/resolve/consume endpoint timeout до 12 сек по умолчанию (ограничен диапазоном 9–30 сек), что превышает 8-секундное окно bounded server retry. Остальные runtime POST остаются с timeout 4 сек.
