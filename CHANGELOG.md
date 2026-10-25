@@ -1,3 +1,10 @@
+## NK1 WorkPass542 — decay stale affect-driven action bias (2026-10-25)
+
+- [AFFECT → AGENCY] `EmotionAppraisalEngine.actionBias` now time-bounds emotion-label, mood, attention-capture and emotion-context learning contributions. A prior episode can remain in memory without exerting the same immediate action pressure indefinitely.
+- [HOMEOSTASIS] Interoceptive regulation pressure remains available after the emotional episode ages out; old emotion-specific rewards are not substituted with a global reward when contextual evidence exists.
+- [DETERMINISM] Added an optional `atMs` argument for replayable decision evaluation and rejects invalid timestamps with zero affective bias.
+- [REGRESSION] Added a fresh-versus-stale action-bias comparison and invalid-time assertion to the emotion/interoception regression. Code and regression are committed; exact-head CI has not yet been observed, so this pass is not marked validated.
+
 ## NK1 WorkPass541 — align affect contract with freshness projection (2026-10-25)
 
 - The latest focused CI run exposed one more brittle assertion in the affect UI contract: it searched for a generic `freshness01` token, while the avatar deliberately names the computed signal `feelingFreshness01` and places it in the shared affect projection.
