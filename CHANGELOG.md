@@ -1,3 +1,10 @@
+## NK1 WorkPass540 — normalize imported session-lineage keys (2026-10-25)
+
+- Recognizes stable conversation/session/thread IDs and keys across camelCase, snake_case, kebab-case, and spaced metadata names.
+- Keeps the WorkPass539 precision guard: message indices, turn sequences, and role-only labels are not accepted as conversation identity.
+- Added a retrieval regression using only `session_id` so imported snake_case metadata must win a lexical tie without relying on a descriptive memory ID.
+- CI is pending on the updated PR head; no validation result is inferred from earlier heads.
+
 ## NK1 WorkPass539 — tighten conversation-lineage identity (2026-10-25)
 
 - Narrowed episodic social-memory boosts to stable conversation/session ID or key fields; `messageIndex`, `turnSequence`, and role labels no longer count as dialogue identity on their own.
