@@ -1,3 +1,12 @@
+# NK1 gateway namespace routing and readiness response cleanup (2026-10-25)
+
+- [FIX] Gateway dispatch now matches the exact `/api/organism` and `/api/research` path segments (including their child paths), rather than routing every string with a matching prefix to a backend. Lookalike paths continue to the UI.
+- [RESOURCE SAFETY] HTTP readiness probes best-effort cancel response bodies on both successful and unsuccessful responses without awaiting stream cancellation, so body cleanup cannot extend the overall readiness deadline.
+- [REGRESSION] Added coverage for exact namespace roots, query strings, lookalike prefixes, and response-body disposal.
+- [VALIDATION STATUS] The previous exact-head focused workflow passed at `c545712267608779f11d43cc68990a277aba093b`; these new changes require a fresh exact-head run. No main-branch or Release ZIP change.
+
+---
+
 # NK1 gateway partial-response timeout safety (2026-10-24)
 
 - [HARDENED] A gateway upstream failure after downstream headers are committed now closes the incomplete response without emitting the upstream error as an unhandled `ServerResponse` error. It cannot safely change the already-sent HTTP status to 504.
