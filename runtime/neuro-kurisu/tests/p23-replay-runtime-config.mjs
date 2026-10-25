@@ -11,7 +11,7 @@ const traces = Array.from({length:12},(_,i)=>{
 });
 const learning = new P23LearningEngine();
 const policy = new AdaptivePolicyEngine();
-for (const trace of traces) learning.recordExperience(trace,state(trace.tick+1),{success:.8,reward:.8,surprise:trace.outcome.surprise},policy);
+for (const trace of traces) learning.recordExperience(trace,{...state(trace.tick+1),lastAction:trace.selected.action,lastActionSuccess:.8},{success:.8,reward:.8,surprise:trace.outcome.surprise},policy);
 learning.configureReplaySelection({maxBatchSize:8,recentQuota:4});
 assert.equal(learning.replayPending(traces,policy),8,'runtime must honor the configured hard batch limit');
 const replayed = new Set(learning.snapshot().replayedTraceIds);
