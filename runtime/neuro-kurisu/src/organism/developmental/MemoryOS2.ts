@@ -1230,10 +1230,16 @@ export class MemoryOS2{
    const group=m.revisionGroupId??m.id;
    const indexedIds=this.revisionGroupIndex.get(group);
    if(indexedIds){
-     const indexedRows=[...indexedIds].map(revisionId=>this.itemIndex.get(revisionId)).filter((row):row is MemoryItem2=>Boolean(row)&&(row.revisionGroupId??row.id)===group);
-     // Use the index on the normal path. Fall back to the canonical list if a derived
-     // entry is stale rather than returning a silently incomplete revision history.
-     if(indexedRows.length===indexedIds.size&&indexedRows.some(row=>row.id===m.id)){
+     const indexedRows:MemoryItem2[]=[];
+     let indexComplete=true;
+     for(const revisionId of indexedIds){
+       const row=this.itemIndex.get(revisionId);
+       if(!row||(row.revisionGroupId??row.id)!==group){indexComplete=false;break;}
+       indexedRows.push(row);
+     }
+     // Avoid intermediate spread/map/filter arrays on the hot path. Fall back to the
+     // canonical list if a derived entry is stale rather than returning incomplete history.
+     if(indexComplete&&indexedRows.length===indexedIds.size&&indexedRows.some(row=>row.id===m.id)){
        return indexedRows.sort((a,b)=>(a.revisionSequence??1)-(b.revisionSequence??1)).map(row=>structuredClone(row));
      }
    }
