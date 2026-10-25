@@ -267,4 +267,34 @@ assert.ok(retriedWrite.id, 'the old command receipt must not suppress writes int
 assert.equal(reusedRuntime.memoryOS.size(), 1, 'a fresh state must accept the same external command ID');
 assert.equal(reusedRuntime.fabric.snapshot().stats.encodes, 1);
 
+
+// Ordinary writes must obey the same byte budget as restored checkpoints.
+const writeBudgetMemory = new MemoryOS2({ signalFusionProfile: 'balanced' });
+writeBudgetMemory.state.byteBudget = 16384;
+for (let index = 0; index < 4; index++) {
+  writeBudgetMemory.encode({
+    content: `live write budget record ${index}: ${String.fromCharCode(100 + index).repeat(7000)}`,
+    kind: 'episodic',
+    source: `live-write-budget-${index}`,
+    tags: ['live-write-budget'],
+    salience: 0.1,
+    emotionalWeight: 0.02,
+    identityRelevance: 0.03,
+    goalRelevance: 0.05,
+    socialRelevance: 0.01,
+    predictionError: 0.01,
+    confidence: 0.2,
+    epistemicStatus: 'fact',
+    entities: [],
+    semanticLinks: [],
+    temporalLinks: [],
+    causalLinks: [],
+    contradictionLinks: [],
+  });
+}
+const liveWriteBudget = writeBudgetMemory.budgetDiagnostics();
+assert.ok(liveWriteBudget.budgetEvictions >= 1, 'normal encode must evict records when the byte budget is exceeded');
+assert.ok(liveWriteBudget.estimatedBytes <= liveWriteBudget.byteBudget, 'normal writes must keep canonical memory within its byte budget');
+assert.equal(writeBudgetMemory.indexDiagnostics().pass, true, 'encode-time budget enforcement must preserve indexes');
+
 console.log('MEMORY_CANONICAL_STORE_CHECKPOINT=PASS');
