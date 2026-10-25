@@ -49,6 +49,10 @@ assert.ok(
   'recall-derived attention must enter the bounded action-selection bias',
 );
 assert.ok(
+  Math.abs(recalledEngine.memorySalienceWithoutRecall01(withRecall) - withoutRecall.memorySalienceMultiplier01) < 1e-12,
+  'memory reconsolidation must exclude the salience increment caused by recalling that same memory',
+);
+assert.ok(
   withRecall.memorySalienceMultiplier01 > withoutRecall.memorySalienceMultiplier01,
   'recall-driven arousal may increase current memory salience',
 );
