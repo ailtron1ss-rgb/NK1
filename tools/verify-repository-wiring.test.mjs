@@ -92,6 +92,17 @@ test('valid workflow, npm scripts, executable paths and workflow_run names pass'
   });
 });
 
+test('resolves shell references against the working directory active at each command', () => {
+  withFixture(root => {
+    const packagePath = path.join(root, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    pkg.scripts.audit = 'node tools/audit.mjs && cd runtime && node tests/test.mjs';
+    fs.writeFileSync(packagePath, JSON.stringify(pkg, null, 2));
+    const result = auditRepositoryWiring(root);
+    assert.deepEqual(result.errors, []);
+  });
+});
+
 test('reports a missing executable referenced by an npm script', () => {
   withFixture(root => {
     const packagePath = path.join(root, 'package.json');
