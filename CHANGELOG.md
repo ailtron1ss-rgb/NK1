@@ -5,6 +5,7 @@
 - Expanded cognitive dependency runtime wiring coverage to execute four autonomous cycles before shutdown and four after restart, exercising action attribution and persistence continuity across repeated cycles.
 - Extended the PR-triggered audit gate to check app/runtime types, app tests, cross-layer integration, runtime smoke, recovered cognitive-cycle tests, full runtime project audit, and aggregate runtime audit after the focused wiring tests.
 - Ported the wiring checker hardening and 25 path/workflow regressions into this branch; corrected the full-project audit invocation to run under the runtime package prefix.
+- Removed trailing whitespace from two regression fixtures after `audit:quick` pinpointed the exact hygiene failures. The next run cleared hygiene and found a runner-specific hard-coded TypeScript import in `audit-executable-syntax.mjs`; the checker now resolves the locked compiler via `createRequire` rooted at `app/package.json`, avoiding global Node installation paths.
 
 The current rebased head still requires the new GitHub Actions sweep to finish before this pass can be called fully validated.
 
