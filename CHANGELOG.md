@@ -1,3 +1,11 @@
+## NK1 learning validation — repair trust-boundary fixture arguments (2026-10-25)
+
+- Corrected two adversarial evaluator test calls to pass `payloadFingerprint` under its actual API field name. The prior shorthand populated a non-existent field and unintentionally tested fingerprint rejection instead of accessor non-execution.
+- Fingerprint validation remains mandatory; only the test invocation contract was repaired.
+- **Verification boundary:** rerun the P26 suite on the updated head.
+
+---
+
 ## NK1 learning validation — separate execution diagnostics from verification authority (2026-10-25)
 
 - Fixed independent candidate evaluation so a structurally valid executor result remains visible as an executability-quality diagnostic when the verifier is unavailable.
