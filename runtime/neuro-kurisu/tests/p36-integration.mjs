@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
-import { developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput, P36_EXTERNAL_EVIDENCE_TOOL_ID } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
+import { developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput, P36_EXTERNAL_EVIDENCE_TOOL_ID, P36_DEVELOPMENTAL_OUTCOME_TOOL_ID } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
 
 let coreEvidenceReceiptCount=0;
+let coreMaturityReceiptCount=0;
 const p36IndependentEvaluator={
   capability:'learning.evaluation',
   destructive:false,
@@ -22,11 +23,31 @@ const p36IndependentEvaluator={
       observedPostcondition:'p36-evaluation-complete:'+observationId};
   },
 };
+const p36DevelopmentalOutcomeEvaluator={
+  capability:'learning.maturity',
+  destructive:false,
+  projectAllowed:true,
+  observationSource:{
+    sourceId:'p36-host-fixture-maturity-evaluator',
+    sourceClass:'external-api',
+    channel:'tool',
+    independenceKey:'host-owned-p36-test-maturity-evaluator',
+  },
+  execute:async()=>({ok:true,observationId:'core-p36-maturity-receipt-'+(++coreMaturityReceiptCount)}),
+  verify:({result})=>{
+    const observationId=String(result.observationId??'');
+    return {verified:Boolean(observationId),basis:'external-postcondition',externalObservation:true,confidence01:1,
+      observationId,expectedPostcondition:'maturity-evaluation-complete:'+observationId,
+      observedPostcondition:'maturity-evaluation-complete:'+observationId};
+  },
+};
 const store=new MemoryStateStore();
-const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,p36IndependentEvaluator});
+const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,p36IndependentEvaluator,p36DevelopmentalOutcomeEvaluator});
 await core.init();
 assert.ok(core.actionToolsSnapshot().some(tool=>tool.id===P36_EXTERNAL_EVIDENCE_TOOL_ID),
   'host construction config must register the reserved evaluator before the organism starts');
+assert.ok(core.actionToolsSnapshot().some(tool=>tool.id===P36_DEVELOPMENTAL_OUTCOME_TOOL_ID),
+  'host construction config must register the separate maturity evaluator before the organism starts');
 const before=core.p36Snapshot();
 const step=await core.observe({text:'проверить собственное развитие',novelty:.7,worldContext:{tick:1,location:'lab',energy:.72,attention:.82,uncertainty:.78,facts:['test'],objects:[],events:[]}});
 await core.feedback({success:.8,reward:.6,surprise:.12,notes:'useful developmental outcome'});
@@ -66,6 +87,13 @@ assert.throws(()=>core.registerActionTool({
   verify:()=>({verified:true,basis:'external-postcondition',externalObservation:true,confidence01:1,observationId:'forged-public-registry-receipt',expectedPostcondition:'ok',observedPostcondition:'ok'}),
 }),/reserved-p36-evaluator-must-be-configured-at-core-construction/,
 'generic runtime tool registration cannot seize the reserved independent-evaluator identity');
+assert.throws(()=>core.registerActionTool({
+  id:P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,
+  capability:'learning.maturity',destructive:false,projectAllowed:true,
+  execute:async()=>({ok:true,observationId:'forged-public-maturity-receipt'}),
+  verify:()=>({verified:true,basis:'external-postcondition',externalObservation:true,confidence01:1,observationId:'forged-public-maturity-receipt',expectedPostcondition:'ok',observedPostcondition:'ok'}),
+}),/reserved-p36-maturity-evaluator-must-be-configured-at-core-construction/,
+'generic runtime registration cannot seize the reserved maturity evaluator identity');
 const attemptsBeforeUnlinked=core.p36Diagnostics().unverifiedEvidenceAttempts;
 const unlinkedInput=developmentEvidenceVerificationInput({...evidenceInput,contextKey:'core-unlinked-p36-context'});
 const unlinkedResult=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,unlinkedInput,'p36-unlinked-evidence');
@@ -88,13 +116,13 @@ assert.ok(afterEvaluator.facets.learning.p36.externalEvidence.some(row=>row.exec
 const maturityInput=developmentalOutcomeVerificationInput({area:'learning',outcome01:.91,delayed:true,transfer:true});
 assert.equal(maturityInput.kind,'developmental-outcome','the maturity event must use the dedicated evidence discriminant');
 const maturityBefore=core.p36Diagnostics();
-const unlinkedMaturityResult=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,maturityInput,'p36-unlinked-maturity');
+const unlinkedMaturityResult=await core.executeTool(P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,maturityInput,'p36-unlinked-maturity');
 assert.equal(unlinkedMaturityResult.verified,true);
 assert.equal(core.p36Diagnostics().developmentalMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount,
   'unlinked maturity receipt must not update maturation');
 assert.equal(core.p36Diagnostics().rejectedMaturityReceipts,maturityBefore.rejectedMaturityReceipts+1,
   'unlinked maturity attempt must be observable');
-const maturityResult=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,maturityInput,'p36-linked-maturity',{decisionId:traceForEvidence.id});
+const maturityResult=await core.executeTool(P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,maturityInput,'p36-linked-maturity',{decisionId:traceForEvidence.id});
 assert.equal(maturityResult.verified,true);
 const afterMaturity=core.p36Diagnostics().developmentalMaturity;
 assert.equal(afterMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount+1);
@@ -103,7 +131,7 @@ assert.equal(afterMaturity.transferredOutcomeCount,1);
 const maturityRejectionsBeforeReplay=core.p36Diagnostics().rejectedMaturityReceipts;
 const directMaturityReplay=core.p36RecordDevelopmentalOutcome({
   ...maturityInput,
-  toolId:P36_EXTERNAL_EVIDENCE_TOOL_ID,
+  toolId:P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,
   executionId:maturityResult.executionId,
   decisionId:traceForEvidence.id,
   verification:maturityResult.verification,
