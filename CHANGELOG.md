@@ -1,3 +1,12 @@
+## NK1 WorkPass363 — update Live2D integrity assertions to the versioned intent protocol (2026-10-25)
+
+- [LIVE2D CONTRACT] Updated runtime integrity checks from obsolete `kurisu_expression`/`kurisu_lipsync` event strings to the canonical `kurisu_embodiment_intent` contract and its validated speech/audio sequence fields. The synchronized viewer intentionally consumes one versioned intent envelope instead of the older independent event messages.
+- [REGRESSION] Preserved checks for both model variants, tap motions, expression caching, unchanged-expression deduplication, and byte-for-byte viewer parity.
+- [VALIDATION] The first run after viewer synchronization reached the integrity test and correctly exposed obsolete test expectations; this patch updates the test to the active protocol rather than reintroducing deprecated message handlers.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass362 — synchronize the runtime Live2D viewer and pinned assets (2026-10-25)
 
 - [LIVE2D INTEGRATION] Replaced the stale runtime `viewer.html` with the canonical app viewer, including the versioned EmbodimentIntent protocol, expression deduplication, speech/audio clock checks, bounded input validation and local pinned script loading.
