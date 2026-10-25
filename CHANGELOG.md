@@ -1,3 +1,10 @@
+# WorkPass340 — preserve intention-level motive provenance
+
+- [CAUSAL MEMORY] Each B272 generated-goal history record retains the bounded intrinsic drive and support score consumed at generation time; later cycles cannot overwrite the reason attached to an earlier intention.
+- [COMPATIBILITY] Pre-WorkPass340 history rows restore with neutral zero motive fields; malformed out-of-range provenance is quarantined.
+- [REGRESSION] Added isolated B272 and live Core assertions for motive-to-intention attribution, plus legacy-snapshot restore coverage. Existing WorkPass287–288 workflow owns these tests.
+- [VALIDATION] Exact-head focused and canonical runtime workflow results are required for this commit. This is traceability, not measured learning uplift.
+
 # WorkPass339 — wire current intrinsic motivation into endogenous goal genesis (2026-10-25)
 
 - [FIX] The live `OrganismCore` cycle now updates the canonical `IntrinsicMotivationEngine` before B272 synthesizes an endogenous goal, then passes the current drive and bounded support score into B272. Previously the fresh drive was computed later in the same cycle and the optional B272 fields were omitted.

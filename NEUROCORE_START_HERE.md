@@ -1,3 +1,23 @@
+# WorkPass340 — preserve intention-level motive provenance
+
+Date: 2026-10-25
+
+## Change
+- Each generated B272 goal-history row stores the bounded intrinsic drive and support score consumed at that particular generation step.
+- Historical motive data remains attached to the generated intention instead of being inferred from the current state, so later cycles cannot overwrite the cause of an earlier intention.
+- Older rows restore with neutral zero defaults. Invalid out-of-range provenance is rejected during restore.
+
+## Regression
+- B272 unit coverage asserts that goal-history rows preserve supplied motive values.
+- Restore regression confirms older serialized rows remain readable.
+- The live `OrganismCore.observe(..., 'operational')` test confirms current-cycle drive and support are attached to the goal generated from them.
+- Existing Node 24 WorkPass287–288 workflow executes both tests.
+
+## Verification
+WorkPass339 focused cognitive-contract and canonical-kernel workflows passed on exact SHA `13c02adc926369ce29479a0b916ca374efd03fa6`. This follow-up is a new commit and requires fresh exact-head workflow results. No learning uplift or production-readiness claim is made.
+
+---
+
 # WorkPass339 — intrinsic motivation to endogenous goal integration
 
 Date: 2026-10-25

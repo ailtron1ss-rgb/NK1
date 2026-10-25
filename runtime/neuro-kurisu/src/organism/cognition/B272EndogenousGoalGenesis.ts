@@ -68,7 +68,7 @@ export interface B272State {
   goalWeights:number[][];
   selfProjectionWeights:number[][];
   worldProjectionWeights:number[][];
-  goalHistory:Array<{tick:number;id:string;vector:number[];action:ActionKind;reward01:number;predictionError01:number;accepted:boolean}>;
+  goalHistory:Array<{tick:number;id:string;vector:number[];action:ActionKind;reward01:number;predictionError01:number;accepted:boolean;intrinsicDrive01:number;intrinsicDriveConfidence01:number}>;
   outcomeHistory:Array<{tick:number;goalId:string;action:ActionKind;reward01:number;predictionError01:number}>;
   goalOutcomeMemory:Record<string,{vector:number[];meanReward01:number;meanPredictionError01:number;updates:number;lastTick:number}>;
 }
@@ -135,7 +135,11 @@ export class B272EndogenousGoalGenesis {
       if(!vector||!isSafeId(item.id)||item.id!==`g-${hashVector(vector)}`)continue;
       if(!Number.isSafeInteger(item.tick)||typeof item.tick!=='number'||item.tick<0||item.tick>tick)continue;
       if(!isAction(item.action)||!isUnit(item.reward01)||!isUnit(item.predictionError01)||typeof item.accepted!=='boolean')continue;
-      goalHistory.push({tick:item.tick,id:item.id,vector,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01,accepted:item.accepted});
+      // Older snapshots predate motive provenance; keep them readable with neutral zero support.
+      const intrinsicDrive01=item.intrinsicDrive01===undefined?0:item.intrinsicDrive01;
+      const intrinsicDriveConfidence01=item.intrinsicDriveConfidence01===undefined?0:item.intrinsicDriveConfidence01;
+      if(!isUnit(intrinsicDrive01)||!isUnit(intrinsicDriveConfidence01))continue;
+      goalHistory.push({tick:item.tick,id:item.id,vector,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01,accepted:item.accepted,intrinsicDrive01,intrinsicDriveConfidence01});
     }
     goalHistory.sort((a,b)=>a.tick-b.tick);
 
@@ -302,7 +306,7 @@ const learned=this.learnedGoalValue(v,input.tick);
     const selfConflict=clamp01(.55*(1-c.coherence01)+.25*input.predictionError01+.20*Math.abs(input.needs.goalPressure01-input.intrinsicReward01));
     const endogenous01=clamp01(.32*c.internalNeed01+.24*c.novelty01+.24*(1-selfConflict)+.20*c.confidence01);
     this.state.tick=input.tick;this.state.steps++;this.state.generatedGoals++;this.state.currentGoal=c.vector.slice();this.state.currentGoalId=c.id;this.state.currentAction=action;this.state.currentConfidence01=c.confidence01;this.state.lastIntrinsicDrive01=clamp01(input.intrinsicDrive01??0);this.state.lastIntrinsicDriveConfidence01=clamp01(input.intrinsicDriveConfidence01??0);this.state.goalPressure01=clamp01(.72*this.state.goalPressure01+.28*(input.needs.goalPressure01+endogenous01*.35));this.state.goalNovelty01=c.novelty01;this.state.selfConflict01=selfConflict;this.state.internalCoherence01=c.coherence01;this.state.agency01=clamp01(.82*this.state.agency01+.18*(endogenous01*(1-selfConflict)+.25));
-    this.state.goalHistory=[...this.state.goalHistory,{tick:input.tick,id:c.id,vector:c.vector.slice(),action,reward01:input.lastReward01,predictionError01:input.predictionError01,accepted:false}].slice(-128);
+    this.state.goalHistory=[...this.state.goalHistory,{tick:input.tick,id:c.id,vector:c.vector.slice(),action,reward01:input.lastReward01,predictionError01:input.predictionError01,accepted:false,intrinsicDrive01:clamp01(input.intrinsicDrive01??0),intrinsicDriveConfidence01:clamp01(input.intrinsicDriveConfidence01??0)}].slice(-128);
     return {...c,action,goalId:c.id,goalVector:c.vector.slice(),selfConflict01:selfConflict,agency01:this.state.agency01,endogenous01};
   }
   learnFromOutcome(input:{tick:number;action:ActionKind;reward01:number;predictionError01:number;externalEvidence01:number;independentEvaluatorGain01?:number;acceptedExternalGoal?:boolean}){

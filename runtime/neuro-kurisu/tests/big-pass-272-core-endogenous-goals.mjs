@@ -30,5 +30,9 @@ const liveGoal=liveCore.b272EndogenousGoalDiagnostics();
 assert.ok(liveIntrinsic&&Number.isFinite(liveIntrinsic.overall)&&liveIntrinsic.overall>0,'live Core did not calculate an intrinsic drive');
 assert.ok(Math.abs(liveGoal.lastIntrinsicDrive01-liveIntrinsic.overall)<1e-9,'live B272 goal genesis did not consume the current-cycle intrinsic drive');
 assert.ok(liveGoal.lastIntrinsicDriveConfidence01>0&&liveGoal.lastIntrinsicDriveConfidence01<=1,'live B272 goal genesis did not receive bounded drive-support confidence');
+const latestIntentEvidence=liveGoal.goalHistory.at(-1);
+assert.ok(latestIntentEvidence,'live B272 goal history is missing the generated intention');
+assert.ok(Math.abs(latestIntentEvidence.intrinsicDrive01-liveIntrinsic.overall)<1e-9,'goal history did not retain the drive that generated this intention');
+assert.ok(Math.abs(latestIntentEvidence.intrinsicDriveConfidence01-liveGoal.lastIntrinsicDriveConfidence01)<1e-9,'goal history did not retain the drive-support score for this intention');
 
 console.log(JSON.stringify({pass:true,diagnostics:d,restored:core2.b272EndogenousGoalDiagnostics(),liveDrive:{value:liveGoal.lastIntrinsicDrive01,confidence01:liveGoal.lastIntrinsicDriveConfidence01}},null,2));

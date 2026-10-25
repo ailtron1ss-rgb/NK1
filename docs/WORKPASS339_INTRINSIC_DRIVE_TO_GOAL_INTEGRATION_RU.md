@@ -21,3 +21,8 @@ The source edit and regression wiring have been authored on `workpass339-intrins
 ## Next
 
 After the focused workflow passes, continue the causal-memory track: bind each self-generated intention to the prediction that motivated it, the executed action, the verified outcome and a revision/abandonment reason. Keep this in the existing canonical event/goal owners rather than introducing a second intention store.
+
+
+## WorkPass340 — intention-level motive provenance
+
+B272 goal-history rows now preserve the exact intrinsic drive and bounded support score supplied during generation. This prevents diagnostics from retaining only the latest drive while losing the signal that contributed to an older intention. Older rows restore with neutral zero provenance. Validate the new exact HEAD before marking this follow-up verified.

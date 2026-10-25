@@ -33,6 +33,18 @@ assert.deepEqual(restored.currentGoal(),before,'B272 goal state did not round-tr
 assert.equal(restored.snapshot().lastOutcomeTick,snap.lastOutcomeTick,'last credited outcome tick did not round-trip');
 assert.ok(Object.keys(restored.snapshot().goalOutcomeMemory).length>0,'valid outcome memory should survive an evidence-bound restore');
 
+const motiveStamped=new B272EndogenousGoalGenesis();
+const stampedInput={...comparisonInput,tick:0,intrinsicDrive01:.83,intrinsicDriveConfidence01:.64};
+motiveStamped.step(stampedInput);
+const stampedHistory=motiveStamped.snapshot().goalHistory.at(-1);
+assert.equal(stampedHistory.intrinsicDrive01,.83,'goal history must retain the motive signal used for generation');
+assert.equal(stampedHistory.intrinsicDriveConfidence01,.64,'goal history must retain motive support');
+const legacyHistory=motiveStamped.snapshot();
+legacyHistory.goalHistory=[{tick:legacyHistory.tick,id:legacyHistory.currentGoalId,vector:legacyHistory.currentGoal,action:legacyHistory.currentAction,reward01:.5,predictionError01:.5,accepted:false}];
+const legacyRestored=new B272EndogenousGoalGenesis(); legacyRestored.restore(legacyHistory);
+assert.equal(legacyRestored.snapshot().goalHistory.at(-1).intrinsicDrive01,0,'legacy history must remain restorable with a neutral motive default');
+assert.equal(legacyRestored.snapshot().goalHistory.at(-1).intrinsicDriveConfidence01,0,'legacy motive support defaults to zero');
+
 const forgedZeroUpdate=net.snapshot();
 const forgedId=forgedZeroUpdate.currentGoalId;
 forgedZeroUpdate.goalOutcomeMemory[forgedId]={vector:forgedZeroUpdate.currentGoal.slice(),meanReward01:1,meanPredictionError01:0,updates:0,lastTick:forgedZeroUpdate.tick};
