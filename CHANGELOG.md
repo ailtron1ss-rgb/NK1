@@ -1,3 +1,9 @@
+## NK1 learning validation — isolate signed activation metadata tampering (2026-10-25)
+
+- Adjusted the persistence-tamper regression to mutate only `active.activatedAt`, leaving the initial candidate's `baseVersion` and rollback-target chain structurally valid. Restore now reaches the intended signed CAS/activation metadata guard instead of correctly rejecting a fabricated missing prior version first.
+
+---
+
 ## NK1 learning validation — exercise repeated rollback with a valid request shape (2026-10-25)
 
 - Updated the repeated-rollback assertion to use the current approval contract. The second attempt now passes identity/timestamp/CAS shape validation and fails because the candidate is already rolled back, which is the invariant the regression intends to verify.

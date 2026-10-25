@@ -188,7 +188,7 @@ assert.throws(() => new VersionedSkillCandidateStore(signedApprovalPersistence, 
   /persisted active skill approval failed signature\/context verification/,
   'restoration with an unconfigured approval authority fails closed instead of trusting persisted JSON');
 const tamperedActiveSnapshot = JSON.parse(JSON.stringify(signedApprovalPersistence.read()));
-tamperedActiveSnapshot.candidates[0].baseVersion = 41; // Not part of candidateId; restore must still bind CAS metadata to the signed approval.
+tamperedActiveSnapshot.active[0].activatedAt += 1; // Not part of candidateId; restore must still bind activation metadata to the signed approval.
 const tamperedPersistence = {
   read: () => JSON.parse(JSON.stringify(tamperedActiveSnapshot)),
   compareAndSwap: () => false,
