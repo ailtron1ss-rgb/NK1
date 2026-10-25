@@ -1,3 +1,10 @@
+## [NK1][core] Align WorkPass319 with the current cognitive-cycle persistence API (2026-10-25)
+
+- The cycle-order test already validated embodiment state is committed after the life-course update and before cycle closure. It then failed because it asserted the retired `setUnifiedCognitiveCycle` method name.
+- Updated the assertion to the current `setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot())` persistence boundary. The test still requires cycle snapshot persistence inside the post-write verification block and before completeness evidence is committed; runtime behavior is unchanged.
+
+---
+
 ## [NK1][core] Select the correct embodiment checkpoint in WorkPass319 (2026-10-25)
 
 - The cycle-order test was indexing the first occurrence of `setEmbodiment` in `OrganismRuntime`, which belongs to an earlier sleep-transition path and therefore necessarily appears before the later `closeB380TemporalLife` call.
