@@ -1,3 +1,8 @@
+## NK1 WorkPass565 — deconflict independent evaluator fixture bindings (2026-10-25)
+
+- Fixed a syntax-time test failure in the WorkPass203 independent candidate evaluator suite: the WorkPass214 authority-snapshot block reused top-level `const snapshotEvaluator` and `const snapshotResult` names already declared by the earlier immutable-config test.
+- Renamed only the authority-snapshot block's local identifiers so both independent regressions execute as intended; evaluator implementation and assertions are unchanged.
+
 ## NK1 WorkPass564 — align signed-shadow fixture with candidate ID v2 (2026-10-25)
 
 - Updated the signed-shadow end-to-end test to derive its expected candidate ID using the current five-component identity tuple, including explicit `null` for candidates without reflective revision provenance.
