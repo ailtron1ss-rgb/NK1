@@ -72,6 +72,19 @@ assert.equal(reconciled.brokenLineages,2);
 assert.equal(reconciled.completeCycles+reconciled.incompleteCycles,reconciled.cycles);
 assert.equal(reconciled.lastComplete,false);
 
+const validCompleteRestore=new UnifiedCognitiveCycle();
+validCompleteRestore.restore({cycles:5,completeCycles:4,incompleteCycles:1,brokenLineages:1,lastTick:9,lastComplete:true,lastMissingStages:[]});
+assert.equal(validCompleteRestore.snapshot().lastComplete,true,'a consistent snapshot with an explicitly complete last cycle remains complete');
+
+const brokenCounterContradiction=new UnifiedCognitiveCycle();
+brokenCounterContradiction.restore({cycles:10,completeCycles:8,incompleteCycles:2,brokenLineages:4,lastTick:9,lastComplete:true,lastMissingStages:[]});
+assert.equal(brokenCounterContradiction.snapshot().lastComplete,false,'broken lineages cannot exceed the incomplete-cycle count');
+
+const omittedCounterRestore=new UnifiedCognitiveCycle();
+omittedCounterRestore.restore({cycles:5,completeCycles:5,lastTick:5,lastComplete:true,lastMissingStages:[]});
+assert.equal(omittedCounterRestore.snapshot().lastComplete,false,'a missing partition counter cannot verify completion after restore');
+
+
 
 const undercountRestore=new UnifiedCognitiveCycle();
 undercountRestore.restore({cycles:10,completeCycles:3,incompleteCycles:1,brokenLineages:99,lastTick:8,lastComplete:false,lastMissingStages:['action']});
