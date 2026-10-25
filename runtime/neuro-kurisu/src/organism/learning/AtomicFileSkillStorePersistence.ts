@@ -113,10 +113,13 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
   // Must match VersionedSkillCandidateStore.stageCandidate exactly: the fifth
   // component is the provenance fingerprint, or null for an ordinary candidate.
   const identityPrefix = [value.skillId, value.version, value.proposalId, value.payloadFingerprint];
-  const revisionFingerprint = value.revisionProvenance === undefined ? null : payloadFingerprint(value.revisionProvenance);
+  const revisionFingerprint = value.revisionProvenance === undefined
+    ? null
+    : payloadFingerprint(value.revisionProvenance);
   const expectedId = createHash('sha256').update(JSON.stringify([...identityPrefix, revisionFingerprint])).digest('hex');
-  // Schema-1 files created before revision provenance used a four-field candidate ID.
-  // Preserve those IDs only for candidates without provenance; new IDs include the fifth null/digest component.
+  // Keep schema-1 files written before revision provenance readable. The four-field
+  // identity is accepted only when provenance is absent; new candidates use the
+  // five-field identity, with null as the explicit no-provenance component.
   const legacyExpectedId = value.revisionProvenance === undefined
     ? createHash('sha256').update(JSON.stringify(identityPrefix)).digest('hex')
     : null;
