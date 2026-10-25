@@ -1,3 +1,12 @@
+## NK1 WorkPass338 — Reject malformed runtime closure evidence on restore (2026-10-25)
+
+- [RESTORE] `RuntimeClosureLedger.restore()` now treats dropped malformed persisted records as a failure instead of silently accepting a stale `PASS` summary.
+- [INTEGRITY] Invalid restored evidence increments the failure counter and replaces the persisted success fingerprint with a deterministic integrity fingerprint.
+- [REGRESSION] Added malformed-record fixtures covering empty checks, wrong-typed check results, unsafe counters, and forged success summaries.
+- [VALIDATION] Source and regression tests are committed; the exact-head GitHub Actions run remains the acceptance gate.
+
+---
+
 ## NK1 WorkPass337 — Close expression churn and strict app-test gaps (2026-10-25)
 
 - [LIVE2D] The viewer now caches the last successfully applied mapped expression and skips repeated reapplication of the same expression. This prevents mouth/embodiment updates from restarting an unchanged facial expression.
