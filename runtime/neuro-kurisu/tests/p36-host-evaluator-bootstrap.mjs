@@ -109,6 +109,12 @@ try {
   assert.match(measured.verification.notes,/signed, authenticated paired holdout outcomes/);
   assert.match(measured.verification.notes,/delayed retention is not asserted/);
   assert.equal(artifactPaths.length,32);
+  await assert.rejects(loadP36VerifiedOutcomeLedgerEvaluator(configPath,temporary),/p36-host-bootstrap-config-inside-runtime-writable-state/,
+    'signed ledger config must not be loaded from mutable organism state');
+  await chmod(configPath,0o600);
+  await assert.rejects(loadP36VerifiedOutcomeLedgerEvaluator(configPath),/p36-host-bootstrap-config-must-be-read-only/,
+    'host trust config must not be writable by the runtime identity');
+  await chmod(configPath,0o400);
 
   // A private signing key is never accepted as a verifier public-key ring entry.
   await chmod(keyringPath,0o600);
@@ -162,6 +168,8 @@ export function createP36DevelopmentalOutcomeEvaluator({stateDirectory}) {
 }
 `,{mode:0o600});
   await chmod(maturityModulePath,0o400);
+  await assert.rejects(loadP36DevelopmentalOutcomeEvaluatorModule(maturityModulePath,temporary),/p36-maturity-provider-module-inside-runtime-writable-state/,
+    'trusted maturity code cannot live inside mutable organism state');
   const maturity=await loadP36DevelopmentalOutcomeEvaluatorModule(maturityModulePath,stateDirectory);
   assert.equal(maturity.destructive,false);
   assert.equal(typeof maturity.execute,'function');
