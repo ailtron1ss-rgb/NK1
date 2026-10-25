@@ -1,3 +1,10 @@
+## [NK1][learning] Update rollback regression for signed approval contract (2026-10-25)
+
+- Updated the WorkPass110-reachable skill lifecycle regression to use the current rollback API: legacy calls without approval identity, timestamp and expected active-version guard are explicitly rejected; the fixture then submits a version-bound approval object.
+- Keeps the production fail-closed rollback authorization unchanged. This repairs a stale test contract on the memory-budget branch; CI on the new exact HEAD is required to confirm the fix.
+
+---
+
 ## Memory budget restore integrity — 2026-10-25
 
 - Hardened the canonical `MemoryOS2` byte-budget boundary: non-finite, malformed, null and out-of-range persisted limits are normalized to a safe supported value.
