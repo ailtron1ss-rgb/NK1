@@ -27,7 +27,7 @@ assert.match(normalize, /^\s+affect,$/m,
   'normalized organism snapshot must retain affect data');
 assert.match(avatar, /const mood = snap\.affect\?\.mood/,
   'avatar presentation must consume persistent mood through its shared signal projection');
-assert.match(avatar, /freshness01,/,
+assert.match(avatar, /feelingFreshness01,/,
   'avatar presentation must time-bound feeling influence');
 assert.match(embodiment, /const feelingFreshness = input\.feeling/,
   'embodiment mapper must gate feeling influence by freshness');
