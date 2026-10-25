@@ -1,3 +1,19 @@
+## NK1 WorkPass352 — Align Core shadow-run test with async fail-closed API (2026-10-25)
+
+- [ASYNC-CONTRACT] The Core-owned trusted shadow-process entry test now awaits rejection when asking the coordinator to run an invalid baseline/control lane. The coordinator's declared Promise contract is tested rather than incorrectly expecting a synchronous throw.
+- [SAFETY] The invalid run must still be rejected before child spawn or durable trusted-run registration.
+- [VALIDATION] Exact-head Core regression is triggered by this source change; acceptance remains pending until it reports success.
+
+---
+
+## NK1 WorkPass351 — Check signed CAS metadata before resolving rollback ancestry (2026-10-25)
+
+- [PERSISTENCE-INTEGRITY] Versioned skill restore validates candidate base-version, prior-active version, signed approval timestamp and active activation timestamp before it resolves the rollback ancestry.
+- [DIAGNOSTICS] Tampering with `baseVersion` now reports the violated signed promotion/CAS binding directly, instead of failing earlier on the downstream missing-prior-version lookup. The default-deny approval verifier and the ancestry integrity check remain intact.
+- [VALIDATION] The versioned candidate lifecycle suite must pass on the exact PR head before this ordering fix is considered verified.
+
+---
+
 ## NK1 WorkPass350 — Preserve action attribution across policy overrides (2026-10-25)
 
 - [B272-OUTCOME] The real action chosen by final selection may differ from the endogenous goal generator's candidate. Runtime now credits B272 only when the completed action equals the candidate action, in both synthetic and embodied outcome paths; the module's fail-closed guard stays strict.
