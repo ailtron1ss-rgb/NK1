@@ -93,7 +93,8 @@ export class P66InteroceptiveHomeostasis {
   else if(stress>.58||t>.65||c<.5) mode='protect';
   else if(input.novelty01>.65&&stress<.42&&c>.72) mode='explore';
   else if(stress<.28&&c>.7) mode='engage';
-  this.state.cycles++;this.state.modeCounts[mode]++;this.state.lastError01=error;this.state.lastStress01=stress;this.state.lastCapacity01=c;this.state.lastMode=mode;this.state.lastAt=input.at;
+  const classifiedMode=mode;
+  this.state.cycles++;this.state.modeCounts[mode]=Math.min(1_000_000_000,this.state.modeCounts[mode]+1);this.state.lastError01=error;this.state.lastStress01=stress;this.state.lastCapacity01=c;this.state.lastMode=mode;this.state.lastAt=input.at;
   this.state.meanError01=clamp(this.state.meanError01*.97+error*.03);this.state.meanStress01=clamp(this.state.meanStress01*.97+stress*.03);this.state.meanCapacity01=clamp(this.state.meanCapacity01*.97+c*.03);
   // Slow allostatic adaptation only when the organism is stable. This avoids setpoint drift from acute stress.
   if(stress<.25){ sp.energy01=clamp(sp.energy01*.998+e*.002); sp.capacity01=clamp(sp.capacity01*.998+c*.002); sp.load01=clamp(sp.load01*.998+load*.002); }
@@ -108,6 +109,13 @@ export class P66InteroceptiveHomeostasis {
   if(previousPressure<.32 && pressure<.37 && previousMode==='explore' && input.novelty01>.45) mode='explore';
   if(previousPressure<.32 && pressure<.37 && previousMode==='engage' && input.novelty01<=.65) mode='engage';
   if(mode==='balance' && previousMode==='protect' && pressure<.5 && recoveryDebt>.12) mode='protect';
+  // The post-hysteresis decision is the one delivered to the executive and must be the one persisted.
+  if(mode!==classifiedMode){
+    this.state.modeCounts[classifiedMode]=Math.max(0,this.state.modeCounts[classifiedMode]-1);
+    this.state.modeCounts[mode]=Math.min(1_000_000_000,this.state.modeCounts[mode]+1);
+  }
+  this.state.lastMode=mode;
+  if(this.state.history.length>0)this.state.history[0]={...this.state.history[0],mode};
   return {mode,error01:error,stress01:stress,capacity01:c,pressure01:pressure};
  }
  summary(){return {cycles:this.state.cycles,modeCounts:this.state.modeCounts,meanError01:this.state.meanError01,meanStress01:this.state.meanStress01,meanCapacity01:this.state.meanCapacity01,lastError01:this.state.lastError01,lastStress01:this.state.lastStress01,lastPressure01:this.state.lastPressure01,recoveryDebt01:this.state.recoveryDebt01,stableCycles:this.state.stableCycles,lastMode:this.state.lastMode,setpoints:this.state.setpoints};}
