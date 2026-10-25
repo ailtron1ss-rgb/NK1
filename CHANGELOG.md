@@ -1,3 +1,12 @@
+## NK1 WorkPass336 — Repair restore and strict runtime type contracts (2026-10-25)
+
+- [P23-RESTORE] Preserve a non-empty persisted newest-first dedupe cache as authoritative during restore; reconstruct IDs from durable rows only when the persisted cache is absent/empty. This prevents an older retained replay row from being appended ahead of the cache's bounded history while preserving recovery when caches are missing.
+- [DATASET-TYPES] Keep holdout aggregate split and dataset schema version as literal types so strict TypeScript checks match the declared public interfaces.
+- [NODE-TYPES] Add the missing synchronous hard-link declaration and explicit child-process event parameter types to the runtime shim boundary.
+- [VALIDATION] Changes are committed on the WorkPass328 PR branch. CI has not yet re-run against this exact head; do not treat the wider validation suite as green until its results arrive.
+
+---
+
 ## NK1 WorkPass335 — Restore missing loop-test wiring (2026-10-24)
 
 - [CI-SCRIPT] Added the missing `test:workpass291:payload-budget` and `test:workpass292:evidence-lanes` npm scripts referenced by their workflows. Those jobs had been failing with `npm error Missing script` before either test could run.
