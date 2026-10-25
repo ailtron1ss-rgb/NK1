@@ -67,12 +67,14 @@ jobs:
           cache-dependency-path: |
             app/package-lock.json
             runtime/neuro-kurisu/package-lock.json
-      - name: Install locked app dependencies
-        run: npm ci --prefix app
-      - name: Install locked runtime dependencies
-        run: npm ci --prefix runtime/neuro-kurisu
       - name: Verify project runtime pin contract
         run: npm run test:runtime-pin-contract
+      - name: Test canonical installer contract
+        run: npm run test:super-install
+      - name: Run environment doctor before installation
+        run: npm run doctor
+      - name: Install both locked workspaces through the project installer
+        run: npm run install:all
       - name: Test integration process supervisor
         run: npm run test:integration-supervisor
       - name: Typecheck, build and test app
