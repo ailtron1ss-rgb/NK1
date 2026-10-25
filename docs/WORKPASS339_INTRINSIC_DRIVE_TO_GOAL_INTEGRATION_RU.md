@@ -26,3 +26,8 @@ After the focused workflow passes, continue the causal-memory track: bind each s
 ## WorkPass340 — intention-level motive provenance
 
 B272 goal-history rows now preserve the exact intrinsic drive and bounded support score supplied during generation. This prevents diagnostics from retaining only the latest drive while losing the signal that contributed to an older intention. Older rows restore with neutral zero provenance. Validate the new exact HEAD before marking this follow-up verified.
+
+
+## WorkPass341 follow-up — autonomous-goal outcome replay guard
+
+B273 now has a durable last-credit tick, validates new outcome inputs before mutation, and blocks duplicate or stale feedback including after restore. The focused workflow includes the regression. Exact-head validation is required for this follow-up; no learning uplift is implied.

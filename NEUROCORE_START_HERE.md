@@ -1,3 +1,23 @@
+# WorkPass341 — autonomous-goal outcome replay guard
+
+Date: 2026-10-25
+
+## Defect
+B273's lifecycle learner could accept multiple outcomes for the same logical tick. Each delivery increased goal attempts/progress and could update skills again. Restored snapshots had no canonical last-credit tick.
+
+## Change
+- Add `lastOutcomeTick` as a durable guard.
+- Restore and validate bounded outcome-history records, reconstructing the last credited tick for old snapshots that do not have the new field.
+- Reject non-monotonic goal ticks before state mutation.
+- Preflight outcome tick, action, plan, reward/error/personality/evidence ranges and independent-gain bounds before updating any goal or skill.
+- Fail closed on duplicate outcome credit and prove the snapshot remains byte-for-byte/structurally unchanged across rejection and after restore.
+- Wire the B273 unit lifecycle regression into WorkPass287–288 workflow path filters and run steps.
+
+## Verification
+The WorkPass340 focused workflow is scheduled for exact SHA `67fbc11b4a8dfc7d8f6c8ec7fbea477e0503a2e6`. This follow-up moves the branch again and requires fresh exact-head CI results. No production or learning-uplift claim is made.
+
+---
+
 # WorkPass340 — preserve intention-level motive provenance
 
 Date: 2026-10-25

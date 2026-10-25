@@ -9,6 +9,8 @@ on:
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-273-autonomous-goal-lifecycle.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -25,6 +27,8 @@ on:
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-273-autonomous-goal-lifecycle.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -63,3 +67,6 @@ jobs:
       - name: Check live Core intrinsic-drive wiring
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/big-pass-272-core-endogenous-goals.mjs
+      - name: Check autonomous-goal outcome replay guard
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-273-autonomous-goal-lifecycle.mjs

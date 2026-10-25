@@ -2,6 +2,10 @@ import { cosineSimilarity } from '../core/NumericPrimitives.ts';
 import type { ActionKind, OrganismGoalStatus } from '../core/types.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const isUnit=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const isAction=(value:unknown):value is ActionKind=>typeof value==='string'&&ACTIONS.includes(value as ActionKind);
+const safeCounter=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
 const GOAL_SOURCES=['intrinsic','self-generated','revised','homeostatic','learned'] as const;
 type GoalSource=typeof GOAL_SOURCES[number];
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -46,6 +50,8 @@ export interface B273State {
   tick:number;
   cycles:number;
   learningUpdates:number;
+  /** Highest logical tick whose goal outcome was already credited. */
+  lastOutcomeTick:number;
   goalCreations:number;
   goalRevisions:number;
   goalCompletions:number;
@@ -104,7 +110,7 @@ export interface B273StepResult {
 
 export function defaultB273State():B273State{
   const goalTransitionWeights=Array.from({length:8},(_,i)=>Array.from({length:8},(_,j)=>i===j?.18:(i+j+3)%5===0?.035:-.012));
-  return {version:1,tick:0,cycles:0,learningUpdates:0,goalCreations:0,goalRevisions:0,goalCompletions:0,goalAbandonments:0,subgoalCreations:0,skillCreations:0,skillUses:0,activeGoalId:null,rootGoalId:null,goals:[],skills:[],goalTransitionWeights,goalUtilityWeights:[.25,.18,.18,.14,.10,.08,.07],lastGoalVector:new Array(8).fill(0),lastActionPlan:['reflect'],lastAction:'reflect',lastDecisionConfidence01:.35,autonomy01:.4,goalConflict01:.3,goalStability01:.4,selfAlignment01:.5,longHorizonValue01:.5,intrinsicDrive01:.4,lifecycleMode:'incubating',outcomeHistory:[]};
+  return {version:1,tick:0,cycles:0,learningUpdates:0,lastOutcomeTick:-1,goalCreations:0,goalRevisions:0,goalCompletions:0,goalAbandonments:0,subgoalCreations:0,skillCreations:0,skillUses:0,activeGoalId:null,rootGoalId:null,goals:[],skills:[],goalTransitionWeights,goalUtilityWeights:[.25,.18,.18,.14,.10,.08,.07],lastGoalVector:new Array(8).fill(0),lastActionPlan:['reflect'],lastAction:'reflect',lastDecisionConfidence01:.35,autonomy01:.4,goalConflict01:.3,goalStability01:.4,selfAlignment01:.5,longHorizonValue01:.5,intrinsicDrive01:.4,lifecycleMode:'incubating',outcomeHistory:[]};
 }
 
 export class B273AutonomousGoalLifecycle{
@@ -112,15 +118,28 @@ export class B273AutonomousGoalLifecycle{
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<B273State>|null){
     const d=defaultB273State(); const r:any=raw??{};
+    const restoredTick=safeCounter(r.tick,d.tick);
+    const restoredCycles=safeCounter(r.cycles,d.cycles);
+    const restoredLearningUpdates=safeCounter(r.learningUpdates,d.learningUpdates);
+    const restoredOutcomeHistory:Array<B273State['outcomeHistory'][number]>=Array.isArray(r.outcomeHistory)?r.outcomeHistory.slice(-128).filter((row:any)=>{
+      if(!isRecord(row))return false;
+      if(!Number.isSafeInteger(row.tick)||typeof row.tick!=='number'||row.tick<0||row.tick>restoredTick)return false;
+      if(!(row.goalId===null||(typeof row.goalId==='string'&&row.goalId.length>0&&row.goalId.length<=256&&row.goalId.trim()===row.goalId)))return false;
+      if(!isAction(row.action)||!isUnit(row.reward01)||!isUnit(row.predictionError01))return false;
+      return typeof row.independentGain01==='number'&&Number.isFinite(row.independentGain01)&&row.independentGain01>=-1&&row.independentGain01<=1;
+    }).map((row:any)=>({tick:row.tick,goalId:row.goalId,action:row.action,reward01:row.reward01,predictionError01:row.predictionError01,independentGain01:row.independentGain01})):[];
+    const historyLastOutcomeTick=restoredOutcomeHistory.reduce((last,row)=>Math.max(last,row.tick),-1);
+    const storedLastOutcomeTick=typeof r.lastOutcomeTick==='number'&&Number.isSafeInteger(r.lastOutcomeTick)&&r.lastOutcomeTick>=-1&&r.lastOutcomeTick<=restoredTick?r.lastOutcomeTick:-1;
+    const lastOutcomeTick=Math.max(historyLastOutcomeTick,storedLastOutcomeTick);
     const vec=(x:any,n:number)=>Array.from({length:n},(_,i)=>clamp11(Number(x?.[i]??0)));
     const matrix=(x:any,f:number[][])=>Array.from({length:8},(_,i)=>Array.from({length:8},(_,j)=>Number.isFinite(Number(x?.[i]?.[j]))?clamp11(Number(x[i][j])):f[i][j]));
-    this.state={...d,...r,version:1,
+    this.state={...d,...r,version:1,tick:restoredTick,cycles:restoredCycles,learningUpdates:restoredLearningUpdates,lastOutcomeTick,
       goals:Array.isArray(r.goals)?r.goals.slice(-64).map((g:any)=>({...g,vector:vec(g?.vector,8),status:(['candidate','active','paused','completed','abandoned'].includes(g?.status)?g.status:'candidate'),parentId:g?.parentId??null})):[],
       skills:Array.isArray(r.skills)?r.skills.slice(-48).map((s:any)=>({...s,actions:Array.isArray(s?.actions)?s.actions.slice(0,6).filter((a:any)=>ACTIONS.includes(a)):['reflect']})):[],
       goalTransitionWeights:matrix(r.goalTransitionWeights,d.goalTransitionWeights),
       goalUtilityWeights:Array.isArray(r.goalUtilityWeights)?r.goalUtilityWeights.slice(0,8).map((x:any,i:number)=>clamp11(Number(x??d.goalUtilityWeights[i]??0))):d.goalUtilityWeights,
       lastGoalVector:vec(r.lastGoalVector,8),lastActionPlan:Array.isArray(r.lastActionPlan)?r.lastActionPlan.slice(0,6).filter((a:any)=>ACTIONS.includes(a)):d.lastActionPlan,
-      lastAction:ACTIONS.includes(r.lastAction)?r.lastAction:'reflect',outcomeHistory:Array.isArray(r.outcomeHistory)?r.outcomeHistory.slice(-128):[]
+      lastAction:ACTIONS.includes(r.lastAction)?r.lastAction:'reflect',outcomeHistory:restoredOutcomeHistory
     };
   }
   private available(input:B273StepInput){return (input.availableActions??ACTIONS).filter((a):a is ActionKind=>ACTIONS.includes(a));}
@@ -208,6 +227,9 @@ export class B273AutonomousGoalLifecycle{
     return active;
   }
   step(input:B273StepInput):B273StepResult{
+    if(!isRecord(input))throw new TypeError('B273 step input must be an object');
+    if(!Number.isSafeInteger(input.tick)||typeof input.tick!=='number'||input.tick<0)throw new RangeError('B273 tick must be a non-negative safe integer');
+    if(this.state.cycles>0&&input.tick<=this.state.tick)throw new RangeError('B273 ticks must strictly increase');
     this.state.tick=input.tick;this.state.cycles++;
     const v=this.synthesizeGoalVector(input); const conflict=this.conflict(input,v); const utility=this.goalUtility(input,v,conflict); const drive=this.internalDrive(input);
     let goal=this.ensureHierarchy(input,v,utility);
@@ -238,6 +260,13 @@ export class B273AutonomousGoalLifecycle{
     return {goalId:goal.id,goalVector:goal.vector.slice(),action,plan,mode,autonomy01:this.state.autonomy01,confidence01:confidence,selfAlignment01:selfAlignment,longHorizonValue01:longHorizon,conflict01:conflict,created,revised,skillId:skill?.id??null};
   }
   learnFromOutcome(input:{tick:number;action:ActionKind;plan:ActionKind[];reward01:number;predictionError01:number;independentGain01:number;personalityAlignment01:number;externalEvidence01:number}):{accepted:boolean;revised:boolean;completed:boolean;abandoned:boolean;skillCreated:boolean;goalId:string|null;gain01:number}{
+    if(!isRecord(input))throw new TypeError('B273 outcome must be an object');
+    if(!Number.isSafeInteger(input.tick)||typeof input.tick!=='number'||input.tick!==this.state.tick)throw new RangeError('B273 outcome tick must match the latest goal cycle');
+    if(input.tick<=this.state.lastOutcomeTick)throw new Error('B273 outcome for this tick has already been credited');
+    if(!isAction(input.action))throw new TypeError('B273 outcome action is invalid');
+    if(!Array.isArray(input.plan)||input.plan.length<1||input.plan.length>6||input.plan.some(action=>!isAction(action)))throw new TypeError('B273 outcome plan is invalid');
+    if(!isUnit(input.reward01)||!isUnit(input.predictionError01)||!isUnit(input.personalityAlignment01)||!isUnit(input.externalEvidence01))throw new RangeError('B273 outcome signals must be finite values in [0,1]');
+    if(typeof input.independentGain01!=='number'||!Number.isFinite(input.independentGain01)||input.independentGain01< -1||input.independentGain01>1)throw new RangeError('B273 independent gain must be finite and in [-1,1]');
     const goal=this.state.activeGoalId?this.state.goals.find(g=>g.id===this.state.activeGoalId):null;
     if(!goal){return {accepted:false,revised:false,completed:false,abandoned:false,skillCreated:false,goalId:null,gain01:0};}
     const gain=clamp11((input.reward01-.5)*.72+(input.independentGain01)*.62+(1-input.predictionError01)*.18+(input.personalityAlignment01-.5)*.14);
@@ -293,6 +322,7 @@ export class B273AutonomousGoalLifecycle{
       else{skill.support01=clamp01(skill.support01*.82+.18);skill.success01=clamp01(skill.success01*.88+input.reward01*.12);skill.expectedGain01=clamp01(skill.expectedGain01*.86+(.5+gain*.4)*.14);skill.uses++;skill.lastUsedTick=input.tick;}
     }
     this.state.outcomeHistory=[...this.state.outcomeHistory,{tick:input.tick,goalId:goal.id,action:input.action,reward01:input.reward01,predictionError01:input.predictionError01,independentGain01:input.independentGain01}].slice(-128);
+    this.state.lastOutcomeTick=input.tick;
     this.state.learningUpdates++;
     return {accepted,revised,completed,abandoned,skillCreated,goalId:goal.id,gain01:gain};
   }

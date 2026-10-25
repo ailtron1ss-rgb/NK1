@@ -1,3 +1,11 @@
+# WorkPass341 — close autonomous-goal outcome replay path
+
+- [FIX] B273 now rejects invalid/non-monotonic goal ticks before state mutation and requires outcome feedback to refer to the latest logical goal tick.
+- [REPLAY] Duplicate or older outcome credit fails closed before progress, counters, goal status, or skill learning can change. The guard persists through restart using a validated last-credit tick reconstructed from bounded outcome history for legacy snapshots.
+- [VALIDATION] The learner now preflights action/plan identity and bounded numeric evidence fields before mutating its active goal.
+- [REGRESSION] Added mutation-free duplicate feedback, post-restore replay and duplicate logical-tick tests; wired the B273 lifecycle test into the Node 24 focused cognitive-contract workflow.
+- [STATUS] Exact-head workflows must pass before this guard is considered verified; no learning uplift is inferred.
+
 # WorkPass340 — preserve intention-level motive provenance
 
 - [CAUSAL MEMORY] Each B272 generated-goal history record retains the bounded intrinsic drive and support score consumed at generation time; later cycles cannot overwrite the reason attached to an earlier intention.
