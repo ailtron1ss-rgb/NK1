@@ -5,7 +5,7 @@ function numericVersion(value, { allowPartial = false } = {}) {
   const raw = String(value ?? '').trim().replace(/^v/i, '');
   const parts = raw.split('.');
   if ((!allowPartial && parts.length !== 3) || parts.length < 1 || parts.length > 3
-      || parts.some(part => !/^(0|[1-9]\\d*)$/.test(part) || !Number.isSafeInteger(Number(part)))) {
+      || parts.some(part => !/^(0|[1-9]\d*)$/.test(part) || !Number.isSafeInteger(Number(part)))) {
     throw new TypeError(`Invalid numeric runtime version: ${String(value)}`);
   }
   return { raw, parts: parts.map(Number), precision: parts.length };
