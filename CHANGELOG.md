@@ -1,3 +1,10 @@
+# WorkPass343 — make live-server architecture contract resilient to additive flows (2026-10-25)
+
+- [FIX] The first WorkPass342 live HTTP smoke run reached `/api/organism/cognitive-architecture` but failed because the smoke test hard-coded exactly 22 flows while the current valid architecture map exposes additional flows. This was a stale assertion, not evidence of a server startup failure.
+- [TEST] Replaced exact subsystem/flow counts with structural minimums plus equality between each returned array length and `architecture.validation`'s declared count. Failure output now includes response status, validation details, observed counts, runtime-system count, and tick for actionable diagnosis.
+- [SAFETY] The test still requires HTTP success, read-only response, `validation.ok === true`, at least 14 subsystems and 22 flows, a runtime systems array, and finite runtime tick; it does not loosen the architecture integrity contract.
+- [VALIDATION] WorkPass342 exposed the stale assertion on SHA `e89597aaa20093db2f897008f1c8863ec9ae9e91`; the revised test requires a fresh exact-head run before this gate is considered green.
+
 # WorkPass342 — gate real HTTP service startup in the cognitive-runtime workflow (2026-10-25)
 
 - [CI] Added the existing `npm run server:smoke` test after the in-process autonomy and persistence gates. It starts `src/server/server.mjs` as a child process with an isolated temporary state directory, waits for `/api/health`, then exercises the live root release marker, temporal memory inspector, release contract, camera idempotency preflight, read-only cognitive architecture, chat completion, voice status, and Will transport duplicate/collision/ACK semantics.

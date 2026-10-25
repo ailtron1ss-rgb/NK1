@@ -1,3 +1,18 @@
+## Latest durable checkpoint — WorkPass343: correct stale architecture flow-count assertion (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- WorkPass341 action-handoff calibration passed on SHA `83e2be0df7f8ac4a15dbc69b28541b35d3ceed49`; WorkPass331 and sibling cognitive/learning workflows were green there.
+- WorkPass342 added a real HTTP service smoke to the kernel workflow. On SHA `e89597aaa20093db2f897008f1c8863ec9ae9e91`, organism smoke, autonomy, dialogue-feedback/restore, background-clock initiative and restart persistence all passed before `server:smoke` found a stale assertion requiring exactly 22 cognitive architecture flows. The architecture map is additive; the correct contract is that `validation.flowCount` matches the returned flow array, with minimum coverage preserved.
+- WorkPass343 updates that assertion and enriches its failure diagnostics. This does not hide runtime failures or reduce the architecture validity check. Fresh WorkPass331 and learning workflows on the new exact SHA are required.
+
+### Next gates
+1. Re-run the HTTP service smoke and resolve any subsequent real API/boot failures.
+2. Confirm WorkPass331, P26, WorkPass110 and the sibling evidence/learning workflows on the same exact head.
+3. Continue longer unattended soak and UI/Live2D/voice E2E; refresh the Release archive only after those gates are addressed.
+
+---
+
 ## Latest durable checkpoint — WorkPass342: verify live HTTP service startup (2026-10-25)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
