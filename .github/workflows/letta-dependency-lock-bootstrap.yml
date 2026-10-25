@@ -37,6 +37,8 @@ jobs:
           const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
           pkg.optionalDependencies ??= {};
           pkg.optionalDependencies['@letta-ai/letta-agent-sdk'] = '0.8.52';
+          pkg.devDependencies ??= {};
+          pkg.devDependencies['@types/node'] = '24.19.1';
           pkg.peerDependencies ??= {};
           pkg.peerDependencies['@letta-ai/letta-code'] = '>=0.34.23 <0.35.0';
           pkg.peerDependenciesMeta ??= {};
@@ -56,6 +58,8 @@ jobs:
           const sdk = lock.packages?.['node_modules/@letta-ai/letta-agent-sdk'];
           if (pkg.optionalDependencies?.['@letta-ai/letta-agent-sdk'] !== '0.8.52') throw new Error('SDK must be pinned as an optional exact dependency');
           if (sdk?.version !== '0.8.52') throw new Error('lockfile SDK version mismatch');
+          if (pkg.devDependencies?.['@types/node'] !== '24.19.1') throw new Error('Node 24 type definitions must be pinned');
+          if (lock.packages?.['node_modules/@types/node']?.version !== '24.19.1') throw new Error('lockfile Node 24 type definitions mismatch');
           if (pkg.peerDependenciesMeta?.['@letta-ai/letta-code']?.optional !== true) throw new Error('Letta Code CLI peer must remain optional for unsupported hosts');
           if (lock.packages?.['']?.peerDependenciesMeta?.['@letta-ai/letta-code']?.optional !== true) throw new Error('lockfile omitted optional CLI peer policy');
           console.log('LETTA_OPTIONAL_LOCK_METADATA=PASS');
