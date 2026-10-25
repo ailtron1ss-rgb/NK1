@@ -130,6 +130,36 @@ test('waitForHttp returns a bounded, actionable readiness failure', async () => 
   assert.equal(result.error, 'HTTP 503');
 });
 
+test('waitForHttp disposes response bodies for both failed and successful probes', async () => {
+  let calls = 0;
+  let cancelledBodies = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    return {
+      ok: calls > 1,
+      status: calls > 1 ? 200 : 503,
+      body: {
+        cancel() {
+          cancelledBodies += 1;
+          return Promise.resolve();
+        },
+      },
+    };
+  };
+
+  const result = await waitForHttp('http://unit.test/ready', {
+    timeoutMs: 500,
+    intervalMs: 1,
+    requestTimeoutMs: 50,
+    fetchImpl,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 200);
+  assert.equal(calls, 2);
+  assert.equal(cancelledBodies, 2);
+});
+
 test('terminateChildren escalates a SIGTERM-resistant process group', async () => {
   const child = spawnManaged(process.execPath, [
     '-e',
