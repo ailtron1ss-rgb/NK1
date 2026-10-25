@@ -549,6 +549,9 @@ export class OrganismRuntime {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
     if (externalText) this.embodiment.userActivity();
     let body = await this.embodiment.sample();
+    // Keep measured RAM pressure distinct from cognitive capacity: capacity is
+    // a composite signal and must not overwrite the host/device memory sensor.
+    const measuredRamPressure01 = clamp01(body.telemetry.ramPressure01);
     const resourceAllocation = this.resourceEconomy.allocate({
       tick: this.core.operationalStatusSnapshot().tick,
       at: Date.now(),
@@ -558,11 +561,11 @@ export class OrganismRuntime {
       novelty01: this.core.operationalStatusSnapshot().autonomyScore,
       predictionDebt01: Number((this.core.predictionDebtSnapshot() as any)?.meanPriority01 ?? 0),
       thermalStrain01: body.thermalStrain01,
-      ramPressure01: clamp01((1-body.cognitiveCapacity01)*.65 + (1-body.cognitiveCapacity01)*.35),
+      ramPressure01: measuredRamPressure01,
       performancePressure01: 0,
       awake: body.awake,
     });
-    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
+    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01,cognitiveCapacity01:body.cognitiveCapacity01,ramPressure01:measuredRamPressure01}});
     this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
     const previousNeural = this.core.b365UnifiedNeuroCausalDiagnostics();
     const perceptionPlan = this.core.b365PlanActivePerception({
