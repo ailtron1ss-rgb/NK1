@@ -25,6 +25,8 @@ export interface OutcomeCognitionProjection {
     externalObservation:boolean; expectedPostcondition?:string; observedPostcondition?:string; executionId?:string; predictionId?:string; outcomeClass?:ActionOutcomeClass;
     externalObservations?:Array<{observationId:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;at:number;reason?:string;assessment?:'match'|'mismatch'|'unknown';sourceId?:string;sourceClass?:'os'|'device'|'user'|'external-api'|'world'|'organism'|'simulator'|'unknown';independenceKey?:string}>;
     externalEvidenceStatus?:'none'|'corroborated'|'contradicted'|'mixed';
+    /** Persisted audit marker: this execution identity must not be reused as an active receipt. */
+    receiptQuarantined?:boolean;
   };
   causal:CausalAccountabilityState;
   verifiedExternal:boolean;
@@ -104,16 +106,16 @@ export class OutcomeCognitionFabric {
     };
     this.causal.restore(snapshot?.causal);
     const quarantined=new Set<string>(this.causal.snapshot().quarantinedExecutionIds??[]);
-    const projectionConflicts=new Set<string>();
     const quarantine=(value:unknown)=>{
       const id=boundedText(value,180);
-      if(id){quarantined.add(id);projectionConflicts.add(id);}
+      if(id)quarantined.add(id);
     };
     const validRecords=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).map(r=>structuredClone(r)):[];
     const recordFingerprints=new Map<string,string>();
     for(const record of validRecords){
       const id=boundedText(record.executionId,180);
       if(!id)continue;
+      if(record.receiptQuarantined===true)quarantined.add(id);
       const fingerprint=this.fingerprintFromRecord(record);
       const prior=recordFingerprints.get(id);
       if(prior&&prior!==fingerprint)quarantine(id);
@@ -169,10 +171,9 @@ export class OutcomeCognitionFabric {
     const seenRecords=new Set<string>();
     for(const record of validRecords){
       const id=boundedText(record.executionId,180);
-      if(id&&projectionConflicts.has(id))continue;
       if(id&&seenRecords.has(id))continue;
       if(id)seenRecords.add(id);
-      this.records.push(record);
+      this.records.push(id&&quarantined.has(id)?{...record,receiptQuarantined:true}:record);
       if(this.records.length>=this.maxRecords)break;
     }
 
@@ -437,8 +438,8 @@ export class OutcomeCognitionFabric {
     return this.records.slice(0,Math.max(1,Math.min(64,Math.floor(limit)))).map(r=>({
       at:r.at,tick:r.tick,executionId:r.executionId??null,tool:r.tool,action:r.ok?'executed':'failed',
       expectation:r.expectedPostcondition??null,observation:r.observedPostcondition??null,
-      verification:r.externalEvidenceStatus==='corroborated'?'externally-corroborated':r.externalEvidenceStatus==='contradicted'?'externally-contradicted':r.externalEvidenceStatus==='mixed'?'conflicting-external-evidence':assessExternalPostcondition({basis:r.basis,externalObservation:r.externalObservation,observationId:r.observationId,expectedPostcondition:r.expectedPostcondition,observedPostcondition:r.observedPostcondition,verified:r.verified})==='contradiction'?'externally-contradicted':r.verified?'verified':r.externalObservation?'external-evidence-awaiting-reconciliation':'unverified',
-      evidence:{basis:r.basis,observationId:r.observationId??null,confidence01:r.confidence01,external:Boolean(r.externalObservation),externalEvidenceStatus:r.externalEvidenceStatus??'none',externalObservationCount:r.externalObservations?.length??0,predictionId:r.predictionId??null,outcomeClass:r.outcomeClass??null},
+      verification:r.receiptQuarantined?'ambiguous-execution-quarantined':r.externalEvidenceStatus==='corroborated'?'externally-corroborated':r.externalEvidenceStatus==='contradicted'?'externally-contradicted':r.externalEvidenceStatus==='mixed'?'conflicting-external-evidence':assessExternalPostcondition({basis:r.basis,externalObservation:r.externalObservation,observationId:r.observationId,expectedPostcondition:r.expectedPostcondition,observedPostcondition:r.observedPostcondition,verified:r.verified})==='contradiction'?'externally-contradicted':r.verified?'verified':r.externalObservation?'external-evidence-awaiting-reconciliation':'unverified',
+      evidence:{basis:r.basis,observationId:r.observationId??null,confidence01:r.confidence01,external:Boolean(r.externalObservation),externalEvidenceStatus:r.externalEvidenceStatus??'none',externalObservationCount:r.externalObservations?.length??0,predictionId:r.predictionId??null,outcomeClass:r.outcomeClass??null,receiptQuarantined:Boolean(r.receiptQuarantined)},
     }));
   }
 
