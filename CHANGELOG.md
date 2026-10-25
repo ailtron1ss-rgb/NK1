@@ -1,3 +1,10 @@
+## [NK1][compat] Make project wrapper assertions independent of source order (2026-10-25)
+
+- A second CI run showed that the first marker adjustment still assumed compound-skill selection followed the project path; in the current file that identifier occurs earlier. The regression now independently asserts the unique fresh-dispatch wrapper, the core reconciliation wrapper and absence of their corresponding direct gateway bypasses across the source.
+- Runtime behavior is unchanged; the route test no longer depends on the order of unrelated source declarations.
+
+---
+
 ## [NK1][compat] Extend the project wrapper regression to the full dispatch block (2026-10-25)
 
 - The route regression stopped at the `const unresolvedReceipt` declaration, before the fresh execution through `OrganismCore.executeTool`; the real path continues below that guard.
