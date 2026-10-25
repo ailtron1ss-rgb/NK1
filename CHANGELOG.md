@@ -1,3 +1,11 @@
+## NK1 WorkPass351 — make continual replay buffer compatible with Node type stripping (2026-10-25)
+
+- [COMPATIBILITY] Replaced `ContinualReplayBuffer`'s constructor parameter property with an explicit readonly `capacity` field and assignment. This preserves the runtime API and permits the P26 direct Node 22.12 type-stripping test to load the replay buffer.
+- [VALIDATION] The P26 input-integrity, recovery benchmark, continual curriculum matrix, SkillLearnBench adapter and Hermes candidate-gate tests all passed on `c69fd54`; P26 then stopped on this strip-only syntax error before replay tests could complete.
+- [SCOPE] Isolated PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass350 — validate P26 learning inputs atomically and repair snapshots (2026-10-25)
 
 - [LEARNING SAFETY] `ParametricPolicyLearner.train` and `trainFeatures` reject non-finite targets, learning rates, weights, invalid actions, malformed needs state, and non-finite feature vectors before updates, using stable machine-readable error codes.
