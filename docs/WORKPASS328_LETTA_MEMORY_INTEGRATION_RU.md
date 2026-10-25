@@ -7,7 +7,7 @@
 
 - Добавлен `LettaMemoryBridge`: ленивый TypeScript-адаптер с созданием/повторным использованием Letta agent, ручным `recordExperience`, `recall`, canonical upsert и запросом forget, сериализацией обращений к одному агенту, маскированием секретов, ограничением размера данных и snapshot.
 - `MemoryFabric.applyLifecycleCommand` теперь публикует read-only наблюдения завершённых изменений независимо от того, подавлена ли отдельная запись события в `EventLog`. `MemorySubsystemRuntime` ставит encode/revision/update и forget в ограниченный sync outbox после native commit; `PersistenceProjectionCoordinator` включает agent identity и outbox в `facets.memory` как в full, так и hot checkpoint. При восстановлении сохранённые pending intents валидируются и повторно отправляются только после restore. `flushLettaMemorySync()` служит барьером для завершения/тестов.
-- Добавлен отдельный вход `retrieveForCognitionWithLettaCandidates(...)`: сначала возвращает native retrieval NK1, затем (только при включённом Letta) прикладывает отдельный внешний candidate с меткой `untrusted-candidate`. Этот интерфейс не записывает внешние ответы в `MemoryOS2` автоматически; подключение его результата к каждому prompt/response остаётся отдельным этапом.
+- `OrganismCore` подключён к `retrieveForCognitionWithLettaCandidates(...)` за отдельным флагом `NK1_LETTA_COGNITIVE_RECALL=1`. При включении native retrieval остаётся источником для `cognitionMemoryItems`/`advancedRetrieved` и числовых эвристик выбора действия. Letta добавляет только отдельное поле `workspace.content.externalMemoryCandidate` с метками `provider=letta`, `trust=untrusted-candidate` и ограничением до 1600 символов. Оно доступно вызывающему слою как контекст ответа, но не подменяет canonical memory и не участвует в action/learning score.
 - Автоматическая передача данных включается только при `NK1_LETTA_ENABLED=1` (или явной конфигурации в коде); прежние записи не выгружаются массово при старте. Snapshot/restore сохраняет identity и счётчики, но не включает провайдера сам по себе.
 - Ответы recall помечаются `untrusted-candidate`; они не меняют canonical memory, цели, само-модель или решения NK1 автоматически. Ответ агента «записано» не считается независимым доказательством долговременного commit.
 - Сохранён существующий governance gate: исследовательские/legacy артефакты не повышаются автоматически до canonical.
@@ -27,7 +27,8 @@ npm install @letta-ai/letta-agent-sdk@0.8.52
 
 Переменные:
 
-- `NK1_LETTA_ENABLED=1` — явное включение; по умолчанию интеграция выключена.
+- `NK1_LETTA_ENABLED=1` — явное включение внешнего провайдера; по умолчанию интеграция выключена.
+- `NK1_LETTA_COGNITIVE_RECALL=1` — отдельное включение извлечения Letta в когнитивный read path. Должны быть включены оба флага; без этого NK1 использует только нативную память.
 - Backend по умолчанию — `local`, даже если `LETTA_API_KEY` присутствует в окружении. Ключ сам по себе никогда не переключает память в облако.
 - `NK1_LETTA_BACKEND=cloud` вместе с `LETTA_API_KEY` — явное включение облачного варианта. Ключ не сохраняется в snapshot.
 - При создании агента отключены server-side web tools и навыки (`baseTools: []`, `skillSources: []`); для сеанса разрешены только file tools `Read`, `Edit`, `Write`, `Glob`, `Grep`, `LS`. В локальном backend включён `filesystemConfinement: memory` — sandbox ограничивает доступ областью файлов памяти. Облачный backend не имеет этой локальной kernel-границы, поэтому остаётся отдельной осознанной настройкой и требует отдельного security review.
@@ -42,17 +43,18 @@ npm install @letta-ai/letta-agent-sdk@0.8.52
 ```bash
 npm run test:letta-memory-bridge
 npm run test:letta-memory-lifecycle-sync
+npm run test:letta-cognitive-recall-wiring
 node --experimental-strip-types tests/integration/letta-governance-adaptation.mjs
 ```
 
-Тесты используют fake SDK-клиент и проверяют adapter contracts, redaction, tool/file confinement, восстановление outbox, автоматическое зеркалирование, hybrid recall без повышения кандидата, replay после сетевой ошибки, приоритет forget и обязательный успешный SDK `result.success` перед подтверждением записи. Запись и forget дополнительно требуют явного успешного результата файлового инструмента `Write`/`Edit`; assistant-текст без terminal result или без подтверждённой операции изменения файла не подтверждает синхронизацию. Это всё ещё не доказывает, что MemFS durable commit пережил перезапуск. Оба теста запускаются в `.github/workflows/workpass71-validation.yml` и в изолированном `.github/workflows/letta-memory-bridge.yml` на Node 24; новый workflow использует `actions/checkout@v7` и `actions/setup-node@v7`, чтобы не наследовать предупреждение о Node 20 у старых major-версий. Они не доказывают физическое удаление данных в Letta, доступность внешнего сервера, реальное сохранение MemFS, retrieval uplift, production build или полное поведенческое E2E.
+Тесты используют fake SDK-клиент и проверяют adapter contracts, redaction, tool/file confinement, восстановление outbox, автоматическое зеркалирование, hybrid recall без повышения кандидата, живой read-path gate в `OrganismCore`, изоляцию `workspace.content.externalMemoryCandidate` от action/learning heuristics, replay после сетевой ошибки, приоритет forget и обязательный успешный SDK `result.success`/файловый tool-result перед подтверждением записи. Запись и forget дополнительно требуют явного успешного результата файлового инструмента `Write`/`Edit`; assistant-текст без terminal result или без подтверждённой операции изменения файла не подтверждает синхронизацию. Это всё ещё не доказывает, что MemFS durable commit пережил перезапуск. Оба теста запускаются в `.github/workflows/workpass71-validation.yml` и в изолированном `.github/workflows/letta-memory-bridge.yml` на Node 24; новый workflow использует `actions/checkout@v7` и `actions/setup-node@v7`, чтобы не наследовать предупреждение о Node 20 у старых major-версий. Они не доказывают физическое удаление данных в Letta, доступность внешнего сервера, реальное сохранение MemFS, retrieval uplift, production build или полное поведенческое E2E.
 
 ## Следующие обязательные этапы
 
 1. Закрепить SDK в `package.json` и lockfile через воспроизводимый npm install на Node 24; пройти runtime typecheck и соответствующие memory tests.
 2. Проверить restart round-trip на реальном `FileStateStore` с `facets.memory.lettaBridge` и `facets.memory.lettaSyncOutbox`, включая replay после сбоя и очистку по receipt.
 3. Довести гарантию доставки до transactional post-checkpoint: связать подтверждённую запись outbox в persisted state с завершением checkpoint, проверить повторное выполнение/idempotency после crash и добавить reconciliation. Затем проверить MemFS persistence на реальном Letta local/cloud runtime: restart, duplicate record, conflicting/superseded memory, deletion and retention.
-4. Подключить `retrieveForCognitionWithLettaCandidates` к выбранному когнитивному read path через контролируемую feature flag; затем сравнить NK1 native-only baseline с native+Letta на парных seeds и независимом holdout. Не продвигать вариант, если recall uplift не доказан или latency/resource cost превышает пороги.
+4. Сравнить NK1 native-only baseline с candidate-enabled native+Letta на парных seeds и независимом holdout; проверить, что внешний кандидат помогает вызывающему слою формировать ответы, не повышая unsupported claims и не изменяя native-only action decisions. Не продвигать вариант, если recall uplift не доказан или latency/resource cost превышает пороги.
 5. После runtime validation — отдельный release asset и license/security review. Этот commit ничего не публикует в GitHub Releases.
 
 ## Безопасность и границы
