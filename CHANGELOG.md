@@ -1,3 +1,11 @@
+## NK1 WorkPass357 — finish external-only outcome expectation
+
+- [CAUSAL EVIDENCE] Corrected the last stale external-only `summary().outcomes` assertion after the first exact-head run exposed it at the overlong-runtime-trace guard. External-only streams must keep the trusted outcome count at zero.
+- [VALIDATION] WorkPass292, WorkPass105, WorkPass102 and initiative regression passed on the previous head. WorkPass110 is rerunning after this final expectation correction; WorkPass108 is being checked after the signature-tampering test correction.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass356 — exercise signature tampering and finish grounded-count regressions (2026-10-25)
 
 - [CAUSAL EVIDENCE] Corrected the remaining external-only assertions so retries and conflicting duplicates preserve a trusted-outcome count of zero; imported rows remain separate from grounded runtime outcomes.
