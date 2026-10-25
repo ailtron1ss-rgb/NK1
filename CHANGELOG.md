@@ -4,7 +4,8 @@
 - [IMPLEMENTED] Added a reviewed Hexis → NK1 memory projector that writes through the existing canonical MemoryFabric/MemoryOS2 owner and projects relationships into SemanticMemoryGraph only when both imported endpoints are known.
 - [SAFETY] Canonical import requires an accepted `port + additive` stage. The apply path validates the full memory batch before writes, compensates partial writes on failure, and keeps failed attempts retryable.
 - [TEST] Expanded exporter/projector regressions and the server smoke test for accept-without-write, explicit apply, persisted memory, and idempotent retry; added a Node.js 24 workflow.
-- [STATUS] The changes are in the WorkPass340 feature branch. Test execution and exact-head Actions remain unverified until the workflow produces a result; no production-readiness or learning-uplift claim is made.
+- [CI] The first exact-head run stopped at repository-wide `typecheck` and skipped Hexis regression tests. Added a `.d.mts` adapter contract and tightened HMX source/goal metadata typing; split `audit:hexis` into its own blocking job and kept the existing repository-wide typecheck as a separate diagnostic job.
+- [STATUS] The CI rerun must still confirm HMX test results. The bridge is not yet verified or production-ready; no learning-uplift claim is made.
 
 ## NK1 WorkPass331 — execute initiative regression guards in CI (2026-10-24)
 
