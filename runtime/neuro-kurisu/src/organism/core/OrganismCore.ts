@@ -4239,7 +4239,20 @@ export class OrganismCore {
         if (predictiveAllostasis.interventionUrgency01 > .72)
             this.cognitiveRuntime.cognitiveField.addPressure('goal', 'predictive-allostatic-intervention', predictiveAllostasis.interventionUrgency01, [], .025);
         const interoceptiveAffect = this.cognitiveRuntime.emotionAppraisal.observeInteroception({ ...bodyTelemetry, homeostaticPressure01: p66Homeostasis.pressure01 });
-        const emotionEpisode = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick + 1, at: Date.now(), goalPressure01: n.goalPressure, goalCongruence01: state.lastActionSuccess ?? .5, controllability01: 1 - n.uncertainty, novelty01: n.novelty, selfRelevance01: n.identityCoherence, socialMeaning01: n.socialNeed, uncertainty01: n.uncertainty, predictionError01: state.predictionError, homeostaticPressure01: p66Homeostasis.pressure01, energy01: n.energy, success01: state.lastActionSuccess ?? .5, external: hasExternalSignal });
+        // Recall contributes only from retrieved, confidence-weighted memories with recorded emotional weight.
+        // This is an arousal/attention cue, not evidence that the current situation has the same valence.
+        const recalledAffectRows = retrieved.slice(0, 4).map(m => ({
+            intensity01: clamp(Number(m.emotionalWeight ?? 0)),
+            salience01: clamp(Number(m.salience ?? 0.5)),
+            confidence01: clamp(Number(m.confidence ?? 0.5)),
+        })).filter(row => row.intensity01 > 0 && row.salience01 > 0 && row.confidence01 > 0);
+        const recalledAffectWeight = recalledAffectRows.reduce((total, row) => total + row.salience01, 0);
+        const recalledAffect = recalledAffectRows.length > 0 && recalledAffectWeight > 0 ? {
+            intensity01: clamp(recalledAffectRows.reduce((total, row) => total + row.intensity01 * row.salience01, 0) / recalledAffectWeight),
+            confidence01: clamp(recalledAffectRows.reduce((total, row) => total + row.confidence01 * row.salience01, 0) / recalledAffectWeight),
+            evidenceCount: recalledAffectRows.length,
+        } : undefined;
+        const emotionEpisode = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick + 1, at: Date.now(), goalPressure01: n.goalPressure, goalCongruence01: state.lastActionSuccess ?? .5, controllability01: 1 - n.uncertainty, novelty01: n.novelty, selfRelevance01: n.identityCoherence, socialMeaning01: n.socialNeed, uncertainty01: n.uncertainty, predictionError01: state.predictionError, homeostaticPressure01: p66Homeostasis.pressure01, energy01: n.energy, success01: state.lastActionSuccess ?? .5, recalledAffect, external: hasExternalSignal });
         const feelingEpisode = this.cognitiveRuntime.emotionAppraisal.inferFeeling(emotionEpisode, { energy01: n.energy, cognitiveLoad01: n.cognitiveLoad, uncertainty01: n.uncertainty, selfFocus01: n.identityCoherence });
         this.organismSystems.memory.causalLifeGraph.recordCycle({ tick: state.tick + 1, at: Date.now(), experience: { id: `obs:${state.tick + 1}`, label: String(observation.text ?? 'sensory-experience').slice(0, 120), confidence01: hasExternalSignal ? .8 : .5, external01: hasExternalSignal ? 1 : 0 }, emotion: { id: emotionEpisode.id, label: emotionEpisode.label, confidence01: emotionEpisode.confidence01, external01: hasExternalSignal ? 1 : 0 } }, { snapshot: false });
         this.persisted.system.emotionAppraisal = this.cognitiveRuntime.emotionAppraisal.snapshot();
