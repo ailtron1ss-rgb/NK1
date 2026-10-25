@@ -1,3 +1,10 @@
+## NK1 Causal Accountability — quarantine conflicting restored execution receipts (2026-10-25)
+
+- `CausalAccountabilityGraph` now detects duplicate `executionId` entries whose persisted receipt identity conflicts, removes the ambiguous receipt from the active directory, and persists a bounded quarantine tombstone.
+- Late external verification and evidence-revision attachment now reject quarantined execution IDs as ambiguous instead of binding to whichever duplicate happened to be processed last.
+- Added a regression that restores conflicting receipt rows and asserts late verification is rejected. Receipt identity comparison deliberately ignores timestamp-only drift while preserving outcome/tool/postcondition identity checks.
+- **Validation boundary:** code and regression are committed; the hosted workflow for this revision must pass before calling this change validated.
+
 ## NK1 Feedback — bound event conflict quarantine memory (2026-10-24)
 
 - The `RealityEvidenceLedger` now bounds conflict quarantine tombstones to the same configured receipt window (512–2,048 IDs), including during restore-time duplicate/conflict reconciliation.
