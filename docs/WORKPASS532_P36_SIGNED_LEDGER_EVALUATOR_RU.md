@@ -28,6 +28,10 @@
 - Снимок `VerifiedOutcomeLedger` после восстановления — это сериализованные данные, не подписи. Адаптер fail-closed, пока исходные подписанные артефакты не будут повторно проверены и заново введены в реестр.
 - P36 хранит в свидетельстве baseline/treatment methods, task family и manifest fingerprint. Результаты разных evaluator-version/manifest/method-pair/family не должны смешиваться в одном статистическом gate.
 
+## Дополнительная граница WorkPass534
+
+Адаптер регистрируется только в `OrganismConfig.p36IndependentEvaluator` и обслуживает ID `organism.learning.p36.evaluate-evidence`. Он не является провайдером зрелости и не должен передаваться в `OrganismConfig.p36DevelopmentalOutcomeEvaluator`. Этот второй слот использует отдельный ID `organism.learning.p36.evaluate-maturity` и требует самостоятельных задержанных исходов. Core отклоняет перекрёстную отправку maturity-payload в experiment lane и наоборот.
+
 ## Чего этот адаптер не утверждает
 
 Этот слой измеряет **моментальный holdout**, поэтому он намеренно требует `delayMs: 0`. Он не подтверждает, что улучшение сохранилось спустя часы или дни, и не подтверждает перенос навыка на новые задачи. Для этих ворот нужны отдельные независимые delayed-retention и transfer наблюдения. Одна подписанная таблица holdout не должна позволять P36 объявить зрелость или воспроизводимость.
