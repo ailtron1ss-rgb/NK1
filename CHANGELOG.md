@@ -7,6 +7,9 @@
 - No runtime dependency was added. This is a targeted input-integrity improvement; hosted Actions and full runtime/typecheck evidence remain pending and are not claimed here.
 
 ### WorkPass328 follow-up — reconcile unified-cycle restore contract (2026-10-25)
+- A second exact-head run exposed a deeper implementation gap: `lastComplete=true` survived restore even when `incompleteCycles` contradicted `cycles - completeCycles`. `UnifiedCognitiveCycle.restore()` now requires a valid partition counter, a non-negative broken-lineage counter bounded by incomplete cycles, and a well-formed missing-stage list before it restores a positive completion flag.
+- Added negative tests for contradictory and omitted counters plus a positive control for a coherent completed snapshot. This preserves fail-closed behavior without rejecting internally consistent history.
+
 
 - Fixed a pre-existing regression-test contradiction exposed by the branch's first Actions run. `UnifiedCognitiveCycle.restore()` deliberately treats a malformed persisted `lastMissingStages` collection as untrusted and restores the complete required-stage list; the test expected only the one valid item and failed before later workflow steps could run.
 - Kept the conservative runtime behavior and updated the assertion to expect all six required stages. This aligns the test with the implementation's fail-closed contract rather than weakening restore validation.
