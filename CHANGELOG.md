@@ -1,3 +1,10 @@
+## NK1 host-owned evaluator test — isolate permission and identity guards (2026-10-25)
+
+- Restored executable permissions after the negative world-writable-mode test so the subsequent replacement and run-root identity tests actually reach their intended guards.
+- Production validation is unchanged: the executable remains rejected while writable, and dispatch-time identity checks are still exercised separately.
+
+---
+
 ## NK1 integration follow-up — repair two CI contract gaps (2026-10-25)
 
 - Corrected the Hermes signed-shadow tamper regression so it changes a signed payload field and recomputes only the unsigned transport fingerprint. The test now reaches the cryptographic verifier rather than failing earlier on a binary-outcome mismatch, and still requires rejection of the tampered signature.
