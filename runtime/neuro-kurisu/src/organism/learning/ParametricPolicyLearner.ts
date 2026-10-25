@@ -123,6 +123,19 @@ export class ParametricPolicyLearner{
       const bias=Number(this.state.bias[a]??0);
       this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+    // A persisted snapshot is untrusted input: repair diagnostics as well as model
+    // parameters, because these values feed exploration, telemetry and future learning.
+    const scalarOr=(value:unknown,fallback:number):number=>
+      typeof value==='number'&&Number.isFinite(value)?value:fallback;
+    const updates=raw?.updates;
+    this.state.updates=typeof updates==='number'&&Number.isSafeInteger(updates)&&updates>=0?updates:d.updates;
+    this.state.tdAbsMean01=clamp(scalarOr(raw?.tdAbsMean01,d.tdAbsMean01));
+    this.state.trainRewardMean01=clamp(scalarOr(raw?.trainRewardMean01,d.trainRewardMean01));
+    this.state.explorationRate01=clamp(scalarOr(raw?.explorationRate01,d.explorationRate01));
+    this.state.lastLoss01=clamp(scalarOr(raw?.lastLoss01,d.lastLoss01));
+    const lastTrainedAt=scalarOr(raw?.lastTrainedAt,d.lastTrainedAt);
+    this.state.lastTrainedAt=lastTrainedAt>=0?lastTrainedAt:d.lastTrainedAt;
+    this.state.frozen=raw?.frozen===true;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}

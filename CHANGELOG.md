@@ -1,3 +1,11 @@
+## NK1 P26 snapshot restore — sanitize persisted learning diagnostics (2026-10-25)
+
+- Extended `ParametricPolicyLearner.restore()` to repair non-finite/out-of-range diagnostics, reject invalid/negative update counters and reset invalid training timestamps.
+- Only an actual boolean `true` now restores a frozen state; malformed truthy strings cannot unexpectedly freeze or alter the learner.
+- This closes the P26 regression exposed after input validation passed: corrupted training telemetry can no longer re-enter runtime state through restore.
+
+---
+
 ## NK1 P26 test fixture — remove duplicate shared-feature declaration (2026-10-25)
 
 - Removed the now-redundant second declaration after moving the feature vector above the negative training assertions; the test uses one immutable shared fixture throughout.
