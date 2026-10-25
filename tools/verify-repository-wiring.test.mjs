@@ -408,3 +408,32 @@ test('rejects a local action manifest symlink that resolves outside the reposito
     }
   });
 });
+
+
+test('accepts executable glob patterns when one or more files match', () => {
+  withFixture(root => {
+    write(root, 'app/scripts/one.test.mjs', 'export const testOne = true;\n');
+    write(root, 'app/scripts/nested/two.test.mjs', 'export const testTwo = true;\n');
+    write(root, 'app/scripts/nested/skip.txt', 'not a test file\n');
+    const packagePath = path.join(root, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    pkg.scripts.audit = 'node app/scripts/**/*.test.mjs';
+    fs.writeFileSync(packagePath, JSON.stringify(pkg, null, 2));
+    const result = auditRepositoryWiring(root);
+    assert.deepEqual(result.errors, []);
+  });
+});
+
+test('reports executable glob patterns that match no files', () => {
+  withFixture(root => {
+    write(root, 'app/scripts/present.test.mjs', 'export const present = true;\n');
+    const packagePath = path.join(root, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    pkg.scripts.audit = 'node app/scripts/missing/**/*.test.mjs';
+    fs.writeFileSync(packagePath, JSON.stringify(pkg, null, 2));
+    const result = auditRepositoryWiring(root);
+    assert.ok(result.errors.some(message =>
+      message.includes('executable glob pattern matched no files: app/scripts/missing/**/*.test.mjs')
+    ));
+  });
+});
