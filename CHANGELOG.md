@@ -1,3 +1,9 @@
+## NK1 WorkPass564 — align signed-shadow fixture with candidate ID v2 (2026-10-25)
+
+- Updated the signed-shadow end-to-end test to derive its expected candidate ID using the current five-component identity tuple, including explicit `null` for candidates without reflective revision provenance.
+- This follows WorkPass552's unified contract between `VersionedSkillCandidateStore` and `AtomicFileSkillStorePersistence`; the previous fixture still used the obsolete four-component digest and failed before the shadow run began.
+- No production gate or signature check was changed. The latest WorkPass110 run must pass the signed-shadow step after this fixture correction.
+
 ## NK1 WorkPass563 — broaden recall goldset across intent modes (2026-10-25)
 
 - Expanded the deterministic recall benchmark from 18 identity/episodic queries to 30 bilingual fixtures covering all six non-general query-intent modes: identity, episodic, procedural, goal, causal, and factual.
