@@ -1,3 +1,12 @@
+## NK1 WorkPass355 — align causal outcome accounting and async trust boundary (2026-10-25)
+
+- [CAUSAL EVIDENCE] Updated external-only retry, restore, quarantine and malformed-input assertions to require zero trusted outcomes. Imported events remain queryable records but do not inflate the runtime-grounded learning outcome metric; the snapshot test recomputes that metric from grounded runtime rows.
+- [TRUSTED EXECUTION] Made the trusted shadow coordinator async so invalid lane/registrar errors become rejected promises consistently with its declared `Promise<LearningProcessResult>` contract. Callers can use `await`/`assert.rejects`, while fail-closed lane validation still runs before child-process spawn.
+- [VALIDATION] Addresses two Actions failures from the previous head: the external evidence count assertion and the Core trusted-shadow entry rejection test. Exact-head rerun is required before claiming both fixed.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass354 — align learning regressions with guarded inputs and grounded outcomes (2026-10-25)
 
 - [LEARNING CONTRACT] Updated the true-learning regression to expect stable rejection of NaN/Infinity rates and to assert the full serialized model snapshot remains unchanged. The former test expected malformed training requests to count as updates, which contradicted WorkPass350's fail-closed integrity contract.
