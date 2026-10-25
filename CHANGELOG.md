@@ -1,9 +1,14 @@
+## NK1 CI — run reality regression for receipt identity changes (2026-10-25)
+
+- Expanded push and pull-request path filters to include `OutcomeVerificationService`, `OutcomeCognitionFabric`, `CausalAccountabilityGraph`, `StateMigrations`, and `StableSerialization`. Changes to receipt identity, restore logic, or canonical fingerprinting now trigger the reality-to-learning suite without requiring a test-file edit.
+- **Validation:** [Actions run #100](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168212427) passed with the updated workflow and the new compaction/rehydration regression on code/test commit `c5b5dadc9ea6d88dcc79390a5ad2035ddcd0ce02`. The following commit updates this changelog only and has not had a separate run.
+
 ## NK1 Causal Accountability — preserve receipt identity during rehydration (2026-10-25)
 
 - The outcome index now carries the source outcome node's timestamp, and nodes rehydrated from its bounded receipt directory preserve an explicit `ok` field plus `originalAt`.
 - Restore now prefers the explicit result flag and original timestamp metadata. Older rehydrated nodes are also recognized from the `:ok:receipt-rehydrated` summary suffix, instead of being misread as a failed action because their summary no longer ends in `:ok`.
 - Added a round-trip regression covering outcome eviction by `compact()`, late external verification rehydration, snapshot/restore, and idempotent replay of the same observation.
-- **Validation boundary:** GitHub Actions [run #100](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168212427) is pending for regression commit `c5b5dadc9ea6d88dcc79390a5ad2035ddcd0ce02`.
+- **Validation:** GitHub Actions [run #100](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168212427) passed on regression commit `c5b5dadc9ea6d88dcc79390a5ad2035ddcd0ce02`; the job includes `BIG_PASS_64_EXTERNAL_OBSERVER=PASS` after compaction, late verification, restore, and replay.
 
 ## NK1 Persistence — retain causal quarantine tombstones across migration (2026-10-25)
 
