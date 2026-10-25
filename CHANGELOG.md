@@ -1,3 +1,11 @@
+## NK1 learning diagnostics — replay-to-reflection bridge (2026-10-25)
+
+- Connected persisted P23 interaction outcomes to the existing evidence-linked diagnosis routine through a bounded, newest-first, read-only `diagnoseRecentLearningAttempts()` view.
+- Outcomes between conservative success/failure thresholds remain `unknown`; existing failure classes are carried into diagnosis as clues, not verified labels. Every report remains explicitly ineligible for promotion.
+- Added regression coverage for restored replay rows, ordering, uncertain outcomes, failure-class propagation, bounded limits, and the no-promotion invariant.
+- **Verification boundary:** committed source and regression coverage; exact-HEAD CI and runtime execution must still confirm the integration. This bridge produces diagnostic hypotheses only and does not establish empirical learning improvement.
+
+---
 ## NK1 typecheck repair — self-development evidence contracts (2026-10-25)
 
 - Added the missing self-development evidence event names to the canonical `OrganismEventType` union so the event journal and its producer agree on one event contract.

@@ -1774,6 +1774,27 @@ export class P23LearningEngine {
 
   evidenceDebt(limit=12):EvidenceDebtItem[]{return this.state.evidenceDebt.slice().sort((a,b)=>repairOpportunity({recurrence:1,severity01:b.priority01,uncertainty01:b.uncertainty01,expectedGain01:b.informationGainPerCost01,cost01:b.estimatedVerificationCost01})-repairOpportunity({recurrence:1,severity01:a.priority01,uncertainty01:a.uncertainty01,expectedGain01:a.informationGainPerCost01,cost01:a.estimatedVerificationCost01})).slice(0,limit).map(x=>structuredClone(x));}
 
+  /**
+   * Turn the newest persisted interaction outcomes into diagnostic hypotheses.
+   * This is a read-only bridge from actual replay rows to reflection; it never
+   * writes labels, changes weights, or grants candidate-promotion authority.
+   */
+  diagnoseRecentLearningAttempts(limit=20) {
+    const boundedLimit=Math.max(0,Math.min(100,Number.isFinite(limit)?Math.floor(limit):20));
+    if(boundedLimit===0)return [];
+    return this.state.experiences.slice(-boundedLimit).reverse().map(experience=>{
+      const outcome: 'success'|'failure'|'unknown' = experience.success>=.8
+        ? 'success' : experience.success<=.2 ? 'failure' : 'unknown';
+      const errors=experience.failureClass ? [experience.failureClass] : [];
+      return this.diagnoseLearningAttempt({
+        taskId:experience.traceId,
+        objective:`Review ${experience.action} outcome in context ${experience.contextKey}.`,
+        outcome,
+        observedBehavior:`observed success=${experience.success.toFixed(3)}; predicted utility=${experience.predictedUtility.toFixed(3)}; reward=${experience.reward.toFixed(3)}; surprise=${experience.surprise.toFixed(3)}.`,
+        errorMessages:errors,
+      });
+    });
+  }
   /** Evidence-backed reflections: suggestions only, never treated as verified labels. */
   reflectionHypotheses(limit=12) {
     return reflectOnOutcomes(this.state.experiences.map(e=>({

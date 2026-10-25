@@ -97,4 +97,30 @@ assert.throws(
 );
 assert.equal(getterCalls, 0, 'snapshot validation must not execute caller getters');
 
+const recent = new P23LearningEngine();
+recent.restore({
+  version: 1,
+  experiences: [{
+    id: 'experience-trace-fail-1', traceId: 'trace-fail-1', tick: 1, at: 100,
+    contextKey: 'file-write', nextContextKey: 'file-read', action: 'verify',
+    predictedUtility: 0.8, predictedConfidence: 0.7, success: 0.1,
+    reward: 0.1, surprise: 0.9, outcomeAt: 101, failureClass: 'tool-error',
+  }, {
+    id: 'experience-trace-uncertain-1', traceId: 'trace-uncertain-1', tick: 2, at: 102,
+    contextKey: 'memory-recall', nextContextKey: 'memory-recall', action: 'reflect',
+    predictedUtility: 0.6, predictedConfidence: 0.5, success: 0.55,
+    reward: 0.5, surprise: 0.3, outcomeAt: 103,
+  }],
+});
+const recentReports = recent.diagnoseRecentLearningAttempts(10);
+assert.equal(recentReports.length, 2);
+assert.equal(recentReports[0].taskId, 'trace-uncertain-1', 'diagnostics are newest-first');
+assert.equal(recentReports[0].outcome, 'unknown', 'middling outcomes are not forced into success/failure');
+assert.equal(recentReports[1].outcome, 'failure');
+assert.ok(recentReports[1].failureClasses.includes('tool-error'));
+assert.ok(recentReports.every((report) => report.promotionEligible === false),
+  'diagnostic reports must never grant promotion authority');
+assert.equal(recent.diagnoseRecentLearningAttempts(0).length, 0);
+assert.equal(recent.diagnoseRecentLearningAttempts(1000).length, 2, 'requested history is bounded');
+
 console.log('P23_LEARNING_ATTEMPT_DIAGNOSIS=PASS trustBoundary=true promotionEligible=false');
