@@ -1,3 +1,11 @@
+## NK1 WorkPass536 — isolate causal value-learning regression from evolving tensions (2026-10-25)
+
+- The new context-sensitive canon tensions correctly influence decision bias, which exposed an over-broad older value-learning assertion: it compared decisions made from different tension states and expected verify bias to remain identical.
+- Updated the regression to hold all personality state constant and change only curiosity/autonomy weights. The test now isolates the intended causal claim without disabling the new tension-to-action path.
+- Focused personality CI failed on that test assertion on the first WorkPass535 head; the corrected run must pass before this pass is considered validated.
+
+---
+
 ## NK1 WorkPass535 — make canon value tensions context-sensitive (2026-10-25)
 
 - Connected the five canonical character conflicts to normalized live-Core context. Truth/comfort, autonomy/cooperation, skepticism/curiosity, composure/vulnerability and usefulness/privacy now update as bounded, smoothed state instead of remaining static labels.
