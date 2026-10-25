@@ -1,3 +1,18 @@
+## Latest durable checkpoint — WorkPass337: test autonomous action selection in the kernel workflow (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft pending end-to-end checks.
+
+- WorkPass336 on source SHA `13671b6a3f3321b6c0074ca4729bd8fd4fc34996` fixed the B272 outcome/action mismatch without relaxing the learner's strict binding. Exact-head WorkPass331 passed: Node/npm preflight, clean-checkout doctor, canonical kernel test, live runtime wiring, 30-cycle autonomous smoke, and restart persistence. WorkPass110, WorkPass108, WorkPass294, replay benchmark WorkPass99, WorkPass292–293, and P26 Learning Validation also passed on the same SHA.
+- WorkPass337 adds the existing 80-cycle `test:autonomy` script to the focused kernel workflow. It requires at least five chosen actions other than `wait`, checking that runtime action selection does not degenerate into waiting. This remains a bounded test, not a claim about hourly unattended initiative.
+- The workflow edit and checkpoint are a new head; all relevant exact-head results need to be refreshed before release decisions. UI/Live2D/voice E2E, longer unattended soak, and release archive refresh remain open.
+
+### Next gates
+1. Observe the new 80-cycle autonomy test, repair runtime issues it uncovers without weakening the action/learning contracts.
+2. Run the remaining cognitive contracts and a long-horizon operational soak on the exact resulting head.
+3. Continue to real API/service startup plus Live2D/voice end-to-end; production readiness is not established by the current focused CI.
+
+---
+
 ## Latest durable checkpoint — WorkPass336: bind goal learning to the action actually executed (2026-10-25)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft and is not release-approved.

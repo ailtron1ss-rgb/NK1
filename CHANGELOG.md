@@ -1,3 +1,10 @@
+# WorkPass337 — verify autonomous action selection in focused CI (2026-10-25)
+
+- [CI] Added the existing 80-cycle `npm run test:autonomy` regression to the canonical cognitive-kernel workflow; it requires at least five selected non-`wait` actions and therefore checks for a degenerate wait-only loop.
+- [TRIGGER] Added `runtime/neuro-kurisu/tests/organism-autonomy.mjs` to both `push` and `pull_request` path filters, keeping the test wired into this focused runtime gate.
+- [SCOPE] This is a bounded autonomous-decision smoke check, not proof of unattended hourly initiative, long-horizon stability, or external-world autonomy.
+- [VALIDATION] The preceding exact-head WorkPass331 workflow and the WorkPass110/108/294 and P26 gates passed on `13671b6a3f3321b6c0074ca4729bd8fd4fc34996`; this workflow change creates a new head, so WorkPass337's autonomy step requires a fresh run.
+
 # WorkPass336 — preserve B272 action-to-outcome binding in the live loop (2026-10-25)
 
 - [FIXED] Added a runtime gate around both synthetic and real-world B272 outcome-learning call sites: the actual selected action must equal B272's generated action before B272 updates its action prototype and goal outcome memory.
