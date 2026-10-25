@@ -17,7 +17,7 @@ function fakeClient() {
         async send(prompt) {
           calls.prompts.push(prompt);
           nextResponse = prompt.includes('NK1_MEMORY_QUERY_JSON:')
-            ? 'Candidate: record-1; source=unit-test; uncertainty=low.'
+            ? 'Candidate: record-1; source=unit-test; uncertainty=low; api_key=recallsecretvalue123.'
             : 'Stored at memory/experience/record-1.md';
         },
         async *stream() {
