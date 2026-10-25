@@ -53,8 +53,8 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - name: Verify Node/npm engine floor and clean installer
-        run: npm run test:runtime-prerequisites
+      - name: Verify Node/npm engine floor
+        run: node --test tools/runtime-requirements.test.mjs
       - name: Verify clean-checkout startup preflight
         run: npm run doctor
       - name: Verify canonical decision-to-learning causal loop
