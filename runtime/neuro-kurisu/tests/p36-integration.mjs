@@ -25,6 +25,8 @@ const p36IndependentEvaluator={
 const store=new MemoryStateStore();
 const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,p36IndependentEvaluator});
 await core.init();
+assert.ok(core.actionToolsSnapshot().some(tool=>tool.id===P36_EXTERNAL_EVIDENCE_TOOL_ID),
+  'host construction config must register the reserved evaluator before the organism starts');
 const before=core.p36Snapshot();
 const step=await core.observe({text:'проверить собственное развитие',novelty:.7,worldContext:{tick:1,location:'lab',energy:.72,attention:.82,uncertainty:.78,facts:['test'],objects:[],events:[]}});
 await core.feedback({success:.8,reward:.6,surprise:.12,notes:'useful developmental outcome'});
