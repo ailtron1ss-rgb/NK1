@@ -65,7 +65,7 @@ assert.throws(() => createIndependentSkillCandidateEvaluator({
 // Evaluator configuration is an authority snapshot: post-construction changes must
 // not relabel the environment under which a candidate was executed.
 const mutableTasks = structuredClone(tasks);
-const expectedSnapshotPlanFingerprint = digest(mutableTasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) => ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds })));
+const expectedSnapshotPlanFingerprint = digest(mutableTasks.map(({ taskId, trialId, taskFamily, seed, split, input, requiredCapabilityIds, expectedStepIds }) => ({ taskId, trialId, taskFamily: taskFamily ?? null, seed, split, input, requiredCapabilityIds, expectedStepIds })));
 const mutableConfig = {
   tasks: mutableTasks,
   environmentFingerprint: 'b'.repeat(64),
