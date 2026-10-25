@@ -123,6 +123,14 @@ assert.ok(recentReports.every((report) => report.promotionEligible === false),
 assert.equal(recent.diagnoseRecentLearningAttempts(0).length, 0);
 assert.equal(recent.diagnoseRecentLearningAttempts(1)[0].taskId, 'trace-uncertain-1',
   'bounded diagnostic window selects the newest outcome, not the oldest tail');
+assert.equal(recent.diagnoseRecentLearningAttempts(1.9)[0].taskId, 'trace-uncertain-1',
+  'fractional limits are floored before selecting recent outcomes');
+assert.equal(recent.diagnoseRecentLearningAttempts(-1).length, 0,
+  'negative limits cannot expose an unintended suffix of old history');
+assert.equal(recent.diagnoseRecentLearningAttempts(Number.NaN).length, 2,
+  'non-finite limits fall back to the bounded default rather than leaking invalid slicing behavior');
+assert.equal(recent.diagnoseRecentLearningAttempts(Number.POSITIVE_INFINITY).length, 2,
+  'infinite limits fall back to the bounded default');
 assert.equal(recent.diagnoseRecentLearningAttempts(1000).length, 2, 'requested history is bounded');
 const summary = recent.learningSummary();
 assert.equal(summary.recentAttemptDiagnoses.length, 2,
