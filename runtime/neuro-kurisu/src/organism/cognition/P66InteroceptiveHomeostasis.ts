@@ -75,6 +75,8 @@ export class P66InteroceptiveHomeostasis {
   return {...this.state,modeCounts:{...this.state.modeCounts},setpoints:{...this.state.setpoints},history:this.state.history.slice(0,64).map(row=>({...row}))};
  }
  observe(input:{tick:number;at:number;energy01:number;thermal01:number;capacity01:number;load01:number;awake:boolean;uncertainty01:number;predictionError01:number;novelty01:number}):{mode:P66Mode;error01:number;stress01:number;capacity01:number;pressure01:number} {
+  if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('homeostasis tick must be a non-negative safe integer');
+  if(!Number.isFinite(input.at)||input.at<0)throw new RangeError('homeostasis timestamp must be finite and non-negative');
   const e=clamp(input.energy01),t=clamp(input.thermal01),c=clamp(input.capacity01),load=clamp(input.load01),awake=input.awake;
   const sp=this.state.setpoints;
   const previousMode=this.state.lastMode;
