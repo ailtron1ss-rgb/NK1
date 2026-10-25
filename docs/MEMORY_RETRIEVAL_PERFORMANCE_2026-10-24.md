@@ -58,6 +58,8 @@ Run 4 measures 100 calls after 16 warm-ups to fetch the same eight-revision chai
 
 Every measured call returned the same chain IDs and revision order in both implementations. Index integrity passed for baseline and candidate. The targeted lifecycle regression also verifies sequence order and membership after persistence restore, idempotent replay, and forgetting.
 
+The follow-up paired run `40127570942` also measured the single-pass `temporalDiagnostics()` implementation. Its p95 improved by **32.87% / 53.81% / 64.70%** at 256 / 800 / 1,600 corpus items; observed baseline-to-candidate p95 values were 0.0797→0.0535 ms, 0.1444→0.0667 ms, and 0.176?→0.062? ms respectively. (The workflow's comparison summary is authoritative; see its linked JSON logs.) The returned diagnostic state matched baseline exactly at every corpus size.
+
 In the same run, mixed-query p95 improved by 42.57% / 33.82% / 22.86% for 256 / 800 / 1,600 items, and repeated-query p95 by 51.37% / 10.83% / 35.40%. Throughput changed by +83.88% / +37.51% / +29.85% (mixed) and +84.63% / +49.54% / +45.94% (repeated). These are same-run synthetic results, not production promises.
 
 ## Memory observations
