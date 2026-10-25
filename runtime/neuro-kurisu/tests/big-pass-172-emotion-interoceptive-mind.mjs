@@ -26,6 +26,40 @@ assert.ok((e.outcomeCalibration('rest')?.attempts??0)===4);
 assert.ok(e.actionBias('rest')>e.actionBias('explore'),'high interoceptive pressure plus good rest outcomes should favor regulation');
 const es=e.snapshot(); const er=new EmotionAppraisalEngine(); er.restore(es); assert.deepEqual(er.snapshot(),es);
 
+const poisonedEmotionState={
+  ...es,episodes:NaN,lastTick:Infinity,lastAt:Infinity,meanStress01:NaN,
+  history:[{...first,arousal01:NaN},first,first],
+  feelings:[{...feeling,intensity01:NaN},feeling],
+  interoception:{...es.interoception,regulationPressure01:Infinity,
+    lastObserved:{...es.interoception.lastObserved,energy01:NaN},
+    predicted:{...es.interoception.predicted,load01:-1}},
+  outcomes:{
+    rest:{attempts:NaN,meanSuccess01:Infinity,meanSurprise01:.1,meanBenefit01:.7},
+    verify:{attempts:3,meanSuccess01:.8,meanSurprise01:.2,meanBenefit01:.6},
+  },
+};
+const safeEmotionRestore=new EmotionAppraisalEngine();
+safeEmotionRestore.restore(poisonedEmotionState);
+const safeEmotionSnapshot=safeEmotionRestore.snapshot();
+assert.equal(safeEmotionSnapshot.episodes,1,'episode count is reconciled with valid restored history');
+assert.equal(safeEmotionSnapshot.history.length,1,'malformed and duplicate emotion episodes are removed');
+assert.equal(safeEmotionSnapshot.feelings.length,1,'malformed and duplicate feeling episodes are removed');
+assert.equal(safeEmotionSnapshot.lastTick,-1,'an invalid tick is reset instead of leaking Infinity');
+assert.equal(safeEmotionSnapshot.lastAt,0,'an invalid timestamp is reset');
+assert.equal(safeEmotionSnapshot.meanStress01,.2,'malformed aggregates fall back to safe defaults');
+assert.equal(safeEmotionSnapshot.interoception.regulationPressure01,.18,'invalid interoceptive pressure is reset');
+assert.equal(safeEmotionSnapshot.interoception.lastObserved.energy01,.68,'invalid body telemetry is reset');
+assert.equal(safeEmotionSnapshot.interoception.predicted.load01,.38,'out-of-range predictions are reset');
+assert.equal(safeEmotionRestore.outcomeCalibration('rest'),null,'malformed calibration records cannot steer action bias');
+assert.equal(safeEmotionRestore.outcomeCalibration('verify')?.attempts,3,'valid action calibration is preserved');
+let emotionGetterCalls=0;
+const hostileEmotionState={...es};
+Object.defineProperty(hostileEmotionState,'episodes',{enumerable:true,get(){emotionGetterCalls++;return 999;}});
+const hostileEmotionRestore=new EmotionAppraisalEngine();
+hostileEmotionRestore.restore(hostileEmotionState);
+assert.equal(emotionGetterCalls,0,'restoration must not execute accessors from persisted state');
+assert.equal(hostileEmotionRestore.snapshot().episodes,0,'an accessor-backed top-level snapshot fails closed');
+
 const h = new P66InteroceptiveHomeostasis();
 const high = h.observe({tick:1,at:1,energy01:.2,thermal01:.9,capacity01:.25,load01:.9,awake:true,uncertainty01:.8,predictionError01:.8,novelty01:.2});
 assert.equal(high.mode,'recover'); assert.ok(high.pressure01>.5);
