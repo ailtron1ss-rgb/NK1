@@ -40,7 +40,7 @@ export function resolveCognitiveRoutingPolicy(
       allowMatchedCounterfactual: false,
       reason: 'critical-interrupt',
       interruptPriority01: priority,
-      cognitiveCycleDelayMultiplier01: 1,
+      cognitiveCycleDelayMultiplier01: criticalType ? 1 : Math.max(0.75, 1 - priority * 0.25),
     };
   }
   if (active) {
