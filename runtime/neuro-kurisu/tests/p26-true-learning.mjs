@@ -59,5 +59,5 @@ assert.throws(
 assert.deepEqual(hardened.snapshot(),hardenedBefore,
   'rejected feature-level feedback must preserve the previous model snapshot');
 assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'feature-level updates must preserve finite biases');
-assert.equal(hardened.snapshot().updates,2);
+assert.equal(hardened.snapshot().updates,0, 'rejected malformed controls must not increment update count');
 console.log(`P26_TRUE_LEARNING=PASS updates=${learner.snapshot().updates} heldout=${learned.toFixed(3)} preExplore=${(before.reduce((a,b)=>a+b,0)/before.length).toFixed(3)} finiteGuard=PASS`);
