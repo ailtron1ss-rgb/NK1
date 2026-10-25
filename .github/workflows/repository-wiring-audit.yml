@@ -23,6 +23,7 @@ on:
   pull_request:
     branches:
       - workpass70-source
+      - feature/memory-budget-restore-integrity-20261025
     paths:
       - ".github/workflows/**"
       - "package.json"
