@@ -7,6 +7,16 @@
 
 ---
 
+## NK1 WorkPass339 — Repair cross-layer CI contracts and malformed causal restore (2026-10-25)
+
+- [CAUSAL RESTORE] Causal-domain persistence rejects malformed recent records instead of normalizing them into trusted evidence; invalid records force FAIL, revoke the last durable receipt, replace the success fingerprint, and reduce restored success/score credit.
+- [REGRESSION] Extended closed-loop failure-closure coverage to assert failure status, corrected counters, reduced score, replacement fingerprint, and removal of malformed causal records.
+- [NULLABILITY] Guarded optional causal-experience events before ingesting replay, verification, and skill-repair signals; aligned the trusted shadow registrar interface with its actual returned context.
+- [TEST FIXES] Removed TypeScript annotations from JavaScript avatar tests and corrected the P23 outcome-order fixture to use the verifier identity declared by its task manifest.
+- [VALIDATION] Exact-head GitHub Actions are in progress; these source changes are not considered fully validated until CI completes.
+
+---
+
 ## NK1 WorkPass338 — Reject malformed runtime closure evidence on restore (2026-10-25)
 
 - [RESTORE] `RuntimeClosureLedger.restore()` now treats dropped malformed persisted records as a failure instead of silently accepting a stale `PASS` summary.
