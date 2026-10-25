@@ -1,3 +1,11 @@
+## NK1 learning ledger — make valid rejection history restorable (2026-10-25)
+
+- Aligned VerifiedOutcomeLedger.restoreSnapshot() with the complete OutcomeRejection contract. Snapshots containing duplicate-evidence-ref or invalid-evidence-reference rejections are no longer rejected solely because the restore allow-list omitted those valid codes.
+- Extended the ledger persistence regression to generate an invalid-evidence-reference rejection and include it in the checksummed serialization round-trip.
+- The earlier WorkPass108/ledger-persistence CI failure demonstrated this mismatch on an older commit. The fix is now on feature/learning; this pass has not yet obtained an exact-HEAD Actions result.
+
+---
+
 ## NK1 embodiment — preserve stable Live2D expressions (2026-10-25)
 
 - Added expression-state caching in the Live2D viewer so repeated emotion/embodiment updates do not restart the same expression every frame or message.
