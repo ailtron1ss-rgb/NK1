@@ -83,6 +83,10 @@ async function runBody(file, low){
 const root=await mkdtemp(join(tmpdir(),'nk172-')); const stableFile=join(root,'stable.json'), stressFile=join(root,'stress.json');
 const stable=await runBody(stableFile,false), stressCore=await runBody(stressFile,true);
 const stableS=stable.emotionAppraisalSnapshot(), stressS=stressCore.emotionAppraisalSnapshot();
+const lifeDecisionRows = stable.autonomousCognitiveLifeSnapshot().predictions;
+assert.ok(lifeDecisionRows.length > 0, 'core feedback must register autonomous-life predictions');
+assert.ok(lifeDecisionRows.every(row => row.contextKey.length <= 180 && row.contextKey.trim() === row.contextKey),
+  'causal context keys must be normalized at the autonomous-life integration boundary');
 assert.ok(stableS.interoception.cycles>=10 && stressS.interoception.cycles>=10);
 assert.ok(stressS.interoception.regulationPressure01>stableS.interoception.regulationPressure01,'body state must alter affective regulation pressure');
 assert.ok(stressS.meanStress01>stableS.meanStress01,'sustained bodily stress must alter emotion state');

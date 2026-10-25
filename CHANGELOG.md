@@ -1,3 +1,11 @@
+## NK1 live cognitive feedback — align causal context keys across learning ledgers (2026-10-25)
+
+- Normalized the causal context once at the OrganismCore feedback boundary before writing to autonomous-life and verified-autonomous-life prediction ledgers, which accept at most 180 trimmed characters.
+- This preserves the wider causal-loop key for its existing consumers while preventing valid live feedback from throwing when that key contains long or boundary whitespace.
+- Extended the emotion/interoception runtime regression to assert non-empty, normalized autonomous-life decision context records.
+
+---
+
 ## NK1 durable skill-store identity — bind candidate IDs to revision provenance (2026-10-25)
 
 - Fixed the atomic-file persistence validator to compute candidate identity using the same five-part tuple as the live skill store, including the provenance fingerprint (or explicit `null`).
