@@ -71,7 +71,8 @@ assert.equal(reconciled.completeCycles,8);
 assert.equal(reconciled.incompleteCycles,2);
 assert.equal(reconciled.brokenLineages,2);
 assert.equal(reconciled.completeCycles+reconciled.incompleteCycles,reconciled.cycles);
-assert.equal(reconciled.lastComplete,false);
+assert.equal(reconciled.lastComplete,true,
+  'lastComplete describes the latest cycle, not whether every historical cycle completed successfully');
 
 
 const undercountRestore=new UnifiedCognitiveCycle();
