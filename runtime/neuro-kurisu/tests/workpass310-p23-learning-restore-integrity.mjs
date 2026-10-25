@@ -55,7 +55,10 @@ assert.equal(restored.skills.length,1);
 assert.equal(restored.ablations.length,1);
 assert.equal(restored.evidenceDebt.length,1);
 assert.equal(restored.processedTraceIds.length,2048);
-assert.equal(restored.processedTraceIds[0],'trace-newest','retain newest trace IDs');
+assert.equal(restored.processedTraceIds[0],'trace-127','durable experience identities must lead the reconciled dedupe cache');
+const newestCacheOnlyTraceIndex=restored.processedTraceIds.indexOf('trace-newest');
+assert.ok(newestCacheOnlyTraceIndex>0&&newestCacheOnlyTraceIndex<2048,
+  'recent cache-only trace IDs must remain after the durable experience identities');
 assert.deepEqual(restored.replayedTraceIds,['replay-newest']);
 assert.equal(restored.checksum.digest,'');
 assert.equal(restored.checksum.verificationFailures,0);
