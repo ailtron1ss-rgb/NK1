@@ -1,3 +1,10 @@
+## NK1 WorkPass543 — add deterministic recall goldset (2026-10-25)
+
+- Expanded episodic intent detection for explicit English reminder/recall requests and Russian `напомни` / restore-chat-context phrasing.
+- Added an 18-query deterministic gold-fixture benchmark across identity and episodic recall, including lexical-tied semantic decoys and social fragments that only carry role/index/relationship metadata.
+- The benchmark prints intent accuracy, Recall@1 and MRR and requires exact rank-1 selection on this controlled protocol; it explicitly does not claim production-corpus quality.
+- Wired the benchmark into Memory Recall Validation. CI is pending on this new head.
+
 ## NK1 WorkPass542 — repair validation contract mismatches (2026-10-25)
 
 - Corrected P26 workflow commands to invoke the three existing regression files directly; the previous npm script names were absent from `package.json`, so validation stopped before executing them.
