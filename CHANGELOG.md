@@ -1,8 +1,8 @@
 ## NK1 WorkPass535 — make canon value tensions context-sensitive (2026-10-25)
 
 - Connected the five canonical character conflicts to normalized live-Core context. Truth/comfort, autonomy/cooperation, skepticism/curiosity, composure/vulnerability and usefulness/privacy now update as bounded, smoothed state instead of remaining static labels.
-- Kept the canonical conflict dimensions code-owned; the update uses existing novelty, uncertainty, goal-pressure and identity-gap signals, and the resulting tension vector remains covered by the existing personality snapshot/restore path.
-- Added regression coverage for canon/vector alignment, context-driven change, and persistence across restore. Focused GitHub Actions confirmation is pending; this is a state-model improvement, not a claim that every tension is yet connected to dialogue planning or action arbitration.
+- Added small, bounded conflict-to-action-bias links (for example, truth/comfort tension modestly favors verification over a comfort-first response). These biases remain subordinate to Core utilities and identity gates.
+- Kept canonical conflict dimensions code-owned; regression coverage now checks canon/vector alignment, context-driven change, persistence across restore, and a causal effect on decision bias. Focused GitHub Actions confirmation is pending; this does not claim that all tensions are yet connected to dialogue planning.
 
 ---
 
