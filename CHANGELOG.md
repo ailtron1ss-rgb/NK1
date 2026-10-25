@@ -1,3 +1,11 @@
+## NK1 WorkPass334 — restore learning regression script wiring (2026-10-25)
+
+- [CI] Registered the real WorkPass291 reflective-payload, WorkPass292 evidence-lanes, and WorkPass293 P23-revision test files in `runtime/neuro-kurisu/package.json`; the workflows were previously failing before tests ran because their script names were missing.
+- [VALIDATION] Package JSON parses and each script points to an existing test file. Exact-head outcomes for the rerun workflows are pending; registration alone is not counted as a passing test.
+- [SCOPE] Changes are limited to the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass333 — calibrate intrinsic drive in endogenous goal scoring (2026-10-25)
 
 - [FIX] Replaced the unbounded raw vector dot-product contribution with normalized cosine alignment in `B272EndogenousGoalGenesis`; scaled the four-way candidate index to `[0,1]` and rebalanced weights to keep intrinsic drive visible before `clamp01` saturation.
