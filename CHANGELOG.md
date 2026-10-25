@@ -1,3 +1,12 @@
+## NK1 WorkPass339 — normalize P23 learning constructors for Node 24 (2026-10-25)
+
+- [COMPATIBILITY] Converted constructor parameter properties to explicit readonly fields/assignments in `P23CompoundRepairRevisionCoordinator` and `P23TrustedShadowLearningScheduler`; these classes are imported by the P23 runtime regression graph and are not supported by Node 24's strip-only TypeScript loader.
+- [CI] Added `P23TrustedShadowLearningScheduler.ts` to the WorkPass293 path filter so future constructor/runtime changes run the P23 revision integration checks.
+- [VALIDATION] This follows earlier confirmed runtime-loader failures in the versioned skill store, atomic file adapter, and trusted-run registry; exact-head Actions results remain in progress/pending.
+- [SCOPE] Changes are limited to the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass338 — remove remaining P23 runtime parameter properties (2026-10-25)
 
 - [COMPATIBILITY] Converted `AtomicFileTrustedSkillShadowRunRegistry`'s constructor parameter property into an explicit readonly field/assignment. WorkPass293 had progressed past the first store and found this second non-erasable TypeScript constructor form.
