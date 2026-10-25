@@ -1,3 +1,10 @@
+## [NK1][core] Select the correct embodiment checkpoint in WorkPass319 (2026-10-25)
+
+- The cycle-order test was indexing the first occurrence of `setEmbodiment` in `OrganismRuntime`, which belongs to an earlier sleep-transition path and therefore necessarily appears before the later `closeB380TemporalLife` call.
+- Updated the regression to find the embodiment commit after the life-course update and explicitly require it to exist before canonical cycle closure. Production ordering already satisfies this intended sequence; the test now checks the relevant occurrence.
+
+---
+
 ## [NK1][memory] Correct the future-evidence doctor fixture boundary (2026-10-25)
 
 - WorkPass318 was setting `observedAt` only 60 seconds in the future while MemoryOS2 intentionally reports future-evidence warnings only when the timestamp exceeds a five-minute tolerance.
