@@ -98,6 +98,7 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
   const expectedId = createHash('sha256').update(JSON.stringify([
     value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+    value.revisionProvenance === undefined ? null : payloadFingerprint(value.revisionProvenance),
   ])).digest('hex');
   if (value.candidateId !== expectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
