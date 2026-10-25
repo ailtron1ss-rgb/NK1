@@ -1,3 +1,11 @@
+## NK1 WorkPass544 — close durable skill-store and independent-evaluation regressions (2026-10-25)
+
+- [DURABLE SKILL STORE] Aligned persisted candidate identity verification with the canonical five-field candidate ID, including validated revision-provenance fingerprint (or `null`). Restart coverage now checks both ordinary and provenance-bound candidates.
+- [SIGNED SHADOW E2E] Updated the fixture to use the canonical candidate-ID envelope so the end-to-end signed observation path reaches verification rather than failing on a stale hash formula.
+- [INDEPENDENT EVALUATION] Kept successful sandbox execution distinct from verifier trust. A failed verifier still blocks task success and trusted trace admission, but no longer mislabels an execution that actually ran as non-executable.
+- [HOST-OWNED EVALUATION] Restored the test executable's secure mode after the expected permission-denial assertion, so the following path-replacement test exercises the intended run-root identity guard.
+- [VALIDATION] Exact-head CI on `6ea1ea43ae2a151b2e6190a22214b4e38619e9dc`: all 12 active branch workflows completed successfully, including WorkPass110, WorkPass108, P26, emotion/Live2D, replay, reservoir, verified outcomes, experience lanes, cognitive contracts and WorkPass291/293/294. This documentation commit triggers a fresh run; keep the branch draft until that exact head is green.
+
 ## NK1 WorkPass543 — harden emotion-to-action continuity and branch readiness (2026-10-25)
 
 - [AFFECT → AGENCY] Stale emotion/mood/attention contributions now decay in `EmotionAppraisalEngine.actionBias`; explicit evaluation time supports deterministic replay, while live homeostatic regulation remains active.
