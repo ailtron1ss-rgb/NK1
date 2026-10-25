@@ -1,3 +1,12 @@
+## NK1 WorkPass328 — Align installer and diagnostics with Node 24 (2026-10-25)
+
+- **FIXED:** Replaced the hard-coded Node.js 22 preflight in `tools/super-install.mjs` with the shared rule sourced from root `.nvmrc`; it now also requires npm `>=10.8.0`, matching the app/runtime engine declarations.
+- **FIXED:** `tools/super-doctor.mjs` uses the same Node/npm policy and resolves the repository root from its own location instead of assuming the current shell directory is the repository.
+- **WIRED:** Added the runtime-version helper and regressions for major/exact Node pins, npm minimums, installer failure paths and lockfile safety; registered them in `audit:quick` and WorkPass71 CI.
+- **VERIFICATION LIMIT:** Changes and test wiring are committed on `workpass328-node24-runtime-pin`; this entry does not claim the new tests, full typechecks, dependency installation or release gates passed. Prior hosted Actions attempts stopped before runner allocation, so exact-head execution evidence is still required.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
