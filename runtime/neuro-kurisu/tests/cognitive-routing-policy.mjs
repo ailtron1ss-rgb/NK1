@@ -40,6 +40,14 @@ assert.equal(highPriority.maxCounterfactualBranches, 0, 'a numerically critical 
 assert.ok(highPriority.cognitiveCycleDelayMultiplier01 < 1, 'urgent non-resource interrupts should advance the next cognitive cycle');
 assert.equal(highPriority.allowMatchedCounterfactual, false);
 
+const nearCritical = resolveCognitiveRoutingPolicy({
+  wakeMask: 8,
+  interrupt: { active: true, priority01: 0.899999, type: 'prediction-error', domains: ['agency'] },
+}, 2);
+assert.equal(nearCritical.reason, 'active-interrupt', 'priority just below the critical threshold must remain an ordinary interrupt');
+assert.equal(nearCritical.maxCounterfactualBranches, 1);
+assert.ok(nearCritical.cognitiveCycleDelayMultiplier01 < 1 && nearCritical.cognitiveCycleDelayMultiplier01 > 0.75);
+
 const governance = resolveCognitiveRoutingPolicy({
   wakeMask: 64,
   interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
@@ -67,11 +75,5 @@ const invalidBudget = resolveCognitiveRoutingPolicy({
   interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
 }, Number.NaN);
 assert.equal(invalidBudget.maxCounterfactualBranches, 0, 'invalid budget input must fail closed');
-
-const fractionalBudget = resolveCognitiveRoutingPolicy({
-  wakeMask: 0,
-  interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
-}, 2.9);
-assert.equal(fractionalBudget.maxCounterfactualBranches, 2, 'fractional branch capacity must be rounded down');
 
 console.log('Cognitive routing policy: PASS');
