@@ -1368,9 +1368,11 @@ export class OrganismCore {
                 throw new Error('p36-developmental-outcome-evaluator-host-config-invalid');
             }
             const experimentSource = p36Evaluator?.observationSource;
+            const canonicalSourceIdentity = (value: unknown) =>
+                typeof value === 'string' ? value.normalize('NFKC').trim().toLocaleLowerCase() : '';
             if (experimentSource &&
-                (experimentSource.sourceId === source.sourceId ||
-                 experimentSource.independenceKey === source.independenceKey)) {
+                (canonicalSourceIdentity(experimentSource.sourceId) === canonicalSourceIdentity(source.sourceId) ||
+                 canonicalSourceIdentity(experimentSource.independenceKey) === canonicalSourceIdentity(source.independenceKey))) {
                 throw new Error('p36-evaluator-authorities-must-be-distinct');
             }
             this.cognitiveRuntime.actionGateway.registerTool({
