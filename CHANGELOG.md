@@ -1,3 +1,17 @@
+## Repository wiring audit hardening — 2026-10-25
+
+- Fixed quoted Node.js/Python entry-point parsing so paths containing spaces are checked as one path rather than truncated.
+- Corrected YAML comment handling so `#` inside quoted scalar names is not treated as a comment.
+- Reworked workflow-step discovery to respect each `steps:` block's indentation and parse both inline `- run:` / `- uses:` forms as well as multiline steps. Local `uses: ./...` references must resolve to a directory with `action.yml` or `action.yaml`.
+- Normalized shell line continuations and recognized `||` command boundaries as well as `&&` and `;`.
+- Added canonical-path boundary checks (including symlink resolution) for executable paths, nested npm package prefixes, working directories, `cd` targets, and relative imports; missing file tails are resolved against their nearest existing ancestor. Rejected `cd`/`working-directory` paths no longer contaminate later resolution, and the audit checks `needs` edges between workflow jobs.
+- Added stress regressions for 120 valid command paths and 120 uniquely missing entry points (240 path cases), plus quoted paths, shell continuations, YAML quoting, traversal attempts, and eight source-file extensions.
+- Wired the dedicated validation workflow to this focused fix branch and its pull-request base so exact-head checks can run before integration.
+
+Validation is intentionally pending until the fresh branch's GitHub Actions results are inspected; test cases are coverage, not a claim that 120 independent production defects were already fixed.
+
+---
+
 ## Cognitive dependency frame integrity — 2026-10-25
 
 - The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
