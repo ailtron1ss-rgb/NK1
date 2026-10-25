@@ -5,6 +5,9 @@
 - **WIRED:** Added the runtime-version helper and regressions for major/exact Node pins, npm minimums, installer failure paths and lockfile safety; registered them in `audit:quick` and WorkPass71 CI.
 - **VERIFICATION LIMIT:** Changes and test wiring are committed on `workpass328-node24-runtime-pin`; this entry does not claim the new tests, full typechecks, dependency installation or release gates passed. Prior hosted Actions attempts stopped before runner allocation, so exact-head execution evidence is still required.
 
+- **FIXED:** Corrected both unified dev and production launchers to start the canonical runtime at `runtime/neuro-kurisu/src/server/server.mjs` rather than a non-existent root-relative `src/server/server.mjs` path; they now resolve their repository root via `fileURLToPath`.
+- **HARDENED:** Both launchers preflight required entrypoints, pass `ORGANISM_RUNTIME_URL` to the research bridge, and stop sibling services if any required child exits or fails to spawn. Added regression coverage for the runtime entrypoint and gateway/Vite port contract.
+
 ---
 
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
