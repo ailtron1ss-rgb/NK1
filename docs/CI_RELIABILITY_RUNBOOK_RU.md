@@ -28,6 +28,14 @@
 
 ## Правила предотвращения повторения
 
+### Контракт TypeScript для runtime и Node.js-зависимостей
+
+- Перед semantic runtime typecheck устанавливать canonical locked toolchain: `npm ci --prefix app` из корня репозитория. Именно `app/package-lock.json` фиксирует версии TypeScript и `@types/node`, а `runtime/neuro-kurisu/tsconfig.clean.json` ищет Node typings в `../../app/node_modules/@types`.
+- `runtime/neuro-kurisu/scripts/typecheck-runtime.mjs` должен выбирать pinned compiler из `app/node_modules/typescript/bin/tsc` (или другой явно зафиксированный compiler) и запускать `-p tsconfig.clean.json --noEmit`.
+- Если compiler не установлен, результат — `BLOCKED`, а не зелёный status. Не использовать глобальный `tsc` как незаметный fallback и не выдавать Node syntax parsing за semantic TypeScript typecheck.
+- После установки зависимостей повторить exact-head check. Если ошибки остаются, классифицировать оставшиеся TS diagnostics как реальные type/contract issues и исправлять их; не ослаблять `strict` и не скрывать ошибки только ради зелёного CI.
+
+
 - Использовать актуальные версии GitHub Actions, совместимые с текущим runner; Node.js 20 для JavaScript Actions больше не поддерживается на GitHub-hosted runners.
 - Версию **Node.js проекта** брать из корневого `.nvmrc`; не смешивать её с Node.js runtime, на котором запускается сама JavaScript Action.
 - Сверять выбранную версию Node с `.nvmrc` перед тестами.
