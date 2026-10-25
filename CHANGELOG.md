@@ -1,3 +1,13 @@
+## Repository-pinned syntax audit portability — 2026-10-25
+
+- Removed the hard-coded TypeScript import from a global Node 22 installation. Under the Node 24 CI workflow that path does not exist, so `audit:quick` was unable to start its executable-syntax scan despite the locked app dependency being installed.
+- The syntax audit now loads TypeScript from the runtime package when present, otherwise from the app's lockfile-installed dependency. If neither is available, it raises an actionable setup error rather than depending on one host's NVM directory.
+- Added the syntax-audit script to the repository contract workflow path filters.
+
+Validation: the new exact-head contract run must complete `audit:syntax` and the remaining broad app/runtime checks.
+
+---
+
 ## Host-owned evaluation fixture isolation — 2026-10-25
 
 - Fixed the WorkPass243 subprocess regression fixture: after its negative test sets the executor's shared inode to group-writable mode and verifies the runtime rejects it, the test now restores mode `0700` before testing scratch-root replacement.
