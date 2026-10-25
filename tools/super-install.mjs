@@ -62,6 +62,11 @@ for (const workspace of workspaces) {
       console.error(`SUPER_INSTALL=FAIL workspace=${workspace.name} reason=lockfile-root-mismatch manifest=${manifest.name}@${manifest.version ?? 'unspecified'} lock=${lockRoot?.name ?? 'missing'}@${lockRoot?.version ?? 'unspecified'}`);
       process.exit(1);
     }
+    const engineMismatch = ['node', 'npm'].some((key) => manifest.engines?.[key] !== lockRoot.engines?.[key]);
+    if (engineMismatch) {
+      console.error(`SUPER_INSTALL=FAIL workspace=${workspace.name} reason=lockfile-engine-mismatch manifestNode=${manifest.engines?.node ?? 'missing'} lockNode=${lockRoot.engines?.node ?? 'missing'} manifestNpm=${manifest.engines?.npm ?? 'missing'} lockNpm=${lockRoot.engines?.npm ?? 'missing'}`);
+      process.exit(1);
+    }
   } catch (error) {
     console.error(`SUPER_INSTALL=FAIL workspace=${workspace.name} reason=invalid-package-or-lockfile message=${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
