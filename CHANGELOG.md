@@ -1,3 +1,10 @@
+## CI follow-up — drift-test precision, candidate ID fixture and replay balance (2026-10-25)
+
+- [TEST FIX] Adaptive-window drift regression now compares the running estimate with a small numeric tolerance; the detector’s exact floating-point accumulation yielded `0.19999999999999962` for a stationary stream of `0.2`.
+- [TEST FIX] The signed shadow-observation e2e fixture now includes the canonical fifth candidate-ID tuple element (`null` when revision provenance is absent). This matches the runtime signer/stager’s current identity contract and does not change production verification.
+- [BENCHMARK] P26 synthetic interleaved sweep now applies the same reduced replay update rate (`0.02`) to all interleave strategies while current-task updates remain at `0.18`. The prior `0.06` replay rate with `stride=1` caused replay updates at the same cadence as current updates and drove one seed’s new-task accuracy down to `0.520`; the `>0.60` task-performance threshold remains unchanged, and the benchmark continues to record old/new accuracy and replay counts.
+- [EVIDENCE] Current-head CI confirmed runtime/app typechecks and WorkPass293, WorkPass292 and WorkPass99 passes, then surfaced these three points. Fresh exact-head runs determine whether the replay policy now retains useful new-task accuracy.
+
 ## CI follow-up — atomic candidate fingerprints and action-grounded goal learning (2026-10-25)
 
 - [FIX] Atomic skill-store validation now matches the candidate ID format used by the writer: the optional revision-provenance fingerprint is the fifth tuple element, represented as `null` for original candidates. Revision provenance is validated before hashing. This repairs a real persistence incompatibility that caused every new file-backed candidate write to be rejected by `isSnapshot`/CAS.

@@ -166,3 +166,12 @@ The 850d exact-head regression matrix identified two functional compatibility is
 2. A real world/chat outcome can be associated with the final policy-selected action, which may differ from the B272 goal generator's last generated action. Passing the selected action unconditionally to B272 caused `B272 outcome action must match the generated action` and bubbled as a server HTTP 500. Core now credits B272 only when the exact selected action matches the goal generator's action; otherwise it skips B272-specific credit instead of corrupting goal/action causality. Strict validation remains enabled.
 
 The transfer metric regression test now compares doubles with a small tolerance, restore tests acknowledge reconstruction of `replay-1` from the durable replay row, and replay-sweep assertions will report the seed/strategy and measured score. The `>0.60` synthetic accuracy criterion has not been weakened.
+
+## Sixteenth follow-up — exact float comparison and interleaved learning balance
+
+The current exact-head run on `1ef8ee0` confirmed:
+- P26 continual transfer now passes, but the next ADWIN detector assertion used exact equality for a floating-point stream mean. The test now uses a `1e-12` bound.
+- The signed shadow E2E test failed on `staged.candidateId`; its fixture hash omitted the explicit fifth `null` element used by the writer when no revision provenance is supplied. The fixture now matches the five-field identity tuple, while production identity/authentication stays unchanged.
+- The replay policy sweep’s `interleave-1 seed=17` produced only `0.520` new-task accuracy. The benchmark interleaves one old record per fresh record at that stride, and the previous replay step `0.06` was a third of the fresh step `0.18`, allowing old-task updates to suppress the new task. The replay rate is now uniformly `0.02` across all interleaved strategies (same experiment across strategies), with the `>0.60` quality threshold kept intact. It still records retention and new-task accuracy so this is observable rather than hidden.
+
+**Status: committed; exact-head replay and signed-observation tests remain the acceptance gate.**

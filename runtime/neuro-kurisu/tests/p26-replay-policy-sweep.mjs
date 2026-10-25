@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { P26TrueLearningEngine } from '../src/organism/learning/P26TrueLearningEngine.ts';
 
 // Multi-seed synthetic diagnostic. It compares retention/plasticity, not generalization.
+// The replay step is kept lower than the current-task step so stride=1 interleaving
+// cannot dominate the fresh-task gradient by sheer update count.
 const actions=['respond','explore','verify','rest','reflect','wait','defer'];
 const seeds=[3,17,41];
 const epochs=6;
