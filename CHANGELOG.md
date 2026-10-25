@@ -1,3 +1,13 @@
+## NK1 WorkPass532 — derive P36 holdout scores from signed outcome ledger (2026-10-25)
+
+- Added `P36VerifiedOutcomeLedgerEvaluator.ts`, a host-configurable adapter for `OrganismConfig.p36IndependentEvaluator`. It computes task-balanced baseline/treatment rates from the canonical `VerifiedOutcomeLedger` and counts only outcomes whose signed artifacts still have process-local authenticated provenance.
+- Requires an exact canonical task manifest, holdout split, matching evaluator version/family/method pair, and complete task coverage for at least four paired independent seeds. The executor and verifier independently recompute the measurement; caller-provided scores must match the ledger-derived values.
+- Rejects missing signatures, non-holdout or absent task families, manifest mismatches, invalid score claims, and serialized/restored rows that have not had their original signed artifacts re-ingested. Evidence rows now retain baseline/treatment methods, task family, and manifest fingerprint; P36 promotion statistics are scoped to a single evaluator protocol instead of mixing unrelated evaluation runs.
+- Added `test:p36:verified-ledger-evaluator` and wired the source, test, and command into `P26 Learning Validation`.
+- **Epistemic boundary:** this adapter only certifies an instantaneous signed holdout comparison and emits `delayMs: 0`. It cannot claim delayed retention or transfer; a separate delayed observer is required before those gates can pass. Exact-HEAD CI/typecheck is not yet confirmed, and no empirical organism learning gain is claimed. `main` and the Release ZIP remain unchanged.
+
+---
+
 ## NK1 WorkPass531 — make the P36 maturity event discriminant explicit (2026-10-25)
 
 - Added `kind?: 'developmental-outcome'` to the P36 maturity input contract and engine method signature. The canonical normalized verifier tuple always carries the required `kind: 'developmental-outcome'`, and Core uses that discriminant to choose the maturity lane.
