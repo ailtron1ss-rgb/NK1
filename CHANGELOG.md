@@ -1,3 +1,11 @@
+## NK1 learning validation — repair signed evidence and ledger recovery fixtures (2026-10-25)
+
+- Bound the P36 signed-ledger evaluator regression to the actual hypothesis created by its self-development engine, so the signed verifier input and recipient hypothesis have the same identity.
+- Added the canonical `invalid-evidence-reference` rejection code to durable `VerifiedOutcomeLedger` snapshot restoration. The ledger may record this validated rejection during ingestion; omitting it from the restore allowlist made a valid snapshot unrestorable.
+- These changes repair the test/evidence identity and recovery contract; they do not make a signed point-in-time holdout promotable or authorize unsigned restored rows.
+
+---
+
 ## NK1 P36 integration — bind ActionGateway receipts to the decision tick (2026-10-25)
 
 - Corrected three decision-trace link guards in `OrganismCore`: the organism increments `state.tick` before constructing a decision, so a valid persisted trace has `trace.tick === trace.stateBefore.tick + 1`.
