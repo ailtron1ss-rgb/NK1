@@ -1,3 +1,11 @@
+## WorkPass... — cross-layer repository wiring and strict test typing (2026-10-25)
+
+- Added `tools/verify-repository-wiring.mjs` to check reachable npm-script chains, recursive script cycles, referenced Node/Python entry points, exact workflow path filters, local actions, working directories, setup-node file inputs, and `workflow_run` workflow names.
+- Added isolated regression fixtures for healthy and intentionally broken wiring, including missing files/scripts, absent workflow names and recursive npm-script cycles.
+- Added `audit:repo-wiring` and `test:repo-wiring` to the root package scripts and connected them to `audit:quick`; added a focused GitHub Actions workflow using the repository's `.nvmrc`.
+- Corrected the avatar-storage test harness's strict JavaScript typing and unsafe `delete globalThis.window` operations identified by the previous exact-head validation.
+- Validation status: pending the new exact-head workflow result. No app/runtime test pass or production release is claimed by this entry.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
