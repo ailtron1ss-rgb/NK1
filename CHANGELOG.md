@@ -1,3 +1,11 @@
+## NK1 learning validation — isolate verifier failure fixture (2026-10-25)
+
+- Corrected the independent-evaluator test case for unavailable verifier: its executor now returns both expected steps, so the test measures verifier failure rather than incomplete execution.
+- Execution status remains distinct from verifier/task-success status; the test continues to require a fail-closed task verdict.
+- **Verification boundary:** exact-head P26 rerun is required.
+
+---
+
 ## NK1 learning validation — align evaluator fingerprint fixture (2026-10-25)
 
 - Updated the snapshot regression's expected task-plan fingerprint to include the canonical `taskFamily` field (`null` when absent), matching the runtime's fingerprint material.
