@@ -1,3 +1,11 @@
+## [NK1][learning] Gate B272 goal learning on actual generated-action identity (2026-10-25)
+
+- The local-provider HTTP E2E exposed a real integration mismatch: `OrganismCore` passed the final arbitrated action to `B272EndogenousGoalGenesis.learnFromOutcome` even when that action differed from the generator's recorded `currentAction`; the engine correctly rejected the mislabeled credit and the chat endpoint returned 500.
+- Both synthetic/no-world-transition and real-world-transition outcome paths now credit B272 only when `currentGoal().action === trace.selected.action`. When policy arbitration selects a different action, that outcome is still available to the actual-action learning owners (B273, policy, and outcome models), but is not falsely attributed to B272's unexecuted action.
+- The strict check inside B272 remains unchanged; no speculative action receives credit. Validate with the fake-provider HTTP E2E and exact-head core regression.
+
+---
+
 ## [NK1][core] Validate supplied optional phases in the causal cognitive-cycle spine (2026-10-25)
 
 - Fixed a verifier gap: `verifyOperationalCycle` previously validated only the six legacy core phases and silently ignored an explicitly supplied optional phase ID if that ID did not exist.
