@@ -294,6 +294,24 @@ try {
   assert.ok(migratedCausalNoise.quarantinedExecutionIds.includes('exec-quarantine-retained-after-noise'),
     'invalid trailing tombstone rows must not erase a valid execution quarantine during migration');
 
+  const recordNoiseSeed = structuredClone(migrationSeed);
+  const retainedHistoryRecord = {
+    at: 100, tick: 2, tool: 'device.read', ok: true, verified: false, basis: 'none',
+    confidence01: 0, externalObservation: false, executionId: 'exec-history-retained-after-noise',
+  };
+  recordNoiseSeed.system.outcomeVerification = {
+    ...(recordNoiseSeed.system.outcomeVerification ?? {}),
+    records: [
+      ...Array.from({ length: 110 }, () => ({ at: NaN, tool: '', ok: 'invalid', verified: 'invalid', basis: 'bad' })),
+      retainedHistoryRecord,
+    ],
+    projectionIndex: [],
+    evidenceRevisions: [],
+  };
+  const migratedNoisyHistory = migratePersistedOrganism(recordNoiseSeed).system.outcomeVerification.records;
+  assert.ok(migratedNoisyHistory.some(row => row.executionId === retainedHistoryRecord.executionId),
+    'invalid leading outcome-history rows must not evict a valid older record during migration');
+
   const migrationRevision = {
     revisionId:'outcome-revision:migration-retention', executionId:'exec:migration-retention', tool:'device.read',
     revisionNumber:1, source:'authoritative-provider-receipt', providerReceiptHash:'a'.repeat(64),
