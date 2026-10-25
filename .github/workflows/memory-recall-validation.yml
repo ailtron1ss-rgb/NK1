@@ -5,6 +5,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/tests/memory-query-intent-workpass51.mjs"
+      - "runtime/neuro-kurisu/tests/memory-autobiographical-recall-goldset-workpass543.mjs"
       - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
       - "runtime/neuro-kurisu/tests/memory-subsystem-runtime-persistence.mjs"
       - "runtime/neuro-kurisu/tests/memory-causal-persistence-projection.mjs"
@@ -47,6 +48,10 @@ jobs:
       - name: Test bilingual autobiographical and session recall
         working-directory: runtime/neuro-kurisu
         run: npm run test:memory-query-intent-workpass51
+
+      - name: Benchmark deterministic autobiographical recall gold fixtures
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/memory-autobiographical-recall-goldset-workpass543.mjs
 
       - name: Test bounded deterministic retrieval coverage
         working-directory: runtime/neuro-kurisu
