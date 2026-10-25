@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from '/opt/nvm/versions/node/v22.16.0/lib/node_modules/typescript/lib/typescript.js';
+import { createRequire } from 'node:module';
+
+// Resolve the compiler pinned by app/package-lock.json rather than a runner-global path.
+const requireFromApp = createRequire(new URL('../../../app/package.json', import.meta.url));
+const ts = requireFromApp('typescript');
 import { spawnSync } from 'node:child_process';
 const root=process.cwd();
 const skip=new Set(['legacy-original','node_modules','state','.git']);
