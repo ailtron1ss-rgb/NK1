@@ -2,19 +2,19 @@
 
 - Hardened the migration retention filter again: even a candidate with a correct canonical identity fingerprint is rejected before the cap if its `verifiedExternal` flag disagrees with the normalized record's external-postcondition assessment.
 - Expanded the migration regression to include 2,100 genuine-fingerprint rows with forged `verifiedExternal: false` alongside 2,100 fingerprint-forged rows; neither group may crowd the valid original projection out of the 2,048-row window.
-- **Validation boundary:** migration hardening `04b761c0f811d13bd3ca33d93581c274c198c803` and regression `7ba1ee6f92b318a86552d9b0402af46053ec8601` are committed; hosted validation is pending.
+- **Validation:** [GitHub Actions run #121](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171370289) passed on regression head `c6cab0cf148f02eea3d959cd2c97838b83bc1325`, covering the combined fingerprint-forgery and verification-flag attacks.
 
 ## NK1 Persistence — validate migrated projection fingerprints before retention cap (2026-10-25)
 
 - Fixed the `StateMigrations` projection-index path so it no longer slices the raw tail before validation. It normalizes candidates, verifies the record execution ID and canonical SHA-256 projection fingerprint, then applies the 2,048-entry cap.
 - Added a migration regression with one valid projection followed by 2,100 structurally valid but fingerprint-forged rows; the valid projection must survive migration and forged rows must be dropped.
-- **Validation boundary:** migration fix `daeb05801e18058f6f9081e9124160c84c7be837` and regression `9d5051ae0c5320a1f22d0c141eaef6bcb97a564a` are committed; GitHub Actions result is pending.
+- **Validation:** migration fingerprint validation is covered by [GitHub Actions run #121](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171370289), which passed the consolidated migration regression.
 
 ## NK1 Causal Accountability — validate projection fingerprints before restore bounds (2026-10-25)
 
 - Tightened the bounded projection restore fix: a candidate now counts toward the retention cap only after its fingerprint matches the canonical immutable outcome and its external-verification flag matches the record. Syntactically valid but forged rows cannot evict trusted older projections.
 - Strengthened the noisy-tail regression from malformed strings to 900 structurally valid rows with mismatched 64-character fingerprints, exercising the semantic-validation boundary.
-- **Validation boundary:** implementation `3f745f6b3f4ac4d42aec2a4062c0eacc21bdbfd1` and regression `a086cdc53263608ca50ef85f7781c47438cb1d0b` are committed; GitHub Actions is pending.
+- **Validation:** [GitHub Actions run #121](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171370289) passed the stronger restore and migration regression path on the consolidated test head.
 
 ## NK1 Causal Accountability — preserve valid projections across noisy restore tails (2026-10-25)
 
