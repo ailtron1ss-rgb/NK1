@@ -13,8 +13,9 @@ import {
 } from '../src/organism/learning/P36HostEvaluatorBootstrap.ts';
 
 const temporary=await mkdtemp(path.join(os.tmpdir(),'nk-p36-host-bootstrap-'));
+let artifactsDir;
 try {
-  const artifactsDir=path.join(temporary,'signed-artifacts');
+  artifactsDir=path.join(temporary,'signed-artifacts');
   await mkdir(artifactsDir,{recursive:true,mode:0o700});
   const {publicKey,privateKey}=generateKeyPairSync('ed25519');
   const publicPem=publicKey.export({type:'spki',format:'pem'}).toString();
@@ -178,5 +179,8 @@ export function createP36DevelopmentalOutcomeEvaluator({stateDirectory}) {
 
   console.log('P36_HOST_EVALUATOR_BOOTSTRAP=PASS signatures-reingested=32 private-key-blocked=true tampered-artifact-blocked=true separate-maturity-module=true');
 } finally {
+  // The trust-input directory is deliberately chmod'ed read-only in the test.
+  // Restore parent write permission before removing immutable test fixtures.
+  if(artifactsDir) await chmod(artifactsDir,0o700).catch(()=>{});
   await rm(temporary,{recursive:true,force:true});
 }
