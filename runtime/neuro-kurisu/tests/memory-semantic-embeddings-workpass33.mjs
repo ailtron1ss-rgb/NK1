@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { LocalEmbeddingProvider } from '../src/organism/developmental/LocalEmbeddingProvider.ts';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
+import { memoContentHash } from '../src/organism/developmental/MemoInspiredMemoryPrimitives.ts';
 
 const provider = new LocalEmbeddingProvider({
   kind: 'ollama', model: 'test-embed', baseUrl: 'http://127.0.0.1:11434', batchSize: 8,
@@ -76,6 +77,18 @@ assert.equal(maintenance.remaining, 0);
 assert.equal(maintenance.waitingForRetry, 0);
 assert.equal(maintenance.nextRetryAt, null);
 assert.deepEqual(memory.snapshot(), before, 'semantic inspector retrieval must not mutate canonical memory state');
+
+// Expired hashes/provider changes must not inflate semantic cache coverage or persist
+// as unusable rows when the bounded backfill budget only refreshes one item.
+memory.semanticEmbeddingIndex.set('network-decoy', { contentHash: 'stale-hash', providerId: 'fixture:concept-v1', vector: [0, 1, 0], lastUsedAt: now });
+memory.semanticEmbeddingIndex.set('general-decoy', { contentHash: 'stale-hash', providerId: 'fixture:concept-v1', vector: [0, 0, 1], lastUsedAt: now });
+await memory.previewRetrieveWithEmbeddings('I cannot authenticate to my user profile', 3, 0, 0, { temporalMode: 'current', asOfAt: now }, { maxIndexItems: 1 });
+const currentRowsForCache = new Map(memory.snapshot().items.map(item => [item.id, item]));
+const staleCacheIds = [...memory.semanticEmbeddingIndex].filter(([id, row]) => {
+  const item = currentRowsForCache.get(id);
+  return !item || row.contentHash !== memoContentHash(item.content) || row.providerId !== 'fixture:concept-v1';
+}).map(([id]) => id);
+assert.deepEqual(staleCacheIds, [], 'semantic cache maintenance must prune stale content-hash entries even when only one row can be reindexed');
 
 class FailingProvider extends SemanticFixtureProvider {
   providerId = 'fixture:offline';
