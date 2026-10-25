@@ -262,7 +262,12 @@ export class B272EndogenousGoalGenesis {
       const actionScores=this.state.actionPrototypeWeights.map(row=>clamp11(dot(row,v)/Math.max(1,norm(row)*norm(v))));
 const learned=this.learnedGoalValue(v,input.tick);
       const learnedClosure=(learned.reward01-.5)*.20 + (learned.evidence01*(.52-learned.predictionError01))*.10;
-      const predictedFutureValue=clamp01(.5+.32*dot(v,base)+.18*intrinsic+.16*(1-conflict)+.08*k+learnedClosure);
+      const goalAlignment01=clamp01(.5+.5*dot(v,base));
+      const learnedValue01=clamp01(.5+learnedClosure);
+      // Use a convex combination so the calibrated drive stays observable even
+      // when other signals are strong; a large additive score previously saturated
+      // at 1 and erased the difference between trusted drive inputs.
+      const predictedFutureValue=clamp01(.36*goalAlignment01+.22*intrinsic+.20*(1-conflict)+.10*(k/3)+.12*learnedValue01);
       const coherence=clamp01(.5+.25*cosine(v,base)+.25*(1-conflict));
       const novelty01=clamp01(.25+.45*(1-Math.abs(cosine(v,this.state.currentGoal)))+.30*(k/3));
       const internalNeed=clamp01(.5+.35*Math.abs(dot(v,base))+.15*conflict);

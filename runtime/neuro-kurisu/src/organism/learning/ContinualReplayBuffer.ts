@@ -43,12 +43,14 @@ export class ContinualReplayBuffer {
   private seen = 0;
   private readonly random: () => number;
   private readonly actions: Set<string>;
+  readonly capacity: number;
 
   constructor(
-    readonly capacity: number,
+    capacity: number,
     actions: readonly ActionKind[] = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'],
     random: () => number = Math.random,
   ) {
+    this.capacity = capacity;
     if (!Number.isSafeInteger(capacity) || capacity < 1) throw new RangeError('replay-capacity-must-be-positive-integer');
     if (typeof random !== 'function') throw new TypeError('replay-random-must-be-function');
     this.actions = new Set(actions);

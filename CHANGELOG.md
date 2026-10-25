@@ -1,3 +1,13 @@
+## Exact-head compatibility follow-up — replay cap, signed rollback, and cognitive contracts (2026-10-25)
+
+- [FIX] P26 interleaved learning now honors `conflictCandidateCap` from its options, validates the cap within 1–512, and returns the actual cap used. The multi-seed sweep's bound is now enforced by runtime rather than merely asserted by the test.
+- [FIX] B272 goal value now uses a bounded convex combination of aligned goal, calibrated intrinsic drive, available resources/conflict, candidate novelty and learned evidence. This prevents the additive score from saturating at 1 and washing out a high-confidence drive input.
+- [FIX] Replaced the remaining TypeScript constructor parameter property in `ContinualReplayBuffer` for Node 24 strip-only compatibility.
+- [FIX] Updated the versioned-skill lifecycle test to pass the new rollback-approval object and explicit test-only rollback verifier. Production default remains deny; rollback still requires identity, timestamp, compare-and-swap version and configured verifier.
+- [FIX] `HermesVerifiedEvidenceBinding` now validates the signature/authority on the exact receipt before reading its mutable payload's task/outcome claims. Tampered receipts produce the trust-boundary reason rather than being misclassified first as an outcome mismatch.
+- [FIX] Changed the blank-skill-ID coordinator test to assert the synchronous fail-closed throw and changed the server architecture smoke test to compare endpoint arrays to their validation-declared counts instead of stale hard-coded flow count 22.
+- [EVIDENCE] The e091 exact-head run passed runtime typecheck, P26 input integrity/recovery/continual matrix, WorkPass291, WorkPass292, WorkPass294 and WorkPass99; these changes target the remaining observed failures and need fresh exact-head runs.
+
 ## Follow-up — strict P26 restore typing and synchronous coordinator guards (2026-10-25)
 
 - [FIX] Typed restored P26 metrics as `Partial<P26LearningMetrics>` so strict TypeScript can validate field accesses.

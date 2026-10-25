@@ -87,6 +87,8 @@ export interface P26InterleavedExperience {
 export interface P26InterleavedTrainingOptions {
   replayEveryNCurrent?: number;
   maxReplayUpdates?: number;
+  /** Maximum fresh examples compared against each replay row for conflict detection. */
+  conflictCandidateCap?: number;
   targetMode?: 'reward' | 'td';
   currentLearningRate01?: number;
   replayLearningRate01?: number;
@@ -210,8 +212,12 @@ export class P26TrueLearningEngine{
     const currentRate = options.currentLearningRate01 ?? .05;
     const replayRate = options.replayLearningRate01 ?? .03;
     const targetMode = options.targetMode ?? 'td';
+    const requestedConflictCandidateCap = options.conflictCandidateCap ?? 64;
     if (!Number.isSafeInteger(replayEvery) || replayEvery < 1) throw new Error('replay-interval-must-be-positive-integer');
     if (!Number.isSafeInteger(maxReplay) || maxReplay < 0 || maxReplay > 4096) throw new Error('replay-update-cap-invalid');
+    if (!Number.isSafeInteger(requestedConflictCandidateCap) || requestedConflictCandidateCap < 1 || requestedConflictCandidateCap > 512) {
+      throw new Error('conflict-candidate-cap-invalid');
+    }
     if (typeof currentRate !== 'number' || !Number.isFinite(currentRate)) throw new Error('current-learning-rate-must-be-finite');
     if (typeof replayRate !== 'number' || !Number.isFinite(replayRate)) throw new Error('replay-learning-rate-must-be-finite');
     if (targetMode !== 'reward' && targetMode !== 'td') throw new Error('interleaved-target-mode-invalid');
@@ -238,7 +244,7 @@ export class P26TrueLearningEngine{
     for (const row of fresh) preflight(row, currentRate);
     for (const row of replayRows) preflight(row, replayRate);
 
-    const conflictCandidateCap = 64;
+    const conflictCandidateCap = requestedConflictCandidateCap;
     const candidateCount = Math.min(conflictCandidateCap, fresh.length);
     const candidates = candidateCount === 0 ? [] : Array.from({ length: candidateCount }, (_, i) =>
       fresh[Math.min(fresh.length - 1, Math.floor(i * fresh.length / candidateCount))],

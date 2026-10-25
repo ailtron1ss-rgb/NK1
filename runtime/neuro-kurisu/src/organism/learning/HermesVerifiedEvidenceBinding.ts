@@ -105,6 +105,12 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
       reasons.push('reflective-trial-has-no-signed-run');
       continue;
     }
+    let verified = false;
+    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
+    if (!verified) {
+      reasons.push('signed-shadow-evidence-not-trusted');
+      continue;
+    }
     consumedRuns.add(report.trialId);
     if (payload.taskId !== report.taskId || payload.runId !== report.trialId) {
       reasons.push('reflective-trial-receipt-identity-mismatch');
@@ -113,12 +119,6 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
     if (payload.passed !== report.taskSuccess?.passed ||
         report.taskSuccess?.passRate !== (payload.passed ? 1 : 0)) {
       reasons.push('reflective-trial-outcome-mismatch');
-      continue;
-    }
-    let verified = false;
-    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
-    if (!verified) {
-      reasons.push('signed-shadow-evidence-not-trusted');
       continue;
     }
     boundTrials += 1;

@@ -140,3 +140,15 @@ The first rerun after the previous batch surfaced three follow-on defects in tha
 - The coordinator performs two trust checks synchronously before producing the child-process promise. The tests for missing registrar and disallowed baseline/method lanes now assert the synchronous throw; failures occurring after registration are still checked as rejected promises.
 
 **Status: patch committed for fresh exact-head verification.**
+
+## Thirteenth follow-up — replay bounds, trusted evidence order and integration expectations
+
+The e091 exact-head matrix passed strict runtime typechecking and several central gates, then exposed:
+- P26 interleaved conflict checking returned its hard-coded 64-candidate cap even when the benchmark explicitly requested 32. The option is now part of the validated runtime contract (1–512), so measured comparisons stay within the caller's bounded resource budget.
+- B272's additive future-value formula could saturate after clamping and hide the intrinsic-drive signal. Replacing it with a bounded convex combination keeps high-confidence intrinsic motivation observable without allowing out-of-range values.
+- The Node 24 continual replay-buffer test imported a TypeScript constructor parameter property that strip-only cannot transform. The public capacity is now an explicit readonly field.
+- Rollback testing invoked a removed positional API despite rollback now requiring a signed/verified approval object. The lifecycle fixture uses an explicitly injected test verifier; production remains default-deny.
+- Hermes evidence binding compared mutable payload outcome before authenticating the signed artifact. It now verifies the exact receipt first, then uses its trusted identity/outcome fields.
+- The compound-revision test expected Promise rejection for a synchronous invalid ID; it now checks the sync throw. The architecture smoke test compares subsystem/flow arrays to their validated counts instead of preserving an obsolete literal flow count.
+
+All edits are isolated on the existing compatibility draft PR. Fresh exact-head CI is the acceptance gate; none of these changes implies full production readiness or improved generalization by itself.
