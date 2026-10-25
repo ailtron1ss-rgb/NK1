@@ -1,3 +1,10 @@
+## NK1 learning validation — align signed-shadow runtime fixture with candidate identity schema (2026-10-25)
+
+- Updated the signed-shadow end-to-end fixture to include the explicit `null` fifth candidate-ID component when no revision provenance is present. This matches the canonical identity used by `stageCandidate` and atomic persistence.
+- The change aligns fixture identity; verifier signatures and evidence bindings remain unchanged.
+
+---
+
 ## NK1 learning validation — align durable candidate identity with revision lineage (2026-10-25)
 
 - Fixed a production mismatch between `stageCandidate` and the atomic-file trust-boundary validator: staged candidate identity includes a fifth component (revision-provenance fingerprint or explicit `null`), while durable restoration previously recomputed only the first four components. That rejected even ordinary first-time file-backed candidates at compare-and-swap.
