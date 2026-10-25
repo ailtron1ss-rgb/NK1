@@ -1,3 +1,12 @@
+## Quick-audit formatting blocker — 2026-10-25
+
+- Removed two trailing-whitespace-only lines from `runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs` after the expanded quick audit identified them.
+- No executable statements or test logic were changed; this unblocks the repository-wide formatting/architecture gate.
+
+Validation: rerun `audit:quick` on the latest head to confirm the workspace passes the full quick audit.
+
+---
+
 ## CI wiring for durable skill lifecycle — 2026-10-25
 
 - Added the versioned-skill lifecycle regression to the repository contract gate so the source, durable adapter and lifecycle test are exercised together on a fresh checkout.
