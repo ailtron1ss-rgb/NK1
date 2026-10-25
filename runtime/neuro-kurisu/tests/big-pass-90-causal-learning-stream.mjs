@@ -6,6 +6,9 @@ const mkState=(overrides={})=>({
   needs:{energy:.7,cognitiveLoad:.3,uncertainty:.65,novelty:.7,goalPressure:.6,socialNeed:.4,identityCoherence:.82},
   ...overrides,
 });
+const mkOutcomeState=(overrides={},success01=.8)=>mkState({
+  lastAction:'explore',lastActionSuccess:success01,...overrides,
+});
 const trace={
   id:'trace-90',tick:1,createdAt:1000,candidates:[],selected:{action:'explore',goalId:'goal-1',predictedUtility:.6,confidence:.7,predictedCost:.3,reasons:[]},
   stateBefore:mkState(),reasoningSignals:{},userRequestedAction:null,autonomousOverride:true,predictedOutcomes:[]
@@ -13,7 +16,7 @@ const trace={
 
 const stream=new CausalExperienceStream(16);
 stream.observe(trace);
-const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
+const record=stream.recordOutcome(trace,mkOutcomeState({tick:2,at:1100,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
 
 assert.ok(record);
 assert.ok(record.causalStrength01>.3);
@@ -21,25 +24,25 @@ assert.ok(record.causalStrength01>.3);
 assert.equal(stream.recordOutcome({
   ...trace, id: "invalid-before-state",
   stateBefore: mkState({ needs: { ...mkState().needs, energy: Number.NaN } }),
-}, mkState({ tick: 3 }), { reward01: .8, success01: .8, surprise01: .7, novelty01: .75 }), null,
+}, mkOutcomeState({ tick: 3 }), { reward01: .8, success01: .8, surprise01: .7, novelty01: .75 }), null,
   "non-finite pre-action state must not mint grounded causal evidence");
-assert.equal(stream.recordOutcome(trace, mkState({ tick: 1 }), {
+assert.equal(stream.recordOutcome(trace, mkOutcomeState({ tick: 1 }), {
   reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "an outcome without a later observed state transition must be rejected");
 
 assert.equal(stream.recordOutcome({
   ...trace, id: "mismatched-pre-action-tick", tick: 0,
-}, mkState({ tick: 3 }), {
+}, mkOutcomeState({ tick: 3 }), {
   reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "a trace from a different world tick must not be attached to this observed transition");
 
-assert.equal(stream.recordOutcome({ ...trace, id: "nan-outcome-reward" }, mkState({ tick: 3 }), {
+assert.equal(stream.recordOutcome({ ...trace, id: "nan-outcome-reward" }, mkOutcomeState({ tick: 3 }), {
   reward01: Number.NaN, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "non-finite outcome metrics must not be clamped into trusted evidence");
 assert.equal(stream.recordOutcome({
   ...trace, id: "unsafe-outcome-task",
   selected: { ...trace.selected, goalId: "unsafe" + String.fromCharCode(10) + "task" },
-}, mkState({ tick: 3 }), {
+}, mkOutcomeState({ tick: 3 }), {
   reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "control-bearing task identity must not mint causal evidence");
 assert.ok(stream.summary().rolling.learningOpportunity01>0);
@@ -50,7 +53,7 @@ const persisted=stream.snapshot();
 const restored=new CausalExperienceStream(16);
 restored.restore(persisted);
 assert.deepEqual(restored.recent(8),stream.recent(8));
-assert.equal(restored.recordOutcome(trace,mkState({tick:2,at:1100}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75}),null,
+assert.equal(restored.recordOutcome(trace,mkOutcomeState({tick:2,at:1100}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75}),null,
   "restored trace identity must prevent recording the same runtime outcome twice");
 assert.ok(Array.isArray(restored.snapshot().recordedTraceIds));
 const consolidated=restored.consolidate(8,1200);
@@ -232,7 +235,7 @@ assert.equal(externalStream.summary().outcomes, 1,
 
 const overlongRuntimeTrace = { ...trace, id: "r".repeat(181) };
 assert.equal(externalStream.recordOutcome(
-  overlongRuntimeTrace, mkState({ tick: 22 }),
+  overlongRuntimeTrace, mkOutcomeState({ tick: 22 }, .5),
   { reward01: .5, success01: .5, surprise01: .5, novelty01: .5 },
 ), null, "an overlong runtime trace cannot be silently truncated into another identity");
 assert.equal(externalStream.summary().outcomes, 1);
@@ -275,12 +278,12 @@ for (let i = 0; i < 3; i++) {
   replayDiversity.recordOutcome({
     ...trace, id: `replay-a-${i}`, tick: 10 + i,
     selected: { ...trace.selected, goalId: "task-A" },
-  }, mkState({ tick: 11 + i }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+  }, mkOutcomeState({ tick: 11 + i }, .7), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 }
 replayDiversity.recordOutcome({
   ...trace, id: "replay-b-0", tick: 20,
   selected: { ...trace.selected, goalId: "task-B" },
-}, mkState({ tick: 21 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+}, mkOutcomeState({ tick: 21 }, .7), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
 assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
 assert.ok(replayBatch.some((row) => row.taskId === "task-B"),

@@ -1,3 +1,12 @@
+## NK1 WorkPass354 — align learning regressions with guarded inputs and grounded outcomes (2026-10-25)
+
+- [LEARNING CONTRACT] Updated the true-learning regression to expect stable rejection of NaN/Infinity rates and to assert the full serialized model snapshot remains unchanged. The former test expected malformed training requests to count as updates, which contradicted WorkPass350's fail-closed integrity contract.
+- [CAUSAL EVIDENCE] Added an explicit helper for valid observed post-action state (`lastAction` + bounded `lastActionSuccess`) and used it where the causal stream test intends to test valid outcome ingestion, duplicate identity, replay diversity, and overlong IDs. Rejection cases retain their targeted malformed inputs.
+- [VALIDATION] On the previous head, P26 passed all drift/replay/continual metrics tests through Page-Hinkley and failed only in the legacy true-learning test's obsolete expectation; WorkPass110 also exposed an under-specified test outcome lacking post-action attribution.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass353 — harden drift metrics and signed outcome replay (2026-10-25)
 
 - [NUMERICS] Updated the stationary-stream ADWIN regression to compare its computed mean within `1e-12`; actual `0.19999999999999962` is IEEE-754 summation noise, while the window must still remain stationary and trigger no drift.
