@@ -34,7 +34,14 @@ assert.equal(restored.snapshot().lastOutcomeTick,snap.lastOutcomeTick,'last cred
 assert.ok(Object.keys(restored.snapshot().goalOutcomeMemory).length>0,'valid outcome memory should survive an evidence-bound restore');
 
 const motiveStamped=new B272EndogenousGoalGenesis();
-const stampedInput={...comparisonInput,tick:0,intrinsicDrive01:.83,intrinsicDriveConfidence01:.64};
+const stampedInput={
+  tick:0,selfLatent:new Array(16).fill(.2),worldLatent:new Array(16).fill(.1),
+  needs:{energy01:.7,uncertainty01:.4,novelty01:.5,goalPressure01:.3,socialNeed01:.2},
+  traits:{curiosity:.7,'truth-seeking':.7,'self-reflection':.6,'self-preservation':.7,care:.6,'social-attunement':.5,persistence:.7},
+  predictionError01:.3,autobiographicalContinuity01:.8,identityContinuity01:.8,
+  intrinsicReward01:.2,lastAction:null,lastReward01:.5,
+  intrinsicDrive01:.83,intrinsicDriveConfidence01:.64,
+};
 motiveStamped.step(stampedInput);
 const stampedHistory=motiveStamped.snapshot().goalHistory.at(-1);
 assert.equal(stampedHistory.intrinsicDrive01,.83,'goal history must retain the motive signal used for generation');

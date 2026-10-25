@@ -31,3 +31,8 @@ B272 goal-history rows now preserve the exact intrinsic drive and bounded suppor
 ## WorkPass341 follow-up — autonomous-goal outcome replay guard
 
 B273 now has a durable last-credit tick, validates new outcome inputs before mutation, and blocks duplicate or stale feedback including after restore. The focused workflow includes the regression. Exact-head validation is required for this follow-up; no learning uplift is implied.
+
+
+## WorkPass342 — regression fixture correction
+
+The first WorkPass287–288 run on commit `67fbc11b4a8dfc7d8f6c8ec7fbea477e0503a2e6` failed because the newly added motive-history fixture referenced `comparisonInput` before its declaration. The runtime code was not reached by that test. The fixture now uses a self-contained valid B272 input; re-run the focused workflow on the new exact HEAD before treating WorkPass340/341 as verified.

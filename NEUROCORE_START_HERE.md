@@ -1,3 +1,11 @@
+# WorkPass342 — make motive-provenance regression fixture self-contained
+
+- [FIX] The first WorkPass340 focused run exposed a test-only temporal-dead-zone bug: the new motive-history fixture referenced `comparisonInput` before its later declaration. It now uses a local, complete B272 input, without changing runtime behavior.
+- [VALIDATION] The failure was observed on commit `67fbc11b4a8dfc7d8f6c8ec7fbea477e0503a2e6` in [Actions run 40168969516](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168969516). A fresh exact-head focused run is required after this fix.
+
+
+---
+
 # WorkPass341 — autonomous-goal outcome replay guard
 
 Date: 2026-10-25
