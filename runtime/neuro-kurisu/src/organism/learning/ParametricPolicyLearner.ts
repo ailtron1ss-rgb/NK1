@@ -139,6 +139,7 @@ export class ParametricPolicyLearner{
     this.state.lastLoss01=finiteInRange(raw?.lastLoss01,d.lastLoss01);
     this.state.lastTrainedAt=finiteInRange(raw?.lastTrainedAt,d.lastTrainedAt,0,Number.MAX_SAFE_INTEGER);
     // Only literal boolean true may restore an intentional safety freeze.
+    this.state.version=1;
     this.state.frozen=raw?.frozen===true;
   }
 
@@ -233,7 +234,7 @@ export class ParametricPolicyLearner{
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};
   }
 
-  setFrozen(frozen:boolean){this.state.frozen=Boolean(frozen);}
+  setFrozen(frozen:boolean){this.state.frozen=frozen===true;}
   actionList(){return [...ACTIONS];}
   featureNamesList(){return [...featureNames];}
 }
