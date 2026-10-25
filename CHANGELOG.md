@@ -1,3 +1,11 @@
+## [NK1][learning] Inject the explicit rollback verifier in the isolated lifecycle fixture (2026-10-25)
+
+- The first CI retry exposed a second stale fixture assumption: the rollback API's fourth constructor dependency defaults to deny-all, even when the test fixture explicitly allows promotion and shadow verification.
+- The isolated success-path fixture now injects a test-only rollback verifier. Production defaults and signed approval validation are unchanged; the regression still proves unsigned legacy rollback calls are rejected.
+- The separate WorkPass71 run also exposed an API mismatch in the sequential-learning benchmark (`P26TrueLearningEngine.trainInterleaved` is absent from this branch). That is tracked as an independent integration defect and is not treated as fixed by this rollback change.
+
+---
+
 ## [NK1][memory] Ensure the byte-budget regression runs on the feature branch (2026-10-25)
 
 - Added the memory-budget work branch to the WorkPass71 push trigger. The focused `test:memory-budget-restore-integrity` gate now runs on that branch instead of being merely registered in a workflow whose existing branch filters excluded the PR base.
