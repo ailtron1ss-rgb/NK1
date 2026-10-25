@@ -157,6 +157,13 @@ export class B272EndogenousGoalGenesis {
     for(const item of outcomeHistory)outcomeTickCounts.set(item.tick,(outcomeTickCounts.get(item.tick)??0)+1);
     const observedLastOutcomeTick=outcomeHistory.reduce((latest,item)=>Math.max(latest,item.tick),-1);
     const uniqueOutcomeHistory=outcomeHistory.filter(item=>outcomeTickCounts.get(item.tick)===1);
+    const persistedLastOutcomeTick=safeCounter(r.lastOutcomeTick,-1);
+    const actionHandoffObservations=safeCounter(r.actionHandoffObservations,d.actionHandoffObservations);
+    const actionHandoffMatches=Math.min(actionHandoffObservations,safeCounter(r.actionHandoffMatches,d.actionHandoffMatches));
+    // Derive the mismatch count from the total so corrupted snapshots cannot make the
+    // match and mismatch buckets overlap or silently lose observations.
+    const actionHandoffMismatches=actionHandoffObservations-actionHandoffMatches;
+    const persistedLastActionHandoffTick=typeof r.lastActionHandoffTick==='number'&&Number.isSafeInteger(r.lastActionHandoffTick)&&r.lastActionHandoffTick>=-1&&r.lastActionHandoffTick<=tick?r.lastActionHandoffTick:-1;
     const actionHandoffHistory:B272State['actionHandoffHistory']=[];
     const rawActionHandoffHistory=Array.isArray(r.actionHandoffHistory)?r.actionHandoffHistory.slice(-256):[];
     for(const item of rawActionHandoffHistory){
@@ -173,13 +180,6 @@ export class B272EndogenousGoalGenesis {
     const observedLastActionHandoffTick=actionHandoffHistory.reduce((latest,item)=>Math.max(latest,item.tick),-1);
     const uniqueActionHandoffHistory=actionHandoffHistory.filter(item=>handoffTickCounts.get(item.tick)===1);
     const lastActionHandoffTick=Math.max(observedLastActionHandoffTick,persistedLastActionHandoffTick);
-    const persistedLastOutcomeTick=safeCounter(r.lastOutcomeTick,-1);
-    const actionHandoffObservations=safeCounter(r.actionHandoffObservations,d.actionHandoffObservations);
-    const actionHandoffMatches=Math.min(actionHandoffObservations,safeCounter(r.actionHandoffMatches,d.actionHandoffMatches));
-    // Derive the mismatch count from the total so corrupted snapshots cannot make the
-    // match and mismatch buckets overlap or silently lose observations.
-    const actionHandoffMismatches=actionHandoffObservations-actionHandoffMatches;
-    const persistedLastActionHandoffTick=typeof r.lastActionHandoffTick==='number'&&Number.isSafeInteger(r.lastActionHandoffTick)&&r.lastActionHandoffTick>=-1&&r.lastActionHandoffTick<=tick?r.lastActionHandoffTick:-1;
     const lastOutcomeTick=Math.max(observedLastOutcomeTick,persistedLastOutcomeTick>=0&&persistedLastOutcomeTick<=tick?persistedLastOutcomeTick:-1);
 
     const goalOutcomeMemory:B272State['goalOutcomeMemory']={};

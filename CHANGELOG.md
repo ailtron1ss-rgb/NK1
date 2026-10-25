@@ -1,3 +1,9 @@
+# WorkPass340 — fix handoff restore ordering exposed by the new regression (2026-10-25)
+
+- [ROOT CAUSE] The first WorkPass339 CI run caught a restore-order defect in the new B272 handoff diagnostics: `lastActionHandoffTick` was reduced from history before `persistedLastActionHandoffTick` had been initialized. This produced TypeScript TS2448/TS2454 in P26 and a runtime `ReferenceError` in WorkPass110's trusted shadow scheduler integration.
+- [FIX] Moved parsing/validation of `persistedLastActionHandoffTick` above the history reducer. The counter derivation and duplicate-tick quarantine semantics remain unchanged.
+- [STATUS] WorkPass339's exact-head run failed for this issue; this fix is committed on top of `4f5c8871eeb1863d9701787550d0535992bb8008`. P26 typecheck, WorkPass110 runtime integration, focused handoff test, and the main WorkPass331 workflow must all be re-run on the new head before the metric is marked validated.
+
 # WorkPass339 — measure endogenous-goal action handoff without weakening credit binding (2026-10-25)
 
 - [RUNTIME] Added bounded, persisted B272 diagnostics for generated-action handoffs: observation count, exact match/mismatch buckets, rolling recent records, and match/mismatch rates. Every selected action is recorded against the B272-generated action and goal ID before outcome credit is considered.

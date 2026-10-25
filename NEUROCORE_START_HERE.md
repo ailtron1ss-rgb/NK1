@@ -1,3 +1,18 @@
+## Latest durable checkpoint — WorkPass340: fix restore-order bug in B272 handoff metrics (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- WorkPass339 added backward-compatible persisted action-handoff diagnostics to B272 (`observations`, `matches`, `mismatches`, last tick, bounded history and rates) and connects one event at each real/synthetic feedback branch. The strict `learnFromOutcome` gate remains unchanged; it still refuses a different action. A focused regression checks match/mismatch accounting, no false credit, duplicate protection, and restore; the spontaneous-dialogue integration checks that telemetry survives the canonical runtime path.
+- CI exposed a source defect in the new restore code: `persistedLastActionHandoffTick` was used before initialization. It caused TS2448/TS2454 in P26 typecheck and a ReferenceError in WorkPass110's trusted shadow scheduler integration. WorkPass340 moves that variable's validated initialization before history reduction; no handoff or learning checks are weakened.
+- Before WorkPass339, exact SHA `4c019acd95789d9aa819accf1f94e5838d8dd1ca` had passed WorkPass331 run [40168339627](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168339627) and WorkPass294/99/108/102/291/287–288/110/P26/292/105/293. That result is historical, not a pass for the new code. Exact-head WorkPass340 runs are pending.
+
+### Next gates
+1. Confirm P26 typecheck, WorkPass110 trusted shadow scheduler, and the new focused handoff regression pass on one exact SHA.
+2. Confirm WorkPass331 passes smoke, 80-cycle action selection, background-clock initiative, dialogue feedback/restore, and restart persistence.
+3. Measure action match/mismatch rate over a longer run before any planner-weight adjustment; continue with real API/service startup, UI/Live2D/voice E2E, and Release archive refresh.
+
+---
+
 ## Latest durable checkpoint — WorkPass339: instrument endogenous-goal action handoff (2026-10-25)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
