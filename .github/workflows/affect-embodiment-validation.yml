@@ -78,6 +78,10 @@ jobs:
         working-directory: runtime/neuro-kurisu
         run: npm run test:big-pass-172
 
+      - name: Run P66 homeostasis regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-190:p66
+
   affect-api-contract:
     name: Canonical affect API bridge contract
     runs-on: ubuntu-latest
