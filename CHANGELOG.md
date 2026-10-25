@@ -1,3 +1,9 @@
+## NK1 Persistence — validate outcome history before migration retention cap (2026-10-25)
+
+- Changed `StateMigrations` to validate persisted outcome-history rows before selecting the newest 96 records. Invalid leading rows no longer displace valid older audit history before the runtime restore validator can see it.
+- Added a migration regression with 110 invalid leading records followed by one valid action receipt.
+- **Validation boundary:** migration change `e0be234f82fa851c8051c921d6e453a5ce536ffe` and regression `6191d83fcaef93d8f50b4350e5ce6139cbef583d` are committed; hosted validation is pending.
+
 ## NK1 Causal Accountability — preserve valid causal indices and quarantine tombstones during migration (2026-10-25)
 
 - Changed `StateMigrations` to validate causal `outcomeIndex` rows and quarantine IDs before applying the 1,024-entry retention caps. Invalid trailing rows no longer evict valid historical action receipts or erase a quarantine tombstone.
