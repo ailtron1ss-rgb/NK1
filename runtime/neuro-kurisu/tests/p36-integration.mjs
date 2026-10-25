@@ -41,6 +41,18 @@ const p36DevelopmentalOutcomeEvaluator={
       observedPostcondition:'maturity-evaluation-complete:'+observationId};
   },
 };
+assert.throws(()=>new OrganismCore(new MemoryStateStore(),{
+  p36IndependentEvaluator,
+  p36DevelopmentalOutcomeEvaluator:{
+    ...p36DevelopmentalOutcomeEvaluator,
+    observationSource:{
+      ...p36DevelopmentalOutcomeEvaluator.observationSource,
+      sourceId:'different-label-same-authority',
+      independenceKey:p36IndependentEvaluator.observationSource.independenceKey,
+    },
+  },
+}),/p36-evaluator-authorities-must-be-distinct/,
+'host construction must not reuse one independence key for experiment evidence and maturity');
 const store=new MemoryStateStore();
 const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,p36IndependentEvaluator,p36DevelopmentalOutcomeEvaluator});
 await core.init();
