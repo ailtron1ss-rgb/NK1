@@ -1,3 +1,11 @@
+## NK1 CI wiring — execute persistence and runtime-avatar regressions (2026-10-25)
+
+- WorkPass105 now runs the checksummed verified-outcome-ledger persistence regression and triggers when that test changes; the existing round-trip test covers durable rejection history.
+- WorkPass110 now watches runtime/neuro-kurisu/public/live2d/viewer.html and tests/live2d-integrity.mjs as well as the app viewer, closing a path-filter gap that could leave runtime-viewer changes without the intended integrity job.
+- P26 Learning Validation already includes the P36 source and P36 migration tests in its paths and steps. Exact-HEAD Actions for the current branch remain unconfirmed; the latest visible workflows still reference an earlier commit.
+
+---
+
 ## NK1 learning ledger — make valid rejection history restorable (2026-10-25)
 
 - Aligned VerifiedOutcomeLedger.restoreSnapshot() with the complete OutcomeRejection contract. Snapshots containing duplicate-evidence-ref or invalid-evidence-reference rejections are no longer rejected solely because the restore allow-list omitted those valid codes.
