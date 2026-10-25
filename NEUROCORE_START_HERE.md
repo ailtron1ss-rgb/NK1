@@ -1,3 +1,12 @@
+## Latest durable checkpoint — WorkPass341 (2026-10-25)
+
+- Runtime type declarations are pinned and installed through the runtime lockfile; the WorkPass294 workflow installs those dependencies before typecheck.
+- Core's nullable external causal record is guarded without invalid control flow; learning-process buffers and optional skill-retrieval query numbers now use strict-compatible types; trusted registration is awaited explicitly.
+- Imported external causal events remain ungrounded and do not increment the trusted outcome counter. Regression expectations encode that epistemic boundary.
+- Latest WorkPass340 CI exposed these concrete failures. Exact-head rerun is required; runtime typecheck is not yet claimed green. Release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass340 (2026-10-25)
 
 - Runtime typecheck has a pinned, runtime-local `@types/node` package and matching lockfile, and no longer includes the incomplete ambient Node shims in the semantic program. Strict TypeScript checking remains enabled.

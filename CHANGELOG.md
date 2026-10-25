@@ -1,3 +1,12 @@
+## NK1 WorkPass341 — finish strict runtime typing and align imported-outcome counters (2026-10-25)
+
+- [FIXED] Replaced an invalid `continue` outside a loop in Core with a null-guarded learning ingestion. No unified-learning signal is emitted when an external causal event is rejected.
+- [FIXED] Widened stdout/stderr accumulators to `Buffer<ArrayBufferLike>`, typed optional retrieval query numbers with finite fallbacks, and made the trusted-run registration bridge explicitly await Core's registration receipt.
+- [SEMANTICS] Public imported causal events are quarantined as ungrounded external evidence. They do not increment the trusted `outcomes` aggregate; the regression now encodes that contract.
+- [VALIDATION] These changes address exact-head runtime typecheck and causal regression failures observed in WorkPass340 CI. A new exact-head run must confirm them; Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass340 — make runtime typechecking self-contained and close learning nullability gaps (2026-10-25)
 
 - [DEPENDENCIES] Pinned `@types/node@22.20.4` in the runtime package and lockfile, including its locked `undici-types` dependency. Clean runtime installs no longer depend on the app workspace being installed just to discover Node declarations.

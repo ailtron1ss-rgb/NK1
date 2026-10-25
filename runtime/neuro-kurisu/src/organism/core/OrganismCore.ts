@@ -10410,8 +10410,7 @@ export class OrganismCore {
         if (r.independentVerified && r.verificationTransition !== 'duplicate') {
             const tick = Number(this.persisted.state.tick ?? 0);
             const cx = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick, taskId: input.taskId ?? `replay-validation:${input.memoryId}`, action: 'verify', reward01: r.retentionScore01, success01: r.retentionScore01, surprise01: Math.abs(r.retentionGain01), novelty01: r.transferPotential01, uncertainty01: r.interferenceRisk01, causalStrength01: Math.max(0, Math.min(1, .5 * r.retentionScore01 + .3 * r.transferPotential01 + .2 * (1 - r.interferenceRisk01))), identityRelevance01: 0, goalPressure01: this.persisted.state.needs.goalPressure, traceId: r.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: r.memoryId, evidenceKey: r.evidenceKey });
-            if (!cx) continue;
-            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
+            if (cx) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
         }
         this.persisted.facets.advanced.experienceContinuum = this.memorySubsystem.experienceContinuum.snapshot();
         this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
