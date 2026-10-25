@@ -1,3 +1,11 @@
+## NK1 learning diagnostics — expose replay diagnoses in summary (2026-10-25)
+
+- Extended `P23LearningEngine.learningSummary()` with a bounded `recentAttemptDiagnoses` field, making the newest persisted outcome diagnoses available to existing summary consumers and observability without a separate call path.
+- Added regression assertions for summary visibility, newest-first ordering, and preservation of the non-promotable diagnostic boundary.
+- **Verification boundary:** source and regression changes are committed; exact-HEAD workflow execution is not yet confirmed.
+
+---
+
 ## NK1 learning diagnostics — replay-to-reflection bridge (2026-10-25)
 
 - Connected persisted P23 interaction outcomes to the existing evidence-linked diagnosis routine through a bounded, newest-first, read-only `diagnoseRecentLearningAttempts()` view.
