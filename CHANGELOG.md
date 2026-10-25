@@ -1,6 +1,6 @@
 ## NK1 learning validation — fix duplicate evaluator test binding (2026-10-25)
 
-- Renamed the second local evaluator in the independent-candidate-evaluator regression so Node 24 can parse and execute the suite; behavior and assertions are unchanged.
+- Gave the second independent evaluator and its result distinct local names in the regression so Node 24 can parse and execute both snapshot cases; behavioral assertions are preserved.
 - This was an existing test-harness syntax blocker surfaced after the learning runtime typecheck passed.
 - **Verification boundary:** fresh P26 rerun is required before this branch validation PR can be considered ready.
 
