@@ -1,3 +1,12 @@
+## NK1 WorkPass338 — remove remaining P23 runtime parameter properties (2026-10-25)
+
+- [COMPATIBILITY] Converted `AtomicFileTrustedSkillShadowRunRegistry`'s constructor parameter property into an explicit readonly field/assignment. WorkPass293 had progressed past the first store and found this second non-erasable TypeScript constructor form.
+- [CI] The WorkPass293 workflow now tracks `TrustedSkillShadowRunRegistry.ts`; WorkPass99 tracks `MultiSourceLearningMechanisms.ts`, so replay policy changes run their runtime configuration and ablation benchmark.
+- [VALIDATION] Runtime test progression is being checked against exact commit SHAs; the broad WorkPass294 runtime type-check still reports unrelated existing type/shim inconsistencies and is not yet green.
+- [SCOPE] All changes remain on the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass337 — preserve configured replay recency guarantees (2026-10-25)
 
 - [LEARNING] `adaptiveReplayOptions` now preserves an explicitly configured `recentQuota`, clamped only to the adaptive batch size. Health signals can shrink batch capacity without silently replacing the caller's recent-window contract.
