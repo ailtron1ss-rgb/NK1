@@ -7,6 +7,7 @@ import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { ExternalObserverFabric } from '../src/organism/system/ExternalObserverFabric.ts';
 import { CausalAccountabilityGraph } from '../src/organism/system/CausalAccountabilityGraph.ts';
 import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
+import { migratePersistedOrganism } from '../src/organism/persistence/StateMigrations.ts';
 
 // Conflicting persisted execution receipts must not let later evidence attach to
 // whichever duplicate happened to appear last in the snapshot.
@@ -162,6 +163,15 @@ const dir=await mkdtemp(path.join(tmpdir(),'nk-p64-'));
 try {
   const core=new OrganismCore(new FileStateStore(path.join(dir,'state.json')),{enableLanguage:false});
   await core.init();
+  // State migration must retain bounded causal quarantine tombstones, not only the graph nodes/index.
+  const migrationSeed=structuredClone(core.snapshot());
+  migrationSeed.system.causalAccountability={
+    version:1,nodes:[],edges:[],activeChains:[],lastAt:0,updatedAt:0,outcomeIndex:[],
+    quarantinedExecutionIds:['exec-state-migration-quarantine'],
+  };
+  const migratedSeed=migratePersistedOrganism(migrationSeed);
+  assert.ok(migratedSeed.system.causalAccountability.quarantinedExecutionIds?.includes('exec-state-migration-quarantine'),
+    'state migration must preserve execution quarantine tombstones across restart');
   core.registerActionTool({
     id:'observer.smoke',capability:'smoke',destructive:false,
     observationSource:{sourceId:'device-smoke',sourceClass:'device',channel:'sensor',independenceKey:'sensor:smoke'},
