@@ -1,3 +1,10 @@
+## NK1 WorkPass361 — Finish signed-shadow fixture identity migration (2026-10-25)
+
+- [E2E-FIXTURE] Removed the last stale reference to the pre-refactor staged variable in the signed-shadow lifecycle assertion. The test now consistently resolves the candidate by the ID read from the durable versioned store.
+- [VALIDATION] This fixes a test-only ReferenceError found after the persisted candidate identity change; cryptographic verification and candidate-version checks remain intact.
+
+---
+
 ## NK1 WorkPass359 — Restore conflict-gated P26 interleaved learning (2026-10-25)
 
 - [CONTINUAL-LEARNING] Restored the P26TrueLearningEngine.trainInterleaved API used by sequential-learning benchmarks: it updates fresh examples, periodically rehearses bounded historical samples, and tracks online/replay updates separately.
