@@ -32,6 +32,8 @@ function makeFixture() {
   }, null, 2));
   write(root, 'tools/audit.mjs', 'export const audit = true;\n');
   write(root, 'runtime/tests/test.mjs', 'export const test = true;\n');
+  write(root, 'tools/source-a.mjs', 'export const sourceA = true;\n');
+  write(root, 'tools/source-b.mjs', "import { sourceA } from './source-a.mjs';\nexport { sourceA };\n");
   write(root, 'local-action/action.yml', 'name: fixture-local-action\nruns:\n  using: composite\n  steps: []\n');
   write(root, '.github/workflows/core.yml', `name: Core validation
 on:
@@ -85,6 +87,8 @@ test('valid workflow, npm scripts, executable paths and workflow_run names pass'
     assert.equal(result.workflowsScanned, 2);
     assert.equal(result.npmScriptsChecked, 3);
     assert.equal(result.packagesRead, 2);
+    assert.ok(result.sourceFilesScanned >= 4);
+    assert.ok(result.relativeImportsChecked >= 1);
   });
 });
 
@@ -137,5 +141,17 @@ test('detects recursive npm script wiring rather than silently accepting a cycle
     fs.writeFileSync(packagePath, JSON.stringify(pkg, null, 2));
     const result = auditRepositoryWiring(root);
     assert.ok(result.errors.some(message => message.includes('cyclic npm script reference')));
+  });
+});
+
+
+test('reports unresolved relative imports, not only broken workflow commands', () => {
+  withFixture(root => {
+    const missingReference = ['im', 'port', " './ghost.mjs';"].join('');
+    write(root, 'tools/broken-import.mjs', missingReference);
+    const result = auditRepositoryWiring(root);
+    assert.ok(result.errors.some(message =>
+      message.includes('tools/broken-import.mjs') && message.includes('unresolved relative module import') && message.includes('./ghost.mjs')
+    ));
   });
 });
