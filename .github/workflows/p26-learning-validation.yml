@@ -12,6 +12,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/memory/AdaptiveExperienceConsolidator.ts"
       - "runtime/neuro-kurisu/src/organism/system/ContinuityLedger.ts"
       - "runtime/neuro-kurisu/tests/p36-migration.mjs"
+      - "runtime/neuro-kurisu/tests/p23-learning-attempt-diagnosis.mjs"
       - "runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-persistence.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs"
