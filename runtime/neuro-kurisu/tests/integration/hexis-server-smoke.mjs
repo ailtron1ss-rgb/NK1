@@ -48,8 +48,10 @@ try {
   if (!stageRes.ok || stageRes.stage?.status !== 'staged' || stageRes.stage?.conflicts?.length) throw new Error(`hexis-hmx-stage:${JSON.stringify(stageRes.stage?.conflicts)}`);
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
   if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted' || acceptRes.appliedToCanonicalMemory !== false) throw new Error('hexis-hmx-accept-mutated-memory');
-  const indexBeforeApply = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=128`)).json();
-  if (!indexBeforeApply.ok || indexBeforeApply.memoryIndex?.some(memory => memory.summary === canonicalSmokeMemoryText)) throw new Error('hexis-hmx-accept-mutated-canonical-memory');
+  const canonicalBeforeApply = await (await fetch(`${base}/api/organism/memory-inspector?q=${encodeURIComponent(canonicalSmokeMemoryText)}&limit=8`)).json();
+  if (!canonicalBeforeApply.ok || canonicalBeforeApply.memories?.some(memory => memory.content === canonicalSmokeMemoryText)) {
+    throw new Error('hexis-hmx-accept-mutated-canonical-memory');
+  }
   const applyRes = await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'apply' });
   const applyResult = await applyRes.json();
   if (!applyResult.ok || applyResult.stage?.status !== 'applied' || applyResult.appliedToCanonicalMemory !== true) {
@@ -57,8 +59,8 @@ try {
   }
   if (applyResult.application?.importedCount < 1 || !applyResult.application?.memoryIds?.length) throw new Error('hexis-canonical-memory-receipt');
   if (!applyResult.application?.deferredSections?.identity) throw new Error('hexis-identity-section-must-remain-explicitly-deferred');
-  const indexAfterApply = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=128`)).json();
-  if (!indexAfterApply.ok || !indexAfterApply.memoryIndex?.some(memory => memory.summary === canonicalSmokeMemoryText && memory.source?.startsWith('hexis:'))) {
+  const canonicalAfterApply = await (await fetch(`${base}/api/organism/memory-inspector?q=${encodeURIComponent(canonicalSmokeMemoryText)}&limit=8`)).json();
+  if (!canonicalAfterApply.ok || !canonicalAfterApply.memories?.some(memory => memory.content === canonicalSmokeMemoryText && memory.source?.startsWith('hexis:'))) {
     throw new Error('hexis-apply-did-not-persist-canonical-memory');
   }
   const replayApply = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'apply' })).json();
