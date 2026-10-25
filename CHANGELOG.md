@@ -6,7 +6,7 @@
 - [FIXED] Exact duplicate delivery is counted once; conflicting records that reuse an experience ID are excluded rather than allowing arrival order to select the label.
 - [FIXED] Experiences sharing a cognitive tick are ordered deterministically by timestamp and stable ID, so the recent-evidence window does not depend on input order. Hypothesis output now uses a deterministic tie-breaker.
 - [TEST] Added regressions for duplicate delivery, conflicting identity, NaN/Infinity, invalid ranges/timestamps, and permutation-invariant evidence order; the focused Node.js 24 workflow runs the new suite.
-- [VALIDATION] Exact-head GitHub Actions run `40161026754` passed all four focused regression suites and `npm run typecheck` (`TYPECHECK=PASS mode=tsc compiler=PATH`) at `1df6e31e7e8353872cf95a5d957781a91cd6974e`. Workflow name was then aligned to WorkPass339; the new name-only commit receives a fresh exact-head run.
+- [VALIDATION] Exact-head GitHub Actions run `40161068610` passed all five focused checks (four regression suites plus `npm run typecheck`, `TYPECHECK=PASS mode=tsc compiler=PATH`) at `53f4bde72029d92b7b2cec91dc2de81e28cfd011`. The reflection normalization regression prints `WORKPASS339_REFLECTION_EVIDENCE_NORMALIZATION=PASS`.
 
 - [TYPECHECK FIX] The focused CI typecheck exposed incorrectly inferred empty-object fallback types in `InnerImperativeController.ts`. Normalized `needs` and `embodiment` are now explicitly partial contract types, preserving the previous bounded-default runtime behavior while satisfying strict property access.
 - [TEST] Added coverage for entirely missing and partially populated homeostasis inputs; the focused workflow now runs this regression and includes the controller in its path filters.
