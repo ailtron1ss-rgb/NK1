@@ -29,7 +29,26 @@ assert.equal(withoutRecall.appraisal.recalledAffect01, 0);
 assert.equal(withoutRecall.appraisal.recalledMemoryCount, 0);
 assert.ok(withRecall.appraisal.recalledAffect01 > .8, 'strong recalled affect should be represented explicitly');
 assert.equal(withRecall.appraisal.recalledMemoryCount, 3);
+assert.equal(withRecall.appraisal.recalledContextRelevance01, 1, 'legacy callers without a context score preserve their prior behavior');
+const highContext = recalledEngine.scoreRecallContextRelevance01(
+  'the reactor control system is overheating',
+  'reactor control system reports overheating',
+);
+const lowContext = recalledEngine.scoreRecallContextRelevance01(
+  'the reactor control system is overheating',
+  'garden flowers grow during summer',
+);
+assert.ok(highContext > lowContext, 'shared contextual terms must increase recall relevance');
+assert.ok(lowContext >= .1 && lowContext <= .2, 'unrelated memory context must retain only a small floor');
 assert.ok(withRecall.arousal01 > withoutRecall.arousal01, 'recalled emotional salience may modestly increase arousal');
+const lowContextEpisode = new EmotionAppraisalEngine().appraise({
+  ...base,
+  recalledAffect: { intensity01: .95, confidence01: .9, evidenceCount: 3, contextRelevance01: lowContext },
+});
+assert.ok(
+  lowContextEpisode.arousal01 - withoutRecall.arousal01 < withRecall.arousal01 - withoutRecall.arousal01,
+  'low-relevance recalled emotion must transfer less arousal than a context-matched recall',
+);
 assert.ok(
   Math.abs(withRecall.arousal01 - withoutRecall.arousal01) <= .08,
   'the recall influence must remain bounded',
