@@ -19,6 +19,8 @@ assert.equal(ledger.record(row({ method: 'self-check', authority: 'self-report' 
 ledger.record(row({ taskId: 'task-2', method: 'candidate', seed: 8, passed: false, evidenceRef: 'evidence://run/8' }));
 assert.equal(ledger.record(row({ method: 'malformed', evidenceRef: undefined })).rejection.code, 'invalid-outcome');
 assert.equal(ledger.record(row({ method: 'malformed-pass', passed: 'yes' })).rejection.code, 'invalid-outcome');
+assert.equal(ledger.record(row({ method: 'bad-evidence-ref', evidenceRef: ' ' })).rejection.code, 'invalid-evidence-reference',
+  'invalid evidence-reference rejection codes must survive durable ledger snapshots');
 
 const encoded = serializeVerifiedOutcomeLedger(ledger);
 const restored = restoreVerifiedOutcomeLedger(encoded);
