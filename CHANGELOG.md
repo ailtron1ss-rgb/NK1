@@ -1,3 +1,10 @@
+## NK1 Causal Accountability — validate provider revisions before bounding restore (2026-10-25)
+
+- Fixed `OutcomeCognitionFabric.restore()` to validate provider-receipt revision rows before applying the 2,048-entry retention cap, scanning newest-to-oldest and then restoring accepted rows in chronological order.
+- Previously, `slice(-2048).filter(...)` let malformed trailing rows evict older valid receipt revisions before validation. This could erase authoritative reconciliation history from a persisted snapshot without a conflict signal.
+- Added a regression with one valid revision followed by 2,050 malformed rows; the valid revision must survive restore.
+- **Validation boundary:** implementation commit `f0c47fd0c3ce89b1b949e3f300888fc313262b79` and regression commit `3881c5ea4ab78d91ec032a3b30a97646386d2099` are committed on `feature/feedback`; awaiting the triggered GitHub Actions result.
+
 ## NK1 CI — run reality regression for receipt identity changes (2026-10-25)
 
 - Expanded push and pull-request path filters to include `OutcomeVerificationService`, `OutcomeCognitionFabric`, `CausalAccountabilityGraph`, `StateMigrations`, and `StableSerialization`. Changes to receipt identity, restore logic, or canonical fingerprinting now trigger the reality-to-learning suite without requiring a test-file edit.
