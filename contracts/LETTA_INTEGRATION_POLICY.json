@@ -47,7 +47,14 @@
     "durableSyncOutbox": false,
     "externalMemorySyncBestEffort": true,
     "productionReady": false,
-    "snapshotBackedSyncOutbox": true
+    "snapshotBackedSyncOutbox": true,
+    "cognitiveRecallFeatureFlag": "NK1_LETTA_COGNITIVE_RECALL=1",
+    "cognitiveRecallRequiresProviderOptIn": true,
+    "externalCandidateOutputPath": "OrganismCore.observe.workspace.content.externalMemoryCandidate",
+    "externalCandidateAffectsCanonicalRetrievalRows": false,
+    "externalCandidateAffectsActionOrLearningScores": false,
+    "externalCandidateOutputCharLimit": 1600,
+    "externalCandidateTrust": "untrusted-candidate"
   },
   "activeRuntimeAdapter": "runtime/neuro-kurisu/src/organism/integration/letta/LettaMemoryBridge.ts",
   "activeSdk": "https://github.com/letta-ai/letta-agent-sdk",
@@ -60,6 +67,8 @@
     "The adapter uses an allowlisted set of file tools, disables server-side web tools/skills, and enables the SDK memory-filesystem confinement for local sessions.",
     "Hybrid recall returns native NK1 records plus a separate untrusted Letta candidate; callers must review it and it is not automatically stored as canonical memory.",
     "The bounded sync outbox and receipts are projected into facets.memory in full and hot checkpoints and replayed after restore when pending intents were saved. This is not transactionally coupled to FileStateStore commit; crash injection and reconciliation remain required before production.",
-    "Canonical forget supersedes queued upserts for the same ID and is prioritized over failed non-delete writes; queue overflow is explicitly surfaced as requiresReconciliation."
+    "Canonical forget supersedes queued upserts for the same ID and is prioritized over failed non-delete writes; queue overflow is explicitly surfaced as requiresReconciliation.",
+    "OrganismCore's live cognition read path can expose a Letta candidate in the returned workspace only when NK1_LETTA_COGNITIVE_RECALL=1 and the provider itself is enabled.",
+    "The external candidate is segregated from native cognitionMemoryItems/advancedRetrieved and is not used in numeric action/learning heuristics; downstream response consumers must treat it as untrusted data."
   ]
 }
