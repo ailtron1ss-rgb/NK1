@@ -152,6 +152,113 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
+  /**
+   * Interleave fresh online updates with bounded rehearsal from prior experience.
+   * Historical labels that contradict fresh outcomes in an indistinguishable state
+   * are quarantined for this run; separated contexts (for example, novelty bands)
+   * remain eligible. Every fresh and replay update is still a normal policy update.
+   */
+  trainInterleaved(
+    currentRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'reward'|'td';currentLearningRate01?:number;replayLearningRate01?:number}={},
+  ){
+    const candidateCap=64;
+    const replayEvery=Math.max(1,Math.min(4096,Math.floor(Number.isFinite(options.replayEveryNCurrent)?Number(options.replayEveryNCurrent):16)));
+    const maxReplay=Math.max(0,Math.min(10000,Math.floor(Number.isFinite(options.maxReplayUpdates)?Number(options.maxReplayUpdates):160)));
+    const currentRate=Number.isFinite(options.currentLearningRate01)?Math.max(.002,Math.min(.30,Number(options.currentLearningRate01))):.045;
+    const replayRate=Number.isFinite(options.replayLearningRate01)?Math.max(.002,Math.min(.30,Number(options.replayLearningRate01))):.035;
+    const targetMode=options.targetMode==='reward'?'reward':'td';
+    type Example={state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number};
+    type Indexed={row:Example;index:number;energy:number;novelty:number;key:string};
+    const safeRow=(value:Example)=>Boolean(value&&value.state&&value.nextState&&value.state.needs&&value.nextState.needs&&
+      ACTIONS.includes(value.action)&&Number.isFinite(value.reward)&&Number.isFinite(value.state.needs.energy)&&
+      Number.isFinite(value.state.needs.novelty)&&Number.isFinite(value.state.needs.cognitiveLoad)&&
+      Number.isFinite(value.state.needs.uncertainty)&&Number.isFinite(value.state.needs.goalPressure)&&
+      Number.isFinite(value.state.needs.socialNeed)&&Number.isFinite(value.state.needs.identityCoherence));
+    const historical:Indexed[]=replayRows.flatMap((row,index)=>safeRow(row)?[{
+      row,index,energy:clamp(row.state.needs.energy),novelty:clamp(row.state.needs.novelty),
+      key:`${index}:${row.action}:${clamp(row.state.needs.energy).toFixed(4)}:${clamp(row.state.needs.novelty).toFixed(4)}:${clamp(row.reward).toFixed(4)}`,
+    }]:[]);
+    const replayByAction=new Map<ActionKind,Indexed[]>();
+    for(const item of historical){const rows=replayByAction.get(item.row.action)??[];rows.push(item);replayByAction.set(item.row.action,rows);}
+    for(const rows of replayByAction.values())rows.sort((a,b)=>a.energy-b.energy||a.novelty-b.novelty||a.index-b.index);
+
+    const lowerBound=(rows:Indexed[],energy:number)=>{
+      let lo=0,hi=rows.length;
+      while(lo<hi){const mid=(lo+hi)>>>1;if(rows[mid].energy<energy)lo=mid+1;else hi=mid;}
+      return lo;
+    };
+    const targetFor=(row:Example)=>{
+      const reward=clamp(row.reward);
+      if(targetMode==='reward')return reward;
+      const next=Math.max(.5,...this.learner.predict(row.nextState).map(prediction=>prediction.value));
+      return clamp(reward+.78*next);
+    };
+    const isContradictoryContext=(fresh:Example,old:Example)=>{
+      const a=fresh.state.needs,b=old.state.needs;
+      const noveltyGap=Math.abs(clamp(a.novelty)-clamp(b.novelty));
+      // A large novelty separation is an explicit context signal, not proof that
+      // two experiences conflict. It permits selective transfer across distinct modes.
+      if(noveltyGap>.35)return false;
+      const sameContext=Math.abs(clamp(a.energy)-clamp(b.energy))<=.075&&
+        Math.abs(clamp(a.cognitiveLoad)-clamp(b.cognitiveLoad))<=.12&&
+        Math.abs(clamp(a.uncertainty)-clamp(b.uncertainty))<=.12&&
+        Math.abs(clamp(a.goalPressure)-clamp(b.goalPressure))<=.15&&
+        Math.abs(clamp(a.socialNeed)-clamp(b.socialNeed))<=.12&&
+        Math.abs(clamp(a.identityCoherence)-clamp(b.identityCoherence))<=.18&&
+        Math.abs(clamp(fresh.state.predictionError)-clamp(old.state.predictionError))<=.16;
+      return sameContext&&Math.abs(clamp(fresh.reward)-clamp(old.reward))>.28;
+    };
+
+    let onlineUpdates=0,replayUpdates=0,loss=0,conflictComparisons=0;
+    const usedReplay=new Set<string>(),blockedReplay=new Set<string>(),eligibleReplay=new Set<string>();
+    for(let index=0;index<currentRows.length;index++){
+      const fresh=currentRows[index];
+      if(!safeRow(fresh))continue;
+      const outcome=this.learner.train({state:fresh.state,action:fresh.action,target01:targetFor(fresh),
+        learningRate01:currentRate});
+      onlineUpdates++;loss+=outcome.loss01;
+      if(maxReplay===0||replayUpdates>=maxReplay||(index+1)%replayEvery!==0)continue;
+      const rows=replayByAction.get(fresh.action)??[];
+      if(!rows.length)continue;
+      const position=lowerBound(rows,clamp(fresh.state.needs.energy));
+      const start=Math.max(0,Math.min(Math.max(0,rows.length-candidateCap),position-Math.floor(candidateCap/2)));
+      const pool=rows.slice(start,Math.min(rows.length,start+candidateCap));
+      for(const candidate of pool){
+        if(replayUpdates>=maxReplay)break;
+        if(usedReplay.has(candidate.key)||blockedReplay.has(candidate.key))continue;
+        conflictComparisons++;
+        if(isContradictoryContext(fresh,candidate.row)){
+          blockedReplay.add(candidate.key);
+          continue;
+        }
+        eligibleReplay.add(candidate.key);
+        usedReplay.add(candidate.key);
+        const trained=this.learner.train({state:candidate.row.state,action:candidate.row.action,
+          target01:targetFor(candidate.row),learningRate01:replayRate});
+        replayUpdates++;loss+=trained.loss01;
+        break;
+      }
+    }
+    this.state.metrics.onlineUpdates+=onlineUpdates;
+    this.state.metrics.replayUpdates+=replayUpdates;
+    if(onlineUpdates+replayUpdates){
+      this.state.metrics.outcomeSamples+=onlineUpdates;
+      this.state.metrics.recentLoss01=clamp(loss/(onlineUpdates+replayUpdates));
+      this.state.metrics.lastUpdatedAt=Date.now();
+    }
+    this.refreshDerivedMetrics();
+    this.sync();
+    return {
+      onlineUpdates,replayUpdates,blockedReplayRows:blockedReplay.size,eligibleReplayRows:eligibleReplay.size,
+      conflictComparisons,conflictCandidateCap:candidateCap,
+      meanLoss01:onlineUpdates+replayUpdates?loss/(onlineUpdates+replayUpdates):0,
+      trainingExposure01:this.state.metrics.trainingExposure01,
+      generalizationEvidence01:this.state.metrics.generalizationEvidence01,
+    };
+  }
+
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
     if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};
