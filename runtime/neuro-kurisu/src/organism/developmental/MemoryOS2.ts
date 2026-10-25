@@ -105,9 +105,10 @@ export function detectMemoryQueryIntent(query:string):MemoryQueryIntent{
 }
 function isConversationMemory(item:MemoryItem2):boolean{
  const context=item.context??{};
- // Prefer durable conversation/session identity; role labels alone are not lineage.
+ // Only stable conversation/session IDs or keys count as lineage. A message index,
+ // turn sequence, or speaker role identifies a fragment, not the dialogue it belongs to.
  const hasConversationIdentity=Object.entries(context).some(([key,value])=>
-  /^(?:conversation|dialogue|chat|transcript|message|turn|session)(?:id|key|index|sequence)?$/iu.test(key)&&
+  /^(?:conversation|dialogue|chat|transcript|session)(?:id|key)$/iu.test(key)&&
   typeof value==='string'&&value.trim().length>0
  );
  if(hasConversationIdentity)return true;
