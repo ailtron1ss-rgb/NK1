@@ -1,3 +1,12 @@
+## NK1 WorkPass343 — fail closed on cycle counter corruption and support Node strip-only runtime
+
+- [FIXED] `UnifiedCognitiveCycle.restore()` now refuses to treat `lastComplete=true` as trustworthy when persisted cycle aggregates do not form a valid complete/incomplete partition or broken lineages exceed incomplete cycles.
+- [COMPAT] Replaced TypeScript constructor parameter properties in `VersionedSkillCandidateStore` with explicit class fields and assignments. This preserves the type contract while allowing Node 24's strip-only TypeScript execution used by runtime regressions.
+- [REGRESSION] Updated the WorkPass294 static contract test to match the gateway's actual explicit decision-ID spread while preserving the requirement that execution and decision IDs are both forwarded.
+- [VALIDATION] On the previous head, WorkPass292 passed; WorkPass287, WorkPass291, and WorkPass294 exposed these specific problems. The new head must re-run those checks and the core runtime typecheck. Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass342 — repair CI entrypoints and ground replay diversity fixtures (2026-10-25)
 
 - [CI] Added missing runtime npm script aliases for the three P26 validation scripts and WorkPass291/292/294 regression files. The workflow files were already invoking these names, but the commands did not exist in the package manifest.

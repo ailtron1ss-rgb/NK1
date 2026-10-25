@@ -1,3 +1,12 @@
+## Latest durable checkpoint — WorkPass343 (2026-10-25)
+
+- Cycle restore now verifies persisted aggregate counter coherence before trusting the last-cycle completion flag; inconsistent counters fail closed.
+- The versioned skill candidate store no longer uses constructor parameter properties that Node 24's strip-only TypeScript runtime cannot execute.
+- WorkPass294's source-contract assertion matches the current gateway syntax and still checks transmission of the execution ID plus optional decision ID.
+- WorkPass342 added missing runtime test script aliases; WorkPass292 has passed on that head. WorkPass287/291/294 fixes need exact-head CI confirmation. Release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass342 (2026-10-25)
 
 - Added the npm scripts already referenced by P26 Learning Validation and WorkPass291/292/294 workflows, so they invoke the actual checked-in test files instead of failing with “Missing script”.
