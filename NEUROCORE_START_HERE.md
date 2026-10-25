@@ -1,3 +1,20 @@
+## Latest durable checkpoint — WorkPass334: isolate host-owned evaluator regression checks (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains a draft pending integration and end-to-end validation.
+
+- Exact-head CI at `756f7448fbbd5a254b040be649693bb4fed52535` passed the unified cognitive kernel, replay benchmark, correlated external postconditions, reflective payload budget, WorkPass108, WorkPass292–293, WorkPass102, WorkPass105, WorkPass287–288, and P26 Learning Validation. WorkPass110 failed in `workpass243-host-owned-independent-evaluation-services.mjs`.
+- Root cause: the regression intentionally changed the executor fixture's permissions to assert rejection of group/world-writable executables, then reused that fixture without restoring its mode. The next run-root-replacement assertion was masked by the correctly functioning executable permission guard.
+- Fix committed: restore fixture mode to `0700` immediately after the permission-rejection assertion. Runtime security checks are unchanged; the test now isolates permission integrity and run-root identity replacement as separate invariants.
+- Commits: fixture fix `75c441a6a26274e189cbb0d54c8f17f3b633ace5`; checkpoint/changelog `eef339abdecc31c8c7698cdf911a2bb6c5d372dc`. These were created after the previously tested SHA. The latest head's WorkPass110 rerun must finish before this fix is described as validated.
+
+### Next gates
+1. Confirm WorkPass110 and WorkPass331 on the final checkpoint SHA; inspect actual failing-step output if any regression remains.
+2. Run runtime boot, cognition-cycle execution, durable memory across restart, and basic API/CLI smoke on one exact SHA; focused contract tests do not prove full organism readiness.
+3. Continue toward a clean install and integrated perception→appraisal→planning→action→reflection→consolidation path; UI/Live2D/voice end-to-end and release artifact refresh remain open.
+4. Do not claim production readiness or learning uplift without measured end-to-end and frozen-holdout evidence.
+
+---
+
 ## Latest durable checkpoint — WorkPass333: restore truthful independent-evaluation status (2026-10-24)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR #96 remains draft and targets WorkPass331's source branch, not `main`.
