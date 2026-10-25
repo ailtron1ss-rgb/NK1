@@ -1,3 +1,9 @@
+## NK1 WorkPass535 — remove two stale affect-validation blockers (2026-10-25)
+
+- Fixed the app typecheck fixture to remove the optional `globalThis.window` property through `Reflect.deleteProperty`, avoiding TypeScript's required-global delete diagnostic while preserving the unavailable-storage test.
+- Updated the affect API bridge contract assertion to verify that avatar code consumes the canonical `snap.affect?.mood` projection without requiring one exact whitespace/defaulting expression. This keeps the contract meaningful while avoiding a brittle source-format assertion.
+- The focused run already confirms **runtime typecheck PASS**, **emotion/interoception regression PASS**, and **voice/Live2D regression PASS**. App typecheck and the API contract need a fresh run on these fixes before they can be called green.
+
 ## NK1 WorkPass538 — preserve feeling-access evidence in causal memory (2026-10-25)
 
 - The canonical observation cycle now writes the associated feeling-access episode ID, intensity, interoceptive mismatch, self-access confidence and bodily focus into the emotion node's causal-memory metadata.
