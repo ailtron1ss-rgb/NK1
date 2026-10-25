@@ -7,8 +7,11 @@ import {
 assert.equal(MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES, 256 * 1024);
 assert.equal(assertReflectiveSkillPayloadWithinBudget({ b: 2, a: 1 }), '{"a":1,"b":2}',
   'budget guard returns the same canonical representation used by the P23 fingerprint');
-assert.doesNotThrow(() => assertReflectiveSkillPayloadWithinBudget('x'.repeat(MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES)),
-  'payload exactly at the byte budget remains eligible for downstream evaluation');
+const exactBudgetPayload = 'x'.repeat(MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES - 2);
+assert.equal(Buffer.byteLength(JSON.stringify(exactBudgetPayload), 'utf8'), MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES,
+  'fixture must measure the canonical JSON payload including its surrounding quotes');
+assert.doesNotThrow(() => assertReflectiveSkillPayloadWithinBudget(exactBudgetPayload),
+  'payload exactly at the canonical JSON byte budget remains eligible for downstream evaluation');
 assert.throws(
   () => assertReflectiveSkillPayloadWithinBudget('x'.repeat(MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES + 1), 'generated'),
   /p23-reflective-skill-payload-too-large:generated:/,

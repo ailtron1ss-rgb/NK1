@@ -95,3 +95,11 @@ The previous WorkPass110 run passed causal evidence and avatar lifecycle tests b
 The standalone P26 Learning Validation workflow previously pinned Node 22.12.0 and installed only `runtime/neuro-kurisu/package-lock.json`, which contains no TypeScript or Node type dependency. The strict runtime config now intentionally imports the canonical Node types from `app/node_modules/@types`, and the project-level Node pin is 24. The workflow now follows `.nvmrc`, caches on `app/package-lock.json`, and installs the canonical app dependencies without lifecycle scripts before running strict runtime typecheck and learning tests.
 
 This removes a CI environment mismatch; it does not by itself verify the learning tests or establish generalization. Exact-head Actions is required.
+
+## Ninth follow-up — missing evidence-lanes script and JSON byte-accurate fixture
+
+WorkPass292's dedicated workflow invoked `test:workpass292:evidence-lanes`, which was missing from the runtime package scripts despite the referenced test file existing. The script alias now points to `tests/workpass292-evidence-lanes.mjs`.
+
+WorkPass291 also exposed an off-by-two expectation in its exact-size fixture: the helper measures canonical JSON bytes, while the test had supplied a source string whose JSON representation includes two additional quote bytes. The test now constructs a canonical JSON string of exactly the configured byte budget and asserts that byte length before calling the existing size guard. The production limit was not raised or weakened.
+
+**Status: code/wiring repaired; exact-head validation pending.**

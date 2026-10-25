@@ -1,3 +1,9 @@
+## CI contract follow-up — evidence-lanes alias and canonical payload byte boundary (2026-10-25)
+
+- [CI FIX] Added `test:workpass292:evidence-lanes` to the runtime package because the dedicated WorkPass292 workflow referenced that script name but it was absent.
+- [TEST FIX] The WorkPass291 exact-byte-budget test now measures the serialized JSON payload. A JSON string has two surrounding quote bytes, so the fixture uses `MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES - 2` source characters and asserts the serialized size equals the configured cap. Production size validation and the limit remain unchanged.
+- [EVIDENCE] The previous exact-head run exposed both issues after the earlier strip-only/type errors were cleared. These are test/CI contract repairs and still require the new exact-head workflow results.
+
 ## Align P26 validation environment with the canonical runtime toolchain (2026-10-25)
 
 - [CI FIX] P26 Learning Validation now selects Node from `.nvmrc` (Node 24), rather than hard-coding 22.12.0.
