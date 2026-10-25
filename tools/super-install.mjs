@@ -1,13 +1,44 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { inspectToolchainVersions } from './toolchain-contract.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const nodeMajor = Number(process.versions.node.split('.')[0]);
-if (nodeMajor !== 22) {
-  console.error(`SUPER_INSTALL=FAIL reason=node-major-required expected=22 actual=${process.version}`);
+function version(bin, args = ['--version']) {
+  try { return execFileSync(bin, args, { encoding: 'utf8' }).trim(); }
+  catch { return null; }
+}
+function readManifest(relativePath) {
+  try { return JSON.parse(readFileSync(path.join(root, relativePath), 'utf8')); }
+  catch { return null; }
+}
+let nodePin = null;
+try { nodePin = readFileSync(path.join(root, '.nvmrc'), 'utf8').trim(); }
+catch { /* Missing version pin is rejected below. */ }
+const nodeVersion = process.version;
+const npmVersion = version('npm');
+const manifests = [
+  { name: 'root', path: 'package.json' },
+  { name: 'runtime', path: 'runtime/neuro-kurisu/package.json' },
+  { name: 'app', path: 'app/package.json' },
+].map(entry => ({ ...entry, value: readManifest(entry.path) }));
+const contracts = manifests.map(({ value }) => inspectToolchainVersions({
+  nodeVersion,
+  npmVersion,
+  nodePin,
+  nodeRequirement: value?.engines?.node,
+  npmRequirement: value?.engines?.npm,
+}));
+const nodeReady = !!nodePin && manifests.every((manifest, index) =>
+  manifest.value && contracts[index].nodePinMatches && contracts[index].nodeMeetsRequirement);
+const npmReady = !!npmVersion && manifests.every((manifest, index) =>
+  manifest.value && contracts[index].npmMeetsRequirement);
+if (!nodeReady || !npmReady) {
+  const engines = manifests.map(({ name, value }) =>
+    `${name}:node=${value?.engines?.node ?? 'missing'},npm=${value?.engines?.npm ?? 'missing'}`).join('; ');
+  console.error(`SUPER_INSTALL=FAIL reason=toolchain-contract node=${nodeVersion} pin=${nodePin ?? 'missing'} npm=${npmVersion ?? 'missing'} engines=[${engines}]`);
   process.exit(1);
 }
 
