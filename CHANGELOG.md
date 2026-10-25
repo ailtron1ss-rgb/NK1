@@ -1,3 +1,10 @@
+## [NK1][learning] Align signed-shadow E2E fixture with provenance-bound candidate identity (2026-10-25)
+
+- After the atomic-file adapter was corrected, WorkPass110 advanced to the signed shadow-observation E2E and exposed a second legacy candidate-ID formula in the fixture. Production candidate IDs include the explicit fifth provenance fingerprint slot; without provenance this is `null`.
+- Updated the fixture's expected candidate ID to use the same canonical five-slot tuple before it signs the shadow observation. This preserves end-to-end binding and does not change the runtime verifier or acceptance conditions.
+
+---
+
 ## [NK1][learning] Improve multi-seed replay sweep diagnostics (2026-10-25)
 
 - Added the failing strategy, seed and measured new-task accuracy to the P26 replay-policy-sweep assertion message. The threshold remains unchanged at 0.60; this is diagnostic instrumentation, not a relaxation of the benchmark.
