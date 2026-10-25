@@ -112,11 +112,18 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
   // Must match VersionedSkillCandidateStore.stageCandidate exactly: the fifth
   // component is the provenance fingerprint, or null for an ordinary candidate.
-  const expectedId = createHash('sha256').update(JSON.stringify([
-    value.skillId, value.version, value.proposalId, value.payloadFingerprint,
-    value.revisionProvenance ? payloadFingerprint(value.revisionProvenance) : null,
-  ])).digest('hex');
-  if (value.candidateId !== expectedId) return false;
+  const identityPrefix = [value.skillId, value.version, value.proposalId, value.payloadFingerprint];
+  const revisionFingerprint = value.revisionProvenance === undefined
+    ? null
+    : payloadFingerprint(value.revisionProvenance);
+  const expectedId = createHash('sha256').update(JSON.stringify([...identityPrefix, revisionFingerprint])).digest('hex');
+  // Keep schema-1 files written before revision provenance readable. The four-field
+  // identity is accepted only when provenance is absent; new candidates use the
+  // five-field identity, with null as the explicit no-provenance component.
+  const legacyExpectedId = value.revisionProvenance === undefined
+    ? createHash('sha256').update(JSON.stringify(identityPrefix)).digest('hex')
+    : null;
+  if (value.candidateId !== expectedId && value.candidateId !== legacyExpectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
   if (value.rollbackApproval !== undefined && !isRollbackApproval(value.rollbackApproval)) return false;
   if (value.promotedAt !== undefined && !isTime(value.promotedAt)) return false;

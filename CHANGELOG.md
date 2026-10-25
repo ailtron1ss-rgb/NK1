@@ -1,3 +1,18 @@
+## NK1 WorkPass549 — close emotion-to-action and embodied expression continuity (2026-10-25)
+
+- Resolve P66 homeostasis hysteresis before incrementing mode counters or writing history. The mode returned by `observe()`, `lastMode`, the newest history entry and cycle counters now share one final decision.
+- Add a targeted P66 regression for a stable cycle where hysteresis retains exploration over the provisional engagement classification.
+- Cache the mapped Live2D expression so repeated identical emotion messages do not restart the same animation during mouth, gaze or body updates.
+- Keep causal-learning regressions aligned with the current trust boundary: imported external rows remain reviewable but do not count as trusted runtime outcomes or contribute restored learning aggregates; replay-diversity fixtures now represent grounded action transitions.
+- Run the P66 regression in affect CI and watch the Live2D viewer so changes to these files trigger the validation workflow.
+- [Node 24 CI] Run the skill-retrieval/reflection regression with `--experimental-transform-types`; the test imports a class using parameter properties, which Node's strip-only mode cannot execute.
+- [Node 24 full-sweep compatibility] Switched every WorkPass110 learning-test entry point and direct test command from strip-only mode to `--experimental-transform-types`. This retains every regression while supporting runtime TypeScript constructs used by imported classes.
+- [Fail-closed coordinator] Updated the trusted shadow-run coordinator regression to expect immediate synchronous throws when the trusted `OrganismCore` registrar is missing or when a baseline/control or non-shadow method is submitted. The production pre-spawn refusal remains unchanged.
+- [Skill rollback] Updated the lifecycle regression to supply the required rollback approval object and an explicit test-only rollback verifier. Repeated rollback now uses a complete approval and verifies refusal because the candidate is no longer active; production's default-deny verifier is unchanged.
+- [Durable skill store] Preserve the current five-field candidate ID contract and add backwards compatibility for pre-provenance schema-1 files. The atomic JSON-file adapter accepts old four-field identities only when revision provenance is absent; the new format remains validated and provenance-bound.
+- [P23 benchmark] Corrected the reversed-arrival-order fixture to use the verifier identity declared by the task manifest. The previous fixture used a different verifier ID, so every row was legitimately rejected and the bootstrap interval became `null`; no estimator behavior was changed.
+- **Validation boundary:** all changed-path tests and the broad workflow must pass on the exact final head.
+
 ## NK1 WorkPass544 — close durable skill-store and independent-evaluation regressions (2026-10-25)
 
 - [DURABLE SKILL STORE] Aligned persisted candidate identity verification with the canonical five-field candidate ID, including validated revision-provenance fingerprint (or `null`). Restart coverage now checks both ordinary and provenance-bound candidates.

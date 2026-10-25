@@ -4,8 +4,10 @@ on:
   pull_request:
     paths:
       - 'runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/public/live2d/viewer.html'
       - 'runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts'
       - 'runtime/neuro-kurisu/src/organism/cognition/IntrinsicExperimentGenerator.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts'
@@ -18,6 +20,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSessionDataset.ts'
       - 'runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts'
       - 'runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs'
       - 'runtime/neuro-kurisu/tests/affect-ui-snapshot-contract.mjs'
       - 'app/src/components/AvatarStage.tsx'
       - 'app/src/components/avatar/embodimentTimeline.ts'
@@ -75,6 +78,10 @@ jobs:
       - name: Run emotion regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:big-pass-172
+
+      - name: Run P66 homeostasis regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-190:p66
 
   affect-api-contract:
     name: Canonical affect API bridge contract
