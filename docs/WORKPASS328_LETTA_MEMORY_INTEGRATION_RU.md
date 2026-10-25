@@ -45,7 +45,7 @@ npm run test:letta-memory-lifecycle-sync
 node --experimental-strip-types tests/integration/letta-governance-adaptation.mjs
 ```
 
-Тесты используют fake SDK-клиент и проверяют adapter contracts, redaction, tool/file confinement, restore snapshot, автоматическое зеркалирование из canonical mutation boundary, hybrid recall без повышения кандидата до canonical памяти, подавление mirror во время restore, checkpoint-backed outbox replay после сетевой ошибки и приоритет forget над неподтверждённым upsert. Оба теста добавлены в `.github/workflows/workpass71-validation.yml`. Они не доказывают физическое удаление данных в Letta, доступность внешнего сервера, реальное сохранение MemFS, retrieval uplift, production build или полное поведенческое E2E.
+Тесты используют fake SDK-клиент и проверяют adapter contracts, redaction, tool/file confinement, восстановление outbox, автоматическое зеркалирование, hybrid recall без повышения кандидата, replay после сетевой ошибки, приоритет forget и обязательный успешный SDK `result.success` перед подтверждением записи. Assistant-текст без terminal result не считается подтверждением операции. Оба теста добавлены в `.github/workflows/workpass71-validation.yml`. Они не доказывают физическое удаление данных в Letta, доступность внешнего сервера, реальное сохранение MemFS, retrieval uplift, production build или полное поведенческое E2E.
 
 ## Следующие обязательные этапы
 
