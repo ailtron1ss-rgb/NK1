@@ -104,9 +104,10 @@ export class OutcomeCognitionFabric {
     };
     this.causal.restore(snapshot?.causal);
     const quarantined=new Set<string>(this.causal.snapshot().quarantinedExecutionIds??[]);
+    const projectionConflicts=new Set<string>();
     const quarantine=(value:unknown)=>{
       const id=boundedText(value,180);
-      if(id)quarantined.add(id);
+      if(id){quarantined.add(id);projectionConflicts.add(id);}
     };
     const validRecords=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).map(r=>structuredClone(r)):[];
     const recordFingerprints=new Map<string,string>();
@@ -168,7 +169,7 @@ export class OutcomeCognitionFabric {
     const seenRecords=new Set<string>();
     for(const record of validRecords){
       const id=boundedText(record.executionId,180);
-      if(id&&quarantined.has(id))continue;
+      if(id&&projectionConflicts.has(id))continue;
       if(id&&seenRecords.has(id))continue;
       if(id)seenRecords.add(id);
       this.records.push(record);
