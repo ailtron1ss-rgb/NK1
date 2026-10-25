@@ -1,4 +1,4 @@
-## WorkPass... — cross-layer repository wiring and strict test typing (2026-10-25)
+## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
 - Added `tools/verify-repository-wiring.mjs` to check reachable npm-script chains, recursive script cycles, referenced Node/Python entry points, exact workflow path filters, local actions, working directories, setup-node file inputs, and `workflow_run` workflow names.
 - Added isolated regression fixtures for healthy and intentionally broken wiring, including missing files/scripts, absent workflow names and recursive npm-script cycles.
