@@ -1,3 +1,12 @@
+## NK1 WorkPass339 — add an isolated correlation-ID boundary regression (2026-10-25)
+
+- [REGRESSION] Add a focused test for the corrected correlation-ID filter: valid gateway IDs are preserved, control-character-bearing IDs are omitted from the verifier's isolated context, and ordinary verifier output remains normalized.
+- [CI] Add a dedicated workflow step before app/runtime typecheck so this evidence is not hidden when a later unrelated gate fails.
+- [CONTEXT] WorkPass336 fixed the exact module-load syntax error seen in the memory-to-action test; WorkPass338 addressed two independent learning type errors. Runtime Node.js type discovery from WorkPass337 still needs an exact-head CI result.
+- [VALIDATION] Test and CI wiring are next in this pass; Release ZIP remains unchanged.
+
+---
+
 ## NK1 WorkPass338 — tighten learning restore guards and preserve dataset schema literals (2026-10-25)
 
 - [FIXED] `CausalExperienceStream.restore()` now binds and checks the optional `policyFeatures01` array before reading its length or values. This keeps malformed persisted records from entering the grounded learning stream and fixes a TypeScript narrowing error.
