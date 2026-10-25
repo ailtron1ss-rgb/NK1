@@ -1,3 +1,9 @@
+## NK1 WorkPass556 — isolate stale-signature rejection in Hermes evidence test (2026-10-25)
+
+- Changed the signed-receipt tamper fixture to mutate only `artifactId` while preserving task/run identity and the binary outcome. The previous fixture flipped `passed`, so the correct outcome-binding guard rejected it before signature verification ran.
+- The wrapper fingerprint is still recomputed, ensuring the test must reject the stale cryptographic signature rather than a superficial wrapper mismatch.
+- No production evidence-binding logic was weakened; the test now targets the signature verification stage it claims to cover.
+
 ## NK1 WorkPass555 — assert synchronous skill-ID validation correctly (2026-10-25)
 
 - Corrected the compound-revision regression to use `assert.throws` for an invalid blank skill ID. The coordinator validates the ID synchronously before it returns a Promise, so `assert.rejects` could not capture the expected guard exception.
