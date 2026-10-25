@@ -54,7 +54,7 @@ GitHub Actions run [40127691364](https://github.com/ailtron1ss-rgb/NK1/actions/r
 - partial semantic relationship projection, deduplication and graph rollback;
 - isolation of an existing same-text native memory from external HMX provenance.
 
-The WorkPass333 follow-up, including cross-export goal proposal deduplication and explicit external-goal activation, passed exact-head run [40161146253](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161146253) at commit `d2e01c4d76f85f6582cb6b3f0c1904addc90243d`. All five Hexis workflow steps passed, including the staging/import-boundary regression and live HTTP server smoke.
+The WorkPass333 follow-up, including cross-export goal proposal deduplication and explicit external-goal activation, passed exact-head run [40161146253](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161146253) at commit `d2e01c4d76f85f6582cb6b3f0c1904addc90243d`. WorkPass334 boundary typing and WorkPass334 batch-integrity regression subsequently passed all five steps at [40161669084](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161669084), commit `d97e3a01169ee78dfc8d6eafc7f958adc0347a52`.
 
 The parallel WorkPass110 metrics workflow continues to fail on the separate `tests/big-pass-90-causal-learning-stream.mjs:18` assertion (`record` is null). That failure has not been attributed to Hexis.
 
@@ -75,7 +75,18 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 
 - Narrowed untrusted HMX `source` and goal metadata to validated record objects before reading dynamic fields; this removes strict TypeScript errors without weakening runtime validation.
 - Added a NodeNext `.d.mts` declaration for `HexisCanonicalMemoryProjector.mjs`, connecting it to the canonical MemoryFabric, semantic graph, HMX stage and receipt types.
-- Added an explicit impossible-state guard before finalizing goal proposal materialization. The isolated Hexis workflow had passed on the prior code checkpoint; this type-boundary update requires fresh validation. The broader runtime typecheck still reports unrelated legacy nullability and contract errors; a green Hexis workflow is not being presented as a full-repository typecheck pass.
+- Added an explicit impossible-state guard before finalizing goal proposal materialization.
+- Exact branch-head Hexis run [40161669084](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161669084) at `d97e3a01169ee78dfc8d6eafc7f958adc0347a52` passed all five workflow steps, including the oversized-goal-batch regression and live server smoke. The HMX-specific source/metadata and `.mjs` declaration errors were absent from the typecheck log on that head. Remaining full-runtime type errors were outside the HMX adapter; WorkPass335 addresses those separately, and its typecheck is still pending.
 
 
 - **WorkPass334 batch-integrity follow-up:** HMX goal review now rejects batches larger than 64 proposals as a whole instead of silently truncating the staged goal section. A regression asserts that proposal state and metrics remain unchanged on this failure.
+
+
+## WorkPass335 — follow-up runtime typecheck repairs
+
+- Fixed the Node spawn error event's callback type in Android/Termux TTS without changing its uncertain-playback fail-safe.
+- Guarded nullable causal-experience results before generating unified-learning input, so a deduplicated/absent causal event is not dereferenced or treated as a new observation.
+- Updated the trusted-shadow registration wrapper to await registrar persistence without leaking its synchronous result through a void-only callback contract.
+- Added the opt-in P23 compound repair runtime-clock ID to both the type union and scheduler allowlist, and added scheduler regression coverage. This fixes a type error and a real path where enabling the loop would previously have thrown "Unknown runtime clock".
+- Tightened optional numeric normalization in skill retrieval for strict TypeScript narrowing.
+- Exact-head tests for this follow-up are pending at commit `b4ec50e2e1893d4d9dcfb32d169a4b6c5079765c`; no full-runtime typecheck pass is claimed yet.

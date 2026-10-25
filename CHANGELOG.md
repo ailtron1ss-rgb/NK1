@@ -2255,3 +2255,14 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 
 - **WorkPass334 batch integrity:** Explicit HMX goal preparation rejects a staged goal section larger than the 64-proposal batch limit without mutating the durable proposal queue or its counters; this avoids silent loss from a `slice(0, 64)` import path.
+
+
+
+## 2026-10-25 — WorkPass335: runtime typecheck boundary repairs
+
+- Fixed Android TTS spawn error typing; retained the rule that errors after process start are not falsely reported as completed playback.
+- Added null guards before ingesting causal-replay and skill-repair signals into unified learning.
+- Corrected trusted shadow-run callback return typing while still awaiting durable run registration before spawning a process.
+- Added `p23-compound-repair-revision` to `RuntimeClockKind` and the actual scheduler allowlist; extended the runtime-clock regression.
+- Changed skill retrieval's optional numeric helper to narrow `number | undefined` to a finite number.
+- WorkPass334 HMX validation at run [40161669084](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161669084) passed 5/5 steps. WorkPass335 is on `b4ec50e2e1893d4d9dcfb32d169a4b6c5079765c`; its exact-head Hexis and strict typecheck results remain pending.
