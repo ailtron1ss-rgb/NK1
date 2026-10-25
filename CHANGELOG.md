@@ -1,6 +1,6 @@
 ## NK1 integration follow-up — align restore and postcondition regression contracts (2026-10-25)
 
-- Updated the P23 restore test to match the existing canonical policy: durable newest-first experience rows lead the bounded dedupe cache, while recent cache-only IDs remain within the 2,048-entry cap. The implementation still prioritizes persisted outcomes so cache omission cannot reopen already-processed traces.
+- Updated the P23 restore test to match the existing canonical policy: durable newest-first experience and replay rows lead their bounded dedupe caches, while recent cache-only IDs remain after durable rows within the 2,048-entry cap. The implementation still prioritizes persisted outcomes so cache omission cannot reopen already-processed traces.
 - Updated the WorkPass294 source contract to recognize the current explicit conditional spread of `decisionId` alongside the exact `executionId` when calling the verifier. Runtime behavior is unchanged; the regression now checks the code the gateway actually uses instead of an obsolete formatting pattern.
 - These are contract-alignment fixes, not an outcome-learning uplift claim. Exact-head CI must confirm both workflows.
 
