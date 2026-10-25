@@ -62,11 +62,11 @@ const zeroBudget = resolveCognitiveRoutingPolicy({
 assert.equal(zeroBudget.maxCounterfactualBranches, 0);
 assert.equal(zeroBudget.allowMatchedCounterfactual, false, 'zero branch budget must disable optional alternate projections');
 
-const fractionalBudget = resolveCognitiveRoutingPolicy({
+const negativeBudget = resolveCognitiveRoutingPolicy({
   wakeMask: 0,
   interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
-}, 2.9);
-assert.equal(fractionalBudget.maxCounterfactualBranches, 2, 'branch capacity must normalize fractional resource budgets conservatively');
+}, -4);
+assert.equal(negativeBudget.maxCounterfactualBranches, 0, 'negative branch budgets must fail closed');
 
 const invalidBudget = resolveCognitiveRoutingPolicy({
   wakeMask: 0,
