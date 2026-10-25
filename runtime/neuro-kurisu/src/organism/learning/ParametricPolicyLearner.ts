@@ -34,7 +34,8 @@ export interface ParametricPrediction { action:ActionKind; value:number; uncerta
 const featureNames=[
   'energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed',
   'predictionError','attentionBudget','identityCoherence','externalInput','bodyCapacity','thermalPressure',
-  'boredom','resourceRisk','energyNoveltyInteraction','energyGoalPressureInteraction','noveltyGoalPressureInteraction','actionCost'
+  'boredom','resourceRisk','energyNoveltyInteraction','energyGoalPressureInteraction','noveltyGoalPressureInteraction','actionCost',
+  'lowNoveltyGate','highNoveltyGate','energyCenteredLowNoveltyInteraction','energyCenteredHighNoveltyInteraction'
 ];
 
 export function defaultParametricPolicy():ParametricPolicyState{
@@ -52,6 +53,11 @@ export function defaultParametricPolicy():ParametricPolicyState{
 function featureVector(state:OrganismState, extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}):number[]{
   const n=state.needs;
   const energy=clamp(n.energy),novelty=clamp(n.novelty),goalPressure=clamp(n.goalPressure);
+  // Separate context gates let one policy retain opposite energy/action gradients
+  // in distinct novelty regimes rather than averaging them into catastrophic forgetting.
+  const lowNoveltyGate=clamp((.5-novelty)/.5);
+  const highNoveltyGate=clamp((novelty-.5)/.5);
+  const centeredEnergy=energy-.5;
   return [
     energy,
     clamp(n.cognitiveLoad),
@@ -71,6 +77,10 @@ function featureVector(state:OrganismState, extras?:{external01?:number;boredom0
     energy*goalPressure,
     novelty*goalPressure,
     0,
+    lowNoveltyGate,
+    highNoveltyGate,
+    centeredEnergy*lowNoveltyGate,
+    centeredEnergy*highNoveltyGate,
   ];
 }
 
@@ -99,7 +109,7 @@ export class ParametricPolicyLearner{
 
   features(state:OrganismState, extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}, action?:ActionKind){
     const f=featureVector(state,extras);
-    if(action) f[f.length-1]=actionCost(action);
+    if(action) f[featureNames.indexOf('actionCost')]=actionCost(action);
     return f;
   }
 
