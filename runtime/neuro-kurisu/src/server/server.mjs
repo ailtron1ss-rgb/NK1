@@ -15,6 +15,7 @@ import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
 import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
 import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs';
+import { retryTransientApprovalStorage } from './transient-approval-storage-retry.mjs';
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
@@ -93,17 +94,6 @@ let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
 
 const APPROVAL_STORAGE_RETRY_WINDOW_MS = Math.max(500, Math.min(15000, Number(process.env.NEURO_APPROVAL_STORAGE_RETRY_MS || 8000)));
-async function retryTransientApprovalStorage(operation, isBusy) {
-    const deadline = Date.now() + APPROVAL_STORAGE_RETRY_WINDOW_MS;
-    let delayMs = 25;
-    for (;;) {
-        const result = await operation();
-        if (!isBusy(result)) return { result, exhausted: false };
-        if (Date.now() >= deadline) return { result, exhausted: true };
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-        delayMs = Math.min(250, delayMs * 2);
-    }
-}
 
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
 const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
@@ -2006,6 +1996,7 @@ async function route(req, res) {
                 const attempt = await retryTransientApprovalStorage(
                     () => runtime.core.requestActionToolApproval(id,toolInput,reason,options,operation),
                     result => !result.created && result.error === 'approval-storage-busy',
+                    { timeoutMs: APPROVAL_STORAGE_RETRY_WINDOW_MS },
                 );
                 const approval = attempt.result;
                 if(!approval.created && !approval.request) return json(res,503,{ok:false,error:approval.error||'approval-request-failed',retryable:attempt.exhausted && approval.error==='approval-storage-busy'});
@@ -2019,6 +2010,7 @@ async function route(req, res) {
             const attempt = await retryTransientApprovalStorage(
                 () => runtime.core.resolveActionToolApproval(requestId,input.approved===true),
                 result => !result.ok && result.error === 'approval-storage-busy',
+                { timeoutMs: APPROVAL_STORAGE_RETRY_WINDOW_MS },
             );
             const result = attempt.result;
             return json(res,result.ok?200:attempt.exhausted && result.error==='approval-storage-busy'?503:409,{...result,...(attempt.exhausted?{retryable:true}:{})});
@@ -2032,6 +2024,7 @@ async function route(req, res) {
             const attempt = await retryTransientApprovalStorage(
                 () => runtime.core.consumeDirectActionApproval(id,toolInput,approvalId,{}),
                 result => !result.ok && result.reason === 'approval-storage-busy',
+                { timeoutMs: APPROVAL_STORAGE_RETRY_WINDOW_MS },
             );
             const result = attempt.result;
             return json(res,result.ok?200:attempt.exhausted && result.reason==='approval-storage-busy'?503:403,{...result,...(attempt.exhausted?{retryable:true}:{})});
