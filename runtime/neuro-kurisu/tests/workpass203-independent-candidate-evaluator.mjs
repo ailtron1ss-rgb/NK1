@@ -221,7 +221,7 @@ assert.equal(unsafeResult.evaluation.provenance.runBindings[0].safetyViolationCo
 
 const verifierUnavailable = createIndependentSkillCandidateEvaluator({
   tasks, environmentFingerprint: 'd'.repeat(64),
-  executor: { async execute({ task }) { return { runId: 'unique-' + task.trialId, observedStepIds: ['open'] }; } },
+  executor: { async execute({ task }) { return { runId: 'unique-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
   verifier: { async verify() { throw new Error('verifier unavailable'); } },
   safetyScanner: { async scan() { return { violationCount: 0 }; } },
 });
