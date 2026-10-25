@@ -1,3 +1,8 @@
+## NK1 CI repair — WorkPass293 P23 revision command (2026-10-25)
+
+- [FIXED] Restored the missing `test:workpass293:p23-revision` package script that the `autonomous-p23-revision` Actions job invokes. The command runs eight existing, substantive revision/evidence regressions: holdout isolation, local-model revision generation, verified-session dataset, replay admission/selection, skill revision gate, promotion proposal and outcome-artifact authentication.
+- [INTENT] This is a real aggregate test command, not a no-op alias. The workflow must run again on the updated branch to confirm the aggregate passes; no CI success is claimed yet.
+
 ## NK1 WorkPass320 — bounded internal-dialogue history (2026-10-25)
 
 - [INTEGRATED] Added `InternalDialogueHistory.ts`, aggregating up to 32 schema-valid review receipts after startup and after each live review. The runtime exposes a read-only diagnostic summary with sample count, average confidence/coverage/uncertainty/contradiction, and recent-vs-earlier half deltas. `/api/organism/inspect` now includes this aggregate under `internalDialogueHistory`.
