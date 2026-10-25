@@ -11,6 +11,8 @@ on:
       - "package.json"
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "tools/verify-repository-wiring.mjs"
       - "tools/verify-repository-wiring.test.mjs"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
@@ -25,6 +27,8 @@ on:
       - "package.json"
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "tools/verify-repository-wiring.mjs"
       - "tools/verify-repository-wiring.test.mjs"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
@@ -72,3 +76,6 @@ jobs:
 
       - name: Test cognitive interrupt episode linkage
         run: npm --prefix runtime/neuro-kurisu run test:p324:interrupt-episodes
+
+      - name: Test live runtime graph persistence and restart continuity
+        run: npm --prefix runtime/neuro-kurisu run test:cognitive-dependency-runtime-wiring
