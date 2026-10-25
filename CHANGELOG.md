@@ -3,7 +3,7 @@
 - [CI] Added the existing 80-cycle `npm run test:autonomy` regression to the canonical cognitive-kernel workflow; it requires at least five selected non-`wait` actions and therefore checks for a degenerate wait-only loop.
 - [TRIGGER] Added `runtime/neuro-kurisu/tests/organism-autonomy.mjs` to both `push` and `pull_request` path filters, keeping the test wired into this focused runtime gate.
 - [SCOPE] This is a bounded autonomous-decision smoke check, not proof of unattended hourly initiative, long-horizon stability, or external-world autonomy.
-- [VALIDATION] The preceding exact-head WorkPass331 workflow and the WorkPass110/108/294 and P26 gates passed on `13671b6a3f3321b6c0074ca4729bd8fd4fc34996`; this workflow change creates a new head, so WorkPass337's autonomy step requires a fresh run.
+- [VALIDATION] PASS on exact SHA `8f5e4da3c37b7e218a259d3e11ec1b1329ec8e15`: [WorkPass331 run 40168142987](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168142987) completed `success`. Node/npm version tests (4/4), clean-checkout doctor, canonical kernel, runtime wiring, organism smoke, 80-cycle autonomy (`CLEAN_AUTONOMY=PASS 79/80`), and restart persistence (`CLEAN_RESTART_PERSISTENCE=PASS`) all passed. WorkPass110, WorkPass108, WorkPass105, WorkPass102, WorkPass99, WorkPass287–288, WorkPass291–294 and P26 Learning Validation also passed on that SHA.
 
 # WorkPass336 — preserve B272 action-to-outcome binding in the live loop (2026-10-25)
 
