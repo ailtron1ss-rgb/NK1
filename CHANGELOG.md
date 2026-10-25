@@ -1,3 +1,10 @@
+## NK1 WorkPass544 — align external learning counters with trust semantics (2026-10-25)
+
+- The full pull-request workflow exposed a stale assertion in the causal-learning stream regression: external imports were expected to increment the trusted runtime-outcome counter even though the ingestion boundary explicitly keeps imported evidence ungrounded.
+- Updated the regression to distinguish retained external records from trusted runtime outcomes. Normalized retries must keep one record; conflicting identities are quarantined; invalid inputs must leave both the record set and trusted outcome count unchanged.
+- No trust checks were weakened and the production runtime path was unchanged; this corrects the test to match the current trust contract.
+- **Validation boundary:** focused affect checks already passed before this extra regression correction; rerun the exact-head learning workflow and focused affect workflow before merging.
+
 ## NK1 WorkPass543 — persist the final homeostasis mode (2026-10-25)
 
 - Fixed a state-integrity defect in P66 hysteresis: the returned mode could be corrected after lastMode, history and counters had already recorded the provisional choice.
