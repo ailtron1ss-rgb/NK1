@@ -59,7 +59,6 @@ async function waitForManagedGatewayPort(child, timeoutMs = 4_000) {
         const portText = output.slice(markerIndex + marker.length).match(/^\d+/)?.[0];
         if (portText) finish(null, Number(portText));
       }
-      if (match) finish(null, Number(match[1]));
     };
     const onExit = (code, signal) => finish(
       new Error(`gateway exited before readiness: code=${code} signal=${signal ?? 'none'} stderr=${stderr}`),
