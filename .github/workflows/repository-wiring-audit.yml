@@ -8,6 +8,7 @@ on:
       - feature/memory-budget-restore-integrity-20261025
       - work/node24-project-pin-alignment-20261025
       - work/node24-project-pin-rebased-20261025
+      - fix/cognitive-interrupt-severity-normalization-2026-10-25
     paths:
       - ".github/workflows/repository-wiring-audit.yml"
       - ".github/workflows/**"
