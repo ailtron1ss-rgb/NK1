@@ -1238,7 +1238,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
       projectResearchSession: projectResearchSessionState,
       outcomeVerification: {
         version:1,
-        records:Array.isArray(raw.system?.outcomeVerification?.records)?raw.system.outcomeVerification.records.slice(0,96).map((r:any)=>({
+        records:Array.isArray(raw.system?.outcomeVerification?.records)?raw.system.outcomeVerification.records.filter((r:any)=>r&&typeof r==='object'&&Number.isFinite(Number(r.at))&&typeof r.tool==='string'&&r.tool.trim().length>0&&r.tool.length<=180&&typeof r.ok==='boolean'&&typeof r.verified==='boolean'&&['none','tool-contract','external-postcondition'].includes(r.basis)&&(r.evidenceEventId===undefined||typeof r.evidenceEventId==='string'&&/^outcome:[a-f0-9]{40}$/.test(r.evidenceEventId))).slice(0,96).map((r:any)=>({
           at:Number(r?.at??0), tick:Number(r?.tick??0), tool:String(r?.tool??''), ok:Boolean(r?.ok), verified:Boolean(r?.verified),
           basis:r?.basis==='external-postcondition'||r?.basis==='tool-contract'?'external-postcondition'===r?.basis?'external-postcondition':'tool-contract':'none',
           confidence01:Number(r?.confidence01??0), evidenceEventId:typeof r?.evidenceEventId==='string'&&/^outcome:[a-f0-9]{40}$/.test(r.evidenceEventId)?r.evidenceEventId:undefined,
