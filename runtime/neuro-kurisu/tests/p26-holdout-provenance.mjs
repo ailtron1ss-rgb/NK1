@@ -7,7 +7,9 @@ const mkState=(energy=.42)=>({
   predictionError:.2,attentionBudget:.8,lastAction:'none',lastActionSuccess:null,autonomyScore:.5,
   selfPredictionError:.1,predictedNextAction:'none',lastPredictionConfidence:.5,worldContextVersion:1,
 });
-const engine=new P26TrueLearningEngine();
+// Test-only verifier adapter: production construction defaults to deny without a trusted verifier.
+const testOnlyVerifier=evidence=>evidence.verified===true&&evidence.independent===true;
+const engine=new P26TrueLearningEngine(testOnlyVerifier);
 const state=mkState();
 const replay=engine.replay([{state,action:'verify',reward:.9,nextState:mkState(.5),surprise:.8}]);
 assert.equal(replay.updates,1);
@@ -21,13 +23,15 @@ assert.equal(weak.accepted,false,'unverified holdout must be rejected');
 assert.equal(engine.metrics().generalizationEvidence01,0);
 
 const evidence={evidenceId:'e1',taskId:'task-a',protocolId:'frozen-v1',verifierId:'oracle-a',sampleSetHash:'sha-a',baseline01:.4,learned01:.8,verified:true,independent:true};
+assert.equal(new P26TrueLearningEngine().recordVerifiedHoldout(evidence).reason,'holdout-evidence-not-authenticated',
+  'self-asserted booleans must not authenticate holdout evidence under the default verifier');
 assert.equal(engine.recordVerifiedHoldout(evidence).accepted,true);
 assert.equal(engine.metrics().independentHoldoutSamples,1);
 assert.equal(engine.metrics().generalizationEvidence01,.05);
 assert.equal(engine.recordVerifiedHoldout(evidence).reason,'duplicate-holdout-evidence','duplicate evidence must not inflate maturity');
 assert.equal(engine.metrics().independentHoldoutSamples,1);
 
-const restored=new P26TrueLearningEngine();
+const restored=new P26TrueLearningEngine(testOnlyVerifier);
 restored.restore(engine.snapshot());
 assert.equal(restored.metrics().generalizationEvidence01,.05,'independent evidence count should survive persistence');
 assert.equal(restored.recordVerifiedHoldout(evidence).accepted,false,'duplicate guard should survive persistence');
