@@ -26,6 +26,8 @@
 - При импорте статусы памяти отображаются консервативно: `quarantined`, `archived`, `deleted`, `forgotten`, `rejected`, `inactive` и `superseded` не становятся доступными убеждениями; неизвестный статус остаётся `unknown`. Внешняя метка `fact` также не может повысить запись до NK1-подтверждённого факта: она импортируется как `belief`.
 - Исправлена некорректная регулярка управляющих символов в `OutcomeVerificationService.ts`, из-за которой Node.js 24 прекращал загрузку runtime ещё до HMX-тестов.
 
+- Server smoke нашёл TypeScript-конструкцию parameter property в `VersionedSkillCandidateStore.ts`, несовместимую с Node strip-only режимом. Убрал параметр-свойства в пользу обычных полей с присваиваниями; `npm start` и smoke-запуск переключены на Node 24 `--experimental-transform-types`, который поддерживает такие конструкции. Этот исправленный запуск ещё требует нового подтверждения CI.
+
 ## Проверка
 
 CI разделён на независимые этапы из `runtime/neuro-kurisu`:
