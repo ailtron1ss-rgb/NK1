@@ -90,3 +90,8 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 - Added the opt-in P23 compound repair runtime-clock ID to both the type union and scheduler allowlist, and added scheduler regression coverage. This fixes a type error and a real path where enabling the loop would previously have thrown "Unknown runtime clock".
 - Tightened optional numeric normalization in skill retrieval for strict TypeScript narrowing.
 - Exact-head tests for this follow-up are pending at commit `b4ec50e2e1893d4d9dcfb32d169a4b6c5079765c`; no full-runtime typecheck pass is claimed yet.
+
+
+## WorkPass335 — CI script wiring repair
+
+- The `WorkPass292 verified experience lanes` workflow invoked `npm run test:workpass292:evidence-lanes`, but the package script map did not declare that command even though `tests/workpass292-evidence-lanes.mjs` existed. Added the missing script with Node's strip-types runner. The prior failure was a workflow/package wiring error, not a failing causal-experience assertion. Fresh exact-head workflow confirmation is pending.

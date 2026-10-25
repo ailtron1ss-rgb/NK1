@@ -2266,3 +2266,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added `p23-compound-repair-revision` to `RuntimeClockKind` and the actual scheduler allowlist; extended the runtime-clock regression.
 - Changed skill retrieval's optional numeric helper to narrow `number | undefined` to a finite number.
 - WorkPass334 HMX validation at run [40161669084](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161669084) passed 5/5 steps. WorkPass335 is on `b4ec50e2e1893d4d9dcfb32d169a4b6c5079765c`; its exact-head Hexis and strict typecheck results remain pending.
+
+
+
+## 2026-10-25 — WorkPass335: repair WorkPass292 CI script wiring
+
+- Added the missing `test:workpass292:evidence-lanes` npm script to point at the existing `tests/workpass292-evidence-lanes.mjs` regression.
+- Prior run [40161669028](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161669028) failed before executing the test because npm could not find the script. This is now a package/workflow mapping fix; the new exact-head run must confirm the evidence-lane assertions themselves pass.
