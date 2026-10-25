@@ -1,3 +1,10 @@
+## NK1 WorkPass550 — align skill rollback regression with approval gate (2026-10-25)
+
+- Updated the versioned skill-store fixture to provide an explicit test-only rollback verifier and the required approval envelope (`approvedBy`, `approvedAt`, `expectedActiveVersion`) for the successful rollback path.
+- Added a negative assertion proving legacy/empty rollback calls fail before lifecycle mutation, and made the repeat-rollback assertion use a well-shaped approval so it tests the current-candidate guard.
+- The previous fixture called the removed `rollback(candidateId, expectedVersion, now)` form; the implementation now requires an approval object and a configured authority verifier. No rollback authentication guard was relaxed.
+- Latest WorkPass110 run must be repeated on the updated head.
+
 ## NK1 WorkPass549 — align multi-source replay contract test (2026-10-25)
 
 - Updated the low-energy replay test to reflect the current contract: `adaptiveReplayOptions` preserves the configured batch cap and quota for reproducible experiments; energy throttling remains the upstream scheduler's responsibility.
