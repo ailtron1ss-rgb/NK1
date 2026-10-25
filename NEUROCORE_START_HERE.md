@@ -4,7 +4,7 @@
 
 - WorkPass334 fixed a real fixture-ordering defect in `workpass243-host-owned-independent-evaluation-services.mjs`: after proving that `0720` executable permissions are rejected, the test restores the fixture to `0700` so the following run-root identity assertion reaches the intended guard. Security checks were not loosened.
 - WorkPass331 unified cognitive-kernel workflow passed on SHA `a12a4e9ec8a8418c4070620ef56e3052f6189d5d`; WorkPass110 was queued/pending on that same SHA when last inspected. Those results are not evidence for the later commits.
-- WorkPass335 adds existing `npm run test:smoke` and `npm run test:restart` steps to the focused kernel workflow and adds their test files to both `push` and `pull_request` path filters. Workflow commit: `468e2e68906f380ac0b9c65c822669879160b2aa`; checkpoint/changelog commit: `9b51e3850dc109f1306824d70c521c59a3ebca18`.
+- WorkPass335 adds existing `npm run test:smoke` and `npm run test:restart` steps to the focused kernel workflow, adds their test files to both `push` and `pull_request` path filters, and adds `runtime/neuro-kurisu/package.json` so script changes re-trigger these gates. Workflow commits: `468e2e68906f380ac0b9c65c822669879160b2aa` and `19d79192af27d728942c7d76501d95e99febff69`; checkpoint/changelog commits: `9b51e3850dc109f1306824d70c521c59a3ebca18` and `ddcb2024fd272549d6b2ed6f328144833ea93bcb`.
 - Final-head CI must rerun after the latest checkpoint update. No success is claimed for the new smoke/restart gates until their exact-head jobs finish. Focused tests still do not prove full perception-to-action operation, voice/Live2D end-to-end, production deployment, or learning uplift.
 
 ### Next gates
