@@ -1,3 +1,11 @@
+## Unified cognitive substrate runtime wiring — 2026-10-25
+
+- Replaced unsafe nested-object spreading in `UnifiedCognitiveSubstrate.restore()` with schema-aware own-property reads, finite [0,1] metric normalization, safe non-negative counters, bounded text, and an explicit state-version guard.
+- Applied the same normalization to live integration inputs and rejected malformed sections, invalid ticks, and replayed ticks before state mutation; derived coupling metrics now consume normalized values only.
+- Wired the substrate into the real `OrganismRuntime` cycle after `OrganismCore.observe()`, with a dedicated `.cognitive-substrate.json` sidecar, bounded cadence/meaningful-change checkpointing, restart restore, final stop flush, and evidence-bus diagnostics. Core remains the canonical action arbiter; this change does not claim a learning or task-success uplift.
+- Added adversarial restore/input and source-wiring regressions, registered them in `test:rebuild-recovered`, and added a Node 24 focused workflow.
+- Validation status at commit time: authored and wired; exact-head execution remains pending. No production-readiness or consciousness claim is implied.
+
 ## Cognitive dependency frame integrity — 2026-10-25
 
 - The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
