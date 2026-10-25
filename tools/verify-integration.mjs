@@ -129,7 +129,7 @@ try {
     });
     record(`research:${kind}:blocked-without-approval`,
       blocked.res.status === 403 && blocked.data?.approvalRequired === true && Boolean(blocked.data?.approvalRequest?.id),
-      `status=${blocked.res.status}`);
+      `status=${blocked.res.status} error=${blocked.data?.error ?? '—'} approvalId=${blocked.data?.approvalRequest?.id ? 'present' : 'missing'}`);
     if (blocked.res.status !== 403 || !blocked.data?.approvalRequest?.id) return { res: blocked.res, data: blocked.data };
 
     const decision = await fetchJson(`${runtimeUrl}/api/organism/tools/permissions/resolve`, {
@@ -138,7 +138,7 @@ try {
       body: JSON.stringify({ requestId: blocked.data.approvalRequest.id, approved: true }),
     });
     record(`research:${kind}:explicit-owner-approval`, decision.res.ok && decision.data?.ok === true,
-      `status=${decision.res.status}`);
+      `status=${decision.res.status} error=${decision.data?.error ?? '—'}`);
     if (!decision.res.ok) return { res: decision.res, data: decision.data };
     return await fetchJson(base, {
       method: 'POST',
@@ -150,17 +150,17 @@ try {
   const nc = await runApprovedProbe('neurocore');
   record('research:neurocore-probe-after-approval',
     nc.res.ok && Boolean(nc.data?.ok) && nc.data?.status === 'pass',
-    `delta=${nc.data?.delta ?? '—'}`);
+    `delta=${nc.data?.delta ?? '—'} error=${nc.data?.error ?? '—'}`);
 
   const nm = await runApprovedProbe('nomega-registry');
   record('research:nomega-registry-after-approval',
     nm.res.ok && Boolean(nm.data?.ok) && nm.data?.status === 'pass',
-    `modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'}`);
+    `modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'} error=${nm.data?.error ?? '—'}`);
 
   const dc = await runApprovedProbe('deepcode');
   record('research:deepcode-probe-after-approval',
     dc.res.ok && Boolean(dc.data?.ok) && dc.data?.status === 'pass',
-    `smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'}`);
+    `smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'} error=${dc.data?.error ?? '—'}`);
 } catch (error) {
   record('runtime/bridge:http', false, error instanceof Error ? error.message : String(error));
 } finally {
