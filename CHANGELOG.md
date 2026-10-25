@@ -8,6 +8,9 @@
 - Connected `CognitiveDependencyGraph` to the live `OrganismRuntime` cycle: it builds a routing frame from the normalized observation and current organism state, records an evidence-bus event, and atomically checkpoints its small state in a sidecar when routing/interrupt state changes, every 16 organism ticks, and at shutdown.
 - The graph's routing frame identity remains monotonic across a recovery where the organism snapshot is restored from an older valid backup. Core's canonical action arbitration remains unchanged; the first integration records/wires routing evidence rather than independently selecting actions.
 - Added an integration regression that runs the runtime, verifies the final sidecar flush, restarts it, and checks that the dependency frame advances. CI now executes this restart test; result pending.
+- Added `CognitiveRoutingPolicy` to adapt graph interrupts/governance pressure to the optional speculative-work budget. It only reduces the existing resource allocator's branch count; it does not replace canonical Core action arbitration.
+- Critical resource/thermal/memory interrupts deny counterfactual branches, ordinary active interrupts cap them at one and skip matched alternative projections, and governance pressure caps optional work. Zero upstream branch budget also disables matched alternate projections.
+- Added policy unit tests and wired them into the focused CI workflow, including its push/pull-request path filters. Execution remains unverified until a completed Actions result is available.
 
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
