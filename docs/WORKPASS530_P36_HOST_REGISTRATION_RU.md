@@ -39,6 +39,10 @@
 
 Предыдущий WorkPass529 отделил `kind: 'developmental-outcome'` от обычного baseline/treatment/holdout-свидетельства и убрал доверие к `verifiedNow` из общих world/reward feedback.
 
+## Уточнение WorkPass534: два независимых полномочия
+
+Помимо `OrganismConfig.p36IndependentEvaluator` теперь существует отдельный `OrganismConfig.p36DevelopmentalOutcomeEvaluator` под зарезервированным ID `organism.learning.p36.evaluate-maturity`. Публичный реестр блокирует оба ID. Первый принимает только экспериментальные baseline/treatment/holdout-свидетельства; второй — только `kind: 'developmental-outcome'` и квитанцию, привязанную к отложенному результату. Signed-ledger-адаптер WorkPass532 не должен подключаться к maturity-слоту, потому что он подтверждает только point-in-time holdout.
+
 ## Дополнительное уточнение WorkPass531
 
 Путь зрелости закреплён отдельным discriminant: `kind: 'developmental-outcome'`. Он входит в нормализованный кортеж, который проверяется verifier receipt, и явно типизирован в интерфейсе и методе P36. Это снижает риск, что maturity outcome ошибочно обработается как обычная baseline/treatment evidence запись. Интеграционный тест отдельно проверяет наличие этого поля.
