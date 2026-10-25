@@ -94,3 +94,6 @@ jobs:
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
+      - name: Run P26 training-exposure and verified holdout provenance regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:holdout-provenance

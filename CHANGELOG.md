@@ -1,3 +1,11 @@
+## Runtime compatibility follow-up — trusted persistence, replay budget and workflow entry points (2026-10-25)
+
+- [FIX] Replaced the remaining Node 24 strip-only-incompatible constructor parameter property in `AtomicFileSkillStorePersistence` with explicit field initialization.
+- [FIX] Replay selection now treats configured `recentQuota` as a guarantee (clamped to the adaptive batch size) instead of silently lowering it below the caller's requested minimum. Adaptive capacity remains a hard ceiling and may shrink below `maxBatchSize` under low pressure; the runtime test now reflects these distinct contracts.
+- [FIX] WorkPass294's source-level correlation assertion now checks the actual verifier and tool-call object shapes, proving explicit execution/decision ticket propagation rather than depending on an outdated shorthand syntax pattern.
+- [CI FIX] Added the three missing P26 npm aliases for existing input-integrity, recovery-benchmark and continual-matrix test files, and explicitly wired the P26 holdout-provenance regression into the dedicated workflow.
+- [EVIDENCE] The last exact-head run passed the P26 strict typecheck, WorkPass105 signed outcome tests, WorkPass291 byte-budget test and WorkPass292 experience-lanes test. It then surfaced the issues fixed here; the refreshed exact-head regressions remain required.
+
 ## CI contract follow-up — evidence-lanes alias and canonical payload byte boundary (2026-10-25)
 
 - [CI FIX] Added `test:workpass292:evidence-lanes` to the runtime package because the dedicated WorkPass292 workflow referenced that script name but it was absent.
