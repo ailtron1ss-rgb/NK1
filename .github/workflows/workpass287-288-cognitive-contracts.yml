@@ -8,6 +8,8 @@ on:
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/workpass287-288-cognitive-contracts.yml"
@@ -22,6 +24,8 @@ on:
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/workpass287-288-cognitive-contracts.yml"
@@ -56,3 +60,6 @@ jobs:
       - name: Check motivation-to-goal integration
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs
+      - name: Check live Core intrinsic-drive wiring
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-272-core-endogenous-goals.mjs

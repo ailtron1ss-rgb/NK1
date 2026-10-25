@@ -1,3 +1,10 @@
+# WorkPass339 — wire current intrinsic motivation into endogenous goal genesis (2026-10-25)
+
+- [FIX] The live `OrganismCore` cycle now updates the canonical `IntrinsicMotivationEngine` before B272 synthesizes an endogenous goal, then passes the current drive and bounded support score into B272. Previously the fresh drive was computed later in the same cycle and the optional B272 fields were omitted.
+- [OBSERVABILITY] B272 snapshots/diagnostics record the last consumed drive and support score. Existing persisted states without these optional values restore to safe defaults.
+- [REGRESSION] Extended the real `Core.observe(..., 'operational')` path test to assert B272 consumed the same-cycle intrinsic state; added the Core source/test to the WorkPass287–288 path filter and the test step.
+- [VALIDATION] Exact-head workflow and typecheck are pending for this commit. No learning uplift or production-readiness claim is made.
+
 # WorkPass338 — gate unsolicited dialogue and background initiative end-to-end (2026-10-25)
 
 - [CI] Added two existing runtime integration regressions after the bounded 80-cycle autonomy test: `workpass50-autonomous-runtime-loop.mjs` verifies spontaneous message generation, UI acknowledgement idempotency, explicit-response interest learning, durable flush, restart without redelivery, and quiet-time continuity; `workpass50-autonomous-background-clock.mjs` verifies the auto-run scheduler triggers a provider-seam turn without a manual `step()`, stages it for polling, acknowledges it once, and persists the initiative state.

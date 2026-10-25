@@ -16,4 +16,19 @@ assert.ok(d.agency01>.20,'core agency remained inert');
 const snap=core.snapshot();
 const core2=new OrganismCore(new MemoryStateStore({initial:snap}),{performanceProfile:'mobile'}); await core2.init();
 assert.deepEqual(core2.b272EndogenousGoalDiagnostics(),d,'B272 state did not survive Core restart');
-console.log(JSON.stringify({pass:true,diagnostics:d,restored:core2.b272EndogenousGoalDiagnostics()},null,2));
+
+const liveCore=new OrganismCore(new MemoryStateStore(),{performanceProfile:'mobile',cycleResultMode:'operational'}); await liveCore.init();
+await liveCore.observe({
+  text:'',
+  novelty:.68,
+  surprise:.63,
+  embodiment:{bodyEnergy01:.74,cognitiveCapacity01:.84,thermalStrain01:.15,sensoryFreshness01:.91,awake:true,battery01:.75,cpuLoad01:.22,ramPressure01:.22},
+},'operational');
+const liveSnapshot=liveCore.snapshot();
+const liveIntrinsic=liveSnapshot.facets.consciousness.intrinsic;
+const liveGoal=liveCore.b272EndogenousGoalDiagnostics();
+assert.ok(liveIntrinsic&&Number.isFinite(liveIntrinsic.overall)&&liveIntrinsic.overall>0,'live Core did not calculate an intrinsic drive');
+assert.ok(Math.abs(liveGoal.lastIntrinsicDrive01-liveIntrinsic.overall)<1e-9,'live B272 goal genesis did not consume the current-cycle intrinsic drive');
+assert.ok(liveGoal.lastIntrinsicDriveConfidence01>0&&liveGoal.lastIntrinsicDriveConfidence01<=1,'live B272 goal genesis did not receive bounded drive-support confidence');
+
+console.log(JSON.stringify({pass:true,diagnostics:d,restored:core2.b272EndogenousGoalDiagnostics(),liveDrive:{value:liveGoal.lastIntrinsicDrive01,confidence01:liveGoal.lastIntrinsicDriveConfidence01}},null,2));

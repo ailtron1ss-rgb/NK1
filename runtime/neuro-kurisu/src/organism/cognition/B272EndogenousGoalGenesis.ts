@@ -55,6 +55,10 @@ export interface B272State {
   currentGoalId:string;
   currentAction:ActionKind;
   currentConfidence01:number;
+  /** Last current-cycle intrinsic drive consumed by goal generation. */
+  lastIntrinsicDrive01:number;
+  /** Bounded evidence-support score supplied alongside the drive. */
+  lastIntrinsicDriveConfidence01:number;
   goalPressure01:number;
   goalNovelty01:number;
   selfConflict01:number;
@@ -75,7 +79,7 @@ export function defaultB272State():B272State{
   const selfProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.sin((i+2)*(j+1)*.19)*.06)));
   const worldProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.cos((i+3)*(j+2)*.17)*.06)));
   const g=defaultGoal(3);
-  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
+  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,lastIntrinsicDrive01:0,lastIntrinsicDriveConfidence01:0,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
 }
 
 export interface B272StepInput {
@@ -174,6 +178,8 @@ export class B272EndogenousGoalGenesis {
       currentGoal,currentGoalId,
       currentAction:isAction(r.currentAction)?r.currentAction:d.currentAction,
       currentConfidence01:isUnit(r.currentConfidence01)?r.currentConfidence01:d.currentConfidence01,
+      lastIntrinsicDrive01:isUnit(r.lastIntrinsicDrive01)?r.lastIntrinsicDrive01:d.lastIntrinsicDrive01,
+      lastIntrinsicDriveConfidence01:isUnit(r.lastIntrinsicDriveConfidence01)?r.lastIntrinsicDriveConfidence01:d.lastIntrinsicDriveConfidence01,
       goalPressure01:isUnit(r.goalPressure01)?r.goalPressure01:d.goalPressure01,
       goalNovelty01:isUnit(r.goalNovelty01)?r.goalNovelty01:d.goalNovelty01,
       selfConflict01:isUnit(r.selfConflict01)?r.selfConflict01:d.selfConflict01,
@@ -295,7 +301,7 @@ const learned=this.learnedGoalValue(v,input.tick);
     const c=this.generateCandidate({...input,tick}); const idx=c.actionScores.indexOf(Math.max(...c.actionScores)); const action=ACTIONS[idx]??'reflect';
     const selfConflict=clamp01(.55*(1-c.coherence01)+.25*input.predictionError01+.20*Math.abs(input.needs.goalPressure01-input.intrinsicReward01));
     const endogenous01=clamp01(.32*c.internalNeed01+.24*c.novelty01+.24*(1-selfConflict)+.20*c.confidence01);
-    this.state.tick=input.tick;this.state.steps++;this.state.generatedGoals++;this.state.currentGoal=c.vector.slice();this.state.currentGoalId=c.id;this.state.currentAction=action;this.state.currentConfidence01=c.confidence01;this.state.goalPressure01=clamp01(.72*this.state.goalPressure01+.28*(input.needs.goalPressure01+endogenous01*.35));this.state.goalNovelty01=c.novelty01;this.state.selfConflict01=selfConflict;this.state.internalCoherence01=c.coherence01;this.state.agency01=clamp01(.82*this.state.agency01+.18*(endogenous01*(1-selfConflict)+.25));
+    this.state.tick=input.tick;this.state.steps++;this.state.generatedGoals++;this.state.currentGoal=c.vector.slice();this.state.currentGoalId=c.id;this.state.currentAction=action;this.state.currentConfidence01=c.confidence01;this.state.lastIntrinsicDrive01=clamp01(input.intrinsicDrive01??0);this.state.lastIntrinsicDriveConfidence01=clamp01(input.intrinsicDriveConfidence01??0);this.state.goalPressure01=clamp01(.72*this.state.goalPressure01+.28*(input.needs.goalPressure01+endogenous01*.35));this.state.goalNovelty01=c.novelty01;this.state.selfConflict01=selfConflict;this.state.internalCoherence01=c.coherence01;this.state.agency01=clamp01(.82*this.state.agency01+.18*(endogenous01*(1-selfConflict)+.25));
     this.state.goalHistory=[...this.state.goalHistory,{tick:input.tick,id:c.id,vector:c.vector.slice(),action,reward01:input.lastReward01,predictionError01:input.predictionError01,accepted:false}].slice(-128);
     return {...c,action,goalId:c.id,goalVector:c.vector.slice(),selfConflict01:selfConflict,agency01:this.state.agency01,endogenous01};
   }
