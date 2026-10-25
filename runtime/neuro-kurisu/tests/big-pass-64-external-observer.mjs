@@ -31,6 +31,45 @@ assert.equal(receiptGraph.resolveExternalVerification({
 }).reason, 'ambiguous-execution-receipt',
   'late evidence must not attach to a conflicting restored execution identity');
 
+// Live receipt identity is immutable: exact replay is idempotent; conflicting reuse is quarantined.
+const liveReceiptGraph = new CausalAccountabilityGraph();
+const liveReceipt = {
+  tick: 7, tool: 'door.open', ok: true, verified: false, confidence01: 0.91,
+  expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+  externalObservation: true, executionId: 'exec-12345678-live-reuse',
+};
+const firstLiveReceipt = liveReceiptGraph.recordActionChain(liveReceipt);
+const exactLiveReplay = liveReceiptGraph.recordActionChain({ ...liveReceipt });
+assert.equal(exactLiveReplay.replayed, true, 'an exact live execution replay must not create a second outcome');
+assert.equal(exactLiveReplay.outcomeId, firstLiveReceipt.outcomeId);
+assert.equal(liveReceiptGraph.snapshot().nodes.filter(node => node.kind === 'outcome' && node.data?.executionId === liveReceipt.executionId).length, 1);
+const liveConflict = liveReceiptGraph.recordActionChain({
+  ...liveReceipt, tool: 'door.close', ok: false,
+  expectedPostcondition: 'door=closed', observedPostcondition: 'door=closed', confidence01: 0.88,
+});
+assert.equal(liveConflict.quarantined, true, 'conflicting live execution receipt reuse must be quarantined');
+assert.ok(liveReceiptGraph.snapshot().quarantinedExecutionIds?.includes(liveReceipt.executionId));
+assert.ok(!liveReceiptGraph.snapshot().outcomeIndex?.some(row => row.executionId === liveReceipt.executionId),
+  'quarantined live execution IDs must be removed from the active receipt directory');
+for (let tick = 8; tick < 48; tick++) {
+  liveReceiptGraph.recordActionChain({
+    tick, tool: 'observer.noop', ok: true, verified: false, confidence01: 0.5,
+    executionId: `exec-live-window-${tick}`,
+  });
+}
+liveReceiptGraph.compact();
+const afterLiveCompaction = liveReceiptGraph.snapshot();
+assert.ok(afterLiveCompaction.quarantinedExecutionIds?.includes(liveReceipt.executionId),
+  'live receipt quarantine must survive graph compaction');
+assert.ok(!afterLiveCompaction.outcomeIndex?.some(row => row.executionId === liveReceipt.executionId));
+assert.equal(liveReceiptGraph.resolveExternalVerification({
+  tick: 50, tool: 'door.open', observationId: 'obs:live-late', verified: true,
+  confidence01: 0.91, executionId: liveReceipt.executionId,
+}).reason, 'ambiguous-execution-receipt',
+  'compaction must not rehabilitate a conflicting live execution ID');
+assert.equal(liveReceiptGraph.recordActionChain(liveReceipt).quarantined, true,
+  'a later replay must not clear an existing live quarantine');
+
 const f=new ExternalObserverFabric();
 f.registerSource({id:'device-smoke',sourceClass:'device',channel:'sensor',independenceKey:'sensor:smoke',reliability01:.9});
 const first=f.observeAndAssess({sourceId:'device-smoke',sourceClass:'device',channel:'sensor',claimKey:'door',observedPostcondition:'door=open',confidence01:.96,actionRef:'exec-1',tool:'door.open',tick:1,expectedPostcondition:'door=open'});
