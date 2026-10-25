@@ -59,6 +59,32 @@ export const defaultP26TrueLearning=():P26TrueLearningState=>({
 
 export interface BodyExtras { external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number; }
 
+export interface P26InterleavedExperience {
+  state: OrganismState;
+  action: ActionKind;
+  reward: number;
+  nextState: OrganismState;
+  surprise?: number;
+  extras?: BodyExtras;
+}
+
+export interface P26InterleavedTrainingOptions {
+  replayEveryNCurrent?: number;
+  maxReplayUpdates?: number;
+  targetMode?: 'reward' | 'td';
+  currentLearningRate01?: number;
+  replayLearningRate01?: number;
+}
+
+export interface P26InterleavedTrainingResult {
+  onlineUpdates: number;
+  replayUpdates: number;
+  blockedReplayRows: number;
+  eligibleReplayRows: number;
+  conflictComparisons: number;
+  conflictCandidateCap: number;
+}
+
 export class P26TrueLearningEngine{
   readonly learner=new ParametricPolicyLearner();
   private state=defaultP26TrueLearning();
@@ -124,6 +150,135 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
+  /**
+   * Interleave verified/current task examples with bounded, conflict-gated replay.
+   * Replay from a similar state/action with a contradictory reward is suppressed;
+   * distinguishable contexts remain eligible for rehearsal.
+   */
+  trainInterleaved(
+    fresh: P26InterleavedExperience[],
+    replayRows: P26InterleavedExperience[],
+    options: P26InterleavedTrainingOptions = {},
+  ): P26InterleavedTrainingResult {
+    if (!Array.isArray(fresh) || !Array.isArray(replayRows)) throw new Error('interleaved-batches-must-be-arrays');
+    const replayEvery = options.replayEveryNCurrent ?? 8;
+    const maxReplay = options.maxReplayUpdates ?? 64;
+    const currentRate = options.currentLearningRate01 ?? .05;
+    const replayRate = options.replayLearningRate01 ?? .03;
+    const targetMode = options.targetMode ?? 'td';
+    if (!Number.isSafeInteger(replayEvery) || replayEvery < 1) throw new Error('replay-interval-must-be-positive-integer');
+    if (!Number.isSafeInteger(maxReplay) || maxReplay < 0 || maxReplay > 4096) throw new Error('replay-update-cap-invalid');
+    if (typeof currentRate !== 'number' || !Number.isFinite(currentRate)) throw new Error('current-learning-rate-must-be-finite');
+    if (typeof replayRate !== 'number' || !Number.isFinite(replayRate)) throw new Error('replay-learning-rate-must-be-finite');
+    if (targetMode !== 'reward' && targetMode !== 'td') throw new Error('interleaved-target-mode-invalid');
+
+    const preflight = (row: P26InterleavedExperience, rate: number) => {
+      if (!row || typeof row !== 'object') throw new Error('interleaved-row-invalid');
+      if (typeof row.reward !== 'number' || !Number.isFinite(row.reward) || row.reward < 0 || row.reward > 1) {
+        throw new Error('interleaved-reward-invalid');
+      }
+      if (row.surprise !== undefined &&
+          (typeof row.surprise !== 'number' || !Number.isFinite(row.surprise) || row.surprise < 0 || row.surprise > 1)) {
+        throw new Error('interleaved-surprise-invalid');
+      }
+      this.learner.validateTrainingInput({
+        state: row.state, action: row.action, target01: row.reward,
+        learningRate01: rate, extras: row.extras,
+      });
+      this.learner.validateTrainingInput({
+        state: row.nextState, action: row.action, target01: row.reward,
+        learningRate01: rate, extras: row.extras,
+      });
+    };
+    // Atomic input validation before the first SGD update.
+    for (const row of fresh) preflight(row, currentRate);
+    for (const row of replayRows) preflight(row, replayRate);
+
+    const conflictCandidateCap = 64;
+    const candidateCount = Math.min(conflictCandidateCap, fresh.length);
+    const candidates = candidateCount === 0 ? [] : Array.from({ length: candidateCount }, (_, i) =>
+      fresh[Math.min(fresh.length - 1, Math.floor(i * fresh.length / candidateCount))],
+    );
+    const sameContext = (a: OrganismState, b: OrganismState): boolean => {
+      const an = a.needs, bn = b.needs;
+      return Math.abs(an.energy - bn.energy) <= .18 &&
+        Math.abs(an.novelty - bn.novelty) <= .18 &&
+        Math.abs(an.uncertainty - bn.uncertainty) <= .20 &&
+        Math.abs(an.cognitiveLoad - bn.cognitiveLoad) <= .20 &&
+        Math.abs(an.goalPressure - bn.goalPressure) <= .20 &&
+        Math.abs(an.socialNeed - bn.socialNeed) <= .20 &&
+        Math.abs(an.identityCoherence - bn.identityCoherence) <= .20;
+    };
+
+    let blockedReplayRows = 0;
+    let eligibleReplayRows = 0;
+    let conflictComparisons = 0;
+    const eligible: P26InterleavedExperience[] = [];
+    for (const prior of replayRows) {
+      let conflict = false;
+      for (const current of candidates) {
+        conflictComparisons++;
+        if (current.action === prior.action &&
+            Math.abs(current.reward - prior.reward) >= .35 &&
+            sameContext(current.state, prior.state)) {
+          conflict = true;
+          break;
+        }
+      }
+      if (conflict) blockedReplayRows++;
+      else { eligibleReplayRows++; eligible.push(prior); }
+    }
+
+    const computeTarget = (row: P26InterleavedExperience): number => {
+      if (targetMode === 'reward') return clamp(row.reward);
+      const nextValue = Math.max(.5, ...this.learner.predict(row.nextState, row.extras).map(p => p.value));
+      return clamp(row.reward + .78 * nextValue);
+    };
+    let onlineUpdates = 0;
+    let replayUpdates = 0;
+    let totalLoss = 0;
+    let nextReplay = 0;
+    for (let i = 0; i < fresh.length; i++) {
+      const row = fresh[i];
+      const result = this.learner.train({
+        state: row.state, action: row.action, target01: computeTarget(row),
+        learningRate01: currentRate, extras: row.extras,
+      });
+      onlineUpdates++;
+      totalLoss += result.loss01;
+      this.state.metrics.learningDelta01 = clamp(
+        this.state.metrics.learningDelta01 * .97 +
+        (result.predictionAfter - result.predictionBefore) * .03 +
+        Math.abs(result.tdError01) * .02,
+      );
+      if ((i + 1) % replayEvery === 0 && replayUpdates < maxReplay && nextReplay < eligible.length) {
+        const prior = eligible[nextReplay++];
+        const replayResult = this.learner.train({
+          state: prior.state, action: prior.action, target01: computeTarget(prior),
+          learningRate01: replayRate, extras: prior.extras,
+        });
+        replayUpdates++;
+        totalLoss += replayResult.loss01;
+        this.state.metrics.learningDelta01 = clamp(
+          this.state.metrics.learningDelta01 * .97 +
+          (replayResult.predictionAfter - replayResult.predictionBefore) * .03 +
+          Math.abs(replayResult.tdError01) * .02,
+        );
+      }
+    }
+    this.state.metrics.outcomeSamples += onlineUpdates;
+    this.state.metrics.onlineUpdates += onlineUpdates;
+    this.state.metrics.replayUpdates += replayUpdates;
+    this.updateTrainingExposure();
+    const applied = onlineUpdates + replayUpdates;
+    if (applied) {
+      this.state.metrics.recentLoss01 = clamp(totalLoss / applied);
+      this.state.metrics.lastUpdatedAt = Date.now();
+    }
+    this.sync();
+    return { onlineUpdates, replayUpdates, blockedReplayRows, eligibleReplayRows, conflictComparisons, conflictCandidateCap };
+  }
+
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
     if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};

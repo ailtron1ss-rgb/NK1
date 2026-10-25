@@ -77,6 +77,80 @@ function featureVector(state:OrganismState, extras?:{external01?:number;boredom0
 export class ParametricPolicyLearner{
   private state=defaultParametricPolicy();
 
+  private assertValidState(value: unknown): asserts value is OrganismState {
+    if (!value || typeof value !== 'object' || Array.isArray(value) ||
+        !('needs' in value) || !value.needs || typeof value.needs !== 'object' || Array.isArray(value.needs)) {
+      throw new Error('state-must-have-needs');
+    }
+    const state = value as OrganismState;
+    const n = state.needs;
+    const values: unknown[] = [
+      n.energy, n.cognitiveLoad, n.uncertainty, n.novelty, n.goalPressure,
+      n.socialNeed, n.identityCoherence, state.predictionError,
+      state.attentionBudget, state.selfPredictionError,
+    ];
+    if (!values.every(v => typeof v === 'number' && Number.isFinite(v))) {
+      throw new Error('state-values-must-be-finite');
+    }
+    if (!values.every(v => (v as number) >= 0 && (v as number) <= 1)) {
+      throw new Error('state-values-out-of-range');
+    }
+  }
+
+  private assertValidExtras(extras: unknown): void {
+    if (extras === undefined) return;
+    if (!extras || typeof extras !== 'object' || Array.isArray(extras)) {
+      throw new Error('extras-must-be-object');
+    }
+    for (const [key, value] of Object.entries(extras as Record<string, unknown>)) {
+      if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) {
+        throw new Error('extras-values-must-be-finite');
+      }
+      if (typeof value === 'number' && (value < 0 || value > 1)) {
+        throw new Error('extras-values-out-of-range');
+      }
+      if (!['external01','boredom01','resourceRisk01','thermalPressure01','bodyCapacity01'].includes(key)) {
+        throw new Error('extras-field-unsupported');
+      }
+    }
+  }
+
+  private assertValidTrainInput(input: Parameters<ParametricPolicyLearner['train']>[0]): void {
+    if (!input || typeof input !== 'object') throw new Error('training-input-must-be-object');
+    if (!ACTIONS.includes(input.action)) throw new Error('invalid-action');
+    if (typeof input.target01 !== 'number' || !Number.isFinite(input.target01)) throw new Error('target-must-be-finite');
+    if (input.target01 < 0 || input.target01 > 1) throw new Error('target-out-of-range');
+    if (typeof input.learningRate01 !== 'number' || !Number.isFinite(input.learningRate01)) throw new Error('rate-must-be-finite');
+    if (input.sampleWeight01 !== undefined &&
+        (typeof input.sampleWeight01 !== 'number' || !Number.isFinite(input.sampleWeight01))) {
+      throw new Error('sample-weight-must-be-finite');
+    }
+    this.assertValidState(input.state);
+    this.assertValidExtras(input.extras);
+  }
+
+  /** Public, side-effect-free preflight used by the P26 interleaving controller. */
+  validateTrainingInput(input: Parameters<ParametricPolicyLearner['train']>[0]): void {
+    this.assertValidTrainInput(input);
+  }
+
+  private assertValidFeatureInput(input: Parameters<ParametricPolicyLearner['trainFeatures']>[0]): void {
+    if (!input || typeof input !== 'object') throw new Error('training-input-must-be-object');
+    if (!ACTIONS.includes(input.action)) throw new Error('invalid-action');
+    if (typeof input.target01 !== 'number' || !Number.isFinite(input.target01)) throw new Error('target-must-be-finite');
+    if (input.target01 < 0 || input.target01 > 1) throw new Error('target-out-of-range');
+    if (typeof input.learningRate01 !== 'number' || !Number.isFinite(input.learningRate01)) throw new Error('rate-must-be-finite');
+    if (input.sampleWeight01 !== undefined &&
+        (typeof input.sampleWeight01 !== 'number' || !Number.isFinite(input.sampleWeight01))) {
+      throw new Error('sample-weight-must-be-finite');
+    }
+    if (!Array.isArray(input.features) || input.features.length === 0 ||
+        !input.features.every(value => typeof value === 'number' && Number.isFinite(value))) {
+      throw new Error('features-must-be-finite');
+    }
+    if (input.features.some(value => value < 0 || value > 1)) throw new Error('features-out-of-range');
+  }
+
   restore(raw?:Partial<ParametricPolicyState>|null){
     const d=defaultParametricPolicy();
     const savedNames=Array.isArray(raw?.featureNames)?raw!.featureNames:[];
@@ -120,6 +194,7 @@ export class ParametricPolicyLearner{
   }
 
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    this.assertValidTrainInput(input);
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
@@ -146,6 +221,7 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    this.assertValidFeatureInput(input);
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
@@ -169,6 +245,10 @@ export class ParametricPolicyLearner{
   }
 
   trainBatch(samples:Array<Parameters<ParametricPolicyLearner['train']>[0]>){
+    if (!Array.isArray(samples)) throw new Error('training-batch-must-be-array');
+    // Preflight every row first: malformed later feedback cannot partially update
+    // weights, metrics, or the processed-batch diagnostics.
+    for (const sample of samples) this.assertValidTrainInput(sample);
     let loss=0; let n=0;
     for(const sample of samples){const r=this.train(sample);loss+=r.loss01;n++;}
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};

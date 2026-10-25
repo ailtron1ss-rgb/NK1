@@ -1,3 +1,10 @@
+## Node 24 compatibility and P26 learning input integrity follow-up (2026-10-25)
+
+- [FIX] Converted `P23CompoundRepairRevisionCoordinator` to explicit constructor field assignments so Node 24 strip-only execution can import the coordinator.
+- [FIX] `ParametricPolicyLearner` now rejects non-finite targets, rates, sample weights, unsupported actions, malformed/non-finite state and extra values, and non-finite feature vectors. `trainBatch` preflights the entire batch before mutating weights or metrics.
+- [FIX] Added the missing `P26TrueLearningEngine.trainInterleaved` path: it bounds replay updates, measures candidate comparisons, blocks same-context contradictory replay labels, interleaves fresh samples with eligible replay, and reports separate current/replay update counts. This supports the existing sequential-learning regression; it is not itself proof of real-world learning uplift.
+- [EVIDENCE] Exact-head CI passed the strict runtime typecheck, but the P26 integrity regression found that NaN targets were being silently clamped, and the P26 sequential benchmark called a missing method. WorkPass293 found another Node 24 strip-only parameter property. These changes need fresh exact-head validation.
+
 ## Runtime compatibility follow-up — trusted persistence, replay budget and workflow entry points (2026-10-25)
 
 - [FIX] Replaced the remaining Node 24 strip-only-incompatible constructor parameter property in `AtomicFileSkillStorePersistence` with explicit field initialization.

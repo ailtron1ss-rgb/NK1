@@ -103,3 +103,11 @@ WorkPass292's dedicated workflow invoked `test:workpass292:evidence-lanes`, whic
 WorkPass291 also exposed an off-by-two expectation in its exact-size fixture: the helper measures canonical JSON bytes, while the test had supplied a source string whose JSON representation includes two additional quote bytes. The test now constructs a canonical JSON string of exactly the configured byte budget and asserts that byte length before calling the existing size guard. The production limit was not raised or weakened.
 
 **Status: code/wiring repaired; exact-head validation pending.**
+
+## Tenth follow-up — strict learner inputs and interleaved replay
+
+The current exact-head run passed runtime typecheck but the P26 input-integrity test revealed that the parametric learner silently clamped `NaN` targets and substituted default learning rates for infinite values. The learner now performs explicit finite/action/state/feature validation before any mutation; `trainBatch` validates every row before applying the first update. A malformed later sample can no longer partially update weights.
+
+The P26 sequential benchmark also called `trainInterleaved`, which did not exist in the engine despite being part of the required continual-learning evaluation. A bounded implementation now interleaves current-task SGD with replay, limits each old replay row's conflict screening to 64 sampled current examples, blocks contradictory same-action labels from similar state contexts, and separately reports blocked/eligible rows and online/replay updates. Tests may still reveal contract tuning needed; synthetic performance remains diagnostic only.
+
+WorkPass293 exposed another strip-only TypeScript parameter property in the same coordinator; it now initializes explicit fields.
