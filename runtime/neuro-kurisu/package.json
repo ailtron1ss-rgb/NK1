@@ -1781,5 +1781,9 @@
     "test:cognitive-routing-policy": "node --experimental-strip-types tests/cognitive-routing-policy.mjs",
     "test:cognitive-routing-policy-runtime-wiring": "node tests/cognitive-routing-policy-runtime-wiring.mjs",
     "test:cognitive-integration-suite": "npm run typecheck && npm run test:cognitive-cycle-boundary && npm run test:cognitive-cycle-boundary-runtime-wiring && npm run test:cognitive-dependency-runtime-wiring && npm run test:cognitive-routing-policy && npm run test:cognitive-routing-policy-runtime-wiring && npm run test:memory-budget-restore-integrity && npm run test:workpass310:p23-restore-integrity"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "typescript": "5.9.3"
   }
 }
