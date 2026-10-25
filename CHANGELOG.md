@@ -1,5 +1,7 @@
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
+- Fixed command-order handling in the wiring audit: each `cd`, Node/Python file reference, and nested `npm run` is now resolved against the directory active at that point in the shell sequence. Added a regression for `node … && cd runtime && node …`.
+
 - Added `tools/verify-repository-wiring.mjs` to check reachable npm-script chains, recursive script cycles, referenced Node/Python entry points, exact workflow path filters, local actions, working directories, setup-node file inputs, and `workflow_run` workflow names.
 - Added isolated regression fixtures for healthy and intentionally broken wiring, including missing files/scripts, absent workflow names and recursive npm-script cycles.
 - Added `audit:repo-wiring` and `test:repo-wiring` to the root package scripts and connected them to `audit:quick`; added a focused GitHub Actions workflow using the repository's `.nvmrc`.
