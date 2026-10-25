@@ -299,9 +299,80 @@ export class HexisAdaptationFabric {
         validFrom: number;
         source?: string;
         value?: unknown;
-    }): HexisTemporalAssertion { const existing = this.state.temporal.find((x) => x.memoryId === input.memoryId && x.validUntil === null); const at = nowMs(); if (existing)
-        existing.validUntil = Math.max(existing.validFrom, Number(input.validFrom)); const created: HexisTemporalAssertion = { id: randomUUID(), memoryId: String(input.memoryId), valueHash: digest(input.value ?? input.summary), summary: String(input.summary).slice(0, 2000), confidence01: clamp(input.confidence01), validFrom: Number(input.validFrom), validUntil: null, supersedesId: existing?.id, source: String(input.source ?? 'canonical-memory'), at }; this.state.temporal.push(created); this.state.temporal = this.state.temporal.slice(-4096); return structuredClone(created); }
-    temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null { this.state.metrics.temporalQueries += 1; const rows = this.state.temporal.filter((x) => x.memoryId === memoryId && x.validFrom <= at && (x.validUntil === null || at < x.validUntil)).sort((a, b) => b.validFrom - a.validFrom); return rows[0] ? structuredClone(rows[0]) : null; }
+    }): HexisTemporalAssertion {
+        const memoryId = String(input?.memoryId ?? '').trim();
+        const summary = String(input?.summary ?? '').trim();
+        const rawValidFrom = input?.validFrom;
+        const validFrom = typeof rawValidFrom === 'number'
+            ? rawValidFrom
+            : typeof rawValidFrom === 'string' && rawValidFrom.trim() !== ''
+                ? Number(rawValidFrom)
+                : Number.NaN;
+        if (!memoryId) throw new TypeError('temporal_memory_id_required');
+        if (!summary) throw new TypeError('temporal_summary_required');
+        if (!Number.isFinite(validFrom)) throw new RangeError('temporal_valid_from_must_be_finite');
+
+        const normalizedSummary = summary.slice(0, 2000);
+        const source = String(input?.source ?? 'canonical-memory').trim() || 'canonical-memory';
+        const confidence01 = clamp(input?.confidence01);
+        const valueHash = digest(input?.value ?? normalizedSummary);
+        const existingAtTime = this.state.temporal.find((row) =>
+            row.memoryId === memoryId && Number.isFinite(row.validFrom) && row.validFrom === validFrom
+        );
+        if (existingAtTime) {
+            const isSameLogicalAssertion =
+                existingAtTime.valueHash === valueHash &&
+                existingAtTime.summary === normalizedSummary &&
+                existingAtTime.confidence01 === confidence01 &&
+                existingAtTime.source === source;
+            if (isSameLogicalAssertion) return structuredClone(existingAtTime);
+            throw new Error('temporal_valid_from_conflict');
+        }
+
+        const created: HexisTemporalAssertion = {
+            id: randomUUID(),
+            memoryId,
+            valueHash,
+            summary: normalizedSummary,
+            confidence01,
+            validFrom,
+            validUntil: null,
+            source,
+            at: nowMs(),
+        };
+        this.state.temporal.push(created);
+        this.state.temporal = this.state.temporal.slice(-4096);
+
+        // Valid-time history is ordered by when a claim is true, not by when it arrived.
+        // Rebuild intervals after every insertion so backfilled assertions cannot erase
+        // or overlap already-recorded history. The first retained row has no predecessor.
+        const timeline = this.state.temporal
+            .filter((row) => row.memoryId === memoryId && Number.isFinite(row.validFrom))
+            .sort((a, b) => a.validFrom - b.validFrom || a.at - b.at || a.id.localeCompare(b.id));
+        for (let index = 0; index < timeline.length; index += 1) {
+            const current = timeline[index]!;
+            const previous = index > 0 ? timeline[index - 1] : undefined;
+            const next = timeline[index + 1];
+            current.validUntil = next?.validFrom ?? null;
+            if (previous) current.supersedesId = previous.id;
+            else delete current.supersedesId;
+        }
+        return structuredClone(created);
+    }
+    temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null {
+        this.state.metrics.temporalQueries += 1;
+        const normalizedMemoryId = String(memoryId ?? '').trim();
+        if (!normalizedMemoryId || !Number.isFinite(at)) return null;
+        const rows = this.state.temporal
+            .filter((row) =>
+                row.memoryId === normalizedMemoryId &&
+                Number.isFinite(row.validFrom) &&
+                row.validFrom <= at &&
+                (row.validUntil === null || (Number.isFinite(row.validUntil) && at < row.validUntil))
+            )
+            .sort((a, b) => b.validFrom - a.validFrom || b.at - a.at);
+        return rows[0] ? structuredClone(rows[0]) : null;
+    }
     temporalDiff(memoryId: string, fromAt: number, toAt: number) { this.state.metrics.temporalQueries += 1; const from = this.temporalAt(memoryId, fromAt); const to = this.temporalAt(memoryId, toAt); return { memoryId, from, to, changed: (from?.valueHash ?? null) !== (to?.valueHash ?? null) }; }
     createLearningReview(input: {
         periodStart: number;
