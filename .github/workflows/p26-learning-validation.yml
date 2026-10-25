@@ -15,6 +15,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveWindowDriftDetector.ts"
       - "runtime/neuro-kurisu/src/organism/learning/DriftAwareLearningController.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/tests/p23-learning-attempt-diagnosis.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/LearningFitnessJournal.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23LocalModelSkillRevisionGenerator.ts"
       - "runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs"
@@ -130,6 +131,9 @@ jobs:
       - name: Run Hermes-inspired reflective candidate gate regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p29:hermes-reflective-candidate-gate
+      - name: Run P23 evidence-based learning attempt diagnosis regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:learning-attempt-diagnosis
       - name: Run continual experience replay regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-continual-replay-buffer.mjs

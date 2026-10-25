@@ -1,3 +1,12 @@
+## NK1 learning diagnostics — evidence-bound attempt analysis (2026-10-25)
+
+- Hardened `P23LearningEngine.diagnoseLearningAttempt` by detaching incoming data through the shared plain-data trust boundary before field access; accessor-backed and malformed requests fail closed.
+- Added normalized objective/evidence identity, typed failure classes (including tool errors, timeouts, postcondition mismatches, low-confidence evidence, and safety blocks), stable SHA-256 evidence fingerprinting, and an explicitly uncalibrated evidence-coverage score.
+- Added `p23-learning-attempt-diagnosis.mjs` regression coverage for failures, held-out generalization caution, unknown outcomes, safety-gate priority, malformed inputs, stable fingerprints, and getter non-execution. Wired the test into the package script and P26 Learning Validation workflow.
+- **Verification boundary:** code and regression wiring are committed; exact-head runtime tests, TypeScript typecheck, and GitHub Actions have not yet been confirmed passing. No skill improvement or promotion readiness is claimed.
+
+---
+
 ## NK1 WorkPass529 — separate P36 maturity evidence lane (2026-10-24)
 
 - Removed P36 maturity updates based on the generic `verifiedNow` boolean from internal world-transition/reward feedback. Those signals remain available to other learning loops but are not independent developmental-maturity proof.

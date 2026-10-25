@@ -594,44 +594,94 @@ export class P23LearningEngine {
 
   /**
    * Diagnose a learning attempt without granting execution or promotion authority.
-   * The result is a set of testable hypotheses, not an assertion that learning occurred.
+   * The report is an evidence-linked set of hypotheses, never proof of learning.
+   * Input is detached through the shared trust boundary before any field is read.
    */
   diagnoseLearningAttempt(input: {
     taskId: string;
     objective: string;
     outcome: "success" | "failure" | "unknown";
-    observedBehavior: string;
+    observedBehavior?: string;
     expectedBehavior?: string;
     errorMessages?: string[];
-    confidence?: number;
   }): {
     schemaVersion: 1;
     taskId: string;
+    objective: string;
     outcome: "success" | "failure" | "unknown";
     failureSignals: string[];
+    failureClasses: ReflectionFailureClass[];
     hypotheses: string[];
     nextExperiments: string[];
     confidence: number;
+    confidenceSemantics: "heuristic-evidence-coverage-not-calibrated";
+    evidenceFingerprint: string;
     promotionEligible: false;
   } {
+    const data = snapshotPlainData<Record<string, unknown>>(input, {
+      maxDepth: 4,
+      maxNodes: 256,
+      maxStringUnits: 16_384,
+    });
     const normalize = (value: string): string =>
       value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
-    const objective = normalize(input.objective).slice(0, 1000);
-    const observed = normalize(input.observedBehavior).slice(0, 2000);
-    const expected = normalize(input.expectedBehavior ?? "").slice(0, 2000);
-    const errors = (input.errorMessages ?? [])
-      .map(normalize)
+    const requiredText = (field: string): string => {
+      const value = data[field];
+      if (typeof value !== "string") {
+        throw new TypeError(`learning-attempt-diagnosis-${field}-must-be-string`);
+      }
+      return normalize(value);
+    };
+    const taskId = requiredText("taskId").slice(0, 200);
+    const objective = requiredText("objective").slice(0, 1000);
+    if (!taskId) throw new TypeError("learning-attempt-diagnosis-task-id-required");
+    if (!objective) throw new TypeError("learning-attempt-diagnosis-objective-required");
+
+    const outcomeValue = data.outcome;
+    if (outcomeValue !== "success" && outcomeValue !== "failure" && outcomeValue !== "unknown") {
+      throw new TypeError("learning-attempt-diagnosis-outcome-invalid");
+    }
+    const outcome = outcomeValue;
+    if (data.observedBehavior !== undefined && typeof data.observedBehavior !== "string") {
+      throw new TypeError("learning-attempt-diagnosis-observed-behavior-must-be-string");
+    }
+    if (data.expectedBehavior !== undefined && typeof data.expectedBehavior !== "string") {
+      throw new TypeError("learning-attempt-diagnosis-expected-behavior-must-be-string");
+    }
+    if (data.errorMessages !== undefined && !Array.isArray(data.errorMessages)) {
+      throw new TypeError("learning-attempt-diagnosis-errors-must-be-array");
+    }
+    const observed = normalize(typeof data.observedBehavior === "string" ? data.observedBehavior : "").slice(0, 2000);
+    const expected = normalize(typeof data.expectedBehavior === "string" ? data.expectedBehavior : "").slice(0, 2000);
+    const errors = (Array.isArray(data.errorMessages) ? data.errorMessages : [])
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => normalize(value))
       .filter(Boolean)
       .slice(0, 12)
       .map((value) => value.slice(0, 500));
+
     const failureSignals: string[] = [];
-    if (input.outcome === "failure") failureSignals.push("task_failed");
+    if (outcome === "failure") failureSignals.push("task_failed");
     if (errors.length) failureSignals.push("explicit_error_evidence");
     if (!observed) failureSignals.push("missing_observation");
     if (expected && observed && expected !== observed) failureSignals.push("expected_observed_mismatch");
 
+    const failureClasses: ReflectionFailureClass[] = [];
+    const addFailureClass = (value: ReflectionFailureClass | undefined): void => {
+      if (value && !failureClasses.includes(value)) failureClasses.push(value);
+    };
+    for (const error of errors) addFailureClass(classifyLearningFailureReason(error));
+    if (expected && observed && expected !== observed) addFailureClass("postcondition-mismatch");
+    if (!observed || outcome === "unknown" || (outcome === "failure" && failureClasses.length === 0)) {
+      addFailureClass("low-confidence");
+    }
+
     const hypotheses: string[] = [];
     const nextExperiments: string[] = [];
+    if (failureClasses.includes("safety-block")) {
+      hypotheses.push("A safety or ethical gate blocked the trajectory; treat this as a hard constraint, not a performance defect.");
+      nextExperiments.push("Pause performance optimization; review the safety decision independently before preparing a remediation candidate.");
+    }
     if (!observed) {
       hypotheses.push("Insufficient observable evidence to diagnose the attempt reliably.");
       nextExperiments.push("Repeat with structured input, action, output, and error capture.");
@@ -644,28 +694,43 @@ export class P23LearningEngine {
       hypotheses.push("Observed behavior diverges from the declared expected behavior.");
       nextExperiments.push("Create a minimal counterexample and compare candidate against baseline.");
     }
-    if (input.outcome === "failure" && errors.length === 0) {
+    if (outcome === "failure" && errors.length === 0) {
       hypotheses.push("Failure may stem from planning, reasoning, or acceptance criteria rather than a runtime exception.");
       nextExperiments.push("Add an explicit success predicate and capture intermediate decisions before retrying.");
     }
-    if (input.outcome === "unknown") {
+    if (outcome === "unknown") {
       hypotheses.push("Outcome is not labeled strongly enough to support a learning or promotion decision.");
       nextExperiments.push("Obtain an independent evaluator verdict before changing the active skill.");
     }
-    if (input.outcome === "success" && failureSignals.length === 0) {
+    if (outcome === "success" && failureSignals.length === 0) {
       hypotheses.push("Candidate success is not yet evidence of generalized skill improvement.");
       nextExperiments.push("Run held-out cases and regression tests against the previous baseline.");
     }
-    void objective; // retained for input hygiene; callers should persist the task objective with the report.
-    const rawConfidence = Number.isFinite(input.confidence) ? input.confidence! : 0.35;
+
+    // This is a heuristic evidence-coverage score, not a calibrated probability
+    // and not a caller-provided confidence value.
+    const confidence = clamp(
+      0.15 + 0.10 + (outcome === "unknown" ? 0 : 0.10) +
+      (observed ? 0.25 : 0) + (expected ? 0.20 : 0) +
+      (errors.length ? 0.15 : 0) + (failureClasses.some((item) => item !== "low-confidence") ? 0.05 : 0)
+    );
+    const evidenceFingerprint = createHash("sha256").update(JSON.stringify({
+      taskId, objective, outcome, observedBehavior: observed,
+      expectedBehavior: expected, errorMessages: errors,
+    })).digest("hex");
+
     return {
       schemaVersion: 1,
-      taskId: normalize(input.taskId).slice(0, 200),
-      outcome: input.outcome,
+      taskId,
+      objective,
+      outcome,
       failureSignals,
+      failureClasses,
       hypotheses,
-      nextExperiments,
-      confidence: Math.max(0, Math.min(1, rawConfidence)),
+      nextExperiments: Array.from(new Set(nextExperiments)),
+      confidence,
+      confidenceSemantics: "heuristic-evidence-coverage-not-calibrated",
+      evidenceFingerprint,
       promotionEligible: false,
     };
   }
