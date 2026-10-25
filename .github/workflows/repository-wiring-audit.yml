@@ -13,6 +13,9 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "tools/verify-repository-wiring.mjs"
       - "tools/verify-repository-wiring.test.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-graph-workpass320.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-interrupt-episode-workpass324.mjs"
   pull_request:
     branches:
       - workpass70-source
@@ -59,3 +62,9 @@ jobs:
 
       - name: Audit workflow and executable linkages
         run: npm run audit:repo-wiring
+
+      - name: Test cognitive dependency graph restore and frame integrity
+        run: npm --prefix runtime/neuro-kurisu run test:p320:cognitive-dependency-restore
+
+      - name: Test cognitive interrupt episode linkage
+        run: npm --prefix runtime/neuro-kurisu run test:p324:interrupt-episodes
