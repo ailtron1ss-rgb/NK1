@@ -85,11 +85,12 @@ const P36_SIGNED_LEDGER_CONFIG_FILE = String(process.env.NEURO_P36_SIGNED_LEDGER
 const P36_MATURITY_EVALUATOR_MODULE = String(process.env.NEURO_P36_MATURITY_EVALUATOR_MODULE || '').trim();
 async function configureP36HostEvaluators() {
     const configured = {};
+    await mkdir(STATE, { recursive: true });
     if (P36_SIGNED_LEDGER_CONFIG_FILE) {
         const configPath = path.isAbsolute(P36_SIGNED_LEDGER_CONFIG_FILE)
             ? P36_SIGNED_LEDGER_CONFIG_FILE
             : path.resolve(ROOT, P36_SIGNED_LEDGER_CONFIG_FILE);
-        configured.p36IndependentEvaluator = await loadP36VerifiedOutcomeLedgerEvaluator(configPath);
+        configured.p36IndependentEvaluator = await loadP36VerifiedOutcomeLedgerEvaluator(configPath, STATE);
     }
     if (P36_MATURITY_EVALUATOR_MODULE) {
         const modulePath = path.isAbsolute(P36_MATURITY_EVALUATOR_MODULE)
