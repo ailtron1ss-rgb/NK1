@@ -62,7 +62,7 @@ const makeContextAwareRun=()=>{
   let replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,conflictCandidateCap=64;
   for(let epoch=0;epoch<8;epoch++){
     const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
-    const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:1,maxReplayUpdates:2520,targetMode:'reward',currentLearningRate01:.18,replayLearningRate01:.18});
+    const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:1,maxReplayUpdates:2520,maxReplayRatio01:1,targetMode:'reward',currentLearningRate01:.18,replayLearningRate01:.18});
     replayUpdates+=result.replayUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;conflictComparisons+=result.conflictComparisons;conflictCandidateCap=result.conflictCandidateCap;
   }
   return {taskABefore,taskAFinal:evalContextTask(engine,0),taskBFinal:evalContextTask(engine,1),replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap};
