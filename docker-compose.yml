@@ -1,0 +1,50 @@
+services:
+  neuro-kurisu:
+    build:
+      context: .
+      dockerfile: runtime/neuro-kurisu/Dockerfile
+    image: neuro-kurisu:local
+    init: true
+    restart: unless-stopped
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "3000"
+      STATE_DIR: "/var/lib/neuro-kurisu"
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-15000}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      GEMINI_VISION_ENABLED: ${GEMINI_VISION_ENABLED:-false}
+      GEMINI_VISION_MODEL: ${GEMINI_VISION_MODEL:-}
+      LLAMA_CPP_URL: ${LLAMA_CPP_URL:-}
+      LLAMA_CPP_MODEL: ${LLAMA_CPP_MODEL:-local-model}
+      KOBOLD_URL: ${KOBOLD_URL:-http://127.0.0.1:5001}
+      NEURO_MAX_BODY_BYTES: ${NEURO_MAX_BODY_BYTES:-1048576}
+      NEURO_REQUEST_TIMEOUT_MS: ${NEURO_REQUEST_TIMEOUT_MS:-20000}
+      NEURO_RATE_LIMIT: ${NEURO_RATE_LIMIT:-120}
+      NEURO_RATE_WINDOW_MS: ${NEURO_RATE_WINDOW_MS:-60000}
+      NEURO_BACKUP_EVERY_SAVES: ${NEURO_BACKUP_EVERY_SAVES:-25}
+      NEURO_SKILL_SHADOW_SCHEDULER_JSON: ${NEURO_SKILL_SHADOW_SCHEDULER_JSON:-}
+      NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON: ${NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON:-}
+    ports:
+      - "${NK1_BIND_ADDR:-127.0.0.1}:3000:3000"
+    volumes:
+      - neuro-kurisu-state:/var/lib/neuro-kurisu
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health').then(async r => { const d = await r.json(); process.exit(r.ok && d.ready === true ? 0 : 1); }).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+
+volumes:
+  neuro-kurisu-state:
