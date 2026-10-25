@@ -148,18 +148,20 @@ export class RuntimeClosureLedger {
 
   restore(snapshot?: Partial<RuntimeClosureSnapshot> | null): void {
     if (!snapshot || Number(snapshot.version) !== 1) return;
-    const records = Array.isArray(snapshot.records)
-      ? snapshot.records.map(normalizeClosureRecord).filter((record): record is RuntimeClosureRecord => record !== null).slice(-24)
-      : [];
+    const rawRecords = Array.isArray(snapshot.records) ? snapshot.records.slice(-24) : [];
+    const records = rawRecords.map(normalizeClosureRecord).filter((record): record is RuntimeClosureRecord => record !== null);
+    const invalidRecordCount = rawRecords.length - records.length;
     const lastCycleRecord = [...records].reverse().find((record) => record.phase === 'step' || record.phase === 'failure');
     const reportedStatus = VALID_CLOSURE_STATUSES.has(snapshot.lastStatus as RuntimeClosureStatus)
       ? snapshot.lastStatus as RuntimeClosureStatus
       : 'DEGRADED';
     const rank: Record<RuntimeClosureStatus, number> = { PASS: 0, DEGRADED: 1, FAIL: 2 };
     // A contradictory summary must never be less severe than its latest retained cycle evidence.
-    const lastStatus: RuntimeClosureStatus = lastCycleRecord && rank[lastCycleRecord.status] > rank[reportedStatus]
-      ? lastCycleRecord.status
-      : reportedStatus;
+    const lastStatus: RuntimeClosureStatus = invalidRecordCount > 0
+      ? 'FAIL'
+      : lastCycleRecord && rank[lastCycleRecord.status] > rank[reportedStatus]
+        ? lastCycleRecord.status
+        : reportedStatus;
     const failedTerminal = lastStatus === 'FAIL' && lastCycleRecord?.status === 'FAIL' ? lastCycleRecord : null;
     const terminalOverridesSummary = Boolean(lastCycleRecord && rank[lastCycleRecord.status] > rank[reportedStatus]);
     this.state = {
@@ -167,10 +169,12 @@ export class RuntimeClosureLedger {
       checks: safeCounter(snapshot.checks),
       passes: safeCounter(snapshot.passes),
       degraded: safeCounter(snapshot.degraded),
-      failures: Math.max(safeCounter(snapshot.failures), failedTerminal ? 1 : 0),
+      failures: Math.max(safeCounter(snapshot.failures), failedTerminal ? 1 : 0, invalidRecordCount > 0 ? 1 : 0),
       lastTick: safeCounter(snapshot.lastTick),
       lastStatus,
-      lastBehaviorHash: (terminalOverridesSummary ? lastCycleRecord?.behaviorHash : failedTerminal?.behaviorHash) ?? (typeof snapshot.lastBehaviorHash === 'string' ? snapshot.lastBehaviorHash.slice(0, 160) : ''),
+      lastBehaviorHash: invalidRecordCount > 0
+        ? fastFingerprint({ invalidPersistedRecords: invalidRecordCount })
+        : (terminalOverridesSummary ? lastCycleRecord?.behaviorHash : failedTerminal?.behaviorHash) ?? (typeof snapshot.lastBehaviorHash === 'string' ? snapshot.lastBehaviorHash.slice(0, 160) : ''),
       lastDurableHash: typeof snapshot.lastDurableHash === 'string' ? snapshot.lastDurableHash.slice(0, 160) : '',
       records,
     };
