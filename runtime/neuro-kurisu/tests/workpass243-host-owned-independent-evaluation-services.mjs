@@ -165,6 +165,9 @@ process.stdout.write(JSON.stringify({
       createHostOwnedIndependentEvaluationServices({ executor, verifier, safetyScanner: scanner }),
       /host-owned-executor-executable-must-not-be-group-or-world-writable/,
     );
+    // Restore the fixture's trusted mode so the next test isolates run-root identity,
+    // rather than failing earlier on the intentionally mutated executable permissions.
+    await chmod(executor.executable, 0o700);
   }
   if (process.platform !== 'win32') {
     // Prepared authority handles must fail closed if the executable path is
