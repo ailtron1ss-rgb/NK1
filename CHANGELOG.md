@@ -1,3 +1,10 @@
+# WorkPass334 — isolate executable-permission regression fixtures (2026-10-25)
+
+- [FIXED] The WorkPass243 host-owned independent-evaluation regression now restores the executor fixture to mode `0700` immediately after asserting that group/world-writable mode `0720` is rejected.
+- [ROOT CAUSE] The following run-root replacement case reused the same prepared executor while its executable was still intentionally writable, so the hardened dispatch guard correctly failed earlier with `host-owned-executor-executable-must-not-be-group-or-world-writable` instead of reaching the run-root identity assertion.
+- [SAFETY] No runtime guard was weakened; the test now isolates each invariant and still verifies that permission tampering is rejected and that replaced run roots fail closed.
+- [VALIDATION] WorkPass110 failed on exact HEAD `756f7448fbbd5a254b040be649693bb4fed52535` at this fixture-ordering defect. The regression is committed for a fresh exact-HEAD CI rerun; no pass is claimed until that run completes.
+
 # WorkPass333 — независимая оценка: execution ≠ verification (2026-10-24)
 
 - [FIXED] Независимый оценщик больше не превращает успешно выполненный sandbox-run в `executable=false`, если отдельный верификатор недоступен или не подтверждает привязку. Метрика исполнимости отражает факт корректного завершения исполнения, а не доверие к трассе.
