@@ -26,7 +26,7 @@ assert.match(language, /bindCognitiveEventEvidence\(claims, evidence, causalSnap
 assert.match(bridge, /node\.stage === 'outcome'/);
 assert.match(bridge, /node\.stage === 'tool-outcome'/);
 assert.match(bridge, /node\.stage === 'external-evidence'/);
-assert.match(runtime, /await this\\.restoreLastInternalDialogueReceipt\\(\\)/,
+assert.match(runtime, /await this\.restoreLastInternalDialogueReceipt\(\)/,
   'runtime startup must restore the latest safe review receipt');
 assert.match(runtime, /readRecent\('runtime\.internal-dialogue\.review'/,
   'receipt restore must read only the named review event from the operational journal');
