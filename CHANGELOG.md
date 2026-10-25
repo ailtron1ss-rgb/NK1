@@ -1,3 +1,11 @@
+## NK1 WorkPass344 — Put closure regression under dedicated CI (2026-10-25)
+
+- [CI-COVERAGE] Added `.github/workflows/workpass328-closed-loop-failure-closure.yml` to run runtime typecheck and `test:p328:closed-loop-failure-closure` on relevant closure/runtime/test changes.
+- [REGRESSION-OWNERSHIP] Malformed restore evidence, runtime-vs-causal closure status, cancellation and late-finalizer failures now have a dedicated workflow trigger instead of relying on unrelated CI to discover the test.
+- [VALIDATION] New workflow is committed and will provide a direct acceptance result on the current pull request; no local or remote pass is claimed before it runs.
+
+---
+
 ## NK1 WorkPass343 — Restore missing workflow script aliases (2026-10-25)
 
 - [CI-WIRING] Added the missing `test:workpass294:correlated-postcondition` and `test:p26:learning-input-integrity` npm aliases referenced by their existing GitHub Actions workflows; both map directly to the committed regression files.
