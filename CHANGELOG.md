@@ -2,7 +2,7 @@
 
 - Corrected a stale runtime integrity test that still required the pre-v1 split `kurisu_embodiment` and `kurisu_lipsync` messages even though the runtime producer had already switched to one versioned `kurisu_embodiment_intent` envelope.
 - The test now checks the actual unified message, its time-indexed mouth pose, and bounded normalized head tilt. It continues to assert that legacy split messages are not emitted.
-- This repairs a contradictory test contract; it does **not** claim the Live2D workflow is green until Actions passes on the new commit SHA.
+- Validation: [Live2D runtime validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40174736678) completed successfully on code/test SHA 02771a1586eb5c942e452e36b2495f25eb2935a6. The later branch-head update only records this evidence in the changelog; no runtime or test source changed after the passing run. Browser contract gate is green; physical-device E2E and release readiness remain unproven.
 
 ---
 
