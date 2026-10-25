@@ -147,6 +147,43 @@ assert.equal(historicalProjectionRestored.resolveExternalObservation({
 }).reason, 'ambiguous-execution-receipt',
   'read-only historical records must not allow new evidence attachment');
 
+// Rehydrating an evicted outcome for late evidence must preserve success identity across another restart.
+const rehydrationGraph = new CausalAccountabilityGraph(64, 128, 8);
+const rehydrationExecutionId = 'exec-12345678-rehydrate-roundtrip';
+rehydrationGraph.recordActionChain({
+  tick: 1, tool: 'door.open', ok: true, verified: false, confidence01: 0.91,
+  expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+  executionId: rehydrationExecutionId,
+});
+for (let tick = 2; tick < 24; tick++) {
+  rehydrationGraph.recordActionChain({
+    tick, tool: 'observer.noop', ok: true, verified: false, confidence01: 0.5,
+    executionId: `exec-rehydrate-window-${tick}`,
+  });
+}
+rehydrationGraph.compact();
+assert.ok(!rehydrationGraph.snapshot().nodes.some(node => node.kind === 'outcome' && node.data?.executionId === rehydrationExecutionId),
+  'the oldest outcome should be evicted from graph nodes before late evidence arrives');
+const lateReceiptResolution = rehydrationGraph.resolveExternalVerification({
+  tick: 25, tool: 'door.open', observationId: 'obs:rehydrated-roundtrip', verified: true,
+  confidence01: 0.91, expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+  executionId: rehydrationExecutionId,
+});
+assert.equal(lateReceiptResolution.resolved, true, 'late verification should rehydrate the outcome from the stable receipt index');
+const graphAfterLateEvidence = rehydrationGraph.snapshot();
+const rehydrationRestored = new CausalAccountabilityGraph(64, 128, 8);
+rehydrationRestored.restore(graphAfterLateEvidence);
+assert.ok(!rehydrationRestored.snapshot().quarantinedExecutionIds?.includes(rehydrationExecutionId),
+  'receipt rehydration must not look like a contradictory failure on subsequent restart');
+const rehydrationReplay = rehydrationRestored.resolveExternalVerification({
+  tick: 25, tool: 'door.open', observationId: 'obs:rehydrated-roundtrip', verified: true,
+  confidence01: 0.91, expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+  executionId: rehydrationExecutionId,
+});
+assert.equal(rehydrationReplay.resolved, true);
+assert.equal(rehydrationReplay.replayed, true,
+  'the same late external evidence must remain an idempotent replay after rehydration and restart');
+
 const f=new ExternalObserverFabric();
 f.registerSource({id:'device-smoke',sourceClass:'device',channel:'sensor',independenceKey:'sensor:smoke',reliability01:.9});
 const first=f.observeAndAssess({sourceId:'device-smoke',sourceClass:'device',channel:'sensor',claimKey:'door',observedPostcondition:'door=open',confidence01:.96,actionRef:'exec-1',tool:'door.open',tick:1,expectedPostcondition:'door=open'});
