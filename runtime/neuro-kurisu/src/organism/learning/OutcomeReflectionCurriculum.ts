@@ -29,7 +29,10 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
   // Invalid feedback must be discarded, not silently converted into failure.
   const isEvidenceText=(value:unknown):value is string=>
     typeof value==='string'&&value.length>0&&value.length<=512&&value.trim()===value&&
-    !/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
+    !Array.from(value).some(character=>{
+      const code=character.charCodeAt(0);
+      return code<=0x1f||code===0x7f||(code>=0x80&&code<=0x9f);
+    });
   const isUnit=(value:unknown):value is number=>
     typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
   const isTick=(value:unknown):value is number=>
