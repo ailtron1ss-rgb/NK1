@@ -1,3 +1,11 @@
+## [NK1][core] Route compound skill steps through canonical execution wrapper (2026-10-25)
+
+- CI exposed a second real bypass: compound-skill steps called `ActionGateway.executeTool` directly, then duplicated some of Core's finalization logic locally. That split ownership could omit or double-apply outcome projections as the runtime changes.
+- Compound-skill dispatch now uses `OrganismCore.executeTool` with the bounded runtime context keys. The canonical wrapper and ActionGateway own finalization according to keyed/unkeyed semantics; the duplicate local finalizer block is removed.
+- This restores consistent alias canonicalization, execution outcome handling, and finalization context across planner, project, and compound-skill actions. Exact-head CI is required.
+
+---
+
 ## [NK1][compat] Scope direct Gateway bypass checks to project dispatch (2026-10-25)
 
 - The route test previously searched the whole `OrganismCore.ts` for direct reconciliation calls, incorrectly flagging the canonical Core wrapper's own legitimate delegation to ActionGateway.
