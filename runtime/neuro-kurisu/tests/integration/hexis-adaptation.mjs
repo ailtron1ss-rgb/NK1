@@ -415,6 +415,36 @@ assert.equal(directReplayReceipt.digest, retryAfterRollback.application?.digest,
 assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2,
   'direct receipt replay must not write duplicate canonical memories');
 
+// Do not let external HMX status labels silently upgrade inactive data to live beliefs.
+const restrictedMemoryRuntime = new MemorySubsystemRuntime();
+const restrictedProjector = new HexisCanonicalMemoryProjector(restrictedMemoryRuntime.fabric, restrictedMemoryRuntime.semanticMemory);
+const restrictedFabric = new HexisAdaptationFabric();
+restrictedFabric.bindCanonicalMemoryApply(candidate => restrictedProjector.apply(candidate));
+const restrictedExportId = 'exp_7777777777777777';
+const restrictedStage = restrictedFabric.stageHmx({
+  document: makeHmxDocument(restrictedExportId, { memories: [
+    { ref: restrictedExportId + ':quarantined', type: 'semantic', status: 'quarantined', content: 'Quarantined external assertion.' },
+    { ref: restrictedExportId + ':archived', type: 'semantic', status: 'archived', content: 'Archived external assertion.' },
+    { ref: restrictedExportId + ':unknown', type: 'semantic', status: 'future-status-v2', content: 'Unknown-status external assertion.' },
+  ] }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(restrictedStage.conflicts, []);
+restrictedFabric.decideHmx(restrictedStage.stagingId, 'accept');
+restrictedFabric.decideHmx(restrictedStage.stagingId, 'apply');
+const restrictedItems = restrictedMemoryRuntime.fabric.canonicalSnapshot().items;
+assert.equal(restrictedItems.find(item => item.content === 'Quarantined external assertion.')?.epistemicStatus, 'quarantined');
+assert.equal(restrictedItems.find(item => item.content === 'Archived external assertion.')?.epistemicStatus, 'quarantined');
+assert.equal(restrictedItems.find(item => item.content === 'Unknown-status external assertion.')?.epistemicStatus, 'unknown',
+  'an unrecognized external memory status must not be promoted to belief');
+
+// The exported status must carry through to the canonical retrieval policy.
+const quarantineId = restrictedItems.find(item => item.content === 'Quarantined external assertion.')?.id;
+const quarantineRecall = restrictedMemoryRuntime.fabric.previewRetrieve('Quarantined external assertion', 8);
+assert.equal(quarantineRecall.some(item => item.id === quarantineId), false,
+  'quarantined imported memories must remain excluded from canonical recall');
+
 
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
