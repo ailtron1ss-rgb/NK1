@@ -81,6 +81,7 @@ test('search scopes to the configured user, redacts sensitive content and labels
   let requestedUrl = '';
   let requestedHeaders;
   let requestedBody;
+  let requestedRedirect;
   const adapter = new Mem0PlatformAdapter({
     enabled: true,
     apiKey: 'do-not-log-this-key',
@@ -89,6 +90,7 @@ test('search scopes to the configured user, redacts sensitive content and labels
       requestedUrl = String(input);
       requestedHeaders = init?.headers;
       requestedBody = JSON.parse(String(init?.body));
+      requestedRedirect = init?.redirect;
       return jsonResponse({ results: [
         { id: 'mem-good', user_id: 'nk1-user-01', memory: 'Contact alice@example.com; api_key=very-secret-value-123456', score: 0.91, created_at: '2026-10-23T12:00:00Z' },
         { id: 'mem-cross-user', user_id: 'another-user', memory: 'must never appear in results', score: 0.99 },
@@ -100,6 +102,7 @@ test('search scopes to the configured user, redacts sensitive content and labels
   assert.equal(result.status, 'ok');
   assert.equal(new URL(requestedUrl).pathname, '/v3/memories/search/');
   assert.equal(requestedHeaders.authorization, 'Token do-not-log-this-key');
+  assert.equal(requestedRedirect, 'error', 'credentialed provider requests must not follow redirects');
   assert.deepEqual(requestedBody?.filters, { user_id: 'nk1-user-01' });
   assert.equal(requestedBody?.limit, 10);
   assert.equal(result.memories.length, 1);
@@ -255,7 +258,7 @@ test('remote deletion requires explicit approval and a UUID returned within this
     userId: 'scope-one',
     allowWrites: true,
     fetchImpl: async (input, init) => {
-      requests.push({ url: new URL(String(input)), method: init?.method, headers: init?.headers });
+      requests.push({ url: new URL(String(input)), method: init?.method, headers: init?.headers, redirect: init?.redirect });
       if (init?.method === 'POST') {
         return jsonResponse({ results: [{ id: memoryId, user_id: 'scope-one', memory: 'a remembered preference' }] });
       }
@@ -285,6 +288,7 @@ test('remote deletion requires explicit approval and a UUID returned within this
   assert.equal(requests[1].url.pathname, `/v1/memories/${memoryId}/`);
   assert.equal(requests[1].url.searchParams.get('delete_linked'), 'false');
   assert.equal(requests[1].headers.authorization, 'Token test-key');
+  assert.equal(requests[1].redirect, 'error', 'credentialed deletion must reject redirects');
 
   const repeat = await adapter.deleteMemory(memoryId, { approved: true });
   assert.equal(repeat.status, 'invalid-input');
