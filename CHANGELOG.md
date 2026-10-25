@@ -1,3 +1,10 @@
+## NK1 CI wiring — run cognitive runtime checks for dependency-audit PRs (2026-10-25)
+
+- Added the live cognitive dependency runtime wiring test, OrganismCore/Runtime, and B272/B273 source tests to repository-wiring audit push and pull-request path filters.
+- Enabled WorkPass71 core runtime regression validation for pull requests targeting the repository-wiring audit branch, so planner/action-attribution changes are exercised by integration CI.
+
+---
+
 ## NK1 cognitive runtime — preserve action/outcome attribution across planner arbitration (2026-10-25)
 
 - Fixed the B338 real-transition learning bridge: B272 now receives an outcome only when its endogenous proposed action equals the action selected and executed by the canonical planner.

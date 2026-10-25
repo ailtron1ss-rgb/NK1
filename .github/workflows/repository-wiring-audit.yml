@@ -17,6 +17,13 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-graph-workpass320.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-interrupt-episode-workpass324.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
   pull_request:
     branches:
       - workpass70-source
@@ -31,6 +38,13 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-graph-workpass320.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-interrupt-episode-workpass324.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
   workflow_dispatch:
 
 permissions:
