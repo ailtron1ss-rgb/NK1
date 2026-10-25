@@ -322,7 +322,16 @@ export class OrganismRuntime {
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
       this.cognitiveDependencyGraph.restore(await this.cognitiveDependencyStore.load() ?? undefined);
-      this.unifiedCognitiveSubstrate.restore(await this.unifiedCognitiveSubstrateStore.load() ?? undefined);
+      try {
+        this.unifiedCognitiveSubstrate.restore(await this.unifiedCognitiveSubstrateStore.load() ?? undefined);
+      } catch (error) {
+        // A corrupt/forward-version sidecar must not make the entire organism
+        // unbootable. Reset only this derived projection and keep an auditable trace.
+        this.unifiedCognitiveSubstrate.restore();
+        await this.journal.write('warn', 'runtime.unified-cognitive-substrate.restore-failed', {
+          message: String((error as any)?.message ?? error).slice(0, 200),
+        }).catch(() => {});
+      }
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
@@ -671,7 +680,7 @@ export class OrganismRuntime {
         scarcity01: resourceAllocation.scarcity01,
         efficiency01: 1 - resourceAllocation.scarcity01,
       },
-      memoryPressure01: body.telemetry.ramPressure01,
+      memoryPressure01: 1 - resourceAllocation.memory01,
       evidenceCoverage01: body.sensoryFreshness01,
       realObservationCoverage01: directObservation ? body.sensoryFreshness01 : 0,
       unknown01: 1 - clamp01(body.sensoryFreshness01),
