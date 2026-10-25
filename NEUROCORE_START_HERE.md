@@ -1,3 +1,18 @@
+## Latest durable checkpoint — WorkPass345: add operational 250-cycle soak (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft and targets the WorkPass331 source branch, not `main`.
+
+- Current verified code SHA before this workflow-only change: `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364`. [WorkPass331 run 40171612592](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171612592) passed canonical kernel and live wiring, B272 handoff calibration (140 cycles), organism smoke, action selection (`79/80` non-wait), spontaneous dialogue/feedback/restore, background clock (`clockExecutions=1; providerCalls=1; staged+acked+persisted=true`), restart persistence, and real HTTP server smoke. The learning/cognitive sibling workflows passed on that code SHA as well.
+- WorkPass345 adds the existing 250-cycle operational scaling test to the canonical workflow. It checks that warmed median latency stays under a 4.5× ratio and emits p95/heap-growth measurements. This broadens the bounded operational soak; it is not equivalent to an hour of unattended initiative.
+- PR #96 head at the time of this change was `c0882cc323fef680b5ab460e1e734893759c2932`, a documentation checkpoint after the green runtime SHA. This change makes a new source commit; exact-head CI must run again.
+
+### Next gates
+1. Verify the 250-cycle operational soak and inspect its latency/heap telemetry on the exact new head.
+2. Add or run a longer wall-clock background initiative test; then exercise configured external provider, UI/Live2D/voice E2E.
+3. Refresh the Release archive only after the source state and required gates are verified; do not mark PR #96 merge-ready yet.
+
+---
+
 ## Latest durable checkpoint — WorkPass344: live service smoke is green (2026-10-25)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.

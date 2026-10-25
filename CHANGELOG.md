@@ -1,3 +1,10 @@
+# WorkPass345 — add 250-cycle operational soak to the live runtime gate (2026-10-25)
+
+- [CI] Added existing `npm run test:long-horizon:operational:250` after autonomy, initiative and restart tests. It executes 250 operational observations against the actual `OrganismCore` and checks warmed median latency does not regress by more than 4.5×; it also records approximate p95 latency and heap-growth telemetry.
+- [TRIGGER] Added the operational 250-cycle regression to both `push` and `pull_request` path filters so edits to this test refresh the canonical runtime gate.
+- [SCOPE] This is a bounded 250-cycle stability/scaling soak, not an hour-long wall-clock background run, provider-backed initiative soak, or a proof of zero memory leaks. The separate server smoke continues to validate real local HTTP routes.
+- [BASELINE] Exact code SHA `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364` passed WorkPass331 run `40171612592`, including server smoke, background-clock initiative and persistence; the current workflow edit needs fresh exact-head CI.
+
 # WorkPass344 — record green live-service and autonomy gates (2026-10-25)
 
 - [VALIDATION] PASS on exact code SHA `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364`: [WorkPass331 run 40171612592](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171612592) completed `success`. This includes Node/npm preflight, doctor, canonical kernel/runtime wiring, B272 action handoff, organism smoke, 80-cycle action selection, spontaneous dialogue/feedback/restore, background-clock initiative, restart persistence, and **live HTTP server smoke**.
