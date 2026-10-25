@@ -28,4 +28,4 @@ jobs:
         run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
       - name: Run integrated P23 revision/evidence regressions
         working-directory: runtime/neuro-kurisu
-        run: npm run test:workpass293:p23-revision
+        run: node --experimental-transform-types tests/workpass293-autonomous-p23-revision.mjs
