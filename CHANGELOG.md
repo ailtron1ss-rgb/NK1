@@ -1,3 +1,10 @@
+# WorkPass344 — record green live-service and autonomy gates (2026-10-25)
+
+- [VALIDATION] PASS on exact code SHA `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364`: [WorkPass331 run 40171612592](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171612592) completed `success`. This includes Node/npm preflight, doctor, canonical kernel/runtime wiring, B272 action handoff, organism smoke, 80-cycle action selection, spontaneous dialogue/feedback/restore, background-clock initiative, restart persistence, and **live HTTP server smoke**.
+- [HTTP] `npm run server:smoke` now passes against an actual child-process server with isolated state. It exercises `/api/health`, memory-inspector temporal semantics, release contract, camera idempotency preflight, cognitive-architecture integrity, chat completion, voice status, and Will envelope/ACK idempotency. The stale exact-flow-count assertion was replaced by a self-consistent architecture validation contract with minimum coverage preserved.
+- [LEARNING] The sibling exact-SHA gates WorkPass108, WorkPass110, WorkPass105, WorkPass102, WorkPass99, WorkPass291–294, WorkPass287–288 and P26 Learning Validation all completed `success` on the same code SHA. One redundant WorkPass331 attempt was cancelled by workflow concurrency after another attempt had already completed successfully; no exact-head workflow failures remain.
+- [SCOPE] This validates the local service and deterministic fallback path, not configured external provider credentials, mobile/device UI, full Live2D/voice visual synchronization, or an hour-long unattended soak. PR #96 remains draft and the release archive has not been refreshed.
+
 # WorkPass343 — make live-server architecture contract resilient to additive flows (2026-10-25)
 
 - [FIX] The first WorkPass342 live HTTP smoke run reached `/api/organism/cognitive-architecture` but failed because the smoke test hard-coded exactly 22 flows while the current valid architecture map exposes additional flows. This was a stale assertion, not evidence of a server startup failure.

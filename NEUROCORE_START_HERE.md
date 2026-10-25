@@ -1,3 +1,19 @@
+## Latest durable checkpoint — WorkPass344: live service smoke is green (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- The source/code SHA `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364` passed [WorkPass331 run 40171612592](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171612592): clean startup/doctor, canonical kernel, B272 strict action handoff, organism smoke, 80-cycle autonomy (`79/80` non-wait selections), spontaneous dialogue feedback/restore, background clock, restart persistence, and live HTTP service smoke.
+- The first HTTP smoke exposed a stale assertion that required exactly 22 architecture flows despite the map being additive. WorkPass343 fixed the assertion to check `validation.ok`, minimum subsystem/flow coverage, and consistency between returned arrays and declared validation counts; failure output now includes observed architecture diagnostics.
+- On the same source SHA, WorkPass108, WorkPass110, WorkPass105, WorkPass102, WorkPass99, WorkPass291–294, WorkPass287–288, and P26 Learning Validation also passed. A redundant duplicate WorkPass331 attempt was cancelled by GitHub Actions concurrency after the successful run; it was not a test failure.
+- The current commit to record this checkpoint is documentation-only. External-provider credentials, mobile/device UI, Live2D/voice visual E2E, long unattended soak, and release archive refresh remain open; PR #96 remains draft.
+
+### Next gates
+1. Add a bounded longer unattended runtime soak and inspect natural action-handoff mismatch rates before adjusting planner weights.
+2. Run real configured-provider and UI/Live2D/voice end-to-end checks when their environment is available.
+3. Refresh the Release archive only after the source state and required gates are verified.
+
+---
+
 ## Latest durable checkpoint — WorkPass343: correct stale architecture flow-count assertion (2026-10-25)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
@@ -19,7 +35,7 @@
 
 - WorkPass341 calibrated B272 action handoff across 140 deterministic runtime-style cycles: every seventh action is intentionally mismatched, mismatch credit is rejected without mutation, exact counters/rates are checked, and telemetry must survive restore. The expanded handoff regression and all sibling cognitive/learning workflows passed on exact source SHA `83e2be0df7f8ac4a15dbc69b28541b35d3ceed49`; WorkPass331 run [40170774606](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40170774606) succeeded.
 - WorkPass342 adds the real server smoke test to the canonical kernel workflow: child-process startup in an isolated state directory, health readiness, memory inspector temporal bounds, release contract, camera idempotency preflight, read-only cognitive architecture, chat completion, voice status, and Will transport idempotency/collision/ACK behavior. This is a meaningful next step beyond in-process organism tests.
-- The new service smoke gate has not yet run on its new commit. Its result must be checked at exact HEAD before claiming live HTTP integration is green. It does not cover a configured external LLM provider, mobile device E2E, or an hour-long unattended soak.
+- **Validated on exact code SHA `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364`:** [WorkPass331 run 40171612592](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171612592) completed `success`, including the live HTTP service smoke. The stale exact-flow-count assertion was fixed without weakening `validation.ok` or minimum subsystem/flow coverage. WorkPass108/110/105/102/99/291–294/287–288 and P26 all passed on the same SHA. This still does not cover a configured external LLM provider, mobile/device E2E, or an hour-long unattended soak.
 
 ### Next gates
 1. Run WorkPass331 with the new live HTTP service smoke test; fix any startup/route failures without weakening API contracts.
