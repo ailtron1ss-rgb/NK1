@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
+import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, P36_DEVELOPMENTAL_OUTCOME_TOOL_ID, developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 
 const engine=new P36AutonomousSelfDevelopmentEngine();
@@ -26,8 +26,7 @@ let receiptSequence=0;
 let forcedObservationId;
 let forceNegativeResult=false;
 let issuedObservationCount=0;
-gateway.registerTool({
-  id:P36_EXTERNAL_EVIDENCE_TOOL_ID,
+const fixtureEvaluator={
   capability:'learning.evaluation',
   destructive:false,
   execute:async()=>({ok:!forceNegativeResult,observationId:forcedObservationId??('p36-independent-proof-'+(++issuedObservationCount))}),
@@ -39,12 +38,14 @@ gateway.registerTool({
       observedPostcondition:'evaluation-completed:'+observationId,
     };
   },
-});
-async function mintProof(binding, suppliedObservationId, expectVerified=true){
+};
+gateway.registerTool({id:P36_EXTERNAL_EVIDENCE_TOOL_ID,...fixtureEvaluator});
+gateway.registerTool({id:P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,...fixtureEvaluator});
+async function mintProof(binding, suppliedObservationId, expectVerified=true, toolId=P36_EXTERNAL_EVIDENCE_TOOL_ID){
   const ticket=++receiptSequence;
   forcedObservationId=suppliedObservationId;
   const decisionId=`p36-development-decision-${ticket}`;
-  const result=await gateway.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,binding,'p36-independent-development-evaluation',{decisionId});
+  const result=await gateway.executeTool(toolId,binding,'p36-independent-development-evaluation',{decisionId});
   forcedObservationId=undefined;
   if(expectVerified) assert.equal(result.verified,true,'fixture evaluator result must pass through ActionGateway verification');
   else assert.equal(result.ok,false,'negative fixture must preserve the failed executor result');
@@ -173,7 +174,7 @@ const crossPathEvidence=evidence(crossPathHypothesis.id,'cross-path-experiment',
 const crossPathProof=await mintProof(developmentEvidenceVerificationInput(crossPathEvidence),crossPathId);
 assert.equal(crossPathEngine.recordExternalEvidence({...crossPathEvidence,...crossPathProof}).independentCount,1);
 const crossPathOutcome={area:'learning',outcome01:.9,delayed:true,transfer:true};
-const crossPathOutcomeProof=await mintProof(developmentalOutcomeVerificationInput(crossPathOutcome),crossPathId);
+const crossPathOutcomeProof=await mintProof(developmentalOutcomeVerificationInput(crossPathOutcome),crossPathId,true,P36_DEVELOPMENTAL_OUTCOME_TOOL_ID);
 const crossPathMaturity=crossPathEngine.observeDevelopmentalOutcome({...crossPathOutcome,...crossPathOutcomeProof});
 assert.equal(crossPathMaturity.verifiedOutcomeCount,0,'same observation cannot be credited through a second learning route');
 
@@ -184,7 +185,7 @@ const forgedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,veri
 assert.equal(forgedMaturity.verifiedOutcomeCount,0,'a caller boolean cannot certify developmental maturity');
 assert.equal(maturityEngine.diagnostics().rejectedMaturityReceipts,1,'blocked maturity assertions must be observable');
 assert.throws(()=>maturityEngine.observeDevelopmentalOutcome({...outcome,outcome01:1.1}),/invalid-developmental-outcome/,'out-of-range outcomes must be rejected');
-const outcomeProof=await mintProof(developmentalOutcomeVerificationInput(outcome));
+const outcomeProof=await mintProof(developmentalOutcomeVerificationInput(outcome),undefined,true,P36_DEVELOPMENTAL_OUTCOME_TOOL_ID);
 const measuredMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verified:false,...outcomeProof});
 assert.equal(measuredMaturity.verifiedOutcomeCount,1);
 assert.equal(measuredMaturity.retainedOutcomeCount,1);
@@ -195,7 +196,7 @@ assert.equal(duplicatedMaturity.verifiedOutcomeCount,1,'the same authenticated o
 assert.equal(maturityEngine.diagnostics().rejectedMaturityReceipts,maturityRejectionsBeforeExactReplay,'an exact receipt replay is idempotent, not reported as a trust rejection');
 const copiedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,...outcomeProof,verification:structuredClone(outcomeProof.verification)});
 assert.equal(copiedMaturity.verifiedOutcomeCount,1,'a serialized copy cannot replay a trusted maturity receipt');
-const reusedMaturityProof=await mintProof(developmentalOutcomeVerificationInput({...outcome,area:'memory',outcome01:.8}),outcomeProof.verification.observationId);
+const reusedMaturityProof=await mintProof(developmentalOutcomeVerificationInput({...outcome,area:'memory',outcome01:.8}),outcomeProof.verification.observationId,true,P36_DEVELOPMENTAL_OUTCOME_TOOL_ID);
 const reusedMaturity=maturityEngine.observeDevelopmentalOutcome({area:'memory',outcome01:.8,delayed:true,transfer:true,...reusedMaturityProof});
 assert.equal(reusedMaturity.verifiedOutcomeCount,1,'one observation ID cannot certify two different developmental outcomes');
 
