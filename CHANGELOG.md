@@ -1,3 +1,10 @@
+## NK1 test-fixture compatibility — guarded rollback authority (2026-10-25)
+
+- Updated the versioned-skill rollback regression fixture to provide an explicit test-only rollback verifier and a compare-and-swap approval object.
+- This unblocks full-suite validation without weakening the production default-deny policy or removing stale-version rejection.
+
+---
+
 ## Repository wiring audit hardening — 2026-10-25
 
 - Fixed quoted Node.js/Python entry-point parsing so paths containing spaces are checked as one path rather than truncated.
