@@ -484,7 +484,8 @@ export class ActionGateway {
         ...(typeof row.executionId==='string'&&/^exec-[a-z0-9-]{8,80}$/i.test(row.executionId)?{executionId:row.executionId}:{}),
         ...(typeof row.toolId==='string'&&row.toolId.length<=64?{toolId:row.toolId}:{}),
         ...(typeof row.decisionId==='string'&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
-        ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{})};
+        ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{}),
+        ...(row.responseOmitted===true?{responseOmitted:true}:{})};
       if(row.status==='completed' && row.response && typeof row.response==='object') {
         // A snapshot is untrusted input. Preserve a completed receipt only when its
         // duplicated identity/outcome fields agree and its serialized payload stays
