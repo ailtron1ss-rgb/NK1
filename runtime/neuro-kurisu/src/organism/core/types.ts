@@ -308,6 +308,10 @@ export interface MemoryFacet {
   experiments: import('../cognition/IntrinsicExperimentGenerator.ts').IntrinsicExperiment[];
   counterfactuals: import('../world/CounterfactualEngine.ts').CounterfactualBranch[];
   lastRetrievedMemoryIds: string[];
+  /** Optional external-memory provider identity and diagnostic receipt. */
+  lettaBridge?: import('../integration/letta/LettaMemoryBridge.ts').LettaMemoryBridgeSnapshot;
+  /** Pending external sync intents are checkpointed but remain best-effort across crash windows. */
+  lettaSyncOutbox?: import('./MemorySubsystemRuntime.ts').LettaSyncOutboxSnapshot;
 }
 
 export interface DevelopmentalCognitionFacet {
