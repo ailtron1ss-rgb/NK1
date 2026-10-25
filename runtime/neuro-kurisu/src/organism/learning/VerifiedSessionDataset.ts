@@ -126,7 +126,7 @@ export function buildVerifiedSessionDataset(
   // Stable fingerprint lets downstream generators/evaluators bind results to the
   // exact verified dataset rather than merely to a task manifest or export time.
   const datasetIdentity = {
-    schemaVersion: 1,
+    schemaVersion: 1 as const,
     manifestFingerprint: ledger.manifestFingerprint(),
     training: sortedTraining,
     validation: sortedValidation,
