@@ -8,7 +8,7 @@
 - [RUNTIME FIX] Fixed a malformed control-character regex that prevented Node.js 24 from loading `OutcomeVerificationService.ts` before tests could run.
 - [GOAL LIFECYCLE] Fixed the P68 active-only traversal that made paused-goal reactivation unreachable; imported external goals remain activation-gated unless explicitly approved. Reactivation now also respects the four-active-goal capacity.
 - [IDEMPOTENCY] Projector now returns the stored receipt when replayed with an already-applied stage; a direct replay regression was added.
-- [MEMORY SAFETY] Imported quarantine/archive/deletion/rejection statuses remain quarantined; unknown statuses remain `unknown` instead of being promoted to beliefs. Added a recall-exclusion regression. Foreign `fact` labels are reduced to `belief`, never trusted as NK1-verified facts.
+- [MEMORY SAFETY] Imported quarantine/archive/deletion/rejection statuses remain quarantined; unknown statuses remain `unknown` instead of being promoted to beliefs. Added a recall-exclusion regression. Foreign `fact` labels are reduced to `belief`, never trusted as NK1-verified facts. The canonical `MemoryFabric` boundary now forwards `forceDistinct`, keeping same-text imported lineage separate from native records.
 - [STATUS] The CI rerun must still confirm HMX test results. The bridge is not yet verified or production-ready; no learning-uplift claim is made.
 
 ## NK1 WorkPass331 — execute initiative regression guards in CI (2026-10-24)
