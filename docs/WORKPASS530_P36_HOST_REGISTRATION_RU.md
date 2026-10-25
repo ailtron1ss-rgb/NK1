@@ -39,6 +39,10 @@
 
 Предыдущий WorkPass529 отделил `kind: 'developmental-outcome'` от обычного baseline/treatment/holdout-свидетельства и убрал доверие к `verifiedNow` из общих world/reward feedback.
 
+## Дополнительное уточнение WorkPass531
+
+Путь зрелости закреплён отдельным discriminant: `kind: 'developmental-outcome'`. Он входит в нормализованный кортеж, который проверяется verifier receipt, и явно типизирован в интерфейсе и методе P36. Это снижает риск, что maturity outcome ошибочно обработается как обычная baseline/treatment evidence запись. Интеграционный тест отдельно проверяет наличие этого поля.
+
 ## Текущая граница готовности
 
 **Сделано в коде:** доверенный construction-time вход оценщика, блокировка публичной регистрации зарезервированного ID, обновлённый Core integration fixture и документированный handover.
