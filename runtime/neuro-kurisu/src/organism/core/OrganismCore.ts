@@ -11058,7 +11058,7 @@ export class OrganismCore {
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
         return executeTrustedShadowLearningProcess({ ...input, core: {
-            registerTrustedSkillShadowRun: context => this.registerTrustedSkillShadowRun(context),
+            registerTrustedSkillShadowRun: context => { this.registerTrustedSkillShadowRun(context); },
         } });
     }
     /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
