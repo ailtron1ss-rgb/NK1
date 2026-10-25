@@ -87,10 +87,21 @@ export class ContinuityLedger {
     const size = (await handle.stat()).size;
     if (size >= this.maxBytes) { this.pendingLines = []; this.pendingBytes = 0; return; }
     const remaining = Math.max(0, this.maxBytes - size);
-    const output = bytes <= remaining ? payload : payload.slice(0, remaining);
-    await handle.write(output, null, 'utf8');
+    // This is JSONL, so a byte-budget boundary may discard a whole frame but must
+    // never cut a UTF-16 string or a serialized JSON object in the middle.
+    const selected: string[] = [];
+    let selectedBytes = 0;
+    for (const line of this.pendingLines) {
+      const lineBytes = new TextEncoder().encode(line).byteLength;
+      if (lineBytes > remaining - selectedBytes) break;
+      selected.push(line);
+      selectedBytes += lineBytes;
+    }
     this.pendingLines = [];
     this.pendingBytes = 0;
+    const output = selected.join('');
+    if (!output) return;
+    await handle.write(output, null, 'utf8');
     const written = new TextEncoder().encode(output).byteLength;
     this.stats = { ...this.stats, bytesWritten: this.stats.bytesWritten + written, lastWriteMs: Date.now() - started };
   }
