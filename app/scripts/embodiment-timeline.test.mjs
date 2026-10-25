@@ -278,3 +278,23 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
   dispatch(message({ stateVersion: 4, audioTimeMs: 160 }), location.origin, {});
   assert.equal(fakeWindow.__w70AppliedCount, 3, "foreign message sources are rejected");
 });
+
+test("React and standalone runtime import one canonical viseme algorithm", async () => {
+  const appTimelineSource = await readFile(join(root, "src/components/avatar/embodimentTimeline.ts"), "utf8");
+  const runtimeMapperSource = await readFile(join(root, "../runtime/neuro-kurisu/public/avatar-state.mjs"), "utf8");
+  const sharedCore = await readFile(join(root, "../runtime/neuro-kurisu/public/speech-viseme-core.mjs"), "utf8");
+  assert.ok(appTimelineSource.includes("runtime/neuro-kurisu/public/speech-viseme-core.mjs"));
+  assert.ok(runtimeMapperSource.includes("from './speech-viseme-core.mjs'"));
+  assert.ok(sharedCore.includes("export function buildVisemeTimeline"));
+  assert.ok(sharedCore.includes("export function poseForGrapheme"));
+  assert.ok(!appTimelineSource.includes("function segmentGraphemes"), "React wrapper must not keep a second segmenter");
+  assert.ok(!runtimeMapperSource.includes("function speechWeight"), "runtime wrapper must not keep duplicate viseme weights");
+
+  for (const source of ["мама, мир", "Ку\u0301рису 🙂", "а🙂‍↔️б\n", "🇳🇱 Курису"]) {
+    const shared = buildVisemeTimeline(source, 0.96, "ru-RU");
+    assert.deepEqual(
+      shared.map(frame => ({ startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose })),
+      buildVisemeTimeline(source, 0.96, "ru-RU").map(frame => ({ startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose })),
+    );
+  }
+});
