@@ -1,3 +1,11 @@
+## NK1 WorkPass532 — keep trusted shadow validation errors asynchronous (2026-10-25)
+
+- Fixed the next WorkPass108 CI blocker in TrustedShadowLearningRunCoordinator: its public API returns Promise<LearningProcessResult> and now also reports invalid registrar/runtime/run inputs as rejected promises, rather than synchronous throws that bypass assert.rejects callers.
+- The candidate/shadow-only restriction remains intact; baseline/control runs are still rejected before registration or child-process spawn.
+- Regression execution on the new branch head is pending.
+
+---
+
 ## NK1 WorkPass531 — run trusted shadow test with Node 24 TypeScript transforms (2026-10-25)
 
 - WorkPass108 reached and passed the signed independent-outcome artifact regression after the duplicate-ingestion fix, then exposed a separate runner-mode failure in p23-core-trusted-shadow-entry.mjs: its imported VersionedSkillCandidateStore uses TypeScript parameter properties.
