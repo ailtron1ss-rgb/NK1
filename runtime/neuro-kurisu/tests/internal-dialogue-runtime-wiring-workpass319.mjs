@@ -38,6 +38,10 @@ assert.match(journal, /async readRecent\(event:string, limit=32\)/,
   'OperationalJournal must expose bounded filtered readback');
 assert.match(journal, /parseJournalRecords/,
   'corrupt/torn JSONL lines must be isolated from prior valid records');
+assert.match(runtime, /restoreInternalDialogueReceipt\(record\.data\)/);
+assert.match(runtime, /lastInternalDialogueReceipt = receipt/);
+assert.match(journal, /filePath\+'\.1'/,
+  'readback must include the latest rotated journal when present');
 
 assert.match(runtime, /runtime\.internal-dialogue\.review/,
   'runtime must append a durable sanitized receipt to the operational journal');
