@@ -1,3 +1,11 @@
+## NK1 WorkPass348 — restore missing learning/postcondition regression commands (2026-10-25)
+
+- [CI] Added package script entries for the existing P26 learning input integrity, recovery benchmark, continual matrix, and WorkPass294 correlated-postcondition regression files. Both workflows previously stopped immediately after the passing runtime typecheck because `npm run` could not resolve those command names.
+- [VALIDATION] The commands map to existing real `.mjs` tests and `package.json` parses. The current-head reruns must still execute the full scripts before their outcomes can be claimed.
+- [SCOPE] Integration branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass346–347 — fix dream association guard and trusted registration adapter (2026-10-25)
 
 - [FIX] Restored the valid boolean predicate in `IntrinsicExperimentGenerator` after strict-typing cleanup; the P23 integrated revision regression now passes on commit `f650eb4`.
