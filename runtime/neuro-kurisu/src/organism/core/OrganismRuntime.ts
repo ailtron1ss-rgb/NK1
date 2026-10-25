@@ -171,6 +171,9 @@ export class OrganismRuntime {
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
   private readonly perceptionEngine = new PerceptionEngine();
+  /** P41 semantic vision frames are bridged into multimodal ingress exactly once per runtime. */
+  private lastIntegratedP41VisionObservationCount = 0;
+  private lastIntegratedP41SceneLabel = 'unknown';
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
   private readonly resourceEconomy = new CognitiveResourceEconomy();
   private readonly realityEvidence = new RealityEvidenceLedger(384);
@@ -315,6 +318,9 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      const initialP41Perception = this.core.p41PerceptionSnapshot() as any;
+      this.lastIntegratedP41VisionObservationCount = Number(initialP41Perception?.modalityReliability?.vision?.observations ?? 0);
+      this.lastIntegratedP41SceneLabel = String(initialP41Perception?.scene?.label ?? 'unknown');
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
@@ -616,8 +622,93 @@ export class OrganismRuntime {
           },
         })
       : null;
+    const p41Semantic = this.core.p41PerceptionSnapshot() as any;
+    const p41VisionObservationCount = Number(p41Semantic?.modalityReliability?.vision?.observations ?? this.lastIntegratedP41VisionObservationCount);
+    const p41VisionObservationDelta = p41VisionObservationCount - this.lastIntegratedP41VisionObservationCount;
+    let semanticVisionSignal: {
+      snapshotId: string; scene: string; confidence01: number; salience01: number;
+      novelty01: number; summary: string; evidence: string[]; content: string; evidenceId: string;
+    } | null = null;
+    if (p41VisionObservationDelta > 0) {
+      const semanticSnapshot = Array.isArray(p41Semantic?.snapshots) ? p41Semantic.snapshots[0] : null;
+      if (semanticSnapshot && typeof semanticSnapshot.id === 'string') {
+        const entityIds = new Set(Array.isArray(semanticSnapshot.entityIds) ? semanticSnapshot.entityIds : []);
+        const eventIds = new Set(Array.isArray(semanticSnapshot.eventIds) ? semanticSnapshot.eventIds : []);
+        const relationIds = new Set(Array.isArray(semanticSnapshot.relationIds) ? semanticSnapshot.relationIds : []);
+        const visionEntities = (Array.isArray(p41Semantic.entities) ? p41Semantic.entities : [])
+          .filter((item: any) => entityIds.has(item.id) && Array.isArray(item.modalities)
+            && item.modalities.includes('vision') && Number(item.lastSeenAt) >= Number(semanticSnapshot.at))
+          .slice(0, 8);
+        const visionEvents = (Array.isArray(p41Semantic.events) ? p41Semantic.events : [])
+          .filter((item: any) => eventIds.has(item.id) && Array.isArray(item.modalities)
+            && item.modalities.includes('vision') && Number(item.lastAt) >= Number(semanticSnapshot.at))
+          .slice(0, 6);
+        const visionRelations = (Array.isArray(p41Semantic.relations) ? p41Semantic.relations : [])
+          .filter((item: any) => relationIds.has(item.id) && item.modality === 'vision'
+            && Number(item.at) >= Number(semanticSnapshot.at))
+          .slice(0, 6);
+        const scene = String(semanticSnapshot.scene ?? p41Semantic.scene?.label ?? 'unknown').slice(0, 120);
+        const freshSceneConfidence = Number(p41Semantic.scene?.at) === Number(semanticSnapshot.at)
+          ? Number(p41Semantic.scene?.confidence01 ?? 0) : 0;
+        const confidence01 = clamp01(Math.max(
+          freshSceneConfidence,
+          ...visionEntities.map((item: any) => Number(item.confidence01 ?? 0)),
+          ...visionEvents.map((item: any) => Number(item.confidence01 ?? 0)),
+          0.35,
+        ));
+        const salience01 = clamp01(Math.max(
+          0.30,
+          ...visionEntities.map((item: any) => Number(item.salience01 ?? 0)),
+          ...visionEvents.map((item: any) => Number(item.confidence01 ?? 0) * 0.8),
+        ));
+        const novelty01 = clamp01(scene !== this.lastIntegratedP41SceneLabel
+          ? 0.82
+          : 0.28 + 0.08 * Math.min(4, visionEntities.length + visionEvents.length + visionRelations.length));
+        const entityLabels = visionEntities.map((item: any) => String(item.label)).slice(0, 8);
+        const eventLabels = visionEvents.map((item: any) => String(item.label)).slice(0, 6);
+        const relationLabels = visionRelations.map((item: any) => `${String(item.from)} ${String(item.relation)} ${String(item.to)}`).slice(0, 6);
+        const summary = `semantic-vision: scene=${scene}; entities=${entityLabels.join(', ') || 'none'}; events=${eventLabels.join(', ') || 'none'}; relations=${relationLabels.join(', ') || 'none'}`.slice(0, 500);
+        const evidence = [
+          `p41-snapshot=${semanticSnapshot.id}`,
+          `vision-frames=${Math.min(32, p41VisionObservationDelta)}`,
+          'evidence-kind=model-output',
+        ];
+        const visionEvidence = this.evidenceBus.publish({
+          tick: this.core.operationalStatusSnapshot().tick,
+          kind: 'observation',
+          source: 'p41-semantic-vision',
+          confidence01,
+          payload: {
+            snapshotId: semanticSnapshot.id,
+            scene,
+            entityLabels,
+            eventLabels,
+            relationLabels,
+            observationDelta: p41VisionObservationDelta,
+            novelty01,
+            salience01,
+            evidenceKind: 'model-output',
+          },
+        });
+        semanticVisionSignal = {
+          snapshotId: semanticSnapshot.id, scene, confidence01, salience01, novelty01,
+          summary, evidence, content: JSON.stringify({ scene, entityLabels, eventLabels, relationLabels }),
+          evidenceId: visionEvidence.id,
+        };
+        this.lastIntegratedP41VisionObservationCount = p41VisionObservationCount;
+        this.lastIntegratedP41SceneLabel = scene;
+      }
+    }
     const modalityEvents = [];
     if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:['user-input'], content:externalText }));
+    if (semanticVisionSignal) modalityEvents.push(this.core.recordMultimodalObservation({
+      modality: 'vision',
+      summary: semanticVisionSignal.summary,
+      confidence: semanticVisionSignal.confidence01,
+      salience: semanticVisionSignal.salience01,
+      evidence: semanticVisionSignal.evidence,
+      content: semanticVisionSignal.content,
+    }));
     if (perceptionHasSignal) {
       const modality = perceptionEvent.source === 'android'
         ? 'sensor'
@@ -640,11 +731,19 @@ export class OrganismRuntime {
     const fused = this.core.multimodalSnapshot();
     const cycle = await this.core.observe({
       ...observation,
-      surprise: perceptionHasSignal
-        ? clamp01(Math.max(Number(observation.surprise ?? 0), perceptionEvent.salience * 0.45 + perceptionEvent.novelty * 0.25))
+      surprise: (perceptionHasSignal || semanticVisionSignal)
+        ? clamp01(Math.max(
+            Number(observation.surprise ?? 0),
+            perceptionHasSignal ? perceptionEvent.salience * 0.45 + perceptionEvent.novelty * 0.25 : 0,
+            semanticVisionSignal ? semanticVisionSignal.salience01 * 0.45 + semanticVisionSignal.novelty01 * 0.25 : 0,
+          ))
         : observation.surprise,
-      novelty: perceptionHasSignal
-        ? clamp01(Math.max(Number(observation.novelty ?? 0), perceptionEvent.novelty * perceptionEvent.confidence))
+      novelty: (perceptionHasSignal || semanticVisionSignal)
+        ? clamp01(Math.max(
+            Number(observation.novelty ?? 0),
+            perceptionHasSignal ? perceptionEvent.novelty * perceptionEvent.confidence : 0,
+            semanticVisionSignal ? semanticVisionSignal.novelty01 * semanticVisionSignal.confidence01 : 0,
+          ))
         : observation.novelty,
       text: externalText,
       externalGoal: externalText ? { title: externalText.slice(0, 160), importance: 0.65, urgency: 0.4 } : undefined,
@@ -657,18 +756,27 @@ export class OrganismRuntime {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
     const internalAction = cycle.decision.selected?.action ?? 'wait';
+    const observationParentIds = [perceptionEvidence?.id, semanticVisionSignal?.evidenceId]
+      .filter((parentId): parentId is string => typeof parentId === 'string' && parentId.length > 0);
     const observationEvidence = this.evidenceBus.publish({
       tick: cycle.state.tick,
       kind: 'observation',
       source: 'runtime',
-      confidence01: perceptionHasSignal ? Math.max(0.72, perceptionEvent.confidence) : 0.72,
-      ...(perceptionEvidence ? { parentIds: [perceptionEvidence.id] } : {}),
+      confidence01: Math.max(
+        0.72,
+        perceptionHasSignal ? perceptionEvent.confidence : 0,
+        semanticVisionSignal?.confidence01 ?? 0,
+      ),
+      ...(observationParentIds.length ? { parentIds: observationParentIds } : {}),
       payload: {
         external: Boolean(externalText),
         predictionError: cycle.state.predictionError,
         selectedAction: internalAction,
         perceptionKind: perceptionEvent.kind,
         perceptionEventId: perceptionEvent.id,
+        p41VisionSnapshotId: semanticVisionSignal?.snapshotId ?? null,
+        p41VisionScene: semanticVisionSignal?.scene ?? null,
+        p41VisionNovelty01: semanticVisionSignal?.novelty01 ?? null,
       },
     });
     this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning');

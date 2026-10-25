@@ -3,7 +3,8 @@
 - Fixed canonical runtime perception so one sensor event updates only its own baseline; simultaneous sensor changes are surfaced across successive perception cycles.
 - Wired runtime-owned `PerceptionEngine` events into multimodal observation and cognitive `novelty`/`surprise` ingress, with evidence-bus parent lineage into the canonical observation event; the runtime still keeps action selection inside `OrganismCore`.
 - Added deterministic runtime integration regressions for fresh-baseline establishment, motion change, sensor loss and recovery during user-text cycles, proving unavailable samples are not fabricated into zero-valued physical observations.
-- The follow-up loss/recovery regression is committed separately and pending its own exact-head CI run.
+- The sensor loss/recovery regression passed the exact-head [perception workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169166470).
+- Added a bridge from newly produced P41 semantic-vision snapshots into the runtime multimodal event stream, cognitive novelty/surprise, and parent-linked observation evidence; exact-head CI for this bridge is pending.
 - Added explicit `sensor-availability` events for signal loss/recovery. Missing readings are no longer confused with numeric zero or a confirmed absence of movement/proximity/light/network.
 - Sensor telemetry fails closed when freshness is out of range, stale duration is invalid/negative, or staleness exceeds the accepted bound.
 - World-object normalization now preserves knowledge state separately from fallback values: `valueKnown`, `visibilityKnown`, and `collectionKnown` distinguish unknown data from measured zero/false.

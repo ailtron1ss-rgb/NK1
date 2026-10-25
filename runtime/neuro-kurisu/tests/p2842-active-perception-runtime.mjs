@@ -62,6 +62,32 @@ assert.ok(active.lastInformationGain01>=0);
 assert.ok(calibration.resolved>=1,'runtime must resolve the exact pre-action prediction ticket');
 assert.ok(calibration.records.some(x=>x.predictionId && x.verified01===1 && x.independent01===1));
 
+// Semantic vision is produced after the camera pipeline and must enter the next
+// canonical multimodal/cognitive cycle once, without replaying stale startup frames.
+const beforeVisionFrames = runtime.core.p41PerceptionSnapshot().modalityReliability.vision.observations;
+runtime.core.p41PerceptionIngest({
+  vision: {
+    semantic: true,
+    sceneLabel: 'test-room',
+    confidence01: 0.92,
+    objects: [{ label: 'desk lamp', kind: 'object', confidence01: 0.87 }],
+    relations: [{ from: 'desk lamp', relation: 'on', to: 'desk', confidence01: 0.81 }],
+    events: [{ label: 'lamp-lit', confidence01: 0.84 }],
+    latencyMs: 12,
+  },
+  at: sampleAt + 100,
+});
+assert.equal(
+  runtime.core.p41PerceptionSnapshot().modalityReliability.vision.observations,
+  beforeVisionFrames + 1,
+);
+await runtime.step();
+const multimodalVision = runtime.core.multimodalSnapshot().recent.find(
+  event => event.modality === 'vision' && event.summary.includes('scene=test-room'),
+);
+assert.ok(multimodalVision, 'new P41 semantic vision should surface in runtime multimodal ingress');
+assert.ok(multimodalVision.confidence >= 0.84);
+
 // A sensor becoming unavailable/recovering must be represented as availability,
 // not as a fabricated zero or a physical motion event; user text must not starve sensing.
 motion01 = null;
