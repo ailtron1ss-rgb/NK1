@@ -114,7 +114,7 @@ const normalizeMood=(value:unknown):EmotionMoodState|null=>{
   return {
     tick:value.tick as number,at:value.at as number,valence01:value.valence01 as number,
     arousal01:value.arousal01 as number,stress01:value.stress01 as number,
-    confidence01:value.confidence01 as number,dominantLabel:value.dominantLabel as EmotionLabel,
+    confidence01:value.confidence01 as number,dominantLabel:value.dominantLabel as unknown as EmotionLabel,
     persistence01:value.persistence01 as number,episodes:value.episodes as number,
   };
 };
