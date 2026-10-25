@@ -1,3 +1,11 @@
+## NK1 cognition follow-up — harden intrinsic-motivation restore (2026-10-25)
+
+- `IntrinsicMotivationEngine.restore()` now reads only own data properties from persisted state. Prototype-inherited drive values can no longer create artificial urgency or autonomous goals, and accessor properties are ignored without being executed.
+- Extended the WorkPass288 contract test with inherited-state forgery and throwing-accessor regressions. No dependency was added; no learning-uplift claim is made.
+- Verification status: change committed to the active cognitive-cycle PR branch; the focused test and exact-head runtime typecheck still require an actionable run.
+
+---
+
 ## WorkPass319 — unified cognitive-cycle and motivation integration closure (2026-10-25)
 
 - Made `UnifiedCognitiveCycle.restore()` fail closed on invalid/missing/contradictory persisted cycle counters and corrected mixed malformed-stage normalization.
