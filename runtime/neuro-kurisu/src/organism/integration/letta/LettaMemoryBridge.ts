@@ -336,7 +336,7 @@ export class LettaMemoryBridge {
     ].join('\n');
 
     try {
-      const response = await this.runTurn(prompt);
+      const response = await this.runTurn(prompt, { requireMemoryMutation: true });
       if (!response.trim()) return this.failed('assistant-no-response');
       const safeResponse = redactSecrets(response);
       if (safeResponse.redacted) this.snapshotState.metrics.redactions += 1;
