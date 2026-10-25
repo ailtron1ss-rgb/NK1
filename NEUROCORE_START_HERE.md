@@ -1,3 +1,18 @@
+## Latest durable checkpoint — WorkPass341: long-run action-handoff calibration (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- Latest confirmed base before this change: WorkPass340 head `57249dc536186e9eb2837398d31f977ebe45f519`; WorkPass331 [run 40169007748](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169007748), WorkPass110 [40169007770](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169007770), WorkPass108 [40169007775](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169007775), WorkPass294 [40169007759](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169007759), P26 [40169007782](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169007782), and WorkPass287–293/99/102/105/291/292 all completed successfully on that exact SHA.
+- WorkPass341 adds a 140-cycle deterministic action-handoff calibration: one in seven actions is deliberately mismatched, and the test requires exact counters/rates plus zero learning-state mutation for every rejected mismatch. Only matching handoffs may update B272; all metrics must survive restore.
+- This is an isolated diagnostic/validation improvement, not a planner-weight change. It deliberately avoids changing behavior before a trustworthy match/mismatch rate has been measured. The new exact-head CI result is pending.
+
+### Next gates
+1. Verify WorkPass331 and all P23/learning gates on the new exact SHA; fix any regression without weakening strict handoff credit.
+2. If green, run a longer live-runtime soak and measure naturally occurring handoff mismatch rate before adjusting planner or action-selection weights.
+3. Continue real API/service startup, UI/Live2D/voice end-to-end, and Release archive refresh; these remain unverified.
+
+---
+
 ## Latest durable checkpoint — WorkPass340: fix restore-order bug in B272 handoff metrics (2026-10-25)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.

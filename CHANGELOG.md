@@ -1,3 +1,10 @@
+# WorkPass341 — calibrate B272 action handoff across 140 cycles (2026-10-25)
+
+- [TEST] Expanded `tests/b272-action-handoff-diagnostics.mjs` with a 140-cycle deterministic runtime-handoff calibration. Every seventh tick intentionally selects a different action from the generated endogenous goal; all other ticks select the generated action.
+- [INVARIANT] The test requires every tick to be accounted for exactly once, match/mismatch rates to equal the observed counts, and learner updates to equal matching handoffs only. Each deliberately mismatched outcome is rejected without any state mutation, including no false credit from high reward or external-evidence signals.
+- [PERSISTENCE] The test restores the learner after the 140-cycle run and compares full diagnostics, confirming counters/rates/history survive restore.
+- [VALIDATION] This extends an already green single-step handoff regression and is covered by WorkPass331's existing path filter; a fresh exact-head workflow run is required before claiming the extended test passes.
+
 # WorkPass340 — fix handoff restore ordering exposed by the new regression (2026-10-25)
 
 - [ROOT CAUSE] The first WorkPass339 CI run caught a restore-order defect in the new B272 handoff diagnostics: `lastActionHandoffTick` was reduced from history before `persistedLastActionHandoffTick` had been initialized. This produced TypeScript TS2448/TS2454 in P26 and a runtime `ReferenceError` in WorkPass110's trusted shadow scheduler integration.

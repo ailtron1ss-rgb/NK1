@@ -48,4 +48,63 @@ assert.equal(final.lastActionHandoffTick,1);
 const finalRestored=new B272EndogenousGoalGenesis();
 finalRestored.restore(restored0.snapshot());
 assert.deepEqual(finalRestored.diagnostics(),final,'counters and bounded handoff history must round-trip');
-console.log('B272_ACTION_HANDOFF_DIAGNOSTICS=PASS (matched/mismatched handoffs, strict credit binding, idempotency, restore)');
+
+// Long-run action-handoff calibration: every generated goal is paired with the
+// action actually selected by the runtime. A deterministic 1-in-7 mismatch rate
+// must remain visible in diagnostics and must never receive B272 outcome credit.
+const longRun = new B272EndogenousGoalGenesis();
+let longRunMatches = 0;
+let longRunMismatches = 0;
+for (let tick = 0; tick < 140; tick++) {
+  const goal = longRun.step(input(tick));
+  const intentionallyMismatched = tick % 7 === 0;
+  const selectedAction = intentionallyMismatched
+    ? (goal.action === 'wait' ? 'explore' : 'wait')
+    : goal.action;
+  const handoff = longRun.recordActionHandoff({
+    tick,
+    goalId: goal.goalId,
+    generatedAction: goal.action,
+    selectedAction,
+  });
+  assert.equal(handoff.matched, !intentionallyMismatched);
+  if (handoff.matched) {
+    longRunMatches++;
+    longRun.learnFromOutcome({
+      tick,
+      action: selectedAction,
+      reward01: .62,
+      predictionError01: .2,
+      externalEvidence01: tick % 11 === 0 ? .5 : 0,
+      independentEvaluatorGain01: .03,
+      acceptedExternalGoal: true,
+    });
+  } else {
+    longRunMismatches++;
+    const beforeRejectedCredit = longRun.snapshot();
+    assert.throws(() => longRun.learnFromOutcome({
+      tick,
+      action: selectedAction,
+      reward01: .99,
+      predictionError01: 0,
+      externalEvidence01: 1,
+      acceptedExternalGoal: true,
+    }), /action must match/);
+    assert.deepEqual(longRun.snapshot(), beforeRejectedCredit,
+      'a long-run action mismatch must not mutate the learner or gain false credit');
+  }
+}
+const longRunDiagnostics = longRun.diagnostics();
+assert.equal(longRunDiagnostics.actionHandoffObservations, 140);
+assert.equal(longRunDiagnostics.actionHandoffMatches, longRunMatches);
+assert.equal(longRunDiagnostics.actionHandoffMismatches, longRunMismatches);
+assert.equal(longRunMatches + longRunMismatches, 140);
+assert.ok(Math.abs(longRunDiagnostics.actionHandoffMatchRate01 - longRunMatches / 140) < 1e-12);
+assert.ok(Math.abs(longRunDiagnostics.actionHandoffMismatchRate01 - longRunMismatches / 140) < 1e-12);
+assert.equal(longRunDiagnostics.learningUpdates, longRunMatches,
+  'only correctly handed-off actions may contribute learning over the long run');
+const longRunRestored = new B272EndogenousGoalGenesis();
+longRunRestored.restore(longRun.snapshot());
+assert.deepEqual(longRunRestored.diagnostics(), longRunDiagnostics,
+  'long-run match/mismatch telemetry must survive restore');
+console.log('B272_ACTION_HANDOFF_DIAGNOSTICS=PASS (single-step, 140-cycle calibration, strict credit binding, idempotency, restore)');
