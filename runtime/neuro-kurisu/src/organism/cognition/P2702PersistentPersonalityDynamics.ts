@@ -219,6 +219,15 @@ export class P2702PersistentPersonalityDynamics {
     bias.wait = clamp(uncertainty01 * 0.012 * (1 - responsibility * 0.5));
     bias.defer = clamp(uncertainty01 * 0.016 * (1 - adaptive('directness')));
 
+    // Conflicts influence the next decision as small, bounded tendencies:
+    // they bias arbitration but never override Core utilities or identity gates.
+    const tensions = this.state.tensionState;
+    bias.verify = clamp(bias.verify + ((tensions[0] ?? 0.5) - 0.5) * 0.012 + ((tensions[2] ?? 0.5) - 0.5) * 0.008);
+    bias.respond = clamp(bias.respond + (0.5 - (tensions[0] ?? 0.5)) * 0.008 + (0.5 - (tensions[3] ?? 0.5)) * 0.006);
+    bias.reflect = clamp(bias.reflect + ((tensions[1] ?? 0.5) - 0.5) * 0.008 + ((tensions[3] ?? 0.5) - 0.5) * 0.006);
+    bias.explore = clamp(bias.explore + ((tensions[2] ?? 0.5) - 0.5) * 0.008);
+    bias.defer = clamp(bias.defer + ((tensions[4] ?? 0.5) - 0.5) * 0.006);
+
     // Learned values must affect behavior, not just appear in diagnostics. Use
     // deviations from the code-owned starting prior so a fresh personality keeps
     // its canonical bias, while experience-driven value drift can favor or suppress
