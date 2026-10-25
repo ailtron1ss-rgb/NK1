@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -59,11 +59,11 @@ try {
     return await fetchJson(base,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({approvalId:blocked.data.approvalRequest.id})});
   };
   const nc = await runApprovedProbe('neurocore');
-  record('research:neurocore-probe-after-approval', nc.res.ok && Boolean(nc.data?.ok) && nc.data?.status === 'pass', `delta=${nc.data?.delta ?? '—'}`);
+  record('research:neurocore-probe-after-approval', nc.res.ok && Boolean(nc.data?.ok) && nc.data?.status === 'pass', `http=${nc.res.status} delta=${nc.data?.delta ?? '—'} error=${String(nc.data?.error ?? '—').slice(0,160)}`);
   const nm = await runApprovedProbe('nomega-registry');
-  record('research:nomega-registry-after-approval', nm.res.ok && Boolean(nm.data?.ok) && nm.data?.status === 'pass', `modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'}`);
+  record('research:nomega-registry-after-approval', nm.res.ok && Boolean(nm.data?.ok) && nm.data?.status === 'pass', `http=${nm.res.status} modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'} error=${String(nm.data?.error ?? '—').slice(0,160)}`);
   const dc = await runApprovedProbe('deepcode');
-  record('research:deepcode-probe-after-approval', dc.res.ok && Boolean(dc.data?.ok) && dc.data?.status === 'pass', `smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'}`);
+  record('research:deepcode-probe-after-approval', dc.res.ok && Boolean(dc.data?.ok) && dc.data?.status === 'pass', `http=${dc.res.status} smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'} error=${String(dc.data?.error ?? '—').slice(0,160)}`);
 } catch (error) {
   record('runtime/bridge:http', false, String(error));
 } finally {
@@ -78,7 +78,8 @@ for (const [label, command, args] of [
   record(label, r.code === 0, (r.err || r.out).trim().split('\n').slice(-3).join(' | '));
 }
 
-const environmentBlocked = !existsSync(resolve(ROOT, 'app/node_modules'));
+const pythonTorch = spawnSync('python3', ['-c', 'import torch'], { encoding: 'utf8', timeout: 10000 });
+const environmentBlocked = !existsSync(resolve(ROOT, 'app/node_modules')) || pythonTorch.status !== 0;
 const summary = { ok: results.every(r => r.ok), environmentBlocked, results, generatedAt: new Date().toISOString() };
 console.log(JSON.stringify(summary, null, 2));
 process.exitCode = summary.ok ? 0 : 1;
