@@ -44,6 +44,12 @@ let latestPresentation = null;
 let speechCursor = null;
 let lastControlAt = 0;
 let mouthWasActive = false;
+let intentStateVersion = 0;
+let motionToken = 0;
+let motionIdentity = "";
+let lastPublishedSpeechIdentity = "";
+let lastPublishedSpeechPhase = "idle";
+const CLOSED_POSE = Object.freeze({ open: 0.015, form: 0, viseme: 'rest' });
 
 function post(type, data = {}) {
   try { frame.contentWindow.postMessage({ type, ...data }, location.origin); } catch {}
@@ -71,10 +77,9 @@ async function refreshSnapshot() {
     latestPresentation = presentation;
     state.textContent = (presentation.awake ? 'awake' : 'sleep') + ' · ' + presentation.action + ' · ' + presentation.emotion;
     tick.textContent = 'tick ' + presentation.tick;
-    post('kurisu_expression', { expression: presentation.expression });
-    post('kurisu_embodiment', {
-      ...presentation.body, speaking: false, mouthOpen: 0.015, mouthForm: 0, voiceEmphasis: 0,
-    });
+    // React and runtime both emit one versioned EmbodimentIntent v1 envelope.
+    // Snapshot updates refresh the slow affect channels without resetting the speech clock.
+    publishIntent(performance.now());
   } catch {
     state.textContent = 'organism offline';
   } finally {
@@ -91,69 +96,120 @@ async function refreshSpeech() {
     if (!response.ok) return;
     const speech = await response.json();
     if (speech?.ok !== true || typeof speech.speaking !== 'boolean') return;
+    const now = performance.now();
     if (typeof speech.speechEventId !== 'string' || speech.speechEventId.length < 1
         || speech.speechEventId.length > 140 || typeof speech.text !== 'string'
         || !Number.isFinite(speech.startedAt) || speech.startedAt < 0) {
-      if (speechCursor) speechCursor.speaking = false;
+      if (speechCursor) {
+        speechCursor.speaking = false;
+        speechCursor.phase = 'unknown';
+        speechCursor.lastResponseAt = now;
+      }
       return;
     }
     const identity = speech.speechEventId + ':' + speech.startedAt;
     if (!speechCursor || speechCursor.identity !== identity) {
       const timeline = buildAvatarSpeechTimeline(speech.text, speech.rate, 'ru-RU');
-      const now = performance.now();
       speechCursor = {
         identity, eventId: speech.speechEventId, startedAt: speech.startedAt,
-        timeline, speaking: speech.speaking,
-        // Bridge wall-clock speech start to the monotonic animation clock once per utterance.
+        timeline, speaking: speech.speaking, phase: speech.speaking ? 'speaking' : 'ended',
+        lastResponseAt: now,
+        // Bridge wall-clock TTS start to the monotonic animation clock once per utterance.
         elapsedAtAnchor: Math.max(0, Date.now() - speech.startedAt),
         performanceAtAnchor: now,
       };
     } else {
       speechCursor.speaking = speech.speaking;
+      speechCursor.phase = speech.speaking ? 'speaking' : 'ended';
+      speechCursor.lastResponseAt = now;
     }
   } catch {
-    // Keep the last known cursor during a brief local API hiccup; stale closure is handled below.
+    // A stale cursor is failed closed by isSpeechActive(), which closes the mouth after 1.2s.
   } finally {
     speechInFlight = false;
   }
 }
 
+function speechElapsedAt(now) {
+  if (!speechCursor) return 0;
+  return Math.max(0, speechCursor.elapsedAtAnchor + Math.max(0, now - speechCursor.performanceAtAnchor));
+}
+
+function currentSpeechPhase(now) {
+  if (!speechCursor) return 'idle';
+  if (speechCursor.phase === 'unknown') return 'unknown';
+  if (speechCursor.speaking) return now - speechCursor.lastResponseAt <= 1200 ? 'speaking' : 'unknown';
+  return 'ended';
+}
+
+function isSpeechActive(now) {
+  return Boolean(speechCursor?.timeline.length && currentSpeechPhase(now) === 'speaking');
+}
+
+function publishIntent(now, sampledPose = null) {
+  const body = latestPresentation?.body ?? {
+    gazeX: 0, gazeY: 0, gazeDriven: false, headTilt: 0,
+    expressionIntensity: 0.35, gesture: false, motionGroup: 'Idle', motionIndex: 0, voiceEmphasis: 0,
+  };
+  const phase = currentSpeechPhase(now);
+  const active = phase === 'speaking';
+  const pose = active
+    ? (sampledPose ?? sampleAvatarSpeechTimeline(speechCursor.timeline, speechElapsedAt(now)))
+    : CLOSED_POSE;
+  const eventId = speechCursor?.eventId ?? null;
+  const clockId = speechCursor ? ('runtime-tts:' + speechCursor.eventId + ':' + speechCursor.startedAt) : null;
+  const motionGroup = active ? 'Special' : (body.motionGroup || 'Idle');
+  const motionIndex = Number.isSafeInteger(body.motionIndex) ? Math.max(0, Math.min(16, body.motionIndex)) : 0;
+  const motionKey = [active ? eventId : (latestPresentation?.action || 'idle'), motionGroup, motionIndex].join(':');
+  if (motionKey !== motionIdentity) {
+    motionIdentity = motionKey;
+    motionToken = Math.min(Number.MAX_SAFE_INTEGER, motionToken + 1);
+  }
+  const intent = {
+    type: 'kurisu_embodiment_intent',
+    protocolVersion: 1,
+    stateVersion: ++intentStateVersion,
+    sentAtEpochMs: Date.now(),
+    speechEventId: eventId,
+    audioClockId: clockId,
+    speechPhase: phase,
+    audioTimeMs: speechElapsedAt(now),
+    clockSource: speechCursor ? 'runtime-tts-start-anchored-monotonic' : 'none',
+    priority: active ? 70 : phase === 'unknown' ? 55 : 30,
+    cancellationToken: phase === 'cancelled' && eventId ? ('cancel:' + eventId) : null,
+    expression: latestPresentation?.expression || 'neutral',
+    expressionIntensity: Math.max(0, Math.min(1, Number(body.expressionIntensity) || 0)),
+    mouth: { open: pose.open, form: pose.form, viseme: pose.viseme },
+    gaze: {
+      x: Math.max(-1, Math.min(1, Number(body.gazeX) || 0)),
+      y: Math.max(-1, Math.min(1, Number(body.gazeY) || 0)),
+      driven: body.gazeDriven === true,
+    },
+    body: {
+      headTilt: Math.max(-0.15, Math.min(0.15, Number(body.headTilt) || 0)),
+      gesture: active || Boolean(body.gesture),
+      motionGroup,
+      motionIndex,
+      motionToken,
+    },
+    voiceEmphasis: active ? Math.max(0, Math.min(1, Number(body.voiceEmphasis) || 0)) : 0,
+  };
+  post('kurisu_embodiment_intent', intent);
+  lastPublishedSpeechIdentity = speechCursor?.identity ?? '';
+  lastPublishedSpeechPhase = phase;
+}
 function animateSpeech(now) {
-  const active = Boolean(speechCursor?.speaking && speechCursor.timeline.length);
+  const phase = currentSpeechPhase(now);
+  const active = isSpeechActive(now);
+  const identity = speechCursor?.identity ?? '';
   if (active && now - lastControlAt >= 32) {
-    const elapsed = speechCursor.elapsedAtAnchor + Math.max(0, now - speechCursor.performanceAtAnchor);
-    const pose = sampleAvatarSpeechTimeline(speechCursor.timeline, elapsed);
-    // Speech has its own low-latency cursor and must animate even if the slower
-    // cognitive snapshot has not arrived yet. Emotion/gaze enrich the same pose later.
-    const baseBody = latestPresentation?.body ?? {
-      gazeX: 0, gazeY: 0, gazeDriven: false, headTilt: 0,
-      expressionIntensity: 0.35, gesture: true, motionGroup: 'Special', motionIndex: 0, voiceEmphasis: 0,
-    };
-    const body = {
-      ...baseBody,
-      speaking: true,
-      mouthOpen: pose.open,
-      mouthForm: pose.form,
-      mouthViseme: pose.viseme,
-      voiceEmphasis: latestPresentation.body.voiceEmphasis,
-      motionGroup: 'Special',
-      motionIndex: 0,
-    };
-    post('kurisu_embodiment', body);
-    post('kurisu_lipsync', { value: pose.open });
+    const pose = sampleAvatarSpeechTimeline(speechCursor.timeline, speechElapsedAt(now));
+    publishIntent(now, pose);
     mouthWasActive = true;
     lastControlAt = now;
-  } else if (!active && mouthWasActive && now - lastControlAt >= 32) {
-    if (latestPresentation) {
-      const baseBody = latestPresentation?.body ?? {
-        gazeX: 0, gazeY: 0, gazeDriven: false, headTilt: 0,
-        expressionIntensity: 0.35, gesture: false, motionGroup: 'Idle', motionIndex: 0, voiceEmphasis: 0,
-      };
-      post('kurisu_embodiment', {
-        ...baseBody, speaking: false, mouthOpen: 0.015, mouthForm: 0, voiceEmphasis: 0,
-      });
-      post('kurisu_lipsync', { value: 0.015 });
-    }
+  } else if (!active && now - lastControlAt >= 32
+      && (mouthWasActive || phase !== lastPublishedSpeechPhase || identity !== lastPublishedSpeechIdentity)) {
+    publishIntent(now, CLOSED_POSE);
     mouthWasActive = false;
     lastControlAt = now;
   }
