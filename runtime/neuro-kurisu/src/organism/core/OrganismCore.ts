@@ -9417,7 +9417,22 @@ export class OrganismCore {
                 this.developmentalNeural.neuralAutobiographicalCoreB271.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, traits: this.developmentalNeural.neuralGerminalOrganismB270.autonomousSnapshot().traitValues, goal: this.developmentalNeural.neuralAutobiographicalCoreB271.snapshotAutobiography().proposedGoal, acceptedExternalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b272GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b272IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                const b272Learning = this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal });
+                const b272Learner = this.developmentalNeural.endogenousGoalGenesisB272;
+                // Reward credit belongs only to the candidate action that actually won
+                // canonical arbitration. If Core selected another action, finalize the
+                // B272 proposal as unselected without training its action prototypes on
+                // an unrelated outcome; never weaken B272's strict action identity check.
+                const b272Learning = trace.selected.action === b272GoalState.action
+                    ? b272Learner.learnFromOutcome({
+                        tick: state.tick, action: b272GoalState.action, reward01: gatedReward01,
+                        predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b272IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    })
+                    : b272Learner.recordUnselectedAction({
+                        tick: state.tick, generatedAction: b272GoalState.action, selectedAction: trace.selected.action,
+                    });
+                this.persisted.system.endogenousGoalGenesisB272 = b272Learner.snapshot();
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
