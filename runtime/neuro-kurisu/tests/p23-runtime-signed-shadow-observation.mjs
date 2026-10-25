@@ -158,7 +158,7 @@ try {
   assert.equal(diagnostics.lastError, null);
 
   const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
-  const candidate = lifecycle.candidates.find(item => item.candidateId === staged.candidateId);
+  const candidate = lifecycle.candidates.find(item => item.candidateId === expectedCandidateId);
   assert.ok(candidate);
   assert.equal(candidate.status, 'shadow');
   assert.equal(candidate.shadowObservations.length, 1);
