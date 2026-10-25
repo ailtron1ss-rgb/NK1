@@ -2290,3 +2290,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Explicit goal activation now projects only relationships touching that proposal's source reference. Imported-memory endpoints must resolve to matching source-isolated graph nodes; other external-goal endpoints must already be explicitly active and provenance-verified.
 - Added graph-node source namespaces for external goals, capped external edge weights at `0.55`, deduplicated existing edge projections, and rolled graph state back if the projection stage fails.
 - Updated the live HTTP smoke to assert that the goal-to-memory edge is not just staged but present after activation, with a durable receipt. Validation on the new head is pending.
+
+
+
+- **WorkPass336 validation correction:** Exposed the goal relationship receipt in the HTTP response, fixed the Unicode property escape in the source-isolated graph label helper, and switched the WorkPass293 script to Node's transform-types loader because that test imports a class using TypeScript parameter properties. The previous live HTTP smoke failed because the receipt was omitted by the server serializer, not because the core did not run the projection; exact-head retest is required.

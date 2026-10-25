@@ -1007,6 +1007,7 @@ async function route(req, res) {
                 proposal: result.proposal,
                 goal,
                 requiresExplicitActivation: Boolean(result.requiresExplicitActivation),
+                relationshipReceipt: result.relationshipReceipt ?? result.proposal?.goalRelationshipReceipt ?? null,
                 goalActivated: activated,
                 note: decision === 'approve'
                     ? 'The proposal has been materialized as a paused external goal; it cannot enter active planning until a separate activate decision.'

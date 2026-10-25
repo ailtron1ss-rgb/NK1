@@ -1135,7 +1135,7 @@ function hexisImportedMemoryGraphSourceKey(lineageId: string, ref: string, conte
     return 'hexis:' + lineageHash + ':' + createHash('sha256').update(stableRef + '\0' + contentHash).digest('hex').slice(0, 24);
 }
 function hexisGraphLabel(value: string): string {
-    return String(value ?? '').toLowerCase().replace(/[^\\p{L}\\p{N}\\s_-]/gu, '').trim().slice(0, 96);
+    return String(value ?? '').toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').trim().slice(0, 96);
 }
 function hexisSemanticRelationType(value: unknown): import('../memory/SemanticMemoryGraph.ts').SemanticEdge['relation'] {
     const relation = String(value ?? '').toLowerCase();
