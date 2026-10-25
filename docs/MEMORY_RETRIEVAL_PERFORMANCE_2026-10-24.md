@@ -2,7 +2,7 @@
 
 ## Status
 
-Four paired performance runs completed successfully on the same Ubuntu 24.04 GitHub-hosted runner class with Node.js v24.21.0. The first three primarily measured retrieval; run 4 adds an explicit temporal revision-chain lookup benchmark:
+Seven paired performance runs completed successfully on the same Ubuntu 24.04 GitHub-hosted runner class with Node.js v24.21.0. The first three primarily measured retrieval; later runs added indexed temporal-chain lookup, one-pass temporal diagnostics, and repeat measurements to expose runner variability:
 
 - [Run 1 — 40126730431](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126730431), candidate commit `56a15ddc50b012fe7114461d13b0f06e1f81a910`.
 - [Run 2 — 40126825696](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126825696), candidate commit `42b496bcc290a03f2222b73c99a8e4daecc46fda`.
@@ -61,6 +61,23 @@ Every measured call returned the same chain IDs and revision order in both imple
 The follow-up paired run `40127570942` also measured the single-pass `temporalDiagnostics()` implementation. Its p95 improved by **32.87% / 53.81% / 64.70%** at 256 / 800 / 1,600 corpus items; observed baseline-to-candidate p95 values were 0.0797→0.0535 ms, 0.1444→0.0667 ms, and 0.4875→0.1721 ms respectively. The returned diagnostic state matched baseline exactly at every corpus size.
 
 In the same run, mixed-query p95 improved by 42.57% / 33.82% / 22.86% for 256 / 800 / 1,600 items, and repeated-query p95 by 51.37% / 10.83% / 35.40%. Throughput changed by +83.88% / +37.51% / +29.85% (mixed) and +84.63% / +49.54% / +45.94% (repeated). These are same-run synthetic results, not production promises.
+
+## Follow-up paired validation — runs 5 and 6 (2026-10-25)
+
+- [Run 5 — 40167183371](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167183371), candidate commit `668b204d7807103107561c61eb5fc25b3574ba23`, validated one-loop temporal-chain member checks plus single-pass temporal diagnostics.
+- [Run 6 — 40168688980](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168688980), candidate commit `07fab5c7195784eebc9cc79b7eaa5b55672c9127`, reran the paired benchmarks alongside semantic-index maintenance regression tests. All targeted checks completed successfully.
+
+Run 6 p95 latency, baseline → candidate (milliseconds):
+
+| Corpus | Mixed query | Repeated query | Eight-revision chain | Temporal diagnostics |
+|---:|---:|---:|---:|---:|
+| 256 | 11.9421 → 7.5080 (-37.13%) | 4.6563 → 2.6631 (-42.81%) | 0.1355 → 0.1282 (-5.39%) | 0.0827 → 0.0571 (-30.96%) |
+| 800 | 13.7477 → 9.7089 (-29.38%) | 7.6267 → 5.6197 (-26.32%) | 0.1758 → 0.1558 (-11.38%) | 0.1672 → 0.0858 (-48.68%) |
+| 1,600 | 14.6946 → 11.5010 (-21.73%) | 9.9619 → 8.4198 (-15.48%) | 0.1889 → 0.1461 (-22.66%) | 0.4347 → 0.3338 (-23.21%) |
+
+Run 6 kept every recorded top-five retrieval ID identical to baseline, returned the same eight chain IDs and revision order, passed index-integrity checks on both baseline and candidate, and returned diagnostic state identical to baseline. Throughput changes were +62.18% / +36.27% / +27.35% for mixed queries, +80.92% / +52.20% / +35.46% for repeated queries, +3.87% / +9.56% / +21.75% for chain lookup, and +43.96% / +71.89% / +61.34% for diagnostics at 256 / 800 / 1,600 items respectively.
+
+Run 5 recorded a temporal-chain p95 regression at the 800-item corpus (0.2430 → 0.2912 ms, +19.84%), while run 6 measured an improvement at that size (0.1758 → 0.1558 ms). This variability is a reason to treat tiny microbenchmarks as descriptive and repeat them; no production latency or SLO guarantee is claimed. Both runs retained retrieval-ranking parity.
 
 ## Memory observations
 
