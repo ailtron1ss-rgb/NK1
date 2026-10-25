@@ -177,8 +177,8 @@ assert.ok(conflictRestore.snapshot().recordedTraceIds.includes("External-Source-
 assert.equal(conflictRestore.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
 }), null, "quarantined identity must not be accepted again as a new event");
-assert.equal(conflictRestore.summary().outcomes, 1,
-  "quarantine/retry must not change the persisted outcome count");
+assert.equal(conflictRestore.summary().outcomes, 0,
+  "quarantined external imports must not count as trusted runtime outcomes");
 
 const cyclicSnapshot = externalStream.snapshot();
 const cyclicRecord = { ...externalFirst, id: "cyclic-normalized-alias", traceId: "Ｅxternal-Source-17" };
@@ -198,8 +198,8 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, action: "delete-all", traceId: "invalid-action",
 }), /causal-external-action-invalid/);
-assert.equal(externalStream.summary().outcomes, 1,
-  "invalid external task/action data must not mutate the causal stream");
+assert.equal(externalStream.summary().outcomes, 0,
+  "invalid external task/action data must not mutate trusted outcome counts");
 
 // IDs are identity keys, not display strings: truncating an overlong value could
 // collapse two independent tasks/events into one duplicate and silently lose data.
@@ -236,15 +236,15 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, taskId: "edge-task" + String.fromCharCode(10), traceId: "control-task-edge",
 }), /causal-external-task-id-invalid/,
   "task IDs with trailing control characters must not normalize into ordinary IDs");
-assert.equal(externalStream.summary().outcomes, 1,
-  "overlong or control-bearing identity keys must fail before mutating causal state");
+assert.equal(externalStream.summary().outcomes, 0,
+  "overlong or control-bearing identity keys must fail before changing trusted outcome counts");
 
 const overlongRuntimeTrace = { ...trace, id: "r".repeat(181) };
 assert.equal(externalStream.recordOutcome(
   overlongRuntimeTrace, mkState({ tick: 22 }),
   { reward01: .5, success01: .5, surprise01: .5, novelty01: .5 },
 ), null, "an overlong runtime trace cannot be silently truncated into another identity");
-assert.equal(externalStream.summary().outcomes, 1);
+assert.equal(externalStream.summary().outcomes, 0);
 
 const corruptSnapshot = externalStream.snapshot();
 corruptSnapshot.records.push({
