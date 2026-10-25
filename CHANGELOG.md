@@ -1,7 +1,8 @@
 ## NK1 Persistence — validate receipt revisions before migration truncation (2026-10-25)
 
 - Applied the same valid-before-cap rule to `StateMigrations`: malformed provider-receipt revision rows are filtered before the 2,048-row cap is applied. The runtime restore fix alone was insufficient because migration could already discard valid rows first.
-- **Validation boundary:** migration fix is committed as `cc6653532ceb008dd6f2fab383a4cd714266d7cb`; the currently queued reality regression is [Actions run #101](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169342629), which was triggered by the companion test commit. The migration change is newer than that run's head and requires an exact-head rerun.
+- Added migration-level regression with one valid provider revision followed by 2,050 malformed rows, verifying the revision survives the actual persisted-state migration path.
+- **Validation boundary:** source fix is `cc6653532ceb008dd6f2fab383a4cd714266d7cb`; migration regression is `9aad352d0412d1e87b5cd57070e196c903d0ccca`. Exact-head [Actions run #104](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169423093) is pending; no pass is claimed until it completes.
 
 ## NK1 Causal Accountability — validate provider revisions before bounding restore (2026-10-25)
 
