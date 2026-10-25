@@ -1,3 +1,14 @@
+## Latest durable checkpoint — WorkPass530 P36 host-only evaluator registration (2026-10-25)
+
+- Continue on existing `feature/learning` and draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate PR. Leave `main` and the Release ZIP unchanged.
+- The reserved ID `organism.learning.p36.evaluate-evidence` can now be registered only from `OrganismConfig.p36IndependentEvaluator` at trusted `OrganismCore` construction. That adapter must be non-destructive, provide both `execute` and `verify`, and declare a non-empty source/source-class/channel/independence identity.
+- Public `core.registerActionTool(...)` rejects the reserved evaluator ID, preventing an ordinary runtime adapter from hijacking the independent-learning authority. The Core integration regression registers through the construction config, confirms the tool exists, and asserts that a public spoofed registration is rejected.
+- WorkPass529 already separated developmental-maturity observations from generic reward feedback and added the canonical `kind: 'developmental-outcome'` receipt binding. This pass preserves that separate route.
+- **Verification:** current tests/typecheck are not confirmed passing; GitHub has not supplied an exact-head validation result during this pass. A real host-owned evaluator and empirical holdout/retention/transfer results are still required before calling the production learning loop ready.
+- WorkPass530 notes: [Russian report](docs/WORKPASS530_P36_HOST_REGISTRATION_RU.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass529 P36 maturity evidence route (2026-10-24)
 
 - Continue in the existing `feature/learning` branch and draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate PR. `main` and the Release ZIP remain unchanged.
