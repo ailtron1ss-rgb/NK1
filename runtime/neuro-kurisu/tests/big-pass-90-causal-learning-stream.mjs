@@ -277,11 +277,13 @@ const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
   replayDiversity.recordOutcome({
     ...trace, id: `replay-a-${i}`, tick: 10 + i,
+    stateBefore: mkState({ tick: 10 + i, at: 1000 + 10 + i }),
     selected: { ...trace.selected, goalId: "task-A" },
   }, mkOutcomeState({ tick: 11 + i }, .7), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 }
 replayDiversity.recordOutcome({
   ...trace, id: "replay-b-0", tick: 20,
+  stateBefore: mkState({ tick: 20, at: 1020 }),
   selected: { ...trace.selected, goalId: "task-B" },
 }, mkOutcomeState({ tick: 21 }, .7), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);

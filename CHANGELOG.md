@@ -1,3 +1,12 @@
+## NK1 WorkPass359 — ground replay-diversity fixtures in the matching pre-action tick (2026-10-25)
+
+- [CAUSAL REPLAY] Fixed the replay-diversity fixture so each synthetic decision's `stateBefore.tick` matches its own decision tick. The hardened causal intake correctly rejected the old fixtures because they changed `trace.tick` while retaining a stale pre-action state snapshot, leaving the replay test with no trusted records.
+- [INTEGRITY] Kept the production guard intact; repaired test evidence rather than relaxing tick attribution or state-grounding requirements.
+- [VALIDATION] WorkPass102, WorkPass105, WorkPass291, WorkPass292, WorkPass293, WorkPass294, WorkPass287/288 and initiative regression passed on the recent head. WorkPass110 and WorkPass108 are rerunning after the remaining fixture corrections.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass358 — preserve newest-first P23 identity cache on restore (2026-10-25)
 
 - [MEMORY INTEGRITY] Fixed P23 restore ordering: persisted newest-first processed/replayed trace-ID caches now retain their order, while identities recovered from durable rows are appended only when absent. Previously prepending every retained experience could crowd out a newer cached ID when the 2,048-entry cap was reached.
