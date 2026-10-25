@@ -367,38 +367,51 @@ export class EmotionAppraisalEngine {
 
   regulationPressure01():number{return this.state.interoception.regulationPressure01;}
 
-  actionBias(action:string):number{
+  /**
+   * Affective action bias is time-bounded: old episodes may remain useful memory,
+   * but their immediate motivational pull must fade during long idle gaps.
+   * Pass atMs explicitly for deterministic/replayed cycles; live calls use wall time.
+   */
+  actionBias(action:string,atMs=Date.now()):number{
     if(typeof action!=='string'||action.length===0||action.length>96||action.trim()!==action||
        ['__proto__','prototype','constructor','toString','hasOwnProperty'].includes(action))return 0;
+    if(typeof atMs!=='number'||!Number.isFinite(atMs)||atMs<0)return 0;
     const e=this.state.history[0]; if(!e)return 0;
+    const emotionAgeMs=atMs-e.at;
+    const emotionFreshness01=Number.isFinite(emotionAgeMs)&&emotionAgeMs>=0
+      ?Math.exp(-Math.min(emotionAgeMs,86_400_000)/180_000):0;
+    const mood=this.state.mood;
+    const moodAgeMs=atMs-mood.at;
+    const moodFreshness01=mood.episodes>0&&Number.isFinite(moodAgeMs)&&moodAgeMs>=0
+      ?Math.exp(-Math.min(moodAgeMs,86_400_000)/300_000):0;
     const match:Record<string,number>={explore:e.label==='curiosity'?0.08:0,verify:e.label==='anxiety'||e.label==='frustration'?0.06:0,reflect:e.label==='frustration'?0.055:0,rest:e.label==='protective'||e.label==='sadness'?0.04:0,protect:e.label==='protective'||e.label==='anger'?0.07:0,approach:e.label==='joy'?0.05:0,withdraw:e.label==='sadness'?0.06:0,engage:e.label==='calm'||e.label==='joy'?0.025:0};
     const intero=this.state.interoception;
     const regulation:Record<string,number>={rest:intero.regulationPressure01*.075,protect:intero.regulationPressure01*.055,verify:intero.regulationPressure01*.025,reflect:intero.regulationPressure01*.015,explore:-intero.regulationPressure01*.055,approach:-intero.regulationPressure01*.02,engage:-intero.regulationPressure01*.015,withdraw:intero.regulationPressure01*.01};
-    const mood=this.state.mood;
     const moodBias:Record<string,number>={
-      rest:mood.persistence01*mood.stress01*.025,
-      protect:mood.persistence01*mood.stress01*.018,
-      verify:mood.persistence01*mood.stress01*.012,
-      reflect:mood.persistence01*mood.arousal01*.012,
-      explore:mood.persistence01*(1-mood.stress01)*Math.max(0,mood.arousal01-.35)*.04,
-      approach:mood.persistence01*Math.max(0,mood.valence01-.55)*.08,
-      withdraw:mood.persistence01*Math.max(0,.45-mood.valence01)*.08,
-      engage:mood.persistence01*Math.max(0,mood.valence01-.45)*.02,
+      rest:mood.persistence01*moodFreshness01*mood.stress01*.025,
+      protect:mood.persistence01*moodFreshness01*mood.stress01*.018,
+      verify:mood.persistence01*moodFreshness01*mood.stress01*.012,
+      reflect:mood.persistence01*moodFreshness01*mood.arousal01*.012,
+      explore:mood.persistence01*moodFreshness01*(1-mood.stress01)*Math.max(0,mood.arousal01-.35)*.04,
+      approach:mood.persistence01*moodFreshness01*Math.max(0,mood.valence01-.55)*.08,
+      withdraw:mood.persistence01*moodFreshness01*Math.max(0,.45-mood.valence01)*.08,
+      engage:mood.persistence01*moodFreshness01*Math.max(0,mood.valence01-.45)*.02,
     };
-    const contextualKey=contextOutcomeKey(action,e.label,this.state.interoception.regulationPressure01);
-    const contextualCalibration=Object.prototype.hasOwnProperty.call(this.state.contextualOutcomes,contextualKey)
+    const contextualKey=contextOutcomeKey(action,e.label,intero.regulationPressure01);
+    const contextualCalibration=emotionFreshness01>.05&&Object.prototype.hasOwnProperty.call(this.state.contextualOutcomes,contextualKey)
       ?this.state.contextualOutcomes[contextualKey]:undefined;
     const hasContextualCalibrationForAction=Object.keys(this.state.contextualOutcomes).some(key=>{
       try{const parsed=JSON.parse(key);return Array.isArray(parsed)&&parsed[0]===action;}catch{return false;}
     });
-    // Once an action has context-bound outcome history, do not leak its global
-    // reward into a distinct emotional/homeostatic context with no matched data.
+    // Do not fall back to a global reward once this action has context-bound history:
+    // stale context is not evidence that a different affective state should inherit it.
     const calibration=contextualCalibration??(!hasContextualCalibrationForAction&&Object.prototype.hasOwnProperty.call(this.state.outcomes,action)?this.state.outcomes[action]:undefined);
-    const matchBias=Object.prototype.hasOwnProperty.call(match,action)?match[action]:0;
+    const matchBias=Object.prototype.hasOwnProperty.call(match,action)?match[action]*emotionFreshness01:0;
     const regulationBias=Object.prototype.hasOwnProperty.call(regulation,action)?regulation[action]:0;
-    const learned=calibration&&calibration.attempts>=3 ? (calibration.meanBenefit01-.5)*(contextualCalibration?.045:.015) : 0;
+    const learned=calibration&&calibration.attempts>=3?(calibration.meanBenefit01-.5)*(contextualCalibration?.045:.015):0;
     const affectiveBias=Object.prototype.hasOwnProperty.call(moodBias,action)?moodBias[action]:0;
-    return c(Math.max(0,matchBias+regulationBias+learned+affectiveBias))*c(.55+e.interoceptiveDelta.attentionCapture01*.45);
+    const attentionMultiplier=c(.55+e.interoceptiveDelta.attentionCapture01*.45*emotionFreshness01);
+    return c(Math.max(0,matchBias+regulationBias+learned+affectiveBias))*attentionMultiplier;
   }
 
   summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,mood:structuredClone(this.state.mood),interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes),contextualOutcomeContexts:Object.keys(this.state.contextualOutcomes).length};}
