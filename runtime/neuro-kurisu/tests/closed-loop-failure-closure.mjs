@@ -34,6 +34,22 @@ contradictoryCheckRestore.restore({
 });
 assert.equal(contradictoryCheckRestore.diagnostics().lastStatus, 'FAIL', 'a restored PASS record with a failed check must be downgraded');
 
+const malformedRuntimeRestore = new RuntimeClosureLedger();
+malformedRuntimeRestore.restore({
+  version: 1, checks: Number.POSITIVE_INFINITY, passes: Number.NaN, degraded: -1,
+  failures: 0, lastTick: 8, lastStatus: 'PASS', lastBehaviorHash: 'forged-success-hash',
+  lastDurableHash: '',
+  records: [
+    { at: Date.now(), tick: 8, phase: 'step', status: 'PASS', behaviorHash: 'missing-checks', checks: [] },
+    { at: Date.now(), tick: 9, phase: 'step', status: 'PASS', behaviorHash: 'malformed-check', checks: [{ name: 'wrong-type', ok: 'yes' }] },
+  ],
+});
+assert.equal(malformedRuntimeRestore.diagnostics().lastStatus, 'FAIL', 'discarded malformed persisted records must not silently restore as PASS');
+assert.ok(malformedRuntimeRestore.diagnostics().failures >= 1, 'invalid persisted records must be counted as a failure');
+assert.match(malformedRuntimeRestore.diagnostics().lastBehaviorHash, /^[a-f0-9]+$/, 'malformed snapshot must replace the forged success fingerprint');
+assert.equal(malformedRuntimeRestore.snapshot().records.length, 0, 'malformed records must not be retained as trusted evidence');
+
+
 // Bookkeeping may not erase DEGRADED either; only a new actual cognitive step resolves it.
 const degradedBoundaryLedger = new RuntimeClosureLedger();
 const firstSession = degradedBoundaryLedger.restoreVerification({ at: Date.now(), tick: 0, replaySignature: '', continuousTick: 0 });
