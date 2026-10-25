@@ -181,6 +181,32 @@ const persistedTime=(value:unknown,fallback:number):number=>
   isPersistedCounter(value)?value:fallback;
 const isPersistedAction=(value:unknown):value is ActionKind=>
   typeof value==='string'&&ACTIONS.includes(value as ActionKind);
+const isLearningContextState=(value:unknown):value is Pick<OrganismState,'needs'>=>{
+  if(!isPlainRecord(value)||!isPlainRecord(value.needs))return false;
+  const needs=value.needs;
+  return ['energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed']
+    .every(key=>isPersistedUnit(needs[key]));
+};
+const isLearningCandidate=(value:unknown):boolean=>{
+  if(!isPlainRecord(value))return false;
+  return isPersistedAction(value.action)&&isPersistedUnit(value.predictedUtility)&&
+    typeof value.score==='number'&&Number.isFinite(value.score);
+};
+const isLearningPrediction=(value:unknown):boolean=>{
+  if(!isPlainRecord(value))return false;
+  return isPersistedAction(value.action)&&isPersistedUnit(value.utility);
+};
+const isAdmissibleLearningTrace=(value:unknown):value is OrganismDecisionTrace=>{
+  if(!isPlainRecord(value)||!isPersistedText(value.id)||!isPersistedCounter(value.tick)||
+     !isPersistedCounter(value.createdAt)||!isPlainRecord(value.selected))return false;
+  const selected=value.selected;
+  if(!isPersistedAction(selected.action)||!isPersistedUnit(selected.predictedUtility)||
+     !isPersistedUnit(selected.confidence)||typeof selected.score!=='number'||
+     !Number.isFinite(selected.score))return false;
+  if(!Array.isArray(value.candidates)||!value.candidates.every(isLearningCandidate)||
+     !Array.isArray(value.predictedOutcomes)||!value.predictedOutcomes.every(isLearningPrediction))return false;
+  return isLearningContextState(value.stateBefore);
+};
 
 function sanitizeIdList(value:unknown,limit:number):string[]{
   if(!Array.isArray(value))return [];
@@ -783,10 +809,14 @@ export class P23LearningEngine {
   }
 
   recordExperience(trace:OrganismDecisionTrace,stateAfter:OrganismState,outcome:{success:number;reward:number;surprise:number},policy:AdaptivePolicyEngine):void {
-    if (!trace.selected || this.state.processedTraceIds.includes(trace.id)) return;
-    // Invalid feedback is not evidence: reject non-finite labels instead of
-    // silently converting NaN/Infinity into apparently valid zero-reward data.
-    if (![outcome.success,outcome.reward,outcome.surprise].every(Number.isFinite)) return;
+    // This public runtime boundary may also be reached from untyped JavaScript.
+    // Reject malformed traces and probability-like feedback before changing any
+    // state; clipping an invalid label into 0 or 1 would turn bad data into evidence.
+    if(!isAdmissibleLearningTrace(trace)||!isLearningContextState(stateAfter))return;
+    if(this.state.processedTraceIds.includes(trace.id))return;
+    if(!isPlainRecord(outcome)||!isPersistedUnit(outcome.success)||
+       typeof outcome.reward!=='number'||!Number.isFinite(outcome.reward)||
+       !isPersistedUnit(outcome.surprise))return;
     const key=contextKey(trace.stateBefore), nextKey=contextKey(stateAfter);
     const record:LearningExperience={
       id:`exp-${trace.id}`,
@@ -796,11 +826,11 @@ export class P23LearningEngine {
       contextKey:key,
       nextContextKey:nextKey,
       action:trace.selected.action,
-      predictedUtility:clamp(trace.selected.predictedUtility),
-      predictedConfidence:clamp(trace.selected.confidence),
-      success:clamp(outcome.success),
+      predictedUtility:trace.selected.predictedUtility,
+      predictedConfidence:trace.selected.confidence,
+      success:outcome.success,
       reward:clamp(outcome.reward),
-      surprise:clamp(outcome.surprise),
+      surprise:outcome.surprise,
       outcomeAt:now(),
     };
     this.state.experiences=[record,...this.state.experiences].slice(0,1024);

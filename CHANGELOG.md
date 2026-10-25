@@ -1,3 +1,10 @@
+# WorkPass340 — reject malformed P23 outcome evidence (2026-10-25)
+
+- [FIXED] `P23LearningEngine.recordExperience` now rejects malformed trace identity, ticks/timestamps, action names, candidate/prediction collections, context needs, non-finite reward, and out-of-range probability-like fields before changing state. Invalid success/surprise/prediction/confidence values are no longer clipped into apparently valid training examples.
+- [FIXED] Accepted success, surprise, predicted utility, and confidence values are stored exactly after validation. The existing finite reward normalization remains unchanged.
+- [TEST] Added `workpass340-outcome-label-admission.mjs` for malformed traces, range violations, and the retry path proving that rejected feedback does not consume a trace ID.
+- [CI] The focused Node.js 24 workflow now executes the admission regression together with reflection-integrity tests and strict TypeScript checking.
+
 # WorkPass338 — preserve successful reflective revision lineage (2026-10-24)
 
 # WorkPass339 — normalize reflective outcome evidence (2026-10-25)
