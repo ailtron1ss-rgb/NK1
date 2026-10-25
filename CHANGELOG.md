@@ -1,3 +1,11 @@
+## NK1 learning reliability — separate execution from trusted outcome evidence (2026-10-25)
+
+- Corrected P23 independent candidate evaluation so a valid sandbox execution remains marked executable even when its independent verifier fails or is unavailable.
+- Kept trust fail-closed: unverified run IDs and observed trace steps remain absent from trusted provenance, and task success still requires verified binding, a passing verifier and a clean safety scan.
+- Expanded the WorkPass203 regression to assert this distinction explicitly. GitHub Actions is being used for exact-head validation; this change does not itself claim production readiness.
+
+---
+
 ## NK1 all-systems hardening — restore boundaries, affect continuity, memory and journal integrity (2026-10-25)
 
 - Hardened EmotionAppraisalEngine restore: plain-data-only snapshot reads, bounded/deduplicated emotion and feeling histories, validation of labels/tendencies, finite affect metrics, normalized interoception and calibrated outcome records. Getter-backed snapshots fail closed; invalid tick/timestamp inputs are rejected before an episode is recorded.
