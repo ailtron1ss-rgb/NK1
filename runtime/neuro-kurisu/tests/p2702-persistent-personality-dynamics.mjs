@@ -15,6 +15,25 @@ assert(after.autobiographicalStrength01>before.autobiographicalStrength01);
 assert(after.adaptiveValues.some((v,i)=>Math.abs(v-(before.adaptiveValues[i]??v))>1e-6));
 assert.notEqual(after.selfBeliefs[0],before.selfBeliefs[0],
   'verified identity observations must refine the persistent self-belief anchor');
+// Value learning must reach the live action bias, not remain a diagnostics-only vector.
+const valueProbe = new P2702PersistentPersonalityDynamics();
+const valueProbeInput = {
+  tick: 1, novelty01: .7, uncertainty01: .6, goalPressure01: .5, identityGap01: .2,
+  actionUtilities: actions,
+};
+const valuePriorDecision = valueProbe.beforeDecision(valueProbeInput);
+const valueOnlyState = valueProbe.snapshot();
+valueOnlyState.valueWeights[valueOnlyState.valueNames.indexOf('curiosity')] = 1;
+valueOnlyState.valueWeights[valueOnlyState.valueNames.indexOf('autonomy')] = 1;
+const valueOnlyRestored = new P2702PersistentPersonalityDynamics();
+valueOnlyRestored.restore(valueOnlyState);
+const valueShiftDecision = valueOnlyRestored.beforeDecision({ ...valueProbeInput, tick: 2 });
+assert.ok(valueShiftDecision.actionBias.explore > valuePriorDecision.actionBias.explore + .001,
+  'raising curiosity/autonomy values must increase the explore bias');
+assert.equal(valueShiftDecision.actionBias.verify, valuePriorDecision.actionBias.verify,
+  'unrelated truth/science/responsibility values must leave verify bias unchanged');
+
+// Trait learning should target the action-relevant expression rather than array position.
 const curiosityExpressionIndex=after.adaptiveNames.indexOf('curiosityExpression');
 const playfulnessIndex=after.adaptiveNames.indexOf('playfulness');
 const warmthIndex=after.adaptiveNames.indexOf('warmth');
