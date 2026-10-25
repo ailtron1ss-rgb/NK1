@@ -1,3 +1,12 @@
+## NK1 WorkPass533 — pin the signed P36 comparison to host-approved methods (2026-10-25)
+
+- The host configuration for `P36VerifiedOutcomeLedgerEvaluator` now requires a fixed `baselineMethod`, `treatmentMethod`, and `taskFamily`, in addition to the canonical manifest fingerprint and trusted verifier source identity.
+- The evaluator refuses requests that switch to another baseline/candidate/family after seeing outcome data, preventing caller-side cherry-picking among the signed ledger's available methods.
+- Added regression coverage for the pinned pair and family. The signed ledger still proves point-in-time holdout only (`delayMs: 0`), not delayed retention or transfer.
+- **Verification boundary:** exact-head TypeScript/test execution is not confirmed by GitHub Actions; no PASS or empirical learning uplift is claimed. `main` and the Release ZIP remain unchanged.
+
+---
+
 ## NK1 WorkPass532 — derive P36 holdout scores from signed outcome ledger (2026-10-25)
 
 - Added `P36VerifiedOutcomeLedgerEvaluator.ts`, a host-configurable adapter for `OrganismConfig.p36IndependentEvaluator`. It computes task-balanced baseline/treatment rates from the canonical `VerifiedOutcomeLedger` and counts only outcomes whose signed artifacts still have process-local authenticated provenance.
