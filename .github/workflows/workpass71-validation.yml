@@ -24,6 +24,10 @@ on:
       - "package.json"
       - "tools/verify-ci-reliability.mjs"
       - "tools/verify-ci-reliability.test.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-launch-config.test.mjs"
+      - "tools/super-gateway.mjs"
       - "tools/runtime-pin.mjs"
       - "tools/runtime-pin.test.mjs"
       - "tools/super-install.mjs"
@@ -61,6 +65,10 @@ on:
       - "package.json"
       - "tools/verify-ci-reliability.mjs"
       - "tools/verify-ci-reliability.test.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-launch-config.test.mjs"
+      - "tools/super-gateway.mjs"
       - "tools/runtime-pin.mjs"
       - "tools/runtime-pin.test.mjs"
       - "tools/super-install.mjs"
@@ -106,6 +114,8 @@ jobs:
         run: node --test tools/verify-ci-reliability.test.mjs
       - name: Test pinned Node/npm policy and clean workspace installer
         run: npm run test:runtime-pin
+      - name: Test unified runtime/UI/gateway launch wiring
+        run: npm run test:super-launch
       - name: Install app dependencies without lifecycle scripts
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Audit canonical public asset ownership
