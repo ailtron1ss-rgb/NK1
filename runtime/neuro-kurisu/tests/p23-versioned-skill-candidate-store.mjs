@@ -194,9 +194,27 @@ try {
   const durable = new AtomicFileSkillStorePersistence(filePath);
   const durableStore = new VersionedSkillCandidateStore(durable);
   const durableCandidate = durableStore.stageCandidate(proposal('g'), 'file-backed-skill', { instruction: 'persisted' });
+  const durableRevisionProvenance = {
+    schemaVersion: 1,
+    evaluationFingerprint: '1'.repeat(64),
+    sourceCandidateId: null,
+    planFingerprint: '2'.repeat(64),
+    datasetFingerprint: '3'.repeat(64),
+    sourceEvidenceFingerprint: '4'.repeat(64),
+    dimensions: ['task-success', 'trajectory'],
+    createdAt: Date.now(),
+  };
+  const durableRevisionCandidate = durableStore.stageCandidate(
+    proposal('g-revision'), 'file-backed-revision-skill', { instruction: 'persisted with provenance' },
+    durableRevisionProvenance,
+  );
   const afterRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
   assert.equal(afterRestart.snapshot().candidates[0].candidateId, durableCandidate.candidateId,
-    'atomic file adapter restores candidate state across store reconstruction');
+    'atomic file adapter restores ordinary candidate state across store reconstruction');
+  const restoredRevisionCandidate = afterRestart.snapshot().candidates.find(item => item.candidateId === durableRevisionCandidate.candidateId);
+  assert.ok(restoredRevisionCandidate, 'atomic file adapter accepts candidate IDs bound to revision provenance');
+  assert.deepEqual(restoredRevisionCandidate.revisionProvenance, durableRevisionProvenance,
+    'revision provenance survives validated durable JSON reconstruction');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
 } finally {
