@@ -1,3 +1,11 @@
+## Learning evidence addendum — WorkPass329 (2026-10-25)
+
+- Exact code checkpoint `9d0e1fa5d7cb94e0e252cce09bdfca4551d0ddba` passed the independent CI workflows: WorkPass110, P26 Learning Validation, WorkPass99 replay benchmark, WorkPass105 verified outcome ledger, WorkPass108 signed evidence/promotion gate, WorkPass287–288 cognitive contracts and WorkPass291–294.
+- Replay ablation (5 deterministic seeds): mean MAE without replay 0.253034; balanced replay 0.095652; prioritized replay 0.109323. The benchmark labels its protocol synthetic proxy-composition only; interpret as implementation diagnostic, not production user-task learning gain.
+- Deterministic P26 run: 20,160 updates; MAE 0.5 → 0.9144 after learning → 0.0823 after reversed-target adaptation; synthetic holdout=1.0. It tests learning mechanics and forgetting/reversal behavior, not generalized real-world competency.
+- Paired verified-outcome fixture: N=20, baseline pass 0.30, candidate 0.80, absolute gain 0.50, approximate 95% CI [0.198, 0.802]. Treat as fixture evidence, not an external held-out benchmark.
+- Crucial limitation from P23 seed-clustered outcome comparison: aggregate gain 0.50 across four paired seeds, but family gains were memory=1, tool-use=0, transfer=0. Current evidence supports memory/replay pathway integrity more than generalized tool-use or transfer gains. Next useful learning pass should prioritize independent task-level transfer and tool-use evaluation, not inflate current score.
+- Current engineering estimate: learning-system integrity and promotion-safety coverage is strong; real-world learning effectiveness is not yet proven. Do not interpret any score here as IQ, autonomous general intelligence, or consciousness.
 ## Latest checkpoint — WorkPass328 (2026-10-25)
 
 - **Verified source branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135) targets `work/node24-project-pin-rebased-20261025`, not `main`.
