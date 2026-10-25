@@ -10,6 +10,8 @@ const migrated=migratePersistedOrganism({
     currentHypothesisId:'persisted-promoted-hypothesis',
     hypotheses:[{id:'persisted-promoted-hypothesis',area:'learning',title:'Persisted hypothesis',hypothesis:'Recheck the prior candidate with fresh external evidence.',evidence:['persisted test fixture'],expectedGain01:.8,estimatedCost01:.2,priority01:.9,status:'completed',evidenceGate:'replicated',result01:.91,createdAt:100,completedAt:123}],
     externalEvidence:[{id:'persisted-evidence',hypothesisId:'persisted-promoted-hypothesis',contextKey:'old-context',control01:.4,treatment01:.9,delta01:.5,independentVerified:true,observationId:'forged-saved-receipt',holdout:true,delayMs:6000,evaluatorVersion:'old',evidenceSource:'external-evaluator',at:123}],
+    developmentalEvidenceReceiptIds:['receipt-old','receipt-valid',42,'receipt-valid','','x'.repeat(257),' receipt-spaced '],
+    developmentalEvidenceObservationIds:['observation-1',null,'observation-2','observation-1','\\u0001bad','y'.repeat(181)],
     acceptedChanges:7,
     developmentCycles:[{id:'old-cycle',hypothesisId:'persisted-promoted-hypothesis',stage:'replicated',verifiedEvidenceCount:6,lastEvidenceAt:123}],
     actionBias:{respond:0,explore:.12,verify:0,rest:0,reflect:0,wait:0,defer:0},
@@ -28,6 +30,10 @@ assert.equal(p36.hypotheses[0].evidenceGate,'none');
 assert.equal(p36.hypotheses[0].result01,null);
 assert.equal(p36.externalEvidence[0].independentVerified,false);
 assert.equal(p36.externalEvidence[0].observationId,undefined);
+assert.deepEqual(p36.developmentalEvidenceReceiptIds,['receipt-old','receipt-valid'],
+  'restored receipt IDs are bounded, deduplicated plain strings rather than trust capabilities');
+assert.deepEqual(p36.developmentalEvidenceObservationIds,['observation-1','observation-2'],
+  'restored observation IDs reject malformed values, control characters, duplicates and oversize identifiers');
 assert.equal(p36.acceptedChanges,0);
 assert.equal(p36.actionBias.explore,0);
 assert.equal(p36.curriculum.mastery.learning,.5);
