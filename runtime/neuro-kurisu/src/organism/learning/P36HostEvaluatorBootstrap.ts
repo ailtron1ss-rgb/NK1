@@ -24,7 +24,16 @@ function validText(value:unknown,max=180):value is string {
     !/[\u0000-\u001f\u007f-\u009f]/.test(value);
 }
 function safeMode(mode:number,label:string):void {
-  if(process.platform!=='win32'&&(mode&0o022)!==0)fail('p36-host-bootstrap-'+label+'-group-world-writable');
+  // Trust inputs and host code must be read-only to the runtime identity.
+  // Deployments that need updates should replace them through the host/deploy pipeline.
+  if(process.platform!=='win32'&&(mode&0o222)!==0)fail('p36-host-bootstrap-'+label+'-must-be-read-only');
+}
+function isWithinDirectory(root:string,target:string):boolean {
+  const relative=path.relative(root,target);
+  return relative===''||(relative!=='..'&&!relative.startsWith('..'+path.sep)&&!path.isAbsolute(relative));
+}
+function assertOutsideRuntimeState(stateRoot:string|undefined,target:string,label:string):void {
+  if(stateRoot&&isWithinDirectory(stateRoot,target))fail('p36-host-bootstrap-'+label+'-inside-runtime-writable-state');
 }
 function parseJson<T>(text:string,code:string):T {
   try { return JSON.parse(text) as T; }
@@ -70,6 +79,7 @@ interface ParsedP36SignedLedgerHostBootstrapConfig extends Omit<P36SignedLedgerH
  */
 export async function loadP36VerifiedOutcomeLedgerEvaluator(
   configFile:string,
+  runtimeWritableDirectory?:string,
 ):Promise<Omit<ToolDefinition,'id'>> {
   if(!validText(configFile,4096))return fail('p36-host-bootstrap-config-path-invalid');
   let configStat;
@@ -77,6 +87,8 @@ export async function loadP36VerifiedOutcomeLedgerEvaluator(
   if(configStat.isSymbolicLink()||!configStat.isFile())fail('p36-host-bootstrap-config-must-be-regular-file');
   safeMode(configStat.mode,'config');
   const configRealPath=await realpath(configFile);
+  const runtimeStateReal=runtimeWritableDirectory?await realpath(runtimeWritableDirectory):undefined;
+  assertOutsideRuntimeState(runtimeStateReal,configRealPath,'config');
   const configDirectory=path.dirname(configRealPath);
   if(configStat.size>MAX_CONFIG_BYTES)fail('p36-host-bootstrap-config-too-large');
   const raw=await parseJson<ParsedP36SignedLedgerHostBootstrapConfig>(
@@ -89,6 +101,9 @@ export async function loadP36VerifiedOutcomeLedgerEvaluator(
   const manifestPath=configuredPath(configDirectory,raw.manifestFile,'manifest');
   const keysPath=configuredPath(configDirectory,raw.trustedVerifierKeysFile,'keyring');
   const artifactsPath=configuredPath(configDirectory,raw.artifactsDirectory,'artifacts');
+  assertOutsideRuntimeState(runtimeStateReal,await realpath(manifestPath),'manifest');
+  assertOutsideRuntimeState(runtimeStateReal,await realpath(keysPath),'keyring');
+  assertOutsideRuntimeState(runtimeStateReal,await realpath(artifactsPath),'artifacts-directory');
   const manifestRaw=await readTrustedJsonFile(manifestPath,'manifest',MAX_MANIFEST_BYTES);
   if(!Array.isArray(manifestRaw)||manifestRaw.length===0||manifestRaw.length>10_000) {
     fail('p36-host-bootstrap-manifest-invalid');
@@ -195,6 +210,8 @@ export async function loadP36DevelopmentalOutcomeEvaluatorModule(
   if(stat.isSymbolicLink()||!stat.isFile())fail('p36-maturity-provider-module-must-be-regular-file');
   safeMode(stat.mode,'maturity-provider-module');
   const real=await realpath(resolved);
+  const stateReal=await realpath(stateDirectory);
+  if(isWithinDirectory(stateReal,real))fail('p36-maturity-provider-module-inside-runtime-writable-state');
   const loaded=await import(pathToFileURL(real).href) as Record<string,unknown>;
   const factory=loaded.createP36DevelopmentalOutcomeEvaluator??loaded.default;
   if(typeof factory!=='function')fail('p36-maturity-provider-factory-missing');
