@@ -24,7 +24,7 @@ test('readiness probe waits for a successful HTTP response', async t => {
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
-  t.after(() => server.close());
+  t.after(() => new Promise(resolve => server.close(resolve)));
   const address = server.address();
   const response = await waitForHttp(`http://127.0.0.1:${address.port}/ready`, {
     timeoutMs: 1_000,
@@ -32,7 +32,17 @@ test('readiness probe waits for a successful HTTP response', async t => {
     label: 'fixture',
   });
   assert.equal(response.status, 200);
-  assert.equal(response.status, 200);
+});
+
+test('readiness fails immediately when a child has already exited', async () => {
+  await assert.rejects(
+    waitForHttp('http://127.0.0.1:1/never', {
+      timeoutMs: 1_000,
+      child: { pid: 123, exitCode: 1, signalCode: null },
+      label: 'failed fixture',
+    }),
+    /failed fixture exited before readiness/,
+  );
 });
 
 test('readiness timeout is bounded and reports the last failure', async () => {
