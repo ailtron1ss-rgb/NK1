@@ -371,7 +371,8 @@ export function createIndependentSkillCandidateEvaluator(
         plannedRunId: plannedRun?.runId ?? null,
         seed: task.seed,
         split: task.split,
-        executable: executable && bindingVerified,
+        // Execution capability is distinct from whether a verifier authenticates its trace.
+        executable,
         observedStepIds: bindingVerified ? execution?.observedStepIds ?? [] : [],
         bindingVerified,
         verifierPassed: executable && bindingVerified && verifierPassed,
@@ -388,7 +389,9 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          // A structurally valid execution can be measurable as executable even when its trace is untrusted.
+          // Task success and trusted trajectory evidence still require verifier binding below.
+          executable,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {
