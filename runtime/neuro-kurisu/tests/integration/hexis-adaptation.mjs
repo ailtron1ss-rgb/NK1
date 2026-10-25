@@ -67,6 +67,34 @@ assert.equal(fabric.temporalDiff('mem-1',1500,2500).changed, true);
  assert.equal(temporal.temporalAt('mem-out-of-order', 3500)?.summary, 'late',
    'invalid temporal input must not corrupt the existing timeline');
 
+// Restoring a legacy snapshot must discard invalid timestamps and re-establish non-overlapping intervals.
+const restoredTemporal = new HexisAdaptationFabric();
+restoredTemporal.restore({
+  temporal: [
+    { id: 'legacy-late', memoryId: 'legacy-memory', valueHash: 'hash-late', summary: 'legacy late', confidence01: .8, validFrom: 3000, validUntil: null, source: 'test', at: 3 },
+    { id: 'legacy-invalid', memoryId: 'legacy-memory', valueHash: 'hash-invalid', summary: 'legacy invalid', confidence01: .5, validFrom: Number.NaN, validUntil: null, source: 'test', at: 4 },
+    { id: 'legacy-early', memoryId: 'legacy-memory', valueHash: 'hash-early', summary: 'legacy early', confidence01: .6, validFrom: 1000, validUntil: 99999, source: 'test', at: 1 },
+  ],
+});
+assert.equal(restoredTemporal.snapshot().temporal.length, 2, 'invalid legacy timestamps are dropped on restore');
+assert.equal(restoredTemporal.temporalAt('legacy-memory', 2000)?.summary, 'legacy early');
+assert.equal(restoredTemporal.temporalAt('legacy-memory', 3500)?.summary, 'legacy late');
+const restoredTimeline = restoredTemporal.snapshot().temporal
+  .filter(row => row.memoryId === 'legacy-memory')
+  .sort((a, b) => a.validFrom - b.validFrom);
+assert.deepEqual(restoredTimeline.map(row => [row.summary, row.validUntil]), [
+  ['legacy early', 3000], ['legacy late', null],
+]);
+assert.throws(() => temporal.recordTemporalAssertion({
+  memoryId: '', summary: 'blank ID', confidence01: .5, validFrom: 4000,
+}), /temporal_memory_id_required/);
+assert.throws(() => temporal.recordTemporalAssertion({
+  memoryId: 'mem-out-of-order', summary: '   ', confidence01: .5, validFrom: 4000,
+}), /temporal_summary_required/);
+assert.throws(() => temporal.recordTemporalAssertion({
+  memoryId: 'mem-out-of-order', summary: 'blank timestamp', confidence01: .5, validFrom: '  ',
+}), /temporal_valid_from_must_be_finite/);
+
 const review = fabric.createLearningReview({periodStart:0,periodEnd:1,summary:'test review',items:[{kind:'semantic_belief',title:'x',content:'y',sourceMemoryId:'mem-1',evidence:{}}]});
 const decided = fabric.decideLearningReview(review.id,review.items[0].id,'approve');
 assert.equal(decided?.status,'approved');
