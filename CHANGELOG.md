@@ -1,3 +1,10 @@
+## [NK1][memory] Ensure the byte-budget regression runs on the feature branch (2026-10-25)
+
+- Added the memory-budget work branch to the WorkPass71 push trigger. The focused `test:memory-budget-restore-integrity` gate now runs on that branch instead of being merely registered in a workflow whose existing branch filters excluded the PR base.
+- The same commit also updates the stale rollback regression to require the version-bound approval object; the next exact-head Actions run is the validation gate.
+
+---
+
 ## [NK1][learning] Update rollback regression for signed approval contract (2026-10-25)
 
 - Updated the WorkPass110-reachable skill lifecycle regression to use the current rollback API: legacy calls without approval identity, timestamp and expected active-version guard are explicitly rejected; the fixture then submits a version-bound approval object.
