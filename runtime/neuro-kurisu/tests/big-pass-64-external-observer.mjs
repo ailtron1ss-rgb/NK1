@@ -5,6 +5,31 @@ import { tmpdir } from 'node:os';
 import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { ExternalObserverFabric } from '../src/organism/system/ExternalObserverFabric.ts';
+import { CausalAccountabilityGraph } from '../src/organism/system/CausalAccountabilityGraph.ts';
+
+// Conflicting persisted execution receipts must not let later evidence attach to
+// whichever duplicate happened to appear last in the snapshot.
+const receiptGraph = new CausalAccountabilityGraph();
+const receiptBase = {
+  executionId: 'exec:ambiguous-restore', outcomeId: 'outcome:receipt-a',
+  tool: 'door.open', tick: 4, at: 4000, ok: true,
+  expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+  observationId: 'obs:a', confidence01: 0.9,
+};
+receiptGraph.restore({
+  version: 1, nodes: [], edges: [], activeChains: [], lastAt: 4, updatedAt: 4000,
+  outcomeIndex: [
+    receiptBase,
+    { ...receiptBase, outcomeId: 'outcome:receipt-b', tool: 'door.close', observedPostcondition: 'door=closed' },
+  ],
+});
+assert.ok(receiptGraph.snapshot().quarantinedExecutionIds?.includes('exec:ambiguous-restore'),
+  'conflicting execution receipts must be quarantined during restore');
+assert.equal(receiptGraph.resolveExternalVerification({
+  tick: 5, tool: 'door.open', observationId: 'obs:late', verified: true,
+  confidence01: 0.9, executionId: 'exec:ambiguous-restore',
+}).reason, 'ambiguous-execution-receipt',
+  'late evidence must not attach to a conflicting restored execution identity');
 
 const f=new ExternalObserverFabric();
 f.registerSource({id:'device-smoke',sourceClass:'device',channel:'sensor',independenceKey:'sensor:smoke',reliability01:.9});
