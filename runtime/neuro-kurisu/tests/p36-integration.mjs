@@ -117,10 +117,13 @@ const maturityInput=developmentalOutcomeVerificationInput({area:'learning',outco
 assert.equal(maturityInput.kind,'developmental-outcome','the maturity event must use the dedicated evidence discriminant');
 const maturityBefore=core.p36Diagnostics();
 const wrongLaneMaturity=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,maturityInput,'p36-maturity-on-experiment-lane',{decisionId:traceForEvidence.id});
-assert.equal(wrongLaneMaturity.verified,true,'ActionGateway can verify an adapter response; Core still enforces the semantic evidence lane');
+assert.equal(wrongLaneMaturity.verified,false,'the signed-ledger experiment evaluator must reject a maturity-shaped request');
 assert.equal(core.p36Diagnostics().developmentalMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount,
   'instantaneous experiment evaluator must not update maturity even if given a maturity-shaped payload');
-assert.equal(core.p36DevelopmentalOutcomeSnapshot?.(),undefined,'no alternate maturity snapshot route should be exposed');
+const wrongLaneEvidence=await core.executeTool(P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,evidenceInput,'p36-evidence-on-maturity-lane',{decisionId:traceForEvidence.id});
+assert.equal(wrongLaneEvidence.verified,true,'the generic fixture can return a receipt, but Core must enforce the separate evidence lane');
+assert.equal(core.p36Diagnostics().developmentalMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount,
+  'an external-evidence tuple must never update maturity through the maturity evaluator ID');
 const unlinkedMaturityResult=await core.executeTool(P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,maturityInput,'p36-unlinked-maturity');
 assert.equal(unlinkedMaturityResult.verified,true);
 assert.equal(core.p36Diagnostics().developmentalMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount,
