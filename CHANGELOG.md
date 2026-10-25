@@ -1,3 +1,13 @@
+## NK1 WorkPass337 — preserve configured replay recency guarantees (2026-10-25)
+
+- [LEARNING] `adaptiveReplayOptions` now preserves an explicitly configured `recentQuota`, clamped only to the adaptive batch size. Health signals can shrink batch capacity without silently replacing the caller's recent-window contract.
+- [REGRESSION] Updated the replay runtime config test to assert the configured batch size as a hard ceiling (adaptive capacity can legitimately select fewer samples) while retaining checks that all explicitly requested recent items and at least one historical sample enter the replayed set.
+- [COMPATIBILITY] WorkPass293 logs exposed another non-erasable constructor parameter property in `AtomicFileSkillStorePersistence`; converted it to an explicit readonly field with constructor assignment. Added the persistence adapter to WorkPass291/WorkPass99/WorkPass293 workflow path filters.
+- [VALIDATION] WorkPass291 payload byte-boundary regression passed on commit `f4a21eef`; the latest replay and P23 tests are being re-executed after the additional compatibility and quota fixes. No full-CI pass is claimed.
+- [SCOPE] All changes remain on the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass336 — fix regression boundaries and verifier input validation (2026-10-25)
 
 - [FIX] Corrected `OutcomeVerificationService`'s control-character range so it parses as a valid regular expression and still rejects C0/C1 control characters in correlation IDs.
