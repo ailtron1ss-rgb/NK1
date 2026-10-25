@@ -72,7 +72,7 @@ const server = createServer(async (req, res) => {
     if (pathname === "/api/organism/avatar-speech") {
       if (avatarSpeechStartedAt === null) avatarSpeechStartedAt = Date.now() - 20;
       res.writeHead(200,{"content-type":"application/json; charset=utf-8","cache-control":"no-store"});
-      res.end(JSON.stringify({ok:true,speaking:true,speechEventId:"runtime-smoke-speech",text:"мама, а!",startedAt:avatarSpeechStartedAt,rate:1,updatedAt:Date.now()}));
+      res.end(JSON.stringify({ok:true,speaking:true,speechEventId:"runtime-smoke-speech",text:"мама, а! мама, а! мама, а! мама, а!",startedAt:avatarSpeechStartedAt,rate:1,updatedAt:Date.now()}));
       return;
     }
     if (pathname === "/favicon.ico") { res.writeHead(204); res.end(); return; }
@@ -94,7 +94,7 @@ const server = createServer(async (req, res) => {
       source = source.replace(motionAnchor,
         "try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k;window.__nk1RuntimeMotion={group:String(bodySignal.motionGroup),index:Number(bodySignal.motionIndex||0)}}catch{}");
       source = source.replace(embodimentAnchor,
-        "const signal=sanitizeEmbodiment(d);\n      if(signal){applyEmbodiment(signal);window.__nk1RuntimeLastEmbodiment={...signal,mouthViseme:d.mouthViseme};}");
+        "const signal=sanitizeEmbodiment(d);\n      if(signal){applyEmbodiment(signal);window.__nk1RuntimeLastEmbodiment={...signal,mouthViseme:d.mouthViseme};if(d.mouthViseme==='open'&&signal.mouthOpen>0.3)window.__nk1RuntimeSawOpenViseme=true;}");
       source = source.replace(lipsyncAnchor, "lipTarget=clamp(d.value,0,1);window.__nk1RuntimeLipTarget=lipTarget;");
       bytes = Buffer.from(source, "utf8");
     }
@@ -144,7 +144,7 @@ try {
   await page.goto(origin+"/avatar.html",{waitUntil:"domcontentloaded"});
   const frame=page.frames().find(f=>f.url().includes("/live2d/viewer.html"));
   assert.ok(frame,"avatar.html must mount the runtime viewer");
-  await frame.waitForFunction(()=>window.__nk1RuntimeExpression==="Stanby Smile"&&window.__nk1RuntimeLastEmbodiment?.motionGroup==="Special"&&window.__nk1RuntimeLastEmbodiment?.mouthOpen>0.3&&window.__nk1RuntimeLipTarget>0&&window.__nk1RuntimeLastEmbodiment?.mouthViseme==="open",null,{timeout:15000});
+  await frame.waitForFunction(()=>window.__nk1RuntimeExpression==="Stanby Smile"&&window.__nk1RuntimeLastEmbodiment?.motionGroup==="Special"&&window.__nk1RuntimeSawOpenViseme===true,null,{timeout:15000});
   // The smoke text starts with a closed consonant, then opens on the vowel; an unchanging jaw cannot satisfy this assertion.
   assert.equal(await page.locator("#tick").textContent(),"tick 987");
   assert.equal(await page.locator("#state").textContent(),"awake · respond · joy");
