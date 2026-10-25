@@ -48,7 +48,7 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
     gate: { accepted }, canActivateAutomatically: false, authenticatedEvidenceRows, unauthenticatedEvidenceRows,
   };
 }
-const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true); // explicit test-only approval/evidence adapters
+const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true, () => true); // explicit test-only promotion, shadow-evidence and rollback-approval adapters
 const defaultDenyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
 const defaultDenyCandidate = defaultDenyStore.stageCandidate(proposal('f'), 'deny-shadow-test', { instruction: 'must not enter shadow' });
 assert.throws(() => defaultDenyStore.recordShadowObservation(defaultDenyCandidate.candidateId, {
