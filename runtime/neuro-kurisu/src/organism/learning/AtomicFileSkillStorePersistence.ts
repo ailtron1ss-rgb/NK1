@@ -112,10 +112,14 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
   if (value.revisionProvenance !== undefined && !isRevisionProvenance(value.revisionProvenance)) return false;
   const revisionFingerprint = value.revisionProvenance === undefined ? null : payloadFingerprint(value.revisionProvenance);
   if (value.revisionProvenance !== undefined && revisionFingerprint === null) return false;
-  const expectedId = createHash('sha256').update(JSON.stringify([
-    value.skillId, value.version, value.proposalId, value.payloadFingerprint, revisionFingerprint,
-  ])).digest('hex');
-  if (value.candidateId !== expectedId) return false;
+  const identityPrefix = [value.skillId, value.version, value.proposalId, value.payloadFingerprint];
+  const expectedId = createHash('sha256').update(JSON.stringify([...identityPrefix, revisionFingerprint])).digest('hex');
+  // Pre-revision-provenance schema-1 candidates used the four-field identity. Accept
+  // those legacy rows only when provenance is absent; new rows use the five-field identity.
+  const legacyExpectedId = value.revisionProvenance === undefined
+    ? createHash('sha256').update(JSON.stringify(identityPrefix)).digest('hex')
+    : null;
+  if (value.candidateId !== expectedId && value.candidateId !== legacyExpectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
   if (value.rollbackApproval !== undefined && !isRollbackApproval(value.rollbackApproval)) return false;
   if (value.promotedAt !== undefined && !isTime(value.promotedAt)) return false;
