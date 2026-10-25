@@ -432,12 +432,20 @@ export class MemoryOS2{
  }
 
  semanticEmbeddingMaintenanceDiagnostics():SemanticIndexMaintenanceResult{
-  const providerDiag=this.embeddingProvider?.diagnostics();const now=Date.now();
-  const corpus=this.state.items.filter(item=>!item.dormant&&item.epistemicStatus!=='quarantined'&&Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt)));
-  const indexed=corpus.filter(item=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===this.embeddingProvider?.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);}).length;
-  const pending=corpus.filter(item=>{const row=this.semanticEmbeddingIndex.get(item.id);return !row||row.providerId!==this.embeddingProvider?.providerId||row.contentHash!==memoContentHash(item.content)||!row.vector.length;});
-  const retries=pending.map(item=>this.semanticEmbeddingRetry.get(item.id)).filter((row):row is {contentHash:string;attempts:number;retryAt:number}=>Boolean(row&&row.retryAt>now));
-  return {enabled:Boolean(this.embeddingProvider),provider:providerDiag?.provider??'none',model:providerDiag?.model??'',considered:0,indexed:0,failed:this.lastSemanticIndexMaintenance.lastFailed,staleSkipped:this.lastSemanticIndexMaintenance.lastStaleSkipped,indexedItems:indexed,corpusItems:corpus.length,remaining:Math.max(0,corpus.length-indexed),waitingForRetry:retries.length,nextRetryAt:retries.length?Math.min(...retries.map(row=>row.retryAt)):null,lastRunAt:this.lastSemanticIndexMaintenance.lastRunAt,lastDurationMs:this.lastSemanticIndexMaintenance.lastDurationMs,lastErrorCode:this.lastSemanticIndexMaintenance.lastErrorCode,redactedInputs:Number(providerDiag?.redactedInputs??0)};
+  const providerDiag=this.embeddingProvider?.diagnostics();const now=Date.now();const providerId=this.embeddingProvider?.providerId;
+  // Count eligible, indexed, and retry-waiting rows in a single pass. The diagnostic
+  // path runs frequently; avoid materializing corpus/pending/retry arrays just to count them.
+  let corpusItems=0,indexed=0,waitingForRetry=0,nextRetryAt:number|null=null;
+  for(const item of this.state.items){
+   if(item.dormant||item.epistemicStatus==='quarantined'||!(Number(item.validFromAt??item.createdAt)<=now)||(item.validUntilAt!=null&&!(now<Number(item.validUntilAt))))continue;
+   corpusItems++;
+   const row=this.semanticEmbeddingIndex.get(item.id);
+   const hasCurrentVector=Boolean(row&&row.providerId===providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);
+   if(hasCurrentVector){indexed++;continue;}
+   const retry=this.semanticEmbeddingRetry.get(item.id);
+   if(retry&&retry.retryAt>now){waitingForRetry++;if(nextRetryAt===null||retry.retryAt<nextRetryAt)nextRetryAt=retry.retryAt;}
+  }
+  return {enabled:Boolean(this.embeddingProvider),provider:providerDiag?.provider??'none',model:providerDiag?.model??'',considered:0,indexed:0,failed:this.lastSemanticIndexMaintenance.lastFailed,staleSkipped:this.lastSemanticIndexMaintenance.lastStaleSkipped,indexedItems:indexed,corpusItems,remaining:Math.max(0,corpusItems-indexed),waitingForRetry,nextRetryAt,lastRunAt:this.lastSemanticIndexMaintenance.lastRunAt,lastDurationMs:this.lastSemanticIndexMaintenance.lastDurationMs,lastErrorCode:this.lastSemanticIndexMaintenance.lastErrorCode,redactedInputs:Number(providerDiag?.redactedInputs??0)};
  }
 
  /**
