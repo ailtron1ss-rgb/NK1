@@ -390,7 +390,9 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          // Preserve execution validity as its own quality dimension; verifier binding
+          // still gates trusted trajectory, task success, run IDs and promotion evidence.
+          executable,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {
