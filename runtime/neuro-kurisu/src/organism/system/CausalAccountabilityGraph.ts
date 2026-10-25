@@ -87,28 +87,67 @@ export class CausalAccountabilityGraph {
   link(from:string,to:string,relation:CausalAccountabilityEdge['relation'],confidence01=1){this.addEdge({from,to,relation,confidence01});}
 
   recordActionChain(input:{tick:number;tool:string;ok:boolean;verified:boolean;observationId?:string;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;externalObservation?:boolean;contradicted?:boolean;executionId?:string;predictionId?:string;decisionId?:string;goalId?:string;data?:Record<string,unknown>}){
+    const executionId=typeof input.executionId==='string'?input.executionId.trim():'';
+    const actionForOutcome=(outcomeId:string)=>this.edges.find(edge=>edge.to===outcomeId&&edge.relation==='caused'&&this.nodes.some(node=>node.id===edge.from&&node.kind==='action'))?.from??'';
+    const matchesInput=(row:{tool:string;tick:number;ok:boolean;expectedPostcondition?:string;observedPostcondition?:string;observationId?:string;confidence01:number})=>
+      row.tool===input.tool&&row.tick===input.tick&&row.ok===input.ok&&
+      row.expectedPostcondition===input.expectedPostcondition&&row.observedPostcondition===input.observedPostcondition&&
+      row.observationId===input.observationId&&clamp(row.confidence01)===clamp(input.confidence01);
+    if(executionId){
+      const existingNodes=this.nodes.filter(node=>node.kind==='outcome'&&node.data?.executionId===executionId);
+      const indexed=this.outcomeIndex.get(executionId);
+      if(this.quarantinedExecutionIds.has(executionId)){
+        const existing=existingNodes[0];
+        const outcomeId=existing?.id??indexed?.outcomeId??'';
+        return {actionId:outcomeId?actionForOutcome(outcomeId):'',outcomeId,quarantined:true};
+      }
+      if(existingNodes.length>0||indexed){
+        const nodesMatch=existingNodes.length<=1&&existingNodes.every(node=>{
+          const ok=typeof node.data?.ok==='boolean'?node.data.ok:String(node.summary).endsWith(':ok');
+          return matchesInput({
+            tool:String(node.data?.tool??''),tick:node.tick,ok,
+            expectedPostcondition:typeof node.data?.expectedPostcondition==='string'?node.data.expectedPostcondition:undefined,
+            observedPostcondition:typeof node.data?.observedPostcondition==='string'?node.data.observedPostcondition:undefined,
+            observationId:typeof node.data?.observationId==='string'?node.data.observationId:undefined,
+            confidence01:clamp(Number(node.confidence01??0)),
+          });
+        });
+        const indexMatches=!indexed||matchesInput(indexed);
+        if(nodesMatch&&indexMatches){
+          const existing=existingNodes[0];
+          const outcomeId=existing?.id??indexed?.outcomeId??'';
+          return {actionId:outcomeId?actionForOutcome(outcomeId):'',outcomeId,replayed:true};
+        }
+        // A live duplicate execution ID is just as ambiguous as a conflicting
+        // restored receipt. Quarantine survives node compaction, so a later
+        // replay cannot make the ID eligible for evidence attachment again.
+        this.quarantineExecutionId(executionId);
+        const existing=existingNodes[0];
+        const outcomeId=existing?.id??indexed?.outcomeId??'';
+        return {actionId:outcomeId?actionForOutcome(outcomeId):'',outcomeId,quarantined:true};
+      }
+    }
     const action=this.add('action',input.tick,`tool:${input.tool}`,{tool:input.tool,ok:input.ok,...(input.data??{})});
     if(input.goalId)this.link(input.goalId,action,'caused',.7);
     if(input.decisionId)this.link(input.decisionId,action,'caused',.85);
     if(input.predictionId)this.link(input.predictionId,action,'predicted',.9);
-    const outcome=this.add('outcome',input.tick,`tool:${input.tool}:${input.ok?'ok':'failed'}`,{tool:input.tool,executionId:input.executionId,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition,externalObservation:Boolean(input.externalObservation),observationId:input.observationId},input.confidence01,input.observationId);
-    if(input.executionId){
-      this.outcomeIndex.delete(input.executionId);
-      this.outcomeIndex.set(input.executionId,{executionId:input.executionId,outcomeId:outcome,tool:input.tool,tick:input.tick,at:Date.now(),ok:input.ok,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition,observationId:input.observationId,confidence01:clamp(input.confidence01)});
+    const outcome=this.add('outcome',input.tick,`tool:${input.tool}:${input.ok?'ok':'failed'}`,{tool:input.tool,executionId:executionId||undefined,ok:input.ok,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition,externalObservation:Boolean(input.externalObservation),observationId:input.observationId},input.confidence01,input.observationId);
+    if(executionId){
+      this.outcomeIndex.set(executionId,{executionId,outcomeId:outcome,tool:input.tool,tick:input.tick,at:Date.now(),ok:input.ok,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition,observationId:input.observationId,confidence01:clamp(input.confidence01)});
       while(this.outcomeIndex.size>this.maxOutcomeIndex){const oldest=this.outcomeIndex.keys().next().value as string|undefined;if(!oldest)break;this.outcomeIndex.delete(oldest);}
     }
     this.link(action,outcome,'caused',input.ok?.8:.35);
     if(input.verified){
-      const verification=this.add('verification',input.tick,`verified:${input.tool}`,{basis:input.externalObservation?'external-postcondition':'tool-contract',observationId:input.observationId,executionId:input.executionId},input.confidence01,input.observationId);
+      const verification=this.add('verification',input.tick,`verified:${input.tool}`,{basis:input.externalObservation?'external-postcondition':'tool-contract',observationId:input.observationId,executionId:executionId||undefined},input.confidence01,input.observationId);
       this.link(outcome,verification,'verified-by',input.confidence01);
       if(input.observationId){
-        const observation=this.add('observation',input.tick,`observation:${input.observationId}`,{tool:input.tool,executionId:input.executionId,observedPostcondition:input.observedPostcondition},input.confidence01,input.observationId);
+        const observation=this.add('observation',input.tick,`observation:${input.observationId}`,{tool:input.tool,executionId:executionId||undefined,observedPostcondition:input.observedPostcondition},input.confidence01,input.observationId);
         this.link(verification,observation,'observed',input.confidence01);
       }
     } else if(input.contradicted === true) {
       // A negative learning signal requires explicit contradictory evidence. A missing
       // verification is unknown, not proof that the predicted postcondition was false.
-      const error=this.add('prediction-error',input.tick,`outcome-contradicted:${input.tool}`,{tool:input.tool,executionId:input.executionId,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition},input.confidence01);
+      const error=this.add('prediction-error',input.tick,`outcome-contradicted:${input.tool}`,{tool:input.tool,executionId:executionId||undefined,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition},input.confidence01);
       this.link(outcome,error,'contradicted',input.confidence01);
     }
     return {actionId:action,outcomeId:outcome};
