@@ -7,14 +7,16 @@ assert.equal(m.snapshot().cycles,0,'invalid homeostasis clocks must not mutate c
 const base={energy01:.8,thermal01:.2,capacity01:.8,load01:.25,awake:true,uncertainty01:.15,predictionError01:.12,novelty01:.7};
 const a=m.observe({tick:1,at:1001,...base});
 const b=m.observe({tick:2,at:1002,...base,novelty01:.5});
-const c=m.observe({tick:3,at:1003,...base,energy01:.18,capacity01:.35,thermal01:.85});
 assert.equal(a.mode,'explore');
 assert.equal(b.mode,'explore');
 assert.equal(m.snapshot().lastMode,b.mode,'persisted mode must match the post-hysteresis decision returned to the executive');
 assert.equal(m.snapshot().history[0].mode,b.mode,'history must record the effective mode, not the pre-hysteresis classifier result');
 assert.equal(m.snapshot().modeCounts.explore,2,'mode counts must follow effective modes after hysteresis');
 assert.equal(m.snapshot().modeCounts.engage,0,'a superseded pre-hysteresis mode must not remain in aggregate counts');
+const c=m.observe({tick:3,at:1003,...base,energy01:.18,capacity01:.35,thermal01:.85});
 assert(['recover','protect'].includes(c.mode));
+assert.equal(m.snapshot().lastMode,c.mode,'the latest observation must persist its own effective post-hysteresis mode');
+assert.equal(m.snapshot().history[0].mode,c.mode,'the newest history row must match the latest decision');
 assert.equal(m.snapshot().cycles,3);
 const r=new P66InteroceptiveHomeostasis(); r.restore(m.snapshot()); assert.deepEqual(r.snapshot(),m.snapshot());
 

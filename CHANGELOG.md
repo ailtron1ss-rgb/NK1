@@ -1,3 +1,10 @@
+## NK1 P66 regression — assert each observation before advancing the controller (2026-10-25)
+
+- Corrected the homeostasis regression sequence: assertions for observation two were executed only after observation three had already updated controller state.
+- Kept the implementation's persisted post-hysteresis mode contract intact and added explicit checks that the third observation becomes the newest persisted mode/history entry.
+
+---
+
 ## NK1 live cognitive feedback — align causal context keys across learning ledgers (2026-10-25)
 
 - Normalized the causal context once at the OrganismCore feedback boundary before writing to autonomous-life and verified-autonomous-life prediction ledgers, which accept at most 180 trimmed characters.
