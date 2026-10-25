@@ -121,3 +121,18 @@ assert.equal(
   'z-session-snake-case',
   'snake_case session identifiers from imported memory must retain conversation lineage',
 );
+
+for (const [key, sessionId] of [['session-id', 'session-44'], ['session id', 'session-45'], ['threadId', 'thread-46']]) {
+  const importedSession = new MemoryOS2({ embeddingProvider: null });
+  const importedContent = 'neural memory experiment dialogue';
+  encode(importedSession, { id: 'a-semantic-decoy', kind: 'semantic', content: importedContent });
+  encode(importedSession, {
+    id: 'z-imported-session', kind: 'social', content: importedContent,
+    context: { [key]: sessionId },
+  });
+  assert.equal(
+    importedSession.retrieve('What did we discuss last time about the neural memory experiment?', 1, .1, .1)[0]?.id,
+    'z-imported-session',
+    'normalized session/thread key should preserve lineage: ' + key,
+  );
+}
