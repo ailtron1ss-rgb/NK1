@@ -14,6 +14,9 @@ on:
       - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
+      - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
       - "runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
@@ -39,6 +42,9 @@ on:
       - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
+      - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
       - "runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
@@ -103,6 +109,9 @@ jobs:
 
       - name: Test restored action receipt integrity (WorkPass95)
         run: npm --prefix runtime/neuro-kurisu run test:workpass95:receipt-integrity
+
+      - name: Test versioned skill lifecycle and durable provenance restore (P23)
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs
 
       - name: Test live runtime graph persistence and restart continuity
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-dependency-runtime-wiring
