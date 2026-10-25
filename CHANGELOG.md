@@ -1,3 +1,11 @@
+## NK1 WorkPass535 — make canon value tensions context-sensitive (2026-10-25)
+
+- Connected the five canonical character conflicts to normalized live-Core context. Truth/comfort, autonomy/cooperation, skepticism/curiosity, composure/vulnerability and usefulness/privacy now update as bounded, smoothed state instead of remaining static labels.
+- Kept the canonical conflict dimensions code-owned; the update uses existing novelty, uncertainty, goal-pressure and identity-gap signals, and the resulting tension vector remains covered by the existing personality snapshot/restore path.
+- Added regression coverage for canon/vector alignment, context-driven change, and persistence across restore. Focused GitHub Actions confirmation is pending; this is a state-model improvement, not a claim that every tension is yet connected to dialogue planning or action arbitration.
+
+---
+
 ## NK1 WorkPass534 — verify signed shadow payload before classifying fields (2026-10-25)
 
 - Corrected the Hermes reflective evidence binding order: the trusted signature/context verifier now runs before mutable receipt payload fields are used to classify task identity or binary-outcome mismatches.
