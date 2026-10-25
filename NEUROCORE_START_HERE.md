@@ -1,3 +1,11 @@
+## Latest durable checkpoint — WorkPass337 (2026-10-25)
+
+- Fixed runtime type discovery: `tsconfig.clean.json` now explicitly loads the pinned Node.js ambient package from the runtime-local or installed app workspace type root, without loading unrelated React globals.
+- This specifically targets the observed missing Node built-in module/global declarations; strict checking remains enabled, and remaining real type errors still need to be addressed rather than suppressed.
+- WorkPass336 also fixed the malformed correlation-ID regex and duplicate cycle verifier; exact-head validation is pending. Release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass336 (2026-10-25)
 
 - Fixed a malformed correlation-ID control-character regex that prevented the memory-to-action regression from loading its imported verification module.
