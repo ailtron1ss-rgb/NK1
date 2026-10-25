@@ -98,6 +98,7 @@ export class ParametricPolicyLearner{
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
 
   features(state:OrganismState, extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}, action?:ActionKind){
+    if(!state||typeof state!=='object'||!state.needs||typeof state.needs!=='object') throw new TypeError('state-must-have-needs');
     const f=featureVector(state,extras);
     if(action) f[f.length-1]=actionCost(action);
     return f;
