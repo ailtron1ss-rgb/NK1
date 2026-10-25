@@ -1,3 +1,13 @@
+## NK1 WorkPass336 — fix regression boundaries and verifier input validation (2026-10-25)
+
+- [FIX] Corrected `OutcomeVerificationService`'s control-character range so it parses as a valid regular expression and still rejects C0/C1 control characters in correlation IDs.
+- [REGRESSION] Corrected the WorkPass291 exact-byte-boundary test to account for the two JSON quote bytes around a string payload; the production byte-budget guard remains unchanged.
+- [CI] Added `OutcomeVerificationService.ts` to the WorkPass293 workflow path filter because the integration test loads it through the runtime dependency graph.
+- [VALIDATION] Changes are committed; exact-head CI runs are pending. No pass is claimed until Actions confirms the tests.
+- [SCOPE] All changes remain on the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass335 — remove non-erasable skill-store constructor syntax (2026-10-25)
 
 - [COMPATIBILITY] Replaced TypeScript constructor parameter properties in `VersionedSkillCandidateStore` with explicit readonly fields and assignments. This preserves runtime behavior while allowing Node 24's `--experimental-strip-types` runner to load the module without code-generation syntax.
