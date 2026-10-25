@@ -51,6 +51,20 @@ for (const type of ['THERMAL-CRITICAL', 'Resource-Critical', 'MEMORY-PRESSURE'])
   );
 }
 
+for (const type of ['resource-critical', 'thermal-critical', 'memory-pressure']) {
+  const contradictoryInactive = resolveCognitiveRoutingPolicy({
+    wakeMask: 0,
+    interrupt: { active: false, priority01: 0.42, type, domains: [] },
+  }, 3);
+  assert.equal(
+    contradictoryInactive.maxCounterfactualBranches,
+    0,
+    `critical label "${type}" must fail closed even if the active flag is contradictory`,
+  );
+  assert.equal(contradictoryInactive.allowMatchedCounterfactual, false);
+  assert.equal(contradictoryInactive.reason, 'critical-interrupt');
+}
+
 const highPriority = resolveCognitiveRoutingPolicy({
   wakeMask: 8,
   interrupt: { active: true, priority01: 0.95, type: 'prediction-error', domains: ['agency'] },
