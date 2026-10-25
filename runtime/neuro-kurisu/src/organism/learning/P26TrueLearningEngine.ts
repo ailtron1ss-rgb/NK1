@@ -3,6 +3,16 @@ import { ParametricPolicyLearner, defaultParametricPolicy, type ParametricPolicy
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const nonEmptyText=(value:unknown):value is string=>typeof value==='string'&&value.trim().length>0;
+const isHoldoutEvidenceShape=(value:unknown):value is P26VerifiedHoldoutEvidence=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return false;
+  const row=value as Record<string,unknown>;
+  return nonEmptyText(row.evidenceId)&&row.evidenceId.length<=256&&nonEmptyText(row.taskId)&&row.taskId.length<=256&&
+    nonEmptyText(row.protocolId)&&row.protocolId.length<=256&&nonEmptyText(row.verifierId)&&row.verifierId.length<=256&&
+    nonEmptyText(row.sampleSetHash)&&row.sampleSetHash.length<=512&&typeof row.baseline01==='number'&&Number.isFinite(row.baseline01)&&row.baseline01>=0&&row.baseline01<=1&&
+    typeof row.learned01==='number'&&Number.isFinite(row.learned01)&&row.learned01>=0&&row.learned01<=1&&typeof row.verified==='boolean'&&typeof row.independent==='boolean';
+};
+const isAcceptedHoldoutEvidence=(value:unknown):value is P26VerifiedHoldoutEvidence=>isHoldoutEvidenceShape(value)&&value.verified===true&&value.independent===true;
 
 export interface P26LearningMetrics {
   outcomeSamples:number;
@@ -15,6 +25,13 @@ export interface P26LearningMetrics {
   holdoutLearned01:number;
   holdoutDelta01:number;
   lastUpdatedAt:number;
+  trainingExposure01:number;
+  independentHoldoutSamples:number;
+}
+
+export interface P26VerifiedHoldoutEvidence {
+  evidenceId:string; taskId:string; protocolId:string; verifierId:string; sampleSetHash:string;
+  baseline01:number; learned01:number; verified:boolean; independent:boolean;
 }
 
 export interface P26TrueLearningState {
@@ -22,12 +39,14 @@ export interface P26TrueLearningState {
   policy:ParametricPolicyState;
   metrics:P26LearningMetrics;
   processedTraceIds:string[];
+  verifiedHoldoutEvidence:P26VerifiedHoldoutEvidence[];
 }
 
 export const defaultP26TrueLearning=():P26TrueLearningState=>({
   version:1,policy:defaultParametricPolicy(),
-  metrics:{outcomeSamples:0,onlineUpdates:0,replayUpdates:0,learningDelta01:0,recentLoss01:0,generalizationEvidence01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0,lastUpdatedAt:0},
+  metrics:{outcomeSamples:0,onlineUpdates:0,replayUpdates:0,learningDelta01:0,recentLoss01:0,generalizationEvidence01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0,lastUpdatedAt:0,trainingExposure01:0,independentHoldoutSamples:0},
   processedTraceIds:[],
+  verifiedHoldoutEvidence:[],
 });
 
 export interface BodyExtras { external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number; }
@@ -37,8 +56,12 @@ export class P26TrueLearningEngine{
   private state=defaultP26TrueLearning();
   restore(raw?:Partial<P26TrueLearningState>|null){
     const d=defaultP26TrueLearning();
-    this.state={...d,...(raw??{}),metrics:{...d.metrics,...(raw?.metrics??{})},processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.slice(-4096):[]};
+    const rows=Array.isArray(raw?.verifiedHoldoutEvidence)?raw!.verifiedHoldoutEvidence.filter(isAcceptedHoldoutEvidence).slice(-4096):[];
+    const uniqueEvidence=[...new Map(rows.map(item=>[item.evidenceId,item])).values()];
+    this.state={...d,...(raw??{}),metrics:{...d.metrics,...(raw?.metrics??{})},processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.filter((id):id is string=>typeof id==='string'&&id.trim().length>0).slice(-4096):[],verifiedHoldoutEvidence:uniqueEvidence};
     this.learner.restore(this.state.policy);
+    this.refreshEvidenceMetrics();
+    this.refreshTrainingExposure();
   }
   snapshot():P26TrueLearningState{ this.sync(); return structuredClone(this.state); }
   sync(){ this.state.policy=this.learner.snapshot(); }
@@ -62,10 +85,10 @@ export class P26TrueLearningEngine{
     this.state.metrics.onlineUpdates++;
     this.state.metrics.learningDelta01=clamp(this.state.metrics.learningDelta01*.97 + (r.predictionAfter-r.predictionBefore)*.03 + Math.abs(r.tdError01)*.02*shared);
     this.state.metrics.recentLoss01=clamp(r.loss01);
-    this.state.metrics.generalizationEvidence01=clamp(Math.min(1,this.state.policy.updates/160));
     this.state.metrics.lastUpdatedAt=Date.now();
     this.state.processedTraceIds=[trace.id,...this.state.processedTraceIds].slice(0,4096);
     this.sync();
+    this.refreshTrainingExposure();
     return {updated:true,loss01:r.loss01};
   }
   replay(experiences:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,extras?:BodyExtras){
@@ -77,8 +100,9 @@ export class P26TrueLearningEngine{
       updates++; loss+=r.loss01;
     }
     this.state.metrics.replayUpdates+=updates;
-    if(updates){this.state.metrics.recentLoss01=clamp(loss/updates);this.state.metrics.generalizationEvidence01=clamp(Math.min(1,this.state.policy.updates/160));this.state.metrics.lastUpdatedAt=Date.now();}
+    if(updates){this.state.metrics.recentLoss01=clamp(loss/updates);this.state.metrics.lastUpdatedAt=Date.now();}
     this.sync();
+    this.refreshTrainingExposure();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
@@ -93,14 +117,31 @@ export class P26TrueLearningEngine{
       loss+=this.learner.trainFeatures({features:r.policyFeatures01!,action:r.action,target01:target,learningRate01:.022+clamp(r.surprise01)*.028+priority*.018,sampleWeight01:weight}).loss01;
     }
     const learned=score(holdout); this.state.metrics.replayUpdates+=train.length; this.state.metrics.recentLoss01=clamp(train.length?loss/train.length:0);
-    this.state.metrics.generalizationEvidence01=clamp(this.state.metrics.generalizationEvidence01*.85+Math.min(1,holdout.length/4)*.15);
     this.state.metrics.holdoutBaseline01=baseline; this.state.metrics.holdoutLearned01=learned; this.state.metrics.holdoutDelta01=learned-baseline; this.state.metrics.lastUpdatedAt=Date.now(); this.sync();
     return {updates:train.length,meanLoss01:train.length?loss/train.length:0,holdoutBaseline01:baseline,holdoutLearned01:learned,holdoutDelta01:learned-baseline};
   }
 
   recordHoldout(baseline01:number,learned01:number){
     this.state.metrics.holdoutBaseline01=clamp(baseline01);this.state.metrics.holdoutLearned01=clamp(learned01);this.state.metrics.holdoutDelta01=learned01-baseline01;this.sync();
+    // This legacy diagnostic alone does not contribute generalization maturity.
     return this.state.metrics.holdoutDelta01;
+  }
+  recordVerifiedHoldout(evidence:P26VerifiedHoldoutEvidence):{accepted:boolean;reason?:string}{
+    if(!isHoldoutEvidenceShape(evidence))return {accepted:false,reason:'invalid-holdout-evidence'};
+    if(evidence.verified!==true)return {accepted:false,reason:'holdout-evidence-not-verified'};
+    if(evidence.independent!==true)return {accepted:false,reason:'holdout-evidence-not-independent'};
+    if(this.state.verifiedHoldoutEvidence.some(item=>item.evidenceId===evidence.evidenceId))return {accepted:false,reason:'duplicate-holdout-evidence'};
+    this.state.verifiedHoldoutEvidence=[...this.state.verifiedHoldoutEvidence,structuredClone(evidence)].slice(-4096);
+    this.state.metrics.holdoutBaseline01=clamp(evidence.baseline01);this.state.metrics.holdoutLearned01=clamp(evidence.learned01);this.state.metrics.holdoutDelta01=evidence.learned01-evidence.baseline01;
+    this.refreshEvidenceMetrics();this.sync();return {accepted:true};
+  }
+  private refreshEvidenceMetrics():void{
+    this.state.metrics.independentHoldoutSamples=this.state.verifiedHoldoutEvidence.length;
+    this.state.metrics.generalizationEvidence01=clamp(this.state.verifiedHoldoutEvidence.length*.05);
+  }
+  private refreshTrainingExposure():void{
+    const updates=Math.max(0,this.state.metrics.onlineUpdates)+Math.max(0,this.state.metrics.replayUpdates);
+    this.state.metrics.trainingExposure01=clamp(updates/160);
   }
   freeze(){this.learner.setFrozen(true);this.sync();}
   unfreeze(){this.learner.setFrozen(false);this.sync();}
