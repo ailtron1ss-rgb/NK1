@@ -1,3 +1,10 @@
+## NK1 WorkPass548 — correct learner-ingress and seed-evidence fixtures (2026-10-25)
+
+- Updated the true-learning integrity test to expect explicit rejection of non-finite learning rates and sample weights and to assert rejected inputs leave weights, biases and update counters untouched.
+- Fixed the seed-order bootstrap fixture's verifier ID to match its task manifest and added an accepted-outcome count assertion. The prior mismatch caused all reversed-order samples to be rejected, so its null interval was expected from an empty valid sample rather than an order-dependence defect.
+- Both changes preserve fail-closed behavior and strengthen tests against silent state mutation or invalid evidence.
+- Latest-head CI must rerun to validate these updates.
+
 ## NK1 WorkPass547 — close runtime avatar expression-cache gap (2026-10-25)
 
 - Brought the runtime-served Live2D viewer's expression application in line with the guarded app viewer: it now caches the last successfully applied expression and avoids restarting an unchanged expression animation every embodiment update.
