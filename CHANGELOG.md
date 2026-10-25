@@ -1,3 +1,10 @@
+## NK1 Causal Projection — quarantine conflicting restored outcome identities (2026-10-25)
+
+- `OutcomeCognitionFabric.restore()` now checks restored projection-index identity against its record fingerprint, rejects the last-write-wins behavior for duplicate `executionId` values, and quarantines conflicting IDs in `CausalAccountabilityGraph` so the tombstone persists across restart.
+- Restored `verifiedExternal` is recomputed from the canonical external-postcondition contract rather than trusted as a stored boolean. Quarantined IDs are removed from projection records/index and their evidence-revision rows.
+- Project replay, external-observation attachment, authoritative-receipt revision, and `hasProjectionForExecution()` now respect quarantine. Added a regression that combines two individually plausible snapshots with conflicting tool/postcondition identities and verifies no later evidence can attach.
+- **Validation boundary:** GitHub Actions is running for regression commit `d422b86a549cd37f2f2b1236799672068f6a79bf`; result will be recorded after the hosted run completes.
+
 ## NK1 WorkPass564 — bounded affect reactivation from retrieved memories (2026-10-25)
 
 - `OrganismCore.observe()` now aggregates only retrieved memory records with positive recorded emotional weight, salience, and confidence, then supplies that evidence to current emotion appraisal.
