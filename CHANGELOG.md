@@ -1,3 +1,12 @@
+## WorkPass322 — critical interrupt activation from interoception (2026-10-25)
+
+- **Code fix:** `CognitiveFrame` now treats `resource-critical`, `thermal-critical`, and `memory-pressure` as active interrupts even when their weighted scalar score is below the generic 0.72 threshold. Single-sensor fixtures showed why the two signals must not be conflated: energy=0.17 gives about 0.714, thermal=0.83 about 0.664, and RAM pressure=0.87 about 0.679.
+- **Defense in depth:** `CognitiveRoutingPolicy` now suppresses optional counterfactual work whenever a recognized critical label is present, even if the active bit is contradictory; `CognitiveDependencyGraph` also restores recognized critical labels as active.
+- **Regression coverage:** added a raw-telemetry-to-policy test for all three cases, expanded policy tests for contradictory inactive critical labels, and hardened the restored snapshot fixture.
+- **CI reachability:** added the current fix branch to the push branch filters in the cognitive integration workflow and repository wiring audit. The composite cognitive gate now includes the raw-frame regression and the previously omitted dependency restore test.
+- **Validation honesty:** no focused test/typecheck result is yet confirmed. The latest checked workflow-run/status endpoints returned no records; recheck exact head after the trigger changes. Do not infer pass/fail from missing run metadata.
+- **Release status:** implementation checkpoint, not production clearance. UI/Live2D/TTS, Android/Termux audio, independent held-out memory/learning, soak and license review remain open.
+
 ## WorkPass321 — Cognitive interrupt severity normalization (2026-10-25)
 
 - **Code fix:** critical interrupt labels are normalized with trim/lowercase before policy routing; case variants of `thermal-critical`, `resource-critical`, and `memory-pressure` now disable optional counterfactual branches even below the numeric 0.90 priority threshold.
