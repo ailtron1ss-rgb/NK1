@@ -1,3 +1,9 @@
+## NK1 learning validation — exercise repeated rollback with a valid request shape (2026-10-25)
+
+- Updated the repeated-rollback assertion to use the current approval contract. The second attempt now passes identity/timestamp/CAS shape validation and fails because the candidate is already rolled back, which is the invariant the regression intends to verify.
+
+---
+
 ## NK1 learning validation — verify authenticated rollback lifecycle (2026-10-25)
 
 - Updated the legacy versioned-skill lifecycle fixture to use the rollback API's explicit approval identity, timestamp and compare-and-swap version.
