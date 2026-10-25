@@ -99,8 +99,10 @@ assert.ok(projectionAfterRestore.causal.quarantinedExecutionIds?.includes('exec-
   'projection-index conflicts must be persisted as causal quarantine tombstones');
 assert.ok(!projectionAfterRestore.projectionIndex.some(row => row.executionId === 'exec-projection-conflict'),
   'no duplicate projection may survive conflict quarantine');
-assert.ok(!projectionAfterRestore.records.some(row => row.executionId === 'exec-projection-conflict'),
-  'quarantined execution records must not remain available for fallback matching');
+assert.ok(projectionAfterRestore.records.some(row => row.executionId === 'exec-projection-conflict' && row.receiptQuarantined === true),
+  'conflicting outcome must remain visible as quarantined read-only audit history');
+assert.ok(projectionRestored.causalAutobiography().some(row => row.executionId === 'exec-projection-conflict' && row.verification === 'ambiguous-execution-quarantined'),
+  'autobiography must not report quarantined history as trusted verification');
 assert.equal(projectionRestored.resolveExternalObservation({
   tick: 12, executionId: 'exec-projection-conflict', tool: 'door.open', observationId: 'obs:late-projection',
   verified: true, confidence01: 0.96, expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
@@ -131,8 +133,9 @@ historicalProjectionRestored.restore({
   },
 });
 const historicalAfterRestore = historicalProjectionRestored.snapshot();
-assert.ok(historicalAfterRestore.records.some(row => row.executionId === 'exec-causal-only-quarantine'),
-  'causal-only quarantine must preserve the original projection as read-only audit history');
+assert.ok(historicalAfterRestore.records.some(row => row.executionId === 'exec-causal-only-quarantine' && row.receiptQuarantined === true),
+  'causal-only quarantine must preserve the original projection as explicitly marked read-only audit history');
+assert.ok(historicalProjectionRestored.causalAutobiography().some(row => row.executionId === 'exec-causal-only-quarantine' && row.verification === 'ambiguous-execution-quarantined'));
 assert.ok(!historicalAfterRestore.projectionIndex.some(row => row.executionId === 'exec-causal-only-quarantine'),
   'causal-only quarantine must remove the execution from the active projection index');
 assert.equal(historicalProjectionRestored.hasProjectionForExecution('exec-causal-only-quarantine'), false);
