@@ -1,3 +1,12 @@
+## NK1 WorkPass342 — repair CI entrypoints and ground replay diversity fixtures (2026-10-25)
+
+- [CI] Added missing runtime npm script aliases for the three P26 validation scripts and WorkPass291/292/294 regression files. The workflow files were already invoking these names, but the commands did not exist in the package manifest.
+- [REGRESSION] Replay-diversity outcomes now include post-state action attribution and matching success values, so the fixture creates actual grounded records under the current causal-stream contract.
+- [REGRESSION] Updated the WorkPass287 restore test to expect fail-closed handling of a malformed persisted missing-stage list: all required stages remain missing rather than accepting a partially trusted list.
+- [VALIDATION] Changes are committed together; the newest-head WorkPass71, P26, WorkPass110, WorkPass287, WorkPass291/292/294 workflows must establish the actual result. Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass341 — finish strict runtime typing and align imported-outcome counters (2026-10-25)
 
 - [FIXED] Replaced an invalid `continue` outside a loop in Core with a null-guarded learning ingestion. No unified-learning signal is emitted when an external causal event is rejected.

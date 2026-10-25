@@ -1,5 +1,14 @@
 # NeuroCore — repository working rules
 
+## Latest durable checkpoint — WorkPass342 (2026-10-25)
+
+- Added the npm scripts already referenced by P26 Learning Validation and WorkPass291/292/294 workflows, so they invoke the actual checked-in test files instead of failing with “Missing script”.
+- Replay-diversity test fixtures now explicitly report `lastAction: 'explore'` and matching `lastActionSuccess`, matching the causal stream's trusted post-state grounding rule.
+- WorkPass287 now expects fail-closed reconstruction of all required phases when a persisted missing-stage list is malformed.
+- WorkPass341 strict typing fixes remain in place. The latest exact-head workflows still need to verify these changes; no green claim yet. Release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass341 (2026-10-25)
 
 - Runtime type declarations are pinned and installed through the runtime lockfile; the WorkPass294 workflow installs those dependencies before typecheck.
