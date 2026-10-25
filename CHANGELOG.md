@@ -1,3 +1,10 @@
+# NK1 gateway request-body forwarding regression (2026-10-25)
+
+- [REGRESSION] Added an end-to-end HTTP test proving the gateway preserves POST method, content type, query string routing, and exact JSON body when forwarding to Runtime.
+- [VALIDATION STATUS] The focused Node 24 workflow must confirm this test on the exact commit; the preceding commit's full focused workflow passed.
+
+---
+
 # NK1 gateway downstream disconnect cleanup (2026-10-25)
 
 - [REGRESSION] Added a streaming-upstream test that disconnects the downstream client after the first response chunk and requires the upstream response to close promptly. This guards against wasted upstream work after the caller has gone away.

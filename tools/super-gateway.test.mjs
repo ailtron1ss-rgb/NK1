@@ -67,6 +67,37 @@ test('gateway routes UI, organism, and research requests to their own upstreams'
   }
 });
 
+test('gateway preserves POST method, content headers, and request body', async (t) => {
+  const { baseUrl } = await withGateway(t, {
+    runtimeHandler: (req, res) => {
+      const chunks = [];
+      req.on('data', (chunk) => chunks.push(chunk));
+      req.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8');
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({
+          method: req.method,
+          contentType: req.headers['content-type'],
+          body,
+        }));
+      });
+    },
+  });
+  const payload = JSON.stringify({ goal: 'preserve request semantics', nested: { count: 2 } });
+  const response = await fetch(new URL('/api/organism/command?source=test', baseUrl), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-nk1-test': 'forwarded' },
+    body: payload,
+    signal: AbortSignal.timeout(3_000),
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    method: 'POST',
+    contentType: 'application/json',
+    body: payload,
+  });
+});
+
 test('gateway turns an inactive upstream into a bounded 504 response', async (t) => {
   const { baseUrl } = await withGateway(t, {
     timeoutMs: 1_000,
