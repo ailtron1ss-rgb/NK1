@@ -102,6 +102,44 @@ assert.equal(fallback.semantic.enabled, false);
 assert.match(fallback.semantic.fallbackReason, /local-model-offline/);
 assert.ok(Array.isArray(fallback.items), 'provider failures should return deterministic hybrid fallback results');
 
+const wideRows = [
+  ...before.items.map(row => structuredClone(row)),
+  ...Array.from({ length: 10 }, (_, index) => {
+    const row = structuredClone(before.items[0]);
+    const createdAt = now - (index + 10) * 1_000;
+    return {
+      ...row,
+      id: \`wide-fallback-\${index}\`,
+      content: \`Fallback fixture record \${index} stores generic retained context for response recovery.\`,
+      contentHash: undefined,
+      createdAt,
+      lastAccessAt: createdAt,
+      observedAt: createdAt,
+      validFromAt: createdAt,
+      validUntilAt: null,
+      supersedesId: null,
+      supersededById: null,
+      revisionGroupId: \`wide-fallback-\${index}\`,
+      revisionSequence: 1,
+      dormant: false,
+      epistemicStatus: 'fact',
+      semanticVector: [],
+    };
+  }),
+];
+const wideFallback = new MemoryOS2({ embeddingProvider: new FailingProvider() });
+wideFallback.restore({ ...before, items: wideRows });
+const wideFallbackResult = await wideFallback.previewRetrieveWithEmbeddings(
+  'credential recovery account access',
+  32,
+  0,
+  0,
+  { temporalMode: 'current', asOfAt: now },
+  { maxLexicalPool: 8 },
+);
+assert.equal(wideFallbackResult.semantic.enabled, false);
+assert.equal(wideFallbackResult.items.length, wideRows.length, 'an eight-row semantic candidate pool must not truncate a larger fallback response');
+
 const diagnosticNow = Date.now();
 const ignoredRows = [
   { id: 'ignored-dormant', dormant: true },
