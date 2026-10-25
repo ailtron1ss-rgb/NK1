@@ -1,3 +1,12 @@
+## NK1 WorkPass543 — harden emotion-to-action continuity and branch readiness (2026-10-25)
+
+- [AFFECT → AGENCY] Stale emotion/mood/attention contributions now decay in `EmotionAppraisalEngine.actionBias`; explicit evaluation time supports deterministic replay, while live homeostatic regulation remains active.
+- [P26 INPUT INTEGRITY] Training and feature-level updates reject non-finite/out-of-range targets, learning rates, weights, states and feature vectors before changing parameters. `trainBatch` preflights all samples; restored counters, diagnostics and freeze state are sanitized.
+- [CAUSAL LEARNING] Repeated authenticated signed-outcome ingestion is rejected as a duplicate attempt. Test fixtures now supply a real observed action transition, and external unverified imports remain quarantined rather than counting as trusted runtime outcomes.
+- [MOTIVATION] Endogenous goal valuation uses normalized goal/base similarity and leaves headroom for confidence-weighted intrinsic drive, preventing score saturation from hiding the drive contribution.
+- [CI / REGRESSIONS] Missing npm-script aliases were replaced by direct test entry points; Node 24 full TypeScript transforms are used where parameter properties require them. Payload-budget, replay-adaptation, verifier-ticket, floating-point boundary and stale-action-bias regressions were corrected without disabling assertions.
+- **Validation boundary:** the focused replay, payload, cognitive-goal, verified-outcome, causal-lane and postcondition checks passed on recent branch heads. Final exact-head CI is still running; keep PR #114 in draft until the full current check set passes.
+
 ## NK1 WorkPass542 — decay stale affect-driven action bias (2026-10-25)
 
 - [AFFECT → AGENCY] `EmotionAppraisalEngine.actionBias` now time-bounds emotion-label, mood, attention-capture and emotion-context learning contributions. A prior episode can remain in memory without exerting the same immediate action pressure indefinitely.
