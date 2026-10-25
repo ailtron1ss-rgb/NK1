@@ -6,7 +6,7 @@ import {
 import { dirname } from 'node:path';
 import type {
   ActiveSkillVersion, SkillPromotionApproval, SkillRollbackApproval, SkillShadowObservation, SkillStorePersistence,
-  VersionedSkillCandidate, VersionedSkillStoreSnapshot,
+  SkillRevisionProvenance, VersionedSkillCandidate, VersionedSkillStoreSnapshot,
 } from './VersionedSkillCandidateStore.ts';
 
 const emptySnapshot = (): VersionedSkillStoreSnapshot => ({ schemaVersion: 1, revision: 0, active: [], candidates: [] });
@@ -86,16 +86,16 @@ function isRollbackApproval(value: unknown): value is SkillRollbackApproval {
     payload.expectedActiveVersion === value.expectedActiveVersion;
 }
 
-function isRevisionProvenance(value: unknown): boolean {
+function isRevisionProvenance(value: unknown): value is SkillRevisionProvenance {
   if (!isRecord(value) || value.schemaVersion !== 1 ||
-      !isFingerprint(value.evaluationFingerprint) ||
       !(value.sourceCandidateId === null || isFingerprint(value.sourceCandidateId)) ||
       !isFingerprint(value.planFingerprint) || !isFingerprint(value.datasetFingerprint) ||
-      (value.sourceEvidenceFingerprint !== undefined && !isFingerprint(value.sourceEvidenceFingerprint)) ||
       !Array.isArray(value.dimensions) || value.dimensions.length === 0 ||
       value.dimensions.some(d => !['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'].includes(String(d))) ||
       new Set(value.dimensions).size !== value.dimensions.length ||
       !isTime(value.createdAt)) return false;
+  if (value.evaluationFingerprint !== undefined && !isFingerprint(value.evaluationFingerprint)) return false;
+  if (value.sourceEvidenceFingerprint !== undefined && !isFingerprint(value.sourceEvidenceFingerprint)) return false;
   return true;
 }
 
@@ -105,17 +105,18 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !isFingerprint(value.proposalId) || !isFingerprint(value.proposalOutcomeFingerprint) ||
       !(value.baseVersion === null || isVersion(value.baseVersion)) ||
       !(value.previousActive === null || isActiveSkill(value.previousActive)) ||
+      (value.revisionProvenance !== undefined && !isRevisionProvenance(value.revisionProvenance)) ||
       !['staged', 'shadow', 'active', 'superseded', 'rolled-back'].includes(String(value.status)) ||
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
-  if (value.revisionProvenance !== undefined && !isRevisionProvenance(value.revisionProvenance)) return false;
-  const revisionFingerprint = value.revisionProvenance === undefined ? null : payloadFingerprint(value.revisionProvenance);
-  if (value.revisionProvenance !== undefined && revisionFingerprint === null) return false;
+  // Must match VersionedSkillCandidateStore.stageCandidate exactly: the fifth
+  // component is the provenance fingerprint, or null for an ordinary candidate.
   const identityPrefix = [value.skillId, value.version, value.proposalId, value.payloadFingerprint];
+  const revisionFingerprint = value.revisionProvenance === undefined ? null : payloadFingerprint(value.revisionProvenance);
   const expectedId = createHash('sha256').update(JSON.stringify([...identityPrefix, revisionFingerprint])).digest('hex');
-  // Pre-revision-provenance schema-1 candidates used the four-field identity. Accept
-  // those legacy rows only when provenance is absent; new rows use the five-field identity.
+  // Schema-1 files created before revision provenance used a four-field candidate ID.
+  // Preserve those IDs only for candidates without provenance; new IDs include the fifth null/digest component.
   const legacyExpectedId = value.revisionProvenance === undefined
     ? createHash('sha256').update(JSON.stringify(identityPrefix)).digest('hex')
     : null;
