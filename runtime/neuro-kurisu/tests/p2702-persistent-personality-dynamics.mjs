@@ -42,17 +42,21 @@ const valueProbeInput = {
   tick: 1, novelty01: .7, uncertainty01: .6, goalPressure01: .5, identityGap01: .2,
   actionUtilities: actions,
 };
-const valuePriorDecision = valueProbe.beforeDecision(valueProbeInput);
+valueProbe.beforeDecision(valueProbeInput);
 const valueOnlyState = valueProbe.snapshot();
-valueOnlyState.valueWeights[valueOnlyState.valueNames.indexOf('curiosity')] = 1;
-valueOnlyState.valueWeights[valueOnlyState.valueNames.indexOf('autonomy')] = 1;
 const valueOnlyRestored = new P2702PersistentPersonalityDynamics();
 valueOnlyRestored.restore(valueOnlyState);
-const valueShiftDecision = valueOnlyRestored.beforeDecision({ ...valueProbeInput, tick: 2 });
+const valuePriorDecision = valueOnlyRestored.beforeDecision({ ...valueProbeInput, tick: 2 });
+const shiftedValueState = valueOnlyRestored.snapshot();
+shiftedValueState.valueWeights[shiftedValueState.valueNames.indexOf('curiosity')] = 1;
+shiftedValueState.valueWeights[shiftedValueState.valueNames.indexOf('autonomy')] = 1;
+const valueShiftedProbe = new P2702PersistentPersonalityDynamics();
+valueShiftedProbe.restore(shiftedValueState);
+const valueShiftDecision = valueShiftedProbe.beforeDecision({ ...valueProbeInput, tick: 2 });
 assert.ok(valueShiftDecision.actionBias.explore > valuePriorDecision.actionBias.explore + .001,
   'raising curiosity/autonomy values must increase the explore bias');
 assert.equal(valueShiftDecision.actionBias.verify, valuePriorDecision.actionBias.verify,
-  'unrelated truth/science/responsibility values must leave verify bias unchanged');
+  'changing curiosity/autonomy values alone must leave verify bias unchanged when all other personality state is held constant');
 
 // Trait learning should target the action-relevant expression rather than array position.
 const curiosityExpressionIndex=after.adaptiveNames.indexOf('curiosityExpression');
