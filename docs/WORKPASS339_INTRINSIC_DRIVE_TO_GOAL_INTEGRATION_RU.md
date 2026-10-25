@@ -61,3 +61,8 @@ The active B273 skill store now creates only single-action primitives from the a
 ## WorkPass347 — preserve learning liveness under plan divergence
 
 The broad WorkPass346 run showed that gating atomic skill learning on plan-first-action equality can prevent skill reuse in the live Core when the canonical executor chooses a different action. WorkPass347 now lets an accepted actual outcome train its own one-step primitive without granting credit to unexecuted plan steps. Fresh focused and broad checks are required.
+
+
+## WorkPass348 — reward/success separation and actual skill-use provenance
+
+Core now passes B273 both the transformed reward scalar (for goal progress) and its separately calibrated success scalar (for primitive quality). B273 no longer counts proposed-plan matches as executions; per-skill/global use counts update only when outcome feedback matches an already-active primitive to the actual action. Historical plan-based counters reset via evidence-version migration, and old histories restore without invented success/use provenance. Exact-head validation is pending.

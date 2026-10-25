@@ -50,7 +50,8 @@ const mismatchedOutcome=mismatchedNet.learnFromOutcome({
   tick:0,
   action:wrongActualAction,
   plan:mismatchProposal.plan,
-  reward01:.98,
+  reward01:.42,
+  success01:.91,
   predictionError01:.1,
   independentGain01:.8,
   personalityAlignment01:.8,
@@ -61,6 +62,9 @@ assert.equal(mismatchedOutcome.skillCreated,true,'an accepted result for the act
 const mismatchSnapshot=mismatchedNet.snapshot();
 assert.equal(mismatchSnapshot.skills.length,1,'mismatched plan/action must train only one observed primitive, not the proposed plan');
 assert.deepEqual(mismatchSnapshot.skills[0].actions,[wrongActualAction],'the primitive must contain only the action that actually ran');
+assert.equal(mismatchSnapshot.skills[0].success01,.91,'primitive success quality must use the separate success signal');
+assert.equal(mismatchSnapshot.skills[0].actualUses,0,'creating a skill after an outcome does not mean it was already reused');
+assert.equal(mismatchedNet.diagnostics().skillUses,0,'a proposed plan/newly created skill must not count as actual execution');
 assert.notDeepEqual(mismatchSnapshot.skills[0].actions,mismatchProposal.plan,'the unexecuted plan must not be promoted as the learned skill');
 assert.equal(mismatchSnapshot.outcomeHistory.at(-1).action,wrongActualAction);
 assert.equal(mismatchSnapshot.outcomeHistory.at(-1).plannedAction,mismatchProposal.plan[0]);
@@ -78,6 +82,32 @@ assert.equal(primitiveOutcome.accepted,true);
 assert.equal(primitiveOutcome.skillCreated,true,'aligned successful action should create an atomic skill primitive');
 assert.deepEqual(primitiveNet.snapshot().skills.map(skill=>skill.actions),[[primitiveProposal.action]],
   'the system must not promote imagined future steps as executed skill actions');
+
+
+const reuseNet=new B273AutonomousGoalLifecycle();
+const firstProposal=reuseNet.step({...lastStepInput,tick:0});
+const firstOutcome=reuseNet.learnFromOutcome({
+  tick:0,action:firstProposal.action,plan:firstProposal.plan,reward01:.43,success01:.94,
+  predictionError01:.14,independentGain01:.65,personalityAlignment01:.8,externalEvidence01:0,
+});
+assert.equal(firstOutcome.skillCreated,true);
+const primitiveId=reuseNet.snapshot().skills.find(skill=>skill.actions[0]===firstProposal.action)?.id;
+assert.ok(primitiveId,'the actual action should produce a primitive from its success evidence');
+assert.equal(reuseNet.snapshot().skills.find(skill=>skill.id===primitiveId).actualUses,0);
+assert.equal(reuseNet.diagnostics().skillUses,0,'skill creation is not a reuse');
+const secondProposal=reuseNet.step({...lastStepInput,tick:1});
+assert.equal(reuseNet.diagnostics().skillUses,0,'proposal alignment alone must not increment execution-use counters');
+const secondOutcome=reuseNet.learnFromOutcome({
+  tick:1,action:firstProposal.action,plan:secondProposal.plan,reward01:.41,success01:.88,
+  predictionError01:.20,independentGain01:.50,personalityAlignment01:.8,externalEvidence01:0,
+});
+assert.equal(secondOutcome.accepted,true);
+assert.equal(reuseNet.diagnostics().skillUses,1,'an active primitive matching the actual outcome action must count as reused');
+assert.equal(reuseNet.diagnostics().skillReuseOutcomes,1,'bounded history must preserve actual-use provenance');
+assert.equal(reuseNet.snapshot().outcomeHistory.at(-1).reusedSkillId,primitiveId,
+  'outcome evidence must identify the primitive that was active for the executed action');
+assert.equal(reuseNet.snapshot().outcomeHistory.at(-1).success01,.88);
+assert.equal(reuseNet.snapshot().skills.find(skill=>skill.id===primitiveId).actualUses,1);
 
 const legacySequenceState=mismatchedNet.snapshot();
 legacySequenceState.skills=[{

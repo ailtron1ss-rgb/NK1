@@ -1,3 +1,12 @@
+# WorkPass348 — separate reward from success and count only actual skill reuse
+
+- [CAUSE] Core passed `gatedReward01` as B273's only outcome-quality signal even though it separately calculates `gatedSuccess01`. The reward scalar is transformed on a different scale and left useful primitives below the reuse threshold in live Core testing.
+- [FIX] B273 accepts optional `success01` independently of reward. Goal-progress gain still uses reward; primitive quality/activation uses calibrated success. Both live Core outcome call sites now pass both values.
+- [OBSERVABILITY] Skill `actualUses` and global `skillUses` increase only when outcome feedback confirms an action matching a previously active primitive. Proposal selection and skill creation no longer count as executions. Outcome history stores distinct success evidence and the reused skill ID.
+- [MIGRATION] A dedicated evidence version resets legacy plan-based `skillUses` rather than misrepresenting it as actual execution. Older histories restore with unknown success/use provenance and older skills with zero known actual uses.
+- [REGRESSION] Added tests for reward/success separation, true action reuse, proposal-vs-execution counter semantics and legacy counter migration. Live Core long-cycle and independent policy evaluations remain enabled.
+- [STATUS] Exact-head focused and broad workflows must pass before WorkPass348 is validated.
+
 # WorkPass347 — learn executed primitives even when the plan diverges
 
 - [CI FINDING] WorkPass346 broad workflow exposed a liveness regression in live Core: the strict plan/action-alignment gate blocked B273 skill reuse when the canonical executor chose an action different from the B273 proposal. Runtime typecheck and focused checks passed, but the live Core long-cycle assertion failed at `B273 learned skills were not reused in Core`.

@@ -1,3 +1,22 @@
+# WorkPass348 — correct skill quality signal and actual-use accounting
+
+Date: 2026-10-25
+
+## Root cause
+WorkPass347 removed the plan-equality gate, but the live Core reuse regression still failed. Core supplied `gatedReward01` to B273 even though `gatedSuccess01` was computed separately; the former's transformation frequently left useful primitives below the activation threshold. The existing `skillUses` counter also incremented during B273 plan generation, not necessarily after the action was executed.
+
+## Changes
+- Accept optional `success01` independently from `reward01`. Goal progress remains reward-based; primitive quality and its EMA use calibrated success. Core passes both signals.
+- Remove actual-use increments from `step`. Count use only when feedback confirms that the actual action matches an already-active one-step primitive.
+- Store per-skill `actualUses`; creation initializes it to zero.
+- Add `skillUseEvidenceVersion` so historical plan-based counters are reset instead of reinterpreted as real executions.
+- Persist optional success and the matched `reusedSkillId` on outcomes; old rows restore with unknown/null provenance. Add deterministic tests and migration coverage.
+
+## Verification
+WorkPass347 focused workflow passed at exact SHA `6551bf8deec503221eaff26cfc4c516822aa5f6d`; broad WorkPass331 still failed on the live Core skill-reuse assertion. WorkPass348 requires new exact-head focused and broad runs; the Core liveness assertion stays in place.
+
+---
+
 # WorkPass347 — reconcile plan divergence with observed-action learning
 
 Date: 2026-10-25
