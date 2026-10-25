@@ -1,3 +1,10 @@
+## NK1 P26 workflow contract — restore missing package test scripts (2026-10-25)
+
+- Registered the three existing P26 integrity/recovery/curriculum-matrix tests as explicit runtime package scripts referenced by the validation workflow.
+- The workflow no longer fails before tests execute due to script-name drift; every script invokes its real test file under the repository's pinned Node.js type-stripping runtime.
+
+---
+
 ## NK1 integrated-runtime stabilization — action causality, context bounds and reproducible typecheck (2026-10-25)
 
 - Connected B272 real-world outcome learning to the actual selected action: only matching endogenous actions receive credit; mismatches create a bounded audit event instead of crashing the core or teaching the wrong action.
