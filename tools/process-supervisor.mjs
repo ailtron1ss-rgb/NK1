@@ -1,6 +1,15 @@
 import { spawn } from 'node:child_process';
 
 const DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024;
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
+function assertTimerDelay(name, value, { allowZero = true } = {}) {
+  const minimumValid = allowZero ? value >= 0 : value > 0;
+  if (!Number.isFinite(value) || !minimumValid || value > MAX_TIMER_DELAY_MS) {
+    const qualifier = allowZero ? 'finite and non-negative' : 'finite and positive';
+    throw new RangeError(`${name} must be ${qualifier} and no greater than ${MAX_TIMER_DELAY_MS}ms`);
+  }
+}
 
 function withTail(current, chunk, maxBytes) {
   const incoming = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
@@ -80,6 +89,8 @@ export function spawnManaged(command, args = [], options = {}) {
  */
 export function terminateChild(child, { graceMs = 1_000, forceGraceMs = 500 } = {}) {
   if (!child) return Promise.resolve({ stopped: true, alreadyExited: true, forced: false });
+  assertTimerDelay('graceMs', graceMs);
+  assertTimerDelay('forceGraceMs', forceGraceMs);
   if (hasExited(child) && !(child.__nkProcessGroup && processGroupExists(child.pid))) {
     return Promise.resolve({ stopped: true, alreadyExited: true, forced: false, code: child.exitCode, signal: child.signalCode });
   }
@@ -168,6 +179,12 @@ export function runCommand(command, args = [], options = {}) {
     streamOutput = false,
   } = options;
   const maxBytes = Number.isFinite(maxOutputBytes) ? Math.max(0, Math.floor(maxOutputBytes)) : DEFAULT_MAX_OUTPUT_BYTES;
+  // Node clamps oversized timer delays to 1ms; rejecting invalid values avoids
+  // silently turning a requested long deadline into an almost immediate kill.
+  assertTimerDelay('timeoutMs', timeoutMs);
+  assertTimerDelay('terminationGraceMs', terminationGraceMs);
+  assertTimerDelay('forceGraceMs', forceGraceMs);
+  assertTimerDelay('timeout cleanup deadline', terminationGraceMs + forceGraceMs + 1_000);
   const startedAt = Date.now();
 
   return new Promise((resolvePromise) => {
@@ -276,8 +293,11 @@ export async function waitForHttp(url, {
   requestTimeoutMs = 1_000,
   fetchImpl = fetch,
 } = {}) {
+  assertTimerDelay('timeoutMs', timeoutMs);
+  assertTimerDelay('intervalMs', intervalMs);
+  assertTimerDelay('requestTimeoutMs', requestTimeoutMs, { allowZero: false });
   const startedAt = Date.now();
-  const deadline = startedAt + Math.max(0, timeoutMs);
+  const deadline = startedAt + timeoutMs;
   let lastError = 'deadline elapsed before a successful response';
 
   while (Date.now() < deadline) {
