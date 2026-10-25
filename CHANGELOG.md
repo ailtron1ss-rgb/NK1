@@ -1,3 +1,10 @@
+## NK1 rollback persistence regression — distinguish early rollback binding from signed activation tampering (2026-10-25)
+
+- Updated the versioned skill-store test to expect fail-closed rejection at the earliest violated invariant when persisted base-version metadata redirects rollback to an unapproved predecessor.
+- Added a separate tampered `activatedAt` case that still verifies signed approval binding, preserving coverage of both trust boundaries.
+
+---
+
 ## NK1 P26 CI — run paired-seed bootstrap regressions on push (2026-10-25)
 
 - Added `PairedSeedConfidence.ts` and `workpass404-paired-seed-confidence.mjs` to the P26 push paths. The options were already tracked for pull requests but changes to their implementation did not independently trigger the feature-branch workflow.
