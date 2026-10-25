@@ -115,7 +115,8 @@ export class P66InteroceptiveHomeostasis {
     this.state.modeCounts[mode]=Math.min(1_000_000_000,this.state.modeCounts[mode]+1);
   }
   this.state.lastMode=mode;
-  if(this.state.history.length>0)this.state.history[0]={...this.state.history[0],mode};
+  const latestHistory=this.state.history[0];
+  if(latestHistory)this.state.history[0]={...latestHistory,mode};
   return {mode,error01:error,stress01:stress,capacity01:c,pressure01:pressure};
  }
  summary(){return {cycles:this.state.cycles,modeCounts:this.state.modeCounts,meanError01:this.state.meanError01,meanStress01:this.state.meanStress01,meanCapacity01:this.state.meanCapacity01,lastError01:this.state.lastError01,lastStress01:this.state.lastStress01,lastPressure01:this.state.lastPressure01,recoveryDebt01:this.state.recoveryDebt01,stableCycles:this.state.stableCycles,lastMode:this.state.lastMode,setpoints:this.state.setpoints};}
