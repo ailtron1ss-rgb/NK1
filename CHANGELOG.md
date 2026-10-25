@@ -1,3 +1,13 @@
+## Durable skill candidate identity consistency — 2026-10-25
+
+- Fixed a real mismatch between `VersionedSkillCandidateStore` and `AtomicFileSkillStorePersistence`: candidates without revision provenance now keep the established four-field candidate ID, matching the durable adapter's restore validator.
+- Only evidence-directed revision candidates that contain revision provenance bind its canonical fingerprint as a fifth identity field.
+- This preserves legacy IDs and allows fresh file-backed candidate staging to pass the same integrity check used after restart, without relaxing candidate or approval validation.
+
+Validation: the versioned-skill lifecycle workflow is rerunning after this fix; confirm the exact-head result before treating the durable-store path as closed.
+
+---
+
 ## Skill rollback lifecycle regression fixture alignment — 2026-10-25
 
 - Updated the versioned-skill candidate-store regression to use the current rollback approval object and an explicitly test-only rollback verifier rather than the obsolete positional API.
