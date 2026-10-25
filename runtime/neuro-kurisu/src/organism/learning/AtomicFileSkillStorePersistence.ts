@@ -64,6 +64,22 @@ function isShadowObservation(value: unknown): value is SkillShadowObservation {
     typeof value.passed === 'boolean' && isTime(value.observedAt);
 }
 
+const REVISION_DIMENSIONS = new Set([
+  'safety', 'task-success', 'trajectory', 'capability-coverage', 'executability', 'holdout-generalization',
+]);
+
+function isRevisionProvenance(value: unknown): boolean {
+  return isRecord(value) && value.schemaVersion === 1 &&
+    (value.evaluationFingerprint === undefined || isFingerprint(value.evaluationFingerprint)) &&
+    (value.sourceCandidateId === null || isFingerprint(value.sourceCandidateId)) &&
+    isFingerprint(value.planFingerprint) && isFingerprint(value.datasetFingerprint) &&
+    (value.sourceEvidenceFingerprint === undefined || isFingerprint(value.sourceEvidenceFingerprint)) &&
+    Array.isArray(value.dimensions) && value.dimensions.length > 0 &&
+    value.dimensions.every(dimension => typeof dimension === 'string' && REVISION_DIMENSIONS.has(dimension)) &&
+    new Set(value.dimensions).size === value.dimensions.length &&
+    isTime(value.createdAt);
+}
+
 function isRollbackApproval(value: unknown): value is SkillRollbackApproval {
   if (!isRecord(value) || !isText(value.approvedBy) || !isTime(value.approvedAt) ||
       !isVersion(value.expectedActiveVersion)) return false;
@@ -96,8 +112,15 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
+  // Keep persisted identity derivation byte-for-byte aligned with stageCandidate:
+  // the provenance digest (or explicit null) is the fifth identity component.
+  if (value.revisionProvenance !== undefined && !isRevisionProvenance(value.revisionProvenance)) return false;
+  const provenanceFingerprint = value.revisionProvenance === undefined
+    ? null
+    : payloadFingerprint(value.revisionProvenance);
+  if (value.revisionProvenance !== undefined && provenanceFingerprint === null) return false;
   const expectedId = createHash('sha256').update(JSON.stringify([
-    value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+    value.skillId, value.version, value.proposalId, value.payloadFingerprint, provenanceFingerprint,
   ])).digest('hex');
   if (value.candidateId !== expectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;

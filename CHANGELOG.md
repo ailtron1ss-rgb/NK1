@@ -1,3 +1,11 @@
+## NK1 learning validation — align durable candidate identity with revision lineage (2026-10-25)
+
+- Fixed a production mismatch between `stageCandidate` and the atomic-file trust-boundary validator: staged candidate identity includes a fifth component (revision-provenance fingerprint or explicit `null`), while durable restoration previously recomputed only the first four components. That rejected even ordinary first-time file-backed candidates at compare-and-swap.
+- Atomic persistence now validates optional revision provenance against the same canonical schema and recomputes the candidate ID using the same five-component material as the producer.
+- Extended the regression to cover atomic restart with both a candidate without lineage and one with valid lineage; non-canonical provenance remains rejected.
+
+---
+
 ## NK1 learning validation — isolate signed activation metadata tampering (2026-10-25)
 
 - Adjusted the persistence-tamper regression to mutate only `active.activatedAt`, leaving the initial candidate's `baseVersion` and rollback-target chain structurally valid. Restore now reaches the intended signed CAS/activation metadata guard instead of correctly rejecting a fabricated missing prior version first.
