@@ -5,6 +5,7 @@ on:
     branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ReplaySelectionPolicy.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/MultiSourceLearningMechanisms.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
@@ -27,6 +28,7 @@ on:
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
       - 'runtime/neuro-kurisu/src/organism/learning/ReplaySelectionPolicy.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/MultiSourceLearningMechanisms.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
