@@ -164,8 +164,11 @@ export class EmbodimentRuntime {
     if(!dispatcher){this.voice.speaking=false;this.voice.lastAt=Date.now();this.voice.lastError='action-gateway-speech-dispatcher-unavailable';return false;}
     const speechEventId=String(context?.speechEventId??'').trim().slice(0,140)||`speech-${createHash('sha256').update(JSON.stringify({text:clean,action:context?.action??null,mode:context?.mode??null,lastUserActivityAt:this.body.lastUserActivityAt,lastExternalEventAt:this.body.lastExternalEventAt})).digest('hex').slice(0,48)}`;
     const options:TermuxTtsOptions={ language:plan.language, pitch:plan.prosody.pitch, rate:plan.prosody.rate, volume:plan.prosody.volume, stream:plan.stream };
+    const speechStartedAt=Date.now();
     this.activeSpeechEventId=speechEventId;
-    this.voice.speaking=true; this.voice.lastMode=plan.mode; this.voice.lastTone=plan.tone; this.voice.lastProsody=plan.prosody; this.voice.lastAt=Date.now(); this.voice.lastError=null;
+    this.voice.speaking=true; this.voice.lastMode=plan.mode; this.voice.lastTone=plan.tone; this.voice.lastProsody=plan.prosody;
+    this.voice.lastSpeechEventId=speechEventId; this.voice.lastSpeechText=clean; this.voice.speechStartedAt=speechStartedAt;
+    this.voice.lastAt=speechStartedAt; this.voice.lastError=null;
     try {
       const result=await dispatcher(clean,options,speechEventId);
       this.voice.lastAt=Date.now();
