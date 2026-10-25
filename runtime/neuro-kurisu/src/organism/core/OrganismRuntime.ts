@@ -609,11 +609,11 @@ export class OrganismRuntime {
     // It is routing/diagnostic evidence only; canonical Core arbitration still owns action selection.
     const proposedCognitiveFrame = buildCognitiveFrame(cycle.state, cycleObservation);
     const cognitiveDependencyTick = this.cognitiveDependencyGraph.snapshot().lastTick;
-    // Keep routing-frame identity monotonic even if the organism snapshot is recovered
-    // from an older valid backup after a crash between the two durable writes.
+    // Bind the frame to this completed organism cycle. If recovery leaves the
+    // sidecar ahead of the main snapshot, advance the routing identity without replaying it.
     const cognitiveFrame = {
       ...proposedCognitiveFrame,
-      tick: Math.max(proposedCognitiveFrame.tick, cognitiveDependencyTick + 1),
+      tick: Math.max(cycle.state.tick, cognitiveDependencyTick + 1),
     };
     this.cognitiveDependencyGraph.resolve(cognitiveFrame);
     const dependencyState = this.cognitiveDependencyGraph.snapshot();
