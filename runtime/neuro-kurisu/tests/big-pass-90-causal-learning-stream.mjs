@@ -365,8 +365,12 @@ const aggregateRestore = new CausalExperienceStream(64);
 aggregateRestore.restore(poisonedAggregates);
 const safeAggregateSnapshot = aggregateRestore.snapshot();
 assert.equal(safeAggregateSnapshot.observations, 0, "invalid persisted observation count must be reset");
-assert.equal(safeAggregateSnapshot.outcomes, 0,
-  "untrusted external records must not be promoted into trusted runtime outcome totals");
+assert.equal(safeAggregateSnapshot.outcomes, safeAggregateSnapshot.records.filter(row =>
+  row.provenance === "runtime-outcome" && row.stateGrounded === true &&
+  Array.isArray(row.policyFeatures01) && row.policyFeatures01.length >= 16 &&
+  row.policyFeatures01.every(value => Number.isFinite(value) && value >= 0 && value <= 1),
+).length,
+  "invalid persisted outcome count must be recomputed only from grounded runtime outcomes");
 assert.equal(safeAggregateSnapshot.consolidated, safeAggregateSnapshot.records.filter(row => row.consolidated).length,
   "invalid persisted consolidation count must fall back to retained consolidated rows");
 assert.equal(safeAggregateSnapshot.lastConsolidatedAt, 0, "invalid consolidation timestamp must be reset");
