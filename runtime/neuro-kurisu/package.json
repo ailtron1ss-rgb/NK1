@@ -1780,7 +1780,8 @@
     "test:cognitive-dependency-runtime-wiring": "node --experimental-strip-types tests/cognitive-dependency-runtime-wiring.mjs",
     "test:cognitive-routing-policy": "node --experimental-strip-types tests/cognitive-routing-policy.mjs",
     "test:cognitive-routing-policy-runtime-wiring": "node tests/cognitive-routing-policy-runtime-wiring.mjs",
-    "test:cognitive-integration-suite": "npm run typecheck && npm run test:cognitive-cycle-boundary && npm run test:cognitive-cycle-boundary-runtime-wiring && npm run test:p320:cognitive-dependency-restore && npm run test:cognitive-dependency-runtime-wiring && npm run test:cognitive-routing-policy && npm run test:cognitive-routing-policy-runtime-wiring && npm run test:memory-budget-restore-integrity && npm run test:workpass310:p23-restore-integrity"
+    "test:cognitive-integration-suite": "npm run typecheck && npm run test:cognitive-cycle-boundary && npm run test:cognitive-cycle-boundary-runtime-wiring && npm run test:cognitive-frame-critical-interrupt && npm run test:p320:cognitive-dependency-restore && npm run test:cognitive-dependency-runtime-wiring && npm run test:cognitive-routing-policy && npm run test:cognitive-routing-policy-runtime-wiring && npm run test:memory-budget-restore-integrity && npm run test:workpass310:p23-restore-integrity",
+    "test:cognitive-frame-critical-interrupt": "node --experimental-strip-types tests/cognitive-frame-critical-interrupt.mjs"
   },
   "devDependencies": {
     "@types/node": "22.20.4",
