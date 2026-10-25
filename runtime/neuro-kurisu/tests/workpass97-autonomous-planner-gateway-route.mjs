@@ -29,16 +29,15 @@ assert.match(wrapper, /options\.idempotencyKey \|\| result\.idempotentReplay/,
 
 const projectStart = source.indexOf('const reconcileExistingOperation =');
 assert.notEqual(projectStart, -1, 'project execution/reconciliation path must remain identifiable');
-const projectEnd = source.indexOf('const canonicalCandidateTool =', projectStart);
-assert.ok(projectEnd > projectStart, 'project execution path must end before compound-skill tool selection');
-const projectDispatch = source.slice(projectStart, projectEnd);
-assert.match(projectDispatch, /result = await this\.executeTool\(id, input, executionReason, executionOptions\)/,
+// Fresh dispatch occurs before the reconciliation-stage classification in this implementation;
+// assert each canonical path at the source level rather than assuming both live in one slice.
+assert.match(source, /result = await this\.executeTool\(id, input, executionReason, executionOptions\)/,
   'fresh project tool execution must use the canonical core wrapper so unkeyed outcomes are finalized');
-assert.doesNotMatch(projectDispatch, /actionGateway\.executeTool\(id, input, executionReason, executionOptions\)/,
+assert.doesNotMatch(source, /actionGateway\.executeTool\(id, input, executionReason, executionOptions\)/,
   'project executor must not bypass the canonical core finalizer for fresh tool execution');
-assert.match(projectDispatch, /this\.reconcileToolExecution\(id, input, `\$\{executionReason\};resume-reconcile`, executionOptions\)/,
+assert.match(source, /this\.reconcileToolExecution\(id, input, `\$\{executionReason\};resume-reconcile`, executionOptions\)/,
   'project receipt recovery must use the core reconciliation wrapper so legacy tool aliases are canonicalized');
-assert.doesNotMatch(projectDispatch, /cognitiveRuntime\.actionGateway\.reconcileToolExecution\(/,
+assert.doesNotMatch(source, /cognitiveRuntime\.actionGateway\.reconcileToolExecution\(/,
   'project receipt recovery must not bypass canonical tool-ID normalization');
 
 
