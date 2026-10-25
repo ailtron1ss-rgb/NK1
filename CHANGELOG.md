@@ -1,3 +1,9 @@
+## NK1 WorkPass547 — align restored rolling metrics with trust gate (2026-10-25)
+
+- The causal-learning regression reached the rolling-metric assertion and exposed a persisted-value expectation inconsistent with restore behavior: an untrusted external row cannot contribute learning-opportunity signal after restart.
+- Updated the expected restored rolling metrics to neutral values when the snapshot contains only untrusted external evidence. Trusted runtime rows remain the sole source for restored learning aggregates.
+- **Validation boundary:** rerun the full learning workflow on the revised PR head.
+
 ## NK1 WorkPass546 — align restored learning aggregate assertion (2026-10-25)
 
 - The next exact-head learning workflow reached a persistence assertion that still treated every retained record as a trusted outcome. Updated it to verify that restored, untrusted external rows remain excluded from the trusted outcome aggregate.
