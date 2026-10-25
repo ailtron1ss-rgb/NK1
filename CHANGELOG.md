@@ -1,3 +1,9 @@
+## NK1 Causal Accountability — validate projection fingerprints before restore bounds (2026-10-25)
+
+- Tightened the bounded projection restore fix: a candidate now counts toward the retention cap only after its fingerprint matches the canonical immutable outcome and its external-verification flag matches the record. Syntactically valid but forged rows cannot evict trusted older projections.
+- Strengthened the noisy-tail regression from malformed strings to 900 structurally valid rows with mismatched 64-character fingerprints, exercising the semantic-validation boundary.
+- **Validation boundary:** implementation `3f745f6b3f4ac4d42aec2a4062c0eacc21bdbfd1` and regression `a086cdc53263608ca50ef85f7781c47438cb1d0b` are committed; GitHub Actions is pending.
+
 ## NK1 Causal Accountability — preserve valid projections across noisy restore tails (2026-10-25)
 
 - Fixed `OutcomeCognitionFabric.restore()` so malformed trailing projection-index rows do not evict older valid execution projections before validation. Malformed rows still quarantine their own bounded execution identity; the active index cap counts structurally valid candidates.
