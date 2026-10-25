@@ -1,3 +1,13 @@
+## NK1 integrated-runtime stabilization — action causality, context bounds and reproducible typecheck (2026-10-25)
+
+- Connected B272 real-world outcome learning to the actual selected action: only matching endogenous actions receive credit; mismatches create a bounded audit event instead of crashing the core or teaching the wrong action.
+- Normalized causal context keys once at the autonomous-life integration boundary to satisfy both learning ledgers' 180-character contract while preserving the full key for other consumers.
+- Fixed CI setup to install the app lockfile's canonical TypeScript/Node type toolchain before runtime typecheck, use the pinned `.nvmrc` Node version and fail closed rather than accepting a global `tsc`.
+- Corrected strict-JavaScript annotations in the avatar storage test so application typecheck reports real source errors instead of implicit-any/delete-operator noise.
+- Expanded P26 path filters so core/action-attribution, autonomous-life context and server smoke changes cannot bypass regression validation.
+
+---
+
 ## NK1 integration follow-up — align restore and postcondition regression contracts (2026-10-25)
 
 - Updated the P23 restore test to match the existing canonical policy: durable newest-first experience and replay rows lead their bounded dedupe caches, while recent cache-only IDs remain after durable rows within the 2,048-entry cap. The implementation still prioritizes persisted outcomes so cache omission cannot reopen already-processed traces.

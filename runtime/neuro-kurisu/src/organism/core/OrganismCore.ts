@@ -9691,15 +9691,29 @@ export class OrganismCore {
             if (outcome.worldTransition) {
                 const b338GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                    independentEvaluatorGain01: b338IndependentGain,
-                    acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
-                });
+                // The endogenous goal generator proposes an action, while the canonical planner
+                // may select a different action. Only credit B272 when its proposed action was
+                // the action that actually produced this transition; never relabel another
+                // subsystem's action as B272's own outcome.
+                if (b338GoalState.action === trace.selected.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
+                        tick: state.tick,
+                        action: b338GoalState.action,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b338IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    });
+                } else {
+                    this.memorySubsystem.events.append(makeEvent('b272-outcome-attribution-skipped' as any, state.tick, {
+                        goalId: b338GoalState.id,
+                        proposedAction: b338GoalState.action,
+                        executedAction: trace.selected.action,
+                        reason: 'executed-action-differs-from-endogenous-goal-action',
+                        source: 'world-transition',
+                    } as any));
+                }
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
                     tick: state.tick,
@@ -9872,8 +9886,12 @@ export class OrganismCore {
             const decisionAudit = this.developmentalNeural.developmentalSynthesis.recordDecision({ tick: trace.stateAfter?.tick ?? trace.stateBefore.tick, chosen: trace.selected.action, predictedChosen01: trace.selected.predictedUtility ?? .5, predictedAlternatives: (trace.predictedOutcomes ?? []).map((x: any) => ({ action: x.action, utility01: x.utility })), realized01: clamp(success * .55 + rewardNow * .35 + (1 - surprise) * .10), at: state.at });
             const developmentExecutiveOutcome = this.developmentalNeural.developmentalExecutive.observeOutcome({ tick: state.tick, at: state.at, goalId: trace.selected.goalId ?? this.persisted.goals.find(g => g.status === 'active')?.id ?? null, action: trace.selected.action, outcome01: gatedSuccess01, verified: verifiedNow, contextKey: synthContext, delayed: Boolean(state.tick - trace.stateBefore.tick >= 6), transfer: Boolean(this.developmentalNeural.developmentalSynthesis.diagnostics().abstraction01 > .18), revisionPressure01: this.developmentalNeural.developmentalSynthesis.diagnostics().revisionPressure01 });
             const selected = trace.selected;
-            this.developmentalNeural.autonomousCognitiveLife.recordDecision({ action: selected.action, predicted01: clamp(selected.predictedUtility ?? .5), confidence01: clamp(this.developmentalNeural.autonomousLifeProjections.find(x => x.action === selected.action)?.confidence01 ?? .5), contextKey: synthContext, at: state.at });
-            this.developmentalNeural.verifiedAutonomousLifeDecisionId = this.developmentalNeural.verifiedAutonomousLife.recordDecision({ action: selected.action, predicted01: clamp(selected.predictedUtility ?? .5), confidence01: clamp(this.developmentalNeural.autonomousLifeProjections.find(x => x.action === selected.action)?.confidence01 ?? .5), contextKey: synthContext, at: state.at });
+            // CausalDevelopmentLoop contexts may be up to 240 chars; the autonomous-life
+            // prediction ledger deliberately accepts a canonical <=180-char key. Adapt
+            // once at this integration boundary and preserve the same key in both ledgers.
+            const lifeDecisionContextKey = synthContext.slice(0, 180).trim() || 'default';
+            this.developmentalNeural.autonomousCognitiveLife.recordDecision({ action: selected.action, predicted01: clamp(selected.predictedUtility ?? .5), confidence01: clamp(this.developmentalNeural.autonomousLifeProjections.find(x => x.action === selected.action)?.confidence01 ?? .5), contextKey: lifeDecisionContextKey, at: state.at });
+            this.developmentalNeural.verifiedAutonomousLifeDecisionId = this.developmentalNeural.verifiedAutonomousLife.recordDecision({ action: selected.action, predicted01: clamp(selected.predictedUtility ?? .5), confidence01: clamp(this.developmentalNeural.autonomousLifeProjections.find(x => x.action === selected.action)?.confidence01 ?? .5), contextKey: lifeDecisionContextKey, at: state.at });
             const metaGoal = selected.goalId ? this.persisted.goals.find(g => g.id === selected.goalId) ?? null : this.persisted.goals.find(g => g.status === 'active') ?? null;
             this.developmentalNeural.researchGradeDecisionId = this.developmentalNeural.researchGradeOrganism.registerDecision(selected.action, clamp(selected.predictedUtility ?? .5), synthContext, state.at);
             this.developmentalNeural.operationalLifeDecisionId = this.developmentalNeural.operationalLife.registerDecision({ action: selected.action, predicted01: clamp(selected.predictedUtility ?? .5), confidence01: clamp(this.developmentalNeural.autonomousLifeProjections.find(x => x.action === selected.action)?.confidence01 ?? .5), horizon01: clamp(this.developmentalNeural.personalWorldline.snapshot().worldlineStability01), at: state.at });
