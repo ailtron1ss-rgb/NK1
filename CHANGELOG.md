@@ -1,3 +1,14 @@
+## Skill rollback lifecycle regression fixture alignment — 2026-10-25
+
+- Updated the versioned-skill candidate-store regression to use the current rollback approval object and an explicitly test-only rollback verifier rather than the obsolete positional API.
+- Kept the default-deny production rollback verifier unchanged and added a regression proving that plausible caller-supplied identity/timestamp/version fields cannot authorize rollback without an authenticated authority.
+- Corrected the persisted promotion compare-and-swap tampering fixture to mutate the signed approval's expected active version, preserving the historical rollback link so the test reaches the intended integrity guard.
+- This is a regression-fixture repair; it does not relax the runtime promotion or rollback trust boundary.
+
+Validation: the exact-head WorkPass110 continual-learning workflow must rerun before this lifecycle fix is called validated.
+
+---
+
 ## Restored action receipt integrity hardening — 2026-10-25
 
 - Treat the persisted action ledger as untrusted input when restoring completed receipts.
