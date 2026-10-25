@@ -1,3 +1,12 @@
+## NK1 WorkPass356 — exercise signature tampering and finish grounded-count regressions (2026-10-25)
+
+- [CAUSAL EVIDENCE] Corrected the remaining external-only assertions so retries and conflicting duplicates preserve a trusted-outcome count of zero; imported rows remain separate from grounded runtime outcomes.
+- [HERMES EVIDENCE] Adjusted the tamper regression to modify the signed seed while leaving the report's binary outcome intact. This drives the case through signature verification rather than stopping earlier at the expected report/receipt outcome mismatch.
+- [VALIDATION] WorkPass292, WorkPass291, WorkPass99, WorkPass294, WorkPass287/288 and initiative regression passed on the prior head. WorkPass110 and WorkPass108 found these two remaining assertions; exact-head reruns are pending.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass355 — align causal outcome accounting and async trust boundary (2026-10-25)
 
 - [CAUSAL EVIDENCE] Updated external-only retry, restore, quarantine and malformed-input assertions to require zero trusted outcomes. Imported events remain queryable records but do not inflate the runtime-grounded learning outcome metric; the snapshot test recomputes that metric from grounded runtime rows.
