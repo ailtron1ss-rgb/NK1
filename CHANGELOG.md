@@ -1,3 +1,10 @@
+## NK1 WorkPass536 — isolate MemoryFabric restore from prior runtime state (2026-10-25)
+
+- Fixed `MemoryFabric.restore()` to reset counters, hot IDs, mutation receipts, Bloom tombstones, policy ledger and transient scheduler handles before applying a checkpoint; an omitted optional facet now restores to safe defaults instead of silently keeping the prior organism's idempotency journal.
+- Added a reused-runtime regression: write a memory with a command ID, restore a partial checkpoint without a MemoryFabric snapshot, then verify the same command ID can write into the new canonical state.
+- Added `MemoryFabric.ts` to the focused persistence workflow path filter so changes to the canonical lifecycle gateway run the same typecheck and memory regressions.
+- Exact-head validation is pending; no result is claimed until Actions completes.
+
 ## NK1 WorkPass535 — remove runtime typecheck blockers surfaced by persistence CI (2026-10-24)
 
 - Guarded nullable causal-experience return values before forwarding them to unified learning; a missing signal now skips ingestion rather than dereferencing null.
