@@ -122,9 +122,9 @@ function normalizeEmotionEpisode(value:unknown):EmotionEpisode|null{
   const valence01=safeMetric(row.valence01,-1),arousal01=safeMetric(row.arousal01,-1),dominance01=safeMetric(row.dominance01,-1);
   const memorySalienceMultiplier01=safeMetric(row.memorySalienceMultiplier01,-1),confidence01=safeMetric(row.confidence01,-1);
   if([valence01,arousal01,dominance01,memorySalienceMultiplier01,confidence01].some(n=>n<0))return null;
-  return {id:row.id,tick:Number(row.tick),at:row.at,label:row.label as EmotionLabel,actionTendency:row.actionTendency as EmotionActionTendency,
+  return {id:row.id as string,tick:Number(row.tick),at:row.at as number,label:row.label as EmotionLabel,actionTendency:row.actionTendency as EmotionActionTendency,
     valence01,arousal01,dominance01,appraisal:normalizedAppraisal,interoceptiveDelta:normalizedDelta,
-    memorySalienceMultiplier01,confidence01,cause:row.cause};
+    memorySalienceMultiplier01,confidence01,cause:row.cause as string};
 }
 function normalizeFeelingEpisode(value:unknown):FeelingEpisode|null{
   const row=safeRecord(value);
@@ -133,8 +133,8 @@ function normalizeFeelingEpisode(value:unknown):FeelingEpisode|null{
   const intensity01=safeMetric(row.intensity01,-1),interoceptiveMismatch01=safeMetric(row.interoceptiveMismatch01,-1);
   const selfAccessConfidence01=safeMetric(row.selfAccessConfidence01,-1),bodilyFocus01=safeMetric(row.bodilyFocus01,-1);
   if([intensity01,interoceptiveMismatch01,selfAccessConfidence01,bodilyFocus01].some(n=>n<0))return null;
-  return {id:row.id,tick:Number(row.tick),at:row.at,label:row.label as EmotionLabel,intensity01,interoceptiveMismatch01,
-    selfAccessConfidence01,bodilyFocus01,causeEmotionId:row.causeEmotionId};
+  return {id:row.id as string,tick:Number(row.tick),at:row.at as number,label:row.label as EmotionLabel,intensity01,interoceptiveMismatch01,
+    selfAccessConfidence01,bodilyFocus01,causeEmotionId:row.causeEmotionId as string};
 }
 function normalizeInteroceptiveState(value:unknown):InteroceptiveAffectState{
   const defaults=emptyInteroception(),row=safeRecord(value);
