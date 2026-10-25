@@ -28,6 +28,13 @@ assert.equal(critical.maxCounterfactualBranches, 0, 'critical resource interrupt
 assert.equal(critical.allowMatchedCounterfactual, false);
 assert.equal(critical.reason, 'critical-interrupt');
 
+const highPriority = resolveCognitiveRoutingPolicy({
+  wakeMask: 8,
+  interrupt: { active: true, priority01: 0.95, type: 'prediction-error', domains: ['agency'] },
+}, 3);
+assert.equal(highPriority.maxCounterfactualBranches, 0, 'a numerically critical interrupt must deny optional simulations even when its label is not a critical resource type');
+assert.equal(highPriority.reason, 'critical-interrupt');
+
 const governance = resolveCognitiveRoutingPolicy({
   wakeMask: 64,
   interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
