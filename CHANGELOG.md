@@ -1,3 +1,9 @@
+## NK1 WorkPass557 — fix cognitive-boundary and payload-budget CI contracts (2026-10-25)
+
+- Updated the cognitive-cycle prototype test to assert the intended fail-closed behavior for inherited stage IDs and verify rejected input does not mutate counters.
+- Replaced the nonexistent `test:workpass291:payload-budget` npm alias in its dedicated workflow with a direct invocation of the existing regression file under Node's TypeScript transform mode.
+- Neither change weakens validation: one asserts the input boundary, the other ensures the already-existing payload-budget test actually runs.
+
 ## NK1 WorkPass556 — isolate stale-signature rejection in Hermes evidence test (2026-10-25)
 
 - Changed the signed-receipt tamper fixture to mutate only `artifactId` while preserving task/run identity and the binary outcome. The previous fixture flipped `passed`, so the correct outcome-binding guard rejected it before signature verification ran.
