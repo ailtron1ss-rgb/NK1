@@ -1,3 +1,10 @@
+## NK1 WorkPass543 — persist the final homeostasis mode (2026-10-25)
+
+- Fixed a state-integrity defect in P66 hysteresis: the returned mode could be corrected after lastMode, history and counters had already recorded the provisional choice.
+- Resolve hysteresis first, then commit the final mode to the snapshot, history and exactly one mode counter. The downstream planner and restored runtime now observe the same homeostasis decision that observe() returned.
+- Added a focused regression where stable novelty retains exploration despite a provisional engage classification, and asserts the returned mode, persisted state, history and mode counters agree. Wired the P66 regression into affect/embodiment CI.
+- **Validation boundary:** code and regression committed; exact-head CI must pass before the branch is marked complete.
+
 ## NK1 WorkPass542 — decay stale affect-driven action bias (2026-10-25)
 
 - [AFFECT → AGENCY] `EmotionAppraisalEngine.actionBias` now time-bounds emotion-label, mood, attention-capture and emotion-context learning contributions. A prior episode can remain in memory without exerting the same immediate action pressure indefinitely.
