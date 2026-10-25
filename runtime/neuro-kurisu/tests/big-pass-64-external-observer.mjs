@@ -7,6 +7,7 @@ import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { ExternalObserverFabric } from '../src/organism/system/ExternalObserverFabric.ts';
 import { CausalAccountabilityGraph } from '../src/organism/system/CausalAccountabilityGraph.ts';
 import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
+import { sha256Stable } from '../src/organism/core/StableSerialization.ts';
 
 // Conflicting persisted execution receipts must not let later evidence attach to
 // whichever duplicate happened to appear last in the snapshot.
@@ -175,6 +176,17 @@ try {
   assert.equal(resolved.resolution?.resolved,true);
   const outcome=core.outcomeCognitionSnapshot();
   const verifiedOutcome=outcome.records.find(record=>record.executionId===executed.executionId);
+  const projectionIndexEntry=outcome.projectionIndex.find(entry=>entry.executionId===executed.executionId);
+  const diagnosticFingerprint=(record)=>sha256Stable({executionId:record.executionId??'',tool:record.tool,ok:Boolean(record.ok),outcomeClass:record.outcomeClass??null,verification:{verified:Boolean(record.verified),basis:record.basis,confidence01:Math.max(0,Math.min(1,Number.isFinite(Number(record.confidence01))?Number(record.confidence01):0)),externalObservation:Boolean(record.externalObservation),observationId:record.observationId??null,...(record.evidenceEventId?{evidenceEventId:record.evidenceEventId}:{}),expectedPostcondition:record.expectedPostcondition??null,observedPostcondition:record.observedPostcondition??null}});
+  console.log('P64_PRE_RESTORE_PROJECTION_DEBUG='+JSON.stringify({
+    executionId:executed.executionId,
+    record:verifiedOutcome,
+    recordFingerprint:verifiedOutcome?diagnosticFingerprint(verifiedOutcome):null,
+    indexRecord:projectionIndexEntry?.record??null,
+    indexFingerprint:projectionIndexEntry?.fingerprint??null,
+    recalculatedIndexFingerprint:projectionIndexEntry?.record?diagnosticFingerprint(projectionIndexEntry.record):null,
+    storedAndIndexEqual:verifiedOutcome&&projectionIndexEntry?JSON.stringify(verifiedOutcome)===JSON.stringify(projectionIndexEntry.record):null,
+  }));
   assert.ok(verifiedOutcome?.externalObservations?.some(observation=>observation.verified), 'the matching execution record must retain verified external evidence separately from its original receipt');
   assert.equal(verifiedOutcome.executionId,executed.executionId);
   assert.ok(outcome.causal.nodes.some(n=>n.kind==='observation' && n.evidenceRef===resolved.observation.id));
