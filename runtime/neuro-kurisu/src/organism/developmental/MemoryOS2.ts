@@ -488,7 +488,10 @@ export class MemoryOS2{
      corpus.push(item);corpusById.set(item.id,item);corpusIds.add(item.id);
      corpusState.set(item.id,{contentHash:memoContentHash(item.content),validFromAt:Number(item.validFromAt??item.createdAt),validUntilAt:item.validUntilAt??null,dormant:item.dormant,epistemicStatus:item.epistemicStatus});
    }
-   for(const id of this.semanticEmbeddingIndex.keys())if(!corpusIds.has(id))this.semanticEmbeddingIndex.delete(id);
+   for(const [id,cached] of this.semanticEmbeddingIndex){
+     const state=corpusState.get(id);
+     if(!state||cached.providerId!==provider.providerId||cached.contentHash!==state.contentHash||!cached.vector.length)this.semanticEmbeddingIndex.delete(id);
+   }
    const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(performanceOptions.maxLexicalPool??Math.max(24,Math.min(64,safeLimit*8)))));
    // One isolated lexical preview supplies both the fallback and semantic candidate pool.
    const lexicalPreview=this.previewRetrieve(query,lexicalPoolLimit,goalRelevance,identityRelevance,temporalOptions);
