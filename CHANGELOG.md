@@ -1,3 +1,10 @@
+# NK1 gateway downstream disconnect cleanup (2026-10-25)
+
+- [REGRESSION] Added a streaming-upstream test that disconnects the downstream client after the first response chunk and requires the upstream response to close promptly. This guards against wasted upstream work after the caller has gone away.
+- [VALIDATION STATUS] A new focused Node 24 workflow run must confirm this regression on the exact commit.
+
+---
+
 # NK1 cleanup of descendants after leader exit (2026-10-25)
 
 - [REGRESSION] Added a POSIX-only process-group test where the managed leader exits normally while its SIGTERM-resistant descendant stays alive. The supervisor must still find the detached group and escalate shutdown to SIGKILL.

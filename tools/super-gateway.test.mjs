@@ -113,3 +113,34 @@ test('gateway timeout configuration has a safe default and rejects invalid value
   assert.throws(() => readUpstreamTimeout('999'), /must be an integer from 1000 to 120000/);
   assert.throws(() => readUpstreamTimeout('120001'), /must be an integer from 1000 to 120000/);
 });
+
+test('gateway aborts upstream work when the downstream client disconnects', async (t) => {
+  let markStarted;
+  let markClosed;
+  const upstreamStarted = new Promise((resolve) => { markStarted = resolve; });
+  const upstreamClosed = new Promise((resolve) => { markClosed = resolve; });
+  const { baseUrl } = await withGateway(t, {
+    timeoutMs: 5_000,
+    runtimeHandler: (_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/plain' });
+      res.write('stream-started');
+      res.once('close', markClosed);
+      markStarted();
+    },
+  });
+
+  const client = http.get(new URL('/api/organism/client-disconnect', baseUrl));
+  client.on('response', (response) => {
+    response.once('data', () => response.destroy());
+  });
+  client.on('error', (error) => {
+    if (error.code !== 'ECONNRESET') t.diagnostic(String(error));
+  });
+  t.after(() => client.destroy());
+
+  await upstreamStarted;
+  await Promise.race([
+    upstreamClosed,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('gateway did not abort upstream after client disconnect')), 2_000)),
+  ]);
+});
