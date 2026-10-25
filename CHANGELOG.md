@@ -1,3 +1,11 @@
+## WorkPass323 — реальная RAM-телеметрия в resource allocator (2026-10-25)
+
+- **Code fix:** `OrganismRuntime` больше не подставляет `1 - cognitiveCapacity01` как `ramPressure01`. Resource economy получает измеренное `body.telemetry.ramPressure01`, отдельно от `cognitiveLoad01`.
+- **Observability:** событие `cognitive-resource-economy` теперь публикует оба входа — `cognitiveCapacity01` и `ramPressure01` — чтобы обнаружить рассинхронизацию датчика и решения.
+- **Regression:** `cognitive-dependency-runtime-wiring.mjs` разводит входы (capacity=0.85, RAM pressure=0.88), проверяет evidence payload и проверяет фактическую формулу scarcity.
+- **CI status:** remote tests/typecheck still require real completed runner steps on the updated PR head; missing status records must not be treated as a pass.
+- **Scope boundary:** эта правка улучшает управление ресурсным бюджетом, но сама по себе не подтверждает production-readiness или измеримый uplift обучения.
+
 ## WorkPass322 — critical interrupt activation from interoception (2026-10-25)
 
 - **Code fix:** `CognitiveFrame` now treats `resource-critical`, `thermal-critical`, and `memory-pressure` as active interrupts even when their weighted scalar score is below the generic 0.72 threshold. Single-sensor fixtures showed why the two signals must not be conflated: energy=0.17 gives about 0.714, thermal=0.83 about 0.664, and RAM pressure=0.87 about 0.679.
