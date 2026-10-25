@@ -16,6 +16,7 @@
 - Fixed a live feedback-boundary defect exposed by the runtime integration test: Core previously passed the canonically selected action into B272 even when B272 had generated a different candidate action. Core now credits B272's action learner only when its generated action actually won arbitration; otherwise it records a terminal unselected-candidate decision without attributing another action's reward.
 - B272 now persists a bounded, validated `unselectedActionHistory`; restore quarantines duplicate terminal-decision ticks across executed outcomes and unselected candidates. The Core snapshot is refreshed after feedback so B272's new terminal decision and any actual learning update survive restart.
 - Added regression checks that a non-selected candidate is finalized but receives no action-prototype, goal-outcome-memory, or executed-outcome-history reward credit. Focused CI now runs the B272 goal-attribution test before the live runtime/restart integration test.
+- A subsequent CI attempt exposed a second B272 reward-attribution path in the B338 world-transition branch. It now applies the same selected-action equality gate as the no-transition branch and persists the terminal B272 decision after feedback; CI rerun pending.
 
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
