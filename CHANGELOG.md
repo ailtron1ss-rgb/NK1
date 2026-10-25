@@ -1,3 +1,12 @@
+## Node 24 toolchain alignment — 2026-10-25
+
+- Aligned the root, app and runtime package engine declarations with the repository's `.nvmrc` Node 24 pin; synchronized app/runtime lockfile engine metadata.
+- Replaced the Node 22-only checks in `super-doctor` and `super-install` with one reusable version contract. Install now rejects stale/mismatched lockfile engine metadata before calling npm.
+- Added a preflight to `super-start` before it creates local state or launches services, and launches Node-owned child processes with the same `process.execPath` as the supervisor.
+- Added focused unit regressions for major/minor/patch pins, minimum engine versions, malformed versions and mismatched contracts; wired them into `audit:quick`.
+- Updated P26 learning validation to use Node 24, consistent with the repository pin.
+- Verification status for this change: source edits are committed; local project-wide install/typecheck/runtime tests and GitHub Actions are **not yet verified** in this working environment. No release ZIP was replaced by this source-branch change.
+
 ## Cognitive dependency frame integrity — 2026-10-25
 
 - The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
