@@ -130,9 +130,15 @@ export function createGatewayServer({
   };
 
   return http.createServer((req, res) => {
-    const pathname = String(req.url || '/');
-    if (pathname.startsWith('/api/organism')) return forward(req, res, runtimePort);
-    if (pathname.startsWith('/api/research')) return forward(req, res, researchPort);
+    // Match API namespaces by path-segment boundary, not arbitrary string
+    // prefix; for example, /api/organism-preview is not a Runtime endpoint.
+    const pathname = String(req.url || '/').split('?', 1)[0];
+    if (pathname === '/api/organism' || pathname.startsWith('/api/organism/')) {
+      return forward(req, res, runtimePort);
+    }
+    if (pathname === '/api/research' || pathname.startsWith('/api/research/')) {
+      return forward(req, res, researchPort);
+    }
     return forward(req, res, uiPort);
   });
 }
