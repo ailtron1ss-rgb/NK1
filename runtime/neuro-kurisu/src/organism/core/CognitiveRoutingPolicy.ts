@@ -7,6 +7,8 @@ export interface CognitiveRoutingPolicy {
   allowMatchedCounterfactual: boolean;
   reason: 'resource-budget' | 'active-interrupt' | 'critical-interrupt' | 'governance-pressure';
   interruptPriority01: number;
+  /** Non-resource interrupts may shorten the next cognitive cycle, never below 75% of its normal delay. */
+  cognitiveCycleDelayMultiplier01: number;
 }
 
 /**
@@ -38,6 +40,7 @@ export function resolveCognitiveRoutingPolicy(
       allowMatchedCounterfactual: false,
       reason: 'critical-interrupt',
       interruptPriority01: priority,
+      cognitiveCycleDelayMultiplier01: 1,
     };
   }
   if (active) {
@@ -46,6 +49,7 @@ export function resolveCognitiveRoutingPolicy(
       allowMatchedCounterfactual: false,
       reason: 'active-interrupt',
       interruptPriority01: priority,
+      cognitiveCycleDelayMultiplier01: Math.max(0.75, 1 - priority * 0.25),
     };
   }
   if (governanceActive) {
@@ -54,6 +58,7 @@ export function resolveCognitiveRoutingPolicy(
       allowMatchedCounterfactual: false,
       reason: 'governance-pressure',
       interruptPriority01: priority,
+      cognitiveCycleDelayMultiplier01: 1,
     };
   }
   return {
@@ -61,5 +66,6 @@ export function resolveCognitiveRoutingPolicy(
     allowMatchedCounterfactual: baseBranches > 0,
     reason: 'resource-budget',
     interruptPriority01: priority,
+    cognitiveCycleDelayMultiplier01: 1,
   };
 }
