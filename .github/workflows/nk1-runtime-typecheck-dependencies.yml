@@ -39,6 +39,14 @@ jobs:
           npm ci --prefix app
           npm ci --prefix runtime/neuro-kurisu
 
+      - name: App TypeScript check
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        run: npm run typecheck --prefix app
+
+      - name: Build frontend production bundle
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        run: npm run build --prefix app
+
       - name: Semantic runtime TypeScript check
         if: ${{ always() && steps.install.outcome == 'success' }}
         working-directory: runtime/neuro-kurisu
@@ -88,3 +96,20 @@ jobs:
           npm run test:workpass97:planner-route
           npm run test:workpass98:project-reconciliation-route
           npm run test:workpass318:operational-microcycle-finite-input
+
+      - name: Organism runtime smoke
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:smoke
+
+      - name: HTTP server and security smoke
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: |
+          npm run test:server-smoke
+          npm run test:server-security-smoke
+
+      - name: State persistence and restart smoke
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:restart
