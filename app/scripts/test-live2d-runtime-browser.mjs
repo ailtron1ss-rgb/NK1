@@ -85,8 +85,9 @@ const server = createServer(async (req, res) => {
       const expressionAnchor = "try{model.expression(expressionName);lastAppliedExpression=expressionName}catch{}";
       const motionAnchor = "try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k}catch{}";
       const embodimentAnchor = "const signal=sanitizeEmbodiment(d);\n      if(signal)applyEmbodiment(signal);";
+      const intentAnchor = "const intent=sanitizeIntent(d);\n      if(intent)applyIntent(intent);";
       const lipsyncAnchor = "lipTarget=clamp(d.value,0,1);";
-      for (const anchor of [expressionAnchor,motionAnchor,embodimentAnchor,lipsyncAnchor]) {
+      for (const anchor of [expressionAnchor,motionAnchor,embodimentAnchor,intentAnchor,lipsyncAnchor]) {
         if (!source.includes(anchor)) throw new Error("runtime viewer smoke instrumentation anchor missing: " + anchor);
       }
       source = source.replace(expressionAnchor,
@@ -95,6 +96,8 @@ const server = createServer(async (req, res) => {
         "try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k;window.__nk1RuntimeMotion={group:String(bodySignal.motionGroup),index:Number(bodySignal.motionIndex||0)}}catch{}");
       source = source.replace(embodimentAnchor,
         "const signal=sanitizeEmbodiment(d);\n      if(signal){applyEmbodiment(signal);window.__nk1RuntimeLastEmbodiment={...signal,mouthViseme:d.mouthViseme};if(d.mouthViseme==='open'&&signal.mouthOpen>0.3)window.__nk1RuntimeSawOpenViseme=true;}");
+      source = source.replace(intentAnchor,
+        "const intent=sanitizeIntent(d);\\n      if(intent){applyIntent(intent);window.__nk1RuntimeIntentApplied={stateVersion:intent.stateVersion,speechEventId:intent.speechEventId,audioClockId:intent.audioClockId,speechPhase:intent.speechPhase,audioTimeMs:intent.audioTimeMs,clockSource:intent.clockSource,mouthOpen:intent.mouthOpen,mouthForm:intent.mouthForm,mouthViseme:intent.mouthViseme,expression:intent.expression,motionGroup:intent.motionGroup,motionToken:intent.motionToken,speaking:intent.speaking};window.__nk1RuntimeLastEmbodiment={speaking:intent.speaking,mouthOpen:intent.mouthOpen,mouthForm:intent.mouthForm,mouthViseme:intent.mouthViseme,motionGroup:intent.motionGroup,expressionIntensity:intent.expressionIntensity};window.__nk1RuntimeLipTarget=lipTarget;if(intent.mouthViseme==='open'&&intent.mouthOpen>0.3)window.__nk1RuntimeSawOpenViseme=true;}");
       source = source.replace(lipsyncAnchor, "lipTarget=clamp(d.value,0,1);window.__nk1RuntimeLipTarget=lipTarget;");
       bytes = Buffer.from(source, "utf8");
     }
@@ -130,8 +133,52 @@ try {
     assert.ok(pixels.bright>250,profile+": runtime canvas appears empty "+JSON.stringify(pixels));
     await page.locator("#viewer").evaluate((f)=>f.contentWindow.postMessage({type:"kurisu_expression",expression:"thinking"},location.origin));
     await page.locator("#viewer").evaluate((f)=>f.contentWindow.postMessage({type:"kurisu_embodiment",gazeX:0.2,gazeY:-0.1,gazeDriven:true,headTilt:-0.045,expressionIntensity:0.7,speaking:true,gesture:true,motionGroup:"TapBody",motionIndex:0,voiceEmphasis:0.7},location.origin));
-    await page.locator("#viewer").evaluate((f)=>f.contentWindow.postMessage({type:"kurisu_lipsync",value:0.5},location.origin));
-    await frame.waitForFunction(()=>window.__nk1RuntimeExpression==="Stanby Scared"&&window.__nk1RuntimeMotion?.group==="TapBody"&&window.__nk1RuntimeLastEmbodiment?.speaking===true&&window.__nk1RuntimeLipTarget===0.5,null,{timeout:5000});
+    await page.locator("#viewer").evaluate((f)=>f.contentWindow.postMessage({
+      type:"kurisu_embodiment_intent",protocolVersion:1,stateVersion:1,sentAtEpochMs:1700000000000,
+      speechEventId:"runtime-smoke-intent",audioClockId:"runtime-tts:runtime-smoke-intent:12345",
+      speechPhase:"speaking",audioTimeMs:100,clockSource:"runtime-tts-start-anchored-monotonic",priority:70,cancellationToken:null,
+      expression:"happy",expressionIntensity:0.7,mouth:{open:0.61,form:-0.22,viseme:"open"},
+      gaze:{x:0.2,y:-0.1,driven:true},body:{headTilt:-0.045,gesture:true,motionGroup:"TapBody",motionIndex:0,motionToken:77},voiceEmphasis:0.4,
+    },location.origin));
+    await frame.waitForFunction(()=>window.__nk1RuntimeIntentApplied?.stateVersion===1
+      &&window.__nk1RuntimeIntentApplied?.clockSource==="runtime-tts-start-anchored-monotonic"
+      &&window.__nk1RuntimeIntentApplied?.speechPhase==="speaking"
+      &&window.__nk1RuntimeIntentApplied?.mouthViseme==="open"
+      &&window.__nk1RuntimeIntentApplied?.mouthOpen===0.61
+      &&window.__nk1RuntimeExpression==="Stanby Smile"
+      &&window.__nk1RuntimeMotion?.group==="TapBody",null,{timeout:5000});
+    await page.locator("#viewer").evaluate((f)=>f.contentWindow.postMessage({
+      type:"kurisu_embodiment_intent",protocolVersion:1,stateVersion:1,sentAtEpochMs:1700000000001,
+      speechEventId:"runtime-smoke-intent",audioClockId:"runtime-tts:runtime-smoke-intent:12345",
+      speechPhase:"speaking",audioTimeMs:120,clockSource:"runtime-tts-start-anchored-monotonic",priority:70,cancellationToken:null,
+      expression:"happy",expressionIntensity:0.7,mouth:{open:0.1,form:0,viseme:"closed"},
+      gaze:{x:0.2,y:-0.1,driven:true},body:{headTilt:-0.045,gesture:true,motionGroup:"TapBody",motionIndex:0,motionToken:77},voiceEmphasis:0.4,
+    },location.origin));
+    await page.waitForTimeout(80);
+    assert.equal(await frame.evaluate(()=>window.__nk1RuntimeIntentApplied?.mouthOpen),0.61,
+      profile+": duplicate intent stateVersion must be rejected");
+    await page.locator("#viewer").evaluate((f)=>f.contentWindow.postMessage({
+      type:"kurisu_embodiment_intent",protocolVersion:1,stateVersion:2,sentAtEpochMs:1700000000002,
+      speechEventId:"runtime-smoke-intent",audioClockId:"runtime-tts:runtime-smoke-intent:12345",
+      speechPhase:"speaking",audioTimeMs:90,clockSource:"runtime-tts-start-anchored-monotonic",priority:70,cancellationToken:null,
+      expression:"happy",expressionIntensity:0.7,mouth:{open:0.1,form:0,viseme:"closed"},
+      gaze:{x:0.2,y:-0.1,driven:true},body:{headTilt:-0.045,gesture:true,motionGroup:"TapBody",motionIndex:0,motionToken:77},voiceEmphasis:0.4,
+    },location.origin));
+    await page.waitForTimeout(80);
+    assert.equal(await frame.evaluate(()=>window.__nk1RuntimeIntentApplied?.stateVersion),1,
+      profile+": rewound runtime audio time must be rejected");
+    await page.locator("#viewer").evaluate((f)=>f.contentWindow.postMessage({
+      type:"kurisu_embodiment_intent",protocolVersion:1,stateVersion:2,sentAtEpochMs:1700000000003,
+      speechEventId:"runtime-smoke-intent",audioClockId:"runtime-tts:runtime-smoke-intent:12345",
+      speechPhase:"cancelled",audioTimeMs:150,clockSource:"runtime-tts-start-anchored-monotonic",priority:100,
+      cancellationToken:"cancel:runtime-smoke-intent",expression:"happy",expressionIntensity:0.7,
+      mouth:{open:0.9,form:0.6,viseme:"open"},gaze:{x:0.2,y:-0.1,driven:true},
+      body:{headTilt:-0.045,gesture:true,motionGroup:"TapBody",motionIndex:0,motionToken:78},voiceEmphasis:0.8,
+    },location.origin));
+    await frame.waitForFunction(()=>window.__nk1RuntimeIntentApplied?.stateVersion===2
+      &&window.__nk1RuntimeIntentApplied?.speechPhase==="cancelled"
+      &&window.__nk1RuntimeIntentApplied?.mouthOpen===0.015
+      &&window.__nk1RuntimeIntentApplied?.speaking===false,null,{timeout:5000});
     assert.deepEqual(errors,[],profile+": runtime viewer uncaught errors");
     assert.deepEqual(bad,[],profile+": runtime viewer failed local resources");
     console.log("NK1_LIVE2D_RUNTIME_PROFILE=PASS profile="+profile+" canvas="+canvas.width+"x"+canvas.height+" brightPixels="+pixels.bright);
