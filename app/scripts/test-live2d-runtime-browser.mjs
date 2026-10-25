@@ -68,6 +68,11 @@ const server = createServer(async (req, res) => {
     const pathname = decodeURIComponent(new URL(req.url || "/", "http://127.0.0.1").pathname);
     if (pathname === "/__test__") { res.writeHead(200,{"content-type":"text/html; charset=utf-8","cache-control":"no-store"}); res.end(harness); return; }
     if (pathname === "/api/organism/ui-snapshot") { res.writeHead(200,{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}); res.end(JSON.stringify(snapshot)); return; }
+    if (pathname === "/api/organism/avatar-speech") {
+      res.writeHead(200,{"content-type":"application/json; charset=utf-8","cache-control":"no-store"});
+      res.end(JSON.stringify({ok:true,speaking:true,speechEventId:"runtime-smoke-speech",text:"Привет, Курису!",startedAt:Date.now()-140,rate:1,updatedAt:Date.now()}));
+      return;
+    }
     if (pathname === "/favicon.ico") { res.writeHead(204); res.end(); return; }
     const filePath = path.resolve(publicRoot, "." + pathname);
     const relative = path.relative(publicRoot, filePath);
@@ -137,7 +142,8 @@ try {
   await page.goto(origin+"/avatar.html",{waitUntil:"domcontentloaded"});
   const frame=page.frames().find(f=>f.url().includes("/live2d/viewer.html"));
   assert.ok(frame,"avatar.html must mount the runtime viewer");
-  await frame.waitForFunction(()=>window.__nk1RuntimeExpression==="Stanby Smile"&&window.__nk1RuntimeLastEmbodiment?.motionGroup==="Special"&&window.__nk1RuntimeLipTarget>0,null,{timeout:15000});
+  await frame.waitForFunction(()=>window.__nk1RuntimeExpression==="Stanby Smile"&&window.__nk1RuntimeLastEmbodiment?.motionGroup==="Special"&&window.__nk1RuntimeLastEmbodiment?.mouthOpen>0&&window.__nk1RuntimeLipTarget>0,null,{timeout:15000});
+  assert.ok(["closed","teeth","wide","open","round","neutral","rest"].includes(window.__nk1RuntimeLastEmbodiment?.mouthViseme ?? "neutral"));
   assert.equal(await page.locator("#tick").textContent(),"tick 987");
   assert.equal(await page.locator("#state").textContent(),"awake · respond · joy");
   assert.equal((await frame.evaluate(()=>window.__nk1RuntimeLastEmbodiment?.speaking)),true);
