@@ -1,3 +1,12 @@
+## [NK1][learning] Restore conflict-gated interleaved replay in P26 (2026-10-25)
+
+- Added the missing `P26TrueLearningEngine.trainInterleaved` API used by the sequential-learning regression. It trains current samples and rehearses a bounded number of historical samples in one pass.
+- Historical rows are screened against a bounded set of same-action current examples; near-identical features with contradictory reward labels are blocked, while separated contexts remain eligible.
+- Exposes online/replay update counts, blocked/eligible rows and conflict comparison counts; enforces finite learning rates and bounded replay/search. Synthetic benchmark metrics remain diagnostics, not independent generalization evidence.
+- Exact-head CI is required before treating the new method as validated.
+
+---
+
 ## [NK1][learning] Inject the explicit rollback verifier in the isolated lifecycle fixture (2026-10-25)
 
 - The first CI retry exposed a second stale fixture assumption: the rollback API's fourth constructor dependency defaults to deny-all, even when the test fixture explicitly allows promotion and shadow verification.
