@@ -2,7 +2,7 @@
 
 - Restore now compares the full canonical row for duplicate provider-receipt revision IDs instead of trusting only the claimed `revisionFingerprint`. Conflicting rows quarantine all implicated execution IDs, mark the visible outcome history, remove active projection-index entries, and drop revisions for quarantined executions.
 - Added a regression where two rows reuse the same revision ID and fingerprint while disagreeing on outcome fields; restore must persist quarantine and must not leave either revision active.
-- **Validation boundary:** GitHub Actions [run #127](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40174750819) is running against test commit `26df690e6c4440fd59b5d1418c59566f09735ded`; no pass is claimed until it completes.
+- **Validation:** [GitHub Actions run #127](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40174750819) passed on test commit `26df690e6c4440fd59b5d1418c59566f09735ded`; `WORKPASS521_OBSERVER_LEDGER_BRIDGE=PASS`, `WORKPASS529_P23_REALITY_PROMOTION_GATE=PASS`, and `BIG_PASS_64_EXTERNAL_OBSERVER=PASS`.
 
 ## NK1 Persistence — validate outcome history before migration retention cap (2026-10-25)
 
