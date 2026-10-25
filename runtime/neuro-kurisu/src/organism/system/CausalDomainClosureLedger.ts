@@ -87,12 +87,30 @@ export class CausalDomainClosureLedger {
     const cap=Number.isFinite(capacityValue)?Math.max(8,Math.min(128,Math.floor(capacityValue))):base.capacity;
     const totalCycles=safeCount(raw?.totalCycles);
     const rawRecent=Array.isArray(raw?.recent)?raw!.recent.slice(0,cap):[];
-    const recent=rawRecent.map(x=>this.cleanRecord(x));
+    const isPersistedRecordValid=(value:any):boolean=>{
+      if(!value||typeof value!=='object'||Array.isArray(value))return false;
+      if(!Number.isSafeInteger(value.tick)||value.tick<0||typeof value.at!=='number'||!Number.isFinite(value.at))return false;
+      if(!['PASS','DEGRADED','FAIL'].includes(value.status)||typeof value.score01!=='number'||!Number.isFinite(value.score01)||value.score01<0||value.score01>1)return false;
+      if(typeof value.complete!=='boolean'||!Array.isArray(value.causalChain)||!value.causalChain.every((item:any)=>typeof item==='string'))return false;
+      if(typeof value.behaviorHash!=='string'||!value.behaviorHash.trim())return false;
+      if(value.durableHash!==undefined&&typeof value.durableHash!=='string')return false;
+      const evidence=value.evidence;
+      const requiredEvidence=['memoryChanged','worldChanged','agencyChanged','learningChanged','selfChanged','memoryWorldVerified','worldAgencyLearningVerified','causalLifeGraphChain','replaySignaturePresent','durableStateAligned'];
+      if(!evidence||typeof evidence!=='object'||Array.isArray(evidence)||!requiredEvidence.every(key=>typeof evidence[key]==='boolean'))return false;
+      if(evidence.cognitiveCycleComplete!==undefined&&typeof evidence.cognitiveCycleComplete!=='boolean')return false;
+      const counterKeys=['memoryCount','worldTick','identityRevision','agencyDecisions','learningUpdates','selfChangeCount','lifeGraphCompleteChains'];
+      const validCounters=(c:any)=>Boolean(c&&typeof c==='object'&&!Array.isArray(c)&&counterKeys.every(key=>typeof c[key]==='number'&&Number.isFinite(c[key])&&c[key]>=0));
+      if(!validCounters(value.before)||!validCounters(value.after))return false;
+      return true;
+    };
+    const validRawRecent=rawRecent.filter(isPersistedRecordValid);
+    const recent=validRawRecent.map(x=>this.cleanRecord(x));
+    const invalidRecordCount=rawRecent.length-recent.length;
     const latest=recent[0];
     const rawStatus:CausalClosureStatus=['PASS','DEGRADED','FAIL'].includes(raw?.lastStatus as any)?raw!.lastStatus!:'PASS';
     const rank:Record<CausalClosureStatus,number>={PASS:0,DEGRADED:1,FAIL:2};
     const failedLatest=Boolean(latest&&(latest.status==='FAIL'||latest.failureReason||latest.evidence.cognitiveCycleComplete===false));
-    const lastStatus:CausalClosureStatus=latest&&rank[latest.status]>rank[rawStatus]?latest.status:rawStatus;
+    const lastStatus:CausalClosureStatus=invalidRecordCount>0?'FAIL':latest&&rank[latest.status]>rank[rawStatus]?latest.status:rawStatus;
     const latestOverridesSummary=Boolean(latest&&rank[latest.status]>rank[rawStatus]);
     const rawLatest=rawRecent[0] as any;
     let completeCycles=Math.min(totalCycles,safeCount(raw?.completeCycles));
@@ -100,25 +118,26 @@ export class CausalDomainClosureLedger {
     let failures=Math.max(safeCount(raw?.failures),failedLatest?1:0);
     // When the bounded window contains the full non-empty history, derive counters from
     // normalized terminal records instead of trusting contradictory summaries.
-    if(totalCycles>0&&recent.length===totalCycles){
+    if(totalCycles>0&&rawRecent.length===totalCycles){
       completeCycles=recent.filter(record=>record.complete&&record.status==='PASS').length;
       degradedCycles=recent.filter(record=>record.status==='DEGRADED').length;
-      failures=recent.filter(record=>record.status==='FAIL').length;
-    }else if(failedLatest&&rawLatest?.complete===true&&!latest?.complete){
-      completeCycles=Math.max(0,completeCycles-1);
+      failures=recent.filter(record=>record.status==='FAIL').length+invalidRecordCount;
+    }else{
+      if(invalidRecordCount>0)completeCycles=Math.max(0,completeCycles-invalidRecordCount);
+      if(failedLatest&&rawLatest?.complete===true&&!latest?.complete)completeCycles=Math.max(0,completeCycles-1);
     }
     const rawMeanScore=clamp(Number(raw?.meanScore01??0));
     const lastScoreOverstatement=failedLatest&&latest?Math.max(0,clamp(Number(rawLatest?.score01??0))-latest.score01):0;
-    const meanScore01=clamp(rawMeanScore-lastScoreOverstatement/Math.max(1,totalCycles));
+    const meanScore01=clamp(rawMeanScore-lastScoreOverstatement/Math.max(1,totalCycles)-rawMeanScore*invalidRecordCount/Math.max(1,totalCycles));
     this.state={
       version:1,capacity:cap,totalCycles,completeCycles,
       degradedCycles,
-      failures:Math.max(failures,failedLatest?1:0),
+      failures:Math.max(failures,failedLatest?1:0,invalidRecordCount>0?1:0),
       meanScore01,
       lastTick:finiteCount(raw?.lastTick),
       lastStatus,
-      lastBehaviorHash:latestOverridesSummary&&latest?latest.behaviorHash:failedLatest&&latest?latest.behaviorHash:String(raw?.lastBehaviorHash??'').slice(0,160),
-      lastDurableHash:String(raw?.lastDurableHash??'').slice(0,160),
+      lastBehaviorHash:invalidRecordCount>0?fastHash({invalidPersistedRecords:invalidRecordCount}):latestOverridesSummary&&latest?latest.behaviorHash:failedLatest&&latest?latest.behaviorHash:String(raw?.lastBehaviorHash??'').slice(0,160),
+      lastDurableHash:invalidRecordCount>0?'':String(raw?.lastDurableHash??'').slice(0,160),
       recent:recent.slice(0,cap),
     };
   }
