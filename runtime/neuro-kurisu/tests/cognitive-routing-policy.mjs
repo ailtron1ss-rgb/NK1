@@ -42,6 +42,13 @@ const neverExpands = resolveCognitiveRoutingPolicy({
 }, 99);
 assert.equal(neverExpands.maxCounterfactualBranches, 3, 'routing must never expand the upstream resource budget');
 
+const zeroBudget = resolveCognitiveRoutingPolicy({
+  wakeMask: 0,
+  interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
+}, 0);
+assert.equal(zeroBudget.maxCounterfactualBranches, 0);
+assert.equal(zeroBudget.allowMatchedCounterfactual, false, 'zero branch budget must disable optional alternate projections');
+
 const invalidBudget = resolveCognitiveRoutingPolicy({
   wakeMask: 0,
   interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
