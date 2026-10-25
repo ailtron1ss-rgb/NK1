@@ -1,3 +1,11 @@
+## NK1 WorkPass537 — account for bounded tension smoothing in value isolation (2026-10-25)
+
+- The fresh focused CI run passed the learning trust boundary and P67 contracts, then exposed a residual verify-bias delta of about 0.0000303 in the value-only probe. The delta came from the deliberately evolving, smoothed canon tension state, not from curiosity/autonomy value attribution.
+- Replaced exact equality with a tight absolute tolerance of 1e-4. The regression still fails on material cross-action effects while allowing the bounded state smoothing that this pass intentionally introduced.
+- The corrected test is committed; rerun of the focused workflow is required before claiming the character suite is green.
+
+---
+
 ## NK1 WorkPass536 — isolate causal value-learning regression from evolving tensions (2026-10-25)
 
 - The new context-sensitive canon tensions correctly influence decision bias, which exposed an over-broad older value-learning assertion: it compared decisions made from different tension states and expected verify bias to remain identical.
