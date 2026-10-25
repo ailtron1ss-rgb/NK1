@@ -43,8 +43,10 @@ export class ContinuityLedger {
 
   constructor(filePath: string, maxBytes = 4 * 1024 * 1024, flushEveryFrames = 4) {
     this.filePath = filePath;
-    this.maxBytes = Math.max(64 * 1024, Math.floor(maxBytes));
-    this.flushEveryFrames = Math.max(1, Math.min(16, Math.floor(flushEveryFrames)));
+    const normalizedMaxBytes = Number.isFinite(maxBytes) ? Math.floor(maxBytes) : 4 * 1024 * 1024;
+    const normalizedFlushEveryFrames = Number.isFinite(flushEveryFrames) ? Math.floor(flushEveryFrames) : 4;
+    this.maxBytes = Math.max(64 * 1024, normalizedMaxBytes);
+    this.flushEveryFrames = Math.max(1, Math.min(16, normalizedFlushEveryFrames));
   }
 
   metrics(): ContinuityLedgerMetrics { return { ...this.stats }; }
