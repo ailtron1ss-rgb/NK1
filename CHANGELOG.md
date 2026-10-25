@@ -1,3 +1,11 @@
+## NK1 cognitive architecture smoke — validate dynamic contract counts and bounded context keys (2026-10-25)
+
+- Updated the server smoke to compare subsystem/flow array lengths with the architecture validator's own counts, keeping minimum architecture coverage without freezing the test to the old 22-flow map after it grew to 25.
+- Added a runtime regression asserting that feedback-created autonomous-life decision context keys stay non-empty, trimmed and within the ledger's 180-character boundary.
+- Improved future smoke-failure diagnostics with HTTP status, architecture validation, actual subsystem/flow counts and runtime snapshot health.
+
+---
+
 ## NK1 P26 workflow contract — restore missing package test scripts (2026-10-25)
 
 - Registered the three existing P26 integrity/recovery/curriculum-matrix tests as explicit runtime package scripts referenced by the validation workflow.
