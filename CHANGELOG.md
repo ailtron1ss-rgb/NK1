@@ -1,3 +1,10 @@
+## NK1 WorkPass533 — preserve causal action identity in endogenous-goal feedback (2026-10-25)
+
+- Fixed a runtime crash observed by the emotion/interoception integration test: canonical planner feedback could send a different action than the action proposed by B272, violating B272's explicit outcome-attribution contract.
+- `OrganismCore.feedback()` now credits B272 goal/action learning only when the actually selected action matches the generated goal action. A mismatched proposal is not assigned reward for an action that did not occur; other feedback paths continue normally.
+- The existing emotion/interoception integration test exercises repeated observe/feedback cycles and should now reach its body-state comparisons instead of aborting on the first mismatch.
+- **Validation boundary:** the source fix is committed; the next focused CI run must confirm the regression progresses and passes. Runtime-wide TypeScript failures remain separate.
+
 ## NK1 WorkPass532 — execute emotion regression with full Node 24 TypeScript transforms (2026-10-25)
 
 - Updated the targeted `test:big-pass-172` script to use Node 24's `--experimental-transform-types`; the previous strip-only loader could not execute imported runtime modules with TypeScript parameter properties.
