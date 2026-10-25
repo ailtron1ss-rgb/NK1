@@ -514,7 +514,7 @@ export class OrganismRuntime {
     const budgetSnapshot = this.core.cognitiveBudgetOperationalSnapshot();
     const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
     if (!shouldAsk) return null;
-    const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext());
+    const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.cognitiveEventFabricSnapshot());
     if(signal) request.signal=signal;
     this.lastContextBudgetLedger = request.contextLedger ?? null;
     const budgetMode = budgetSnapshot?.mode ?? 'shallow';
