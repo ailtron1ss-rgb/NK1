@@ -146,6 +146,20 @@ assert.ok(!JSON.stringify(expectedAdvisoryContext).includes('outcome-reflection-
 assert.ok(!JSON.stringify(expectedAdvisoryContext).includes('sourceExperienceIds'),
   'advisory generator context must not include direct source-identity fields');
 
+// Advisory context must remain bounded and deterministic for all caller-supplied limits.
+const minimalAdvisoryContext = engine.advisoryOutcomeLearningContext(0);
+const oversizedAdvisoryContext = engine.advisoryOutcomeLearningContext(999);
+assert.equal(minimalAdvisoryContext.hypotheses.length <= 1, true,
+  'zero limit must clamp to a single diagnostic hint rather than disabling safeguards');
+assert.equal(minimalAdvisoryContext.nextLearningTargets.length <= 1, true,
+  'zero limit must clamp target recommendations to one');
+assert.equal(oversizedAdvisoryContext.hypotheses.length <= 12, true,
+  'oversized limits must never produce more than twelve reflection hints');
+assert.equal(oversizedAdvisoryContext.nextLearningTargets.length <= 12, true,
+  'oversized limits must never produce more than twelve learning targets');
+assert.deepEqual(engine.advisoryOutcomeLearningContext(6), expectedAdvisoryContext,
+  'advisory context must be deterministic for unchanged recorded experience');
+
 let generatorCalled = false;
 const result = await engine.generateAndStageReflectiveSkillRevision(
   proposal,

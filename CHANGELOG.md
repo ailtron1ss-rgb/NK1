@@ -1,3 +1,9 @@
+# WorkPass342 — bound reflection-to-revision context (2026-10-25)
+
+- [TEST] Extend the P23 revision-lineage regression to check that caller-supplied advisory limits are clamped at both boundaries and that unchanged experience history yields a deterministic advisory context.
+- [BOUNDARY] The revision generator can receive at most twelve reflection hypotheses and twelve curriculum targets from this path; the limit affects diagnostics only, not the source repair plan or promotion gate.
+- [VALIDATION] The same focused Node.js 24 workflow covers this regression alongside independent paired-seed evaluation, promotion-bypass denial, evidence lineage, reflection normalization, malformed outcome admission, and strict TypeScript checking.
+
 # WorkPass341 — connect outcome reflection to skill revision (2026-10-25)
 
 - [INTEGRATED] The P23 revision generator now receives a bounded advisory summary of cross-task reflection hypotheses and ranked learning targets derived from its retained outcome history.
