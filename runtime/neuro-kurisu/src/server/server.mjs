@@ -120,7 +120,9 @@ async function invokeLanguage(request) {
     const effectiveBackend = preferredBackend === 'local-fallback'
         ? 'deterministic-policy-fallback'
         : preferredBackend;
-    const response = await generateLanguage({ ...request, preferredBackend: effectiveBackend });
+    const providerRequest = { ...request };
+    delete providerRequest.internalDialogueReceipt;
+    const response = await generateLanguage({ ...providerRequest, preferredBackend: effectiveBackend });
     const finishedAt = Date.now();
     LOCAL_LANGUAGE_BACKEND_POLICY.observe({ backend: String(response.backend ?? ''), failures: response.failures || [], now: finishedAt });
     const backend = String(response.backend ?? effectiveBackend ?? 'unknown');
@@ -2197,6 +2199,8 @@ async function route(req, res) {
                 goalsActive: snapshot.goals.filter(g => g.status === 'active').length,
                 memories: snapshot.memories.length,
                 events: snapshot.traces.length,
+                // Aggregate only numeric trends and fixed uncertainty categories; never expose question text here.
+                internalDialogueHistory: runtime.internalDialogueHistorySummarySnapshot(),
                 body: {
                     battery01: bodyState.telemetry.battery01,
                     thermalPressure01: bodyState.telemetry.thermalPressure01,

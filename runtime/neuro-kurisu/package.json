@@ -10,6 +10,9 @@
   },
   "scripts": {
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
+    "test:internal-dialogue-workpass319": "node --experimental-strip-types tests/internal-dialogue-workpass319.mjs",
+    "test:internal-dialogue-runtime-wiring-workpass319": "node --experimental-strip-types tests/internal-dialogue-runtime-wiring-workpass319.mjs",
+    "test:internal-dialogue-receipt-journal-workpass319": "node --experimental-strip-types tests/internal-dialogue-receipt-journal-workpass319.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
     "test:workpass96:finalizer-boundary": "node --experimental-strip-types tests/workpass96-action-finalizer-boundary.mjs",
     "test:workpass97:planner-route": "node --experimental-strip-types tests/workpass97-autonomous-planner-gateway-route.mjs",
@@ -22,7 +25,7 @@
     "test:p26:feature-schema-migration": "node --experimental-strip-types tests/p26-feature-schema-migration.mjs",
     "test:learning-replay": "npm run test:p26:feature-schema-migration && npm run test:causal-replay-sampler && npm run test:causal-replay-benchmark && node --experimental-strip-types tests/big-pass-115-causal-replay.mjs && npm run test:p26:true-learning && npm run test:p26:holdout-provenance && npm run test:p26:sequential-benchmark && npm run test:p26:replay-policy-sweep",
     "test:workpass318:operational-microcycle-finite-input": "node --experimental-strip-types tests/operational-microcycle-finite-input.mjs",
-    "test:rebuild-recovered": "npm run test:cognitive-cycle-boundary && npm run test:cognitive-cycle-boundary-runtime-wiring && npm run test:learning-replay && npm run test:causal-replay-runtime-wiring && npm run test:workpass95:receipt-integrity && npm run test:workpass96:finalizer-boundary && npm run test:workpass97:planner-route && npm run test:workpass98:project-reconciliation-route && npm run test:workpass318:operational-microcycle-finite-input",
+    "test:rebuild-recovered": "npm run test:cognitive-cycle-boundary && npm run test:internal-dialogue-workpass319 && npm run test:internal-dialogue-runtime-wiring-workpass319 && npm run test:internal-dialogue-receipt-journal-workpass319 && npm run test:internal-dialogue-history-workpass320 && npm run test:cognitive-cycle-boundary-runtime-wiring && npm run test:learning-replay && npm run test:causal-replay-runtime-wiring && npm run test:workpass95:receipt-integrity && npm run test:workpass96:finalizer-boundary && npm run test:workpass97:planner-route && npm run test:workpass98:project-reconciliation-route && npm run test:workpass318:operational-microcycle-finite-input",
     "test:workpass292:motivation-to-goal": "node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs",
     "test:workpass288:intrinsic-motivation": "node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs",
     "test:workpass287:cognitive-cycle": "node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs",
@@ -1768,6 +1771,8 @@
     "test:p324:interrupt-episodes": "node --experimental-strip-types tests/cognitive-dependency-interrupt-episode-workpass324.mjs",
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
-    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs"
+    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
+    "test:internal-dialogue-history-workpass320": "node --experimental-strip-types tests/internal-dialogue-history-workpass320.mjs",
+    "test:workpass293:p23-revision": "npm run test:p23:revision-plan-holdout-isolation && npm run test:p23:local-model-skill-revision-generator && npm run test:p23:verified-session-dataset && npm run test:p23:verified-replay-admission && npm run test:p23:replay-selection-policy && npm run test:p23:verified-skill-revision-gate && npm run test:p23:verified-skill-promotion-proposal && npm run test:p23:verified-outcome-artifact-authentication"
   }
 }

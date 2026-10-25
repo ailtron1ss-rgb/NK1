@@ -6,12 +6,15 @@ import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '.
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
-import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
+import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse, type InternalDialogueReviewReceipt } from '../language/LanguageOrgan.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
+import type { OperationalRecord } from '../persistence/OperationalJournal.ts';
+import { sanitizeInternalDialogueText } from '../cognition/InternalDialogueEngine.ts';
+import { summarizeInternalDialogueHistory } from '../cognition/InternalDialogueHistory.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
@@ -80,6 +83,75 @@ function bodyActionCost(body: ReturnType<EmbodimentRuntime['snapshot']>, action:
   return Math.max(0, Math.min(1, base + (1-body.cognitiveCapacity01)*0.25 + body.thermalStrain01*0.15));
 }
 
+type RuntimeJournalPort = {
+  write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void>;
+  readRecent?: (event:string, limit?:number) => Promise<OperationalRecord[]>;
+};
+
+const INTERNAL_DIALOGUE_ACTIONS = new Set(['respond','explore','verify','rest','reflect','wait','defer']);
+const INTERNAL_DIALOGUE_ROLES = new Set(['frame','hypothesis','critic','evidence-audit','metacognition','synthesis']);
+
+function restoreInternalDialogueReceipt(raw: unknown): InternalDialogueReviewReceipt | null {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  const finite01 = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1;
+  const safeId = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 96 && /^[A-Za-z0-9:_-]+$/.test(v);
+  if (value.schemaVersion !== 1 || !Number.isSafeInteger(value.tick) || Number(value.tick) < 0 ||
+      !['reviewed','provisional','needs-evidence'].includes(String(value.status)) ||
+      !finite01(value.rankingConfidence01) || !finite01(value.uncertainty01) ||
+      !finite01(value.evidenceCoverage01) || !finite01(value.contradiction01) ||
+      !(value.leadingClaimId === null || safeId(value.leadingClaimId)) ||
+      !INTERNAL_DIALOGUE_ACTIONS.has(String(value.suggestedAction)) ||
+      !['accept-provisionally','seek-evidence','explore','pause'].includes(String(value.recommendedNextStep)) ||
+      !Array.isArray(value.unresolvedQuestions) || !Array.isArray(value.candidateScores) ||
+      !Array.isArray(value.reviewedRoles) || !Array.isArray(value.evidenceIds) ||
+      !['core-cef-snapshot','prediction-only'].includes(String(value.evidenceMode)) ||
+      value.advisoryOnly !== true) return null;
+
+  const unresolvedQuestions = value.unresolvedQuestions.slice(0,10).flatMap(question => {
+    const safe = sanitizeInternalDialogueText(question,180);
+    return safe ? [safe] : [];
+  });
+  const candidateScores: InternalDialogueReviewReceipt['candidateScores'] = [];
+  for (const rawScore of value.candidateScores.slice(0,8)) {
+    if (rawScore === null || typeof rawScore !== 'object' || Array.isArray(rawScore)) continue;
+    const score = rawScore as Record<string,unknown>;
+    if (!safeId(score.id) || !(score.action === null || INTERNAL_DIALOGUE_ACTIONS.has(String(score.action))) ||
+        !finite01(score.score01) || !finite01(score.evidenceCoverage01) || !finite01(score.contradiction01) ||
+        !Number.isSafeInteger(score.supportingEvidenceCount) || Number(score.supportingEvidenceCount)<0 ||
+        !Number.isSafeInteger(score.contradictingEvidenceCount) || Number(score.contradictingEvidenceCount)<0) continue;
+    candidateScores.push({
+      id:score.id,
+      action:score.action as InternalDialogueReviewReceipt['candidateScores'][number]['action'],
+      score01:score.score01,
+      evidenceCoverage01:score.evidenceCoverage01,
+      contradiction01:score.contradiction01,
+      supportingEvidenceCount:Math.min(10_000,Number(score.supportingEvidenceCount)),
+      contradictingEvidenceCount:Math.min(10_000,Number(score.contradictingEvidenceCount)),
+    });
+  }
+  const reviewedRoles=[...new Set(value.reviewedRoles.filter(role => typeof role==='string' && INTERNAL_DIALOGUE_ROLES.has(role)))].slice(0,6) as InternalDialogueReviewReceipt['reviewedRoles'];
+  const evidenceIds=[...new Set(value.evidenceIds.filter(safeId))].slice(0,32);
+  return {
+    schemaVersion:1,
+    tick:Number(value.tick),
+    status:value.status as InternalDialogueReviewReceipt['status'],
+    rankingConfidence01:value.rankingConfidence01,
+    uncertainty01:value.uncertainty01,
+    evidenceCoverage01:value.evidenceCoverage01,
+    contradiction01:value.contradiction01,
+    leadingClaimId:value.leadingClaimId as string|null,
+    suggestedAction:value.suggestedAction as InternalDialogueReviewReceipt['suggestedAction'],
+    recommendedNextStep:value.recommendedNextStep as InternalDialogueReviewReceipt['recommendedNextStep'],
+    unresolvedQuestions,
+    candidateScores,
+    reviewedRoles,
+    evidenceIds,
+    evidenceMode:value.evidenceMode as InternalDialogueReviewReceipt['evidenceMode'],
+    advisoryOnly:true,
+  };
+}
+
 export interface RuntimeConfig extends OrganismConfig {
   stateFile: string;
   worldStateFile?: string;
@@ -91,7 +163,7 @@ export interface RuntimeConfig extends OrganismConfig {
   languageInvoker?: LanguageInvoker;
   stateStore?: JsonStateStore<PersistedOrganism>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
-  journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
+  journal?: RuntimeJournalPort;
   visionBackend?: VisionSemanticBackend;
   /** Explicit opt-in to scheduled, Core-owned P23 candidate/shadow learner runs. */
   trustedShadowLearning?: TrustedShadowLearningScheduleConfig;
@@ -145,7 +217,7 @@ export class OrganismRuntime {
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
   private stepsSinceConsolidation = 0;
   private readonly worldStore: JsonStateStore<PersistedWorld>;
-  private readonly journal: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
+  private readonly journal: RuntimeJournalPort;
   private readonly sensorIntervalMs: number;
   private readonly phonePolicy: PhonePolicyConfig;
   private worldDirtyCycles = 0;
@@ -155,6 +227,34 @@ export class OrganismRuntime {
   private queue: Promise<unknown> = Promise.resolve();
   private initialized = false;
   private lastContextBudgetLedger: ContextBudgetLedgerReport | null = null;
+  private lastInternalDialogueReceipt: InternalDialogueReviewReceipt | null = null;
+  private internalDialogueReceiptHistory: InternalDialogueReviewReceipt[] = [];
+  internalDialogueReceiptSnapshot() { return this.lastInternalDialogueReceipt ? structuredClone(this.lastInternalDialogueReceipt) : null; }
+  internalDialogueHistorySummarySnapshot() { return summarizeInternalDialogueHistory(this.internalDialogueReceiptHistory); }
+
+  private rememberInternalDialogueReceipt(receipt: InternalDialogueReviewReceipt): void {
+    this.internalDialogueReceiptHistory = [...this.internalDialogueReceiptHistory, structuredClone(receipt)].slice(-32);
+  }
+
+  private async restoreLastInternalDialogueReceipt(): Promise<void> {
+    this.lastInternalDialogueReceipt = null;
+    this.internalDialogueReceiptHistory = [];
+    if (!this.journal.readRecent) return;
+    try {
+      // Reader returns newest-first; reverse before summarizing so trend direction stays chronological.
+      const records = await this.journal.readRecent('runtime.internal-dialogue.review',128);
+      for (const record of records.slice().reverse()) {
+        const receipt = restoreInternalDialogueReceipt(record.data);
+        if (receipt) this.internalDialogueReceiptHistory.push(receipt);
+      }
+      this.internalDialogueReceiptHistory = this.internalDialogueReceiptHistory.slice(-32);
+      this.lastInternalDialogueReceipt = this.internalDialogueReceiptHistory.at(-1) ?? null;
+    } catch {
+      // A missing or damaged optional journal receipt must not prevent runtime startup.
+      this.lastInternalDialogueReceipt = null;
+      this.internalDialogueReceiptHistory = [];
+    }
+  }
   contextBudgetDiagnostics() {
     return this.lastContextBudgetLedger ? structuredClone(this.lastContextBudgetLedger) : {
       version: 1, owner: 'LanguageOrgan', policy: 'priority-bounded-loss-accounting', maxDynamicChars: 0,
@@ -309,6 +409,7 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      await this.restoreLastInternalDialogueReceipt();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
@@ -514,7 +615,17 @@ export class OrganismRuntime {
     const budgetSnapshot = this.core.cognitiveBudgetOperationalSnapshot();
     const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
     if (!shouldAsk) return null;
-    const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext());
+    const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.cognitiveEventFabricSnapshot());
+    if (request.internalDialogueReceipt) {
+      this.lastInternalDialogueReceipt = structuredClone(request.internalDialogueReceipt);
+      this.rememberInternalDialogueReceipt(request.internalDialogueReceipt);
+      // Journal only a bounded metadata receipt; never persist the user focus text or prose turn notes.
+      try {
+        await this.journal.write('info', 'runtime.internal-dialogue.review', { ...request.internalDialogueReceipt });
+      } catch {
+        // Receipt telemetry is useful but must not invalidate an otherwise valid cognitive proposal.
+      }
+    }
     if(signal) request.signal=signal;
     this.lastContextBudgetLedger = request.contextLedger ?? null;
     const budgetMode = budgetSnapshot?.mode ?? 'shallow';
@@ -524,7 +635,10 @@ export class OrganismRuntime {
     const spend=this.core.cognitiveBudgetSpend(budgetMode==='deep'?'llm-deep':'llm-fast',tierCost,infoGain,'cognitive-proposal');
     if(!spend.accepted) return parseCognitiveProposal('budget constrained: preserve resources and verify supplied evidence before changing course','local-fallback');
     try {
-      const response=await this.config.languageInvoker(request);
+      // Never leak the host-only review receipt to any configured LanguageInvoker.
+      const providerRequest = { ...request };
+      delete providerRequest.internalDialogueReceipt;
+      const response=await this.config.languageInvoker(providerRequest);
       await this.core.recordLanguageBackend(response.backend, response.latencyMs, true);
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
       return parseCognitiveProposal(response.text,'llm');
