@@ -30,10 +30,14 @@ const safeDomains=(value:unknown):CognitiveDomain[]=>{
 };
 const normalizeInterrupt=(value:unknown):CognitiveDependencyState['interrupt']=>{
   if(!isRecord(value))return {active:false,priority01:0,type:'none',domains:[]};
+  const type=cleanText(value.type,'none',64).toLowerCase();
+  const criticalType=type==='resource-critical'||type==='thermal-critical'||type==='memory-pressure';
   return {
-    active:value.active===true,
+    // The persisted active bit may be stale/corrupt. A critical normalized
+    // label must stay active so restore cannot weaken the safety response.
+    active:value.active===true||criticalType,
     priority01:clamp01(value.priority01),
-    type:cleanText(value.type,'none',64).toLowerCase(),
+    type,
     domains:safeDomains(value.domains),
   };
 };
