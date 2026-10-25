@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "snapshotDate": "2026-10-25",
+  "method": "Copy archive, verify content equality and Git blob identity, then remove the source path; preserve both copy and deletion commits.",
+  "measurementCommit": "7c51b5eb82234d0d91fd140c1dd107296509f70f",
+  "inventoryRun": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40162439239",
+  "entries": [
+    {
+      "originalPath": "docs/PROJECT_CURRENT_STATUS_2026-10-11_WORKPASS22.md",
+      "archivedPath": "docs/history/workpasses/project-status/PROJECT_CURRENT_STATUS_2026-10-11_WORKPASS22.md",
+      "contentSha256": "6452a7d2e56edef717562a7211078c6d493b9d4493546639734cd750ea2a0115",
+      "sizeBytes": 4121,
+      "originalGitBlobSha": "2f6de15a62d62f11347dc66914532f1707f1cdc0",
+      "archivedGitBlobSha": "2f6de15a62d62f11347dc66914532f1707f1cdc0",
+      "copyCommit": "f7588d17da53b2a678ba45a5294df090dfc5355b",
+      "sourceRemovalCommit": "0bdd7dc51fd5e2993a0e326c1ced758d958101ee",
+      "sourceRemoved": true,
+      "reason": "Historical status snapshot with superseded claims. Latest inventory on measurement commit 7c51b5eb82234d0d91fd140c1dd107296509f70f found no inbound local Markdown or scanned text/config references; report contains no relative Markdown links; GitHub issue/PR searches for the exact path returned no results. Archived byte-for-byte and retained as history."
+    },
+    {
+      "originalPath": "docs/PROJECT_CURRENT_STATUS_2026-10-11_WORKPASS24.md",
+      "archivedPath": "docs/history/workpasses/project-status/PROJECT_CURRENT_STATUS_2026-10-11_WORKPASS24.md",
+      "contentSha256": "2891f3d6d75daf439f3269269ad1be78cd42ad3ca009560a75ea7796663daf68",
+      "sizeBytes": 4964,
+      "originalGitBlobSha": "d2ec5f6d344536b7edf71b5c9506e8d0dcbdd8b4",
+      "archivedGitBlobSha": "d2ec5f6d344536b7edf71b5c9506e8d0dcbdd8b4",
+      "copyCommit": "12d930a9bb24673ec3578dd36e4b9eb4a5ddc86e",
+      "sourceRemovalCommit": "85febd9120d16724b151e78cd60d8cd456f63116",
+      "sourceRemoved": true,
+      "reason": "Historical status snapshot with superseded claims. Latest inventory on measurement commit 7c51b5eb82234d0d91fd140c1dd107296509f70f found no inbound local Markdown or scanned text/config references; report contains no relative Markdown links; GitHub issue/PR searches for the exact path returned no results. Archived byte-for-byte and retained as history."
+    },
+    {
+      "originalPath": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS36.md",
+      "archivedPath": "docs/history/workpasses/project-status/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS36.md",
+      "contentSha256": "ad3a6d0a7a3702641a6dd9a4c1ea7d5732ddc40e48567ec1880c4d844b8db8b5",
+      "sizeBytes": 5716,
+      "originalGitBlobSha": "0123c9c6792c7b04cba7effe795f28d7ad2a9fd0",
+      "archivedGitBlobSha": "0123c9c6792c7b04cba7effe795f28d7ad2a9fd0",
+      "copyCommit": "a78d0b8fbb3148459127eefcfae847de2999104f",
+      "sourceRemovalCommit": "b99ab01a1aaa86fc90604d9e7ce6355aeeb1adc4",
+      "sourceRemoved": true,
+      "reason": "Historical status snapshot with superseded claims. Latest inventory on measurement commit 7c51b5eb82234d0d91fd140c1dd107296509f70f found no inbound local Markdown or scanned text/config references; report contains no relative Markdown links; GitHub issue/PR searches for the exact path returned no results. Archived byte-for-byte and retained as history."
+    }
+  ]
+}

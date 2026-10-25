@@ -1,4 +1,21 @@
-## Current source-stack checkpoint — WorkPass272 (2026-10-22)
+# NK1 / Neuro Kurisu — repository entry point
+
+> **Current navigation:** read [the project map, ownership boundaries, branch rules and release-artifact policy](docs/PROJECT_MAP_AND_ORDERING.md). Then read [the working rules](AGENTS.md) and refresh live GitHub state before choosing a source branch.
+
+- **Canonical runtime owner:** `runtime/neuro-kurisu/`
+- **UI shell:** `app/`; it must not own a second organism or writable memory system.
+- **Research-only code:** `research/`; **historical/provenance sources:** `legacy/`.
+- **Branch warning:** `integration` and `operation-omega-hexis-2026-10-24` diverged in the 2026-10-24 comparison. Do not infer ancestry from pass numbers.
+- **Branch names:** see the [2026-10-24 branch inventory](docs/BRANCH_INVENTORY_2026-10-24.md): an initial list of 104 refs plus a later live refresh to 124 refs and selected head SHAs; this is not a deletion or merge list.
+- **Ordering gate:** run `npm run audit:ordering` to check link-parser regressions, canonical doc links, runtime dependency boundaries and the transitive server import graph. `npm run audit:quick` now includes it.
+- **Module boundaries:** see [the dependency contracts](docs/architecture/module-dependency-contracts-ru.md); architecture and server-import checks now have dedicated regression suites.
+- **Documentation cleanup:** review the [latest 2026-10-25 inventory results](docs/DOCUMENTATION_INVENTORY_RESULTS_2026-10-25.md), [archive policy](docs/DOCUMENTATION_INVENTORY_AND_ARCHIVE_POLICY_2026-10-24.md), [historical release reports](docs/history/reports/INDEX.md) and [archived project-status reports](docs/history/workpasses/project-status/INDEX.md). Exact hashes and zero-inbound links are review evidence, never automatic deletion permission.
+- **Release warning (rechecked 2026-10-25):** the attached release ZIPs are still WorkPass70 artifacts published 2026-10-19. Stable tag `Neuro` has `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` (135,290,615 bytes; SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`); the hotfix prerelease ZIP is `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` (136,354,713 bytes; SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`). This ordering PR does not alter either release asset.
+- The continuation records below are preserved for traceability. Their status statements are historical snapshots, not a substitute for the live branch, diff, PR and Actions results.
+
+---
+
+## Historical continuation snapshot — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
 - Added unit-level contract cases for different path strings with the same underlying identity, nested roots, and truly distinct roots; the existing WorkPass110 workflow already runs the host-owned evaluator subprocess regression.

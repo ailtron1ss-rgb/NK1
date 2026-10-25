@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "snapshotDate": "2026-10-24",
+  "entries": [
+    {
+      "originalPath": "docs/FINAL-STATUS-2026-10-06.md",
+      "archivedPath": "docs/history/reports/FINAL-STATUS-2026-10-06.md",
+      "contentSha256": "57189f6459fac20b68fecaf58d44a39d46d4f08381e56e1d962d5b4d103b9c0a",
+      "sizeBytes": 2041,
+      "originalGitBlobSha": "8fe759eaf898a8b7cb2496a0d7eae5bf1fb89d7b",
+      "archivedGitBlobSha": "8fe759eaf898a8b7cb2496a0d7eae5bf1fb89d7b",
+      "copyCommit": "608026313340758fc2b20bf4d1136a49bddb302f",
+      "sourceRemovalCommit": "e87c8c390acd0f600dd3fca83b9d2c8e9639d987",
+      "sourceRemoved": true,
+      "reason": "Preserve a dated 2026-10-06 status snapshot whose runtime/schema claims are historical. The branch inventory reported no incoming local Markdown links and no references from scanned non-Markdown source/config/manifest files; GitHub issue and PR searches found no direct path reference. The file was verified byte-identical after copy."
+    },
+    {
+      "originalPath": "docs/INVENTORY.md",
+      "archivedPath": "docs/history/reports/STRUCTURAL-INVENTORY-2026-10-06.md",
+      "contentSha256": "49582f96c756b938186a910f09b6c4fd1021771beb505195ae6ff9a63527caaa",
+      "sizeBytes": 1501,
+      "originalGitBlobSha": "4d98729c1ad2f2ba497d67c2cb03254608d5adbc",
+      "archivedGitBlobSha": "4d98729c1ad2f2ba497d67c2cb03254608d5adbc",
+      "copyCommit": "faa1ab98d4ecdd44affe552ec6ded9e17b325e1e",
+      "sourceRemovalCommit": "0211c0ac5a9198b3c0d381616aff0d62c34780fc",
+      "sourceRemoved": true,
+      "reason": "Preserve a dated 2026-10-06 structural inventory with stale role/count snapshots. The repository inventory reported no incoming local Markdown or scanned non-Markdown path/basename references, and GitHub issue/PR search found no direct reference to docs/INVENTORY.md. The archived copy was verified byte-identical before source removal."
+    },
+    {
+      "originalPath": "docs/CONFLICTS-AND-GAPS.md",
+      "archivedPath": "docs/history/reports/CONFLICTS-AND-GAPS-2026-10-06.md",
+      "contentSha256": "47478ec872d30bbae3740d8f73f7db7a761e661dcddbbbebb040f796be8308c0",
+      "sizeBytes": 2294,
+      "originalGitBlobSha": "8d64dceff3688227619de65e4877a3bea1e8d2df",
+      "archivedGitBlobSha": "8d64dceff3688227619de65e4877a3bea1e8d2df",
+      "copyCommit": "1652f879e4c85346461737871776092bb3d4b878",
+      "sourceRemovalCommit": "a6e41f80bb6d4a981136d46d4bd8f0990475454d",
+      "sourceRemoved": true,
+      "reason": "Preserve the dated 2026-10-06 conflicts/gaps snapshot as historical engineering evidence. The latest scanned inventory found no inbound local Markdown or scanned non-Markdown path/basename references; exact GitHub issue/PR path searches returned no direct references. Its old capability and constraint claims should not be treated as current status."
+    }
+  ]
+}
