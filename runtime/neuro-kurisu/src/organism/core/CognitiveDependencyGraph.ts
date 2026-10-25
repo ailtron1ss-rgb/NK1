@@ -33,7 +33,7 @@ const normalizeInterrupt=(value:unknown):CognitiveDependencyState['interrupt']=>
   return {
     active:value.active===true,
     priority01:clamp01(value.priority01),
-    type:cleanText(value.type,'none',64),
+    type:cleanText(value.type,'none',64).toLowerCase(),
     domains:safeDomains(value.domains),
   };
 };
