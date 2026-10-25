@@ -50,8 +50,14 @@ test('gateway routes UI, organism, and research requests to their own upstreams'
   const { baseUrl } = await withGateway(t);
   const cases = [
     ['/home?mode=compact', 'ui:/home?mode=compact'],
+    ['/api/organism', 'runtime:/api/organism'],
+    ['/api/organism?root=1', 'runtime:/api/organism?root=1'],
     ['/api/organism/ui-snapshot?fresh=1', 'runtime:/api/organism/ui-snapshot?fresh=1'],
+    ['/api/research', 'research:/api/research'],
     ['/api/research/status', 'research:/api/research/status'],
+    // Similar string prefixes are not members of the API namespaces.
+    ['/api/organism-preview', 'ui:/api/organism-preview'],
+    ['/api/researcher', 'ui:/api/researcher'],
   ];
 
   for (const [pathname, expected] of cases) {
