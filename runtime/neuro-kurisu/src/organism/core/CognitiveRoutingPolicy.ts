@@ -28,8 +28,9 @@ export function resolveCognitiveRoutingPolicy(
   const type = typeof rawInterrupt?.type === 'string' ? rawInterrupt.type : 'none';
   const criticalType = type === 'thermal-critical' || type === 'resource-critical' || type === 'memory-pressure';
   const governanceActive =
-    (typeof dependency?.wakeMask === 'number' && Number.isSafeInteger(dependency.wakeMask) && (dependency.wakeMask & 64) !== 0) ||
-    (Array.isArray(rawInterrupt?.domains) && rawInterrupt.domains.includes('governance'));
+    typeof dependency?.wakeMask === 'number' &&
+    Number.isSafeInteger(dependency.wakeMask) &&
+    (dependency.wakeMask & 64) !== 0;
 
   if (active && (priority >= 0.90 || criticalType)) {
     return {
