@@ -1,3 +1,11 @@
+## NK1 durable skill-store identity — bind candidate IDs to revision provenance (2026-10-25)
+
+- Fixed the atomic-file persistence validator to compute candidate identity using the same five-part tuple as the live skill store, including the provenance fingerprint (or explicit `null`).
+- Added strict persisted provenance schema checks and regressions for round-tripping a provenance-bearing candidate plus rejection of provenance tampering under compare-and-swap.
+- This repairs a real difference between the in-memory and durable adapters that previously rejected valid staged candidates at write time.
+
+---
+
 ## NK1 rollback persistence regression — distinguish early rollback binding from signed activation tampering (2026-10-25)
 
 - Updated the versioned skill-store test to expect fail-closed rejection at the earliest violated invariant when persisted base-version metadata redirects rollback to an unapproved predecessor.
