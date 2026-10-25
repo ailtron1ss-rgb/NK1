@@ -230,6 +230,14 @@ assert.equal(verifierFailed.evaluation.validation[0].skillQuality.executability,
   'verifier failure must not mislabel a successfully executed candidate as non-executable');
 assert.equal(verifierFailed.evaluation.validation[0].taskSuccess.passed, false,
   'verifier failure must fail closed for task success');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].executable, true,
+  'execution diagnostics survive verifier failure as a non-authoritative quality signal');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].bindingVerified, false,
+  'verifier failure must leave execution identity unbound');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].runId, null,
+  'an unverified execution must not publish a trusted run identity');
+assert.deepEqual(verifierFailed.evaluation.provenance.runBindings[0].observedStepIds, [],
+  'an unverified execution must not publish trusted trajectory steps');
 
 const duplicateRunId = createIndependentSkillCandidateEvaluator({
   tasks, environmentFingerprint: 'e'.repeat(64),
