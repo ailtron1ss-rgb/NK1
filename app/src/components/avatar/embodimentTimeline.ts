@@ -118,7 +118,7 @@ export function deriveAffectiveEmbodiment(input: AffectiveEmbodimentInput): Affe
   const unit = (value: number, fallback = 0.5): number =>
     Number.isFinite(value) ? clamp(value, 0, 1) : fallback;
   const moodPersistence = input.mood
-    ? unit(input.mood.persistence01, 0) * unit(input.mood.freshness01, 1)
+    ? unit(input.mood.persistence01, 0) * unit(input.mood.freshness01 ?? 1, 1)
     : 0;
   const moodBlend = moodPersistence * 0.30;
   const currentValence = unit(input.valence01);
