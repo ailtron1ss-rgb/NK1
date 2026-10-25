@@ -48,14 +48,16 @@ export class UnifiedCognitiveCycle {
 
   restore(raw?:Partial<UnifiedCognitiveCycleState>|null):void {
     const source:object=raw!==undefined&&raw!==null&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
-    const cycles=safeCounter(ownDataValue(source,'cycles'));
+    const persistedCycles=ownDataValue(source,'cycles');
+    const cycles=safeCounter(persistedCycles);
     // Restored counters must describe one coherent history: complete and
     // incomplete are disjoint subsets of cycles, and broken lineages are a
     // subset of incomplete cycles. Independent clamping can otherwise make
     // aggregate counts exceed the number of observations.
     const restoredVersion=ownDataValue(source,'version');
     if(restoredVersion!==undefined&&restoredVersion!==1)throw new RangeError('unsupported cognitive-cycle state version');
-    const completeCycles=Math.min(cycles,safeCounter(ownDataValue(source,'completeCycles')));
+    const persistedCompleteCycles=ownDataValue(source,'completeCycles');
+    const completeCycles=Math.min(cycles,safeCounter(persistedCompleteCycles));
     // Partition every recorded cycle. Any count not proven complete is
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
     // silently drop cycles from both outcome buckets.
@@ -66,22 +68,25 @@ export class UnifiedCognitiveCycle {
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
     const normalizedMissing=malformedMissing&&filteredMissing.length===0?[...REQUIRED]:filteredMissing;
-    const lastTick=typeof ownDataValue(source,'lastTick')==='number'&&Number.isSafeInteger(ownDataValue(source,'lastTick'))&&(ownDataValue(source,'lastTick') as number)>=-1?ownDataValue(source,'lastTick') as number:-1;
+    const persistedLastTick=ownDataValue(source,'lastTick');
+    const lastTick=typeof persistedLastTick==='number'&&Number.isSafeInteger(persistedLastTick)&&persistedLastTick>=-1?persistedLastTick:-1;
+    const persistedIncompleteCycles=ownDataValue(source,'incompleteCycles');
+    const persistedBrokenLineages=ownDataValue(source,'brokenLineages');
     const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
     // Preserve a restored `lastComplete` flag only when persisted counters form
     // the same disjoint partition as the canonical history. Missing, invalid,
     // over-counted, or contradictory counters make the last-cycle claim untrusted.
     const restoredCountsConsistent=
-      isSafeCounter(ownDataValue(source,'cycles'))&&ownDataValue(source,'cycles')===cycles&&
-      isSafeCounter(ownDataValue(source,'completeCycles'))&&ownDataValue(source,'completeCycles')===completeCycles&&
-      isSafeCounter(ownDataValue(source,'incompleteCycles'))&&ownDataValue(source,'incompleteCycles')===incompleteCycles&&
-      isSafeCounter(ownDataValue(source,'brokenLineages'))&&ownDataValue(source,'brokenLineages')<=incompleteCycles;
+      isSafeCounter(persistedCycles)&&persistedCycles===cycles&&
+      isSafeCounter(persistedCompleteCycles)&&persistedCompleteCycles===completeCycles&&
+      isSafeCounter(persistedIncompleteCycles)&&persistedIncompleteCycles===incompleteCycles&&
+      isSafeCounter(persistedBrokenLineages)&&persistedBrokenLineages<=incompleteCycles;
     this.state={
       version:1,
       cycles,
       completeCycles,
       incompleteCycles,
-      brokenLineages:Math.min(incompleteCycles,safeCounter(ownDataValue(source,'brokenLineages'))),
+      brokenLineages:Math.min(incompleteCycles,safeCounter(persistedBrokenLineages)),
       meanStageCoverage01:safeMetric(ownDataValue(source,'meanStageCoverage01')),
       meanCausalContinuity01:safeMetric(ownDataValue(source,'meanCausalContinuity01')),
       lastTick,
