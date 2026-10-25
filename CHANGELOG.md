@@ -1,3 +1,10 @@
+## [NK1][learning] Align persisted rollback-target tamper assertion with validation order (2026-10-25)
+
+- CI confirmed the tampered persisted base version is rejected before the later signed-approval CAS check, because the stored rollback target no longer matches the prior approved version.
+- The regression now accepts either fail-closed rejection point while still requiring the malicious snapshot to be rejected. No production check is weakened; the earlier rollback-target validation is the stricter result.
+
+---
+
 ## [NK1][learning] Update the second rollback assertion for the signed request schema (2026-10-25)
 
 - A fresh WorkPass110 run passed the valid rollback path and then exposed one remaining legacy assertion: the second rollback attempt still supplied a numeric version instead of a request object.
