@@ -36,6 +36,20 @@ assert.ok(moodAfterStress.stress01>initialMood.stress01,
   'repeated body/appraisal stress must influence the persistent affective state');
 assert.equal(moodAfterStress.dominantLabel,stressed.label,
   'a sufficiently salient new emotion must be able to become the dominant mood');
+
+// WorkPass535: a long silent gap attenuates mood influence on the next appraisal.
+const moodContextForDecay=e.snapshot();
+const decayInput={tick:4,novelty01:.2,uncertainty01:.3,predictionError01:.1,homeostaticPressure01:.1,goalPressure01:.2,goalCongruence01:.6,controllability01:.7,success01:.6};
+const recentMoodEngine=new EmotionAppraisalEngine(); recentMoodEngine.restore(moodContextForDecay);
+const recentMoodEpisode=recentMoodEngine.appraise({...decayInput,at:1004});
+const delayedMoodEngine=new EmotionAppraisalEngine(); delayedMoodEngine.restore(moodContextForDecay);
+const delayedMoodEpisode=delayedMoodEngine.appraise({...decayInput,at:601004});
+const noMoodState=structuredClone(moodContextForDecay); noMoodState.mood.persistence01=0;
+const noMoodEngine=new EmotionAppraisalEngine(); noMoodEngine.restore(noMoodState);
+const noMoodEpisode=noMoodEngine.appraise({...decayInput,at:601004});
+const affectDistance=(episode)=>Math.abs(episode.valence01-noMoodEpisode.valence01)+Math.abs(episode.arousal01-noMoodEpisode.arousal01)+Math.abs(episode.interoceptiveDelta.stress01-noMoodEpisode.interoceptiveDelta.stress01);
+assert.ok(affectDistance(delayedMoodEpisode)<affectDistance(recentMoodEpisode),
+  'mood must influence a near-future appraisal more strongly than an otherwise identical appraisal after a long gap');
 const feeling = e.inferFeeling(stressed,{energy01:.18,cognitiveLoad01:.88,uncertainty01:.9,selfFocus01:.8});
 assert.ok(feeling.interoceptiveMismatch01>.1 && feeling.bodilyFocus01>.5);
 const beforeInvalidFeeling=e.snapshot();
