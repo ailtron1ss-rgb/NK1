@@ -122,5 +122,11 @@ assert.ok(recentReports.every((report) => report.promotionEligible === false),
   'diagnostic reports must never grant promotion authority');
 assert.equal(recent.diagnoseRecentLearningAttempts(0).length, 0);
 assert.equal(recent.diagnoseRecentLearningAttempts(1000).length, 2, 'requested history is bounded');
+const summary = recent.learningSummary();
+assert.equal(summary.recentAttemptDiagnoses.length, 2,
+  'the ordinary learning summary must expose recent replay diagnoses to downstream reflection/observability');
+assert.equal(summary.recentAttemptDiagnoses[0].taskId, 'trace-uncertain-1');
+assert.ok(summary.recentAttemptDiagnoses.every((report) => report.promotionEligible === false),
+  'summary exposure must preserve the diagnostic-only trust boundary');
 
 console.log('P23_LEARNING_ATTEMPT_DIAGNOSIS=PASS trustBoundary=true promotionEligible=false');
