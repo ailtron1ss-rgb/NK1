@@ -39,7 +39,8 @@ const exhausted = await retryTransientApprovalStorage(
 );
 assert.equal(exhausted.result, busy);
 assert.equal(exhausted.exhausted, true);
-assert.equal(exhausted.attempts, 4);
+assert.equal(exhausted.attempts, 3, 'no operation may start once the retry deadline is reached');
+assert.equal(calls, 3);
 assert.deepEqual(exhaustedSleeps, [25, 50, 15], 'retry delay must never sleep beyond the remaining budget');
 
 calls = 0;
