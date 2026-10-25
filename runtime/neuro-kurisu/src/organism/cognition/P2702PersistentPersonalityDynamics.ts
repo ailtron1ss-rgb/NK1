@@ -2,6 +2,11 @@ import type { ActionKind } from '../core/types.ts';
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
 
 const ACTIONS: ActionKind[] = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'];
+const DEFAULT_VALUE_NAMES = ['truth', 'science', 'autonomy', 'responsibility', 'privacy', 'loyalty', 'curiosity', 'relationship'];
+const DEFAULT_VALUE_WEIGHTS = [0.98, 0.96, 0.9, 0.92, 0.84, 0.88, 0.96, 0.72];
+const DEFAULT_VALUE_WEIGHT_BY_NAME: Record<string, number> = Object.fromEntries(
+  DEFAULT_VALUE_NAMES.map((name, index) => [name, DEFAULT_VALUE_WEIGHTS[index]!]),
+);
 const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, Number.isFinite(x) ? x : (a + b) / 2));
 const deep = <T>(x: T): T => structuredClone(x);
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -81,7 +86,7 @@ export interface P2702PersonalityState {
 const defaultState = (): P2702PersonalityState => {
   const inv = Object.entries(KURISU_ORGANISM_CANON.invariants);
   const ad = Object.entries(KURISU_ORGANISM_CANON.adaptiveTraits);
-  const values = ['truth', 'science', 'autonomy', 'responsibility', 'privacy', 'loyalty', 'curiosity', 'relationship'];
+  const values = DEFAULT_VALUE_NAMES;
   return {
     version: 1,
     tick: 0,
@@ -92,7 +97,7 @@ const defaultState = (): P2702PersonalityState => {
     adaptiveNames: ad.map(([k]) => k),
     adaptiveValues: ad.map(([, v]) => v),
     valueNames: values,
-    valueWeights: [0.98, 0.96, 0.9, 0.92, 0.84, 0.88, 0.96, 0.72],
+    valueWeights: DEFAULT_VALUE_WEIGHTS.slice(),
     relationshipTrust: {},
     selfBeliefs: [0.72, 0.68, 0.76, 0.64, 0.58, 0.7, 0.62, 0.74],
     selfUncertainty: new Array(8).fill(0.28),
@@ -202,6 +207,25 @@ export class P2702PersistentPersonalityDynamics {
     bias.rest = clamp((1 - goalPressure01) * 0.012);
     bias.wait = clamp(uncertainty01 * 0.012 * (1 - responsibility * 0.5));
     bias.defer = clamp(uncertainty01 * 0.016 * (1 - adaptive('directness')));
+
+    // Learned values must affect behavior, not just appear in diagnostics. Use
+    // deviations from the code-owned starting prior so a fresh personality keeps
+    // its canonical bias, while experience-driven value drift can favor or suppress
+    // actions that actually exercise those values.
+    for (const action of ACTIONS) {
+      let weightedValueDelta = 0;
+      let totalWeight = 0;
+      for (const [name, rawWeight] of Object.entries(ACTION_VALUE_WEIGHTS[action])) {
+        const index = this.state.valueNames.indexOf(name);
+        if (index < 0) continue;
+        const weight = boundedNumber(rawWeight, 0);
+        const baseline = DEFAULT_VALUE_WEIGHT_BY_NAME[name] ?? 0.5;
+        weightedValueDelta += ((this.state.valueWeights[index] ?? baseline) - baseline) * weight;
+        totalWeight += weight;
+      }
+      const valueAffinity = totalWeight > 0 ? weightedValueDelta / totalWeight : 0;
+      bias[action] = clamp(bias[action]! + valueAffinity * 0.08, -0.04, 0.12);
+    }
 
     const utilities = isRecord(input.actionUtilities) ? input.actionUtilities : {};
     for (const action of ACTIONS) {
