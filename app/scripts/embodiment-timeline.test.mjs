@@ -204,6 +204,9 @@ test("AvatarStage applies the shared affect smoothing to expression, gaze, pose 
 test("versioned EmbodimentIntent JSON schema is present and pins all synchronized channels", async () => {
   const schema = JSON.parse(await readFile(join(root, "../contracts/embodiment-intent.v1.schema.json"), "utf8"));
   assert.equal(schema.properties.protocolVersion.const, 1);
+  assert.ok(schema.properties.clockSource.enum.includes("runtime-tts-start-anchored-monotonic"));
+  assert.equal(isEmbodimentIntentV1(intent({ clockSource: "runtime-tts-start-anchored-monotonic" })), true,
+    "runtime TTS start-clock intents must satisfy the same v1 envelope");
   for (const key of ["stateVersion", "speechEventId", "audioClockId", "speechPhase", "audioTimeMs", "priority", "cancellationToken", "expression", "mouth", "gaze", "body", "voiceEmphasis"]) {
     assert.ok(schema.required.includes(key), `schema must require ${key}`);
   }
