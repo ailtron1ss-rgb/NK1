@@ -1,3 +1,10 @@
+## NK1 WorkPass535 — runtime type-contract repair and mood relaxation (2026-10-25)
+
+- Corrected a batch of runtime TypeScript contracts found by the dedicated CI job: typed B272 need keys; made intrinsic-association filter predicates strictly boolean; typed dependency-transition records; registered the compound-repair clock kind; narrowed optional causal policy features; imported replay-selection options from their declaring module; corrected the retention-gap argument; supplied the missing verified-non-holdout counter; pinned holdout/schema literals; and disambiguated the legacy extended cycle verifier from the newer cycle verifier.
+- Hardened outcome attribution for nullable causal events: replay learning, replay-validation learning and skill-repair learning now run only when the canonical causal recorder returned a valid event. The trusted shadow registrar contract now permits a synchronous receipt while the coordinator explicitly awaits registration before launching the child process.
+- Live2D mood influence now decays between appraisals (five-minute time constant) instead of remaining frozen indefinitely when no new appraisal arrives. A regression verifies that expired mood stops affecting voice pitch, expression intensity and posture, while a fresh persistent mood still carries forward.
+- **Validation boundary:** fixes and targeted regressions are committed, and the new CI run is queued. Exact-head runtime/app typecheck results and fresh browser/Live2D playback are not yet confirmed.
+
 ## NK1 WorkPass534 — repair app typecheck fixtures for safe avatar storage (2026-10-25)
 
 - Fixed six TypeScript diagnostics in `safeLocalStorage.test.mjs`: annotated helper/test-double parameters and replaced direct deletion of the required `globalThis.window` property with `Reflect.deleteProperty`.
