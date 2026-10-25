@@ -1,3 +1,11 @@
+## NK1 learning — fix bounded recent-outcome diagnosis ordering (2026-10-25)
+
+- Corrected `P23LearningEngine.diagnoseRecentLearningAttempts()` to select the newest-first prefix of the canonical experience history. The previous tail-and-reverse selection could report older outcomes when callers requested a small history window.
+- Updated the regression fixture to use the persisted newest-first contract and added a `limit=1` assertion; wired the regression into `test:p23:learning`.
+- **Verification boundary:** source and regression are committed; exact-HEAD runtime execution and typecheck still need confirmation. No measured learning uplift is claimed.
+
+---
+
 ## NK1 learning diagnostics — expose replay diagnoses in summary (2026-10-25)
 
 - Extended `P23LearningEngine.learningSummary()` with a bounded `recentAttemptDiagnoses` field, making the newest persisted outcome diagnoses available to existing summary consumers and observability without a separate call path.
