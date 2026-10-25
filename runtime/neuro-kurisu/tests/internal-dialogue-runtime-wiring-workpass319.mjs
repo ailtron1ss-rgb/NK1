@@ -5,6 +5,7 @@ const runtime = await readFile(new URL('../src/organism/core/OrganismRuntime.ts'
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const language = await readFile(new URL('../src/organism/language/LanguageOrgan.ts', import.meta.url), 'utf8');
 const bridge = await readFile(new URL('../src/organism/cognition/CognitiveEventEvidenceBridge.ts', import.meta.url), 'utf8');
+const server = await readFile(new URL('../src/server/server.mjs', import.meta.url), 'utf8');
 
 const proposalCall = runtime.indexOf('buildCognitiveProposalPrompt(cycle,fusedObservation');
 assert.notEqual(proposalCall, -1, 'runtime must retain the canonical cognitive proposal path');
@@ -24,6 +25,13 @@ assert.match(language, /bindCognitiveEventEvidence\(claims, evidence, causalSnap
 assert.match(bridge, /node\.stage === 'outcome'/);
 assert.match(bridge, /node\.stage === 'tool-outcome'/);
 assert.match(bridge, /node\.stage === 'external-evidence'/);
+assert.match(runtime, /runtime\.internal-dialogue\.review/,
+  'runtime must append a durable sanitized receipt to the operational journal');
+assert.match(runtime, /internalDialogueReceiptSnapshot\(\)/,
+  'runtime must expose only the last bounded review receipt for diagnostics');
+assert.match(server, /internalDialogueReceipt:\s*_internalDialogueReceipt,\s*\.\.\.providerRequest/,
+  'host-side receipt metadata must be stripped before language-provider submission');
+
 assert.match(bridge, /node\.payload\.independenceKey/,
   'late observations must preserve independent-source requirements');
 
