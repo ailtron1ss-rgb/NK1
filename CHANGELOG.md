@@ -1,3 +1,10 @@
+# NK1 child-process cleanup edge cases (2026-10-25)
+
+- [REGRESSION] Added tests that call `terminateChildren()` for an already-exited child and a child whose executable cannot be spawned. These pin down the expected cleanup result for both edge cases and guard against a cleanup wait that never settles.
+- [VALIDATION STATUS] Focused Node 24 workflow is triggered by this branch update; results for the new tests must be checked on the exact resulting HEAD.
+
+---
+
 # NK1 managed gateway end-to-end regression (2026-10-25)
 
 - [INTEGRATION] Added `tools/super-stack.integration.test.mjs`, which launches the real gateway CLI through `spawnManaged`, exercises live HTTP routing to mock UI/Runtime/Research services, verifies API namespace lookalikes route to UI, and confirms the process supervisor stops the gateway.
