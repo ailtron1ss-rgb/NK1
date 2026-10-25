@@ -32,6 +32,25 @@ assert.equal(critical.allowMatchedCounterfactual, false);
 assert.equal(critical.reason, 'critical-interrupt');
 assert.equal(critical.cognitiveCycleDelayMultiplier01, 1, 'critical resource interrupts must not accelerate CPU work');
 
+for (const type of ['THERMAL-CRITICAL', 'Resource-Critical', 'MEMORY-PRESSURE']) {
+  const caseVariant = resolveCognitiveRoutingPolicy({
+    wakeMask: 0,
+    interrupt: { active: true, priority01: 0.84, type, domains: ['embodiment'] },
+  }, 3);
+  assert.equal(
+    caseVariant.maxCounterfactualBranches,
+    0,
+    `case-variant critical interrupt "${type}" must fail closed below the numeric priority threshold`,
+  );
+  assert.equal(caseVariant.allowMatchedCounterfactual, false);
+  assert.equal(caseVariant.reason, 'critical-interrupt');
+  assert.equal(
+    caseVariant.cognitiveCycleDelayMultiplier01,
+    1,
+    'critical resource labels must not accelerate CPU work regardless of casing',
+  );
+}
+
 const highPriority = resolveCognitiveRoutingPolicy({
   wakeMask: 8,
   interrupt: { active: true, priority01: 0.95, type: 'prediction-error', domains: ['agency'] },
