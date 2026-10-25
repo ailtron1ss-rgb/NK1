@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { generateKeyPairSync, sign } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AtomicFileSkillStorePersistence } from '../src/organism/learning/AtomicFileSkillStorePersistence.ts';
@@ -213,6 +213,18 @@ try {
   );
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
+
+  // Existing schema-1 files may still contain the pre-lineage four-field candidate ID.
+  const legacySnapshot = JSON.parse(readFileSync(filePath, 'utf8'));
+  const legacyCandidate = legacySnapshot.candidates.find(item => item.skillId === 'file-backed-skill');
+  assert.ok(legacyCandidate, 'file-backed standard candidate exists before legacy identity check');
+  legacyCandidate.candidateId = createHash('sha256').update(JSON.stringify([
+    legacyCandidate.skillId, legacyCandidate.version, legacyCandidate.proposalId, legacyCandidate.payloadFingerprint,
+  ])).digest('hex');
+  writeFileSync(filePath, JSON.stringify(legacySnapshot));
+  const legacyRestored = new AtomicFileSkillStorePersistence(filePath).read();
+  assert.equal(legacyRestored.candidates.find(item => item.skillId === 'file-backed-skill')?.candidateId,
+    legacyCandidate.candidateId, 'schema-1 candidate IDs without revision provenance remain readable after upgrade');
 } finally {
   rmSync(tempRoot, { recursive: true, force: true });
 }
