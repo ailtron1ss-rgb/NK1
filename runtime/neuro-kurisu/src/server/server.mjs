@@ -16,6 +16,7 @@ import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
 import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs';
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
+import { buildCognitiveArchitectureSnapshot } from '../organism/core/CognitiveArchitectureMap.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
@@ -431,7 +432,27 @@ async function route(req, res) {
             return json(res, 200, { ok: true, release: RELEASE_CONTRACT.application, graph: runtime.core.organismSystemGraph(), health: runtime.core.organismSystemHealth() });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/cognitive-architecture') {
-            return json(res, 200, { ok: true, release: RELEASE_CONTRACT.application, architecture: runtime.core.organismCognitiveArchitecture(), readOnly: true });
+            const architecture = buildCognitiveArchitectureSnapshot();
+            const health = runtime.core.cognitiveSubsystemHealth();
+            const coreSnapshot = runtime.core.snapshot();
+            // Keep the live health projection distinct from the static, validated
+            // architecture map; neither should be inferred from the other.
+            const systems = Array.isArray(health)
+                ? health
+                : health !== null && typeof health === 'object'
+                    ? Object.entries(health).map(([id, status]) => ({ id, status }))
+                    : [];
+            const rawTick = coreSnapshot && typeof coreSnapshot === 'object' ? coreSnapshot.tick : undefined;
+            const tick = typeof rawTick === 'number' && Number.isFinite(rawTick) ? rawTick : 0;
+            const runtimeSnapshot = { tick, systems, stateSchema: RELEASE_CONTRACT.stateSchema };
+            const runtimeArchitecture = runtime.core.organismCognitiveArchitecture();
+            return json(res, architecture.validation.ok ? 200 : 503, {
+                ok: architecture.validation.ok === true && Number.isFinite(tick),
+                release: RELEASE_CONTRACT.application,
+                architecture: { ...architecture, runtimeSnapshot, runtimeArchitecture },
+                readOnly: true,
+                note: 'Read-only architecture and live subsystem projection; availability does not establish consciousness or subjective experience.',
+            });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/subject-continuity') {
             return json(res, 200, { ok: true, subject: runtime.core.subjectContinuitySnapshot(), motive: runtime.core.motiveEcologySummary(), nonConsciousnessClaim: true });

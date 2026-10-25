@@ -6,7 +6,7 @@ import {
 import { dirname } from 'node:path';
 import type {
   ActiveSkillVersion, SkillPromotionApproval, SkillRollbackApproval, SkillShadowObservation, SkillStorePersistence,
-  VersionedSkillCandidate, VersionedSkillStoreSnapshot,
+  SkillRevisionProvenance, VersionedSkillCandidate, VersionedSkillStoreSnapshot,
 } from './VersionedSkillCandidateStore.ts';
 
 const emptySnapshot = (): VersionedSkillStoreSnapshot => ({ schemaVersion: 1, revision: 0, active: [], candidates: [] });
@@ -86,6 +86,19 @@ function isRollbackApproval(value: unknown): value is SkillRollbackApproval {
     payload.expectedActiveVersion === value.expectedActiveVersion;
 }
 
+function isRevisionProvenance(value: unknown): value is SkillRevisionProvenance {
+  if (!isRecord(value) || value.schemaVersion !== 1 ||
+      !isFingerprint(value.evaluationFingerprint) ||
+      !(value.sourceCandidateId === null || isFingerprint(value.sourceCandidateId)) ||
+      !isFingerprint(value.planFingerprint) || !isFingerprint(value.datasetFingerprint) ||
+      (value.sourceEvidenceFingerprint !== undefined && !isFingerprint(value.sourceEvidenceFingerprint)) ||
+      !Array.isArray(value.dimensions) || value.dimensions.length === 0 ||
+      !value.dimensions.every(d => ['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'].includes(String(d))) ||
+      new Set(value.dimensions).size !== value.dimensions.length ||
+      !isTime(value.createdAt)) return false;
+  return true;
+}
+
 function isCandidate(value: unknown): value is VersionedSkillCandidate {
   if (!isRecord(value) || !isFingerprint(value.candidateId) || !isText(value.skillId) ||
       !isVersion(value.version) || !isFingerprint(value.payloadFingerprint) ||
@@ -96,10 +109,17 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
+  if (value.revisionProvenance !== undefined && !isRevisionProvenance(value.revisionProvenance)) return false;
+  const idParts = [value.skillId, value.version, value.proposalId, value.payloadFingerprint];
   const expectedId = createHash('sha256').update(JSON.stringify([
-    value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+    ...idParts,
+    value.revisionProvenance === undefined ? null : payloadFingerprint(value.revisionProvenance),
   ])).digest('hex');
-  if (value.candidateId !== expectedId) return false;
+  // Accept the previous four-part ID only for legacy candidates without revision provenance.
+  const legacyId = value.revisionProvenance === undefined
+    ? createHash('sha256').update(JSON.stringify(idParts)).digest('hex')
+    : null;
+  if (value.candidateId !== expectedId && value.candidateId !== legacyId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
   if (value.rollbackApproval !== undefined && !isRollbackApproval(value.rollbackApproval)) return false;
   if (value.promotedAt !== undefined && !isTime(value.promotedAt)) return false;
@@ -124,8 +144,10 @@ function isSnapshot(value: unknown): value is VersionedSkillStoreSnapshot {
  */
 export class AtomicFileSkillStorePersistence implements SkillStorePersistence {
   private readonly lockPath: string;
+  private readonly filePath: string;
 
-  constructor(private readonly filePath: string) {
+  constructor(filePath: string) {
+    this.filePath = filePath;
     if (!filePath?.trim()) throw new Error('skill store file path must be non-empty');
     this.lockPath = filePath + '.lock';
   }

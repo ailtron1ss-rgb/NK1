@@ -421,11 +421,16 @@ export class P23LearningEngine {
     const ablations=sanitizeRows(source.ablations,512,parseAblation,row=>row.traceId);
     const evidenceDebt=sanitizeRows(source.evidenceDebt,256,parseEvidenceDebt,row=>row.id);
     // Reconcile dedupe caches with durable rows; restored rows must not be applied twice.
+    // Persisted dedupe caches are newest-first. Give them precedence over
+    // IDs reconstructed from retained evidence rows, otherwise a restart can
+    // discard the actual latest IDs and allow recently processed traces to replay.
+    const persistedProcessedIds=Array.isArray(source.processedTraceIds)?source.processedTraceIds:[];
+    const persistedReplayedIds=Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[];
     const processedTraceIds=sanitizeIdList([
-      ...experiences.map(row=>row.traceId),...(Array.isArray(source.processedTraceIds)?source.processedTraceIds:[]),
+      ...(persistedProcessedIds.length?persistedProcessedIds:experiences.map(row=>row.traceId)),
     ],2048);
     const replayedTraceIds=sanitizeIdList([
-      ...replayUpdates.map(row=>row.traceId),...(Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[]),
+      ...(persistedReplayedIds.length?persistedReplayedIds:replayUpdates.map(row=>row.traceId)),
     ],2048);
     const checksum=sanitizeChecksum(source.checksum,d.checksum);
     const metrics=sanitizeMetrics(source.metrics,d.metrics);
@@ -1001,7 +1006,7 @@ export class P23LearningEngine {
       // Skills are durable but not immortal: stale evidence gradually loses
       // influence, reaching zero after 180 days without fresh validation.
       const ageMs=Math.max(0,now()-exact.updatedAt);
-      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,usageGapMs:ageMs});
+      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,gapMs:ageMs});
       if(exact.status==='promoted') return clamp(exact.confidence01*.05*retention);
       if(exact.status==='rejected') return retention===0?0:-clamp(exact.confidence01*.03*retention);
       return 0;

@@ -53,11 +53,19 @@ export class UnifiedCognitiveCycle {
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
+    const counterIsTrusted=(value:unknown):boolean=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+    const aggregateContradiction=(
+      source.completeCycles!==undefined&&(!counterIsTrusted(source.completeCycles)||source.completeCycles!==completeCycles)
+    )||(
+      source.incompleteCycles!==undefined&&(!counterIsTrusted(source.incompleteCycles)||source.incompleteCycles!==incompleteCycles)
+    )||(
+      source.brokenLineages!==undefined&&(!counterIsTrusted(source.brokenLineages)||safeCounter(source.brokenLineages)>incompleteCycles)
+    );
     const hasMissingArray=Array.isArray(source.lastMissingStages);
     const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...REQUIRED];
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
-    const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
+    const normalizedMissing=malformedMissing&&filteredMissing.length===0?[...REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
     const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
     this.state={
@@ -69,7 +77,7 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:!aggregateContradiction&&cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }

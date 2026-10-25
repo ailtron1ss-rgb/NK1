@@ -1,3 +1,257 @@
+## NK1 WorkPass361 — Finish signed-shadow fixture identity migration (2026-10-25)
+
+- [E2E-FIXTURE] Removed the last stale reference to the pre-refactor staged variable in the signed-shadow lifecycle assertion. The test now consistently resolves the candidate by the ID read from the durable versioned store.
+- [VALIDATION] This fixes a test-only ReferenceError found after the persisted candidate identity change; cryptographic verification and candidate-version checks remain intact.
+
+---
+
+## NK1 WorkPass359 — Restore conflict-gated P26 interleaved learning (2026-10-25)
+
+- [CONTINUAL-LEARNING] Restored the P26TrueLearningEngine.trainInterleaved API used by sequential-learning benchmarks: it updates fresh examples, periodically rehearses bounded historical samples, and tracks online/replay updates separately.
+- [CONFLICT-GATE] Replay comparisons are bounded to 8–128 same-action candidate records, compare normalized policy features and reward disagreement, and block stale replay only when a near-identical context has a contradictory outcome. Distinct context-separated tasks remain eligible for rehearsal.
+- [INPUT-GUARDS] Invalid rows and out-of-range replay options fail before the learning loop starts. Generalization maturity is not increased by this synthetic benchmark.
+
+---
+
+## NK1 WorkPass358 — Bind signed-shadow E2E to the persisted candidate (2026-10-25)
+
+- [E2E-IDENTITY] The signed-shadow observation fixture now stages a candidate through a Core backed by the test's durable state path, then reads the actual persisted candidate ID/version before configuring the execution scheduler.
+- [CORRELATION] The second runtime must reload that exact candidate from durable storage; command environment and scheduler use the persisted identity instead of assuming version 1. Signature and candidate checks remain enabled.
+- [VALIDATION] The signed-shadow lifecycle is being checked again on the updated PR head.
+
+---
+
+## NK1 WorkPass360 — Isolate host-owned authority boundary test mutations (2026-10-25)
+
+- [TEST-ISOLATION] The host-owned independent-evaluation regression restores the test executable's private mode after deliberately making it group-writable for a rejection check.
+- [REGRESSION] Later dispatch-time run-root replacement now reaches the intended inode/identity guard rather than being preempted by the earlier file-mode mutation. The production permission check remains unchanged.
+
+---
+
+## NK1 WorkPass359 — Reconcile signed-shadow fixture with durable candidate ID (2026-10-25)
+
+- [IDENTITY] The signed-shadow integration fixture now hashes the five-field candidate identity, including an explicit `null` lineage slot for a candidate without reflective revision provenance, matching the current writer and persistence validator.
+- [COVERAGE] Runtime evidence signature, candidate payload fingerprint, run/task binding and the no-auto-promotion invariant remain part of the same end-to-end regression.
+
+---
+
+## NK1 WorkPass358 — Separate execution validity from independent verification (2026-10-25)
+
+- [EVALUATOR] The independent candidate evaluator records whether execution itself succeeded separately from whether an independent verifier authenticated the run/task/context binding.
+- [FAIL-CLOSED] Verification outage still makes task success false, suppresses trusted run IDs and trajectory evidence, and cannot promote a candidate. Invalid or repeated execution traces remain non-executable.
+- [VALIDATION] The targeted evaluator regression is the acceptance gate for this metric separation; no broad CI-green claim is implied.
+
+---
+
+## NK1 WorkPass357 — Align signed shadow fixture with canonical candidate identity (2026-10-25)
+
+- [IDENTITY-CONTRACT] Updated the signed-shadow end-to-end fixture to include the explicit nullable provenance slot used by the versioned candidate writer when computing a candidate ID.
+- [COMPATIBILITY] Runtime writer and atomic persistence validator now share the same canonical five-part identity; persisted legacy four-part candidates remain readable only when no revision provenance is present.
+- [VALIDATION] The end-to-end shadow observation and durable lifecycle regressions are running on the current PR head.
+
+---
+
+## NK1 WorkPass356 — Authenticate P26 holdout maturity and preserve candidate identity (2026-10-25)
+
+- [LEARNING-METRICS] Added explicit trainingExposure01 so online/replay parameter updates are tracked separately from generalization. Training exposure and a replay-derived split no longer count as independent generalization evidence.
+- [HOLDOUT-TRUST] P26TrueLearningEngine now accepts a verifier dependency for independent holdout records; the production default denies unauthenticated evidence. Accepted records are deduplicated and re-verified on restore, and only then contribute to the bounded generalization metric.
+- [DURABLE-ID] Standardized candidate identity with the versioned-store writer: a five-part tuple always includes an explicit provenance slot (the SHA-256 digest or null). The atomic persistence validator enforces that identity and still accepts legacy four-part IDs only when provenance is absent.
+- [REGRESSION] Expanded P26 holdout tests to cover training exposure, no generalization credit from ordinary updates, independent evidence persistence/deduplication, and default-deny behavior for self-asserted verification flags.
+
+---
+
+## NK1 WorkPass355 — Make drift mean assertion numerically tolerant (2026-10-25)
+
+- [TEST-ROBUSTNESS] Replaced strict equality for a repeated-value drift estimate with a 1e-12 tolerance. The computed mean can be 0.19999999999999962 due to floating-point accumulation; the test still requires the result to remain effectively 0.2.
+- [NO-WEAKENED-DETECTION] Drift detection, window width, and post-change adaptation assertions remain strict.
+
+---
+
+## NK1 WorkPass354 — Make transfer-metric regression numerically robust (2026-10-25)
+
+- [NUMERICAL-CORRECTNESS] Changed the continual-transfer unit test to compare the computed (0.35 - 0.20) delta within a small floating-point tolerance. IEEE-754 subtraction can produce `0.14999999999999997`; the metric is correct, while exact decimal equality was brittle.
+- [NO-RELAXED-SEMANTICS] The accepted value remains constrained to within (10^{-12}) of the expected transfer delta; signed negative-transfer and snapshot-restore assertions remain unchanged.
+- [VALIDATION] The P26 Learning Validation workflow reruns against the current PR head after this test correction.
+
+---
+
+## NK1 WorkPass351 — Repair strip-only runtime loading and durable skill CAS (2026-10-25)
+
+- [REPLAY-RUNTIME] Replaced the `ContinualReplayBuffer` constructor parameter property with an explicit field assignment so Node's strip-only TypeScript loader can import the module in replay CI.
+- [LEARNING-INPUTS] Corrected the true-learning regression to require malformed `NaN` / `Infinity` rates to be rejected atomically, with learner weights, biases and update counters unchanged. This matches the new preflight validation rather than testing the old unsafe behavior.
+- [DURABLE-SKILLS] Reconciled the atomic skill-store validator with the candidate-ID contract: ordinary candidates retain the canonical four-part identity, while provenance-directed revisions bind an additional fifth digest. Restore validates provenance fields and accepts legacy four-part IDs when lineage is absent, preserving durable restart compatibility.
+
+---
+
+## NK1 WorkPass352 — Align Core shadow-run test with async fail-closed API (2026-10-25)
+
+- [ASYNC-CONTRACT] The Core-owned trusted shadow-process entry test now awaits rejection when asking the coordinator to run an invalid baseline/control lane. The coordinator's declared Promise contract is tested rather than incorrectly expecting a synchronous throw.
+- [SAFETY] The invalid run must still be rejected before child spawn or durable trusted-run registration.
+- [VALIDATION] Exact-head Core regression is triggered by this source change; acceptance remains pending until it reports success.
+
+---
+
+## NK1 WorkPass351 — Check signed CAS metadata before resolving rollback ancestry (2026-10-25)
+
+- [PERSISTENCE-INTEGRITY] Versioned skill restore validates candidate base-version, prior-active version, signed approval timestamp and active activation timestamp before it resolves the rollback ancestry.
+- [DIAGNOSTICS] Tampering with `baseVersion` now reports the violated signed promotion/CAS binding directly, instead of failing earlier on the downstream missing-prior-version lookup. The default-deny approval verifier and the ancestry integrity check remain intact.
+- [VALIDATION] The versioned candidate lifecycle suite must pass on the exact PR head before this ordering fix is considered verified.
+
+---
+
+## NK1 WorkPass350 — Preserve action attribution across policy overrides (2026-10-25)
+
+- [B272-OUTCOME] The real action chosen by final selection may differ from the endogenous goal generator's candidate. Runtime now credits B272 only when the completed action equals the candidate action, in both synthetic and embodied outcome paths; the module's fail-closed guard stays strict.
+- [REGRESSION] Expanded the WorkPass296 action-attribution contract test to verify the matching-action guard at both outcome call sites. This prevents a legitimate policy override from turning a chat/runtime cycle into HTTP 500 or false goal credit.
+
+---
+
+## NK1 WorkPass349 — Make causal replay fixtures state-grounded (2026-10-25)
+
+- [REPLAY-FIXTURE] Added explicit before/after ticks and an observed `lastAction` / `lastActionSuccess` receipt to the Big-Pass 115 replay fixture. The causal stream now receives a realistic transition satisfying its existing grounding contract instead of returning zero valid candidates.
+- [PRODUCTION-GUARD] No minimum-sample assertion was weakened and no learning validation was bypassed.
+
+---
+
+## NK1 WorkPass348 — Wire P26 recovery and curriculum tests (2026-10-25)
+
+- [CI-SCRIPTS] Added the missing `test:p26:learning-recovery-benchmark` and `test:p26:learning-continual-matrix` aliases for their existing regression scripts. Previously P26 CI could stop with “Missing script” before exercising recovery and continual-learning behavior.
+
+---
+
+## NK1 WorkPass347 — Align rollback lifecycle fixture with signed approval API (2026-10-25)
+
+- [SIGNED-ROLLBACK] Updated the versioned-skill-store test to provide an explicit test-only rollback verifier and a rollback approval object containing reviewer, timestamp and expected active version. The production default-deny verifier remains unchanged.
+- [LIFECYCLE] Preserved the follow-up assertion that a rolled-back candidate cannot be rolled back again.
+
+---
+
+## NK1 WorkPass346 — Harden P26 training inputs and action-lineage acceptance (2026-10-25)
+
+- [P26-INPUT] Added finite-value, valid-action and state-shape checks to parametric training; malformed targets, learning rates, sample weights and feature vectors now fail before an update.
+- [P26-ATOMICITY] Batch training preflights every sample before the first parameter update, and corrupted persisted diagnostics/counters are normalized rather than restored as NaN, Infinity, negative counts or string-based safety flags.
+- [ACTION-LINEAGE] Tightened the WorkPass294 static acceptance contract to verify that both normal finalization and receipt reconciliation call the decision-linked external-postcondition validator with the exact tool, input, execution ID and decision ID.
+- [VALIDATION] New checks are committed to the current PR branch. The corresponding P26 and WorkPass294 workflow results are still pending; no green status is claimed here.
+
+---
+
+## NK1 WorkPass344 — Put closure regression under dedicated CI (2026-10-25)
+
+- [CI-COVERAGE] Added `.github/workflows/workpass328-closed-loop-failure-closure.yml` to run runtime typecheck and `test:p328:closed-loop-failure-closure` on relevant closure/runtime/test changes.
+- [REGRESSION-OWNERSHIP] Malformed restore evidence, runtime-vs-causal closure status, cancellation and late-finalizer failures now have a dedicated workflow trigger instead of relying on unrelated CI to discover the test.
+- [VALIDATION] New workflow is committed and will provide a direct acceptance result on the current pull request; no local or remote pass is claimed before it runs.
+
+---
+
+## NK1 WorkPass343 — Restore missing workflow script aliases (2026-10-25)
+
+- [CI-WIRING] Added the missing `test:workpass294:correlated-postcondition` and `test:p26:learning-input-integrity` npm aliases referenced by their existing GitHub Actions workflows; both map directly to the committed regression files.
+- [FOLLOW-THROUGH] This removes immediate “Missing script” failures after typecheck, allowing those workflows to reach the actual behavioural checks instead of stopping at package-script resolution.
+- [VALIDATION] Exact-head runs triggered after the package change; workflow acceptance remains pending until the new runs finish.
+
+---
+
+## NK1 WorkPass342 — Make coordinator validation failures promise-safe (2026-10-25)
+
+- [API-CONTRACT] The trusted shadow-run coordinator is now declared `async`, so invalid registrar, runtime-version and execution-lane guards reject its declared `Promise<LearningProcessResult>` instead of escaping synchronously.
+- [TRUST-BOUNDARY] Registration remains awaited before child spawn; registry failures still prevent execution, and the registrar's domain return value is not confused with the supervisor callback result.
+- [VALIDATION] Coordinator and strict runtime checks are running against the current PR head; passing status remains unclaimed until exact-head jobs complete.
+
+---
+
+## NK1 WorkPass341 — Restore the live cognitive-architecture HTTP projection (2026-10-25)
+
+- [HTTP-API] The read-only `/api/organism/cognitive-architecture` route now serves the canonical validated `CognitiveArchitectureMap` plus runtime tick and the real live subsystem-health projection.
+- [TRUTHFUL-STATUS] Kept static map validation separate from runtime health and preserved the former OrganismCore architecture view as a nested compatibility field; no health or consciousness claims are invented.
+- [REGRESSION] Updated server smoke to compare subsystem/flow totals with the canonical map rather than stale hard-coded counts. The map has evolved beyond the old 22-flow expectation.
+- [VALIDATION] Code and regression are committed below; exact-head server smoke is still required before calling the endpoint verified.
+
+---
+
+## NK1 WorkPass339 — Repair cross-layer CI contracts and malformed causal restore (2026-10-25)
+
+- [CAUSAL RESTORE] Causal-domain persistence rejects malformed recent records instead of normalizing them into trusted evidence; invalid records force FAIL, revoke the last durable receipt, replace the success fingerprint, and reduce restored success/score credit.
+- [REGRESSION] Extended closed-loop failure-closure coverage to assert failure status, corrected counters, reduced score, replacement fingerprint, and removal of malformed causal records.
+- [NULLABILITY] Guarded optional causal-experience events before ingesting replay, verification, and skill-repair signals; aligned the trusted shadow registrar interface with its actual returned context.
+- [TEST FIXES] Removed TypeScript annotations from JavaScript avatar tests and corrected the P23 outcome-order fixture to use the verifier identity declared by its task manifest.
+- [VALIDATION] Exact-head GitHub Actions are in progress; these source changes are not considered fully validated until CI completes.
+
+---
+
+## NK1 WorkPass338 — Reject malformed runtime closure evidence on restore (2026-10-25)
+
+- [RESTORE] `RuntimeClosureLedger.restore()` now treats dropped malformed persisted records as a failure instead of silently accepting a stale `PASS` summary.
+- [INTEGRITY] Invalid restored evidence increments the failure counter and replaces the persisted success fingerprint with a deterministic integrity fingerprint.
+- [REGRESSION] Added malformed-record fixtures covering empty checks, wrong-typed check results, unsafe counters, and forged success summaries.
+- [VALIDATION] Source and regression tests are committed; the exact-head GitHub Actions run remains the acceptance gate.
+
+---
+
+## NK1 WorkPass337 — Close expression churn and strict app-test gaps (2026-10-25)
+
+- [LIVE2D] The viewer now caches the last successfully applied mapped expression and skips repeated reapplication of the same expression. This prevents mouth/embodiment updates from restarting an unchanged facial expression.
+- [APP-TESTS] Typed safe-local-storage test fixtures and replaced deletion of the required global property with `Reflect.deleteProperty`, addressing strict typecheck errors without weakening runtime storage failure behavior.
+- [VALIDATION] CI is running on the evolving PR head; remaining core nullability and server-smoke contract failures are still open until independently reproduced and repaired.
+
+---
+
+## NK1 WorkPass336 — Repair restore and strict runtime type contracts (2026-10-25)
+
+- [P23-RESTORE] Preserve a non-empty persisted newest-first dedupe cache as authoritative during restore; reconstruct IDs from durable rows only when the persisted cache is absent/empty. This prevents an older retained replay row from being appended ahead of the cache's bounded history while preserving recovery when caches are missing.
+- [DATASET-TYPES] Keep holdout aggregate split and dataset schema version as literal types so strict TypeScript checks match the declared public interfaces.
+- [NODE-TYPES] Add the missing synchronous hard-link declaration and explicit child-process event parameter types to the runtime shim boundary.
+- [VALIDATION] Changes are committed on the WorkPass328 PR branch. CI has not yet re-run against this exact head; do not treat the wider validation suite as green until its results arrive.
+
+---
+
+## NK1 WorkPass335 — Restore missing loop-test wiring (2026-10-24)
+
+- [CI-SCRIPT] Added the missing `test:workpass291:payload-budget` and `test:workpass292:evidence-lanes` npm scripts referenced by their workflows. Those jobs had been failing with `npm error Missing script` before either test could run.
+- [CI-SCRIPT] The WorkPass292 target now resolves to `tests/big-pass-90-causal-learning-stream.mjs`; its untrusted external imports are asserted to remain outside trusted runtime outcome totals.
+- [NODE24-RUNTIME] Removed the last observed constructor parameter-property blocker in `TrustedSkillShadowRunRegistry.ts`, reached by the P328 runtime regression and P23 learning path.
+- [TEST-SYNTAX] Renamed the WorkPass214 evaluator variable in `workpass203-independent-candidate-evaluator.mjs` to avoid a duplicate top-level `const snapshotEvaluator` that made the regression script fail to parse.
+- [VALIDATION] These fixes are committed to the PR branch; fresh-head workflow runs must confirm the tests now actually execute and pass.
+
+---
+
+## NK1 WorkPass334 — Align closed-loop regressions with evidence contracts (2026-10-24)
+
+- [CAUSAL-OUTCOME] Updated the WorkPass90 runtime-outcome fixture to include an explicit `lastAction` and bounded `lastActionSuccess` receipt. The stream's required state-attribution guard remains strict; it is the fixture that now models a real observed action outcome.
+- [SIGNED-EVIDENCE] Updated signed-artifact regression coverage to assert idempotent re-ingestion of the exact same signed artifact (restoring the process-local trust receipt without adding another outcome), and separately reject a different signed artifact attempting to occupy the same task/method/seed/attempt as `conflicting-existing-outcome`.
+- [NODE24-RUNTIME] Converted constructor parameter properties to explicit fields in `VersionedSkillCandidateStore`, `P23TrustedShadowLearningScheduler`, and `P23CompoundRepairRevisionCoordinator`. Node 24's `--experimental-strip-types` loader rejects constructor parameter properties; these modules are reachable from the replay/runtime cycle tests and must load before their assertions can run.
+- [VALIDATION] Both tests failed in CI on the older head for these contract mismatches. They have been corrected in the source branch; current-head runs are pending and their outcomes remain unclaimed.
+
+---
+
+## NK1 WorkPass333 — Repair restore-contract and CI wiring defects (2026-10-24)
+
+- [RESTORE] Preserve valid persisted cognitive stages when a mixed stage list contains an invalid entry; fall back to all required stages only when no stored stage can be trusted. Fixes the exact WorkPass287 assertion in current CI.
+- [RESTORE] A later WorkPass287 run on PR head `cbe7bb4b8373d995408d07cdcf7cf0c45e92bef8` exposed another inconsistent-snapshot case: `lastComplete=true` was retained when the persisted complete/incomplete/broken counters contradicted one another. `UnifiedCognitiveCycle.restore()` now marks the latest cycle incomplete when those supplied aggregates are inconsistent, while consistent aggregates may still preserve a verified complete latest cycle.
+- [CI] Restore `test:workpass293:p23-revision` npm alias to the existing `tests/workpass293-autonomous-p23-revision.mjs` test, matching the workflow's command.
+- [VALIDATION] Earlier runs showed separate blockers: App typecheck failed on untouched `app/src/legacy/avatar/safeLocalStorage.test.mjs`; WorkPass79 failed `tests/p23-signed-outcome-artifact.mjs` at the duplicate-attempt assertion; Runtime/P26 typecheck reported numerous existing Node-shim and unrelated typing errors. A later WorkPass287 run on PR head `cbe7bb4b8373d995408d07cdcf7cf0c45e92bef8` failed `tests/workpass287-unified-cycle-contract.mjs:73` because aggregate contradictions did not invalidate `lastComplete`. This is fixed on the newer head; that head's re-run is still pending, so no new tests are claimed green.
+
+---
+
+## NK1 WorkPass328 — Close failed cognitive cycles explicitly (2026-10-24)
+
+- [CLOSED-LOOP] Added a terminal `failure` phase to `RuntimeClosureLedger`. Durability/restore bookkeeping cannot erase the last cycle's `FAIL`; a later actual step can replace it.
+- [CLOSED-LOOP] Added `CausalDomainClosureLedger.failPending()` for exceptions/cancellations before normal closure, preserving a bounded failure reason and denying causal success credit.
+- [CLOSED-LOOP] Added `failLatest()` so batch-finalization or emergency-checkpoint failures downgrade an already-recorded cycle instead of leaving stale PASS evidence, while preserving observed world/learning facts and revoking only unproven durability claims.
+- [INTEGRATION] `OrganismRuntime` now supplies the current `UnifiedCognitiveCycle` result to both terminal ledgers; missing/misaligned stage closure is a hard `FAIL` with zero causal score, including after durable finalization.
+- [INTERRUPT] `OrganismRuntime.stepInternal` now checks `AbortSignal` at cycle entry, after awaited perception/observation/proposal boundaries, and immediately before embodied-action dispatch; early cancellation avoids unnecessary inference, and late cancellation fails closed before physical actuation.
+- [LIFECYCLE] `OrganismRuntime.stop()` now shares one in-flight shutdown promise across concurrent callers. Failed shutdown persistence records a terminal runtime failure, attempts a best-effort failure flush, and always flushes/closes the continuity journal.
+- [ADMISSION] A `beginBatch()` failure now creates an explicit causal `FAIL` record rather than appearing only in the runtime error journal.
+- [BACKGROUND-CYCLE] Registered and started the opt-in `p23-compound-repair-revision` clock in `RuntimeClockScheduler`; `tests/runtime-clocks.mjs` now exercises this clock, and the test is part of `test:rebuild-recovered`.
+- [COGNITIVE-LINEAGE] Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation, keeping the extended single verifier that checks both required and supplied optional-stage edges.
+- [EVIDENCE-BOUNDARY] Corrected the malformed control-character regex in `OutcomeVerificationService` which prevented TypeScript compilation.
+- [CI-ORDER] Updated `workpass71-validation.yml` so focused P328 and runtime-clock regressions run after dependencies install but before the separate App typecheck can skip all runtime checks.
+- [VALIDATION] Added `audit:p328:closed-loop-failure-closure` (`typecheck` + regression) as a single acceptance command. Current observed Actions logs are from the earlier PR head `2990f2cf…`: typecheck and unrelated P23 artifact checks failed; the new loop-specific fixes have not yet been validated on the latest head.
+- [REGRESSION] Added `tests/closed-loop-failure-closure.mjs` and connected `test:p328:closed-loop-failure-closure` plus `test:runtime-clocks` to `test:rebuild-recovered`; new-head regression execution remains unverified.
+- [DOCUMENTATION] Added `docs/CLOSED_LOOP_SYSTEM_AUDIT_2026-10-24.md` with the cross-module cycle map, invariants, remaining validation gaps and release gates.
+- [LIMITATION] This is a source-branch implementation checkpoint, not a regenerated release ZIP or a production-approval claim. Exact-head targeted regressions and broad TypeScript/replay gates remain to be confirmed; held-out learning, Android/Live2D E2E and long-soak gates are still open.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

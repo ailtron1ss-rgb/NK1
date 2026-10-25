@@ -50,12 +50,19 @@ export class P23CompoundRepairRevisionCoordinator {
   private readonly inFlightBySkill = new Map<string, Promise<any>>();
   private readonly stagedEvidenceDigestsBySkill = new Map<string, Set<string>>();
   private readonly retryBackoffBySkill = new Map<string, RevisionFailureBackoff>();
+  private readonly runtime: OrganismRuntime;
+  private readonly engine: P23LearningEngine;
+  private readonly provideInputs: CompoundRepairRevisionInputProvider;
 
   constructor(
-    private readonly runtime: OrganismRuntime,
-    private readonly engine: P23LearningEngine,
-    private readonly provideInputs: CompoundRepairRevisionInputProvider,
-  ) {}
+    runtime: OrganismRuntime,
+    engine: P23LearningEngine,
+    provideInputs: CompoundRepairRevisionInputProvider,
+  ) {
+    this.runtime = runtime;
+    this.engine = engine;
+    this.provideInputs = provideInputs;
+  }
 
   private evidenceDigest(rows: ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>): string {
     return createHash('sha256').update(JSON.stringify(rows)).digest('hex');

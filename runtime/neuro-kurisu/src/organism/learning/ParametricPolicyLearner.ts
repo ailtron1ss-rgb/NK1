@@ -5,6 +5,57 @@ const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wa
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const tanh=(x:number)=>Math.tanh(Number.isFinite(x)?x:0);
 const now=()=>Date.now();
+function assertAction(value: unknown): asserts value is ActionKind {
+  if (typeof value !== 'string' || !ACTIONS.includes(value as ActionKind)) throw new Error('invalid-action');
+}
+function assertTrainState(value: unknown): asserts value is OrganismState {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('state-must-have-needs');
+  const candidate = value as Record<string, unknown>;
+  const needs = candidate.needs;
+  if (!needs || typeof needs !== 'object' || Array.isArray(needs)) throw new Error('state-must-have-needs');
+  const needRecord = needs as Record<string, unknown>;
+  for (const key of ['energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed','identityCoherence']) {
+    if (typeof needRecord[key] !== 'number' || !Number.isFinite(needRecord[key])) throw new Error('state-feature-must-be-finite');
+  }
+  for (const key of ['predictionError','attentionBudget']) {
+    if (typeof candidate[key] !== 'number' || !Number.isFinite(candidate[key])) throw new Error('state-feature-must-be-finite');
+  }
+}
+function assertFinite(value: unknown, errorCode: string): asserts value is number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(errorCode);
+}
+function validateTrainInput(input: unknown): asserts input is {
+  state: OrganismState; action: ActionKind; target01: number; learningRate01: number; sampleWeight01?: number;
+  extras?: {external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number};
+} {
+  if (!input || typeof input !== 'object') throw new Error('invalid-training-sample');
+  const sample = input as Record<string, unknown>;
+  assertTrainState(sample.state);
+  assertAction(sample.action);
+  assertFinite(sample.target01, 'target-must-be-finite');
+  assertFinite(sample.learningRate01, 'rate-must-be-finite');
+  if (sample.sampleWeight01 !== undefined) assertFinite(sample.sampleWeight01, 'sample-weight-must-be-finite');
+  if (sample.extras !== undefined) {
+    if (!sample.extras || typeof sample.extras !== 'object' || Array.isArray(sample.extras)) throw new Error('extras-must-be-record');
+    for (const value of Object.values(sample.extras as Record<string, unknown>)) {
+      if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) throw new Error('extras-must-be-finite');
+    }
+  }
+}
+function validateTrainFeaturesInput(input: unknown): asserts input is {
+  features: number[]; action: ActionKind; target01: number; learningRate01: number; sampleWeight01?: number;
+} {
+  if (!input || typeof input !== 'object') throw new Error('invalid-training-sample');
+  const sample = input as Record<string, unknown>;
+  assertAction(sample.action);
+  assertFinite(sample.target01, 'target-must-be-finite');
+  assertFinite(sample.learningRate01, 'rate-must-be-finite');
+  if (sample.sampleWeight01 !== undefined) assertFinite(sample.sampleWeight01, 'sample-weight-must-be-finite');
+  if (!Array.isArray(sample.features) || !sample.features.every(value => typeof value === 'number' && Number.isFinite(value))) {
+    throw new Error('features-must-be-finite');
+  }
+}
+
 
 /**
  * P26 learned function approximator.
@@ -93,6 +144,16 @@ export class ParametricPolicyLearner{
       const bias=Number(this.state.bias[a]??0);
       this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+    const finite01 = (value: unknown, fallback: number) =>
+      typeof value === 'number' && Number.isFinite(value) ? clamp(value) : fallback;
+    this.state.updates = Number.isSafeInteger(raw?.updates) && Number(raw?.updates) >= 0 ? Number(raw?.updates) : 0;
+    this.state.tdAbsMean01 = finite01(raw?.tdAbsMean01, d.tdAbsMean01);
+    this.state.trainRewardMean01 = finite01(raw?.trainRewardMean01, d.trainRewardMean01);
+    this.state.explorationRate01 = finite01(raw?.explorationRate01, d.explorationRate01);
+    this.state.lastLoss01 = finite01(raw?.lastLoss01, d.lastLoss01);
+    this.state.lastTrainedAt = typeof raw?.lastTrainedAt === 'number' && Number.isFinite(raw.lastTrainedAt) && raw.lastTrainedAt >= 0
+      ? raw.lastTrainedAt : 0;
+    this.state.frozen = raw?.frozen === true;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
@@ -120,6 +181,7 @@ export class ParametricPolicyLearner{
   }
 
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    validateTrainInput(input);
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
@@ -146,6 +208,7 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    validateTrainFeaturesInput(input);
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
@@ -169,6 +232,10 @@ export class ParametricPolicyLearner{
   }
 
   trainBatch(samples:Array<Parameters<ParametricPolicyLearner['train']>[0]>){
+    if (!Array.isArray(samples)) throw new Error('training-batch-must-be-array');
+    // Validate the complete batch before the first SGD update, so later corrupt
+    // input cannot leave a partially learned policy behind.
+    for (const sample of samples) validateTrainInput(sample);
     let loss=0; let n=0;
     for(const sample of samples){const r=this.train(sample);loss+=r.loss01;n++;}
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};

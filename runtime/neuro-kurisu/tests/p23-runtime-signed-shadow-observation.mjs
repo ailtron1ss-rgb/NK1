@@ -77,9 +77,8 @@ try {
     return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
   };
   const payloadFingerprint = createHash('sha256').update(canonical(skill)).digest('hex');
-  const expectedCandidateId = createHash('sha256')
-    .update(JSON.stringify([skill.id, 1, proposal.proposalId, payloadFingerprint]))
-    .digest('hex');
+  let expectedCandidateId;
+  let expectedCandidateVersion;
   const runtimeVersion = 'nk1-e2e-runtime-145';
   const stateFile = path.join(root, 'organism.json');
   const observationFileName = 'verified-skill-shadow-observation.json';
@@ -95,6 +94,18 @@ try {
     "fs.writeFileSync(path.join(process.env.NK1_LEARNING_RUN_DIR,process.env.NK1_LEARNING_SIGNED_OBSERVATION_FILENAME),JSON.stringify(observation));",
     "process.stdout.write('signed-shadow-observation-written');",
   ].join('\n');
+
+  // Stage once through a Core with the same state path, then read the actual
+  // persisted candidate identity instead of predicting an implementation detail.
+  const stagingRuntime = new OrganismRuntime({
+    stateFile,
+    autoRun: false,
+    enableLanguage: false,
+    journal: { write: async () => {} },
+  });
+  const stagedCandidate = stagingRuntime.core.stageVerifiedSkillCandidate(proposal, skill);
+  expectedCandidateId = stagedCandidate.candidateId;
+  expectedCandidateVersion = stagedCandidate.version;
 
   runtime = new OrganismRuntime({
     stateFile,
@@ -123,7 +134,7 @@ try {
           NK1_TEST_SHADOW_PRIVATE_KEY: privatePem,
           NK1_TEST_CANDIDATE_ID: expectedCandidateId,
           NK1_TEST_SKILL_ID: skill.id,
-          NK1_TEST_CANDIDATE_VERSION: '1',
+          NK1_TEST_CANDIDATE_VERSION: String(expectedCandidateVersion),
           NK1_TEST_PAYLOAD_FINGERPRINT: payloadFingerprint,
           NK1_TEST_PROPOSAL_OUTCOME_FINGERPRINT: proposal.outcomeFingerprint,
           NK1_TEST_RUNTIME_VERSION: runtimeVersion,
@@ -132,9 +143,11 @@ try {
       },
     },
   });
-  const staged = runtime.core.stageVerifiedSkillCandidate(proposal, skill);
-  assert.equal(staged.candidateId, expectedCandidateId);
-  assert.equal(staged.status, 'staged');
+  const restoredCandidate = runtime.core.verifiedSkillCandidateSnapshot()?.candidates
+    .find(candidate => candidate.candidateId === expectedCandidateId);
+  assert.ok(restoredCandidate, 'runtime must reload the exact staged candidate from durable storage');
+  assert.equal(restoredCandidate.version, expectedCandidateVersion, 'shadow run must use the persisted candidate version');
+  assert.equal(restoredCandidate.status, 'staged');
   await runtime.init();
 
   const result = await runtime.runTrustedShadowLearningOnce();
@@ -145,7 +158,7 @@ try {
   assert.equal(diagnostics.lastError, null);
 
   const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
-  const candidate = lifecycle.candidates.find(item => item.candidateId === staged.candidateId);
+  const candidate = lifecycle.candidates.find(item => item.candidateId === expectedCandidateId);
   assert.ok(candidate);
   assert.equal(candidate.status, 'shadow');
   assert.equal(candidate.shadowObservations.length, 1);

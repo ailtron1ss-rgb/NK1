@@ -46,6 +46,16 @@ import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndepe
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+
+function throwIfAborted(signal: AbortSignal | undefined, stage: string): void {
+  if (!signal?.aborted) return;
+  const detail = typeof signal.reason === 'string'
+    ? signal.reason.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').trim().slice(0, 120)
+    : '';
+  const error = new Error('cognitive-cycle-aborted:' + stage + (detail ? ':' + detail : ''));
+  error.name = 'AbortError';
+  throw error;
+}
 // External repair hints are advisory only and must be fresh; stale/future timestamps cannot bias autonomous revision order.
 const EXTERNAL_REPAIR_HINT_TTL_MS=7*24*60*60*1000;
 const EXTERNAL_REPAIR_HINT_MAX_FUTURE_SKEW_MS=5*60*1000;
@@ -154,6 +164,7 @@ export class OrganismRuntime {
   private consecutiveActiveCycles = 0;
   private queue: Promise<unknown> = Promise.resolve();
   private initialized = false;
+  private stopPromise: Promise<void> | null = null;
   private lastContextBudgetLedger: ContextBudgetLedgerReport | null = null;
   contextBudgetDiagnostics() {
     return this.lastContextBudgetLedger ? structuredClone(this.lastContextBudgetLedger) : {
@@ -364,6 +375,7 @@ export class OrganismRuntime {
       this.startEmbodimentClock();
       this.clockScheduler.start('reflection');
       if (this.trustedShadowLearningScheduler) this.clockScheduler.start('trusted-shadow-learning');
+      if (this.compoundRepairRevisionCoordinator && this.config.compoundRepairRevision?.backgroundRevision?.enabled === true) this.clockScheduler.start('p23-compound-repair-revision');
       if (this.config.autoRun) this.startCognitiveClock();
       await this.journal.write('info', 'runtime.init.complete', { tick: this.core.operationalStatusSnapshot().tick });
     });
@@ -388,9 +400,41 @@ export class OrganismRuntime {
       const stepStartedAt=Date.now();
       let stepCpuStart:any=null;
       try { stepCpuStart=(process as any).cpuUsage?.(); } catch {}
-      await this.core.beginBatch();
+      try {
+        await this.core.beginBatch();
+      } catch (error: any) {
+        const reason = String(error?.message || error).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 240);
+        const tick = Number(this.core.operationalStatusSnapshot().tick) || 0;
+        this.runtimeClosure.fail({ at: Date.now(), tick, reason });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        try {
+          // Admission failed before the normal batch began; still create a terminal
+          // causal record for this attempted step so it cannot disappear from totals.
+          const failedDomain = this.core.causalDomainOperationalSnapshot(Number(this.environment.snapshot().tick));
+          const failedCounters = {
+            memoryCount: failedDomain.memoryCount, worldTick: failedDomain.worldTick, identityRevision: failedDomain.identityRevision,
+            agencyDecisions: failedDomain.agencyDecisions, learningUpdates: failedDomain.learningUpdates, selfChangeCount: failedDomain.selfChangeCount,
+            lifeGraphCompleteChains: failedDomain.lifeGraphCompleteChains,
+          };
+          this.causalDomainClosureLedger.begin({ at: Date.now(), tick: Number(failedDomain.tick) + 1, counters: failedCounters });
+          const failedCausal = this.causalDomainClosureLedger.failPending({ reason: 'runtime.batch.begin.failed:' + reason, counters: failedCounters });
+          if (failedCausal) this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+        } catch (closureError: any) {
+          await this.journal.write('error', 'runtime.batch.begin.closure.failed', {
+            message: String(closureError?.message || closureError).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 180),
+          }).catch(() => {});
+        }
+        await this.core.flush().catch(() => {});
+        await this.journal.write('error', 'runtime.batch.begin.failed', { message: reason }).catch(() => {});
+        throw error;
+      }
       const worldBeforeTick=Number(this.environment.snapshot().tick);
       const domainBefore=this.core.causalDomainOperationalSnapshot(worldBeforeTick);
+      let causalClosureEnded=false;
+      let stepFailure: unknown;
+      let failureReason='';
+      let failureWasThrown=false;
+      let failureRecorded=false;
       this.causalDomainClosureLedger.begin({
         at: Date.now(),
         tick: Number(domainBefore.tick)+1,
@@ -404,6 +448,8 @@ export class OrganismRuntime {
         const previousTick = this.core.operationalStatusSnapshot().tick;
         const previousProcessed = this.continuousCognitiveFabric.diagnostics().processed;
         const result = await this.stepInternal(externalText, options);
+        const unifiedCycle = this.unifiedCycle.snapshot();
+        const cognitiveCycleComplete = unifiedCycle.lastComplete && unifiedCycle.lastTick === result.cycle.state.tick;
         const fabric = this.continuousCognitiveFabric.diagnostics();
         this.runtimeClosure.step({
           at: Date.now(),
@@ -419,6 +465,9 @@ export class OrganismRuntime {
           identityContinuity01: this.core.operationalStatusSnapshot().identityContinuity,
           predictionError01: result.cycle.state.predictionError,
           action: result.worldAction,
+          cognitiveCycleComplete,
+          cognitiveCycleTick: unifiedCycle.lastTick,
+          missingCognitiveStages: unifiedCycle.lastMissingStages,
         });
         this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
         await this.journal.write('info', 'runtime.step', { tick: result.cycle.state.tick, action: result.worldAction, external: Boolean(externalText) });
@@ -445,21 +494,97 @@ export class OrganismRuntime {
           causalLifeGraphChain: Boolean((domainAfter as any).lifeGraphCurrentTickComplete),
           replaySignaturePresent: Boolean(domainAfter.replaySignature),
           durableStateAligned: domainAfter.lastCheckpointTick === domainAfter.tick && Boolean(domainAfter.replaySignature),
+          cognitiveCycleComplete,
         };
         const closureRecord=this.causalDomainClosureLedger.end({counters:{
           memoryCount:domainAfter.memoryCount,worldTick:domainAfter.worldTick,identityRevision:domainAfter.identityRevision,agencyDecisions:domainAfter.agencyDecisions,
           learningUpdates:domainAfter.learningUpdates,selfChangeCount:domainAfter.selfChangeCount,lifeGraphCompleteChains:domainAfter.lifeGraphCompleteChains,
         },evidence});
+        causalClosureEnded = closureRecord !== null;
         this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
         if (closureRecord && closureRecord.status==='FAIL') {
           await this.journal.write('warn','runtime.causal-domain-closure.degraded',{tick:closureRecord.tick,score01:closureRecord.score01,chain:closureRecord.causalChain});
         }
         return result;
       } catch (error: any) {
-        await this.journal.write('error', 'runtime.step.failed', { message: String(error?.message || error) });
+        stepFailure = error;
+        failureWasThrown = true;
+        failureReason = String(error?.message || error).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 240);
+        this.runtimeClosure.fail({
+          at: Date.now(),
+          tick: Number(this.core.operationalStatusSnapshot().tick) || 0,
+          reason: failureReason || 'cycle execution failed',
+        });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        failureRecorded = true;
+        await this.journal.write('error', 'runtime.step.failed', { message: failureReason, aborted: options.signal?.aborted === true }).catch(() => {});
+        if (options.signal?.aborted) {
+          await this.journal.write('warn', 'runtime.step.aborted', {
+            tick: Number(this.core.operationalStatusSnapshot().tick) || 0,
+            reason: failureReason || 'caller-aborted',
+          }).catch(() => {});
+        }
         throw error;
       } finally {
-        await this.core.endBatch();
+        // A begun cycle must always reach a terminal causal record. Failure closes
+        // the pending record without granting causal credit or learning evidence.
+        if (!causalClosureEnded) {
+          try {
+            const failedDomain = this.core.causalDomainOperationalSnapshot(Number(this.environment.snapshot().tick));
+            const failedClosure = this.causalDomainClosureLedger.failPending({
+              reason: failureReason || 'cycle-exited-without-causal-closure',
+              counters: {
+                memoryCount: failedDomain.memoryCount,
+                worldTick: failedDomain.worldTick,
+                identityRevision: failedDomain.identityRevision,
+                agencyDecisions: failedDomain.agencyDecisions,
+                learningUpdates: failedDomain.learningUpdates,
+                selfChangeCount: failedDomain.selfChangeCount,
+                lifeGraphCompleteChains: failedDomain.lifeGraphCompleteChains,
+              },
+            });
+            causalClosureEnded = failedClosure !== null;
+            if (failedClosure) {
+              this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+              await this.journal.write('warn', 'runtime.causal-domain-closure.aborted', {
+                tick: failedClosure.tick,
+                reason: failedClosure.failureReason,
+              }).catch(() => {});
+            }
+          } catch (closureError: any) {
+            const fallback = this.causalDomainClosureLedger.failPending({
+              reason: failureReason || 'causal-closure-finalizer-failed',
+            });
+            if (fallback) {
+              causalClosureEnded = true;
+              this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+            }
+            await this.journal.write('error', 'runtime.causal-domain-closure.close-failed', {
+              message: String(closureError?.message || closureError).slice(0, 180),
+            }).catch(() => {});
+          }
+        }
+        try {
+          await this.core.endBatch();
+        } catch (error: any) {
+          const reason = String(error?.message || error).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 240);
+          if (stepFailure === undefined) {
+            stepFailure = error;
+            failureReason = reason || 'cycle batch finalization failed';
+            if (!failureRecorded) {
+              this.runtimeClosure.fail({
+                at: Date.now(),
+                tick: Number(this.core.operationalStatusSnapshot().tick) || 0,
+                reason: failureReason,
+              });
+              this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+              failureRecorded = true;
+            }
+          }
+          const causalFailure = this.causalDomainClosureLedger.failLatest({ reason: failureReason || reason });
+          if (causalFailure) this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+          await this.journal.write('error', 'runtime.batch.end.failed', { message: reason, causalClosureDowngraded: Boolean(causalFailure) }).catch(() => {});
+        }
         let cpuMs=0;
         try { if(stepCpuStart && (process as any).cpuUsage) { const cpu=(process as any).cpuUsage(stepCpuStart); cpuMs=(Number(cpu?.user??0)+Number(cpu?.system??0))/1000; } } catch {}
         const mem=process.memoryUsage();
@@ -469,13 +594,33 @@ export class OrganismRuntime {
         if (this.pendingEmergencyCheckpointReason !== null) {
           const reason = this.pendingEmergencyCheckpointReason;
           const tick = this.pendingEmergencyCheckpointTick;
-          this.pendingEmergencyCheckpointReason = null;
-          this.pendingEmergencyCheckpointTick = -1;
-          await this.core.flush();
-          this.lastEmergencyCheckpointTick = tick;
-          this.emergencyCheckpointCount += 1;
-          this.lastEmergencyCheckpointReason = reason;
-          await this.journal.write('warn','runtime.emergency-checkpoint',{tick,reason});
+          try {
+            await this.core.flush();
+            this.pendingEmergencyCheckpointReason = null;
+            this.pendingEmergencyCheckpointTick = -1;
+            this.lastEmergencyCheckpointTick = tick;
+            this.emergencyCheckpointCount += 1;
+            this.lastEmergencyCheckpointReason = reason;
+            await this.journal.write('warn','runtime.emergency-checkpoint',{tick,reason}).catch(() => {});
+          } catch (checkpointError: any) {
+            const message = String(checkpointError?.message || checkpointError).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 240);
+            if (stepFailure === undefined) {
+              stepFailure = checkpointError;
+              failureReason = message || 'emergency checkpoint failed';
+              if (!failureRecorded) {
+                this.runtimeClosure.fail({
+                  at: Date.now(),
+                  tick: Number(this.core.operationalStatusSnapshot().tick) || 0,
+                  reason: failureReason,
+                });
+                this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+                failureRecorded = true;
+              }
+            }
+            const causalFailure = this.causalDomainClosureLedger.failLatest({ reason: failureReason || message });
+            if (causalFailure) this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+            await this.journal.write('error', 'runtime.emergency-checkpoint.failed', { tick, reason, message, causalClosureDowngraded: Boolean(causalFailure) }).catch(() => {});
+          }
         }
         const runtimeView = this.core.runtimeClosureOperationalSnapshot();
         this.runtimeClosure.durable({
@@ -504,6 +649,7 @@ export class OrganismRuntime {
           processed: causalView.continuousProcessed,
         });
         this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+        if (stepFailure !== undefined && !failureWasThrown) throw stepFailure;
       }
     });
   }
@@ -538,8 +684,10 @@ export class OrganismRuntime {
 
   private async stepInternal(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean; signal?: AbortSignal } = {}): Promise<RuntimeStep> {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+    throwIfAborted(options.signal, 'step-start');
     if (externalText) this.embodiment.userActivity();
     let body = await this.embodiment.sample();
+    throwIfAborted(options.signal, 'after-sensor-sample');
     const resourceAllocation = this.resourceEconomy.allocate({
       tick: this.core.operationalStatusSnapshot().tick,
       at: Date.now(),
@@ -565,6 +713,7 @@ export class OrganismRuntime {
     });
     const previousSampledAt=body.telemetry.sampledAt;
     const activeBody = await this.embodiment.sampleActive(perceptionPlan.requestedSensors,true);
+    throwIfAborted(options.signal, 'after-active-perception');
     const observedSensors:string[]=[];
     if(activeBody.telemetry.source==='android-termux' && activeBody.telemetry.staleMs===0){
       if(perceptionPlan.requestedSensors.includes('battery') || perceptionPlan.requestedSensors.includes('thermal')) observedSensors.push('battery');
@@ -596,9 +745,11 @@ export class OrganismRuntime {
       externalGoal: externalText ? { title: externalText.slice(0, 160), importance: 0.65, urgency: 0.4 } : undefined,
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
     });
+    throwIfAborted(options.signal, 'after-core-observation');
     const activePerceptionRequestId = this.core.activePerceptionPendingId();
     const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
     const cognitiveProposal = await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal);
+    throwIfAborted(options.signal, 'after-cognitive-proposal');
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
@@ -690,6 +841,7 @@ export class OrganismRuntime {
     } else if (autonomousAgenda) {
       this.core.deferAutonomousSocialInitiative(autonomousAgenda.id, Date.now());
     }
+    throwIfAborted(options.signal, 'before-embodied-action');
     const actionAdvice = this.embodiedRecovery.advise(internalAction);
     const physicalAction = actionAdvice.allowed ? internalAction : 'wait';
     if (!actionAdvice.allowed && physicalAction !== internalAction) this.embodiedRecovery.noteRetry(internalAction);
@@ -1424,44 +1576,66 @@ export class OrganismRuntime {
   embodimentStatus(): ReturnType<EmbodimentRuntime['snapshot']> { return this.embodiment.snapshot(); }
   embodimentDiagnostics(){ return this.embodiment.sensorDiagnosticsSnapshot(); }
   async stop(): Promise<void> {
-    // Stop is a durability boundary, not merely a scheduler shutdown.  The previous
-    // implementation closed runtime clocks/ledgers without forcing the core/world
-    // stores to persist the final in-memory cycle.  On mobile this is especially
-    // dangerous because checkpoint cadence is deliberately throttled.
+    // Concurrent callers share one shutdown transaction; otherwise overlapping
+    // flush/close paths can race the continuity ledger and overwrite terminal state.
+    if (this.stopPromise) return this.stopPromise;
+    this.stopPromise = this.stopInternal();
+    return this.stopPromise;
+  }
+
+  private async stopInternal(): Promise<void> {
+    // Stop is a durability boundary, not merely a scheduler shutdown. Preserve
+    // a terminal failure if final persistence cannot be completed.
     this.stopping = true;
-    this.clockScheduler.stop();
-    await this.clockScheduler.drain();
-    await this.trustedShadowLearningScheduler?.drain();
-    await this.queue.catch(() => undefined);
+    let shutdownError: unknown;
+    try {
+      this.clockScheduler.stop();
+      await this.clockScheduler.drain();
+      await this.trustedShadowLearningScheduler?.drain();
+      await this.queue.catch(() => undefined);
 
-    // All queued cognitive work has drained, so the final flush is now serialized
-    // with the same queue used by step()/tool calls.  This closes the crash/restart
-    // window without making every cycle pay a synchronous disk write.
-    await this.enqueue(async () => {
-      // Capture the closure before the single durable flush. A previous implementation
-      // flushed twice here, which is disproportionately expensive because a full core
-      // projection serializes several MB of state on a phone.
-      const runtimeView = this.core.runtimeClosureOperationalSnapshot();
-      this.runtimeClosure.durable({
-        at: Date.now(),
-        tick: runtimeView.tick,
-        stateTick: runtimeView.tick,
-        replaySignature: runtimeView.replaySignature,
-        continuousTick: runtimeView.continuous?.tick,
-        continuityProcessed: runtimeView.continuous?.processed,
-        memoryCount: runtimeView.memoryCount,
+      // All queued cognitive work has drained, so final persistence is serialized
+      // with the same queue used by step()/tool calls.
+      await this.enqueue(async () => {
+        const runtimeView = this.core.runtimeClosureOperationalSnapshot();
+        this.runtimeClosure.durable({
+          at: Date.now(),
+          tick: runtimeView.tick,
+          stateTick: runtimeView.tick,
+          replaySignature: runtimeView.replaySignature,
+          continuousTick: runtimeView.continuous?.tick,
+          continuityProcessed: runtimeView.continuous?.processed,
+          memoryCount: runtimeView.memoryCount,
+        });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        await this.core.flush();
+        await this.checkpointWorld(true);
+        await this.journal.write('info', 'runtime.stop.durable', {
+          tick: runtimeView.tick,
+          worldTick: this.environment.snapshot().tick,
+        }).catch(() => {});
       });
-      this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
-      await this.core.flush();
-      await this.checkpointWorld(true);
-      await this.journal.write('info', 'runtime.stop.durable', {
-        tick: runtimeView.tick,
-        worldTick: this.environment.snapshot().tick,
-      }).catch(() => {});
-    });
-
-    await this.continuityLedger.flush().catch(() => {});
-    await this.continuityLedger.close();
+    } catch (error: any) {
+      shutdownError = error;
+      const reason = String(error?.message || error).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').trim().slice(0, 240) || 'runtime shutdown finalization failed';
+      let tick = 0;
+      try { tick = Number(this.core.operationalStatusSnapshot().tick) || 0; } catch {}
+      try {
+        this.runtimeClosure.fail({ at: Date.now(), tick, reason });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+      } catch {}
+      try {
+        const causalFailure = this.causalDomainClosureLedger.failLatest({ reason, tick });
+        if (causalFailure) this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+      } catch {}
+      await this.journal.write('error', 'runtime.stop.failed', { tick, reason }).catch(() => {});
+      // Best effort only: preserve the failure marker if storage permits it.
+      await this.core.flush().catch(() => {});
+    } finally {
+      await this.continuityLedger.flush().catch(() => {});
+      await this.continuityLedger.close();
+    }
+    if (shutdownError !== undefined) throw shutdownError;
   }
 
   private runtimeDecision(): ReturnType<typeof choosePhonePolicyDelay> {

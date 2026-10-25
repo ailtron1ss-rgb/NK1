@@ -1,8 +1,8 @@
 declare module 'node:crypto' { export function randomUUID(): string;
-  export function createHash(algorithm: string): { update(data: string | Uint8Array): any; digest(encoding: string): string }; export function verify(algorithm: null | string, data: Uint8Array, key: string, signature: Uint8Array): boolean; export function sign(algorithm: null | string, data: Uint8Array, key: string): any; }
+  export function createHash(algorithm: string): { update(data: string | Uint8Array): any; digest(encoding: string): string }; export function verify(algorithm: null | string, data: Uint8Array, key: string, signature: Uint8Array): boolean; export function sign(algorithm: null | string, data: Uint8Array, key: string): any; export function createPublicKey(key: string | Uint8Array | object): any; }
 declare module 'node:fs/promises' {
-  export function access(path:string): Promise<void>;
-  export function appendFile(path:string,data:string,encoding?:string):Promise<void>;
+  export function access(path:string, mode?:number): Promise<void>;
+  export function appendFile(path:string,data:string|Uint8Array,options?:string|{encoding?:string;mode?:number;flag?:string}):Promise<void>;
   export function copyFile(src:string,dest:string):Promise<void>;
   export function mkdir(path:string, options?:{recursive?:boolean;mode?:number}):Promise<string|undefined>;
   export function open(path:string, flags:string, mode?:number):Promise<any>;
@@ -11,17 +11,19 @@ declare module 'node:fs/promises' {
   export function rename(src:string,dest:string):Promise<void>;
   export function rm(path:string, options?:{recursive?:boolean;force?:boolean}):Promise<void>;
   export function stat(path:string):Promise<any>;
+  export function lstat(path:string):Promise<any>;
+  export function realpath(path:string):Promise<string>;
   export function unlink(path:string):Promise<void>;
   export function link(existingPath:string,newPath:string):Promise<void>;
-  export function writeFile(path:string,data:string,encoding:'utf8'):Promise<void>;
+  export function writeFile(path:string,data:string|Uint8Array,options?:string|{encoding?:string;mode?:number;flag?:string}):Promise<void>;
   export function mkdtemp(prefix:string):Promise<string>;
 }
-declare module 'node:path' { const path: { join(...parts:string[]):string; dirname(path:string):string; basename(path:string):string; isAbsolute(path:string):boolean; }; export default path; export function dirname(path:string):string; export function join(...parts:string[]):string; export function basename(path:string):string; export function isAbsolute(path:string):boolean; }
+declare module 'node:path' { const path: { join(...parts:string[]):string; resolve(...parts:string[]):string; dirname(path:string):string; basename(path:string):string; isAbsolute(path:string):boolean; sep:string; }; export default path; export function dirname(path:string):string; export function join(...parts:string[]):string; export function resolve(...parts:string[]):string; export function basename(path:string):string; export function isAbsolute(path:string):boolean; export const sep:string; }
 declare module 'node:os' { export function homedir():string; export function tmpdir():string; export function totalmem():number; export function freemem():number; export function loadavg():number[]; export function cpus():any[]; export function hostname():string; }
 declare module 'node:http' { export function createServer(handler:(req:any,res:any)=>void):any; }
 declare module 'node:child_process' { export function spawn(command:string,args?:string[],options?:any):any; export function execFile(command:string,args?:string[],options?:any,callback?:any):any; }
 declare module 'node:util' { export function promisify(fn:any):any; }
-declare const process: { pid:number; env:Record<string,string|undefined>; argv:string[]; exitCode?:number; on(event:string,handler:()=>void):void; memoryUsage():{rss:number;heapUsed:number;heapTotal:number;external:number;arrayBuffers?:number}; kill(pid:number|string,signal?:number|string):void; }
+declare const process: { pid:number; platform:string; cwd():string; execPath:string; version:string; env:Record<string,string|undefined>; argv:string[]; exitCode?:number; on(event:string,handler:(...args:any[])=>void):void; memoryUsage():{rss:number;heapUsed:number;heapTotal:number;external:number;arrayBuffers?:number}; kill(pid:number|string,signal?:number|string):void; }
 
 declare module 'node:zlib' { export function deflateRawSync(data: Uint8Array): Uint8Array; export function inflateRawSync(data: Uint8Array): Uint8Array; }
 declare module 'node:v8' { export function serialize(value: unknown): Uint8Array; export function deserialize(data: Uint8Array): unknown; }
@@ -29,4 +31,42 @@ declare module 'node:v8' { export function serialize(value: unknown): Uint8Array
 declare module 'node:dns/promises' { export function lookup(hostname:string, options?:{all?:boolean;verbatim?:boolean}):Promise<any>; }
 declare module 'node:net' { export function isIP(input:string):number; }
 declare module 'node:https' { export type RequestOptions = { lookup?: any; [key:string]: any }; export function request(options:any, callback:(response:any)=>void):any; }
-declare const Buffer: { isBuffer(value:unknown):boolean; from(value:string|Uint8Array, encoding?:string):any; concat(list:readonly Uint8Array[], totalLength?:number):Uint8Array; };
+interface Buffer extends Uint8Array { toString(encoding?:string):string; } 
+declare const Buffer: { isBuffer(value:unknown):boolean; from(value:string|Uint8Array, encoding?:string):Buffer; concat(list:readonly Uint8Array[], totalLength?:number):Buffer; alloc(size:number, fill?:number|string):Buffer; byteLength(value:string, encoding?:string):number; };
+
+declare namespace NodeJS {
+  interface ErrnoException extends Error { errno?: number; code?: string; path?: string; syscall?: string; }
+  interface Timeout { ref(): this; unref(): this; hasRef(): boolean; }
+  type Signals = string;
+  type ProcessEnv = Record<string, string | undefined>;
+}
+declare module 'node:fs' {
+  export const constants: any;
+  export function accessSync(path: string, mode?: number): void;
+  export function appendFileSync(path: string, data: string | Uint8Array, options?: any): void;
+  export function chmodSync(path: string, mode: number): void;
+  export function closeSync(fd: number): void;
+  export function copyFileSync(src: string, dest: string, mode?: number): void;
+  export function existsSync(path: string): boolean;
+  export function fsyncSync(fd: number): void;
+  export function lstatSync(path: string): any;
+  export function linkSync(existingPath: string, newPath: string): void;
+  export function mkdirSync(path: string, options?: any): string | undefined;
+  export function openSync(path: string, flags: string | number, mode?: number): number;
+  export function readFileSync(path: string, options?: any): any;
+  export function readdirSync(path: string, options?: any): any[];
+  export function realpathSync(path: string): string;
+  export function renameSync(oldPath: string, newPath: string): void;
+  export function rmSync(path: string, options?: any): void;
+  export function statSync(path: string): any;
+  export function unlinkSync(path: string): void;
+  export function writeFileSync(path: string | number, data: string | Uint8Array, options?: any): void;
+  export function createReadStream(path: string, options?: any): any;
+  export function createWriteStream(path: string, options?: any): any;
+  export const promises: any;
+}
+
+declare function setTimeout(handler: (...args: any[]) => void, timeout?: number, ...args: any[]): NodeJS.Timeout;
+declare function setInterval(handler: (...args: any[]) => void, timeout?: number, ...args: any[]): NodeJS.Timeout;
+declare function clearTimeout(timeout: number | NodeJS.Timeout | undefined): void;
+declare function clearInterval(timeout: number | NodeJS.Timeout | undefined): void;
