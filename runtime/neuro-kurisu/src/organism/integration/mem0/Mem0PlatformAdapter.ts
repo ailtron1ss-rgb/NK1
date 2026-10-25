@@ -258,7 +258,12 @@ export class Mem0PlatformAdapter {
       const explicitUser = String(row.user_id ?? row.userId ?? '').trim();
       const metadata = asRecord(row.metadata);
       const explicitMetadataUser = String(metadata?.user_id ?? metadata?.userId ?? '').trim();
-      if ((explicitUser && explicitUser !== this.userId) ||
+      // The API request is already filtered, but never trust the filter alone:
+      // require the returned item itself to carry matching owner provenance.
+      // Any explicit mismatch or a result with no provable owner is quarantined.
+      const scopeMatches = explicitUser === this.userId || explicitMetadataUser === this.userId;
+      if (!scopeMatches ||
+          (explicitUser && explicitUser !== this.userId) ||
           (explicitMetadataUser && explicitMetadataUser !== this.userId)) {
         this.scopeRejected++;
         continue;
