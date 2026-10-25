@@ -1,8 +1,8 @@
-## NK1 cognition follow-up — harden intrinsic-motivation restore (2026-10-25)
+## NK1 cognition follow-up — harden cognitive restore boundaries (2026-10-25)
 
-- `IntrinsicMotivationEngine.restore()` now reads only own data properties from persisted state. Prototype-inherited drive values can no longer create artificial urgency or autonomous goals, and accessor properties are ignored without being executed.
-- Extended the WorkPass288 contract test with inherited-state forgery and throwing-accessor regressions. No dependency was added; no learning-uplift claim is made.
-- Verification status: change committed to the active cognitive-cycle PR branch; the focused test and exact-head runtime typecheck still require an actionable run.
+- `IntrinsicMotivationEngine.restore()` and `UnifiedCognitiveCycle.restore()` now read only own data properties from persisted state. Prototype-inherited values can no longer forge internal drive urgency or a completed cognitive-cycle record, and accessor properties are ignored without being executed.
+- Extended WorkPass288 and WorkPass287 contract tests with inherited-state forgery and throwing-accessor regressions. No dependency was added; no learning-uplift or consciousness claim is made.
+- Verification status: changes are committed to the active cognitive-cycle PR branch. Exact-head focused tests and runtime typecheck must pass before this gate can be considered closed.
 
 ---
 
