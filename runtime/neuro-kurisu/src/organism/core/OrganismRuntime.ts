@@ -607,7 +607,14 @@ export class OrganismRuntime {
     const cycle = await this.core.observe(cycleObservation);
     // The graph observes the already-normalized result at the real runtime boundary.
     // It is routing/diagnostic evidence only; canonical Core arbitration still owns action selection.
-    const cognitiveFrame = { ...buildCognitiveFrame(cycle.state, cycleObservation), tick: cycle.state.tick };
+    const proposedCognitiveFrame = buildCognitiveFrame(cycle.state, cycleObservation);
+    const cognitiveDependencyTick = this.cognitiveDependencyGraph.snapshot().lastTick;
+    // Keep routing-frame identity monotonic even if the organism snapshot is recovered
+    // from an older valid backup after a crash between the two durable writes.
+    const cognitiveFrame = {
+      ...proposedCognitiveFrame,
+      tick: Math.max(proposedCognitiveFrame.tick, cognitiveDependencyTick + 1),
+    };
     this.cognitiveDependencyGraph.resolve(cognitiveFrame);
     const dependencyState = this.cognitiveDependencyGraph.snapshot();
     await this.cognitiveDependencyStore.save(dependencyState);
