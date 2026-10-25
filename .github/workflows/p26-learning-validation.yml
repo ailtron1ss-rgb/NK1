@@ -7,6 +7,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/P36AutonomousSelfDevelopment.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
       - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
       - "runtime/neuro-kurisu/src/organism/memory/AdaptiveExperienceConsolidator.ts"
