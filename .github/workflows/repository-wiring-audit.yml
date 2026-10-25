@@ -16,6 +16,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts"
+      - "runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs"
       - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
       - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
@@ -46,6 +48,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts"
+      - "runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs"
       - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
       - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
@@ -119,6 +123,10 @@ jobs:
 
       - name: Test independent candidate execution/verification metric separation (WorkPass203)
         run: npm --prefix runtime/neuro-kurisu run test:workpass203:independent-candidate-evaluator
+
+      - name: Test host-owned independent evaluation process and root integrity (WorkPass243)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass243:host-owned-independent-evaluation-services
+
 
       - name: Test live runtime graph persistence and restart continuity
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-dependency-runtime-wiring
