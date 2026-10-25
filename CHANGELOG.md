@@ -1,3 +1,10 @@
+## Memory budget restore integrity — 2026-10-25
+
+- Hardened the canonical `MemoryOS2` byte-budget boundary: non-finite, malformed, null and out-of-range persisted limits are normalized to a safe supported value.
+- Hardened `enforceByteBudget()`: invalid per-call overrides now fall back to the valid stored budget instead of allowing `NaN` to bypass eviction.
+- Added a regression that checks malformed snapshot restoration and verifies that an over-budget memory is still evicted after an invalid override.
+- Registered the focused regression in the runtime package and WorkPass71 validation workflow. Execution against the exact branch head remains to be confirmed; no test pass or retrieval uplift is claimed.
+
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
 - Added `tools/verify-repository-wiring.mjs` to check reachable npm-script chains, recursive script cycles, referenced Node/Python entry points, exact workflow path filters, local actions, working directories, setup-node file inputs, and `workflow_run` workflow names.
