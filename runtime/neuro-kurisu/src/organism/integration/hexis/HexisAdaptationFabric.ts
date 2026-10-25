@@ -631,6 +631,8 @@ export class HexisAdaptationFabric {
             // HMX refs are export-scoped. Prefer the original NK1 goal ID
             // preserved by the adapter, falling back to the stable ref suffix.
             const stableRef = String(nativeGoalMetadata.id ?? nativeGoalMetadata.goalId ?? nativeGoalMetadata.goal_id ?? ref.slice(stage.exportId.length + 1)).trim();
+            // External exports may prefix the same source ref with a fresh export ID.
+            // Stable lineage + source ref + normalized content makes re-exports idempotent.
             const id = 'hexgoal:' + digest({ lineage, stableRef, title: title.normalize('NFKC'), description: description.normalize('NFKC') }).slice(0, 32);
             return {
                 id, stageId: stage.stagingId, exportId: stage.exportId, sourceLineageId: lineage,
