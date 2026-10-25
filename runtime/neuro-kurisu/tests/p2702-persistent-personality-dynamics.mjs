@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { P2702PersistentPersonalityDynamics } from '../src/organism/cognition/P2702PersistentPersonalityDynamics.ts';
+import { KURISU_ORGANISM_CANON } from '../src/organism/language/KurisuCanonProfile.ts';
 import { NeuralExperienceBranch, defaultNeuralExperienceBranch } from '../src/organism/cognition/NeuralExperienceBranch.ts';
 
 const actions={respond:.5,explore:.5,verify:.5,rest:.5,reflect:.5,wait:.5,defer:.5};
@@ -8,6 +9,14 @@ const p=new P2702PersistentPersonalityDynamics();
 const before=p.snapshot();
 let out=p.beforeDecision({tick:1,novelty01:.9,uncertainty01:.8,goalPressure01:.7,identityGap01:.2,reward01:.5,actionUtilities:actions,identityVector:new Array(24).fill(.2)});
 assert(out.actionBias.explore>0,'exploration should receive curiosity-driven personality bias');
+assert.equal(p.snapshot().tensionState.length,KURISU_ORGANISM_CANON.tensions.length,
+  'persistent tension state must remain aligned with the code-owned canon conflict dimensions');
+assert.ok(p.snapshot().tensionState.some((v,i)=>Math.abs(v-(before.tensionState[i]??v))>1e-4),
+  'Core context must update persistent value-conflict tension, not leave the canon conflicts as static labels');
+const tensionSnapshot=p.snapshot();
+const tensionRestored=new P2702PersistentPersonalityDynamics();tensionRestored.restore(tensionSnapshot);
+assert.deepEqual(tensionRestored.snapshot().tensionState,tensionSnapshot.tensionState,
+  'context-sensitive value-conflict state must survive snapshot/restore');
 p.afterOutcome({reward01:.95,verified01:1,predictionError01:.05,identityGap01:.1,action:'explore',identityVector:new Array(24).fill(.4)});
 const after=p.snapshot();
 assert(after.learningUpdates>before.learningUpdates);
