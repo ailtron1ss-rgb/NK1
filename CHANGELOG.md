@@ -1,3 +1,11 @@
+## WorkPass333 — HMX goal proposals, stable identity, and explicit activation
+
+- Added a durable HMX goal-proposal review queue. External goals remain proposals until reviewed; approval materializes a paused canonical goal, and activation requires a separate explicit decision plus capacity and identity-continuity checks.
+- Kept imported goal provenance attached to the canonical goal and preserved relationship receipts for the goal's source stage; identity/policy sections remain protected.
+- Fixed re-export deduplication to key HMX goals by the original NK1 goal ID preserved in adapter metadata rather than the export-scoped HMX ref.
+- Added integration and HTTP smoke coverage for proposal preparation, approval, activation denial before review, explicit activation, provenance, and re-export idempotency.
+- Validation note: the first exact-head HMX workflow exposed a real re-export dedupe regression (the goal's HMX ref changes on each export). The fix is committed; the next exact-head CI run is the validation gate. The unrelated WorkPass110 causal-stream failure and other older workflows remain separate.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2160,3 +2168,170 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - CI-driven compatibility repair: converted the canonical `VersionedSkillCandidateStore` constructor away from TypeScript parameter properties so Node's strip-only runtime can import it; moved the new filesystem adapter to plain `.mjs` to keep the TypeScript learning service free of additional filesystem type-stub requirements.
 - Validation status: code and test are committed for exact-head CI; local execution was not available through the GitHub write connector. No test pass or production acceptance is claimed. The review-inbox-to-authenticated-UI / signed-approval-request wiring remains open.
+
+
+## 2026-10-24 — WorkPass330: Hexis HMX import-boundary hardening
+
+- Tightened `HexisAdaptationFabric.stageHmx()` against the upstream HMX 1.x envelope: required version/export ID/export metadata, source lineage fields, and supported section shapes are now checked before a candidate can be accepted.
+- Added explicit size boundaries (1,000,000-character document, 256 records per array section, 1,024 total staged records); truncated/unsupported/malformed content carries conflicts and remains non-acceptable.
+- Expanded `tests/integration/hexis-adaptation.mjs` for missing provenance, unknown future sections, oversized imports, and invalid intent. Updated the HMX fixtures to provide a complete envelope.
+- Added `docs/OPERATION_OMEGA_HEXIS_DEEP_PASS_2026-10-24.md` with the source baseline, integration rationale, code changes and validation boundary.
+- Validation status: changes are committed to the dedicated continuation branch. Tests have **not** yet been run on the exact branch head; no test-pass or production-readiness claim is made.
+
+- Follow-up CI pass: the HMX adapter regression passed under Node 24. The server smoke was first blocked by Node's strip-only TS loader, so its child runtime now uses `--experimental-transform-types`; after startup was unblocked, the smoke reached HMX acceptance and exposed a real conflict-path mismatch. The acceptance assertion now prints the complete staged conflict set for diagnosis. Exact-head server acceptance is still pending; this is not marked green.
+
+
+- **WorkPass330 live-export follow-up:** added `Nk1HmxExportAdapter.mjs` and wired the server HMX export endpoint to produce an HMX 1.7 envelope instead of forwarding the NK1-native object unchanged. It maps native skills to procedural memories, converts identity/goals/relationships, normalizes provenance/reference IDs, emits required HMX metadata, and preserves unsupported/malformed native payloads under `config.nk1NativeSections` or record metadata.
+- Aligned `capabilities`, `privacy`, `export_scope`, and `statistics` fields with the upstream HMX 1.7 schema. Text-only exports state that vectors are absent and must be re-embedded.
+- Added a native-export round-trip regression that checks HMX metadata requirements, preservation of the native extension, skill mapping, reference IDs, and acceptance through the strict stage gate. Updated CI path filters to include the adapter and server route.
+- Validation update: the Node 24 GitHub Actions run at commit `040a124cdb53d9030a77d82d18192bc0b46a9b0e` completed all five Hexis workflow steps successfully, including live server HMX export/stage/accept. Newer tests now also assert the upstream envelope metadata; exact-head CI for the latest extension is still the final gate. The independent WorkPass110 workflow failure remains a separate `big-pass-90-causal-learning-stream.mjs:18` assertion and is not attributed to Hexis.
+
+
+- **HMX boundary follow-up:** the native export now declares `privacy.redaction_policy: none` and warns that no automatic redaction is performed. The export adapter emits the required HMX 1.7 metadata and records missing embeddings honestly.
+- Tightened `POST /api/organism/integration/hexis/hmx/decide`: invalid arguments return 400, unknown stages return 404, and attempts to accept a conflicting stage return 409 with `ok: false`. The API explicitly returns `appliedToCanonicalMemory: false`; a review decision must not be mistaken for a mutation of NK1's canonical memory.
+- Extended the live server smoke to verify both the accepted-for-review/not-applied boundary and the rejection of a conflicted HMX candidate. Exact-head CI after this addition is pending; intermediate runs passed the format adapter and live export/stage/accept path. The remaining architectural item is a separately audited, rollback-capable apply/projection step into the cognitive memory substrate.
+
+
+## 2026-10-24 — WorkPass331: Canonical Hexis memory projection
+
+- Added `HexisCanonicalMemoryProjector.mjs` and bound it to the canonical `MemorySubsystemRuntime.fabric` from `OrganismSystemFabric`. Approved HMX memories now enter NK1 through `MemoryFabric.encode()` into `MemoryOS2`; no direct persisted-JSON edits or second memory store are introduced.
+- Added a distinct `apply` decision after `accept`. The server returns the persisted application receipt and identifies deferred sections; an acceptance decision alone still does not change canonical memory.
+- Imported memory rows preserve lineage/ref/provenance in context, map external trust to bounded confidence, and are not promoted to facts. HMX identity values are stored as ordinary recallable semantic content when present in the memories section; the structural identity section stays deferred.
+- Added stable source/ref/content identity, a persistent command ID per application attempt, deduplication across repeated imports, bounded application receipts, and compensating canonical forget commands for newly-created records when a batch write fails. Failed applies leave the stage accepted and retryable.
+- Expanded regressions to cover actual MemoryFabric/MemoryOS2 writes, approval-vs-apply separation, repeat-import deduplication, rollback under injected mid-batch failure, and retry after rollback. Expanded the server smoke to exercise the full HTTP export → stage → accept → apply flow and verify deferred identity reporting.
+- Validation: Node 24 Hexis workflow run `40127219359` at code commit `7363c8c490af9b28f41901a32cb85fc3ae02ee4d` passed all five Hexis steps, including canonical apply and server smoke. Exact-head CI is rerunning after this documentation/checkpoint commit. The parallel WorkPass110 metrics test still has an independent failure at `tests/big-pass-90-causal-learning-stream.mjs:18` (`record` is null).
+- Remaining: goals, relationships, narrative, audit and protected identity are reported as deferred, not falsely counted as fully imported; those need separate canonical projections and fidelity/consent tests. No learning uplift is claimed.
+
+
+## 2026-10-24 — WorkPass332: Hexis semantic graph and source-isolated imports
+
+- Bound `HexisCanonicalMemoryProjector` to the canonical `MemorySubsystemRuntime.semanticMemory` graph. Relationships are projected only when both HMX endpoints resolve to memories imported in the same candidate; relation counts and edge IDs are part of the application receipt. Goal/identity/other endpoints remain explicitly deferred.
+- Added semantic-graph rollback alongside canonical memory compensation. A failed batch restores the graph snapshot and compensates newly created canonical memory records.
+- Extended the canonical `MemoryFabric` encode command with `forceDistinct`, and gave HMX imports stable IDs based on source lineage, export-independent record-reference suffix, and content hash. Same-text native memories are no longer reconsolidated with foreign HMX provenance; re-exports with new `export_id` values can still deduplicate stable source records.
+- Added regressions for partial relationship projection, graph-edge idempotency, graph rollback, preserving same-text native memory fields, and cross-export deduplication. Exact-head CI for the last cross-export test remains queued; previous HEAD `c97e512b84cd25784bf6257db7bdf46051437053` passed all five Hexis workflow steps.
+- Validation boundary unchanged: the separate WorkPass110 workflow has an independent failure at `tests/big-pass-90-causal-learning-stream.mjs:18` (`record` is null). No learning uplift is claimed; structural identity and goals are still deferred.
+
+
+## 2026-10-24 — WorkPass333: HMX goal review and activation boundary
+
+- Removed the legacy \`OrganismCore.hexisDecideHmx\` auto-import branch. Review \`accept\` no longer mutates canonical memory; only explicit \`apply\` invokes the Hexis projector and persists the canonical MemoryOS2, MemoryFabric, semantic-graph and event-log snapshots.
+- Added a persistent bounded HMX goal-proposal queue in \`HexisAdaptationFabric\`, with stable source-lineage/ref/title/content identity, duplicate detection across re-exports, explicit review decisions, and proposal metrics.
+- Added core/server goal-proposal routes. Importing a goal requires explicit preparation, review approval materializes it as a paused \`source: external\` goal, and a separate \`activate\` decision is required before it can influence active planning. Activation checks active-goal capacity, duplicate active titles and identity-continuity threshold.
+- Made reviewed proposal decisions monotonic: stale conflicting decisions no longer change an approved/materialized proposal into rejected.
+- Added the \`activationApproved\` marker to \`OrganismGoal\` and a guard in P68 so externally sourced paused goals are not automatically reactivated before explicit approval.
+- Namespaced \`SemanticMemoryGraph\` nodes with an optional \`sourceKey\`; the Hexis projector looks up/reuses only matching-source graph nodes, keeping imported same-label nodes separate from native NK1 nodes.
+- Expanded unit/server tests for proposal deduplication across exports, immutable review decisions, paused-until-explicit-activation semantics, server acceptance-without-write, post-apply memory persistence, and native/imported graph node isolation.
+- Exact-head Hexis CI for WorkPass333 is queued as of this commit sequence; do not treat the new tests as passed until the latest run completes. Earlier WorkPass332 heads passed the five Hexis checks. The independent WorkPass110 causal-learning failure at \`tests/big-pass-90-causal-learning-stream.mjs:18\` remains separate; no learning-uplift claim is made.
+
+
+- **WorkPass333 safety hardening:** The 256-record HMX goal proposal registry now preflights capacity before mutation and refuses a new batch when full, rather than silently evicting pending/reviewed proposals. P68 pruning preserves external goals marked \`activationApproved: false\` until explicit activation is completed. Added regression coverage for full-queue atomic failure and retention during cleanup.
+
+
+- **WorkPass333 follow-up hardening:** HMX canonical memory application now fails closed unless the staged candidate uses \`intent=port\` and \`strategy=additive\`; \`analysis_only\` and \`authoritative\` candidates can be reviewed but cannot mutate MemoryOS2 through this limited projector.
+- The HMX apply error path in \`OrganismCore\` now persists the updated attempt counter before rethrowing. This keeps post-restart retries on a distinct canonical command ID after a compensated write.
+- Repaired P68's paused-goal traversal: the ecology now revisits both active and paused goals, allowing native paused goals to resume under existing conditions. External goals require \`activationApproved === true\` to reactivate, and both new and legacy unapproved external goals are protected from retention pruning.
+- Added regressions for unsupported apply strategies, restart-safe attempt advancement, P68 native-goal reactivation, external-goal activation gating, and fail-closed proposal queue capacity.
+
+- P68 follow-up: paused-goal traversal is now reachable, native paused goals may resume again, and automatic reactivation is capped at four active goals. External goals lacking an explicit activation marker (including legacy records) remain paused and are protected from cleanup.
+
+
+
+## 2026-10-25 — WorkPass333 validation checkpoint
+
+- Exact branch-head Hexis workflow [40161146253](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161146253) at commit `d2e01c4d76f85f6582cb6b3f0c1904addc90243d` passed all five steps: review-inbox regression, epistemic provenance, source-monitor lineage, HMX staging/import boundary, and live server integration.
+- Fixed the cross-export goal proposal test fixture to reuse the same durable `HexisAdaptationFabric` owner across source re-exports. A separate instance represents a separate organism and cannot share the first instance's proposal registry.
+- The separate WorkPass110 causal-learning workflow still fails at `tests/big-pass-90-causal-learning-stream.mjs:18` because an expected record is null; this is not the Hexis workflow and remains unclaimed as fixed.
+- PR [#95](https://github.com/ailtron1ss-rgb/NK1/pull/95) remains open and unmerged. This checkpoint records successful validation, not a claim of full Hexis parity or production readiness.
+
+
+## 2026-10-25 — WorkPass334: durable provenance for external goals
+
+- Added typed `OrganismGoalExternalProvenance` with HMX export ID, lineage ID, source ref, reviewed proposal ID and import timestamp.
+- External-goal materialization persists this source chain in canonical NK1 goal state; repeat approvals and activations verify it rather than relying solely on proposal status or a matching goal ID.
+- Added a restricted recovery case for an interrupted same-proposal materialization and fail-closed handling for native/different-source ID collisions.
+- Extended the Hexis server smoke to verify source lineage and proposal provenance before and after activation. Exact-head validation is pending after this code change; no passing result is assumed yet.
+
+
+
+## 2026-10-25 — WorkPass334: strict Hexis boundary typing
+
+- Narrowed HMX source and imported-goal metadata to validated records before accessing dynamic fields.
+- Added `HexisCanonicalMemoryProjector.d.mts` so strict NodeNext TypeScript resolves the existing `.mjs` projector with concrete canonical-memory and semantic-graph contracts.
+- Added an explicit guard before canonical HMX goal materialization to avoid an undefined-goal type path.
+- Fresh validation is required after this commit. The wider typecheck has also reported unrelated pre-existing nullability/contract errors elsewhere; no whole-runtime typecheck pass is claimed.
+
+
+
+- **WorkPass334 batch integrity:** Explicit HMX goal preparation rejects a staged goal section larger than the 64-proposal batch limit without mutating the durable proposal queue or its counters; this avoids silent loss from a `slice(0, 64)` import path.
+
+
+
+## 2026-10-25 — WorkPass335: runtime typecheck boundary repairs
+
+- Fixed Android TTS spawn error typing; retained the rule that errors after process start are not falsely reported as completed playback.
+- Added null guards before ingesting causal-replay and skill-repair signals into unified learning.
+- Corrected trusted shadow-run callback return typing while still awaiting durable run registration before spawning a process.
+- Added `p23-compound-repair-revision` to `RuntimeClockKind` and the actual scheduler allowlist; extended the runtime-clock regression.
+- Changed skill retrieval's optional numeric helper to narrow `number | undefined` to a finite number.
+- WorkPass334 HMX validation at run [40161669084](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161669084) passed 5/5 steps. WorkPass335 is on `b4ec50e2e1893d4d9dcfb32d169a4b6c5079765c`; its exact-head Hexis and strict typecheck results remain pending.
+
+
+
+## 2026-10-25 — WorkPass335: repair WorkPass292 CI script wiring
+
+- Added the missing `test:workpass292:evidence-lanes` npm script to point at the existing `tests/workpass292-evidence-lanes.mjs` regression.
+- Prior run [40161669028](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161669028) failed before executing the test because npm could not find the script. This is now a package/workflow mapping fix; the new exact-head run must confirm the evidence-lane assertions themselves pass.
+
+
+
+- **WorkPass335 registrar follow-up:** Wrapped Core-owned trusted-shadow registration in an async void capability, preserving the awaited registration boundary while satisfying the coordinator contract. This addresses the last reported strict-type error on the previous checked head; fresh exact-head typecheck is pending.
+
+
+
+- **WorkPass335 CI wiring follow-up:** Added the missing `test:workpass293:p23-revision` npm script pointing to the existing autonomous P23 repair-revision test. Run [40162024733](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40162024733) failed before test execution because npm could not find the command; the new exact-head workflow will validate the underlying regression.
+
+
+
+## 2026-10-25 — WorkPass336: project reviewed goal relationships safely
+
+- Added durable `HexisGoalRelationshipReceipt` to the proposal record, with source-stage availability, relationship candidate count, projected/deferred counts, semantic edge IDs and timestamp.
+- Explicit goal activation now projects only relationships touching that proposal's source reference. Imported-memory endpoints must resolve to matching source-isolated graph nodes; other external-goal endpoints must already be explicitly active and provenance-verified.
+- Added graph-node source namespaces for external goals, capped external edge weights at `0.55`, deduplicated existing edge projections, and rolled graph state back if the projection stage fails.
+- Updated the live HTTP smoke to assert that the goal-to-memory edge is not just staged but present after activation, with a durable receipt. Validation on the new head is pending.
+
+
+
+- **WorkPass336 validation correction:** Exposed the goal relationship receipt in the HTTP response, fixed the Unicode property escape in the source-isolated graph label helper, and switched the WorkPass293 script to Node's transform-types loader because that test imports a class using TypeScript parameter properties. The previous live HTTP smoke failed because the receipt was omitted by the server serializer, not because the core did not run the projection; exact-head retest is required.
+
+
+
+## 2026-10-25 — WorkPass337: preserve deferred semantic goal edges
+
+- Blocked activation if the source HMX stage is present but has not completed explicit canonical `apply`.
+- Preserve the current external goal's source-namespaced semantic node even when all candidate goal-to-goal edges are deferred; this enables a later explicitly activated peer goal to resolve and project the edge.
+- Made durable goal-activation receipts idempotent and tested that replay cannot replace evidence or increment activation metrics twice.
+- Exact-head validation pending after this change.
+
+
+
+## 2026-10-25 — WorkPass338: repair three missing test scripts
+
+- Added `test:workpass291:payload-budget`, `test:workpass294:correlated-postcondition`, and `test:p26:learning-input-integrity` to `runtime/neuro-kurisu/package.json`, each mapped to its existing regression file.
+- The prior workflows failed before running those regressions because npm could not find the named commands. New CI must confirm the tests themselves pass; no pass is inferred from adding the entries.
+
+
+
+- **WorkPass338 follow-up:** Aligned the WorkPass287 test with fail-closed restore behavior: if prior tick metadata is invalid and the previous completion claim is rejected, all six cognitive-cycle stages are marked missing rather than trusting a partial stale list.
+
+
+
+- **WorkPass338 P26 follow-up:** Added missing script mappings for `test:p26:learning-recovery-benchmark` and `test:p26:learning-continual-matrix`, which the existing P26 workflow invoked but `package.json` did not declare. Both map to existing regressions using Node's transform-types mode.
+
+### WorkPass333 — Hexis goal review and explicit activation boundary (2026-10-25)
+
+- Added a durable HMX goal-proposal queue with stable identity across exports, bounded proposal batches, lineage retention, and explicit pending/approved/rejected/materialized states.
+- Added API endpoints to prepare, list, approve/reject, and explicitly activate external goal proposals. Approval materializes a paused external goal; activation is a separate action guarded by duplicate checks, active-goal capacity, and identity-continuity checks.
+- Updated goal ecology so imported external goals that have not passed explicit activation cannot be autonomously reactivated or pruned as ordinary inactive candidates.
+- Fixed the canonical HMX decision path so `accept` stages only; canonical memory projection and persistence happen only on the explicit `apply` decision.
+- Added unit and HTTP smoke regressions for the goal review/activation path. The current PR head’s Hexis workflow is green; the earlier intermediate run exposed a cross-export goal-dedup assertion mismatch that was corrected. A fresh run for the newest head is still required.
+- Remaining: finish full exact-head validation, review broad legacy workflow failures separately, and keep identity/policy/narrative HMX sections deferred until dedicated ownership and consent rules exist.

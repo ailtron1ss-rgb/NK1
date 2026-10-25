@@ -7,10 +7,10 @@ import { buildKnownEntityDossiers, projectKnownEntityPromptContext } from '../sy
 import { buildGradedTraitSalience } from '../language/GradedTraitSalience.ts';
 import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, type MemoryRetrievalBenchmarkOptions } from '../memory/MemoryRetrievalBenchmark.ts';
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
-import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisExecutionPlacement, type HexisGoalProposal } from '../integration/hexis/HexisAdaptationFabric.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
-import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
+import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismGoalExternalProvenance, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
@@ -1119,6 +1119,32 @@ function defaultPersisted(): PersistedOrganism {
 }
 function p29Reason(result: any): string { if (!result)
     return 'no-arbitration'; return `dominant=${result.dominantSource ?? 'none'};conflict=${Number(result.conflict01 ?? 0).toFixed(3)};budget=${Number(result.budgetScale01 ?? 0).toFixed(3)}`; }
+function externalGoalProvenance(proposal: HexisGoalProposal): OrganismGoalExternalProvenance {
+    return { adapter: 'hexis-hmx', exportId: proposal.exportId, sourceLineageId: proposal.sourceLineageId, sourceRef: proposal.sourceRef, proposalId: proposal.id, importedAt: proposal.createdAt };
+}
+function hasMatchingExternalGoalProvenance(goal: OrganismGoal, proposal: HexisGoalProposal): boolean {
+    const provenance = goal.externalProvenance;
+    return goal.source === 'external' && provenance?.adapter === 'hexis-hmx' &&
+        provenance.exportId === proposal.exportId && provenance.sourceLineageId === proposal.sourceLineageId &&
+        provenance.sourceRef === proposal.sourceRef && provenance.proposalId === proposal.id;
+}
+function hexisImportedMemoryGraphSourceKey(lineageId: string, ref: string, content: string): string {
+    const contentHash = createHash('sha256').update(String(content)).digest('hex');
+    const stableRef = String(ref).replace(/^exp_[a-f0-9]{16}:/, '');
+    const lineageHash = createHash('sha256').update(String(lineageId)).digest('hex').slice(0, 12);
+    return 'hexis:' + lineageHash + ':' + createHash('sha256').update(stableRef + '\0' + contentHash).digest('hex').slice(0, 24);
+}
+function hexisGraphLabel(value: string): string {
+    return String(value ?? '').toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').trim().slice(0, 96);
+}
+function hexisSemanticRelationType(value: unknown): import('../memory/SemanticMemoryGraph.ts').SemanticEdge['relation'] {
+    const relation = String(value ?? '').toLowerCase();
+    if (['supports', 'contradicts', 'causes', 'about', 'located', 'associated'].includes(relation)) {
+        return relation as import('../memory/SemanticMemoryGraph.ts').SemanticEdge['relation'];
+    }
+    if (relation === 'supersedes' || relation === 'revises') return 'associated';
+    return 'associated';
+}
 function goalScore(g: OrganismGoal): number {
     return clamp(g.importance * 0.34 +
         g.urgency * 0.18 +
@@ -2898,63 +2924,226 @@ export class OrganismCore {
         return { hmx_version: '1.7', record_type: 'document', export_id: randomUUID(), source_subject_id: String(state.system.subjectIdentity?.subjectId ?? ''), created_at: new Date().toISOString(), intent: 'port', strategy: 'additive', sections: { identity: [pma.identity], goals: goals.slice(0, 32), memories: memorySummary.slice(-96), relationships: knownEntities.slice(0, 32), skills: competence.slice(0, 48), in_flight_work: conversationAims.slice(0, 48), audit_records: this.hexisAdaptation.snapshot().beliefAudit.slice(-64) } };
     }
     hexisStageHmx(document: unknown, intent: HexisHmxIntent, strategy: HexisHmxStrategy) { const stage = this.hexisAdaptation.stageHmx({ document, intent, strategy }); this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot(); return stage; }
-    hexisDecideHmx(stagingId: string, decision: 'accept' | 'reject') {
-        const stage = this.hexisAdaptation.decideHmx(stagingId, decision);
-        if (stage?.status === 'accepted' && stage.intent === 'port' && stage.strategy !== 'analysis_only') {
-            const memories = Array.isArray(stage.stagedSections?.memories) ? stage.stagedSections.memories : [];
-            let created = 0, reused = 0;
-            const beforeItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
-            const beforeKeys = new Set(beforeItems.map((m) => `${m.kind}|${m.content}`));
-            for (const row of memories.slice(0, 96)) {
-                const record = row && typeof row === 'object' ? row as Record<string, unknown> : {};
-                const content = String(record.content ?? record.summary ?? '').trim().slice(0, 12000);
-                if (!content)
-                    continue;
-                const requestedKind = String(record.kind);
-                const safeKind = (['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream'].includes(requestedKind) ? requestedKind : 'semantic') as any;
-                const key = `${safeKind}|${content}`;
-                const wasPresent = beforeKeys.has(key);
-                const importedMemory = {
-                    content,
-                    kind: safeKind,
-                    source: 'hexis-hmx-import',
-                    tags: Array.isArray(record.tags)
-                        ? record.tags.map(String).slice(0, 24)
-                        : ['hexis', 'hmx'],
-                    context: record.context && typeof record.context === 'object'
-                        ? Object.fromEntries(Object.entries(record.context).slice(0, 12).map(([k, v]) => [String(k), String(v)]))
-                        : undefined,
-                    salience: Number(record.salience ?? 0.55),
-                    emotionalWeight: Number(record.emotionalWeight ?? 0.1),
-                    identityRelevance: 0,
-                    goalRelevance: Number(record.goalRelevance ?? 0),
-                    socialRelevance: Number(record.socialRelevance ?? 0),
-                    predictionError: Number(record.predictionError ?? 0),
-                    confidence: Number(record.confidence ?? 0.55),
-                    epistemicStatus: 'belief' as const,
-                    entities: Array.isArray(record.entities) ? record.entities.map(String).slice(0, 12) : [],
-                    semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
-                    provenanceClass: 'external' as const,
-                    sourceAuthority01: 0.55,
-                    independenceKey: `hexis:${stage.sourceSubjectId ?? stage.exportId}`,
-                    evidenceFreshnessAt: Date.now(),
-                    dormant: false,
-                    retrievalCount: 0,
-                    semanticVector: [],
-                };
-                this.memorySubsystem.fabric.encode(importedMemory, { tick: this.persisted.state.tick });
-                if (wasPresent)
-                    reused += 1;
-                else {
-                    created += 1;
-                    beforeKeys.add(key);
-                }
-            }
+    hexisDecideHmx(stagingId: string, decision: 'accept' | 'reject' | 'apply') {
+        let stage: any;
+        try {
+            stage = this.hexisAdaptation.decideHmx(stagingId, decision);
+        }
+        catch (error) {
+            // Keep the failed attempt counter durable so a post-restart retry gets
+            // a new canonical command ID after compensation removed earlier rows.
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            throw error;
+        }
+        if (stage?.status === 'applied' && stage.application?.status !== 'noop') {
+            // Persist every canonical owner touched by the Hexis projector. Acceptance alone
+            // does not write memory; only the explicit apply decision reaches this branch.
             this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
-            (stage as any).importResult = { created, reused };
+            this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
+            this.persisted.facets.memory.semanticGraph = this.memorySubsystem.semanticMemory.snapshot();
+            this.persisted.facets.memory.eventLog = this.memorySubsystem.events.recent(64);
         }
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return stage;
+    }
+    hexisPrepareGoalProposals(stagingId: string) {
+        const result = this.hexisAdaptation.prepareGoalProposals(stagingId);
+        this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+        return result;
+    }
+    hexisGoalProposals(status?: 'pending' | 'approved' | 'rejected' | 'materialized') {
+        return this.hexisAdaptation.listGoalProposals({ status, limit: 128 });
+    }
+    hexisDecideGoalProposal(proposalId: string, decision: 'approve' | 'reject' | 'activate') {
+        const proposal = this.hexisAdaptation.getGoalProposal(proposalId);
+        if (!proposal) return null;
+        if (decision === 'reject') {
+            if (proposal.status !== 'pending' && proposal.status !== 'rejected') {
+                throw new Error('hmx-goal-proposal-already-reviewed');
+            }
+            const rejected = this.hexisAdaptation.decideGoalProposal(proposalId, 'reject');
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            return { proposal: rejected, goal: null, requiresExplicitActivation: false };
+        }
+        if (decision === 'approve') {
+            if (proposal.status === 'rejected') throw new Error('hmx-goal-proposal-was-rejected');
+            if (proposal.status === 'materialized' && proposal.canonicalGoalId) {
+                const existingGoal = this.persisted.goals.find(goal => goal.id === proposal.canonicalGoalId) ?? null;
+                if (existingGoal && !hasMatchingExternalGoalProvenance(existingGoal, proposal)) throw new Error('hmx-goal-provenance-mismatch');
+                return { proposal, goal: existingGoal ? structuredClone(existingGoal) : null, requiresExplicitActivation: Boolean(existingGoal && existingGoal.activationApproved !== true) };
+            }
+            const goalId = proposal.canonicalGoalId ?? proposal.id;
+            const existingById = this.persisted.goals.find(goal => goal.id === goalId);
+            const expectedExternalProvenance = externalGoalProvenance(proposal);
+            if (existingById && !hasMatchingExternalGoalProvenance(existingById, proposal)) {
+                const repairable = existingById.source === 'external' && existingById.id === proposal.id &&
+                    existingById.status === 'paused' && existingById.activationApproved === false && !existingById.externalProvenance;
+                if (!repairable) throw new Error('hmx-goal-id-or-provenance-conflict');
+                existingById.externalProvenance = expectedExternalProvenance;
+            }
+            const sameTitle = this.persisted.goals.find(goal =>
+                goal.id !== goalId &&
+                goal.title.normalize('NFKC').trim().toLocaleLowerCase() === proposal.title.normalize('NFKC').trim().toLocaleLowerCase() &&
+                (goal.status === 'candidate' || goal.status === 'active' || goal.status === 'paused'));
+            if (sameTitle) throw new Error('hmx-goal-title-conflicts-with-existing-goal:' + sameTitle.id);
+            if (!existingById && this.persisted.goals.length >= 100) throw new Error('organism-goal-capacity-reached');
+            const approved = proposal.status === 'pending'
+                ? this.hexisAdaptation.decideGoalProposal(proposalId, 'approve')
+                : proposal;
+            if (!approved) throw new Error('hmx-goal-approval-failed');
+            let goal = existingById;
+            if (!goal) {
+                const at = Date.now();
+                goal = {
+                    id: goalId,
+                    title: proposal.title.slice(0, 300),
+                    reason: ('Imported from external HMX source; not yet activated.' + (proposal.description ? ' ' + proposal.description : '')).slice(0, 2200),
+                    source: 'external',
+                    status: 'paused',
+                    activationApproved: false,
+                    externalProvenance: expectedExternalProvenance,
+                    importance: Math.max(0.1, Math.min(0.9, Number(proposal.importance) || 0.48)),
+                    urgency: Math.max(0.05, Math.min(0.78, Number(proposal.urgency) || 0.32)),
+                    confidence: Math.max(0.05, Math.min(0.8, Number(proposal.confidence) || 0.42)),
+                    progress: 0,
+                    createdAt: at,
+                    updatedAt: at,
+                };
+                this.persisted.goals.unshift(goal);
+                this.persisted.goals = this.persisted.goals.slice(0, 100);
+            }
+            if (!goal) throw new Error('hmx-goal-materialization-failed');
+            const materialized = this.hexisAdaptation.markGoalProposalMaterialized(proposalId, goal.id);
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            return { proposal: materialized, goal: structuredClone(goal), requiresExplicitActivation: true };
+        }
+        if (decision === 'activate') {
+            if (proposal.status !== 'materialized' || !proposal.canonicalGoalId) throw new Error('hmx-goal-must-be-approved-and-materialized-before-activation');
+            const goal = this.persisted.goals.find(candidate => candidate.id === proposal.canonicalGoalId);
+            if (!goal) throw new Error('canonical-hmx-goal-not-found');
+            if (!hasMatchingExternalGoalProvenance(goal, proposal)) throw new Error('hmx-goal-provenance-mismatch');
+            if (goal.status === 'active' && goal.activationApproved === true) {
+                return { proposal, goal: structuredClone(goal), requiresExplicitActivation: false, alreadyActive: true };
+            }
+            if (goal.status !== 'paused' || goal.activationApproved !== false) throw new Error('hmx-goal-is-not-awaiting-explicit-activation');
+            if (this.persisted.goals.filter(candidate => candidate.status === 'active').length >= 4) throw new Error('active-goal-capacity-reached');
+            const identity01 = clamp(Number((this.persisted.facets.consciousness as any)?.identityContinuity?.continuity ?? 0.5));
+            if (identity01 < 0.55) throw new Error('identity-continuity-too-low-for-external-goal-activation');
+            const duplicate = this.persisted.goals.find(candidate =>
+                candidate.id !== goal.id && candidate.status === 'active' &&
+                candidate.title.normalize('NFKC').trim().toLocaleLowerCase() === goal.title.normalize('NFKC').trim().toLocaleLowerCase());
+            if (duplicate) throw new Error('active-goal-title-conflict:' + duplicate.id);
+            // Only explicit activation may project edges that touch this reviewed HMX goal.
+            // The goal's graph node is source-namespaced and external edge weights are capped.
+            const graph = this.organismSystems.memory.semanticMemory;
+            const graphBefore = graph.snapshot();
+            const relationshipReceipt: import('../integration/hexis/HexisAdaptationFabric.ts').HexisGoalRelationshipReceipt = {
+                sourceStageFound: false, candidateRelationships: 0, projected: 0, deferred: 0, semanticEdgeIds: [], at: Date.now(),
+            };
+            const sourceStage = this.hexisAdaptation.getHmxStage(proposal.stageId);
+            if (sourceStage && sourceStage.status !== 'applied') throw new Error('hmx-stage-must-be-applied-before-goal-activation');
+            try {
+                if (sourceStage && sourceStage.exportId === proposal.exportId && sourceStage.sourceLineageId === proposal.sourceLineageId) {
+                    relationshipReceipt.sourceStageFound = true;
+                    const relationshipRows = Array.isArray(sourceStage.stagedSections?.relationships)
+                        ? sourceStage.stagedSections.relationships.filter((row: any) =>
+                            row && typeof row === 'object' &&
+                            (String(row.source_ref ?? '') === proposal.sourceRef || String(row.target_ref ?? '') === proposal.sourceRef))
+                        : [];
+                    relationshipReceipt.candidateRelationships = relationshipRows.length;
+                    const allProposals = this.hexisAdaptation.listGoalProposals({ limit: 128 });
+                    const stagedMemories = Array.isArray(sourceStage.stagedSections?.memories) ? sourceStage.stagedSections.memories as any[] : [];
+                    const graphSnapshot = () => graph.snapshot();
+                    const getOrCreateCurrentGoalNode = () => {
+                        const sourceKey = 'hexis-goal:' + proposal.id;
+                        const label = hexisGraphLabel(goal.title);
+                        const existing = graphSnapshot().nodes.find(node => node.sourceKey === sourceKey);
+                        if (existing) {
+                            if (existing.type !== 'goal' || existing.label !== label) throw new Error('hmx-goal-graph-node-source-conflict');
+                            return existing;
+                        }
+                        return graph.upsertNode(goal.title, 'goal', Math.max(0.1, Math.min(0.9, goal.importance)), sourceKey);
+                    };
+                    const resolveOtherEndpoint = (ref: string) => {
+                        const externalGoalProposal = allProposals.find(candidate =>
+                            candidate.id !== proposal.id &&
+                            candidate.sourceRef === ref &&
+                            candidate.sourceLineageId === proposal.sourceLineageId &&
+                            candidate.stageId === proposal.stageId &&
+                            candidate.status === 'materialized' &&
+                            Boolean(candidate.canonicalGoalId));
+                        if (externalGoalProposal?.canonicalGoalId) {
+                            const otherGoal = this.persisted.goals.find(candidate => candidate.id === externalGoalProposal.canonicalGoalId);
+                            if (!otherGoal || otherGoal.source !== 'external' || otherGoal.status !== 'active' || otherGoal.activationApproved !== true ||
+                                !hasMatchingExternalGoalProvenance(otherGoal, externalGoalProposal)) return null;
+                            const sourceKey = 'hexis-goal:' + externalGoalProposal.id;
+                            const existing = graphSnapshot().nodes.find(node => node.sourceKey === sourceKey);
+                            if (!existing || existing.type !== 'goal' || existing.label !== hexisGraphLabel(otherGoal.title)) return null;
+                            return existing;
+                        }
+                        const memoryRow = stagedMemories.find((row: any) => String(row?.ref ?? '') === ref);
+                        if (!memoryRow || typeof memoryRow.content !== 'string' || !memoryRow.content.trim()) return null;
+                        const sourceKey = hexisImportedMemoryGraphSourceKey(proposal.sourceLineageId, ref, memoryRow.content);
+                        return graphSnapshot().nodes.find(node => node.sourceKey === sourceKey) ?? null;
+                    };
+                    // Preserve the activated goal's source-isolated graph node even when another
+                    // goal endpoint is still awaiting explicit activation. The later activation can
+                    // then complete the deferred edge without forging or merging an endpoint.
+                    const currentGoalNode = relationshipRows.length ? getOrCreateCurrentGoalNode() : null;
+                    for (const relationship of relationshipRows as any[]) {
+                        const sourceRef = String(relationship.source_ref ?? '');
+                        const targetRef = String(relationship.target_ref ?? '');
+                        const otherRef = sourceRef === proposal.sourceRef ? targetRef : sourceRef;
+                        if (!otherRef || otherRef === proposal.sourceRef) {
+                            relationshipReceipt.deferred++;
+                            continue;
+                        }
+                        const otherNode = resolveOtherEndpoint(otherRef);
+                        if (!otherNode || !currentGoalNode) {
+                            relationshipReceipt.deferred++;
+                            continue;
+                        }
+                        const from = sourceRef === proposal.sourceRef ? currentGoalNode.id : otherNode.id;
+                        const to = targetRef === proposal.sourceRef ? currentGoalNode.id : otherNode.id;
+                        if (from === to) {
+                            relationshipReceipt.deferred++;
+                            continue;
+                        }
+                        const relation = hexisSemanticRelationType(relationship.edge_type);
+                        const existingEdge = graphSnapshot().edges.find(edge => edge.from === from && edge.to === to && edge.relation === relation);
+                        const rawWeight = Number(relationship.properties?.weight ?? relationship.properties?.confidence ?? 0.45);
+                        const weight = Math.max(0, Math.min(0.55, Number.isFinite(rawWeight) ? rawWeight : 0.45));
+                        const edge = existingEdge ?? graph.connect(from, to, relation, weight);
+                        relationshipReceipt.semanticEdgeIds.push(edge.id);
+                        relationshipReceipt.projected++;
+                    }
+                    relationshipReceipt.semanticEdgeIds = [...new Set(relationshipReceipt.semanticEdgeIds)];
+                }
+            } catch (error) {
+                graph.restore(graphBefore);
+                throw error;
+            }
+            goal.status = 'active';
+            goal.activationApproved = true;
+            goal.updatedAt = Date.now();
+            const activated = this.hexisAdaptation.markGoalProposalActivated(proposalId, goal.id, relationshipReceipt);
+            if (!activated) {
+                graph.restore(graphBefore);
+                goal.status = 'paused';
+                goal.activationApproved = false;
+                throw new Error('hmx-goal-activation-receipt-failed');
+            }
+            this.persisted.facets.memory.semanticGraph = graph.snapshot();
+            this.memorySubsystem.events.append(makeEvent('goal-updated', this.persisted.state.tick, {
+                goalId: goal.id, title: goal.title, source: 'external', reason: 'explicitly-activated-reviewed-hmx-goal',
+                proposalId: proposal.id, exportId: proposal.exportId, sourceLineageId: proposal.sourceLineageId, sourceRef: proposal.sourceRef,
+                identityContinuity01: identity01, relationshipProjection: { projected: relationshipReceipt.projected, deferred: relationshipReceipt.deferred },
+            } as any));
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            this.persisted.facets.memory.eventLog = this.memorySubsystem.events.recent(64);
+            return { proposal: activated, goal: structuredClone(goal), requiresExplicitActivation: false, relationshipReceipt };
+        }
+        throw new Error('invalid-hmx-goal-decision');
     }
     hexisEnqueueOutbox(input: {
         idempotencyKey: string;
@@ -8107,7 +8296,7 @@ export class OrganismCore {
         const replayEvents = this.memorySubsystem.experienceContinuum.snapshot().replay.events.slice(-8);
         for (const event of replayEvents.filter(e => e.at === state.at)) {
             const cxReplay = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick: state.tick, taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: clamp(event.learningOpportunity01), novelty01: clamp(event.priorityBefore01), uncertainty01: clamp(1 - event.priorityAfter01), identityRelevance01: event.identityWeight01, goalPressure01: state.needs.goalPressure, causalStrength01: clamp(event.learningOpportunity01), traceId: event.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: event.memoryId, evidenceKey: `replay:${event.memoryId}` });
-            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: cxReplay.surprise01, novelty01: cxReplay.novelty01, causalStrength01: cxReplay.causalStrength01, transferPotential01: clamp(event.learningOpportunity01 * .72), provenance: 'experience-replay' } as any);
+            if (cxReplay) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: cxReplay.surprise01, novelty01: cxReplay.novelty01, causalStrength01: cxReplay.causalStrength01, transferPotential01: clamp(event.learningOpportunity01 * .72), provenance: 'experience-replay' } as any);
         }
         this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot();
         this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot();
@@ -10409,7 +10598,7 @@ export class OrganismCore {
         if (r.independentVerified && r.verificationTransition !== 'duplicate') {
             const tick = Number(this.persisted.state.tick ?? 0);
             const cx = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick, taskId: input.taskId ?? `replay-validation:${input.memoryId}`, action: 'verify', reward01: r.retentionScore01, success01: r.retentionScore01, surprise01: Math.abs(r.retentionGain01), novelty01: r.transferPotential01, uncertainty01: r.interferenceRisk01, causalStrength01: Math.max(0, Math.min(1, .5 * r.retentionScore01 + .3 * r.transferPotential01 + .2 * (1 - r.interferenceRisk01))), identityRelevance01: 0, goalPressure01: this.persisted.state.needs.goalPressure, traceId: r.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: r.memoryId, evidenceKey: r.evidenceKey });
-            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
+            if (cx) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
         }
         this.persisted.facets.advanced.experienceContinuum = this.memorySubsystem.experienceContinuum.snapshot();
         this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
@@ -11023,7 +11212,14 @@ export class OrganismCore {
      * the registrar: this Core instance records provenance before child spawn.
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
-        return executeTrustedShadowLearningProcess({ ...input, core: this });
+        return executeTrustedShadowLearningProcess({
+            ...input,
+            core: {
+                registerTrustedSkillShadowRun: async context => {
+                    await this.registerTrustedSkillShadowRun(context);
+                },
+            },
+        });
     }
     /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
     verifiedSkillCandidateSnapshot() {
@@ -11415,7 +11611,7 @@ export class OrganismCore {
                             if (variant)
                                 this.cognitiveRuntime.skillLibrary.recordVariantExecution(skill.id, variant.id, { success01: 1, verified: true, independent: Boolean(input.independentEvidence), holdout: true, context: String(input.contextKey ?? input.context ?? '') });
                             const causalRepair = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick: this.persisted.state.tick, taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: clamp(.35 + (1 - confidence)), novelty01: .45, uncertainty01: clamp(1 - confidence), identityRelevance01: this.persisted.state.needs.identityCoherence, goalPressure01: this.persisted.state.needs.goalPressure, causalStrength01: clamp(.28 + confidence * .5), traceId: `repair:${skill.id}:${step.id}:${candidateTool}`, provenance: 'skill-repair', stateGrounded: false, evidenceKey: `repair:${skill.id}:${step.id}` });
-                            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: causalRepair.surprise01, novelty01: causalRepair.novelty01, causalStrength01: causalRepair.causalStrength01, transferPotential01: .72, provenance: 'skill-repair' });
+                            if (causalRepair) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: causalRepair.surprise01, novelty01: causalRepair.novelty01, causalStrength01: causalRepair.causalStrength01, transferPotential01: .72, provenance: 'skill-repair' });
                             this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot();
                             this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot();
                             this.persisted.facets.cognition.skills = this.cognitiveRuntime.skillLibrary.snapshot();
