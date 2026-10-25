@@ -128,16 +128,26 @@ export class OutcomeCognitionFabric {
     }
 
     const restoredIndex=new Map<string,OutcomeProjectionIndexEntry>();
-    const candidates=Array.isArray(snapshot?.projectionIndex)?snapshot.projectionIndex.slice(-this.maxProjectionIndex):[];
-    for(const candidate of candidates){
+    const rawCandidates=Array.isArray(snapshot?.projectionIndex)?snapshot.projectionIndex:[];
+    // Invalid trailing rows must not evict valid older projections from the
+    // bounded active index. First quarantine malformed identities, then select
+    // the newest bounded set of structurally valid candidates.
+    for(const candidate of rawCandidates){
       if(!candidate||typeof candidate.executionId!=='string')continue;
       const id=boundedText(candidate.executionId,180);
-      if(!id)continue;
-      if(!validRecord(candidate.record)||!/^[a-f0-9]{64}$/i.test(String(candidate.fingerprint??''))){
+      if(id&&(!validRecord(candidate.record)||!/^[a-f0-9]{64}$/i.test(String(candidate.fingerprint??''))))
         quarantine(id,'invalid-projection-entry');
-        restoredIndex.delete(id);
-        continue;
-      }
+    }
+    const candidates:OutcomeProjectionIndexEntry[]=[];
+    for(let i=rawCandidates.length-1;i>=0&&candidates.length<this.maxProjectionIndex;i--){
+      const candidate=rawCandidates[i];
+      if(!candidate||typeof candidate.executionId!=='string'||!validRecord(candidate.record)||!/^[a-f0-9]{64}$/i.test(String(candidate.fingerprint??'')))continue;
+      candidates.push(candidate as OutcomeProjectionIndexEntry);
+    }
+    candidates.reverse();
+    for(const candidate of candidates){
+      const id=boundedText(candidate.executionId,180);
+      if(!id)continue;
       if(quarantined.has(id))continue;
       const record=structuredClone(candidate.record);
       const canonicalFingerprint=this.fingerprintFromRecord(record);
