@@ -1,3 +1,11 @@
+## NK1 learning validation — preserve duplicate evidence rejection in ledger recovery (2026-10-25)
+
+- Added the canonical `duplicate-evidence-ref` rejection code to the durable restore allowlist. A legitimate snapshot containing a recorded duplicate-evidence rejection must round-trip without being misclassified as malformed.
+- Fixed the continual outcome matrix fixture to use unique evidence references per task, method and seed. Its prior static references caused the ledger to reject the very rows the test intended to use, so the test exercised missing-cell behavior instead of seed-set mismatch.
+- The runtime still rejects duplicate evidence references; only the persistence schema allowlist and test fixture are corrected.
+
+---
+
 ## NK1 embodiment — cache the active Live2D expression (2026-10-25)
 
 - Restored the viewer's expression cache contract so repeated emotional-state updates do not restart an already active Live2D expression, while failed asynchronous applications clear the cached name for a safe retry.
