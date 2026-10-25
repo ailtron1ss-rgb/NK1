@@ -1,3 +1,16 @@
+## Latest checkpoint — WorkPass322 (2026-10-25)
+
+- **Active branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135) targets `work/node24-project-pin-rebased-20261025`. It remains unmerged and does not target `main`.
+- **Newly found upstream defect:** `CognitiveFrame` gave critical type labels based on thresholds (energy < .18, thermal > .82, RAM > .86) but set `interrupt.active` only when weighted priority exceeded .72. With a single abnormal sensor those weighted contributions are 0.714, 0.664 and 0.679, respectively, so the critical label could be inactive.
+- **Code fixes:** critical labels force `active=true` at the source; the router suppresses counterfactuals based on critical type even if `active=false`; restore canonicalizes the type and preserves activation. Case-insensitive matching from WorkPass321 remains.
+- **Regressions added:** `tests/cognitive-frame-critical-interrupt.mjs` exercises low-energy, high-thermal and high-RAM raw input all the way through the routing policy. Additional tests cover uppercase labels, contradictory persisted activation, and zero speculative branches. `test:cognitive-integration-suite` now runs both the raw-telemetry regression and the existing dependency-restore test.
+- **CI wiring:** new branch `fix/cognitive-interrupt-severity-normalization-2026-10-25` is included in the push filters for `.github/workflows/cognitive-integration-suite.yml` and `.github/workflows/repository-wiring-audit.yml`. Last check at the previous workflow commits returned no workflow-run or status records; check the latest head again before interpreting test status.
+- **Validation:** no tests/typecheck have run successfully in the local tool environment. CI evidence is still pending/unavailable; tests being committed is not a pass.
+- **Next code-first actions:** (1) verify exact-head Actions jobs now that branch trigger filters are enabled; (2) correct any actual typecheck/runtime regression reported by executed steps; (3) add a runtime-level test that injects critical telemetry through `OrganismRuntime` and verifies published policy evidence; (4) audit all severity producers/consumers and state restore paths; (5) continue cross-layer memory → planning → action → independently verified outcome → learning integration.
+- **Release gates:** UI build/real browser and Live2D/TTS, Android/Termux audio, independent held-out retrieval/learning uplift, long-duration soak and license review remain open. No release asset was modified and no consciousness claim is inferred.
+
+---
+
 ## Latest checkpoint — WorkPass321 (2026-10-25)
 
 - **Active work branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`, based on `work/node24-project-pin-rebased-20261025`; no merge into `main` or release ZIP was performed.
