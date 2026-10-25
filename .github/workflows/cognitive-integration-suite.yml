@@ -1,0 +1,48 @@
+name: Cognitive integration suite
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/tests/cognitive-*.mjs"
+      - "runtime/neuro-kurisu/tests/memory-budget-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
+      - ".github/workflows/cognitive-integration-suite.yml"
+  push:
+    branches:
+      - "nk1-cognitive-cohesion-20261025"
+      - "feature/memory-budget-restore-integrity-20261025"
+      - "workpass70-source"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/tests/cognitive-*.mjs"
+      - "runtime/neuro-kurisu/tests/memory-budget-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
+      - ".github/workflows/cognitive-integration-suite.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  cognitive-integration:
+    name: Install and verify cognitive runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu
+      - name: Verify cognitive integration contracts
+        run: npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite
