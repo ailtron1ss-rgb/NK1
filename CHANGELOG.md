@@ -1,3 +1,15 @@
+## WorkPass321 — mega-pass cognitive integrity repair (2026-10-25)
+
+- Hardened `ParametricPolicyLearner.restore()`: corrupt/non-finite metrics are replaced with bounded defaults; update counters must be safe non-negative integers; persisted schema version is normalized; only literal boolean `true` restores a policy freeze.
+- Hardened the public freeze setter so truthy strings cannot silently engage the learner safety freeze.
+- Kept finite target/rate and action/state validation before any learning update or frozen-model shortcut; batch training preflights every sample before mutation.
+- Preserved the exact execution ID while carrying the optional decision ticket into the host-owned external-outcome verifier, aligning code with WorkPass294's lineage contract.
+- Rechecked the WorkPass243 evaluator regression fixture on the latest base: it now restores executable permissions after the expected denial case, allowing the final root-identity assertion to reach its own guard.
+- **Validation pending:** this change requires a fresh exact-head CI pass. This entry does not claim full project readiness or a refreshed release archive.
+- Details: [WorkPass321 cognitive integrity repair](docs/WORKPASS321_MEGA_COGNITIVE_INTEGRITY_PASS_2026-10-25.md).
+
+---
+
 ## WorkPass320 — reproducible runtime typecheck and dependency contract (2026-10-25)
 
 - Runtime typecheck now prefers the canonical TypeScript compiler installed through `app/package-lock.json`; if it is absent, the check fails as blocked instead of silently using a global compiler or reporting syntax-only validation as a semantic typecheck.
