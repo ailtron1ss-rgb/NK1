@@ -14,11 +14,11 @@ const baseRows = Array.from({ length: 7 }, (_, i) => ({
 const duplicateDelivery = { ...baseRows[0] };
 const conflictingDuplicate = { ...baseRows[1], success: 1, predictedUtility: 1, surprise: 0 };
 const malformed = [
-  { ...baseRows[2], success: Number.NaN },
-  { ...baseRows[3], predictedUtility: Number.POSITIVE_INFINITY },
-  { ...baseRows[4], surprise: -0.1 },
-  { ...baseRows[5], tick: -1 },
-  { ...baseRows[6], at: Number.NaN },
+  { ...baseRows[2], id: 'invalid-success', success: Number.NaN },
+  { ...baseRows[3], id: 'invalid-prediction', predictedUtility: Number.POSITIVE_INFINITY },
+  { ...baseRows[4], id: 'invalid-surprise', surprise: -0.1 },
+  { ...baseRows[5], id: 'invalid-tick', tick: -1 },
+  { ...baseRows[6], id: 'invalid-time', at: Number.NaN },
 ];
 
 const hypotheses = reflectOnOutcomes([
@@ -28,20 +28,20 @@ const hypotheses = reflectOnOutcomes([
   ...malformed,
 ]);
 assert.equal(hypotheses.length, 1);
-assert.equal(hypotheses[0].occurrences, 5,
+assert.equal(hypotheses[0].occurrences, 6,
   'exact redelivery must count once and conflicting-ID evidence must be excluded');
 assert.equal(hypotheses[0].kind, 'repeated-context-failure');
 assert.ok(!hypotheses[0].sourceExperienceIds.includes('experience-1'),
   'conflicting duplicate identity must be removed rather than choosing the first or last value');
-assert.ok(!hypotheses[0].sourceExperienceIds.includes('experience-2'),
+assert.ok(!hypotheses[0].sourceExperienceIds.includes('invalid-success'),
   'non-finite success is invalid evidence, not a zero-success label');
-assert.ok(!hypotheses[0].sourceExperienceIds.includes('experience-3'),
+assert.ok(!hypotheses[0].sourceExperienceIds.includes('invalid-prediction'),
   'infinite prediction is invalid evidence');
-assert.ok(!hypotheses[0].sourceExperienceIds.includes('experience-4'),
+assert.ok(!hypotheses[0].sourceExperienceIds.includes('invalid-surprise'),
   'out-of-range surprise is invalid evidence');
-assert.ok(!hypotheses[0].sourceExperienceIds.includes('experience-5'),
+assert.ok(!hypotheses[0].sourceExperienceIds.includes('invalid-tick'),
   'negative cognitive tick is invalid evidence');
-assert.ok(!hypotheses[0].sourceExperienceIds.includes('experience-6'),
+assert.ok(!hypotheses[0].sourceExperienceIds.includes('invalid-time'),
   'invalid timestamp is invalid evidence');
 
 const tied = [
