@@ -10,6 +10,7 @@
   },
   "scripts": {
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
+    "test:runtime-clock-compound-revision": "node --experimental-strip-types tests/runtime-clock-compound-revision.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
     "test:workpass96:finalizer-boundary": "node --experimental-strip-types tests/workpass96-action-finalizer-boundary.mjs",
     "test:workpass97:planner-route": "node --experimental-strip-types tests/workpass97-autonomous-planner-gateway-route.mjs",
@@ -622,7 +623,7 @@
     "test:big-pass-160:verification": "npm run test:big-pass-160 && npm run typecheck && npm run test:function-public-utilities",
     "test:big-pass-161:sweep": "node --experimental-strip-types tests/big-pass-161-function-sweep.mjs",
     "test:big-pass-161": "node --experimental-strip-types tests/big-pass-160-semantic-coverage.mjs && npm run test:big-pass-161:sweep && node scripts/audit-semantic-coverage.mjs",
-    "test:big-pass-161:cognitive": "node --experimental-strip-types tests/big-pass-161-cognitive-event-fabric.mjs",
+    "test:big-pass-161:cognitive": "node --experimental-strip-types tests/big-pass-161-causal-verifier.mjs",
     "test:big-pass-161:all": "npm run typecheck && npm run test:big-pass-161:cognitive && npm run test:big-pass-161:sweep && node scripts/audit-semantic-coverage.mjs",
     "test:big-pass-162": "node --experimental-strip-types tests/big-pass-162-unified-cognitive-economy.mjs",
     "audit:big-pass-162": "npm run typecheck && npm run test:big-pass-160 && npm run test:big-pass-162 && node --experimental-strip-types tests/big-pass-162-runtime-integration.mjs && npm run test:big-pass-161:sweep && npm run test:big-pass-161:cognitive && node scripts/audit-semantic-coverage.mjs && npm run audit:architecture && npm run audit:integrity && npm run audit:forensics && npm run audit:hygiene && npm run verify:release-source",
@@ -1768,6 +1769,15 @@
     "test:p324:interrupt-episodes": "node --experimental-strip-types tests/cognitive-dependency-interrupt-episode-workpass324.mjs",
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
-    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs"
+    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
+    "test:workpass292:evidence-lanes": "node --experimental-transform-types tests/workpass292-evidence-lanes.mjs",
+    "test:workpass293:p23-revision": "node --experimental-transform-types tests/workpass293-autonomous-p23-revision.mjs && node --experimental-transform-types tests/workpass172-compound-revision-coordinator.mjs && node --experimental-transform-types tests/workpass292-evidence-lanes.mjs",
+    "test:p26:learning-input-integrity": "node --experimental-strip-types tests/p26-learning-input-integrity.mjs",
+    "test:workpass291:payload-budget": "node --experimental-transform-types tests/workpass291-reflective-payload-budget.mjs",
+    "test:workpass294:correlated-postcondition": "node --experimental-transform-types tests/workpass294-correlated-postcondition.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "^5.9.3"
   }
 }

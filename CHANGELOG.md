@@ -1,3 +1,37 @@
+## 2026-10-24 — Strict runtime TypeScript boundary repairs
+
+- [TYPES] Runtime strict checking now uses the locked `@types/node` package from the app install and excludes the repository's incomplete local Node shims from the clean semantic typecheck. The first full run reduced diagnostics from 85 to 19, showing that most apparent Node API failures came from the shims.
+- [CORE] Added null guards before external learning signals are ingested; narrowed the host-owned shadow-run registrar to its registration capability; removed a duplicate `verifyOperationalCycle` method so the richer causal-edge verifier remains active.
+- [LEARNING] Corrected the replay selection type import, optional policy-feature narrowing, forgetting-risk parameter, buffer generic and verified dataset literal types; completed the missing non-holdout verification counter on a base skill variant.
+- [CLOCK] Added `p23-compound-repair-revision` as a valid runtime clock kind plus a regression that verifies registration is accepted, observable and still rejects duplicates. Its regression has passed in hosted CI.
+- [FALLBACK] Replaced unsupported TypeScript `--check` use with Node's `stripTypeScriptTypes` parser-only path. This still exits non-zero with `TYPECHECK=PARTIAL`; the follow-up regression is wired to the matching mode name and awaits a fresh CI result.
+- [BOUNDARY] Fixes are on draft PR #102 targeting `workpass70-source`. Full runtime typecheck after the latest strict fixes, the two new cognition/security regressions, merge and Release ZIP replacement remain unverified/not done.
+
+## 2026-10-24 — Final TypeScript patch-set checkpoint
+
+- [BOUNDARY] The app strict-JS fixes, runtime partial-check exit behavior, and matching regression assertions are now all present on the same branch head.
+- [CI] A fresh source-branch/pull-request validation is required for this combined head; earlier runs were cancelled or failed before the latest combined state could finish.
+- [NO FALSE GREEN] Syntax-only parsing is diagnostic evidence only. A missing semantic compiler makes `npm run typecheck` fail instead of passing.
+- [RELEASE] No merge, main-branch update, or release-archive replacement has been performed.
+
+## 2026-10-24 — Prevent parser-only fallback from passing typecheck
+
+- [TYPECHECK] When no TypeScript compiler is available, runtime parsing still reports `TYPECHECK=PARTIAL`, but the wrapper now exits with code 2. A semantic typecheck command therefore cannot succeed solely because syntax parsing succeeded.
+- [REGRESSION] The compiler-selection test asserts the partial status and non-zero exit, while keeping separate coverage for syntax errors (exit 1) and compiler diagnostics (original non-zero exit propagated).
+
+## 2026-10-24 — Repair strict JS checking in avatar-storage tests
+
+- [TYPECHECK] Corrected six existing `checkJs` errors in `app/src/legacy/avatar/safeLocalStorage.test.mjs`: annotated test-double parameters and used `Reflect.deleteProperty` for optional global cleanup instead of deleting a required typed property.
+- [VALIDATION] The first pull-request run exposed these pre-existing app typecheck failures before reaching the new runtime regression. The fix is now included on the same work branch; a rerun on the updated exact HEAD is required.
+- [SCOPE] Test and type declarations only; storage adapter runtime behavior is unchanged.
+
+## 2026-10-24 — TypeScript runtime-check status is now explicit
+
+- [TYPECHECK] A compiler-free runtime fallback now reports `TYPECHECK=PARTIAL` when it can only parse TypeScript syntax; it no longer labels syntax-only validation as a complete typecheck.
+- [REGRESSION] Extended the compiler-selection test to cover the app-pinned compiler, the explicitly partial syntax fallback (including a syntax-valid type mismatch), syntax-error rejection, and propagation of a non-zero compiler exit.
+- [CI] Added the regression to the WorkPass71 validation workflow so the behavior is checked on the source branch and pull requests.
+- [LIMITATION] These changes improve verification honesty, not application type coverage. The exact-head CI and test execution still need to pass before the change is treated as validated.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2113,3 +2147,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+
+## NK1 Hexis H0 — assimilation architecture plan (2026-10-24)
+
+- [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
+- [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
+- [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
