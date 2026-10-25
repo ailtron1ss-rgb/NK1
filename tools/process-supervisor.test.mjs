@@ -233,3 +233,28 @@ test('terminateChildren reports a spawn failure without hanging cleanup', async 
   assert.equal(result.forced, false);
   assert.ok(child.spawnfile);
 });
+
+test('terminateChildren kills descendants after their process-group leader exits', { skip: process.platform === 'win32' }, async () => {
+  const child = spawnManaged(process.execPath, [
+    '-e',
+    'const { spawn } = require("node:child_process"); spawn(process.execPath, ["-e", "process.on(\\\"SIGTERM\\\", () => {}); setInterval(() => {}, 1000)"], { stdio: "ignore" }); setTimeout(() => { process.stdout.write("leader-exited"); process.exit(0); }, 100);',
+  ], { stdio: ['ignore', 'pipe', 'ignore'] });
+  child.stdout.setEncoding('utf8');
+
+  const closed = new Promise((resolve, reject) => {
+    child.once('close', resolve);
+    child.once('error', reject);
+  });
+  await new Promise((resolveReady, rejectReady) => {
+    child.stdout.on('data', (chunk) => {
+      if (chunk.includes('leader-exited')) resolveReady();
+    });
+    child.once('error', rejectReady);
+  });
+  await closed;
+  assert.equal(child.exitCode, 0, 'the process-group leader should have exited naturally');
+
+  const [result] = await terminateChildren([child], { graceMs: 50, forceGraceMs: 500 });
+  assert.equal(result.stopped, true, 'the remaining process group should be gone');
+  assert.equal(result.forced, true, 'SIGTERM-resistant descendant should require escalation');
+});

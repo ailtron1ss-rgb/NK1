@@ -1,3 +1,10 @@
+# NK1 cleanup of descendants after leader exit (2026-10-25)
+
+- [REGRESSION] Added a POSIX-only process-group test where the managed leader exits normally while its SIGTERM-resistant descendant stays alive. The supervisor must still find the detached group and escalate shutdown to SIGKILL.
+- [SCOPE] Covers a leak scenario not exercised by the existing test, which kept the process-group leader itself alive during termination. Windows process-tree cleanup remains explicitly outside this test's scope.
+
+---
+
 # NK1 child-process cleanup edge cases (2026-10-25)
 
 - [REGRESSION] Added tests for already-exited children and executable startup failures. The first CI run exposed a race in the already-exited test fixture: it could send SIGTERM before the child had naturally exited. The test now awaits the child's `close` event, then asserts the dedicated `alreadyExited` result.
