@@ -17,6 +17,10 @@ async function createFixture(t) {
   const runtime = path.join(root, 'runtime/neuro-kurisu');
   const fakeBin = path.join(root, 'fake-bin');
   for (const dir of [tools, app, runtime, fakeBin]) await mkdir(dir, { recursive: true });
+  // The installer now imports its shared pin helper and reads .nvmrc.
+  // Give each isolated fixture its own valid pin matching the Node running the test.
+  await writeFile(path.join(root, '.nvmrc'), `${process.versions.node.split('.')[0]}\n`);
+  await writeFile(path.join(tools, 'project-runtime-pin.mjs'), await readFile(path.join(repoRoot, 'tools/project-runtime-pin.mjs')));
   await writeFile(path.join(tools, 'super-install.mjs'), await readFile(installerSource));
   for (const [dir, name, version] of [[app, 'app-builder-workspace', '1.0.0'], [runtime, 'neuro-kurisu-organism-evolution', '1.0.0']]) {
     await writeFile(path.join(dir, 'package.json'), JSON.stringify({ name, version }, null, 2));
