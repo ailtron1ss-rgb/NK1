@@ -1,3 +1,12 @@
+## NK1 WorkPass335 — remove non-erasable skill-store constructor syntax (2026-10-25)
+
+- [COMPATIBILITY] Replaced TypeScript constructor parameter properties in `VersionedSkillCandidateStore` with explicit readonly fields and assignments. This preserves runtime behavior while allowing Node 24's `--experimental-strip-types` runner to load the module without code-generation syntax.
+- [CI] Added `VersionedSkillCandidateStore.ts` to the WorkPass291 and WorkPass99 workflow path filters because both test graphs import this store indirectly; WorkPass293 already tracked it.
+- [VALIDATION] The root cause is confirmed by Actions logs on Node v24.21.0. New post-fix runs have not yet completed; no test pass is claimed for this commit.
+- [SCOPE] Changes remain on the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass334 — restore learning regression script wiring (2026-10-25)
 
 - [CI] Registered the real WorkPass291 reflective-payload, WorkPass292 evidence-lanes, and WorkPass293 P23-revision test files in `runtime/neuro-kurisu/package.json`; the workflows were previously failing before tests ran because their script names were missing.
