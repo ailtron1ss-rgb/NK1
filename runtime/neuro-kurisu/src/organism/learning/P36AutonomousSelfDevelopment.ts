@@ -5,6 +5,21 @@ const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wa
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const now=()=>Date.now();
 
+/** Restore bounded identifier caches as plain, typed data; persisted IDs never restore verifier authority. */
+function restorePersistedIdentifiers(value:unknown,maxLength:number,limit:number):string[]{
+  if(!Array.isArray(value))return [];
+  const identifiers:string[]=[];
+  const seen=new Set<string>();
+  for(const candidate of value as unknown[]){
+    if(typeof candidate!=='string'||candidate.length===0||candidate.length>maxLength||candidate.trim()!==candidate)continue;
+    if(Array.from(candidate).some(character=>{const code=character.charCodeAt(0);return code<32||(code>=127&&code<=159);}))continue;
+    if(seen.has(candidate))continue;
+    seen.add(candidate);
+    identifiers.push(candidate);
+  }
+  return identifiers.slice(-limit);
+}
+
 export type DevelopmentArea = 'memory'|'learning'|'world-model'|'self-model'|'relationship'|'agency'|'resource-discipline'|'perception';
 export type DevelopmentStatus = 'proposed'|'running'|'completed'|'rejected'|'rolled-back'|'preview-only'|'awaiting-evidence';
 
@@ -426,8 +441,8 @@ export class P36AutonomousSelfDevelopmentEngine{
           typeof (e as DevelopmentEvidenceRecord).evaluatorVersion==='string'&&
           ((e as DevelopmentEvidenceRecord).evidenceSource==='external-evaluator'||(e as DevelopmentEvidenceRecord).evidenceSource==='manual-observer')))
         .map(e=>({...e,independentVerified:false,observationId:undefined})):[],
-      developmentalEvidenceReceiptIds:Array.isArray((r as any).developmentalEvidenceReceiptIds)?(r as any).developmentalEvidenceReceiptIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=256).slice(-512):[],
-      developmentalEvidenceObservationIds:Array.isArray((r as any).developmentalEvidenceObservationIds)?[...new Set((r as any).developmentalEvidenceObservationIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=180))].slice(-512):[],
+      developmentalEvidenceReceiptIds:restorePersistedIdentifiers((r as any).developmentalEvidenceReceiptIds,256,512),
+      developmentalEvidenceObservationIds:restorePersistedIdentifiers((r as any).developmentalEvidenceObservationIds,180,512),
       investmentDecisions:Array.isArray((r as any).investmentDecisions)?(r as any).investmentDecisions.slice(-96):[],
       learningBudget01:d.learningBudget01,spentBudget01:0,recovery01:d.recovery01,
       // Outcome-derived metrics, learned policy weights and mastery are not re-authenticated by JSON.
