@@ -1,3 +1,13 @@
+## NK1 WorkPass362 — synchronize the runtime Live2D viewer and pinned assets (2026-10-25)
+
+- [LIVE2D INTEGRATION] Replaced the stale runtime `viewer.html` with the canonical app viewer, including the versioned EmbodimentIntent protocol, expression deduplication, speech/audio clock checks, bounded input validation and local pinned script loading.
+- [PACKAGING] Mirrored the three already-vendored runtime libraries (`pixi.min.js`, `live2dcubismcore.min.js`, `cubism4.min.js`) into the runtime's `public/live2d/vendor` path so the synchronized viewer remains self-contained and does not fall back to unpinned CDN scripts.
+- [REGRESSION GUARD] Extended `live2d-integrity.mjs` to assert byte-for-byte parity between the runtime viewer and the canonical app viewer, preventing future protocol/security drift between duplicate deployment paths.
+- [VALIDATION] This addresses WorkPass110's viewer-expression-cache failure. The newest exact-head CI is still running; no all-green claim is made yet.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass361 — recompute imported-only rolling metrics as zero (2026-10-25)
 
 - [CAUSAL EVIDENCE] Updated the poisoned-snapshot regression to expect zero `learningOpportunity01` when the stream contains only untrusted imported events. Restore intentionally recomputes rolling metrics from authenticated, grounded runtime outcomes rather than preserving a forged aggregate.
