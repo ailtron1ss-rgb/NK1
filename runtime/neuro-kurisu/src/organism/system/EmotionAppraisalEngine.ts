@@ -77,6 +77,13 @@ export class EmotionAppraisalEngine {
     return episode?structuredClone(episode):null;
   }
 
+  /** Remove only the explicit recall-derived arousal increment before memory reconsolidation.
+   * This prevents re-reading a memory from being treated as fresh affective evidence. */
+  arousalWithoutRecall01(episode:EmotionEpisode):number{
+    const recalledAffect01=c(episode.appraisal.recalledAffect01??0);
+    return c(episode.arousal01-recalledAffect01*.072);
+  }
+
   observeInteroception(input:{energy01:number;thermal01:number;capacity01:number;load01:number;homeostaticPressure01?:number}):InteroceptiveAffectState{
     const st=this.state.interoception;
     const actual={energy01:c(input.energy01),thermal01:c(input.thermal01),capacity01:c(input.capacity01),load01:c(input.load01)};
@@ -132,7 +139,7 @@ export class EmotionAppraisalEngine {
     // It can modestly raise attention/arousal, but is deliberately excluded from valence and stress.
     const recalledMemoryCount=Math.max(0,Math.min(4,Math.floor(Number(input.recalledAffect?.evidenceCount??0))));
     const recalledAffect01=c(c(input.recalledAffect?.intensity01??0)*c(input.recalledAffect?.confidence01??0)*Math.min(1,recalledMemoryCount/2));
-    const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)+recalledAffect01*.04),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
+    const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
     const arousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09+recalledAffect01*.072);
     const valence=c(.5+(a.goalCongruence01-.5)*.48+a.controllability01*.10-(a.uncertainty01*.16)+((input.success01??.5)-.5)*.45);
     const stress=c((1-a.controllability01)*.30+a.uncertainty01*.20+(input.predictionError01??0)*.22+(input.homeostaticPressure01??0)*.18+this.state.interoception.lastMismatch01*.10);
