@@ -122,6 +122,24 @@ export class ParametricPolicyLearner{
       const bias=Number(this.state.bias[a]??0);
       this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+
+    // Persisted state is untrusted input: snapshots may be stale, hand-edited,
+    // partially written, or produced by an older runtime version. Sanitize every
+    // diagnostic before it can influence policy selection or future learning.
+    const finiteInRange=(value:unknown,fallback:number,min=0,max=1):number =>
+      typeof value==='number'&&Number.isFinite(value)
+        ? Math.max(min,Math.min(max,value))
+        : fallback;
+    this.state.updates=Number.isSafeInteger(raw?.updates)&&Number(raw?.updates)>=0
+      ? Number(raw?.updates)
+      : 0;
+    this.state.tdAbsMean01=finiteInRange(raw?.tdAbsMean01,d.tdAbsMean01);
+    this.state.trainRewardMean01=finiteInRange(raw?.trainRewardMean01,d.trainRewardMean01);
+    this.state.explorationRate01=finiteInRange(raw?.explorationRate01,d.explorationRate01);
+    this.state.lastLoss01=finiteInRange(raw?.lastLoss01,d.lastLoss01);
+    this.state.lastTrainedAt=finiteInRange(raw?.lastTrainedAt,d.lastTrainedAt,0,Number.MAX_SAFE_INTEGER);
+    // Only literal boolean true may restore an intentional safety freeze.
+    this.state.frozen=raw?.frozen===true;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
