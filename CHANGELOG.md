@@ -1,3 +1,15 @@
+## P26 interleaved replay implementation — 2026-10-25
+
+- Added the missing `P26TrueLearningEngine.trainInterleaved` API used by the sequential-learning benchmark. It trains current rows online and schedules bounded replay updates at a configurable stride.
+- Added a bounded same-action/context candidate index for conflict screening. Replay rows that disagree with current outcomes for near-matching contexts are withheld; separable old-task contexts remain eligible for rehearsal.
+- Added strict preflight validation for every current/replay row and all numeric controls before the first weight update, so malformed late records cannot partially mutate model weights or metrics.
+- Enforced an explicit candidate-comparison cap (8–128), validated replay stride and update budget, exposed online/replay/block/eligible/comparison counters, and kept synthetic training metrics separate from authenticated generalization evidence.
+- Added regressions for malformed-row atomicity and invalid conflict-candidate bounds to the sequential-learning benchmark.
+
+Validation is pending until the new sequential benchmark and the current full-project sweep complete on the updated head.
+
+---
+
 ## Research probe CI dependency and diagnostics repair — 2026-10-25
 
 - Added a pinned CPU-only PyTorch requirement for the governed research integration probes. NeuroCore V143 and NOMEGA declare `torch>=2.0`; DeepCode v21 imports the same runtime. The CI sweep now installs the exact `torch==2.14.1` CPU wheel before exercising those probes.
