@@ -1,3 +1,17 @@
+## Latest checkpoint — WorkPass326 (2026-10-25)
+
+- **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), source base `work/node24-project-pin-rebased-20261025`. No merge to `main`; release archive not touched.
+- **Diagnosis from executed CI logs:** source typecheck and cognitive integration passed, but unified smoke failed because two research approval requests returned `approval-storage-failed`; the persister uses `action-ledger-persistence-busy` when a checkpoint is already inside a runtime persistence batch. A third probe made it through approval but failed at `import torch` because CI had no declared/installed Python research dependency.
+- **Gateway fix:** ActionGateway maps only that exact known checkpoint-busy cause to `approval-storage-busy`, retaining rollback for pending/resolved/consumed tickets. Permanent persistence errors remain `approval-storage-failed`.
+- **HTTP boundary:** `/api/organism/tools/permissions/request|resolve|consume` now perform bounded exponential retry (up to 8 sec) only on `approval-storage-busy`, returning retryable 503 if the window expires. No auto-approval or side-effect bypass. Core/internal methods do not self-retry, preventing deadlock when called inside a persistence batch.
+- **Tests:** `tests/workpass53-action-approval-boundary.mjs` now covers busy rollback + retry success for request, resolve and consume. CI workflow explicitly runs `npm --prefix runtime/neuro-kurisu run test:workpass53` including real approval bridge E2E.
+- **Python dependency:** added `research/requirements-cpu.txt` (`torch>=2.0`, CPU wheel index, aligned to `research/neurocore-v143/pyproject.toml`) and setup-python 3.12/install/check steps before integration smoke. Workflow path filters now cover server/system/bridge/dependency changes.
+- **Evidence status:** latest changes are committed to branch; new exact-head CI must complete before calling them passing. Previously, the latest complete run passed all earlier steps, runtime/app typechecks and cognitive suite, but failed all-up smoke for the above two causes.
+- **Next actions:** check exact-head CI logs; if PyTorch install or DeepCode exposes additional undeclared imports, add dependency pins intentionally to the CPU research manifest. Then inspect another real server launch/approval cycle, memory restore integrity, action outcome/learning closure, and the release startup path.
+- **Remaining release gates:** production UI/browser/Live2D/TTS, Android/Termux audio, independent held-out memory retrieval/learning uplift, long-duration soak, license review, clean-machine archive/release reproduction.
+
+---
+
 ## Latest checkpoint — WorkPass323 (2026-10-25)
 
 - **Active branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), base `work/node24-project-pin-rebased-20261025`. It is unmerged; no main merge or release ZIP edit.
