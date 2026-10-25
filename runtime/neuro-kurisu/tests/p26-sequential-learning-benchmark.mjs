@@ -10,6 +10,34 @@ const mkState=(energy,novelty,uncertainty=.3)=>({
 });
 const targetA=(s,a)=>s.needs.energy<.5?(a==='rest'?.92:.08):(a==='respond'?.92:.08);
 const targetB=(s,a)=>s.needs.energy<.5?(a==='respond'?.92:.08):(a==='rest'?.92:.08);
+
+// A malformed late row must be rejected before any online or replay weight changes.
+const atomicGuardEngine = new P26TrueLearningEngine();
+const atomicGuardState = mkState(.4, .2);
+const atomicGuardRow = {
+  state: atomicGuardState, action: 'rest', reward: .92,
+  nextState: mkState(.42, .22), surprise: .3,
+};
+const atomicGuardBefore = atomicGuardEngine.snapshot();
+assert.throws(
+  () => atomicGuardEngine.trainInterleaved(
+    [atomicGuardRow, { ...atomicGuardRow, reward: Number.NaN }], [],
+    { targetMode: 'reward' },
+  ),
+  /reward-out-of-range/,
+  'interleaved replay must preflight every row before the first weight update',
+);
+assert.deepEqual(
+  atomicGuardEngine.snapshot(), atomicGuardBefore,
+  'rejected interleaved replay input must not partially update weights or metrics',
+);
+assert.throws(
+  () => atomicGuardEngine.trainInterleaved([atomicGuardRow], [], { targetMode: 'reward', conflictCandidateCap: 1000 }),
+  /conflict-candidate-cap-out-of-range/,
+  'the conflict comparator must reject unbounded candidate caps',
+);
+assert.deepEqual(atomicGuardEngine.snapshot(), atomicGuardBefore,
+  'invalid replay bounds must be rejected before learning starts');
 const rows=(phase,n=360)=>Array.from({length:n},(_,i)=>{
   const energy=.2+((i*37+phase*13)%61)/100;
   const novelty=((i*19+phase*7)%100)/100;
