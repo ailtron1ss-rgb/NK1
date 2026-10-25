@@ -4,6 +4,7 @@
 - Dirty domains are activated only by own properties whose values are exactly `true`; inherited properties and truthy coercion no longer create false wake signals.
 - Added regression cases for replayed ticks, malformed domain containers, and prototype-inherited activation. Automated execution remains unverified in this environment.
 - Focused CI now runs the WorkPass320 restore/frame regression and WorkPass324 interrupt-episode regression when the cognitive dependency graph or either test changes. Execution is still unverified until GitHub reports a completed run.
+- The focused workflow's push and pull-request path filters both cover the graph implementation and its two regression tests, so these changes remain linked to validation on either trigger.
 
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
