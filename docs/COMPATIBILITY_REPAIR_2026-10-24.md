@@ -67,3 +67,11 @@ The newest Actions jobs confirmed the application typecheck and development bund
 - WorkPass294 previously ran strict runtime typecheck without installing the canonical TypeScript/@types dependencies. Its workflow now installs from the app lockfile first.
 
 **Status: code and workflow repairs committed; exact-head CI verification pending.** No end-to-end or production-readiness claim is made, and the published release ZIP was not rebuilt or replaced.
+
+## Fifth follow-up — Node 24 strip-only and P26 evidence accounting
+
+The latest exact-head Actions run showed that several previously unexecuted regressions import `VersionedSkillCandidateStore.ts` directly under Node 24 strip-only mode; its constructor used TypeScript parameter properties, syntax Node's strip-only loader rejects. The constructor now uses explicit class fields without changing lifecycle semantics.
+
+The P26 holdout-provenance regression also exposed a gap between the test contract and the runtime: there was no distinct training-exposure metric or durable verified-holdout evidence list. P26 now tracks exposure separately from generalization, accepts only structurally bounded verified + independent evidence records, prevents duplicate evidence IDs from increasing maturity, and restores that evidence ledger across snapshots. A parameter update, a legacy holdout diagnostic, or an internal replay split does not count as independent generalization evidence. The causal restore test was adjusted to reject preserved external-only learning opportunity.
+
+**Status remains implemented, awaiting CI.** These contracts are code changes, not evidence of actual generalization uplift. The release ZIP remains unchanged.

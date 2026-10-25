@@ -1,3 +1,11 @@
+## Runtime compatibility follow-up — strip-only TypeScript and holdout provenance (2026-10-25)
+
+- [FIX] Replaced constructor parameter properties in `VersionedSkillCandidateStore` with explicit fields and assignments. The canonical Node 24 `--experimental-strip-types` runtime can now parse this module without changing the store's API or lifecycle checks.
+- [FIX] Added separate `trainingExposure01` and `independentHoldoutSamples` metrics to P26. Online/replay updates increase exposure only; they no longer masquerade as verified generalization evidence.
+- [FIX] Added bounded, deduplicated verified-holdout evidence tracking. Unverified/non-independent input is rejected; exact duplicate IDs cannot inflate the sample count; the evidence ledger survives state restore.
+- [FIX] Corrected the causal restore regression to expect untrusted external rolling learning signals to be reset, not preserved.
+- [EVIDENCE] The latest CI localized the next failures to Node strip-only syntax in `VersionedSkillCandidateStore`, an unimplemented P26 holdout-provenance contract, and the overly permissive expected external rolling metric. These changes await exact-head validation.
+
 ## Strict compatibility follow-up — verified runtime fixtures and CI entry points (2026-10-25)
 
 - [FIX] Runtime causal replay fixtures now use a matching pre-action tick, a subsequent state tick, and an explicit action-result receipt. This lets the production evidence gate remain strict while the tests exercise its intended success path.
