@@ -35,3 +35,5 @@ assert.match(embodiment, /feelingMismatch \* 0\.35/,
   'interoceptive mismatch must attenuate feeling-driven presentation');
 
 console.log('Affect UI snapshot contract: PASS');
+
+// Keep this contract focused on observable data flow, not a single JSX/object-literal spelling.
