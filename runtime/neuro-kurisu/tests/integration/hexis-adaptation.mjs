@@ -345,15 +345,16 @@ assert.notEqual(laterNormalizedNk1Export.export_id, normalizedNk1Export.export_i
 assert.equal(laterNormalizedNk1Export.source.hexis_lineage_id, normalizedNk1Export.source.hexis_lineage_id);
 assert.notEqual(laterNormalizedNk1Export.sections.memories[0].ref, normalizedNk1Export.sections.memories[0].ref);
 
-const duplicateApplyFabric = new HexisAdaptationFabric();
-duplicateApplyFabric.bindCanonicalMemoryApply(candidate => canonicalProjector.apply(candidate));
-const duplicateStage = duplicateApplyFabric.stageHmx({ document: laterNormalizedNk1Export, intent: 'port', strategy: 'additive' });
-assert.equal(duplicateApplyFabric.decideHmx(duplicateStage.stagingId, 'accept')?.status, 'accepted');
-const duplicateGoalPreparation = duplicateApplyFabric.prepareGoalProposals(duplicateStage.stagingId);
+// Use the same durable adaptation owner, as the production system does across imports.
+// A new HexisAdaptationFabric would model a separate organism and cannot share its proposal registry.
+const duplicateStage = applyFabric.stageHmx({ document: laterNormalizedNk1Export, intent: 'port', strategy: 'additive' });
+assert.deepEqual(duplicateStage.conflicts, []);
+assert.equal(applyFabric.decideHmx(duplicateStage.stagingId, 'accept')?.status, 'accepted');
+const duplicateGoalPreparation = applyFabric.prepareGoalProposals(duplicateStage.stagingId);
 assert.equal(duplicateGoalPreparation.created, 0, 'same lineage/reference/content goal proposals must deduplicate across re-exports');
 assert.equal(duplicateGoalPreparation.duplicates, preparedGoals.proposals.length);
 
-const duplicateApply = duplicateApplyFabric.decideHmx(duplicateStage.stagingId, 'apply');
+const duplicateApply = applyFabric.decideHmx(duplicateStage.stagingId, 'apply');
 assert.equal(duplicateApply?.application?.importedCount, 0);
 assert.equal(duplicateApply?.application?.deduplicatedCount, 2);
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
