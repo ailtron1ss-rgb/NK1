@@ -29,8 +29,12 @@ assert.match(wrapper, /options\.idempotencyKey \|\| result\.idempotentReplay/,
 
 const projectStart = source.indexOf('const reconcileExistingOperation =');
 assert.notEqual(projectStart, -1, 'project execution/reconciliation path must remain identifiable');
-const projectEnd = source.indexOf('const unresolvedReceipt = [', projectStart);
-assert.ok(projectEnd > projectStart, 'project execution path must have an explicit receipt outcome boundary');
+// Newer implementations compute the receipt-reconciliation gate before the fresh
+// dispatch, so that boundary is not the end of the project execution block.
+const receiptBoundaryAt = source.indexOf('const unresolvedReceipt = [', projectStart);
+assert.ok(receiptBoundaryAt > projectStart, 'project execution path must have an explicit receipt outcome boundary');
+const projectEnd = source.indexOf('const outcomeNeedsReconciliation =', receiptBoundaryAt);
+assert.ok(projectEnd > receiptBoundaryAt, 'project execution path must reach its outcome classification boundary');
 const projectDispatch = source.slice(projectStart, projectEnd);
 assert.match(projectDispatch, /result = await this\.executeTool\(id, input, executionReason, executionOptions\)/,
   'fresh project tool execution must use the canonical core wrapper so unkeyed outcomes are finalized');

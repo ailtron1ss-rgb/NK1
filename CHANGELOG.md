@@ -1,3 +1,13 @@
+## WorkPass320 — reproducible runtime typecheck and dependency contract (2026-10-25)
+
+- Runtime typecheck now prefers the canonical TypeScript compiler installed through `app/package-lock.json`; if it is absent, the check fails as blocked instead of silently using a global compiler or reporting syntax-only validation as a semantic typecheck.
+- Extended the compiler-selection regression so a global `tsc` cannot be accepted as a fallback when the pinned compiler is unavailable.
+- Added `.github/workflows/nk1-runtime-typecheck-dependencies.yml`: install locked app dependencies and then run runtime typecheck plus cognitive-cycle, motivation, learning/replay, causal wiring and gateway-lifecycle contracts.
+- **Validation pending:** the new workflow must run on the exact feature-branch head. This change does not claim all current TypeScript errors are caused by dependency setup or that the whole system is production-ready.
+- Details: [WorkPass320 dependency/typecheck contract](docs/WORKPASS320_RUNTIME_TYPECHECK_DEPENDENCY_CONTRACTS_2026-10-25.md).
+
+---
+
 ## WorkPass319 — unified cognitive-cycle and motivation integration closure (2026-10-25)
 
 - Made `UnifiedCognitiveCycle.restore()` fail closed on invalid/missing/contradictory persisted cycle counters and corrected mixed malformed-stage normalization.
