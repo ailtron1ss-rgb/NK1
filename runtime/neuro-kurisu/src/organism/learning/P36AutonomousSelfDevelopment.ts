@@ -83,6 +83,10 @@ export interface DevelopmentEvidenceRecord {
   protocolId?:string;
   sessionId?:string;
   trialId?:string;
+  baselineMethod?:string;
+  treatmentMethod?:string;
+  taskFamily?:string;
+  manifestFingerprint?:string;
   /** ActionGateway execution tuple that the verifier receipt is bound to. */
   toolId?:string;
   executionId?:string;
@@ -104,6 +108,11 @@ export interface DevelopmentEvidenceVerificationBinding {
   protocolId?:string;
   sessionId?:string;
   trialId?:string;
+  /** Optional canonical verified-outcome-ledger comparison provenance. */
+  baselineMethod?:string;
+  treatmentMethod?:string;
+  taskFamily?:string;
+  manifestFingerprint?:string;
 }
 
 export interface NormalizedDevelopmentEvidenceVerificationBinding extends Omit<DevelopmentEvidenceVerificationBinding,'evidenceSource'> {
@@ -133,9 +142,12 @@ export function developmentEvidenceVerificationInput(input:DevelopmentEvidenceVe
     evaluatorVersion:canonicalEvidenceText(input.evaluatorVersion,64)??'',
     evidenceSource:input.evidenceSource==='external-evaluator'||input.evidenceSource==='manual-observer'?input.evidenceSource:'invalid',
   };
-  for(const key of ['protocolId','sessionId','trialId'] as const){
+  for(const key of ['protocolId','sessionId','trialId','baselineMethod','treatmentMethod','taskFamily','manifestFingerprint'] as const){
     const value=input[key];
-    if(value!==undefined)binding[key]=canonicalEvidenceText(value,96)??'';
+    if(value!==undefined){
+      const max=key==='baselineMethod'||key==='treatmentMethod'?180:key==='taskFamily'?96:key==='manifestFingerprint'?64:96;
+      binding[key]=canonicalEvidenceText(value,max)??'';
+    }
   }
   return binding;
 }
@@ -624,7 +636,9 @@ export class P36AutonomousSelfDevelopmentEngine{
        !binding.hypothesisId||!binding.contextKey||!binding.evaluatorVersion||
        (input.evidenceSource!=='external-evaluator'&&input.evidenceSource!=='manual-observer')||
        (input.protocolId!==undefined&&!binding.protocolId)||(input.sessionId!==undefined&&!binding.sessionId)||
-       (input.trialId!==undefined&&!binding.trialId))throw new Error('invalid-development-evidence');
+       (input.trialId!==undefined&&!binding.trialId)||
+       (input.baselineMethod!==undefined&&!binding.baselineMethod)||(input.treatmentMethod!==undefined&&!binding.treatmentMethod)||
+       (input.taskFamily!==undefined&&!binding.taskFamily)||(input.manifestFingerprint!==undefined&&!/^[a-f0-9]{64}$/i.test(binding.manifestFingerprint??'')))throw new Error('invalid-development-evidence');
     const h=this.state.hypotheses.find(x=>x.id===binding.hypothesisId);
     if(!h) throw new Error('unknown-development-hypothesis');
 
@@ -652,6 +666,10 @@ export class P36AutonomousSelfDevelopmentEngine{
       ...(binding.protocolId?{protocolId:binding.protocolId}:{}),
       ...(binding.sessionId?{sessionId:binding.sessionId}:{}),
       ...(binding.trialId?{trialId:binding.trialId}:{}),
+      ...(binding.baselineMethod?{baselineMethod:binding.baselineMethod}:{}),
+      ...(binding.treatmentMethod?{treatmentMethod:binding.treatmentMethod}:{}),
+      ...(binding.taskFamily?{taskFamily:binding.taskFamily}:{}),
+      ...(binding.manifestFingerprint?{manifestFingerprint:binding.manifestFingerprint}:{}),
       ...(independentVerified&&input.toolId?{toolId:input.toolId}:{}),
       ...(independentVerified&&input.executionId?{executionId:input.executionId}:{}),
       ...(independentVerified&&input.decisionId?{decisionId:input.decisionId}:{}),
