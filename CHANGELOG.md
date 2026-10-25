@@ -1,3 +1,12 @@
+## NK1 WorkPass538 — bilingual autobiographical session recall (2026-10-25)
+
+- Expanded MemoryOS2 intent routing for Russian recollection prompts and English prior-conversation prompts, while prioritizing explicit user-profile recall as identity memory.
+- Conversation recall recognizes session IDs and session-history metadata as durable dialogue lineage. Role-only labels (for example `conversationRole=assistant`) no longer qualify as a conversation identity key.
+- Added a session-only social-memory regression that verifies snapshot/restore preserves lineage and the previous-dialogue query can still select the conversation-backed memory over a lexical-tied semantic decoy.
+- Added a focused Memory Recall Validation workflow: runtime typecheck, bilingual recall regression, candidate-coverage regression, canonical memory snapshot/restore, and causal memory persistence projection.
+- MemoryOS2 remains the canonical writable store; no parallel memory store or new runtime dependency was introduced.
+- **Validation boundary:** implementation and CI wiring are committed; target workflow execution and exact-head runtime/typecheck results remain unverified. No retrieval uplift is claimed.
+
 ## NK1 WorkPass537 — reconcile restored hot IDs with canonical memory (2026-10-25)
 
 - `MemoryFabric.restore()` now filters persisted hot IDs against the already-restored canonical MemoryOS2 records and removes duplicates before applying the hot-set limit.
