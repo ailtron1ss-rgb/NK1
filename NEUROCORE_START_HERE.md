@@ -1,3 +1,16 @@
+## Latest checkpoint — WorkPass323 (2026-10-25)
+
+- **Active branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), base `work/node24-project-pin-rebased-20261025`. It is unmerged; no main merge or release ZIP edit.
+- **Resource wiring defect fixed:** `OrganismRuntime.stepInternal()` previously fed `CognitiveResourceEconomy.allocate()` with `ramPressure01 = 1 - cognitiveCapacity01`, not the available telemetry `body.telemetry.ramPressure01`. These signals have different semantics. It now routes the measured RAM pressure directly and includes both values in resource evidence.
+- **Regression:** the runtime integration test injects capacity=0.85 with measured RAM pressure=0.88, validates telemetry evidence and verifies computed scarcity against the allocator formula.
+- **Critical interruption fixes from WorkPass321–322:** normalize critical labels; make labels such as `resource-critical`, `thermal-critical`, `memory-pressure` activate interrupts despite the generic weighted threshold; choose these physical-resource signals before generic prediction errors; suppress optional counterfactual work even with contradictory inactive flags; normalize restored state. The raw-frame test covers three independent critical sensor states and the same three mixed with prediction error.
+- **Composite checks wired:** `test:cognitive-frame-critical-interrupt` and `test:p320:cognitive-dependency-restore` are in the cognitive integration suite. The current branch is included in the push filters for the cognitive integration suite and repository wiring audit.
+- **Validation:** do not call tests passing unless there are completed steps/results from a runner on the code changes. Fetch the latest PR #135 workflow runs/jobs/steps; older queued runs may refer to an earlier head.
+- **Next code-first actions:** (1) confirm current PR-head runner, typecheck and cognitive suite; (2) fix any specific failures in actual logs; (3) add a runtime integration case forcing critical telemetry through the graph and verifying the published `admittedBranchBudget=0`; (4) check other signal-to-policy unit conversions and distinguish measured hardware signals from derived capacity; (5) continue memory → planning → action → independent postcondition → learning wiring.
+- **Unresolved release gates:** production UI/browser/Live2D/TTS, Android/Termux audio, held-out memory retrieval and learning transfer, long soak, license review, full clean-machine release reproduction. No consciousness claim is supported by module presence or these targeted fixes.
+
+---
+
 ## Latest checkpoint — WorkPass322 (2026-10-25)
 
 - **Active branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135) targets `work/node24-project-pin-rebased-20261025`. It remains unmerged and does not target `main`.
