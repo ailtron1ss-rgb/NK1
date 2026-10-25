@@ -1,3 +1,12 @@
+## NK1 WorkPass341 — Restore the live cognitive-architecture HTTP projection (2026-10-25)
+
+- [HTTP-API] The read-only `/api/organism/cognitive-architecture` route now serves the canonical validated `CognitiveArchitectureMap` plus runtime tick and the real live subsystem-health projection.
+- [TRUTHFUL-STATUS] Kept static map validation separate from runtime health and preserved the former OrganismCore architecture view as a nested compatibility field; no health or consciousness claims are invented.
+- [REGRESSION] Updated server smoke to compare subsystem/flow totals with the canonical map rather than stale hard-coded counts. The map has evolved beyond the old 22-flow expectation.
+- [VALIDATION] Code and regression are committed below; exact-head server smoke is still required before calling the endpoint verified.
+
+---
+
 ## NK1 WorkPass338 — Reject malformed runtime closure evidence on restore (2026-10-25)
 
 - [RESTORE] `RuntimeClosureLedger.restore()` now treats dropped malformed persisted records as a failure instead of silently accepting a stale `PASS` summary.
