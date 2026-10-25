@@ -1,3 +1,11 @@
+## NK1 WorkPass360 — assert both newest replay cache and recovered durable identity (2026-10-25)
+
+- [MEMORY INTEGRITY] Updated the restore regression to expect the preserved newest replay-cache ID first, followed by the replay identity recovered from a durable replay row. Both must survive restore so recent deduplication priority is retained without permitting a durable replay to be applied twice.
+- [VALIDATION] WorkPass293, WorkPass105, WorkPass102, WorkPass99, WorkPass294, WorkPass292, WorkPass291, WorkPass287/288 and initiative regression passed on the preceding head. WorkPass108 exposed this final expectation mismatch after the cache-order implementation fix.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass359 — ground replay-diversity fixtures in the matching pre-action tick (2026-10-25)
 
 - [CAUSAL REPLAY] Fixed the replay-diversity fixture so each synthetic decision's `stateBefore.tick` matches its own decision tick. The hardened causal intake correctly rejected the old fixtures because they changed `trace.tick` while retaining a stale pre-action state snapshot, leaving the replay test with no trusted records.
