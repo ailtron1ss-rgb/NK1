@@ -50,7 +50,8 @@ const child = spawn(process.execPath, ['--experimental-transform-types', 'src/se
   cwd: runtimeRoot,
   env: {
     ...process.env,
-    HOST: '127.0.0.1',
+    // Exercise the same bearer-token gate required for non-loopback deployments.
+    HOST: '0.0.0.0',
     PORT: String(appPort),
     STATE_DIR: stateDir,
     LLAMA_CPP_URL: providerUrl,
@@ -60,6 +61,7 @@ const child = spawn(process.execPath, ['--experimental-transform-types', 'src/se
     NK_MEM0_ENABLED: '0',
     NK_MEM0_COGNITIVE_RECALL: '1',
     NK_MEM0_USER_ID: 'mem0-http-smoke-user',
+    NEURO_API_TOKEN: 'mem0-http-smoke-only-token',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -87,7 +89,15 @@ try {
 
   // Route-level Mem0 contract: the second cognitive gate can be set, but the
   // primary provider gate remains off, so no cloud call or remote prompt context is allowed.
-  const mem0DiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/diagnostics`);
+  const unauthDiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/diagnostics`);
+  const unauthDiagnostics = await unauthDiagnosticsResponse.json();
+  assert.equal(unauthDiagnosticsResponse.status, 401);
+  assert.equal(unauthDiagnostics.reason, 'missing-bearer-token');
+  assert.equal(Object.prototype.hasOwnProperty.call(unauthDiagnostics, 'diagnostics'), false);
+
+  const mem0DiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/diagnostics`, {
+    headers: { authorization: 'Bearer mem0-http-smoke-only-token' },
+  });
   const mem0Diagnostics = await mem0DiagnosticsResponse.json();
   assert.equal(mem0DiagnosticsResponse.status, 200);
   assert.equal(mem0Diagnostics.ok, true);
@@ -95,9 +105,19 @@ try {
   assert.equal(mem0Diagnostics.diagnostics?.available, false);
   assert.equal(Object.prototype.hasOwnProperty.call(mem0Diagnostics.diagnostics ?? {}, 'apiKey'), false);
 
-  const mem0SearchResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/search`, {
+  const unauthorizedSearchResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/search`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'the current user preference', limit: 5 }),
+  });
+  const unauthorizedSearch = await unauthorizedSearchResponse.json();
+  assert.equal(unauthorizedSearchResponse.status, 401);
+  assert.equal(unauthorizedSearch.reason, 'missing-bearer-token');
+  assert.equal(Object.prototype.hasOwnProperty.call(unauthorizedSearch, 'canonical'), false);
+
+  const mem0SearchResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/search`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer mem0-http-smoke-only-token' },
     body: JSON.stringify({ query: 'the current user preference', limit: 5 }),
   });
   const mem0Search = await mem0SearchResponse.json();
@@ -112,9 +132,17 @@ try {
   assert.equal(mem0Search.policy?.instructionExecution, false);
   assert.equal(JSON.stringify(mem0Search).includes('MEM0_API_KEY'), false);
 
-  const response = await fetch(`http://127.0.0.1:${appPort}/api/organism/chat`, {
+  const unauthorizedChatResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ message: 'This unauthenticated request must be denied before provider dispatch.' }),
+  });
+  assert.equal(unauthorizedChatResponse.status, 401);
+  assert.equal(providerRequests, 0, 'unauthenticated chat must not reach the language provider');
+
+  const response = await fetch(`http://127.0.0.1:${appPort}/api/organism/chat`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer mem0-http-smoke-only-token' },
     body: JSON.stringify({ message: 'Use the configured local model for this integration smoke.' }),
     signal: AbortSignal.timeout(Math.max(1000, deadlineAt - Date.now())),
   });
