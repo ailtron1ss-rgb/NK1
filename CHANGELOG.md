@@ -2,8 +2,11 @@
 
 - Runtime typecheck now prefers the canonical TypeScript compiler installed through `app/package-lock.json`; if it is absent, the check fails as blocked instead of silently using a global compiler or reporting syntax-only validation as a semantic typecheck.
 - Extended the compiler-selection regression so a global `tsc` cannot be accepted as a fallback when the pinned compiler is unavailable.
-- Added `.github/workflows/nk1-runtime-typecheck-dependencies.yml`: install locked app dependencies and then run runtime typecheck plus cognitive-cycle, motivation, learning/replay, causal wiring and gateway-lifecycle contracts.
-- **Validation pending:** the new workflow must run on the exact feature-branch head. This change does not claim all current TypeScript errors are caused by dependency setup or that the whole system is production-ready.
+- Added .github/workflows/nk1-runtime-typecheck-dependencies.yml: install both lockfiles, typecheck app/runtime, build the frontend, run cognition/learning/gateway/server/security/restart suites, then build and boot the single-service Compose runtime.
+- Added Node 24 non-root Docker runtime, persistent state volume, loopback-only default bind, healthcheck, .env.example and [Russian quickstart](docs/QUICKSTART_NEURO_KURISU_RU.md).
+- Hardened P26 input validation/restore diagnostics and semantic feature migration, separated training exposure from independent holdout evidence, added bounded interleaved replay, and corrected causal sampler fixtures.
+- Routed Core project/compound-skill actions through canonical wrappers; reject inconsistent restored ActionGateway receipts; verify signed Hermes evidence before trusting payload metadata. Guarded both B272 learning paths against misattributed planner outcomes and repaired P23 restored dedupe order.
+- **Validation:** [run 40229027931](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40229027931) passed all steps on code head 974a8cf5dea2093cad936f76a3fc43c86783ae3e: app/runtime typecheck, production build, cognitive/learning/gateway contracts, server/security/restart, and Docker Compose boot + health/UI smoke. This does not by itself prove every optional provider, avatar/voice integration or external learning uplift.
 - Details: [WorkPass320 dependency/typecheck contract](docs/WORKPASS320_RUNTIME_TYPECHECK_DEPENDENCY_CONTRACTS_2026-10-25.md).
 
 ---
