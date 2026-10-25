@@ -33,3 +33,8 @@ npm-debug.log*
 /app/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json
 /app/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png
 /app/public/live2d/PROVENANCE.json
+
+# Local provider credentials/configuration; keep the template versioned.
+.env
+.env.*
+!.env.example
