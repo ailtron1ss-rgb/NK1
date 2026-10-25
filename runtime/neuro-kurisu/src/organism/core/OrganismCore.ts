@@ -9417,7 +9417,13 @@ export class OrganismCore {
                 this.developmentalNeural.neuralAutobiographicalCoreB271.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, traits: this.developmentalNeural.neuralGerminalOrganismB270.autonomousSnapshot().traitValues, goal: this.developmentalNeural.neuralAutobiographicalCoreB271.snapshotAutobiography().proposedGoal, acceptedExternalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b272GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b272IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                const b272Learning = this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal });
+                const b272ActionMatchesGenerated = b272GoalState.action === trace.selected.action;
+                // Credit the endogenous goal generator only when the action it proposed was the action actually executed.
+                // Policy arbitration may select a different action; that outcome trains the selected-action owners,
+                // but must not be relabeled as evidence for B272's unexecuted action.
+                const b272Learning = b272ActionMatchesGenerated
+                    ? this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal })
+                    : null;
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
@@ -9691,15 +9697,19 @@ export class OrganismCore {
             if (outcome.worldTransition) {
                 const b338GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                    independentEvaluatorGain01: b338IndependentGain,
-                    acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
-                });
+                // Keep the real-transition path consistent with the synthetic path: don't credit B272
+                // when arbitration executed a different action than the generator proposed.
+                if (b338GoalState.action === trace.selected.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
+                        tick: state.tick,
+                        action: trace.selected.action,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b338IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    });
+                }
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
                     tick: state.tick,
@@ -11340,8 +11350,8 @@ export class OrganismCore {
                         ...(stepApprovalId?{approvalId:stepApprovalId}:{})
                     };
                     if(stepApprovalId) pendingApprovalId=undefined; // one approval can authorize only the first matching protected step.
-                    const result = await this.cognitiveRuntime.actionGateway.executeTool(
-                        canonicalCandidateTool, resolvedToolInput, executionReason, executionOptions,
+                    const result = await this.executeTool(
+                        canonicalCandidateTool, resolvedToolInput, executionReason, executionOptions, Object.keys(runtimeInput),
                     );
                     if(result.outcomeClass==='approval-required') {
                         // Consent is a pause, not a skill failure: never retry through a fallback tool or learn a repair from a blocked side effect.
@@ -11370,12 +11380,6 @@ export class OrganismCore {
                     stepOutcomeClass = result.outcomeClass;
                     priorResults.set(step.id, result.result);
                     actualTools.set(step.id, canonicalCandidateTool);
-                    // Keyed tool executions are finalized exactly once by ActionGateway
-                    // before its completed receipt is committed; unkeyed legacy skill runs
-                    // use the same canonical finalizer here.
-                    if (!stepIdempotencyKey && !result.idempotentReplay) {
-                        await this.finalizeToolOutcome(canonicalCandidateTool, resolvedToolInput, executionReason, result, executionOptions, Object.keys(runtimeInput));
-                    }
                     stepError = result.result?.error ? String(result.result.error) : '';
                     const evidence01 = clamp(Number(result.verification.confidence01 ?? (result.verified ? .72 : .25)));
                     resultVerificationConfidence01 = evidence01;
@@ -11985,14 +11989,14 @@ export class OrganismCore {
         const canonicalId = this.canonicalActionToolId(id);
         return this.cognitiveRuntime.actionGateway.reconcileToolExecution(canonicalId, input, reason, options);
     }
-    async executeTool(id: string, input: Record<string, unknown> = {}, reason = 'tool-request', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
+    async executeTool(id: string, input: Record<string, unknown> = {}, reason = 'tool-request', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, finalizationContextKeys: string[] = Object.keys(input)) {
         const canonicalId = this.canonicalActionToolId(id);
         const result = await this.cognitiveRuntime.actionGateway.executeTool(canonicalId, input, reason, options);
         // Keyed executions are finalized inside ActionGateway before its completed
         // receipt and outcome projections are committed together. A replay does
         // not create new learning, causal links or external observations.
         if (options.idempotencyKey || result.idempotentReplay) return result;
-        await this.finalizeToolOutcome(canonicalId, input, reason, result, options);
+        await this.finalizeToolOutcome(canonicalId, input, reason, result, options, finalizationContextKeys);
         await this.checkpoint(true);
         return result;
     }
@@ -12374,7 +12378,7 @@ export class OrganismCore {
         if (reconcileExistingOperation) {
             // Never call the executor again for an operation that may already have
             // crossed the side-effect boundary. The gateway only performs receipt lookup.
-            result = await this.cognitiveRuntime.actionGateway.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);
+            result = await this.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);
         } else {
             const budget = this.agencySubsystem.budget.spend('planning', undefined, 0.05, { tick: this.persisted.state.tick, reason: `project-tool:${project.id}` });
             if (!budget.accepted) {
@@ -12384,7 +12388,7 @@ export class OrganismCore {
             }
             await this.checkpoint(true); // Prepared intent is durable; ActionGateway writes its own pending receipt before executor entry.
             stepOperation = this.agencySubsystem.projectExecutor.activeStepOperation()!;
-            result = await this.cognitiveRuntime.actionGateway.executeTool(id, input, executionReason, executionOptions);
+            result = await this.executeTool(id, input, executionReason, executionOptions);
         }
         if(result.outcomeClass==='approval-required') {
             if (reconcileExistingOperation) {

@@ -96,8 +96,13 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
+  // Keep candidate identity in lockstep with VersionedSkillCandidateStore.stageCandidate:
+  // revision provenance is bound as a fifth fingerprint slot, including explicit null when absent.
+  const provenanceFingerprint = value.revisionProvenance === undefined
+    ? null : payloadFingerprint(value.revisionProvenance);
+  if (value.revisionProvenance !== undefined && provenanceFingerprint === null) return false;
   const expectedId = createHash('sha256').update(JSON.stringify([
-    value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+    value.skillId, value.version, value.proposalId, value.payloadFingerprint, provenanceFingerprint,
   ])).digest('hex');
   if (value.candidateId !== expectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;

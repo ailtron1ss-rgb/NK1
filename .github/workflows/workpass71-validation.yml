@@ -2,7 +2,7 @@ name: NeuroCore core regression validation
 
 on:
   push:
-    branches: [workpass70-source, nk1-integration-workspace-2026-10-22]
+    branches: [workpass70-source, nk1-integration-workspace-2026-10-22, feature/memory-budget-restore-integrity-20261025]
     paths:
       - "app/**"
       - "runtime/neuro-kurisu/src/**"
@@ -120,6 +120,8 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-verified-skill-revision-gate.mjs
       - name: WorkPass314 canonical memory doctor
         run: npm --prefix runtime/neuro-kurisu run test:p314:memory-doctor
+      - name: Validate memory budget restore and eviction integrity
+        run: npm --prefix runtime/neuro-kurisu run test:memory-budget-restore-integrity
       - name: WorkPass318 read-only memory doctor CLI
         run: npm --prefix runtime/neuro-kurisu run test:p318:memory-doctor-cli
       - name: WorkPass319 causal cognitive-cycle phase ordering

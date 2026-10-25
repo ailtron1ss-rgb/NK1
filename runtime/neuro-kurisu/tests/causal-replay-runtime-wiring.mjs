@@ -11,14 +11,18 @@ const samplerAt = engine.indexOf('selectCausalReplayBatch(causalCandidates', rep
 const finalSelectorAt = engine.indexOf('selectReplayBatch(causalCandidatesSelected,options)', replayAt);
 assert.ok(samplerAt > replayAt, 'causal selection must run in the production replayPending path');
 assert.ok(finalSelectorAt > samplerAt, 'the adaptive multi-signal selector must remain the final selector');
-const vectorAt = engine.indexOf('policyFeatures01:[', samplerAt);
-assert.ok(vectorAt > samplerAt, 'causal sampler candidates must be grounded in state/outcome features');
+const vectorAt = engine.indexOf('policyFeatures01:[', replayAt);
+assert.ok(vectorAt > replayAt && vectorAt < samplerAt,
+  'causal replay candidates must carry state/outcome features before the sampler selects them');
 const vectorEnd = engine.indexOf('],', vectorAt);
-assert.ok(vectorEnd > vectorAt, 'causal feature vector must be closed');
+assert.ok(vectorEnd > vectorAt && vectorEnd < samplerAt, 'causal feature vector must be closed before selection');
 const vector = engine.slice(vectorAt, vectorEnd);
 assert.match(vector, /needs\.energy/);
 assert.match(vector, /needs\.goalPressure/);
 assert.match(vector, /trace\.outcome\?\.success/);
+assert.match(vector, /trace\.outcome\?\.reward/);
+assert.match(vector, /trace\.outcome\?\.surprise/);
+assert.match(vector, /learningQuality/);
 assert.match(engine.slice(samplerAt, finalSelectorAt), /maxBatchSize:/,
   'causal prefilter must have an explicit bounded capacity');
 

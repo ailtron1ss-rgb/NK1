@@ -191,6 +191,45 @@ export interface ToolExecution {
   providerReceiptId?:string;
   idempotencyStatus?:'recorded'|'replayed'|'recovery-required'|'conflict'|'payload-omitted'|'reconciled'|'confirmed-not-executed';
 }
+
+const VALID_ACTION_OUTCOME_CLASS_VALUES:ReadonlySet<string>=new Set([
+  'unavailable','competence-insufficient','gate-check-failed','policy-refused','execution-failed',
+  'executed-unverified','executed-verified','executed-contradicted','idempotency-conflict',
+  'idempotency-recovery-required','idempotency-storage-failed','idempotency-ledger-full',
+  'failed-no-effect','executed-partial','reconciled-not-executed','idempotency-key-required',
+  'approval-required','approval-invalid','approval-storage-failed',
+]);
+
+/**
+ * Restored receipts are an authority boundary: validate the embedded response
+ * against the ledger identity and its own audit/verification fields before replay.
+ * This is structural integrity, not a cryptographic signature over an untrusted
+ * snapshot; deployments must still protect the durable ledger store.
+ */
+function isValidRestoredExecutionResponse(entry:ActionExecutionLedgerEntry, value:unknown, requestedToolId:string):value is ToolExecution {
+  const isRecord=(item:unknown):item is Record<string,unknown>=>item!==null&&typeof item==='object'&&!Array.isArray(item);
+  if(!isRecord(value)||!entry.executionId||!entry.toolId) return false;
+  const response=value as unknown as ToolExecution;
+  if(response.executionId!==entry.executionId||response.tool!==entry.toolId||response.tool!==requestedToolId) return false;
+  if(typeof response.ok!=='boolean'||typeof response.verified!=='boolean'||
+     typeof response.capability!=='string'||response.capability.length>160||
+     !isRecord(response.result)||!isRecord(response.audit)||!isRecord(response.verification)||
+     !VALID_ACTION_OUTCOME_CLASS_VALUES.has(response.outcomeClass)) return false;
+  const audit=response.audit as unknown as Record<string,unknown>;
+  const verification=response.verification as unknown as Record<string,unknown>;
+  if(audit.executionId!==undefined&&audit.executionId!==response.executionId) return false;
+  if(audit.outcomeClass!==response.outcomeClass||audit.verified!==response.verified) return false;
+  if(verification.verified!==response.verified||
+     !['none','tool-contract','external-postcondition'].includes(String(verification.basis))||
+     typeof verification.confidence01!=='number'||!Number.isFinite(verification.confidence01)||
+     verification.confidence01<0||verification.confidence01>1||
+     (verification.externalObservation!==undefined&&typeof verification.externalObservation!=='boolean')) return false;
+  if(response.idempotentReplay===true||response.idempotencyStatus==='replayed') return false;
+  try {
+    if(new TextEncoder().encode(stableJson(response)).length>48*1024) return false;
+  } catch { return false; }
+  return true;
+}
 const DEFAULT_ALLOWED:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const unavailableVerification:OutcomeVerification={verified:false,basis:'none',confidence01:0,externalObservation:false,notes:'not executed'};
 function classifyVerifiedExecution(toolOk:boolean, verification:OutcomeVerification):{ok:boolean;verified:boolean;outcomeClass:ActionOutcomeClass;contradicted:boolean} {
@@ -486,7 +525,11 @@ export class ActionGateway {
         ...(typeof row.decisionId==='string'&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
         ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{})};
       if(row.status==='completed' && row.response && typeof row.response==='object') {
-        try { safe.response=structuredClone(row.response); } catch { safe.responseOmitted=true; }
+        try {
+          const candidate=structuredClone(row.response);
+          if(isValidRestoredExecutionResponse(safe,candidate,String(safe.toolId??''))) safe.response=candidate;
+          else safe.responseOmitted=true;
+        } catch { safe.responseOmitted=true; }
       } else if(row.status==='completed') safe.responseOmitted=true;
       const prior=restored.get(safe.keyHash);
       if(prior && (prior.requestHash!==safe.requestHash || stableJson(prior)!==stableJson(safe))) throw new Error('action-ledger-snapshot-key-conflict');
@@ -872,11 +915,13 @@ export class ActionGateway {
   }
 
   private replayLedgerEntry(entry:ActionExecutionLedgerEntry,id:string):ToolExecution {
-    if(entry.response) {
+    if(entry.response&&isValidRestoredExecutionResponse(entry,entry.response,id)) {
       const response=structuredClone(entry.response);
       return {...response,idempotentReplay:true,idempotencyStatus:entry.responseOmitted?'payload-omitted':'replayed'};
     }
-    return this.result(id,'unknown','idempotency-recovery-required','idempotency-recovery-required',`exec-${randomUUID()}`,{error:'idempotency-recovery-required'},'completed receipt has no replayable result; refusing to execute the side effect again');
+    // Missing or malformed receipt content becomes a recovery tombstone; never
+    // trust/replay the embedded success and never rerun a possibly completed effect.
+    return this.result(id,'unknown','idempotency-recovery-required','idempotency-recovery-required',entry.executionId??`exec-${randomUUID()}`,{error:'idempotency-recovery-required'},'completed receipt has no valid identity-bound replay result; refusing to execute the side effect again');
   }
 
   private idempotencyConflict(id:string,executionId:string):ToolExecution {

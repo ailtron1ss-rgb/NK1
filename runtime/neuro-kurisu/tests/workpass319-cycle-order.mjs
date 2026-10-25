@@ -14,7 +14,8 @@ const embodiedConsequenceLearning = index('this.core.b365LearnEmbodiedConsequenc
 const continuousMemory = index('const continuousFabric = this.continuousCognitiveFabric.step({');
 const neuralTrace = index('const neuralTrace = this.neuralCausalTrace.record({');
 const lifeCourseUpdate = index('this.core.closeB380TemporalLife({');
-const embodimentPersist = index('await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());');
+const embodimentPersist = runtime.indexOf('await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());', lifeCourseUpdate);
+assert.notEqual(embodimentPersist, -1, 'post-life-course embodiment state commit must exist before cycle closure');
 const cycleLedger = index('const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({');
 const cycleEvaluation = index('const cycleVerification = this.unifiedCycle.evaluate({');
 const completenessEvidence = index("claim:'cognitive-cycle-completeness'");
@@ -34,6 +35,6 @@ assert.ok(completenessEvidence < cycleEvidencePersist, 'cycle completeness evide
 const cycleBlock = runtime.slice(cycleLedger, completenessEvidence);
 assert.match(cycleBlock, /learning:\s*\{?\s*source:'core\.feedback'/);
 assert.match(cycleBlock, /selfUpdate:\s*\{?\s*source:'core\.lifecycle'/);
-assert.match(cycleBlock, /this\.core\.setUnifiedCognitiveCycle\(this\.unifiedCycle\.snapshot\(\)\)/);
+assert.match(cycleBlock, /this\.core\.setRuntimeUnifiedCognitiveCycle\(this\.unifiedCycle\.snapshot\(\)\)/, 'the unified cycle snapshot must be persisted through the current runtime persistence owner');
 
 console.log('WorkPass319 cognitive-cycle causal ordering: PASS');

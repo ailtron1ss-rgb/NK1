@@ -1,3 +1,206 @@
+## [NK1][learning] Assert the interleaved replay budget in the sequential benchmark (2026-10-25)
+
+- Added direct budget assertions for the default interleaved mode (replay attempts cannot exceed 50% of the fresh batch) and the context-aware retention mode (explicit ratio 1.0). In both modes, replayed plus blocked historical rows must fit the returned attempt cap.
+- Added a fail-fast assertion for ratios above 1.0. The benchmark's task-retention/plasticity thresholds remain unchanged; this checks the safety boundary for the new replay controller.
+
+---
+
+## [NK1][learning] Gate B272 goal learning on actual generated-action identity (2026-10-25)
+
+- The local-provider HTTP E2E exposed a real integration mismatch: `OrganismCore` passed the final arbitrated action to `B272EndogenousGoalGenesis.learnFromOutcome` even when that action differed from the generator's recorded `currentAction`; the engine correctly rejected the mislabeled credit and the chat endpoint returned 500.
+- Both synthetic/no-world-transition and real-world-transition outcome paths now credit B272 only when `currentGoal().action === trace.selected.action`. When policy arbitration selects a different action, that outcome is still available to the actual-action learning owners (B273, policy, and outcome models), but is not falsely attributed to B272's unexecuted action.
+- The strict check inside B272 remains unchanged; no speculative action receives credit. Validate with the fake-provider HTTP E2E and exact-head core regression.
+
+---
+
+## [NK1][core] Validate supplied optional phases in the causal cognitive-cycle spine (2026-10-25)
+
+- Fixed a verifier gap: `verifyOperationalCycle` previously validated only the six legacy core phases and silently ignored an explicitly supplied optional phase ID if that ID did not exist.
+- The verifier now rejects missing/incorrect optional phase events, enforces same-tick ownership, and checks the causal edges for each optional stage actually supplied. A provided plan also must link to the action. Legacy callers that supply only the original six phases remain compatible.
+- Integrity coverage now uses the number of required plus actually requested optional phases, instead of dividing by the legacy six-stage count. WorkPass321 is the targeted validation.
+
+---
+
+## [NK1][core] Align WorkPass319 with the current cognitive-cycle persistence API (2026-10-25)
+
+- The cycle-order test already validated embodiment state is committed after the life-course update and before cycle closure. It then failed because it asserted the retired `setUnifiedCognitiveCycle` method name.
+- Updated the assertion to the current `setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot())` persistence boundary. The test still requires cycle snapshot persistence inside the post-write verification block and before completeness evidence is committed; runtime behavior is unchanged.
+
+---
+
+## [NK1][core] Select the correct embodiment checkpoint in WorkPass319 (2026-10-25)
+
+- The cycle-order test was indexing the first occurrence of `setEmbodiment` in `OrganismRuntime`, which belongs to an earlier sleep-transition path and therefore necessarily appears before the later `closeB380TemporalLife` call.
+- Updated the regression to find the embodiment commit after the life-course update and explicitly require it to exist before canonical cycle closure. Production ordering already satisfies this intended sequence; the test now checks the relevant occurrence.
+
+---
+
+## [NK1][memory] Correct the future-evidence doctor fixture boundary (2026-10-25)
+
+- WorkPass318 was setting `observedAt` only 60 seconds in the future while MemoryOS2 intentionally reports future-evidence warnings only when the timestamp exceeds a five-minute tolerance.
+- Increased the fixture to ten minutes in the future. The production threshold is unchanged, and the read-only CLI still must report the malformed timestamp without modifying the file.
+
+---
+
+## [NK1][core] Preserve finalization context keys in the canonical wrapper (2026-10-25)
+
+- The compound-skill route now calls `OrganismCore.executeTool(..., Object.keys(runtimeInput))` as required, and strict TypeScript revealed the wrapper exposed only four arguments despite `finalizeToolOutcome` already supporting caller-supplied context keys.
+- Extended the canonical wrapper with an optional, defaulted `finalizationContextKeys` argument and forwarded it into `finalizeToolOutcome`. Existing four-argument callers retain the original `Object.keys(input)` behavior; the compound-skill path can explicitly preserve the intended runtime-context boundary.
+- This keeps one finalizer owner and fixes the compile-time contract rather than weakening the regression.
+
+---
+
+## [NK1][core] Route compound skill steps through canonical execution wrapper (2026-10-25)
+
+- CI exposed a second real bypass: compound-skill steps called `ActionGateway.executeTool` directly, then duplicated some of Core's finalization logic locally. That split ownership could omit or double-apply outcome projections as the runtime changes.
+- Compound-skill dispatch now uses `OrganismCore.executeTool` with the bounded runtime context keys. The canonical wrapper and ActionGateway own finalization according to keyed/unkeyed semantics; the duplicate local finalizer block is removed.
+- This restores consistent alias canonicalization, execution outcome handling, and finalization context across planner, project, and compound-skill actions. Exact-head CI is required.
+
+---
+
+## [NK1][compat] Scope direct Gateway bypass checks to project dispatch (2026-10-25)
+
+- The route test previously searched the whole `OrganismCore.ts` for direct reconciliation calls, incorrectly flagging the canonical Core wrapper's own legitimate delegation to ActionGateway.
+- The test now scopes the no-bypass assertions to the project dispatch block, where fresh calls must use `this.executeTool` and resume paths must use `this.reconcileToolExecution`. Wrapper internals remain free to delegate to the Gateway.
+
+---
+
+## [NK1][core] Route project execution through the canonical Core wrapper (2026-10-25)
+
+- The passing receipt-integrity fix uncovered a real production bypass in project tool execution: fresh project dispatch called `ActionGateway.executeTool` directly, and resume reconciliation also bypassed `OrganismCore`'s canonical wrapper.
+- Routed fresh project execution through `this.executeTool` and resume reconciliation through `this.reconcileToolExecution`. This restores tool alias normalization and the single owner for unkeyed outcome finalization/checkpointing; keyed receipts keep ActionGateway's own atomic finalization path and are not double-finalized.
+- The route regression now guards against reintroducing either direct project-path bypass. Exact-head CI is required before treating this as validated.
+
+---
+
+## [NK1][compat] Make project wrapper assertions independent of source order (2026-10-25)
+
+- A second CI run showed that the first marker adjustment still assumed compound-skill selection followed the project path; in the current file that identifier occurs earlier. The regression now independently asserts the unique fresh-dispatch wrapper, the core reconciliation wrapper and absence of their corresponding direct gateway bypasses across the source.
+- Runtime behavior is unchanged; the route test no longer depends on the order of unrelated source declarations.
+
+---
+
+## [NK1][compat] Extend the project wrapper regression to the full dispatch block (2026-10-25)
+
+- The route regression stopped at the `const unresolvedReceipt` declaration, before the fresh execution through `OrganismCore.executeTool`; the real path continues below that guard.
+- The test now inspects the full project dispatch region up to compound-skill tool selection, so it checks fresh wrapper execution and reconciliation routing together without depending on the former source layout. The production dispatch code is unchanged.
+
+---
+
+## [NK1][runtime] Fail closed on malformed restored action receipts (2026-10-25)
+
+- Added a receipt validator tying persisted response `executionId` and tool ID back to the durable ledger row; it checks outcome/audit/verification consistency, bounded confidence values, known outcome classes and the 48 KiB serialized receipt limit.
+- `restoreExecutionLedger` now retains only structurally coherent embedded responses. Malformed responses become non-replayable recovery tombstones, and `replayLedgerEntry` repeats validation as defense in depth, including for archive-backed receipts.
+- A malformed receipt is never replayed as success and never causes automatic re-execution of a possibly completed side effect. This is structural integrity, not cryptographic authentication of an untrusted snapshot; durable-store access control remains required.
+- Validation pending on the new exact HEAD.
+
+---
+
+## [NK1][learning] Align causal replay wiring regression with candidate construction order (2026-10-25)
+
+- Fixed a stale source-order assertion: P23 builds each candidate's `policyFeatures01` before invoking `selectCausalReplayBatch`, but the regression searched for that vector after the sampler call.
+- The test now requires the feature vector to appear inside the replayPending candidate-construction section and before selection, and verifies energy, goal pressure, outcome success/reward/surprise and learning-quality signals. Runtime replay logic is unchanged.
+
+---
+
+## [NK1][learning] Separate replay policy modes and isolate process-identity fixtures (2026-10-25)
+
+- The P26 context-aware benchmark now opts into a replay ratio of 1.0 because that scenario specifically measures retaining both separable tasks; standard interleaving strategies keep the default 0.5 ratio to protect fresh-task plasticity. The benchmark's retention and new-task thresholds are unchanged.
+- Restored the host-owned executor fixture's permission mode after the negative group/world-writable check. This ensures the subsequent run-root replacement regression reaches the intended inode/identity guard instead of failing on the previous test's mutated executable mode.
+- These are test-scenario and fixture-isolation corrections; exact-head CI must still pass.
+
+---
+
+## [NK1][learning] Keep sandbox executability distinct inside skill-quality scoring (2026-10-25)
+
+- Follow-up review of WorkPass110 clarified that the report's `runBindings.executable` field was fixed, but `skillQuality.executability` still received the stricter `trustedExecution` flag. That incorrectly reduced execution quality to zero when the independent verifier threw, despite a valid sandbox run.
+- Both report-level executability and skill-quality executability now use the structurally valid execution result. Verification/binding still gates task success, trusted step/run IDs, outcome evidence and promotion; no verifier bypass is introduced.
+- Exact-head regression is required to validate the separation.
+
+---
+
+## [NK1][learning] Bound replay against fresh learning and separate execution from trust (2026-10-25)
+
+- P26 interleaved replay now caps historical replay attempts to a configurable ratio of the current batch (`maxReplayRatio01`, default 0.5), in addition to the absolute attempt cap. This prevents high-frequency replay from overwhelming fresh-task updates; the multi-seed plasticity threshold remains unchanged.
+- The independent candidate evaluator now reports `executable` separately from `bindingVerified`: a sandbox can produce a valid execution even if the verifier is unavailable, while the unbound trace still cannot count as a trusted success or receive run/step evidence credit. This aligns the existing fail-closed outcome logic with the test contract.
+- Exact-head CI is required to validate both changes; no production learning uplift is claimed.
+
+---
+
+## [NK1][learning] Align signed-shadow E2E fixture with provenance-bound candidate identity (2026-10-25)
+
+- After the atomic-file adapter was corrected, WorkPass110 advanced to the signed shadow-observation E2E and exposed a second legacy candidate-ID formula in the fixture. Production candidate IDs include the explicit fifth provenance fingerprint slot; without provenance this is `null`.
+- Updated the fixture's expected candidate ID to use the same canonical five-slot tuple before it signs the shadow observation. This preserves end-to-end binding and does not change the runtime verifier or acceptance conditions.
+
+---
+
+## [NK1][learning] Improve multi-seed replay sweep diagnostics (2026-10-25)
+
+- Added the failing strategy, seed and measured new-task accuracy to the P26 replay-policy-sweep assertion message. The threshold remains unchanged at 0.60; this is diagnostic instrumentation, not a relaxation of the benchmark.
+- The prior run failed the existing plasticity threshold after the new interleaved replay method was added. The next exact-head result will identify the specific strategy/seed before changing replay balance.
+
+---
+
+## [NK1][learning] Bind file-backed candidate IDs to revision provenance consistently (2026-10-25)
+
+- WorkPass110 exposed a production persistence mismatch: `VersionedSkillCandidateStore.stageCandidate` hashes a five-slot identity tuple, with a provenance fingerprint or explicit `null` as slot five, while the atomic-file adapter validated only the first four slots.
+- Updated `AtomicFileSkillStorePersistence` to calculate the same tuple. Candidates without provenance now validate with the explicit null slot; provenance-bearing candidates bind the canonical provenance fingerprint. Malformed provenance that cannot be fingerprinted is rejected.
+- This repairs file-backed staging/restart integrity rather than relaxing atomic compare-and-swap. The exact-head skill lifecycle regression and WorkPass71 still need to pass.
+
+---
+
+## [NK1][learning] Align persisted rollback-target tamper assertion with validation order (2026-10-25)
+
+- CI confirmed the tampered persisted base version is rejected before the later signed-approval CAS check, because the stored rollback target no longer matches the prior approved version.
+- The regression now accepts either fail-closed rejection point while still requiring the malicious snapshot to be rejected. No production check is weakened; the earlier rollback-target validation is the stricter result.
+
+---
+
+## [NK1][learning] Update the second rollback assertion for the signed request schema (2026-10-25)
+
+- A fresh WorkPass110 run passed the valid rollback path and then exposed one remaining legacy assertion: the second rollback attempt still supplied a numeric version instead of a request object.
+- The regression now sends a structurally valid, version-bound approval-shaped request and asserts that an already rolled-back candidate is rejected as `currently promoted`. The verifier remains explicitly test-only in the happy-path fixture; production remains deny-by-default.
+
+---
+
+## [NK1][learning] Restore conflict-gated interleaved replay in P26 (2026-10-25)
+
+- Added the missing `P26TrueLearningEngine.trainInterleaved` API used by the sequential-learning regression. It trains current samples and rehearses a bounded number of historical samples in one pass.
+- Historical rows are screened against a bounded set of same-action current examples; near-identical features with contradictory reward labels are blocked, while separated contexts remain eligible.
+- Exposes online/replay update counts, blocked/eligible rows and conflict comparison counts; enforces finite learning rates and bounded replay/search. Synthetic benchmark metrics remain diagnostics, not independent generalization evidence.
+- Exact-head CI is required before treating the new method as validated.
+
+---
+
+## [NK1][learning] Inject the explicit rollback verifier in the isolated lifecycle fixture (2026-10-25)
+
+- The first CI retry exposed a second stale fixture assumption: the rollback API's fourth constructor dependency defaults to deny-all, even when the test fixture explicitly allows promotion and shadow verification.
+- The isolated success-path fixture now injects a test-only rollback verifier. Production defaults and signed approval validation are unchanged; the regression still proves unsigned legacy rollback calls are rejected.
+- The separate WorkPass71 run also exposed an API mismatch in the sequential-learning benchmark (`P26TrueLearningEngine.trainInterleaved` is absent from this branch). That is tracked as an independent integration defect and is not treated as fixed by this rollback change.
+
+---
+
+## [NK1][memory] Ensure the byte-budget regression runs on the feature branch (2026-10-25)
+
+- Added the memory-budget work branch to the WorkPass71 push trigger. The focused `test:memory-budget-restore-integrity` gate now runs on that branch instead of being merely registered in a workflow whose existing branch filters excluded the PR base.
+- The same commit also updates the stale rollback regression to require the version-bound approval object; the next exact-head Actions run is the validation gate.
+
+---
+
+## [NK1][learning] Update rollback regression for signed approval contract (2026-10-25)
+
+- Updated the WorkPass110-reachable skill lifecycle regression to use the current rollback API: legacy calls without approval identity, timestamp and expected active-version guard are explicitly rejected; the fixture then submits a version-bound approval object.
+- Keeps the production fail-closed rollback authorization unchanged. This repairs a stale test contract on the memory-budget branch; CI on the new exact HEAD is required to confirm the fix.
+
+---
+
+## Memory budget restore integrity — 2026-10-25
+
+- Hardened the canonical `MemoryOS2` byte-budget boundary: non-finite, malformed, null and out-of-range persisted limits are normalized to a safe supported value.
+- Hardened `enforceByteBudget()`: invalid per-call overrides now fall back to the valid stored budget instead of allowing `NaN` to bypass eviction.
+- Added a regression that checks malformed snapshot restoration and verifies that an over-budget memory is still evicted after an invalid override.
+- Registered the focused regression in the runtime package and WorkPass71 validation workflow. Execution against the exact branch head remains to be confirmed; no test pass or retrieval uplift is claimed.
+
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
 - Added `tools/verify-repository-wiring.mjs` to check reachable npm-script chains, recursive script cycles, referenced Node/Python entry points, exact workflow path filters, local actions, working directories, setup-node file inputs, and `workflow_run` workflow names.

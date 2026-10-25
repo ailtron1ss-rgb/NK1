@@ -243,6 +243,20 @@ function bm25Score(queryTokens:string[],content:string,docCount:number,documentF
 }
 type MemoryEncodeInput=Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'|'residencyTier'> & {id?:string};
 export const defaultMemoryOS2=():MemoryOSState2=>({items:[],forgetCount:0,reconsolidations:0,quarantined:0,lastMaintenanceAt:0,semanticQueries:0,semanticHits:0,linkUpdates:0,version:7,implicitConflictCandidates:0,implicitConflictsResolved:0,staleRetrievalsAvoided:0,lastConflictScanAt:0,implicitConflictsDeferred:0,provenanceProtected:0,estimatedBytes:0,byteBudget:524288,budgetEvictions:0,budgetMisses:0,meanEvictionRegret01:0,evictionWitnesses:[]});
+
+const MIN_MEMORY_BYTE_BUDGET=16_384;
+const DEFAULT_MEMORY_BYTE_BUDGET=524_288;
+/** Reject non-finite persisted/config values before they can disable the eviction comparison. */
+function normalizeMemoryByteBudget(value:unknown,fallback=DEFAULT_MEMORY_BYTE_BUDGET):number{
+ const safeFallback=Number.isFinite(fallback)
+  ?Math.max(MIN_MEMORY_BYTE_BUDGET,Math.min(Number.MAX_SAFE_INTEGER,Math.floor(fallback)))
+  :DEFAULT_MEMORY_BYTE_BUDGET;
+ if(value===undefined||value===null)return safeFallback;
+ let numeric:number;
+ try{numeric=typeof value==='number'?value:Number(value);}catch{return safeFallback;}
+ if(!Number.isFinite(numeric))return safeFallback;
+ return Math.max(MIN_MEMORY_BYTE_BUDGET,Math.min(Number.MAX_SAFE_INTEGER,Math.floor(numeric)));
+}
 const MAX_MEMORY_REVISION_HISTORY=64;
 const EPISTEMIC_STATUSES=new Set<EpistemicStatus>(['fact','belief','hypothesis','unknown','quarantined']);
 function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
@@ -511,7 +525,7 @@ export class MemoryOS2{
    implicitConflictsDeferred:Math.max(0,Math.floor(Number((s as any)?.implicitConflictsDeferred??0))),
    provenanceProtected:Math.max(0,Math.floor(Number((s as any)?.provenanceProtected??0))),
    estimatedBytes:savedEstimate,
-   byteBudget:Math.max(16384,Math.floor(Number((s as any)?.byteBudget??524288))),
+   byteBudget:normalizeMemoryByteBudget((s as any)?.byteBudget),
    budgetEvictions:Math.max(0,Math.floor(Number((s as any)?.budgetEvictions??0))),
    budgetMisses:Math.max(0,Math.floor(Number((s as any)?.budgetMisses??0))),
    meanEvictionRegret01:clamp(Number((s as any)?.meanEvictionRegret01??0)),
@@ -1050,7 +1064,9 @@ export class MemoryOS2{
    return true;
  }
   enforceByteBudget(options:{maxBytes?:number;tick?:number;protectedIds?:string[];reason?:string}={}){
-   const budget=Math.max(16384,Math.floor(Number(options.maxBytes??this.state.byteBudget??524288)));
+   const fallbackBudget=normalizeMemoryByteBudget(this.state.byteBudget);
+   const budget=options.maxBytes===undefined||options.maxBytes===null
+    ?fallbackBudget:normalizeMemoryByteBudget(options.maxBytes,fallbackBudget);
    this.state.byteBudget=budget;
    const protectedIds=new Set(options.protectedIds??[]);
    const removed:string[]=[];

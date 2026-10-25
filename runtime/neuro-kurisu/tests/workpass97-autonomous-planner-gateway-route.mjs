@@ -30,11 +30,11 @@ assert.match(wrapper, /options\.idempotencyKey \|\| result\.idempotentReplay/,
 const projectStart = source.indexOf('const reconcileExistingOperation =');
 assert.notEqual(projectStart, -1, 'project execution/reconciliation path must remain identifiable');
 const projectEnd = source.indexOf('const unresolvedReceipt = [', projectStart);
-assert.ok(projectEnd > projectStart, 'project execution path must have an explicit receipt outcome boundary');
+assert.ok(projectEnd > projectStart, 'project dispatch must include both fresh execution and receipt handling');
 const projectDispatch = source.slice(projectStart, projectEnd);
 assert.match(projectDispatch, /result = await this\.executeTool\(id, input, executionReason, executionOptions\)/,
   'fresh project tool execution must use the canonical core wrapper so unkeyed outcomes are finalized');
-assert.doesNotMatch(projectDispatch, /actionGateway\.executeTool\(id, input, executionReason, executionOptions\)/,
+assert.doesNotMatch(projectDispatch, /cognitiveRuntime\.actionGateway\.executeTool\(id, input, executionReason, executionOptions\)/,
   'project executor must not bypass the canonical core finalizer for fresh tool execution');
 assert.match(projectDispatch, /this\.reconcileToolExecution\(id, input, `\$\{executionReason\};resume-reconcile`, executionOptions\)/,
   'project receipt recovery must use the core reconciliation wrapper so legacy tool aliases are canonicalized');
