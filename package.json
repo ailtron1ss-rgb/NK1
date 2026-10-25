@@ -185,7 +185,8 @@
     "audit:workpass70": "npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:app-dependency-contract && npm run test:super-install && npm run test:workpass70 && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run verify:release-source && npm run audit:release-metadata",
     "audit:ci-reliability": "node tools/verify-ci-reliability.mjs",
     "audit:repo-wiring": "node tools/verify-repository-wiring.mjs",
-    "test:repo-wiring": "node --test tools/verify-repository-wiring.test.mjs"
+    "test:repo-wiring": "node --test tools/verify-repository-wiring.test.mjs",
+    "test:cognitive-integration-suite": "npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",

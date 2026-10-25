@@ -1,3 +1,12 @@
+## 2026-10-25 — WorkPass320: когнитивная связность и маршрутизация- Устранён выявленный CI-дефект TS2688: runtime теперь сам фиксирует `typescript@5.9.3`, `@types/node@22.20.4` и их lockfile-зависимость `undici-types`, не зависит от случайного наличия `app/node_modules`.
+
+
+- Подключён `CognitiveDependencyGraph` к живой границе `OrganismRuntime`: граф получает нормализованный frame после цикла, сохраняется отдельно и восстанавливается при перезапуске.
+- Добавлена `CognitiveRoutingPolicy`: прерывания, критические ресурсы и давление governance сокращают или отключают необязательные контрфактические симуляции.
+- Маршрутизация не подменяет каноническое действие, выбранное когнитивным ядром; политика ограничивает только необязательную работу и публикует evidence.
+- Добавлены unit/wiring/restart-проверки, единая команда `test:cognitive-integration-suite` и отдельный GitHub Actions workflow с установкой зависимостей в Node.js 24.
+- Статус: интеграционный проход; production approval не заявляется до фактического CI, production build/E2E, независимой оценки retrieval и license review.
+
 ## [NK1][learning] Assert the interleaved replay budget in the sequential benchmark (2026-10-25)
 
 - Added direct budget assertions for the default interleaved mode (replay attempts cannot exceed 50% of the fresh batch) and the context-aware retention mode (explicit ratio 1.0). In both modes, replayed plus blocked historical rows must fit the returned attempt cap.

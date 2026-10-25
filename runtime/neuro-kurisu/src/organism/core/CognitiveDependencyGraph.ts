@@ -77,9 +77,15 @@ export class CognitiveDependencyGraph {
   snapshot(){return structuredClone(this.state);}
 
   resolve(frame:CognitiveFrame){
+    // Validate routing identity and the dirty-domain container before mutating
+    // counters or previous-state memory. A replayed frame must not rewind the graph.
+    if(frame===null||typeof frame!=='object'||Array.isArray(frame))throw new TypeError('cognitive dependency frame must be an object');
+    if(!Number.isSafeInteger(frame.tick)||frame.tick<=this.state.lastTick)throw new RangeError('cognitive dependency tick must strictly increase');
+    if(!isRecord(frame.dirtyDomains))throw new TypeError('cognitive dependency dirtyDomains must be an object');
     let mask=0,count=0,transitions=0;
     for(const domain of DOMAINS){
-      const dirty=Boolean(frame.dirtyDomains[domain]);
+      // Domain activation is explicit evidence, not inherited or truthy coercion.
+      const dirty=Object.hasOwn(frame.dirtyDomains,domain)&&frame.dirtyDomains[domain]===true;
       if(dirty){mask|=BIT[domain];count++;}
       if(dirty!==this.previous[domain]){
         transitions++;
@@ -87,7 +93,7 @@ export class CognitiveDependencyGraph {
       }
       this.previous[domain]=dirty;
     }
-    this.state.lastTick=safeCounter(frame.tick);
+    this.state.lastTick=frame.tick;
     this.state.wakeMask=mask;
     this.state.dirtyCount=count;
     this.state.transitionCount=Math.min(Number.MAX_SAFE_INTEGER,this.state.transitionCount+transitions);

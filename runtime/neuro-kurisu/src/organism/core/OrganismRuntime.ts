@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
+import { buildCognitiveFrame } from './CognitiveFrame.ts';
+import { CognitiveDependencyGraph, type CognitiveDependencyState } from './CognitiveDependencyGraph.ts';
+import { resolveCognitiveRoutingPolicy } from './CognitiveRoutingPolicy.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
@@ -145,6 +148,7 @@ export class OrganismRuntime {
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
   private stepsSinceConsolidation = 0;
   private readonly worldStore: JsonStateStore<PersistedWorld>;
+  private readonly cognitiveDependencyStore: JsonStateStore<CognitiveDependencyState>;
   private readonly journal: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
   private readonly sensorIntervalMs: number;
   private readonly phonePolicy: PhonePolicyConfig;
@@ -162,6 +166,7 @@ export class OrganismRuntime {
       includedSections: 0, truncatedSections: 0, omittedSections: 0, receipts: [], note: 'no-language-prompt-built-yet'
     };
   }
+  private readonly cognitiveDependencyGraph = new CognitiveDependencyGraph();
   private readonly clockScheduler = new RuntimeClockScheduler();
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
@@ -291,6 +296,9 @@ export class OrganismRuntime {
     });
     const worldPath = config.worldStateFile ?? config.stateFile.replace(/\.json$/i, '.world.json');
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
+    // Keep this small routing state in an atomic sidecar so injected in-memory test stores
+    // and production persistence share the same restart semantics without widening core schema.
+    this.cognitiveDependencyStore = new FileStateStore<CognitiveDependencyState>(`${config.stateFile}.cognitive-dependencies.json`);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
@@ -309,6 +317,7 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      this.cognitiveDependencyGraph.restore(await this.cognitiveDependencyStore.load() ?? undefined);
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
@@ -590,11 +599,55 @@ export class OrganismRuntime {
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'sensor', summary:this.embodiment.resourceSummary(), confidence:body.sensoryFreshness01*.82, salience:Math.max(.18,Math.abs(body.telemetry.motion01 ?? 0)+.15), evidence:['device-telemetry'] }));
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'world', summary:observation.worldContext.facts.slice(-8).join(' | '), confidence:.7, salience:Math.max(.15,observation.surprise ?? .2), evidence:['world-model'] }));
     const fused = this.core.multimodalSnapshot();
-    const cycle = await this.core.observe({
+    const cycleObservation = {
       ...observation,
       text: externalText,
       externalGoal: externalText ? { title: externalText.slice(0, 160), importance: 0.65, urgency: 0.4 } : undefined,
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
+    };
+    const cycle = await this.core.observe(cycleObservation);
+    // The graph observes the already-normalized result at the real runtime boundary.
+    // It is routing/diagnostic evidence only; canonical Core arbitration still owns action selection.
+    const proposedCognitiveFrame = buildCognitiveFrame(cycle.state, cycleObservation);
+    const previousDependencyState = this.cognitiveDependencyGraph.snapshot();
+    // Bind the frame to this completed organism cycle. If recovery leaves the
+    // sidecar ahead of the main snapshot, advance the routing identity without replaying it.
+    const cognitiveFrame = {
+      ...proposedCognitiveFrame,
+      tick: Math.max(cycle.state.tick, previousDependencyState.lastTick + 1),
+    };
+    this.cognitiveDependencyGraph.resolve(cognitiveFrame);
+    const dependencyState = this.cognitiveDependencyGraph.snapshot();
+    const dependencyStateChanged =
+      previousDependencyState.wakeMask !== dependencyState.wakeMask ||
+      previousDependencyState.dirtyCount !== dependencyState.dirtyCount ||
+      previousDependencyState.transitionCount !== dependencyState.transitionCount ||
+      previousDependencyState.interrupts !== dependencyState.interrupts ||
+      JSON.stringify(previousDependencyState.interrupt) !== JSON.stringify(dependencyState.interrupt);
+    // Avoid an extra fsync on every mobile runtime cycle. Persist on meaningful
+    // routing changes and bounded intervals; stop() always performs a final flush.
+    if (dependencyStateChanged || cycle.state.tick % 16 === 0) {
+      await this.cognitiveDependencyStore.save(dependencyState).catch(async error => {
+        await this.journal.write('warn', 'runtime.cognitive-dependency.persist-failed', {
+          tick: cycle.state.tick,
+          message: String((error as any)?.message ?? error).slice(0, 200),
+        }).catch(() => {});
+      });
+    }
+    this.evidenceBus.publish({
+      tick: cycle.state.tick,
+      kind: 'model',
+      source: 'cognitive-dependency-graph',
+      confidence01: 1,
+      payload: {
+        frameTick: cognitiveFrame.tick,
+        wakeMask: dependencyState.wakeMask,
+        dirtyCount: dependencyState.dirtyCount,
+        transitionCount: dependencyState.transitionCount,
+        interruptActive: dependencyState.interrupt.active,
+        interruptType: dependencyState.interrupt.type,
+        interruptPriority01: dependencyState.interrupt.priority01,
+      },
     });
     const activePerceptionRequestId = this.core.activePerceptionPendingId();
     const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
@@ -603,12 +656,31 @@ export class OrganismRuntime {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
     const internalAction = cycle.decision.selected?.action ?? 'wait';
+    const routingPolicy = resolveCognitiveRoutingPolicy(dependencyState, resourceAllocation.maxCounterfactualBranches);
+    this.evidenceBus.publish({
+      tick: cycle.state.tick,
+      kind: 'resource',
+      source: 'cognitive-routing-policy',
+      confidence01: 1,
+      payload: {
+        reason: routingPolicy.reason,
+        resourceBranchBudget: resourceAllocation.maxCounterfactualBranches,
+        admittedBranchBudget: routingPolicy.maxCounterfactualBranches,
+        allowMatchedCounterfactual: routingPolicy.allowMatchedCounterfactual,
+        interruptActive: dependencyState.interrupt.active,
+        interruptPriority01: routingPolicy.interruptPriority01,
+        cognitiveCycleDelayMultiplier01: routingPolicy.cognitiveCycleDelayMultiplier01,
+        governanceWake: this.cognitiveDependencyGraph.shouldWake('governance'),
+      },
+    });
     const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
     this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning');
     const plan = this.plans.build(cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null, internalAction, 4, 4);
-    const simBudget=this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout');
-    const branches = simBudget.accepted
-      ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, resourceAllocation.maxCounterfactualBranches, 4)
+    const simBudget = routingPolicy.maxCounterfactualBranches > 0
+      ? this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout')
+      : { accepted: false };
+    const branches = simBudget.accepted && routingPolicy.maxCounterfactualBranches > 0
+      ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, routingPolicy.maxCounterfactualBranches, 4)
       : [];
     await this.core.recordCounterfactuals(branches);
     const worldAction = plan.steps[0]?.environmentAction ?? 'observe';
@@ -619,7 +691,9 @@ export class OrganismRuntime {
     // after reality arbitration decides that no authoritative external outcome exists.
     const shadowTransition = this.environment.simulate(worldAction, before);
     const transition = shadowTransition;
-    const matchedCandidates: import('../world/WorldEnvironment.ts').EnvironmentAction[] = ['observe','inspect','move','collect','rest','communicate'].filter((a): a is import('../world/WorldEnvironment.ts').EnvironmentAction => a !== worldAction);
+    const matchedCandidates: import('../world/WorldEnvironment.ts').EnvironmentAction[] = routingPolicy.allowMatchedCounterfactual
+      ? ['observe','inspect','move','collect','rest','communicate'].filter((a): a is import('../world/WorldEnvironment.ts').EnvironmentAction => a !== worldAction)
+      : [];
     const matchedProjections = matchedCandidates.map(action => ({ action, projection: this.environment.project(action, before) }));
     const matched = matchedProjections.filter(x => x.projection.valid).sort((a,b) => b.projection.reward-a.projection.reward)[0] ?? null;
     if (matched) {
@@ -1256,6 +1330,7 @@ export class OrganismRuntime {
       return this.core.perceptionSnapshot();
     });
   }
+  cognitiveDependencySnapshot(): CognitiveDependencyState { return this.cognitiveDependencyGraph.snapshot(); }
   adaptiveDevelopmentSnapshot(){ return this.core.adaptiveDevelopmentSnapshot(); }
   cameraCaptureToolInput(cameraId=0, retain=false) {
     const backendNeedsPath=Boolean(this.config.visionBackend);
@@ -1452,6 +1527,12 @@ export class OrganismRuntime {
         memoryCount: runtimeView.memoryCount,
       });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+      await this.cognitiveDependencyStore.save(this.cognitiveDependencyGraph.snapshot()).catch(async error => {
+        await this.journal.write('warn', 'runtime.cognitive-dependency.final-flush-failed', {
+          tick: runtimeView.tick,
+          message: String((error as any)?.message ?? error).slice(0, 200),
+        }).catch(() => {});
+      });
       await this.core.flush();
       await this.checkpointWorld(true);
       await this.journal.write('info', 'runtime.stop.durable', {
@@ -1638,7 +1719,12 @@ export class OrganismRuntime {
       id: 'cognitive', initialDelayMs: 0,
       decide: () => {
         const p = this.runtimeDecision();
-        return { delayMs: p.nextDelayMs, reason: p.reasonCodes.join(','), run: p.cognitiveBudget01 >= 0.45 && this.embodiment.snapshot().awake };
+        const cognitiveRouting = resolveCognitiveRoutingPolicy(this.cognitiveDependencyGraph.snapshot(), 3);
+        const delayMs = Math.max(5_000, Math.round(p.nextDelayMs * cognitiveRouting.cognitiveCycleDelayMultiplier01));
+        const reasonCodes = cognitiveRouting.cognitiveCycleDelayMultiplier01 < 0.999
+          ? [...new Set([...p.reasonCodes, 'cognitive-interrupt'])]
+          : p.reasonCodes;
+        return { delayMs, reason: reasonCodes.join(','), run: p.cognitiveBudget01 >= 0.45 && this.embodiment.snapshot().awake };
       },
       task: async () => {
         const body = this.embodiment.snapshot();
