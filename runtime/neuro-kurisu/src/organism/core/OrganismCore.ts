@@ -418,6 +418,8 @@ export interface OrganismConfig {
     checkpointMaxDirtyCycles?: number;
     includeAdvancedCycleSnapshot?: boolean;
     cycleResultMode?: 'full' | 'operational';
+    /** Trusted host bootstrap only. This adapter is registered at construction and cannot be added through the public tool registry. */
+    p36IndependentEvaluator?: Omit<import('../system/ActionGateway.ts').ToolDefinition, 'id'>;
     /** Runtime resource profile. 'mobile' preserves cognition but widens deep-persistence spacing. */
     performanceProfile?: 'quality' | 'balanced' | 'mobile';
     enableTemporalResolutionGovernor?: boolean;
@@ -1331,6 +1333,24 @@ export class OrganismCore {
             enableB2523MultiHorizonCounterfactualVerifier: config.enableB2523MultiHorizonCounterfactualVerifier ?? true,
             ...config,
         } as Required<OrganismConfig>;
+        const p36Evaluator = config.p36IndependentEvaluator;
+        if (p36Evaluator !== undefined) {
+            const source = p36Evaluator.observationSource;
+            if (!p36Evaluator || p36Evaluator.destructive !== false || typeof p36Evaluator.execute !== 'function' ||
+                typeof p36Evaluator.verify !== 'function' || !source ||
+                typeof source.sourceId !== 'string' || !source.sourceId.trim() ||
+                typeof source.independenceKey !== 'string' || !source.independenceKey.trim() ||
+                typeof source.channel !== 'string' || !source.channel.trim() ||
+                typeof source.sourceClass !== 'string' || !source.sourceClass.trim() ||
+                p36Evaluator.requiresIdempotencyKey === true) {
+                throw new Error('p36-independent-evaluator-host-config-invalid');
+            }
+            this.cognitiveRuntime.actionGateway.registerTool({
+                ...p36Evaluator,
+                id: P36_EXTERNAL_EVIDENCE_TOOL_ID,
+                destructive: false,
+            });
+        }
         this.cognitiveSubsystemFacadeB297 = new CognitiveSubsystemFacade(this as any);
         this.persistence.configure(this.config.checkpointMinIntervalMs, this.config.checkpointMaxDirtyCycles);
         this.cognitiveRuntime.actionGateway.registerTool({ id: 'organism.inspect', capability: 'core.read', destructive: false, projectAllowed: true, execute: async () => ({ ok: true, verified: true, tick: this.persisted.state.tick, lastAction: this.persisted.state.lastAction, energy: this.persisted.state.needs.energy }) });
@@ -11525,7 +11545,12 @@ export class OrganismCore {
         await this.checkpoint(true);
         return { ok: allOk, verified: allVerified, id, results, skill: compoundRecord, idempotentReplay: replayedExecutions > 0 && freshExecutions === 0 };
     }
-    registerActionTool(def: import('../system/ActionGateway.ts').ToolDefinition) { this.cognitiveRuntime.actionGateway.registerTool(def); }
+    registerActionTool(def: import('../system/ActionGateway.ts').ToolDefinition) {
+        if (def?.id === P36_EXTERNAL_EVIDENCE_TOOL_ID) {
+            throw new Error('reserved-p36-evaluator-must-be-configured-at-core-construction');
+        }
+        this.cognitiveRuntime.actionGateway.registerTool(def);
+    }
     actionExecutionLedgerMetrics() { return this.cognitiveRuntime.actionGateway.executionLedgerMetrics(); }
     actionRecoveryQueueSnapshot(limit = 32) { return this.cognitiveRuntime.actionGateway.unresolvedExecutionSnapshot(limit); }
     actionToolsSnapshot() { return this.cognitiveRuntime.actionGateway.listTools(); }
