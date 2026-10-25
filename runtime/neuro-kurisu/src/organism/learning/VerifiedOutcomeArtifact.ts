@@ -131,9 +131,17 @@ export function ingestSignedOutcomeArtifact(
     evidenceRef: `signed-artifact:${payload.artifactId}:sha256:${fingerprint}`,
     observedAt: payload.observedAt,
   };
-  // A restored ledger intentionally has no in-memory trust receipts. Permit the exact
-  // signed artifact to re-establish its receipt after restart, but never overwrite or
-  // bless a conflicting outcome that happens to occupy the same task/method/seed/attempt.
+  // Reject a second ingestion into the same live ledger once this exact signed
+  // artifact has already established its process-local trust receipt. After restart,
+  // the restored ledger has no such receipt, so an exact artifact can re-attest its
+  // existing row without duplicating it.
+  const evidence = authenticatedEvidence.get(ledger) ?? new Map<string, string>();
+  if (evidence.has(outcome.evidenceRef)) {
+    return { accepted: false, artifactFingerprint: fingerprint, rejection: 'duplicate-attempt' };
+  }
+
+  // Never overwrite or bless a conflicting outcome that occupies the same
+  // task/method/seed/attempt tuple.
   const existing = ledger.snapshot().outcomes.find(row =>
     row.taskId === outcome.taskId && row.method === outcome.method &&
     row.seed === outcome.seed && row.attempt === outcome.attempt,
@@ -152,7 +160,6 @@ export function ingestSignedOutcomeArtifact(
       return { accepted: false, artifactFingerprint: fingerprint, rejection: result.rejection?.code ?? 'ledger-rejected' };
     }
   }
-  const evidence = authenticatedEvidence.get(ledger) ?? new Map<string, string>();
   evidence.set(outcome.evidenceRef, fingerprint);
   authenticatedEvidence.set(ledger, evidence);
   return { accepted: true, artifactFingerprint: fingerprint };
