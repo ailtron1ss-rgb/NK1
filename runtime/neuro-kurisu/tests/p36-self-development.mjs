@@ -146,6 +146,25 @@ const reuseProofB=await mintProof(developmentEvidenceVerificationInput(reuseB),r
 const blockedReuse=reuseEngine.recordExternalEvidence({...reuseB,...reuseProofB});
 assert.equal(blockedReuse.independentCount,1,'reused observation IDs cannot inflate replication across contexts');
 
+// Evidence from different evaluator protocols must not be pooled into one promotion decision.
+const protocolEngine=new P36AutonomousSelfDevelopmentEngine();
+const protocolHypothesis=prepareHypothesis(protocolEngine,105);
+const protocolEvidence=[
+  {protocolId:'protocol-a',contextKey:'protocol-a-context-1',delayMs:1000,baselineMethod:'baseline-a',treatmentMethod:'candidate-a',taskFamily:'memory',manifestFingerprint:'a'.repeat(64)},
+  {protocolId:'protocol-a',contextKey:'protocol-a-context-2',delayMs:6000,baselineMethod:'baseline-a',treatmentMethod:'candidate-a',taskFamily:'memory',manifestFingerprint:'a'.repeat(64)},
+  {protocolId:'protocol-b',contextKey:'protocol-b-context-1',delayMs:1000,baselineMethod:'baseline-b',treatmentMethod:'candidate-b',taskFamily:'memory',manifestFingerprint:'b'.repeat(64)},
+  {protocolId:'protocol-b',contextKey:'protocol-b-context-2',delayMs:6000,baselineMethod:'baseline-b',treatmentMethod:'candidate-b',taskFamily:'memory',manifestFingerprint:'b'.repeat(64)},
+];
+for(const item of protocolEvidence){
+  const payload={...evidence(protocolHypothesis.id,item.contextKey,true,item.delayMs),...item};
+  const proof=await mintProof(developmentEvidenceVerificationInput(payload));
+  const result=protocolEngine.recordExternalEvidence({...payload,...proof});
+  assert.equal(result.status,'insufficient','two unrelated evidence protocols cannot be combined to meet a four-observation gate');
+  assert.equal(result.promoted,false);
+}
+assert.equal(protocolEngine.diagnostics().acceptedChanges,0,
+  'mixed evaluator protocols must not accumulate into an unsupported promotion');
+
 // One verified observation cannot be credited once as experiment evidence and again as a maturity outcome.
 const crossPathEngine=new P36AutonomousSelfDevelopmentEngine();
 const crossPathHypothesis=prepareHypothesis(crossPathEngine,104);
