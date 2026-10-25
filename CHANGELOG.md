@@ -1,3 +1,11 @@
+## NK1 WorkPass337 — Close expression churn and strict app-test gaps (2026-10-25)
+
+- [LIVE2D] The viewer now caches the last successfully applied mapped expression and skips repeated reapplication of the same expression. This prevents mouth/embodiment updates from restarting an unchanged facial expression.
+- [APP-TESTS] Typed safe-local-storage test fixtures and replaced deletion of the required global property with `Reflect.deleteProperty`, addressing strict typecheck errors without weakening runtime storage failure behavior.
+- [VALIDATION] CI is running on the evolving PR head; remaining core nullability and server-smoke contract failures are still open until independently reproduced and repaired.
+
+---
+
 ## NK1 WorkPass336 — Repair restore and strict runtime type contracts (2026-10-25)
 
 - [P23-RESTORE] Preserve a non-empty persisted newest-first dedupe cache as authoritative during restore; reconstruct IDs from durable rows only when the persisted cache is absent/empty. This prevents an older retained replay row from being appended ahead of the cache's bounded history while preserving recovery when caches are missing.
