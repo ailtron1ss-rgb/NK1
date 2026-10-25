@@ -1,3 +1,13 @@
+## Research probe CI dependency and diagnostics repair — 2026-10-25
+
+- Added a pinned CPU-only PyTorch requirement for the governed research integration probes. NeuroCore V143 and NOMEGA declare `torch>=2.0`; DeepCode v21 imports the same runtime. The CI sweep now installs the exact `torch==2.14.1` CPU wheel before exercising those probes.
+- Extended integration failure details to include HTTP status and returned probe errors, rather than showing only missing metric placeholders.
+- Updated `environmentBlocked` detection to include unavailable PyTorch, so absent research dependencies are not misreported as an otherwise complete environment.
+
+Validation is pending for this latest change until the full integration verifier reruns with the installed CPU runtime.
+
+---
+
 ## Cognitive runtime action-attribution fix — 2026-10-25
 
 - Fixed the B338 runtime feedback path so B272's endogenous-goal learner is credited only when the current tick and the selected execution action match the learner's generated goal/action. A downstream policy choice that differs from the proposal now skips B272-specific credit instead of crashing the entire organism step.
