@@ -33,7 +33,7 @@ try {
     core: {}, runtimeVersion: '35.90.0', run, planFingerprint: 'b'.repeat(64), command,
   }), /trusted OrganismCore run registrar is required/);
   let rejectedLaneRegistrations = 0;
-  await assert.rejects(() => runTrustedShadowLearningProcess({
+  assert.throws(() => runTrustedShadowLearningProcess({
     core: { registerTrustedSkillShadowRun() { rejectedLaneRegistrations++; } },
     runtimeVersion: '35.90.0',
     run: { ...run, runId: 'baseline-must-not-register', arm: 'P', method: 'prior' },
@@ -41,7 +41,7 @@ try {
     command: { ...command, runRoot: join(root, 'baseline-runs'), surviveDir: join(root, 'baseline-survive') },
   }), /only candidate\/shadow runs/);
   assert.equal(rejectedLaneRegistrations, 0, 'baseline/control runs must not enter trusted shadow registry');
-  await assert.rejects(() => runTrustedShadowLearningProcess({
+  assert.throws(() => runTrustedShadowLearningProcess({
     core: { registerTrustedSkillShadowRun() { rejectedLaneRegistrations++; } },
     runtimeVersion: '35.90.0',
     run: { ...run, runId: 'wrong-method', method: 'continuous' },
