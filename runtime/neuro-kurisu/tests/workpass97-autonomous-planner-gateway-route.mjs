@@ -14,7 +14,7 @@ assert.notEqual(callAt, -1, 'autonomous planner must delegate through OrganismCo
 const directCallAt = source.indexOf('this.cognitiveRuntime.actionGateway.executeTool(', planAt);
 assert.ok(directCallAt === -1 || directCallAt > callAt,
   'autonomous planner must not bypass the canonical core execution wrapper before its planned action');
-const wrapperAt = source.indexOf('async executeTool(id: string');
+const wrapperAt = source.indexOf('async executeTool(');
 assert.notEqual(wrapperAt, -1, 'canonical core execution wrapper must exist');
 const wrapperEnd = source.indexOf('\n    /**', wrapperAt);
 const wrapper = source.slice(wrapperAt, wrapperEnd === -1 ? wrapperAt + 2500 : wrapperEnd);
