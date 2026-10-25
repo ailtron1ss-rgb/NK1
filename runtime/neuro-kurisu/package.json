@@ -1755,6 +1755,7 @@
     "test:workpass243:host-owned-independent-evaluation-services": "node --experimental-strip-types tests/workpass243-host-owned-independent-evaluation-services.mjs",
     "test:p313:user-mind-and-eils": "node --experimental-strip-types tests/user-mind-reconstruction-workpass313.mjs",
     "test:p314:memory-doctor": "node --experimental-strip-types tests/memory-doctor-workpass314.mjs",
+    "test:memory-budget-restore-integrity": "node --experimental-strip-types tests/memory-budget-restore-integrity.mjs",
     "test:p315:self-model-evidence-gate": "node --experimental-strip-types tests/self-model-evidence-write-gate-workpass315.mjs",
     "test:p316:relational-tether": "node --experimental-strip-types tests/relational-tether-workpass316.mjs",
     "test:p317:micro-dream-associations": "node --experimental-strip-types tests/micro-dream-associations-workpass317.mjs",
