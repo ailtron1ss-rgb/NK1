@@ -1,3 +1,11 @@
+## NK1 WorkPass536 — time-decayed mood carry-over (2026-10-25)
+
+- Applied timestamp-aware decay to mood influence inside `EmotionAppraisalEngine.appraise()`: after a long interval without appraisal, prior arousal/valence/stress only weakly influences the next emotion instead of being treated as fresh context.
+- Reuse a single validated appraisal timestamp for episode identity and persistence, avoiding a tiny ID/time mismatch when no explicit timestamp is supplied.
+- Extended the runtime regression with a paired recent-versus-delayed appraisal test and a no-mood baseline. The Live2D/voice mapper now also decays mood influence while the organism is idle; the feeling episode keeps a faster freshness decay.
+- Explicitly default absent optional mood freshness for backwards-compatible app snapshots.
+- **Validation boundary:** source and regression are committed; fresh CI execution of the new time-decay assertion and typechecks is pending.
+
 ## NK1 WorkPass535 — runtime type-contract repair and mood relaxation (2026-10-25)
 
 - Corrected a batch of runtime TypeScript contracts found by the dedicated CI job: typed B272 need keys; made intrinsic-association filter predicates strictly boolean; typed dependency-transition records; registered the compound-repair clock kind; narrowed optional causal policy features; imported replay-selection options from their declaring module; corrected the retention-gap argument; supplied the missing verified-non-holdout counter; pinned holdout/schema literals; and disambiguated the legacy extended cycle verifier from the newer cycle verifier.
