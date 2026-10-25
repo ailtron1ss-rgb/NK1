@@ -1,3 +1,30 @@
+## NK1 WorkPass350 — Preserve action attribution across policy overrides (2026-10-25)
+
+- [B272-OUTCOME] The real action chosen by final selection may differ from the endogenous goal generator's candidate. Runtime now credits B272 only when the completed action equals the candidate action, in both synthetic and embodied outcome paths; the module's fail-closed guard stays strict.
+- [REGRESSION] Expanded the WorkPass296 action-attribution contract test to verify the matching-action guard at both outcome call sites. This prevents a legitimate policy override from turning a chat/runtime cycle into HTTP 500 or false goal credit.
+
+---
+
+## NK1 WorkPass349 — Make causal replay fixtures state-grounded (2026-10-25)
+
+- [REPLAY-FIXTURE] Added explicit before/after ticks and an observed `lastAction` / `lastActionSuccess` receipt to the Big-Pass 115 replay fixture. The causal stream now receives a realistic transition satisfying its existing grounding contract instead of returning zero valid candidates.
+- [PRODUCTION-GUARD] No minimum-sample assertion was weakened and no learning validation was bypassed.
+
+---
+
+## NK1 WorkPass348 — Wire P26 recovery and curriculum tests (2026-10-25)
+
+- [CI-SCRIPTS] Added the missing `test:p26:learning-recovery-benchmark` and `test:p26:learning-continual-matrix` aliases for their existing regression scripts. Previously P26 CI could stop with “Missing script” before exercising recovery and continual-learning behavior.
+
+---
+
+## NK1 WorkPass347 — Align rollback lifecycle fixture with signed approval API (2026-10-25)
+
+- [SIGNED-ROLLBACK] Updated the versioned-skill-store test to provide an explicit test-only rollback verifier and a rollback approval object containing reviewer, timestamp and expected active version. The production default-deny verifier remains unchanged.
+- [LIFECYCLE] Preserved the follow-up assertion that a rolled-back candidate cannot be rolled back again.
+
+---
+
 ## NK1 WorkPass346 — Harden P26 training inputs and action-lineage acceptance (2026-10-25)
 
 - [P26-INPUT] Added finite-value, valid-action and state-shape checks to parametric training; malformed targets, learning rates, sample weights and feature vectors now fail before an update.
