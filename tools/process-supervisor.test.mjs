@@ -210,8 +210,14 @@ test('terminateChildren treats an already-exited child as successfully stopped',
   const child = spawnManaged(process.execPath, ['-e', 'process.exit(0)'], {
     stdio: ['ignore', 'ignore', 'ignore'],
   });
+  // Wait for the natural close event first; otherwise this test races the child
+  // startup and may exercise SIGTERM cleanup instead of the already-exited path.
+  const exited = new Promise((resolve) => child.once('close', resolve));
+  await exited;
+
   const [result] = await terminateChildren([child], { graceMs: 100, forceGraceMs: 100 });
   assert.equal(result.stopped, true);
+  assert.equal(result.alreadyExited, true);
   assert.equal(result.forced, false);
   assert.equal(child.exitCode, 0);
 });

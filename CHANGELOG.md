@@ -1,7 +1,7 @@
 # NK1 child-process cleanup edge cases (2026-10-25)
 
-- [REGRESSION] Added tests that call `terminateChildren()` for an already-exited child and a child whose executable cannot be spawned. These pin down the expected cleanup result for both edge cases and guard against a cleanup wait that never settles.
-- [VALIDATION STATUS] Focused Node 24 workflow is triggered by this branch update; results for the new tests must be checked on the exact resulting HEAD.
+- [REGRESSION] Added tests for already-exited children and executable startup failures. The first CI run exposed a race in the already-exited test fixture: it could send SIGTERM before the child had naturally exited. The test now awaits the child's `close` event, then asserts the dedicated `alreadyExited` result.
+- [VALIDATION STATUS] The first run caught a test-fixture race (14/15 tests passed); this correction needs a fresh exact-head Node 24 run.
 
 ---
 
