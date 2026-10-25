@@ -121,6 +121,8 @@ export class ParametricPolicyLearner{
 
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
     if(typeof input.target01!=='number'||!Number.isFinite(input.target01)) throw new RangeError('target-must-be-finite');
+    if(!ACTIONS.includes(input.action)) throw new RangeError('invalid-action');
+
     if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01)) throw new RangeError('rate-must-be-finite');
     if(input.sampleWeight01!==undefined&&(typeof input.sampleWeight01!=='number'||!Number.isFinite(input.sampleWeight01))) throw new RangeError('sample-weight-must-be-finite');
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
@@ -149,6 +151,7 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    if(!ACTIONS.includes(input.action)) throw new RangeError('invalid-action');
     if(typeof input.target01!=='number'||!Number.isFinite(input.target01)) throw new RangeError('target-must-be-finite');
     if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01)) throw new RangeError('rate-must-be-finite');
     if(input.sampleWeight01!==undefined&&(typeof input.sampleWeight01!=='number'||!Number.isFinite(input.sampleWeight01))) throw new RangeError('sample-weight-must-be-finite');
