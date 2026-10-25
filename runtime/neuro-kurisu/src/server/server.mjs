@@ -416,6 +416,19 @@ async function route(req, res) {
             return json(res, 200, embodimentAssetStatus());
         if (req.method === 'GET' && url.pathname === '/api/organism/avatar')
             return json(res, 200, { ok: true, avatar: embodimentAssetStatus(), note: 'Read-only Live2D embodiment asset surface.' });
+        if (req.method === 'GET' && url.pathname === '/api/organism/avatar-speech') {
+            const voice = runtime.embodiment.voiceSnapshot();
+            const state = voice.state;
+            return json(res, 200, {
+                ok: true,
+                speaking: state.speaking === true,
+                speechEventId: state.lastSpeechEventId,
+                text: state.lastSpeechText,
+                startedAt: state.speechStartedAt,
+                rate: state.lastProsody?.rate ?? voice.plan?.prosody?.rate ?? 1,
+                updatedAt: state.lastAt,
+            });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/time') {
             const temporal = runtime.core.temporalContinuitySnapshot();
             return json(res, 200, { ok: true, current: runtime.core.temporalContext(), continuity: temporal, offlineSinceLastCheckpointMs: temporal.gapSincePreviousMs, lastSeenAt: temporal.lastCheckpointAt, lastSessionEndedAt: temporal.lastSessionEndedAt, sessionCount: temporal.sessionCount, interruptionCount: temporal.interruptionCount });
