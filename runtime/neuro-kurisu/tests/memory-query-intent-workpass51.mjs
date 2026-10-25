@@ -74,7 +74,7 @@ const conversationalMemory = new MemoryOS2({ embeddingProvider: null });
 const conversationContent = 'нейронная память эксперимент разговор';
 encode(conversationalMemory, { id: 'a-semantic-decoy', kind: 'semantic', content: conversationContent });
 encode(conversationalMemory, {
-  id: 'z-social-conversation', kind: 'social', content: conversationContent,
+  id: 'z-social-session-memory', kind: 'social', content: conversationContent,
   // Some stores persist only the session identifier, not a separate conversation ID.
   context: { sessionId: 'session-42' },
 });
@@ -83,28 +83,28 @@ const restoredConversation = new MemoryOS2({ embeddingProvider: null });
 restoredConversation.restore(conversationSnapshot);
 assert.equal(
   restoredConversation.retrieve('Что мы обсуждали в прошлый раз про нейронную память и эксперимент?', 1, .1, .1)[0]?.id,
-  'z-social-conversation',
+  'z-social-session-memory',
   'session-backed social memory must survive snapshot/restore and beat a lexical-tied semantic note',
 );
-assert.equal(restoredConversation.get('z-social-conversation')?.context?.sessionId, 'session-42',
+assert.equal(restoredConversation.get('z-social-session-memory')?.context?.sessionId, 'session-42',
   'conversation/session lineage must survive snapshot/restore');
 
 const relationshipMemory = new MemoryOS2({ embeddingProvider: null });
 const relationshipContent = 'нейронная память эксперимент разговор';
 encode(relationshipMemory, {
   id: 'a-relationship-social', kind: 'social', content: relationshipContent,
-  context: { relationshipId: 'relationship-7', conversationRole: 'assistant' },
+  context: { relationshipId: 'relationship-7', conversationRole: 'assistant', messageIndex: '3', turnSequence: '7' },
 });
 encode(relationshipMemory, { id: 'z-actual-episode', kind: 'episodic', content: relationshipContent });
 assert.equal(
   relationshipMemory.retrieve('Вспомни, что мы обсуждали про нейронную память', 1, .1, .1)[0]?.id,
   'z-actual-episode',
-  'a relationship or role label must not impersonate a durable conversation ID',
+  'relationship, message-index, turn-sequence, and role labels must not impersonate a durable conversation ID',
 );
 
 console.log('MEMORY_QUERY_INTENT_AUTOBIOGRAPHICAL_RECALL=PASS', JSON.stringify({
   phraseCases: autobiographicalRecallCases.length,
   identityWinner: 'z-identity-recall',
-  sessionRecallWinner: 'z-social-conversation',
+  sessionRecallWinner: 'z-social-session-memory',
   roleOnlyGuard: 'z-actual-episode',
 }));
