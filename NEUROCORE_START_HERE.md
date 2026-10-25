@@ -1,3 +1,9 @@
+## Current work direction baseline — 2026-10-25
+
+Before continuing implementation, read [the persistent NK1 work direction register](docs/NK1_WORK_DIRECTION_REGISTER_RU.md). It preserves the ten directions, P0/P1/P2 order, starting scorecard and evidence rules. Prioritize real code changes and integration, then targeted checks on the exact current SHA. A new branch or an old green CI run is not proof of integration or current validation.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
