@@ -25,7 +25,7 @@ assert.match(normalize, /const rawFeeling = remote\.affect\?\.latestFeeling/,
   'normalization must read the canonical feeling payload');
 assert.match(normalize, /^\s+affect,$/m,
   'normalized organism snapshot must retain affect data');
-assert.match(avatar, /mood: snap\.affect\?\.mood \?\? undefined/,
+assert.match(avatar, /mood:\s*snap\.affect\?\.mood/ ,
   'avatar presentation must consume persistent mood');
 assert.match(avatar, /freshness01,/,
   'avatar presentation must time-bound feeling influence');
