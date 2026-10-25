@@ -26,7 +26,7 @@ assert.match(language, /bindCognitiveEventEvidence\(claims, evidence, causalSnap
 assert.match(bridge, /node\.stage === 'outcome'/);
 assert.match(bridge, /node\.stage === 'tool-outcome'/);
 assert.match(bridge, /node\.stage === 'external-evidence'/);
-assert.match(runtime, /restoreLastInternalDialogueReceipt\(\)/,
+assert.match(runtime, /await this.restoreLastInternalDialogueReceipt()/,
   'runtime startup must restore the latest safe review receipt');
 assert.match(runtime, /readRecent\('runtime\.internal-dialogue\.review'/,
   'receipt restore must read only the named review event from the operational journal');
@@ -43,6 +43,8 @@ assert.match(runtime, /lastInternalDialogueReceipt = receipt/);
 assert.match(journal, /filePath\+'\.1'/,
   'readback must include the latest rotated journal when present');
 
+assert.match(runtime, /delete providerRequest\.internalDialogueReceipt/,
+  'runtime must strip the host-only receipt before calling any configured language invoker');
 assert.match(runtime, /runtime\.internal-dialogue\.review/,
   'runtime must append a durable sanitized receipt to the operational journal');
 assert.match(runtime, /internalDialogueReceiptSnapshot\(\)/,
