@@ -27,6 +27,7 @@ export interface OutcomeCognitionProjection {
     externalEvidenceStatus?:'none'|'corroborated'|'contradicted'|'mixed';
     /** Persisted audit marker: this execution identity must not be reused as an active receipt. */
     receiptQuarantined?:boolean;
+    receiptQuarantineReason?:'causal-graph'|'previously-quarantined'|'duplicate-record-conflict'|'invalid-projection-entry'|'projection-fingerprint-conflict'|'verified-external-mismatch'|'duplicate-index-conflict'|'record-index-conflict';
   };
   causal:CausalAccountabilityState;
   verifiedExternal:boolean;
@@ -106,19 +107,23 @@ export class OutcomeCognitionFabric {
     };
     this.causal.restore(snapshot?.causal);
     const quarantined=new Set<string>(this.causal.snapshot().quarantinedExecutionIds??[]);
-    const quarantine=(value:unknown)=>{
+    const quarantineReasons=new Map<string,NonNullable<OutcomeCognitionProjection['verificationRecord']['receiptQuarantineReason']>>();
+    for(const id of quarantined)quarantineReasons.set(id,'causal-graph');
+    const quarantine=(value:unknown,reason:NonNullable<OutcomeCognitionProjection['verificationRecord']['receiptQuarantineReason']>)=>{
       const id=boundedText(value,180);
-      if(id)quarantined.add(id);
+      if(!id)return;
+      quarantined.add(id);
+      if(!quarantineReasons.has(id))quarantineReasons.set(id,reason);
     };
     const validRecords=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).map(r=>structuredClone(r)):[];
     const recordFingerprints=new Map<string,string>();
     for(const record of validRecords){
       const id=boundedText(record.executionId,180);
       if(!id)continue;
-      if(record.receiptQuarantined===true)quarantined.add(id);
+      if(record.receiptQuarantined===true)quarantine(id,record.receiptQuarantineReason??'previously-quarantined');
       const fingerprint=this.fingerprintFromRecord(record);
       const prior=recordFingerprints.get(id);
-      if(prior&&prior!==fingerprint)quarantine(id);
+      if(prior&&prior!==fingerprint)quarantine(id,'duplicate-record-conflict');
       else recordFingerprints.set(id,fingerprint);
     }
 
@@ -129,7 +134,7 @@ export class OutcomeCognitionFabric {
       const id=boundedText(candidate.executionId,180);
       if(!id)continue;
       if(!validRecord(candidate.record)||!/^[a-f0-9]{64}$/i.test(String(candidate.fingerprint??''))){
-        quarantine(id);
+        quarantine(id,'invalid-projection-entry');
         restoredIndex.delete(id);
         continue;
       }
@@ -138,20 +143,20 @@ export class OutcomeCognitionFabric {
       const canonicalFingerprint=this.fingerprintFromRecord(record);
       const suppliedFingerprint=String(candidate.fingerprint).toLowerCase();
       if(record.executionId!==id||suppliedFingerprint!==canonicalFingerprint){
-        quarantine(id);
+        quarantine(id,'projection-fingerprint-conflict');
         restoredIndex.delete(id);
         continue;
       }
       const verifiedExternal=this.verifiedExternalFromRecord(record);
       if(Boolean(candidate.verifiedExternal)!==verifiedExternal){
-        quarantine(id);
+        quarantine(id,'verified-external-mismatch');
         restoredIndex.delete(id);
         continue;
       }
       const entry:OutcomeProjectionIndexEntry={executionId:id,fingerprint:suppliedFingerprint,record,verifiedExternal};
       const prior=restoredIndex.get(id);
       if(prior&&(prior.fingerprint!==entry.fingerprint||sha256Stable(prior.record)!==sha256Stable(entry.record)||prior.verifiedExternal!==entry.verifiedExternal)){
-        quarantine(id);
+        quarantine(id,'duplicate-index-conflict');
         restoredIndex.delete(id);
         continue;
       }
@@ -161,7 +166,7 @@ export class OutcomeCognitionFabric {
     // A record row and its active index must describe the same immutable outcome.
     for(const [id,fingerprint] of recordFingerprints){
       const indexed=restoredIndex.get(id);
-      if(indexed&&indexed.fingerprint!==fingerprint)quarantine(id);
+      if(indexed&&indexed.fingerprint!==fingerprint)quarantine(id,'record-index-conflict');
     }
 
     // Conflicts found in the projection layer become causal-graph tombstones too.
@@ -173,7 +178,7 @@ export class OutcomeCognitionFabric {
       const id=boundedText(record.executionId,180);
       if(id&&seenRecords.has(id))continue;
       if(id)seenRecords.add(id);
-      this.records.push(id&&quarantined.has(id)?{...record,receiptQuarantined:true}:record);
+      this.records.push(id&&quarantined.has(id)?{...record,receiptQuarantined:true,receiptQuarantineReason:quarantineReasons.get(id)??'causal-graph'}:record);
       if(this.records.length>=this.maxRecords)break;
     }
 
@@ -439,7 +444,7 @@ export class OutcomeCognitionFabric {
       at:r.at,tick:r.tick,executionId:r.executionId??null,tool:r.tool,action:r.ok?'executed':'failed',
       expectation:r.expectedPostcondition??null,observation:r.observedPostcondition??null,
       verification:r.receiptQuarantined?'ambiguous-execution-quarantined':r.externalEvidenceStatus==='corroborated'?'externally-corroborated':r.externalEvidenceStatus==='contradicted'?'externally-contradicted':r.externalEvidenceStatus==='mixed'?'conflicting-external-evidence':assessExternalPostcondition({basis:r.basis,externalObservation:r.externalObservation,observationId:r.observationId,expectedPostcondition:r.expectedPostcondition,observedPostcondition:r.observedPostcondition,verified:r.verified})==='contradiction'?'externally-contradicted':r.verified?'verified':r.externalObservation?'external-evidence-awaiting-reconciliation':'unverified',
-      evidence:{basis:r.basis,observationId:r.observationId??null,confidence01:r.confidence01,external:Boolean(r.externalObservation),externalEvidenceStatus:r.externalEvidenceStatus??'none',externalObservationCount:r.externalObservations?.length??0,predictionId:r.predictionId??null,outcomeClass:r.outcomeClass??null,receiptQuarantined:Boolean(r.receiptQuarantined)},
+      evidence:{basis:r.basis,observationId:r.observationId??null,confidence01:r.confidence01,external:Boolean(r.externalObservation),externalEvidenceStatus:r.externalEvidenceStatus??'none',externalObservationCount:r.externalObservations?.length??0,predictionId:r.predictionId??null,outcomeClass:r.outcomeClass??null,receiptQuarantined:Boolean(r.receiptQuarantined),receiptQuarantineReason:r.receiptQuarantineReason??null},
     }));
   }
 
