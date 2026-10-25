@@ -1,3 +1,17 @@
+## Latest durable checkpoint — WorkPass534 separates P36 evidence and maturity (2026-10-25)
+
+- Continue on `feature/learning` / draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); no duplicate PR. Keep `main` and the Release ZIP unchanged.
+- P36 now has two reserved capabilities:
+  - `organism.learning.p36.evaluate-evidence` through `OrganismConfig.p36IndependentEvaluator` for baseline/treatment/holdout experiment evidence.
+  - `organism.learning.p36.evaluate-maturity` through `OrganismConfig.p36DevelopmentalOutcomeEvaluator` for independently observed developmental outcomes, delayed retention and transfer.
+- Core routes `kind: 'developmental-outcome'` only to the second capability. An experiment-evidence payload sent to the maturity ID, or a maturity payload sent to the experiment ID, cannot change P36 maturity/promotion state. Both IDs are blocked from the public `registerActionTool` method.
+- The signed `VerifiedOutcomeLedger` adapter is intentionally point-in-time (`delayMs: 0`) and belongs only to the experiment-evidence slot. It must not be configured as the maturity evaluator. Updated Core integration/self-development regressions cover the separation and public-registry boundaries.
+- **Validation:** exact-HEAD typecheck and P36 suite are not confirmed passing. Production still needs a real, independent delayed-maturity evaluator and held-out retention/transfer measurements. No readiness or empirical learning-gain claim.
+
+Full report: [WorkPass534 P36 authority separation](docs/WORKPASS534_P36_EXPERIMENT_VS_MATURITY_AUTHORITY_RU.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass533 host-pinned P36 comparison (2026-10-25)
 
 - Continue in `feature/learning` / draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79). Do not create a duplicate PR; keep `main` and Release ZIP unchanged.
