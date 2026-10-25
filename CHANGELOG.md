@@ -2,11 +2,11 @@
 
 - [ADDED] Introduced `InternalDialogueEngine` with a bounded six-pass review: framing, hypothesis comparison, skeptic, evidence audit, metacognitive calibration and synthesis.
 - [INTEGRATED] Added `CognitiveEventEvidenceBridge`, which imports the canonical `CognitiveEventFabric` snapshot and binds outcomes to a candidate only through an explicit action-parent edge and a recognized action identity. Late independent observations require the full tool-action → tool-outcome → external-evidence chain, exact execution identity, independent source identity, and corroborated/contradicted status.
-- [INTEGRATED] Wired the review into `buildCognitiveProposalPrompt`, before provider proposal generation. Prediction-only support remains low-weighted; the old heuristic that treated a matching `lastActionSuccess` as directly relevant evidence was removed. The CEF snapshot can be supplied as an optional review context.
+- [INTEGRATED] Wired the review into `buildCognitiveProposalPrompt` before provider proposal generation and updated `OrganismRuntime.generateCognitiveProposal` to pass `this.core.cognitiveEventFabricSnapshot()` on the live runtime path. Prediction-only support remains low-weighted; the old `lastActionSuccess` heuristic was removed.
 - [CALIBRATION] Conflicting references to the same evidence ID resolve conservatively as contradiction; overall coverage is averaged once per candidate; independent-source bonus counts supporting evidence only.
 - [SAFETY] The review is advisory-only; `OrganismCore` and existing safety gates retain action authority. Raw event payload text is never forwarded by the bridge. Duplicate event identities, missing lineage, unknown outcomes, and external observations without independence keys are rejected or ignored.
-- [REGRESSION] Added causal bridge cases for operational outcomes, delayed independent observations, missing independence identity, dangling action parents, as well as the existing ranking, contradiction, privacy, bounded-turn, and proposal-wiring cases. Registered in `test:rebuild-recovered`.
-- [VALIDATION] Local isolated harnesses against copied engine/bridge source passed. The exact integrated test, exact-head typecheck/CI and release-archive rebuild remain unverified; no learning uplift or production readiness is claimed.
+- [REGRESSION] Added `internal-dialogue-runtime-wiring-workpass319.mjs` to guard the real `OrganismRuntime` → `OrganismCore` snapshot → proposal builder path. Both internal-dialogue tests are registered in `test:rebuild-recovered`.
+- [VALIDATION] The latest runtime-wiring version has not been run on the exact checkout. GitHub Actions was queued/pending with no completed combined status at the last inspection; the local environment cannot resolve `github.com`. Typecheck, full regression suite and release-archive rebuild remain unverified; no learning uplift or production readiness is claimed.
 
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
