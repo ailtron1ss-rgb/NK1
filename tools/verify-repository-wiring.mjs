@@ -603,7 +603,7 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
     sourceFilesScanned: codeFiles.length,
     relativeImportsChecked,
     npmScriptsChecked: auditedScripts.size,
-    packagesRead: [...packageCache.values()].filter(Boolean).length
+    packagesRead: [...packageCache.values()].filter(Boolean).length,
     workflowJobsChecked,
     workflowDependenciesChecked,
     localActionsChecked
