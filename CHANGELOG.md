@@ -1,3 +1,12 @@
+## [NK1][planning] Persistent work direction register (2026-10-25)
+
+- Preserved ten ongoing work directions and P0/P1/P2 execution order in docs/NK1_WORK_DIRECTION_REGISTER_RU.md.
+- Added the register to the continuation entrypoint so future passes retain the same priorities rather than recreating the plan.
+- Stored the current audit baseline (engineering 61/100, unified product 43/100, release 25/100) as expert estimates only; no score improvement is claimed without comparable exact-head evidence.
+- First code pass: replace stale Live2D split-message assertions that contradict the unified EmbodimentIntent v1 producer; run the affected gate on the new commit SHA before declaring it fixed.
+
+---
+
 ## NK1 WorkPass510 — фиксировать boundary-проходы и статус CI без завышения готовности (2026-10-24)
 
 - Зафиксированы emotion interoception ingress guard и предсказуемая семантика лимитов RealityEvidenceLedger, включая регрессионные сценарии.
