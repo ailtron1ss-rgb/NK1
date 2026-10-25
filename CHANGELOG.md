@@ -1,3 +1,10 @@
+## NK1 paired-seed confidence utility — preserve specific validation errors (2026-10-25)
+
+- Validate numeric bootstrap samples and policy values by own data descriptors before generic snapshotting, so invalid numeric values produce the documented domain errors.
+- Kept accessor rejection fail-closed and non-executing; added NaN regressions for confidence level, resample count and seed, without relaxing the existing work-budget and getter tests.
+
+---
+
 ## NK1 P26 CI — exercise matched-evaluation validation on push (2026-10-25)
 
 - Added the independent candidate evaluator source and its matched independent evaluation regression to P26 push-path filters, matching the existing pull-request filters.

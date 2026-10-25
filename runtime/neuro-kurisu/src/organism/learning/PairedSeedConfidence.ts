@@ -51,6 +51,61 @@ export function bootstrapMeanConfidenceInterval(
   rawValues: readonly number[],
   options: BootstrapMeanIntervalOptions = {},
 ): BootstrapMeanInterval {
+  // Validate numeric domain errors through own data descriptors before the generic
+  // snapshot boundary, so NaN/Infinity produce stable value-specific failures while
+  // getters are rejected without being invoked.
+  try {
+    if (!Array.isArray(rawValues) || rawValues.length < 2) {
+      throw new Error('paired-seed-bootstrap-values-invalid');
+    }
+    for (let index = 0; index < rawValues.length; index++) {
+      const descriptor = Object.getOwnPropertyDescriptor(rawValues, String(index));
+      if (!descriptor) throw new Error('paired-seed-bootstrap-values-invalid');
+      if (!Object.hasOwn(descriptor, 'value')) {
+        throw new Error('paired-seed-bootstrap-data-boundary-rejected');
+      }
+      const value: unknown = descriptor.value;
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < -1 || value > 1) {
+        throw new Error('paired-seed-bootstrap-values-invalid');
+      }
+    }
+    if (!options || typeof options !== 'object' || Array.isArray(options)) {
+      throw new Error('paired-seed-bootstrap-data-boundary-rejected');
+    }
+    const optionFields = [
+      ['confidenceLevel', 'confidence-level'],
+      ['resamples', 'resamples'],
+      ['seed', 'seed'],
+    ] as const;
+    for (const [key, label] of optionFields) {
+      const descriptor = Object.getOwnPropertyDescriptor(options, key);
+      if (!descriptor) continue;
+      if (!Object.hasOwn(descriptor, 'value')) {
+        throw new Error('paired-seed-bootstrap-data-boundary-rejected');
+      }
+      const value: unknown = descriptor.value;
+      if (value === undefined) continue;
+      if (label === 'confidence-level' &&
+          (typeof value !== 'number' || !Number.isFinite(value) || value <= 0.5 || value >= 1)) {
+        throw new RangeError('paired-seed-bootstrap-confidence-level-invalid');
+      }
+      if (label === 'resamples' &&
+          (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 100 || value > 50_000)) {
+        throw new RangeError('paired-seed-bootstrap-resamples-invalid');
+      }
+      if (label === 'seed' &&
+          (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0 || value > 0xffff_ffff)) {
+        throw new RangeError('paired-seed-bootstrap-seed-invalid');
+      }
+    }
+  } catch (error) {
+    if (error instanceof RangeError ||
+        (error instanceof Error && error.message.startsWith('paired-seed-bootstrap-'))) {
+      throw error;
+    }
+    throw new Error('paired-seed-bootstrap-data-boundary-rejected');
+  }
+
   let values: unknown;
   let config: BootstrapMeanIntervalOptions;
   try {
