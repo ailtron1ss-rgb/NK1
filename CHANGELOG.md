@@ -1,7 +1,7 @@
 # NK1 managed gateway end-to-end regression (2026-10-25)
 
 - [INTEGRATION] Added `tools/super-stack.integration.test.mjs`, which launches the real gateway CLI through `spawnManaged`, exercises live HTTP routing to mock UI/Runtime/Research services, verifies API namespace lookalikes route to UI, and confirms the process supervisor stops the gateway.
-- [CI] Added `npm run test:super-stack` to the focused Node 24 workflow as a separate end-to-end step. This bridges the existing unit tests for gateway behavior and process cleanup.
+- [CI] Added `npm run test:super-stack` to the focused Node 24 workflow as a separate end-to-end step. This bridges the existing unit tests for gateway behavior and process cleanup. The exact-head workflow passed on commit `bda799fd5d3b04f5d17937ddbcefa4c8da664b49` (run [40167462547](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167462547)).
 - [SCOPE] This is an isolated cross-process smoke test; it does not replace the full `npm run test:integration` check against the actual Runtime and Research Bridge.
 
 ---
