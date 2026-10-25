@@ -79,8 +79,8 @@ uppercaseRestored.restore({
   lastTick: 4,
   wakeMask: 8,
   interrupt: {
-    active: true,
-    priority01: 0.84,
+    active: false,
+    priority01: 0.42,
     type: 'RESOURCE-CRITICAL',
     domains: ['agency'],
   },
@@ -90,5 +90,7 @@ assert.equal(
   'resource-critical',
   'restored interrupt labels must be canonical before downstream routing',
 );
+assert.equal(uppercaseRestored.interruption().active, true,
+  'a restored critical type must remain active even when its persisted active flag is stale');
 
 console.log('WorkPass320 cognitive dependency restore hardening: PASS');
