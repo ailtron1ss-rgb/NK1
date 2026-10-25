@@ -1,3 +1,12 @@
+## WorkPass319 — unified cognitive-cycle restore consistency (2026-10-25)
+
+- Hardened `UnifiedCognitiveCycle.restore()`: persisted `lastComplete` now requires valid, internally consistent cycle counters.
+- Added regressions for contradictory counts, a coherent persisted partition, and partial snapshots.
+- No dependency added. Validation is tracked by the focused WorkPass287-288 GitHub Actions workflow; see the WorkPass319 checkpoint for the exact evidence boundary.
+- No claims of learning uplift, production sandboxing, organism-wide readiness, or consciousness are made.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
