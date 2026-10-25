@@ -471,6 +471,7 @@ export class HexisAdaptationFabric {
             conflicts.push({ path: 'exported_at', kind: 'schema', detail: 'exported_at must be a parseable date-time string' });
         }
         const source = document.source;
+        const sourceRecord = isHmxRecord(source) ? source : {};
         const sourceRequired = ['instance_id', 'schema_version', 'embedding_model', 'hexis_lineage_id'];
         if (!isHmxRecord(source) ||
             sourceRequired.some((field) => !isHmxText(source[field], 512)) ||
@@ -579,7 +580,7 @@ export class HexisAdaptationFabric {
             intent,
             strategy,
             sourceSubjectId: isHmxText(document.source_subject_id, 256) ? document.source_subject_id : undefined,
-            sourceLineageId: isHmxText(source?.hexis_lineage_id, 512) ? source.hexis_lineage_id : undefined,
+            sourceLineageId: isHmxText(sourceRecord['hexis_lineage_id'], 512) ? String(sourceRecord['hexis_lineage_id']) : undefined,
             sectionCounts,
             protectedSections: names.filter((name) => protectedSections.has(name)),
             conflicts,
@@ -608,6 +609,8 @@ export class HexisAdaptationFabric {
         if (!lineage) throw new Error('hmx-goal-source-lineage-required');
         const validated = rows.map((row: any, index) => {
             if (!isHmxRecord(row)) throw new Error('hmx-goal-row-not-object:' + index);
+            const metadata = isHmxRecord(row.metadata) ? row.metadata : {};
+            const nativeGoal = isHmxRecord(metadata['nk1NativeGoal']) ? metadata['nk1NativeGoal'] : {};
             const ref = String(row.ref ?? '').trim();
             const title = String(row.title ?? row.name ?? '').trim();
             const description = String(row.description ?? row.summary ?? '').trim();
@@ -619,9 +622,9 @@ export class HexisAdaptationFabric {
             return {
                 id, stageId: stage.stagingId, exportId: stage.exportId, sourceLineageId: lineage,
                 sourceRef: ref, title: title.slice(0, 300), description: description.slice(0, 2000),
-                importance: clamp(Number(row.metadata?.nk1NativeGoal?.importance ?? row.importance ?? 0.48), 0.1, 0.9),
-                urgency: clamp(Number(row.metadata?.nk1NativeGoal?.urgency ?? row.urgency ?? 0.32), 0.05, 0.78),
-                confidence: clamp(Number(row.metadata?.nk1NativeGoal?.confidence ?? row.confidence ?? 0.42), 0.05, 0.8),
+                importance: clamp(Number(nativeGoal['importance'] ?? row.importance ?? 0.48), 0.1, 0.9),
+                urgency: clamp(Number(nativeGoal['urgency'] ?? row.urgency ?? 0.32), 0.05, 0.78),
+                confidence: clamp(Number(nativeGoal['confidence'] ?? row.confidence ?? 0.42), 0.05, 0.8),
             };
         });
         const existingIds = new Set(this.state.goalProposals.map((proposal) => proposal.id));
