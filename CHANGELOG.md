@@ -1,3 +1,9 @@
+## Restore identity precedence and rollback CAS fixture precision (2026-10-25)
+
+- [FIX] P23 restore now preserves the valid newest-first prefix of persisted processed/replayed identity caches, then unions IDs implied by durable experience/replay rows. This retains the newest dedupe IDs under capacity limits while still recovering missing IDs from durable rows.
+- [TEST FIX] The versioned-skill persistence test now tampers with the mirrored `approval.expectedActiveVersion` field rather than `candidate.baseVersion`; the latter correctly fails earlier at the prior-version rollback-target guard. The new mutation directly exercises the signed-approval/CAS binding assertion without bypassing the earlier integrity gate.
+- [EVIDENCE] On commit `5705d51`, WorkPass110 progressed through avatar/Live2D and learning regressions, then failed only on newest trace-ID retention; WorkPass108 passed all signature/authority integration scenarios and reached the P23 restore-integrity case, where the mutation triggered a different earlier guard than the expected regex. These adjustments align both test intents to the runtime contract.
+
 ## Exact-head compatibility follow-up — replay cap, signed rollback, and cognitive contracts (2026-10-25)
 
 - [FIX] P26 interleaved learning now honors `conflictCandidateCap` from its options, validates the cap within 1–512, and returns the actual cap used. The multi-seed sweep's bound is now enforced by runtime rather than merely asserted by the test.

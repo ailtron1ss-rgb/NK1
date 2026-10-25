@@ -152,3 +152,9 @@ The e091 exact-head matrix passed strict runtime typechecking and several centra
 - The compound-revision test expected Promise rejection for a synchronous invalid ID; it now checks the sync throw. The architecture smoke test compares subsystem/flow arrays to their validated counts instead of preserving an obsolete literal flow count.
 
 All edits are isolated on the existing compatibility draft PR. Fresh exact-head CI is the acceptance gate; none of these changes implies full production readiness or improved generalization by itself.
+
+## Fourteenth follow-up — keep newest identity cache entries and target the intended CAS guard
+
+Exact-head CI for `5705d51` reached the P23 restore integrity suite, where the runtime correctly merged durable row IDs into the processed/replayed caches but prioritized every reconstructed row ID ahead of the persisted newest-first caches. Since the caches have a bounded size, this discarded the newest cache entries. Restore now preserves the valid persisted cache order first, then adds durable row-derived IDs as missing entries. A separate recovery test still proves IDs are reconstructed when the cache is empty.
+
+The same exact-head run reached the tampered promotion-state restore test; changing `candidate.baseVersion` correctly failed at the earlier prior-approved-version/rollback-target invariant. To exercise the specific signed-approval CAS assertion named by that test, the fixture now tampers with the mirrored `approval.expectedActiveVersion` instead, leaving the valid prior-version structure intact. Production checks are unchanged.
