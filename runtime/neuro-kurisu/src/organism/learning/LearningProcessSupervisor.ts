@@ -189,9 +189,9 @@ export async function runLearningProcess(
     explicitEnv: explicitEnvKeys.map(key => [key, env[key] ?? null]),
   }));
 
-  // Node streams may yield Buffer<ArrayBufferLike>; widen the empty initial buffer.
-  let stdout: Buffer<ArrayBufferLike> = Buffer.alloc(0);
-  let stderr: Buffer<ArrayBufferLike> = Buffer.alloc(0);
+  // Keep the accumulator type compatible with the repository's pinned Node typings.
+  let stdout: Buffer = Buffer.alloc(0);
+  let stderr: Buffer = Buffer.alloc(0);
   let stdoutBytes = 0;
   let stderrBytes = 0;
   let outputTruncated = false;
