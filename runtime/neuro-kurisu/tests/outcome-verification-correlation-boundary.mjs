@@ -55,4 +55,15 @@ assert.equal(Object.hasOwn(observedContext, 'executionId'), false,
   'an execution ID containing a control character must be omitted instead of propagated');
 assert.equal(observedContext.decisionId, 'decision-safe');
 
-console.log('OUTCOME_VERIFICATION_CORRELATION_BOUNDARY=PASS validIdsPreserved=true controlBearingIdsDropped=true');
+const oversized = await service.verify({
+  toolId: 'fixture.correlation-boundary',
+  input: { value: 4 },
+  result: { ok: true },
+  executionId: 'exec-' + 'a'.repeat(110),
+  decisionId: 'd'.repeat(181),
+}, verifier);
+assert.equal(oversized.verified, true, 'oversized optional metadata must not break independent tool-contract verification');
+assert.equal(Object.hasOwn(observedContext, 'executionId'), false, 'oversized execution identifiers must be omitted');
+assert.equal(Object.hasOwn(observedContext, 'decisionId'), false, 'oversized decision identifiers must be omitted');
+
+console.log('OUTCOME_VERIFICATION_CORRELATION_BOUNDARY=PASS validIdsPreserved=true controlBearingIdsDropped=true oversizedIdsDropped=true');
