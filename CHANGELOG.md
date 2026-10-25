@@ -1,3 +1,12 @@
+## WorkPass321 — Cognitive interrupt severity normalization (2026-10-25)
+
+- **Code fix:** critical interrupt labels are normalized with trim/lowercase before policy routing; case variants of `thermal-critical`, `resource-critical`, and `memory-pressure` now disable optional counterfactual branches even below the numeric 0.90 priority threshold.
+- **Persistence contract:** the cognitive dependency graph canonicalizes restored/resolved interrupt labels as well.
+- **Regression coverage:** added case-variant policy cases plus restored-state coverage for `RESOURCE-CRITICAL`.
+- **Integration wiring:** `test:p320:cognitive-dependency-restore` is now part of `test:cognitive-integration-suite`; previously it existed as a standalone script but was omitted from the composite gate.
+- **Validation honesty:** implementation and tests are committed to the work branch. Focused tests and typecheck were not executed in this editing environment; exact-head CI must be checked before calling them passing.
+- **Release status:** implementation checkpoint only. Production build, browser/Live2D/TTS, Android audio, independent memory/learning holdout, long soak, and license review remain open.
+
 ## [NK1][integration] Make runtime smoke deterministic and bounded (2026-10-25)
 
 - Replaced the shared repository-local `.verify-state` folder with a unique OS temporary directory so concurrent smoke runs cannot erase or mutate one another's state.
