@@ -1,3 +1,12 @@
+## NK1 WorkPass361 — recompute imported-only rolling metrics as zero (2026-10-25)
+
+- [CAUSAL EVIDENCE] Updated the poisoned-snapshot regression to expect zero `learningOpportunity01` when the stream contains only untrusted imported events. Restore intentionally recomputes rolling metrics from authenticated, grounded runtime outcomes rather than preserving a forged aggregate.
+- [INTEGRITY] This keeps the production trust boundary unchanged: imported records remain available for review, but cannot influence trusted outcome counts, replay, consolidation, or rolling learning signals.
+- [VALIDATION] WorkPass102, WorkPass105, WorkPass291, WorkPass292, WorkPass293, WorkPass294, WorkPass99, WorkPass287/288 and initiative regression passed on recent heads; WorkPass110 and WorkPass108 are being rerun against the latest corrections.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass360 — assert both newest replay cache and recovered durable identity (2026-10-25)
 
 - [MEMORY INTEGRITY] Updated the restore regression to expect the preserved newest replay-cache ID first, followed by the replay identity recovered from a durable replay row. Both must survive restore so recent deduplication priority is retained without permitting a durable replay to be applied twice.
