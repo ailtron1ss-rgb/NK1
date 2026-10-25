@@ -119,12 +119,18 @@ async function refreshSpeech() {
 }
 
 function animateSpeech(now) {
-  const active = Boolean(latestPresentation && speechCursor?.speaking && speechCursor.timeline.length);
+  const active = Boolean(speechCursor?.speaking && speechCursor.timeline.length);
   if (active && now - lastControlAt >= 32) {
     const elapsed = speechCursor.elapsedAtAnchor + Math.max(0, now - speechCursor.performanceAtAnchor);
     const pose = sampleAvatarSpeechTimeline(speechCursor.timeline, elapsed);
+    // Speech has its own low-latency cursor and must animate even if the slower
+    // cognitive snapshot has not arrived yet. Emotion/gaze enrich the same pose later.
+    const baseBody = latestPresentation?.body ?? {
+      gazeX: 0, gazeY: 0, gazeDriven: false, headTilt: 0,
+      expressionIntensity: 0.35, gesture: true, motionGroup: 'Special', motionIndex: 0, voiceEmphasis: 0,
+    };
     const body = {
-      ...latestPresentation.body,
+      ...baseBody,
       speaking: true,
       mouthOpen: pose.open,
       mouthForm: pose.form,
@@ -139,8 +145,12 @@ function animateSpeech(now) {
     lastControlAt = now;
   } else if (!active && mouthWasActive && now - lastControlAt >= 32) {
     if (latestPresentation) {
+      const baseBody = latestPresentation?.body ?? {
+        gazeX: 0, gazeY: 0, gazeDriven: false, headTilt: 0,
+        expressionIntensity: 0.35, gesture: false, motionGroup: 'Idle', motionIndex: 0, voiceEmphasis: 0,
+      };
       post('kurisu_embodiment', {
-        ...latestPresentation.body, speaking: false, mouthOpen: 0.015, mouthForm: 0, voiceEmphasis: 0,
+        ...baseBody, speaking: false, mouthOpen: 0.015, mouthForm: 0, voiceEmphasis: 0,
       });
       post('kurisu_lipsync', { value: 0.015 });
     }
