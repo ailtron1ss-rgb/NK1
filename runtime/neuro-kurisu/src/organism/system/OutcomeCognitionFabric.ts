@@ -129,20 +129,36 @@ export class OutcomeCognitionFabric {
 
     const restoredIndex=new Map<string,OutcomeProjectionIndexEntry>();
     const rawCandidates=Array.isArray(snapshot?.projectionIndex)?snapshot.projectionIndex:[];
-    // Invalid trailing rows must not evict valid older projections from the
-    // bounded active index. First quarantine malformed identities, then select
-    // the newest bounded set of structurally valid candidates.
-    for(const candidate of rawCandidates){
-      if(!candidate||typeof candidate.executionId!=='string')continue;
-      const id=boundedText(candidate.executionId,180);
-      if(id&&(!validRecord(candidate.record)||!/^[a-f0-9]{64}$/i.test(String(candidate.fingerprint??''))))
+    // Count only semantically valid projections toward the active-index cap.
+    // Syntactically valid but forged fingerprints must not crowd older trusted
+    // rows out of the bounded restore window.
+    const validCandidate=(candidate:unknown):candidate is OutcomeProjectionIndexEntry=>{
+      if(!candidate||typeof candidate!=='object')return false;
+      const row=candidate as OutcomeProjectionIndexEntry;
+      const id=boundedText(row.executionId,180);
+      if(!id)return false;
+      if(!validRecord(row.record)||!/^[a-f0-9]{64}$/i.test(String(row.fingerprint??''))){
         quarantine(id,'invalid-projection-entry');
-    }
+        return false;
+      }
+      const record=structuredClone(row.record);
+      const suppliedFingerprint=String(row.fingerprint).toLowerCase();
+      if(record.executionId!==id||suppliedFingerprint!==this.fingerprintFromRecord(record)){
+        quarantine(id,'projection-fingerprint-conflict');
+        return false;
+      }
+      if(Boolean(row.verifiedExternal)!==this.verifiedExternalFromRecord(record)){
+        quarantine(id,'verified-external-mismatch');
+        return false;
+      }
+      return true;
+    };
     const candidates:OutcomeProjectionIndexEntry[]=[];
     for(let i=rawCandidates.length-1;i>=0&&candidates.length<this.maxProjectionIndex;i--){
       const candidate=rawCandidates[i];
-      if(!candidate||typeof candidate.executionId!=='string'||!validRecord(candidate.record)||!/^[a-f0-9]{64}$/i.test(String(candidate.fingerprint??'')))continue;
-      candidates.push(candidate as OutcomeProjectionIndexEntry);
+      if(!validCandidate(candidate))continue;
+      if(quarantined.has(candidate.executionId))continue;
+      candidates.push(candidate);
     }
     candidates.reverse();
     for(const candidate of candidates){
