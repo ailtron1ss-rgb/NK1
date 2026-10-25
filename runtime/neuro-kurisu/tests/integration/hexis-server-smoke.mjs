@@ -46,6 +46,10 @@ try {
   ];
   const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: importDocument, intent: 'port', strategy: 'additive' })).json();
   if (!stageRes.ok || stageRes.stage?.status !== 'staged' || stageRes.stage?.conflicts?.length) throw new Error(`hexis-hmx-stage:${JSON.stringify(stageRes.stage?.conflicts)}`);
+  const canonicalAfterStage = await (await fetch(`${base}/api/organism/memory-inspector?q=${encodeURIComponent(canonicalSmokeMemoryText)}&limit=8`)).json();
+  if (!canonicalAfterStage.ok || canonicalAfterStage.memories?.some(memory => memory.content === canonicalSmokeMemoryText)) {
+    throw new Error(`hexis-hmx-stage-mutated-canonical-memory:${JSON.stringify(canonicalAfterStage.memories?.filter(memory => memory.content === canonicalSmokeMemoryText))}`);
+  }
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
   if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted' || acceptRes.appliedToCanonicalMemory !== false) throw new Error('hexis-hmx-accept-mutated-memory');
   const canonicalBeforeApply = await (await fetch(`${base}/api/organism/memory-inspector?q=${encodeURIComponent(canonicalSmokeMemoryText)}&limit=8`)).json();
