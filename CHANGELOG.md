@@ -1,3 +1,9 @@
+## NK1 WorkPass549 — align multi-source replay contract test (2026-10-25)
+
+- Updated the low-energy replay test to reflect the current contract: `adaptiveReplayOptions` preserves the configured batch cap and quota for reproducible experiments; energy throttling remains the upstream scheduler's responsibility.
+- The previous assertion expected the adaptive selector itself to shrink batch size, contradicting the implementation's explicit experiment-manifest guarantee.
+- Latest-head WorkPass110 and P26 workflows must rerun after this test-contract correction.
+
 ## NK1 WorkPass548 — correct learner-ingress and seed-evidence fixtures (2026-10-25)
 
 - Updated the true-learning integrity test to expect explicit rejection of non-finite learning rates and sample weights and to assert rejected inputs leave weights, biases and update counters untouched.
