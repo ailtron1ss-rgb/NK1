@@ -1,3 +1,12 @@
+## Latest durable checkpoint — WorkPass346 (2026-10-25)
+
+- P26 learner batch training now validates every item before mutating parameters, preserving atomicity when a later batch item contains malformed state.
+- Atomic file skill-store persistence uses explicit fields/assignment so Node 24's strip-only TypeScript runtime can import it without a transform.
+- WorkPass345 restored finite learner diagnostics, rejects invalid training controls, aligned adaptive replay tests with a hard maximum budget, and registered WorkPass293's test command.
+- WorkPass291, WorkPass99, WorkPass102, WorkPass105, WorkPass287, WorkPass292, and WorkPass294 passed on the prior exact head. P26 and Core/WorkPass108/293 require a fresh run after these changes. Release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass345 (2026-10-25)
 
 - Parametric policy restoration sanitizes all scalar diagnostics, update count, timestamp and freeze state; non-finite learner control values are rejected before mutation.

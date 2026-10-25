@@ -1,3 +1,11 @@
+## NK1 WorkPass346 — make learning batches atomic and keep file skill storage executable under Node 24
+
+- [BATCH ATOMICITY] `ParametricPolicyLearner.trainBatch()` now preflights every sample before the first weight update. A malformed later row cannot partially train on an earlier valid row; missing/malformed state needs fail with the explicit `state-must-have-needs` boundary error.
+- [NODE 24] Refactored `AtomicFileSkillStorePersistence` to use an explicit `filePath` field rather than a TypeScript constructor parameter property, which the Node 24 strip-only TypeScript runner cannot execute.
+- [REGRESSION] This addresses the latest CI failures in P26 input integrity and the WorkPass108/293 import path. Those jobs must re-run after this commit; Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass345 — restore learner diagnostics safely and align adaptive replay contracts (2026-10-25)
 
 - [RESTORE] `ParametricPolicyLearner.restore()` now sanitizes counters, all persisted training diagnostics, timestamp and freeze state rather than spreading malformed values back into the live state. The focused integrity regression verifies all persisted diagnostics are finite.
