@@ -1,3 +1,12 @@
+## Current source-stack checkpoint — WorkPass338 (2026-10-25)
+
+- Hardened causal experience restore by guarding optional policy feature arrays before access.
+- Preserved the declared literal schema for verified training datasets and holdout aggregates.
+- WorkPass336 fixes the malformed correlation-ID regex, removes the duplicate cognitive-cycle verifier, and corrects the learning replay-options import.
+- WorkPass337 changes runtime type discovery to load pinned Node.js ambient declarations while preserving strict mode; awaiting completed exact-head CI to establish the effect. Release ZIP unchanged.
+
+---
+
 ## Current source-stack checkpoint — WorkPass337 (2026-10-25)
 
 - Fixed runtime type discovery: `tsconfig.clean.json` now explicitly loads the pinned Node.js ambient package from the runtime-local or installed app workspace type root, without loading unrelated React globals.
