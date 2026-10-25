@@ -1,3 +1,10 @@
+## NK1 learning validation — supply manifest versions in threshold fixtures (2026-10-25)
+
+- Added the required `taskVersion` to valid held-out observation fixtures used to test non-finite minimum thresholds. Without it, the plain-data parser correctly rejected every row and the test was not reaching its intended coverage or gain-threshold branch.
+- The NaN paired-count test still checks the minimum-pair fallback; the NaN gain test includes valid 100 paired tasks and one explicitly permitted independent seed so it reaches the 0.02 conservative default.
+
+---
+
 ## NK1 learning validation — isolate the conservative gain-threshold regression (2026-10-25)
 
 - The NaN minimum-gain regression now sets `minIndependentSeeds: 1` so it reaches the intended gain-threshold decision instead of stopping at the default three-seed provenance gate. Production defaults remain unchanged and continue to require three independent seeds.
