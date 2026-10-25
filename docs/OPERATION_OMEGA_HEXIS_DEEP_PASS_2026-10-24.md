@@ -101,3 +101,12 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 
 
 - **WorkPass335 CI wiring follow-up:** The P23 autonomous-revision workflow also referenced a missing npm script (`test:workpass293:p23-revision`) despite the regression file being present. Added the script mapping to `tests/workpass293-autonomous-p23-revision.mjs`. The preceding workflow failed before invoking the test, so the new head must verify both script resolution and actual test behavior.
+
+
+## WorkPass336 — explicit goal-linked semantic relationship projection
+
+- Goal activation now inspects relationship rows from the exact staged HMX export/lineage and projects only edges that touch the reviewed goal's source reference.
+- Edges to imported memories resolve only to existing source-namespaced Hexis graph nodes from canonical memory apply. Edges to another external goal resolve only when that second goal has its own materialized proposal, matching source provenance and explicit active/approved state; unresolved endpoints remain deferred.
+- Goal graph nodes use a dedicated `hexis-goal:<proposalId>` source namespace so imported labels cannot merge into NK1's native goals. External relation weights are capped at `0.55`, and existing matching edges are reused rather than reinforced.
+- Activation stores a durable receipt (`sourceStageFound`, candidate/projected/deferred counts, semantic edge IDs, timestamp), persists the semantic graph, and includes projection counts in the goal event. A graph mutation error restores the previous graph and leaves activation blocked.
+- The live server smoke now imports a reviewed goal plus a weighted relationship to its imported memory and asserts that the edge is projected only after explicit activation. Fresh exact-head CI is pending.

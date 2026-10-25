@@ -1128,6 +1128,23 @@ function hasMatchingExternalGoalProvenance(goal: OrganismGoal, proposal: HexisGo
         provenance.exportId === proposal.exportId && provenance.sourceLineageId === proposal.sourceLineageId &&
         provenance.sourceRef === proposal.sourceRef && provenance.proposalId === proposal.id;
 }
+function hexisImportedMemoryGraphSourceKey(lineageId: string, ref: string, content: string): string {
+    const contentHash = createHash('sha256').update(String(content)).digest('hex');
+    const stableRef = String(ref).replace(/^exp_[a-f0-9]{16}:/, '');
+    const lineageHash = createHash('sha256').update(String(lineageId)).digest('hex').slice(0, 12);
+    return 'hexis:' + lineageHash + ':' + createHash('sha256').update(stableRef + '\0' + contentHash).digest('hex').slice(0, 24);
+}
+function hexisGraphLabel(value: string): string {
+    return String(value ?? '').toLowerCase().replace(/[^\\p{L}\\p{N}\\s_-]/gu, '').trim().slice(0, 96);
+}
+function hexisSemanticRelationType(value: unknown): import('../memory/SemanticMemoryGraph.ts').SemanticEdge['relation'] {
+    const relation = String(value ?? '').toLowerCase();
+    if (['supports', 'contradicts', 'causes', 'about', 'located', 'associated'].includes(relation)) {
+        return relation as import('../memory/SemanticMemoryGraph.ts').SemanticEdge['relation'];
+    }
+    if (relation === 'supersedes' || relation === 'revises') return 'associated';
+    return 'associated';
+}
 function goalScore(g: OrganismGoal): number {
     return clamp(g.importance * 0.34 +
         g.urgency * 0.18 +
@@ -3016,17 +3033,111 @@ export class OrganismCore {
                 candidate.id !== goal.id && candidate.status === 'active' &&
                 candidate.title.normalize('NFKC').trim().toLocaleLowerCase() === goal.title.normalize('NFKC').trim().toLocaleLowerCase());
             if (duplicate) throw new Error('active-goal-title-conflict:' + duplicate.id);
+            // Only explicit activation may project edges that touch this reviewed HMX goal.
+            // The goal's graph node is source-namespaced and external edge weights are capped.
+            const graph = this.organismSystems.memory.semanticMemory;
+            const graphBefore = graph.snapshot();
+            const relationshipReceipt: import('../integration/hexis/HexisAdaptationFabric.ts').HexisGoalRelationshipReceipt = {
+                sourceStageFound: false, candidateRelationships: 0, projected: 0, deferred: 0, semanticEdgeIds: [], at: Date.now(),
+            };
+            try {
+                const sourceStage = this.hexisAdaptation.getHmxStage(proposal.stageId);
+                if (sourceStage && sourceStage.exportId === proposal.exportId && sourceStage.sourceLineageId === proposal.sourceLineageId) {
+                    relationshipReceipt.sourceStageFound = true;
+                    const relationshipRows = Array.isArray(sourceStage.stagedSections?.relationships)
+                        ? sourceStage.stagedSections.relationships.filter((row: any) =>
+                            row && typeof row === 'object' &&
+                            (String(row.source_ref ?? '') === proposal.sourceRef || String(row.target_ref ?? '') === proposal.sourceRef))
+                        : [];
+                    relationshipReceipt.candidateRelationships = relationshipRows.length;
+                    const allProposals = this.hexisAdaptation.listGoalProposals({ limit: 128 });
+                    const stagedMemories = Array.isArray(sourceStage.stagedSections?.memories) ? sourceStage.stagedSections.memories as any[] : [];
+                    const graphSnapshot = () => graph.snapshot();
+                    const getOrCreateCurrentGoalNode = () => {
+                        const sourceKey = 'hexis-goal:' + proposal.id;
+                        const label = hexisGraphLabel(goal.title);
+                        const existing = graphSnapshot().nodes.find(node => node.sourceKey === sourceKey);
+                        if (existing) {
+                            if (existing.type !== 'goal' || existing.label !== label) throw new Error('hmx-goal-graph-node-source-conflict');
+                            return existing;
+                        }
+                        return graph.upsertNode(goal.title, 'goal', Math.max(0.1, Math.min(0.9, goal.importance)), sourceKey);
+                    };
+                    const resolveOtherEndpoint = (ref: string) => {
+                        const externalGoalProposal = allProposals.find(candidate =>
+                            candidate.id !== proposal.id &&
+                            candidate.sourceRef === ref &&
+                            candidate.sourceLineageId === proposal.sourceLineageId &&
+                            candidate.stageId === proposal.stageId &&
+                            candidate.status === 'materialized' &&
+                            Boolean(candidate.canonicalGoalId));
+                        if (externalGoalProposal?.canonicalGoalId) {
+                            const otherGoal = this.persisted.goals.find(candidate => candidate.id === externalGoalProposal.canonicalGoalId);
+                            if (!otherGoal || otherGoal.source !== 'external' || otherGoal.status !== 'active' || otherGoal.activationApproved !== true ||
+                                !hasMatchingExternalGoalProvenance(otherGoal, externalGoalProposal)) return null;
+                            const sourceKey = 'hexis-goal:' + externalGoalProposal.id;
+                            const existing = graphSnapshot().nodes.find(node => node.sourceKey === sourceKey);
+                            if (!existing || existing.type !== 'goal' || existing.label !== hexisGraphLabel(otherGoal.title)) return null;
+                            return existing;
+                        }
+                        const memoryRow = stagedMemories.find((row: any) => String(row?.ref ?? '') === ref);
+                        if (!memoryRow || typeof memoryRow.content !== 'string' || !memoryRow.content.trim()) return null;
+                        const sourceKey = hexisImportedMemoryGraphSourceKey(proposal.sourceLineageId, ref, memoryRow.content);
+                        return graphSnapshot().nodes.find(node => node.sourceKey === sourceKey) ?? null;
+                    };
+                    for (const relationship of relationshipRows as any[]) {
+                        const sourceRef = String(relationship.source_ref ?? '');
+                        const targetRef = String(relationship.target_ref ?? '');
+                        const otherRef = sourceRef === proposal.sourceRef ? targetRef : sourceRef;
+                        if (!otherRef || otherRef === proposal.sourceRef) {
+                            relationshipReceipt.deferred++;
+                            continue;
+                        }
+                        const otherNode = resolveOtherEndpoint(otherRef);
+                        if (!otherNode) {
+                            relationshipReceipt.deferred++;
+                            continue;
+                        }
+                        const currentNode = getOrCreateCurrentGoalNode();
+                        const from = sourceRef === proposal.sourceRef ? currentNode.id : otherNode.id;
+                        const to = targetRef === proposal.sourceRef ? currentNode.id : otherNode.id;
+                        if (from === to) {
+                            relationshipReceipt.deferred++;
+                            continue;
+                        }
+                        const relation = hexisSemanticRelationType(relationship.edge_type);
+                        const existingEdge = graphSnapshot().edges.find(edge => edge.from === from && edge.to === to && edge.relation === relation);
+                        const rawWeight = Number(relationship.properties?.weight ?? relationship.properties?.confidence ?? 0.45);
+                        const weight = Math.max(0, Math.min(0.55, Number.isFinite(rawWeight) ? rawWeight : 0.45));
+                        const edge = existingEdge ?? graph.connect(from, to, relation, weight);
+                        relationshipReceipt.semanticEdgeIds.push(edge.id);
+                        relationshipReceipt.projected++;
+                    }
+                    relationshipReceipt.semanticEdgeIds = [...new Set(relationshipReceipt.semanticEdgeIds)];
+                }
+            } catch (error) {
+                graph.restore(graphBefore);
+                throw error;
+            }
             goal.status = 'active';
             goal.activationApproved = true;
             goal.updatedAt = Date.now();
+            const activated = this.hexisAdaptation.markGoalProposalActivated(proposalId, goal.id, relationshipReceipt);
+            if (!activated) {
+                graph.restore(graphBefore);
+                goal.status = 'paused';
+                goal.activationApproved = false;
+                throw new Error('hmx-goal-activation-receipt-failed');
+            }
+            this.persisted.facets.memory.semanticGraph = graph.snapshot();
             this.memorySubsystem.events.append(makeEvent('goal-updated', this.persisted.state.tick, {
                 goalId: goal.id, title: goal.title, source: 'external', reason: 'explicitly-activated-reviewed-hmx-goal',
-                proposalId: proposal.id, exportId: proposal.exportId, sourceLineageId: proposal.sourceLineageId, sourceRef: proposal.sourceRef, identityContinuity01: identity01,
+                proposalId: proposal.id, exportId: proposal.exportId, sourceLineageId: proposal.sourceLineageId, sourceRef: proposal.sourceRef,
+                identityContinuity01: identity01, relationshipProjection: { projected: relationshipReceipt.projected, deferred: relationshipReceipt.deferred },
             } as any));
-            const activated = this.hexisAdaptation.markGoalProposalActivated(proposalId, goal.id);
             this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
             this.persisted.facets.memory.eventLog = this.memorySubsystem.events.recent(64);
-            return { proposal: activated, goal: structuredClone(goal), requiresExplicitActivation: false };
+            return { proposal: activated, goal: structuredClone(goal), requiresExplicitActivation: false, relationshipReceipt };
         }
         throw new Error('invalid-hmx-goal-decision');
     }

@@ -2281,3 +2281,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 
 - **WorkPass335 CI wiring follow-up:** Added the missing `test:workpass293:p23-revision` npm script pointing to the existing autonomous P23 repair-revision test. Run [40162024733](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40162024733) failed before test execution because npm could not find the command; the new exact-head workflow will validate the underlying regression.
+
+
+
+## 2026-10-25 — WorkPass336: project reviewed goal relationships safely
+
+- Added durable `HexisGoalRelationshipReceipt` to the proposal record, with source-stage availability, relationship candidate count, projected/deferred counts, semantic edge IDs and timestamp.
+- Explicit goal activation now projects only relationships touching that proposal's source reference. Imported-memory endpoints must resolve to matching source-isolated graph nodes; other external-goal endpoints must already be explicitly active and provenance-verified.
+- Added graph-node source namespaces for external goals, capped external edge weights at `0.55`, deduplicated existing edge projections, and rolled graph state back if the projection stage fails.
+- Updated the live HTTP smoke to assert that the goal-to-memory edge is not just staged but present after activation, with a durable receipt. Validation on the new head is pending.

@@ -181,6 +181,14 @@ export interface HexisExecutionPlan {
     rationale: string;
     at: number;
 }
+export interface HexisGoalRelationshipReceipt {
+    sourceStageFound: boolean;
+    candidateRelationships: number;
+    projected: number;
+    deferred: number;
+    semanticEdgeIds: string[];
+    at: number;
+}
 export interface HexisGoalProposal {
     id: string;
     stageId: string;
@@ -194,6 +202,7 @@ export interface HexisGoalProposal {
     confidence: number;
     status: 'pending' | 'approved' | 'rejected' | 'materialized';
     canonicalGoalId?: string;
+    goalRelationshipReceipt?: HexisGoalRelationshipReceipt;
     createdAt: number;
     decidedAt?: number;
     decisionReason?: string;
@@ -686,10 +695,14 @@ export class HexisAdaptationFabric {
         proposal.decidedAt = nowMs();
         return structuredClone(proposal);
     }
-    markGoalProposalActivated(id: string, canonicalGoalId: string) {
+    markGoalProposalActivated(id: string, canonicalGoalId: string, receipt?: HexisGoalRelationshipReceipt) {
         const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
         if (!proposal) return null;
         if (proposal.status !== 'materialized' || proposal.canonicalGoalId !== String(canonicalGoalId)) throw new Error('hmx-goal-must-be-materialized-before-activation');
+        if (proposal.goalRelationshipReceipt) return structuredClone(proposal);
+        proposal.goalRelationshipReceipt = structuredClone(receipt ?? {
+            sourceStageFound: false, candidateRelationships: 0, projected: 0, deferred: 0, semanticEdgeIds: [], at: nowMs(),
+        });
         this.state.metrics.hmxGoalProposalsActivated++;
         return structuredClone(proposal);
     }

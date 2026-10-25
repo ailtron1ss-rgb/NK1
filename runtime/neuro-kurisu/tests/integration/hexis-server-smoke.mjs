@@ -59,6 +59,15 @@ try {
       metadata: { importance: 0.52, urgency: 0.28, confidence: 0.65 },
     },
   ];
+  importDocument.sections.relationships = [
+    ...(Array.isArray(importDocument.sections.relationships) ? importDocument.sections.relationships : []),
+    {
+      source_ref: `${importExportId}:server-smoke-reviewed-goal`,
+      target_ref: `${importExportId}:server-smoke-canonical-memory`,
+      edge_type: 'supports',
+      properties: { weight: 0.99 },
+    },
+  ];
   const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: importDocument, intent: 'port', strategy: 'additive' })).json();
   if (!stageRes.ok || stageRes.stage?.status !== 'staged' || stageRes.stage?.conflicts?.length) throw new Error(`hexis-hmx-stage:${JSON.stringify(stageRes.stage?.conflicts)}`);
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
@@ -106,6 +115,13 @@ try {
   const activationResult = await activationResponse.json();
   if (!activationResult.ok || activationResult.goal?.status !== 'active' || activationResult.goal?.activationApproved !== true || activationResult.goalActivated !== true) {
     throw new Error(`hexis-goal-explicit-activation:${JSON.stringify({ status: activationResponse.status, body: activationResult })}`);
+  }
+  if (!activationResult.relationshipReceipt?.sourceStageFound ||
+      activationResult.relationshipReceipt.candidateRelationships < 1 ||
+      activationResult.relationshipReceipt.projected < 1 ||
+      !activationResult.relationshipReceipt.semanticEdgeIds?.length ||
+      activationResult.relationshipReceipt.deferred < 0) {
+    throw new Error(`hexis-goal-memory-relationship-not-projected:${JSON.stringify(activationResult.relationshipReceipt)}`);
   }
   if (activationResult.goal?.externalProvenance?.proposalId !== goalProposal.id ||
       activationResult.goal.externalProvenance.sourceLineageId !== goalProposal.sourceLineageId ||
