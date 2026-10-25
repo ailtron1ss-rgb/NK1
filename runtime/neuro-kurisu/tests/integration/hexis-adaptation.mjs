@@ -409,6 +409,11 @@ assert.equal(retryAfterRollback?.application?.attempt, 2, 'a compensated retry u
 assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
 assert.equal(rollbackMemoryRuntime.semanticMemory.snapshot().edges.length, 1,
   'retry must commit graph relations after all canonical memory rows succeed');
+const directReplayReceipt = rollbackProjector.apply(retryAfterRollback);
+assert.equal(directReplayReceipt.digest, retryAfterRollback.application?.digest,
+  'replaying an already-applied stage directly through the projector must return the exact stored receipt');
+assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2,
+  'direct receipt replay must not write duplicate canonical memories');
 
 
 const fabric = new HexisAdaptationFabric();
