@@ -1,3 +1,10 @@
+## NK1 WorkPass548 — keep Live2D expressions stable across body updates (2026-10-25)
+
+- Fixed the Live2D viewer so repeated incoming emotion messages do not restart the same expression animation during mouth, gaze or body updates.
+- The viewer now caches the mapped expression name and applies a new expression only when it changes; the cache is updated only after an available model accepts the expression call.
+- This addresses the existing Live2D integrity regression and supports synchronized emotional embodiment without repetitive animation resets.
+- **Validation boundary:** the exact-head affect and learning workflows must pass after the viewer change.
+
 ## NK1 WorkPass547 — align restored rolling metrics with trust gate (2026-10-25)
 
 - The causal-learning regression reached the rolling-metric assertion and exposed a persisted-value expectation inconsistent with restore behavior: an untrusted external row cannot contribute learning-opportunity signal after restart.
