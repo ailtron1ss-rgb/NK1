@@ -1,3 +1,13 @@
+## NK1 WorkPass336 — fix regression loader, cycle verifier duplicate, and learning type import (2026-10-25)
+
+- [FIXED] Corrected the correlation-ID control-character filter in `OutcomeVerificationService.ts`. The previous double-escaped character class threw a JavaScript syntax error at module load and blocked the real memory-to-action regression before assertions ran.
+- [FIXED] Removed the second duplicate `verifyOperationalCycle` implementation from `CognitiveEventFabric.ts`; retained the richer implementation that also validates optional phases and their causal edges.
+- [FIXED] Imported `ReplaySelectionOptions` from its owning `ReplaySelectionPolicy.ts` module rather than from `P23LearningEngine.ts`, which used that type internally but did not export it.
+- [EVIDENCE] On the previous exact head, universal-interpreter regression, app typecheck, app bundle, and WorkPass105 verified-outcome workflow passed. WorkPass79 failed while loading `OutcomeVerificationService.ts`; runtime typecheck also reported many other errors.
+- [VALIDATION] These are source-level corrections; the new head's Actions must confirm the targeted regression. The broader runtime typecheck still has a backlog including incomplete Node.js ambient declarations and additional learning/core type mismatches. Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass335 — complete audio migration and type-safe interpreter boundary (2026-10-24)
 
 - [FIXED] Made the interpreter's fallback embodiment record explicit as `Record<string, unknown>`, removing all eight new TypeScript property errors from the current runtime typecheck report.
