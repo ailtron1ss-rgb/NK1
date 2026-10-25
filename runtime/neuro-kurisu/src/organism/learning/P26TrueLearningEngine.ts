@@ -8,6 +8,10 @@ export interface P26LearningMetrics {
   outcomeSamples:number;
   onlineUpdates:number;
   replayUpdates:number;
+  /** Normalized training exposure, not a generalization claim. */
+  trainingExposure01:number;
+  /** Count of unique independently verified holdout evidence items accepted by the gate. */
+  independentHoldoutSamples:number;
   learningDelta01:number;
   recentLoss01:number;
   generalizationEvidence01:number;
@@ -17,18 +21,51 @@ export interface P26LearningMetrics {
   lastUpdatedAt:number;
 }
 
+export interface VerifiedHoldoutEvidenceInput {
+  evidenceId:string;
+  taskId:string;
+  protocolId:string;
+  verifierId:string;
+  sampleSetHash:string;
+  baseline01:number;
+  learned01:number;
+  verified:boolean;
+  independent:boolean;
+}
+
+export interface StoredVerifiedHoldoutEvidence extends VerifiedHoldoutEvidenceInput {
+  recordedAt:number;
+}
+
 export interface P26TrueLearningState {
   version:1;
   policy:ParametricPolicyState;
   metrics:P26LearningMetrics;
   processedTraceIds:string[];
+  /** Optional on input for backwards compatibility with previous v1 snapshots. */
+  holdoutEvidence?:StoredVerifiedHoldoutEvidence[];
+  usedHoldoutEvidenceKeys?:string[];
 }
 
 export const defaultP26TrueLearning=():P26TrueLearningState=>({
   version:1,policy:defaultParametricPolicy(),
-  metrics:{outcomeSamples:0,onlineUpdates:0,replayUpdates:0,learningDelta01:0,recentLoss01:0,generalizationEvidence01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0,lastUpdatedAt:0},
-  processedTraceIds:[],
+  metrics:{outcomeSamples:0,onlineUpdates:0,replayUpdates:0,trainingExposure01:0,independentHoldoutSamples:0,learningDelta01:0,recentLoss01:0,generalizationEvidence01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0,lastUpdatedAt:0},
+  processedTraceIds:[],holdoutEvidence:[],usedHoldoutEvidenceKeys:[],
 });
+
+const hasUnsafeControl=(value:string)=>[...value].some(ch=>{const n=ch.charCodeAt(0);return n<32||(n>=127&&n<=159);});
+const safeEvidenceText=(value:unknown,max=240):string|null=>{
+  if(typeof value!=='string')return null;
+  const normalized=value.normalize('NFKC');
+  if(hasUnsafeControl(normalized))return null;
+  const text=normalized.trim();
+  return text.length>0&&text.length<=max?text:null;
+};
+const validEvidenceMetric=(value:unknown):value is number=>
+  typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const holdoutIdentityKey=(row:Pick<VerifiedHoldoutEvidenceInput,'taskId'|'protocolId'|'verifierId'|'sampleSetHash'>):string=>
+  'sample:'+JSON.stringify([row.taskId,row.protocolId,row.verifierId,row.sampleSetHash]);
+const holdoutIdKey=(evidenceId:string):string=>'id:'+evidenceId;
 
 export interface BodyExtras { external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number; }
 
@@ -37,11 +74,44 @@ export class P26TrueLearningEngine{
   private state=defaultP26TrueLearning();
   restore(raw?:Partial<P26TrueLearningState>|null){
     const d=defaultP26TrueLearning();
-    this.state={...d,...(raw??{}),metrics:{...d.metrics,...(raw?.metrics??{})},processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.slice(-4096):[]};
+    const restoredEvidence:StoredVerifiedHoldoutEvidence[]=[];
+    const seenIds=new Set<string>(),seenSamples=new Set<string>();
+    const rawEvidence=Array.isArray(raw?.holdoutEvidence)?raw!.holdoutEvidence!.slice(-1024):[];
+    for(const value of rawEvidence){
+      if(!value||typeof value!=='object'||value.verified!==true||value.independent!==true||
+        !validEvidenceMetric(value.baseline01)||!validEvidenceMetric(value.learned01)||
+        !Number.isFinite(value.recordedAt)||value.recordedAt<0)continue;
+      const evidenceId=safeEvidenceText(value.evidenceId,180),taskId=safeEvidenceText(value.taskId,180),
+        protocolId=safeEvidenceText(value.protocolId,180),verifierId=safeEvidenceText(value.verifierId,180),
+        sampleSetHash=safeEvidenceText(value.sampleSetHash,300);
+      if(!evidenceId||!taskId||!protocolId||!verifierId||!sampleSetHash)continue;
+      const row:StoredVerifiedHoldoutEvidence={evidenceId,taskId,protocolId,verifierId,sampleSetHash,
+        baseline01:value.baseline01,learned01:value.learned01,verified:true,independent:true,recordedAt:value.recordedAt};
+      const identity=holdoutIdentityKey(row);
+      if(seenIds.has(evidenceId)||seenSamples.has(identity))continue;
+      seenIds.add(evidenceId);seenSamples.add(identity);restoredEvidence.push(row);
+    }
+    const usedKeys=new Set<string>();
+    if(Array.isArray(raw?.usedHoldoutEvidenceKeys))for(const key of raw!.usedHoldoutEvidenceKeys!){
+      if(typeof key==='string'&&key.length>4&&key.length<=1024&&!hasUnsafeControl(key))usedKeys.add(key);
+    }
+    for(const row of restoredEvidence){usedKeys.add(holdoutIdKey(row.evidenceId));usedKeys.add(holdoutIdentityKey(row));}
+    this.state={...d,...(raw??{}),metrics:{...d.metrics,...(raw?.metrics??{})},
+      processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.slice(-4096):[],
+      holdoutEvidence:restoredEvidence,usedHoldoutEvidenceKeys:[...usedKeys].slice(-4096)};
     this.learner.restore(this.state.policy);
+    this.refreshDerivedMetrics();
   }
-  snapshot():P26TrueLearningState{ this.sync(); return structuredClone(this.state); }
+  snapshot():P26TrueLearningState{ this.refreshDerivedMetrics();this.sync();return structuredClone(this.state); }
   sync(){ this.state.policy=this.learner.snapshot(); }
+  private refreshDerivedMetrics():void{
+    const metrics=this.state.metrics;
+    metrics.trainingExposure01=clamp(Math.min(1,(Math.max(0,metrics.onlineUpdates)+Math.max(0,metrics.replayUpdates))/160));
+    metrics.independentHoldoutSamples=(this.state.holdoutEvidence??[]).length;
+    // Parameter updates and internal train/holdout splits are not independent proof.
+    // Only accepted verified-holdout evidence may advance this maturity signal.
+    metrics.generalizationEvidence01=clamp(Math.min(1,metrics.independentHoldoutSamples/20));
+  }
   predict(state:OrganismState,extras?:BodyExtras){return this.learner.predict(state,extras);}
   bias(state:OrganismState,action:ActionKind,baseUtility:number,extras?:BodyExtras){
     const p=this.learner.value(state,action,extras);
@@ -62,9 +132,9 @@ export class P26TrueLearningEngine{
     this.state.metrics.onlineUpdates++;
     this.state.metrics.learningDelta01=clamp(this.state.metrics.learningDelta01*.97 + (r.predictionAfter-r.predictionBefore)*.03 + Math.abs(r.tdError01)*.02*shared);
     this.state.metrics.recentLoss01=clamp(r.loss01);
-    this.state.metrics.generalizationEvidence01=clamp(Math.min(1,this.state.policy.updates/160));
     this.state.metrics.lastUpdatedAt=Date.now();
     this.state.processedTraceIds=[trace.id,...this.state.processedTraceIds].slice(0,4096);
+    this.refreshDerivedMetrics();
     this.sync();
     return {updated:true,loss01:r.loss01};
   }
@@ -77,7 +147,8 @@ export class P26TrueLearningEngine{
       updates++; loss+=r.loss01;
     }
     this.state.metrics.replayUpdates+=updates;
-    if(updates){this.state.metrics.recentLoss01=clamp(loss/updates);this.state.metrics.generalizationEvidence01=clamp(Math.min(1,this.state.policy.updates/160));this.state.metrics.lastUpdatedAt=Date.now();}
+    if(updates){this.state.metrics.recentLoss01=clamp(loss/updates);this.state.metrics.lastUpdatedAt=Date.now();}
+    this.refreshDerivedMetrics();
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
@@ -93,17 +164,53 @@ export class P26TrueLearningEngine{
       loss+=this.learner.trainFeatures({features:r.policyFeatures01!,action:r.action,target01:target,learningRate01:.022+clamp(r.surprise01)*.028+priority*.018,sampleWeight01:weight}).loss01;
     }
     const learned=score(holdout); this.state.metrics.replayUpdates+=train.length; this.state.metrics.recentLoss01=clamp(train.length?loss/train.length:0);
-    this.state.metrics.generalizationEvidence01=clamp(this.state.metrics.generalizationEvidence01*.85+Math.min(1,holdout.length/4)*.15);
-    this.state.metrics.holdoutBaseline01=baseline; this.state.metrics.holdoutLearned01=learned; this.state.metrics.holdoutDelta01=learned-baseline; this.state.metrics.lastUpdatedAt=Date.now(); this.sync();
+    // The internal split is useful diagnostics, but not independent verified evidence.
+    this.state.metrics.holdoutBaseline01=baseline; this.state.metrics.holdoutLearned01=learned; this.state.metrics.holdoutDelta01=learned-baseline; this.state.metrics.lastUpdatedAt=Date.now();
+    this.refreshDerivedMetrics();this.sync();
     return {updates:train.length,meanLoss01:train.length?loss/train.length:0,holdoutBaseline01:baseline,holdoutLearned01:learned,holdoutDelta01:learned-baseline};
   }
 
   recordHoldout(baseline01:number,learned01:number){
-    this.state.metrics.holdoutBaseline01=clamp(baseline01);this.state.metrics.holdoutLearned01=clamp(learned01);this.state.metrics.holdoutDelta01=learned01-baseline01;this.sync();
+    // Legacy aggregate input has no independent provenance, so it is diagnostic only.
+    this.state.metrics.holdoutBaseline01=clamp(baseline01);this.state.metrics.holdoutLearned01=clamp(learned01);this.state.metrics.holdoutDelta01=learned01-baseline01;
+    this.refreshDerivedMetrics();this.sync();
     return this.state.metrics.holdoutDelta01;
   }
+
+  recordVerifiedHoldout(input:VerifiedHoldoutEvidenceInput):{accepted:boolean;reason:string;generalizationEvidence01:number;independentHoldoutSamples:number}{
+    const evidenceId=safeEvidenceText(input?.evidenceId,180),taskId=safeEvidenceText(input?.taskId,180),
+      protocolId=safeEvidenceText(input?.protocolId,180),verifierId=safeEvidenceText(input?.verifierId,180),
+      sampleSetHash=safeEvidenceText(input?.sampleSetHash,300);
+    if(!evidenceId||!taskId||!protocolId||!verifierId||!sampleSetHash||
+      !validEvidenceMetric(input?.baseline01)||!validEvidenceMetric(input?.learned01)){
+      this.refreshDerivedMetrics();
+      return {accepted:false,reason:'invalid-holdout-evidence',generalizationEvidence01:this.state.metrics.generalizationEvidence01,independentHoldoutSamples:this.state.metrics.independentHoldoutSamples};
+    }
+    if(input.verified!==true||input.independent!==true){
+      this.refreshDerivedMetrics();
+      return {accepted:false,reason:'holdout-evidence-not-verified-independent',generalizationEvidence01:this.state.metrics.generalizationEvidence01,independentHoldoutSamples:this.state.metrics.independentHoldoutSamples};
+    }
+    const row:StoredVerifiedHoldoutEvidence={evidenceId,taskId,protocolId,verifierId,sampleSetHash,
+      baseline01:input.baseline01,learned01:input.learned01,verified:true,independent:true,recordedAt:Date.now()};
+    const idKey=holdoutIdKey(evidenceId),sampleKey=holdoutIdentityKey(row);
+    const used=new Set(this.state.usedHoldoutEvidenceKeys??[]);
+    if(used.has(idKey)||used.has(sampleKey)){
+      this.refreshDerivedMetrics();
+      return {accepted:false,reason:'duplicate-holdout-evidence',generalizationEvidence01:this.state.metrics.generalizationEvidence01,independentHoldoutSamples:this.state.metrics.independentHoldoutSamples};
+    }
+    this.state.holdoutEvidence=[...(this.state.holdoutEvidence??[]),row].slice(-1024);
+    this.state.usedHoldoutEvidenceKeys=[...used,idKey,sampleKey].slice(-4096);
+    this.state.metrics.holdoutBaseline01=input.baseline01;
+    this.state.metrics.holdoutLearned01=input.learned01;
+    this.state.metrics.holdoutDelta01=input.learned01-input.baseline01;
+    this.state.metrics.lastUpdatedAt=Date.now();
+    this.refreshDerivedMetrics();
+    this.sync();
+    return {accepted:true,reason:'accepted',generalizationEvidence01:this.state.metrics.generalizationEvidence01,independentHoldoutSamples:this.state.metrics.independentHoldoutSamples};
+  }
+
   freeze(){this.learner.setFrozen(true);this.sync();}
   unfreeze(){this.learner.setFrozen(false);this.sync();}
-  metrics():P26LearningMetrics{return {...this.state.metrics};}
+  metrics():P26LearningMetrics{this.refreshDerivedMetrics();return {...this.state.metrics};}
   actionList(){return [...ACTIONS];}
 }
