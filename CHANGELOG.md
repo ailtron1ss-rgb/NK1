@@ -1,3 +1,9 @@
+## NK1 Causal Accountability — preserve valid projections across noisy restore tails (2026-10-25)
+
+- Fixed `OutcomeCognitionFabric.restore()` so malformed trailing projection-index rows do not evict older valid execution projections before validation. Malformed rows still quarantine their own bounded execution identity; the active index cap counts structurally valid candidates.
+- Added a regression with 900 malformed trailing entries after a valid external-postcondition receipt; the valid projection must remain active and must not be quarantined due to unrelated invalid rows.
+- **Validation boundary:** implementation commit `a02c9deba95445c82a875c888afeb5e8cef03264` and regression commit `cd3be0fc8341fa9cdc6ce9f026a2fc2b31eb7b17` are committed; hosted workflow result is pending.
+
 ## NK1 WorkPass565 — prevent recall-driven affect from reinforcing itself (2026-10-25)
 
 - The recalled-memory cue now enters current appraisal through one explicit arousal increment rather than also being added to appraisal relevance. The resulting attention capture can still feed the normal bounded emotion-to-action bias and current-experience salience path.
