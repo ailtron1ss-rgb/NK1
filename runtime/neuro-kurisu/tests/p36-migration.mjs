@@ -11,7 +11,7 @@ const migrated=migratePersistedOrganism({
     hypotheses:[{id:'persisted-promoted-hypothesis',area:'learning',title:'Persisted hypothesis',hypothesis:'Recheck the prior candidate with fresh external evidence.',evidence:['persisted test fixture'],expectedGain01:.8,estimatedCost01:.2,priority01:.9,status:'completed',evidenceGate:'replicated',result01:.91,createdAt:100,completedAt:123}],
     externalEvidence:[{id:'persisted-evidence',hypothesisId:'persisted-promoted-hypothesis',contextKey:'old-context',control01:.4,treatment01:.9,delta01:.5,independentVerified:true,observationId:'forged-saved-receipt',holdout:true,delayMs:6000,evaluatorVersion:'old',evidenceSource:'external-evaluator',at:123}],
     developmentalEvidenceReceiptIds:['receipt-old','receipt-valid',42,'receipt-valid','','x'.repeat(257),' receipt-spaced '],
-    developmentalEvidenceObservationIds:['observation-1',null,'observation-2','observation-1','\\u0001bad','y'.repeat(181)],
+    developmentalEvidenceObservationIds:['observation-1',null,'observation-2','observation-1','\u0001bad','y'.repeat(181)],
     acceptedChanges:7,
     developmentCycles:[{id:'old-cycle',hypothesisId:'persisted-promoted-hypothesis',stage:'replicated',verifiedEvidenceCount:6,lastEvidenceAt:123}],
     actionBias:{respond:0,explore:.12,verify:0,rest:0,reflect:0,wait:0,defer:0},
