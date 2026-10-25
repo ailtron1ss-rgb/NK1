@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "vite";
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -147,6 +147,14 @@ function authPopupPlugin(): Plugin {
 // AGENTS.md § "First scaffold".
 export default defineConfig(({ command, isPreview }) => ({
   server: {
+    // The app and standalone runtime share the canonical speech-viseme module.
+    // Permit that one runtime-public directory for the Vite dev module graph.
+    fs: {
+      allow: [
+        searchForWorkspaceRoot(process.cwd()),
+        join(process.cwd(), "../runtime/neuro-kurisu/public"),
+      ],
+    },
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
