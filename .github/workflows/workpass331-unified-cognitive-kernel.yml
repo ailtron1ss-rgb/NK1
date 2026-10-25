@@ -8,6 +8,8 @@ on:
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/tests/organism-smoke.mjs"
       - "runtime/neuro-kurisu/tests/organism-autonomy.mjs"
+      - "runtime/neuro-kurisu/tests/workpass50-autonomous-background-clock.mjs"
+      - "runtime/neuro-kurisu/tests/workpass50-autonomous-runtime-loop.mjs"
       - "runtime/neuro-kurisu/tests/restart-persistence.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
@@ -29,6 +31,8 @@ on:
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/tests/organism-smoke.mjs"
       - "runtime/neuro-kurisu/tests/organism-autonomy.mjs"
+      - "runtime/neuro-kurisu/tests/workpass50-autonomous-background-clock.mjs"
+      - "runtime/neuro-kurisu/tests/workpass50-autonomous-runtime-loop.mjs"
       - "runtime/neuro-kurisu/tests/restart-persistence.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
@@ -77,6 +81,12 @@ jobs:
       - name: Verify autonomous action selection is not stuck in wait
         working-directory: runtime/neuro-kurisu
         run: npm run test:autonomy
+      - name: Verify spontaneous dialogue, feedback learning, and restore continuity
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass50-autonomous-runtime-loop.mjs
+      - name: Verify initiative on the background cognitive clock
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass50-autonomous-background-clock.mjs
       - name: Verify state survives runtime restart
         working-directory: runtime/neuro-kurisu
         run: npm run test:restart

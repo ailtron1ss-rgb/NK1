@@ -1,3 +1,10 @@
+# WorkPass338 — gate unsolicited dialogue and background initiative end-to-end (2026-10-25)
+
+- [CI] Added two existing runtime integration regressions after the bounded 80-cycle autonomy test: `workpass50-autonomous-runtime-loop.mjs` verifies spontaneous message generation, UI acknowledgement idempotency, explicit-response interest learning, durable flush, restart without redelivery, and quiet-time continuity; `workpass50-autonomous-background-clock.mjs` verifies the auto-run scheduler triggers a provider-seam turn without a manual `step()`, stages it for polling, acknowledges it once, and persists the initiative state.
+- [TRIGGER] Added both tests to `push` and `pull_request` path filters, so changes to either test run through this focused workflow.
+- [SCOPE] These tests use a deterministic language-provider seam and bounded local time; they validate the internal loop and persistence, not a live commercial provider, 1-hour unattended soak, or external messaging integration.
+- [VALIDATION] Previous WorkPass331 workflow run `40168142987` passed on code SHA `8f5e4da3c37b7e218a259d3e11ec1b1329ec8e15` including `CLEAN_AUTONOMY=PASS 79/80`, smoke and restart. WorkPass338 extends the gate, so both initiative tests require a fresh run on this new commit.
+
 # WorkPass337 — verify autonomous action selection in focused CI (2026-10-25)
 
 - [CI] Added the existing 80-cycle `npm run test:autonomy` regression to the canonical cognitive-kernel workflow; it requires at least five selected non-`wait` actions and therefore checks for a degenerate wait-only loop.

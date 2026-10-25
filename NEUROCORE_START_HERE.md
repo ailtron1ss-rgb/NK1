@@ -1,3 +1,19 @@
+## Latest durable checkpoint — WorkPass338: add initiative-to-dialogue end-to-end gates (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- WorkPass336 fixed the B272 generated-action mismatch by skipping B272 credit when another action was actually selected; validation stays strict and unrelated outcome learners still receive the executed action.
+- WorkPass337 was validated by [WorkPass331 run 40168142987](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168142987) on SHA `8f5e4da3c37b7e218a259d3e11ec1b1329ec8e15`: Node/npm preflight 4/4, doctor, canonical kernel, runtime wiring, organism smoke, autonomous action selection (`CLEAN_AUTONOMY=PASS 79/80`), and restart persistence all passed. WorkPass110/108/105/102/99, WorkPass287–294, and P26 also passed on that SHA.
+- WorkPass338 adds two stronger existing tests to the focused workflow. The first verifies spontaneous dialogue generation → exactly-once UI acknowledgement → explicit-response interest learning → persistence → restart without duplicate delivery; the second verifies the actual background scheduler can stage and persist an unsolicited turn without a manual cognitive step.
+- This broadens internal autonomous initiative validation; it does not yet prove uninterrupted hour-long operation, live provider reliability, outbound messaging, or production readiness. The new workflow/head must pass before this checkpoint is considered fully validated.
+
+### Next gates
+1. Run both initiative tests on the new exact head and repair any real lifecycle or scheduler issue they expose.
+2. Continue with longer unattended runtime and API/service startup on the same exact commit.
+3. Complete UI/Live2D/voice end-to-end and refresh the Release archive; neither is verified by the current focused workflow.
+
+---
+
 ## Latest durable checkpoint — WorkPass337: test autonomous action selection in the kernel workflow (2026-10-25)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft pending end-to-end checks.
