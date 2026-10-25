@@ -5,6 +5,7 @@
 - Added strict preflight validation for every current/replay row and all numeric controls before the first weight update, so malformed late records cannot partially mutate model weights or metrics.
 - Enforced an explicit candidate-comparison cap (8–128), validated replay stride and update budget, exposed online/replay/block/eligible/comparison counters, and kept synthetic training metrics separate from authenticated generalization evidence.
 - Added regressions for malformed-row atomicity and invalid conflict-candidate bounds to the sequential-learning benchmark.
+- Extended the P23 wiring regression to verify that energy, goal pressure and observed outcome labels are assembled into each causal candidate before the sampler call; the test now follows the real producer→consumer order.
 - Stabilized high-frequency replay without over-throttling equal-rate rehearsal: only when the requested replay learning rate is less than half the current learning rate is it additionally scaled by `min(1, stride / 4)`. This addresses replay-policy sweep seed 17, where `interleave-1` previously dropped new-task accuracy to 0.52, while preserving equal-rate contextual replay needed for old-task retention.
 
 Validation is pending until the new sequential benchmark and the current full-project sweep complete on the updated head.
