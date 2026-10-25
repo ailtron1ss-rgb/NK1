@@ -470,20 +470,29 @@ export class MemoryOS2{
   */
  async previewRetrieveWithEmbeddings(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},performanceOptions:SemanticRetrievalPerformanceOptions={}):Promise<SemanticMemoryPreview>{
    const safeLimit=Math.max(1,Math.min(32,Math.floor(Number.isFinite(limit)?limit:8)));
-   const fallbackItems=this.previewRetrieve(query,safeLimit,goalRelevance,identityRelevance,temporalOptions);
    const provider=this.embeddingProvider;
    const providerDiag=provider?.diagnostics();
    if(!provider||!String(query??'').trim()){
+     const fallbackItems=this.previewRetrieve(query,safeLimit,goalRelevance,identityRelevance,temporalOptions);
      return {items:fallbackItems,semantic:{enabled:false,provider:providerDiag?.provider??'none',model:providerDiag?.model??'',indexedItems:0,corpusItems:this.state.items.length,coverage01:0,newlyIndexed:0,fallbackReason:!provider?'embedding-provider-disabled':'empty-query',cacheEntries:providerDiag?.cacheEntries??0,requests:providerDiag?.requests??0,failures:providerDiag?.failures??0,lastLatencyMs:providerDiag?.lastLatencyMs??0}};
    }
    const now=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:Date.now();
    const temporalMode=temporalOptions.temporalMode??'current';
    const eligible=(item:MemoryItem2)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&(temporalMode==='all'||(Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt))));
-   const corpus=this.state.items.filter(eligible);
-   const corpusIds=new Set(corpus.map(item=>item.id));
+   const corpus:MemoryItem2[]=[];
+   const corpusById=new Map<string,MemoryItem2>();
+   const corpusIds=new Set<string>();
+   for(const item of this.state.items){
+     if(!eligible(item))continue;
+     corpus.push(item);corpusById.set(item.id,item);corpusIds.add(item.id);
+   }
    for(const id of this.semanticEmbeddingIndex.keys())if(!corpusIds.has(id))this.semanticEmbeddingIndex.delete(id);
    const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(performanceOptions.maxLexicalPool??Math.max(24,Math.min(64,safeLimit*8)))));
-   const lexicalPool=this.previewRetrieve(query,lexicalPoolLimit,goalRelevance,identityRelevance,temporalOptions).filter(eligible);
+   // One isolated lexical preview supplies both the fallback and semantic candidate pool.
+   const lexicalPreview=this.previewRetrieve(query,lexicalPoolLimit,goalRelevance,identityRelevance,temporalOptions);
+   const fallbackItems=lexicalPreview.slice(0,safeLimit);
+   const lexicalPool:MemoryItem2[]=[];
+   for(const previewItem of lexicalPreview){const current=corpusById.get(previewItem.id);if(current&&eligible(current))lexicalPool.push(current);}
    const hasCurrentVector=(item:MemoryItem2)=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);};
    const missingSet=new Map<string,MemoryItem2>();
    // Prioritize lexical/fuzzy candidates but reserve part of a cold-start batch for
@@ -498,15 +507,21 @@ export class MemoryOS2{
      missingSet.set(item.id,item);
    }
    const missing=[...missingSet.values()].slice(0,backfillBudget);
+   const candidateState=missing.map(item=>({id:item.id,contentHash:memoContentHash(item.content),validFromAt:item.validFromAt??item.createdAt,validUntilAt:item.validUntilAt??null,dormant:item.dormant,epistemicStatus:item.epistemicStatus}));
    let newlyIndexed=0;
    try{
-     const vectors=await provider.embedBatch([query,...missing.map(item=>item.content)],performanceOptions.providerTimeoutMs?{timeoutMs:performanceOptions.providerTimeoutMs}:undefined);
+     const candidateContents=missing.map(item=>item.content);
+     const vectors=await provider.embedBatch([query,...candidateContents],performanceOptions.providerTimeoutMs?{timeoutMs:performanceOptions.providerTimeoutMs}:undefined);
      if(vectors.length!==missing.length+1||!vectors[0]?.length)throw new Error('embedding-vector-count-mismatch');
      const queryVector=vectors[0];
      for(let index=0;index<missing.length;index++){
-       const item=missing[index],vector=vectors[index+1];
+       const item=missing[index],vector=vectors[index+1],state=candidateState[index]!;
        if(!Array.isArray(vector)||vector.length!==queryVector.length)continue;
-       this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(item.content),providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
+       // The provider call yields to the event loop; never attach a vector when the
+       // canonical memory was edited, revised, quarantined, or made dormant meanwhile.
+       const current=this.itemIndex.get(state.id);
+       if(!current||!eligible(current)||memoContentHash(current.content)!==state.contentHash||(current.validFromAt??current.createdAt)!==state.validFromAt||(current.validUntilAt??null)!==state.validUntilAt||current.dormant!==state.dormant||current.epistemicStatus!==state.epistemicStatus)continue;
+       this.semanticEmbeddingIndex.set(item.id,{contentHash:state.contentHash,providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
      }
      // Keep one compact index for the canonical memory's maximum 1600 rows.
      while(this.semanticEmbeddingIndex.size>1600){
@@ -519,6 +534,7 @@ export class MemoryOS2{
      const queryEntities=extractEntities(query);
      const semanticRows:Array<{item:MemoryItem2;score:number;similarity:number;lexicalRank:number}> = [];
      for(const item of corpus){
+       if(!eligible(item))continue;
        const cached=this.semanticEmbeddingIndex.get(item.id);
        if(!cached||cached.providerId!==provider.providerId||cached.contentHash!==memoContentHash(item.content)||cached.vector.length!==queryVector.length)continue;
        let dot=0,normA=0,normB=0;for(let i=0;i<queryVector.length;i++){dot+=queryVector[i]*cached.vector[i];normA+=queryVector[i]*queryVector[i];normB+=cached.vector[i]*cached.vector[i];}
