@@ -217,6 +217,16 @@ const proposalPrompt = buildCognitiveProposalPrompt(
   toolEvidenceSnapshot,
 );
 const wholePrompt = proposalPrompt.system + '\n' + proposalPrompt.user;
+const receipt = proposalPrompt.internalDialogueReceipt;
+assert.ok(receipt, 'cognitive proposal must return a compact operational review receipt');
+assert.equal(receipt.advisoryOnly, true);
+assert.equal(receipt.evidenceMode, 'core-cef-snapshot');
+assert.ok(receipt.reviewedRoles.includes('critic'));
+assert.ok(receipt.evidenceIds.length > 0);
+assert.doesNotMatch(JSON.stringify(receipt), /hunter2|curator@example\.com/,
+  'persisted receipt must not contain credential or contact strings');
+assert.doesNotMatch(JSON.stringify(receipt), /grounded observation about two competing action hypotheses/,
+  'persisted receipt must not copy user/focus text');
 assert.match(wholePrompt, /INTERNAL DIALOGUE REVIEW/);
 assert.match(wholePrompt, /advisoryOnly/);
 assert.match(wholePrompt, /candidate-1/);
