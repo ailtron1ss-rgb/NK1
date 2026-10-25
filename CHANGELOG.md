@@ -1,3 +1,9 @@
+## NK1 learning validation — assert replay identity reconciliation order (2026-10-25)
+
+- Updated the P23 persistence test to verify that durable `replayUpdates` trace IDs are reconciled before cache-only `replayedTraceIds`, matching the processed-trace integrity invariant and preventing replayed outcomes from being forgotten at the bounded cache limit.
+
+---
+
 ## NK1 learning validation — supply manifest versions in threshold fixtures (2026-10-25)
 
 - Added the required `taskVersion` to valid held-out observation fixtures used to test non-finite minimum thresholds. Without it, the plain-data parser correctly rejected every row and the test was not reaching its intended coverage or gain-threshold branch.
