@@ -1,3 +1,10 @@
+## [NK1][memory] Correct the future-evidence doctor fixture boundary (2026-10-25)
+
+- WorkPass318 was setting `observedAt` only 60 seconds in the future while MemoryOS2 intentionally reports future-evidence warnings only when the timestamp exceeds a five-minute tolerance.
+- Increased the fixture to ten minutes in the future. The production threshold is unchanged, and the read-only CLI still must report the malformed timestamp without modifying the file.
+
+---
+
 ## [NK1][core] Preserve finalization context keys in the canonical wrapper (2026-10-25)
 
 - The compound-skill route now calls `OrganismCore.executeTool(..., Object.keys(runtimeInput))` as required, and strict TypeScript revealed the wrapper exposed only four arguments despite `finalizeToolOutcome` already supporting caller-supplied context keys.
