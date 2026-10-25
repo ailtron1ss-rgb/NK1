@@ -9,6 +9,9 @@
     "npm": ">=10.8.0"
   },
   "scripts": {
+    "test:letta-memory-bridge": "node --experimental-strip-types tests/integration/letta-memory-bridge.mjs",
+    "test:letta-memory-lifecycle-sync": "node --experimental-strip-types tests/integration/letta-memory-lifecycle-sync.mjs",
+    "test:letta-cognitive-recall-wiring": "node --experimental-strip-types tests/integration/letta-cognitive-recall-wiring.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
     "test:workpass96:finalizer-boundary": "node --experimental-strip-types tests/workpass96-action-finalizer-boundary.mjs",
@@ -1769,5 +1772,19 @@
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
     "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs"
+  },
+  "optionalDependencies": {
+    "@letta-ai/letta-agent-sdk": "0.8.52"
+  },
+  "peerDependencies": {
+    "@letta-ai/letta-code": ">=0.34.23 <0.35.0"
+  },
+  "peerDependenciesMeta": {
+    "@letta-ai/letta-code": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1"
   }
 }

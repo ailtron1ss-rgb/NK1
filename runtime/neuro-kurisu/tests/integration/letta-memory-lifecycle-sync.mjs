@@ -1,0 +1,214 @@
+import assert from 'node:assert/strict';
+import { MemorySubsystemRuntime } from '../../src/organism/core/MemorySubsystemRuntime.ts';
+
+function makeClient() {
+  const state = { createOptions: [], sessionOptions: [], prompts: [], closedSessions: 0 };
+  const client = {
+    async createAgent(options) {
+      state.createOptions.push(options);
+      return 'agent-lifecycle-test';
+    },
+    resumeSession(agentId, options = {}) {
+      assert.equal(agentId, 'agent-lifecycle-test');
+      state.sessionOptions.push(options);
+      return {
+        async ready() {},
+        async send(prompt) { state.prompts.push(prompt); },
+        async *stream() {
+          if (!state.prompts.at(-1)?.includes('NK1_MEMORY_QUERY_JSON:')) {
+            yield { type: 'tool_call', toolCallId: 'lifecycle-write', toolName: 'Write', toolInput: { file_path: 'memory/experience/test.md' } };
+            yield { type: 'tool_result', toolCallId: 'lifecycle-write', isError: false, content: 'written' };
+          }
+          yield { type: 'assistant', content: 'Fake provider acknowledged this request; no durability is implied.' };
+          yield { type: 'result', success: true, durationMs: 1, conversationId: 'conv-lifecycle-test' };
+        },
+        async close() { state.closedSessions += 1; },
+      };
+    },
+  };
+  return { client, state };
+}
+
+const { client, state } = makeClient();
+const runtime = new MemorySubsystemRuntime({ letta: { enabled: true, client } });
+
+// Restore is intentionally suppressed from mirroring: boot-time compatibility
+// reconstruction must not bulk-export historical memories to an external store.
+runtime.restoreFromPersisted({ memory: {}, advanced: {} });
+assert.equal(state.prompts.length, 0);
+
+const item = runtime.fabric.encode({
+  content: 'Kurisu retained a controlled memory lifecycle test.',
+  kind: 'episodic',
+  tags: ['integration-test'],
+  context: { testRun: 'workpass328' },
+  salience: 0.7,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.2,
+  goalRelevance: 0.1,
+  socialRelevance: 0.0,
+  predictionError: 0.1,
+  confidence: 0.9,
+  epistemicStatus: 'fact',
+  source: 'unit-test',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+});
+assert.ok(item?.id);
+await runtime.flushLettaMemorySync();
+assert.equal(state.createOptions.length, 1);
+assert.deepEqual(state.createOptions[0].baseTools, []);
+assert.ok(state.sessionOptions[0].allowedTools.includes('Write'));
+assert.equal(state.sessionOptions[0].filesystemConfinement, 'memory');
+assert.ok(state.prompts.some((prompt) => prompt.includes('NK1_MEMORY_RECORD_JSON:')));
+assert.ok(state.prompts.some((prompt) => prompt.includes('Kurisu retained a controlled memory lifecycle test.')));
+assert.equal(runtime.lettaBridge.snapshot().metrics.lifecycleUpserts, 1);
+
+const canonicalCountBeforeRecall = runtime.memoryOS.size();
+const hybridRecall = await runtime.retrieveForCognitionWithLettaCandidates('controlled memory lifecycle test', { limit: 3 });
+assert.ok(Array.isArray(hybridRecall.canonicalRecords));
+assert.equal(hybridRecall.externalStatus.status, 'candidate-available');
+assert.equal(hybridRecall.externalCandidate.trust, 'untrusted-candidate');
+assert.equal(hybridRecall.externalCandidate.evidence, 'agent-response-unverified');
+assert.equal(runtime.memoryOS.size(), canonicalCountBeforeRecall, 'Letta recall must not write into canonical memory');
+assert.equal(state.prompts.length, 2);
+
+// Suppressing event-log output must not bypass committed-memory mirroring.
+runtime.fabric.encode({
+  content: 'This deliberately suppresses event-log emission only.',
+  kind: 'episodic',
+  tags: [],
+  context: {},
+  salience: 0.4,
+  emotionalWeight: 0.0,
+  identityRelevance: 0.0,
+  goalRelevance: 0.0,
+  socialRelevance: 0.0,
+  predictionError: 0.0,
+  confidence: 0.8,
+  epistemicStatus: 'fact',
+  source: 'unit-test',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+}, { emitEvent: false });
+await runtime.flushLettaMemorySync();
+assert.equal(state.prompts.length, 3);
+assert.equal(runtime.lettaBridge.snapshot().metrics.lifecycleUpserts, 2);
+assert.ok(state.prompts[2].includes('This deliberately suppresses event-log emission only.'));
+
+assert.equal(runtime.fabric.forgetById(item.id, 'test-forget'), true);
+await runtime.flushLettaMemorySync();
+assert.equal(state.prompts.length, 4);
+assert.ok(state.prompts[3].includes('Canonical NK1 memory lifecycle event: FORGET.'));
+assert.ok(state.prompts[3].includes(item.id));
+assert.equal(runtime.lettaBridge.snapshot().metrics.forgetRequests, 1);
+assert.equal(runtime.lettaBridge.snapshot().metrics.forgetResponsesReceived, 1);
+
+await runtime.close();
+
+// A failed external write must remain in the snapshot-backed outbox and replay
+// on restart instead of being silently lost when the process-local queue dies.
+const failingClient = {
+  async createAgent() { return 'agent-lifecycle-test'; },
+  resumeSession() {
+    return {
+      async ready() {},
+      async send() { throw new Error('simulated-network-outage'); },
+      async *stream() { yield { type: 'assistant', content: 'should never be reached' }; },
+      async close() {},
+    };
+  },
+};
+const failingRuntime = new MemorySubsystemRuntime({ letta: { enabled: true, client: failingClient } });
+failingRuntime.fabric.encode({
+  content: 'This record must survive a Letta transport failure.',
+  kind: 'episodic',
+  tags: ['outbox-test'],
+  context: { testRun: 'workpass328-outbox' },
+  salience: 0.7,
+  emotionalWeight: 0.0,
+  identityRelevance: 0.0,
+  goalRelevance: 0.0,
+  socialRelevance: 0.0,
+  predictionError: 0.0,
+  confidence: 0.85,
+  epistemicStatus: 'fact',
+  source: 'unit-test',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+});
+await failingRuntime.flushLettaMemorySync();
+const failedSnapshot = failingRuntime.snapshot();
+assert.equal(failedSnapshot.lettaSyncOutbox.version, 1);
+assert.equal(failedSnapshot.lettaSyncOutbox.entries.length, 1);
+assert.ok(failedSnapshot.lettaSyncOutbox.entries[0].attempts >= 1);
+assert.match(failedSnapshot.lettaSyncOutbox.entries[0].lastError, /simulated-network-outage/);
+assert.equal(failingRuntime.lettaSyncOutboxStatus().pending, 1);
+
+const recovered = makeClient();
+const recoveredRuntime = new MemorySubsystemRuntime({ letta: { enabled: true, client: recovered.client } });
+recoveredRuntime.restoreFromPersisted({
+  memory: {
+    lettaBridge: failedSnapshot.lettaBridge,
+    lettaSyncOutbox: failedSnapshot.lettaSyncOutbox,
+  },
+  advanced: {},
+});
+await recoveredRuntime.flushLettaMemorySync();
+assert.equal(recoveredRuntime.lettaSyncOutboxStatus().pending, 0);
+assert.equal(recoveredRuntime.lettaSyncOutboxStatus().completedReceipts, 1);
+assert.ok(recovered.state.prompts.some((prompt) => prompt.includes('This record must survive a Letta transport failure.')));
+assert.equal(recoveredRuntime.snapshot().lettaSyncOutbox.entries.length, 0);
+await recoveredRuntime.close();
+
+// A canonical forget must supersede an unsent upsert and move to the front
+// of the outbox even when the provider is failing.
+const deletePriorityClient = {
+  async createAgent() { return 'agent-lifecycle-test'; },
+  resumeSession() {
+    return {
+      async ready() {},
+      async send() { throw new Error('simulated-network-outage'); },
+      async *stream() { yield { type: 'assistant', content: 'should never be reached' }; },
+      async close() {},
+    };
+  },
+};
+const deletePriorityRuntime = new MemorySubsystemRuntime({ letta: { enabled: true, client: deletePriorityClient } });
+const deletePriorityItem = deletePriorityRuntime.fabric.encode({
+  content: 'This pending write must be superseded by canonical deletion.',
+  kind: 'episodic',
+  tags: ['delete-priority'],
+  context: { testRun: 'workpass328-delete-priority' },
+  salience: 0.6,
+  emotionalWeight: 0.0,
+  identityRelevance: 0.0,
+  goalRelevance: 0.0,
+  socialRelevance: 0.0,
+  predictionError: 0.0,
+  confidence: 0.85,
+  epistemicStatus: 'fact',
+  source: 'unit-test',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+});
+assert.ok(deletePriorityItem?.id);
+await deletePriorityRuntime.flushLettaMemorySync();
+assert.equal(deletePriorityRuntime.lettaSyncOutboxStatus().pending, 1);
+assert.equal(deletePriorityRuntime.getLettaSyncOutboxSnapshot().entries[0].input.action, 'upsert');
+assert.equal(deletePriorityRuntime.fabric.forgetById(deletePriorityItem.id, 'delete-priority-test'), true);
+await deletePriorityRuntime.flushLettaMemorySync();
+const priorityQueue = deletePriorityRuntime.getLettaSyncOutboxSnapshot().entries;
+assert.equal(priorityQueue.length, 1);
+assert.equal(priorityQueue[0].input.action, 'forget');
+assert.equal(priorityQueue[0].input.id, deletePriorityItem.id);
+assert.ok(!priorityQueue.some((entry) => entry.input.action === 'upsert' && entry.input.id === deletePriorityItem.id));
+console.log('LETTA_MEMORY_LIFECYCLE_SYNC=PASS');

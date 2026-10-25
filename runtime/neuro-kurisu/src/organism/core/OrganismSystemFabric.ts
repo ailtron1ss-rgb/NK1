@@ -123,6 +123,15 @@ export class OrganismSystemFabric {
 
     this.world.restoreFromPersisted({ persisted, cognition, advanced, consciousness, learning });
     this.memory.restoreFromPersisted({ memory, advanced });
+    // The memory snapshot may be carried in the system-fabric envelope rather
+    // than in legacy facets; accept both persisted shapes without enabling Letta.
+    const lettaMemorySnapshot =
+      system?.systems?.memory?.lettaBridge ??
+      system?.memory?.lettaBridge ??
+      persisted?.systems?.memory?.lettaBridge;
+    if (lettaMemorySnapshot && typeof lettaMemorySnapshot === 'object') {
+      this.memory.lettaBridge.restore(lettaMemorySnapshot);
+    }
     this.embodiment.restoreFromPersisted({ cognition, embodiment:facets.embodiment ?? {}, advanced });
     this.agency.restore({
       selfProjects:evolution.selfProjects,

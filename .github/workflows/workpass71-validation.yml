@@ -104,10 +104,18 @@ jobs:
         run: npm --prefix app run test:embodiment-timeline
       - name: Run app script regression suite
         run: npm --prefix app run test:scripts
+      - name: WorkPass328 Letta memory bridge contracts
+        run: npm --prefix runtime/neuro-kurisu run test:letta-memory-bridge
+      - name: WorkPass328 Letta canonical lifecycle and hybrid recall
+        run: npm --prefix runtime/neuro-kurisu run test:letta-memory-lifecycle-sync
+      - name: WorkPass328 Letta live cognitive recall wiring
+        run: npm --prefix runtime/neuro-kurisu run test:letta-cognitive-recall-wiring
       - name: App typecheck
         run: npm --prefix app run typecheck
       - name: App development bundle build
         run: npm --prefix app run build:dev
+      - name: Install locked runtime dependencies and Node type declarations
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Recovered rebuild, causal replay, avatar storage, and Live2D regressions

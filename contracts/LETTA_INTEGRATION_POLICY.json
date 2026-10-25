@@ -1,6 +1,6 @@
 {
   "source": "letta-main.zip",
-  "classification": "reference-governance-only",
+  "classification": "governance-reference-plus-optional-memory-provider",
   "currentRuntimeAvailableInArchive": false,
   "rules": {
     "canonicalSource": "Neuro-Kurisu 35.40",
@@ -9,6 +9,66 @@
     "provenanceArchivesAreImmutable": true,
     "credentialFilesExcluded": true,
     "generatedArtifactsRequireHumanReview": true,
-    "telemetryDefault": {"enabled": true, "localOnly": true, "redactSensitive": true, "exportAllowed": false, "retentionDays": 30}
-  }
+    "telemetryDefault": {
+      "enabled": true,
+      "localOnly": true,
+      "redactSensitive": true,
+      "exportAllowed": false,
+      "retentionDays": 30
+    },
+    "externalMemoryProviderEnabledByDefault": false,
+    "nk1RemainsCanonicalMemoryAndActionOwner": true,
+    "recalledContentTrust": "untrusted-candidate",
+    "secretsRedactedBeforeOutboundRequests": true,
+    "providerResponseIsNotDurabilityProof": true,
+    "humanApprovalRequiredForGeneratedArtifactPromotion": true,
+    "legacyArchiveRemainsProvenanceOnly": true,
+    "canonicalMemoryLifecycleObserverEnabledWhenOptedIn": true,
+    "historicalMemoryBackfillByDefault": false,
+    "letTaForgetRequestIsUnverified": true,
+    "nativeMutationCompletesBeforeExternalSync": true,
+    "syncSuppressedDuringRuntimeRestore": true,
+    "defaultBackend": "local",
+    "cloudBackendRequiresExplicitFlag": true,
+    "serverSideToolsAllowed": [],
+    "memoryAgentSkillsDisabled": true,
+    "sessionAllowedTools": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "LS"
+    ],
+    "localFilesystemConfinement": "memory",
+    "cloudFilesystemConfinementAvailable": false,
+    "eventLogSuppressionDoesNotSuppressCanonicalMemorySync": true,
+    "externalRecallPromotedToCanonicalAutomatically": false,
+    "durableSyncOutbox": false,
+    "externalMemorySyncBestEffort": true,
+    "productionReady": false,
+    "snapshotBackedSyncOutbox": true,
+    "cognitiveRecallFeatureFlag": "NK1_LETTA_COGNITIVE_RECALL=1",
+    "cognitiveRecallRequiresProviderOptIn": true,
+    "externalCandidateOutputPath": "OrganismCore.observe.workspace.content.externalMemoryCandidate",
+    "externalCandidateAffectsCanonicalRetrievalRows": false,
+    "externalCandidateAffectsActionOrLearningScores": false,
+    "externalCandidateOutputCharLimit": 1600,
+    "externalCandidateTrust": "untrusted-candidate"
+  },
+  "activeRuntimeAdapter": "runtime/neuro-kurisu/src/organism/integration/letta/LettaMemoryBridge.ts",
+  "activeSdk": "https://github.com/letta-ai/letta-agent-sdk",
+  "integrationNotes": [
+    "The archived letta-main.zip remains a historical/governance reference; it is not imported as the current runtime.",
+    "The runtime adapter uses the current Letta TypeScript Agent SDK with MemFS enabled.",
+    "Provider responses must not directly mutate NK1 canonical memory, goals, self-model, or action state.",
+    "SDK dependency and lockfile still require a reproducible Node 24 install before release.",
+    "Cloud backend is never inferred from the mere presence of LETTA_API_KEY; NK1_LETTA_BACKEND=cloud is required.",
+    "The adapter uses an allowlisted set of file tools, disables server-side web tools/skills, and enables the SDK memory-filesystem confinement for local sessions.",
+    "Hybrid recall returns native NK1 records plus a separate untrusted Letta candidate; callers must review it and it is not automatically stored as canonical memory.",
+    "The bounded sync outbox and receipts are projected into facets.memory in full and hot checkpoints and replayed after restore when pending intents were saved. This is not transactionally coupled to FileStateStore commit; crash injection and reconciliation remain required before production.",
+    "Canonical forget supersedes queued upserts for the same ID and is prioritized over failed non-delete writes; queue overflow is explicitly surfaced as requiresReconciliation.",
+    "OrganismCore's live cognition read path can expose a Letta candidate in the returned workspace only when NK1_LETTA_COGNITIVE_RECALL=1 and the provider itself is enabled.",
+    "The external candidate is segregated from native cognitionMemoryItems/advancedRetrieved and is not used in numeric action/learning heuristics; downstream response consumers must treat it as untrusted data."
+  ]
 }
