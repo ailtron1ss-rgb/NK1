@@ -245,6 +245,20 @@ try {
   const migratedSeed=migratePersistedOrganism(migrationSeed);
   assert.ok(migratedSeed.system.causalAccountability.quarantinedExecutionIds?.includes('exec-state-migration-quarantine'),
     'state migration must preserve execution quarantine tombstones across restart');
+
+  const migrationRevision = {
+    revisionId:'outcome-revision:migration-retention', executionId:'exec:migration-retention', tool:'device.read',
+    revisionNumber:1, source:'authoritative-provider-receipt', providerReceiptHash:'a'.repeat(64),
+    baseFingerprint:'b'.repeat(64), revisionFingerprint:'c'.repeat(64), at:10, tick:1, ok:true,
+    verified:true, outcomeClass:'verified', basis:'tool-contract', confidence01:0.9, status:'verified',
+  };
+  migrationSeed.system.outcomeVerification = {
+    ...(migrationSeed.system.outcomeVerification ?? {}),
+    evidenceRevisions:[migrationRevision,...Array.from({length:2050},(_,i)=>({revisionId:'invalid-migration-row-'+i}))],
+  };
+  const migratedRevisions = migratePersistedOrganism(migrationSeed).system.outcomeVerification.evidenceRevisions;
+  assert.ok(migratedRevisions.some(row=>row.revisionId===migrationRevision.revisionId),
+    'migration must validate provider revisions before applying its retention cap');
   core.registerActionTool({
     id:'observer.smoke',capability:'smoke',destructive:false,
     observationSource:{sourceId:'device-smoke',sourceClass:'device',channel:'sensor',independenceKey:'sensor:smoke'},
