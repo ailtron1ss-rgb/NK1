@@ -1,3 +1,10 @@
+## NK1 learning validation — assert durable identity precedence during restore (2026-10-25)
+
+- Adjusted the P23 restore-integrity regression to reflect the safety invariant: accepted experience rows are reconciled into the bounded dedupe cache before uncorrelated cache-only IDs, so a full cache can never crowd out durable outcomes needed to prevent duplicate processing.
+- The test still verifies that a valid cache-only recent ID survives after the durable identities are retained.
+
+---
+
 ## NK1 learning validation — fail closed on invalid SGD controls and throttle replay by resources (2026-10-25)
 
 - Updated P26 regression coverage to match the learner's fail-closed input contract: non-finite learning rates and sample weights must throw before any weights, bias, update count or diagnostics change.
