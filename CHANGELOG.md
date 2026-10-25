@@ -1,3 +1,18 @@
+## NK1 WorkPass359 — Reconcile signed-shadow fixture with durable candidate ID (2026-10-25)
+
+- [IDENTITY] The signed-shadow integration fixture now hashes the five-field candidate identity, including an explicit `null` lineage slot for a candidate without reflective revision provenance, matching the current writer and persistence validator.
+- [COVERAGE] Runtime evidence signature, candidate payload fingerprint, run/task binding and the no-auto-promotion invariant remain part of the same end-to-end regression.
+
+---
+
+## NK1 WorkPass358 — Separate execution validity from independent verification (2026-10-25)
+
+- [EVALUATOR] The independent candidate evaluator records whether execution itself succeeded separately from whether an independent verifier authenticated the run/task/context binding.
+- [FAIL-CLOSED] Verification outage still makes task success false, suppresses trusted run IDs and trajectory evidence, and cannot promote a candidate. Invalid or repeated execution traces remain non-executable.
+- [VALIDATION] The targeted evaluator regression is the acceptance gate for this metric separation; no broad CI-green claim is implied.
+
+---
+
 ## NK1 WorkPass357 — Align signed shadow fixture with canonical candidate identity (2026-10-25)
 
 - [IDENTITY-CONTRACT] Updated the signed-shadow end-to-end fixture to include the explicit nullable provenance slot used by the versioned candidate writer when computing a candidate ID.
