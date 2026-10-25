@@ -194,37 +194,41 @@ try {
   const durable = new AtomicFileSkillStorePersistence(filePath);
   const durableStore = new VersionedSkillCandidateStore(durable);
   const durableCandidate = durableStore.stageCandidate(proposal('g'), 'file-backed-skill', { instruction: 'persisted' });
-  const provenance = {
-    schemaVersion: 1, evaluationFingerprint: 'a'.repeat(64), sourceCandidateId: null,
-    planFingerprint: 'b'.repeat(64), datasetFingerprint: 'c'.repeat(64),
-    sourceEvidenceFingerprint: 'd'.repeat(64), dimensions: ['task-success'], createdAt: Date.now(),
+  const durableRevisionProvenance = {
+    schemaVersion: 1,
+    evaluationFingerprint: '1'.repeat(64),
+    sourceCandidateId: null,
+    planFingerprint: '2'.repeat(64),
+    datasetFingerprint: '3'.repeat(64),
+    sourceEvidenceFingerprint: '4'.repeat(64),
+    dimensions: ['task-success', 'trajectory'],
+    createdAt: Date.now(),
   };
-  const revisionCandidate = durableStore.stageCandidate(
-    proposal('h'), 'revision-backed-skill', { instruction: 'persisted with lineage' }, provenance,
+  const durableRevisionCandidate = durableStore.stageCandidate(
+    proposal('g-revision'), 'file-backed-revision-skill', { instruction: 'persisted with provenance' },
+    durableRevisionProvenance,
   );
   const afterRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
-  const restoredSnapshot = afterRestart.snapshot();
-  assert.equal(restoredSnapshot.candidates.find(item => item.candidateId === durableCandidate.candidateId)?.candidateId,
-    durableCandidate.candidateId, 'atomic file adapter restores standard candidate identity across reconstruction');
-  assert.deepEqual(
-    restoredSnapshot.candidates.find(item => item.candidateId === revisionCandidate.candidateId)?.revisionProvenance,
-    provenance,
-    'atomic file adapter preserves and validates revision provenance bound into candidate identity',
-  );
+  assert.equal(afterRestart.snapshot().candidates[0].candidateId, durableCandidate.candidateId,
+    'atomic file adapter restores ordinary candidate state across store reconstruction');
+  const restoredRevisionCandidate = afterRestart.snapshot().candidates.find(item => item.candidateId === durableRevisionCandidate.candidateId);
+  assert.ok(restoredRevisionCandidate, 'atomic file adapter accepts candidate IDs bound to revision provenance');
+  assert.deepEqual(restoredRevisionCandidate.revisionProvenance, durableRevisionProvenance,
+    'revision provenance survives validated durable JSON reconstruction');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
 
-  // Existing schema-1 files may still contain the pre-lineage four-field candidate ID.
+  // A schema-1 file created before revision provenance used a four-field candidate ID.
   const legacySnapshot = JSON.parse(readFileSync(filePath, 'utf8'));
   const legacyCandidate = legacySnapshot.candidates.find(item => item.skillId === 'file-backed-skill');
-  assert.ok(legacyCandidate, 'file-backed standard candidate exists before legacy identity check');
+  assert.ok(legacyCandidate, 'ordinary file-backed candidate exists for migration coverage');
   legacyCandidate.candidateId = createHash('sha256').update(JSON.stringify([
     legacyCandidate.skillId, legacyCandidate.version, legacyCandidate.proposalId, legacyCandidate.payloadFingerprint,
   ])).digest('hex');
   writeFileSync(filePath, JSON.stringify(legacySnapshot));
-  const legacyRestored = new AtomicFileSkillStorePersistence(filePath).read();
-  assert.equal(legacyRestored.candidates.find(item => item.skillId === 'file-backed-skill')?.candidateId,
-    legacyCandidate.candidateId, 'schema-1 candidate IDs without revision provenance remain readable after upgrade');
+  const migratedSnapshot = new AtomicFileSkillStorePersistence(filePath).read();
+  assert.equal(migratedSnapshot.candidates.find(item => item.skillId === 'file-backed-skill')?.candidateId,
+    legacyCandidate.candidateId, 'legacy candidate IDs remain readable when no revision provenance is present');
 } finally {
   rmSync(tempRoot, { recursive: true, force: true });
 }
