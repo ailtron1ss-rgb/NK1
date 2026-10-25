@@ -1,3 +1,15 @@
+## Latest durable checkpoint — learning restore + embodiment integrity pass (2026-10-25)
+
+- **Continue on the existing branch and PR only:** `feature/learning` → `integration`, draft PR [#79](https://github.com/ailtron1ss-rgb/NK1/pull/79). Do not create a duplicate PR. Keep `main` and the published Release ZIP unchanged.
+- **P36 restore:** replaced the ambiguous filtered-array inference with a typed bounded identifier normalizer for persisted receipt/observation ID caches. Rejects non-strings, empty/untrimmed values, control characters and overlong identifiers; deduplicates and bounds retained IDs. These IDs remain ordinary persistence data, never verifier capabilities. Regression coverage is in `runtime/neuro-kurisu/tests/p36-migration.mjs`.
+- **Verified outcome ledger:** restored the complete declared rejection-code contract, including `duplicate-evidence-ref` and `invalid-evidence-reference`. Extended `p23-verified-outcome-ledger-persistence.mjs` to cover an invalid evidence reference and its checksummed persistence round-trip. WorkPass105 now runs this persistence regression.
+- **Live2D:** viewer caches the last applied expression and skips repeat applications, while retaining changed-expression handling. WorkPass110 path filters now include the runtime viewer and `tests/live2d-integrity.mjs`, not just the app viewer.
+- **Validation boundary:** these code, regression, workflow and changelog commits are on `feature/learning`. Current exact-HEAD Actions results are not available: the latest visible P36 typecheck failure was for an older SHA and reported TS2322 in the identifier-cache restore expression; the later fix has not yet been confirmed by a fresh run. Do not mark the draft PR ready or claim production readiness until exact-HEAD CI passes.
+- **Still production-blocking:** host-supplied public verifier keyring and authenticated signed outcome corpus; a genuinely separate delayed-maturity evaluator with independent retention/transfer measurements; browser/device Live2D and sound-sync E2E; memory retrieval uplift and soak testing; license/source audit. These were not fabricated or bypassed in this pass.
+- **Release limitation:** the published ZIP is still the Oct 19 WorkPass70 Hotfix 1 asset. This pass leaves it and `main` unchanged; the available GitHub connector path here does not expose a verified binary-release-asset replacement operation, so no refreshed release ZIP is claimed.
+
+---
+
 ## Latest durable checkpoint — WorkPass535 production P36 evaluator bootstrap (2026-10-25)
 
 - Continue in `feature/learning` / draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate PR. Keep `main` and the Release ZIP unchanged.
