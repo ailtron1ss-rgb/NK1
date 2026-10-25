@@ -3,7 +3,7 @@
 - Fixed `StateMigrations` normalization so `outcomeVerification.records` and the nested records inside `projectionIndex` retain the identity fields that participate in a receipt fingerprint, including `evidenceEventId` and `outcomeClass`. Quarantine audit markers are preserved across migration as well.
 - Root cause was a lossy schema-migration mapping: it removed `outcomeClass` from the history row while preserving it in the projection index. A legitimate single receipt then appeared to conflict on restart and was quarantined.
 - Extended `big-pass-64-external-observer.mjs` to assert a real persisted Core round-trip retains verified external observations and outcome identity without quarantining a valid execution.
-- **Validation boundary:** GitHub Actions run #96 is queued for regression commit `ff6cd5cda3cda17433808371a99691fd6719c688`; final pass/fail will be recorded once the hosted job completes.
+- **Validation:** GitHub Actions [run #96](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167978971) passed on regression commit `ff6cd5cda3cda17433808371a99691fd6719c688`; the job includes `BIG_PASS_64_EXTERNAL_OBSERVER=PASS` and the persisted Core restore assertions.
 
 ## NK1 Emotion — prevent recalled-memory salience saturation (2026-10-25)
 
@@ -17,7 +17,7 @@
 - `OutcomeCognitionFabric.restore()` now checks restored projection-index identity against its record fingerprint, rejects the last-write-wins behavior for duplicate `executionId` values, and quarantines conflicting IDs in `CausalAccountabilityGraph` so the tombstone persists across restart.
 - Restored `verifiedExternal` is recomputed from the canonical external-postcondition contract rather than trusted as a stored boolean. Conflicting or causally quarantined outcomes remain as explicitly marked read-only audit records (`receiptQuarantined`); they are removed from the active projection index and evidence-revision ledger. Causal autobiography labels them `ambiguous-execution-quarantined`, and all new evidence/project/revision operations fail closed.
 - Project replay, external-observation attachment, authoritative-receipt revision, and `hasProjectionForExecution()` now respect quarantine. Added a regression that combines two individually plausible snapshots with conflicting tool/postcondition identities and verifies no later evidence can attach.
-- **Validation boundary:** projection-restore conflict regression plus real Core persistence round-trip are being validated together in [Actions run #96](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167978971); the previous attempts exposed a lossy `StateMigrations` mapping, now fixed in commit `82e6af4008e9475806fc0d80a600503802138c8d`.
+- **Validation:** [Actions run #96](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167978971) passed the projection-conflict restore, real Core persistence round-trip, recalled-affect regression, and observer/promotion sequence after the lossy `StateMigrations` mapping was fixed in commit `82e6af4008e9475806fc0d80a600503802138c8d`.
 
 ## NK1 WorkPass564 — bounded affect reactivation from retrieved memories (2026-10-25)
 
@@ -25,7 +25,7 @@
 - `EmotionAppraisalEngine` applies a bounded cue to relevance/arousal and surfaces `recalledAffect01` plus `recalledMemoryCount` in each new appraisal episode. Recalled emotional intensity does not directly alter valence or stress, so salience alone cannot be mistaken for positive meaning or present danger.
 - Added `workpass564-recalled-affect-appraisal.mjs` and wired it into the Node 24 reality-to-learning workflow, including both push and pull-request path filters.
 - The new appraisal metadata remains optional in the TypeScript snapshot contract, preserving compatibility with restored/constructed episodes that predate this pass.
-- **Validation:** [Actions run #92](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167647775) passed the recalled-affect appraisal regression; run #96 repeats it with the new restore-identity assertions.
+- **Validation:** [Actions run #96](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167978971) passed `workpass564-recalled-affect-appraisal` together with the restore-identity regression.
 
 ## NK1 Causal Accountability — quarantine live execution receipt conflicts (2026-10-25)
 
