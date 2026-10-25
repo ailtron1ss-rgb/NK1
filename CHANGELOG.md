@@ -1,3 +1,10 @@
+## NK1 P26 input-integrity fixture — initialize shared features before negative cases (2026-10-25)
+
+- Moved the valid feature-vector fixture before negative trainFeatures assertions so the regression exercises numeric validation rather than hitting a JavaScript temporal-dead-zone ReferenceError.
+- No runtime behavior changed; the test now reaches the intended target/rate/weight rejection paths.
+
+---
+
 ## NK1 P26 learner integrity — reject malformed training feedback before mutation (2026-10-25)
 
 - Added preflight validation for action identity, finite/ranged TD targets, finite learning rates/sample weights, required state features, and numeric extras before either online or feature-vector training.

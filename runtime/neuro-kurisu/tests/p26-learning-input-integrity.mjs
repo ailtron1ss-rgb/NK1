@@ -11,6 +11,7 @@ const state = {
 const learner = new ParametricPolicyLearner();
 const initial = learner.snapshot();
 const valid = { state, action: 'respond', target01: .9, learningRate01: .06 };
+const features = learner.features(state, undefined, 'respond');
 
 assert.throws(() => learner.train({ ...valid, target01: Number.NaN }), /target-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, learningRate01: Number.POSITIVE_INFINITY }), /rate-must-be-finite/);
