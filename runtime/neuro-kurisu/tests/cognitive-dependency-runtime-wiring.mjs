@@ -28,10 +28,11 @@ try {
   const first = runtime.cognitiveDependencySnapshot();
   assert.ok(first.lastTick > 0, 'the live runtime cycle must resolve a cognitive dependency frame');
   assert.ok(first.transitionCount >= 0);
-  const persisted = await new FileStateStore(dependencyStateFile).load();
-  assert.deepEqual(persisted, first, 'the routed graph snapshot must be durably written after a cycle');
-
   await runtime.stop();
+  runtime = undefined;
+  const persisted = await new FileStateStore(dependencyStateFile).load();
+  assert.deepEqual(persisted, first, 'the routed graph snapshot must be durably flushed at shutdown');
+
   runtime = new OrganismRuntime(runtimeConfig());
   await runtime.init();
   assert.deepEqual(runtime.cognitiveDependencySnapshot(), first, 'restart must restore the last graph snapshot');
