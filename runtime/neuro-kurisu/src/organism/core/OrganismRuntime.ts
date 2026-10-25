@@ -625,7 +625,10 @@ export class OrganismRuntime {
     const spend=this.core.cognitiveBudgetSpend(budgetMode==='deep'?'llm-deep':'llm-fast',tierCost,infoGain,'cognitive-proposal');
     if(!spend.accepted) return parseCognitiveProposal('budget constrained: preserve resources and verify supplied evidence before changing course','local-fallback');
     try {
-      const response=await this.config.languageInvoker(request);
+      // Never leak the host-only review receipt to any configured LanguageInvoker.
+      const providerRequest = { ...request };
+      delete providerRequest.internalDialogueReceipt;
+      const response=await this.config.languageInvoker(providerRequest);
       await this.core.recordLanguageBackend(response.backend, response.latencyMs, true);
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
       return parseCognitiveProposal(response.text,'llm');
