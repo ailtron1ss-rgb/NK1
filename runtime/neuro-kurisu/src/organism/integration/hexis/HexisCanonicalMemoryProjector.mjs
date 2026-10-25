@@ -20,8 +20,16 @@ const memoryKind = value => {
     : (kind === 'relationship' ? 'social' : 'semantic');
 };
 const memoryStatus = value => {
-  const status = String(value ?? '').toLowerCase();
-  return status === 'quarantined' ? 'hypothesis' : 'belief';
+  const status = String(value ?? '').trim().toLowerCase();
+  // Never reactivate memory explicitly archived, deleted, rejected or quarantined upstream.
+  if (['quarantined', 'archived', 'deleted', 'forgotten', 'rejected', 'inactive', 'superseded', 'blocked'].includes(status)) {
+    return 'quarantined';
+  }
+  if (['hypothesis', 'candidate', 'proposed', 'pending', 'unverified', 'draft'].includes(status)) return 'hypothesis';
+  if (['fact', 'verified', 'confirmed'].includes(status)) return 'fact';
+  if (['belief', 'active', 'approved', 'accepted'].includes(status)) return 'belief';
+  // Unknown source states must not be promoted to a belief by the adapter.
+  return 'unknown';
 };
 const contextText = value => {
   if (typeof value === 'string') return value.slice(0, 1200);
