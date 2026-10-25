@@ -1,3 +1,9 @@
+## NK1 WorkPass559 — make WorkPass294 typecheck deterministic (2026-10-25)
+
+- Added `npm ci` before WorkPass294's runtime typecheck and added the runtime lockfile/typecheck script to the workflow path filter.
+- Without the lock install, the runtime typecheck script fell back to the lightweight shim when no local TypeScript compiler / official Node typings existed; this produced misleading errors in child-process and filesystem APIs. With the lock, it uses the pinned TypeScript compiler and official Node typings, matching the successful Memory Recall validation path.
+- Also corrects the P23 restore regression's ordering assumption: valid experience IDs must lead the processed-ID cache so durable rows cannot be replayed twice, while the newest cache-only ID must still survive.
+
 ## NK1 WorkPass558 — align P23 restore test with durable-ID reconciliation order (2026-10-25)
 
 - Updated the P23 persisted-learning restore regression to match the implementation's intentional merge order: valid durable experience trace IDs are added first so their dedupe identity cannot be evicted by a polluted cache.
