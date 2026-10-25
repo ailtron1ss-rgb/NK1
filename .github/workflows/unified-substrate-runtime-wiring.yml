@@ -39,3 +39,5 @@ jobs:
         run: npm run test:workpass287:cognitive-cycle --prefix runtime/neuro-kurisu
       - name: Existing cognitive-boundary runtime wiring
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-cycle-boundary-runtime-wiring.mjs
+      - name: Operational runtime and substrate restart smoke
+        run: npm run test:smoke --prefix runtime/neuro-kurisu
