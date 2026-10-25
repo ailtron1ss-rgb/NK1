@@ -1,9 +1,15 @@
+## NK1 WorkPass537 — reconcile restored hot IDs with canonical memory (2026-10-25)
+
+- `MemoryFabric.restore()` now filters persisted hot IDs against the already-restored canonical MemoryOS2 records and removes duplicates before applying the hot-set limit.
+- Added a checkpoint regression containing both a nonexistent/evicted memory ID and a duplicate live ID; the restored hot set must contain only the canonical live ID.
+- Validation is pending for the current code/test head.
+
 ## NK1 WorkPass536 — isolate MemoryFabric restore from prior runtime state (2026-10-25)
 
 - Fixed `MemoryFabric.restore()` to reset counters, hot IDs, mutation receipts, Bloom tombstones, policy ledger and transient scheduler handles before applying a checkpoint; an omitted optional facet now restores to safe defaults instead of silently keeping the prior organism's idempotency journal.
 - Added a reused-runtime regression: write a memory with a command ID, restore a partial checkpoint without a MemoryFabric snapshot, then verify the same command ID can write into the new canonical state.
 - Added `MemoryFabric.ts` to the focused persistence workflow path filter so changes to the canonical lifecycle gateway run the same typecheck and memory regressions.
-- Exact-head validation is pending; no result is claimed until Actions completes.
+- CI run [#40161128299](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161128299) passed the official-types runtime typecheck and four focused memory regressions for the restore-isolation change.
 
 ## NK1 WorkPass535 — remove runtime typecheck blockers surfaced by persistence CI (2026-10-24)
 
