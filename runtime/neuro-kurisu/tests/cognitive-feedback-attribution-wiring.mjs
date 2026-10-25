@@ -17,7 +17,7 @@ function requireFeedbackGate(label, startMarker, endMarker, learnerName) {
     `${label}: matched generated actions must preserve normal learning`);
   assert.match(block, new RegExp(`${learnerName}Learner\\.recordUnselectedAction\\(`),
     `${label}: a losing generated action must be finalized without action reward credit`);
-  assert.match(block, /this\\.persisted\\.system\\.endogenousGoalGenesisB272\\s*=\\s*\w+Learner\\.snapshot\\(\\)/,
+  assert.ok(block.includes(`this.persisted.system.endogenousGoalGenesisB272 = ${learnerName}Learner.snapshot();`),
     `${label}: B272 terminal-decision state must be persisted after feedback`);
 }
 
@@ -41,7 +41,7 @@ assert.ok(learningStart > unselectedStart, 'unselected-candidate handling must b
 const unselectedMethod = b272.slice(unselectedStart, learningStart);
 assert.match(unselectedMethod, /unselectedActionHistory/);
 assert.match(unselectedMethod, /lastOutcomeTick/);
-assert.match(unselectedMethod, /this\\.state\\.rejectedGoals\\+\\+/);
+assert.ok(unselectedMethod.includes('this.state.rejectedGoals++'));
 assert.doesNotMatch(unselectedMethod, /actionPrototypeWeights|goalWeights|goalOutcomeMemory|outcomeHistory/,
   'an unselected proposal must not train action prototypes or pollute executed-action outcome memory');
 
