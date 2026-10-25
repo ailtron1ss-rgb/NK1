@@ -399,21 +399,46 @@ export class CognitiveEventFabric {
    */
   verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
     const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
+    const optional = ['appraisal','attention','memory','goal','plan'] as const;
     const byId = new Map(this.events.map(event => [event.id, event] as const));
     const found = new Map<string, CognitiveEventNode>();
     const missingStages: string[] = [];
     const invalidStages: string[] = [];
     let cycleTick: number | null = null;
 
-    for (const stage of required) {
+    const stageOrder: OperationalCycleStageName[] = [
+      'observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update',
+    ];
+    const requiredSet = new Set<string>(required);
+    const requestedOptional = new Set<OperationalCycleStageName>(
+      optional.filter(stage => Boolean(stageIds[stage])),
+    );
+
+    for (const stage of stageOrder) {
       const id = stageIds[stage];
-      const event = id ? byId.get(id) : undefined;
-      if (!event) { missingStages.push(stage); continue; }
-      if (event.stage !== stage) { invalidStages.push(`${stage}:expected-stage-${stage}-got-${event.stage}`); continue; }
+      const isRequired = requiredSet.has(stage);
+      if (!id) {
+        if (isRequired) missingStages.push(stage);
+        continue;
+      }
+      const event = byId.get(id);
+      if (!event) {
+        if (isRequired) missingStages.push(stage);
+        else invalidStages.push(`${stage}:missing-event`);
+        continue;
+      }
+      if (event.stage !== stage) {
+        invalidStages.push(`${stage}:expected-stage-${stage}-got-${event.stage}`);
+        continue;
+      }
       if (cycleTick === null) cycleTick = event.tick;
-      if (event.tick !== cycleTick) { invalidStages.push(`${stage}:tick-mismatch`); continue; }
+      if (event.tick !== cycleTick) {
+        invalidStages.push(`${stage}:tick-mismatch`);
+        continue;
+      }
       found.set(stage, event);
     }
+
     const edgeRequirements: Array<[OperationalCycleStageName, OperationalCycleStageName, string]> = [
       ['prediction','observation','prediction->observation'],
       ['action','prediction','action->prediction'],
@@ -422,6 +447,24 @@ export class CognitiveEventFabric {
       ['learning','outcome','learning->outcome'],
       ['self-update','learning','self-update->learning'],
     ];
+    const optionalEdgeRequirements: Array<[OperationalCycleStageName, OperationalCycleStageName, string]> = [
+      ['appraisal','observation','appraisal->observation'],
+      ['appraisal','prediction','appraisal->prediction'],
+      ['attention','appraisal','attention->appraisal'],
+      ['attention','prediction','attention->prediction'],
+      ['memory','attention','memory->attention'],
+      ['memory','observation','memory->observation'],
+      ['goal','appraisal','goal->appraisal'],
+      ['goal','memory','goal->memory'],
+      ['plan','goal','plan->goal'],
+      ['plan','prediction','plan->prediction'],
+    ];
+    for (const edge of optionalEdgeRequirements) {
+      if (requestedOptional.has(edge[0])) edgeRequirements.push(edge);
+    }
+    // If a plan phase is supplied, the required action must causally descend from it.
+    if (requestedOptional.has('plan')) edgeRequirements.push(['action','plan','action->plan']);
+
     const missingEdges: string[] = [];
     let validEdges = 0;
     for (const [childStage, parentStage, label] of edgeRequirements) {
@@ -430,8 +473,9 @@ export class CognitiveEventFabric {
       if (child && parent && child.parentIds.includes(parent.id)) validEdges++;
       else missingEdges.push(label);
     }
-    const stageCoverage = found.size / required.length;
-    const edgeCoverage = validEdges / edgeRequirements.length;
+    const expectedStageCount = required.length + requestedOptional.size;
+    const stageCoverage = found.size / Math.max(1, expectedStageCount);
+    const edgeCoverage = validEdges / Math.max(1, edgeRequirements.length);
     const integrity01 = clamp01(stageCoverage * .6 + edgeCoverage * .4);
     const complete = missingStages.length === 0 && invalidStages.length === 0 && missingEdges.length === 0;
     return { tick: cycleTick, complete, integrity01: complete ? 1 : integrity01, missingStages, invalidStages, missingEdges };
