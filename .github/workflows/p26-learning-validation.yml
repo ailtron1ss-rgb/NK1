@@ -52,6 +52,7 @@ on:
       - "runtime/neuro-kurisu/tests/p26-*.mjs"
       - "runtime/neuro-kurisu/tests/p36-*.mjs"
       - "runtime/neuro-kurisu/tests/p36-verified-outcome-ledger-evaluator.mjs"
+      - "runtime/neuro-kurisu/tests/p36-host-evaluator-bootstrap.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-110-autonomous-development-cycle.mjs"
       - "runtime/neuro-kurisu/tests/p27-page-hinkley-drift-detector.mjs"
       - "runtime/neuro-kurisu/tests/p28-drift-detector-benchmark.mjs"
@@ -73,6 +74,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P36AutonomousSelfDevelopment.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P36VerifiedOutcomeLedgerEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P36HostEvaluatorBootstrap.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - ".github/workflows/p26-learning-validation.yml"
@@ -242,6 +245,9 @@ jobs:
       - name: Run signed verified-outcome-ledger P36 evaluator regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p36:verified-ledger-evaluator
+      - name: Run trusted P36 host evaluator bootstrap regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p36:host-bootstrap
       - name: Run autonomous P36 end-to-end development cycle with trusted receipts
         working-directory: runtime/neuro-kurisu
         run: npm run test:big-pass-110
