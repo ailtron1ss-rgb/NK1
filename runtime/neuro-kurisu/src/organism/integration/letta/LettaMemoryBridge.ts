@@ -50,6 +50,10 @@ export interface LettaTurnMessage {
   success?: boolean;
   error?: unknown;
   errorCode?: unknown;
+  toolCallId?: string;
+  toolName?: string;
+  toolInput?: unknown;
+  isError?: boolean;
 }
 
 export interface LettaSessionLike {
@@ -77,7 +81,7 @@ export interface LettaBridgeOperationResult {
   agentId?: string;
   response?: string;
   redacted?: boolean;
-  evidence?: 'agent-response-unverified';
+  evidence?: 'agent-response-unverified' | 'file-tool-result-success-unverified-durability';
   trust?: 'untrusted-candidate';
 }
 
@@ -254,7 +258,7 @@ export class LettaMemoryBridge {
       'Reason JSON: ' + JSON.stringify(safeReason.text || 'canonical forget command'),
     ].join('\n');
     try {
-      const response = await this.runTurn(prompt);
+      const response = await this.runTurn(prompt, { requireMemoryMutation: true });
       const safeResponse = redactSecrets(response);
       if (safeResponse.redacted) this.snapshotState.metrics.redactions += 1;
       if (!safeResponse.text.trim()) return this.failed('assistant-no-response');
@@ -269,7 +273,7 @@ export class LettaMemoryBridge {
         agentId: this.agentId ?? undefined,
         response: safeResponse.text.slice(0, 4000),
         redacted: safeId.redacted || safeReason.redacted || safeResponse.redacted,
-        evidence: 'agent-response-unverified',
+        evidence: 'file-tool-result-success-unverified-durability',
       };
     } catch (error) {
       return this.failed(this.errorCode(error));
@@ -341,7 +345,7 @@ export class LettaMemoryBridge {
       this.snapshotState.metrics.successfulTurns += 1;
       this.snapshotState.lastOperationAt = Date.now();
       this.snapshotState.lastError = null;
-      return { ok: true, agentId: this.agentId ?? undefined, response: safeResponse.text.slice(0, 4000), redacted: inputRedacted || safeResponse.redacted, evidence: 'agent-response-unverified' };
+      return { ok: true, agentId: this.agentId ?? undefined, response: safeResponse.text.slice(0, 4000), redacted: inputRedacted || safeResponse.redacted, evidence: 'file-tool-result-success-unverified-durability' };
     } catch (error) {
       return this.failed(this.errorCode(error));
     }
@@ -424,7 +428,7 @@ export class LettaMemoryBridge {
     return agentId;
   }
 
-  private async runTurn(prompt: string): Promise<string> {
+  private async runTurn(prompt: string, options: { requireMemoryMutation?: boolean } = {}): Promise<string> {
     const operation = async (): Promise<string> => {
       if (!this.enabled) throw new Error('letta-disabled');
       const client = await this.loadClient();
@@ -446,7 +450,19 @@ export class LettaMemoryBridge {
         const chunks: string[] = [];
         let turnSucceeded: boolean | null = null;
         let terminalErrorCode: string | null = null;
+        let successfulMemoryMutation = false;
+        const toolNames = new Map<string, string>();
         for await (const message of session.stream()) {
+          if (message.type === 'tool_call' && typeof message.toolCallId === 'string' && typeof message.toolName === 'string') {
+            toolNames.set(message.toolCallId, message.toolName);
+            continue;
+          }
+          if (message.type === 'tool_result') {
+            const name = (typeof message.toolName === 'string' ? message.toolName : undefined) ??
+              (typeof message.toolCallId === 'string' ? toolNames.get(message.toolCallId) : undefined);
+            if (message.isError === false && name && /^(?:Write|Edit)$/i.test(name)) successfulMemoryMutation = true;
+            continue;
+          }
           if (message.type === 'result') {
             turnSucceeded = message.success === true;
             if (typeof message.errorCode === 'string') terminalErrorCode = message.errorCode;
@@ -456,11 +472,14 @@ export class LettaMemoryBridge {
           const chunk = messageText(message);
           if (chunk) chunks.push(chunk);
         }
-        // Letta SDK documents result.success as the authoritative turn outcome.
-        // Never acknowledge an outbox item from assistant text alone.
+        // SDK's terminal result is necessary but not sufficient: memory writes
+        // also require an explicitly successful Write/Edit tool result.
         if (turnSucceeded !== true) {
           const safeCode = terminalErrorCode ? redactSecrets(terminalErrorCode).text : '';
           throw new Error(safeCode ? 'letta-turn-unsuccessful:' + safeCode : 'letta-turn-not-confirmed');
+        }
+        if (options.requireMemoryMutation && !successfulMemoryMutation) {
+          throw new Error('letta-memory-mutation-not-confirmed');
         }
         return chunks.join('\n').trim();
       } finally {
