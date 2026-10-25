@@ -1,3 +1,8 @@
+## NK1 WorkPass103 — preserve organism status when Live2D becomes ready (2026-10-25)
+
+- Fixed a runtime viewer race where the asynchronous `live2d_ready` message overwrote the current organism action/emotion label (for example, `awake · respond · joy`) with the renderer status `Live2D online`. The readiness message now only fills the label while the page is still initializing; ongoing organism state remains visible.
+- Regression evidence before the fix: Live2D runtime browser workflow [40170364631](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40170364631) failed at `app/scripts/test-live2d-runtime-browser.mjs:197` because actual status was `Live2D online` while expected organism status was `awake · respond · joy`. This entry records the defect and fix; post-fix verification is pending.
+
 ## NK1 WorkPass102 — standalone runtime uses EmbodimentIntent v1 (2026-10-25)
 
 - Unified standalone runtime's Live2D producer on the same `kurisu_embodiment_intent` v1 envelope used by React. It now publishes one message containing the active viseme, expression, gaze/body state, speech identity, runtime-TTS start clock, and motion token instead of three split producer channels.
