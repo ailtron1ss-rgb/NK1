@@ -1,3 +1,15 @@
+## Current source-stack checkpoint — Mem0 integration WorkPass 1 (2026-10-24)
+
+- Draft PR [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100) implements opt-in Mem0 recall on `workpass70-source`.
+- MemoryOS2 remains canonical. Remote notes enter context only when both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1` are set, capped at three sanitized low-priority untrusted notes. No automatic cloud export or promotion.
+- Added an internal scope-bound delete operation: a valid UUID must have been returned by a scoped search/add from this adapter process, the write gate and per-operation approval are required, linked memories are never cascaded, and no HTTP delete route is exposed.
+- Dedicated Node 24 CI now checks server syntax, 11 adapter/context/deletion tests, and the real server's disabled-provider diagnostics/search routes via the existing fake-local-LLM HTTP test. Current exact-head run was still queued/pending at the last check; earlier run [40126269767](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126269767) passed only the previous nine-case suite.
+- The broader runtime typecheck [40126269720](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126269720) remains failed with 88 diagnostics in the wider source tree and no diagnostics naming the Mem0 adapter or LanguageOrgan. Overall build is not clean; live provider behavior and independent RU/EN recall quality remain unverified.
+- No changes to `main` or release assets. Keep PR #100 Draft until current-head targeted CI, live Mem0 contract, retention/deletion review and independent retrieval evaluation are complete.
+
+
+---
+
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.

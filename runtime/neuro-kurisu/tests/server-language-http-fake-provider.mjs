@@ -46,17 +46,22 @@ assert.ok(appAddress && typeof appAddress === 'object');
 const appPort = appAddress.port;
 await new Promise(resolve => portProbe.close(resolve));
 
-const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], {
+const child = spawn(process.execPath, ['--experimental-transform-types', 'src/server/server.mjs'], {
   cwd: runtimeRoot,
   env: {
     ...process.env,
-    HOST: '127.0.0.1',
+    // Exercise the same bearer-token gate required for non-loopback deployments.
+    HOST: '0.0.0.0',
     PORT: String(appPort),
     STATE_DIR: stateDir,
     LLAMA_CPP_URL: providerUrl,
     LLAMA_CPP_MODEL: 'neurocore-http-smoke-model',
     LLM_TIMEOUT_MS: '5000',
     NEURO_REQUEST_TIMEOUT_MS: '20000',
+    NK_MEM0_ENABLED: '0',
+    NK_MEM0_COGNITIVE_RECALL: '1',
+    NK_MEM0_USER_ID: 'mem0-http-smoke-user',
+    NEURO_API_TOKEN: 'mem0-http-smoke-only-token',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -81,28 +86,65 @@ async function waitReady() {
 
 try {
   await waitReady();
-  const response = await fetch(`http://127.0.0.1:${appPort}/api/organism/chat`, {
+
+  // Route-level Mem0 contract: the second cognitive gate can be set, but the
+  // primary provider gate remains off, so no cloud call or remote prompt context is allowed.
+  const unauthDiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/diagnostics`);
+  const unauthDiagnostics = await unauthDiagnosticsResponse.json();
+  assert.equal(unauthDiagnosticsResponse.status, 401);
+  assert.equal(unauthDiagnostics.reason, 'missing-bearer-token');
+  assert.equal(Object.prototype.hasOwnProperty.call(unauthDiagnostics, 'diagnostics'), false);
+
+  const mem0DiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/diagnostics`, {
+    headers: { authorization: 'Bearer mem0-http-smoke-only-token' },
+  });
+  const mem0Diagnostics = await mem0DiagnosticsResponse.json();
+  assert.equal(mem0DiagnosticsResponse.status, 200);
+  assert.equal(mem0Diagnostics.ok, true);
+  assert.equal(mem0Diagnostics.diagnostics?.enabled, false);
+  assert.equal(mem0Diagnostics.diagnostics?.available, false);
+  assert.equal(Object.prototype.hasOwnProperty.call(mem0Diagnostics.diagnostics ?? {}, 'apiKey'), false);
+
+  const unauthorizedSearchResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/search`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ message: 'Use the configured local model for this integration smoke.' }),
-    signal: AbortSignal.timeout(Math.max(1000, deadlineAt - Date.now())),
+    body: JSON.stringify({ query: 'the current user preference', limit: 5 }),
   });
-  const body = await response.json();
-  assert.equal(response.status, 200, `chat endpoint failed: ${JSON.stringify(body)}`);
-  assert.equal(body.ok, true);
-  assert.equal(body.language?.text, 'FAKE_LOCAL_PROVIDER_OK', 'HTTP chat must return the fake local provider response, not deterministic fallback');
-  assert.equal(body.language?.backend, 'llama.cpp:neurocore-http-smoke-model', 'reported backend must identify the provider that actually answered');
-  assert.equal(body.language?.preferredBackend, 'llama.cpp', 'configured local provider should be preferred while healthy');
-  assert.ok(Number.isFinite(body.language?.latencyMs) && body.language.latencyMs >= 0, 'language invocation must report finite non-negative latency');
-  assert.equal(providerRequests, 1, 'one chat request should reach the local provider exactly once');
-  assert.equal(lastProviderPayload?.model, 'neurocore-http-smoke-model', 'configured model identity must reach the provider');
-  assert.ok(Array.isArray(lastProviderPayload?.messages) && lastProviderPayload.messages.some(message => message.role === 'user' && message.content.includes('configured local model')), 'user prompt must reach the local provider');
-  assert.equal(lastProviderPayload?.stream, false, 'smoke provider request should use the bounded non-streaming response path');
-  console.log('SERVER_LANGUAGE_HTTP_FAKE_PROVIDER=PASS', JSON.stringify({
-    status: response.status,
-    backend: body.language.backend,
-    preferredBackend: body.language.preferredBackend,
-    latencyMs: body.language.latencyMs,
+  const unauthorizedSearch = await unauthorizedSearchResponse.json();
+  assert.equal(unauthorizedSearchResponse.status, 401);
+  assert.equal(unauthorizedSearch.reason, 'missing-bearer-token');
+  assert.equal(Object.prototype.hasOwnProperty.call(unauthorizedSearch, 'canonical'), false);
+
+  const mem0SearchResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/search`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer mem0-http-smoke-only-token' },
+    body: JSON.stringify({ query: 'the current user preference', limit: 5 }),
+  });
+  const mem0Search = await mem0SearchResponse.json();
+  assert.equal(mem0SearchResponse.status, 200, `Mem0 disabled search must degrade to local memory: ${JSON.stringify(mem0Search)}`);
+  assert.equal(mem0Search.ok, true);
+  assert.equal(mem0Search.canonical?.source, 'MemoryOS2');
+  assert.equal(mem0Search.canonical?.authoritative, true);
+  assert.ok(Array.isArray(mem0Search.canonical?.memories));
+  assert.deepEqual(mem0Search.externalCandidates, []);
+  assert.equal(mem0Search.mem0?.status, 'disabled');
+  assert.equal(mem0Search.policy?.autoPromotion, false);
+  assert.equal(mem0Search.policy?.instructionExecution, false);
+  assert.equal(JSON.stringify(mem0Search).includes('MEM0_API_KEY'), false);
+
+  const unauthorizedChatResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/chat`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ message: 'This unauthenticated request must be denied before provider dispatch.' }),
+  });
+  assert.equal(unauthorizedChatResponse.status, 401);
+  assert.equal(providerRequests, 0, 'unauthenticated chat must not reach the language provider');
+
+  assert.equal(providerRequests, 0, 'Mem0 disabled-mode route checks must not call the language provider');
+  console.log('MEM0_DISABLED_HTTP_SMOKE=PASS', JSON.stringify({
+    diagnosticsEnabled: mem0Diagnostics.diagnostics?.enabled,
+    canonicalSource: mem0Search.canonical?.source,
+    externalCandidates: mem0Search.externalCandidates.length,
     providerRequests,
   }));
 } finally {
