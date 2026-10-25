@@ -120,6 +120,11 @@ export class ParametricPolicyLearner{
   }
 
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    if(!ACTIONS.includes(input.action))throw new TypeError('invalid-action');
+    if(typeof input.target01!=='number'||!Number.isFinite(input.target01))throw new TypeError('target-must-be-finite');
+    if(input.target01<0||input.target01>1)throw new RangeError('target-out-of-range');
+    if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01))throw new TypeError('rate-must-be-finite');
+    if(input.sampleWeight01!==undefined&&(typeof input.sampleWeight01!=='number'||!Number.isFinite(input.sampleWeight01)))throw new TypeError('sample-weight-must-be-finite');
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
@@ -146,6 +151,12 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    if(!ACTIONS.includes(input.action))throw new TypeError('invalid-action');
+    if(typeof input.target01!=='number'||!Number.isFinite(input.target01))throw new TypeError('target-must-be-finite');
+    if(input.target01<0||input.target01>1)throw new RangeError('target-out-of-range');
+    if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01))throw new TypeError('rate-must-be-finite');
+    if(input.sampleWeight01!==undefined&&(typeof input.sampleWeight01!=='number'||!Number.isFinite(input.sampleWeight01)))throw new TypeError('sample-weight-must-be-finite');
+    if(!Array.isArray(input.features)||input.features.some(v=>typeof v!=='number'||!Number.isFinite(v)))throw new TypeError('features-must-be-finite');
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};

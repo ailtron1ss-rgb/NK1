@@ -1,3 +1,13 @@
+## Latest durable checkpoint — WorkPass344 (2026-10-25)
+
+- Parametric policy training rejects invalid inputs atomically: non-finite target/rate/sample weight, invalid action and non-finite feature vector.
+- Payload-budget test measures canonical JSON bytes, including the quotes added around string values.
+- Cause-linked replay fixtures now provide a matching pre-action tick and explicit attributed post-action/success fields, so records should satisfy the strict runtime grounding contract instead of being silently rejected.
+- B272 goal value no longer adds a reward solely because a candidate was generated later in the enumeration order; calibrated intrinsic drive has more headroom to affect the bounded score.
+- WorkPass343 fail-closed cycle restore, Node strip-only compatibility, and the corrected WorkPass294 static contract assertion remain in place. Exact-head CI is still required; Release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass343 (2026-10-25)
 
 - Cycle restore now verifies persisted aggregate counter coherence before trusting the last-cycle completion flag; inconsistent counters fail closed.

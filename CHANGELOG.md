@@ -1,3 +1,13 @@
+## NK1 WorkPass344 — preserve learner input integrity and make causal replay fixtures satisfy grounding (2026-10-25)
+
+- [LEARNING INPUT GATE] `ParametricPolicyLearner.train()` and `trainFeatures()` now reject non-finite targets, learning rates and weights, invalid actions, and non-finite feature vectors before touching parameters or diagnostics. This matches the existing atomic-rejection regression.
+- [PAYLOAD BUDGET] Fixed WorkPass291's boundary fixture to measure canonical JSON bytes. A string of 262,144 raw characters is actually 262,146 UTF-8 bytes when serialized with JSON quotes; the exact-budget test now uses `MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES - 2`.
+- [CAUSAL REPLAY] WorkPass90 replay-diversity fixtures and WorkPass115's 24-record replay probe now bind `trace.tick` to `stateBefore.tick`, advance the post-state tick, and include explicit matching `lastAction`/`lastActionSuccess`.
+- [INTRINSIC GOALS] Removed the unconditional bonus derived from candidate loop index in B272's predicted goal value. Candidate index is a search-order detail, not evidence; its bonus could saturate values and mask a high-confidence intrinsic-drive contribution.
+- [VALIDATION] Exact-head CI must confirm P26, WorkPass291, WorkPass110 and Core regression outcomes. WorkPass294 has passed with runtime typecheck on WorkPass343. Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass343 — fail closed on cycle counter corruption and support Node strip-only runtime
 
 - [FIXED] `UnifiedCognitiveCycle.restore()` now refuses to treat `lastComplete=true` as trustworthy when persisted cycle aggregates do not form a valid complete/incomplete partition or broken lineages exceed incomplete cycles.
