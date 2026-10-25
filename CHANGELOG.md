@@ -1,3 +1,11 @@
+## [NK1][core] Validate supplied optional phases in the causal cognitive-cycle spine (2026-10-25)
+
+- Fixed a verifier gap: `verifyOperationalCycle` previously validated only the six legacy core phases and silently ignored an explicitly supplied optional phase ID if that ID did not exist.
+- The verifier now rejects missing/incorrect optional phase events, enforces same-tick ownership, and checks the causal edges for each optional stage actually supplied. A provided plan also must link to the action. Legacy callers that supply only the original six phases remain compatible.
+- Integrity coverage now uses the number of required plus actually requested optional phases, instead of dividing by the legacy six-stage count. WorkPass321 is the targeted validation.
+
+---
+
 ## [NK1][core] Align WorkPass319 with the current cognitive-cycle persistence API (2026-10-25)
 
 - The cycle-order test already validated embodiment state is committed after the life-course update and before cycle closure. It then failed because it asserted the retired `setUnifiedCognitiveCycle` method name.
