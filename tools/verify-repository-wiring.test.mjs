@@ -103,6 +103,19 @@ test('resolves shell references against the working directory active at each com
   });
 });
 
+test('resolves workflow commands after a multiline cd before checking local entry points', () => {
+  withFixture(root => {
+    const workflowPath = path.join(root, '.github/workflows/core.yml');
+    const workflow = fs.readFileSync(workflowPath, 'utf8').replace(
+      '          npm run test:nested',
+      '          cd runtime\n          node tests/test.mjs'
+    );
+    fs.writeFileSync(workflowPath, workflow);
+    const result = auditRepositoryWiring(root);
+    assert.deepEqual(result.errors, []);
+  });
+});
+
 test('reports a missing executable referenced by an npm script', () => {
   withFixture(root => {
     const packagePath = path.join(root, 'package.json');
