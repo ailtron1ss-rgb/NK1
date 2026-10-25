@@ -1,3 +1,11 @@
+## NK1 learning validation — fail closed on invalid SGD controls and throttle replay by resources (2026-10-25)
+
+- Updated P26 regression coverage to match the learner's fail-closed input contract: non-finite learning rates and sample weights must throw before any weights, bias, update count or diagnostics change.
+- Made adaptive experience replay use explicit energy and memory-pressure budgets under the configured hard batch cap, preserving a minimum one-item budget when work is available. Added assertions that low energy and high memory pressure reduce the budget.
+- These changes repair one stale P26 test expectation and implement the resource-aware behavior already asserted by the multi-source learning regression.
+
+---
+
 ## NK1 learning validation — isolate signed-evidence, seed and cleanup regressions (2026-10-25)
 
 - The P36 host-bootstrap regression now restores write permission on its deliberately read-only fixture directory before cleanup; the trusted evaluator had passed its signature, private-key and tamper checks, and the test process had been failing only during teardown.
