@@ -5,6 +5,9 @@
 - [SAFETY] Canonical import requires an accepted `port + additive` stage. The apply path validates the full memory batch before writes, compensates partial writes on failure, and keeps failed attempts retryable.
 - [TEST] Expanded exporter/projector regressions and the server smoke test for accept-without-write, explicit apply, persisted memory, and idempotent retry; added a Node.js 24 workflow.
 - [CI] The first exact-head run stopped at repository-wide `typecheck` and skipped Hexis regression tests. Added a `.d.mts` adapter contract and tightened HMX source/goal metadata typing; split `audit:hexis` into its own blocking job and kept the existing repository-wide typecheck as a separate diagnostic job.
+- [RUNTIME FIX] Fixed a malformed control-character regex that prevented Node.js 24 from loading `OutcomeVerificationService.ts` before tests could run.
+- [GOAL LIFECYCLE] Fixed the P68 active-only traversal that made paused-goal reactivation unreachable; imported external goals remain activation-gated unless explicitly approved.
+- [IDEMPOTENCY] Projector now returns the stored receipt when replayed with an already-applied stage; a direct replay regression was added.
 - [STATUS] The CI rerun must still confirm HMX test results. The bridge is not yet verified or production-ready; no learning-uplift claim is made.
 
 ## NK1 WorkPass331 — execute initiative regression guards in CI (2026-10-24)
