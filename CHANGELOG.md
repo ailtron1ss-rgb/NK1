@@ -1,3 +1,12 @@
+## NK1 WorkPass346 — Harden P26 training inputs and action-lineage acceptance (2026-10-25)
+
+- [P26-INPUT] Added finite-value, valid-action and state-shape checks to parametric training; malformed targets, learning rates, sample weights and feature vectors now fail before an update.
+- [P26-ATOMICITY] Batch training preflights every sample before the first parameter update, and corrupted persisted diagnostics/counters are normalized rather than restored as NaN, Infinity, negative counts or string-based safety flags.
+- [ACTION-LINEAGE] Tightened the WorkPass294 static acceptance contract to verify that both normal finalization and receipt reconciliation call the decision-linked external-postcondition validator with the exact tool, input, execution ID and decision ID.
+- [VALIDATION] New checks are committed to the current PR branch. The corresponding P26 and WorkPass294 workflow results are still pending; no green status is claimed here.
+
+---
+
 ## NK1 WorkPass344 — Put closure regression under dedicated CI (2026-10-25)
 
 - [CI-COVERAGE] Added `.github/workflows/workpass328-closed-loop-failure-closure.yml` to run runtime typecheck and `test:p328:closed-loop-failure-closure` on relevant closure/runtime/test changes.
