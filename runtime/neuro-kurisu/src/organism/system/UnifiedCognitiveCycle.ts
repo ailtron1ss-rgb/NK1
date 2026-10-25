@@ -31,7 +31,8 @@ export interface UnifiedCognitiveCycleResult {
 const REQUIRED:UnifiedCycleStage[]=['observation','prediction','action','outcome','learning','self-update'];
 const ALL_STAGES=new Set<UnifiedCycleStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update']);
 const clamp01=(x:number)=>Math.max(0,Math.min(1,x));
-const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+const isSafeCounter=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+const safeCounter=(value:unknown):number=>isSafeCounter(value)?value:0;
 const safeMetric=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):0;
 const validStageId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim().length>0&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 
@@ -60,6 +61,14 @@ export class UnifiedCognitiveCycle {
     const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
     const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
+    // Preserve a restored `lastComplete` flag only when persisted counters form
+    // the same disjoint partition as the canonical history. Missing, invalid,
+    // over-counted, or contradictory counters make the last-cycle claim untrusted.
+    const restoredCountsConsistent=
+      isSafeCounter(source.cycles)&&source.cycles===cycles&&
+      isSafeCounter(source.completeCycles)&&source.completeCycles===completeCycles&&
+      isSafeCounter(source.incompleteCycles)&&source.incompleteCycles===incompleteCycles&&
+      isSafeCounter(source.brokenLineages)&&source.brokenLineages<=incompleteCycles;
     this.state={
       version:1,
       cycles,
@@ -69,7 +78,7 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:restoredCountsConsistent&&cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }
