@@ -1,3 +1,9 @@
+## NK1 Persistence — validate migrated projection fingerprints before retention cap (2026-10-25)
+
+- Fixed the `StateMigrations` projection-index path so it no longer slices the raw tail before validation. It normalizes candidates, verifies the record execution ID and canonical SHA-256 projection fingerprint, then applies the 2,048-entry cap.
+- Added a migration regression with one valid projection followed by 2,100 structurally valid but fingerprint-forged rows; the valid projection must survive migration and forged rows must be dropped.
+- **Validation boundary:** migration fix `daeb05801e18058f6f9081e9124160c84c7be837` and regression `9d5051ae0c5320a1f22d0c141eaef6bcb97a564a` are committed; GitHub Actions result is pending.
+
 ## NK1 Causal Accountability — validate projection fingerprints before restore bounds (2026-10-25)
 
 - Tightened the bounded projection restore fix: a candidate now counts toward the retention cap only after its fingerprint matches the canonical immutable outcome and its external-verification flag matches the record. Syntactically valid but forged rows cannot evict trusted older projections.
