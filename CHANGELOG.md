@@ -1,3 +1,11 @@
+## CI follow-up — atomic candidate fingerprints and action-grounded goal learning (2026-10-25)
+
+- [FIX] Atomic skill-store validation now matches the candidate ID format used by the writer: the optional revision-provenance fingerprint is the fifth tuple element, represented as `null` for original candidates. Revision provenance is validated before hashing. This repairs a real persistence incompatibility that caused every new file-backed candidate write to be rejected by `isSnapshot`/CAS.
+- [FIX] B272 only receives outcome credit when the externally executed/selected action exactly matches the goal generator's current action. A policy-arbitrated alternative no longer turns a valid chat/world outcome into an exception or falsely trains the wrong goal; B272's strict action-boundary check remains intact.
+- [TEST FIX] The continual-transfer assertion now uses a small float tolerance, and P23 restore integrity expects the replay ID reconstructed from its valid durable replay row.
+- [DIAGNOSTIC] Replay-policy sweep failure text now includes strategy, seed and observed new-task accuracy to make the next exact-head report actionable without relaxing the `>0.60` requirement.
+- [EVIDENCE] The previous current-head run passed app typecheck, runtime typecheck, P26 input/recovery/curriculum, P23 integrated revision and multiple signed-evidence gates. It then exposed the file-backed candidate ID mismatch, B272 wrong-action credit path, and the small test/diagnostic issues above. Fresh exact-head CI remains required.
+
 ## Restore identity precedence and rollback CAS fixture precision (2026-10-25)
 
 - [FIX] P23 restore now preserves the valid newest-first prefix of persisted processed/replayed identity caches, then unions IDs implied by durable experience/replay rows. This retains the newest dedupe IDs under capacity limits while still recovering missing IDs from durable rows.
