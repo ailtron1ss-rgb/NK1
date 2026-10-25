@@ -6,7 +6,7 @@ import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '.
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
-import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
+import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse, type InternalDialogueReviewReceipt } from '../language/LanguageOrgan.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
@@ -155,6 +155,8 @@ export class OrganismRuntime {
   private queue: Promise<unknown> = Promise.resolve();
   private initialized = false;
   private lastContextBudgetLedger: ContextBudgetLedgerReport | null = null;
+  private lastInternalDialogueReceipt: InternalDialogueReviewReceipt | null = null;
+  internalDialogueReceiptSnapshot() { return this.lastInternalDialogueReceipt ? structuredClone(this.lastInternalDialogueReceipt) : null; }
   contextBudgetDiagnostics() {
     return this.lastContextBudgetLedger ? structuredClone(this.lastContextBudgetLedger) : {
       version: 1, owner: 'LanguageOrgan', policy: 'priority-bounded-loss-accounting', maxDynamicChars: 0,
@@ -515,6 +517,15 @@ export class OrganismRuntime {
     const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
     if (!shouldAsk) return null;
     const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.cognitiveEventFabricSnapshot());
+    if (request.internalDialogueReceipt) {
+      this.lastInternalDialogueReceipt = structuredClone(request.internalDialogueReceipt);
+      // Journal only a bounded metadata receipt; never persist the user focus text or prose turn notes.
+      try {
+        await this.journal.write('info', 'runtime.internal-dialogue.review', { ...request.internalDialogueReceipt });
+      } catch {
+        // Receipt telemetry is useful but must not invalidate an otherwise valid cognitive proposal.
+      }
+    }
     if(signal) request.signal=signal;
     this.lastContextBudgetLedger = request.contextLedger ?? null;
     const budgetMode = budgetSnapshot?.mode ?? 'shallow';
