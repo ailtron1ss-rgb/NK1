@@ -193,6 +193,17 @@ export class P2702PersistentPersonalityDynamics {
     this.state.lastReward01 = boundedNumber(input.reward01, 0.5);
 
     const tension = clamp(identityGap01 * 0.5 + uncertainty01 * 0.3 + novelty01 * 0.2);
+    // Keep the canon's named value conflicts as live state, not static profile text.
+    // Targets are deliberately derived only from already-normalized Core signals.
+    const tensionTargets = [
+      clamp(uncertainty01 * 0.55 + identityGap01 * 0.45), // truth vs relationship comfort
+      clamp(goalPressure01 * 0.55 + identityGap01 * 0.45), // autonomy vs cooperation
+      clamp(novelty01 * 0.55 + uncertainty01 * 0.45), // skepticism vs curiosity
+      clamp(identityGap01 * 0.55 + (1 - uncertainty01) * 0.45), // composure vs vulnerability
+      clamp(identityGap01 * 0.5 + uncertainty01 * 0.25 + goalPressure01 * 0.25), // usefulness vs privacy
+    ];
+    this.state.tensionState = KURISU_ORGANISM_CANON.tensions.map((_, index) =>
+      clamp((this.state.tensionState[index] ?? 0.5) * 0.85 + tensionTargets[index]! * 0.15));
     const canonCuriosity = this.state.invariantValues[this.state.invariantNames.indexOf('curiosity')] ?? 0.96;
     const rigor = this.state.invariantValues[this.state.invariantNames.indexOf('scientificRigor')] ?? 0.95;
     const autonomy = this.state.invariantValues[this.state.invariantNames.indexOf('intellectualIndependence')] ?? 0.92;
