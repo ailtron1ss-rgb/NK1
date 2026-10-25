@@ -1,3 +1,10 @@
+## [NK1][learning] Align causal replay wiring regression with candidate construction order (2026-10-25)
+
+- Fixed a stale source-order assertion: P23 builds each candidate's `policyFeatures01` before invoking `selectCausalReplayBatch`, but the regression searched for that vector after the sampler call.
+- The test now requires the feature vector to appear inside the replayPending candidate-construction section and before selection, and verifies energy, goal pressure, outcome success/reward/surprise and learning-quality signals. Runtime replay logic is unchanged.
+
+---
+
 ## [NK1][learning] Separate replay policy modes and isolate process-identity fixtures (2026-10-25)
 
 - The P26 context-aware benchmark now opts into a replay ratio of 1.0 because that scenario specifically measures retaining both separable tasks; standard interleaving strategies keep the default 0.5 ratio to protect fresh-task plasticity. The benchmark's retention and new-task thresholds are unchanged.
