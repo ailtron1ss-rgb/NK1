@@ -120,7 +120,8 @@ async function invokeLanguage(request) {
     const effectiveBackend = preferredBackend === 'local-fallback'
         ? 'deterministic-policy-fallback'
         : preferredBackend;
-    const { internalDialogueReceipt: _internalDialogueReceipt, ...providerRequest } = request;
+    const providerRequest = { ...request };
+    delete providerRequest.internalDialogueReceipt;
     const response = await generateLanguage({ ...providerRequest, preferredBackend: effectiveBackend });
     const finishedAt = Date.now();
     LOCAL_LANGUAGE_BACKEND_POLICY.observe({ backend: String(response.backend ?? ''), failures: response.failures || [], now: finishedAt });
