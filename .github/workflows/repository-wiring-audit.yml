@@ -26,6 +26,9 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "tools/verify-repository-wiring.mjs"
       - "tools/verify-repository-wiring.test.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-graph-workpass320.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-interrupt-episode-workpass324.mjs"
   workflow_dispatch:
 
 permissions:
