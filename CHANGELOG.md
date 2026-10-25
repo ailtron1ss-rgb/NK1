@@ -6,6 +6,12 @@
 - Expanded the finite-input regression from source-string checks to direct behavior cases for invalid numeric inputs, fallbacks, range clipping, inherited properties, getter exceptions, and normalization wiring. Added a named WorkPass328 npm command and wired the rebuild regression aggregate to it.
 - No runtime dependency was added. This is a targeted input-integrity improvement; hosted Actions and full runtime/typecheck evidence remain pending and are not claimed here.
 
+### WorkPass328 follow-up — reconcile unified-cycle restore contract (2026-10-25)
+
+- Fixed a pre-existing regression-test contradiction exposed by the branch's first Actions run. `UnifiedCognitiveCycle.restore()` deliberately treats a malformed persisted `lastMissingStages` collection as untrusted and restores the complete required-stage list; the test expected only the one valid item and failed before later workflow steps could run.
+- Kept the conservative runtime behavior and updated the assertion to expect all six required stages. This aligns the test with the implementation's fail-closed contract rather than weakening restore validation.
+- The failed run on the earlier WorkPass328 commit was an actual test failure, not a runner-allocation failure. A new run on the updated branch is needed to establish whether this fix and the new sensor-boundary tests pass.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
