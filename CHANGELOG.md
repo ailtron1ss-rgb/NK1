@@ -1,3 +1,13 @@
+## NK1 WorkPass350 — validate P26 learning inputs atomically and repair snapshots (2026-10-25)
+
+- [LEARNING SAFETY] `ParametricPolicyLearner.train` and `trainFeatures` reject non-finite targets, learning rates, weights, invalid actions, malformed needs state, and non-finite feature vectors before updates, using stable machine-readable error codes.
+- [ATOMIC BATCH] `trainBatch` preflights every sample before training the first one, so a later invalid sample cannot partially mutate weights or diagnostics.
+- [PERSISTENCE] `restore` sanitizes model metrics, timestamps, counters and the frozen flag, preserving a freeze only when the snapshot contains literal boolean `true`; existing weight and bias repair remains intact.
+- [VALIDATION] WorkPass294's typecheck succeeded; its source-contract assertion was corrected in WorkPass349. P26 exposed the missing learner guards, and this implementation addresses its existing regression requirements without weakening tests. Current-head verification is pending.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass349 — align gateway lineage regression with the explicit conditional spread (2026-10-25)
 
 - [REGRESSION] Corrected the WorkPass294 source-contract assertion to accept the actual TypeScript form `...(typeof context.decisionId === 'string' ? … : {})`. The gateway already forwards the exact `executionId` and optional `decisionId` to the verifier; the test incorrectly required the spread's opening parenthesis to be absent.
