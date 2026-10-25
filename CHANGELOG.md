@@ -1,3 +1,15 @@
+## Cognitive runtime action-attribution fix — 2026-10-25
+
+- Fixed the B338 runtime feedback path so B272's endogenous-goal learner is credited only when the current tick and the selected execution action match the learner's generated goal/action. A downstream policy choice that differs from the proposal now skips B272-specific credit instead of crashing the entire organism step.
+- Kept B272's strict provenance contract intact; no relaxation of the “outcome action must match generated action” check.
+- Expanded cognitive dependency runtime wiring coverage to execute four autonomous cycles before shutdown and four after restart, exercising action attribution and persistence continuity across repeated cycles.
+- Extended the PR-triggered audit gate to check app/runtime types, app tests, cross-layer integration, runtime smoke, recovered cognitive-cycle tests, full runtime project audit, and aggregate runtime audit after the focused wiring tests.
+- Ported the wiring checker hardening and 25 path/workflow regressions into this branch; corrected the full-project audit invocation to run under the runtime package prefix.
+
+The current rebased head still requires the new GitHub Actions sweep to finish before this pass can be called fully validated.
+
+---
+
 ## Learning lifecycle, evidence integrity, and cross-layer regression repairs — 2026-10-25
 
 - Updated the versioned-skill lifecycle regression to use the current rollback approval object. The production default-deny rollback verifier remains enforced, and the suite now checks that approval-shaped fields alone cannot authorize rollback.
