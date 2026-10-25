@@ -36,7 +36,12 @@ export type OrganismEventType =
   | 'causal-development-update'
   | 'embodiment-sample'
   | 'developmental-synthesis'
-  | 'memory-world-causal-link';
+  | 'memory-world-causal-link'
+  | 'self-development-maturity-evidence-accepted'
+  | 'self-development-maturity-evidence-rejected'
+  | 'self-development-evidence-promoted'
+  | 'self-development-evidence-recorded'
+  | 'self-development-evidence-rejected';
 
 export interface OrganismEvent {
   id: string;

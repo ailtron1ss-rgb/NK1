@@ -196,7 +196,8 @@ export function createP36VerifiedOutcomeLedgerEvaluator(
       try {
         const result=measure(authority,input);
         if(!result)return {ok:false,effectStatus:'not-applied',error:'p36-verified-ledger-evidence-unavailable'};
-        const q=input as P36VerifiedOutcomeLedgerRequest;
+        // measure() has already validated the query contract; keep caller fields unknown until score checks.
+        const q=input as Record<string,unknown>;
         if(typeof q.control01!=='number'||!Number.isFinite(q.control01)||q.control01<0||q.control01>1||
            typeof q.treatment01!=='number'||!Number.isFinite(q.treatment01)||q.treatment01<0||q.treatment01>1) {
           return {ok:false,effectStatus:'not-applied',error:'p36-verified-ledger-score-claim-invalid'};

@@ -399,7 +399,7 @@ export class P36AutonomousSelfDevelopmentEngine{
         taskCount:Number.isSafeInteger(cycle.taskCount)?Math.max(0,Math.min(1024,cycle.taskCount)):0,
         verifiedEvidenceCount:0,lastEvidenceAt:0,
       } as DevelopmentCycleRecord;
-    }).filter((cycle):cycle is DevelopmentCycleRecord=>cycle!==null):[];
+    }).filter((cycle:DevelopmentCycleRecord|null):cycle is DevelopmentCycleRecord=>cycle!==null):[];
     this.state={...d,...r,version:6,
       currentHypothesisId:typeof r.currentHypothesisId==='string'&&restoredHypotheses.some(hypothesis=>
         hypothesis.id===r.currentHypothesisId&&['proposed','running','awaiting-evidence'].includes(hypothesis.status))
@@ -414,7 +414,18 @@ export class P36AutonomousSelfDevelopmentEngine{
       developmentCycles:restoredCycles,
       // Verifier receipts are WeakMap-backed capabilities and do not survive JSON snapshots.
       // Preserve observations for audit, but never restore serialized trust booleans.
-      externalEvidence:Array.isArray(r.externalEvidence)?r.externalEvidence.slice(-512).map(e=>({...e,independentVerified:false,observationId:undefined})):[],
+      externalEvidence:Array.isArray(r.externalEvidence)?(r.externalEvidence as unknown[]).slice(-512)
+        .filter((e):e is DevelopmentEvidenceRecord=>Boolean(e&&typeof e==='object'&&!Array.isArray(e)&&
+          typeof (e as DevelopmentEvidenceRecord).id==='string'&&
+          typeof (e as DevelopmentEvidenceRecord).hypothesisId==='string'&&
+          typeof (e as DevelopmentEvidenceRecord).contextKey==='string'&&
+          typeof (e as DevelopmentEvidenceRecord).control01==='number'&&Number.isFinite((e as DevelopmentEvidenceRecord).control01)&&
+          typeof (e as DevelopmentEvidenceRecord).treatment01==='number'&&Number.isFinite((e as DevelopmentEvidenceRecord).treatment01)&&
+          typeof (e as DevelopmentEvidenceRecord).delta01==='number'&&Number.isFinite((e as DevelopmentEvidenceRecord).delta01)&&
+          typeof (e as DevelopmentEvidenceRecord).at==='number'&&Number.isFinite((e as DevelopmentEvidenceRecord).at)&&
+          typeof (e as DevelopmentEvidenceRecord).evaluatorVersion==='string'&&
+          ((e as DevelopmentEvidenceRecord).evidenceSource==='external-evaluator'||(e as DevelopmentEvidenceRecord).evidenceSource==='manual-observer')))
+        .map(e=>({...e,independentVerified:false,observationId:undefined})):[],
       developmentalEvidenceReceiptIds:Array.isArray((r as any).developmentalEvidenceReceiptIds)?(r as any).developmentalEvidenceReceiptIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=256).slice(-512):[],
       developmentalEvidenceObservationIds:Array.isArray((r as any).developmentalEvidenceObservationIds)?[...new Set((r as any).developmentalEvidenceObservationIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=180))].slice(-512):[],
       investmentDecisions:Array.isArray((r as any).investmentDecisions)?(r as any).investmentDecisions.slice(-96):[],

@@ -1,3 +1,12 @@
+## NK1 typecheck repair — self-development evidence contracts (2026-10-25)
+
+- Added the missing self-development evidence event names to the canonical `OrganismEventType` union so the event journal and its producer agree on one event contract.
+- Made restored self-development cycle filtering explicitly typed and rejected malformed serialized evidence records before restoring them. Serialized evidence remains untrusted: `independentVerified` is still reset and observation IDs are stripped.
+- Removed an unsafe evaluator request cast. Score claims are now handled as unknown-valued fields and checked for finite numeric bounds before comparison with independently measured ledger results.
+- **Verification boundary:** fixes committed to `feature/learning`; a new typecheck/test run is required to confirm the previous errors are resolved.
+
+---
+
 ## NK1 WorkPass535 — wire signed P36 evaluators into the production host (2026-10-25)
 
 - Added `P36HostEvaluatorBootstrap.ts`. `NEURO_P36_SIGNED_LEDGER_CONFIG_FILE` optionally points to host-owned config for a task manifest, public verifier keyring, and signed-artifact directory. The server re-ingests and verifies all artifacts at startup, rejects private keys/invalid signatures/path traversal/writable inputs, forbids trust files/config inside runtime-writable state, and refuses to register a ledger evaluator unless full pinned holdout coverage exists for at least four paired seeds.
