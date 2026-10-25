@@ -262,7 +262,11 @@ export class B272EndogenousGoalGenesis {
       const actionScores=this.state.actionPrototypeWeights.map(row=>clamp11(dot(row,v)/Math.max(1,norm(row)*norm(v))));
 const learned=this.learnedGoalValue(v,input.tick);
       const learnedClosure=(learned.reward01-.5)*.20 + (learned.evidence01*(.52-learned.predictionError01))*.10;
-      const predictedFutureValue=clamp01(.5+.32*dot(v,base)+.18*intrinsic+.16*(1-conflict)+.08*k+learnedClosure);
+      // Keep goal-value channels on comparable scales. The raw 8-D dot product and
+      // .08*k bonus could saturate the score at 1.0, erasing changes from a trusted
+      // intrinsic drive before the autonomy selector ever saw them.
+      const goalAlignment=clamp11(dot(v,base)/Math.max(1,GOAL_DIMS.length));
+      const predictedFutureValue=clamp01(.42+.12*goalAlignment+.18*intrinsic+.10*(1-conflict)+.04*k+learnedClosure*.35);
       const coherence=clamp01(.5+.25*cosine(v,base)+.25*(1-conflict));
       const novelty01=clamp01(.25+.45*(1-Math.abs(cosine(v,this.state.currentGoal)))+.30*(k/3));
       const internalNeed=clamp01(.5+.35*Math.abs(dot(v,base))+.15*conflict);
