@@ -27,19 +27,14 @@ NK1 remains the runtime and canonical memory owner. The upstream reference is [Q
 - Extended the canonical `MemoryFabric` mutation command with an explicit `forceDistinct` option. The importer now uses a stable distinct ID, so a same-text native NK1 record is not reconsolidated with incoming Hexis metadata/provenance.
 - If a multi-record write fails, new memory rows are compensated through canonical `MemoryFabric.forgetById()` calls and the semantic graph is restored to its pre-apply snapshot. The HMX stage remains approved/retryable; the retry uses a new command attempt but the same stable imported record IDs.
 
-## WorkPass333 — reviewed goals and canonical lifecycle
+## WorkPass333 — HMX goal proposals, stable identity, and explicit activation
 
-- Removed the obsolete `OrganismCore.hexisDecideHmx` path that inserted memories during `accept`. `accept` now only records the human review decision; only `apply` invokes the canonical projector, and then persists MemoryOS2, MemoryFabric, semantic graph, event log and Hexis receipts.
-- Added a durable bounded `goalProposals` registry to `HexisAdaptationFabric`. Approved HMX stages can produce stable, deduplicated proposals, but preparing the queue does not create a canonical organism goal.
-- Added explicit goal decisions: `pending → approved → materialized → active`. Approval creates a canonical NK1 goal only as `paused`, with `source: external` and `activationApproved: false`. A separate `activate` call is required and checks for capacity, title collisions, and identity continuity. A stale reject can no longer overwrite an already approved/materialized decision.
-- Added server endpoints `POST .../hmx/goals/prepare`, `GET .../hmx/goals/proposals`, and `POST .../hmx/goals/decide`. The server smoke covers a rejected early activation, the paused state after approval, explicit activation, and durable proposal retrieval.
-- Added an optional `sourceKey` namespace to `SemanticMemoryGraph` nodes. Imported HMX graph nodes now reuse only nodes in the same provenance namespace, avoiding accidental connection of a same-label native node to external-source relationships.
-- P68 retention pruning now protects external goals explicitly marked `activationApproved: false`, so an approved-but-not-activated goal is not lost during routine goal cleanup.
-- The bounded 256-entry HMX goal-proposal registry preflights the full batch capacity before its first mutation; when full, it fails closed rather than silently evicting pending or reviewed proposals.
-- The canonical projector and HMX decision layer now both reject memory mutation unless the staged candidate is `intent=port`, `strategy=additive`; unsupported analysis/authoritative strategies remain reviewable but write nothing.
-- Corrected P68's paused-goal traversal (the old loop iterated active goals only, making its paused-to-active transition unreachable). Native paused goals can again resume under the existing ecology conditions, but reactivation respects a four-active-goal cap. External goals without explicit activation remain paused and are protected from routine retention pruning, including older records that lack the new marker.
-- Failed HMX apply attempts are persisted by `OrganismCore` even when the projector throws, so a restart increments the attempt ID before retry instead of reusing a command receipt from a compensated write.
-- Extended tests for goal proposal deduplication across exports, immutable decisions, P68 not auto-reactivating externally imported paused goals, and same-label graph-node isolation. Exact-head run [40161146253](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161146253) at `d2e01c4d76f85f6582cb6b3f0c1904addc90243d` passed all five Hexis workflow steps, including the goal proposal regression and live HTTP server smoke.
+- Added a durable HMX goal-proposal review queue. External goals remain proposals until reviewed; approval materializes a paused canonical goal, and activation requires a separate explicit decision plus capacity and identity-continuity checks.
+- Kept imported goal provenance attached to the canonical goal and preserved relationship receipts for the goal's source stage; identity/policy sections remain protected.
+- Fixed re-export deduplication to key HMX goals by the original NK1 goal ID preserved in adapter metadata rather than the export-scoped HMX ref.
+- Added integration and HTTP smoke coverage for proposal preparation, approval, activation denial before review, explicit activation, provenance, and re-export idempotency.
+- Validation note: the first exact-head HMX workflow exposed a real re-export dedupe regression (the goal's HMX ref changes on each export). The fix is committed; the next exact-head CI run is the validation gate. The unrelated WorkPass110 causal-stream failure and other older workflows remain separate.
+
 
 ## Explicit limits — not claimed complete
 
