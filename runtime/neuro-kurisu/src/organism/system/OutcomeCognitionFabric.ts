@@ -67,7 +67,7 @@ export interface OutcomeProjectionEvidenceRevision {
 
 export type OutcomeEvidenceRevisionResult =
   | {resolved:true;revision:OutcomeProjectionEvidenceRevision;causal:CausalAccountabilityState;replayed:boolean}
-  | {resolved:false;reason:'execution-id-required'|'provider-receipt-id-required'|'provider-receipt-invalid'|'no-matching-outcome'|'execution-tool-mismatch'|'outcome-execution-id-conflict'|'evidence-revision-conflict'|'evidence-revision-ledger-full'|'causal-revision-conflict'};
+  | {resolved:false;reason:'execution-id-required'|'provider-receipt-id-required'|'provider-receipt-invalid'|'no-matching-outcome'|'execution-tool-mismatch'|'outcome-execution-id-conflict'|'evidence-revision-conflict'|'evidence-revision-ledger-full'|'causal-revision-conflict'|'ambiguous-execution-receipt'};
 
 const cap=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const boundedEvidenceEventId=(value:unknown):string|undefined=>
@@ -102,34 +102,113 @@ export class OutcomeCognitionFabric {
         ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean'&&
         (row.evidenceEventId===undefined||boundedEvidenceEventId(row.evidenceEventId)===row.evidenceEventId);
     };
-    this.records=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).slice(-this.maxRecords).map(r=>structuredClone(r)):[];
+    this.causal.restore(snapshot?.causal);
+    const quarantined=new Set<string>(this.causal.snapshot().quarantinedExecutionIds??[]);
+    const quarantine=(value:unknown)=>{
+      const id=boundedText(value,180);
+      if(id)quarantined.add(id);
+    };
+    const validRecords=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).map(r=>structuredClone(r)):[];
+    const recordFingerprints=new Map<string,string>();
+    for(const record of validRecords){
+      const id=boundedText(record.executionId,180);
+      if(!id)continue;
+      const fingerprint=this.fingerprintFromRecord(record);
+      const prior=recordFingerprints.get(id);
+      if(prior&&prior!==fingerprint)quarantine(id);
+      else recordFingerprints.set(id,fingerprint);
+    }
+
+    const restoredIndex=new Map<string,OutcomeProjectionIndexEntry>();
+    const candidates=Array.isArray(snapshot?.projectionIndex)?snapshot.projectionIndex.slice(-this.maxProjectionIndex):[];
+    for(const candidate of candidates){
+      if(!candidate||typeof candidate.executionId!=='string')continue;
+      const id=boundedText(candidate.executionId,180);
+      if(!id)continue;
+      if(!validRecord(candidate.record)||!/^[a-f0-9]{64}$/i.test(String(candidate.fingerprint??''))){
+        quarantine(id);
+        restoredIndex.delete(id);
+        continue;
+      }
+      if(quarantined.has(id))continue;
+      const record=structuredClone(candidate.record);
+      const canonicalFingerprint=this.fingerprintFromRecord(record);
+      const suppliedFingerprint=String(candidate.fingerprint).toLowerCase();
+      if(record.executionId!==id||suppliedFingerprint!==canonicalFingerprint){
+        quarantine(id);
+        restoredIndex.delete(id);
+        continue;
+      }
+      const verifiedExternal=this.verifiedExternalFromRecord(record);
+      if(Boolean(candidate.verifiedExternal)!==verifiedExternal){
+        quarantine(id);
+        restoredIndex.delete(id);
+        continue;
+      }
+      const entry:OutcomeProjectionIndexEntry={executionId:id,fingerprint:suppliedFingerprint,record,verifiedExternal};
+      const prior=restoredIndex.get(id);
+      if(prior&&(prior.fingerprint!==entry.fingerprint||sha256Stable(prior.record)!==sha256Stable(entry.record)||prior.verifiedExternal!==entry.verifiedExternal)){
+        quarantine(id);
+        restoredIndex.delete(id);
+        continue;
+      }
+      if(!prior)restoredIndex.set(id,entry);
+    }
+
+    // A record row and its active index must describe the same immutable outcome.
+    for(const [id,fingerprint] of recordFingerprints){
+      const indexed=restoredIndex.get(id);
+      if(indexed&&indexed.fingerprint!==fingerprint)quarantine(id);
+    }
+
+    // Conflicts found in the projection layer become causal-graph tombstones too.
+    // This keeps later evidence attachment blocked after persistence and compaction.
+    this.causal.restore({...snapshot?.causal,quarantinedExecutionIds:[...quarantined]});
+    this.records=[];
+    const seenRecords=new Set<string>();
+    for(const record of validRecords){
+      const id=boundedText(record.executionId,180);
+      if(id&&quarantined.has(id))continue;
+      if(id&&seenRecords.has(id))continue;
+      if(id)seenRecords.add(id);
+      this.records.push(record);
+      if(this.records.length>=this.maxRecords)break;
+    }
+
     this.projectionIndex.clear();
-    if(Array.isArray(snapshot?.projectionIndex)) for(const candidate of snapshot.projectionIndex.slice(-this.maxProjectionIndex)){
-      if(!candidate||typeof candidate.executionId!=='string'||!candidate.executionId.trim()||candidate.executionId.length>180||
-        !/^[a-f0-9]{64}$/i.test(String(candidate.fingerprint??''))||!validRecord(candidate.record))continue;
-      const executionId=candidate.executionId.trim();
-      this.projectionIndex.set(executionId,{executionId,fingerprint:candidate.fingerprint.toLowerCase(),record:structuredClone(candidate.record),verifiedExternal:Boolean(candidate.verifiedExternal)});
+    for(const [id,entry] of restoredIndex){
+      if(quarantined.has(id))continue;
+      this.projectionIndex.set(id,entry);
     }
     // Backward-compatible seeding for snapshots created before the projection index.
     for(const record of this.records){
-      if(!record.executionId||this.projectionIndex.has(record.executionId))continue;
+      const id=boundedText(record.executionId,180);
+      if(!id||quarantined.has(id)||this.projectionIndex.has(id))continue;
       const fingerprint=this.fingerprintFromRecord(record);
-      this.projectionIndex.set(record.executionId,{executionId:record.executionId,fingerprint,record:structuredClone(record),verifiedExternal:Boolean(record.ok&&record.verified&&record.basis==='external-postcondition'&&record.externalObservation&&record.observationId)});
+      this.projectionIndex.set(id,{executionId:id,fingerprint,record:structuredClone(record),verifiedExternal:this.verifiedExternalFromRecord(record)});
     }
     this.trimProjectionIndex();
+
     this.evidenceRevisions=Array.isArray(snapshot?.evidenceRevisions)
-      ? snapshot!.evidenceRevisions!.slice(-this.maxEvidenceRevisions).filter((row:any)=>row&&typeof row.revisionId==='string'&&row.revisionId.length<=180&&typeof row.executionId==='string'&&row.executionId.length<=180&&typeof row.tool==='string'&&row.tool.length<=180&&Number.isInteger(row.revisionNumber)&&row.revisionNumber>0&&row.source==='authoritative-provider-receipt'&&/^[a-f0-9]{64}$/i.test(String(row.providerReceiptHash??''))&&/^[a-f0-9]{64}$/i.test(String(row.baseFingerprint??''))&&/^[a-f0-9]{64}$/i.test(String(row.revisionFingerprint??''))&&Number.isFinite(Number(row.at))&&Number.isFinite(Number(row.tick))&&typeof row.ok==='boolean'&&typeof row.verified==='boolean'&&['none','tool-contract','external-postcondition'].includes(row.basis)&&Number.isFinite(Number(row.confidence01))&&['verified','contradicted','unverified'].includes(row.status)&&typeof row.outcomeClass==='string').map((row:any)=>({...row,providerReceiptHash:String(row.providerReceiptHash).toLowerCase(),baseFingerprint:String(row.baseFingerprint).toLowerCase(),revisionFingerprint:String(row.revisionFingerprint).toLowerCase(),confidence01:cap(Number(row.confidence01)),tick:Math.max(0,Math.floor(Number(row.tick))),at:Math.max(0,Number(row.at))}))
+      ? snapshot!.evidenceRevisions!.slice(-this.maxEvidenceRevisions).filter((row:any)=>row&&typeof row.revisionId==='string'&&row.revisionId.length<=180&&typeof row.executionId==='string'&&row.executionId.length<=180&&!quarantined.has(String(row.executionId).trim())&&typeof row.tool==='string'&&row.tool.length<=180&&Number.isInteger(row.revisionNumber)&&row.revisionNumber>0&&row.source==='authoritative-provider-receipt'&&/^[a-f0-9]{64}$/i.test(String(row.providerReceiptHash??''))&&/^[a-f0-9]{64}$/i.test(String(row.baseFingerprint??''))&&/^[a-f0-9]{64}$/i.test(String(row.revisionFingerprint??''))&&Number.isFinite(Number(row.at))&&Number.isFinite(Number(row.tick))&&typeof row.ok==='boolean'&&typeof row.verified==='boolean'&&['none','tool-contract','external-postcondition'].includes(row.basis)&&Number.isFinite(Number(row.confidence01))&&['verified','contradicted','unverified'].includes(row.status)&&typeof row.outcomeClass==='string').map((row:any)=>({...row,providerReceiptHash:String(row.providerReceiptHash).toLowerCase(),baseFingerprint:String(row.baseFingerprint).toLowerCase(),revisionFingerprint:String(row.revisionFingerprint).toLowerCase(),confidence01:cap(Number(row.confidence01)),tick:Math.max(0,Math.floor(Number(row.tick))),at:Math.max(0,Number(row.at))}))
       : [];
     // Conflicting duplicate revision IDs indicate a damaged or hand-edited snapshot.
     // Keep the first authenticated revision and discard later conflicting copies.
     const uniqueRevisions=new Map<string,OutcomeProjectionEvidenceRevision>();
     for(const revision of this.evidenceRevisions){const prior=uniqueRevisions.get(revision.revisionId);if(!prior)uniqueRevisions.set(revision.revisionId,revision);else if(prior.revisionFingerprint!==revision.revisionFingerprint)continue;}
     this.evidenceRevisions=[...uniqueRevisions.values()].slice(-this.maxEvidenceRevisions);
-    this.causal.restore(snapshot?.causal);
   }
-
   private fingerprintFromRecord(record:OutcomeCognitionProjection['verificationRecord']):string{
     return sha256Stable({executionId:record.executionId??'',tool:record.tool,ok:Boolean(record.ok),outcomeClass:record.outcomeClass??null,verification:{verified:Boolean(record.verified),basis:record.basis,confidence01:cap(record.confidence01),externalObservation:Boolean(record.externalObservation),observationId:record.observationId??null,...(record.evidenceEventId?{evidenceEventId:record.evidenceEventId}:{}),expectedPostcondition:record.expectedPostcondition??null,observedPostcondition:record.observedPostcondition??null}});
+  }
+
+  private verifiedExternalFromRecord(record:OutcomeCognitionProjection['verificationRecord']):boolean{
+    return Boolean(record.ok&&record.verified&&record.basis==='external-postcondition'&&record.externalObservation&&record.observationId&&
+      assessExternalPostcondition({basis:record.basis,externalObservation:record.externalObservation,observationId:record.observationId,verified:record.verified,expectedPostcondition:record.expectedPostcondition,observedPostcondition:record.observedPostcondition})==='match');
+  }
+
+  private isExecutionQuarantined(executionId:string):boolean{
+    return this.causal.snapshot().quarantinedExecutionIds?.includes(executionId)??false;
   }
 
   private trimProjectionIndex(){while(this.projectionIndex.size>this.maxProjectionIndex){const oldest=this.projectionIndex.keys().next().value as string|undefined;if(!oldest)break;this.projectionIndex.delete(oldest);}}
@@ -140,6 +219,7 @@ export class OutcomeCognitionFabric {
     const raw=input.verification;
     const tool=boundedText(input.tool,180)??'unknown-tool';
     const executionId=boundedText(input.executionId,180);
+    if(executionId&&this.isExecutionQuarantined(executionId))throw new Error('outcome-execution-id-conflict');
     const allowedBasis=raw?.basis==='none'||raw?.basis==='tool-contract'||raw?.basis==='external-postcondition';
     const observationId=boundedText(raw?.observationId,180);
     // The event key is a join identity, not proof. Preserve it only alongside a valid external-observation shape.
@@ -216,6 +296,7 @@ export class OutcomeCognitionFabric {
     if(!executionId) return {resolved:false,reason:'execution-id-required'} as const;
     if(!tool) return {resolved:false,reason:'tool-id-invalid'} as const;
     if(!observationId) return {resolved:false,reason:'observation-id-required'} as const;
+    if(this.isExecutionQuarantined(executionId))return {resolved:false,reason:'ambiguous-execution-receipt'} as const;
     const indexed=this.projectionIndex.get(executionId);
     const matches=indexed&&indexed.record.tool===tool
       ? [{record:indexed.record,index:this.records.findIndex(row=>row.executionId===executionId)}]
@@ -279,7 +360,8 @@ export class OutcomeCognitionFabric {
   }
 
   hasProjectionForExecution(executionId:string):boolean{
-    return this.projectionIndex.has(String(executionId??'').trim());
+    const id=String(executionId??'').trim();
+    return Boolean(id&&!this.isExecutionQuarantined(id)&&this.projectionIndex.has(id));
   }
 
   /**
@@ -296,6 +378,7 @@ export class OutcomeCognitionFabric {
     const tool=boundedText(input.tool,180);
     const providerReceiptId=boundedText(input.providerReceiptId,180);
     if(!executionId)return {resolved:false,reason:'execution-id-required'};
+    if(this.isExecutionQuarantined(executionId))return {resolved:false,reason:'ambiguous-execution-receipt'};
     if(!providerReceiptId)return {resolved:false,reason:'provider-receipt-id-required'};
     if(input.authoritative!==true||/[\u0000-\u001f\u007f]/.test(providerReceiptId))return {resolved:false,reason:'provider-receipt-invalid'};
     if(!tool)return {resolved:false,reason:'execution-tool-mismatch'};
