@@ -24,7 +24,7 @@ import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
-import { UnifiedCognitiveSubstrate, type UnifiedCognitiveSubstrateState } from './UnifiedCognitiveSubstrate.ts';
+import { UnifiedCognitiveSubstrate, type UnifiedCognitiveSubstrateState, resolveUnifiedCognitiveWorkPolicy } from './UnifiedCognitiveSubstrate.ts';
 import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
 import { CausalDomainClosureLedger, type CausalDomainEvidence } from '../system/CausalDomainClosureLedger.ts';
@@ -744,7 +744,24 @@ export class OrganismRuntime {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
     const internalAction = cycle.decision.selected?.action ?? 'wait';
-    const routingPolicy = resolveCognitiveRoutingPolicy(dependencyState, resourceAllocation.maxCounterfactualBranches);
+    const baseRoutingPolicy = resolveCognitiveRoutingPolicy(dependencyState, resourceAllocation.maxCounterfactualBranches);
+    // The substrate is an adaptive optional-work governor, never an alternate
+    // action selector. It may reduce counterfactual cost or withhold matched
+    // projections when evidence quality, readiness or device pressure is poor.
+    const substrateWorkPolicy = resolveUnifiedCognitiveWorkPolicy(
+      substrateState,
+      baseRoutingPolicy.maxCounterfactualBranches,
+    );
+    const routingPolicy = {
+      ...baseRoutingPolicy,
+      maxCounterfactualBranches: Math.min(
+        baseRoutingPolicy.maxCounterfactualBranches,
+        substrateWorkPolicy.maxCounterfactualBranches,
+      ),
+      allowMatchedCounterfactual:
+        baseRoutingPolicy.allowMatchedCounterfactual && substrateWorkPolicy.allowMatchedCounterfactual,
+      reason: `${baseRoutingPolicy.reason};${substrateWorkPolicy.reason}`.slice(0, 240),
+    };
     this.evidenceBus.publish({
       tick: cycle.state.tick,
       kind: 'resource',
@@ -759,6 +776,10 @@ export class OrganismRuntime {
         interruptPriority01: routingPolicy.interruptPriority01,
         cognitiveCycleDelayMultiplier01: routingPolicy.cognitiveCycleDelayMultiplier01,
         governanceWake: this.cognitiveDependencyGraph.shouldWake('governance'),
+        substrateReadiness01: substrateState.coupling.actionReadiness01,
+        substrateGrounding01: substrateState.coupling.predictionGrounding01,
+        substrateBudgetReason: substrateWorkPolicy.reason,
+        substrateMatchedAllowed: substrateWorkPolicy.allowMatchedCounterfactual,
       },
     });
     const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
