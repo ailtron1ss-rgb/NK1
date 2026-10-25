@@ -15,6 +15,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
       - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
       - "runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs"
@@ -43,6 +45,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
       - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
       - "runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs"
@@ -112,6 +116,9 @@ jobs:
 
       - name: Test versioned skill lifecycle and durable provenance restore (P23)
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs
+
+      - name: Test independent candidate execution/verification metric separation (WorkPass203)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass203:independent-candidate-evaluator
 
       - name: Test live runtime graph persistence and restart continuity
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-dependency-runtime-wiring
