@@ -13,6 +13,11 @@ const isHoldoutEvidenceShape=(value:unknown):value is P26VerifiedHoldoutEvidence
     typeof row.learned01==='number'&&Number.isFinite(row.learned01)&&row.learned01>=0&&row.learned01<=1&&typeof row.verified==='boolean'&&typeof row.independent==='boolean';
 };
 const isAcceptedHoldoutEvidence=(value:unknown):value is P26VerifiedHoldoutEvidence=>isHoldoutEvidenceShape(value)&&value.verified===true&&value.independent===true;
+export type P26HoldoutEvidenceVerifier=(evidence:Readonly<P26VerifiedHoldoutEvidence>)=>boolean;
+const isVerifiedBy=(verifier:P26HoldoutEvidenceVerifier,evidence:unknown):evidence is P26VerifiedHoldoutEvidence=>{
+  if(!isAcceptedHoldoutEvidence(evidence))return false;
+  try{return verifier(structuredClone(evidence))===true;}catch{return false;}
+};
 
 export interface P26LearningMetrics {
   outcomeSamples:number;
@@ -54,9 +59,11 @@ export interface BodyExtras { external01?:number;boredom01?:number;resourceRisk0
 export class P26TrueLearningEngine{
   readonly learner=new ParametricPolicyLearner();
   private state=defaultP26TrueLearning();
+  private readonly verifyHoldoutEvidence:P26HoldoutEvidenceVerifier;
+  constructor(verifyHoldoutEvidence:P26HoldoutEvidenceVerifier=()=>false){this.verifyHoldoutEvidence=verifyHoldoutEvidence;}
   restore(raw?:Partial<P26TrueLearningState>|null){
     const d=defaultP26TrueLearning();
-    const rows=Array.isArray(raw?.verifiedHoldoutEvidence)?raw!.verifiedHoldoutEvidence.filter(isAcceptedHoldoutEvidence).slice(-4096):[];
+    const rows=Array.isArray(raw?.verifiedHoldoutEvidence)?raw!.verifiedHoldoutEvidence.filter(item=>isVerifiedBy(this.verifyHoldoutEvidence,item)).slice(-4096):[];
     const uniqueEvidence=[...new Map(rows.map(item=>[item.evidenceId,item])).values()];
     this.state={...d,...(raw??{}),metrics:{...d.metrics,...(raw?.metrics??{})},processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.filter((id):id is string=>typeof id==='string'&&id.trim().length>0).slice(-4096):[],verifiedHoldoutEvidence:uniqueEvidence};
     this.learner.restore(this.state.policy);
@@ -130,6 +137,7 @@ export class P26TrueLearningEngine{
     if(!isHoldoutEvidenceShape(evidence))return {accepted:false,reason:'invalid-holdout-evidence'};
     if(evidence.verified!==true)return {accepted:false,reason:'holdout-evidence-not-verified'};
     if(evidence.independent!==true)return {accepted:false,reason:'holdout-evidence-not-independent'};
+    if(!isVerifiedBy(this.verifyHoldoutEvidence,evidence))return {accepted:false,reason:'holdout-evidence-not-authenticated'};
     if(this.state.verifiedHoldoutEvidence.some(item=>item.evidenceId===evidence.evidenceId))return {accepted:false,reason:'duplicate-holdout-evidence'};
     this.state.verifiedHoldoutEvidence=[...this.state.verifiedHoldoutEvidence,structuredClone(evidence)].slice(-4096);
     this.state.metrics.holdoutBaseline01=clamp(evidence.baseline01);this.state.metrics.holdoutLearned01=clamp(evidence.learned01);this.state.metrics.holdoutDelta01=evidence.learned01-evidence.baseline01;
