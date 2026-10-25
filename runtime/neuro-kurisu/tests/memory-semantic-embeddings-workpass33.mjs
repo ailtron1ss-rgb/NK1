@@ -158,6 +158,12 @@ racingMemory.encode({
   epistemicStatus: 'fact',
   semanticVector: [],
 }, { forceDistinct: true });
+racingMemory.semanticEmbeddingIndex.set('race-target', {
+  contentHash: memoContentHash('Login credential recovery restores account access when authentication is lost.'),
+  providerId: 'fixture:mutating',
+  vector: [1, 0, 0],
+  lastUsedAt: Date.now(),
+});
 const raceResult = await racingMemory.previewRetrieveWithEmbeddings('login credential recovery', 3, 0, 0, { temporalMode: 'current' });
 assert.equal(raceResult.semantic.newlyIndexed, 0, 'a vector must not be attached after its source memory is revised during the provider await');
 assert.equal(racingMemory.semanticEmbeddingIndex.has('race-target'), false, 'stale source vectors must not enter the semantic index');
