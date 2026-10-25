@@ -33,7 +33,8 @@ function walkCodeFiles(directory, rootDirectory = directory) {
     const runtimeHistory = relative[0] === 'runtime' && relative[1] === 'neuro-kurisu' && (
       (relative[2] === 'docs' && relative[3] === 'history') ||
       (relative[2] === 'research' && relative[3] === 'history') ||
-      (relative[2] === 'tests' && relative[3] === 'history')
+      (relative[2] === 'tests' && relative[3] === 'history') ||
+      (relative[2] === 'scripts' && relative[3] === 'history')
     );
     if (entry.isDirectory()) {
       if (!IGNORED_SOURCE_DIRECTORIES.has(entry.name) && !historicalSnapshot && !runtimeHistory) {
@@ -98,14 +99,15 @@ function resolveRelativeModule(importerPath, specifier) {
   if (!cleanSpecifier || /[{}$*]/.test(cleanSpecifier)) return true;
   const base = path.resolve(path.dirname(importerPath), cleanSpecifier);
   const extension = path.extname(cleanSpecifier).toLowerCase();
+  const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json']);
   const candidates = [base];
-  if (extension === '.js') candidates.push(base.slice(0, -3) + '.ts', base.slice(0, -3) + '.tsx', base.slice(0, -3) + '.mts', base.slice(0, -3) + '.cts');
-  else if (extension === '.mjs') candidates.push(base.slice(0, -4) + '.mts', base.slice(0, -4) + '.ts');
-  else if (extension === '.cjs') candidates.push(base.slice(0, -4) + '.cts', base.slice(0, -4) + '.ts');
+  if (extension === '.js') candidates.push(base.slice(0, -3) + '.d.ts', base.slice(0, -3) + '.ts', base.slice(0, -3) + '.tsx', base.slice(0, -3) + '.mts', base.slice(0, -3) + '.cts');
+  else if (extension === '.mjs') candidates.push(base.slice(0, -4) + '.d.mts', base.slice(0, -4) + '.mts', base.slice(0, -4) + '.ts');
+  else if (extension === '.cjs') candidates.push(base.slice(0, -4) + '.d.cts', base.slice(0, -4) + '.cts', base.slice(0, -4) + '.ts');
   else if (extension === '.jsx') candidates.push(base.slice(0, -4) + '.tsx');
-  else if (!extension) {
-    for (const suffix of ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json']) candidates.push(base + suffix);
-    for (const suffix of ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']) candidates.push(path.join(base, 'index' + suffix));
+  else if (!sourceExtensions.has(extension)) {
+    for (const suffix of ['.ts', '.tsx', '.mts', '.cts', '.d.ts', '.d.mts', '.d.cts', '.js', '.jsx', '.mjs', '.cjs', '.json']) candidates.push(base + suffix);
+    for (const suffix of ['.ts', '.tsx', '.mts', '.cts', '.d.ts', '.d.mts', '.d.cts', '.js', '.jsx', '.mjs', '.cjs']) candidates.push(path.join(base, 'index' + suffix));
   }
   for (const candidate of new Set(candidates)) {
     try { if (fs.statSync(candidate).isFile()) return true; } catch { /* next resolution candidate */ }
