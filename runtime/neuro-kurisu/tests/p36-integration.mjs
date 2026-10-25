@@ -116,10 +116,13 @@ assert.ok(afterEvaluator.facets.learning.p36.externalEvidence.some(row=>row.exec
 const maturityInput=developmentalOutcomeVerificationInput({area:'learning',outcome01:.91,delayed:true,transfer:true});
 assert.equal(maturityInput.kind,'developmental-outcome','the maturity event must use the dedicated evidence discriminant');
 const maturityBefore=core.p36Diagnostics();
+const evidenceCountBeforeWrongLane=core.p36DevelopmentEvidence(hypothesis.id).length;
 const wrongLaneMaturity=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,maturityInput,'p36-maturity-on-experiment-lane',{decisionId:traceForEvidence.id});
-assert.equal(wrongLaneMaturity.verified,false,'the signed-ledger experiment evaluator must reject a maturity-shaped request');
+assert.equal(wrongLaneMaturity.verified,true,'a generic fixture may attest its tool response, but that alone does not authorize the Core evidence lane');
 assert.equal(core.p36Diagnostics().developmentalMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount,
-  'instantaneous experiment evaluator must not update maturity even if given a maturity-shaped payload');
+  'experiment evaluator ID must not update maturity even if given a maturity-shaped payload');
+assert.equal(core.p36DevelopmentEvidence(hypothesis.id).length,evidenceCountBeforeWrongLane,
+  'Core must not convert a maturity payload into experiment evidence');
 const wrongLaneEvidence=await core.executeTool(P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,evidenceInput,'p36-evidence-on-maturity-lane',{decisionId:traceForEvidence.id});
 assert.equal(wrongLaneEvidence.verified,true,'the generic fixture can return a receipt, but Core must enforce the separate evidence lane');
 assert.equal(core.p36Diagnostics().developmentalMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount,
