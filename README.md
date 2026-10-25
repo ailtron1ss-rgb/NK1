@@ -1,3 +1,12 @@
+## Current source-stack checkpoint — WorkPass347 (2026-10-25)
+
+- The trusted shadow run registry now uses an explicit path field to remain executable under Node 24's strip-only TypeScript loader.
+- Poisoned CausalExperienceStream snapshot counters no longer expect retained external rows to become trusted outcomes or consolidations; restoration derives these totals only from grounded runtime-origin records.
+- WorkPass346 added full-batch learner preflight and converted the file-backed candidate store away from constructor parameter properties.
+- The last exact-head run confirmed WorkPass99, 102, 105, 287–288, 291, 292 and 294 pass. P26/Core/WorkPass108/293 need exact-head results. Release ZIP unchanged.
+
+---
+
 ## Current source-stack checkpoint — WorkPass346 (2026-10-25)
 
 - P26 learner batch training now validates every item before mutating parameters, preserving atomicity when a later batch item contains malformed state.

@@ -1,3 +1,11 @@
+## NK1 WorkPass347 — keep untrusted causal rows out of trusted aggregates and fix registry Node 24 import
+
+- [NODE 24] Converted `AtomicFileTrustedSkillShadowRunRegistry` from a TypeScript constructor parameter property to an explicit `filePath` field assignment, addressing the next strip-only import failure observed by WorkPass293.
+- [CAUSAL RESTORE] The poisoned-aggregate regression now expects zero trusted outcomes and zero consolidations when the only retained record is external/untrusted. A corrupted aggregate counter may never promote an unverified record into trusted learning or memory.
+- [VALIDATION] WorkPass99, 102, 105, 287–288, 291, 292 and 294 passed on WorkPass346's head. P26 batch atomicity, Core integration and WorkPass108/293 are being revalidated after the latest Node-compatibility and trust-counter fixes. Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass346 — make learning batches atomic and keep file skill storage executable under Node 24
 
 - [BATCH ATOMICITY] `ParametricPolicyLearner.trainBatch()` now preflights every sample before the first weight update. A malformed later row cannot partially train on an earlier valid row; missing/malformed state needs fail with the explicit `state-must-have-needs` boundary error.
