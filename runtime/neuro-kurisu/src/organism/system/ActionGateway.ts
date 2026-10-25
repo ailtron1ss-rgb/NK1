@@ -713,7 +713,7 @@ export class ActionGateway {
       const verification=await this.verifier.verify({
          toolId:id,input,result,
          executionId,
-         ...(typeof prior.decisionId==='string'?{decisionId:prior.decisionId}:{}),
+         ...typeof prior.decisionId === 'string' ? {decisionId:prior.decisionId} : {},
        },tool.verify);
       const classified=classifyVerifiedExecution(toolOk,verification);
       const auditReason=classified.contradicted?'external-postcondition-contradicted':reason;
