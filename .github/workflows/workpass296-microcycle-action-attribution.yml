@@ -5,6 +5,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/OperationalMicroCycleRuntime.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveArchitectureMap.ts'
       - 'runtime/neuro-kurisu/tests/workpass296-microcycle-action-attribution.mjs'
+      - 'runtime/neuro-kurisu/tests/operational-microcycle-finite-input.mjs'
+      - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass296-microcycle-action-attribution.yml'
   workflow_dispatch:
 permissions:
@@ -24,3 +26,6 @@ jobs:
       - name: Check reduced-resolution action attribution
         working-directory: runtime/neuro-kurisu
         run: node tests/workpass296-microcycle-action-attribution.mjs
+      - name: Check operational micro-cycle sensor boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass328:operational-microcycle-sensors
