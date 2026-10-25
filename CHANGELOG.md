@@ -1,3 +1,9 @@
+## NK1 WorkPass536 — enforce memory byte budget on live writes (2026-10-25)
+
+- Added budget enforcement to both new-record insertion and reconsolidation in `MemoryOS2.encode()`; the just-written record is protected during eviction so low-value older records are preferred.
+- Added a live-write regression that exceeds the configured budget and asserts evictions, bounded estimated bytes, and consistent indexes.
+- CI validation is pending for this change; no passing result is claimed yet.
+
 ## NK1 WorkPass537 — reconcile restored hot IDs with canonical memory (2026-10-25)
 
 - `MemoryFabric.restore()` now filters persisted hot IDs against the already-restored canonical MemoryOS2 records and removes duplicates before applying the hot-set limit.
