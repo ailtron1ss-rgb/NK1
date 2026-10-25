@@ -1,3 +1,10 @@
+## NK1 WorkPass539 — tighten conversation-lineage identity (2026-10-25)
+
+- Narrowed episodic social-memory boosts to stable conversation/session ID or key fields; `messageIndex`, `turnSequence`, and role labels no longer count as dialogue identity on their own.
+- Removed an accidental source-name cue from the session-only regression fixture so the test must rely on the actual `sessionId` field.
+- Added a regression proving that a lexical-tied social fragment with only relationship/role/index/sequence metadata cannot outrank a true episodic memory.
+- Validation is pending for the updated rebased head; do not infer the new predicate has passed CI until its run completes.
+
 ## NK1 WorkPass538 — bilingual autobiographical session recall (2026-10-25)
 
 - Expanded MemoryOS2 intent routing for Russian recollection prompts and English prior-conversation prompts, while prioritizing explicit user-profile recall as identity memory.
