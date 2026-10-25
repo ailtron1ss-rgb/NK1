@@ -122,6 +122,24 @@ export class ParametricPolicyLearner{
       const bias=Number(this.state.bias[a]??0);
       this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+
+    // Persisted state is untrusted input: snapshots may be stale, hand-edited,
+    // partially written, or produced by older runtime versions. Sanitize every
+    // diagnostic before it can influence predictions or future learning.
+    const finiteInRange=(value:unknown,fallback:number,min=0,max=1):number =>
+      typeof value==='number'&&Number.isFinite(value)
+        ? Math.max(min,Math.min(max,value))
+        : fallback;
+    this.state.updates=Number.isSafeInteger(raw?.updates)&&Number(raw?.updates)>=0
+      ? Number(raw?.updates)
+      : 0;
+    this.state.tdAbsMean01=finiteInRange(raw?.tdAbsMean01,d.tdAbsMean01);
+    this.state.trainRewardMean01=finiteInRange(raw?.trainRewardMean01,d.trainRewardMean01);
+    this.state.explorationRate01=finiteInRange(raw?.explorationRate01,d.explorationRate01);
+    this.state.lastLoss01=finiteInRange(raw?.lastLoss01,d.lastLoss01);
+    this.state.lastTrainedAt=finiteInRange(raw?.lastTrainedAt,d.lastTrainedAt,0,Number.MAX_SAFE_INTEGER);
+    // Only literal boolean true may restore an intentional safety freeze.
+    this.state.frozen=raw?.frozen===true;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
@@ -149,8 +167,11 @@ export class ParametricPolicyLearner{
   }
 
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    // Validate before prediction, learning, or the frozen-model fast path.
     this.validateStateForTraining(input?.state);
     this.validateCommonTrainingInput(input);
+    if(typeof input.target01!=='number'||!Number.isFinite(input.target01))throw new Error('target-must-be-finite');
+    if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01))throw new Error('rate-must-be-finite');
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
@@ -179,6 +200,8 @@ export class ParametricPolicyLearner{
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
     if(!input||!Array.isArray(input.features)||!input.features.every(value=>typeof value==='number'&&Number.isFinite(value)))throw new Error('features-must-be-finite');
     this.validateCommonTrainingInput(input);
+    if(typeof input.target01!=='number'||!Number.isFinite(input.target01))throw new Error('target-must-be-finite');
+    if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01))throw new Error('rate-must-be-finite');
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
     const x=input.features.slice(0,featureNames.length).map(normalizeFeature); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
