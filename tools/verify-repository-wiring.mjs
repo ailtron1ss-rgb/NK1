@@ -261,35 +261,59 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
 
   function auditShellCommands(commandText, workingDirectory, origin, ancestry = []) {
     let currentDirectory = path.resolve(workingDirectory);
-    const commandLines = String(commandText).split(/\r?\n/);
+    const commandLines = String(commandText).split(/\\r?\\n/);
     for (const line of commandLines) {
-      const cdPattern = /(?:^|&&|;)\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/g;
+      // Build one ordered stream of statically recognizable operations. Resolving all
+      // `cd` commands before file/script references loses shell evaluation order.
+      const operations = [];
+      const cdPattern = /(?:^|&&|\\|\\||;|\\|)\\s*cd\\s+(?:"([^"]+)"|'([^']+)'|([^\\s;&|]+))/g;
       for (const match of line.matchAll(cdPattern)) {
-        const destination = match[1] ?? match[2] ?? match[3];
-        if (destination && !destination.startsWith('$') && !destination.startsWith('<')) {
-          currentDirectory = path.resolve(currentDirectory, destination);
-          if (!fs.existsSync(currentDirectory)) report(origin + ': cd target not found: ' + path.relative(root, currentDirectory));
-        }
+        operations.push({ index: match.index ?? 0, type: 'cd', target: match[1] ?? match[2] ?? match[3] });
       }
 
       NODE_FILE.lastIndex = 0;
       for (const match of line.matchAll(NODE_FILE)) {
-        const target = match[1];
-        if (!target.startsWith('$') && !target.startsWith('<')) checkLocalFile(path.resolve(currentDirectory, target), origin);
+        operations.push({ index: match.index ?? 0, type: 'node', target: match[1] });
       }
 
       PYTHON_FILE.lastIndex = 0;
       for (const match of line.matchAll(PYTHON_FILE)) {
-        const target = match[1];
-        if (!target.startsWith('$') && !target.startsWith('<')) checkLocalFile(path.resolve(currentDirectory, target), origin);
+        operations.push({ index: match.index ?? 0, type: 'python', target: match[1] });
       }
 
       NPM_RUN.lastIndex = 0;
       for (const match of line.matchAll(NPM_RUN)) {
-        const prefix = match[1] ?? match[2] ?? match[3];
-        const scriptName = match[4] ?? match[5] ?? match[6];
-        const packageDirectory = prefix ? path.resolve(currentDirectory, prefix) : currentDirectory;
-        auditNpmScript(packageDirectory, scriptName, origin, ancestry);
+        operations.push({
+          index: match.index ?? 0,
+          type: 'npm',
+          prefix: match[1] ?? match[2] ?? match[3],
+          scriptName: match[4] ?? match[5] ?? match[6]
+        });
+      }
+
+      operations.sort((a, b) => a.index - b.index);
+      for (const operation of operations) {
+        if (operation.type === 'cd') {
+          const destination = operation.target;
+          if (destination && !destination.startsWith('$') && !destination.startsWith('<')) {
+            currentDirectory = path.resolve(currentDirectory, destination);
+            if (!fs.existsSync(currentDirectory)) {
+              report(origin + ': cd target not found: ' + path.relative(root, currentDirectory));
+            }
+          }
+          continue;
+        }
+
+        if (operation.target && !operation.target.startsWith('$') && !operation.target.startsWith('<')) {
+          checkLocalFile(path.resolve(currentDirectory, operation.target), origin);
+        }
+
+        if (operation.type === 'npm') {
+          const packageDirectory = operation.prefix
+            ? path.resolve(currentDirectory, operation.prefix)
+            : currentDirectory;
+          auditNpmScript(packageDirectory, operation.scriptName, origin, ancestry);
+        }
       }
     }
   }
