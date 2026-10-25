@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass319 (2026-10-25)
+
+- **Fix:** `UnifiedCognitiveCycle.restore()` no longer preserves `lastComplete=true` when persisted cycle counters are missing or contradict the canonical partition.
+- **Regression:** covers contradictory counts, a coherent persisted partition, and a partial snapshot.
+- **Work branch:** `nk1-ready-unified-cycle-restore-integrity-20261025`, based on source line `workpass206-runtime-evaluator-wiring`.
+- **Verification:** the focused WorkPass287-288 Actions workflow was triggered; check its exact-head result before merge. This is a restore-integrity fix, not evidence of learning uplift or full release readiness.
+
+See [WorkPass319 checkpoint](docs/WORKPASS319_UNIFIED_COGNITIVE_CYCLE_RESTORE_INTEGRITY_2026-10-25.md).
+
+---
+
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
