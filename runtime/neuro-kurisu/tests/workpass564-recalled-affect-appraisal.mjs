@@ -17,7 +17,8 @@ const base = {
   success01: .63,
 };
 
-const withoutRecall = new EmotionAppraisalEngine().appraise(base);
+const baselineEngine = new EmotionAppraisalEngine();
+const withoutRecall = baselineEngine.appraise(base);
 const recalledEngine = new EmotionAppraisalEngine();
 const withRecall = recalledEngine.appraise({
   ...base,
@@ -38,6 +39,15 @@ assert.equal(
   withRecall.interoceptiveDelta.stress01,
   withoutRecall.interoceptiveDelta.stress01,
   'emotional intensity alone must not label a recalled memory as present threat',
+);
+assert.equal(
+  recalledEngine.arousalWithoutRecall01(withRecall),
+  withoutRecall.arousal01,
+  'reconsolidation must be able to remove exactly the recall-only arousal increment',
+);
+assert.ok(
+  recalledEngine.actionBias('engage') > baselineEngine.actionBias('engage'),
+  'recall-derived attention must enter the bounded action-selection bias',
 );
 assert.ok(
   withRecall.memorySalienceMultiplier01 > withoutRecall.memorySalienceMultiplier01,
