@@ -28,6 +28,21 @@ try {
   assert.equal(restored.replaySignature.length,49_000);
   assert.ok(!text.includes('�'),'bounded writes must not split a UTF-16 surrogate pair');
   console.log('CONTINUITY_LEDGER_BOUNDED_WRITE=PASS',JSON.stringify({bytes,maxBytes,frames:lines.length}));
+
+  const retryLedger=new ContinuityLedger(join(root,'retry.jsonl'),maxBytes,1);
+  let failOnce=true, recoveredOutput='';
+  retryLedger.handle={
+    stat:async()=>({size:new TextEncoder().encode(recoveredOutput).byteLength}),
+    write:async(chunk)=>{if(failOnce){failOnce=false;throw new Error('injected-write-failure');}recoveredOutput+=String(chunk);return {bytesWritten:new TextEncoder().encode(String(chunk)).byteLength};},
+    close:async()=>{},
+  };
+  await assert.rejects(()=>retryLedger.record(frame(3,'retry-frame')),/injected-write-failure/);
+  assert.equal(retryLedger.diagnostics().pendingLines,1,'a failed write keeps its JSONL frame pending for retry');
+  assert.ok(retryLedger.diagnostics().pendingBytes>0,'the pending byte count survives a failed write');
+  await retryLedger.flush();
+  assert.equal(retryLedger.diagnostics().pendingLines,0,'a successful retry clears the buffer');
+  assert.equal(JSON.parse(recoveredOutput.trim()).tick,3,'retry writes one complete frame');
+  await retryLedger.close();
 } finally {
   await ledger.close();
   await rm(root,{recursive:true,force:true});
