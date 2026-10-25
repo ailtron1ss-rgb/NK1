@@ -7,10 +7,12 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/letta/**"
       - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts"
       - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
       - "runtime/neuro-kurisu/tests/integration/letta-memory-bridge.mjs"
       - "runtime/neuro-kurisu/tests/integration/letta-memory-lifecycle-sync.mjs"
+      - "runtime/neuro-kurisu/tests/integration/letta-cognitive-recall-wiring.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - ".github/workflows/letta-memory-bridge.yml"
@@ -45,6 +47,9 @@ jobs:
         working-directory: runtime/neuro-kurisu
       - name: Letta canonical lifecycle, outbox recovery, and hybrid recall
         run: npm run test:letta-memory-lifecycle-sync
+        working-directory: runtime/neuro-kurisu
+      - name: Letta live cognitive recall wiring contract
+        run: npm run test:letta-cognitive-recall-wiring
         working-directory: runtime/neuro-kurisu
       - name: Existing Letta governance contract
         run: node --experimental-strip-types tests/integration/letta-governance-adaptation.mjs
