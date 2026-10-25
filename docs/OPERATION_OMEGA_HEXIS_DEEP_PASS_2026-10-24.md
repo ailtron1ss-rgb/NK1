@@ -95,3 +95,6 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 ## WorkPass335 — CI script wiring repair
 
 - The `WorkPass292 verified experience lanes` workflow invoked `npm run test:workpass292:evidence-lanes`, but the package script map did not declare that command even though `tests/workpass292-evidence-lanes.mjs` existed. Added the missing script with Node's strip-types runner. The prior failure was a workflow/package wiring error, not a failing causal-experience assertion. Fresh exact-head workflow confirmation is pending.
+
+
+- **WorkPass335 registrar follow-up:** The broad typecheck narrowed to one remaining incompatibility: `OrganismCore` returns the registry receipt synchronously, while the minimal coordinator contract allows only void or an awaited result. The Core entry point now wraps the trusted registrar as an async void capability. Durable registration is still awaited before child spawn; the registry result is not leaked through the coordinator callback.

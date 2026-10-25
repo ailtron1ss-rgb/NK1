@@ -2273,3 +2273,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - Added the missing `test:workpass292:evidence-lanes` npm script to point at the existing `tests/workpass292-evidence-lanes.mjs` regression.
 - Prior run [40161669028](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161669028) failed before executing the test because npm could not find the script. This is now a package/workflow mapping fix; the new exact-head run must confirm the evidence-lane assertions themselves pass.
+
+
+
+- **WorkPass335 registrar follow-up:** Wrapped Core-owned trusted-shadow registration in an async void capability, preserving the awaited registration boundary while satisfying the coordinator contract. This addresses the last reported strict-type error on the previous checked head; fresh exact-head typecheck is pending.
