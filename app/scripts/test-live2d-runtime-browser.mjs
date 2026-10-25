@@ -84,7 +84,7 @@ const server = createServer(async (req, res) => {
       let source = bytes.toString("utf8");
       const expressionAnchor = "try{model.expression(expressionName);lastAppliedExpression=expressionName}catch{}";
       const motionAnchor = "try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k}catch{}";
-      const embodimentAnchor = "const signal=sanitizeEmbodiment(d);\n      if(signal){applyEmbodiment(signal);window.__nk1RuntimeLastEmbodiment={...signal,mouthViseme:d.mouthViseme};}";
+      const embodimentAnchor = "const signal=sanitizeEmbodiment(d);\n      if(signal)applyEmbodiment(signal);";
       const lipsyncAnchor = "lipTarget=clamp(d.value,0,1);";
       for (const anchor of [expressionAnchor,motionAnchor,embodimentAnchor,lipsyncAnchor]) {
         if (!source.includes(anchor)) throw new Error("runtime viewer smoke instrumentation anchor missing: " + anchor);
@@ -94,7 +94,7 @@ const server = createServer(async (req, res) => {
       source = source.replace(motionAnchor,
         "try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k;window.__nk1RuntimeMotion={group:String(bodySignal.motionGroup),index:Number(bodySignal.motionIndex||0)}}catch{}");
       source = source.replace(embodimentAnchor,
-        "const signal=sanitizeEmbodiment(d);\n      if(signal){applyEmbodiment(signal);window.__nk1RuntimeLastEmbodiment=signal;}");
+        "const signal=sanitizeEmbodiment(d);\n      if(signal){applyEmbodiment(signal);window.__nk1RuntimeLastEmbodiment={...signal,mouthViseme:d.mouthViseme};}");
       source = source.replace(lipsyncAnchor, "lipTarget=clamp(d.value,0,1);window.__nk1RuntimeLipTarget=lipTarget;");
       bytes = Buffer.from(source, "utf8");
     }
