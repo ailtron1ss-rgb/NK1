@@ -29,6 +29,8 @@ export interface CausalAccountabilityState {
   updatedAt: number;
   /** Bounded stable receipt directory permits late evidence to relink after node compaction. */
   outcomeIndex?: Array<{executionId:string;outcomeId:string;tool:string;tick:number;at:number;ok:boolean;expectedPostcondition?:string;observedPostcondition?:string;observationId?:string;confidence01:number}>;
+  /** Bounded IDs whose persisted execution receipts conflicted and must not be rebound. */
+  quarantinedExecutionIds?:string[];
 }
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -38,11 +40,23 @@ export class CausalAccountabilityGraph {
   private edges:CausalAccountabilityEdge[]=[];
   private activeChains:string[]=[];
   private outcomeIndex=new Map<string,{executionId:string;outcomeId:string;tool:string;tick:number;at:number;ok:boolean;expectedPostcondition?:string;observedPostcondition?:string;observationId?:string;confidence01:number}>();
+  private quarantinedExecutionIds=new Set<string>();
   private updatedAt=0;
   private readonly maxNodes:number;
   private readonly maxEdges:number;
   private readonly maxChains:number;
   private readonly maxOutcomeIndex=1024;
+
+  private quarantineExecutionId(executionId:string){
+    this.quarantinedExecutionIds.delete(executionId);
+    this.quarantinedExecutionIds.add(executionId);
+    this.outcomeIndex.delete(executionId);
+    while(this.quarantinedExecutionIds.size>this.maxOutcomeIndex){
+      const oldest=this.quarantinedExecutionIds.keys().next().value as string|undefined;
+      if(oldest===undefined)break;
+      this.quarantinedExecutionIds.delete(oldest);
+    }
+  }
 
   constructor(maxNodes=192,maxEdges=384,maxChains=32){
     this.maxNodes=Math.max(64,maxNodes);
@@ -104,6 +118,7 @@ export class CausalAccountabilityGraph {
     {resolved:true;verificationId:string;learningId?:string;replayed?:false}|{resolved:true;verificationId:string;learningId?:string;replayed:true}|{resolved:false;reason:'execution-id-required'|'no-matching-outcome'|'ambiguous-execution-receipt'} {
     const executionId=String(input.executionId??'').trim();
     if(!executionId) return {resolved:false,reason:'execution-id-required'};
+    if(this.quarantinedExecutionIds.has(executionId))return {resolved:false,reason:'ambiguous-execution-receipt'};
     let matches=this.nodes.filter(n=>n.kind==='outcome'&&n.data&&n.data.tool===input.tool&&n.data.executionId===executionId);
     if(matches.length===0){
       const receipt=this.outcomeIndex.get(executionId);
@@ -153,6 +168,7 @@ export class CausalAccountabilityGraph {
     const executionId=String(input.executionId??'').trim();
     const revisionId=String(input.revisionId??'').trim();
     if(!executionId||!revisionId)return {resolved:false,reason:'execution-id-required'};
+    if(this.quarantinedExecutionIds.has(executionId))return {resolved:false,reason:'ambiguous-execution-receipt'};
     if(!/^[a-f0-9]{64}$/i.test(input.providerReceiptHash)||!/^[a-f0-9]{64}$/i.test(input.baseFingerprint)||!/^[a-f0-9]{64}$/i.test(input.revisionFingerprint))return {resolved:false,reason:'evidence-revision-conflict'};
     const nodeId=`causal:evidence-revision:${revisionId.replace(/[^a-zA-Z0-9:_-]/g,'').slice(-48)}`;
     const existing=this.nodes.find(node=>node.id===nodeId);
@@ -199,7 +215,7 @@ export class CausalAccountabilityGraph {
   }
 
   snapshot():CausalAccountabilityState{
-    return {version:1,nodes:this.nodes.map(n=>structuredClone(n)),edges:this.edges.map(e=>structuredClone(e)),activeChains:[...this.activeChains],lastAt:this.nodes.at(-1)?.at??0,updatedAt:this.updatedAt,outcomeIndex:[...this.outcomeIndex.values()].map(row=>structuredClone(row))};
+    return {version:1,nodes:this.nodes.map(n=>structuredClone(n)),edges:this.edges.map(e=>structuredClone(e)),activeChains:[...this.activeChains],lastAt:this.nodes.at(-1)?.at??0,updatedAt:this.updatedAt,outcomeIndex:[...this.outcomeIndex.values()].map(row=>structuredClone(row)),quarantinedExecutionIds:[...this.quarantinedExecutionIds]};
   }
 
   restore(snapshot?:Partial<CausalAccountabilityState>){
@@ -208,14 +224,42 @@ export class CausalAccountabilityGraph {
     this.edges=Array.isArray(snapshot?.edges)?snapshot!.edges!.slice(-this.maxEdges).map(e=>structuredClone(e)):[];
     this.activeChains=Array.isArray(snapshot?.activeChains)?snapshot!.activeChains!.slice(0,this.maxChains):[];
     this.outcomeIndex.clear();
+    this.quarantinedExecutionIds.clear();
+    const quarantine=(id:string)=>{
+      this.quarantinedExecutionIds.delete(id);
+      this.quarantinedExecutionIds.add(id);
+      this.outcomeIndex.delete(id);
+      while(this.quarantinedExecutionIds.size>this.maxOutcomeIndex){
+        const oldest=this.quarantinedExecutionIds.keys().next().value as string|undefined;
+        if(oldest===undefined)break;
+        this.quarantinedExecutionIds.delete(oldest);
+      }
+    };
+    if(Array.isArray(snapshot?.quarantinedExecutionIds)){
+      for(const value of snapshot.quarantinedExecutionIds.slice(-this.maxOutcomeIndex)){
+        if(typeof value==='string'&&value.trim()&&value.length<=180)quarantine(value);
+      }
+    }
+    const sameReceipt=(a:{executionId:string;outcomeId:string;tool:string;tick:number;at:number;ok:boolean;expectedPostcondition?:string;observedPostcondition?:string;observationId?:string;confidence01:number},b:{executionId:string;outcomeId:string;tool:string;tick:number;at:number;ok:boolean;expectedPostcondition?:string;observedPostcondition?:string;observationId?:string;confidence01:number})=>
+      a.executionId===b.executionId&&a.outcomeId===b.outcomeId&&a.tool===b.tool&&a.tick===b.tick&&a.at===b.at&&a.ok===b.ok&&a.expectedPostcondition===b.expectedPostcondition&&a.observedPostcondition===b.observedPostcondition&&a.observationId===b.observationId&&a.confidence01===b.confidence01;
     if(Array.isArray(snapshot?.outcomeIndex))for(const value of snapshot.outcomeIndex.slice(-this.maxOutcomeIndex)){
       if(!value||typeof value.executionId!=='string'||!value.executionId.trim()||value.executionId.length>180||typeof value.outcomeId!=='string'||!value.outcomeId.trim()||typeof value.tool!=='string'||!value.tool.trim()||value.tool.length>180||!Number.isFinite(Number(value.tick))||!Number.isFinite(Number(value.at))||typeof value.ok!=='boolean')continue;
-      this.outcomeIndex.set(value.executionId,{...structuredClone(value),confidence01:clamp(Number(value.confidence01))});
+      const row={...structuredClone(value),confidence01:clamp(Number(value.confidence01))};
+      if(this.quarantinedExecutionIds.has(row.executionId))continue;
+      const prior=this.outcomeIndex.get(row.executionId);
+      if(prior&&!sameReceipt(prior,row)){quarantine(row.executionId);continue;}
+      if(!prior)this.outcomeIndex.set(row.executionId,row);
     }
     // Old snapshots do not have the directory; seed it from retained outcome nodes.
+    // A node that conflicts with a persisted receipt quarantines the execution ID.
     for(const node of this.nodes){
-      if(node.kind!=='outcome'||!node.data||typeof node.data.executionId!=='string'||typeof node.data.tool!=='string'||this.outcomeIndex.has(node.data.executionId))continue;
-      this.outcomeIndex.set(node.data.executionId,{executionId:node.data.executionId,outcomeId:node.id,tool:node.data.tool,tick:node.tick,at:node.at,ok:String(node.summary).endsWith(':ok'),expectedPostcondition:typeof node.data.expectedPostcondition==='string'?node.data.expectedPostcondition:undefined,observedPostcondition:typeof node.data.observedPostcondition==='string'?node.data.observedPostcondition:undefined,observationId:typeof node.data.observationId==='string'?node.data.observationId:undefined,confidence01:clamp(Number(node.confidence01??0))});
+      if(node.kind!=='outcome'||!node.data||typeof node.data.executionId!=='string'||typeof node.data.tool!=='string')continue;
+      const executionId=node.data.executionId;
+      if(!executionId.trim()||executionId.length>180||this.quarantinedExecutionIds.has(executionId))continue;
+      const row={executionId,outcomeId:node.id,tool:node.data.tool,tick:node.tick,at:node.at,ok:String(node.summary).endsWith(':ok'),expectedPostcondition:typeof node.data.expectedPostcondition==='string'?node.data.expectedPostcondition:undefined,observedPostcondition:typeof node.data.observedPostcondition==='string'?node.data.observedPostcondition:undefined,observationId:typeof node.data.observationId==='string'?node.data.observationId:undefined,confidence01:clamp(Number(node.confidence01??0))};
+      const prior=this.outcomeIndex.get(executionId);
+      if(prior&&!sameReceipt(prior,row)){quarantine(executionId);continue;}
+      if(!prior)this.outcomeIndex.set(executionId,row);
     }
     while(this.outcomeIndex.size>this.maxOutcomeIndex){const oldest=this.outcomeIndex.keys().next().value as string|undefined;if(!oldest)break;this.outcomeIndex.delete(oldest);}
   }
