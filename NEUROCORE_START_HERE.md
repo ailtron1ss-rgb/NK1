@@ -1,3 +1,17 @@
+## Latest checkpoint — WorkPass328 (2026-10-25)
+
+- **Verified source branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135) targets `work/node24-project-pin-rebased-20261025`, not `main`.
+- **Verified head:** `9d0e1fa5d7cb94e0e252cce09bdfca4551d0ddba`.
+- **Exact-head evidence:** Unified project integration suite run **#55 / 40229436759** completed success. Runner installed Node 24, Python 3.12 and CPU-only PyTorch; environment doctor and both locked npm installs passed; supervisor tests, app build/typecheck, cognitive integration, approval gateway E2E and unified runtime/research smoke all passed.
+- **New shared retry module:** `runtime/neuro-kurisu/src/server/transient-approval-storage-retry.mjs` is used by request/resolve/consume permission routes. It retries only the explicitly tagged transient `approval-storage-busy`, uses bounded exponential backoff, never starts a new operation at/after the deadline, fails fast on permanent storage errors, and propagates unexpected exceptions.
+- **Deterministic regression:** `tests/workpass327-transient-approval-retry.mjs` ran and emitted `WORKPASS327_TRANSIENT_APPROVAL_RETRY=PASS scenarios=4`: recovery after busy results, strict 90ms deadline, no retry for permanent failure, and thrown-error propagation.
+- **Other exact-head test markers:** `COGNITIVE_FRAME_CRITICAL_INTERRUPT=PASS scenarios=6 routeClosed=true`; `WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=25`; `WORKPASS53_RESEARCH_BRIDGE_APPROVAL=PASS scenarios=10`; `WORKPASS53_APPROVAL_BRIDGE_E2E=PASS scenarios=20`.
+- **Research evidence:** NeuroCore denied without approval (403) then passed after owner approval (MSE delta `-0.8120256662368774`); NOMEGA denied without approval then passed with 313 modules / 0 cycles; DeepCode denied without approval and passed after explicit approval.
+- **Next code-first focus:** check the latest source/Actions on each pass; extend runtime-level assertions for critical interrupts/resource budget through the full cycle; inspect actual learning outputs and independent holdout results; then continue memory → planning → action → independently verified postcondition → learning integration. Do not re-run old static audits when a targeted code/CI failure can be fixed directly.
+- **Still open before calling the whole project release-ready:** real browser/UI and Live2D/TTS, Android/Termux audio, independent held-out retrieval and learning-transfer uplift, a long-duration soak, license review and clean-machine release archive reproduction. No release ZIP update or merge into main was performed.
+
+---
+
 ## Latest checkpoint — WorkPass327 (2026-10-25)
 
 - **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135) remains draft, based on source branch `work/node24-project-pin-rebased-20261025`.
