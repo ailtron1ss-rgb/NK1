@@ -27,7 +27,9 @@ export function resolveCognitiveRoutingPolicy(
   const priority = typeof rawInterrupt?.priority01 === 'number' && Number.isFinite(rawInterrupt.priority01)
     ? Math.max(0, Math.min(1, rawInterrupt.priority01))
     : 0;
-  const type = typeof rawInterrupt?.type === 'string' ? rawInterrupt.type : 'none';
+  const type = typeof rawInterrupt?.type === 'string'
+    ? (rawInterrupt.type.trim().toLowerCase() || 'none')
+    : 'none';
   const criticalType = type === 'thermal-critical' || type === 'resource-critical' || type === 'memory-pressure';
   const governanceActive =
     typeof dependency?.wakeMask === 'number' &&
