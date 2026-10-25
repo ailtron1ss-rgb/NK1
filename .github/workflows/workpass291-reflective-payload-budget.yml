@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/tests/workpass291-reflective-payload-budget.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass291-reflective-payload-budget.yml'
