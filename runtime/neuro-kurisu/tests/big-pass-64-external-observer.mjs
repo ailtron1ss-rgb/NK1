@@ -312,6 +312,33 @@ try {
     'semantically invalid trailing projection rows must not evict a valid older projection during migration');
   assert.ok(!migratedProjection.projectionIndex.some(row => row.executionId === 'exec-migration-projection-forged-0'),
     'migration must discard projections whose fingerprint does not match their normalized record');
+
+  // Migration must validate semantic projection fingerprints before its own cap too.
+  const projectionMigrationSeed = structuredClone(migrationSeed);
+  const migrationProjectionSource = new OutcomeCognitionFabric();
+  migrationProjectionSource.project({
+    tick: 31, tool: 'door.open', ok: true, verification: projectionBaseVerification,
+    executionId: 'exec-migration-projection-valid', outcomeClass: 'executed-verified',
+  });
+  const migrationProjection = migrationProjectionSource.snapshot().projectionIndex[0];
+  projectionMigrationSeed.system.outcomeVerification = {
+    ...(projectionMigrationSeed.system.outcomeVerification ?? {}),
+    records: [migrationProjection.record],
+    projectionIndex: [
+      migrationProjection,
+      ...Array.from({ length: 2100 }, (_, i) => ({
+        executionId: 'exec-migration-projection-forged-' + i,
+        fingerprint: '0'.repeat(64),
+        record: { ...migrationProjection.record, executionId: 'exec-migration-projection-forged-' + i },
+        verifiedExternal: migrationProjection.verifiedExternal,
+      })),
+    ],
+  };
+  const migratedProjection = migratePersistedOrganism(projectionMigrationSeed).system.outcomeVerification;
+  assert.ok(migratedProjection.projectionIndex.some(row => row.executionId === 'exec-migration-projection-valid'),
+    'semantically invalid trailing projection rows must not evict a valid older projection during migration');
+  assert.ok(!migratedProjection.projectionIndex.some(row => row.executionId === 'exec-migration-projection-forged-0'),
+    'migration must discard projections whose fingerprint does not match their normalized record');
   core.registerActionTool({
     id:'observer.smoke',capability:'smoke',destructive:false,
     observationSource:{sourceId:'device-smoke',sourceClass:'device',channel:'sensor',independenceKey:'sensor:smoke'},
