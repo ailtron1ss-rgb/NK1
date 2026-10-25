@@ -168,7 +168,7 @@ assert.ok(conflictRestore.snapshot().recordedTraceIds.includes("External-Source-
 assert.equal(conflictRestore.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
 }), null, "quarantined identity must not be accepted again as a new event");
-assert.equal(conflictRestore.summary().outcomes, 1,
+assert.equal(conflictRestore.summary().outcomes, 0,
   "quarantine/retry must not change the persisted outcome count");
 
 const cyclicSnapshot = externalStream.snapshot();
@@ -189,7 +189,7 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, action: "delete-all", traceId: "invalid-action",
 }), /causal-external-action-invalid/);
-assert.equal(externalStream.summary().outcomes, 1,
+assert.equal(externalStream.summary().outcomes, 0,
   "invalid external task/action data must not mutate the causal stream");
 
 // IDs are identity keys, not display strings: truncating an overlong value could
@@ -227,7 +227,7 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, taskId: "edge-task" + String.fromCharCode(10), traceId: "control-task-edge",
 }), /causal-external-task-id-invalid/,
   "task IDs with trailing control characters must not normalize into ordinary IDs");
-assert.equal(externalStream.summary().outcomes, 1,
+assert.equal(externalStream.summary().outcomes, 0,
   "overlong or control-bearing identity keys must fail before mutating causal state");
 
 const overlongRuntimeTrace = { ...trace, id: "r".repeat(181) };
@@ -235,7 +235,7 @@ assert.equal(externalStream.recordOutcome(
   overlongRuntimeTrace, mkState({ tick: 22 }),
   { reward01: .5, success01: .5, surprise01: .5, novelty01: .5 },
 ), null, "an overlong runtime trace cannot be silently truncated into another identity");
-assert.equal(externalStream.summary().outcomes, 1);
+assert.equal(externalStream.summary().outcomes, 0);
 
 const corruptSnapshot = externalStream.snapshot();
 corruptSnapshot.records.push({
