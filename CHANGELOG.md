@@ -10,7 +10,9 @@
 - [GOAL LIFECYCLE] Fixed the P68 active-only traversal that made paused-goal reactivation unreachable; imported external goals remain activation-gated unless explicitly approved. Reactivation now also respects the four-active-goal capacity.
 - [IDEMPOTENCY] Projector now returns the stored receipt when replayed with an already-applied stage; a direct replay regression was added.
 - [MEMORY SAFETY] Imported quarantine/archive/deletion/rejection statuses remain quarantined; unknown statuses remain `unknown` instead of being promoted to beliefs. Added a recall-exclusion regression. Foreign `fact` labels are reduced to `belief`, never trusted as NK1-verified facts. The canonical `MemoryFabric` boundary now forwards `forceDistinct`, keeping same-text imported lineage separate from native records. `SemanticMemoryGraph` now respects `sourceKey`, preventing same-label native/imported nodes from collapsing.
-- [STATUS] The CI rerun must still confirm HMX test results. The bridge is not yet verified or production-ready; no learning-uplift claim is made.
+- [CANONICAL WRAPPER] Removed legacy `OrganismCore.hexisDecideHmx` behavior that wrote imported memories during `accept`. `accept` now records review state only; explicit `apply` invokes the canonical projector, then refreshes the persisted `MemoryOS2` snapshot.
+- [CI] `npm run audit:hexis` passed in WorkPass340 workflow run 73 at code commit `db18a488112c004544d44c527344c101d9ecb356` (export/projector regressions, server smoke, UI wiring). The server smoke confirms `stage` and `accept` are write-free and explicit `apply` persists through canonical memory.
+- [STATUS] Repository-wide typecheck remains red on existing errors across unrelated runtime modules and is tracked as diagnostic. PR #116 remains draft/unmerged pending review; no release ZIP, deployment, or learning-uplift benchmark is claimed.
 
 ## NK1 WorkPass331 — execute initiative regression guards in CI (2026-10-24)
 
