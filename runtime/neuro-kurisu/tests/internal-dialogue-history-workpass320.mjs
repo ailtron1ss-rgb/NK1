@@ -52,7 +52,7 @@ assert.ok(summary.uncertaintyCategoryCounts.some(entry => entry.category === 'ac
 assert.equal(summary.advisoryOnly, true);
 assert.equal(JSON.stringify(summary).includes('alice@example.com'), false, 'summary must never include original question text');
 
-const single = summarizeInternalDialogueHistory([receipt(77)]);
+const single = summarizeInternalDialogueHistory([receipt(17)]);
 assert.equal(single.sampleCount, 1);
 assert.equal(single.rankingConfidenceDelta01, null);
 assert.equal(single.rankingConfidenceTrend, 'insufficient-data');
