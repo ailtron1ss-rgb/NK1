@@ -122,9 +122,10 @@ validProjectionSource.project({
 const validProjectionSnapshot = validProjectionSource.snapshot();
 const noisyProjectionRows = Array.from({ length: 900 }, (_, i) => ({
   executionId: 'exec-invalid-projection-tail-' + i,
-  fingerprint: 'invalid',
-  record: null,
-  verifiedExternal: false,
+  // Looks structurally valid but does not match the record's immutable identity.
+  fingerprint: '0'.repeat(64),
+  record: { ...validProjectionSnapshot.projectionIndex[0].record, executionId: 'exec-invalid-projection-tail-' + i },
+  verifiedExternal: validProjectionSnapshot.projectionIndex[0].verifiedExternal,
 }));
 const noisyProjectionRestored = new OutcomeCognitionFabric();
 noisyProjectionRestored.restore({
