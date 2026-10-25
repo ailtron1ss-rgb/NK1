@@ -84,6 +84,13 @@ export class EmotionAppraisalEngine {
     return c(episode.arousal01-recalledAffect01*.072);
   }
 
+  /** Rebuild memory salience without the arousal increment caused by recalling that same memory. */
+  memorySalienceWithoutRecall01(episode:EmotionEpisode):number{
+    const recalledAffect01=c(episode.appraisal.recalledAffect01??0);
+    const attentionWithoutRecall=c(episode.interoceptiveDelta.attentionCapture01-recalledAffect01*.072*.55);
+    return Math.max(.8,Math.min(1.35,.8+attentionWithoutRecall*.7));
+  }
+
   observeInteroception(input:{energy01:number;thermal01:number;capacity01:number;load01:number;homeostaticPressure01?:number}):InteroceptiveAffectState{
     const st=this.state.interoception;
     const actual={energy01:c(input.energy01),thermal01:c(input.thermal01),capacity01:c(input.capacity01),load01:c(input.load01)};
