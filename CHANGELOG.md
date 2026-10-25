@@ -1,3 +1,10 @@
+## NK1 WorkPass360 — Isolate host-owned authority boundary test mutations (2026-10-25)
+
+- [TEST-ISOLATION] The host-owned independent-evaluation regression restores the test executable's private mode after deliberately making it group-writable for a rejection check.
+- [REGRESSION] Later dispatch-time run-root replacement now reaches the intended inode/identity guard rather than being preempted by the earlier file-mode mutation. The production permission check remains unchanged.
+
+---
+
 ## NK1 WorkPass359 — Reconcile signed-shadow fixture with durable candidate ID (2026-10-25)
 
 - [IDENTITY] The signed-shadow integration fixture now hashes the five-field candidate identity, including an explicit `null` lineage slot for a candidate without reflective revision provenance, matching the current writer and persistence validator.
