@@ -241,7 +241,7 @@ export class CausalAccountabilityGraph {
       }
     }
     const sameReceipt=(a:{executionId:string;outcomeId:string;tool:string;tick:number;at:number;ok:boolean;expectedPostcondition?:string;observedPostcondition?:string;observationId?:string;confidence01:number},b:{executionId:string;outcomeId:string;tool:string;tick:number;at:number;ok:boolean;expectedPostcondition?:string;observedPostcondition?:string;observationId?:string;confidence01:number})=>
-      a.executionId===b.executionId&&a.outcomeId===b.outcomeId&&a.tool===b.tool&&a.tick===b.tick&&a.at===b.at&&a.ok===b.ok&&a.expectedPostcondition===b.expectedPostcondition&&a.observedPostcondition===b.observedPostcondition&&a.observationId===b.observationId&&a.confidence01===b.confidence01;
+      a.executionId===b.executionId&&a.outcomeId===b.outcomeId&&a.tool===b.tool&&a.tick===b.tick&&a.ok===b.ok&&a.expectedPostcondition===b.expectedPostcondition&&a.observedPostcondition===b.observedPostcondition&&a.observationId===b.observationId&&a.confidence01===b.confidence01;
     if(Array.isArray(snapshot?.outcomeIndex))for(const value of snapshot.outcomeIndex.slice(-this.maxOutcomeIndex)){
       if(!value||typeof value.executionId!=='string'||!value.executionId.trim()||value.executionId.length>180||typeof value.outcomeId!=='string'||!value.outcomeId.trim()||typeof value.tool!=='string'||!value.tool.trim()||value.tool.length>180||!Number.isFinite(Number(value.tick))||!Number.isFinite(Number(value.at))||typeof value.ok!=='boolean')continue;
       const row={...structuredClone(value),confidence01:clamp(Number(value.confidence01))};
