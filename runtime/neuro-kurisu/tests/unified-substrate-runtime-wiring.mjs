@@ -150,7 +150,7 @@ assert.ok([
   ...Object.values(updated.provenance),
 ].every(value => Number.isFinite(value) && value >= 0 && value <= 1 || Number.isSafeInteger(value) && value >= 0));
 const beforeRejectedInput = substrate.snapshot();
-assert.throws(() => substrate.integrate({ tick: 1 }), /sections must be objects/);
+assert.throws(() => substrate.integrate({ tick: 2 }), /sections must be objects/);
 assert.deepEqual(substrate.snapshot(), beforeRejectedInput, 'malformed sections must not mutate the active frame');
 assert.throws(() => substrate.integrate({ tick: 1, self: {}, world: {}, prediction: {}, resources: {} }), /tick must strictly increase/);
 assert.deepEqual(substrate.snapshot(), beforeRejectedInput, 'replayed ticks must not mutate the active frame');
