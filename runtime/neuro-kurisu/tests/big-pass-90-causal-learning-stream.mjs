@@ -277,16 +277,29 @@ assert.equal(boundedDuplicateStream.summary().outcomes, outcomesBeforeEvictedRet
   "late duplicate after bounded eviction must not change outcome counts");
 
 const replayDiversity = new CausalExperienceStream(64);
-for (let i = 0; i < 3; i++) {
-  replayDiversity.recordOutcome({
-    ...trace, id: `replay-a-${i}`, tick: 10 + i,
-    selected: { ...trace.selected, goalId: "task-A" },
-  }, mkState({ tick: 11 + i }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
-}
-replayDiversity.recordOutcome({
-  ...trace, id: "replay-b-0", tick: 20,
-  selected: { ...trace.selected, goalId: "task-B" },
-}, mkState({ tick: 21 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+const recordObservedTaskOutcome = (id, tick, goalId) => {
+  const replayTrace = {
+    ...trace,
+    id,
+    tick,
+    stateBefore: mkState({ tick }),
+    selected: { ...trace.selected, goalId },
+  };
+  const replayStateAfter = mkState({
+    tick: tick + 1,
+    at: 1000 + (tick + 1) * 100,
+    lastAction: replayTrace.selected.action,
+    lastActionSuccess: .7,
+    needs: { ...mkState().needs, energy: .55, uncertainty: .4, novelty: .75 },
+  });
+  return replayDiversity.recordOutcome(replayTrace, replayStateAfter, {
+    reward01: .7, success01: .7, surprise01: .6, novelty01: .5,
+  });
+};
+for (let i = 0; i < 3; i++) recordObservedTaskOutcome(`replay-a-${i}`, 10 + i, "task-A");
+recordObservedTaskOutcome("replay-b-0", 20, "task-B");
+assert.equal(replayDiversity.summary().outcomes, 4,
+  "replay diversity fixture must contain four valid observed transitions before replay");
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
 assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
 assert.ok(replayBatch.some((row) => row.taskId === "task-B"),
