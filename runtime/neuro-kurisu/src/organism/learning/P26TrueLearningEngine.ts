@@ -124,13 +124,15 @@ export class P26TrueLearningEngine{
   trainInterleaved(
     current:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
     historical:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
-    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'reward'|'td';currentLearningRate01?:number;replayLearningRate01?:number;conflictCandidateCap?:number}={}
+    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number;maxReplayRatio01?:number;targetMode?:'reward'|'td';currentLearningRate01?:number;replayLearningRate01?:number;conflictCandidateCap?:number}={}
   ){
     if(!Array.isArray(current)||!Array.isArray(historical)) throw new TypeError('interleaved-experience-must-be-arrays');
     const every=Number.isSafeInteger(options.replayEveryNCurrent)&&Number(options.replayEveryNCurrent)>0
       ?Math.min(4096,Number(options.replayEveryNCurrent)):16;
-    const maxAttempts=options.maxReplayUpdates===undefined?160
+    const requestedReplayAttempts=options.maxReplayUpdates===undefined?160
       :(Number.isSafeInteger(options.maxReplayUpdates)&&options.maxReplayUpdates>=0?Math.min(4096,options.maxReplayUpdates):0);
+    const maxReplayRatio=options.maxReplayRatio01??.5;
+    if(!Number.isFinite(maxReplayRatio)||maxReplayRatio<0||maxReplayRatio>1) throw new RangeError('max-replay-ratio-out-of-range');
     const candidateCap=options.conflictCandidateCap===undefined?64
       :(Number.isSafeInteger(options.conflictCandidateCap)?Math.max(8,Math.min(128,options.conflictCandidateCap)):64);
     const currentRate=options.currentLearningRate01??.18;
@@ -146,6 +148,9 @@ export class P26TrueLearningEngine{
         &&(r.surprise===undefined||(typeof r.surprise==='number'&&Number.isFinite(r.surprise))));
     };
     if(!current.every(validRow)||!historical.every(validRow))throw new TypeError('interleaved-experience-row-invalid');
+    // Bound rehearsal relative to the fresh batch so a high-frequency replay stride
+    // cannot overwhelm current-task learning even when maxReplayUpdates is large.
+    const maxAttempts=Math.min(requestedReplayAttempts,Math.floor(current.length*maxReplayRatio));
     const targetFor=(row:{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number})=>{
       if(targetMode==='reward')return clamp(row.reward);
       const next=Math.max(...this.learner.predict(row.nextState).map(p=>p.value),.5);
@@ -199,7 +204,7 @@ export class P26TrueLearningEngine{
       this.state.metrics.lastUpdatedAt=Date.now();
     }
     this.sync();
-    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap:candidateCap,meanLoss01:totalUpdates?totalLoss/totalUpdates:0};
+    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap:candidateCap,maxReplayAttempts:maxAttempts,meanLoss01:totalUpdates?totalLoss/totalUpdates:0};
   }
 
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
