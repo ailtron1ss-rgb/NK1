@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-import { existsSync, statSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
-const root = process.cwd();
+import { fileURLToPath } from 'node:url';
+import { matchesNodePin, versionAtLeast, MIN_NPM_VERSION } from './runtime-pin.mjs';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out=[]; const ok=(name,pass,detail='')=>out.push({name,pass,detail});
 function ver(bin,args=['--version']){try{return execFileSync(bin,args,{encoding:'utf8'}).trim()}catch{return null}}
 const node=ver(process.execPath); const npm=ver('npm'); const py=ver('python3');
