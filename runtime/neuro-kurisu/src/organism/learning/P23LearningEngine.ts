@@ -1866,8 +1866,8 @@ export class P23LearningEngine {
     return ok;
   }
 
-  learningSummary():P23LearningMetrics & {topSkills:PolicySkillRecord[];evidenceDebt:EvidenceDebtItem[];checksum:CognitiveChecksum;reflections:ReturnType<P23LearningEngine['reflectionHypotheses']>;nextLearningTargets:ReturnType<P23LearningEngine['recommendLearningTargets']>} {
-    return {...this.state.metrics,topSkills:this.topSkills(8),evidenceDebt:this.evidenceDebt(8),checksum:structuredClone(this.state.checksum),reflections:this.reflectionHypotheses(8),nextLearningTargets:this.recommendLearningTargets(8)};
+  learningSummary():P23LearningMetrics & {topSkills:PolicySkillRecord[];evidenceDebt:EvidenceDebtItem[];checksum:CognitiveChecksum;reflections:ReturnType<P23LearningEngine['reflectionHypotheses']>;recentAttemptDiagnoses:ReturnType<P23LearningEngine['diagnoseRecentLearningAttempts']>;nextLearningTargets:ReturnType<P23LearningEngine['recommendLearningTargets']>} {
+    return {...this.state.metrics,topSkills:this.topSkills(8),evidenceDebt:this.evidenceDebt(8),checksum:structuredClone(this.state.checksum),reflections:this.reflectionHypotheses(8),recentAttemptDiagnoses:this.diagnoseRecentLearningAttempts(8),nextLearningTargets:this.recommendLearningTargets(8)};
   }
 
   private recomputeMetrics():void {
