@@ -12,7 +12,7 @@ export type EmotionActionTendency = 'explore'|'engage'|'verify'|'reflect'|'rest'
 export interface EmotionEpisode {
   id:string; tick:number; at:number; label:EmotionLabel; actionTendency:EmotionActionTendency;
   valence01:number; arousal01:number; dominance01:number;
-  appraisal:{relevance01:number; goalCongruence01:number; controllability01:number; novelty01:number; selfRelevance01:number; socialMeaning01:number; uncertainty01:number; recalledAffect01?:number; recalledMemoryCount?:number};
+  appraisal:{relevance01:number; goalCongruence01:number; controllability01:number; novelty01:number; selfRelevance01:number; socialMeaning01:number; uncertainty01:number; recalledAffect01?:number; recalledMemoryCount?:number; recalledContextRelevance01?:number};
   interoceptiveDelta:{stress01:number; energy01:number; load01:number; attentionCapture01:number};
   memorySalienceMultiplier01:number;
   confidence01:number;
@@ -75,6 +75,22 @@ export class EmotionAppraisalEngine {
     if(!key)return null;
     const episode=this.state.history.find(item=>item.id===key);
     return episode?structuredClone(episode):null;
+  }
+
+  /**
+   * Estimate whether a recalled memory shares lexical context with the current input.
+   * This is a conservative lexical signal, not a semantic-similarity claim. A small
+   * floor preserves weak retrieval influence without letting unrelated memories dominate.
+   */
+  scoreRecallContextRelevance01(queryText:string,memoryText:string,tags:string[]=[]):number{
+    const stop=new Set(['the','and','for','that','with','this','from','have','your','you','are','was','were','will','what','when','where','how','why','into','onto','about','then','than','but','not','can','could','would','should','our','their','there','here','just','also','its','has','had','did','does','что','это','как','для','при','или','если','когда','где','почему','тогда','быть','был','была','были','есть','мой','моя','мои','твой','твоя','ваш','ваша','они','она','оно','его','ее','ему','нам','вам','так','уже','ещё','еще']);
+    const tokens=(value:string)=>new Set(String(value??'').toLocaleLowerCase().normalize('NFKC').match(/[\\p{L}\\p{N}]{3,}/gu)?.filter(token=>!stop.has(token))??[]);
+    const query=tokens(queryText);
+    if(query.size===0)return .1;
+    const memory=tokens([memoryText,...tags].join(' '));
+    let matched=0;
+    for(const token of query)if(memory.has(token))matched++;
+    return c(.1+.9*(matched/query.size));
   }
 
   /** Remove only the explicit recall-derived arousal increment before memory reconsolidation.
@@ -141,11 +157,11 @@ export class EmotionAppraisalEngine {
     }
     return this.state.outcomes[String(action)]?structuredClone(this.state.outcomes[String(action)]):null;
   }
-  appraise(input:{tick:number;at?:number;goalPressure01?:number;goalCongruence01?:number;controllability01?:number;novelty01?:number;selfRelevance01?:number;socialMeaning01?:number;uncertainty01?:number;predictionError01?:number;homeostaticPressure01?:number;energy01?:number;success01?:number;external?:boolean;recalledAffect?:{intensity01:number;confidence01:number;evidenceCount:number}}):EmotionEpisode{
+  appraise(input:{tick:number;at?:number;goalPressure01?:number;goalCongruence01?:number;controllability01?:number;novelty01?:number;selfRelevance01?:number;socialMeaning01?:number;uncertainty01?:number;predictionError01?:number;homeostaticPressure01?:number;energy01?:number;success01?:number;external?:boolean;recalledAffect?:{intensity01:number;confidence01:number;evidenceCount:number;contextRelevance01?:number}}):EmotionEpisode{
     // Retrieved emotional weight measures salience/intensity, not positive or negative valence.
     // It can modestly raise attention/arousal, but is deliberately excluded from valence and stress.
     const recalledMemoryCount=Math.max(0,Math.min(4,Math.floor(Number(input.recalledAffect?.evidenceCount??0))));
-    const recalledAffect01=c(c(input.recalledAffect?.intensity01??0)*c(input.recalledAffect?.confidence01??0)*Math.min(1,recalledMemoryCount/2));
+    const recalledContextRelevance01=c(input.recalledAffect?.contextRelevance01??1);\n    const recalledAffect01=c(c(input.recalledAffect?.intensity01??0)*c(input.recalledAffect?.confidence01??0)*Math.min(1,recalledMemoryCount/2)*recalledContextRelevance01);
     const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
     const arousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09+recalledAffect01*.072);
     const valence=c(.5+(a.goalCongruence01-.5)*.48+a.controllability01*.10-(a.uncertainty01*.16)+((input.success01??.5)-.5)*.45);
@@ -161,7 +177,7 @@ export class EmotionAppraisalEngine {
     else if(valence<.34 && dominance>.65){label='anger';actionTendency='protect';}
     const attentionCapture=c(arousal*.55+a.relevance01*.25+a.selfRelevance01*.20);
     const n=this.state.episodes+1;
-    const episode:EmotionEpisode={id:`emo:${Math.max(0,Math.floor(input.tick))}:${Number(input.at??Date.now())}:${n}`,tick:Math.max(0,Math.floor(input.tick)),at:Number(input.at??Date.now()),label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:{...a,recalledAffect01,recalledMemoryCount},interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},memorySalienceMultiplier01:Math.max(.8,Math.min(1.35,.8+attentionCapture*.7)),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state'};
+    const episode:EmotionEpisode={id:`emo:${Math.max(0,Math.floor(input.tick))}:${Number(input.at??Date.now())}:${n}`,tick:Math.max(0,Math.floor(input.tick)),at:Number(input.at??Date.now()),label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:{...a,recalledAffect01,recalledMemoryCount,recalledContextRelevance01},interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},memorySalienceMultiplier01:Math.max(.8,Math.min(1.35,.8+attentionCapture*.7)),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state'};
     this.state={...this.state,episodes:n,lastTick:episode.tick,lastAt:episode.at,lastLabel:episode.label,meanArousal01:c(this.state.meanArousal01*(n-1)/n+episode.arousal01/n),meanValence01:c(this.state.meanValence01*(n-1)/n+episode.valence01/n),meanStress01:c(this.state.meanStress01*(n-1)/n+stress/n),meanAttentionCapture01:c(this.state.meanAttentionCapture01*(n-1)/n+attentionCapture/n),history:[episode,...this.state.history].slice(0,128)};
     return structuredClone(episode);
   }
