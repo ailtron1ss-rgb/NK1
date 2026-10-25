@@ -10,8 +10,8 @@ export class IntrinsicExperimentGenerator {
   fromDreamAssociation(input:{id:string;question:string;confidence:number;at:number;sourceMemoryIds?:string[];sharedTerms?:string[];kind?:string;validationStatus?:string},goals:OrganismGoal[]):IntrinsicExperiment|null{
     const id=String(input?.id??'').trim().slice(0,160);
     const question=String(input?.question??'').normalize('NFKC').trim().slice(0,400);
-    const sources=Array.isArray(input?.sourceMemoryIds)?[...new Set(input.sourceMemoryIds.filter((x):x is string=>typeof x==='string'&&x.trim()).map(x=>x.slice(0,160)))].slice(0,2):[];
-    const terms=Array.isArray(input?.sharedTerms)?[...new Set(input.sharedTerms.filter((x):x is string=>typeof x==='string'&&x.trim()).map(x=>x.normalize('NFKC').trim().slice(0,64)))].slice(0,8):[];
+    const sources=Array.isArray(input?.sourceMemoryIds)?[...new Set(input.sourceMemoryIds.filter((x):x is string=>typeof x==='string'&&x.trim().length>0).map(x=>x.slice(0,160)))].slice(0,2):[];
+    const terms=Array.isArray(input?.sharedTerms)?[...new Set(input.sharedTerms.filter((x):x is string=>typeof x==='string'&&x.trim().length>0).map(x=>x.normalize('NFKC').trim().slice(0,64)))].slice(0,8):[];
     const confidence=Number(input?.confidence);
     if(!id||!question||input.kind!=='association'||input.validationStatus!=='candidate'||sources.length!==2||terms.length<2||!Number.isFinite(confidence)||confidence<.45)return null;
     const goal=goals.find(g=>g.source==='intrinsic'||g.source==='homeostatic');
