@@ -16,6 +16,11 @@ assert.throws(() => learner.train({ ...valid, target01: Number.NaN }), /target-m
 assert.throws(() => learner.train({ ...valid, learningRate01: Number.POSITIVE_INFINITY }), /rate-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, sampleWeight01: Number.NaN }), /sample-weight-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, action: 'not-an-action' }), /invalid-action/);
+assert.throws(() => learner.train({ ...valid, state: { needs: null } }), /state-must-have-needs/);
+assert.throws(() => learner.trainFeatures({ features, action: 'respond', target01: Number.NaN, learningRate01: .06 }), /target-must-be-finite/);
+assert.throws(() => learner.trainFeatures({ features, action: 'respond', target01: .9, learningRate01: Number.POSITIVE_INFINITY }), /rate-must-be-finite/);
+assert.throws(() => learner.trainFeatures({ features, action: 'respond', target01: .9, learningRate01: .06, sampleWeight01: Number.NaN }), /sample-weight-must-be-finite/);
+assert.throws(() => learner.trainFeatures({ features: [...features, Number.NaN], action: 'respond', target01: .9, learningRate01: .06 }), /features-must-be-finite/);
 assert.deepEqual(learner.snapshot(), initial, 'rejected samples must not mutate policy weights or learning diagnostics');
 
 const features = learner.features(state, undefined, 'respond');

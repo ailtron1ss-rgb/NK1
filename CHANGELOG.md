@@ -1,3 +1,12 @@
+## NK1 P26 learner integrity — reject malformed training feedback before mutation (2026-10-25)
+
+- Added preflight validation for action identity, finite/ranged TD targets, finite learning rates/sample weights, required state features, and numeric extras before either online or feature-vector training.
+- Hardened feature-vector training against non-finite values and malformed vector length rather than silently clamping them into legitimate data.
+- Made batch training validate every sample before the first update, preserving atomic rejection when later feedback is malformed.
+- Expanded the P26 integrity regression for NaN/infinite scalar inputs, invalid actions and malformed states while retaining snapshot checks proving rejected data does not mutate the policy.
+
+---
+
 ## NK1 cognitive architecture smoke — validate dynamic contract counts and bounded context keys (2026-10-25)
 
 - Updated the server smoke to compare subsystem/flow array lengths with the architecture validator's own counts, keeping minimum architecture coverage without freezing the test to the old 22-flow map after it grew to 25.
