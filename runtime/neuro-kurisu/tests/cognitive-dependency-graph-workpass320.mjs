@@ -73,4 +73,22 @@ copy.domainTransitions.world = 999;
 assert.deepEqual(graph.snapshot().interrupt.domains, ['world'], 'diagnostics must not leak mutable interrupt arrays');
 assert.notEqual(graph.snapshot().domainTransitions.world, 999, 'diagnostics must not leak mutable counters');
 
+const uppercaseRestored = new CognitiveDependencyGraph();
+uppercaseRestored.restore({
+  version: 1,
+  lastTick: 4,
+  wakeMask: 8,
+  interrupt: {
+    active: true,
+    priority01: 0.84,
+    type: 'RESOURCE-CRITICAL',
+    domains: ['agency'],
+  },
+});
+assert.equal(
+  uppercaseRestored.interruption().type,
+  'resource-critical',
+  'restored interrupt labels must be canonical before downstream routing',
+);
+
 console.log('WorkPass320 cognitive dependency restore hardening: PASS');
