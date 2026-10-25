@@ -1,3 +1,13 @@
+## NK1 WorkPass535 — wire signed P36 evaluators into the production host (2026-10-25)
+
+- Added `P36HostEvaluatorBootstrap.ts`. `NEURO_P36_SIGNED_LEDGER_CONFIG_FILE` optionally points to host-owned config for a task manifest, public verifier keyring, and signed-artifact directory. The server re-ingests and verifies all artifacts at startup, rejects private keys/invalid signatures/path traversal/writable inputs, and refuses to register a ledger evaluator unless full pinned holdout coverage exists for at least four paired seeds.
+- `NEURO_P36_MATURITY_EVALUATOR_MODULE` optionally loads a separate trusted host module exporting `createP36DevelopmentalOutcomeEvaluator()` (or a default factory). If absent, the maturity slot remains unavailable; no delayed-retention result is fabricated.
+- Production `server.mjs` now passes only explicitly configured host evaluators through `OrganismRuntime` into Core. Invalid configured trust data aborts startup rather than silently disabling verification.
+- Added `test:p36:host-bootstrap` and wired bootstrap/server changes into P26 Learning Validation.
+- **Validation boundary:** exact-HEAD CI/typecheck remains unconfirmed. This change adds an opt-in wiring and strict loader; it does not provide production key material, signed outcomes, or a production maturity module. `main` and Release ZIP remain unchanged.
+
+---
+
 ## NK1 WorkPass534 — split P36 experiment evidence from developmental maturity (2026-10-25)
 
 - Introduced a separate reserved host capability `organism.learning.p36.evaluate-maturity` alongside `organism.learning.p36.evaluate-evidence`.
