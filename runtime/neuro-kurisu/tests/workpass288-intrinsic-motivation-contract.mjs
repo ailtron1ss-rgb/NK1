@@ -48,4 +48,21 @@ assert.equal(engine.snapshot().novelty,0.8);
 engine.restore({overall:1,dominant:'made-up'});
 assert.equal(engine.snapshot().overall,0);
 assert.equal(engine.proposeGoal(),null);
+const inheritedState=Object.create({
+  epistemic:1,novelty:1,competence:1,coherence:1,social:1,homeostatic:1,
+  dominant:'homeostatic',updatedAt:1,
+});
+engine.restore(inheritedState);
+const inheritedSnapshot=engine.snapshot();
+for(const key of ['epistemic','novelty','competence','coherence','social','homeostatic','overall']) {
+  assert.equal(inheritedSnapshot[key],0,`inherited ${key} must not become restored drive evidence`);
+}
+assert.equal(inheritedSnapshot.dominant,'epistemic');
+assert.equal(engine.proposeGoal(),null,'prototype-injected drive values must not create autonomous goals');
+
+const accessorState={};
+Object.defineProperty(accessorState,'novelty',{enumerable:true,get(){throw new Error('restore must not execute snapshot getters');}});
+assert.doesNotThrow(()=>engine.restore(accessorState),'restore must read own data properties without invoking accessors');
+assert.equal(engine.snapshot().novelty,0);
+
 console.log('WorkPass288 intrinsic motivation contract: PASS');
