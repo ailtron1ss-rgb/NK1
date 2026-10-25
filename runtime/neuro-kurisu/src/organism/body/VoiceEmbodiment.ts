@@ -94,5 +94,5 @@ export function buildVoicePlan(input:{text:string;action?:ActionKind|string|null
   };
 }
 
-export interface VoiceRuntimeState { version:1; speaking:boolean; listening:boolean; lastMode:VoiceBreathMode|null; lastTone:VoiceTone|null; lastProsody:VoiceProsody|null; utteranceCount:number; listenCount:number; interruptionCount:number; lastAt:number; lastError:string|null; }
-export const defaultVoiceRuntimeState=():VoiceRuntimeState=>({version:1,speaking:false,listening:false,lastMode:null,lastTone:null,lastProsody:null,utteranceCount:0,listenCount:0,interruptionCount:0,lastAt:0,lastError:null});
+export interface VoiceRuntimeState { version:1; speaking:boolean; listening:boolean; lastMode:VoiceBreathMode|null; lastTone:VoiceTone|null; lastProsody:VoiceProsody|null; lastSpeechEventId:string|null; lastSpeechText:string|null; speechStartedAt:number|null; utteranceCount:number; listenCount:number; interruptionCount:number; lastAt:number; lastError:string|null; }
+export const defaultVoiceRuntimeState=():VoiceRuntimeState=>({version:1,speaking:false,listening:false,lastMode:null,lastTone:null,lastProsody:null,lastSpeechEventId:null,lastSpeechText:null,speechStartedAt:null,utteranceCount:0,listenCount:0,interruptionCount:0,lastAt:0,lastError:null});
