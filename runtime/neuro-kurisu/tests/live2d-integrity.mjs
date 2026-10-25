@@ -69,4 +69,11 @@ assert.ok(avatarSource.includes('requestAnimationFrame(animateSpeech)'), 'viseme
 assert.ok(avatarStateSource.includes('export function buildAvatarSpeechTimeline'), 'avatar mapper must build grapheme pose windows');
 assert.ok(avatarStateSource.includes('export function sampleAvatarSpeechTimeline'), 'avatar mapper must sample time-indexed visemes');
 assert.ok(!avatarStateSource.includes('clamp(0.32 + arousal * 0.35'), 'mouth motion cannot be a constant amplitude while speaking');
+assert.ok(avatarSource.includes("post('kurisu_embodiment_intent', intent)"), 'runtime avatar must publish a single versioned embodiment intent');
+assert.ok(!avatarSource.includes("post('kurisu_expression'") && !avatarSource.includes("post('kurisu_embodiment',") && !avatarSource.includes("post('kurisu_lipsync',"),
+  'runtime avatar must not emit split legacy control messages after switching to intent v1');
+assert.ok(runtimeViewerSource.includes('function sanitizeIntent(d)') && runtimeViewerSource.includes('function applyIntent(intent)'),
+  'runtime viewer must validate and apply the shared EmbodimentIntent v1 contract');
+assert.ok(runtimeViewerSource.includes("d.type==='kurisu_embodiment_intent'"), 'runtime viewer must receive the versioned intent');
+assert.ok(runtimeViewerSource.includes('runtime-tts-start-anchored-monotonic'), 'runtime viewer must accept its declared start-clock source');
 console.log(`LIVE2D_INTEGRITY=PASS qualityTextureBytes=${fs.statSync(path.join(root,'public/live2d/Kurisu/Kurisu.4096/texture_00.png')).size} mobileTextureBytes=${fs.statSync(path.join(root,'public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png')).size}`);
