@@ -36,7 +36,8 @@ export function resolveCognitiveRoutingPolicy(
     Number.isSafeInteger(dependency.wakeMask) &&
     (dependency.wakeMask & 64) !== 0;
 
-  if (active && (priority >= 0.90 || criticalType)) {
+  // Critical severity is itself authoritative; a contradictory inactive flag must not reopen speculative work.
+  if (criticalType || (active && priority >= 0.90)) {
     return {
       maxCounterfactualBranches: 0,
       allowMatchedCounterfactual: false,
