@@ -627,7 +627,7 @@ export class P36AutonomousSelfDevelopmentEngine{
     return structuredClone(result);
   }
 
-  recordExternalEvidence(input:{hypothesisId:string;contextKey:string;control01:number;treatment01:number;independentVerified?:boolean;verification?:OutcomeVerification;toolId?:string;executionId?:string;decisionId?:string;holdout:boolean;delayMs:number;evaluatorVersion:string;evidenceSource:'external-evaluator'|'manual-observer';protocolId?:string;sessionId?:string;trialId?:string;at?:number}):{eligible:boolean;evidenceCount:number;distinctContexts:number;distinctDelays:number;holdoutCount:number;independentCount:number;meanDelta01:number|null;ci95Low01:number|null;ci95High01:number|null;status:'insufficient'|'holdout-verified'|'replicated';promoted:boolean} {
+  recordExternalEvidence(input:{hypothesisId:string;contextKey:string;control01:number;treatment01:number;independentVerified?:boolean;verification?:OutcomeVerification;toolId?:string;executionId?:string;decisionId?:string;holdout:boolean;delayMs:number;evaluatorVersion:string;evidenceSource:'external-evaluator'|'manual-observer';protocolId?:string;sessionId?:string;trialId?:string;baselineMethod?:string;treatmentMethod?:string;taskFamily?:string;manifestFingerprint?:string;at?:number}):{eligible:boolean;evidenceCount:number;distinctContexts:number;distinctDelays:number;holdoutCount:number;independentCount:number;meanDelta01:number|null;ci95Low01:number|null;ci95High01:number|null;status:'insufficient'|'holdout-verified'|'replicated';promoted:boolean} {
     // The legacy independentVerified boolean is caller-controlled data and has no authority.
     const binding=developmentEvidenceVerificationInput(input);
     if(typeof input.control01!=='number'||!Number.isFinite(input.control01)||input.control01<0||input.control01>1||
@@ -648,9 +648,13 @@ export class P36AutonomousSelfDevelopmentEngine{
     const exactReceipt=input.evidenceSource==='external-evaluator'&&input.toolId===P36_EXTERNAL_EVIDENCE_TOOL_ID&&Boolean(actionBinding)&&
       isTrustedDecisionLinkedExternalPostcondition(input.verification,actionBinding!);
     const observationId=exactReceipt?input.verification?.observationId:undefined;
-    const sameEvidenceKey=(x:DevelopmentEvidenceRecord)=>x.hypothesisId===binding.hypothesisId&&
-      x.contextKey===binding.contextKey&&x.evaluatorVersion===binding.evaluatorVersion&&
-      x.holdout===binding.holdout&&x.delayMs===binding.delayMs;
+    const sameProtocol=(x:DevelopmentEvidenceRecord)=>x.hypothesisId===binding.hypothesisId&&
+      x.evaluatorVersion===binding.evaluatorVersion&&x.evidenceSource===input.evidenceSource&&
+      x.protocolId===binding.protocolId&&x.baselineMethod===binding.baselineMethod&&
+      x.treatmentMethod===binding.treatmentMethod&&x.taskFamily===binding.taskFamily&&
+      x.manifestFingerprint===binding.manifestFingerprint;
+    const sameEvidenceKey=(x:DevelopmentEvidenceRecord)=>sameProtocol(x)&&
+      x.contextKey===binding.contextKey&&x.holdout===binding.holdout&&x.delayMs===binding.delayMs;
     // One observation ID cannot be reused across contexts/splits to inflate replication.
     const duplicateVerifiedReceipt=Boolean(observationId&&this.state.externalEvidence.some(x=>
       sameEvidenceKey(x)&&x.independentVerified&&x.observationId===observationId));
@@ -687,7 +691,8 @@ export class P36AutonomousSelfDevelopmentEngine{
     if(storedOrExactDuplicate&&observationId&&!this.state.developmentalEvidenceObservationIds.includes(observationId)){
       this.state.developmentalEvidenceObservationIds=[...this.state.developmentalEvidenceObservationIds,observationId].slice(-512);
     }
-    const rows=this.state.externalEvidence.filter(x=>x.hypothesisId===h.id&&x.independentVerified);
+    // Never combine counts from different evaluator versions, manifests, task families or method pairs.
+    const rows=this.state.externalEvidence.filter(x=>sameProtocol(x)&&x.independentVerified);
     const contexts=new Set(rows.map(x=>x.contextKey));
     const holdoutCount=rows.filter(x=>x.holdout).length;
     const independentCount=rows.length;
