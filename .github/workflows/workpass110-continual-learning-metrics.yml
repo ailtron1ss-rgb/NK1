@@ -228,7 +228,7 @@ jobs:
         run: node --experimental-transform-types tests/p23-multi-source-learning-mechanisms.mjs
       - name: Run skill retrieval, reflection and curriculum regression
         working-directory: runtime/neuro-kurisu
-        run: npm run test:p23:skill-retrieval-reflection-curriculum
+        run: node --experimental-transform-types tests/p23-skill-retrieval-reflection-curriculum.mjs
       - name: Run verified skill revision gate regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:verified-skill-revision-gate
