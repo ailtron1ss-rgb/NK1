@@ -1,3 +1,9 @@
+## NK1 Causal Accountability — quarantine conflicting persisted evidence revisions (2026-10-25)
+
+- Restore now compares the full canonical row for duplicate provider-receipt revision IDs instead of trusting only the claimed `revisionFingerprint`. Conflicting rows quarantine all implicated execution IDs, mark the visible outcome history, remove active projection-index entries, and drop revisions for quarantined executions.
+- Added a regression where two rows reuse the same revision ID and fingerprint while disagreeing on outcome fields; restore must persist quarantine and must not leave either revision active.
+- **Validation boundary:** GitHub Actions [run #127](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40174750819) is running against test commit `26df690e6c4440fd59b5d1418c59566f09735ded`; no pass is claimed until it completes.
+
 ## NK1 Persistence — validate outcome history before migration retention cap (2026-10-25)
 
 - Changed `StateMigrations` to validate persisted outcome-history rows before selecting the newest 96 records. Invalid leading rows no longer displace valid older audit history before the runtime restore validator can see it.
