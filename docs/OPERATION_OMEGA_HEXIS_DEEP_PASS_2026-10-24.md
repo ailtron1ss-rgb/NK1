@@ -120,3 +120,9 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 - A new external goal may only be activated while its original HMX stage is still available and marked `applied`; accepting/reviewing a document is not enough to promote its intent into active planning.
 - When an explicitly activated goal has HMX edges to another not-yet-activated external goal, NK1 now preserves the first goal's source-isolated semantic node while recording the edge as deferred. The second goal's later activation can then resolve its endpoint and project the edge.
 - The durable relationship receipt is idempotent: replayed activation evidence cannot replace its original counters/edge IDs or increment the activation metric again. Unit regression covers receipt replay; live server smoke covers explicit goal-to-memory projection. Fresh exact-head CI is pending.
+
+
+## WorkPass338 — missing runtime test command wiring
+
+- Corrected three more workflow/package mismatches identified by exact GitHub Actions logs: WorkPass291 reflective payload budget, WorkPass294 correlated external postconditions and P26 learning input integrity all pointed at test files that existed but had no corresponding npm scripts.
+- Added the missing script entries using Node's transform-types loader, which supports the repository's TypeScript parameter-property syntax. The previous CI failures stopped at npm's `Missing script` error and did not establish whether the test assertions passed; that remains for the next exact-head run.

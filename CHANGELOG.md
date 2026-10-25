@@ -2303,3 +2303,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Preserve the current external goal's source-namespaced semantic node even when all candidate goal-to-goal edges are deferred; this enables a later explicitly activated peer goal to resolve and project the edge.
 - Made durable goal-activation receipts idempotent and tested that replay cannot replace evidence or increment activation metrics twice.
 - Exact-head validation pending after this change.
+
+
+
+## 2026-10-25 — WorkPass338: repair three missing test scripts
+
+- Added `test:workpass291:payload-budget`, `test:workpass294:correlated-postcondition`, and `test:p26:learning-input-integrity` to `runtime/neuro-kurisu/package.json`, each mapped to its existing regression file.
+- The prior workflows failed before running those regressions because npm could not find the named commands. New CI must confirm the tests themselves pass; no pass is inferred from adding the entries.
