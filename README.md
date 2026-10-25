@@ -1,3 +1,13 @@
+## Current source-stack checkpoint — WorkPass345 (2026-10-25)
+
+- Parametric policy restoration sanitizes all scalar diagnostics, update count, timestamp and freeze state; non-finite learner control values are rejected before mutation.
+- The P26 existing learning regression aligns with the atomic-rejection contract and complements the dedicated input-integrity test.
+- P23 replay config regression now verifies its configured maximum as a hard cap while preserving adaptive batch sizing and the newest/history selection invariants.
+- Added the missing npm entrypoint for the existing WorkPass293 autonomous P23 revision test; prior workflow failure was solely “Missing script”.
+- WorkPass344 also fixed JSON-serialized payload budgeting, causal replay fixture identity/post-state grounding and the B272 candidate-order reward saturation. Exact-head CI must confirm the expanded regression set. Release ZIP unchanged.
+
+---
+
 ## Current source-stack checkpoint — WorkPass344 (2026-10-25)
 
 - Parametric policy training rejects invalid inputs atomically: non-finite target/rate/sample weight, invalid action and non-finite feature vector.

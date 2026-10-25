@@ -1,3 +1,13 @@
+## NK1 WorkPass345 — restore learner diagnostics safely and align adaptive replay contracts (2026-10-25)
+
+- [RESTORE] `ParametricPolicyLearner.restore()` now sanitizes counters, all persisted training diagnostics, timestamp and freeze state rather than spreading malformed values back into the live state. The focused integrity regression verifies all persisted diagnostics are finite.
+- [INPUT GATE] The legacy P26 learning test now expects non-finite training rates/weights to be rejected atomically, matching the new strict learner input contract instead of expecting silent substitution followed by a model update.
+- [REPLAY CONTRACT] The P23 runtime-config regression now treats `maxBatchSize` as a hard upper bound while honoring the health-adaptive budget. It checks that the durable replay count stays within the cap, the recent window includes the newest eligible traces, and historical samples still participate.
+- [CI ENTRYPOINT] Registered the missing `test:workpass293:p23-revision` script, pointing it at the existing checked-in WorkPass293 regression. That workflow previously stopped at “Missing script” before executing its evidence tests.
+- [VALIDATION] WorkPass287 and WorkPass294 passed on the prior head; P26/Core/WorkPass99/110/291/293 are being re-run for this batch. Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass344 — preserve learner input integrity and make causal replay fixtures satisfy grounding (2026-10-25)
 
 - [LEARNING INPUT GATE] `ParametricPolicyLearner.train()` and `trainFeatures()` now reject non-finite targets, learning rates and weights, invalid actions, and non-finite feature vectors before touching parameters or diagnostics. This matches the existing atomic-rejection regression.
