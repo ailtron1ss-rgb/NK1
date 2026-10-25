@@ -1,9 +1,11 @@
-## WorkPass319 — unified cognitive-cycle restore consistency (2026-10-25)
+## WorkPass319 — unified cognitive-cycle and motivation integration closure (2026-10-25)
 
-- Hardened `UnifiedCognitiveCycle.restore()`: persisted `lastComplete` now requires valid, internally consistent cycle counters.
-- Added regressions for contradictory counts, a coherent persisted partition, and partial snapshots.
-- No dependency added. Validation is tracked by the focused WorkPass287-288 GitHub Actions workflow; see the WorkPass319 checkpoint for the exact evidence boundary.
-- No claims of learning uplift, production sandboxing, organism-wide readiness, or consciousness are made.
+- Made `UnifiedCognitiveCycle.restore()` fail closed on missing or contradictory persisted counters before preserving `lastComplete`.
+- Fixed missing-stage normalization to retain recognized stages alongside malformed entries while defaulting wholly unrecognized input to all required stages.
+- Replaced the unnormalized B272 goal-value dot product with bounded alignment/reward/evidence signals so score saturation cannot hide confidence-weighted intrinsic motivation.
+- Added coherent/partial restore regressions and added `npm run typecheck` to the focused WorkPass287-288 CI gate.
+- Focused behavior tests passed in [run 40189833009](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189833009); [run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) is the typecheck-enabled verification run.
+- This work does not claim organism-wide release readiness or measured learning uplift.
 
 ---
 
