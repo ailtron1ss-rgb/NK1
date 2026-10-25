@@ -1,3 +1,10 @@
+## [NK1][compat] Extend the project wrapper regression to the full dispatch block (2026-10-25)
+
+- The route regression stopped at the `const unresolvedReceipt` declaration, before the fresh execution through `OrganismCore.executeTool`; the real path continues below that guard.
+- The test now inspects the full project dispatch region up to compound-skill tool selection, so it checks fresh wrapper execution and reconciliation routing together without depending on the former source layout. The production dispatch code is unchanged.
+
+---
+
 ## [NK1][runtime] Fail closed on malformed restored action receipts (2026-10-25)
 
 - Added a receipt validator tying persisted response `executionId` and tool ID back to the durable ledger row; it checks outcome/audit/verification consistency, bounded confidence values, known outcome classes and the 48 KiB serialized receipt limit.
