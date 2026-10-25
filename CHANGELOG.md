@@ -1,3 +1,11 @@
+# NK1 managed gateway end-to-end regression (2026-10-25)
+
+- [INTEGRATION] Added `tools/super-stack.integration.test.mjs`, which launches the real gateway CLI through `spawnManaged`, exercises live HTTP routing to mock UI/Runtime/Research services, verifies API namespace lookalikes route to UI, and confirms the process supervisor stops the gateway.
+- [CI] Added `npm run test:super-stack` to the focused Node 24 workflow as a separate end-to-end step. This bridges the existing unit tests for gateway behavior and process cleanup.
+- [SCOPE] This is an isolated cross-process smoke test; it does not replace the full `npm run test:integration` check against the actual Runtime and Research Bridge.
+
+---
+
 # NK1 strict process deadline validation (2026-10-25)
 
 - [GUARD] `runCommand()`, `terminateChild()` and `waitForHttp()` now reject non-finite, negative, zero-where-invalid, or over-limit timer values. This prevents `Infinity` from disabling a watchdog and avoids Node timer overflow being silently interpreted as a near-immediate timeout.

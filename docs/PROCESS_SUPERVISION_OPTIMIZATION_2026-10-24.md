@@ -93,3 +93,11 @@ npm run test:integration
 - Это усиливает корректность fail-fast поведения; в обычном успешном запуске дополнительный cleanup не выполняется, а уже завершённые процессы проходят короткий быстрый путь.
 
 - При timeout после отправки upstream-ответа gateway закрывает неполный downstream-ответ без передачи ошибки в `ServerResponse.destroy(error)`; это не даёт ошибке ответа случайно стать необработанной ошибкой самого gateway.
+
+
+## Сквозная проверка управляемого gateway
+
+- Добавлен `tools/super-stack.integration.test.mjs`: тест поднимает три локальных HTTP upstream, запускает реальный CLI gateway как управляемый дочерний процесс, проверяет маршрутизацию к UI/Runtime/Research и убеждается, что после `terminateChildren()` gateway прекращает принимать подключения.
+- API-пути с похожим строковым префиксом (`/api/organism-preview`, `/api/researcher`) отдельно проверяются на маршрутизацию в UI.
+- Запуск добавлен в `npm run test:super-stack` и отдельный шаг Node 24 focused workflow; его выполнение не требует app/runtime зависимостей.
+- Это связывает процессный supervisor и gateway в одном реальном HTTP-проходе. Полная проверка фактических Runtime и Research Bridge по-прежнему требует отдельного `npm run test:integration` с зависимостями репозитория.

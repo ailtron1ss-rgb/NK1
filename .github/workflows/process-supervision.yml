@@ -6,6 +6,7 @@ on:
     paths:
       - "tools/process-supervisor.mjs"
       - "tools/process-supervisor.test.mjs"
+      - "tools/super-stack.integration.test.mjs"
       - "tools/super-dev.mjs"
       - "tools/super-start.mjs"
       - "tools/super-install.mjs"
@@ -29,6 +30,7 @@ on:
     paths:
       - "tools/process-supervisor.mjs"
       - "tools/process-supervisor.test.mjs"
+      - "tools/super-stack.integration.test.mjs"
       - "tools/super-dev.mjs"
       - "tools/super-start.mjs"
       - "tools/super-install.mjs"
@@ -79,6 +81,7 @@ jobs:
       - name: Syntax-check orchestration and release scripts
         run: |
           node --check tools/process-supervisor.mjs
+          node --check tools/super-stack.integration.test.mjs
           node --check tools/super-dev.mjs
           node --check tools/super-start.mjs
           node --check tools/super-install.mjs
@@ -103,3 +106,5 @@ jobs:
         run: npm run test:super-gateway
       - name: Process supervision and readiness regressions
         run: npm run test:process-supervisor
+      - name: Managed gateway end-to-end regression
+        run: npm run test:super-stack
