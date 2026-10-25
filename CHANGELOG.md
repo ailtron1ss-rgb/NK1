@@ -1,3 +1,10 @@
+# WorkPass347 — learn executed primitives even when the plan diverges
+
+- [CI FINDING] WorkPass346 broad workflow exposed a liveness regression in live Core: the strict plan/action-alignment gate blocked B273 skill reuse when the canonical executor chose an action different from the B273 proposal. Runtime typecheck and focused checks passed, but the live Core long-cycle assertion failed at `B273 learned skills were not reused in Core`.
+- [SEMANTICS FIX] An accepted outcome with bounded prediction error can train a one-action primitive from `input.action` without requiring plan conformance. The stored primitive remains `[input.action]`; speculative plan suffixes receive no executed-trajectory credit.
+- [REGRESSION] The mismatch case now requires the actual action to be learned as an atomic primitive while the proposed multi-action plan remains unpromoted. Keep the live Core reuse test active.
+- [STATUS] Fresh exact-head focused and broad workflow runs are required; WorkPass347 is not validated until both pass.
+
 # WorkPass346 — promote observed action primitives, not imagined macro-plans
 
 - [LEARNING SEMANTICS] B273 previously stored the entire proposed plan as a skill after one outcome. Only its first action was actually executed and credited; remaining actions were speculative.

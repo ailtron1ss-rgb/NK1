@@ -56,3 +56,8 @@ B273 now preserves the planned first action beside the actual outcome action, re
 ## WorkPass346 — distinguish observed action primitives from macro-plan candidates
 
 The active B273 skill store now creates only single-action primitives from the actual executed action. Multi-action legacy entries are preserved but no longer affect policy; their count is diagnostic. The focused and broad workflows now include B273 migration, live Core long-cycle and independent synthetic policy checks. Exact-head validation is pending, and genuine multi-step skill promotion still requires observed trajectories.
+
+
+## WorkPass347 — preserve learning liveness under plan divergence
+
+The broad WorkPass346 run showed that gating atomic skill learning on plan-first-action equality can prevent skill reuse in the live Core when the canonical executor chooses a different action. WorkPass347 now lets an accepted actual outcome train its own one-step primitive without granting credit to unexecuted plan steps. Fresh focused and broad checks are required.

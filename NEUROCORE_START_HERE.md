@@ -1,3 +1,20 @@
+# WorkPass347 — reconcile plan divergence with observed-action learning
+
+Date: 2026-10-25
+
+## Failure seen
+WorkPass346 typecheck, unit and migration tests passed, but the broad Core validation failed at `tests/big-pass-273-core-long-cycle.mjs`: after switching to observed single-action primitives, a strict `plan[0] === action` prerequisite prevented the live runtime from learning/reusing skills when the canonical executor chose a different action than B273 recommended.
+
+## Fix
+- Remove plan conformance as a prerequisite for learning an atomic skill from an accepted, bounded-error actual outcome.
+- Continue storing only `[input.action]`; the proposed plan and its unexecuted suffix are not promoted.
+- Strengthen the mismatch regression: a good outcome trains the actual primitive, but the skill contents must not equal/include the speculative plan.
+
+## Validation
+WorkPass346 focused workflow passed at exact SHA `ead35cf4b9e8111f1371b8f7d6f2d9b1ee6db6dc`; its broad workflow failed on the live Core skill-reuse assertion at that SHA. WorkPass347 requires fresh exact-head runs and must retain the Core long-cycle and independent policy evaluation tests.
+
+---
+
 # WorkPass346 — active skills contain only observed actions
 
 Date: 2026-10-25

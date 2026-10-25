@@ -317,8 +317,8 @@ export class B273AutonomousGoalLifecycle{
       }
     }
     // A result for a different executed action can update the goal's outcome, but it must not certify a skill made from an unexecuted plan prefix.
-    const planAligned=input.plan[0]===input.action;
-    const goodSkill=planAligned && accepted && input.plan.length>=2 && input.plan.length<=5 && input.predictionError01<.72;
+    // Learn only the action actually executed. Divergence from the proposed plan is diagnostic, not a reason to suppress valid atomic outcome learning.
+    const goodSkill=accepted && input.predictionError01<.72;
     let skillCreated=false;
     if(goodSkill){
       const goalFingerprint=hashVector(goal.vector);

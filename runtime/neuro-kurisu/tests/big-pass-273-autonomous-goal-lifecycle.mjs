@@ -57,9 +57,11 @@ const mismatchedOutcome=mismatchedNet.learnFromOutcome({
   externalEvidence01:0,
 });
 assert.equal(mismatchedOutcome.accepted,true,'the positive actual outcome should still update goal progress');
-assert.equal(mismatchedOutcome.skillCreated,false,'an unexecuted plan must not be promoted as an observed multi-action skill');
+assert.equal(mismatchedOutcome.skillCreated,true,'an accepted result for the actual action may train an atomic primitive even when the plan differed');
 const mismatchSnapshot=mismatchedNet.snapshot();
-assert.equal(mismatchSnapshot.skills.length,0,'no reusable skill may be created from a mismatched plan/action pair');
+assert.equal(mismatchSnapshot.skills.length,1,'mismatched plan/action must train only one observed primitive, not the proposed plan');
+assert.deepEqual(mismatchSnapshot.skills[0].actions,[wrongActualAction],'the primitive must contain only the action that actually ran');
+assert.notDeepEqual(mismatchSnapshot.skills[0].actions,mismatchProposal.plan,'the unexecuted plan must not be promoted as the learned skill');
 assert.equal(mismatchSnapshot.outcomeHistory.at(-1).action,wrongActualAction);
 assert.equal(mismatchSnapshot.outcomeHistory.at(-1).plannedAction,mismatchProposal.plan[0]);
 assert.equal(mismatchedNet.diagnostics().planActionMismatchCount,1,'the mismatch should remain visible in diagnostics');
