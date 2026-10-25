@@ -13,19 +13,18 @@ assert.deepEqual(initial.snapshot(), defaultUnifiedCognitiveSubstrate());
 // counters, inherited values and oversized/control-containing text must not
 // leak into the active cognitive frame.
 const inheritedSelf = Object.create({ agency01: 1 });
-inheritedSelf.coherence01 = 2;
+Object.assign(inheritedSelf, {
+  continuity01: Number.POSITIVE_INFINITY,
+  coherence01: 2,
+  realityAlignment01: -1,
+  mode: '\u0000explore\nspoof',
+  lastAction: 42,
+});
 const restored = new UnifiedCognitiveSubstrate();
 restored.restore({
   cycles: Number.NaN,
   lastTick: -1,
-  self: {
-    continuity01: Number.POSITIVE_INFINITY,
-    coherence01: 2,
-    agency01: inheritedSelf.agency01,
-    realityAlignment01: -1,
-    mode: '\u0000explore\nspoof',
-    lastAction: 42,
-  },
+  self: inheritedSelf,
   world: {
     confidence01: Number.NaN,
     uncertainty01: 2,
