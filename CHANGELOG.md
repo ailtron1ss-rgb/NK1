@@ -1,3 +1,12 @@
+## NK1 WorkPass549 — close emotion-to-action and embodied expression continuity (2026-10-25)
+
+- Resolve P66 homeostasis hysteresis before incrementing mode counters or writing history. The mode returned by `observe()`, `lastMode`, the newest history entry and the cycle counters now share one final decision.
+- Add a targeted P66 regression for a stable cycle where hysteresis retains exploration over the provisional engagement classification.
+- Cache the mapped Live2D expression so repeated identical emotion messages do not restart the same animation during mouth, gaze or body updates.
+- Keep the causal learning regression aligned with the current trust boundary: imported external rows remain reviewable but do not count as trusted runtime outcomes or contribute restored learning aggregates; replay-diversity fixtures now represent grounded action transitions.
+- Run the P66 regression in affect CI and watch the Live2D viewer so changes to these files trigger the validation workflow.
+- **Validation boundary:** focused affect checks and the causal stream, avatar lifecycle, Live2D integrity and continual-learning metric subset must pass on the exact final head. The independent seed-clustered P23 benchmark is tracked separately if it fails.
+
 ## NK1 WorkPass543 — harden emotion-to-action continuity and branch readiness (2026-10-25)
 
 - [AFFECT → AGENCY] Stale emotion/mood/attention contributions now decay in `EmotionAppraisalEngine.actionBias`; explicit evaluation time supports deterministic replay, while live homeostatic regulation remains active.
