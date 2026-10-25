@@ -193,6 +193,17 @@ for (const badBudget of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
   assert.equal(policy.allowMatchedCounterfactual, false);
   assert.equal(policy.reason, 'invalid-resource-budget');
 }
+const malformedPolicyState = resolveUnifiedCognitiveWorkPolicy(null, 3);
+assert.equal(malformedPolicyState.maxCounterfactualBranches, 0);
+assert.equal(malformedPolicyState.allowMatchedCounterfactual, false);
+assert.equal(malformedPolicyState.reason, 'invalid-substrate-state');
+const nonFinitePolicyState = structuredClone(groundedFrame);
+nonFinitePolicyState.coupling.predictionGrounding01 = Number.NaN;
+const nonFinitePolicy = resolveUnifiedCognitiveWorkPolicy(nonFinitePolicyState, 3);
+assert.equal(nonFinitePolicy.maxCounterfactualBranches, 0);
+assert.equal(nonFinitePolicy.allowMatchedCounterfactual, false);
+assert.equal(nonFinitePolicy.reason, 'invalid-substrate-state');
+
 const noBudget = resolveUnifiedCognitiveWorkPolicy(groundedFrame, 0);
 assert.equal(noBudget.maxCounterfactualBranches, 0);
 assert.equal(noBudget.allowMatchedCounterfactual, false);
