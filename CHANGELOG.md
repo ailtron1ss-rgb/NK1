@@ -1,3 +1,11 @@
+## [NK1][learning] Bound replay against fresh learning and separate execution from trust (2026-10-25)
+
+- P26 interleaved replay now caps historical replay attempts to a configurable ratio of the current batch (`maxReplayRatio01`, default 0.5), in addition to the absolute attempt cap. This prevents high-frequency replay from overwhelming fresh-task updates; the multi-seed plasticity threshold remains unchanged.
+- The independent candidate evaluator now reports `executable` separately from `bindingVerified`: a sandbox can produce a valid execution even if the verifier is unavailable, while the unbound trace still cannot count as a trusted success or receive run/step evidence credit. This aligns the existing fail-closed outcome logic with the test contract.
+- Exact-head CI is required to validate both changes; no production learning uplift is claimed.
+
+---
+
 ## [NK1][learning] Align signed-shadow E2E fixture with provenance-bound candidate identity (2026-10-25)
 
 - After the atomic-file adapter was corrected, WorkPass110 advanced to the signed shadow-observation E2E and exposed a second legacy candidate-ID formula in the fixture. Production candidate IDs include the explicit fifth provenance fingerprint slot; without provenance this is `null`.
