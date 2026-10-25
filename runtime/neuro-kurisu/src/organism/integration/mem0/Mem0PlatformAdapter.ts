@@ -334,6 +334,7 @@ export class Mem0PlatformAdapter {
       url.searchParams.set('delete_linked', 'false');
       const response = await this.fetchImpl(url.toString(), {
         method: 'DELETE',
+        redirect: 'error',
         headers: { authorization: `Token ${this.apiKey}`, accept: 'application/json' },
         signal: controller.signal,
       });
@@ -429,6 +430,7 @@ export class Mem0PlatformAdapter {
     try {
       const response = await this.fetchImpl(new URL(path, this.baseUrl!).toString(), {
         method: 'POST',
+        redirect: 'error',
         headers: {
           authorization: `Token ${this.apiKey}`,
           'content-type': 'application/json',
