@@ -1,3 +1,11 @@
+## [NK1][learning] Keep sandbox executability distinct inside skill-quality scoring (2026-10-25)
+
+- Follow-up review of WorkPass110 clarified that the report's `runBindings.executable` field was fixed, but `skillQuality.executability` still received the stricter `trustedExecution` flag. That incorrectly reduced execution quality to zero when the independent verifier threw, despite a valid sandbox run.
+- Both report-level executability and skill-quality executability now use the structurally valid execution result. Verification/binding still gates task success, trusted step/run IDs, outcome evidence and promotion; no verifier bypass is introduced.
+- Exact-head regression is required to validate the separation.
+
+---
+
 ## [NK1][learning] Bound replay against fresh learning and separate execution from trust (2026-10-25)
 
 - P26 interleaved replay now caps historical replay attempts to a configurable ratio of the current batch (`maxReplayRatio01`, default 0.5), in addition to the absolute attempt cap. This prevents high-frequency replay from overwhelming fresh-task updates; the multi-seed plasticity threshold remains unchanged.
