@@ -72,6 +72,17 @@ assert.equal(reconciled.brokenLineages,2);
 assert.equal(reconciled.completeCycles+reconciled.incompleteCycles,reconciled.cycles);
 assert.equal(reconciled.lastComplete,false);
 
+const consistentRestore=new UnifiedCognitiveCycle();
+consistentRestore.restore({
+  cycles:10,completeCycles:8,incompleteCycles:2,brokenLineages:1,
+  lastTick:9,lastComplete:true,lastMissingStages:[],
+});
+assert.equal(consistentRestore.snapshot().lastComplete,true,'a coherent persisted partition should preserve a valid last-complete flag');
+
+const partialRestore=new UnifiedCognitiveCycle();
+partialRestore.restore({cycles:1,completeCycles:1,lastTick:0,lastComplete:true,lastMissingStages:[]});
+assert.equal(partialRestore.snapshot().lastComplete,false,'partial counters cannot authenticate a restored last-complete flag');
+
 
 const undercountRestore=new UnifiedCognitiveCycle();
 undercountRestore.restore({cycles:10,completeCycles:3,incompleteCycles:1,brokenLineages:99,lastTick:8,lastComplete:false,lastMissingStages:['action']});
