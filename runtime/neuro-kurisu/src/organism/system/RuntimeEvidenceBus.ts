@@ -13,11 +13,12 @@ export type RuntimeEvidenceKind =
   | 'resource'
   | 'model'
   | 'goal'
+  | 'appraisal'
   | 'contradiction';
 
 const EVIDENCE_KINDS: readonly RuntimeEvidenceKind[] = [
   'observation', 'prediction', 'action', 'outcome',
-  'resource', 'model', 'goal', 'contradiction',
+  'resource', 'model', 'goal', 'appraisal', 'contradiction',
 ];
 const DEFAULT_CAPACITY = 384;
 const MIN_CAPACITY = 128;
@@ -68,7 +69,7 @@ const isKind = (v: unknown): v is RuntimeEvidenceKind =>
 
 const emptyCounts = (): Record<RuntimeEvidenceKind, number> => ({
   observation: 0, prediction: 0, action: 0, outcome: 0,
-  resource: 0, model: 0, goal: 0, contradiction: 0,
+  resource: 0, model: 0, goal: 0, appraisal: 0, contradiction: 0,
 });
 
 function nonNegativeInteger(value: unknown, fallback = 0): number {
