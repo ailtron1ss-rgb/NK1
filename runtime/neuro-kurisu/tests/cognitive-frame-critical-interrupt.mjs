@@ -26,9 +26,10 @@ const state = {
   worldContextVersion: 1,
 };
 
-function frameFor({ energy = 0.8, thermal = 0.2, ram = 0.2 } = {}) {
-  return buildCognitiveFrame(state, {
+function frameFor({ energy = 0.8, thermal = 0.2, ram = 0.2, predictionError = 0, surprise = 0 } = {}) {
+  return buildCognitiveFrame({ ...state, predictionError }, {
     novelty: 0,
+    surprise,
     embodiment: {
       bodyEnergy01: energy,
       cognitiveCapacity01: 0.8,
@@ -68,4 +69,26 @@ for (const scenario of scenarios) {
   assert.equal(route.allowMatchedCounterfactual, false);
 }
 
-console.log('COGNITIVE_FRAME_CRITICAL_INTERRUPT=PASS scenarios=3 routeClosed=true');
+const mixedSignalScenarios = [
+  { name: 'low-energy-with-prediction-error', input: { energy: 0.17, predictionError: 0.8, surprise: 0.75 }, type: 'resource-critical' },
+  { name: 'thermal-with-prediction-error', input: { thermal: 0.83, predictionError: 0.8 }, type: 'thermal-critical' },
+  { name: 'ram-pressure-with-prediction-error', input: { ram: 0.87, predictionError: 0.8 }, type: 'memory-pressure' },
+];
+
+for (const scenario of mixedSignalScenarios) {
+  const frame = frameFor(scenario.input);
+  assert.equal(
+    frame.interrupt?.type,
+    scenario.type,
+    `${scenario.name}: physical critical severity must outrank a generic prediction error`,
+  );
+  assert.equal(frame.interrupt?.active, true);
+  const route = resolveCognitiveRoutingPolicy(
+    { wakeMask: frame.wakeMask, interrupt: frame.interrupt! },
+    3,
+  );
+  assert.equal(route.maxCounterfactualBranches, 0,
+    `${scenario.name}: simultaneous cognitive signals must not weaken the critical route`);
+}
+
+console.log('COGNITIVE_FRAME_CRITICAL_INTERRUPT=PASS scenarios=6 routeClosed=true');
