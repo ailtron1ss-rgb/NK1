@@ -41,6 +41,63 @@ export const defaultUnifiedCognitiveSubstrate = (): UnifiedCognitiveSubstrateSta
   lastReason:'initial',
 });
 
+export interface UnifiedCognitiveWorkPolicy {
+  maxCounterfactualBranches: number;
+  allowMatchedCounterfactual: boolean;
+  reason: string;
+}
+
+/**
+ * Bound optional simulation work by the same cross-system state frame used for
+ * continuity diagnostics. This policy can only reduce speculative work; it
+ * cannot select or replace the action chosen by OrganismCore.
+ */
+export function resolveUnifiedCognitiveWorkPolicy(
+  state: UnifiedCognitiveSubstrateState,
+  requestedMaxBranches: number,
+): UnifiedCognitiveWorkPolicy {
+  if (!Number.isSafeInteger(requestedMaxBranches) || requestedMaxBranches < 0) {
+    return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'invalid-resource-budget' };
+  }
+  if (requestedMaxBranches === 0) {
+    return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'upstream-budget-zero' };
+  }
+
+  const { actionReadiness01, predictionGrounding01 } = state.coupling;
+  const unknown01 = state.provenance.unknown01;
+  const evidenceCoverage01 = state.provenance.evidenceCoverage01;
+  const scarcity01 = state.resources.scarcity01;
+  const ramPressure01 = state.resources.ramPressure01;
+  const thermal01 = state.resources.thermal01;
+  const conflict01 = state.world.conflict01;
+  if (actionReadiness01 < 0.25 || conflict01 > 0.9 || scarcity01 > 0.94 || thermal01 > 0.98) {
+    return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'substrate-critical-pressure' };
+  }
+
+  const constrained =
+    actionReadiness01 < 0.55 ||
+    predictionGrounding01 < 0.45 ||
+    unknown01 > 0.75 ||
+    scarcity01 > 0.75 ||
+    ramPressure01 > 0.85 ||
+    thermal01 > 0.9;
+  const maxCounterfactualBranches = constrained ? Math.min(1, requestedMaxBranches) : requestedMaxBranches;
+  const allowMatchedCounterfactual =
+    maxCounterfactualBranches > 0 &&
+    actionReadiness01 >= 0.45 &&
+    predictionGrounding01 >= 0.5 &&
+    evidenceCoverage01 >= 0.3 &&
+    unknown01 <= 0.7 &&
+    scarcity01 <= 0.8 &&
+    conflict01 <= 0.5;
+
+  const reasons = [
+    constrained ? 'substrate-budget-constrained' : 'substrate-budget-open',
+    allowMatchedCounterfactual ? 'matched-counterfactual-grounded' : 'matched-counterfactual-withheld',
+  ];
+  return { maxCounterfactualBranches, allowMatchedCounterfactual, reason: reasons.join(';') };
+}
+
 /**
  * Bounded cross-system projection. It never owns canonical domain state.
  * Persisted snapshots and live inputs are treated as untrusted data: no spread
