@@ -16,10 +16,12 @@ The cause was the goal-value composition in `B272EndogenousGoalGenesis.generateC
 
 The resulting formula has a maximum of 0.9932 under the stated bounds, so score saturation cannot erase the controlled drive comparison. For the test's intrinsic values 0.2 versus 0.9, the value delta is 0.126 before clamping; confidence-zero resolves back to 0.2.
 
-## Verification status
+## Validation
 
-- Source commit: `0091425f559498e9eb98206afc63b4e95a7d9b5e`.
-- The prior run [40161306204](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161306204) reached and passed the WorkPass287 unified-cycle contract after its expectation was updated, and passed the WorkPass288 intrinsic-motivation contract; it then exposed the B272 saturation failure.
-- Exact source validation run [40161436055](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161436055) is **queued** at report creation. The B272 test has not yet been reported as passing; the result is pending, not assumed.
+- Exact source commit: `0091425f559498e9eb98206afc63b4e95a7d9b5e`.
+- GitHub Actions run [40161436055](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161436055) **passed** the entire WorkPass287/288 cognitive-contract job, including the previously failing motivation-to-goal integration test.
+- Confirmed harness output: `pass=true`, 360 generated goals, 360 learning updates, 360 accepted goals, `goalEntropy01≈1.0`, `prototypeDiversity01≈0.5515`, `actionDiversity01≈0.7143`, and `agency01≈0.8679`. These describe the deterministic regression harness, not a live deployed runtime or a production autonomy guarantee.
+- The controlled comparison now passes: trusted intrinsic drive changes endogenous goal value, while confidence-zero leaves the drive contribution disabled.
+- Live2D validation independently passed at [40161393918](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161393918).
 
-The unrelated Live2D validation is green at [40161393918](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161393918). This pass does not claim that the B272 cognitive-contract job is green until its own run completes.
+The value path is now covered by both the source-level bounded formula and the executable controlled regression. Longer-horizon external/device behavior remains outside this contract.
