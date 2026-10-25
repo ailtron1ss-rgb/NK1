@@ -1367,6 +1367,12 @@ export class OrganismCore {
                 p36MaturityEvaluator.requiresIdempotencyKey === true) {
                 throw new Error('p36-developmental-outcome-evaluator-host-config-invalid');
             }
+            const experimentSource = p36Evaluator?.observationSource;
+            if (experimentSource &&
+                (experimentSource.sourceId === source.sourceId ||
+                 experimentSource.independenceKey === source.independenceKey)) {
+                throw new Error('p36-evaluator-authorities-must-be-distinct');
+            }
             this.cognitiveRuntime.actionGateway.registerTool({
                 ...p36MaturityEvaluator,
                 id: P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,
