@@ -28,6 +28,13 @@ on:
       - workpass331-project-ordering-unified-20261024
       - operation-omega-hexis-2026-10-24
     paths:
+      - "package.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/scripts/audit-architecture.mjs"
+      - "runtime/neuro-kurisu/scripts/audit-server-imports.mjs"
+      - "runtime/neuro-kurisu/scripts/dependency-boundary-policy.mjs"
+      - "runtime/neuro-kurisu/tests/architecture-dependency-boundaries.test.mjs"
+      - "runtime/neuro-kurisu/tests/server-import-graph-audit.test.mjs"
       - "**/*.md"
       - "**/*.mdx"
       - "**/*.markdown"
