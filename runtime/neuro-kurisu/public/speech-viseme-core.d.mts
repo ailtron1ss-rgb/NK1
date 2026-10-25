@@ -9,7 +9,7 @@ export interface VisemeFrame {
   endMs: number;
   pose: MouthPose;
 }
-export const CLOSED_MOUTH: Readonly<MouthPose>;
+export const CLOSED_MOUTH: MouthPose;
 export function poseForGrapheme(grapheme: string): MouthPose;
 export function buildVisemeTimeline(text: string, rate?: number, language?: string): VisemeFrame[];
 export function timelineOffsetForCharIndex(timeline: VisemeFrame[], charIndex: number): number;
