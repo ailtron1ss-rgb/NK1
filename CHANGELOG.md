@@ -1,3 +1,10 @@
+## NK1 Persistence — retain causal quarantine tombstones across migration (2026-10-25)
+
+- `StateMigrations` now preserves the bounded `causalAccountability.quarantinedExecutionIds` list instead of rebuilding the graph state without its quarantine tombstones.
+- IDs are normalized and bounded to the graph's maximum 1,024-entry quarantine window. This prevents conflicting execution receipts from becoming eligible for new evidence attachment merely because the organism restarted.
+- Added direct migration regression coverage using `migratePersistedOrganism()` and a real persisted Core snapshot.
+- **Validation boundary:** GitHub Actions [run #97](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168078455) is queued for test commit `1f03240aed83d3019cda049aefb632b645c8c0bf`; final status will be recorded after it completes.
+
 ## NK1 Persistence — preserve outcome projection fingerprints during migration (2026-10-25)
 
 - Fixed `StateMigrations` normalization so `outcomeVerification.records` and the nested records inside `projectionIndex` retain the identity fields that participate in a receipt fingerprint, including `evidenceEventId` and `outcomeClass`. Quarantine audit markers are preserved across migration as well.
