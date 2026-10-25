@@ -2,7 +2,7 @@ name: NeuroCore core regression validation
 
 on:
   push:
-    branches: [workpass70-source, nk1-integration-workspace-2026-10-22]
+    branches: [workpass70-source, nk1-integration-workspace-2026-10-22, feature/memory-budget-restore-integrity-20261025]
     paths:
       - "app/**"
       - "runtime/neuro-kurisu/src/**"
