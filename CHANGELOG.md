@@ -1,3 +1,11 @@
+## [NK1][learning] Separate replay policy modes and isolate process-identity fixtures (2026-10-25)
+
+- The P26 context-aware benchmark now opts into a replay ratio of 1.0 because that scenario specifically measures retaining both separable tasks; standard interleaving strategies keep the default 0.5 ratio to protect fresh-task plasticity. The benchmark's retention and new-task thresholds are unchanged.
+- Restored the host-owned executor fixture's permission mode after the negative group/world-writable check. This ensures the subsequent run-root replacement regression reaches the intended inode/identity guard instead of failing on the previous test's mutated executable mode.
+- These are test-scenario and fixture-isolation corrections; exact-head CI must still pass.
+
+---
+
 ## [NK1][learning] Keep sandbox executability distinct inside skill-quality scoring (2026-10-25)
 
 - Follow-up review of WorkPass110 clarified that the report's `runBindings.executable` field was fixed, but `skillQuality.executability` still received the stricter `trustedExecution` flag. That incorrectly reduced execution quality to zero when the independent verifier threw, despite a valid sandbox run.
