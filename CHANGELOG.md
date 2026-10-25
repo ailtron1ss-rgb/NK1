@@ -1,3 +1,12 @@
+## NK1 WorkPass349 — align gateway lineage regression with the explicit conditional spread (2026-10-25)
+
+- [REGRESSION] Corrected the WorkPass294 source-contract assertion to accept the actual TypeScript form `...(typeof context.decisionId === 'string' ? … : {})`. The gateway already forwards the exact `executionId` and optional `decisionId` to the verifier; the test incorrectly required the spread's opening parenthesis to be absent.
+- [CI] WorkPass294 previously passed runtime typecheck but failed this overly narrow source-pattern assertion. Its new script is now registered, so the subsequent run exercises the real postcondition lineage tests.
+- [VALIDATION] Full latest-head postcondition and P26 runs are pending; earlier target results remain separately recorded.
+- [SCOPE] `integration` PR branch only; `main` and the Release ZIP are untouched.
+
+---
+
 ## NK1 WorkPass348 — restore missing learning/postcondition regression commands (2026-10-25)
 
 - [CI] Added package script entries for the existing P26 learning input integrity, recovery benchmark, continual matrix, and WorkPass294 correlated-postcondition regression files. Both workflows previously stopped immediately after the passing runtime typecheck because `npm run` could not resolve those command names.
