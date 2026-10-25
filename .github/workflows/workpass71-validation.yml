@@ -108,6 +108,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:letta-memory-bridge
       - name: WorkPass328 Letta canonical lifecycle and hybrid recall
         run: npm --prefix runtime/neuro-kurisu run test:letta-memory-lifecycle-sync
+      - name: WorkPass328 Letta live cognitive recall wiring
+        run: npm --prefix runtime/neuro-kurisu run test:letta-cognitive-recall-wiring
       - name: App typecheck
         run: npm --prefix app run typecheck
       - name: App development bundle build
