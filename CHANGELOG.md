@@ -1,3 +1,15 @@
+## Restored action receipt integrity hardening — 2026-10-25
+
+- Treat the persisted action ledger as untrusted input when restoring completed receipts.
+- Validate the receipt's execution/tool identity against its enclosing ledger row, plus consistency between the response, audit record, outcome class and verification claim.
+- Reject oversized or non-serializable restored receipt payloads; keep their ledger entry as a fail-closed recovery tombstone rather than replaying a potentially corrupted success or repeating a side effect.
+- Preserve bounded, internally consistent receipts and the existing idempotent replay behavior.
+- Added restore-time regression coverage was already present in `workpass95-restored-action-receipt-integrity.mjs`; this patch addresses the CI failure it exposed.
+
+Validation: awaiting the PR-triggered Node 24 workflow on the updated head. These checks detect internal contradictions and payload abuse; they do not constitute a cryptographic signature over a user-writable snapshot.
+
+---
+
 ## P26 interleaved replay implementation — 2026-10-25
 
 - Added the missing `P26TrueLearningEngine.trainInterleaved` API used by the sequential-learning benchmark. It trains current rows online and schedules bounded replay updates at a configurable stride.
