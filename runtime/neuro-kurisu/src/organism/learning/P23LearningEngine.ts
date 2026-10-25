@@ -38,6 +38,19 @@ export const P23_REFLECTIVE_PROMOTION_POLICY = Object.freeze({
   bootstrapResamples: 2000,
 });
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
+
+// Persisted failure classes are compact taxonomy codes, not free-form error messages.
+// Translate them to bounded diagnostic clues so replay-to-reflection preserves the
+// validated class instead of passing opaque hyphenated codes through the text classifier.
+const LEARNING_FAILURE_DIAGNOSTIC_EVIDENCE: Record<ReflectionFailureClass,string> = Object.freeze({
+  'tool-error':'tool error recorded in the prior outcome',
+  timeout:'operation timed out during the prior outcome',
+  'permission-denied':'permission denied during the prior outcome',
+  'safety-block':'safety gate blocked the prior action by policy',
+  'postcondition-mismatch':'postcondition mismatch in the prior outcome',
+  'resource-exhaustion':'resource limit exceeded during the prior outcome',
+  'low-confidence':'insufficient evidence in the prior outcome',
+});
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 
 /** Continuous replay salience: poor outcomes and prediction misses matter without a brittle success threshold. */
