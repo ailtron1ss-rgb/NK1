@@ -247,7 +247,17 @@ export class VersionedSkillCandidateStore {
           candidate.proposalId !== active.proposalId || canonical(candidate.payload) !== canonical(active.payload)) {
         throw new Error('persisted active skill is not bound to its candidate payload/version');
       }
-      if (candidate.baseVersion !== null) {
+      const approval = candidate.approval;
+      if (!approval) throw new Error('persisted active candidate is missing signed promotion approval');
+      // Validate the signed CAS binding before resolving its rollback target, so
+      // corrupted baseVersion reports the broken authority binding directly.
+            if (candidate.baseVersion !== approval.expectedActiveVersion ||
+                (candidate.previousActive?.version ?? null) !== candidate.baseVersion ||
+                candidate.promotedAt !== approval.approvedAt ||
+                active.activatedAt !== approval.approvedAt) {
+              throw new Error('persisted active candidate promotion CAS/activation metadata is not bound to the signed approval');
+            }
+            if (candidate.baseVersion !== null) {
         const prior = current.candidates.find(item => item.skillId === candidate.skillId &&
           item.version === candidate.baseVersion && ['active', 'superseded'].includes(item.status));
         const expectedPrior = prior ? {
@@ -262,15 +272,7 @@ export class VersionedSkillCandidateStore {
       } else if (candidate.previousActive !== null) {
         throw new Error('persisted initial candidate has an unexpected rollback target');
       }
-      const approval = candidate.approval;
-      if (!approval) throw new Error('persisted active candidate is missing signed promotion approval');
-      if (candidate.baseVersion !== approval.expectedActiveVersion ||
-          (candidate.previousActive?.version ?? null) !== candidate.baseVersion ||
-          candidate.promotedAt !== approval.approvedAt ||
-          active.activatedAt !== approval.approvedAt) {
-        throw new Error('persisted active candidate promotion CAS/activation metadata is not bound to the signed approval');
-      }
-      const minShadowRuns = approval.artifact?.payload?.minShadowRuns ?? 3;
+       const minShadowRuns = approval.artifact?.payload?.minShadowRuns ?? 3;
       if (!Number.isSafeInteger(minShadowRuns) || minShadowRuns < 1 || minShadowRuns > 1000 ||
           candidate.shadowObservations.length < minShadowRuns ||
           candidate.shadowObservations.some(item => item.passed !== true)) {
