@@ -7,6 +7,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/ReplaySelectionPolicy.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
       - 'runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-runtime-config.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs'
@@ -28,6 +29,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/ReplaySelectionPolicy.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
       - 'runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-runtime-config.mjs'
   workflow_dispatch:
