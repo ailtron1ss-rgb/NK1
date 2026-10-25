@@ -1,3 +1,9 @@
+## NK1 WorkPass531 — fix focused workflow dependency-cache resolution (2026-10-25)
+
+- The first isolated-job attempt revealed that `setup-node` auto-detected a nonexistent root lockfile, so jobs failed before installing dependencies or reaching their checks.
+- Set `cache-dependency-path` explicitly to each workspace's real lockfile (`runtime/neuro-kurisu/package-lock.json` or `app/package-lock.json`) and retained the Node.js 24 workflow jobs. This fixes the CI setup boundary, not the source-level TypeScript errors already found in the runtime.
+- **Validation boundary:** the corrective workflow is committed; confirm the next Actions run before treating the setup fix as verified.
+
 ## NK1 WorkPass530 — CI diagnostics and isolated affect validation (2026-10-25)
 
 - Addressed the new mood-state type error: the shared numeric-field validator narrows the record to numeric fields, so the validated label is explicitly restored through `unknown` to its separately validated `EmotionLabel` type.
