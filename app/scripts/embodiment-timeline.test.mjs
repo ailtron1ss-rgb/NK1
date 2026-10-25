@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import vm from "node:vm";
+import { buildAvatarSpeechTimeline as buildRuntimeSpeechTimeline } from "../../runtime/neuro-kurisu/public/avatar-state.mjs";
 import {
   buildVisemeTimeline,
   CLOSED_MOUTH,
@@ -292,9 +293,14 @@ test("React and standalone runtime import one canonical viseme algorithm", async
 
   for (const source of ["мама, мир", "Ку\u0301рису 🙂", "а🙂‍↔️б\n", "🇳🇱 Курису"]) {
     const shared = buildVisemeTimeline(source, 0.96, "ru-RU");
+    const runtime = buildRuntimeSpeechTimeline(source, 0.96, "ru-RU");
     assert.deepEqual(
-      shared.map(frame => ({ startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose })),
-      buildVisemeTimeline(source, 0.96, "ru-RU").map(frame => ({ startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose })),
+      runtime.map(({ startMs, endMs, pose, grapheme }) => ({ startMs, endMs, pose, grapheme })),
+      shared.map(frame => ({
+        startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose,
+        grapheme: source.slice(frame.charIndex, frame.endCharIndex),
+      })),
+      "runtime output must match the React timeline for Unicode graphemes and UTF-16 offsets",
     );
   }
 });
