@@ -124,3 +124,9 @@ The newest full CI matrix identified several independent issues:
 - The P23 guard throws synchronously before returning a process promise, so the test now uses `assert.throws`. The evaluator syntax audit also found a duplicate `snapshotEvaluator` declaration; the second authority-snapshot scenario now has its own identifier.
 
 **Verification status: implemented, exact-head CI pending.** These repairs do not claim real learning uplift, generalization, or production readiness. The WorkPass70 release archive remains unchanged.
+
+## Eleventh follow-up — inconsistent cognitive history fails closed
+
+The refreshed WorkPass287 contract progressed past malformed-stage-list handling and exposed a second persistence defect: aggregate counters were reconciled, but `lastComplete=true` was still trusted even when the stored incomplete/broken-lineage counters contradicted the computed partition. Restoration now detects that inconsistency and refuses to preserve a completion claim; if no required stage was marked missing, it reinstates the required missing-stage set.
+
+Status: committed for exact-head verification. This prevents a corrupted historical snapshot from reporting a completed cognitive cycle without coherent aggregate evidence.

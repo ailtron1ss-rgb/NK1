@@ -1,3 +1,8 @@
+## Cognitive-cycle restore consistency fix (2026-10-25)
+
+- [FIX] `UnifiedCognitiveCycle.restore` now detects contradictions between persisted `incompleteCycles`, the recomputed complete/incomplete partition, and `brokenLineages`. If a snapshot claims the last cycle completed while those counters conflict, restore clears that completion claim and marks the missing-stage set as required work.
+- [EVIDENCE] Fresh WorkPass287 CI exposed an internally inconsistent persisted snapshot whose counters reconciled numerically but whose `lastComplete` flag remained trusted. The new exact-head cognitive contract run must pass before this is marked verified.
+
 ## Exact-head CI repair — restore sanitization, Node 24 and regression integrity (2026-10-25)
 
 - [FIX] `ParametricPolicyLearner.restore` now sanitizes counters, diagnostics, timestamps and the freeze flag as well as weights/biases, preventing a corrupted snapshot from poisoning uncertainty or subsequent training.
