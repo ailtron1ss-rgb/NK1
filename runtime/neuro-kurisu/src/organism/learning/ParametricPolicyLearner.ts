@@ -3,6 +3,8 @@ import { actionCost } from '../core/ActionCostPolicy.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const clampSigned=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
+const normalizeFeature=(value:number,index:number)=>index>=20?clampSigned(value):clamp(value);
 const tanh=(x:number)=>Math.tanh(Number.isFinite(x)?x:0);
 const now=()=>Date.now();
 
@@ -157,7 +159,7 @@ export class ParametricPolicyLearner{
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
-    const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
+    const x=input.features.slice(0,featureNames.length).map(normalizeFeature); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
     const before=this.predictFromFeatures(x,input.action), target=clamp(input.target01), error=target-before;
     const requestedRate=Number.isFinite(input.learningRate01)?input.learningRate01:.03;
@@ -173,7 +175,7 @@ export class ParametricPolicyLearner{
   }
 
   predictFromFeatures(features:number[],action:ActionKind):number{
-    const x=features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
+    const x=features.slice(0,featureNames.length).map(normalizeFeature); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[action]??[]; const z=(this.state.bias[action]??0)+x.reduce((sum,v,i)=>sum+v*(w[i]??0),0);
     return clamp(.5+.5*tanh(z));
   }
