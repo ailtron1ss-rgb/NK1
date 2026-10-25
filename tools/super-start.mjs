@@ -1,5 +1,5 @@
 import { spawn, execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inspectToolchainVersions } from './toolchain-contract.mjs';
