@@ -131,6 +131,19 @@ assert.equal(item.source, 'user-session-17');
 assert.equal(item.provenanceClass, 'user');
 assert.equal(item.epistemicStatus, 'fact');
 
+// Hot-ID restore is a bounded read-model projection of canonical memory, not a
+// second authority. Missing and duplicate IDs must not survive a checkpoint.
+const fabricSnapshotWithStaleHotIds = restored.fabric.snapshot();
+restored.fabric.restore({
+  ...fabricSnapshotWithStaleHotIds,
+  hotIds: [item.id, 'evicted-memory-that-no-longer-exists', item.id],
+});
+assert.deepEqual(
+  restored.fabric.hotIdsSnapshot(),
+  [item.id],
+  'restored hot IDs must be canonical, unique, and bounded',
+);
+
 // Legacy checkpoints without MemoryOS2 still need compatibility migration.
 const legacy = new MemorySubsystemRuntime();
 legacy.restoreFromPersisted({
