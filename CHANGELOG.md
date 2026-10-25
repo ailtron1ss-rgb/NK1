@@ -1,3 +1,9 @@
+## Cognitive dependency frame integrity — 2026-10-25
+
+- The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
+- Dirty domains are activated only by own properties whose values are exactly `true`; inherited properties and truthy coercion no longer create false wake signals.
+- Added regression cases for replayed ticks, malformed domain containers, and prototype-inherited activation. Automated execution remains unverified in this environment.
+
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
 - Fixed command-order handling in the wiring audit: each `cd`, Node/Python file reference, and nested `npm run` is now resolved against the directory active at that point in the shell sequence. Added a regression for `node … && cd runtime && node …`.
