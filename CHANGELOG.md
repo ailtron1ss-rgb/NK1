@@ -1,3 +1,9 @@
+## NK1 Causal Accountability — preserve valid causal indices and quarantine tombstones during migration (2026-10-25)
+
+- Changed `StateMigrations` to validate causal `outcomeIndex` rows and quarantine IDs before applying the 1,024-entry retention caps. Invalid trailing rows no longer evict valid historical action receipts or erase a quarantine tombstone.
+- Added a regression with one valid outcome-index row and one valid quarantine ID followed by 1,100 malformed rows in each collection.
+- **Validation boundary:** migration fix `8de59a044f530d2097a876b3c63200136c8e7f88` and regression `da26d3df847f77fa68bc4ab132008a6af6da3413` are committed; hosted validation is pending.
+
 ## NK1 Persistence — reject inconsistent migrated verification flags before retention (2026-10-25)
 
 - Hardened the migration retention filter again: even a candidate with a correct canonical identity fingerprint is rejected before the cap if its `verifiedExternal` flag disagrees with the normalized record's external-postcondition assessment.
