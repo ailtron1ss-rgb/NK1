@@ -115,6 +115,34 @@ assert.throws(() => projectionRestored.project({
 }), /outcome-execution-id-conflict/,
   'a later project call must not silently reintroduce the quarantined identity');
 
+// A causal-only quarantine keeps historical evidence readable but disables active reuse.
+const historicalProjectionSource = new OutcomeCognitionFabric();
+historicalProjectionSource.project({
+  tick: 20, tool: 'door.open', ok: true, verification: projectionBaseVerification,
+  executionId: 'exec-causal-only-quarantine', outcomeClass: 'executed-verified',
+});
+const historicalProjectionSnapshot = historicalProjectionSource.snapshot();
+const historicalProjectionRestored = new OutcomeCognitionFabric();
+historicalProjectionRestored.restore({
+  ...historicalProjectionSnapshot,
+  causal: {
+    ...historicalProjectionSnapshot.causal,
+    quarantinedExecutionIds: ['exec-causal-only-quarantine'],
+  },
+});
+const historicalAfterRestore = historicalProjectionRestored.snapshot();
+assert.ok(historicalAfterRestore.records.some(row => row.executionId === 'exec-causal-only-quarantine'),
+  'causal-only quarantine must preserve the original projection as read-only audit history');
+assert.ok(!historicalAfterRestore.projectionIndex.some(row => row.executionId === 'exec-causal-only-quarantine'),
+  'causal-only quarantine must remove the execution from the active projection index');
+assert.equal(historicalProjectionRestored.hasProjectionForExecution('exec-causal-only-quarantine'), false);
+assert.equal(historicalProjectionRestored.resolveExternalObservation({
+  tick: 21, executionId: 'exec-causal-only-quarantine', tool: 'door.open', observationId: 'obs:history-late',
+  verified: true, confidence01: 0.95, expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+  assessment: 'match', sourceId: 'world-sensor', sourceClass: 'world', independenceKey: 'sensor:door',
+}).reason, 'ambiguous-execution-receipt',
+  'read-only historical records must not allow new evidence attachment');
+
 const f=new ExternalObserverFabric();
 f.registerSource({id:'device-smoke',sourceClass:'device',channel:'sensor',independenceKey:'sensor:smoke',reliability01:.9});
 const first=f.observeAndAssess({sourceId:'device-smoke',sourceClass:'device',channel:'sensor',claimKey:'door',observedPostcondition:'door=open',confidence01:.96,actionRef:'exec-1',tool:'door.open',tick:1,expectedPostcondition:'door=open'});
