@@ -1772,5 +1772,16 @@
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
     "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs"
+  },
+  "optionalDependencies": {
+    "@letta-ai/letta-agent-sdk": "0.8.52"
+  },
+  "peerDependencies": {
+    "@letta-ai/letta-code": ">=0.34.23 <0.35.0"
+  },
+  "peerDependenciesMeta": {
+    "@letta-ai/letta-code": {
+      "optional": true
+    }
   }
 }
