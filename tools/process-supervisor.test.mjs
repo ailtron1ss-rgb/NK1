@@ -86,6 +86,15 @@ test('runCommand reports executable startup failures instead of hanging', async 
   assert.equal(result.timedOut, false);
 });
 
+test('runCommand rejects unbounded and overflowing timer deadlines before spawning', () => {
+  const command = process.execPath;
+  const args = ['-e', 'process.exit(0)'];
+
+  assert.throws(() => runCommand(command, args, { timeoutMs: Infinity }), /timeoutMs must be finite and non-negative/);
+  assert.throws(() => runCommand(command, args, { timeoutMs: 2_147_483_648 }), /timeoutMs must be finite and non-negative/);
+  assert.throws(() => runCommand(command, args, { terminationGraceMs: -1 }), /terminationGraceMs must be finite and non-negative/);
+});
+
 test('runCommand enforces a deadline and escalates an unresponsive process', async () => {
   const result = await runCommand(process.execPath, [
     '-e',
@@ -98,6 +107,21 @@ test('runCommand enforces a deadline and escalates an unresponsive process', asy
   assert.ok(result.terminationResult, 'timeout must report whether child cleanup completed');
   assert.equal(result.cleanupFailed, false, 'the timed-out child process group should be cleaned up');
   if (process.platform !== 'win32') assert.equal(result.signal, 'SIGKILL');
+});
+
+test('waitForHttp rejects invalid deadlines instead of becoming unbounded', async () => {
+  await assert.rejects(
+    waitForHttp('http://unit.test/ready', { timeoutMs: Infinity }),
+    /timeoutMs must be finite and non-negative/,
+  );
+  await assert.rejects(
+    waitForHttp('http://unit.test/ready', { intervalMs: 2_147_483_648 }),
+    /intervalMs must be finite and non-negative/,
+  );
+  await assert.rejects(
+    waitForHttp('http://unit.test/ready', { requestTimeoutMs: 0 }),
+    /requestTimeoutMs must be finite and positive/,
+  );
 });
 
 test('waitForHttp waits for readiness without a fixed startup sleep', async () => {
