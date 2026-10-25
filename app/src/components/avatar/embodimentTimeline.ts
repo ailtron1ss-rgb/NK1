@@ -101,7 +101,6 @@ export function smoothEmbodimentAffect(
   };
 }
 
-export const CLOSED_MOUTH: MouthPose = Object.freeze({ open: 0.015, form: 0, viseme: "rest" });
 
 /**
  * Append a SpeechSynthesis boundary without admitting stale/out-of-order events.
