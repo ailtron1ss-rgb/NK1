@@ -9,8 +9,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out=[]; const ok=(name,pass,detail='')=>out.push({name,pass,detail});
 function ver(bin,args=['--version']){try{return execFileSync(bin,args,{encoding:'utf8'}).trim()}catch{return null}}
 const node=ver(process.execPath); const npm=ver('npm'); const py=ver('python3');
-ok('node', /^v22\./.test(node||''), node||'missing');
-ok('npm', /^10\./.test(npm||''), npm||'missing');
+let nodePin='';
+try { nodePin=readFileSync(path.join(root,'.nvmrc'),'utf8').trim(); } catch { /* report the missing pin below */ }
+ok('node', !!nodePin && matchesNodePin(nodePin,node), `${node||'missing'} expected_pin=${nodePin||'missing .nvmrc'}`);
+ok('npm', versionAtLeast(npm,MIN_NPM_VERSION), `${npm||'missing'} required>=${MIN_NPM_VERSION}`);
 ok('python', !!py, py||'missing');
 ok('runtime-package', existsSync(path.join(root,'runtime/neuro-kurisu/package.json')));
 ok('app-lock', existsSync(path.join(root,'app/package-lock.json')));
