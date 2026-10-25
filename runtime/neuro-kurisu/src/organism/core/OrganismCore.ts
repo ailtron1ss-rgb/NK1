@@ -11979,14 +11979,14 @@ export class OrganismCore {
         const canonicalId = this.canonicalActionToolId(id);
         return this.cognitiveRuntime.actionGateway.reconcileToolExecution(canonicalId, input, reason, options);
     }
-    async executeTool(id: string, input: Record<string, unknown> = {}, reason = 'tool-request', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
+    async executeTool(id: string, input: Record<string, unknown> = {}, reason = 'tool-request', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, finalizationContextKeys: string[] = Object.keys(input)) {
         const canonicalId = this.canonicalActionToolId(id);
         const result = await this.cognitiveRuntime.actionGateway.executeTool(canonicalId, input, reason, options);
         // Keyed executions are finalized inside ActionGateway before its completed
         // receipt and outcome projections are committed together. A replay does
         // not create new learning, causal links or external observations.
         if (options.idempotencyKey || result.idempotentReplay) return result;
-        await this.finalizeToolOutcome(canonicalId, input, reason, result, options);
+        await this.finalizeToolOutcome(canonicalId, input, reason, result, options, finalizationContextKeys);
         await this.checkpoint(true);
         return result;
     }
