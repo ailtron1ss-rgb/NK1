@@ -181,8 +181,17 @@ const tamperedPersistence = {
   compareAndSwap: () => false,
 };
 assert.throws(() => new VersionedSkillCandidateStore(tamperedPersistence, authenticatedApprovalVerifier, () => true),
+  /persisted active candidate rollback target is not bound to a prior approved version/,
+  'a tampered base-version must fail closed when its rollback target no longer matches an approved predecessor');
+const tamperedActivationSnapshot = JSON.parse(JSON.stringify(signedApprovalPersistence.read()));
+tamperedActivationSnapshot.active[0].activatedAt += 1;
+const tamperedActivationPersistence = {
+  read: () => JSON.parse(JSON.stringify(tamperedActivationSnapshot)),
+  compareAndSwap: () => false,
+};
+assert.throws(() => new VersionedSkillCandidateStore(tamperedActivationPersistence, authenticatedApprovalVerifier, () => true),
   /promotion CAS\/activation metadata is not bound to the signed approval/,
-  'a structurally valid state file cannot rewrite the active skill base-version CAS metadata');
+  'a persisted activation timestamp cannot be rewritten independently of signed approval metadata');
 
 const persistence = new InMemorySkillStorePersistence();
 const first = new VersionedSkillCandidateStore(persistence);

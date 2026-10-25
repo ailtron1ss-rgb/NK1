@@ -1,3 +1,11 @@
+## NK1 cognitive runtime — preserve action/outcome attribution across planner arbitration (2026-10-25)
+
+- Fixed the B338 real-transition learning bridge: B272 now receives an outcome only when its endogenous proposed action equals the action selected and executed by the canonical planner.
+- When the actions differ, NK1 records a bounded operational event identifying the proposed and executed actions, and skips B272 policy credit instead of throwing during the live runtime or falsely teaching the wrong action.
+- Kept B272's strict action/tick checks intact. Expanded the versioned-skill store regression to separately verify early rejection of a broken rollback target and rejection of a tampered activation timestamp.
+
+---
+
 ## NK1 test-fixture compatibility — guarded rollback authority (2026-10-25)
 
 - Updated the versioned-skill rollback regression fixture to provide an explicit test-only rollback verifier and a compare-and-swap approval object.

@@ -9691,15 +9691,29 @@ export class OrganismCore {
             if (outcome.worldTransition) {
                 const b338GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                    independentEvaluatorGain01: b338IndependentGain,
-                    acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
-                });
+                // The endogenous goal generator proposes an action, while the canonical planner
+                // may select a different action. Only credit B272 when its proposed action was
+                // the action that actually produced this transition; never relabel another
+                // subsystem's action as B272's own outcome.
+                if (b338GoalState.action === trace.selected.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
+                        tick: state.tick,
+                        action: b338GoalState.action,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b338IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    });
+                } else {
+                    this.memorySubsystem.events.append(makeEvent('b272-outcome-attribution-skipped' as any, state.tick, {
+                        goalId: b338GoalState.id,
+                        proposedAction: b338GoalState.action,
+                        executedAction: trace.selected.action,
+                        reason: 'executed-action-differs-from-endogenous-goal-action',
+                        source: 'world-transition',
+                    } as any));
+                }
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
                     tick: state.tick,
