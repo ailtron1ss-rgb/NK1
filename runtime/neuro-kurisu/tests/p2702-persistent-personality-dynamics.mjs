@@ -17,6 +17,18 @@ const tensionSnapshot=p.snapshot();
 const tensionRestored=new P2702PersistentPersonalityDynamics();tensionRestored.restore(tensionSnapshot);
 assert.deepEqual(tensionRestored.snapshot().tensionState,tensionSnapshot.tensionState,
   'context-sensitive value-conflict state must survive snapshot/restore');
+const neutralTensionProbe=new P2702PersistentPersonalityDynamics();
+neutralTensionProbe.restore(tensionSnapshot);
+const conflictTensionProbe=new P2702PersistentPersonalityDynamics();
+const conflictSnapshot={...tensionSnapshot,tensionState:tensionSnapshot.tensionState.map((v,i)=>i===0?1:v)};
+conflictTensionProbe.restore(conflictSnapshot);
+const sameContext={tick:2,novelty01:.4,uncertainty01:.6,goalPressure01:.5,identityGap01:.2,actionUtilities:actions};
+const neutralTensionBias=neutralTensionProbe.beforeDecision(sameContext).actionBias;
+const conflictTensionBias=conflictTensionProbe.beforeDecision(sameContext).actionBias;
+assert.ok(conflictTensionBias.verify>neutralTensionBias.verify,
+  'truth-versus-comfort tension must have a bounded causal effect on verification bias');
+assert.ok(conflictTensionBias.respond<neutralTensionBias.respond,
+  'truth-versus-comfort tension must modestly reduce the comfort-first response bias');
 p.afterOutcome({reward01:.95,verified01:1,predictionError01:.05,identityGap01:.1,action:'explore',identityVector:new Array(24).fill(.4)});
 const after=p.snapshot();
 assert(after.learningUpdates>before.learningUpdates);
