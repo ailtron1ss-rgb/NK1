@@ -1,0 +1,80 @@
+name: Letta Optional Dependency Lock Bootstrap
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/letta-dependency-lock-bootstrap.yml"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-optional-sdk-lock:
+    name: Generate and verify optional Letta SDK lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Declare optional SDK and optional local CLI peer
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          pkg.optionalDependencies ??= {};
+          pkg.optionalDependencies['@letta-ai/letta-agent-sdk'] = '0.8.52';
+          pkg.peerDependencies ??= {};
+          pkg.peerDependencies['@letta-ai/letta-code'] = '>=0.34.23 <0.35.0';
+          pkg.peerDependenciesMeta ??= {};
+          pkg.peerDependenciesMeta['@letta-ai/letta-code'] = { optional: true };
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+      - name: Generate the package lock without running install scripts
+        working-directory: runtime/neuro-kurisu
+        run: npm install --package-lock-only --ignore-scripts --save-optional --save-exact @letta-ai/letta-agent-sdk@0.8.52
+      - name: Check lock records and optional peer policy
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const sdk = lock.packages?.['node_modules/@letta-ai/letta-agent-sdk'];
+          if (pkg.optionalDependencies?.['@letta-ai/letta-agent-sdk'] !== '0.8.52') throw new Error('SDK must be pinned as an optional exact dependency');
+          if (sdk?.version !== '0.8.52') throw new Error('lockfile SDK version mismatch');
+          if (pkg.peerDependenciesMeta?.['@letta-ai/letta-code']?.optional !== true) throw new Error('Letta Code CLI peer must remain optional for unsupported hosts');
+          if (lock.packages?.['']?.peerDependenciesMeta?.['@letta-ai/letta-code']?.optional !== true) throw new Error('lockfile omitted optional CLI peer policy');
+          console.log('LETTA_OPTIONAL_LOCK_METADATA=PASS');
+          NODE
+      - name: Reproducible Node 24 install and SDK export smoke test
+        working-directory: runtime/neuro-kurisu
+        run: |
+          npm ci --ignore-scripts --include=optional
+          node --input-type=module <<'NODE'
+          const sdk = await import('@letta-ai/letta-agent-sdk');
+          if (typeof sdk.LettaAgentClient !== 'function') throw new Error('LettaAgentClient export missing');
+          console.log('LETTA_SDK_IMPORT=PASS');
+          NODE
+      - name: Prepare lockfile artifact
+        run: |
+          mkdir -p "$RUNNER_TEMP/letta-lockfile"
+          cp runtime/neuro-kurisu/package.json "$RUNNER_TEMP/letta-lockfile/package.json"
+          cp runtime/neuro-kurisu/package-lock.json "$RUNNER_TEMP/letta-lockfile/package-lock.json"
+      - name: Upload generated lockfiles for reviewed commit
+        uses: actions/upload-artifact@v7
+        with:
+          name: letta-optional-sdk-lock
+          path: ${{ runner.temp }}/letta-lockfile/*
+          if-no-files-found: error
+          retention-days: 7
