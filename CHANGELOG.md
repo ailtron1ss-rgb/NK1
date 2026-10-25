@@ -1,3 +1,12 @@
+## NK1 WorkPass346–347 — fix dream association guard and trusted registration adapter (2026-10-25)
+
+- [FIX] Restored the valid boolean predicate in `IntrinsicExperimentGenerator` after strict-typing cleanup; the P23 integrated revision regression now passes on commit `f650eb4`.
+- [TRUST] The coordinator awaits the host-owned trusted shadow registration but deliberately returns no registry object to the process supervisor, satisfying its `void | Promise<unknown>` capability contract.
+- [VALIDATION] On the preceding head, WorkPass293 P23, WorkPass292 evidence lanes, WorkPass291 payload budget, WorkPass99 replay benchmark, WorkPass287/288 cognition and initiative regression all passed. P26 identified only the adapter return-type mismatch; the latest WorkPass294 run is being checked separately.
+- [SCOPE] Isolated PR branch only. `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass344–345 — enforce runtime evidence contracts at source boundaries (2026-10-25)
 
 - [RUNTIME] Registered `appraisal` as a supported evidence-bus kind and added `p23-compound-repair-revision` to the scheduler allow-list to match active publishers and registration sites.
