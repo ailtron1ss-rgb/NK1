@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('../src/organism/core/OperationalMicroCycleRuntime.ts', import.meta.url), 'utf8');
 const architecture = await readFile(new URL('../src/organism/core/CognitiveArchitectureMap.ts', import.meta.url), 'utf8');
+const organismCore = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 
 // A reduced-resolution heartbeat does not execute a new action. It must not
 // label a prior full-cycle action as if it were executed at the current tick.
@@ -13,5 +14,10 @@ assert.match(source, /const microVerified\s*=\s*false;/);
 assert.match(source, /previousDecision\?\.selected\?\.action\s*\?\?\s*state\.lastAction/);
 
 assert.match(architecture, /from:'lifecycle',to:'outcome-learning',kind:'governance',signal:'heartbeat tick is not an action receipt; no micro-cycle action credit'/);
+assert.match(organismCore, /if \(b272GoalState\.action === trace\.selected\.action\)\s*\{\s*this\.developmentalNeural\.endogenousGoalGenesisB272\.learnFromOutcome\(/s,
+  'synthetic outcomes cannot credit B272 when final action selection overrode its generated action');
+assert.match(organismCore, /if \(b338GoalState\.action === trace\.selected\.action\)\s*\{\s*this\.developmentalNeural\.endogenousGoalGenesisB272\.learnFromOutcome\(/s,
+  'embodied outcomes cannot credit B272 when final action selection overrode its generated action');
+
 
 console.log('WorkPass296 micro-cycle action attribution contract: OK');
