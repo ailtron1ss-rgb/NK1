@@ -6,7 +6,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
       - "runtime/neuro-kurisu/src/organism/system/**"
-      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/src/server/**"
       - "runtime/neuro-kurisu/tests/workpass53-*.mjs"
       - "research/requirements-cpu.txt"
       - "research/research_bridge.py"
@@ -39,7 +39,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
       - "runtime/neuro-kurisu/src/organism/system/**"
-      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/src/server/**"
       - "runtime/neuro-kurisu/tests/workpass53-*.mjs"
       - "research/requirements-cpu.txt"
       - "research/research_bridge.py"
