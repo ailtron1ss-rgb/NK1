@@ -1,3 +1,13 @@
+## NK1 WorkPass534 — split P36 experiment evidence from developmental maturity (2026-10-25)
+
+- Introduced a separate reserved host capability `organism.learning.p36.evaluate-maturity` alongside `organism.learning.p36.evaluate-evidence`.
+- `OrganismConfig.p36DevelopmentalOutcomeEvaluator` now provides an independent construction-time slot for delayed maturity/retention/transfer outcomes. The generic public registry rejects this reserved ID just as it rejects the experiment evaluator ID.
+- Core finalization routes `kind: 'developmental-outcome'` only through the maturity ID and routes baseline/treatment evidence only through the experiment ID. Cross-lane payloads fail closed and are recorded as rejected evidence; the P36 engine itself checks the maturity receipt's exact reserved ID.
+- Updated Core integration and self-development regressions to register and exercise both reserved capabilities separately, including public-registry takeover attempts and cross-lane submissions.
+- **Verification boundary:** code/tests are committed but exact-HEAD CI/typecheck has not been confirmed. The signed ledger adapter remains point-in-time holdout only and is not a maturity/retention evaluator. No empirical learning uplift is claimed.
+
+---
+
 ## NK1 learning diagnostics — evidence-bound attempt analysis (2026-10-25)
 
 - Hardened `P23LearningEngine.diagnoseLearningAttempt` by detaching incoming data through the shared plain-data trust boundary before field access; accessor-backed and malformed requests fail closed.
