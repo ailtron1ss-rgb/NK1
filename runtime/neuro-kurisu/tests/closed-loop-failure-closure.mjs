@@ -175,6 +175,24 @@ assert.equal(contradictoryCausalRestore.snapshot().completeCycles, 0);
 assert.equal(contradictoryCausalRestore.snapshot().failures, 1);
 assert.equal(contradictoryCausalRestore.snapshot().meanScore01, 0);
 
+// Malformed persisted causal records must not be silently normalized into a green restore.
+const malformedCausalRestore = new CausalDomainClosureLedger();
+malformedCausalRestore.restore({
+  version: 1, capacity: 8, totalCycles: 2, completeCycles: 2, degradedCycles: 0, failures: 0,
+  meanScore01: 0.95, lastTick: 2, lastStatus: 'PASS', lastBehaviorHash: 'forged-causal-pass', lastDurableHash: 'stale-durable-hash',
+  recent: [
+    { ...good, tick: 2, at: Date.now(), behaviorHash: 'forged-causal-pass' },
+    { tick: 'invalid', status: 'PASS', complete: true, score01: 1 },
+  ],
+});
+assert.equal(malformedCausalRestore.snapshot().lastStatus, 'FAIL', 'discarded malformed causal evidence must fail closed');
+assert.ok(malformedCausalRestore.snapshot().failures >= 1, 'malformed causal evidence must be counted as a failure');
+assert.equal(malformedCausalRestore.snapshot().completeCycles, 1, 'malformed entries must not retain success credit');
+assert.ok(malformedCausalRestore.snapshot().meanScore01 < 0.95, 'malformed evidence must lower the restored mean score');
+assert.equal(malformedCausalRestore.snapshot().lastDurableHash, '', 'malformed evidence must revoke the stale durable receipt');
+assert.match(malformedCausalRestore.snapshot().lastBehaviorHash, /^[a-f0-9]+$/, 'malformed evidence must replace the forged success fingerprint');
+assert.equal(malformedCausalRestore.snapshot().recent.length, 1, 'invalid causal records must not be retained as trusted evidence');
+
 // Re-entering begin() must close the stale attempt rather than overwrite its pending record.
 const reenteredCausal = new CausalDomainClosureLedger();
 reenteredCausal.begin({ tick: 4, counters: before });
