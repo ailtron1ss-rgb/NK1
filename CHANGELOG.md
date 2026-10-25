@@ -2,7 +2,7 @@
 
 - Corrected the long-cycle fixture's unsupported `evidenceSource: 'external'` value to the runtime's recognized `external-api` evidence class.
 - Extended the deterministic Core loop with a stable final segment and strong bounded feedback so the test exercises both single-action skill creation and reuse instead of expecting execution credit from an unrecognized source label.
-- Strengthened assertions to require a single-action primitive and at least one actual skill-reuse outcome; no production learning threshold or security gate was weakened. Exact-head Actions must confirm the result.
+- Strengthened assertions to require a single-action primitive and at least one actual skill-reuse outcome; no production learning threshold or security gate was weakened. Validation: [WorkPass331 unified cognitive kernel](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40175444624) passed on SHA `f242a32f36a07bbafd9d8c91a92c11e0dc47b986`, including this updated long-cycle test. This confirms that deterministic regression only; it does not establish production learning uplift or full release readiness.
 
 ---
 
