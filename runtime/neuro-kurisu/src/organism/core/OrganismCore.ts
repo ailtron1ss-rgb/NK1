@@ -259,7 +259,7 @@ import { CentralSubjectDynamics, defaultCentralSubjectDynamics } from '../cognit
 import { DeviceEvidenceLedger, defaultDeviceEvidence } from '../body/DeviceEvidenceLedger.ts';
 import { LifelongDevelopmentSystem, defaultLifelongDevelopment } from '../learning/LifelongDevelopmentSystem.ts';
 import { P27NeuralWorldFoundation, defaultP27NeuralWorld } from '../cognition/P27NeuralWorldFoundation.ts';
-import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, defaultP36SelfDevelopment, developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput } from '../learning/P36AutonomousSelfDevelopment.ts';
+import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, P36_DEVELOPMENTAL_OUTCOME_TOOL_ID, defaultP36SelfDevelopment, developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput } from '../learning/P36AutonomousSelfDevelopment.ts';
 import { defaultP37EmbodiedSensorium, type P37Input, type P37SemanticWorldState } from '../body/P37EmbodiedSensorium.ts';
 import { defaultP38Research } from '../learning/P38AutonomousCausalResearch.ts';
 import { defaultP39ContinuousLife } from '../learning/P39ContinuousArtificialLife.ts';
@@ -418,8 +418,10 @@ export interface OrganismConfig {
     checkpointMaxDirtyCycles?: number;
     includeAdvancedCycleSnapshot?: boolean;
     cycleResultMode?: 'full' | 'operational';
-    /** Trusted host bootstrap only. This adapter is registered at construction and cannot be added through the public tool registry. */
+    /** Trusted host bootstrap only; baseline/treatment experiment-evidence authority. */
     p36IndependentEvaluator?: Omit<import('../system/ActionGateway.ts').ToolDefinition, 'id'>;
+    /** Separate trusted host authority for maturity, delayed retention, and transfer outcomes. */
+    p36DevelopmentalOutcomeEvaluator?: Omit<import('../system/ActionGateway.ts').ToolDefinition, 'id'>;
     /** Runtime resource profile. 'mobile' preserves cognition but widens deep-persistence spacing. */
     performanceProfile?: 'quality' | 'balanced' | 'mobile';
     enableTemporalResolutionGovernor?: boolean;
@@ -1349,6 +1351,25 @@ export class OrganismCore {
             this.cognitiveRuntime.actionGateway.registerTool({
                 ...p36Evaluator,
                 id: P36_EXTERNAL_EVIDENCE_TOOL_ID,
+                destructive: false,
+            });
+        }
+        const p36MaturityEvaluator = config.p36DevelopmentalOutcomeEvaluator;
+        if (p36MaturityEvaluator !== undefined) {
+            if (!p36MaturityEvaluator) throw new Error('p36-developmental-outcome-evaluator-host-config-invalid');
+            const source = p36MaturityEvaluator.observationSource;
+            if (p36MaturityEvaluator.destructive !== false || typeof p36MaturityEvaluator.execute !== 'function' ||
+                typeof p36MaturityEvaluator.verify !== 'function' || !source ||
+                typeof source.sourceId !== 'string' || !source.sourceId.trim() ||
+                typeof source.independenceKey !== 'string' || !source.independenceKey.trim() ||
+                typeof source.channel !== 'string' || !source.channel.trim() ||
+                typeof source.sourceClass !== 'string' || !source.sourceClass.trim() ||
+                p36MaturityEvaluator.requiresIdempotencyKey === true) {
+                throw new Error('p36-developmental-outcome-evaluator-host-config-invalid');
+            }
+            this.cognitiveRuntime.actionGateway.registerTool({
+                ...p36MaturityEvaluator,
+                id: P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,
                 destructive: false,
             });
         }
@@ -10910,10 +10931,10 @@ export class OrganismCore {
             ? this.persisted.traces.find(trace => trace.id === decisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick)
             : undefined;
         let verification: OutcomeVerification | undefined;
-        if (input.toolId === P36_EXTERNAL_EVIDENCE_TOOL_ID && linkedTrace &&
+        if (input.toolId === P36_DEVELOPMENTAL_OUTCOME_TOOL_ID && linkedTrace &&
             typeof input.executionId === 'string' &&
             isTrustedDecisionLinkedExternalPostcondition(input.verification, {
-                toolId: P36_EXTERNAL_EVIDENCE_TOOL_ID,
+                toolId: P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,
                 input: developmentalOutcomeVerificationInput(input),
                 executionId: input.executionId,
                 decisionId,
@@ -11550,6 +11571,9 @@ export class OrganismCore {
         if (def?.id === P36_EXTERNAL_EVIDENCE_TOOL_ID) {
             throw new Error('reserved-p36-evaluator-must-be-configured-at-core-construction');
         }
+        if (def?.id === P36_DEVELOPMENTAL_OUTCOME_TOOL_ID) {
+            throw new Error('reserved-p36-maturity-evaluator-must-be-configured-at-core-construction');
+        }
         this.cognitiveRuntime.actionGateway.registerTool(def);
     }
     actionExecutionLedgerMetrics() { return this.cognitiveRuntime.actionGateway.executionLedgerMetrics(); }
@@ -11883,11 +11907,11 @@ export class OrganismCore {
         // The reserved P36 evaluator route is the only live path that may submit independent
         // developmental evidence. The exact ActionGateway receipt and a persisted decision-linked
         // trace must both be present; caller booleans or a tool-contract ACK never qualify.
-        if (id === P36_EXTERNAL_EVIDENCE_TOOL_ID) {
+        if (id === P36_EXTERNAL_EVIDENCE_TOOL_ID || id === P36_DEVELOPMENTAL_OUTCOME_TOOL_ID) {
             const p36Proof = result.ok && result.verified && result.outcomeClass === 'executed-verified' &&
                 decisionLinkedExternalPostcondition ? result.verification : undefined;
             try {
-                if ((input as any)?.kind === 'developmental-outcome') {
+                if (id === P36_DEVELOPMENTAL_OUTCOME_TOOL_ID && (input as any)?.kind === 'developmental-outcome') {
                     const before = this.developmentalNeural.p36SelfDevelopment.developmentalCertification();
                     this.developmentalNeural.p36SelfDevelopment.observeDevelopmentalOutcome({
                         ...(input as any),
@@ -11916,7 +11940,7 @@ export class OrganismCore {
                             rejectedMaturityReceipts: this.developmentalNeural.p36SelfDevelopment.diagnostics().rejectedMaturityReceipts,
                         } as any,
                     ));
-                } else {
+                } else if (id === P36_EXTERNAL_EVIDENCE_TOOL_ID && (input as any)?.kind !== 'developmental-outcome') {
                     const p36EvidenceResult = this.developmentalNeural.p36SelfDevelopment.recordExternalEvidence({
                         ...(input as any),
                         toolId: id,
@@ -11941,6 +11965,8 @@ export class OrganismCore {
                             unverifiedEvidenceAttempts: this.developmentalNeural.p36SelfDevelopment.diagnostics().unverifiedEvidenceAttempts,
                         } as any,
                     ));
+                } else {
+                    throw new Error('p36-evaluator-kind-tool-mismatch');
                 }
             } catch (error) {
                 // Evidence collection is fail-closed but should not misclassify a read-only
