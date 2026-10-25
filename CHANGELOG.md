@@ -1,3 +1,11 @@
+## NK1 WorkPass352 — make continual-transfer assertion floating-point safe (2026-10-25)
+
+- [REGRESSION] Changed the forward-transfer exact-equality assertion to a `1e-12` tolerance. The computed value is `0.14999999999999997` for the mathematically expected `0.15`; this is ordinary IEEE-754 subtraction noise, not a production transfer-metric discrepancy.
+- [VALIDATION] Latest P26 head passed typecheck, learning input guards, recovery, curriculum matrix, SkillLearnBench adapter, Hermes gate, continual replay, prioritized replay, replay ablation and forgetting tracker; transfer tracker stopped on this exact-float assertion.
+- [SCOPE] Isolated PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass351 — make continual replay buffer compatible with Node type stripping (2026-10-25)
 
 - [COMPATIBILITY] Replaced `ContinualReplayBuffer`'s constructor parameter property with an explicit readonly `capacity` field and assignment. This preserves the runtime API and permits the P26 direct Node 22.12 type-stripping test to load the replay buffer.
