@@ -8,6 +8,10 @@ import { EmotionAppraisalEngine } from '../src/organism/system/EmotionAppraisalE
 import { P66InteroceptiveHomeostasis } from '../src/organism/cognition/P66InteroceptiveHomeostasis.ts';
 
 const e = new EmotionAppraisalEngine();
+const emptyEmotionCycles=e.snapshot().episodes;
+assert.throws(()=>e.appraise({tick:NaN}),/tick must be a non-negative safe integer/);
+assert.throws(()=>e.appraise({tick:0,at:Infinity}),/timestamp must be finite and non-negative/);
+assert.equal(e.snapshot().episodes,emptyEmotionCycles,'invalid appraise clocks must not mutate affect history');
 const calmBody = e.observeInteroception({energy01:.88,thermal01:.16,capacity01:.9,load01:.12,homeostaticPressure01:.08});
 const first = e.appraise({tick:1,at:1001,novelty01:.8,uncertainty01:.5,predictionError01:.1,homeostaticPressure01:.08,success01:.92,goalPressure01:.25,goalCongruence01:.9,controllability01:.8});
 assert.ok(calmBody.cycles===1 && calmBody.lastMismatch01<.25);
