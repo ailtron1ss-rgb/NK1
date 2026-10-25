@@ -23,6 +23,7 @@ function fakeClient() {
         async *stream() {
           yield { type: 'user', content: 'not a final answer' };
           yield { type: 'assistant', content: nextResponse };
+          yield { type: 'result', success: true, durationMs: 1, conversationId: 'conv-test' };
         },
         async close() { calls.closedSessions += 1; },
       };
@@ -100,4 +101,28 @@ assert.deepEqual(refused, { ok: false, reason: 'letta-disabled' });
 
 await bridge.close();
 assert.equal(calls.clientClosed, 0, 'does not close a caller-owned client');
+
+// Assistant prose without the SDK's authoritative successful terminal result
+// must not be treated as a successful memory write.
+const unsuccessfulClient = {
+  async createAgent() { return 'agent-unsuccessful-turn'; },
+  resumeSession() {
+    return {
+      async send() {},
+      async *stream() {
+        yield { type: 'assistant', content: 'Stored successfully.' };
+        yield { type: 'result', success: false, errorCode: 'llm_api_error', durationMs: 1, conversationId: 'conv-failed' };
+      },
+      async close() {},
+    };
+  },
+};
+const unsuccessful = new LettaMemoryBridge({ enabled: true, client: unsuccessfulClient });
+const failedWrite = await unsuccessful.recordExperience({
+  id: 'failed-turn-record', source: 'unit-test', kind: 'observation', summary: 'must not be acknowledged',
+});
+assert.equal(failedWrite.ok, false);
+assert.match(failedWrite.reason, /letta-turn-unsuccessful/);
+assert.equal(unsuccessful.snapshot().metrics.recordsSubmitted, 0);
+await unsuccessful.close();
 console.log('LETTA_MEMORY_BRIDGE=PASS');
