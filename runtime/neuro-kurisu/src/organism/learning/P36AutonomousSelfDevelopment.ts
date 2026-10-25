@@ -141,6 +141,8 @@ export function developmentEvidenceVerificationInput(input:DevelopmentEvidenceVe
 }
 
 export interface DevelopmentalOutcomeVerificationBinding {
+  /** Discriminant consumed by OrganismCore.finalizeToolOutcome; never inferred from a score. */
+  kind?:'developmental-outcome';
   area?:DevelopmentArea|null;
   outcome01:number;
   delayed?:boolean;
@@ -705,7 +707,7 @@ export class P36AutonomousSelfDevelopmentEngine{
   recordRollback(reason:string){this.state.rollbackCount++;this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.9+.1*.35);const h=this.state.hypotheses.find(x=>x.id===this.state.currentHypothesisId);if(h)h.status='rolled-back';this.state.currentHypothesisId=null;return reason;}
 
 
-  observeDevelopmentalOutcome(input:{area?:DevelopmentArea|null;outcome01:number;verified?:boolean;verification?:OutcomeVerification;toolId?:string;executionId?:string;decisionId?:string;delayed?:boolean;transfer?:boolean;at?:number}){
+  observeDevelopmentalOutcome(input:{kind?:'developmental-outcome';area?:DevelopmentArea|null;outcome01:number;verified?:boolean;verification?:OutcomeVerification;toolId?:string;executionId?:string;decisionId?:string;delayed?:boolean;transfer?:boolean;at?:number}){
     // The legacy verified boolean is descriptive only; certification needs a verifier-minted receipt.
     const binding=developmentalOutcomeVerificationInput(input);
     if(typeof input.outcome01!=='number'||!Number.isFinite(input.outcome01)||input.outcome01<0||input.outcome01>1||
