@@ -118,6 +118,7 @@ console.log('P26_INTERLEAVED_DIAGNOSTIC',JSON.stringify(interleaved));
 assert.ok(onlineOnly.taskABefore>.8,'benchmark must establish task A before measuring forgetting');
 assert.ok(onlineOnly.taskBFinal>.8,'benchmark must establish task B before measuring retention');
 assert.equal(replay.generalizationEvidence01,0,'synthetic task evaluation is not verifier-certified generalization evidence');
+console.log('P26_CONTEXT_AWARE_DIAGNOSTIC',JSON.stringify(contextAware));
 assert.ok(contextAware.taskABefore>.8,'contextual benchmark must establish old-task performance');
 assert.ok(contextAware.taskAFinal>.8,'separable state contexts plus interaction features should preserve old-task skill');
 assert.ok(contextAware.taskBFinal>.8,'separable state contexts plus interaction features should learn the new task');
