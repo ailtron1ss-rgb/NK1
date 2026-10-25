@@ -309,9 +309,34 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
     }
   }
 
+
+  // Resolve local JavaScript/TypeScript module edges beyond paths executed by CI.
+  const codeFiles = walkCodeFiles(root);
+  let relativeImportsChecked = 0;
+  for (const codePath of codeFiles) {
+    let source;
+    try {
+      source = fs.readFileSync(codePath, 'utf8');
+    } catch (error) {
+      report(path.relative(root, codePath) + ': unable to read source module (' + error.message + ')');
+      continue;
+    }
+    const searchable = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
+    RELATIVE_MODULE_REFERENCE.lastIndex = 0;
+    for (const match of searchable.matchAll(RELATIVE_MODULE_REFERENCE)) {
+      const specifier = match[2];
+      relativeImportsChecked += 1;
+      if (!resolveRelativeModule(codePath, specifier)) {
+        report(path.relative(root, codePath) + ': unresolved relative module import ' + JSON.stringify(specifier));
+      }
+    }
+  }
+
   return {
     errors,
     workflowsScanned: workflowFiles.length,
+    sourceFilesScanned: codeFiles.length,
+    relativeImportsChecked,
     npmScriptsChecked: auditedScripts.size,
     packagesRead: [...packageCache.values()].filter(Boolean).length
   };
@@ -324,6 +349,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
     for (const error of result.errors) console.error(' - ' + error);
     process.exitCode = 1;
   } else {
-    console.log('Repository wiring audit PASS: ' + result.workflowsScanned + ' workflows, ' + result.npmScriptsChecked + ' reachable npm scripts, ' + result.packagesRead + ' package manifests checked.');
+    console.log('Repository wiring audit PASS: ' + result.workflowsScanned + ' workflows, ' + result.sourceFilesScanned + ' source files, ' + result.relativeImportsChecked + ' relative imports, ' + result.npmScriptsChecked + ' reachable npm scripts, ' + result.packagesRead + ' package manifests checked.');
   }
 }
