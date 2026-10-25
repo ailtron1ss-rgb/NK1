@@ -16,6 +16,7 @@ on:
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-feedback-attribution-wiring.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-routing-policy-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-routing-policy.mjs"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveRoutingPolicy.ts"
@@ -38,6 +39,7 @@ on:
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-feedback-attribution-wiring.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-routing-policy-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-routing-policy.mjs"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveRoutingPolicy.ts"
@@ -91,6 +93,9 @@ jobs:
 
       - name: Test B272 endogenous goal and outcome attribution
         run: npm --prefix runtime/neuro-kurisu run test:workpass292:motivation-to-goal
+
+      - name: Verify B272 credit attribution in both feedback paths
+        run: npm --prefix runtime/neuro-kurisu run test:cognitive-feedback-attribution-wiring
 
       - name: Test live runtime graph persistence and restart continuity
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-dependency-runtime-wiring
