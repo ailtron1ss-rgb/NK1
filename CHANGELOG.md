@@ -1,9 +1,19 @@
-## Quick-audit formatting blocker — 2026-10-25
+## Independent candidate executability vs verifier trust — 2026-10-25
 
-- Removed two trailing-whitespace-only lines from `runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs` after the expanded quick audit identified them.
-- No executable statements or test logic were changed; this unblocks the repository-wide formatting/architecture gate.
+- Fixed a metric conflation in `IndependentSkillCandidateEvaluator`: a structurally valid executor result remains measurable as executable when the independent verifier is unavailable.
+- Kept verifier binding, successful task completion, and admissibility into the canonical verified-outcome ledger gated on the trusted verifier result. An unbound trace still cannot become a passed task or a promotion-grade outcome.
+- Added the WorkPass203 regression to the repository contract gate and wired both the evaluator source and test into its path filters.
 
-Validation: rerun `audit:quick` on the latest head to confirm the workspace passes the full quick audit.
+Validation: the WorkPass203 test must pass on the latest exact head; previous WorkPass110 run exposed the mismatch at its assertion.
+
+---
+
+## Quick-audit formatting blockers — 2026-10-25
+
+- Removed trailing whitespace from `runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs` and `runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs` after successive quick-audit runs identified each file.
+- These are whitespace-only edits; no executable statements or test logic changed.
+
+Validation: rerun `audit:quick` on the latest head to confirm all source-hygiene errors are cleared.
 
 ---
 
