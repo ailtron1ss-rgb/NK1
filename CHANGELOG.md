@@ -1,3 +1,13 @@
+## NK1 WorkPass560 — invoke the existing WorkPass294 regression (2026-10-25)
+
+- Replaced the nonexistent `test:workpass294:correlated-postcondition` npm alias with a direct invocation of the existing `workpass294-correlated-postcondition.mjs` file using Node's TypeScript transform mode.
+- The same workflow already installs the locked runtime dependencies before typecheck; this update lets the exact action/decision-lineage assertions actually execute instead of stopping at script lookup.
+
+## NK1 WorkPass561 — reconcile durable replay IDs before cache IDs (2026-10-25)
+
+- Updated the P23 restore-integrity test to expect `replay-1` from the valid persisted replay row before the cache-only `replay-newest` ID.
+- The restore implementation deliberately seeds the deduplication list from durable replay rows before merging the persisted cache, so old replay rows cannot be reapplied. The test now asserts both durable-ID precedence and retention of the newer cache-only ID.
+
 ## NK1 WorkPass559 — make WorkPass294 typecheck deterministic (2026-10-25)
 
 - Added `npm ci` before WorkPass294's runtime typecheck and added the runtime lockfile/typecheck script to the workflow path filter.
