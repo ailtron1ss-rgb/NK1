@@ -1,3 +1,9 @@
+## NK1 WorkPass540 — repair P23 revision workflow command (2026-10-25)
+
+- The PR Actions run confirmed WorkPass292's direct test invocation passes, while WorkPass293 failed before executing assertions because its workflow referenced a missing npm script.
+- Changed the WorkPass293 workflow to execute the existing `tests/workpass293-autonomous-p23-revision.mjs` regression directly with Node.js 24 `--experimental-transform-types`.
+- **Validation boundary:** workflow fix committed; the new run must confirm the test itself passes. Other legacy workflow failures remain independently tracked.
+
 ## NK1 WorkPass539 — repair the affect bridge contract regression (2026-10-25)
 
 - The exact-head affect workflow showed that the UI bridge contract test expected a direct `mood: snap.affect?.mood` expression, while the avatar intentionally routes mood through `affectiveSignalsFromSnapshot()` to calculate freshness and keep mood/feeling inputs consistent.
