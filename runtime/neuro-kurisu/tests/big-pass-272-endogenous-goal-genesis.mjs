@@ -57,6 +57,25 @@ const comparisonInput={
   predictionError01:0.3,autobiographicalContinuity01:0.8,identityContinuity01:0.8,
   intrinsicReward01:0.2,lastAction:null,lastReward01:0.5,
 };
+const unselectedNet=new B272EndogenousGoalGenesis(); unselectedNet.restore(comparisonState);
+const unselectedGoal=unselectedNet.step({...comparisonInput,tick:360});
+const beforeUnselected=unselectedNet.snapshot();
+const alternativeAction=unselectedGoal.action==='explore'?'reflect':'explore';
+const unselected=unselectedNet.recordUnselectedAction({tick:360,generatedAction:unselectedGoal.action,selectedAction:alternativeAction});
+assert.equal(unselected.credited,false,'an unselected generated action must not receive executed-action reward credit');
+const afterUnselected=unselectedNet.snapshot();
+assert.equal(afterUnselected.lastOutcomeTick,360,'unselected candidate decision must be terminal and prevent replay');
+assert.equal(afterUnselected.learningUpdates,beforeUnselected.learningUpdates+1,'unselected candidate needs a terminal decision record');
+assert.equal(afterUnselected.rejectedGoals,beforeUnselected.rejectedGoals+1,'unselected candidate must be classified as rejected');
+assert.deepEqual(afterUnselected.actionPrototypeWeights,beforeUnselected.actionPrototypeWeights,'mismatched action feedback must not train another action prototype');
+assert.deepEqual(afterUnselected.goalOutcomeMemory,beforeUnselected.goalOutcomeMemory,'mismatched action feedback must not pollute learned reward memory');
+assert.deepEqual(afterUnselected.outcomeHistory,beforeUnselected.outcomeHistory,'unselected candidate must not be recorded as an executed-action outcome');
+assert.equal(afterUnselected.unselectedActionHistory.at(-1).generatedAction,unselectedGoal.action);
+assert.equal(afterUnselected.unselectedActionHistory.at(-1).selectedAction,alternativeAction);
+assert.throws(()=>unselectedNet.learnFromOutcome({tick:360,action:unselectedGoal.action,reward01:.9,predictionError01:.1,externalEvidence01:1}),/already been credited|already been finalized/);
+const restoredUnselected=new B272EndogenousGoalGenesis(); restoredUnselected.restore(afterUnselected);
+assert.deepEqual(restoredUnselected.snapshot().unselectedActionHistory,afterUnselected.unselectedActionHistory,'unselected-candidate decisions must survive restore');
+
 const baselineValue=baselineNet.step({...comparisonInput,intrinsicDrive01:0,intrinsicDriveConfidence01:1}).predictedFutureValue01;
 const drivenValue=drivenNet.step({...comparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:1}).predictedFutureValue01;
 assert.ok(drivenValue>baselineValue+0.1,'calibrated intrinsic drive did not influence endogenous goal value');
