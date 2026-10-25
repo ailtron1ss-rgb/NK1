@@ -35,6 +35,11 @@ try {
     'dependency routing must never expand the resource allocator branch budget',
   );
   assert.equal(typeof routingEvent.payload.allowMatchedCounterfactual, 'boolean');
+  assert.ok(
+    Number(routingEvent.payload.cognitiveCycleDelayMultiplier01) >= 0.75 &&
+    Number(routingEvent.payload.cognitiveCycleDelayMultiplier01) <= 1,
+    'cycle cadence adaptation must stay within its declared bound',
+  );
   await runtime.stop();
   runtime = undefined;
   const persisted = await new FileStateStore(dependencyStateFile).load();
