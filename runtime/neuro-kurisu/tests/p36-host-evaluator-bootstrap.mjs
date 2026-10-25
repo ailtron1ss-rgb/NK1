@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
@@ -76,6 +76,12 @@ try {
     minimumPairedSeeds:4,
   };
   await writeFile(configPath,JSON.stringify(config,null,2),{mode:0o600});
+  // Trust inputs are read-only once provisioned, and the production loader forbids mutable-state paths.
+  await chmod(manifestPath,0o400);
+  await chmod(keyringPath,0o400);
+  await chmod(configPath,0o400);
+  for(const artifactPath of artifactPaths) await chmod(artifactPath,0o400);
+  await chmod(artifactsDir,0o500);
 
   const evaluator=await loadP36VerifiedOutcomeLedgerEvaluator(configPath);
   const gateway=new ActionGateway({live:true});
@@ -105,17 +111,25 @@ try {
   assert.equal(artifactPaths.length,32);
 
   // A private signing key is never accepted as a verifier public-key ring entry.
+  await chmod(keyringPath,0o600);
   await writeFile(keyringPath,JSON.stringify({[verifierId]:privatePem}),{mode:0o600});
+  await chmod(keyringPath,0o400);
   await assert.rejects(loadP36VerifiedOutcomeLedgerEvaluator(configPath),/p36-host-bootstrap-keyring-entry-invalid/);
+  await chmod(keyringPath,0o600);
   await writeFile(keyringPath,JSON.stringify({[verifierId]:publicPem}),{mode:0o600});
+  await chmod(keyringPath,0o400);
 
   // A tampered signed outcome blocks host bootstrap instead of being silently skipped.
   const original=JSON.parse(await readFile(artifactPaths[0],'utf8'));
   original.signature='not-a-valid-signature';
+  await chmod(artifactPaths[0],0o600);
   await writeFile(artifactPaths[0],JSON.stringify(original),{mode:0o600});
+  await chmod(artifactPaths[0],0o400);
   await assert.rejects(loadP36VerifiedOutcomeLedgerEvaluator(configPath),/p36-host-bootstrap-artifact-rejected-invalid-signature/);
 
   // Maturity is a separate host-owned module; this loader does not fabricate one.
+  const stateDirectory=path.join(temporary,'runtime-state');
+  await mkdir(stateDirectory,{recursive:true,mode:0o700});
   const maturityModulePath=path.join(temporary,'delayed-maturity-provider.mjs');
   await writeFile(maturityModulePath,`
 export function createP36DevelopmentalOutcomeEvaluator({stateDirectory}) {
@@ -147,7 +161,8 @@ export function createP36DevelopmentalOutcomeEvaluator({stateDirectory}) {
   };
 }
 `,{mode:0o600});
-  const maturity=await loadP36DevelopmentalOutcomeEvaluatorModule(maturityModulePath,temporary);
+  await chmod(maturityModulePath,0o400);
+  const maturity=await loadP36DevelopmentalOutcomeEvaluatorModule(maturityModulePath,stateDirectory);
   assert.equal(maturity.destructive,false);
   assert.equal(typeof maturity.execute,'function');
   assert.equal(typeof maturity.verify,'function');
