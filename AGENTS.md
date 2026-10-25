@@ -1,5 +1,14 @@
 # NeuroCore — repository working rules
 
+## Latest durable checkpoint — WorkPass336 (2026-10-25)
+
+- Fixed a malformed correlation-ID control-character regex that prevented the memory-to-action regression from loading its imported verification module.
+- Removed duplicate `verifyOperationalCycle` implementation; the retained implementation validates required lineage plus optional cognitive phases.
+- Corrected the learning replay-options type import so it comes from `ReplaySelectionPolicy.ts`.
+- Previous exact-head Actions confirmed the universal interpreter, app typecheck/build, and verified-outcome ledger were green; the broader runtime typecheck remained red with other type/declaration errors. New-head verification is pending. Release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass335 (2026-10-24)
 
 - Filled the new `audio` modality into both the situation-model reliability defaults and Core's initial persisted multimodal state.
