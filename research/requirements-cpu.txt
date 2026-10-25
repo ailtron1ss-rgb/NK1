@@ -1,0 +1,4 @@
+# CPU-only dependencies required by research/neurocore-v143/pyproject.toml
+# and imported by the DeepCode v21 research smoke. Avoid CUDA/GPU runtime wheels.
+--index-url https://download.pytorch.org/whl/cpu
+torch>=2.0
