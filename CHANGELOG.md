@@ -8,7 +8,7 @@
 ## NK1 Causal Projection — quarantine conflicting restored outcome identities (2026-10-25)
 
 - `OutcomeCognitionFabric.restore()` now checks restored projection-index identity against its record fingerprint, rejects the last-write-wins behavior for duplicate `executionId` values, and quarantines conflicting IDs in `CausalAccountabilityGraph` so the tombstone persists across restart.
-- Restored `verifiedExternal` is recomputed from the canonical external-postcondition contract rather than trusted as a stored boolean. Conflicting projection records are dropped; IDs quarantined only by the causal graph keep read-only history for audit, while their active index and evidence-revision rows are removed.
+- Restored `verifiedExternal` is recomputed from the canonical external-postcondition contract rather than trusted as a stored boolean. Conflicting or causally quarantined outcomes remain as explicitly marked read-only audit records (`receiptQuarantined`); they are removed from the active projection index and evidence-revision ledger. Causal autobiography labels them `ambiguous-execution-quarantined`, and all new evidence/project/revision operations fail closed.
 - Project replay, external-observation attachment, authoritative-receipt revision, and `hasProjectionForExecution()` now respect quarantine. Added a regression that combines two individually plausible snapshots with conflicting tool/postcondition identities and verifies no later evidence can attach.
 - **Validation boundary:** GitHub Actions is running for regression commit `d422b86a549cd37f2f2b1236799672068f6a79bf`; result will be recorded after the hosted run completes.
 
