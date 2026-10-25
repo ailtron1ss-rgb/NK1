@@ -5,7 +5,21 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/src/organism/system/**"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/workpass53-*.mjs"
+      - "research/requirements-cpu.txt"
+      - "research/research_bridge.py"
+      - "research/deepcode/**"
+      - "research/neurocore-v143/**"
       - "runtime/neuro-kurisu/tests/cognitive-*.mjs"
+      - "runtime/neuro-kurisu/src/organism/system/**"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/workpass53-*.mjs"
+      - "research/requirements-cpu.txt"
+      - "research/research_bridge.py"
+      - "research/deepcode/**"
+      - "research/neurocore-v143/**"
       - "runtime/neuro-kurisu/tests/memory-budget-restore-integrity.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
@@ -66,6 +80,14 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: app/package-lock.json
+      - name: Set up Python 3.12 research runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install CPU-only research dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu -r research/requirements-cpu.txt
+          python -m pip check
       - name: Verify project runtime pin contract
         run: npm run test:runtime-pin-contract
       - name: Test canonical installer contract
@@ -82,5 +104,7 @@ jobs:
           npm --prefix app run build:dev
       - name: Verify cognitive integration contracts
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite
+      - name: Run governed approval gateway and bridge E2E
+        run: npm --prefix runtime/neuro-kurisu run test:workpass53
       - name: Run unified runtime and research bridge smoke
         run: npm run test:integration
