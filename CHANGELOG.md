@@ -1,3 +1,11 @@
+## [NK1][core] Route project execution through the canonical Core wrapper (2026-10-25)
+
+- The passing receipt-integrity fix uncovered a real production bypass in project tool execution: fresh project dispatch called `ActionGateway.executeTool` directly, and resume reconciliation also bypassed `OrganismCore`'s canonical wrapper.
+- Routed fresh project execution through `this.executeTool` and resume reconciliation through `this.reconcileToolExecution`. This restores tool alias normalization and the single owner for unkeyed outcome finalization/checkpointing; keyed receipts keep ActionGateway's own atomic finalization path and are not double-finalized.
+- The route regression now guards against reintroducing either direct project-path bypass. Exact-head CI is required before treating this as validated.
+
+---
+
 ## [NK1][compat] Make project wrapper assertions independent of source order (2026-10-25)
 
 - A second CI run showed that the first marker adjustment still assumed compound-skill selection followed the project path; in the current file that identifier occurs earlier. The regression now independently asserts the unique fresh-dispatch wrapper, the core reconciliation wrapper and absence of their corresponding direct gateway bypasses across the source.
