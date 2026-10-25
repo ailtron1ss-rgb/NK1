@@ -19,11 +19,19 @@ export async function retryTransientApprovalStorage(operation, isBusy, options =
   const deadline = now() + timeoutMs;
   let delayMs = initialDelayMs;
   let attempts = 0;
+  let lastBusyResult;
 
   for (;;) {
+    // Never start another operation after the retry deadline; the first
+    // attempt is always allowed, even when timeoutMs is zero.
+    if (attempts > 0 && now() >= deadline) {
+      return { result: lastBusyResult, exhausted: true, attempts };
+    }
+
     attempts += 1;
     const result = await operation();
     if (!isBusy(result)) return { result, exhausted: false, attempts };
+    lastBusyResult = result;
 
     const remainingMs = deadline - now();
     if (remainingMs <= 0) return { result, exhausted: true, attempts };
