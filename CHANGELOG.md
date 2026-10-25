@@ -1,3 +1,10 @@
+## NK1 WorkPass544 — make causal replay fixture evidence-valid (2026-10-25)
+
+- Corrected the replay-diversity test to build decision traces whose trace tick matches the pre-action snapshot and whose after-state records the selected action plus observed success. The old fixture was intentionally rejected by the grounded-outcome gate, leaving an empty replay batch.
+- Added a precondition assertion that four valid observed transitions were recorded before measuring task diversity; the test now checks the replay policy rather than accidentally testing invalid-ingress rejection.
+- Switched the P26 continual-replay test command to Node's TypeScript transform mode because its imported class uses a constructor parameter property unsupported by strip-only mode in Node 22.12.
+- Latest-head CI must rerun before the broader learning path can be called green.
+
 ## NK1 WorkPass543 — add deterministic recall goldset (2026-10-25)
 
 - Expanded episodic intent detection for explicit English reminder/recall requests and Russian `напомни` / restore-chat-context phrasing.
