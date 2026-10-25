@@ -281,15 +281,25 @@ assert.equal(boundedDuplicateStream.summary().outcomes, outcomesBeforeEvictedRet
 
 const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
+  const tick = 10 + i;
+  const selected = { ...trace.selected, goalId: "task-A" };
+  const stateBefore = mkState({ tick, at: 2000 + i * 100 });
+  const stateAfter = mkState({
+    tick: tick + 1, at: 2050 + i * 100,
+    lastAction: selected.action, lastActionSuccess: .7,
+  });
   replayDiversity.recordOutcome({
-    ...trace, id: `replay-a-${i}`, tick: 10 + i,
-    selected: { ...trace.selected, goalId: "task-A" },
-  }, mkState({ tick: 11 + i }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+    ...trace, id: `replay-a-${i}`, tick, stateBefore, selected,
+  }, stateAfter, { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 }
+const replayBSelected = { ...trace.selected, goalId: "task-B" };
 replayDiversity.recordOutcome({
   ...trace, id: "replay-b-0", tick: 20,
-  selected: { ...trace.selected, goalId: "task-B" },
-}, mkState({ tick: 21 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+  stateBefore: mkState({ tick: 20, at: 4000 }),
+  selected: replayBSelected,
+}, mkState({
+  tick: 21, at: 4050, lastAction: replayBSelected.action, lastActionSuccess: .7,
+}), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
 assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
 assert.ok(replayBatch.some((row) => row.taskId === "task-B"),
