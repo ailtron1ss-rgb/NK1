@@ -1,11 +1,11 @@
 ## Latest durable checkpoint — WorkPass319 (2026-10-25)
 
-- **Target:** restore integrity for the unified cognitive-cycle contract.
-- **Change:** `lastComplete` is no longer trusted if persisted counters are invalid, missing, or fail to partition the recorded cycles coherently.
-- **Tests added:** contradictory counters, coherent counters, and partial snapshots; the existing WorkPass287-288 workflow also exercises intrinsic motivation and B272 goal integration.
+- **Target:** close the focused unified cognitive-cycle / intrinsic motivation / B272 integration gate.
+- **Changes:** restored cycle completion claims now require coherent counters; malformed missing-stage snapshots preserve recognized stage IDs; B272 uses bounded normalized goal-value components so confidence-weighted internal drive remains observable rather than saturating.
+- **Validation:** all three behavior steps passed in [run 40189833009](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189833009). [Run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) adds the runtime typecheck step and must be checked to its final conclusion.
 - **Work branch:** `nk1-ready-unified-cycle-restore-integrity-20261025`.
-- **Validation:** inspect the focused Actions result on the final PR head; do not infer success from a queued/in-progress run.
-- **Next:** finish exact-head CI evidence and review this narrow change into the source integration stack. Keep the release/metadata `main` separate.
+- **Scope boundary:** focused contract validation is not evidence of general learning uplift, full organism E2E, production readiness, or consciousness.
+- **Next:** confirm typecheck-enabled CI and final PR-head CI; keep release/metadata `main` separate.
 
 See [WorkPass319 checkpoint](docs/WORKPASS319_UNIFIED_COGNITIVE_CYCLE_RESTORE_INTEGRITY_2026-10-25.md).
 
