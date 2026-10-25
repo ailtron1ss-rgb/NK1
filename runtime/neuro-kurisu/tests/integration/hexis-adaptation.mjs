@@ -426,6 +426,7 @@ const restrictedStage = restrictedFabric.stageHmx({
     { ref: restrictedExportId + ':quarantined', type: 'semantic', status: 'quarantined', content: 'Quarantined external assertion.' },
     { ref: restrictedExportId + ':archived', type: 'semantic', status: 'archived', content: 'Archived external assertion.' },
     { ref: restrictedExportId + ':unknown', type: 'semantic', status: 'future-status-v2', content: 'Unknown-status external assertion.' },
+    { ref: restrictedExportId + ':foreign-fact', type: 'semantic', status: 'fact', content: 'Foreign fact label is not NK1 verification.' },
   ] }),
   intent: 'port',
   strategy: 'additive',
@@ -438,6 +439,8 @@ assert.equal(restrictedItems.find(item => item.content === 'Quarantined external
 assert.equal(restrictedItems.find(item => item.content === 'Archived external assertion.')?.epistemicStatus, 'quarantined');
 assert.equal(restrictedItems.find(item => item.content === 'Unknown-status external assertion.')?.epistemicStatus, 'unknown',
   'an unrecognized external memory status must not be promoted to belief');
+assert.equal(restrictedItems.find(item => item.content === 'Foreign fact label is not NK1 verification.')?.epistemicStatus, 'belief',
+  'an external HMX fact label must not be trusted as NK1-verified fact evidence');
 
 // The exported status must carry through to the canonical retrieval policy.
 const quarantineId = restrictedItems.find(item => item.content === 'Quarantined external assertion.')?.id;
