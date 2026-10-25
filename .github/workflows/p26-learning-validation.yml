@@ -1,6 +1,24 @@
 name: P26 Learning Validation
 
 on:
+  push:
+    branches:
+      - feature/learning
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/P36AutonomousSelfDevelopment.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/AdaptiveExperienceConsolidator.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ContinuityLedger.ts"
+      - "runtime/neuro-kurisu/tests/p36-migration.mjs"
+      - "runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs"
+      - "runtime/neuro-kurisu/tests/adaptive-experience-consolidator-restore.mjs"
+      - "runtime/neuro-kurisu/tests/continuity-ledger-bounded-write.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/p26-learning-validation.yml"
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
