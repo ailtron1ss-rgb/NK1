@@ -19,6 +19,8 @@ WorkPass532 добавил адаптер `P36VerifiedOutcomeLedgerEvaluator`, �
 - `organism.learning.p36.evaluate-maturity` — `OrganismConfig.p36DevelopmentalOutcomeEvaluator`. Предназначен для отдельно измеренного developmental outcome, delayed retention и transfer.
 
 Оба слота регистрируются при создании `OrganismCore`, проходят базовую проверку host-конфигурации и недоступны для перехвата через публичный `registerActionTool`. Generic публичная регистрация любого из этих двух ID отклоняется.
+Если настроены оба слота, Core дополнительно требует, чтобы у них различались `sourceId` и `independenceKey`. Совпадение любого из них отклоняет конфигурацию с `p36-evaluator-authorities-must-be-distinct`; это предотвращает случайное повторное использование одного source identity в двух ролях. Это структурная защита от конфигурационной ошибки, но не криптографическое доказательство независимости — доверенный production-хост всё равно отвечает за реальные независимые реализации.
+
 
 ### Core routing fail-closed
 
