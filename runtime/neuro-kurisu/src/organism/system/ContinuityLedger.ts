@@ -81,8 +81,6 @@ export class ContinuityLedger {
   private async flushInternal(): Promise<void> {
     if (!this.pendingLines.length) return;
     const started = Date.now();
-    const payload = this.pendingLines.join('');
-    const bytes = this.pendingBytes;
     const handle = await this.ensureHandle();
     const size = (await handle.stat()).size;
     if (size >= this.maxBytes) { this.pendingLines = []; this.pendingBytes = 0; return; }
