@@ -29,11 +29,15 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-          cache-dependency-path: app/package-lock.json
+          cache-dependency-path: |
+            app/package-lock.json
+            runtime/neuro-kurisu/package-lock.json
 
-      - name: Install canonical locked dependencies
+      - name: Install canonical app and runtime dependencies from lockfiles
         id: install
-        run: npm ci --prefix app
+        run: |
+          npm ci --prefix app
+          npm ci --prefix runtime/neuro-kurisu
 
       - name: Semantic runtime TypeScript check
         if: ${{ always() && steps.install.outcome == 'success' }}
