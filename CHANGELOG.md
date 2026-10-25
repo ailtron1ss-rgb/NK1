@@ -1,3 +1,11 @@
+## NK1 WorkPass328 — normalize operational sensor boundary (2026-10-25)
+
+- Added one shared, own-property-only sensor normalizer for the operational micro-cycle. Body energy, cognitive capacity, thermal strain, battery, sensory freshness, CPU load, and RAM pressure now all become finite values in `[0, 1]` before any downstream subsystem sees them.
+- The life-continuity engine now receives the same normalized `awake`, battery and thermal values as the cognitive and neural paths. This closes a gap where raw `NaN`/Infinity/invalid truthy values could bypass the micro-cycle's existing safety normalization.
+- Malformed top-level observations are rejected before the host context is acquired or organism state/tick counters are changed. Inherited sensor fields, array-shaped bodies, and throwing getters are ignored rather than treated as trustworthy sensor readings.
+- Expanded the finite-input regression from source-string checks to direct behavior cases for invalid numeric inputs, fallbacks, range clipping, inherited properties, getter exceptions, and normalization wiring. Added a named WorkPass328 npm command and wired the rebuild regression aggregate to it.
+- No runtime dependency was added. This is a targeted input-integrity improvement; hosted Actions and full runtime/typecheck evidence remain pending and are not claimed here.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
