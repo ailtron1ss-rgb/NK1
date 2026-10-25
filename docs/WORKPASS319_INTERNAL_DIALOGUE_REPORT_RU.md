@@ -45,6 +45,8 @@ Runtime удаляет `internalDialogueReceipt` перед вызовом лю�
 
 Команда `test:internal-dialogue-workpass319` добавлена в `runtime/neuro-kurisu/package.json` и в цепочку `test:rebuild-recovered`.
 
+Для WorkPass320 добавлен отдельный `tests/internal-dialogue-history-workpass320.mjs`: проверяются пустая история, фиксированное окно максимум 32 записей, хронология, агрегаты статусов, изменение coverage/confidence между половинами, категориальная статистика, отказ от невалидных квитанций и отсутствие исходного текста вопроса в итоговой сводке. Команда `test:internal-dialogue-history-workpass320` добавлена в `test:rebuild-recovered`. Read-only `GET /api/organism/inspect` выдаёт только агрегат `internalDialogueHistory`.
+
 ## Проверки и ограничения
 
 - Добавлены отдельные тесты для bounded receipt recovery, runtime wiring и проверки журнала. Они находятся в `test:rebuild-recovered`, но текущая ветка после последних изменений ещё не прошла полный exact-head test/typecheck.
