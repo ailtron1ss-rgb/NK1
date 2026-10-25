@@ -29,7 +29,7 @@ assert.match(runtime, /runtime\.internal-dialogue\.review/,
   'runtime must append a durable sanitized receipt to the operational journal');
 assert.match(runtime, /internalDialogueReceiptSnapshot\(\)/,
   'runtime must expose only the last bounded review receipt for diagnostics');
-assert.match(server, /internalDialogueReceipt:\s*_internalDialogueReceipt,\s*\.\.\.providerRequest/,
+assert.match(server, /delete providerRequest\.internalDialogueReceipt/,
   'host-side receipt metadata must be stripped before language-provider submission');
 
 assert.match(bridge, /node\.payload\.independenceKey/,
