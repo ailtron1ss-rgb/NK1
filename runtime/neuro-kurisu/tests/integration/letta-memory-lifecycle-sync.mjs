@@ -14,7 +14,10 @@ function makeClient() {
       return {
         async ready() {},
         async send(prompt) { state.prompts.push(prompt); },
-        async *stream() { yield { type: 'assistant', content: 'Fake provider acknowledged this request; no durability is implied.' }; },
+        async *stream() {
+          yield { type: 'assistant', content: 'Fake provider acknowledged this request; no durability is implied.' };
+          yield { type: 'result', success: true, durationMs: 1, conversationId: 'conv-lifecycle-test' };
+        },
         async close() { state.closedSessions += 1; },
       };
     },
