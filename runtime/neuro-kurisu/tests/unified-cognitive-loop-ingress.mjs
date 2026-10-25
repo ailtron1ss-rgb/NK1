@@ -25,5 +25,7 @@ assert.equal(loop.getHistorySize(), 1);
 loop.process({ ...event, id: 'evt-2' });
 loop.process({ ...event, id: 'evt-3' });
 assert.equal(loop.getHistorySize(), 2, 'history remains bounded');
-const fallbackCapacity = new UnifiedCognitiveLoop(Number.NaN);\nfallbackCapacity.process(event);\nassert.equal(fallbackCapacity.getHistorySize(), 1, 'invalid capacity falls back safely');
+const fallbackCapacity = new UnifiedCognitiveLoop(Number.NaN);
+fallbackCapacity.process(event);
+assert.equal(fallbackCapacity.getHistorySize(), 1, 'invalid capacity falls back safely');
 console.log('UNIFIED_COGNITIVE_LOOP_INGRESS=PASS invalidInputsRejectedBeforeMutation=true boundedHistory=true');
