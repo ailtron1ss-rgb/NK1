@@ -779,7 +779,7 @@ function defaultEmbodimentFacet(): EmbodimentFacet {
         body: defaultBodyState(), bodyEvents: [], sleepSessions: [], lastSensorAt: 0, sensorFailures: 0,
         perceptionRouting: { version: 1, lastRoutedAt: 0, routedCount: 0, droppedCount: 0, lastRoute: 'none' },
         multimodal: { version: 1, events: 0, fused: 0, lastFusionAt: 0, lastConfidence: .25, lastSalience: .15,
-            modalities: { text: 0, speech: 0, vision: 0, sensor: 0, world: 0 }, recent: [], visionCaptures: 0, speechTurns: 0, fusionConflicts: 0 },
+            modalities: { text: 0, speech: 0, audio: 0, vision: 0, sensor: 0, world: 0 }, recent: [], visionCaptures: 0, speechTurns: 0, fusionConflicts: 0 },
         toolAudit: [], p35: defaultP35SemanticWorldBody(), p37: defaultP37EmbodiedSensorium(),
         p40SemanticIntelligence: defaultP40SemanticIntelligence(), p41SemanticPerception: defaultP41SemanticPerception(),
         p41NativePerception: defaultP41NativePerception(), p41TemporalPerception: defaultP41TemporalPerception(),
@@ -8107,6 +8107,7 @@ export class OrganismCore {
         const replayEvents = this.memorySubsystem.experienceContinuum.snapshot().replay.events.slice(-8);
         for (const event of replayEvents.filter(e => e.at === state.at)) {
             const cxReplay = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick: state.tick, taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: clamp(event.learningOpportunity01), novelty01: clamp(event.priorityBefore01), uncertainty01: clamp(1 - event.priorityAfter01), identityRelevance01: event.identityWeight01, goalPressure01: state.needs.goalPressure, causalStrength01: clamp(event.learningOpportunity01), traceId: event.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: event.memoryId, evidenceKey: `replay:${event.memoryId}` });
+            if (!cxReplay) continue;
             this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: cxReplay.surprise01, novelty01: cxReplay.novelty01, causalStrength01: cxReplay.causalStrength01, transferPotential01: clamp(event.learningOpportunity01 * .72), provenance: 'experience-replay' } as any);
         }
         this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot();
@@ -10409,7 +10410,7 @@ export class OrganismCore {
         if (r.independentVerified && r.verificationTransition !== 'duplicate') {
             const tick = Number(this.persisted.state.tick ?? 0);
             const cx = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick, taskId: input.taskId ?? `replay-validation:${input.memoryId}`, action: 'verify', reward01: r.retentionScore01, success01: r.retentionScore01, surprise01: Math.abs(r.retentionGain01), novelty01: r.transferPotential01, uncertainty01: r.interferenceRisk01, causalStrength01: Math.max(0, Math.min(1, .5 * r.retentionScore01 + .3 * r.transferPotential01 + .2 * (1 - r.interferenceRisk01))), identityRelevance01: 0, goalPressure01: this.persisted.state.needs.goalPressure, traceId: r.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: r.memoryId, evidenceKey: r.evidenceKey });
-            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
+            if (cx) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
         }
         this.persisted.facets.advanced.experienceContinuum = this.memorySubsystem.experienceContinuum.snapshot();
         this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
@@ -11159,6 +11160,24 @@ export class OrganismCore {
         this.persisted.facets.embodiment.multimodal = this.embodimentSubsystem.multimodal.snapshot();
         return ev;
     }
+    /** Fuse only the current runtime tick's canonical, already-recorded modality observations. */
+    fuseMultimodalObservations(events: Array<import('../body/MultimodalPerception.ts').ModalityObservation>) {
+        if (!Array.isArray(events) || events.length > 12) throw new RangeError('multimodal-fusion-event-count-invalid');
+        for (const event of events) {
+            if (!event || typeof event !== 'object' ||
+                !['text', 'speech', 'audio', 'vision', 'sensor', 'world'].includes(event.modality) ||
+                typeof event.summary !== 'string' || event.summary.length > 500 ||
+                typeof event.confidence !== 'number' || !Number.isFinite(event.confidence) || event.confidence < 0 || event.confidence > 1 ||
+                typeof event.salience !== 'number' || !Number.isFinite(event.salience) || event.salience < 0 || event.salience > 1 ||
+                !Array.isArray(event.evidence)) {
+                throw new TypeError('multimodal-fusion-event-invalid');
+            }
+        }
+        const fused = this.embodimentSubsystem.multimodal.fuse(events);
+        // The fusion counters are part of durable multimodal state, so persist after fusion as well as after each observation.
+        this.persisted.facets.embodiment.multimodal = this.embodimentSubsystem.multimodal.snapshot();
+        return fused;
+    }
     multimodalSnapshot() { return this.embodimentSubsystem.multimodal.snapshot(); }
     skillLibrarySnapshot() { return this.cognitiveRuntime.skillLibrary.snapshot(); }
     skillLibrarySummary() { return this.cognitiveRuntime.skillLibrary.summary(); }
@@ -11415,6 +11434,7 @@ export class OrganismCore {
                             if (variant)
                                 this.cognitiveRuntime.skillLibrary.recordVariantExecution(skill.id, variant.id, { success01: 1, verified: true, independent: Boolean(input.independentEvidence), holdout: true, context: String(input.contextKey ?? input.context ?? '') });
                             const causalRepair = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick: this.persisted.state.tick, taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: clamp(.35 + (1 - confidence)), novelty01: .45, uncertainty01: clamp(1 - confidence), identityRelevance01: this.persisted.state.needs.identityCoherence, goalPressure01: this.persisted.state.needs.goalPressure, causalStrength01: clamp(.28 + confidence * .5), traceId: `repair:${skill.id}:${step.id}:${candidateTool}`, provenance: 'skill-repair', stateGrounded: false, evidenceKey: `repair:${skill.id}:${step.id}` });
+                            if (!causalRepair) continue;
                             this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: causalRepair.surprise01, novelty01: causalRepair.novelty01, causalStrength01: causalRepair.causalStrength01, transferPotential01: .72, provenance: 'skill-repair' });
                             this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot();
                             this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot();

@@ -60,6 +60,15 @@ export class UnifiedCognitiveCycle {
     const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
     const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
+    // A persisted lastComplete flag is only credible when its aggregate counters
+    // form a valid partition of cycles and broken lineages fit inside incompletes.
+    // Sanitizing a contradictory tuple must not make the last cycle appear complete.
+    const aggregateCountersHaveValidShape=[
+      source.cycles,source.completeCycles,source.incompleteCycles,source.brokenLineages,
+    ].every(value=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0);
+    const aggregateCountersConsistent=aggregateCountersHaveValidShape&&
+      safeCounter(source.completeCycles)+safeCounter(source.incompleteCycles)===cycles&&
+      safeCounter(source.brokenLineages)<=safeCounter(source.incompleteCycles);
     this.state={
       version:1,
       cycles,
@@ -69,7 +78,7 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:aggregateCountersConsistent&&cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }

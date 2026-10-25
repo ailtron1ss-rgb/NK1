@@ -1,3 +1,192 @@
+## NK1 WorkPass347 — keep untrusted causal rows out of trusted aggregates and fix registry Node 24 import
+
+- [NODE 24] Converted `AtomicFileTrustedSkillShadowRunRegistry` from a TypeScript constructor parameter property to an explicit `filePath` field assignment, addressing the next strip-only import failure observed by WorkPass293.
+- [CAUSAL RESTORE] The poisoned-aggregate regression now expects zero trusted outcomes and zero consolidations when the only retained record is external/untrusted. A corrupted aggregate counter may never promote an unverified record into trusted learning or memory.
+- [VALIDATION] WorkPass99, 102, 105, 287–288, 291, 292 and 294 passed on WorkPass346's head. P26 batch atomicity, Core integration and WorkPass108/293 are being revalidated after the latest Node-compatibility and trust-counter fixes. Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass346 — make learning batches atomic and keep file skill storage executable under Node 24
+
+- [BATCH ATOMICITY] `ParametricPolicyLearner.trainBatch()` now preflights every sample before the first weight update. A malformed later row cannot partially train on an earlier valid row; missing/malformed state needs fail with the explicit `state-must-have-needs` boundary error.
+- [NODE 24] Refactored `AtomicFileSkillStorePersistence` to use an explicit `filePath` field rather than a TypeScript constructor parameter property, which the Node 24 strip-only TypeScript runner cannot execute.
+- [REGRESSION] This addresses the latest CI failures in P26 input integrity and the WorkPass108/293 import path. Those jobs must re-run after this commit; Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass345 — restore learner diagnostics safely and align adaptive replay contracts (2026-10-25)
+
+- [RESTORE] `ParametricPolicyLearner.restore()` now sanitizes counters, all persisted training diagnostics, timestamp and freeze state rather than spreading malformed values back into the live state. The focused integrity regression verifies all persisted diagnostics are finite.
+- [INPUT GATE] The legacy P26 learning test now expects non-finite training rates/weights to be rejected atomically, matching the new strict learner input contract instead of expecting silent substitution followed by a model update.
+- [REPLAY CONTRACT] The P23 runtime-config regression now treats `maxBatchSize` as a hard upper bound while honoring the health-adaptive budget. It checks that the durable replay count stays within the cap, the recent window includes the newest eligible traces, and historical samples still participate.
+- [CI ENTRYPOINT] Registered the missing `test:workpass293:p23-revision` script, pointing it at the existing checked-in WorkPass293 regression. That workflow previously stopped at “Missing script” before executing its evidence tests.
+- [VALIDATION] WorkPass287 and WorkPass294 passed on the prior head; P26/Core/WorkPass99/110/291/293 are being re-run for this batch. Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass344 — preserve learner input integrity and make causal replay fixtures satisfy grounding (2026-10-25)
+
+- [LEARNING INPUT GATE] `ParametricPolicyLearner.train()` and `trainFeatures()` now reject non-finite targets, learning rates and weights, invalid actions, and non-finite feature vectors before touching parameters or diagnostics. This matches the existing atomic-rejection regression.
+- [PAYLOAD BUDGET] Fixed WorkPass291's boundary fixture to measure canonical JSON bytes. A string of 262,144 raw characters is actually 262,146 UTF-8 bytes when serialized with JSON quotes; the exact-budget test now uses `MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES - 2`.
+- [CAUSAL REPLAY] WorkPass90 replay-diversity fixtures and WorkPass115's 24-record replay probe now bind `trace.tick` to `stateBefore.tick`, advance the post-state tick, and include explicit matching `lastAction`/`lastActionSuccess`.
+- [INTRINSIC GOALS] Removed the unconditional bonus derived from candidate loop index in B272's predicted goal value. Candidate index is a search-order detail, not evidence; its bonus could saturate values and mask a high-confidence intrinsic-drive contribution.
+- [VALIDATION] Exact-head CI must confirm P26, WorkPass291, WorkPass110 and Core regression outcomes. WorkPass294 has passed with runtime typecheck on WorkPass343. Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass343 — fail closed on cycle counter corruption and support Node strip-only runtime
+
+- [FIXED] `UnifiedCognitiveCycle.restore()` now refuses to treat `lastComplete=true` as trustworthy when persisted cycle aggregates do not form a valid complete/incomplete partition or broken lineages exceed incomplete cycles.
+- [COMPAT] Replaced TypeScript constructor parameter properties in `VersionedSkillCandidateStore` with explicit class fields and assignments. This preserves the type contract while allowing Node 24's strip-only TypeScript execution used by runtime regressions.
+- [REGRESSION] Updated the WorkPass294 static contract test to match the gateway's actual explicit decision-ID spread while preserving the requirement that execution and decision IDs are both forwarded.
+- [VALIDATION] On the previous head, WorkPass292 passed; WorkPass287, WorkPass291, and WorkPass294 exposed these specific problems. The new head must re-run those checks and the core runtime typecheck. Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass342 — repair CI entrypoints and ground replay diversity fixtures (2026-10-25)
+
+- [CI] Added missing runtime npm script aliases for the three P26 validation scripts and WorkPass291/292/294 regression files. The workflow files were already invoking these names, but the commands did not exist in the package manifest.
+- [REGRESSION] Replay-diversity outcomes now include post-state action attribution and matching success values, so the fixture creates actual grounded records under the current causal-stream contract.
+- [REGRESSION] Updated the WorkPass287 restore test to expect fail-closed handling of a malformed persisted missing-stage list: all required stages remain missing rather than accepting a partially trusted list.
+- [VALIDATION] Changes are committed together; the newest-head WorkPass71, P26, WorkPass110, WorkPass287, WorkPass291/292/294 workflows must establish the actual result. Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass341 — finish strict runtime typing and align imported-outcome counters (2026-10-25)
+
+- [FIXED] Replaced an invalid `continue` outside a loop in Core with a null-guarded learning ingestion. No unified-learning signal is emitted when an external causal event is rejected.
+- [FIXED] Widened stdout/stderr accumulators to `Buffer<ArrayBufferLike>`, typed optional retrieval query numbers with finite fallbacks, and made the trusted-run registration bridge explicitly await Core's registration receipt.
+- [SEMANTICS] Public imported causal events are quarantined as ungrounded external evidence. They do not increment the trusted `outcomes` aggregate; the regression now encodes that contract.
+- [VALIDATION] These changes address exact-head runtime typecheck and causal regression failures observed in WorkPass340 CI. A new exact-head run must confirm them; Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass340 — make runtime typechecking self-contained and close learning nullability gaps (2026-10-25)
+
+- [DEPENDENCIES] Pinned `@types/node@22.20.4` in the runtime package and lockfile, including its locked `undici-types` dependency. Clean runtime installs no longer depend on the app workspace being installed just to discover Node declarations.
+- [TYPECHECK] Runtime TypeScript now compiles production source without automatically including the old partial `src/node-shims.d.ts`; the configuration resolves Node declarations from runtime-local types first and the app workspace second. Strict mode remains enabled.
+- [FIXED] Corrected supported retention option name (`gapMs`), safe indexing of sparse context feature vectors, missing `verifiedNonHoldoutExecutions` initialization, and intrinsic-generator filters that returned `string | false` rather than boolean.
+- [FIXED] Made B272 need keys a literal union and restored dependency counters an explicit record; registered `p23-compound-repair-revision` in the clock-kind union and whitelist.
+- [FIXED] Causal recordExternalLearningEvent results are nullable by contract. Core now checks each result before feeding it into unified learning; the trusted shadow registrar interface accepts the synchronous registration receipt actually returned by Core.
+- [REGRESSION] Updated the causal-learning stream fixture to include explicit post-action attribution (`lastAction` and `lastActionSuccess`), matching the grounded-transition gate instead of weakening production validation.
+- [VALIDATION] Changes are committed; a fresh runtime typecheck and the affected P26 / WorkPass110 / core regression workflows must verify the result on the current head. Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass339 — add an isolated correlation-ID boundary regression (2026-10-25)
+
+- [REGRESSION] Add a focused test for the corrected correlation-ID filter: valid gateway IDs are preserved, control-character-bearing IDs are omitted from the verifier's isolated context, and ordinary verifier output remains normalized.
+- [CI] Add a dedicated workflow step before app/runtime typecheck so this evidence is not hidden when a later unrelated gate fails.
+- [CONTEXT] WorkPass336 fixed the exact module-load syntax error seen in the memory-to-action test; WorkPass338 addressed two independent learning type errors. Runtime Node.js type discovery from WorkPass337 still needs an exact-head CI result.
+- [VALIDATION] Test and CI wiring are next in this pass; Release ZIP remains unchanged.
+
+---
+
+## NK1 WorkPass338 — tighten learning restore guards and preserve dataset schema literals (2026-10-25)
+
+- [FIXED] `CausalExperienceStream.restore()` now binds and checks the optional `policyFeatures01` array before reading its length or values. This keeps malformed persisted records from entering the grounded learning stream and fixes a TypeScript narrowing error.
+- [FIXED] `VerifiedSessionDataset` now preserves the literal `'holdout'` split and schema version `1` in aggregate and dataset identity objects, matching the externally declared schema instead of widening these values to generic strings/numbers.
+- [VALIDATION] Code updates are committed; the runtime typecheck and learning regressions must confirm the result on the newest head. Node declaration discovery from WorkPass337 has not yet been confirmed by a completed exact-head run. Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass337 — make the pinned Node.js declarations visible to runtime typecheck (2026-10-25)
+
+- [CONFIG] The runtime typecheck intentionally reuses the pinned TypeScript compiler installed by the app workspace, but TypeScript resolves ambient type packages relative to the runtime project and was not seeing the sibling `app/node_modules/@types/node`.
+- [FIXED] Added explicit Node.js type package discovery to `tsconfig.clean.json`, preferring runtime-local types when present and otherwise using the app workspace's installed type root. Limited ambient auto-loading to `node` so React/UI global types do not leak into the runtime program.
+- [EXPECTED IMPACT] This targets the observed missing `node:fs`, `node:crypto`, `NodeJS`, `Buffer`, `path.resolve`, `process.platform`, and timer `unref` diagnostics without weakening strict mode or suppressing type errors.
+- [VALIDATION] Configuration change is committed; the exact-head runtime typecheck must confirm how many Node-related diagnostics it removes. Application code and runtime behavior are unchanged. Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass336 — fix regression loader, cycle verifier duplicate, and learning type import (2026-10-25)
+
+- [FIXED] Corrected the correlation-ID control-character filter in `OutcomeVerificationService.ts`. The previous double-escaped character class threw a JavaScript syntax error at module load and blocked the real memory-to-action regression before assertions ran.
+- [FIXED] Removed the second duplicate `verifyOperationalCycle` implementation from `CognitiveEventFabric.ts`; retained the richer implementation that also validates optional phases and their causal edges.
+- [FIXED] Imported `ReplaySelectionOptions` from its owning `ReplaySelectionPolicy.ts` module rather than from `P23LearningEngine.ts`, which used that type internally but did not export it.
+- [EVIDENCE] On the previous exact head, universal-interpreter regression, app typecheck, app bundle, and WorkPass105 verified-outcome workflow passed. WorkPass79 failed while loading `OutcomeVerificationService.ts`; runtime typecheck also reported many other errors.
+- [VALIDATION] These are source-level corrections; the new head's Actions must confirm the targeted regression. The broader runtime typecheck still has a backlog including incomplete Node.js ambient declarations and additional learning/core type mismatches. Release ZIP unchanged.
+
+---
+
+## NK1 WorkPass335 — complete audio migration and type-safe interpreter boundary (2026-10-24)
+
+- [FIXED] Made the interpreter's fallback embodiment record explicit as `Record<string, unknown>`, removing all eight new TypeScript property errors from the current runtime typecheck report.
+- [MIGRATION] Added the `audio` prior to `MultimodalSituationModel` defaults and the Core's initial persisted multimodal state. This closes the two old state literals that became invalid when audio was added to the modality union.
+- [CONFLICT] Updated the situation-model fusion metric: confidence dispersion contributes to uncertainty, but only explicit conflict evidence increments semantic conflict counts.
+- [REGRESSION] Extended the universal interpreter test to cover audio reliability migration and confidence-spread versus explicit-conflict behavior.
+- [CLEANUP] Renamed a duplicate variable pair in the independent-candidate evaluator regression, fixing its observed JavaScript syntax failure without changing the tested behavior.
+- [VALIDATION] Changes are committed; new-head Actions must confirm the targeted regression and remaining runtime typecheck. Other pre-existing type errors remain outside this focused repair.
+
+---
+
+## NK1 WorkPass334 — execute interpreter regression before unrelated gates (2026-10-24)
+
+- [CI] Added a dedicated step to the core validation workflow to run `tests/universal-input-interpreter.mjs` directly before app typecheck.
+- [REASON] The last exact-head workflow showed that unrelated app/typecheck failures could skip the aggregate runtime test suite; this step makes the interpreter's own signal visible independently.
+- [VALIDATION] Step is wired in workflow source; its execution and result must be confirmed on the new head. This does not bypass or weaken later gates.
+
+---
+
+## NK1 WorkPass333 — unblock TypeScript and signed-outcome regression gates (2026-10-24)
+
+- [FIXED] Typed callback parameters and replaced direct deletion of the non-optional `globalThis.window` property in `safeLocalStorage.test.mjs`, addressing the exact app-typecheck failures reported by GitHub Actions.
+- [FIXED] Updated `p23-signed-outcome-artifact.mjs` to match the signed-artifact contract: exact replay of a valid, already-accepted artifact is idempotent and restores the in-memory trust receipt; a different signed outcome on the same task/method/seed/attempt remains rejected as `conflicting-existing-outcome`.
+- [EVIDENCE] These changes address observed failures in Actions run 40128478430 (app typecheck) and 40128478478 (signed-outcome regression), not speculative runner-startup failures.
+- [VALIDATION] Fixes are committed; a new head must execute the workflow steps before either gate can be called green.
+
+---
+
+## NK1 WorkPass332 — prioritize current perception and enforce strict cache freshness (2026-10-24)
+
+- [FIXED] Corrected the cached entity presence predicate so only entities with `present01 > 0.25` are admitted; low-presence residuals no longer pass due to operator precedence.
+- [ARBITRATION] Fresh direct semantic vision/audio events now suppress cached records from the same modality for that cycle, avoiding duplicate votes from the same underlying content.
+- [FRESHNESS] Cached P41 timestamps now allow at most 30 seconds of future clock skew and require age no greater than 120 seconds.
+- [REGRESSION] Added a direct-vision-over-cache case and retained stale-cache rejection.
+- [VALIDATION] Source/test updates are committed together; exact-head test execution remains unverified while GitHub Actions is queued.
+
+---
+
+## NK1 WorkPass331 — connect P41 semantic-perception memory to the interpreter (2026-10-24)
+
+- [WIRED] `OrganismRuntime` now passes the canonical P41 perception snapshot into `UniversalInputInterpreter`, so actual configured semantic vision/audio results can inform later cognitive proposals even when the environment observation does not repeat them.
+- [BOUNDED] Cached entities/events/vision relations are accepted only when their source timestamps are within a 120-second freshness window; summaries identify them as cached and not current-frame evidence. Expired, malformed or stale records are omitted.
+- [AWARENESS] Active P41 vision/audio requests are exposed as unresolved items instead of being mistaken for successful perception.
+- [REGRESSION] Added cases for recent cached vision/audio results, relations, pending perception and stale-record rejection.
+- [VALIDATION] Source/test changes committed; exact-head Actions jobs still need to execute. No learning score uplift claimed.
+
+---
+
+## NK1 WorkPass330 — explicit epistemic labels across interpreted inputs (2026-10-24)
+
+- [HARDENED] Added machine-readable evidence markers distinguishing user/caller claims, vision-model semantic output, audio event labels, external goal claims and incoming world-event claims from independently verified facts.
+- [BOUNDARY] These tags supplement readable summaries; they do not upgrade model output or caller claims into verified evidence.
+- [REGRESSION] Added contract assertions that the relevant markers survive interpretation and are available on the modality events supplied to the canonical fuser.
+- [VALIDATION] Changes are committed to the WorkPass328 branch. Exact-head tests and typecheck remain unverified while Actions is queued.
+
+---
+
+## NK1 WorkPass329 — persist fusion state and distinguish confidence spread from contradiction (2026-10-24)
+
+- [FIXED] The canonical `OrganismCore.fuseMultimodalObservations()` owner now persists the multimodal snapshot after `fuse()`, so fusion counters and explicit conflict counts are durable instead of being lost behind the last observation snapshot.
+- [FIXED] `MultimodalPerception.fusionConflicts` no longer increments merely because modality confidence values differ. That was confidence dispersion, not proof of semantic disagreement.
+- [WIRED] Explicit world-object conflict markers now travel from `UniversalInputInterpreter` into the canonical modality evidence, where fusion can record them.
+- [REGRESSION] Added tests for explicit conflict persistence/wiring and a counterexample proving confidence spread alone does not count as a contradiction.
+- [VALIDATION] Source and regression changes are committed; exact-head test/typecheck remains unverified until Actions executes the relevant steps. No learning score increase is claimed.
+
+---
+
+## NK1 WorkPass328 — universal input interpreter (2026-10-24)
+
+- [INTEGRATED] Added a deterministic interpretation boundary for every currently declared runtime input family: user text, vision semantics/features, audio events/samples, device telemetry, world context/events, goal/appraisal signals, and unverified outcome claims.
+- [INTEGRATED] Added an explicit audio modality to the existing multimodal state; old persisted snapshots receive the new counter through the existing default-state merge.
+- [WIRED] Runtime input evidence is normalized and bounded before it is recorded; the current tick's recorded observations now flow through the canonical `MultimodalPerception.fuse()` owner via `OrganismCore.fuseMultimodalObservations()`. The runtime no longer substitutes a snapshot for an actual fusion result.
+- [GROUNDING] Raw audio samples are not treated as a transcript; image feature vectors are not treated as scene understanding; reward/success fields remain unverified claims. The interpretation digest labels source material as fallible evidence, not instructions.
+- [REGRESSION] Added `test:universal-input-interpreter` with modality normalization, finite confidence/salience, old-state compatibility, unresolved-modality, and runtime-wiring checks; registered it in `test:rebuild-recovered`.
+- [VALIDATION] Commit records source and regression changes only. Exact-head runtime test/typecheck and Actions execution remain unverified; no autonomy/learning score uplift is claimed. The published `Neuro` release asset has not been rebuilt or replaced.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

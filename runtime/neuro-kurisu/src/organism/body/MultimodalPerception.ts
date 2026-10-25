@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 
-export type Modality = 'text'|'speech'|'vision'|'sensor'|'world';
+export type Modality = 'text'|'speech'|'audio'|'vision'|'sensor'|'world';
 export interface ModalityObservation { modality: Modality; at:number; summary:string; confidence:number; salience:number; evidence:string[]; contentHash?:string; }
 export interface MultimodalState {
   version:1;
@@ -17,7 +17,7 @@ export interface MultimodalState {
   speechTurns:number;
   fusionConflicts:number;
 }
-export const defaultMultimodalState=():MultimodalState=>({version:1,events:0,fused:0,lastFusionAt:0,lastConfidence:.25,lastSalience:.15,modalities:{text:0,speech:0,vision:0,sensor:0,world:0},recent:[],visionCaptures:0,speechTurns:0,fusionConflicts:0});
+export const defaultMultimodalState=():MultimodalState=>({version:1,events:0,fused:0,lastFusionAt:0,lastConfidence:.25,lastSalience:.15,modalities:{text:0,speech:0,audio:0,vision:0,sensor:0,world:0},recent:[],visionCaptures:0,speechTurns:0,fusionConflicts:0});
 
 function hashText(value:string){return createHash('sha256').update(value).digest('hex').slice(0,16)}
 
@@ -37,7 +37,12 @@ export class MultimodalPerception {
     const avg=(key:'confidence'|'salience')=>valid.reduce((s,x)=>s+x[key],0)/valid.length;
     const summaries=valid.map(x=>`[${x.modality}] ${x.summary}`).join(' | ');
     const spread=Math.max(...valid.map(x=>x.confidence))-Math.min(...valid.map(x=>x.confidence));
-    if(modalities.length>=2 && spread>.55) this.state.fusionConflicts++;
+    // A difference in confidence is not itself a semantic contradiction.
+    // Count only explicit conflict markers supplied by a source-specific interpreter.
+    const explicitConflict = valid.some(event => event.evidence.some(
+      marker => marker === 'world-object-conflict' || marker === 'cross-modal-conflict' || marker === 'source-conflict'
+    ));
+    if(explicitConflict) this.state.fusionConflicts++;
     this.state.fused++; return {summary:summaries.slice(0,1800),confidence:clamp(avg('confidence')-.08*spread),salience:clamp(avg('salience')),modalities};
   }
 }

@@ -42,12 +42,27 @@ const hardened=new ParametricPolicyLearner();
 hardened.restore({weights:{explore:[NaN,Infinity,-Infinity]},bias:{explore:NaN}});
 assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'restored policy weights must remain finite');
 assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'restored policy biases must remain finite');
-hardened.train({state:mkState(.7,.4,.3),action:'explore',target01:.9,learningRate01:NaN,sampleWeight01:NaN});
-assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'malformed learning rates must not poison learned weights');
-assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'malformed sample weights must not poison learned biases');
-assert.equal(hardened.snapshot().updates,1);
-hardened.trainFeatures({features:new Array(15).fill(.5),action:'explore',target01:.8,learningRate01:Infinity,sampleWeight01:NaN});
-assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'feature-level updates must reject non-finite training controls');
-assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'feature-level updates must preserve finite biases');
-assert.equal(hardened.snapshot().updates,2);
+const hardenedBeforeInvalidTraining=hardened.snapshot();
+assert.throws(
+  () => hardened.train({state:mkState(.7,.4,.3),action:'explore',target01:.9,learningRate01:NaN,sampleWeight01:NaN}),
+  /rate-must-be-finite/,
+  'non-finite learning rates must be rejected rather than silently replaced',
+);
+assert.throws(
+  () => hardened.train({state:mkState(.7,.4,.3),action:'explore',target01:.9,learningRate01:.06,sampleWeight01:NaN}),
+  /sample-weight-must-be-finite/,
+  'non-finite sample weights must be rejected rather than silently replaced',
+);
+assert.deepEqual(hardened.snapshot(),hardenedBeforeInvalidTraining,'rejected scalar controls must not update model parameters or diagnostics');
+assert.throws(
+  () => hardened.trainFeatures({features:new Array(15).fill(.5),action:'explore',target01:.8,learningRate01:Infinity,sampleWeight01:NaN}),
+  /rate-must-be-finite/,
+  'feature-level training must reject non-finite rate controls before mutation',
+);
+assert.throws(
+  () => hardened.trainFeatures({features:new Array(15).fill(.5),action:'explore',target01:.8,learningRate01:.06,sampleWeight01:NaN}),
+  /sample-weight-must-be-finite/,
+  'feature-level training must reject non-finite sample weights before mutation',
+);
+assert.deepEqual(hardened.snapshot(),hardenedBeforeInvalidTraining,'rejected feature-level controls must be atomic');
 console.log(`P26_TRUE_LEARNING=PASS updates=${learner.snapshot().updates} heldout=${learned.toFixed(3)} preExplore=${(before.reduce((a,b)=>a+b,0)/before.length).toFixed(3)} finiteGuard=PASS`);
