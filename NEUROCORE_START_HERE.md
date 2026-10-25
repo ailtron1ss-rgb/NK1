@@ -1,3 +1,18 @@
+## Latest durable checkpoint — all-systems restore, continuity and validation pass (2026-10-25)
+
+- **Work only on the existing integration path:** `feature/learning` → `integration`, draft PR [#79](https://github.com/ailtron1ss-rgb/NK1/pull/79). Do not open a duplicate PR; keep `main` and the large Release ZIP unchanged until a validated, reproducible release build exists.
+- **Learning trust/restore:** P36 receipt/observation identifier caches are restored through a bounded typed normalizer; `VerifiedOutcomeLedger` now permits every declared rejection code when reconstructing snapshots. Both restore regressions are covered and WorkPass105 now runs the ledger persistence round-trip test.
+- **Emotion and homeostasis:** emotion snapshots reject accessor-backed top-level state and discard malformed/duplicate episode, feeling, interoception and calibration rows. Both systems reject invalid clock values before state mutation. P66 now persists the post-hysteresis mode consistently to `lastMode`, recent history and mode counters.
+- **Memory continuity:** `AdaptiveExperienceConsolidator` validates record shape on ingest/restore, bounds tags/scores, rejects getter-backed data and resolves duplicate IDs in favour of the newest valid record.
+- **Continuity journal:** byte-budgeted writes now preserve complete newline-delimited JSON records; a frame that cannot fit is dropped rather than partially serialized. Added `tests/continuity-ledger-bounded-write.mjs` and the adaptive-experience restore regression.
+- **Embodiment and CI:** Live2D skips reapplying an unchanged expression. P26 Learning Validation watches the new emotion/homeostasis/memory/continuity files and runs their regressions; WorkPass110 also watches the runtime viewer integrity path.
+- **Current validation gate:** exact-HEAD GitHub Actions results are still required. The last observed typecheck and failed job logs belong to earlier SHAs; do not infer a PASS for these new commits. Keep PR #79 draft until current-head typecheck, all new regressions and the broader learning workflow pass.
+- **Remaining release/production blockers:** host-provided verifier keys and signed outcome corpus; independent delayed-maturity/retention/transfer evaluator and measurements; browser/device Live2D plus real audio E2E; memory retrieval uplift and long-duration soak; full license/source audit. The published ZIP remains the Oct 19 WorkPass70 Hotfix 1 asset; no binary release asset or `main` update is claimed.
+
+Full change notes: [CHANGELOG.md](CHANGELOG.md).
+
+---
+
 ## Latest durable checkpoint — learning restore + embodiment integrity pass (2026-10-25)
 
 - **Continue on the existing branch and PR only:** `feature/learning` → `integration`, draft PR [#79](https://github.com/ailtron1ss-rgb/NK1/pull/79). Do not create a duplicate PR. Keep `main` and the published Release ZIP unchanged.
