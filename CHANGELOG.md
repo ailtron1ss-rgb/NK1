@@ -3,7 +3,7 @@
 - `CausalAccountabilityGraph.recordActionChain()` now treats an exact repeated execution receipt as an idempotent replay, but quarantines a reused `executionId` when its tool, tick, result, postconditions, observation identity, or confidence differs.
 - A quarantined ID is removed from the active receipt index, remains quarantined across graph compaction, and cannot be reintroduced by a later replay. Receipt identity keeps timestamp noise out of the comparison.
 - Added regression coverage for exact replay, conflicting live reuse, bounded graph compaction, and late external evidence rejection.
-- **Validation boundary:** implementation, regression, and changelog are committed; hosted GitHub Actions for this exact revision must complete before this pass is marked CI-validated.
+- **Validation:** GitHub Actions [run #84](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161029848) passed on regression-test commit `ade522c459351fbbc8a29a2db586e20a489e8aa5`; the job includes `BIG_PASS_64_EXTERNAL_OBSERVER=PASS`. The subsequent commit only updates this changelog entry; that documentation-only commit has not had a separate run.
 
 ## NK1 Causal Accountability — quarantine conflicting restored execution receipts (2026-10-25)
 
