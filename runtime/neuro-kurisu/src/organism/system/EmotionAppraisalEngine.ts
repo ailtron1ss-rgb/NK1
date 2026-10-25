@@ -310,8 +310,13 @@ export class EmotionAppraisalEngine {
        (input.external!==undefined&&typeof input.external!=='boolean')) {
       throw new RangeError('emotion-appraisal-values-invalid');
     }
+    const appraisalAt=Number(input.at??Date.now());
+    const priorMoodAgeMs=this.state.mood.episodes>0?Math.max(0,appraisalAt-this.state.mood.at):0;
+    const priorMoodFreshness01=this.state.mood.episodes>0?Math.exp(-Math.min(priorMoodAgeMs,86_400_000)/180_000):0;
     const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
-    const moodInfluence=this.state.mood.episodes>0?this.state.mood.persistence01:0;
+    // Historical mood influences a new appraisal only while its timestamp is recent.
+    // This prevents a long idle gap from making the next emotion inherit stale arousal/stress.
+    const moodInfluence=this.state.mood.episodes>0?c(this.state.mood.persistence01*priorMoodFreshness01):0;
     const arousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09+(this.state.mood.arousal01-.22)*.08*moodInfluence);
     const valence=c(.5+(a.goalCongruence01-.5)*.48+a.controllability01*.10-(a.uncertainty01*.16)+((input.success01??.5)-.5)*.45+(this.state.mood.valence01-.5)*.10*moodInfluence);
     const stress=c((1-a.controllability01)*.30+a.uncertainty01*.20+(input.predictionError01??0)*.22+(input.homeostaticPressure01??0)*.18+this.state.interoception.lastMismatch01*.10+(this.state.mood.stress01-.2)*.08*moodInfluence);
@@ -326,7 +331,7 @@ export class EmotionAppraisalEngine {
     else if(valence<.34 && dominance>.65){label='anger';actionTendency='protect';}
     const attentionCapture=c(arousal*.55+a.relevance01*.25+a.selfRelevance01*.20);
     const n=this.state.episodes+1;
-    const episode:EmotionEpisode={id:`emo:${input.tick}:${Number(input.at??Date.now())}:${n}`,tick:input.tick,at:Number(input.at??Date.now()),label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:a,interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},regulationPressure01:this.state.interoception.regulationPressure01,memorySalienceMultiplier01:c(.8+attentionCapture*.7),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state'};
+    const episode:EmotionEpisode={id:`emo:${input.tick}:${appraisalAt}:${n}`,tick:input.tick,at:appraisalAt,label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:a,interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},regulationPressure01:this.state.interoception.regulationPressure01,memorySalienceMultiplier01:c(.8+attentionCapture*.7),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state'};
     const mood=transitionMood(this.state.mood,episode);
     this.state={...this.state,episodes:n,lastTick:episode.tick,lastAt:episode.at,lastLabel:episode.label,mood,meanArousal01:c(this.state.meanArousal01*(n-1)/n+episode.arousal01/n),meanValence01:c(this.state.meanValence01*(n-1)/n+episode.valence01/n),meanStress01:c(this.state.meanStress01*(n-1)/n+stress/n),meanAttentionCapture01:c(this.state.meanAttentionCapture01*(n-1)/n+attentionCapture/n),history:[episode,...this.state.history].slice(0,128)};
     return structuredClone(episode);
