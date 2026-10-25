@@ -40,9 +40,8 @@ assert.equal(
   withoutRecall.interoceptiveDelta.stress01,
   'emotional intensity alone must not label a recalled memory as present threat',
 );
-assert.equal(
-  recalledEngine.arousalWithoutRecall01(withRecall),
-  withoutRecall.arousal01,
+assert.ok(
+  Math.abs(recalledEngine.arousalWithoutRecall01(withRecall) - withoutRecall.arousal01) < 1e-12,
   'reconsolidation must be able to remove exactly the recall-only arousal increment',
 );
 assert.ok(
