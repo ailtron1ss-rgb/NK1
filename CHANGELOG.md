@@ -1,3 +1,11 @@
+## NK1 WorkPass531 — run trusted shadow test with Node 24 TypeScript transforms (2026-10-25)
+
+- WorkPass108 reached and passed the signed independent-outcome artifact regression after the duplicate-ingestion fix, then exposed a separate runner-mode failure in p23-core-trusted-shadow-entry.mjs: its imported VersionedSkillCandidateStore uses TypeScript parameter properties.
+- Changed only that workflow command from Node 24 strip-only mode to transform-types mode, consistent with the existing live-Core regression. This fixes test execution configuration without weakening assertions or changing production behavior.
+- The new workflow run must still complete the remaining Hermes evidence binding, promotion-gate checks and runtime typecheck before the verified-learning pipeline is considered green.
+
+---
+
 ## NK1 WorkPass530 — connect learned value priorities to action selection (2026-10-25)
 
 - Wired the experience-adapted value weights in P2702 into action bias using each action's declared value-attribution map. Values now affect live preference as they move from the code-owned initial prior, rather than changing only the saved diagnostics vector.
