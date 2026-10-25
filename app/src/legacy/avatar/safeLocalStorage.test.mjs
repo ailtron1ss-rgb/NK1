@@ -5,12 +5,13 @@ import { readAvatarPreference, writeAvatarPreference } from "./safeLocalStorage.
 
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
 
+/** @param {unknown} value */
 function setWindow(value) {
   Object.defineProperty(globalThis, "window", { configurable: true, writable: true, value });
 }
 function restoreWindow() {
   if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
-  else delete globalThis.window;
+  else Reflect.deleteProperty(globalThis, "window");
 }
 
 test("avatar preference reads fail closed when storage is unavailable", () => {
@@ -35,11 +36,12 @@ test("avatar preference reads and writes tolerate storage exceptions", () => {
 });
 
 test("avatar preference persists when storage works", () => {
+  /** @type {Map<string, string>} */
   const values = new Map();
   try {
     setWindow({ localStorage: {
-      getItem(key) { return values.get(key) ?? null; },
-      setItem(key, value) { values.set(key, String(value)); },
+      getItem(/** @type {string} */ key) { return values.get(key) ?? null; },
+      setItem(/** @type {string} */ key, /** @type {string} */ value) { values.set(key, String(value)); },
     } });
     assert.equal(readAvatarPreference("profile"), null);
     assert.equal(writeAvatarPreference("profile", "formal"), true);
