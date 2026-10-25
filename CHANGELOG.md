@@ -1,8 +1,16 @@
+## NK1 WorkPass357 — Align signed shadow fixture with canonical candidate identity (2026-10-25)
+
+- [IDENTITY-CONTRACT] Updated the signed-shadow end-to-end fixture to include the explicit nullable provenance slot used by the versioned candidate writer when computing a candidate ID.
+- [COMPATIBILITY] Runtime writer and atomic persistence validator now share the same canonical five-part identity; persisted legacy four-part candidates remain readable only when no revision provenance is present.
+- [VALIDATION] The end-to-end shadow observation and durable lifecycle regressions are running on the current PR head.
+
+---
+
 ## NK1 WorkPass356 — Authenticate P26 holdout maturity and preserve candidate identity (2026-10-25)
 
 - [LEARNING-METRICS] Added explicit trainingExposure01 so online/replay parameter updates are tracked separately from generalization. Training exposure and a replay-derived split no longer count as independent generalization evidence.
 - [HOLDOUT-TRUST] P26TrueLearningEngine now accepts a verifier dependency for independent holdout records; the production default denies unauthenticated evidence. Accepted records are deduplicated and re-verified on restore, and only then contribute to the bounded generalization metric.
-- [DURABLE-ID] Restored the long-standing four-part candidate ID when no revision provenance is present; evidence-directed revisions use a fifth provenance digest. The atomic persistence validator now matches this contract without losing backward compatibility.
+- [DURABLE-ID] Standardized candidate identity with the versioned-store writer: a five-part tuple always includes an explicit provenance slot (the SHA-256 digest or null). The atomic persistence validator enforces that identity and still accepts legacy four-part IDs only when provenance is absent.
 - [REGRESSION] Expanded P26 holdout tests to cover training exposure, no generalization credit from ordinary updates, independent evidence persistence/deduplication, and default-deny behavior for self-asserted verification flags.
 
 ---
