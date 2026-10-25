@@ -3,7 +3,7 @@
 - Preserved ten ongoing work directions and P0/P1/P2 execution order in docs/NK1_WORK_DIRECTION_REGISTER_RU.md.
 - Added the register to the continuation entrypoint so future passes retain the same priorities rather than recreating the plan.
 - Stored the current audit baseline (engineering 61/100, unified product 43/100, release 25/100) as expert estimates only; no score improvement is claimed without comparable exact-head evidence.
-- First code pass: replace stale Live2D split-message assertions that contradict the unified EmbodimentIntent v1 producer; run the affected gate on the new commit SHA before declaring it fixed.
+- Completed first code pass: updated stale Live2D split-message assertions to the unified EmbodimentIntent v1 contract; GitHub Actions passed on code/test SHA 02771a1586eb5c942e452e36b2495f25eb2935a6. Physical-device E2E and release readiness remain open.
 
 ---
 
