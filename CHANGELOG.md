@@ -2,7 +2,7 @@
 
 - Fixed B272 candidate-value saturation: normalize the goal-alignment term and bound candidate novelty / learned closure so the predicted goal value cannot clamp to 1.0 before a trusted intrinsic-drive change is reflected.
 - The test's trusted drive comparison should contribute `0.126` (drive 0.2 → 0.9 at factor 0.18); confidence zero remains a no-op. This is a source-level bound calculation, not yet a test-pass claim.
-- Exact source commit `0091425f559498e9eb98206afc63b4e95a7d9b5e`; Actions run [40161436055](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161436055) was queued when this entry was written. Verification remains **pending**.
+- Exact source commit `0091425f559498e9eb98206afc63b4e95a7d9b5e`; Actions run [40161436055](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161436055) **passed** the full WorkPass287/288 cognitive-contract job. B272 harness: 360 generated goals / 360 learning updates / 360 accepted, goal entropy ≈1.0, prototype diversity ≈0.5515, action diversity ≈0.7143, agency ≈0.8679. These are deterministic test metrics, not production/device evidence.
 - Report: [WORKPASS101_B272_INTRINSIC_GOAL_VALUE_2026-10-25.md](https://github.com/ailtron1ss-rgb/NK1/blob/feature/visual-embodiment/docs/WORKPASS101_B272_INTRINSIC_GOAL_VALUE_2026-10-25.md).
 
 ## NK1 WorkPass100 — timed text visemes for Live2D (2026-10-25)
