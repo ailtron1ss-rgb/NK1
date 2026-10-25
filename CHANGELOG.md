@@ -5,6 +5,7 @@
 - Malformed top-level observations are rejected before the host context is acquired or organism state/tick counters are changed. Inherited sensor fields, array-shaped bodies, and throwing getters are ignored rather than treated as trustworthy sensor readings.
 - Expanded the finite-input regression from source-string checks to direct behavior cases for invalid numeric inputs, fallbacks, range clipping, inherited properties, getter exceptions, and normalization wiring. Added a named WorkPass328 npm command and wired the rebuild regression aggregate to it.
 - No runtime dependency was added. This is a targeted input-integrity improvement; hosted Actions and full runtime/typecheck evidence remain pending and are not claimed here.
+- Wired the new sensor regression directly into the existing WorkPass296 pull-request workflow and its path filters, so this check runs alongside action-attribution regression on relevant PR changes.
 
 ### WorkPass328 follow-up — reconcile unified-cycle restore contract (2026-10-25)
 - A second exact-head run exposed a deeper implementation gap: `lastComplete=true` survived restore even when `incompleteCycles` contradicted `cycles - completeCycles`. `UnifiedCognitiveCycle.restore()` now requires a valid partition counter, a non-negative broken-lineage counter bounded by incomplete cycles, and a well-formed missing-stage list before it restores a positive completion flag.
