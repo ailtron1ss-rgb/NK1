@@ -35,6 +35,8 @@ P36 независимо повторно проверяет квитанцию 
 
 **Пока не подтверждено запуском:** TypeScript typecheck, новые тесты и точный HEAD CI. Во время прохода GitHub API не вернул проверяемый запуск workflow для текущего HEAD, а локально выполнить suite из-за недоступности GitHub из контейнера не удалось. Поэтому нигде не заявляется, что тесты прошли.
 
-**Открытый интеграционный пункт:** производственная сборка должна зарегистрировать настоящий host-owned independent evaluator под зарезервированным ID. Он должен получать фактические baseline/treatment/holdout-данные и выдавать верифицируемый external postcondition, а не повторять утверждение самого P36. Тестовый evaluator в регрессии — только fixture; он не установлен в production. После его регистрации нужны exact-HEAD CI, замеры holdout/retention/transfer и подтверждённый результат после перезапуска.
+**Уточнение WorkPass530:** зарезервированный ID больше нельзя зарегистрировать через публичный `OrganismCore.registerActionTool`. Core принимает его только из `OrganismConfig.p36IndependentEvaluator` при создании; конфигурация обязана задавать неразрушительный executor, verifier и явный identity источника наблюдения. Это делает границу регистрации явной, но не создаёт production evaluator автоматически.
+
+**Открытый интеграционный пункт:** production launcher должен передать настоящий host-owned independent evaluator через `OrganismConfig.p36IndependentEvaluator`. Он должен получать фактические baseline/treatment/holdout-данные и выдавать верифицируемый external postcondition, а не повторять утверждение самого P36. Тестовый evaluator в регрессии — только fixture; он не установлен в production. После его регистрации нужны exact-HEAD CI, замеры holdout/retention/transfer и подтверждённый результат после перезапуска.
 
 Никакого эмпирического прироста способности к обучению по числу коммитов не заявляется. `main` и GitHub Release ZIP не менялись.
