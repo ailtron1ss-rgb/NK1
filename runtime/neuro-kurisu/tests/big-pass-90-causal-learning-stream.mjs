@@ -6,6 +6,9 @@ const mkState=(overrides={})=>({
   needs:{energy:.7,cognitiveLoad:.3,uncertainty:.65,novelty:.7,goalPressure:.6,socialNeed:.4,identityCoherence:.82},
   ...overrides,
 });
+const mkOutcomeState=(overrides={},success01=.8)=>mkState({
+  lastAction:'explore',lastActionSuccess:success01,...overrides,
+});
 const trace={
   id:'trace-90',tick:1,createdAt:1000,candidates:[],selected:{action:'explore',goalId:'goal-1',predictedUtility:.6,confidence:.7,predictedCost:.3,reasons:[]},
   stateBefore:mkState(),reasoningSignals:{},userRequestedAction:null,autonomousOverride:true,predictedOutcomes:[]
@@ -13,7 +16,7 @@ const trace={
 
 const stream=new CausalExperienceStream(16);
 stream.observe(trace);
-const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
+const record=stream.recordOutcome(trace,mkOutcomeState({tick:2,at:1100,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
 
 assert.ok(record);
 assert.ok(record.causalStrength01>.3);
@@ -21,25 +24,25 @@ assert.ok(record.causalStrength01>.3);
 assert.equal(stream.recordOutcome({
   ...trace, id: "invalid-before-state",
   stateBefore: mkState({ needs: { ...mkState().needs, energy: Number.NaN } }),
-}, mkState({ tick: 3 }), { reward01: .8, success01: .8, surprise01: .7, novelty01: .75 }), null,
+}, mkOutcomeState({ tick: 3 }), { reward01: .8, success01: .8, surprise01: .7, novelty01: .75 }), null,
   "non-finite pre-action state must not mint grounded causal evidence");
-assert.equal(stream.recordOutcome(trace, mkState({ tick: 1 }), {
+assert.equal(stream.recordOutcome(trace, mkOutcomeState({ tick: 1 }), {
   reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "an outcome without a later observed state transition must be rejected");
 
 assert.equal(stream.recordOutcome({
   ...trace, id: "mismatched-pre-action-tick", tick: 0,
-}, mkState({ tick: 3 }), {
+}, mkOutcomeState({ tick: 3 }), {
   reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "a trace from a different world tick must not be attached to this observed transition");
 
-assert.equal(stream.recordOutcome({ ...trace, id: "nan-outcome-reward" }, mkState({ tick: 3 }), {
+assert.equal(stream.recordOutcome({ ...trace, id: "nan-outcome-reward" }, mkOutcomeState({ tick: 3 }), {
   reward01: Number.NaN, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "non-finite outcome metrics must not be clamped into trusted evidence");
 assert.equal(stream.recordOutcome({
   ...trace, id: "unsafe-outcome-task",
   selected: { ...trace.selected, goalId: "unsafe" + String.fromCharCode(10) + "task" },
-}, mkState({ tick: 3 }), {
+}, mkOutcomeState({ tick: 3 }), {
   reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "control-bearing task identity must not mint causal evidence");
 assert.ok(stream.summary().rolling.learningOpportunity01>0);
@@ -50,7 +53,7 @@ const persisted=stream.snapshot();
 const restored=new CausalExperienceStream(16);
 restored.restore(persisted);
 assert.deepEqual(restored.recent(8),stream.recent(8));
-assert.equal(restored.recordOutcome(trace,mkState({tick:2,at:1100}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75}),null,
+assert.equal(restored.recordOutcome(trace,mkOutcomeState({tick:2,at:1100}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75}),null,
   "restored trace identity must prevent recording the same runtime outcome twice");
 assert.ok(Array.isArray(restored.snapshot().recordedTraceIds));
 const consolidated=restored.consolidate(8,1200);
@@ -87,13 +90,13 @@ const externalDuplicate = externalStream.recordExternalLearningEvent({
 });
 assert.equal(externalDuplicate?.id, externalFirst?.id,
   "NFKC-normalized upstream retry must resolve to the same recorded outcome");
-assert.equal(externalStream.summary().outcomes, 1,
+assert.equal(externalStream.summary().outcomes, 0,
   "duplicate external evidence must not increment outcome count");
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", success01: .1,
 }), /causal-external-trace-id-conflict/,
   "reusing a trace identity with a changed outcome must surface a conflict");
-assert.equal(externalStream.summary().outcomes, 1,
+assert.equal(externalStream.summary().outcomes, 0,
   "conflicting duplicate evidence must not mutate outcome counts");
 
 assert.throws(() => externalStream.recordExternalLearningEvent({
@@ -134,13 +137,13 @@ const restoredExternalDuplicate = externalRestored.recordExternalLearningEvent({
 });
 assert.equal(restoredExternalDuplicate?.id, externalFirst?.id,
   "a restored external outcome must resolve to its original record");
-assert.equal(externalRestored.summary().outcomes, 1,
+assert.equal(externalRestored.summary().outcomes, 0,
   "a restored duplicate must not increment outcome count");
 assert.throws(() => externalRestored.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", reward01: .05,
 }), /causal-external-trace-id-conflict/,
   "the durable duplicate guard must also detect changed payload after restore");
-assert.equal(externalRestored.summary().outcomes, 1);
+assert.equal(externalRestored.summary().outcomes, 0);
 
 // Legacy snapshots may contain Unicode variants that collapse under the current
 // NFKC identity rule. Exact duplicate rows are deduplicated; conflicting rows
@@ -168,7 +171,7 @@ assert.ok(conflictRestore.snapshot().recordedTraceIds.includes("External-Source-
 assert.equal(conflictRestore.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
 }), null, "quarantined identity must not be accepted again as a new event");
-assert.equal(conflictRestore.summary().outcomes, 1,
+assert.equal(conflictRestore.summary().outcomes, 0,
   "quarantine/retry must not change the persisted outcome count");
 
 const cyclicSnapshot = externalStream.snapshot();
@@ -189,7 +192,7 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, action: "delete-all", traceId: "invalid-action",
 }), /causal-external-action-invalid/);
-assert.equal(externalStream.summary().outcomes, 1,
+assert.equal(externalStream.summary().outcomes, 0,
   "invalid external task/action data must not mutate the causal stream");
 
 // IDs are identity keys, not display strings: truncating an overlong value could
@@ -227,15 +230,15 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, taskId: "edge-task" + String.fromCharCode(10), traceId: "control-task-edge",
 }), /causal-external-task-id-invalid/,
   "task IDs with trailing control characters must not normalize into ordinary IDs");
-assert.equal(externalStream.summary().outcomes, 1,
+assert.equal(externalStream.summary().outcomes, 0,
   "overlong or control-bearing identity keys must fail before mutating causal state");
 
 const overlongRuntimeTrace = { ...trace, id: "r".repeat(181) };
 assert.equal(externalStream.recordOutcome(
-  overlongRuntimeTrace, mkState({ tick: 22 }),
+  overlongRuntimeTrace, mkOutcomeState({ tick: 22 }, .5),
   { reward01: .5, success01: .5, surprise01: .5, novelty01: .5 },
 ), null, "an overlong runtime trace cannot be silently truncated into another identity");
-assert.equal(externalStream.summary().outcomes, 1);
+assert.equal(externalStream.summary().outcomes, 0);
 
 const corruptSnapshot = externalStream.snapshot();
 corruptSnapshot.records.push({
@@ -274,13 +277,15 @@ const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
   replayDiversity.recordOutcome({
     ...trace, id: `replay-a-${i}`, tick: 10 + i,
+    stateBefore: mkState({ tick: 10 + i, at: 1000 + 10 + i }),
     selected: { ...trace.selected, goalId: "task-A" },
-  }, mkState({ tick: 11 + i }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+  }, mkOutcomeState({ tick: 11 + i }, .7), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 }
 replayDiversity.recordOutcome({
   ...trace, id: "replay-b-0", tick: 20,
+  stateBefore: mkState({ tick: 20, at: 1020 }),
   selected: { ...trace.selected, goalId: "task-B" },
-}, mkState({ tick: 21 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+}, mkOutcomeState({ tick: 21 }, .7), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
 assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
 assert.ok(replayBatch.some((row) => row.taskId === "task-B"),
@@ -346,13 +351,13 @@ const aggregateRestore = new CausalExperienceStream(64);
 aggregateRestore.restore(poisonedAggregates);
 const safeAggregateSnapshot = aggregateRestore.snapshot();
 assert.equal(safeAggregateSnapshot.observations, 0, "invalid persisted observation count must be reset");
-assert.equal(safeAggregateSnapshot.outcomes, safeAggregateSnapshot.records.length,
-  "invalid persisted outcome count must fall back to retained record count");
+assert.equal(safeAggregateSnapshot.outcomes, safeAggregateSnapshot.records.filter(row => row.provenance === "runtime-outcome" && row.stateGrounded === true && Array.isArray(row.policyFeatures01)).length,
+  "invalid persisted outcome count must be recomputed from trusted grounded runtime rows only");
 assert.equal(safeAggregateSnapshot.consolidated, safeAggregateSnapshot.records.filter(row => row.consolidated).length,
   "invalid persisted consolidation count must fall back to retained consolidated rows");
 assert.equal(safeAggregateSnapshot.lastConsolidatedAt, 0, "invalid consolidation timestamp must be reset");
 assert.deepEqual(safeAggregateSnapshot.rolling, {
-  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0.4,
+  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0,
 }, "rolling metrics must be finite and within normalized bounds");
 assert.equal(safeAggregateSnapshot.behavioralImpact01, 0,
   "persisted behavioral impact must be recomputed instead of trusted");

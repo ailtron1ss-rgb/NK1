@@ -123,4 +123,8 @@ const saturated=new UnifiedCognitiveCycle();
 saturated.restore({cycles:Number.MAX_SAFE_INTEGER,completeCycles:Number.MAX_SAFE_INTEGER,incompleteCycles:0,brokenLineages:0,lastTick:0,lastComplete:true,lastMissingStages:[]});
 assert.throws(()=>saturated.evaluate({tick:1,stageIds:stages,parentIntegrity01:1}),/safe integer limit/);
 
+const legacyRestore=new UnifiedCognitiveCycle();
+legacyRestore.restore({cycles:1,completeCycles:1,brokenLineages:0,lastTick:1,lastComplete:true,lastMissingStages:[]});
+assert.equal(legacyRestore.snapshot().lastComplete,true,'legacy snapshots without incompleteCycles remain valid when present counters agree');
+
 console.log('WorkPass287 unified cognitive-cycle contract: PASS');

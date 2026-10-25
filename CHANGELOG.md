@@ -1,3 +1,253 @@
+## NK1 WorkPass363 — update Live2D integrity assertions to the versioned intent protocol (2026-10-25)
+
+- [LIVE2D CONTRACT] Updated runtime integrity checks from obsolete `kurisu_expression`/`kurisu_lipsync` event strings to the canonical `kurisu_embodiment_intent` contract and its validated speech/audio sequence fields. The synchronized viewer intentionally consumes one versioned intent envelope instead of the older independent event messages.
+- [REGRESSION] Preserved checks for both model variants, tap motions, expression caching, unchanged-expression deduplication, and byte-for-byte viewer parity.
+- [VALIDATION] The first run after viewer synchronization reached the integrity test and correctly exposed obsolete test expectations; this patch updates the test to the active protocol rather than reintroducing deprecated message handlers.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass362 — synchronize the runtime Live2D viewer and pinned assets (2026-10-25)
+
+- [LIVE2D INTEGRATION] Replaced the stale runtime `viewer.html` with the canonical app viewer, including the versioned EmbodimentIntent protocol, expression deduplication, speech/audio clock checks, bounded input validation and local pinned script loading.
+- [PACKAGING] Mirrored the three already-vendored runtime libraries (`pixi.min.js`, `live2dcubismcore.min.js`, `cubism4.min.js`) into the runtime's `public/live2d/vendor` path so the synchronized viewer remains self-contained and does not fall back to unpinned CDN scripts.
+- [REGRESSION GUARD] Extended `live2d-integrity.mjs` to assert byte-for-byte parity between the runtime viewer and the canonical app viewer, preventing future protocol/security drift between duplicate deployment paths.
+- [VALIDATION] This addresses WorkPass110's viewer-expression-cache failure. The newest exact-head CI is still running; no all-green claim is made yet.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass361 — recompute imported-only rolling metrics as zero (2026-10-25)
+
+- [CAUSAL EVIDENCE] Updated the poisoned-snapshot regression to expect zero `learningOpportunity01` when the stream contains only untrusted imported events. Restore intentionally recomputes rolling metrics from authenticated, grounded runtime outcomes rather than preserving a forged aggregate.
+- [INTEGRITY] This keeps the production trust boundary unchanged: imported records remain available for review, but cannot influence trusted outcome counts, replay, consolidation, or rolling learning signals.
+- [VALIDATION] WorkPass102, WorkPass105, WorkPass291, WorkPass292, WorkPass293, WorkPass294, WorkPass99, WorkPass287/288 and initiative regression passed on recent heads; WorkPass110 and WorkPass108 are being rerun against the latest corrections.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass360 — assert both newest replay cache and recovered durable identity (2026-10-25)
+
+- [MEMORY INTEGRITY] Updated the restore regression to expect the preserved newest replay-cache ID first, followed by the replay identity recovered from a durable replay row. Both must survive restore so recent deduplication priority is retained without permitting a durable replay to be applied twice.
+- [VALIDATION] WorkPass293, WorkPass105, WorkPass102, WorkPass99, WorkPass294, WorkPass292, WorkPass291, WorkPass287/288 and initiative regression passed on the preceding head. WorkPass108 exposed this final expectation mismatch after the cache-order implementation fix.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass359 — ground replay-diversity fixtures in the matching pre-action tick (2026-10-25)
+
+- [CAUSAL REPLAY] Fixed the replay-diversity fixture so each synthetic decision's `stateBefore.tick` matches its own decision tick. The hardened causal intake correctly rejected the old fixtures because they changed `trace.tick` while retaining a stale pre-action state snapshot, leaving the replay test with no trusted records.
+- [INTEGRITY] Kept the production guard intact; repaired test evidence rather than relaxing tick attribution or state-grounding requirements.
+- [VALIDATION] WorkPass102, WorkPass105, WorkPass291, WorkPass292, WorkPass293, WorkPass294, WorkPass287/288 and initiative regression passed on the recent head. WorkPass110 and WorkPass108 are rerunning after the remaining fixture corrections.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass358 — preserve newest-first P23 identity cache on restore (2026-10-25)
+
+- [MEMORY INTEGRITY] Fixed P23 restore ordering: persisted newest-first processed/replayed trace-ID caches now retain their order, while identities recovered from durable rows are appended only when absent. Previously prepending every retained experience could crowd out a newer cached ID when the 2,048-entry cap was reached.
+- [REGRESSION] The WorkPass310 restore-integrity test exposed the mismatch (`trace-127` appeared ahead of `trace-newest`). The change preserves bounded deduplication without discarding newest cache entries.
+- [VALIDATION] The exact-head rerun is pending; WorkPass110 had one final stale external-only outcome assertion and WorkPass108 surfaced this P23 cache-order regression after the signature-tampering test passed.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass357 — finish external-only outcome expectation
+
+- [CAUSAL EVIDENCE] Corrected the last stale external-only `summary().outcomes` assertion after the first exact-head run exposed it at the overlong-runtime-trace guard. External-only streams must keep the trusted outcome count at zero.
+- [VALIDATION] WorkPass292, WorkPass105, WorkPass102 and initiative regression passed on the previous head. WorkPass110 is rerunning after this final expectation correction; WorkPass108 is being checked after the signature-tampering test correction.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass356 — exercise signature tampering and finish grounded-count regressions (2026-10-25)
+
+- [CAUSAL EVIDENCE] Corrected the remaining external-only assertions so retries and conflicting duplicates preserve a trusted-outcome count of zero; imported rows remain separate from grounded runtime outcomes.
+- [HERMES EVIDENCE] Adjusted the tamper regression to modify the signed seed while leaving the report's binary outcome intact. This drives the case through signature verification rather than stopping earlier at the expected report/receipt outcome mismatch.
+- [VALIDATION] WorkPass292, WorkPass291, WorkPass99, WorkPass294, WorkPass287/288 and initiative regression passed on the prior head. WorkPass110 and WorkPass108 found these two remaining assertions; exact-head reruns are pending.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass355 — align causal outcome accounting and async trust boundary (2026-10-25)
+
+- [CAUSAL EVIDENCE] Updated external-only retry, restore, quarantine and malformed-input assertions to require zero trusted outcomes. Imported events remain queryable records but do not inflate the runtime-grounded learning outcome metric; the snapshot test recomputes that metric from grounded runtime rows.
+- [TRUSTED EXECUTION] Made the trusted shadow coordinator async so invalid lane/registrar errors become rejected promises consistently with its declared `Promise<LearningProcessResult>` contract. Callers can use `await`/`assert.rejects`, while fail-closed lane validation still runs before child-process spawn.
+- [VALIDATION] Addresses two Actions failures from the previous head: the external evidence count assertion and the Core trusted-shadow entry rejection test. Exact-head rerun is required before claiming both fixed.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass354 — align learning regressions with guarded inputs and grounded outcomes (2026-10-25)
+
+- [LEARNING CONTRACT] Updated the true-learning regression to expect stable rejection of NaN/Infinity rates and to assert the full serialized model snapshot remains unchanged. The former test expected malformed training requests to count as updates, which contradicted WorkPass350's fail-closed integrity contract.
+- [CAUSAL EVIDENCE] Added an explicit helper for valid observed post-action state (`lastAction` + bounded `lastActionSuccess`) and used it where the causal stream test intends to test valid outcome ingestion, duplicate identity, replay diversity, and overlong IDs. Rejection cases retain their targeted malformed inputs.
+- [VALIDATION] On the previous head, P26 passed all drift/replay/continual metrics tests through Page-Hinkley and failed only in the legacy true-learning test's obsolete expectation; WorkPass110 also exposed an under-specified test outcome lacking post-action attribution.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass353 — harden drift metrics and signed outcome replay (2026-10-25)
+
+- [NUMERICS] Updated the stationary-stream ADWIN regression to compare its computed mean within `1e-12`; actual `0.19999999999999962` is IEEE-754 summation noise, while the window must still remain stationary and trigger no drift.
+- [EVIDENCE TRUST] `VerifiedOutcomeArtifact` now rejects re-ingesting an already authenticated artifact into the same live ledger as `duplicate-attempt`, while allowing the exact signed artifact to restore a process-local trust receipt after snapshot restore.
+- [REGRESSION] Extended the signed-outcome artifact test to verify both duplicate rejection in the live process and receipt re-establishment following restore, preserving provenance rather than weakening the expectation.
+- [VALIDATION] P26 passed through continual-transfer tracking on the previous head, then found only the exact-float ADWIN assertion; WorkPass105 paired outcomes passed, but its signed-artifact duplicate protection exposed the receipt ambiguity. Current-head CI is pending.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass352 — make continual-transfer assertion floating-point safe (2026-10-25)
+
+- [REGRESSION] Changed the forward-transfer exact-equality assertion to a `1e-12` tolerance. The computed value is `0.14999999999999997` for the mathematically expected `0.15`; this is ordinary IEEE-754 subtraction noise, not a production transfer-metric discrepancy.
+- [VALIDATION] Latest P26 head passed typecheck, learning input guards, recovery, curriculum matrix, SkillLearnBench adapter, Hermes gate, continual replay, prioritized replay, replay ablation and forgetting tracker; transfer tracker stopped on this exact-float assertion.
+- [SCOPE] Isolated PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass351 — make continual replay buffer compatible with Node type stripping (2026-10-25)
+
+- [COMPATIBILITY] Replaced `ContinualReplayBuffer`'s constructor parameter property with an explicit readonly `capacity` field and assignment. This preserves the runtime API and permits the P26 direct Node 22.12 type-stripping test to load the replay buffer.
+- [VALIDATION] The P26 input-integrity, recovery benchmark, continual curriculum matrix, SkillLearnBench adapter and Hermes candidate-gate tests all passed on `c69fd54`; P26 then stopped on this strip-only syntax error before replay tests could complete.
+- [SCOPE] Isolated PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass350 — validate P26 learning inputs atomically and repair snapshots (2026-10-25)
+
+- [LEARNING SAFETY] `ParametricPolicyLearner.train` and `trainFeatures` reject non-finite targets, learning rates, weights, invalid actions, malformed needs state, and non-finite feature vectors before updates, using stable machine-readable error codes.
+- [ATOMIC BATCH] `trainBatch` preflights every sample before training the first one, so a later invalid sample cannot partially mutate weights or diagnostics.
+- [PERSISTENCE] `restore` sanitizes model metrics, timestamps, counters and the frozen flag, preserving a freeze only when the snapshot contains literal boolean `true`; existing weight and bias repair remains intact.
+- [VALIDATION] WorkPass294's typecheck succeeded; its source-contract assertion was corrected in WorkPass349. P26 exposed the missing learner guards, and this implementation addresses its existing regression requirements without weakening tests. Current-head verification is pending.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass349 — align gateway lineage regression with the explicit conditional spread (2026-10-25)
+
+- [REGRESSION] Corrected the WorkPass294 source-contract assertion to accept the actual TypeScript form `...(typeof context.decisionId === 'string' ? … : {})`. The gateway already forwards the exact `executionId` and optional `decisionId` to the verifier; the test incorrectly required the spread's opening parenthesis to be absent.
+- [CI] WorkPass294 previously passed runtime typecheck but failed this overly narrow source-pattern assertion. Its new script is now registered, so the subsequent run exercises the real postcondition lineage tests.
+- [VALIDATION] Full latest-head postcondition and P26 runs are pending; earlier target results remain separately recorded.
+- [SCOPE] `integration` PR branch only; `main` and the Release ZIP are untouched.
+
+---
+
+## NK1 WorkPass348 — restore missing learning/postcondition regression commands (2026-10-25)
+
+- [CI] Added package script entries for the existing P26 learning input integrity, recovery benchmark, continual matrix, and WorkPass294 correlated-postcondition regression files. Both workflows previously stopped immediately after the passing runtime typecheck because `npm run` could not resolve those command names.
+- [VALIDATION] The commands map to existing real `.mjs` tests and `package.json` parses. The current-head reruns must still execute the full scripts before their outcomes can be claimed.
+- [SCOPE] Integration branch only; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass346–347 — fix dream association guard and trusted registration adapter (2026-10-25)
+
+- [FIX] Restored the valid boolean predicate in `IntrinsicExperimentGenerator` after strict-typing cleanup; the P23 integrated revision regression now passes on commit `f650eb4`.
+- [TRUST] The coordinator awaits the host-owned trusted shadow registration but deliberately returns no registry object to the process supervisor, satisfying its `void | Promise<unknown>` capability contract.
+- [VALIDATION] On the preceding head, WorkPass293 P23, WorkPass292 evidence lanes, WorkPass291 payload budget, WorkPass99 replay benchmark, WorkPass287/288 cognition and initiative regression all passed. P26 identified only the adapter return-type mismatch; the latest WorkPass294 run is being checked separately.
+- [SCOPE] Isolated PR branch only. `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass344–345 — enforce runtime evidence contracts at source boundaries (2026-10-25)
+
+- [RUNTIME] Registered `appraisal` as a supported evidence-bus kind and added `p23-compound-repair-revision` to the scheduler allow-list to match active publishers and registration sites.
+- [LEARNING] Added `verifiedNonHoldoutExecutions: 0` to the compiled base variant, made retrieval query defaults accept optional values, and retained the exact `'holdout'` literal in the verified-session dataset.
+- [SAFETY] The trusted shadow registrar contract now permits its synchronous result as well as a promise; the supervisor awaits either before spawning the trusted candidate process.
+- [NULLABILITY] Forward causal-learning signals to the learner only when the causal experience store accepted the event, avoiding dereferencing a rejected/null record.
+- [VALIDATION] WorkPass291, WorkPass293 and WorkPass99 remain green on preceding heads; the type-check is being tightened from actual compiler diagnostics. This batch's exact-head CI is pending.
+- [SCOPE] All commits remain on the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass340–343 — repair strict runtime typing and duplicate cycle contract (2026-10-25)
+
+- [LEARNING] Corrected the `ReplaySelectionOptions` import to its defining module and fixed the forgetting-risk input key from `usageGapMs` to `gapMs`.
+- [NODE24] Expanded local Node runtime declarations for file descriptors, child-process events, `fs.constants`, process environment, timers, paths and buffer helpers.
+- [COGNITION] Removed the duplicate `verifyOperationalCycle` implementation, retaining the extended lineage checker with optional-stage causal edges.
+- [STRICT TYPES] Added literal-key narrowing for B272 need validation, typed cognitive dependency transition records, made dream-association filters return booleans, and defined explicit initiative-policy input/decision contracts.
+- [LEARNING] Narrowed causal policy vectors with a type predicate. Additional verified-skill and dataset typing fixes are staged in the next integrated batch.
+- [VALIDATION] WorkPass291, WorkPass293, WorkPass99 and WorkPass287/288 were confirmed green on `7b2fb941`; WorkPass294 still exposes additional source-level strict-type failures. This batch's exact-head CI is pending.
+- [SCOPE] Changes are confined to the PR integration branch; `main` and the Release ZIP are untouched.
+
+---
+
+## NK1 WorkPass339 — normalize P23 learning constructors for Node 24 (2026-10-25)
+
+- [COMPATIBILITY] Converted constructor parameter properties to explicit readonly fields/assignments in `P23CompoundRepairRevisionCoordinator` and `P23TrustedShadowLearningScheduler`; these classes are imported by the P23 runtime regression graph and are not supported by Node 24's strip-only TypeScript loader.
+- [CI] Added `P23TrustedShadowLearningScheduler.ts` to the WorkPass293 path filter so future constructor/runtime changes run the P23 revision integration checks.
+- [VALIDATION] This follows earlier confirmed runtime-loader failures in the versioned skill store, atomic file adapter, and trusted-run registry; exact-head Actions results remain in progress/pending.
+- [SCOPE] Changes are limited to the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass338 — remove remaining P23 runtime parameter properties (2026-10-25)
+
+- [COMPATIBILITY] Converted `AtomicFileTrustedSkillShadowRunRegistry`'s constructor parameter property into an explicit readonly field/assignment. WorkPass293 had progressed past the first store and found this second non-erasable TypeScript constructor form.
+- [CI] The WorkPass293 workflow now tracks `TrustedSkillShadowRunRegistry.ts`; WorkPass99 tracks `MultiSourceLearningMechanisms.ts`, so replay policy changes run their runtime configuration and ablation benchmark.
+- [VALIDATION] Runtime test progression is being checked against exact commit SHAs; the broad WorkPass294 runtime type-check still reports unrelated existing type/shim inconsistencies and is not yet green.
+- [SCOPE] All changes remain on the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass337 — preserve configured replay recency guarantees (2026-10-25)
+
+- [LEARNING] `adaptiveReplayOptions` now preserves an explicitly configured `recentQuota`, clamped only to the adaptive batch size. Health signals can shrink batch capacity without silently replacing the caller's recent-window contract.
+- [REGRESSION] Updated the replay runtime config test to assert the configured batch size as a hard ceiling (adaptive capacity can legitimately select fewer samples) while retaining checks that all explicitly requested recent items and at least one historical sample enter the replayed set.
+- [COMPATIBILITY] WorkPass293 logs exposed another non-erasable constructor parameter property in `AtomicFileSkillStorePersistence`; converted it to an explicit readonly field with constructor assignment. Added the persistence adapter to WorkPass291/WorkPass99/WorkPass293 workflow path filters.
+- [VALIDATION] WorkPass291 payload byte-boundary regression passed on commit `f4a21eef`; the latest replay and P23 tests are being re-executed after the additional compatibility and quota fixes. No full-CI pass is claimed.
+- [SCOPE] All changes remain on the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass336 — fix regression boundaries and verifier input validation (2026-10-25)
+
+- [FIX] Corrected `OutcomeVerificationService`'s control-character range so it parses as a valid regular expression and still rejects C0/C1 control characters in correlation IDs.
+- [REGRESSION] Corrected the WorkPass291 exact-byte-boundary test to account for the two JSON quote bytes around a string payload; the production byte-budget guard remains unchanged.
+- [CI] Added `OutcomeVerificationService.ts` to the WorkPass293 workflow path filter because the integration test loads it through the runtime dependency graph.
+- [VALIDATION] Changes are committed; exact-head CI runs are pending. No pass is claimed until Actions confirms the tests.
+- [SCOPE] All changes remain on the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass335 — remove non-erasable skill-store constructor syntax (2026-10-25)
+
+- [COMPATIBILITY] Replaced TypeScript constructor parameter properties in `VersionedSkillCandidateStore` with explicit readonly fields and assignments. This preserves runtime behavior while allowing Node 24's `--experimental-strip-types` runner to load the module without code-generation syntax.
+- [CI] Added `VersionedSkillCandidateStore.ts` to the WorkPass291 and WorkPass99 workflow path filters because both test graphs import this store indirectly; WorkPass293 already tracked it.
+- [VALIDATION] The root cause is confirmed by Actions logs on Node v24.21.0. New post-fix runs have not yet completed; no test pass is claimed for this commit.
+- [SCOPE] Changes remain on the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass334 — restore learning regression script wiring (2026-10-25)
+
+- [CI] Registered the real WorkPass291 reflective-payload, WorkPass292 evidence-lanes, and WorkPass293 P23-revision test files in `runtime/neuro-kurisu/package.json`; the workflows were previously failing before tests ran because their script names were missing.
+- [VALIDATION] Package JSON parses and each script points to an existing test file. Exact-head outcomes for the rerun workflows are pending; registration alone is not counted as a passing test.
+- [SCOPE] Changes are limited to the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass333 — calibrate intrinsic drive in endogenous goal scoring (2026-10-25)
+
+- [FIX] Replaced the unbounded raw vector dot-product contribution with normalized cosine alignment in `B272EndogenousGoalGenesis`; scaled the four-way candidate index to `[0,1]` and rebalanced weights to keep intrinsic drive visible before `clamp01` saturation.
+- [SAFETY] The drive signal remains confidence-weighted, so a drive score with zero confidence falls back to the pre-existing intrinsic reward and cannot independently raise goal value.
+- [REGRESSION] The existing WorkPass272 comparison asserts a calibrated drive changes predicted goal value by more than `0.1` and that an untrusted drive has no effect. Exact-head CI execution is pending; no pass is claimed yet.
+- [SCOPE] Committed only to the PR's isolated integration branch; `main` and the Release ZIP remain untouched.
+
+---
+
+## NK1 WorkPass332 — enforce full cognitive-cycle closure (2026-10-24)
+
+- [ARCHITECTURE] Ported `docs/architecture/module-dependency-contracts-ru.md` into the integration-based source branch, establishing one cycle owner, one action gateway, subsystem ports, single-writer state ownership, and candidate/holdout/promotion boundaries. The map is an enforceable target contract, not evidence that every current import has already been audited.
+- [INTEGRATION] Added an explicit `full` mode to the existing `UnifiedCognitiveCycle` contract. Full mode requires distinct, valid identities for all eleven stages: observation, prediction, appraisal, attention, memory, goal, plan, action, outcome, learning, and self-update.
+- [RUNTIME] Wired `OrganismRuntime` to use full mode after the existing causal-event lineage verifier. The legacy six-stage operational mode remains the default for compatible callers.
+- [STATE RESTORE] Fixed normalization of malformed persisted stage lists: retain valid entries when present, but conservatively fall back to all operational stages when every entry is invalid. This repairs an assertion exposed by the WorkPass287 CI run.
+- [STATE INTEGRITY] Restoration now invalidates `lastComplete` whenever explicitly stored aggregate counters disagree with the reconciled cycle partition, while snapshots that omit newer optional counters remain compatible. Both cases have regression assertions.
+- [REGRESSION] Added `tests/workpass332-full-cognitive-closure.mjs` covering full closure, a missing intermediate phase, duplicate stage identity, invalid mode, and production runtime wiring; registered it in the recovered regression aggregate.
+- [VALIDATION] Changes are committed on an isolated integration-based branch. Local execution and exact-head GitHub Actions are not yet verified; no green test/CI claim is made. `main` and the Release ZIP are untouched.
+
+---
+
 ## NK1 WorkPass331 — execute initiative regression guards in CI (2026-10-24)
 
 - [CI] Added `.github/workflows/initiative-regression.yml` on the `integration` branch to run the WorkPass329/330 initiative wiring regression tests with Node.js 22 on relevant pushes and pull requests.

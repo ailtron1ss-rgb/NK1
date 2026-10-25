@@ -146,6 +146,11 @@ export function ingestSignedOutcomeArtifact(
     if (!exactMatch) {
       return { accepted: false, artifactFingerprint: fingerprint, rejection: 'conflicting-existing-outcome' };
     }
+    // An exact artifact may re-establish an in-memory trust receipt after restore,
+    // but re-ingesting it into the same live ledger remains a duplicate attempt.
+    if (hasAuthenticatedOutcomeEvidence(ledger, existing.evidenceRef)) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: 'duplicate-attempt' };
+    }
   } else {
     const result = ledger.record(outcome);
     if (!result.accepted) {
