@@ -493,11 +493,11 @@ export class MemoryOS2{
      if(!state||cached.providerId!==provider.providerId||cached.contentHash!==state.contentHash||!cached.vector.length)this.semanticEmbeddingIndex.delete(id);
    }
    const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(performanceOptions.maxLexicalPool??Math.max(24,Math.min(64,safeLimit*8)))));
-   // One isolated lexical preview supplies both the fallback and semantic candidate pool.
-   const lexicalPreview=this.previewRetrieve(query,lexicalPoolLimit,goalRelevance,identityRelevance,temporalOptions);
+   // One isolated preview supplies both the full fallback limit and the bounded candidate pool.
+   const lexicalPreview=this.previewRetrieve(query,Math.max(safeLimit,lexicalPoolLimit),goalRelevance,identityRelevance,temporalOptions);
    const fallbackItems=lexicalPreview.slice(0,safeLimit);
    const lexicalPool:MemoryItem2[]=[];
-   for(const previewItem of lexicalPreview){const current=corpusById.get(previewItem.id);if(current&&eligible(current))lexicalPool.push(current);}
+   for(const previewItem of lexicalPreview.slice(0,lexicalPoolLimit)){const current=corpusById.get(previewItem.id);if(current&&eligible(current))lexicalPool.push(current);}
    const hasCurrentVector=(item:MemoryItem2)=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);};
    const missingSet=new Map<string,MemoryItem2>();
    // Prioritize lexical/fuzzy candidates but reserve part of a cold-start batch for
