@@ -1,3 +1,11 @@
+# Neuro Kurisu — quick start
+
+**Run the integrated cognitive runtime + its built-in Russian UI:** see [the Docker Compose quickstart](docs/QUICKSTART_NEURO_KURISU_RU.md). On a machine with Docker Compose v2, copy `.env.example` to `.env`, then run `docker compose up --build -d`; open `http://127.0.0.1:3000`. Persistent organism state lives in the `neuro-kurisu-state` volume. Optional external model credentials stay in the ignored local `.env` file.
+
+The separate `app/` frontend is also typechecked and production-built in CI; it is not silently substituted for the organism UI or wired to the runtime through an unverified API proxy.
+
+---
+
 ## Current source-stack checkpoint — WorkPass319 (2026-10-25)
 
 - **Scope:** closes three functional defects in the unified cycle/motivation integration: contradictory restored counters, malformed missing-stage normalization, and B272 goal-value saturation that hid trusted intrinsic drive. The B272 literal-key validation error was also fixed.
