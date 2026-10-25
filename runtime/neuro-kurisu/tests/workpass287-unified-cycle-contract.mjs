@@ -53,7 +53,8 @@ assert.equal(snapshot.meanStageCoverage01,0);
 assert.equal(snapshot.meanCausalContinuity01,1);
 assert.equal(snapshot.lastTick,-1);
 assert.equal(snapshot.lastComplete,false);
-assert.deepEqual(snapshot.lastMissingStages,['action']);
+assert.deepEqual(snapshot.lastMissingStages,['observation','prediction','action','outcome','learning','self-update'],
+  'an invalid restored completeness claim must fail closed with all cognitive-cycle stages marked missing');
 
 const inconsistentRestore=new UnifiedCognitiveCycle();
 inconsistentRestore.restore({
