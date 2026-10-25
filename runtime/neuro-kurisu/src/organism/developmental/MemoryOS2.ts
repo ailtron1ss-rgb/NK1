@@ -369,25 +369,34 @@ export class MemoryOS2{
   if(!provider)return baseDiag(false,'embedding-provider-disabled');
   const maxItems=Math.max(1,Math.min(16,Math.floor(Number.isFinite(options.maxItems)?Number(options.maxItems):8)));
   const timeoutMs=Math.max(500,Math.min(5000,Math.floor(Number.isFinite(options.providerTimeoutMs)?Number(options.providerTimeoutMs):2200)));
-  const corpus=this.state.items.filter(item=>!item.dormant&&item.epistemicStatus!=='quarantined'&&Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt)));
-  const corpusById=new Map(corpus.map(item=>[item.id,item]));
+  const corpus:MemoryItem2[]=[];
+  const corpusById=new Map<string,MemoryItem2>();
+  for(const item of this.state.items){
+   if(item.dormant||item.epistemicStatus==='quarantined'||!(Number(item.validFromAt??item.createdAt)<=now)||(item.validUntilAt!=null&&!(now<Number(item.validUntilAt))))continue;
+   corpus.push(item);corpusById.set(item.id,item);
+  }
   const currentVector=(item:MemoryItem2)=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);};
   for(const [id,row] of this.semanticEmbeddingIndex){const item=corpusById.get(id);if(!item||row.providerId!==provider.providerId||row.contentHash!==memoContentHash(item.content))this.semanticEmbeddingIndex.delete(id);}
   for(const [id,retry] of this.semanticEmbeddingRetry){const item=corpusById.get(id);if(!item||retry.contentHash!==memoContentHash(item.content))this.semanticEmbeddingRetry.delete(id);}
-  const missing=corpus.filter(item=>!currentVector(item)).filter(item=>(this.semanticEmbeddingRetry.get(item.id)?.retryAt??0)<=now);
   const priority=(item:MemoryItem2)=>{
    const age=Math.max(0,now-Number(item.createdAt??now));
    const freshness=Math.max(0,1-Math.min(1,age/(45*86400000)));
    const retrieval=Math.min(1,Math.max(0,Number(item.retrievalCount??0))/12);
    return .38*clamp(Number(item.salience))+.22*clamp(Number(item.identityRelevance))+.16*clamp(Number(item.goalRelevance))+.14*retrieval+.10*freshness;
   };
+  const missing:MemoryItem2[]=[];
+  let indexedBefore=0,waitingForRetry=0,nextRetryAt:number|null=null;
+  for(const item of corpus){
+   const hasVector=currentVector(item);if(hasVector)indexedBefore++;
+   const retry=this.semanticEmbeddingRetry.get(item.id);
+   if(retry&&retry.retryAt>now){waitingForRetry++;if(nextRetryAt===null||retry.retryAt<nextRetryAt)nextRetryAt=retry.retryAt;}
+   else if(!hasVector)missing.push(item);
+  }
   missing.sort((a,b)=>priority(b)-priority(a)||Number(b.createdAt)-Number(a.createdAt)||a.id.localeCompare(b.id));
   const candidates=missing.slice(0,maxItems);
-  const waiting=corpus.map(item=>this.semanticEmbeddingRetry.get(item.id)).filter((row):row is {contentHash:string;attempts:number;retryAt:number}=>Boolean(row&&row.retryAt>now));
   if(!candidates.length){
    this.lastSemanticIndexMaintenance={...this.lastSemanticIndexMaintenance,lastRunAt:now,lastDurationMs:0,lastIndexed:0,lastFailed:0,lastStaleSkipped:0,lastErrorCode:null};
-   const indexedItems=corpus.filter(currentVector).length;
-   return {...baseDiag(true,null),indexedItems,corpusItems:corpus.length,remaining:Math.max(0,corpus.length-indexedItems),waitingForRetry:waiting.length,nextRetryAt:waiting.length?Math.min(...waiting.map(row=>row.retryAt)):null,lastRunAt:now,lastDurationMs:0,lastErrorCode:null};
+   return {...baseDiag(true,null),indexedItems:indexedBefore,corpusItems:corpus.length,remaining:Math.max(0,corpus.length-indexedBefore),waitingForRetry,nextRetryAt,lastRunAt:now,lastDurationMs:0,lastErrorCode:null};
   }
   const started=Date.now();let indexed=0,failed=0,staleSkipped=0;let errorCode:string|null=null;
   const failRow=(item:MemoryItem2)=>{
@@ -426,9 +435,13 @@ export class MemoryOS2{
    errorCode=/timeout|deadline/.test(message)?'provider-timeout':/http \d+/.test(message)?'provider-http-error':/vector|dimension|response/.test(message)?'invalid-provider-response':'provider-error';
   }
   const duration=Math.max(0,Date.now()-started);this.lastSemanticIndexMaintenance={lastRunAt:now,lastDurationMs:duration,lastIndexed:indexed,lastFailed:failed,lastStaleSkipped:staleSkipped,lastErrorCode:errorCode};
-  const indexedItems=corpus.filter(currentVector).length;
-  const retryRows=corpus.map(item=>this.semanticEmbeddingRetry.get(item.id)).filter((row):row is {contentHash:string;attempts:number;retryAt:number}=>Boolean(row&&row.retryAt>now));
-  return {enabled:true,provider:providerDiag?.provider??'unknown',model:providerDiag?.model??'',considered:candidates.length,indexed,failed,staleSkipped,indexedItems,corpusItems:corpus.length,remaining:Math.max(0,corpus.length-indexedItems),waitingForRetry:retryRows.length,nextRetryAt:retryRows.length?Math.min(...retryRows.map(row=>row.retryAt)):null,lastRunAt:now,lastDurationMs:duration,lastErrorCode:errorCode,redactedInputs:Number(providerDiag?.redactedInputs??0)};
+  let indexedItems=0,retryWaiting=0,retryAt:number|null=null;
+  for(const item of corpus){
+   if(currentVector(item))indexedItems++;
+   const retry=this.semanticEmbeddingRetry.get(item.id);
+   if(retry&&retry.retryAt>now){retryWaiting++;if(retryAt===null||retry.retryAt<retryAt)retryAt=retry.retryAt;}
+  }
+  return {enabled:true,provider:providerDiag?.provider??'unknown',model:providerDiag?.model??'',considered:candidates.length,indexed,failed,staleSkipped,indexedItems,corpusItems:corpus.length,remaining:Math.max(0,corpus.length-indexedItems),waitingForRetry:retryWaiting,nextRetryAt:retryAt,lastRunAt:now,lastDurationMs:duration,lastErrorCode:errorCode,redactedInputs:Number(providerDiag?.redactedInputs??0)};
  }
 
  semanticEmbeddingMaintenanceDiagnostics():SemanticIndexMaintenanceResult{
