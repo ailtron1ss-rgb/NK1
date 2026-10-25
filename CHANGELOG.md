@@ -1,3 +1,10 @@
+## NK1 embodiment — cache the active Live2D expression (2026-10-25)
+
+- Restored the viewer's expression cache contract so repeated emotional-state updates do not restart an already active Live2D expression, while failed asynchronous applications clear the cached name for a safe retry.
+- Reset the cache on model creation; the change does not alter expression mapping or avatar message authority.
+
+---
+
 ## NK1 learning validation — repair signed evidence and ledger recovery fixtures (2026-10-25)
 
 - Bound the P36 signed-ledger evaluator regression to the actual hypothesis created by its self-development engine, so the signed verifier input and recipient hypothesis have the same identity.
