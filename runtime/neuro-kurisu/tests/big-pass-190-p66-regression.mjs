@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { P66InteroceptiveHomeostasis } from '../src/organism/cognition/P66InteroceptiveHomeostasis.ts';
 const m=new P66InteroceptiveHomeostasis();
+assert.throws(()=>m.observe({tick:NaN,at:1,energy01:.8,thermal01:.2,capacity01:.8,load01:.25,awake:true,uncertainty01:.15,predictionError01:.12,novelty01:.7}),/tick must be a non-negative safe integer/);
+assert.throws(()=>m.observe({tick:0,at:Infinity,energy01:.8,thermal01:.2,capacity01:.8,load01:.25,awake:true,uncertainty01:.15,predictionError01:.12,novelty01:.7}),/timestamp must be finite and non-negative/);
+assert.equal(m.snapshot().cycles,0,'invalid homeostasis clocks must not mutate controller state');
 const base={energy01:.8,thermal01:.2,capacity01:.8,load01:.25,awake:true,uncertainty01:.15,predictionError01:.12,novelty01:.7};
 const a=m.observe({tick:1,at:1001,...base});
 const b=m.observe({tick:2,at:1002,...base,novelty01:.75});
