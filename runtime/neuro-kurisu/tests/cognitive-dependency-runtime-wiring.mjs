@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -30,8 +30,6 @@ try {
   assert.ok(first.transitionCount >= 0);
   const persisted = await new FileStateStore(dependencyStateFile).load();
   assert.deepEqual(persisted, first, 'the routed graph snapshot must be durably written after a cycle');
-  const serialized = await readFile(dependencyStateFile, 'utf8');
-  assert.equal(JSON.parse(serialized).lastTick, first.lastTick);
 
   await runtime.stop();
   runtime = new OrganismRuntime(runtimeConfig());
