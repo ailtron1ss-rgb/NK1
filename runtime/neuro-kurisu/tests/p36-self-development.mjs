@@ -180,7 +180,7 @@ assert.equal(crossPathMaturity.verifiedOutcomeCount,0,'same observation cannot b
 
 // Maturity counts also require verifier provenance, and the same receipt can count only once.
 const maturityEngine=new P36AutonomousSelfDevelopmentEngine();
-const outcome={area:'learning',outcome01:.95,delayed:true,transfer:true};
+const outcome={kind:'developmental-outcome',area:'learning',outcome01:.95,delayed:true,transfer:true};
 const forgedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verified:true});
 assert.equal(forgedMaturity.verifiedOutcomeCount,0,'a caller boolean cannot certify developmental maturity');
 assert.equal(maturityEngine.diagnostics().rejectedMaturityReceipts,1,'blocked maturity assertions must be observable');

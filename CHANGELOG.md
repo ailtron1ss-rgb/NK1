@@ -1,3 +1,10 @@
+## NK1 P36 evidence gate — bind verified maturity observations to explicit outcome kind (2026-10-25)
+
+- Corrected the successful maturity-receipt fixture to include the required `kind: 'developmental-outcome'` discriminator that is part of the verifier-bound payload.
+- This preserves fail-closed behavior for omitted or forged kinds; it updates test input to match the signed binding rather than relaxing runtime proof checks.
+
+---
+
 ## NK1 P66 regression — assert each observation before advancing the controller (2026-10-25)
 
 - Corrected the homeostasis regression sequence: assertions for observation two were executed only after observation three had already updated controller state.
