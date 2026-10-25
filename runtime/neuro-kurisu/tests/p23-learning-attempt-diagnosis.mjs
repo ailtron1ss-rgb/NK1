@@ -101,15 +101,15 @@ const recent = new P23LearningEngine();
 recent.restore({
   version: 1,
   experiences: [{
-    id: 'experience-trace-fail-1', traceId: 'trace-fail-1', tick: 1, at: 100,
-    contextKey: 'file-write', nextContextKey: 'file-read', action: 'verify',
-    predictedUtility: 0.8, predictedConfidence: 0.7, success: 0.1,
-    reward: 0.1, surprise: 0.9, outcomeAt: 101, failureClass: 'tool-error',
-  }, {
     id: 'experience-trace-uncertain-1', traceId: 'trace-uncertain-1', tick: 2, at: 102,
     contextKey: 'memory-recall', nextContextKey: 'memory-recall', action: 'reflect',
     predictedUtility: 0.6, predictedConfidence: 0.5, success: 0.55,
     reward: 0.5, surprise: 0.3, outcomeAt: 103,
+  }, {
+    id: 'experience-trace-fail-1', traceId: 'trace-fail-1', tick: 1, at: 100,
+    contextKey: 'file-write', nextContextKey: 'file-read', action: 'verify',
+    predictedUtility: 0.8, predictedConfidence: 0.7, success: 0.1,
+    reward: 0.1, surprise: 0.9, outcomeAt: 101, failureClass: 'tool-error',
   }],
 });
 const recentReports = recent.diagnoseRecentLearningAttempts(10);
@@ -121,6 +121,8 @@ assert.ok(recentReports[1].failureClasses.includes('tool-error'));
 assert.ok(recentReports.every((report) => report.promotionEligible === false),
   'diagnostic reports must never grant promotion authority');
 assert.equal(recent.diagnoseRecentLearningAttempts(0).length, 0);
+assert.equal(recent.diagnoseRecentLearningAttempts(1)[0].taskId, 'trace-uncertain-1',
+  'bounded diagnostic window selects the newest outcome, not the oldest tail');
 assert.equal(recent.diagnoseRecentLearningAttempts(1000).length, 2, 'requested history is bounded');
 const summary = recent.learningSummary();
 assert.equal(summary.recentAttemptDiagnoses.length, 2,
