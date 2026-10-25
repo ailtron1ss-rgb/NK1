@@ -1,3 +1,9 @@
+## NK1 WorkPass532 — execute emotion regression with full Node 24 TypeScript transforms (2026-10-25)
+
+- Updated the targeted `test:big-pass-172` script to use Node 24's `--experimental-transform-types`; the previous strip-only loader could not execute imported runtime modules with TypeScript parameter properties.
+- This uses the transform support available in the workflow's Node.js 24 runtime and allows the behavioral regression to reach actual test assertions. The project still needs an explicit long-term decision for Node versions that remove this experimental flag, or a stable TS runner.
+- **Validation boundary:** test command changed; the next CI run must confirm it advances beyond module loading and whether the affect regressions pass.
+
 ## NK1 WorkPass531 — fix focused workflow dependency-cache resolution (2026-10-25)
 
 - The first isolated-job attempt revealed that `setup-node` auto-detected a nonexistent root lockfile, so jobs failed before installing dependencies or reaching their checks.
