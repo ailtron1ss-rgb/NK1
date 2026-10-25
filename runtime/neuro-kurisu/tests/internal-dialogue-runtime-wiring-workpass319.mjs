@@ -59,6 +59,8 @@ assert.match(runtime, /readRecent\('runtime\.internal-dialogue\.review',128\)/,
   'restore must request enough recent rows to refill the bounded valid-receipt window');
 assert.match(server, /delete providerRequest\.internalDialogueReceipt/,
   'host-side receipt metadata must be stripped before language-provider submission');
+assert.match(server, /internalDialogueHistory: runtime\.internalDialogueHistorySummarySnapshot\(\)/,
+  'read-only inspect API must expose aggregate trends without exposing raw unresolved questions');
 
 assert.match(bridge, /node\.payload\.independenceKey/,
   'late observations must preserve independent-source requirements');
