@@ -8,6 +8,7 @@ on:
       - 'runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/public/live2d/viewer.html'
       - 'runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts'
       - 'runtime/neuro-kurisu/src/organism/cognition/IntrinsicExperimentGenerator.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts'
