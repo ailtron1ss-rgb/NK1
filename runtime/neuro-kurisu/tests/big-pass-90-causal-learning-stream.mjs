@@ -365,14 +365,16 @@ const aggregateRestore = new CausalExperienceStream(64);
 aggregateRestore.restore(poisonedAggregates);
 const safeAggregateSnapshot = aggregateRestore.snapshot();
 assert.equal(safeAggregateSnapshot.observations, 0, "invalid persisted observation count must be reset");
-assert.equal(safeAggregateSnapshot.outcomes, safeAggregateSnapshot.records.length,
-  "invalid persisted outcome count must fall back to retained record count");
-assert.equal(safeAggregateSnapshot.consolidated, safeAggregateSnapshot.records.filter(row => row.consolidated).length,
-  "invalid persisted consolidation count must fall back to retained consolidated rows");
+assert.equal(safeAggregateSnapshot.records.length, 1,
+  "external review row remains queryable after aggregate restore");
+assert.equal(safeAggregateSnapshot.outcomes, 0,
+  "invalid persisted outcome count must be recomputed from grounded runtime outcomes, not every retained row");
+assert.equal(safeAggregateSnapshot.consolidated, 0,
+  "external review rows must not become grounded consolidated outcomes during restore");
 assert.equal(safeAggregateSnapshot.lastConsolidatedAt, 0, "invalid consolidation timestamp must be reset");
 assert.deepEqual(safeAggregateSnapshot.rolling, {
-  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0.4,
-}, "rolling metrics must be finite and within normalized bounds");
+  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0,
+}, "rolling learning aggregates must be recomputed only from grounded runtime outcomes");
 assert.equal(safeAggregateSnapshot.behavioralImpact01, 0,
   "persisted behavioral impact must be recomputed instead of trusted");
 assert.equal(safeAggregateSnapshot.behavioralContextSamples, 0,
