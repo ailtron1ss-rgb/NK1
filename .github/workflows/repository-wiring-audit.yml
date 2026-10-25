@@ -155,11 +155,6 @@ jobs:
       - name: Run app test suite
         run: npm run test:ui
 
-      - name: Install pinned CPU-only research runtime
-        run: |
-          python3 -m pip install --disable-pip-version-check --no-cache-dir -r research/requirements-ci.txt
-          python3 -c "import torch; print('RESEARCH_TORCH=' + torch.__version__)"
-
       - name: Run cross-layer integration verifier
         run: npm run test:integration
 
