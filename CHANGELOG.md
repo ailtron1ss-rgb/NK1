@@ -1,3 +1,9 @@
+## NK1 WorkPass546 — align restored learning aggregate assertion (2026-10-25)
+
+- The next exact-head learning workflow reached a persistence assertion that still treated every retained record as a trusted outcome. Updated it to verify that restored, untrusted external rows remain excluded from the trusted outcome aggregate.
+- The production restore path already recomputes the aggregate from grounded runtime outcomes; this change corrects the regression expectation without weakening restore or replay validation.
+- **Validation boundary:** rerun the learning workflow and focused affect checks on the latest pull-request head before merging.
+
 ## NK1 WorkPass545 — ground replay-diversity regression traces (2026-10-25)
 
 - The rerun advanced past external evidence deduplication and exposed an independent stale replay fixture: its synthetic traces used ticks that disagreed with their pre-action states and omitted the selected action/outcome receipt from post-action states.
