@@ -1,3 +1,101 @@
+# WorkPass345 — add 250-cycle operational soak to the live runtime gate (2026-10-25)
+
+- [CI] Added existing `npm run test:long-horizon:operational:250` after autonomy, initiative and restart tests. It executes 250 operational observations against the actual `OrganismCore` and checks warmed median latency does not regress by more than 4.5×; it also records approximate p95 latency and heap-growth telemetry.
+- [TRIGGER] Added the operational 250-cycle regression to both `push` and `pull_request` path filters so edits to this test refresh the canonical runtime gate.
+- [SCOPE] This is a bounded 250-cycle stability/scaling soak, not an hour-long wall-clock background run, provider-backed initiative soak, or a proof of zero memory leaks. The separate server smoke continues to validate real local HTTP routes.
+- [BASELINE] Exact code SHA `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364` passed WorkPass331 run `40171612592`, including server smoke, background-clock initiative and persistence; the current workflow edit needs fresh exact-head CI.
+
+# WorkPass344 — record green live-service and autonomy gates (2026-10-25)
+
+- [VALIDATION] PASS on exact code SHA `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364`: [WorkPass331 run 40171612592](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171612592) completed `success`. This includes Node/npm preflight, doctor, canonical kernel/runtime wiring, B272 action handoff, organism smoke, 80-cycle action selection, spontaneous dialogue/feedback/restore, background-clock initiative, restart persistence, and **live HTTP server smoke**.
+- [HTTP] `npm run server:smoke` now passes against an actual child-process server with isolated state. It exercises `/api/health`, memory-inspector temporal semantics, release contract, camera idempotency preflight, cognitive-architecture integrity, chat completion, voice status, and Will envelope/ACK idempotency. The stale exact-flow-count assertion was replaced by a self-consistent architecture validation contract with minimum coverage preserved.
+- [LEARNING] The sibling exact-SHA gates WorkPass108, WorkPass110, WorkPass105, WorkPass102, WorkPass99, WorkPass291–294, WorkPass287–288 and P26 Learning Validation all completed `success` on the same code SHA. One redundant WorkPass331 attempt was cancelled by workflow concurrency after another attempt had already completed successfully; no exact-head workflow failures remain.
+- [SCOPE] This validates the local service and deterministic fallback path, not configured external provider credentials, mobile/device UI, full Live2D/voice visual synchronization, or an hour-long unattended soak. PR #96 remains draft and the release archive has not been refreshed.
+
+# WorkPass343 — make live-server architecture contract resilient to additive flows (2026-10-25)
+
+- [FIX] The first WorkPass342 live HTTP smoke run reached `/api/organism/cognitive-architecture` but failed because the smoke test hard-coded exactly 22 flows while the current valid architecture map exposes additional flows. This was a stale assertion, not evidence of a server startup failure.
+- [TEST] Replaced exact subsystem/flow counts with structural minimums plus equality between each returned array length and `architecture.validation`'s declared count. Failure output now includes response status, validation details, observed counts, runtime-system count, and tick for actionable diagnosis.
+- [SAFETY] The test still requires HTTP success, read-only response, `validation.ok === true`, at least 14 subsystems and 22 flows, a runtime systems array, and finite runtime tick; it does not loosen the architecture integrity contract.
+- [VALIDATION] WorkPass342 exposed the stale assertion on SHA `e89597aaa20093db2f897008f1c8863ec9ae9e91`; the revised test requires a fresh exact-head run before this gate is considered green.
+
+# WorkPass342 — gate real HTTP service startup in the cognitive-runtime workflow (2026-10-25)
+
+- [CI] Added the existing `npm run server:smoke` test after the in-process autonomy and persistence gates. It starts `src/server/server.mjs` as a child process with an isolated temporary state directory, waits for `/api/health`, then exercises the live root release marker, temporal memory inspector, release contract, camera idempotency preflight, read-only cognitive architecture, chat completion, voice status, and Will transport duplicate/collision/ACK semantics.
+- [TRIGGER] Added `src/server/server.mjs` and `tests/server-smoke.mjs` to both push and pull-request path filters, so changes to the actual HTTP service or its startup test re-run the integration gate.
+- [BOUNDS] Set the test's existing global deadline to 120 seconds (within its supported 10–180 second range). This checks local service wiring and deterministic fallback behavior; it does not establish external provider credentials, mobile UI/Live2D/voice device E2E, or long unattended operation.
+- [BASELINE] Exact-head WorkPass331 run `40170774606` and the sibling WorkPass99/102/105/108/110/287–294/P26 runs passed on `83e2be0df7f8ac4a15dbc69b28541b35d3ceed49`; WorkPass342 adds a new service gate and requires a fresh exact-head result.
+
+# WorkPass341 — calibrate B272 action handoff across 140 cycles (2026-10-25)
+
+- [TEST] Expanded `tests/b272-action-handoff-diagnostics.mjs` with a 140-cycle deterministic runtime-handoff calibration. Every seventh tick intentionally selects a different action from the generated endogenous goal; all other ticks select the generated action.
+- [INVARIANT] The test requires every tick to be accounted for exactly once, match/mismatch rates to equal the observed counts, and learner updates to equal matching handoffs only. Each deliberately mismatched outcome is rejected without any state mutation, including no false credit from high reward or external-evidence signals.
+- [PERSISTENCE] The test restores the learner after the 140-cycle run and compares full diagnostics, confirming counters/rates/history survive restore.
+- [VALIDATION] This extends an already green single-step handoff regression and is covered by WorkPass331's existing path filter; a fresh exact-head workflow run is required before claiming the extended test passes.
+
+# WorkPass340 — fix handoff restore ordering exposed by the new regression (2026-10-25)
+
+- [ROOT CAUSE] The first WorkPass339 CI run caught a restore-order defect in the new B272 handoff diagnostics: `lastActionHandoffTick` was reduced from history before `persistedLastActionHandoffTick` had been initialized. This produced TypeScript TS2448/TS2454 in P26 and a runtime `ReferenceError` in WorkPass110's trusted shadow scheduler integration.
+- [FIX] Moved parsing/validation of `persistedLastActionHandoffTick` above the history reducer. The counter derivation and duplicate-tick quarantine semantics remain unchanged.
+- [VALIDATION] PASS on exact SHA `f1a0f6716841f9b42d25051eea56bae3bc97f232`: [WorkPass331 run 40168851799](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168851799), [WorkPass110 run 40168851732](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168851732), [P26 run 40168851792](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168851792), and [WorkPass287–288 run 40168851794](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168851794) all completed `success`. The remaining exact-head gates also passed: WorkPass293, 102, 99 replay, 291, 292, 108, 105 and 294. WorkPass331 logs confirm `B272_ACTION_HANDOFF_DIAGNOSTICS=PASS`, organism smoke, `CLEAN_AUTONOMY=PASS 79/80`, spontaneous dialogue/feedback/restore, background clock (`clockExecutions=1; providerCalls=1; staged+acked+persisted=true`), and restart persistence.
+
+# WorkPass339 — measure endogenous-goal action handoff without weakening credit binding (2026-10-25)
+
+- [RUNTIME] Added bounded, persisted B272 diagnostics for generated-action handoffs: observation count, exact match/mismatch buckets, rolling recent records, and match/mismatch rates. Every selected action is recorded against the B272-generated action and goal ID before outcome credit is considered.
+- [STRICTNESS] `B272EndogenousGoalGenesis.learnFromOutcome` remains unchanged and still refuses credit for an action different from the one generated. The handoff ledger is idempotency-guarded per tick; restored counters enforce `matches + mismatches = observations` even if a persisted counter is inconsistent.
+- [CI] Added a focused regression covering matched/mismatched action handoffs, rejection of false credit, duplicate-record protection, and restore round-tripping. Extended the live WorkPass50 dialogue-loop test to require observed handoffs and bounded rates. Both files and the B272 source are now in the WorkPass331 workflow path filters.
+- [VALIDATION] Preceding exact-head WorkPass331 run `40168339627` passed on source SHA `4c019acd95789d9aa819accf1f94e5838d8dd1ca`, including 80-cycle autonomy (`79/80` non-wait choices), spontaneous dialogue feedback/restore, background-clock initiative, and restart persistence. WorkPass339 adds runtime instrumentation and new regressions, so the current head needs a fresh exact-head CI pass before this feature is marked validated.
+
+# WorkPass338 — gate unsolicited dialogue and background initiative end-to-end (2026-10-25)
+
+- [CI] Added two existing runtime integration regressions after the bounded 80-cycle autonomy test: `workpass50-autonomous-runtime-loop.mjs` verifies spontaneous message generation, UI acknowledgement idempotency, explicit-response interest learning, durable flush, restart without redelivery, and quiet-time continuity; `workpass50-autonomous-background-clock.mjs` verifies the auto-run scheduler triggers a provider-seam turn without a manual `step()`, stages it for polling, acknowledges it once, and persists the initiative state.
+- [TRIGGER] Added both tests to `push` and `pull_request` path filters, so changes to either test run through this focused workflow.
+- [SCOPE] These tests use a deterministic language-provider seam and bounded local time; they validate the internal loop and persistence, not a live commercial provider, 1-hour unattended soak, or external messaging integration.
+- [VALIDATION] PASS on exact SHA `4c019acd95789d9aa819accf1f94e5838d8dd1ca`: [WorkPass331 run 40168339627](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168339627) completed `success`. Logs show `CLEAN_ORGANISM_SMOKE=PASS`, `CLEAN_AUTONOMY=PASS 79/80`, `WORKPASS50_AUTONOMOUS_RUNTIME_LOOP=PASS`, `WORKPASS50_BACKGROUND_CLOCK=PASS (clockExecutions=1; providerCalls=1; staged+acked+persisted=true)`, and `CLEAN_RESTART_PERSISTENCE=PASS`. Node/npm preflight (4/4), doctor, canonical kernel, and runtime wiring passed too. WorkPass294, WorkPass99 replay, WorkPass108, WorkPass102, WorkPass291, WorkPass287–288, WorkPass110, P26, WorkPass292, WorkPass105, and WorkPass293 also completed successfully on that same SHA.
+
+# WorkPass337 — verify autonomous action selection in focused CI (2026-10-25)
+
+- [CI] Added the existing 80-cycle `npm run test:autonomy` regression to the canonical cognitive-kernel workflow; it requires at least five selected non-`wait` actions and therefore checks for a degenerate wait-only loop.
+- [TRIGGER] Added `runtime/neuro-kurisu/tests/organism-autonomy.mjs` to both `push` and `pull_request` path filters, keeping the test wired into this focused runtime gate.
+- [SCOPE] This is a bounded autonomous-decision smoke check, not proof of unattended hourly initiative, long-horizon stability, or external-world autonomy.
+- [VALIDATION] PASS on exact SHA `8f5e4da3c37b7e218a259d3e11ec1b1329ec8e15`: [WorkPass331 run 40168142987](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168142987) completed `success`. Node/npm version tests (4/4), clean-checkout doctor, canonical kernel, runtime wiring, organism smoke, 80-cycle autonomy (`CLEAN_AUTONOMY=PASS 79/80`), and restart persistence (`CLEAN_RESTART_PERSISTENCE=PASS`) all passed. WorkPass110, WorkPass108, WorkPass105, WorkPass102, WorkPass99, WorkPass287–288, WorkPass291–294 and P26 Learning Validation also passed on that SHA.
+
+# WorkPass336 — preserve B272 action-to-outcome binding in the live loop (2026-10-25)
+
+- [FIXED] Added a runtime gate around both synthetic and real-world B272 outcome-learning call sites: the actual selected action must equal B272's generated action before B272 updates its action prototype and goal outcome memory.
+- [ROOT CAUSE] The new organism smoke gate exposed `RangeError: B272 outcome action must match the generated action` from `OrganismCore.feedback`. The runtime was crediting the goal generator for an action chosen by a different policy even when B272's own generated action had not executed.
+- [SAFETY] The strict validation in `B272EndogenousGoalGenesis.learnFromOutcome` remains unchanged. The core now skips only the mismatched B272 update; the actual outcome continues through the separate policy, neural, and runtime learners.
+- [VALIDATION] Observed under Node 24 in the WorkPass331 workflow on PR merge SHA `59e814e9c953e58f9cd1a047fcb4d8f015b56611`. This is a failure diagnosis, not a pass; the exact-head smoke and restart checks must run again after this fix.
+
+# WorkPass335 — runtime boot and restart-persistence gates (2026-10-25)
+
+- [CI] Extended `workpass331-unified-cognitive-kernel.yml` to run the existing organism smoke test and restart-persistence regression after the canonical kernel wiring test.
+- [TRIGGER] Added both tests to the workflow's `push` and `pull_request` path filters so the checks can run when those test contracts change.
+- [TRIGGER] Added `runtime/neuro-kurisu/package.json` to both path filters so future changes to runtime test scripts trigger the same gates.
+- [PURPOSE] The kernel wiring and cognitive-cycle contracts are useful but do not prove the organism starts cleanly or restores state after restart; the focused workflow now checks both scenarios on the same SHA as the kernel gate.
+- [VALIDATION] Workflow update committed as `468e2e68906f380ac0b9c65c822669879160b2aa`. Exact-head smoke/restart results are pending; the new tests are gates, not claimed passes.
+
+# WorkPass334 — isolate executable-permission regression fixtures (2026-10-25)
+
+- [FIXED] The WorkPass243 host-owned independent-evaluation regression now restores the executor fixture to mode `0700` immediately after asserting that group/world-writable mode `0720` is rejected.
+- [ROOT CAUSE] The following run-root replacement case reused the same prepared executor while its executable was still intentionally writable, so the hardened dispatch guard correctly failed earlier with `host-owned-executor-executable-must-not-be-group-or-world-writable` instead of reaching the run-root identity assertion.
+- [SAFETY] No runtime guard was weakened; the test now isolates each invariant and still verifies that permission tampering is rejected and that replaced run roots fail closed.
+- [VALIDATION] WorkPass110 failed on exact HEAD `756f7448fbbd5a254b040be649693bb4fed52535` at this fixture-ordering defect. The regression is committed for a fresh exact-HEAD CI rerun; no pass is claimed until that run completes.
+
+# WorkPass333 — независимая оценка: execution ≠ verification (2026-10-24)
+
+- [FIXED] Независимый оценщик больше не превращает успешно выполненный sandbox-run в `executable=false`, если отдельный верификатор недоступен или не подтверждает привязку. Метрика исполнимости отражает факт корректного завершения исполнения, а не доверие к трассе.
+- [SAFETY] Task success и допуск доказательств остаются fail-closed: без `bindingVerified` run ID и observed steps не попадают в доверенную provenance, capability coverage не засчитывается, задача не считается успешной и ledger promotion не допускается.
+- [TEST] Регрессия проверяет различие между успешным исполнением и неподтверждённой трассой; реальные ошибки sandbox и некорректные/повторные run IDs по-прежнему дают executability = 0.
+- [VALIDATION] Оригинальный WorkPass110 run на WorkPass332 SHA падал на этой проверке. Повторная проверка после исправления обязательна; production readiness и learning uplift из исправления не следуют.
+
+# WorkPass332 — подключение единого когнитивного ядра к живому runtime (2026-10-24)
+
+- [INTEGRATION] Подключён `CanonicalCognitiveKernel` в `OrganismRuntime`: реальный цикл использует существующие `CognitiveEventFabric` и `UnifiedCognitiveCycle`, без параллельной ручной записи этапов и отдельного повторного вычисления полноты цикла.
+- [CONTRACT] Данные наблюдения, предсказания, оценки, внимания, памяти, цели, плана, действия, исхода, обучения и self-update остаются у прежних владельцев подсистем; kernel соединяет их причинной линией.
+- [TEST] Добавлен runtime-wiring regression и включён в WorkPass331 workflow.
+- [VALIDATION] Этот коммит не объявляет production readiness или прирост качества обучения. Приёмка ожидает точный результат GitHub Actions и последующие end-to-end/retrieval/soak проверки.
+
 # NK1 follow-up — durable identity, independent evaluator and final integration verification (2026-10-24)
 
 - [FIXED] WorkPass203 independent-candidate evaluator regression declared `snapshotEvaluator` twice in one ES module. Renamed the authority-snapshot case variables and rebound every dependent assertion to the isolated fixture so the regression parses and evaluates the intended snapshot rather than failing on a duplicate declaration or stale references.

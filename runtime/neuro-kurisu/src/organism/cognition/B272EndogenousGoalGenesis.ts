@@ -54,6 +54,11 @@ export interface B272State {
   currentGoal:number[];
   currentGoalId:string;
   currentAction:ActionKind;
+  actionHandoffObservations:number;
+  actionHandoffMatches:number;
+  actionHandoffMismatches:number;
+  lastActionHandoffTick:number;
+  actionHandoffHistory:Array<{tick:number;goalId:string;generatedAction:ActionKind;selectedAction:ActionKind;matched:boolean}>;
   currentConfidence01:number;
   goalPressure01:number;
   goalNovelty01:number;
@@ -75,7 +80,7 @@ export function defaultB272State():B272State{
   const selfProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.sin((i+2)*(j+1)*.19)*.06)));
   const worldProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.cos((i+3)*(j+2)*.17)*.06)));
   const g=defaultGoal(3);
-  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
+  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',actionHandoffObservations:0,actionHandoffMatches:0,actionHandoffMismatches:0,lastActionHandoffTick:-1,actionHandoffHistory:[],currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
 }
 
 export interface B272StepInput {
@@ -153,6 +158,28 @@ export class B272EndogenousGoalGenesis {
     const observedLastOutcomeTick=outcomeHistory.reduce((latest,item)=>Math.max(latest,item.tick),-1);
     const uniqueOutcomeHistory=outcomeHistory.filter(item=>outcomeTickCounts.get(item.tick)===1);
     const persistedLastOutcomeTick=safeCounter(r.lastOutcomeTick,-1);
+    const actionHandoffObservations=safeCounter(r.actionHandoffObservations,d.actionHandoffObservations);
+    const actionHandoffMatches=Math.min(actionHandoffObservations,safeCounter(r.actionHandoffMatches,d.actionHandoffMatches));
+    // Derive the mismatch count from the total so corrupted snapshots cannot make the
+    // match and mismatch buckets overlap or silently lose observations.
+    const actionHandoffMismatches=actionHandoffObservations-actionHandoffMatches;
+    const persistedLastActionHandoffTick=typeof r.lastActionHandoffTick==='number'&&Number.isSafeInteger(r.lastActionHandoffTick)&&r.lastActionHandoffTick>=-1&&r.lastActionHandoffTick<=tick?r.lastActionHandoffTick:-1;
+    const actionHandoffHistory:B272State['actionHandoffHistory']=[];
+    const rawActionHandoffHistory=Array.isArray(r.actionHandoffHistory)?r.actionHandoffHistory.slice(-256):[];
+    for(const item of rawActionHandoffHistory){
+      if(!isRecord(item))continue;
+      if(typeof item.tick!=='number'||!Number.isSafeInteger(item.tick)||item.tick<0||item.tick>tick)continue;
+      if(!isSafeId(item.goalId)||!/^g-[0-9a-f]{8}$/u.test(item.goalId))continue;
+      if(!isAction(item.generatedAction)||!isAction(item.selectedAction)||typeof item.matched!=='boolean')continue;
+      if(item.matched!==(item.generatedAction===item.selectedAction))continue;
+      actionHandoffHistory.push({tick:item.tick,goalId:item.goalId,generatedAction:item.generatedAction,selectedAction:item.selectedAction,matched:item.matched});
+    }
+    actionHandoffHistory.sort((a,b)=>a.tick-b.tick);
+    const handoffTickCounts=new Map<number,number>();
+    for(const item of actionHandoffHistory)handoffTickCounts.set(item.tick,(handoffTickCounts.get(item.tick)??0)+1);
+    const observedLastActionHandoffTick=actionHandoffHistory.reduce((latest,item)=>Math.max(latest,item.tick),-1);
+    const uniqueActionHandoffHistory=actionHandoffHistory.filter(item=>handoffTickCounts.get(item.tick)===1);
+    const lastActionHandoffTick=Math.max(observedLastActionHandoffTick,persistedLastActionHandoffTick);
     const lastOutcomeTick=Math.max(observedLastOutcomeTick,persistedLastOutcomeTick>=0&&persistedLastOutcomeTick<=tick?persistedLastOutcomeTick:-1);
 
     const goalOutcomeMemory:B272State['goalOutcomeMemory']={};
@@ -172,6 +199,7 @@ export class B272EndogenousGoalGenesis {
       version:1,
       tick,lastOutcomeTick,steps,learningUpdates,generatedGoals,acceptedGoals,rejectedGoals,rollbackCount,
       currentGoal,currentGoalId,
+      actionHandoffObservations,actionHandoffMatches,actionHandoffMismatches,lastActionHandoffTick,actionHandoffHistory:uniqueActionHandoffHistory.slice(-128),
       currentAction:isAction(r.currentAction)?r.currentAction:d.currentAction,
       currentConfidence01:isUnit(r.currentConfidence01)?r.currentConfidence01:d.currentConfidence01,
       goalPressure01:isUnit(r.goalPressure01)?r.goalPressure01:d.goalPressure01,
@@ -189,7 +217,24 @@ export class B272EndogenousGoalGenesis {
     };
   }
   snapshot(){return structuredClone(this.state);}
-  diagnostics(){return {...structuredClone(this.state),goalEntropy01:this.goalEntropy(),prototypeDiversity01:this.prototypeDiversity(),goalVectorDiversity01:this.goalVectorDiversity(),actionDiversity01:this.actionDiversity(),endogenousGoalRate01:this.endogenousGoalRate(),goalOutcomeMemoryEntries:Object.keys(this.state.goalOutcomeMemory).length,learnedGoalClosure01:this.learnedGoalClosure01(),externalGoalDependency01:0};}
+  recordActionHandoff(input:{tick:number;goalId:string;generatedAction:ActionKind;selectedAction:ActionKind}){
+    if(!isRecord(input))throw new TypeError('B272 action handoff must be an object');
+    if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick!==this.state.tick)throw new RangeError('B272 action handoff tick must match the current goal tick');
+    if(!isSafeId(input.goalId)||input.goalId!==this.state.currentGoalId)throw new RangeError('B272 action handoff goal must match the current generated goal');
+    if(!isAction(input.generatedAction)||input.generatedAction!==this.state.currentAction)throw new RangeError('B272 action handoff generated action must match the current goal action');
+    if(!isAction(input.selectedAction))throw new RangeError('B272 action handoff selected action is invalid');
+    const latest=this.state.goalHistory[this.state.goalHistory.length-1];
+    if(!latest||latest.tick!==input.tick||latest.id!==input.goalId||latest.action!==input.generatedAction)throw new Error('B272 action handoff has no matching generated-goal evidence');
+    if(input.tick<=this.state.lastActionHandoffTick)throw new Error('B272 action handoff for this tick has already been recorded');
+    if(this.state.actionHandoffObservations>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 action handoff counter reached its safe integer limit');
+    const matched=input.generatedAction===input.selectedAction;
+    this.state.actionHandoffObservations++;
+    if(matched)this.state.actionHandoffMatches++;else this.state.actionHandoffMismatches++;
+    this.state.lastActionHandoffTick=input.tick;
+    this.state.actionHandoffHistory=[...this.state.actionHandoffHistory,{tick:input.tick,goalId:input.goalId,generatedAction:input.generatedAction,selectedAction:input.selectedAction,matched}].slice(-128);
+    return {recorded:true,matched,generatedAction:input.generatedAction,selectedAction:input.selectedAction,observations:this.state.actionHandoffObservations,matches:this.state.actionHandoffMatches,mismatches:this.state.actionHandoffMismatches};
+  }
+  diagnostics(){return {...structuredClone(this.state),goalEntropy01:this.goalEntropy(),prototypeDiversity01:this.prototypeDiversity(),goalVectorDiversity01:this.goalVectorDiversity(),actionDiversity01:this.actionDiversity(),endogenousGoalRate01:this.endogenousGoalRate(),goalOutcomeMemoryEntries:Object.keys(this.state.goalOutcomeMemory).length,learnedGoalClosure01:this.learnedGoalClosure01(),actionHandoffMatchRate01:this.state.actionHandoffObservations?this.state.actionHandoffMatches/this.state.actionHandoffObservations:0,actionHandoffMismatchRate01:this.state.actionHandoffObservations?this.state.actionHandoffMismatches/this.state.actionHandoffObservations:0,externalGoalDependency01:0};}
   private goalEntropy(){
     const hist=this.state.goalHistory.slice(-32); if(!hist.length)return 0;
     const counts=new Map<string,number>(); for(const g of hist)counts.set(g.id,(counts.get(g.id)??0)+1); const n=hist.length; let h=0; for(const c of counts.values()){const p=c/n;h-=p*Math.log(Math.max(1e-9,p));} return clamp01(h/Math.log(Math.max(2,Math.min(32,n))));

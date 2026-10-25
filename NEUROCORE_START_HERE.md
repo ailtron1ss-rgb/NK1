@@ -1,3 +1,226 @@
+## Latest durable checkpoint — WorkPass345: add operational 250-cycle soak (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft and targets the WorkPass331 source branch, not `main`.
+
+- Current verified code SHA before this workflow-only change: `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364`. [WorkPass331 run 40171612592](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171612592) passed canonical kernel and live wiring, B272 handoff calibration (140 cycles), organism smoke, action selection (`79/80` non-wait), spontaneous dialogue/feedback/restore, background clock (`clockExecutions=1; providerCalls=1; staged+acked+persisted=true`), restart persistence, and real HTTP server smoke. The learning/cognitive sibling workflows passed on that code SHA as well.
+- WorkPass345 adds the existing 250-cycle operational scaling test to the canonical workflow. It checks that warmed median latency stays under a 4.5× ratio and emits p95/heap-growth measurements. This broadens the bounded operational soak; it is not equivalent to an hour of unattended initiative.
+- PR #96 head at the time of this change was `c0882cc323fef680b5ab460e1e734893759c2932`, a documentation checkpoint after the green runtime SHA. This change makes a new source commit; exact-head CI must run again.
+
+### Next gates
+1. Verify the 250-cycle operational soak and inspect its latency/heap telemetry on the exact new head.
+2. Add or run a longer wall-clock background initiative test; then exercise configured external provider, UI/Live2D/voice E2E.
+3. Refresh the Release archive only after the source state and required gates are verified; do not mark PR #96 merge-ready yet.
+
+---
+
+## Latest durable checkpoint — WorkPass344: live service smoke is green (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- The source/code SHA `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364` passed [WorkPass331 run 40171612592](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171612592): clean startup/doctor, canonical kernel, B272 strict action handoff, organism smoke, 80-cycle autonomy (`79/80` non-wait selections), spontaneous dialogue feedback/restore, background clock, restart persistence, and live HTTP service smoke.
+- The first HTTP smoke exposed a stale assertion that required exactly 22 architecture flows despite the map being additive. WorkPass343 fixed the assertion to check `validation.ok`, minimum subsystem/flow coverage, and consistency between returned arrays and declared validation counts; failure output now includes observed architecture diagnostics.
+- On the same source SHA, WorkPass108, WorkPass110, WorkPass105, WorkPass102, WorkPass99, WorkPass291–294, WorkPass287–288, and P26 Learning Validation also passed. A redundant duplicate WorkPass331 attempt was cancelled by GitHub Actions concurrency after the successful run; it was not a test failure.
+- The current commit to record this checkpoint is documentation-only. External-provider credentials, mobile/device UI, Live2D/voice visual E2E, long unattended soak, and release archive refresh remain open; PR #96 remains draft.
+
+### Next gates
+1. Add a bounded longer unattended runtime soak and inspect natural action-handoff mismatch rates before adjusting planner weights.
+2. Run real configured-provider and UI/Live2D/voice end-to-end checks when their environment is available.
+3. Refresh the Release archive only after the source state and required gates are verified.
+
+---
+
+## Latest durable checkpoint — WorkPass343: correct stale architecture flow-count assertion (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- WorkPass341 action-handoff calibration passed on SHA `83e2be0df7f8ac4a15dbc69b28541b35d3ceed49`; WorkPass331 and sibling cognitive/learning workflows were green there.
+- WorkPass342 added a real HTTP service smoke to the kernel workflow. On SHA `e89597aaa20093db2f897008f1c8863ec9ae9e91`, organism smoke, autonomy, dialogue-feedback/restore, background-clock initiative and restart persistence all passed before `server:smoke` found a stale assertion requiring exactly 22 cognitive architecture flows. The architecture map is additive; the correct contract is that `validation.flowCount` matches the returned flow array, with minimum coverage preserved.
+- WorkPass343 updates that assertion and enriches its failure diagnostics. This does not hide runtime failures or reduce the architecture validity check. Fresh WorkPass331 and learning workflows on the new exact SHA are required.
+
+### Next gates
+1. Re-run the HTTP service smoke and resolve any subsequent real API/boot failures.
+2. Confirm WorkPass331, P26, WorkPass110 and the sibling evidence/learning workflows on the same exact head.
+3. Continue longer unattended soak and UI/Live2D/voice E2E; refresh the Release archive only after those gates are addressed.
+
+---
+
+## Latest durable checkpoint — WorkPass342: verify live HTTP service startup (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- WorkPass341 calibrated B272 action handoff across 140 deterministic runtime-style cycles: every seventh action is intentionally mismatched, mismatch credit is rejected without mutation, exact counters/rates are checked, and telemetry must survive restore. The expanded handoff regression and all sibling cognitive/learning workflows passed on exact source SHA `83e2be0df7f8ac4a15dbc69b28541b35d3ceed49`; WorkPass331 run [40170774606](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40170774606) succeeded.
+- WorkPass342 adds the real server smoke test to the canonical kernel workflow: child-process startup in an isolated state directory, health readiness, memory inspector temporal bounds, release contract, camera idempotency preflight, read-only cognitive architecture, chat completion, voice status, and Will transport idempotency/collision/ACK behavior. This is a meaningful next step beyond in-process organism tests.
+- **Validated on exact code SHA `b21e7e8f6e0c27f70b7ad8f4f4de0930cb959364`:** [WorkPass331 run 40171612592](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171612592) completed `success`, including the live HTTP service smoke. The stale exact-flow-count assertion was fixed without weakening `validation.ok` or minimum subsystem/flow coverage. WorkPass108/110/105/102/99/291–294/287–288 and P26 all passed on the same SHA. This still does not cover a configured external LLM provider, mobile/device E2E, or an hour-long unattended soak.
+
+### Next gates
+1. Run WorkPass331 with the new live HTTP service smoke test; fix any startup/route failures without weakening API contracts.
+2. Add a longer, bounded unattended soak and inspect natural B272 handoff match/mismatch rates before changing planner weights.
+3. Complete UI/Live2D/voice end-to-end and refresh the release archive; these remain unverified.
+
+---
+
+## Latest durable checkpoint — WorkPass341: long-run action-handoff calibration (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- Latest confirmed base before this change: WorkPass340 head `57249dc536186e9eb2837398d31f977ebe45f519`; WorkPass331 [run 40169007748](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169007748), WorkPass110 [40169007770](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169007770), WorkPass108 [40169007775](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169007775), WorkPass294 [40169007759](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169007759), P26 [40169007782](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169007782), and WorkPass287–293/99/102/105/291/292 all completed successfully on that exact SHA.
+- WorkPass341 adds a 140-cycle deterministic action-handoff calibration: one in seven actions is deliberately mismatched, and the test requires exact counters/rates plus zero learning-state mutation for every rejected mismatch. Only matching handoffs may update B272; all metrics must survive restore.
+- This is an isolated diagnostic/validation improvement, not a planner-weight change. It deliberately avoids changing behavior before a trustworthy match/mismatch rate has been measured. The new exact-head CI result is pending.
+
+### Next gates
+1. Verify WorkPass331 and all P23/learning gates on the new exact SHA; fix any regression without weakening strict handoff credit.
+2. If green, run a longer live-runtime soak and measure naturally occurring handoff mismatch rate before adjusting planner or action-selection weights.
+3. Continue real API/service startup, UI/Live2D/voice end-to-end, and Release archive refresh; these remain unverified.
+
+---
+
+## Latest durable checkpoint — WorkPass340: fix restore-order bug in B272 handoff metrics (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- WorkPass339 added backward-compatible persisted action-handoff diagnostics to B272 (`observations`, `matches`, `mismatches`, last tick, bounded history and rates) and connects one event at each real/synthetic feedback branch. The strict `learnFromOutcome` gate remains unchanged; it still refuses a different action. A focused regression checks match/mismatch accounting, no false credit, duplicate protection, and restore; the spontaneous-dialogue integration checks that telemetry survives the canonical runtime path.
+- CI exposed a source defect in the new restore code: `persistedLastActionHandoffTick` was used before initialization. It caused TS2448/TS2454 in P26 typecheck and a ReferenceError in WorkPass110's trusted shadow scheduler integration. WorkPass340 moves that variable's validated initialization before history reduction; no handoff or learning checks are weakened.
+- Before WorkPass339, exact SHA `4c019acd95789d9aa819accf1f94e5838d8dd1ca` had passed WorkPass331 run [40168339627](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168339627). That result is historical, not a pass for the new code. WorkPass340 now **passes on exact SHA `f1a0f6716841f9b42d25051eea56bae3bc97f232`**: WorkPass331 [run 40168851799](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168851799), WorkPass110 [40168851732](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168851732), P26 [40168851792](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168851792), WorkPass287–288 [40168851794](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168851794), plus WorkPass293/102/99/291/292/108/105/294, all completed successfully on that exact SHA. Logs show `B272_ACTION_HANDOFF_DIAGNOSTICS=PASS`, `CLEAN_ORGANISM_SMOKE=PASS`, `CLEAN_AUTONOMY=PASS 79/80`, `WORKPASS50_AUTONOMOUS_RUNTIME_LOOP=PASS`, `WORKPASS50_BACKGROUND_CLOCK=PASS (clockExecutions=1; providerCalls=1; staged+acked+persisted=true)`, and `CLEAN_RESTART_PERSISTENCE=PASS`.
+
+### Next gates
+1. Confirm P26 typecheck, WorkPass110 trusted shadow scheduler, and the new focused handoff regression pass on one exact SHA.
+2. Confirm WorkPass331 passes smoke, 80-cycle action selection, background-clock initiative, dialogue feedback/restore, and restart persistence.
+3. Measure action match/mismatch rate over a longer run before any planner-weight adjustment; continue with real API/service startup, UI/Live2D/voice E2E, and Release archive refresh.
+
+---
+
+## Latest durable checkpoint — WorkPass339: instrument endogenous-goal action handoff (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- Previous exact-head `4c019acd95789d9aa819accf1f94e5838d8dd1ca` passed WorkPass331 [run 40168339627](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168339627), with `CLEAN_AUTONOMY=PASS 79/80`, `WORKPASS50_AUTONOMOUS_RUNTIME_LOOP=PASS`, `WORKPASS50_BACKGROUND_CLOCK=PASS (clockExecutions=1; providerCalls=1; staged+acked+persisted=true)`, and `CLEAN_RESTART_PERSISTENCE=PASS`. WorkPass294, 99, 108, 102, 291, 287–288, 110, P26, 292, 105 and 293 also passed on that SHA.
+- WorkPass339 adds runtime/persisted B272 action-handoff telemetry to make visible when the selected action differs from the endogenous-goal proposal. The strict B272 outcome gate remains unchanged; outcomes for a different selected action are still not credited to B272. The new counter/history schema is backward-compatible with older snapshots, and the live integration test requires telemetry to survive restart.
+- Exact-head validation of WorkPass339's instrumentation and tests is pending. Do not claim all green until the new WorkPass331 and focused learning workflows pass on the resulting SHA.
+
+### Next gates
+1. Confirm the new handoff regression and updated background dialogue loop pass on the exact head; fix any real mismatch in the telemetry boundary.
+2. Compare handoff match-rate over a longer run before deciding whether planner weighting needs adjustment; avoid amplifying B272 action bias without measured evidence.
+3. Finish longer unattended operation, real service/API smoke, and UI/Live2D/voice end-to-end. The release archive remains unrefreshed and PR #96 remains draft.
+
+---
+
+## Latest durable checkpoint — WorkPass338: add initiative-to-dialogue end-to-end gates (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- WorkPass336 fixed the B272 generated-action mismatch by skipping B272 credit when another action was actually selected; validation stays strict and unrelated outcome learners still receive the executed action.
+- WorkPass337 was validated by [WorkPass331 run 40168142987](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168142987) on SHA `8f5e4da3c37b7e218a259d3e11ec1b1329ec8e15`: Node/npm preflight 4/4, doctor, canonical kernel, runtime wiring, organism smoke, autonomous action selection (`CLEAN_AUTONOMY=PASS 79/80`), and restart persistence all passed. WorkPass110/108/105/102/99, WorkPass287–294, and P26 also passed on that SHA.
+- WorkPass338 adds two stronger existing tests to the focused workflow. The first verifies spontaneous dialogue generation → exactly-once UI acknowledgement → explicit-response interest learning → persistence → restart without duplicate delivery; the second verifies the actual background scheduler can stage and persist an unsolicited turn without a manual cognitive step.
+- **Validated on exact SHA `4c019acd95789d9aa819accf1f94e5838d8dd1ca`:** [WorkPass331 run 40168339627](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168339627) succeeded. Logs confirm `CLEAN_ORGANISM_SMOKE=PASS`, `CLEAN_AUTONOMY=PASS 79/80`, `WORKPASS50_AUTONOMOUS_RUNTIME_LOOP=PASS`, `WORKPASS50_BACKGROUND_CLOCK=PASS (clockExecutions=1; providerCalls=1; staged+acked+persisted=true)`, and `CLEAN_RESTART_PERSISTENCE=PASS`. Node/npm preflight (4/4), doctor, canonical kernel, live runtime wiring, WorkPass294, WorkPass99 replay, WorkPass108, WorkPass102, WorkPass291, WorkPass287–288, WorkPass110, P26, WorkPass292, WorkPass105, and WorkPass293 also passed on that same SHA.
+- This broadens internal autonomous initiative validation; it does not yet prove uninterrupted hour-long operation, live provider reliability, outbound messaging, or production readiness. UI/Live2D/voice E2E and Release archive refresh remain open.
+
+### Next gates
+1. Run both initiative tests on the new exact head and repair any real lifecycle or scheduler issue they expose.
+2. Continue with longer unattended runtime and API/service startup on the same exact commit.
+3. Complete UI/Live2D/voice end-to-end and refresh the Release archive; neither is verified by the current focused workflow.
+
+---
+
+## Latest durable checkpoint — WorkPass337: test autonomous action selection in the kernel workflow (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft pending end-to-end checks.
+
+- WorkPass336 on source SHA `13671b6a3f3321b6c0074ca4729bd8fd4fc34996` fixed the B272 outcome/action mismatch without relaxing the learner's strict binding. Exact-head WorkPass331 passed: Node/npm preflight, clean-checkout doctor, canonical kernel test, live runtime wiring, 30-cycle autonomous smoke, and restart persistence. WorkPass110, WorkPass108, WorkPass294, replay benchmark WorkPass99, WorkPass292–293, and P26 Learning Validation also passed on the same SHA.
+- WorkPass337 adds the existing 80-cycle `test:autonomy` script to the focused kernel workflow. Exact-head [WorkPass331 run 40168142987](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168142987) completed **success** on `8f5e4da3c37b7e218a259d3e11ec1b1329ec8e15`: the autonomy test reported `CLEAN_AUTONOMY=PASS 79/80`, organism smoke reported `CLEAN_ORGANISM_SMOKE=PASS`, and restart persistence reported `CLEAN_RESTART_PERSISTENCE=PASS`. Node/npm preflight, doctor, canonical kernel and live runtime wiring also passed.
+- On that same SHA, WorkPass110, WorkPass108, WorkPass105, WorkPass102, WorkPass99, WorkPass287–288, WorkPass291–294, and P26 Learning Validation completed successfully. This is strong focused integration evidence, not a claim about hourly unattended initiative, long-horizon stability, or production readiness. UI/Live2D/voice E2E, longer unattended soak, and release archive refresh remain open.
+
+### Next gates
+1. Observe the new 80-cycle autonomy test, repair runtime issues it uncovers without weakening the action/learning contracts.
+2. Run the remaining cognitive contracts and a long-horizon operational soak on the exact resulting head.
+3. Continue to real API/service startup plus Live2D/voice end-to-end; production readiness is not established by the current focused CI.
+
+---
+
+## Latest durable checkpoint — WorkPass336: bind goal learning to the action actually executed (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft and is not release-approved.
+
+- WorkPass335's extended CI exposed a genuine runtime fault after the Node/npm preflight, canonical kernel test, and live-kernel wiring test passed: `npm run test:smoke` failed at `OrganismCore.feedback` because `B272EndogenousGoalGenesis.learnFromOutcome` rejected an action different from the one B272 generated.
+- Cause: B272 is an action-bound goal/action-prototype learner, while the live runtime can legitimately select another action through the rest of its planning and gating path. Passing that different action into B272 violates its own learning contract.
+- Fix: both the no-world-transition and real-world-transition paths now call B272's strict outcome learner only when `trace.selected.action === currentGoal.action`. No validation was removed or relaxed; independent outcome learners still receive the executed action.
+- The exact failing workflow was PR merge SHA `59e814e9c953e58f9cd1a047fcb4d8f015b56611`; the new source commit triggers a fresh run. Do not treat the fix as validated until `test:smoke` and `test:restart` pass on the new head.
+
+### Next gates
+1. Confirm the smoke gate clears the B272 mismatch and observe whether the 30-cycle autonomous loop completes.
+2. Confirm restart persistence and all relevant cognitive/learning workflows on the resulting exact SHA.
+3. Continue to a real service/API startup and durable memory check; voice/Live2D E2E and release asset refresh remain open.
+
+---
+
+## Latest durable checkpoint — WorkPass335: add boot and restart-persistence integration gates (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains a draft. Do not treat these changes as a release-ready artifact.
+
+- WorkPass334 fixed a real fixture-ordering defect in `workpass243-host-owned-independent-evaluation-services.mjs`: after proving that `0720` executable permissions are rejected, the test restores the fixture to `0700` so the following run-root identity assertion reaches the intended guard. Security checks were not loosened.
+- WorkPass331 unified cognitive-kernel workflow passed on SHA `a12a4e9ec8a8418c4070620ef56e3052f6189d5d`; WorkPass110 was queued/pending on that same SHA when last inspected. Those results are not evidence for the later commits.
+- WorkPass335 adds existing `npm run test:smoke` and `npm run test:restart` steps to the focused kernel workflow, adds their test files to both `push` and `pull_request` path filters, and adds `runtime/neuro-kurisu/package.json` so script changes re-trigger these gates. Workflow commits: `468e2e68906f380ac0b9c65c822669879160b2aa` and `19d79192af27d728942c7d76501d95e99febff69`; checkpoint/changelog commits: `9b51e3850dc109f1306824d70c521c59a3ebca18` and `ddcb2024fd272549d6b2ed6f328144833ea93bcb`.
+- Final-head CI must rerun after the latest checkpoint update. No success is claimed for the new smoke/restart gates until their exact-head jobs finish. Focused tests still do not prove full perception-to-action operation, voice/Live2D end-to-end, production deployment, or learning uplift.
+
+### Next gates
+1. Confirm the fresh WorkPass110 evaluator regression on the final head; repair any next failing assertion without weakening independent-authority protections.
+2. Confirm kernel + organism smoke + restart persistence all pass on one exact SHA.
+3. If those pass, exercise clean install/doctor, API startup, and a real causal microcycle with durable memory after restart; keep UI/Live2D/voice and the release ZIP as explicitly open gates.
+
+---
+
+## Latest durable checkpoint — WorkPass334: isolate host-owned evaluator regression checks (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains a draft pending integration and end-to-end validation.
+
+- Exact-head CI at `756f7448fbbd5a254b040be649693bb4fed52535` passed the unified cognitive kernel, replay benchmark, correlated external postconditions, reflective payload budget, WorkPass108, WorkPass292–293, WorkPass102, WorkPass105, WorkPass287–288, and P26 Learning Validation. WorkPass110 failed in `workpass243-host-owned-independent-evaluation-services.mjs`.
+- Root cause: the regression intentionally changed the executor fixture's permissions to assert rejection of group/world-writable executables, then reused that fixture without restoring its mode. The next run-root-replacement assertion was masked by the correctly functioning executable permission guard.
+- Fix committed: restore fixture mode to `0700` immediately after the permission-rejection assertion. Runtime security checks are unchanged; the test now isolates permission integrity and run-root identity replacement as separate invariants.
+- Commits: fixture fix `75c441a6a26274e189cbb0d54c8f17f3b633ace5`; checkpoint/changelog `eef339abdecc31c8c7698cdf911a2bb6c5d372dc`. These were created after the previously tested SHA. The latest head's WorkPass110 rerun must finish before this fix is described as validated.
+
+### Next gates
+1. Confirm WorkPass110 and WorkPass331 on the final checkpoint SHA; inspect actual failing-step output if any regression remains.
+2. Run runtime boot, cognition-cycle execution, durable memory across restart, and basic API/CLI smoke on one exact SHA; focused contract tests do not prove full organism readiness.
+3. Continue toward a clean install and integrated perception→appraisal→planning→action→reflection→consolidation path; UI/Live2D/voice end-to-end and release artifact refresh remain open.
+4. Do not claim production readiness or learning uplift without measured end-to-end and frozen-holdout evidence.
+
+---
+
+## Latest durable checkpoint — WorkPass333: restore truthful independent-evaluation status (2026-10-24)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR #96 remains draft and targets WorkPass331's source branch, not `main`.
+
+- WorkPass332 live cognitive-kernel wiring passed its exact-HEAD kernel workflow: [run 40125747286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40125747286). The WorkPass287–288 contracts, replay strategy benchmark, WorkPass292, WorkPass293, WorkPass294, WorkPass102, WorkPass105, P26 learning validation and WorkPass108 also passed on SHA `6f9143d8f329e707e7cbeb890d7a197199ddc083`.
+- WorkPass110 failed at `workpass203-independent-candidate-evaluator.mjs` when verifier failure incorrectly lowered execution-quality to non-executable. The root cause was coupling `executable` to `bindingVerified`, which conflated successful sandbox execution with trust in its trace.
+- WorkPass333 separates these facts. A valid sandbox execution remains executable even if verification fails, while task success, trusted run ID/steps, verified capability coverage and ledger admission still require independent binding. Added regression assertions for the exact distinction.
+- Code/test/doc edits have been pushed after the WorkPass332 SHA; fresh exact-HEAD Actions results are pending. Do not report the WorkPass110 correction as validated until the rerun passes.
+
+### Next gates
+1. Confirm fresh WorkPass110 and full runtime typecheck pass on the newest branch SHA.
+2. Run the canonical kernel integration plus organism smoke and persistence/restart tests together on the same SHA; source-contract tests alone are not a complete runtime proof.
+3. Check production UI build/database migration, browser Live2D E2E and Android/Termux voice execution.
+4. Do not change learning/retrieval quality scores without paired multi-seed, frozen-holdout uplift on the same validated corpus. Release remains non-production-approved until all release gates close.
+
+---
+
+## Latest durable checkpoint — WorkPass332: live runtime kernel wiring (2026-10-24)
+
+**Working branch:** `workpass332-live-runtime-kernel-2026-10-24`, based on `workpass331-unified-cognitive-kernel-2026-10-24`. Do not use `main` as the source-code integration target; it is a release/metadata branch.
+
+- Connected the real `OrganismRuntime` execution path to `CanonicalCognitiveKernel`, reusing the runtime's existing `CognitiveEventFabric` and `UnifiedCognitiveCycle`.
+- Replaced the live `recordOperationalCycle → verifyOperationalCycle → unifiedCycle.evaluate` path with `beginDecisionCycle → completeCycle`. Existing domain systems still own perception/prediction, appraisal, attention, memory, goals, planning, action, outcome verification, learning and self-update; the kernel binds their events into one causal cycle.
+- Added `runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs` and placed it in `.github/workflows/workpass331-unified-cognitive-kernel.yml`.
+- Updated the WorkPass331 kernel report and `CHANGELOG.md`. Code and workflow commits are pushed on the WorkPass332 branch; this new integration is **not yet validated on its exact final HEAD**.
+- The parent WorkPass331 head `5f318ad801f30ddd82150ed6be56baafc1c567a9` had successful results for its kernel and learning-validation workflows, including run [40120536327](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40120536327) and [40120536434](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40120536434). Those results do not substitute for fresh checks on WorkPass332.
+- Local execution could not be used in this environment because GitHub hostname resolution failed; use exact-head GitHub Actions as the validation source.
+
+### Next acceptance gates
+1. Verify WorkPass332's runtime-wiring and kernel contract runs complete with actual steps.
+2. Run runtime/app TypeScript checks, organism smoke, learning replay and persistence/restart regressions on the exact head.
+3. Re-run production app build and migration, then real browser/Live2D and Android/Termux voice/device integration.
+4. Keep recall/learning scores unchanged until a paired multi-seed benchmark on the same validated corpus and an immutable holdout shows measurable uplift. Keep the release marked non-production-approved until all release gates close.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.

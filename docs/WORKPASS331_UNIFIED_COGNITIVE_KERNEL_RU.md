@@ -35,3 +35,18 @@
 `node --experimental-strip-types runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs`
 
 Workflow: `.github/workflows/workpass331-unified-cognitive-kernel.yml`.
+
+## Follow-up — WorkPass332: подключение к живому runtime (2026-10-24)
+
+### Изменения
+- `OrganismRuntime` теперь создаёт `CanonicalCognitiveKernel` над теми же экземплярами `CognitiveEventFabric` и `UnifiedCognitiveCycle`, которые использовались runtime до этого прохода.
+- Передача decision-stage events идёт через `beginDecisionCycle`; фактический outcome, learning и self-update закрывают тот же логический tick через `completeCycle`.
+- Удалён прежний параллельный live-путь `recordOperationalCycle → verifyOperationalCycle → unifiedCycle.evaluate`; runtime получает lineage/result от завершения canonical kernel.
+- Добавлен отдельный регрессионный тест привязки runtime и включён в workflow WorkPass331.
+
+### Ограничения и критерий приёмки
+- Кодовая связь теперь включена в основной путь runtime; это не доказывает полностью рабочий запуск всех провайдеров, БД, Android/Termux-аудио или браузерного Live2D.
+- Не повышать оценку эффективности обучения без независимого benchmark uplift на идентичном корпусе и frozen holdout.
+- Приёмка этого прохода: runtime-wiring regression + kernel contract test на точном HEAD; затем TypeScript checks, organism smoke, persistence/restart, UI/database build и реальные browser/device E2E.
+- Если Actions не исполняет шаги, помечать интеграцию как кодово внесённую, но не проверенную, не объявлять тесты успешными.
+

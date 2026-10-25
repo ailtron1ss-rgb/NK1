@@ -371,7 +371,10 @@ export function createIndependentSkillCandidateEvaluator(
         plannedRunId: plannedRun?.runId ?? null,
         seed: task.seed,
         split: task.split,
-        executable: executable && bindingVerified,
+        // Executability reports whether the sandbox completed with a structurally valid trace.
+        // It is deliberately separate from bindingVerified: without independent binding,
+        // the trace/run ID remains untrusted and cannot count toward task success or promotion.
+        executable,
         observedStepIds: bindingVerified ? execution?.observedStepIds ?? [] : [],
         bindingVerified,
         verifierPassed: executable && bindingVerified && verifierPassed,
@@ -388,7 +391,7 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          executable,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {

@@ -16,6 +16,7 @@
     "inventory": "node tools/super-inventory.mjs",
     "audit:quick": "npm run inventory && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax",
     "doctor": "node tools/super-doctor.mjs",
+    "test:runtime-prerequisites": "node --test tools/runtime-requirements.test.mjs tools/super-install.test.mjs",
     "install:all": "node tools/super-install.mjs",
     "backup": "node tools/super-backup.mjs",
     "restore": "node tools/super-restore.mjs",

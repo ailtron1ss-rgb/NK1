@@ -1,13 +1,10 @@
 # NeuroCore — repository working rules
 
-> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md) and [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), then refresh the live branch head, stacked PR state, exact-head Actions status and open-work register. The active learning stack is WorkPass124 on top of WorkPass123; PR #12 is draft and unmerged. WorkPass126 hardens durable skill-store schema and payload-integrity validation; its tests and exact-head CI remain unverified. The release/metadata `main` branch is not the direct merge target for the source stack. The mission is persistent across chats; do not ask the user to restate it.
-
-## Latest checkpoint
-
-Read [WorkPass127 proposal authenticity report](docs/WORKPASS127_PROMOTION_PROPOSAL_AUTHENTICITY_2026-10-21.md) first. The candidate store now rejects copied or fabricated proposal objects using a module-private same-process issuance registry; successful lifecycle fixtures use signed manifest-bound artifacts. Runtime test/typecheck/CI are not yet verified, and the broader activation call-graph audit remains open.
-
-
-Read [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md), then [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), before resuming. Inspect the exact-head CI and run the owning tests. Active learning work is `workpass124-learning-evidence-hardening` (PR #12, draft/unmerged), stacked on `workpass123-authenticated-skill-lifecycle` (PR #11). The full source stack is based on `workpass70-source`; `main` is a separate release/metadata branch with no common ancestor reported by GitHub compare. Do not merge directly to `main`.
+> **Current continuation point (2026-10-24):** read `NEUROCORE_START_HERE.md`, then `docs/WORKPASS331_UNIFIED_COGNITIVE_KERNEL_RU.md`. Current source integration work is on `workpass332-live-runtime-kernel-2026-10-24`, based on `workpass331-unified-cognitive-kernel-2026-10-24`. Keep `main` stable as the release/metadata branch; do not merge the source stack into `main` without a separately verified release sync.
+>
+> WorkPass332 now routes the actual `OrganismRuntime` cycle through `CanonicalCognitiveKernel` and adds a regression that ensures the live path no longer bypasses it through manual `recordOperationalCycle` / direct `unifiedCycle.evaluate`. The code and CI edits exist on the WorkPass332 branch; **do not treat the exact-head integration as validated until its fresh Actions run has executed and passed.**
+>
+> Parent WorkPass331 commit `5f318ad801f30ddd82150ed6be56baafc1c567a9` had successful kernel/learning-validation Actions runs on 2026-10-24, but those results do not prove the new WorkPass332 change. Continue with exact-head CI, runtime/app typechecks, organism smoke, persistence/restart and UI/device E2E. Do not claim recall uplift without a paired multi-seed comparison on the same validated corpus and frozen holdout.
 
 ## Project objective
 
