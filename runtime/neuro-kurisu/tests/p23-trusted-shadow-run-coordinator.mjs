@@ -29,7 +29,7 @@ try {
     planFingerprint: 'c'.repeat(64),
     command: { ...command, runRoot: join(root, 'failed-runs'), surviveDir: join(root, 'failed-survive') },
   }), /registry persistence failed/);
-  await assert.rejects(() => runTrustedShadowLearningProcess({
+  assert.throws(() => runTrustedShadowLearningProcess({
     core: {}, runtimeVersion: '35.90.0', run, planFingerprint: 'b'.repeat(64), command,
   }), /trusted OrganismCore run registrar is required/);
   let rejectedLaneRegistrations = 0;
