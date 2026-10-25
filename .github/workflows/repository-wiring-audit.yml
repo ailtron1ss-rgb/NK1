@@ -5,6 +5,8 @@ on:
     branches:
       - workpass70-source
       - audit/repository-wiring-contracts-2026-10-25
+      - feature/memory-budget-restore-integrity-20261025
+      - work/node24-project-pin-alignment-20261025
     paths:
       - ".github/workflows/repository-wiring-audit.yml"
       - ".github/workflows/**"
@@ -13,6 +15,11 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "tools/verify-repository-wiring.mjs"
       - "tools/verify-repository-wiring.test.mjs"
+      - ".nvmrc"
+      - "tools/project-runtime-pin.mjs"
+      - "tools/project-runtime-pin.test.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-doctor.mjs"
   pull_request:
     branches:
       - workpass70-source
@@ -23,6 +30,11 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "tools/verify-repository-wiring.mjs"
       - "tools/verify-repository-wiring.test.mjs"
+      - ".nvmrc"
+      - "tools/project-runtime-pin.mjs"
+      - "tools/project-runtime-pin.test.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-doctor.mjs"
   workflow_dispatch:
 
 permissions:
@@ -53,6 +65,9 @@ jobs:
             *.*.*) test "$actual" = "$expected" ;;
             *) case "$actual" in "$expected"|"$expected".*) ;; *) exit 1 ;; esac ;;
           esac
+
+      - name: Test project Node/npm runtime pin contract
+        run: npm run test:runtime-pin-contract
 
       - name: Test repository wiring audit fixtures
         run: npm run test:repo-wiring
