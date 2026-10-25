@@ -1,3 +1,12 @@
+## Exact-head CI repair — restore sanitization, Node 24 and regression integrity (2026-10-25)
+
+- [FIX] `ParametricPolicyLearner.restore` now sanitizes counters, diagnostics, timestamps and the freeze flag as well as weights/biases, preventing a corrupted snapshot from poisoning uncertainty or subsequent training.
+- [FIX] Updated `p26-true-learning.mjs` to require strict rejection of NaN/Infinity training controls and assert zero model mutation. The input-integrity contract already requires this behavior; the old learning test contradicted it.
+- [FIX] `P26TrueLearningEngine.restore` now validates state version, normalizes/deduplicates bounded holdout evidence IDs, sanitizes every persisted metric, derives generalization from the evidence list, and recomputes training exposure/holdout delta instead of trusting caller-supplied diagnostics.
+- [FIX] Removed the Node 24 strip-only parameter property from `P23TrustedShadowLearningScheduler`.
+- [FIX] Corrected stale integrity assertions: malformed cognitive-cycle history fails closed to all required stages; reverse-order outcome samples now use the verifier ID in the canonical manifest; the P23 baseline-lane guard is tested as a synchronous throw; and the independent evaluator regression no longer declares a duplicate top-level identifier.
+- [EVIDENCE] Latest exact-head CI had passing runtime typecheck, WorkPass291 payload budget, WorkPass292 experience lanes, WorkPass294 correlated postconditions, WorkPass99 replay strategy and WorkPass102 reservoir checks. These fixes address the remaining observed failures; fresh exact-head results are still required.
+
 ## Node 24 compatibility and P26 learning input integrity follow-up (2026-10-25)
 
 - [FIX] Converted `P23CompoundRepairRevisionCoordinator` to explicit constructor field assignments so Node 24 strip-only execution can import the coordinator.

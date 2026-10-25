@@ -366,7 +366,7 @@ const expectedScheduledRun = mutableAuthority.validationPlan.runs.find(run => ru
 assert.ok(expectedScheduledRun);
 const expectedScheduledRunId = expectedScheduledRun.runId;
 const snapshotContexts = [];
-const snapshotEvaluator = createIndependentSkillCandidateEvaluator({
+const snapshotAuthorityEvaluator = createIndependentSkillCandidateEvaluator({
   tasks: authorityTasks,
   environmentFingerprint: 'd'.repeat(64),
   experimentAuthority: mutableAuthority,
@@ -380,7 +380,7 @@ const snapshotEvaluator = createIndependentSkillCandidateEvaluator({
 expectedScheduledRun.runId = 'tampered-after-construction';
 mutableAuthority.method = 'attacker-method';
 mutableAuthority.manifest[0].promptFingerprint = '0'.repeat(64);
-const snapshotResult = await snapshotEvaluator({
+const snapshotResult = await snapshotAuthorityEvaluator({
   payload, payloadFingerprint: digest(payload),
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },

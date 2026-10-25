@@ -111,3 +111,16 @@ The current exact-head run passed runtime typecheck but the P26 input-integrity 
 The P26 sequential benchmark also called `trainInterleaved`, which did not exist in the engine despite being part of the required continual-learning evaluation. A bounded implementation now interleaves current-task SGD with replay, limits each old replay row's conflict screening to 64 sampled current examples, blocks contradictory same-action labels from similar state contexts, and separately reports blocked/eligible rows and online/replay updates. Tests may still reveal contract tuning needed; synthetic performance remains diagnostic only.
 
 WorkPass293 exposed another strip-only TypeScript parameter property in the same coordinator; it now initializes explicit fields.
+
+## Tenth compatibility batch — restore sanitization and regression/Node 24 consistency (2026-10-25)
+
+The newest full CI matrix identified several independent issues:
+- `ParametricPolicyLearner.restore` repaired weight arrays and biases but trusted persisted update counters and diagnostics. NaN/Infinity in these fields caused the P26 input-integrity test to fail even when weights were finite. Restoration now bounds all learned metrics, counters, timestamps and the boolean freeze flag.
+- The P26 true-learning test expected NaN/Infinity optimizer settings to be silently accepted, while the separate integrity contract explicitly requires these inputs to throw before any mutation. The learning test now checks strict rejection and snapshot identity.
+- P26's higher-level state restore trusted metrics by object spread and allowed duplicate evidence IDs in the stored holdout list. It now rebuilds a clean v1 state, restores the canonical learner, sanitizes counters/ratios/timestamps, deduplicates normalized bounded evidence IDs, derives holdout maturity from evidence count and recomputes exposure and delta values.
+- Node 24 strip-only encountered the scheduler constructor's parameter property; it is replaced by explicit field assignment.
+- The cognitive-cycle malformed-history test expected a partial list despite the runtime contract intentionally rejecting malformed history in full. The expected result now matches that fail-closed contract.
+- The outcome-order-invariance test used a verifier ID that did not match its task manifest and was therefore correctly rejected; it now uses the canonical verifier ID.
+- The P23 guard throws synchronously before returning a process promise, so the test now uses `assert.throws`. The evaluator syntax audit also found a duplicate `snapshotEvaluator` declaration; the second authority-snapshot scenario now has its own identifier.
+
+**Verification status: implemented, exact-head CI pending.** These repairs do not claim real learning uplift, generalization, or production readiness. The WorkPass70 release archive remains unchanged.

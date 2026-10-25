@@ -31,4 +31,25 @@ const restored=new P26TrueLearningEngine();
 restored.restore(engine.snapshot());
 assert.equal(restored.metrics().generalizationEvidence01,.05,'independent evidence count should survive persistence');
 assert.equal(restored.recordVerifiedHoldout(evidence).accepted,false,'duplicate guard should survive persistence');
+
+const poisoned=new P26TrueLearningEngine();
+poisoned.restore({
+  metrics:{
+    outcomeSamples:NaN,onlineUpdates:-1,replayUpdates:Infinity,trainingExposure01:NaN,
+    independentHoldoutSamples:999,generalizationEvidence01:1,learningDelta01:NaN,recentLoss01:Infinity,
+    holdoutBaseline01:.4,holdoutLearned01:.8,holdoutDelta01:NaN,lastUpdatedAt:Infinity,
+  },
+  processedTraceIds:['trace-a','trace-a',null,'x'.repeat(300)],
+  verifiedHoldoutEvidence:[evidence,{...evidence,learned01:.1}],
+});
+const safeSnapshot=poisoned.snapshot();
+assert.ok(Object.values(safeSnapshot.metrics).every(Number.isFinite),'restored P26 diagnostics must be finite');
+assert.equal(safeSnapshot.metrics.outcomeSamples,0);
+assert.equal(safeSnapshot.metrics.onlineUpdates,0);
+assert.equal(safeSnapshot.metrics.replayUpdates,0);
+assert.equal(safeSnapshot.metrics.trainingExposure01,0);
+assert.equal(safeSnapshot.metrics.independentHoldoutSamples,1,'duplicate evidence IDs must not inflate holdout count');
+assert.equal(safeSnapshot.metrics.generalizationEvidence01,.05,'generalization must derive from deduplicated evidence, not caller metrics');
+assert.equal(safeSnapshot.metrics.holdoutDelta01,.4,'holdout delta is recomputed from bounded endpoints');
+assert.deepEqual(safeSnapshot.processedTraceIds,['trace-a']);
 console.log('P26_HOLDOUT_PROVENANCE=PASS',JSON.stringify({trainingExposure01:restored.metrics().trainingExposure01,generalizationEvidence01:restored.metrics().generalizationEvidence01,independentHoldoutSamples:restored.metrics().independentHoldoutSamples}));

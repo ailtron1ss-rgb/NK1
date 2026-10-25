@@ -43,12 +43,28 @@ const boundedEvidenceId=(value:unknown,max=256):string|null=>{
   if(!normalized||normalized.length>max||/[\u0000-\u001f\u007f-\u009f]/.test(normalized))return null;
   return normalized;
 };
-const isVerifiedHoldoutEvidence=(value:unknown):value is P26VerifiedHoldoutEvidence=>{
-  if(!value||typeof value!=='object'||Array.isArray(value))return false;
+const normalizeVerifiedHoldoutEvidence=(value:unknown):P26VerifiedHoldoutEvidence|null=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
   const row=value as Partial<P26VerifiedHoldoutEvidence>;
-  return [row.evidenceId,row.taskId,row.protocolId,row.verifierId,row.sampleSetHash].every(v=>boundedEvidenceId(v)!==null)&&
-    [row.baseline01,row.learned01].every(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1);
+  const evidenceId=boundedEvidenceId(row.evidenceId);
+  const taskId=boundedEvidenceId(row.taskId);
+  const protocolId=boundedEvidenceId(row.protocolId);
+  const verifierId=boundedEvidenceId(row.verifierId);
+  const sampleSetHash=boundedEvidenceId(row.sampleSetHash);
+  if(!evidenceId||!taskId||!protocolId||!verifierId||!sampleSetHash)return null;
+  if(![row.baseline01,row.learned01].every(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1))return null;
+  return {evidenceId,taskId,protocolId,verifierId,sampleSetHash,baseline01:row.baseline01!,learned01:row.learned01!};
 };
+const isVerifiedHoldoutEvidence=(value:unknown):value is P26VerifiedHoldoutEvidence=>
+  normalizeVerifiedHoldoutEvidence(value)!==null;
+const safeP26Count=(value:unknown):number=>
+  typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+const safeP26Ratio=(value:unknown,fallback=0):number=>
+  typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
+const safeP26Timestamp=(value:unknown):number=>
+  typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+const safeP26SignedDelta=(value:unknown):number=>
+  typeof value==='number'&&Number.isFinite(value)?Math.max(-1,Math.min(1,value)):0;
 
 export const defaultP26TrueLearning=():P26TrueLearningState=>({
   version:1,policy:defaultParametricPolicy(),
@@ -90,20 +106,48 @@ export class P26TrueLearningEngine{
   private state=defaultP26TrueLearning();
   restore(raw?:Partial<P26TrueLearningState>|null){
     const d=defaultP26TrueLearning();
-    const verifiedHoldoutEvidence=Array.isArray(raw?.verifiedHoldoutEvidence)
-      ? raw!.verifiedHoldoutEvidence.filter(isVerifiedHoldoutEvidence).slice(-4096)
+    if(raw?.version!==undefined&&raw.version!==1)throw new RangeError('unsupported P26 true-learning state version');
+    const evidenceById=new Map<string,P26VerifiedHoldoutEvidence>();
+    for(const rawEvidence of Array.isArray(raw?.verifiedHoldoutEvidence)?raw!.verifiedHoldoutEvidence:[]){
+      const evidence=normalizeVerifiedHoldoutEvidence(rawEvidence);
+      if(!evidence||evidenceById.has(evidence.evidenceId))continue;
+      evidenceById.set(evidence.evidenceId,evidence);
+      if(evidenceById.size>=4096)break;
+    }
+    const verifiedHoldoutEvidence=[...evidenceById.values()];
+    const sourceMetrics=raw?.metrics??{};
+    const outcomeSamples=safeP26Count(sourceMetrics.outcomeSamples);
+    const onlineUpdates=Math.min(outcomeSamples,safeP26Count(sourceMetrics.onlineUpdates));
+    const replayUpdates=safeP26Count(sourceMetrics.replayUpdates);
+    const holdoutBaseline01=safeP26Ratio(sourceMetrics.holdoutBaseline01);
+    const holdoutLearned01=safeP26Ratio(sourceMetrics.holdoutLearned01);
+    this.learner.restore(raw?.policy);
+    const processedTraceIds=Array.isArray(raw?.processedTraceIds)
+      ? [...new Set(raw!.processedTraceIds.filter((value):value is string=>
+          typeof value==='string'&&value.length>0&&value.length<=256&&value.trim().length>0&&
+          !/[\\u0000-\\u001f\\u007f-\\u009f]/.test(value)))].slice(-4096)
       : [];
     this.state={
-      ...d,
-      ...(raw??{}),
-      metrics:{...d.metrics,...(raw?.metrics??{})},
-      processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.slice(-4096):[],
+      version:1,
+      policy:this.learner.snapshot(),
+      metrics:{
+        outcomeSamples,
+        onlineUpdates,
+        replayUpdates,
+        trainingExposure01:0,
+        independentHoldoutSamples:verifiedHoldoutEvidence.length,
+        learningDelta01:safeP26Ratio(sourceMetrics.learningDelta01),
+        recentLoss01:safeP26Ratio(sourceMetrics.recentLoss01),
+        generalizationEvidence01:clamp(verifiedHoldoutEvidence.length*.05),
+        holdoutBaseline01,
+        holdoutLearned01,
+        holdoutDelta01:safeP26SignedDelta(holdoutLearned01-holdoutBaseline01),
+        lastUpdatedAt:safeP26Timestamp(sourceMetrics.lastUpdatedAt),
+      },
+      processedTraceIds,
       verifiedHoldoutEvidence,
     };
-    this.state.metrics.independentHoldoutSamples=verifiedHoldoutEvidence.length;
-    this.state.metrics.generalizationEvidence01=clamp(verifiedHoldoutEvidence.length*.05);
     this.updateTrainingExposure();
-    this.learner.restore(this.state.policy);
   }
   private updateTrainingExposure(){
     const exposures=Math.max(0,this.state.metrics.onlineUpdates)+Math.max(0,this.state.metrics.replayUpdates);

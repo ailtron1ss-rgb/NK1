@@ -167,6 +167,22 @@ export class ParametricPolicyLearner{
       const bias=Number(this.state.bias[a]??0);
       this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+    // Persisted counters and diagnostics affect uncertainty and exploration too;
+    // sanitize them alongside weights so NaN never leaks back into live inference.
+    const finite01=(value:unknown,fallback:number):number=>
+      typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
+    const safeCount=(value:unknown):number=>
+      typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+    const safeTimestamp=(value:unknown):number=>
+      typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+    this.state.version=1;
+    this.state.updates=safeCount(raw?.updates);
+    this.state.tdAbsMean01=finite01(raw?.tdAbsMean01,d.tdAbsMean01);
+    this.state.trainRewardMean01=finite01(raw?.trainRewardMean01,d.trainRewardMean01);
+    this.state.explorationRate01=finite01(raw?.explorationRate01,d.explorationRate01);
+    this.state.lastLoss01=finite01(raw?.lastLoss01,d.lastLoss01);
+    this.state.lastTrainedAt=safeTimestamp(raw?.lastTrainedAt);
+    this.state.frozen=raw?.frozen===true;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
