@@ -7,6 +7,7 @@
 - Core routes `kind: 'developmental-outcome'` only to the second capability. An experiment-evidence payload sent to the maturity ID, or a maturity payload sent to the experiment ID, cannot change P36 maturity/promotion state. Both IDs are blocked from the public `registerActionTool` method.
 - The signed `VerifiedOutcomeLedger` adapter is intentionally point-in-time (`delayMs: 0`) and belongs only to the experiment-evidence slot. It must not be configured as the maturity evaluator. Updated Core integration/self-development regressions cover the separation and public-registry boundaries.
 - When both slots are configured, Core rejects matching `sourceId` or `independenceKey` across the experiment and maturity evaluators; one declared source cannot accidentally fill both roles. A constructor regression covers this collision.
+- When both slots are configured, Core rejects matching NFKC-normalized, trimmed, case-folded `sourceId` or `independenceKey` values across experiment and maturity evaluators. Constructor regressions cover reused independence keys and source IDs that differ only by whitespace/case.
 - **Validation:** exact-HEAD typecheck and P36 suite are not confirmed passing. Production still needs a real, independent delayed-maturity evaluator and held-out retention/transfer measurements. No readiness or empirical learning-gain claim.
 
 Full report: [WorkPass534 P36 authority separation](docs/WORKPASS534_P36_EXPERIMENT_VS_MATURITY_AUTHORITY_RU.md).
