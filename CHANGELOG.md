@@ -1,3 +1,11 @@
+## NK1 learning validation — isolate signed-evidence, seed and cleanup regressions (2026-10-25)
+
+- The P36 host-bootstrap regression now restores write permission on its deliberately read-only fixture directory before cleanup; the trusted evaluator had passed its signature, private-key and tamper checks, and the test process had been failing only during teardown.
+- The Hermes stale-signature test now matches the tampered payload's pass/fail value so it reaches the stale-signature trust rejection instead of short-circuiting on a separate outcome mismatch.
+- The reverse-arrival seed-bootstrap fixture now uses the verifier ID in its manifest, so the intended order-invariance assertion compares authenticated outcomes rather than records rejected for a verifier mismatch.
+
+---
+
 ## NK1 learning validation — preserve duplicate evidence rejection in ledger recovery (2026-10-25)
 
 - Added the canonical `duplicate-evidence-ref` rejection code to the durable restore allowlist. A legitimate snapshot containing a recorded duplicate-evidence rejection must round-trip without being misclassified as malformed.
