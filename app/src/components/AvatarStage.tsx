@@ -36,9 +36,14 @@ function inferSpeechLanguage(text: string): string {
 /** Project the canonical affect/mood/feeling state into one shared UI input contract. */
 function affectiveSignalsFromSnapshot(snap: OrganismSnapshot, label = snap.emotion.label) {
   const feeling = snap.affect?.latestFeeling;
-  const ageMs = feeling ? Date.now() - feeling.at : Number.POSITIVE_INFINITY;
-  const freshness01 = feeling && Number.isFinite(ageMs) && ageMs >= 0
-    ? Math.exp(-Math.min(ageMs, 86_400_000) / 45_000)
+  const feelingAgeMs = feeling ? Date.now() - feeling.at : Number.POSITIVE_INFINITY;
+  const feelingFreshness01 = feeling && Number.isFinite(feelingAgeMs) && feelingAgeMs >= 0
+    ? Math.exp(-Math.min(feelingAgeMs, 86_400_000) / 45_000)
+    : 0;
+  const mood = snap.affect?.mood;
+  const moodAgeMs = mood ? Date.now() - mood.at : Number.POSITIVE_INFINITY;
+  const moodFreshness01 = mood && Number.isFinite(moodAgeMs) && moodAgeMs >= 0
+    ? Math.exp(-Math.min(moodAgeMs, 86_400_000) / 300_000)
     : 0;
   return {
     label,
@@ -49,13 +54,13 @@ function affectiveSignalsFromSnapshot(snap: OrganismSnapshot, label = snap.emoti
     cognitiveLoad01: snap.needs.cognitiveLoad,
     uncertainty01: snap.needs.uncertainty,
     sleepPressure01: snap.needs.sleepPressure,
-    mood: snap.affect?.mood ?? undefined,
+    mood: mood ? { ...mood, freshness01: moodFreshness01 } : undefined,
     feeling: feeling ? {
       intensity01: feeling.intensity01,
       interoceptiveMismatch01: feeling.interoceptiveMismatch01,
       selfAccessConfidence01: feeling.selfAccessConfidence01,
       bodilyFocus01: feeling.bodilyFocus01,
-      freshness01,
+      freshness01: feelingFreshness01,
     } : undefined,
   };
 }
