@@ -1,3 +1,10 @@
+# WorkPass339 — measure endogenous-goal action handoff without weakening credit binding (2026-10-25)
+
+- [RUNTIME] Added bounded, persisted B272 diagnostics for generated-action handoffs: observation count, exact match/mismatch buckets, rolling recent records, and match/mismatch rates. Every selected action is recorded against the B272-generated action and goal ID before outcome credit is considered.
+- [STRICTNESS] `B272EndogenousGoalGenesis.learnFromOutcome` remains unchanged and still refuses credit for an action different from the one generated. The handoff ledger is idempotency-guarded per tick; restored counters enforce `matches + mismatches = observations` even if a persisted counter is inconsistent.
+- [CI] Added a focused regression covering matched/mismatched action handoffs, rejection of false credit, duplicate-record protection, and restore round-tripping. Extended the live WorkPass50 dialogue-loop test to require observed handoffs and bounded rates. Both files and the B272 source are now in the WorkPass331 workflow path filters.
+- [VALIDATION] Preceding exact-head WorkPass331 run `40168339627` passed on source SHA `4c019acd95789d9aa819accf1f94e5838d8dd1ca`, including 80-cycle autonomy (`79/80` non-wait choices), spontaneous dialogue feedback/restore, background-clock initiative, and restart persistence. WorkPass339 adds runtime instrumentation and new regressions, so the current head needs a fresh exact-head CI pass before this feature is marked validated.
+
 # WorkPass338 — gate unsolicited dialogue and background initiative end-to-end (2026-10-25)
 
 - [CI] Added two existing runtime integration regressions after the bounded 80-cycle autonomy test: `workpass50-autonomous-runtime-loop.mjs` verifies spontaneous message generation, UI acknowledgement idempotency, explicit-response interest learning, durable flush, restart without redelivery, and quiet-time continuity; `workpass50-autonomous-background-clock.mjs` verifies the auto-run scheduler triggers a provider-seam turn without a manual `step()`, stages it for polling, acknowledges it once, and persists the initiative state.

@@ -62,6 +62,11 @@ try {
   const after = restartedRuntime.core.snapshot().system.autonomousSocialInitiative.lastExternalInputAt;
   assert.equal(after, before, 'sensor-only cognitive cycles must not reset the dialogue quiet-time');
   assert.ok(spokenPrompts.length >= 2, 'the restored running session continues to execute through its configured provider seam');
+  const handoff = restartedRuntime.core.b272EndogenousGoalDiagnostics();
+  assert.ok(handoff.actionHandoffObservations >= 1, 'live feedback must record B272-to-runtime action handoffs');
+  assert.equal(handoff.actionHandoffMatches + handoff.actionHandoffMismatches, handoff.actionHandoffObservations, 'handoff match/mismatch buckets must cover every observation exactly once');
+  assert.ok(handoff.actionHandoffMatchRate01 >= 0 && handoff.actionHandoffMatchRate01 <= 1);
+  assert.ok(handoff.actionHandoffMismatchRate01 >= 0 && handoff.actionHandoffMismatchRate01 <= 1);
   console.log('WORKPASS50_AUTONOMOUS_RUNTIME_LOOP=PASS (generation -> ready -> UI ACK -> explicit response learning -> durable flush -> restart without redelivery)');
 } finally {
   if (restartedRuntime) await restartedRuntime.stop().catch(() => {});

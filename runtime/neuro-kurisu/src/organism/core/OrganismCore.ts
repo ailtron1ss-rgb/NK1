@@ -9472,6 +9472,12 @@ export class OrganismCore {
                     this.persisted.system.selfWorldPredictiveMicrocircuitB293 = this.developmentalNeural.selfWorldPredictiveMicrocircuitB293.snapshot();
                 this.developmentalNeural.neuralAutobiographicalCoreB271.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, traits: this.developmentalNeural.neuralGerminalOrganismB270.autonomousSnapshot().traitValues, goal: this.developmentalNeural.neuralAutobiographicalCoreB271.snapshotAutobiography().proposedGoal, acceptedExternalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b272GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
+                this.developmentalNeural.endogenousGoalGenesisB272.recordActionHandoff({
+                    tick: state.tick,
+                    goalId: b272GoalState.id,
+                    generatedAction: b272GoalState.action,
+                    selectedAction: trace.selected.action,
+                });
                 const b272IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
                 // B272's action-prototype learning is credited only when the runtime actually
                 // executed the action generated with this goal. Other selected actions continue
@@ -9751,6 +9757,12 @@ export class OrganismCore {
             // did not teach the endogenous goal generator from its own consequences.
             if (outcome.worldTransition) {
                 const b338GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
+                this.developmentalNeural.endogenousGoalGenesisB272.recordActionHandoff({
+                    tick: state.tick,
+                    goalId: b338GoalState.id,
+                    generatedAction: b338GoalState.action,
+                    selectedAction: trace.selected.action,
+                });
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
                 // Keep B272's strict generated-action binding on real-world outcomes too.
                 if (trace.selected.action === b338GoalState.action) {

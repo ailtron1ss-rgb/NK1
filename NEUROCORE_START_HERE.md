@@ -1,3 +1,18 @@
+## Latest durable checkpoint — WorkPass339: instrument endogenous-goal action handoff (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- Previous exact-head `4c019acd95789d9aa819accf1f94e5838d8dd1ca` passed WorkPass331 [run 40168339627](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168339627), with `CLEAN_AUTONOMY=PASS 79/80`, `WORKPASS50_AUTONOMOUS_RUNTIME_LOOP=PASS`, `WORKPASS50_BACKGROUND_CLOCK=PASS (clockExecutions=1; providerCalls=1; staged+acked+persisted=true)`, and `CLEAN_RESTART_PERSISTENCE=PASS`. WorkPass294, 99, 108, 102, 291, 287–288, 110, P26, 292, 105 and 293 also passed on that SHA.
+- WorkPass339 adds runtime/persisted B272 action-handoff telemetry to make visible when the selected action differs from the endogenous-goal proposal. The strict B272 outcome gate remains unchanged; outcomes for a different selected action are still not credited to B272. The new counter/history schema is backward-compatible with older snapshots, and the live integration test requires telemetry to survive restart.
+- Exact-head validation of WorkPass339's instrumentation and tests is pending. Do not claim all green until the new WorkPass331 and focused learning workflows pass on the resulting SHA.
+
+### Next gates
+1. Confirm the new handoff regression and updated background dialogue loop pass on the exact head; fix any real mismatch in the telemetry boundary.
+2. Compare handoff match-rate over a longer run before deciding whether planner weighting needs adjustment; avoid amplifying B272 action bias without measured evidence.
+3. Finish longer unattended operation, real service/API smoke, and UI/Live2D/voice end-to-end. The release archive remains unrefreshed and PR #96 remains draft.
+
+---
+
 ## Latest durable checkpoint — WorkPass338: add initiative-to-dialogue end-to-end gates (2026-10-25)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.

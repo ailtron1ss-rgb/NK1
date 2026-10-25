@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/tests/b272-action-handoff-diagnostics.mjs"
+      - "runtime/neuro-kurisu/tests/workpass50-autonomous-runtime-loop.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/tests/organism-smoke.mjs"
@@ -27,6 +30,9 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/tests/b272-action-handoff-diagnostics.mjs"
+      - "runtime/neuro-kurisu/tests/workpass50-autonomous-runtime-loop.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/tests/organism-smoke.mjs"
@@ -75,6 +81,9 @@ jobs:
       - name: Verify live runtime uses the canonical kernel
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/canonical-cognitive-kernel-runtime-wiring.mjs
+      - name: Verify endogenous-goal action handoff and strict credit binding
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/b272-action-handoff-diagnostics.mjs
       - name: Verify organism smoke startup
         working-directory: runtime/neuro-kurisu
         run: npm run test:smoke
