@@ -29,6 +29,6 @@ jobs:
       - name: Run integrated P23 revision/evidence regressions
         working-directory: runtime/neuro-kurisu
         run: |
-          node --experimental-strip-types tests/workpass293-autonomous-p23-revision.mjs
-          node --experimental-strip-types tests/workpass292-evidence-lanes.mjs
-          node --experimental-strip-types tests/workpass172-compound-revision-coordinator.mjs
+          node --experimental-transform-types tests/workpass293-autonomous-p23-revision.mjs
+          node --experimental-transform-types tests/workpass292-evidence-lanes.mjs
+          node --experimental-transform-types tests/workpass172-compound-revision-coordinator.mjs
