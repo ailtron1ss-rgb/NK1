@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
+import { buildCognitiveFrame } from './CognitiveFrame.ts';
+import { CognitiveDependencyGraph, type CognitiveDependencyState } from './CognitiveDependencyGraph.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
@@ -145,6 +147,7 @@ export class OrganismRuntime {
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
   private stepsSinceConsolidation = 0;
   private readonly worldStore: JsonStateStore<PersistedWorld>;
+  private readonly cognitiveDependencyStore: JsonStateStore<CognitiveDependencyState>;
   private readonly journal: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
   private readonly sensorIntervalMs: number;
   private readonly phonePolicy: PhonePolicyConfig;
@@ -162,6 +165,7 @@ export class OrganismRuntime {
       includedSections: 0, truncatedSections: 0, omittedSections: 0, receipts: [], note: 'no-language-prompt-built-yet'
     };
   }
+  private readonly cognitiveDependencyGraph = new CognitiveDependencyGraph();
   private readonly clockScheduler = new RuntimeClockScheduler();
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
@@ -291,6 +295,9 @@ export class OrganismRuntime {
     });
     const worldPath = config.worldStateFile ?? config.stateFile.replace(/\.json$/i, '.world.json');
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
+    // Keep this small routing state in an atomic sidecar so injected in-memory test stores
+    // and production persistence share the same restart semantics without widening core schema.
+    this.cognitiveDependencyStore = new FileStateStore<CognitiveDependencyState>(`${config.stateFile}.cognitive-dependencies.json`);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
@@ -309,6 +316,7 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      this.cognitiveDependencyGraph.restore(await this.cognitiveDependencyStore.load() ?? undefined);
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
@@ -590,11 +598,33 @@ export class OrganismRuntime {
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'sensor', summary:this.embodiment.resourceSummary(), confidence:body.sensoryFreshness01*.82, salience:Math.max(.18,Math.abs(body.telemetry.motion01 ?? 0)+.15), evidence:['device-telemetry'] }));
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'world', summary:observation.worldContext.facts.slice(-8).join(' | '), confidence:.7, salience:Math.max(.15,observation.surprise ?? .2), evidence:['world-model'] }));
     const fused = this.core.multimodalSnapshot();
-    const cycle = await this.core.observe({
+    const cycleObservation = {
       ...observation,
       text: externalText,
       externalGoal: externalText ? { title: externalText.slice(0, 160), importance: 0.65, urgency: 0.4 } : undefined,
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
+    };
+    const cycle = await this.core.observe(cycleObservation);
+    // The graph observes the already-normalized result at the real runtime boundary.
+    // It is routing/diagnostic evidence only; canonical Core arbitration still owns action selection.
+    const cognitiveFrame = { ...buildCognitiveFrame(cycle.state, cycleObservation), tick: cycle.state.tick };
+    this.cognitiveDependencyGraph.resolve(cognitiveFrame);
+    const dependencyState = this.cognitiveDependencyGraph.snapshot();
+    await this.cognitiveDependencyStore.save(dependencyState);
+    this.evidenceBus.publish({
+      tick: cycle.state.tick,
+      kind: 'model',
+      source: 'cognitive-dependency-graph',
+      confidence01: 1,
+      payload: {
+        frameTick: cognitiveFrame.tick,
+        wakeMask: dependencyState.wakeMask,
+        dirtyCount: dependencyState.dirtyCount,
+        transitionCount: dependencyState.transitionCount,
+        interruptActive: dependencyState.interrupt.active,
+        interruptType: dependencyState.interrupt.type,
+        interruptPriority01: dependencyState.interrupt.priority01,
+      },
     });
     const activePerceptionRequestId = this.core.activePerceptionPendingId();
     const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
@@ -1256,6 +1286,7 @@ export class OrganismRuntime {
       return this.core.perceptionSnapshot();
     });
   }
+  cognitiveDependencySnapshot(): CognitiveDependencyState { return this.cognitiveDependencyGraph.snapshot(); }
   adaptiveDevelopmentSnapshot(){ return this.core.adaptiveDevelopmentSnapshot(); }
   cameraCaptureToolInput(cameraId=0, retain=false) {
     const backendNeedsPath=Boolean(this.config.visionBackend);
