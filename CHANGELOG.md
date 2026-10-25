@@ -1,3 +1,10 @@
+## NK1 WorkPass547 — close runtime avatar expression-cache gap (2026-10-25)
+
+- Brought the runtime-served Live2D viewer's expression application in line with the guarded app viewer: it now caches the last successfully applied expression and avoids restarting an unchanged expression animation every embodiment update.
+- Added the runtime viewer to WorkPass110's path filter so future changes to the deployed viewer run the Live2D integrity contract.
+- Replaced the ADWIN stationary-mean exact decimal equality with a narrow tolerance; CI measured `0.19999999999999962` for a constant `0.2` stream due to floating-point accumulation, not drift.
+- These changes address actual CI findings. The latest-head workflows must rerun before this pass is marked validated.
+
 ## NK1 WorkPass546 — align persistence and transfer regressions with numeric contracts (2026-10-25)
 
 - Corrected the causal-stream restore test: restored `outcomes`, `consolidated` and rolling-learning aggregates are recomputed from grounded runtime evidence, not from all retained rows or poisoned scalar values. The external review record must still remain queryable.
