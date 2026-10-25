@@ -1,11 +1,9 @@
 ## WorkPass319 — unified cognitive-cycle and motivation integration closure (2026-10-25)
 
-- Made `UnifiedCognitiveCycle.restore()` fail closed on missing or contradictory persisted counters before preserving `lastComplete`.
-- Fixed missing-stage normalization to retain recognized stages alongside malformed entries while defaulting wholly unrecognized input to all required stages.
+- Made `UnifiedCognitiveCycle.restore()` fail closed on invalid/missing/contradictory persisted cycle counters and corrected mixed malformed-stage normalization.
 - Replaced the unnormalized B272 goal-value dot product with bounded alignment/reward/evidence signals so score saturation cannot hide confidence-weighted intrinsic motivation.
-- Added coherent/partial restore regressions and added `npm run typecheck` to the focused WorkPass287-288 CI gate.
-- Focused behavior tests passed in [run 40189833009](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189833009); [run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) is the typecheck-enabled verification run.
-- This work does not claim organism-wide release readiness or measured learning uplift.
+- Corrected B272 needs validation to use literal keys. Focused cycle, motivation and B272 integration tests passed in [run 40189992050](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189992050).
+- The wider runtime `npm run typecheck` failed in [run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) with multiple diagnostics across the codebase. That debt remains unresolved; this entry does not claim project-wide typecheck or production readiness.
 
 ---
 
