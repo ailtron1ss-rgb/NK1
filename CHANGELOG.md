@@ -1,3 +1,10 @@
+## NK1 CI coverage — gate durable skill provenance and accurate P26 integrity reporting (2026-10-25)
+
+- Added atomic skill-store persistence, candidate-store lifecycle code and its regression to the P26 pull-request path filter so provenance validation cannot change without CI.
+- Corrected the input-integrity test's summary count after expanding negative scalar/state/vector cases.
+
+---
+
 ## NK1 durable skill-store restore — validate revision provenance schema
 
 - Brought the provenance checks from the learning candidate contract into the unified runtime’s atomic JSON persistence validator, rather than validating only the hash.
