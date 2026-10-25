@@ -1,3 +1,10 @@
+## NK1 Node 24 TypeScript runtime — enable transformation for replay-buffer test
+
+- Switched the P26 continual replay test to Node's `--experimental-transform-types` mode, which supports TypeScript parameter properties used by `ContinualReplayBuffer`; strip-only mode rejected this syntax before the test could run.
+- The pinned Node 24 runtime supports the transform flag; the algorithm and replay assertions are unchanged.
+
+---
+
 ## NK1 learning compatibility — preserve bounded legacy feature vectors
 
 - Relaxed the learner's shape check from exact-size to non-empty, finite and bounded vectors so older 15-feature callers still receive the established zero-padding behavior.
