@@ -118,6 +118,27 @@ assert.equal(recentReports[0].taskId, 'trace-uncertain-1', 'diagnostics are newe
 assert.equal(recentReports[0].outcome, 'unknown', 'middling outcomes are not forced into success/failure');
 assert.equal(recentReports[1].outcome, 'failure');
 assert.ok(recentReports[1].failureClasses.includes('tool-error'));
+
+const persistedFailureClasses = [
+  'tool-error', 'timeout', 'permission-denied', 'safety-block',
+  'postcondition-mismatch', 'resource-exhaustion', 'low-confidence',
+];
+const classHistory = new P23LearningEngine();
+classHistory.restore({
+  version: 1,
+  experiences: persistedFailureClasses.map((failureClass, index) => ({
+    id: `exp-class-trace-${index}`, traceId: `class-trace-${index}`,
+    tick: persistedFailureClasses.length - index, at: 200 + persistedFailureClasses.length - index,
+    contextKey: 'test-context', nextContextKey: 'test-next', action: 'verify',
+    predictedUtility: 0.8, predictedConfidence: 0.7, success: 0.1,
+    reward: 0.1, surprise: 0.9, outcomeAt: 300 + index, failureClass,
+  })),
+});
+const classReports = classHistory.diagnoseRecentLearningAttempts(10);
+for (const failureClass of persistedFailureClasses) {
+  assert.ok(classReports.some((report) => report.failureClasses.includes(failureClass)),
+    `persisted failure class ${failureClass} must survive replay-to-reflection diagnosis`);
+}
 assert.ok(recentReports.every((report) => report.promotionEligible === false),
   'diagnostic reports must never grant promotion authority');
 assert.equal(recent.diagnoseRecentLearningAttempts(0).length, 0);
