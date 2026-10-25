@@ -98,6 +98,27 @@ assert.deepEqual(fullGoalQueueFabric.snapshot().goalProposals, beforeFullQueue.g
 assert.deepEqual(fullGoalQueueFabric.snapshot().metrics, beforeFullQueue.metrics,
   'capacity failure must not increment proposal metrics');
 
+// Oversized review batches must fail closed rather than silently dropping goals after row 64.
+const oversizedGoalBatchFabric = new HexisAdaptationFabric();
+const oversizedGoalBatchStage = oversizedGoalBatchFabric.stageHmx({
+  document: makeHmxDocument('exp_3333333333333333', {
+    goals: Array.from({ length: 65 }, (_, index) => ({
+      ref: `exp_3333333333333333:goal-${index}`,
+      title: 'Batch goal ' + index,
+    })),
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(oversizedGoalBatchStage.conflicts, []);
+assert.equal(oversizedGoalBatchFabric.decideHmx(oversizedGoalBatchStage.stagingId, 'accept')?.status, 'accepted');
+const beforeOversizedBatch = oversizedGoalBatchFabric.snapshot();
+assert.throws(() => oversizedGoalBatchFabric.prepareGoalProposals(oversizedGoalBatchStage.stagingId), /hmx-goal-proposal-batch-limit/);
+assert.deepEqual(oversizedGoalBatchFabric.snapshot().goalProposals, beforeOversizedBatch.goalProposals,
+  'oversized goal imports must not partially stage or silently discard goal records');
+assert.deepEqual(oversizedGoalBatchFabric.snapshot().metrics, beforeOversizedBatch.metrics,
+  'rejected oversized goal batches must not mutate the proposal metrics');
+
 // P68 must not autonomously reactivate an HMX-imported paused goal awaiting explicit approval.
 const goalEcology = new P68GoalEcology();
 const protectedExternalGoal = {

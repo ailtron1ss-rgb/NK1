@@ -604,7 +604,9 @@ export class HexisAdaptationFabric {
         if (stage.status !== 'accepted' && stage.status !== 'applied') throw new Error('hmx-goal-stage-must-be-accepted');
         if (stage.conflicts.length) throw new Error('hmx-goal-stage-has-conflicts');
         if (stage.intent !== 'port' || stage.strategy !== 'additive') throw new Error('hmx-goal-import-requires-port-additive-strategy');
-        const rows = Array.isArray(stage.stagedSections?.goals) ? stage.stagedSections.goals.slice(0, 64) : [];
+        const goalRows = Array.isArray(stage.stagedSections?.goals) ? stage.stagedSections.goals : [];
+        if (goalRows.length > 64) throw new Error('hmx-goal-proposal-batch-limit');
+        const rows = goalRows;
         const lineage = String(stage.sourceLineageId ?? '').trim();
         if (!lineage) throw new Error('hmx-goal-source-lineage-required');
         const validated = rows.map((row: any, index) => {

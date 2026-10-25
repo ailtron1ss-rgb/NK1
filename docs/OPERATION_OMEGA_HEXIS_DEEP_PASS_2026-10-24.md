@@ -76,3 +76,6 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 - Narrowed untrusted HMX `source` and goal metadata to validated record objects before reading dynamic fields; this removes strict TypeScript errors without weakening runtime validation.
 - Added a NodeNext `.d.mts` declaration for `HexisCanonicalMemoryProjector.mjs`, connecting it to the canonical MemoryFabric, semantic graph, HMX stage and receipt types.
 - Added an explicit impossible-state guard before finalizing goal proposal materialization. The isolated Hexis workflow had passed on the prior code checkpoint; this type-boundary update requires fresh validation. The broader runtime typecheck still reports unrelated legacy nullability and contract errors; a green Hexis workflow is not being presented as a full-repository typecheck pass.
+
+
+- **WorkPass334 batch-integrity follow-up:** HMX goal review now rejects batches larger than 64 proposals as a whole instead of silently truncating the staged goal section. A regression asserts that proposal state and metrics remain unchanged on this failure.

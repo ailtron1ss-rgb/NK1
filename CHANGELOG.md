@@ -2251,3 +2251,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added `HexisCanonicalMemoryProjector.d.mts` so strict NodeNext TypeScript resolves the existing `.mjs` projector with concrete canonical-memory and semantic-graph contracts.
 - Added an explicit guard before canonical HMX goal materialization to avoid an undefined-goal type path.
 - Fresh validation is required after this commit. The wider typecheck has also reported unrelated pre-existing nullability/contract errors elsewhere; no whole-runtime typecheck pass is claimed.
+
+
+
+- **WorkPass334 batch integrity:** Explicit HMX goal preparation rejects a staged goal section larger than the 64-proposal batch limit without mutating the durable proposal queue or its counters; this avoids silent loss from a `slice(0, 64)` import path.
