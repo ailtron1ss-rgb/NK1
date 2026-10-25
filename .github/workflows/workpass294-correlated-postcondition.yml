@@ -33,4 +33,4 @@ jobs:
         run: npm run typecheck
       - name: Verify exact action and decision lineage
         working-directory: runtime/neuro-kurisu
-        run: npm run test:workpass294:correlated-postcondition
+        run: node --experimental-transform-types tests/workpass294-correlated-postcondition.mjs
