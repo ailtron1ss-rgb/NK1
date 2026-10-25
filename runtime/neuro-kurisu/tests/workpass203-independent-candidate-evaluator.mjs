@@ -228,6 +228,12 @@ const verifierUnavailable = createIndependentSkillCandidateEvaluator({
 const verifierFailed = await verifierUnavailable({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
 assert.equal(verifierFailed.evaluation.validation[0].skillQuality.executability, 1,
   'verifier failure must not mislabel a successfully executed candidate as non-executable');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].executable, true,
+  'valid execution remains separate from verifier trust');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].bindingVerified, false,
+  'verifier failure does not authenticate the trace');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].runId, null,
+  'unverified execution identity is not admitted as trusted evidence');
 assert.equal(verifierFailed.evaluation.validation[0].taskSuccess.passed, false,
   'verifier failure must fail closed for task success');
 
