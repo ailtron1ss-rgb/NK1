@@ -1,3 +1,10 @@
+## NK1 validation coverage — gate guarded skill rollback lifecycle (2026-10-25)
+
+- Added the versioned skill-store implementation and lifecycle regression to P26 push and pull-request path filters.
+- Added an explicit P26 step for the rollback lifecycle test so signed-approval and compare-and-swap regressions are checked in the main learning validation job rather than relying on an unrelated workflow.
+
+---
+
 ## NK1 learning lifecycle — align rollback regression with guarded approval API (2026-10-25)
 
 - Updated the versioned skill-store lifecycle test to pass an explicit test-only rollback authority and compare-and-swap approval record, matching the current guarded rollback API.
