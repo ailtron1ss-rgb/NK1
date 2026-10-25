@@ -1788,7 +1788,8 @@ export class P23LearningEngine {
     return this.state.experiences.slice(0,boundedLimit).map(experience=>{
       const outcome: 'success'|'failure'|'unknown' = experience.success>=.8
         ? 'success' : experience.success<=.2 ? 'failure' : 'unknown';
-      const errors=experience.failureClass ? [experience.failureClass] : [];
+      // Stored classes are advisory replay metadata, not verifier receipts. Normalize their spelling into the same vocabulary the classifier consumes, without granting promotion authority.
+      const errors=experience.failureClass ? [experience.failureClass.replace(/-/gu,' ')] : [];
       return this.diagnoseLearningAttempt({
         taskId:experience.traceId,
         objective:`Review ${experience.action} outcome in context ${experience.contextKey}.`,
