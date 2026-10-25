@@ -185,6 +185,17 @@ assert.throws(() => compareMatchedIndependentEvaluations(
   { minimumValidationFamilySeeds: 1001, minimumHoldoutFamilySeeds: 3 },
 ), /matched-independent-evaluation-minimum-validation-family-seeds-invalid/);
 
+let seedOptionGetterCalls = 0;
+const accessorSeedOptions = Object.defineProperty({}, 'minimumValidationFamilySeeds', {
+  enumerable: true,
+  get() { seedOptionGetterCalls += 1; return Number.NaN; },
+});
+assert.throws(() => compareMatchedIndependentEvaluations(
+  twoSeedBaseline, twoSeedCandidate, familyPolicy, accessorSeedOptions,
+), /matched-independent-evaluation-seed-coverage-options-invalid/);
+assert.equal(seedOptionGetterCalls, 0,
+  'seed-coverage validation must reject accessor options without executing untrusted getters');
+
 const differentEnvironment = await makeEvaluation({ skill: 'candidate', version: 2 }, 'b'.repeat(64), { runPrefix: 'different-env-' });
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, differentEnvironment), /environment-mismatch/);
 

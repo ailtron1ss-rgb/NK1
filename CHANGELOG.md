@@ -1,3 +1,11 @@
+## NK1 learning evaluator — deterministic seed-option validation (2026-10-25)
+
+- Validate minimum validation/holdout family-seed limits before generic snapshotting, so non-finite and out-of-range knobs produce their documented field-specific errors.
+- Inspect own data descriptors and reject accessor-backed options without invoking getters, preserving the evaluator trust boundary.
+- Added regressions for the NaN-specific validation error and non-executed hostile getters.
+
+---
+
 ## NK1 regression harness — correct hostile-payload fingerprint binding (2026-10-25)
 
 - Fixed both WorkPass348 hostile-descriptor fixtures to supply the evaluator's actual `payloadFingerprint` argument instead of an unrelated property name.

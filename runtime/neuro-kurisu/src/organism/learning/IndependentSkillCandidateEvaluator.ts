@@ -956,6 +956,26 @@ export function compareMatchedIndependentEvaluations(
       throw new Error('matched-independent-evaluation-task-seed-split-mismatch');
     }
   }
+  // Validate the two numeric gate knobs from own data descriptors before taking the
+  // plain-data snapshot. This preserves the stable, field-specific error contract for
+  // NaN/Infinity while refusing accessors without executing untrusted getters.
+  if (!seedCoverageOptions || typeof seedCoverageOptions !== 'object' || Array.isArray(seedCoverageOptions)) {
+    throw new Error('matched-independent-evaluation-seed-coverage-options-invalid');
+  }
+  for (const [key, label] of [
+    ['minimumValidationFamilySeeds', 'validation'],
+    ['minimumHoldoutFamilySeeds', 'holdout'],
+  ] as const) {
+    const descriptor = Object.getOwnPropertyDescriptor(seedCoverageOptions, key);
+    if (!descriptor) continue;
+    if (!Object.hasOwn(descriptor, 'value')) {
+      throw new Error('matched-independent-evaluation-seed-coverage-options-invalid');
+    }
+    const value = descriptor.value;
+    if (value !== undefined && (!Number.isSafeInteger(value) || value < 0 || value > 1000)) {
+      throw new RangeError(`matched-independent-evaluation-minimum-${label}-family-seeds-invalid`);
+    }
+  }
   const seedOptions = snapshotPlainData(seedCoverageOptions) as IndependentEvaluationFamilySeedCoverageOptions;
   if (!seedOptions || typeof seedOptions !== 'object' || Array.isArray(seedOptions)) {
     throw new Error('matched-independent-evaluation-seed-coverage-options-invalid');
