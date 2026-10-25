@@ -1801,7 +1801,7 @@ export class P23LearningEngine {
     return this.state.experiences.slice(0,boundedLimit).map(experience=>{
       const outcome: 'success'|'failure'|'unknown' = experience.success>=.8
         ? 'success' : experience.success<=.2 ? 'failure' : 'unknown';
-      const errors=experience.failureClass ? [experience.failureClass] : [];
+      const errors=experience.failureClass ? [LEARNING_FAILURE_DIAGNOSTIC_EVIDENCE[experience.failureClass]] : [];
       return this.diagnoseLearningAttempt({
         taskId:experience.traceId,
         objective:`Review ${experience.action} outcome in context ${experience.contextKey}.`,
