@@ -5,9 +5,9 @@
 - Added regression cases for replayed ticks, malformed domain containers, and prototype-inherited activation. Automated execution remains unverified in this environment.
 - Focused CI now runs the WorkPass320 restore/frame regression and WorkPass324 interrupt-episode regression when the cognitive dependency graph or either test changes. Execution is still unverified until GitHub reports a completed run.
 - The focused workflow's push and pull-request path filters both cover the graph implementation and its two regression tests, so these changes remain linked to validation on either trigger.
-- Connected `CognitiveDependencyGraph` to the live `OrganismRuntime` cycle: it now builds a routing frame from the normalized observation and current organism state, records an evidence-bus event, and atomically persists its small state in a sidecar.
+- Connected `CognitiveDependencyGraph` to the live `OrganismRuntime` cycle: it builds a routing frame from the normalized observation and current organism state, records an evidence-bus event, and atomically checkpoints its small state in a sidecar when routing/interrupt state changes, every 16 organism ticks, and at shutdown.
 - The graph's routing frame identity remains monotonic across a recovery where the organism snapshot is restored from an older valid backup. Core's canonical action arbitration remains unchanged; the first integration records/wires routing evidence rather than independently selecting actions.
-- Added an integration regression that runs the runtime, verifies sidecar persistence, restarts it, and checks that the dependency frame advances. CI now executes this restart test; result pending.
+- Added an integration regression that runs the runtime, verifies the final sidecar flush, restarts it, and checks that the dependency frame advances. CI now executes this restart test; result pending.
 
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
