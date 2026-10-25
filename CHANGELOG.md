@@ -1,3 +1,11 @@
+## NK1 WorkPass340 — Hexis HMX 1.7 canonical-memory bridge (2026-10-25)
+
+- [IMPLEMENTED] Added a native NK1 → HMX 1.7 exporter that preserves source lineage and explicitly discloses that automatic sensitive-data redaction was not performed.
+- [IMPLEMENTED] Added a reviewed Hexis → NK1 memory projector that writes through the existing canonical MemoryFabric/MemoryOS2 owner and projects relationships into SemanticMemoryGraph only when both imported endpoints are known.
+- [SAFETY] Canonical import requires an accepted `port + additive` stage. The apply path validates the full memory batch before writes, compensates partial writes on failure, and keeps failed attempts retryable.
+- [TEST] Expanded exporter/projector regressions and the server smoke test for accept-without-write, explicit apply, persisted memory, and idempotent retry; added a Node.js 24 workflow.
+- [STATUS] The changes are in the WorkPass340 feature branch. Test execution and exact-head Actions remain unverified until the workflow produces a result; no production-readiness or learning-uplift claim is made.
+
 ## NK1 WorkPass331 — execute initiative regression guards in CI (2026-10-24)
 
 - [CI] Added `.github/workflows/initiative-regression.yml` on the `integration` branch to run the WorkPass329/330 initiative wiring regression tests with Node.js 22 on relevant pushes and pull requests.
