@@ -1,3 +1,10 @@
+## NK1 WorkPass541 — verify normalized lineage separators (2026-10-25)
+
+- Corrected the key-normalization character class so underscore, hyphen, and whitespace separators are actually removed before checking stable conversation/session/thread identifiers.
+- Added retrieval cases for `session-id`, `session id`, and `threadId`, alongside existing camelCase and snake_case coverage.
+- The prior WorkPass540 normalization edit had an escaping error; its claimed separator behavior is superseded by this fix.
+- Focused CI must pass on the latest PR head; no validation is claimed yet.
+
 ## NK1 WorkPass540 — normalize imported session-lineage keys (2026-10-25)
 
 - Recognizes stable conversation/session/thread IDs and keys across camelCase, snake_case, kebab-case, and spaced metadata names.
