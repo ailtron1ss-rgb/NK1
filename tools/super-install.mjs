@@ -3,11 +3,18 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { matchesNodeVersionPin, readNodeVersionPin } from './project-runtime-pin.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const nodeMajor = Number(process.versions.node.split('.')[0]);
-if (nodeMajor !== 22) {
-  console.error(`SUPER_INSTALL=FAIL reason=node-major-required expected=22 actual=${process.version}`);
+let nodePin;
+try {
+  nodePin = readNodeVersionPin(root);
+} catch (error) {
+  console.error(`SUPER_INSTALL=FAIL reason=invalid-node-version-pin detail=${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+}
+if (!matchesNodeVersionPin(process.versions.node, nodePin)) {
+  console.error(`SUPER_INSTALL=FAIL reason=node-version-pin-mismatch expected=${nodePin.raw} actual=${process.version}`);
   process.exit(1);
 }
 
