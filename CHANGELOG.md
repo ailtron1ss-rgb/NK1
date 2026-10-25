@@ -2,7 +2,7 @@
 
 - `MemoryFabric.restore()` now filters persisted hot IDs against the already-restored canonical MemoryOS2 records and removes duplicates before applying the hot-set limit.
 - Added a checkpoint regression containing both a nonexistent/evicted memory ID and a duplicate live ID; the restored hot set must contain only the canonical live ID.
-- Validation is pending for the current code/test head.
+- CI run [#40161184140](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161184140) on commit `2c1c2e5244a6` passed the official-types runtime typecheck and all four focused memory regressions, including hot-ID canonicalization.
 
 ## NK1 WorkPass536 — isolate MemoryFabric restore from prior runtime state (2026-10-25)
 
