@@ -630,7 +630,10 @@ export class OrganismRuntime {
       novelty01: number; summary: string; evidence: string[]; content: string; evidenceId: string;
     } | null = null;
     if (p41VisionObservationDelta > 0) {
-      const semanticSnapshot = Array.isArray(p41Semantic?.snapshots) ? p41Semantic.snapshots[0] : null;
+      const availableSnapshots = Array.isArray(p41Semantic?.snapshots) ? p41Semantic.snapshots : [];
+      // Snapshots are newest-first. Drain the oldest unseen frame first so a burst
+      // of camera observations is integrated over successive runtime cycles.
+      const semanticSnapshot = availableSnapshots.slice(0, Math.min(128, p41VisionObservationDelta)).at(-1) ?? null;
       if (semanticSnapshot && typeof semanticSnapshot.id === 'string') {
         const entityIds = new Set(Array.isArray(semanticSnapshot.entityIds) ? semanticSnapshot.entityIds : []);
         const eventIds = new Set(Array.isArray(semanticSnapshot.eventIds) ? semanticSnapshot.eventIds : []);
@@ -695,7 +698,7 @@ export class OrganismRuntime {
           summary, evidence, content: JSON.stringify({ scene, entityLabels, eventLabels, relationLabels }),
           evidenceId: visionEvidence.id,
         };
-        this.lastIntegratedP41VisionObservationCount = p41VisionObservationCount;
+        this.lastIntegratedP41VisionObservationCount = Math.min(p41VisionObservationCount, this.lastIntegratedP41VisionObservationCount + 1);
         this.lastIntegratedP41SceneLabel = scene;
       }
     }

@@ -1,5 +1,8 @@
 ## NK1 [perception] — runtime sensor and world-context integrity (2026-10-25)
 
+- Fixed P41 semantic-vision burst handling: when multiple vision snapshots arrive between runtime cycles, the runtime drains the oldest pending snapshots one per cycle instead of advancing the observation counter to the total and silently skipping intermediate frames.
+- Added a regression that injects two semantic frames before a cycle and verifies both appear once in oldest-first order, with no later replay.
+
 - Fixed canonical runtime perception so one sensor event updates only its own baseline; simultaneous sensor changes are surfaced across successive perception cycles.
 - Wired runtime-owned `PerceptionEngine` events into multimodal observation and cognitive `novelty`/`surprise` ingress, with evidence-bus parent lineage into the canonical observation event; the runtime still keeps action selection inside `OrganismCore`.
 - Added deterministic runtime integration regressions for fresh-baseline establishment, motion change, sensor loss and recovery during user-text cycles, proving unavailable samples are not fabricated into zero-valued physical observations.

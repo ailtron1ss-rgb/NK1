@@ -88,14 +88,33 @@ const multimodalVision = runtime.core.multimodalSnapshot().recent.find(
 assert.ok(multimodalVision, 'new P41 semantic vision should surface in runtime multimodal ingress');
 assert.ok(multimodalVision.confidence >= 0.84);
 
-const visionCycle = await runtime.step();
+// A burst must be drained oldest-first rather than skipping every frame except the newest.
+runtime.core.p41PerceptionIngest({
+  vision: { semantic: true, sceneLabel: 'test-room-intermediate', confidence01: 0.88, objects: [{ label: 'chair', kind: 'object', confidence01: 0.8 }], latencyMs: 11 },
+  at: sampleAt + 200,
+});
+runtime.core.p41PerceptionIngest({
+  vision: { semantic: true, sceneLabel: 'test-room-latest', confidence01: 0.91, objects: [{ label: 'window', kind: 'object', confidence01: 0.85 }], latencyMs: 10 },
+  at: sampleAt + 300,
+});
+await runtime.step();
+const intermediateVision = runtime.core.multimodalSnapshot().recent.filter(
+  event => event.modality === 'vision' && event.summary.includes('scene=test-room-intermediate'),
+);
+assert.equal(intermediateVision.length, 1, 'the oldest pending frame should be integrated first');
+await runtime.step();
+const latestVision = runtime.core.multimodalSnapshot().recent.filter(
+  event => event.modality === 'vision' && event.summary.includes('scene=test-room-latest'),
+);
+assert.equal(latestVision.length, 1, 'the next pending frame should be integrated on the next cycle');
+await runtime.step();
 const repeatedVisionEvents = runtime.core.multimodalSnapshot().recent.filter(
-  event => event.modality === 'vision' && event.summary.includes('scene=test-room'),
+  event => event.modality === 'vision' && /scene=test-room(?:-intermediate|-latest)?(?:;|$)/.test(event.summary),
 );
 assert.equal(
   repeatedVisionEvents.length,
-  1,
-  'an already integrated P41 vision snapshot must not be replayed on later cognitive cycles',
+  3,
+  'integrated P41 vision snapshots must not be replayed on later cognitive cycles',
 );
 
 // A sensor becoming unavailable/recovering must be represented as availability,
