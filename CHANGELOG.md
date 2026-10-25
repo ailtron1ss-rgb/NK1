@@ -1,3 +1,15 @@
+## Restored action receipt integrity hardening — 2026-10-25
+
+- Treat the persisted action ledger as untrusted input when restoring completed receipts.
+- Validate the receipt's execution/tool identity against its enclosing ledger row, plus consistency between the response, audit record, outcome class and verification claim.
+- Reject oversized or non-serializable restored receipt payloads; keep their ledger entry as a fail-closed recovery tombstone rather than replaying a potentially corrupted success or repeating a side effect.
+- Preserve bounded, internally consistent receipts and the existing idempotent replay behavior.
+- The existing `workpass95-restored-action-receipt-integrity.mjs` regression exposed the identity, verification-contradiction, audit-mismatch and size-limit cases.
+
+Validation: awaiting the PR-triggered Node 24 workflow. These checks detect internal contradictions and payload abuse; they do not constitute a cryptographic signature over a user-writable snapshot.
+
+---
+
 ## Cognitive dependency frame integrity — 2026-10-25
 
 - The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
