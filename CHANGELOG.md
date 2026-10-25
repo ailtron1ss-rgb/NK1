@@ -23,6 +23,7 @@
 - Added `audit:repo-wiring` and `test:repo-wiring` to the root package scripts and connected them to `audit:quick`; added a focused GitHub Actions workflow using the repository's `.nvmrc`.
 - Corrected the avatar-storage test harness's strict JavaScript typing and unsafe `delete globalThis.window` operations identified by the previous exact-head validation.
 - Validation status: pending the new exact-head workflow result. No app/runtime test pass or production release is claimed by this entry.
+- Follow-up CI found that multiline `cd runtime/neuro-kurisu` blocks were still being misread by the executable-path audit even though one-line chained commands passed. Reworked shell parsing to process `&&`, `||`, and `;` segments sequentially across lines and added a regression that exercises a real multiline workflow `run` block.
 
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
