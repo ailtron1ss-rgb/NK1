@@ -1,3 +1,8 @@
+# WorkPass343 — isolate revision generator inputs (2026-10-25)
+
+- [TEST] Treat the revision generator as untrusted and mutate its received target list and advisory reflection context deliberately.
+- [BOUNDARY] Verify generator-side mutation cannot rewrite the authoritative repair plan or contaminate subsequent learning-context reads. This protects lineage and diagnostic state; it does not establish candidate quality.
+
 # WorkPass342 — bound reflection-to-revision context (2026-10-25)
 
 - [TEST] Extend the P23 revision-lineage regression to check that caller-supplied advisory limits are clamped at both boundaries and that unchanged experience history yields a deterministic advisory context.

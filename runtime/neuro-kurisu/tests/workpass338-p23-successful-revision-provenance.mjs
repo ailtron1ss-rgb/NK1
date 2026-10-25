@@ -177,6 +177,13 @@ const result = await engine.generateAndStageReflectiveSkillRevision(
     assert.ok(request.outcomeLearningContext.constraints.some(text => text.includes('candidate-specific')));
     assert.ok(!('taskId' in request.outcomeLearningContext.hypotheses[0]),
       'reflection hints cannot masquerade as candidate-task evidence');
+    // Treat the generator as untrusted: mutating its request must not rewrite the
+    // authoritative repair plan or the learning engine's retained diagnostics.
+    request.targets[0].dimension = 'tampered-dimension';
+    if (request.outcomeLearningContext.hypotheses[0]) {
+      request.outcomeLearningContext.hypotheses[0].kind = 'tampered-hypothesis';
+    }
+    request.outcomeLearningContext.constraints.push('tampered constraint');
     return { instructions: 'version two repaired' };
   },
   async ({ payload, payloadFingerprint }) => {
@@ -192,6 +199,10 @@ assert.equal(generatorCalled, true);
 assert.equal(result.candidate.status, 'staged');
 assert.equal(result.fitness.eligible, true, 'the fresh candidate independently improves on baseline');
 assert.ok(result.plan.targets.length > 0, 'returned plan identifies what the generator was asked to repair');
+assert.notEqual(result.plan.targets[0].dimension, 'tampered-dimension',
+  'generator mutation cannot rewrite the authoritative source repair plan');
+assert.deepEqual(engine.advisoryOutcomeLearningContext(6), expectedAdvisoryContext,
+  'generator mutation cannot alter retained learning diagnostics or future advisory contexts');
 assert.equal(result.postRevisionPlan.targets.length, 0, 'post-revision plan correctly reports no remaining performance targets');
 assert.equal(
   result.candidate.revisionProvenance.planFingerprint,
