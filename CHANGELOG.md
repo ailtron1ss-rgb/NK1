@@ -1,3 +1,12 @@
+## WorkPass326 — approval persistence contention and research runtime dependencies (2026-10-25)
+
+- **Approval correctness:** distinguish the known transient `action-ledger-persistence-busy` checkpoint condition from permanent `approval-storage-failed`, while retaining rollback of newly created/resolved/consumed approval tickets.
+- **Bounded HTTP retry:** permission request, resolve and consume endpoints retry only the explicit busy condition, with an 8-second bounded exponential delay. No approval is implicitly granted and no request bypasses exact ticket binding; core/internal callers do not retry, avoiding self-deadlock within an active persistence batch.
+- **Regression:** expanded `test:workpass53` approval-boundary tests to cover request/resolve/consume rollback and subsequent success after contention clears.
+- **Python runtime:** added `research/requirements-cpu.txt` from the declared NeuroCore `torch>=2.0` dependency and added Python 3.12 + CPU-only PyTorch installation to the unified integration workflow. The governed approval E2E now runs before the all-up smoke.
+- **CI results:** pending for the updated exact head. Prior exact-head evidence: cognitive suite passed; overall smoke failed as diagnosed due approval storage contention and missing `torch`. Do not transfer that earlier failure or pass to the new head.
+- **Release boundary:** no merge into `main`, no release ZIP replacement. Full UI/Live2D/TTS, Android/Termux and long-soak/held-out learning validation remain open.
+
 ## WorkPass323 — реальная RAM-телеметрия в resource allocator (2026-10-25)
 
 - **Code fix:** `OrganismRuntime` больше не подставляет `1 - cognitiveCapacity01` как `ramPressure01`. Resource economy получает измеренное `body.telemetry.ramPressure01`, отдельно от `cognitiveLoad01`.
