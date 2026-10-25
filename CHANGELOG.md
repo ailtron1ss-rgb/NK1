@@ -1,3 +1,11 @@
+## NK1 learning validation — align evaluator fingerprint fixture (2026-10-25)
+
+- Updated the snapshot regression's expected task-plan fingerprint to include the canonical `taskFamily` field (`null` when absent), matching the runtime's fingerprint material.
+- The test still checks that changing caller-owned task config after evaluator construction cannot change the captured plan fingerprint.
+- **Verification boundary:** a new exact-head P26 run is required; no pass is claimed until it finishes.
+
+---
+
 ## NK1 learning validation — fix duplicate evaluator test binding (2026-10-25)
 
 - Gave the second independent evaluator and its result distinct local names in the regression so Node 24 can parse and execute both snapshot cases; behavioral assertions are preserved.
