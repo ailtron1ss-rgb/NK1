@@ -53,7 +53,12 @@ async function waitForManagedGatewayPort(child, timeoutMs = 4_000) {
     };
     const onData = (chunk) => {
       output = (output + chunk).slice(-4_096);
-      const match = output.match(/\\[super-gateway\\] http:\\/\\/127\\.0\\.0\\.1:(\\d+)/);
+      const marker = '[super-gateway] http://127.0.0.1:';
+      const markerIndex = output.indexOf(marker);
+      if (markerIndex >= 0) {
+        const portText = output.slice(markerIndex + marker.length).match(/^\d+/)?.[0];
+        if (portText) finish(null, Number(portText));
+      }
       if (match) finish(null, Number(match[1]));
     };
     const onExit = (code, signal) => finish(
@@ -127,6 +132,7 @@ test('managed gateway routes live HTTP requests and shuts down under process sup
 
   await assert.rejects(
     fetch(new URL('/health', baseUrl), { signal: AbortSignal.timeout(500) }),
+    /fetch failed/i,
     'gateway must no longer accept traffic after supervisor shutdown',
   );
 });
