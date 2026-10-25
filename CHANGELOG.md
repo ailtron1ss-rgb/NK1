@@ -5,7 +5,8 @@
 - Cache the mapped Live2D expression so repeated identical emotion messages do not restart the same animation during mouth, gaze or body updates.
 - Keep causal-learning regressions aligned with the current trust boundary: imported external rows remain reviewable but do not count as trusted runtime outcomes or contribute restored learning aggregates; replay-diversity fixtures now represent grounded action transitions.
 - Run the P66 regression in affect CI and watch the Live2D viewer so changes to these files trigger the validation workflow.
-- [Node 24 CI] Run the skill-retrieval/reflection regression with `--experimental-transform-types`; the test imports a class using parameter properties, which Node's strip-only mode cannot execute. Apply the same Node 24 transform mode to the trusted shadow-run registry regression, whose implementation also uses a parameter-property constructor.
+- [Node 24 CI] Run the skill-retrieval/reflection regression with `--experimental-transform-types`; the test imports a class using parameter properties, which Node's strip-only mode cannot execute.
+- [Node 24 full-sweep compatibility] Switched every WorkPass110 learning-test entry point and direct test command from strip-only mode to `--experimental-transform-types`. This retains every regression while supporting runtime TypeScript constructs used by imported classes. Apply the same Node 24 transform mode to the trusted shadow-run registry regression, whose implementation also uses a parameter-property constructor.
 - [P23 benchmark] Corrected the reversed-arrival-order fixture to use the verifier identity declared by the task manifest. The previous fixture used a different verifier ID, so every row was legitimately rejected and the bootstrap interval became `null`; no estimator behavior was changed.
 - **Validation boundary:** all changed-path tests and the broad workflow must pass on the exact final head.
 
