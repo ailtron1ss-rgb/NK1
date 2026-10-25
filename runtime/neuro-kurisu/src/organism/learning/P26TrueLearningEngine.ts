@@ -233,6 +233,10 @@ export class P26TrueLearningEngine{
     }
 
     const learningEnabled=!this.learner.snapshot().frozen;
+    // A replay step after every current step can otherwise give historical samples
+    // too much cumulative influence. Reduce the replay step size for dense schedules;
+    // once the stride reaches four, retain the caller's requested replay rate.
+    const effectiveReplayLearningRate01=replayLearningRate01*Math.min(1,replayEveryNCurrent/4);
     let onlineUpdates=0,replayUpdates=0,lossSum=0;
     let eligibleCursor=0;
     const trainOne=(row:Experience,learningRate01:number)=>{
@@ -251,7 +255,7 @@ export class P26TrueLearningEngine{
       if((index+1)%replayEveryNCurrent!==0||replayUpdates>=maxReplayUpdates||!eligibleReplay.length) continue;
       const row=eligibleReplay[eligibleCursor%eligibleReplay.length];
       eligibleCursor++;
-      trainOne(row,replayLearningRate01);
+      trainOne(row,effectiveReplayLearningRate01);
       if(learningEnabled) replayUpdates++;
     }
 
