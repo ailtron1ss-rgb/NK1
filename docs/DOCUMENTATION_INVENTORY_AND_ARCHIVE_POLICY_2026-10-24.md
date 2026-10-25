@@ -70,6 +70,12 @@ No mass-move or deletion is authorized by this report. Every candidate must pass
 
 A “canonical” path points readers to the current view; it does not mean the older records have to disappear.
 
+## Completed additional archive batch — 2026-10-25
+
+The [project-status archive index](history/workpasses/project-status/INDEX.md) and [relocation manifest](history/workpasses/project-status/relocation-manifest.json) record three more reviewed documents: WorkPass22, WorkPass24 and WorkPass36 status Markdown reports. Their original and archived Git blob SHAs match; source paths were removed only after reading back the copies. The inventory on commit `7c51b5eb82234d0d91fd140c1dd107296509f70f` found no inbound local Markdown or scanned text/config references for these paths; each report had no relative outbound Markdown links, and GitHub issue/PR searches returned no direct path references.
+
+Only these Markdown files were moved. Associated JSON snapshots remain at their original paths pending their own reference review. The move is reversible through the recorded copy/removal commits.
+
 ## Completion criteria for documentation ordering
 
 - [x] Single entry point for the current project map and branch inventory.
@@ -79,6 +85,7 @@ A “canonical” path points readers to the current view; it does not mean the 
 - [x] Read an inventory output and triage exact-content groups and filename families; [the result report](DOCUMENTATION_INVENTORY_RESULTS_2026-10-24.md) binds the counts to the tested SHA and run URL.
 - [x] Search local Markdown and scanned source/config/manifest references for three archive candidates; GitHub issue/PR path searches found no direct references for the three exact paths.
 - [x] Move three dated 2026-10-06 snapshots byte-for-byte with a reversible SHA-256/Git-blob manifest: `FINAL-STATUS-2026-10-06.md`, `INVENTORY.md`, and `CONFLICTS-AND-GAPS.md`; see `docs/history/reports/INDEX.md`.
+- [x] Move three dated WorkPass22/24/36 status reports byte-for-byte with a path/SHA-256/Git-blob manifest after path, local-reference and issue/PR review; see `docs/history/workpasses/project-status/INDEX.md`.
 - [ ] Confirm the latest exact-head run after adding this result report and its strict-link entry; runtime restore/release packaging and ZIP publication remain separate gates.
 
-**Honest status:** this pass creates the evidence-gathering mechanism and a safe policy. The inventory output and follow-up reference search must determine which specific files can move. It does not claim the repository has already been cleaned of duplicates, and does not authorize deleting historical records.
+**Honest status:** the evidence-gathering mechanism is wired into CI, and two small historical-report batches have been archived with manifests. The remaining 323 no-inbound candidates still need individual provenance, semantic and path review. No wholesale cleanup, runtime-readiness claim or release ZIP refresh is implied.
