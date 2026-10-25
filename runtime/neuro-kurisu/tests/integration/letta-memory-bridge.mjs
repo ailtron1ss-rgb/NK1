@@ -130,4 +130,26 @@ assert.equal(failedWrite.ok, false);
 assert.match(failedWrite.reason, /letta-turn-unsuccessful/);
 assert.equal(unsuccessful.snapshot().metrics.recordsSubmitted, 0);
 await unsuccessful.close();
+
+const noMutationClient = {
+  async createAgent() { return 'agent-no-mutation'; },
+  resumeSession() {
+    return {
+      async send() {},
+      async *stream() {
+        yield { type: 'assistant', content: 'Stored successfully.' };
+        yield { type: 'result', success: true, durationMs: 1, conversationId: 'conv-no-mutation' };
+      },
+      async close() {},
+    };
+  },
+};
+const noMutation = new LettaMemoryBridge({ enabled: true, client: noMutationClient });
+const noMutationWrite = await noMutation.recordExperience({
+  id: 'no-tool-record', source: 'unit-test', kind: 'observation', summary: 'no file tool was invoked',
+});
+assert.equal(noMutationWrite.ok, false);
+assert.equal(noMutationWrite.reason, 'letta-memory-mutation-not-confirmed');
+assert.equal(noMutation.snapshot().metrics.recordsSubmitted, 0);
+await noMutation.close();
 console.log('LETTA_MEMORY_BRIDGE=PASS');
