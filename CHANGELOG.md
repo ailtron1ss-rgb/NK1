@@ -13,6 +13,9 @@
 - Added policy unit tests and wired them into the focused CI workflow, including its push/pull-request path filters. Execution remains unverified until a completed Actions result is available.
 - Added a runtime-wiring contract test that checks the policy is fed the live graph state and upstream resource cap, that critical routing can skip reservation, and that canonical `plan.steps[0]` remains the source of the selected world action. The integration test also requires a runtime evidence-bus record for the admitted budget.
 - The same bounded policy now adjusts only the recurring cognitive clock: non-resource interrupts may reduce its next delay by at most 25%, while critical resource interrupts do not accelerate work. Scheduler decisions carry a `cognitive-interrupt` reason for observability; other maintenance clocks and canonical action arbitration are unchanged.
+- Fixed a live feedback-boundary defect exposed by the runtime integration test: Core previously passed the canonically selected action into B272 even when B272 had generated a different candidate action. Core now credits B272's action learner only when its generated action actually won arbitration; otherwise it records a terminal unselected-candidate decision without attributing another action's reward.
+- B272 now persists a bounded, validated `unselectedActionHistory`; restore quarantines duplicate terminal-decision ticks across executed outcomes and unselected candidates. The Core snapshot is refreshed after feedback so B272's new terminal decision and any actual learning update survive restart.
+- Added regression checks that a non-selected candidate is finalized but receives no action-prototype, goal-outcome-memory, or executed-outcome-history reward credit. Focused CI now runs the B272 goal-attribution test before the live runtime/restart integration test.
 
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
