@@ -1,3 +1,13 @@
+## WorkPass329 — сводка learning/skill-evolution evidence (2026-10-25)
+
+- **Independent CI:** на проверенном кодовом head `9d0e1fa5d7cb94e0e252cce09bdfca4551d0ddba` успешны WorkPass110 continual-learning metrics, P26 Learning Validation, WorkPass99 replay strategy, WorkPass105 verified outcome ledger, WorkPass108 paired evidence/promotion gates, WorkPass287–288 cognitive contracts, WorkPass291–294, WorkPass293 autonomous P23 repair.
+- **Replay diagnostic:** в пяти фиксированных seed-ах balanced replay дал mean MAE 0.095652 против 0.253034 без replay; prioritized replay — 0.109323. Benchmark прямо предупреждает, что это синтетический proxy-composition diagnostic, не оценка популяционного/реального прироста.
+- **P26 deterministic tests:** 20,160 update smoke; test MAE 0.5 initial → 0.9144 learned → 0.0823 reversed; holdout=1.0 в синтетическом deterministic probe. Matrix-тест сообщает order sensitivity spread 0.0154 и repair gain 0.7584.
+- **Verified outcome fixture:** pairedN=20, baseline pass rate .30, candidate .80, absolute gain .50; approx 95% CI [0.198, 0.802]. Это fixture-based evaluation, не реальные пользовательские задачи.
+- **Known gap:** P23 seed-clustered outcome comparison — aggregate gain .50 по 4 paired seeds, но improvement family gains составили memory=1, tool-use=0, transfer=0. Поэтому нельзя утверждать, что current evidence доказывает улучшение применения навыков и переноса; эти outcomes требуют отдельного held-out dataset/benchmark.
+- **Quality interpretation:** pipeline integrity, authorization, signed evidence, restart/replay and evaluator gates have broad passing regression coverage. Effectiveness evidence is still synthetic / diagnostic and is not an intelligence or consciousness score.
+- **Release gates remain:** real browser/Live2D/TTS, Android/Termux audio, independent real-world held-out learning, long soak, licensing and clean release archive reproduction.
+
 ## WorkPass328 — детерминированная политика повторов approval persistence (2026-10-25)
 
 - **Refactor:** алгоритм повторов вынесен из `server.mjs` в `src/server/transient-approval-storage-retry.mjs`; три approval endpoint используют общий протестированный helper.
