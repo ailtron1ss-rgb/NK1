@@ -1,3 +1,11 @@
+## NK1 WorkPass530 — CI diagnostics and isolated affect validation (2026-10-25)
+
+- Addressed the new mood-state type error: the shared numeric-field validator narrows the record to numeric fields, so the validated label is explicitly restored through `unknown` to its separately validated `EmotionLabel` type.
+- Reworked the focused Node.js 24 workflow into independent runtime typecheck, emotion regression, affect API-contract, app typecheck, and avatar/voice regression jobs. One compile failure no longer prevents the unrelated focused tests from running and producing their own evidence.
+- Replaced checkout/setup-node v4 with v5 in this workflow to align the job actions with the Node.js 24 runner.
+- The previous run identified numerous pre-existing TypeScript failures elsewhere in runtime; those remain separate follow-up work and are not marked fixed by this pass.
+- **Validation boundary:** corrective code and workflow are committed; fresh run results must be checked before claiming improvement or a green build.
+
 ## NK1 WorkPass529 — enforce runtime-to-avatar affect bridge contract (2026-10-24)
 
 - Added a cross-layer regression that checks the runtime UI snapshot, backend type contract, normalization layer and Live2D/voice adapter all carry the canonical mood and latest feeling-access signal.
