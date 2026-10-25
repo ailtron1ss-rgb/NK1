@@ -54,7 +54,7 @@ export interface LearningProcessResult {
 /** Trusted registration capability owned by the host runtime, never supplied by the child process. */
 export interface TrustedShadowRunRegistration {
   runtimeVersion: string;
-  register(context: { runId: string; taskId: string; seed: number; manifestFingerprint: string; runtimeVersion: string }): void | Promise<unknown>;
+  register(context: { runId: string; taskId: string; seed: number; manifestFingerprint: string; runtimeVersion: string }): unknown | Promise<unknown>;
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
