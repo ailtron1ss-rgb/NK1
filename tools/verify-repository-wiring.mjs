@@ -29,7 +29,9 @@ function walkCodeFiles(directory, rootDirectory = directory) {
   for (const entry of entries) {
     const fullPath = path.join(directory, entry.name);
     const relative = path.relative(rootDirectory, fullPath).split(path.sep);
-    const historicalSnapshot = relative[0] === 'legacy';
+    const historicalSnapshot = relative[0] === 'legacy' || (
+      relative[0] === 'app' && relative[1] === 'src' && relative[2] === 'legacy' && relative[3] === 'browser-organism'
+    );
     const runtimeHistory = relative[0] === 'runtime' && relative[1] === 'neuro-kurisu' && (
       (relative[2] === 'docs' && relative[3] === 'history') ||
       (relative[2] === 'research' && relative[3] === 'history') ||
