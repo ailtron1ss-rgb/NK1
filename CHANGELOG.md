@@ -1,3 +1,9 @@
+## NK1 WorkPass538 — preserve feeling-access evidence in causal memory (2026-10-25)
+
+- The canonical observation cycle now writes the associated feeling-access episode ID, intensity, interoceptive mismatch, self-access confidence and bodily focus into the emotion node's causal-memory metadata.
+- This keeps the distinction between the emotion appraisal and its body-linked feeling-access report, while making both available for later episodic analysis instead of leaving the latter only in the in-memory/serialized affect list.
+- Added an integration assertion over a real `OrganismCore` cycle to check that this metadata survives into the causal life graph and remains finite and bounded. The exact-head runtime test has not yet completed in CI.
+
 ## NK1 WorkPass537 — prevent focused CI queue pile-up (2026-10-25)
 
 - Added a pull-request scoped concurrency group to the focused affect/embodiment workflow. New commits on the same PR cancel stale in-progress focused runs so the latest runtime/app checks do not repeatedly compete with obsolete revisions.
