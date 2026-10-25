@@ -16,6 +16,7 @@ const snapshot = {
   emotion: { label: "joy", valence: 0.85, arousal: 0.6 },
   voice: { speaking: true, listening: false, ttsAvailable: true, sttAvailable: false },
 };
+let avatarSpeechStartedAt = null;
 
 const mime = new Map([
   [".html", "text/html; charset=utf-8"], [".mjs", "application/javascript; charset=utf-8"],
@@ -69,8 +70,9 @@ const server = createServer(async (req, res) => {
     if (pathname === "/__test__") { res.writeHead(200,{"content-type":"text/html; charset=utf-8","cache-control":"no-store"}); res.end(harness); return; }
     if (pathname === "/api/organism/ui-snapshot") { res.writeHead(200,{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}); res.end(JSON.stringify(snapshot)); return; }
     if (pathname === "/api/organism/avatar-speech") {
+      if (avatarSpeechStartedAt === null) avatarSpeechStartedAt = Date.now() - 20;
       res.writeHead(200,{"content-type":"application/json; charset=utf-8","cache-control":"no-store"});
-      res.end(JSON.stringify({ok:true,speaking:true,speechEventId:"runtime-smoke-speech",text:"Привет, Курису!",startedAt:Date.now()-140,rate:1,updatedAt:Date.now()}));
+      res.end(JSON.stringify({ok:true,speaking:true,speechEventId:"runtime-smoke-speech",text:"мама, а!",startedAt:avatarSpeechStartedAt,rate:1,updatedAt:Date.now()}));
       return;
     }
     if (pathname === "/favicon.ico") { res.writeHead(204); res.end(); return; }
@@ -82,7 +84,7 @@ const server = createServer(async (req, res) => {
       let source = bytes.toString("utf8");
       const expressionAnchor = "try{model.expression(expressionName);lastAppliedExpression=expressionName}catch{}";
       const motionAnchor = "try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k}catch{}";
-      const embodimentAnchor = "const signal=sanitizeEmbodiment(d);\n      if(signal)applyEmbodiment(signal);";
+      const embodimentAnchor = "const signal=sanitizeEmbodiment(d);\n      if(signal){applyEmbodiment(signal);window.__nk1RuntimeLastEmbodiment={...signal,mouthViseme:d.mouthViseme};}";
       const lipsyncAnchor = "lipTarget=clamp(d.value,0,1);";
       for (const anchor of [expressionAnchor,motionAnchor,embodimentAnchor,lipsyncAnchor]) {
         if (!source.includes(anchor)) throw new Error("runtime viewer smoke instrumentation anchor missing: " + anchor);
@@ -142,8 +144,8 @@ try {
   await page.goto(origin+"/avatar.html",{waitUntil:"domcontentloaded"});
   const frame=page.frames().find(f=>f.url().includes("/live2d/viewer.html"));
   assert.ok(frame,"avatar.html must mount the runtime viewer");
-  await frame.waitForFunction(()=>window.__nk1RuntimeExpression==="Stanby Smile"&&window.__nk1RuntimeLastEmbodiment?.motionGroup==="Special"&&window.__nk1RuntimeLastEmbodiment?.mouthOpen>0&&window.__nk1RuntimeLipTarget>0,null,{timeout:15000});
-  assert.ok(["closed","teeth","wide","open","round","neutral","rest"].includes(window.__nk1RuntimeLastEmbodiment?.mouthViseme ?? "neutral"));
+  await frame.waitForFunction(()=>window.__nk1RuntimeExpression==="Stanby Smile"&&window.__nk1RuntimeLastEmbodiment?.motionGroup==="Special"&&window.__nk1RuntimeLastEmbodiment?.mouthOpen>0.3&&window.__nk1RuntimeLipTarget>0&&window.__nk1RuntimeLastEmbodiment?.mouthViseme==="open",null,{timeout:15000});
+  // The smoke text starts with a closed consonant, then opens on the vowel; an unchanging jaw cannot satisfy this assertion.
   assert.equal(await page.locator("#tick").textContent(),"tick 987");
   assert.equal(await page.locator("#state").textContent(),"awake · respond · joy");
   assert.equal((await frame.evaluate(()=>window.__nk1RuntimeLastEmbodiment?.speaking)),true);
