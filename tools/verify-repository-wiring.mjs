@@ -266,7 +266,7 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
       // Build one ordered stream of statically recognizable operations. Resolving all
       // `cd` commands before file/script references loses shell evaluation order.
       const operations = [];
-      const cdPattern = /(?:^|&&|\\|\\||;|\\|)\\s*cd\\s+(?:"([^"]+)"|'([^']+)'|([^\\s;&|]+))/g;
+      const cdPattern = /(?:^|&&|;)\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/g;
       for (const match of line.matchAll(cdPattern)) {
         operations.push({ index: match.index ?? 0, type: 'cd', target: match[1] ?? match[2] ?? match[3] });
       }
