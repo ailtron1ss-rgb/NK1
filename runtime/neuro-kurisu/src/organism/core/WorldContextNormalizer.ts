@@ -8,6 +8,11 @@ const clamp01 = (value: unknown, fallback = 0): number => {
   return Number.isFinite(numeric) ? Math.max(0, Math.min(1, numeric)) : fallback;
 };
 
+const isFiniteNumeric = (value: unknown): boolean => {
+  if (typeof value === 'number') return Number.isFinite(value);
+  return typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value));
+};
+
 const finiteNumber = (value: unknown, fallback: number): number => {
   let numeric: number;
   if (typeof value === 'number') numeric = value;
@@ -67,8 +72,11 @@ export function normalizeWorldContext(
         label,
         location: objectLocation,
         value: clamp01(candidate?.value, 0),
+        valueKnown: isFiniteNumeric(candidate?.value),
         visible: candidate?.visible === true,
+        visibilityKnown: typeof candidate?.visible === 'boolean',
         collected: candidate?.collected === true,
+        collectionKnown: typeof candidate?.collected === 'boolean',
         ...(confidence !== undefined ? { confidence01: confidence } : {}),
         ...(evidenceKind ? { evidenceKind } : {}),
         ...(sourceId ? { sourceId } : {}),
