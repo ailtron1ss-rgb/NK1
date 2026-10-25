@@ -445,7 +445,7 @@
     "audit:component-conflicts": "node scripts/audit-component-conflicts.mjs",
     "audit:pass75": "npm run typecheck && npm run audit:project-state && npm run audit:component-conflicts && npm run test:big-pass-75:temporal && npm run test:big-pass-74 && npm run test:big-pass-74:migration && npm run test:big-pass-74:cold && npm run audit:legacy-reintegration && npm run audit:architecture && npm run audit:contract && npm run audit:hygiene && npm run audit:forensics && npm run audit:integrity && npm run server:smoke",
     "test:mobile:5000": "node --experimental-strip-types tests/mobile-horizon-5000.mjs",
-    "test:live2d": "node tests/live2d-integrity.mjs && node tests/avatar-state-mapping.mjs",
+    "test:live2d": "node tests/live2d-integrity.mjs && node tests/avatar-state-mapping.mjs && node tests/avatar-speech-runtime.mjs",
     "test:subject-continuity": "node --experimental-strip-types tests/subject-continuity-fabric.mjs",
     "test:cognitive-integrity": "node --experimental-strip-types tests/cognitive-integrity-gate.mjs",
     "test:p37:agreement": "node --experimental-strip-types tests/p37-cross-modal-agreement.mjs",
