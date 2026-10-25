@@ -10,6 +10,7 @@ assert.deepEqual(calm, {
   allowMatchedCounterfactual: true,
   reason: 'resource-budget',
   interruptPriority01: 0.1,
+  cognitiveCycleDelayMultiplier01: 1,
 }, 'calm routing must preserve the resource allocator budget');
 
 const active = resolveCognitiveRoutingPolicy({
@@ -19,6 +20,8 @@ const active = resolveCognitiveRoutingPolicy({
 assert.equal(active.maxCounterfactualBranches, 1, 'active interruption can only reduce speculative branches');
 assert.equal(active.allowMatchedCounterfactual, false, 'active interruption disables optional alternative projection work');
 assert.equal(active.reason, 'active-interrupt');
+assert.ok(active.cognitiveCycleDelayMultiplier01 < 1 && active.cognitiveCycleDelayMultiplier01 >= 0.75,
+  'non-resource interrupts may advance the next cognitive cycle by at most 25%');
 
 const critical = resolveCognitiveRoutingPolicy({
   wakeMask: 64,
@@ -27,6 +30,7 @@ const critical = resolveCognitiveRoutingPolicy({
 assert.equal(critical.maxCounterfactualBranches, 0, 'critical resource interrupts must stop optional counterfactuals');
 assert.equal(critical.allowMatchedCounterfactual, false);
 assert.equal(critical.reason, 'critical-interrupt');
+assert.equal(critical.cognitiveCycleDelayMultiplier01, 1, 'critical resource interrupts must not accelerate CPU work');
 
 const governance = resolveCognitiveRoutingPolicy({
   wakeMask: 64,
@@ -35,6 +39,7 @@ const governance = resolveCognitiveRoutingPolicy({
 assert.equal(governance.maxCounterfactualBranches, 1, 'governance pressure is capped without overriding the action');
 assert.equal(governance.allowMatchedCounterfactual, false);
 assert.equal(governance.reason, 'governance-pressure');
+assert.equal(governance.cognitiveCycleDelayMultiplier01, 1);
 
 const neverExpands = resolveCognitiveRoutingPolicy({
   wakeMask: 0,
