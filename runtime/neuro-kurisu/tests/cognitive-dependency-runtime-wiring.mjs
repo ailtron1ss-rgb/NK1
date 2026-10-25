@@ -23,7 +23,9 @@ let runtime;
 try {
   runtime = new OrganismRuntime(runtimeConfig());
   await runtime.init();
-  await runtime.autonomousStep();
+  // Multiple cycles exercise outcomes where the selected policy action can differ
+  // from B272's endogenous proposal; only a causally matching action may receive B272 credit.
+  for (let cycle = 0; cycle < 4; cycle += 1) await runtime.autonomousStep();
 
   const first = runtime.cognitiveDependencySnapshot();
   assert.ok(first.lastTick > 0, 'the live runtime cycle must resolve a cognitive dependency frame');
@@ -36,7 +38,7 @@ try {
   runtime = new OrganismRuntime(runtimeConfig());
   await runtime.init();
   assert.deepEqual(runtime.cognitiveDependencySnapshot(), first, 'restart must restore the last graph snapshot');
-  await runtime.autonomousStep();
+  for (let cycle = 0; cycle < 4; cycle += 1) await runtime.autonomousStep();
   const second = runtime.cognitiveDependencySnapshot();
   assert.ok(second.lastTick > first.lastTick, 'runtime routing time must advance after restart');
   await runtime.stop();
