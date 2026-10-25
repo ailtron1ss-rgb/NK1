@@ -1,3 +1,12 @@
+## NK1 P36 restore integrity — typed bounded identifier caches (2026-10-25)
+
+- Fixed the P36AutonomousSelfDevelopment.restore() TypeScript failure caused by inferring an unknown[] from a filtered persisted observation-ID array.
+- Added one typed normalizer for receipt and observation identifier caches: non-empty trimmed strings only, length and control-character bounds, deduplication, and bounded retention. Persisted identifiers remain audit/dedupe data only; they never restore process-local verifier capabilities or evidence trust.
+- Extended p36-migration.mjs with malformed, duplicate, empty, overlong, and control-character fixtures for both identifier collections. The existing P26 validation workflow includes this migration regression.
+- Verification boundary: code and regression commits are pushed to feature/learning; exact-HEAD CI and test execution must still confirm the change. main, the open draft PR's base branch, and the published Release ZIP were not changed.
+
+---
+
 ## NK1 learning — fix bounded recent-outcome diagnosis ordering (2026-10-25)
 
 - Corrected `P23LearningEngine.diagnoseRecentLearningAttempts()` to select the newest-first prefix of the canonical experience history. The previous tail-and-reverse selection could report older outcomes when callers requested a small history window.
