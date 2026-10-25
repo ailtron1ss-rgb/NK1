@@ -1,3 +1,10 @@
+## NK1 WorkPass546 — align persistence and transfer regressions with numeric contracts (2026-10-25)
+
+- Corrected the causal-stream restore test: restored `outcomes`, `consolidated` and rolling-learning aggregates are recomputed from grounded runtime evidence, not from all retained rows or poisoned scalar values. The external review record must still remain queryable.
+- Corrected a brittle transfer-metric assertion to compare a decimal floating-point delta within tolerance; the measured value is `0.14999999999999997` from `0.35 - 0.2`, which is mathematically consistent with the expected `0.15`.
+- Both changes align test assumptions with the implemented evidence and floating-point contracts; no safety gate is relaxed.
+- Re-run latest-head CI before treating the wider memory/learning path as validated.
+
 ## NK1 WorkPass545 — normalize P26 TypeScript test execution mode (2026-10-25)
 
 - Updated direct P26 regression invocations to use `--experimental-transform-types` consistently. The workflow mixes tests that import simple erasable TypeScript with tests that import constructor parameter properties; Node 22.12 strip-only mode fails to parse the latter before the regression logic can run.
