@@ -10,6 +10,9 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/tests/perception-engine-signal-integrity.mjs"
       - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/unified-cognitive-loop-ingress.mjs"
+      - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/perception-runtime-integrity.yml"
   pull_request:
@@ -21,6 +24,9 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/tests/perception-engine-signal-integrity.mjs"
       - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/unified-cognitive-loop-ingress.mjs"
+      - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/perception-runtime-integrity.yml"
 
