@@ -219,6 +219,8 @@ assert.match(runtime, /substrateWorkPolicy\.maxCounterfactualBranches/);
 assert.match(runtime, /baseRoutingPolicy\.allowMatchedCounterfactual && substrateWorkPolicy\.allowMatchedCounterfactual/);
 assert.match(runtime, /FileStateStore<UnifiedCognitiveSubstrateState>\(\x60\$\{config\.stateFile\}\.cognitive-substrate\.json\x60\)/);
 assert.match(runtime, /unifiedCognitiveSubstrate\.restore\(await this\.unifiedCognitiveSubstrateStore\.load\(\) \?\? undefined\)/);
+assert.match(runtime, /runtime\.unified-cognitive-substrate\.restore-failed/);
+assert.match(runtime, /memoryPressure01: 1 - resourceAllocation\.memory01/);
 const observeAt = runtime.indexOf('const cycle = await this.core.observe(cycleObservation);');
 const integrateAt = runtime.indexOf('this.unifiedCognitiveSubstrate.integrate(', observeAt);
 const routingAt = runtime.indexOf('resolveCognitiveRoutingPolicy(dependencyState', observeAt);
