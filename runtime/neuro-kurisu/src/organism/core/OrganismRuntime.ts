@@ -669,6 +669,7 @@ export class OrganismRuntime {
         allowMatchedCounterfactual: routingPolicy.allowMatchedCounterfactual,
         interruptActive: dependencyState.interrupt.active,
         interruptPriority01: routingPolicy.interruptPriority01,
+        cognitiveCycleDelayMultiplier01: routingPolicy.cognitiveCycleDelayMultiplier01,
         governanceWake: this.cognitiveDependencyGraph.shouldWake('governance'),
       },
     });
@@ -1718,7 +1719,12 @@ export class OrganismRuntime {
       id: 'cognitive', initialDelayMs: 0,
       decide: () => {
         const p = this.runtimeDecision();
-        return { delayMs: p.nextDelayMs, reason: p.reasonCodes.join(','), run: p.cognitiveBudget01 >= 0.45 && this.embodiment.snapshot().awake };
+        const cognitiveRouting = resolveCognitiveRoutingPolicy(this.cognitiveDependencyGraph.snapshot(), 3);
+        const delayMs = Math.max(5_000, Math.round(p.nextDelayMs * cognitiveRouting.cognitiveCycleDelayMultiplier01));
+        const reasonCodes = cognitiveRouting.cognitiveCycleDelayMultiplier01 < 0.999
+          ? [...new Set([...p.reasonCodes, 'cognitive-interrupt'])]
+          : p.reasonCodes;
+        return { delayMs, reason: reasonCodes.join(','), run: p.cognitiveBudget01 >= 0.45 && this.embodiment.snapshot().awake };
       },
       task: async () => {
         const body = this.embodiment.snapshot();
