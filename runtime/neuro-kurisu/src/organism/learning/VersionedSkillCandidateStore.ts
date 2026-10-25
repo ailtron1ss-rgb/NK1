@@ -349,10 +349,12 @@ export class VersionedSkillCandidateStore {
       previousActive?.version ?? 0,
       ...current.candidates.filter(item => item.skillId === skillId).map(item => item.version),
     ) + 1;
-    const candidateId = createHash('sha256').update(JSON.stringify([
-      skillId, nextVersion, proposal.proposalId, payloadFingerprint,
-      revisionProvenance ? fingerprint(revisionProvenance) : null,
-    ])).digest('hex');
+    const identityParts = [skillId, nextVersion, proposal.proposalId, payloadFingerprint];
+    // Keep the long-standing four-part identity when no revision lineage is present.
+    // Add a fifth signed-by-hash lineage component only for evidence-directed revisions.
+    const candidateId = createHash('sha256').update(JSON.stringify(
+      revisionProvenance ? [...identityParts, fingerprint(revisionProvenance)] : identityParts,
+    )).digest('hex');
     const candidate: VersionedSkillCandidate = {
       candidateId, skillId, version: nextVersion, payload: clone(payload), payloadFingerprint,
       proposalId: proposal.proposalId, proposalOutcomeFingerprint: proposal.outcomeFingerprint,
