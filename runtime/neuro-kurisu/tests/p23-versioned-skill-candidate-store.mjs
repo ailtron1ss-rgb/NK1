@@ -48,7 +48,7 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
     gate: { accepted }, canActivateAutomatically: false, authenticatedEvidenceRows, unauthenticatedEvidenceRows,
   };
 }
-const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true); // explicit test-only approval/evidence adapters
+const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true, () => true); // explicit test-only promotion/evidence/rollback adapters
 const defaultDenyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
 const defaultDenyCandidate = defaultDenyStore.stageCandidate(proposal('f'), 'deny-shadow-test', { instruction: 'must not enter shadow' });
 assert.throws(() => defaultDenyStore.recordShadowObservation(defaultDenyCandidate.candidateId, {
@@ -93,7 +93,15 @@ const active2 = store.approveAndPromote(c2.candidateId, {
 });
 assert.equal(active2.version, 2);
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 2);
-const restored = store.rollback(c2.candidateId, 2, Date.now());
+assert.throws(() => store.rollback(c2.candidateId, {}),
+  /signed rollback approval identity, timestamp and active-version guard are required/,
+  'rollback must reject legacy calls without an approval identity, timestamp and active-version guard');
+const rollbackApproval = {
+  approvedBy: 'human-reviewer-1',
+  approvedAt: Date.now(),
+  expectedActiveVersion: 2,
+};
+const restored = store.rollback(c2.candidateId, rollbackApproval);
 assert.equal(restored.version, 1);
 assert.equal(restored.payload.instruction, 'version one');
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 1);
@@ -102,7 +110,10 @@ assert.equal(store.snapshot().candidates.find(item => item.candidateId === c1.ca
   'rollback restores the prior version lifecycle status as well as its payload');
 assert.equal(store.snapshot().candidates.find(item => item.candidateId === c2.candidateId).approval.approvedBy, 'human-reviewer-1',
   'promotion approval is retained as an audit record');
-assert.throws(() => store.rollback(c2.candidateId, 2), /currently promoted/);
+assert.throws(() => store.rollback(c2.candidateId, {
+  approvedBy: 'human-reviewer-1', approvedAt: Date.now(), expectedActiveVersion: 2,
+}), /currently promoted/,
+  'even a well-shaped rollback approval cannot roll back an already rolled-back candidate');
 
 // The production-safe default denies promotion even if a caller fabricates plausible audit fields.
 const denyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => false, () => true); // allow fixture shadow rows while testing default-deny approval
@@ -167,7 +178,7 @@ assert.throws(() => new VersionedSkillCandidateStore(signedApprovalPersistence, 
   /persisted active skill approval failed signature\/context verification/,
   'restoration with an unconfigured approval authority fails closed instead of trusting persisted JSON');
 const tamperedActiveSnapshot = JSON.parse(JSON.stringify(signedApprovalPersistence.read()));
-tamperedActiveSnapshot.candidates[0].baseVersion = 41; // Not part of candidateId; restore must still bind CAS metadata to the signed approval.
+tamperedActiveSnapshot.candidates[0].approval.expectedActiveVersion = 41; // Keep the prior candidate link intact and tamper only the CAS guard outside the signed approval payload.
 const tamperedPersistence = {
   read: () => JSON.parse(JSON.stringify(tamperedActiveSnapshot)),
   compareAndSwap: () => false,
@@ -189,9 +200,31 @@ try {
   const durable = new AtomicFileSkillStorePersistence(filePath);
   const durableStore = new VersionedSkillCandidateStore(durable);
   const durableCandidate = durableStore.stageCandidate(proposal('g'), 'file-backed-skill', { instruction: 'persisted' });
+  const durableProvenance = {
+    schemaVersion: 1,
+    evaluationFingerprint: 'a'.repeat(64),
+    sourceCandidateId: null,
+    planFingerprint: 'b'.repeat(64),
+    datasetFingerprint: 'c'.repeat(64),
+    sourceEvidenceFingerprint: 'd'.repeat(64),
+    dimensions: ['trajectory', 'holdout-generalization'],
+    createdAt: Date.now(),
+  };
+  const durableReflectiveCandidate = durableStore.stageCandidate(
+    proposal('g-reflective'), 'file-backed-reflective-skill',
+    { instruction: 'persisted with reflective lineage' }, durableProvenance,
+  );
   const afterRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
-  assert.equal(afterRestart.snapshot().candidates[0].candidateId, durableCandidate.candidateId,
-    'atomic file adapter restores candidate state across store reconstruction');
+  const restoredCandidates = afterRestart.snapshot().candidates;
+  assert.equal(restoredCandidates.find(item => item.skillId === 'file-backed-skill')?.candidateId, durableCandidate.candidateId,
+    'atomic file adapter restores ordinary candidates across store reconstruction');
+  assert.equal(restoredCandidates.find(item => item.skillId === 'file-backed-reflective-skill')?.candidateId, durableReflectiveCandidate.candidateId,
+    'atomic file adapter validates reflective provenance using the same candidate identity formula');
+  assert.deepEqual(
+    restoredCandidates.find(item => item.candidateId === durableReflectiveCandidate.candidateId)?.revisionProvenance,
+    durableProvenance,
+    'reflective lineage survives durable JSON reconstruction without weakening candidate integrity',
+  );
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
 } finally {
