@@ -13,11 +13,28 @@ export const INITIATIVE_DEFAULTS = Object.freeze({
   maxReasonLength: 240,
 });
 
-const finiteUnit = (value, fallback = 0) =>
-  Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
+export interface InitiativeState {
+  energy?: unknown;
+  threat?: unknown;
+  curiosity?: unknown;
+  confidence?: unknown;
+  lastInitiativeAt?: unknown;
+  cooldownMs?: unknown;
+}
+export interface InitiativeDecision {
+  allowed: boolean;
+  reason: string;
+  nextEligibleAt: number | null;
+  priority: number;
+}
 
-const finiteTime = (value, fallback = 0) =>
-  Number.isFinite(value) && value >= 0 ? value : fallback;
+const finiteUnit = (value: unknown, fallback = 0): number =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(1, Math.max(0, value))
+    : fallback;
+
+const finiteTime = (value: unknown, fallback = 0): number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
 
 /**
  * Decide whether an unsolicited initiative cycle is justified.
@@ -26,14 +43,14 @@ const finiteTime = (value, fallback = 0) =>
  * @param {number} nowMs wall-clock timestamp in milliseconds
  * @returns {{allowed:boolean, reason:string, nextEligibleAt:number|null, priority:number}}
  */
-export function evaluateInitiative(state = {}, nowMs = Date.now()) {
+export function evaluateInitiative(state: InitiativeState = {}, nowMs: number = Date.now()): InitiativeDecision {
   const now = finiteTime(nowMs, Date.now());
   const energy = finiteUnit(state.energy);
   const threat = finiteUnit(state.threat);
   const curiosity = finiteUnit(state.curiosity);
   const confidence = finiteUnit(state.confidence, 0.5);
   const lastInitiativeAt = finiteTime(state.lastInitiativeAt);
-  const cooldownMs = Number.isFinite(state.cooldownMs) && state.cooldownMs >= 0
+  const cooldownMs = typeof state.cooldownMs === 'number' && Number.isFinite(state.cooldownMs) && state.cooldownMs >= 0
     ? state.cooldownMs
     : INITIATIVE_DEFAULTS.cooldownMs;
   const nextEligibleAt = lastInitiativeAt + cooldownMs;
@@ -62,7 +79,7 @@ export function evaluateInitiative(state = {}, nowMs = Date.now()) {
 }
 
 /** Produce a short, inspectable rationale for an accepted initiative. */
-export function explainInitiative(decision, topic = "current interests") {
+export function explainInitiative(decision: InitiativeDecision | null | undefined, topic: string = "current interests"): string {
   if (!decision || decision.allowed !== true) {
     return String(decision?.reason ?? "initiative-not-approved");
   }

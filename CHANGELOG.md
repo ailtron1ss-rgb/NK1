@@ -1,3 +1,15 @@
+## NK1 WorkPass340–343 — repair strict runtime typing and duplicate cycle contract (2026-10-25)
+
+- [LEARNING] Corrected the `ReplaySelectionOptions` import to its defining module and fixed the forgetting-risk input key from `usageGapMs` to `gapMs`.
+- [NODE24] Expanded local Node runtime declarations for file descriptors, child-process events, `fs.constants`, process environment, timers, paths and buffer helpers.
+- [COGNITION] Removed the duplicate `verifyOperationalCycle` implementation, retaining the extended lineage checker with optional-stage causal edges.
+- [STRICT TYPES] Added literal-key narrowing for B272 need validation, typed cognitive dependency transition records, made dream-association filters return booleans, and defined explicit initiative-policy input/decision contracts.
+- [LEARNING] Narrowed causal policy vectors with a type predicate. Additional verified-skill and dataset typing fixes are staged in the next integrated batch.
+- [VALIDATION] WorkPass291, WorkPass293, WorkPass99 and WorkPass287/288 were confirmed green on `7b2fb941`; WorkPass294 still exposes additional source-level strict-type failures. This batch's exact-head CI is pending.
+- [SCOPE] Changes are confined to the PR integration branch; `main` and the Release ZIP are untouched.
+
+---
+
 ## NK1 WorkPass339 — normalize P23 learning constructors for Node 24 (2026-10-25)
 
 - [COMPATIBILITY] Converted constructor parameter properties to explicit readonly fields/assignments in `P23CompoundRepairRevisionCoordinator` and `P23TrustedShadowLearningScheduler`; these classes are imported by the P23 runtime regression graph and are not supported by Node 24's strip-only TypeScript loader.
