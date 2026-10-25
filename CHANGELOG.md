@@ -1,3 +1,11 @@
+## NK1 WorkPass320 — bounded internal-dialogue history (2026-10-25)
+
+- [INTEGRATED] Added `InternalDialogueHistory.ts`, aggregating up to 32 schema-valid review receipts after startup and after each live review. The runtime exposes a read-only diagnostic summary with sample count, average confidence/coverage/uncertainty/contradiction, and recent-vs-earlier half deltas.
+- [PRIVACY] Repeated uncertainty is reported only through a fixed six-category vocabulary; no unresolved question text, focus text, evidence payload or free-form notes are included in the summary. The trend is directional telemetry, not proof of learning improvement.
+- [RECOVERY] Startup reads up to 128 recent event records, validates them, restores the newest 32 valid receipts in chronological order, and uses the same bounded buffer for diagnostics. Corrupted or non-advisory rows are discarded by the existing schema gate.
+- [REGRESSION] Added `test:internal-dialogue-history-workpass320` for window bounds, chronology, numeric trend direction, uncertainty categorization and privacy; added runtime-wiring assertions and registered the test in `test:rebuild-recovered`.
+- [VALIDATION] Code and test registration are committed on the WorkPass319 branch. Exact-head local execution/typecheck and release ZIP rebuild remain unverified; see the current PR Actions state before promoting this work.
+
 ## NK1 WorkPass319 — bounded internal dialogue (2026-10-24)
 
 - [ADDED] Introduced `InternalDialogueEngine` with a bounded six-pass review: framing, hypothesis comparison, skeptic, evidence audit, metacognitive calibration and synthesis. `buildCognitiveProposalPrompt` now returns a typed `InternalDialogueReviewReceipt` containing bounded scores, evidence IDs, reviewed roles and unresolved questions without persisting free-form turn notes or focus text.
