@@ -47,6 +47,9 @@ export interface LettaMemoryBridgeSnapshot {
 export interface LettaTurnMessage {
   type?: string;
   content?: unknown;
+  success?: boolean;
+  error?: unknown;
+  errorCode?: unknown;
 }
 
 export interface LettaSessionLike {
@@ -441,9 +444,23 @@ export class LettaMemoryBridge {
         if (session.ready) await session.ready();
         await session.send(prompt);
         const chunks: string[] = [];
+        let turnSucceeded: boolean | null = null;
+        let terminalErrorCode: string | null = null;
         for await (const message of session.stream()) {
+          if (message.type === 'result') {
+            turnSucceeded = message.success === true;
+            if (typeof message.errorCode === 'string') terminalErrorCode = message.errorCode;
+            else if (typeof message.error === 'string') terminalErrorCode = message.error;
+            continue;
+          }
           const chunk = messageText(message);
           if (chunk) chunks.push(chunk);
+        }
+        // Letta SDK documents result.success as the authoritative turn outcome.
+        // Never acknowledge an outbox item from assistant text alone.
+        if (turnSucceeded !== true) {
+          const safeCode = terminalErrorCode ? redactSecrets(terminalErrorCode).text : '';
+          throw new Error(safeCode ? 'letta-turn-unsuccessful:' + safeCode : 'letta-turn-not-confirmed');
         }
         return chunks.join('\n').trim();
       } finally {
