@@ -9,7 +9,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  actions: write
 
 jobs:
   generate-optional-sdk-lock:
@@ -19,6 +20,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Set up Node.js 24
         uses: actions/setup-node@v7
         with:
@@ -66,6 +69,29 @@ jobs:
           if (typeof sdk.LettaAgentClient !== 'function') throw new Error('LettaAgentClient export missing');
           console.log('LETTA_SDK_IMPORT=PASS');
           NODE
+      - name: Commit verified SDK manifest and lock to the designated NK1 PR branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'workpass328-letta-memory-bridge'
+        working-directory: runtime/neuro-kurisu
+        env:
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "Optional Letta SDK lock is already current."
+          else
+            git commit -m "[NK1][deps] lock optional Letta SDK 0.8.52"
+            git push origin "HEAD:refs/heads/$PR_BRANCH"
+          fi
+      - name: Dispatch validation against the lockfile commit
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'workpass328-letta-memory-bridge'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          gh workflow run workpass71-validation.yml --ref "$PR_BRANCH"
+          gh workflow run letta-memory-bridge.yml --ref "$PR_BRANCH"
       - name: Prepare lockfile artifact
         run: |
           mkdir -p "$RUNNER_TEMP/letta-lockfile"
