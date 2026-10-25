@@ -3,7 +3,7 @@
 - The recalled-memory cue now enters current appraisal through one explicit arousal increment rather than also being added to appraisal relevance. The resulting attention capture can still feed the normal bounded emotion-to-action bias and current-experience salience path.
 - Added `EmotionAppraisalEngine.arousalWithoutRecall01()` and `memorySalienceWithoutRecall01()`: feedback reconsolidation can preserve the full decision-time episode in the causal trace while excluding the deterministic recall-only increments (`0.072 × recalledAffect01` from arousal and its propagated attention/salience contribution) from memory strengthening.
 - Extended `workpass564-recalled-affect-appraisal.mjs` to verify action-bias influence, removal of recall-only arousal/salience during reconsolidation, unchanged valence/stress, and snapshot restore.
-- **Validation:** implementation and regression are committed; the exact-head Node 24 Actions result is pending. WorkPass564's earlier test passed on Actions run #104 before these WorkPass565 edits.
+- **Validation:** [GitHub Actions run #111](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40169875106) passed on code/test head `f21240647ea5986c792257fee635853417c61b23`; the run executed the recalled-affect regression and the complete reality-to-learning workflow successfully. The later commit updating this changelog is documentation-only.
 
 ## NK1 Persistence — validate receipt revisions before migration truncation (2026-10-25)
 
