@@ -1,3 +1,10 @@
+## WorkPass566 — context-gated transfer of recalled affect (2026-10-25)
+
+- Recalled emotional memories now carry an explicit context-relevance estimate derived from lexical overlap between the current observation and the retrieved memory text/tags. The estimate is deliberately documented as a conservative lexical signal, not semantic understanding.
+- The runtime weights the recalled affect cue by that relevance score. Context-matched memories retain the prior bounded influence; weakly matching memories retain only a small floor, reducing emotional overgeneralization across superficially unrelated situations.
+- Added regression coverage for high-vs-low lexical overlap, backwards compatibility when older callers omit context relevance, and lower arousal transfer for low-relevance recall.
+- **Validation:** pending targeted test and exact-head GitHub Actions. No improvement in real-world transfer quality is claimed.
+
 ## NK1 Causal Accountability — quarantine conflicting persisted evidence revisions (2026-10-25)
 
 - Restore now compares the full canonical row for duplicate provider-receipt revision IDs instead of trusting only the claimed `revisionFingerprint`. Conflicting rows quarantine all implicated execution IDs, mark the visible outcome history, remove active projection-index entries, and drop revisions for quarantined executions.
