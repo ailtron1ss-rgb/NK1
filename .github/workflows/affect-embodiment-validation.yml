@@ -32,6 +32,10 @@ on:
       - 'runtime/neuro-kurisu/package-lock.json'
       - '.github/workflows/affect-embodiment-validation.yml'
 
+concurrency:
+  group: affect-embodiment-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
