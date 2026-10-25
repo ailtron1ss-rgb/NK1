@@ -1,3 +1,10 @@
+## NK1 learning validation — restore executor fixture permissions between adversarial cases (2026-10-25)
+
+- Restored the host-owned executor's safe `0700` mode after the dedicated group/world-writable rejection assertion. The following run-root identity-replacement case now reaches the intended path-identity check instead of being masked by the prior test's leftover permissions.
+- Production permission validation and identity pinning remain unchanged.
+
+---
+
 ## NK1 learning validation — align signed-shadow runtime fixture with candidate identity schema (2026-10-25)
 
 - Updated the signed-shadow end-to-end fixture to include the explicit `null` fifth candidate-ID component when no revision provenance is present. This matches the canonical identity used by `stageCandidate` and atomic persistence.
