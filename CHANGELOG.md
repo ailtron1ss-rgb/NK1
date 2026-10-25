@@ -1,3 +1,9 @@
+## NK1 WorkPass566 — separate execution quality from evidence trust (2026-10-25)
+
+- Fixed a production evaluator defect exposed by the independent-candidate regression: a successful, structurally valid executor result was scored as non-executable whenever the verifier failed, because executability was gated on `bindingVerified`.
+- `skillQuality.executability` now reflects whether execution itself succeeded. Task success, trusted run bindings, observed trajectory evidence and promotion-relevant run identities remain gated by independent verifier binding and safety results.
+- Added no trust relaxation: a verifier failure still fails task success and emits no trusted run/trace binding. Latest WorkPass110/P26 checks must validate the change.
+
 ## NK1 WorkPass565 — deconflict independent evaluator fixture bindings (2026-10-25)
 
 - Fixed a syntax-time test failure in the WorkPass203 independent candidate evaluator suite: the WorkPass214 authority-snapshot block reused top-level `const snapshotEvaluator` and `const snapshotResult` names already declared by the earlier immutable-config test.
