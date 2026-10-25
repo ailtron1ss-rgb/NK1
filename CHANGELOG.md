@@ -1,3 +1,11 @@
+## WorkPass333 — HMX goal proposals, stable identity, and explicit activation
+
+- Added a durable HMX goal-proposal review queue. External goals remain proposals until reviewed; approval materializes a paused canonical goal, and activation requires a separate explicit decision plus capacity and identity-continuity checks.
+- Kept imported goal provenance attached to the canonical goal and preserved relationship receipts for the goal's source stage; identity/policy sections remain protected.
+- Fixed re-export deduplication to key HMX goals by the original NK1 goal ID preserved in adapter metadata rather than the export-scoped HMX ref.
+- Added integration and HTTP smoke coverage for proposal preparation, approval, activation denial before review, explicit activation, provenance, and re-export idempotency.
+- Validation note: the first exact-head HMX workflow exposed a real re-export dedupe regression (the goal's HMX ref changes on each export). The fix is committed; the next exact-head CI run is the validation gate. The unrelated WorkPass110 causal-stream failure and other older workflows remain separate.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
