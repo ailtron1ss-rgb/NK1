@@ -78,6 +78,8 @@ on:
       - "runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs"
       - "runtime/neuro-kurisu/src/organism/system/ContinuityLedger.ts"
       - "runtime/neuro-kurisu/tests/continuity-ledger-bounded-write.mjs"
+      - "runtime/neuro-kurisu/src/organism/memory/AdaptiveExperienceConsolidator.ts"
+      - "runtime/neuro-kurisu/tests/adaptive-experience-consolidator-restore.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/P36AutonomousSelfDevelopment.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P36VerifiedOutcomeLedgerEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P36HostEvaluatorBootstrap.ts"
@@ -236,6 +238,9 @@ jobs:
       - name: Run reflective promotion authority firewall regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-hermes-production-promotion-gate.mjs
+      - name: Run adaptive experience-memory restore integrity regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:adaptive-experience-consolidator-restore
       - name: Run byte-budgeted continuity journal integrity regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:continuity-ledger-bounded-write
