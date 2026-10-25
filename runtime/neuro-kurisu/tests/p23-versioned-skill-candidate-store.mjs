@@ -93,7 +93,15 @@ const active2 = store.approveAndPromote(c2.candidateId, {
 });
 assert.equal(active2.version, 2);
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 2);
-const restored = store.rollback(c2.candidateId, 2, Date.now());
+assert.throws(() => store.rollback(c2.candidateId, {}),
+  /signed rollback approval identity, timestamp and active-version guard are required/,
+  'rollback must reject legacy calls without an approval identity, timestamp and active-version guard');
+const rollbackApproval = {
+  approvedBy: 'human-reviewer-1',
+  approvedAt: Date.now(),
+  expectedActiveVersion: 2,
+};
+const restored = store.rollback(c2.candidateId, rollbackApproval);
 assert.equal(restored.version, 1);
 assert.equal(restored.payload.instruction, 'version one');
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 1);
