@@ -1,0 +1,62 @@
+name: Repository wiring contract audit
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - audit/repository-wiring-contracts-2026-10-25
+    paths:
+      - ".github/workflows/repository-wiring-audit.yml"
+      - ".github/workflows/**"
+      - "package.json"
+      - "package-lock.json"
+      - "app/package.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "tools/verify-repository-wiring.mjs"
+      - "tools/verify-repository-wiring.test.mjs"
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - ".github/workflows/**"
+      - "package.json"
+      - "package-lock.json"
+      - "app/package.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "tools/verify-repository-wiring.mjs"
+      - "tools/verify-repository-wiring.test.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v7
+
+      - name: Select project Node.js runtime
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Verify project runtime pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          printf 'expected=%s actual=%s\n' "$expected" "$actual"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) exit 1 ;; esac ;;
+          esac
+
+      - name: Test repository wiring audit fixtures
+        run: npm run test:repo-wiring
+
+      - name: Audit workflow and executable linkages
+        run: npm run audit:repo-wiring
