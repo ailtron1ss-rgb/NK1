@@ -77,6 +77,8 @@ The successful workflow passed all steps:
 - Transitive server-import graph test: **1 passed, 0 failed**; `checkedFiles=575`, `checkedEdges=1873`, `unresolvedCount=0`.
 - Strict canonical navigation check: **17 files, 0 issues**.
 
+The report file and its new history-index links were then revalidated on follow-up commit `eeb46e851a45dbb0966153ecb51d3ed339dc7245` by [successful Actions run 40168858480](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168858480). The inventory counts above remain measured on the explicitly named source SHA `b8ff2b50b4e3208aedd6dd1e09c2839d7002bda8`; the follow-up run verifies the committed report/links and the same audit gates after the new files were added.
+
 This gate validates link extraction, local path resolution for the canonical page set, the specific architecture-boundary rules under test and the server's transitive relative-import graph. It does not prove absence of every dynamic import, prove all external integrations work, or replace runtime behavioral/production-release tests.
 
 ## 5. Archive batches completed
@@ -102,7 +104,7 @@ This documentation pass did not rebuild, upload or replace the canonical release
 
 ## 7. Next gates
 
-- Re-run the ordering gate after this report and its archive-index links are added; keep the exact result tied to the new HEAD SHA.
+- For each subsequent archival batch, rerun the ordering gate on the resulting HEAD and record its exact SHA/Actions URL; keep the current report as a dated snapshot rather than silently overwriting historical measurements.
 - Continue only with small review batches. Before moving any candidate, check all local paths, source/config/manifest references, GitHub issue/PR path searches, semantic uniqueness, recovery/packaging needs and provenance; archive it byte-for-byte and write a reversible manifest.
 - Review the JSON companions separately.
 - Do not delete the two exact duplicate groups under `.grok` and `legacy/input-archives/` solely because their blobs match.
