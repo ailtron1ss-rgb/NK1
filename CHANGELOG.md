@@ -1,3 +1,9 @@
+## NK1 WorkPass539 — repair the affect bridge contract regression (2026-10-25)
+
+- The exact-head affect workflow showed that the UI bridge contract test expected a direct `mood: snap.affect?.mood` expression, while the avatar intentionally routes mood through `affectiveSignalsFromSnapshot()` to calculate freshness and keep mood/feeling inputs consistent.
+- Updated the regression to assert the actual canonical projection assignment (`const mood = snap.affect?.mood`) rather than requiring an implementation shape the code does not use.
+- Exact-head Actions on the previous commit: runtime TypeScript, app TypeScript, emotion/interoception regression, and voice/Live2D regression passed; the affect API contract failed on this brittle assertion. The new commit must complete a fresh run before this pass is considered validated.
+
 ## NK1 WorkPass535 — remove two stale affect-validation blockers (2026-10-25)
 
 - Fixed the app typecheck fixture to remove the optional `globalThis.window` property through `Reflect.deleteProperty`, avoiding TypeScript's required-global delete diagnostic while preserving the unavailable-storage test.
