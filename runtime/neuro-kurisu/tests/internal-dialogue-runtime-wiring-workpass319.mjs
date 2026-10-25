@@ -6,6 +6,7 @@ const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', impo
 const language = await readFile(new URL('../src/organism/language/LanguageOrgan.ts', import.meta.url), 'utf8');
 const bridge = await readFile(new URL('../src/organism/cognition/CognitiveEventEvidenceBridge.ts', import.meta.url), 'utf8');
 const server = await readFile(new URL('../src/server/server.mjs', import.meta.url), 'utf8');
+const journal = await readFile(new URL('../src/organism/persistence/OperationalJournal.ts', import.meta.url), 'utf8');
 
 const proposalCall = runtime.indexOf('buildCognitiveProposalPrompt(cycle,fusedObservation');
 assert.notEqual(proposalCall, -1, 'runtime must retain the canonical cognitive proposal path');
@@ -25,6 +26,19 @@ assert.match(language, /bindCognitiveEventEvidence\(claims, evidence, causalSnap
 assert.match(bridge, /node\.stage === 'outcome'/);
 assert.match(bridge, /node\.stage === 'tool-outcome'/);
 assert.match(bridge, /node\.stage === 'external-evidence'/);
+assert.match(runtime, /restoreLastInternalDialogueReceipt\(\)/,
+  'runtime startup must restore the latest safe review receipt');
+assert.match(runtime, /readRecent\('runtime\.internal-dialogue\.review'/,
+  'receipt restore must read only the named review event from the operational journal');
+assert.match(runtime, /restoreInternalDialogueReceipt\(record\.data\)/,
+  'journal payloads must be schema-validated before restoring diagnostics');
+assert.match(runtime, /sanitizeInternalDialogueText\(question,180\)/,
+  'restored open questions must pass the privacy sanitizer');
+assert.match(journal, /async readRecent\(event:string, limit=32\)/,
+  'OperationalJournal must expose bounded filtered readback');
+assert.match(journal, /parseJournalRecords/,
+  'corrupt/torn JSONL lines must be isolated from prior valid records');
+
 assert.match(runtime, /runtime\.internal-dialogue\.review/,
   'runtime must append a durable sanitized receipt to the operational journal');
 assert.match(runtime, /internalDialogueReceiptSnapshot\(\)/,
