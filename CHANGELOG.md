@@ -2,21 +2,22 @@
 
 - The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
 - Dirty domains are activated only by own properties whose values are exactly `true`; inherited properties and truthy coercion no longer create false wake signals.
-- Added regression cases for replayed ticks, malformed domain containers, and prototype-inherited activation. Automated execution remains unverified in this environment.
-- Focused CI now runs the WorkPass320 restore/frame regression and WorkPass324 interrupt-episode regression when the cognitive dependency graph or either test changes. Execution is still unverified until GitHub reports a completed run.
+- Added regression cases for replayed ticks, malformed domain containers, and prototype-inherited activation. Confirmed by focused CI run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- Focused CI runs the WorkPass320 restore/frame regression and WorkPass324 interrupt-episode regression when the graph or either test changes; both passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
 - The focused workflow's push and pull-request path filters both cover the graph implementation and its two regression tests, so these changes remain linked to validation on either trigger.
 - Connected `CognitiveDependencyGraph` to the live `OrganismRuntime` cycle: it builds a routing frame from the normalized observation and current organism state, records an evidence-bus event, and atomically checkpoints its small state in a sidecar when routing/interrupt state changes, every 16 organism ticks, and at shutdown.
 - The graph's routing frame identity remains monotonic across a recovery where the organism snapshot is restored from an older valid backup. Core's canonical action arbitration remains unchanged; the first integration records/wires routing evidence rather than independently selecting actions.
-- Added an integration regression that runs the runtime, verifies the final sidecar flush, restarts it, and checks that the dependency frame advances. CI now executes this restart test; result pending.
+- Added an integration regression for final sidecar flush and restart continuity. It passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
 - Added `CognitiveRoutingPolicy` to adapt graph interrupts/governance pressure to the optional speculative-work budget. It only reduces the existing resource allocator's branch count; it does not replace canonical Core action arbitration.
 - Critical resource/thermal/memory interrupts deny counterfactual branches, ordinary active interrupts cap them at one and skip matched alternative projections, and governance pressure caps optional work. Zero upstream branch budget also disables matched alternate projections.
-- Added policy unit tests and wired them into the focused CI workflow, including its push/pull-request path filters. Execution remains unverified until a completed Actions result is available.
+- Added policy unit tests and wired them into focused CI for push/pull requests; the budget and interrupt-threshold tests passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
 - Added a runtime-wiring contract test that checks the policy is fed the live graph state and upstream resource cap, that critical routing can skip reservation, and that canonical `plan.steps[0]` remains the source of the selected world action. The integration test also requires a runtime evidence-bus record for the admitted budget.
 - The same bounded policy now adjusts only the recurring cognitive clock: non-resource interrupts may reduce its next delay by at most 25%, while critical resource interrupts do not accelerate work. Scheduler decisions carry a `cognitive-interrupt` reason for observability; other maintenance clocks and canonical action arbitration are unchanged.
 - Fixed a live feedback-boundary defect exposed by the runtime integration test: Core previously passed the canonically selected action into B272 even when B272 had generated a different candidate action. Core now credits B272's action learner only when its generated action actually won arbitration; otherwise it records a terminal unselected-candidate decision without attributing another action's reward.
 - B272 now persists a bounded, validated `unselectedActionHistory`; restore quarantines duplicate terminal-decision ticks across executed outcomes and unselected candidates. The Core snapshot is refreshed after feedback so B272's new terminal decision and any actual learning update survive restart.
 - Added regression checks that a non-selected candidate is finalized but receives no action-prototype, goal-outcome-memory, or executed-outcome-history reward credit. Focused CI now runs the B272 goal-attribution test before the live runtime/restart integration test.
-- A subsequent CI attempt exposed a second B272 reward-attribution path in the B338 world-transition branch. It now applies the same selected-action equality gate as the no-transition branch and persists the terminal B272 decision after feedback; CI rerun pending.
+- A second B272 reward-attribution path in the B338 world-transition branch was fixed with the same selected-action equality gate and terminal-state persistence as the no-transition branch. Both branches passed the B272 outcome regression and the new dual-path wiring contract in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- Added `cognitive-feedback-attribution-wiring.mjs` to guard both the no-world-transition and B338 world-transition B272 credit paths; verifies canonical selected-action matching, terminal unselected-candidate recording, state persistence, and no reward leakage into action prototypes or goal outcome memory.
 
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
@@ -26,7 +27,7 @@
 - Added isolated regression fixtures for healthy and intentionally broken wiring, including missing files/scripts, absent workflow names and recursive npm-script cycles.
 - Added `audit:repo-wiring` and `test:repo-wiring` to the root package scripts and connected them to `audit:quick`; added a focused GitHub Actions workflow using the repository's `.nvmrc`.
 - Corrected the avatar-storage test harness's strict JavaScript typing and unsafe `delete globalThis.window` operations identified by the previous exact-head validation.
-- Validation status: pending the new exact-head workflow result. No app/runtime test pass or production release is claimed by this entry.
+- Focused exact-head CI passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019), including workflow/path audit and cognitive routing regressions. This does not claim the full application/runtime suite or production release is validated.
 - Follow-up CI found that multiline `cd runtime/neuro-kurisu` blocks were still being misread by the executable-path audit even though one-line chained commands passed. Reworked shell parsing to process `&&`, `||`, and `;` segments sequentially across lines and added a regression that exercises a real multiline workflow `run` block.
 
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
