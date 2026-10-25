@@ -1,5 +1,13 @@
 # WorkPass338 — preserve successful reflective revision lineage (2026-10-24)
 
+# WorkPass339 — normalize reflective outcome evidence (2026-10-25)
+
+- [FIXED] The reflection curriculum now rejects malformed outcomes instead of coercing non-finite scores, out-of-range values, invalid ticks, or timestamps into apparently valid evidence.
+- [FIXED] Exact duplicate delivery is counted once; conflicting records that reuse an experience ID are excluded rather than allowing arrival order to select the label.
+- [FIXED] Experiences sharing a cognitive tick are ordered deterministically by timestamp and stable ID, so the recent-evidence window does not depend on input order. Hypothesis output now uses a deterministic tie-breaker.
+- [TEST] Added regressions for duplicate delivery, conflicting identity, NaN/Infinity, invalid ranges/timestamps, and permutation-invariant evidence order; the focused Node.js 24 workflow runs the new suite.
+- [VALIDATION] Earlier WorkPass338 regressions and runtime TypeScript check passed. Exact-head WorkPass339 workflow is the final validation gate; results must be inspected before claiming this pass is verified.
+
 - [TYPECHECK FIX] The focused CI typecheck exposed incorrectly inferred empty-object fallback types in `InnerImperativeController.ts`. Normalized `needs` and `embodiment` are now explicitly partial contract types, preserving the previous bounded-default runtime behavior while satisfying strict property access.
 - [TEST] Added coverage for entirely missing and partially populated homeostasis inputs; the focused workflow now runs this regression and includes the controller in its path filters.
 - [VALIDATION] The three learning-growth / revision-lineage regressions passed on the previous exact head. The first new typecheck run failed on the controller fields listed above; this has been corrected, and the new exact-head run is pending.
