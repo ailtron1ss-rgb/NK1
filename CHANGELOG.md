@@ -2,6 +2,8 @@
 
 - [OPTIMIZED] Reworked `semanticEmbeddingMaintenanceDiagnostics()` into one corpus pass: counts eligible memories, current provider-bound vectors, retries awaiting backoff, and the earliest retry time without allocating corpus/pending/retry arrays. Provider/content-hash checks and eligibility semantics remain unchanged.
 - [REGRESSION] Extended `memory-semantic-embeddings-workpass33.mjs` to assert diagnostic corpus/index counts, remaining work, and retry fields after embedding retrieval.
+- [OPTIMIZED] `maintainSemanticIndexBatch()` now builds the eligible corpus/ID map in one pass, computes indexed/missing/retry state together, and computes final index/retry diagnostics in one post-provider pass. Removed intermediate `filter/map` arrays and duplicate corpus traversals while keeping candidate priority ordering, stale-write guards, retry backoff, and the 1,600-vector cap.
+- [REGRESSION] Extended `memory-semantic-embeddings-workpass33.mjs` with ineligible dormant/quarantined/expired/future records and a failing-provider case that checks the three-second first retry, pending counts, and diagnostic parity.
 
 - [OPTIMIZED] Reused the pre-materialized query-token array during hybrid memory ranking instead of allocating it once per candidate.
 - [OPTIMIZED] Added a bounded 512-entry term-frequency cache alongside the existing token cache, so BM25 scoring reuses tokenization results and iterates the already-unique query terms instead of retokenizing each ranked candidate.
