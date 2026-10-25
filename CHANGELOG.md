@@ -5,6 +5,7 @@
 - Wired the substrate into the real `OrganismRuntime` cycle after `OrganismCore.observe()`, with a dedicated `.cognitive-substrate.json` sidecar, bounded cadence/meaningful-change checkpointing, restart restore, final stop flush, and evidence-bus diagnostics. Core remains the canonical action arbiter; this change does not claim a learning or task-success uplift.
 - Added adversarial restore/input and source-wiring regressions, registered them in `test:rebuild-recovered`, and added a Node 24 focused workflow.
 - Added `resolveUnifiedCognitiveWorkPolicy()` as a bounded optional-work governor: low readiness, weak evidence, high unknowns, or device pressure can reduce counterfactual branches and withhold matched projections; it never replaces Core action selection. Regression cases cover open, constrained, critical, and malformed-budget states.
+- The optional-work governor now fails closed for malformed/non-finite substrate frames as well as invalid resource budgets; no optional simulation branches are admitted from invalid policy inputs.
 - Validation status at commit time: authored and wired; exact-head execution remains pending. No production-readiness or consciousness claim is implied.
 
 ## Cognitive dependency frame integrity — 2026-10-25
