@@ -1,3 +1,10 @@
+## NK1 learning compatibility — preserve bounded legacy feature vectors
+
+- Relaxed the learner's shape check from exact-size to non-empty, finite and bounded vectors so older 15-feature callers still receive the established zero-padding behavior.
+- Non-finite values are still rejected across the entire supplied vector, including entries that would otherwise be truncated; vectors larger than 256 entries are rejected to bound input work.
+
+---
+
 ## NK1 CI coverage — gate durable skill provenance and accurate P26 integrity reporting (2026-10-25)
 
 - Added atomic skill-store persistence, candidate-store lifecycle code and its regression to the P26 pull-request path filter so provenance validation cannot change without CI.

@@ -193,7 +193,7 @@ export class ParametricPolicyLearner{
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
     assertTrainingScalars(input);
-    if(!Array.isArray(input.features)||input.features.length!==featureNames.length||input.features.some(value=>typeof value!=='number'||!Number.isFinite(value))){
+    if(!Array.isArray(input.features)||input.features.length===0||input.features.length>256||input.features.some(value=>typeof value!=='number'||!Number.isFinite(value))){
       throw new Error('features-must-be-finite');
     }
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
