@@ -47,6 +47,9 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Check runtime TypeScript
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
       - name: Check unified cognitive-cycle contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs
