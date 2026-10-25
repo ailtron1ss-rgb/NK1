@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildAvatarPresentation } from '../public/avatar-state.mjs';
+import { buildAvatarPresentation, buildAvatarSpeechTimeline, sampleAvatarSpeechTimeline } from '../public/avatar-state.mjs';
 
 const explore = buildAvatarPresentation({
   ok: true,
@@ -56,4 +56,19 @@ assert.equal(safeFallback.lipsync, 0);
 
 assert.equal(buildAvatarPresentation(null), null);
 assert.equal(buildAvatarPresentation({ ok: true, state: {}, emotion: null }), null);
+
+const visemes = buildAvatarSpeechTimeline('мама, мир', 1, 'ru-RU');
+assert.ok(visemes.length >= 8);
+assert.ok(visemes.every((frame, index) => frame.endMs > frame.startMs && (index === 0 || frame.startMs >= visemes[index - 1].endMs)));
+assert.deepEqual(sampleAvatarSpeechTimeline(visemes, 0), { open: 0.025, form: -0.05, viseme: 'closed' });
+assert.ok(sampleAvatarSpeechTimeline(visemes, visemes[1].startMs + 1).open > 0.3,
+  'the second grapheme (a vowel) must produce a different mouth shape from the initial closed consonant');
+const commaPose = visemes.find(frame => frame.grapheme === ',');
+assert.ok(commaPose);
+assert.equal(commaPose.pose.viseme, 'rest', 'punctuation maps to a closed pause pose');
+assert.deepEqual(sampleAvatarSpeechTimeline(visemes, Number.NaN), { open: 0.015, form: 0, viseme: 'rest' });
+assert.deepEqual(buildAvatarSpeechTimeline('', 1), []);
+assert.deepEqual(buildAvatarSpeechTimeline({ toString: () => 'unsafe' }, 1), []);
+assert.deepEqual(sampleAvatarSpeechTimeline(visemes, visemes.at(-1).endMs + 20), { open: 0.015, form: 0, viseme: 'rest' });
+
 console.log('AVATAR_STATE_MAPPING=PASS explore/respond/emotion/speech/bounds');
