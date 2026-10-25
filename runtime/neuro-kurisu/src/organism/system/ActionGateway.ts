@@ -1063,15 +1063,15 @@ function isRestorableCompletedReceipt(entry:ActionExecutionLedgerEntry, value:un
   if (audit.executionId!==entry.executionId || audit.tool!==entry.toolId ||
       audit.action!=='tool' || audit.accepted!==response.ok ||
       audit.verified!==response.verified || audit.outcomeClass!==response.outcomeClass ||
-      !Number.isFinite(audit.at) || typeof audit.reason!=='string' ||
+      typeof audit.at!=='number' || !Number.isFinite(audit.at) || typeof audit.reason!=='string' ||
       (audit.mode!=='dry-run' && audit.mode!=='live')) return false;
 
   const verification=response.verification;
   if (typeof verification.verified!=='boolean' ||
       !['none','tool-contract','external-postcondition'].includes(String(verification.basis)) ||
       typeof verification.externalObservation!=='boolean' ||
-      !Number.isFinite(verification.confidence01) ||
-      Number(verification.confidence01)<0 || Number(verification.confidence01)>1 ||
+      typeof verification.confidence01!=='number' || !Number.isFinite(verification.confidence01) ||
+      verification.confidence01<0 || verification.confidence01>1 ||
       typeof verification.notes!=='string') return false;
   // A positive top-level verification cannot be restored if its underlying proof
   // disagrees. Negative execution outcomes may legitimately carry a positive verifier
