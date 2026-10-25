@@ -11,6 +11,7 @@
 - Added `CognitiveRoutingPolicy` to adapt graph interrupts/governance pressure to the optional speculative-work budget. It only reduces the existing resource allocator's branch count; it does not replace canonical Core action arbitration.
 - Critical resource/thermal/memory interrupts deny counterfactual branches, ordinary active interrupts cap them at one and skip matched alternative projections, and governance pressure caps optional work. Zero upstream branch budget also disables matched alternate projections.
 - Added policy unit tests and wired them into the focused CI workflow, including its push/pull-request path filters. Execution remains unverified until a completed Actions result is available.
+- Added a runtime-wiring contract test that checks the policy is fed the live graph state and upstream resource cap, that critical routing can skip reservation, and that canonical `plan.steps[0]` remains the source of the selected world action. The integration test also requires a runtime evidence-bus record for the admitted budget.
 
 ## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
 
