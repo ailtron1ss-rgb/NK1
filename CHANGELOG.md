@@ -1,3 +1,11 @@
+## NK1 learning — preserve typed failure clues in replay diagnosis (2026-10-25)
+
+- Fixed the P23 replay-to-reflection bridge: persisted failure taxonomy values (for example `tool-error`) are codes, not natural-language messages, so passing them directly through the text classifier silently dropped the class.
+- Added a bounded canonical text mapping for all seven stored failure classes and a regression that checks each class reaches recent-attempt diagnosis. No verified labels, promotion authority, or model-weight updates are introduced.
+- **Verification boundary:** this fix is committed to the validation PR; exact-HEAD P26 execution must pass before merge.
+
+---
+
 ## NK1 learning — fix bounded recent-outcome diagnosis ordering (2026-10-25)
 
 - Corrected `P23LearningEngine.diagnoseRecentLearningAttempts()` to select the newest-first prefix of the canonical experience history. The previous tail-and-reverse selection could report older outcomes when callers requested a small history window.
