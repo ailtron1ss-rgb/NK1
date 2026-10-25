@@ -109,7 +109,7 @@ function isConversationMemory(item:MemoryItem2):boolean{
  // turn sequence, or speaker role identifies a fragment, not the dialogue it belongs to.
  const hasConversationIdentity=Object.entries(context).some(([key,value])=>{
   // Imported memories commonly use camelCase, snake_case, or kebab-case metadata.
-  const normalizedKey=key.replace(/[-_\\s]/gu,'').toLocaleLowerCase();
+  const normalizedKey=key.replace(/[-_\s]/gu,'').toLocaleLowerCase();
   return /^(?:conversation|dialogue|chat|thread|transcript|session)(?:id|key)$/u.test(normalizedKey)&&
    typeof value==='string'&&value.trim().length>0;
  });
