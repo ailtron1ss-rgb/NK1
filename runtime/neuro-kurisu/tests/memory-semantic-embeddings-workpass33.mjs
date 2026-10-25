@@ -82,4 +82,33 @@ assert.equal(fallback.semantic.enabled, false);
 assert.match(fallback.semantic.fallbackReason, /local-model-offline/);
 assert.ok(Array.isArray(fallback.items), 'provider failures should return deterministic hybrid fallback results');
 
-console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason }));
+const diagnosticNow = Date.now();
+const ignoredRows = [
+  { id: 'ignored-dormant', dormant: true },
+  { id: 'ignored-quarantined', epistemicStatus: 'quarantined' },
+  { id: 'ignored-expired', validUntilAt: diagnosticNow - 1 },
+  { id: 'ignored-future', validFromAt: diagnosticNow + 60_000 },
+].map(({ id, ...overrides }) => ({
+  ...structuredClone(before.items[0]),
+  id, content: `non-corpus diagnostic row: ${id}`,
+  createdAt: diagnosticNow - 10_000, lastAccessAt: diagnosticNow - 10_000,
+  validFromAt: diagnosticNow - 5_000, validUntilAt: null,
+  dormant: false, epistemicStatus: 'fact', semanticVector: [],
+  ...overrides,
+}));
+const retryMemory = new MemoryOS2({ embeddingProvider: new FailingProvider() });
+retryMemory.restore({ ...before, items: [...before.items.map(row => structuredClone(row)), ...ignoredRows] });
+const retryResult = await retryMemory.maintainSemanticIndexBatch({ now: diagnosticNow, maxItems: 16 });
+assert.equal(retryResult.corpusItems, 3, 'dormant, quarantined, expired, and future memories must be excluded');
+assert.equal(retryResult.considered, 3);
+assert.equal(retryResult.failed, 3, 'a failed batch should mark each selected row for backoff');
+assert.equal(retryResult.waitingForRetry, 3);
+assert.equal(retryResult.nextRetryAt, diagnosticNow + 3_000, 'first retry backoff should remain three seconds');
+const retryDiagnostics = retryMemory.semanticEmbeddingMaintenanceDiagnostics();
+assert.equal(retryDiagnostics.corpusItems, 3);
+assert.equal(retryDiagnostics.indexedItems, 0);
+assert.equal(retryDiagnostics.remaining, 3);
+assert.equal(retryDiagnostics.waitingForRetry, 3);
+assert.equal(retryDiagnostics.nextRetryAt, diagnosticNow + 3_000);
+
+console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason, maintenance: { corpusItems: retryResult.corpusItems, considered: retryResult.considered, waitingForRetry: retryResult.waitingForRetry, nextRetryAt: retryResult.nextRetryAt } }));
