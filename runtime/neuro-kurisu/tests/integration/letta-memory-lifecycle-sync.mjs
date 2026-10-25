@@ -15,6 +15,10 @@ function makeClient() {
         async ready() {},
         async send(prompt) { state.prompts.push(prompt); },
         async *stream() {
+          if (!state.prompts.at(-1)?.includes('NK1_MEMORY_QUERY_JSON:')) {
+            yield { type: 'tool_call', toolCallId: 'lifecycle-write', toolName: 'Write', toolInput: { file_path: 'memory/experience/test.md' } };
+            yield { type: 'tool_result', toolCallId: 'lifecycle-write', isError: false, content: 'written' };
+          }
           yield { type: 'assistant', content: 'Fake provider acknowledged this request; no durability is implied.' };
           yield { type: 'result', success: true, durationMs: 1, conversationId: 'conv-lifecycle-test' };
         },
