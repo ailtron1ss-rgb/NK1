@@ -1,3 +1,13 @@
+## NK1 WorkPass353 — harden drift metrics and signed outcome replay (2026-10-25)
+
+- [NUMERICS] Updated the stationary-stream ADWIN regression to compare its computed mean within `1e-12`; actual `0.19999999999999962` is IEEE-754 summation noise, while the window must still remain stationary and trigger no drift.
+- [EVIDENCE TRUST] `VerifiedOutcomeArtifact` now rejects re-ingesting an already authenticated artifact into the same live ledger as `duplicate-attempt`, while allowing the exact signed artifact to restore a process-local trust receipt after snapshot restore.
+- [REGRESSION] Extended the signed-outcome artifact test to verify both duplicate rejection in the live process and receipt re-establishment following restore, preserving provenance rather than weakening the expectation.
+- [VALIDATION] P26 passed through continual-transfer tracking on the previous head, then found only the exact-float ADWIN assertion; WorkPass105 paired outcomes passed, but its signed-artifact duplicate protection exposed the receipt ambiguity. Current-head CI is pending.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass352 — make continual-transfer assertion floating-point safe (2026-10-25)
 
 - [REGRESSION] Changed the forward-transfer exact-equality assertion to a `1e-12` tolerance. The computed value is `0.14999999999999997` for the mathematically expected `0.15`; this is ordinary IEEE-754 subtraction noise, not a production transfer-metric discrepancy.
