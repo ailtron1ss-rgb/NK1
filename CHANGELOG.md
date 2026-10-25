@@ -1,3 +1,10 @@
+## [NK1][learning] Assert the interleaved replay budget in the sequential benchmark (2026-10-25)
+
+- Added direct budget assertions for the default interleaved mode (replay attempts cannot exceed 50% of the fresh batch) and the context-aware retention mode (explicit ratio 1.0). In both modes, replayed plus blocked historical rows must fit the returned attempt cap.
+- Added a fail-fast assertion for ratios above 1.0. The benchmark's task-retention/plasticity thresholds remain unchanged; this checks the safety boundary for the new replay controller.
+
+---
+
 ## [NK1][learning] Gate B272 goal learning on actual generated-action identity (2026-10-25)
 
 - The local-provider HTTP E2E exposed a real integration mismatch: `OrganismCore` passed the final arbitrated action to `B272EndogenousGoalGenesis.learnFromOutcome` even when that action differed from the generator's recorded `currentAction`; the engine correctly rejected the mislabeled credit and the chat endpoint returned 500.
