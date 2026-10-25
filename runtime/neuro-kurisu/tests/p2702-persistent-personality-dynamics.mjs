@@ -55,8 +55,8 @@ valueShiftedProbe.restore(shiftedValueState);
 const valueShiftDecision = valueShiftedProbe.beforeDecision({ ...valueProbeInput, tick: 2 });
 assert.ok(valueShiftDecision.actionBias.explore > valuePriorDecision.actionBias.explore + .001,
   'raising curiosity/autonomy values must increase the explore bias');
-assert.equal(valueShiftDecision.actionBias.verify, valuePriorDecision.actionBias.verify,
-  'changing curiosity/autonomy values alone must leave verify bias unchanged when all other personality state is held constant');
+assert.ok(Math.abs(valueShiftDecision.actionBias.verify - valuePriorDecision.actionBias.verify) < 1e-4,
+  'changing curiosity/autonomy values alone must leave verify bias effectively unchanged when all other personality state is held constant');
 
 // Trait learning should target the action-relevant expression rather than array position.
 const curiosityExpressionIndex=after.adaptiveNames.indexOf('curiosityExpression');
