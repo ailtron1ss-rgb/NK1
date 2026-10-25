@@ -2326,3 +2326,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 
 - **WorkPass338 P26 follow-up:** Added missing script mappings for `test:p26:learning-recovery-benchmark` and `test:p26:learning-continual-matrix`, which the existing P26 workflow invoked but `package.json` did not declare. Both map to existing regressions using Node's transform-types mode.
+
+### WorkPass333 — Hexis goal review and explicit activation boundary (2026-10-25)
+
+- Added a durable HMX goal-proposal queue with stable identity across exports, bounded proposal batches, lineage retention, and explicit pending/approved/rejected/materialized states.
+- Added API endpoints to prepare, list, approve/reject, and explicitly activate external goal proposals. Approval materializes a paused external goal; activation is a separate action guarded by duplicate checks, active-goal capacity, and identity-continuity checks.
+- Updated goal ecology so imported external goals that have not passed explicit activation cannot be autonomously reactivated or pruned as ordinary inactive candidates.
+- Fixed the canonical HMX decision path so `accept` stages only; canonical memory projection and persistence happen only on the explicit `apply` decision.
+- Added unit and HTTP smoke regressions for the goal review/activation path. The current PR head’s Hexis workflow is green; the earlier intermediate run exposed a cross-export goal-dedup assertion mismatch that was corrected. A fresh run for the newest head is still required.
+- Remaining: finish full exact-head validation, review broad legacy workflow failures separately, and keep identity/policy/narrative HMX sections deferred until dedicated ownership and consent rules exist.
