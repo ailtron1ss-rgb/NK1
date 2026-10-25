@@ -62,16 +62,16 @@ jobs:
         run: npm run typecheck
       - name: Validate learning input integrity
         working-directory: runtime/neuro-kurisu
-        run: npm run test:p26:learning-input-integrity
+        run: node --experimental-strip-types tests/p26-learning-input-integrity.mjs
       - name: Verify decision-bound evidence bridge into P65
         working-directory: runtime/neuro-kurisu
         run: npm run test:p65:verified-outcome-bridge
       - name: Run online learning and recovery probe
         working-directory: runtime/neuro-kurisu
-        run: npm run test:p26:learning-recovery-benchmark
+        run: node --experimental-strip-types tests/p26-learning-recovery-benchmark.mjs
       - name: Run continual curriculum matrix
         working-directory: runtime/neuro-kurisu
-        run: npm run test:p26:learning-continual-matrix
+        run: node --experimental-strip-types tests/p26-learning-continual-matrix.mjs
       - name: Run SkillLearnBench-compatible evaluation adapter regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-skilllearnbench-adapter.mjs
