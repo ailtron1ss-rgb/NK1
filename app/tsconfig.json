@@ -35,6 +35,7 @@
   ],
   "exclude": [
     "src/legacy/browser-organism/**",
-    "src/lib/cortex.ts"
+    "src/lib/cortex.ts",
+    "src/legacy/avatar/safeLocalStorage.test.mjs"
   ]
 }
