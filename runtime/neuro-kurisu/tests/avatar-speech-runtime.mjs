@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import { EmbodimentRuntime } from '../src/organism/body/EmbodimentRuntime.ts';
+import { defaultBodyState } from '../src/organism/body/EmbodiedBody.ts';
+
+const runtime = new EmbodimentRuntime();
+runtime.body = { ...defaultBodyState(), ttsAvailable: true };
+let resolveSpeech;
+let dispatch;
+runtime.setSpeechGatewayDispatcher((text, options, speechEventId) => {
+  dispatch = { text, options, speechEventId };
+  return new Promise(resolve => { resolveSpeech = resolve; });
+});
+
+const request = runtime.speak('Привет,\nКурису!', { action: 'respond', speechEventId: 'avatar-speech-runtime-test' });
+await new Promise(resolve => setImmediate(resolve));
+const active = runtime.voiceSnapshot();
+assert.equal(active.state.speaking, true);
+assert.equal(active.state.lastSpeechEventId, 'avatar-speech-runtime-test');
+assert.equal(active.state.lastSpeechText, 'Привет, Курису!');
+assert.ok(Number.isFinite(active.state.speechStartedAt) && active.state.speechStartedAt > 0);
+assert.ok(active.state.lastProsody && active.state.lastProsody.rate >= 0.72 && active.state.lastProsody.rate <= 1.25);
+assert.deepEqual(dispatch, {
+  text: 'Привет, Курису!',
+  options: {
+    language: 'ru-RU',
+    pitch: active.state.lastProsody.pitch,
+    rate: active.state.lastProsody.rate,
+    volume: active.state.lastProsody.volume,
+    stream: 'MUSIC',
+  },
+  speechEventId: 'avatar-speech-runtime-test',
+});
+
+resolveSpeech({ ok: true });
+assert.equal(await request, true);
+const completed = runtime.voiceSnapshot();
+assert.equal(completed.state.speaking, false);
+assert.equal(completed.state.lastSpeechEventId, active.state.lastSpeechEventId);
+assert.equal(completed.state.lastSpeechText, active.state.lastSpeechText);
+assert.equal(completed.state.speechStartedAt, active.state.speechStartedAt,
+  'the most recent utterance cursor stays readable after the dispatcher returns');
+assert.equal(completed.state.utteranceCount, 1);
+console.log('AVATAR_SPEECH_RUNTIME=PASS id/text/start/rate/terminal-state');
