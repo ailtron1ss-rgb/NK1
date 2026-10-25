@@ -116,6 +116,11 @@ assert.ok(afterEvaluator.facets.learning.p36.externalEvidence.some(row=>row.exec
 const maturityInput=developmentalOutcomeVerificationInput({area:'learning',outcome01:.91,delayed:true,transfer:true});
 assert.equal(maturityInput.kind,'developmental-outcome','the maturity event must use the dedicated evidence discriminant');
 const maturityBefore=core.p36Diagnostics();
+const wrongLaneMaturity=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,maturityInput,'p36-maturity-on-experiment-lane',{decisionId:traceForEvidence.id});
+assert.equal(wrongLaneMaturity.verified,true,'ActionGateway can verify an adapter response; Core still enforces the semantic evidence lane');
+assert.equal(core.p36Diagnostics().developmentalMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount,
+  'instantaneous experiment evaluator must not update maturity even if given a maturity-shaped payload');
+assert.equal(core.p36DevelopmentalOutcomeSnapshot?.(),undefined,'no alternate maturity snapshot route should be exposed');
 const unlinkedMaturityResult=await core.executeTool(P36_DEVELOPMENTAL_OUTCOME_TOOL_ID,maturityInput,'p36-unlinked-maturity');
 assert.equal(unlinkedMaturityResult.verified,true);
 assert.equal(core.p36Diagnostics().developmentalMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount,
