@@ -11,7 +11,7 @@ export interface TrustedShadowRunContext {
 
 /** Minimal host-owned surface exposed by OrganismCore for trusted run provenance. */
 export interface TrustedShadowRunRegistrar {
-  registerTrustedSkillShadowRun(context: TrustedShadowRunContext): void | Promise<unknown>;
+  registerTrustedSkillShadowRun(context: TrustedShadowRunContext): unknown | Promise<unknown>;
 }
 
 export interface TrustedShadowLearningRunInput {
