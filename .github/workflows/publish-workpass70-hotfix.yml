@@ -2,7 +2,7 @@ name: Publish WorkPass70 hotfix release
 
 on:
   workflow_run:
-    workflows: ["WorkPass71 validation"]
+    workflows: ["NeuroCore core regression validation"]
     branches: [workpass70-source]
     types: [completed]
 
