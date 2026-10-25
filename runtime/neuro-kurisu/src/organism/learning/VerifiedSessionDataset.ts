@@ -106,7 +106,7 @@ export function buildVerifiedSessionDataset(
   const holdoutAggregates: HoldoutAggregate[] = [...holdout.values()]
     .filter(row => row.n >= MIN_HOLDOUT_AGGREGATE_OUTCOMES && row.seeds.size >= MIN_HOLDOUT_AGGREGATE_OUTCOMES)
     .map(row => ({
-      split: 'holdout',
+      split: 'holdout' as const,
       family: row.family,
       method: row.method,
       outcomeCount: row.n,
