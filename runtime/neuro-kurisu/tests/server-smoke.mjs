@@ -1,4 +1,5 @@
 import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
+import { buildCognitiveArchitectureSnapshot } from '../src/organism/core/CognitiveArchitectureMap.ts';
 import { pollUntilReady, timeoutWithinDeadline } from '../scripts/server-smoke-poll.mjs';
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -84,7 +85,8 @@ try {
   if(cameraWithoutKeyResponse.status!==400 || cameraWithoutKey.error!=='idempotency-key-required') throw new Error(`physical camera route must require Idempotency-Key before execution: HTTP ${cameraWithoutKeyResponse.status} ${JSON.stringify(cameraWithoutKey)}`);
   if(!h.actionLedger || h.actionLedger.durablePersisterConfigured!==true || !h.actionLedger.archive?.loaded || !Number.isInteger(h.actionLedger.hotRecords) || !Number.isInteger(h.actionLedger.archive.entries) || !Number.isFinite(h.actionLedger.archive.bytes)) throw new Error('server action-ledger durability diagnostics contract mismatch');
   const brainResponse=await fetch(`http://127.0.0.1:${port}/api/organism/cognitive-architecture`); const brain=await brainResponse.json();
-  if(!brainResponse.ok || brain.ok!==true || brain.readOnly!==true || brain.architecture?.validation?.ok!==true || brain.architecture?.subsystems?.length!==14 || brain.architecture?.flows?.length!==22 || !Array.isArray(brain.architecture?.runtimeSnapshot?.systems) || !Number.isFinite(brain.architecture?.runtimeSnapshot?.tick)) throw new Error('cognitive architecture endpoint/runtime health contract mismatch');
+  const expectedArchitecture=buildCognitiveArchitectureSnapshot();
+  if(!brainResponse.ok || brain.ok!==true || brain.readOnly!==true || brain.architecture?.validation?.ok!==true || brain.architecture?.subsystems?.length!==expectedArchitecture.subsystems.length || brain.architecture?.flows?.length!==expectedArchitecture.flows.length || !Array.isArray(brain.architecture?.runtimeSnapshot?.systems) || !Number.isFinite(brain.architecture?.runtimeSnapshot?.tick)) throw new Error(`cognitive architecture endpoint/runtime health contract mismatch: HTTP ${brainResponse.status} ${JSON.stringify({ok:brain.ok,readOnly:brain.readOnly,validation:brain.architecture?.validation,subsystems:brain.architecture?.subsystems?.length,expectedSubsystems:expectedArchitecture.subsystems.length,flows:brain.architecture?.flows?.length,expectedFlows:expectedArchitecture.flows.length,runtimeSnapshot:brain.architecture?.runtimeSnapshot})}`);
   // Exercise the real language-completion path: telemetry is best-effort and must
   // not turn a generated answer into an HTTP 500.
   const chatResponse=await fetch(`http://127.0.0.1:${port}/api/organism/chat`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'Reply briefly with a greeting for the server smoke test.'})});
