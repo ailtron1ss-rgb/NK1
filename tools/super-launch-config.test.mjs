@@ -52,5 +52,6 @@ test('startup failure of any required child initiates coordinated shutdown', () 
     assert.match(source, /child\.on\('exit'/);
     assert.ok(source.includes('void shutdown('), relative + ' must stop sibling services on child failure');
     assert.ok(source.includes("child.kill('SIGTERM')"), relative + ' must terminate child processes cleanly');
+    assert.ok(source.includes('process.exit(exitCode)'), relative + ' must preserve a failing status for unexpected child exits');
   }
 });
