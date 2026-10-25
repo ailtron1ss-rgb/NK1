@@ -776,7 +776,7 @@ export class P23LearningEngine {
   }
 
   recordExperience(trace:OrganismDecisionTrace,stateAfter:OrganismState,outcome:{success:number;reward:number;surprise:number},policy:AdaptivePolicyEngine):void {
-    if (!trace.selected || this.state.processedTraceIds.includes(trace.id)) return;
+    if (!trace.selected || this.state.processedTraceIds.includes(trace.id) || this.state.experiences.some(row=>row.traceId===trace.id)) return;
     // Invalid feedback is not evidence: reject non-finite labels instead of
     // silently converting NaN/Infinity into apparently valid zero-reward data.
     if (![outcome.success,outcome.reward,outcome.surprise].every(Number.isFinite)) return;
@@ -816,7 +816,7 @@ export class P23LearningEngine {
     for(const experience of this.state.experiences){
       if(!experiencesByTraceId.has(experience.traceId)) experiencesByTraceId.set(experience.traceId,experience);
     }
-    const replayedTraceIds=new Set(this.state.replayedTraceIds);
+    const replayedTraceIds=new Set([...this.state.replayedTraceIds,...this.state.replayUpdates.map(row=>row.traceId)]);
     const eligible=traces.filter(trace=>trace.selected && trace.outcome && !replayedTraceIds.has(trace.id) && experiencesByTraceId.has(trace.id));
     // Selection is shared with the standalone benchmark so production and evaluation
     // exercise the same policy. Recent quota is configurable at the selector boundary.
