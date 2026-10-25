@@ -1,3 +1,11 @@
+## NK1 WorkPass534 — verify signed shadow payload before classifying fields (2026-10-25)
+
+- Corrected the Hermes reflective evidence binding order: the trusted signature/context verifier now runs before mutable receipt payload fields are used to classify task identity or binary-outcome mismatches.
+- A tampered payload is now explicitly rejected as untrusted signed evidence, rather than incidentally being categorized as an outcome mismatch because the forged field is compared first. Validly signed receipts with a genuinely mismatched task or result are still rejected by the subsequent identity/outcome checks.
+- The latest WorkPass108 run confirmed the core shadow registry, ledger, signatures and reflective gate; this diagnostic-order regression was found on the following tampering assertion. Re-run is required after this correction.
+
+---
+
 ## NK1 WorkPass533 — use TypeScript transform mode for Hermes evidence binding (2026-10-25)
 
 - After the trusted-shadow entry test passed with Node 24 transform mode, WorkPass108 revealed the same strip-only incompatibility in the Hermes verified-evidence binding npm script: the dependency graph imports VersionedSkillCandidateStore, which contains TypeScript parameter properties.
