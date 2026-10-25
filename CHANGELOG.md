@@ -1,3 +1,11 @@
+## NK1 WorkPass105 — align runtime viseme labels with normalized speech text (2026-10-25)
+
+- Fixed a UTF-16 offset mismatch in the standalone avatar speech timeline: its frame times were built after CR/LF/tab normalization, while the displayed grapheme labels were sliced from the unnormalized source. Real line breaks could therefore label a viseme with the wrong character.
+- Normalize control whitespace before both timeline construction and grapheme slicing; add regression coverage for actual newline input as well as literal backslash sequences, combining marks, joined emoji and regional-indicator flags.
+- Code and test commits are recorded; the focused Live2D Actions run is the verification gate and is not considered passed until GitHub reports success.
+
+---
+
 ## NK1 WorkPass104 — align Live2D integrity assertions with EmbodimentIntent v1 (2026-10-25)
 
 - Corrected a stale runtime integrity test that still required the pre-v1 split `kurisu_embodiment` and `kurisu_lipsync` messages even though the runtime producer had already switched to one versioned `kurisu_embodiment_intent` envelope.
