@@ -1,3 +1,8 @@
+## NK1 WorkPass555 — assert synchronous skill-ID validation correctly (2026-10-25)
+
+- Corrected the compound-revision regression to use `assert.throws` for an invalid blank skill ID. The coordinator validates the ID synchronously before it returns a Promise, so `assert.rejects` could not capture the expected guard exception.
+- The production input guard is unchanged; the test now checks the exact current API behavior.
+
 ## NK1 WorkPass554 — normalize nested WorkPass110 test commands (2026-10-25)
 
 - Extended the Node TypeScript transform-mode fix through the transitive `npm run` dependency graph used by WorkPass110, not only direct workflow entries. Composite scripts (including continual-metrics and experiment-plan commands) previously retained nested strip-only invocations.
