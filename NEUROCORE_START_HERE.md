@@ -1,3 +1,16 @@
+## Latest checkpoint — WorkPass327 (2026-10-25)
+
+- **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135) remains draft, based on source branch `work/node24-project-pin-rebased-20261025`.
+- **New timeout contract:** `research/research_bridge.py` formerly gave every runtime POST a fixed 4 s timeout; that would cut off the new 8 s bounded persistence-busy retry on the server. Approval request/resolve/consume now use `ORGANISM_APPROVAL_TIMEOUT_SECONDS` (default 12 s, clamp 9–30 s); all other runtime calls retain 4 s.
+- **Bridge regression:** `tests/workpass53-research-bridge-approval.mjs` monkey-patches urllib transport and checks the approval request's timeout exceeds 8 s while normal route timeout remains exactly 4 s.
+- **Workflow hygiene:** duplicate pull-request path filters were removed. Push filters now cover source system/server, approval tests, research bridge, DeepCode/NeuroCore and CPU dependency manifest.
+- **Supported setup:** root package now offers `npm run install:research:cpu` to install the declared CPU PyTorch dependency for research-heavy Linux environments. This remains explicit/optional rather than part of the default app installer because Android/Termux CPU PyTorch wheels may not be available.
+- **Latest completed validations before WorkPass327 changes:** the PR-head runner successfully installed Python 3.12 + CPU torch, completed Node 24/installer/doctor/locked npm installs/app build/typecheck/cognitive suite and `test:workpass53` approval E2E. The all-up smoke was still running at last poll; these earlier results do not validate the timeout/path-filter changes.
+- **Next:** inspect run for WorkPass327 head, especially all-up research smoke and the independent continual-learning workflow. If another probe fails, use emitted per-probe error text rather than suppressing it.
+- **Remaining release gates:** browser/UI/real Live2D/TTS, Android/Termux audio, independent held-out memory/learning uplift, long-duration soak, license review and clean-machine release reproduction. Release archive and main were not changed.
+
+---
+
 ## Latest checkpoint — WorkPass326 (2026-10-25)
 
 - **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), source base `work/node24-project-pin-rebased-20261025`. No merge to `main`; release archive not touched.
