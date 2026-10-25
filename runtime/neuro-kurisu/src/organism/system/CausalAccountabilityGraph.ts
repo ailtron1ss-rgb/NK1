@@ -133,7 +133,8 @@ export class CausalAccountabilityGraph {
     if(input.predictionId)this.link(input.predictionId,action,'predicted',.9);
     const outcome=this.add('outcome',input.tick,`tool:${input.tool}:${input.ok?'ok':'failed'}`,{tool:input.tool,executionId:executionId||undefined,ok:input.ok,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition,externalObservation:Boolean(input.externalObservation),observationId:input.observationId},input.confidence01,input.observationId);
     if(executionId){
-      this.outcomeIndex.set(executionId,{executionId,outcomeId:outcome,tool:input.tool,tick:input.tick,at:Date.now(),ok:input.ok,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition,observationId:input.observationId,confidence01:clamp(input.confidence01)});
+      const outcomeNode=this.nodes.find(node=>node.id===outcome);
+      this.outcomeIndex.set(executionId,{executionId,outcomeId:outcome,tool:input.tool,tick:input.tick,at:outcomeNode?.at??Date.now(),ok:input.ok,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition,observationId:input.observationId,confidence01:clamp(input.confidence01)});
       while(this.outcomeIndex.size>this.maxOutcomeIndex){const oldest=this.outcomeIndex.keys().next().value as string|undefined;if(!oldest)break;this.outcomeIndex.delete(oldest);}
     }
     this.link(action,outcome,'caused',input.ok?.8:.35);
@@ -162,7 +163,7 @@ export class CausalAccountabilityGraph {
     if(matches.length===0){
       const receipt=this.outcomeIndex.get(executionId);
       if(receipt&&receipt.tool===input.tool){
-        const rehydrated=this.addNode({id:receipt.outcomeId,kind:'outcome',tick:receipt.tick,at:Date.now(),summary:`tool:${receipt.tool}:${receipt.ok?'ok':'failed'}:receipt-rehydrated`,confidence01:receipt.confidence01,evidenceRef:receipt.observationId,data:{tool:receipt.tool,executionId:receipt.executionId,expectedPostcondition:receipt.expectedPostcondition,observedPostcondition:receipt.observedPostcondition,externalObservation:Boolean(receipt.observationId),observationId:receipt.observationId,receiptRehydrated:true,originalAt:receipt.at}});
+        const rehydrated=this.addNode({id:receipt.outcomeId,kind:'outcome',tick:receipt.tick,at:Date.now(),summary:`tool:${receipt.tool}:${receipt.ok?'ok':'failed'}:receipt-rehydrated`,confidence01:receipt.confidence01,evidenceRef:receipt.observationId,data:{tool:receipt.tool,executionId:receipt.executionId,ok:receipt.ok,expectedPostcondition:receipt.expectedPostcondition,observedPostcondition:receipt.observedPostcondition,externalObservation:Boolean(receipt.observationId),observationId:receipt.observationId,receiptRehydrated:true,originalAt:receipt.at}});
         matches=[rehydrated];
       }
     }
@@ -220,7 +221,7 @@ export class CausalAccountabilityGraph {
     if(matches.length===0){
       const receipt=this.outcomeIndex.get(executionId);
       if(receipt&&receipt.tool===input.tool){
-        const rehydrated=this.addNode({id:receipt.outcomeId,kind:'outcome',tick:receipt.tick,at:Math.max(0,receipt.at),summary:`tool:${receipt.tool}:${receipt.ok?'ok':'failed'}:receipt-rehydrated`,confidence01:receipt.confidence01,evidenceRef:receipt.observationId,data:{tool:receipt.tool,executionId:receipt.executionId,expectedPostcondition:receipt.expectedPostcondition,observedPostcondition:receipt.observedPostcondition,externalObservation:Boolean(receipt.observationId),observationId:receipt.observationId,receiptRehydrated:true,originalAt:receipt.at}});
+        const rehydrated=this.addNode({id:receipt.outcomeId,kind:'outcome',tick:receipt.tick,at:Math.max(0,receipt.at),summary:`tool:${receipt.tool}:${receipt.ok?'ok':'failed'}:receipt-rehydrated`,confidence01:receipt.confidence01,evidenceRef:receipt.observationId,data:{tool:receipt.tool,executionId:receipt.executionId,ok:receipt.ok,expectedPostcondition:receipt.expectedPostcondition,observedPostcondition:receipt.observedPostcondition,externalObservation:Boolean(receipt.observationId),observationId:receipt.observationId,receiptRehydrated:true,originalAt:receipt.at}});
         matches=[rehydrated];
       }
     }
@@ -295,7 +296,11 @@ export class CausalAccountabilityGraph {
       if(node.kind!=='outcome'||!node.data||typeof node.data.executionId!=='string'||typeof node.data.tool!=='string')continue;
       const executionId=node.data.executionId;
       if(!executionId.trim()||executionId.length>180||this.quarantinedExecutionIds.has(executionId))continue;
-      const row={executionId,outcomeId:node.id,tool:node.data.tool,tick:node.tick,at:node.at,ok:String(node.summary).endsWith(':ok'),expectedPostcondition:typeof node.data.expectedPostcondition==='string'?node.data.expectedPostcondition:undefined,observedPostcondition:typeof node.data.observedPostcondition==='string'?node.data.observedPostcondition:undefined,observationId:typeof node.data.observationId==='string'?node.data.observationId:undefined,confidence01:clamp(Number(node.confidence01??0))};
+      const nodeSummary=String(node.summary);
+      const originalAt=node.data.originalAt;
+      const nodeAt=typeof originalAt==='number'&&Number.isFinite(originalAt)?Math.max(0,originalAt):node.at;
+      const nodeOk=typeof node.data.ok==='boolean'?node.data.ok:(nodeSummary.endsWith(':ok')||nodeSummary.endsWith(':ok:receipt-rehydrated'));
+      const row={executionId,outcomeId:node.id,tool:node.data.tool,tick:node.tick,at:nodeAt,ok:nodeOk,expectedPostcondition:typeof node.data.expectedPostcondition==='string'?node.data.expectedPostcondition:undefined,observedPostcondition:typeof node.data.observedPostcondition==='string'?node.data.observedPostcondition:undefined,observationId:typeof node.data.observationId==='string'?node.data.observationId:undefined,confidence01:clamp(Number(node.confidence01??0))};
       const prior=this.outcomeIndex.get(executionId);
       if(prior&&!sameReceipt(prior,row)){quarantine(executionId);continue;}
       if(!prior)this.outcomeIndex.set(executionId,row);
