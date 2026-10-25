@@ -19,6 +19,19 @@ assert.equal(valid.verified, true, 'well-formed tool-contract evidence remains u
 assert.equal(observedContext.executionId, 'exec-123456789', 'valid execution identity must survive context isolation');
 assert.equal(observedContext.decisionId, 'decision-123', 'valid decision identity must survive context isolation');
 
+const normalized = await service.verify({
+  toolId: 'fixture.correlation-boundary',
+  input: { value: 1.5 },
+  result: { ok: true },
+  executionId: 'ｅｘｅｃ-１２３４５６７８９',
+  decisionId: 'ｄｅｃｉｓｉｏｎ-１２３',
+}, verifier);
+assert.equal(normalized.verified, true);
+assert.equal(observedContext.executionId, 'exec-123456789',
+  'NFKC normalization must happen before validating the execution identifier');
+assert.equal(observedContext.decisionId, 'decision-123',
+  'NFKC normalization must produce a canonical decision identity');
+
 const badDecision = await service.verify({
   toolId: 'fixture.correlation-boundary',
   input: { value: 2 },
