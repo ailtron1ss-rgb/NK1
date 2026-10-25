@@ -272,6 +272,28 @@ try {
   assert.ok(migratedSeed.system.causalAccountability.quarantinedExecutionIds?.includes('exec-state-migration-quarantine'),
     'state migration must preserve execution quarantine tombstones across restart');
 
+  const causalNoiseSeed = structuredClone(migrationSeed);
+  const retainedOutcomeIndexRow = {
+    executionId: 'exec-retained-after-causal-noise', outcomeId: 'outcome:retained-after-causal-noise',
+    tool: 'device.read', tick: 1, at: 10, ok: true,
+  };
+  causalNoiseSeed.system.causalAccountability = {
+    ...causalNoiseSeed.system.causalAccountability,
+    outcomeIndex: [
+      retainedOutcomeIndexRow,
+      ...Array.from({ length: 1100 }, () => ({ executionId: '', outcomeId: '', tool: '', tick: NaN, at: NaN, ok: 'invalid' })),
+    ],
+    quarantinedExecutionIds: [
+      'exec-quarantine-retained-after-noise',
+      ...Array.from({ length: 1100 }, (_, i) => ({ malformedTombstone: i })),
+    ],
+  };
+  const migratedCausalNoise = migratePersistedOrganism(causalNoiseSeed).system.causalAccountability;
+  assert.ok(migratedCausalNoise.outcomeIndex.some(row => row.executionId === retainedOutcomeIndexRow.executionId),
+    'invalid trailing outcome-index rows must not evict a valid causal receipt during migration');
+  assert.ok(migratedCausalNoise.quarantinedExecutionIds.includes('exec-quarantine-retained-after-noise'),
+    'invalid trailing tombstone rows must not erase a valid execution quarantine during migration');
+
   const migrationRevision = {
     revisionId:'outcome-revision:migration-retention', executionId:'exec:migration-retention', tool:'device.read',
     revisionNumber:1, source:'authoritative-provider-receipt', providerReceiptHash:'a'.repeat(64),
