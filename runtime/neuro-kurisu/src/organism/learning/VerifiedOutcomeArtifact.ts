@@ -146,6 +146,12 @@ export function ingestSignedOutcomeArtifact(
     if (!exactMatch) {
       return { accepted: false, artifactFingerprint: fingerprint, rejection: 'conflicting-existing-outcome' };
     }
+    // A repeated ingestion in this live ledger is a duplicate. After restore, the
+    // process-local receipt map is empty, so the exact signed artifact may establish
+    // its receipt again without changing the persisted outcome row.
+    if (authenticatedEvidence.get(ledger)?.has(outcome.evidenceRef)) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: 'duplicate-attempt' };
+    }
   } else {
     const result = ledger.record(outcome);
     if (!result.accepted) {
