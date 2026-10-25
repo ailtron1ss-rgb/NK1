@@ -1,4 +1,4 @@
-name: Cognitive integration suite
+name: Unified project integration suite
 
 on:
   workflow_dispatch:
@@ -10,12 +10,24 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
+      - ".nvmrc"
+      - "package.json"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "tools/project-runtime-pin.mjs"
+      - "tools/project-runtime-pin.test.mjs"
+      - "tools/integration-supervisor.mjs"
+      - "tools/integration-supervisor.test.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-doctor.mjs"
+      - "tools/verify-integration.mjs"
       - ".github/workflows/cognitive-integration-suite.yml"
   push:
     branches:
       - "nk1-cognitive-cohesion-20261025"
       - "feature/memory-budget-restore-integrity-20261025"
       - "workpass70-source"
+      - "work/node24-project-pin-rebased-20261025"
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
       - "runtime/neuro-kurisu/tests/cognitive-*.mjs"
@@ -32,7 +44,7 @@ jobs:
   cognitive-integration:
     name: Install and verify cognitive runtime
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - name: Checkout source
         uses: actions/checkout@v5
@@ -41,8 +53,22 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+          cache-dependency-path: |
+            app/package-lock.json
+            runtime/neuro-kurisu/package-lock.json
+      - name: Install locked app dependencies
+        run: npm ci --prefix app
       - name: Install locked runtime dependencies
         run: npm ci --prefix runtime/neuro-kurisu
+      - name: Verify project runtime pin contract
+        run: npm run test:runtime-pin-contract
+      - name: Test integration process supervisor
+        run: npm run test:integration-supervisor
+      - name: Typecheck, build and test app
+        run: |
+          npm --prefix app run typecheck
+          npm --prefix app run build:dev
       - name: Verify cognitive integration contracts
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite
+      - name: Run unified runtime and research bridge smoke
+        run: npm run test:integration
