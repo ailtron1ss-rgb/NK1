@@ -29,8 +29,8 @@ assert.match(wrapper, /options\.idempotencyKey \|\| result\.idempotentReplay/,
 
 const projectStart = source.indexOf('const reconcileExistingOperation =');
 assert.notEqual(projectStart, -1, 'project execution/reconciliation path must remain identifiable');
-const projectEnd = source.indexOf('const unresolvedReceipt = [', projectStart);
-assert.ok(projectEnd > projectStart, 'project execution path must have an explicit receipt outcome boundary');
+const projectEnd = source.indexOf('const canonicalCandidateTool =', projectStart);
+assert.ok(projectEnd > projectStart, 'project execution path must end before compound-skill tool selection');
 const projectDispatch = source.slice(projectStart, projectEnd);
 assert.match(projectDispatch, /result = await this\.executeTool\(id, input, executionReason, executionOptions\)/,
   'fresh project tool execution must use the canonical core wrapper so unkeyed outcomes are finalized');
