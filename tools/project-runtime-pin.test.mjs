@@ -23,11 +23,12 @@ test('minor and full-version pins constrain only their declared precision', () =
 });
 
 test('symbolic, empty, malformed, and non-numeric pins fail closed', () => {
-  for (const value of ['', 'lts/*', 'node', '24.x', 'v24.1.0-nightly', '24..1', '-24']) {
+  for (const value of ['', 'lts/*', 'node', '24.x', 'v24.1.0-nightly', '24..1', '-24', '9007199254740992.0.0']) {
     assert.throws(() => parseNodeVersionPin(value), undefined, value);
   }
   assert.equal(matchesNodeVersionPin('not-a-version', parseNodeVersionPin('24')), false);
   assert.equal(matchesNodeVersionPin('24.2.0', 'lts/*'), false);
+  assert.equal(matchesNodeVersionPin('24.2.0', { parts: [], precision: 0 }), false);
 });
 
 test('minimum engine ranges compare numeric components rather than strings', () => {
