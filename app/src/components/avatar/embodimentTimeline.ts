@@ -35,7 +35,7 @@ export interface EmbodimentIntentV1 {
   audioClockId: string | null;
   speechPhase: SpeechPhase;
   audioTimeMs: number;
-  clockSource: "speech-synthesis-elapsed-time-anchored-monotonic" | "speech-synthesis-boundary-anchored-monotonic" | "none";
+  clockSource: "speech-synthesis-elapsed-time-anchored-monotonic" | "speech-synthesis-boundary-anchored-monotonic" | "runtime-tts-start-anchored-monotonic" | "none";
   priority: number;
   cancellationToken: string | null;
   expression: string;
@@ -182,7 +182,7 @@ export function isEmbodimentIntentV1(value: unknown): value is EmbodimentIntentV
   const validId = (id: unknown, maxLength: number): boolean => id === null || (typeof id === "string" && id.length > 0 && id.length <= maxLength);
   if (!validId(intent.speechEventId, 180) || !validId(intent.audioClockId, 220)) return false;
   if (intent.speechPhase === "speaking" && (!intent.speechEventId || !intent.audioClockId)) return false;
-  if (intent.clockSource !== "none" && intent.clockSource !== "speech-synthesis-boundary-anchored-monotonic" && intent.clockSource !== "speech-synthesis-elapsed-time-anchored-monotonic") return false;
+  if (intent.clockSource !== "none" && intent.clockSource !== "speech-synthesis-boundary-anchored-monotonic" && intent.clockSource !== "speech-synthesis-elapsed-time-anchored-monotonic" && intent.clockSource !== "runtime-tts-start-anchored-monotonic") return false;
   if (!Number.isFinite(intent.priority) || Number(intent.priority) < 0 || Number(intent.priority) > 100) return false;
   if (intent.cancellationToken !== null && (typeof intent.cancellationToken !== "string" || intent.cancellationToken.length > 220)) return false;
   if (typeof intent.expression !== "string" || intent.expression.length > 32) return false;
