@@ -389,13 +389,14 @@ export function createIndependentSkillCandidateEvaluator(
       runBindings.push({
         taskId: task.taskId,
         trialId: task.trialId,
-        // A run ID and trace are evidence only after the independent verifier binds
-        // them to the exact candidate/task/environment/plan context.
+        // Executability is a diagnostic about the executor result, not verifier authority.
+        // Keep the execution/run trace untrusted until the independent verifier binds it
+        // to the exact candidate/task/environment/plan context.
         runId: bindingVerified ? execution?.runId ?? null : null,
         plannedRunId: plannedRun?.runId ?? null,
         seed: task.seed,
         split: task.split,
-        executable: executable && bindingVerified,
+        executable,
         observedStepIds: bindingVerified ? execution?.observedStepIds ?? [] : [],
         bindingVerified,
         verifierPassed: executable && bindingVerified && verifierPassed,
@@ -413,7 +414,9 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          // Quality diagnostics preserve valid execution even if verification is unavailable.
+          // Task success below still requires trustedExecution + verifier pass + safety pass.
+          executable,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {
