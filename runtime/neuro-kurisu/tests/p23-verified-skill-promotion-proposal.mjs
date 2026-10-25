@@ -101,7 +101,7 @@ for (let i=0;i<100;i++) for (const [method,passed] of [['baseline',false],['cand
     authority:'independent-verifier',verifierId:'v',expectedVerifierId:'v',evidenceRef:'fraction-'+i+'-'+method});
 }
 const nanGainThreshold = evaluateSkillRevision(smallGainObservations,'baseline','candidate',{
-  minPairedTasks:8,minAbsoluteGain:Number.NaN,
+  minPairedTasks:8,minIndependentSeeds:1,minAbsoluteGain:Number.NaN,
 });
 assert.equal(nanGainThreshold.accepted,false);
 assert.equal(nanGainThreshold.reason,'no-material-heldout-improvement',
