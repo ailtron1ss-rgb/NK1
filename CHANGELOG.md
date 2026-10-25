@@ -1,3 +1,10 @@
+## NK1 regression harness — correct hostile-payload fingerprint binding (2026-10-25)
+
+- Fixed both WorkPass348 hostile-descriptor fixtures to supply the evaluator's actual `payloadFingerprint` argument instead of an unrelated property name.
+- The candidate payload hash itself is unchanged; this restores the intended getter-isolation tests instead of failing early on a missing fingerprint.
+
+---
+
 ## NK1 validation coverage — gate guarded skill rollback lifecycle (2026-10-25)
 
 - Added the versioned skill-store implementation and lifecycle regression to P26 push and pull-request path filters.
