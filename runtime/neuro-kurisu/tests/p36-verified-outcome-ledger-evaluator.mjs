@@ -66,6 +66,9 @@ const config={
   ledger,
   manifest,
   evaluatorVersion:'p36-signed-ledger-v1',
+  baselineMethod:'baseline-v1',
+  treatmentMethod:'candidate-v1',
+  taskFamily:'memory',
   sourceId:'p36-signed-ledger-source',
   independenceKey:'p36-independent-verifier-key',
   minimumPairedSeeds:4,
@@ -96,6 +99,8 @@ assert.equal(measureP36VerifiedOutcomeLedger({...unscoredQuery,manifestFingerpri
   'evidence must be bound to the exact canonical manifest fingerprint');
 assert.equal(measureP36VerifiedOutcomeLedger({...unscoredQuery,taskFamily:'relationship',contextKey:'relationship'},config),null,
   'a task family with no signed holdout coverage cannot be measured');
+assert.equal(measureP36VerifiedOutcomeLedger({...unscoredQuery,treatmentMethod:'other-candidate'},config),null,
+  'the caller cannot select a different treatment method after the host evaluator was configured');
 
 // The runtime-facing tuple carries claimed scores, but the registered evaluator
 // recomputes them from authenticated ledger rows on both execute and verify.
