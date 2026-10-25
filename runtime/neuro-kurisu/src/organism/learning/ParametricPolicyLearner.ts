@@ -175,6 +175,17 @@ export class ParametricPolicyLearner{
   }
 
   trainBatch(samples:Array<Parameters<ParametricPolicyLearner['train']>[0]>){
+    if(!Array.isArray(samples)) throw new TypeError('samples-must-be-array');
+    // Preflight every row before the first gradient update. A malformed later
+    // row must not leave the learner partially trained on an invalid batch.
+    for(const sample of samples){
+      if(!sample||typeof sample!=='object') throw new TypeError('sample-must-be-object');
+      if(typeof sample.target01!=='number'||!Number.isFinite(sample.target01)) throw new RangeError('target-must-be-finite');
+      if(typeof sample.learningRate01!=='number'||!Number.isFinite(sample.learningRate01)) throw new RangeError('rate-must-be-finite');
+      if(sample.sampleWeight01!==undefined&&(typeof sample.sampleWeight01!=='number'||!Number.isFinite(sample.sampleWeight01))) throw new RangeError('sample-weight-must-be-finite');
+      if(!ACTIONS.includes(sample.action)) throw new RangeError('invalid-action');
+      this.features(sample.state,sample.extras,sample.action);
+    }
     let loss=0; let n=0;
     for(const sample of samples){const r=this.train(sample);loss+=r.loss01;n++;}
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};
