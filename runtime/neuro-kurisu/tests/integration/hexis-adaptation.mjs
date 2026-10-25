@@ -336,6 +336,27 @@ assert.equal(applyFabric.decideGoalProposal(firstGoalProposal.id, 'approve')?.st
   'replaying the same approval remains idempotent after materialization');
 assert.equal(applyFabric.listGoalProposals({ status: 'pending' }).some(proposal => proposal.id === firstGoalProposal.id), false,
   'approved/materialized proposals must leave the pending review queue');
+const goalRelationshipReceipt = {
+  sourceStageFound: true,
+  candidateRelationships: 2,
+  projected: 1,
+  deferred: 1,
+  semanticEdgeIds: ['semantic-edge-reviewed-goal-1'],
+  at: 1700000000000,
+};
+const firstActivationReceipt = applyFabric.markGoalProposalActivated(
+  firstGoalProposal.id, 'test-canonical-goal:' + firstGoalProposal.id, goalRelationshipReceipt,
+);
+assert.equal(firstActivationReceipt?.goalRelationshipReceipt?.projected, 1);
+const activationMetricAfterFirstReceipt = applyFabric.snapshot().metrics.hmxGoalProposalsActivated;
+const replayedActivationReceipt = applyFabric.markGoalProposalActivated(
+  firstGoalProposal.id, 'test-canonical-goal:' + firstGoalProposal.id,
+  { ...goalRelationshipReceipt, projected: 99, at: 1700000000100 },
+);
+assert.deepEqual(replayedActivationReceipt?.goalRelationshipReceipt, goalRelationshipReceipt,
+  'a replay must not overwrite the first activation receipt or recount its graph mutation');
+assert.equal(applyFabric.snapshot().metrics.hmxGoalProposalsActivated, activationMetricAfterFirstReceipt,
+  'replaying activation evidence must not increment the activation metric twice');
 
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 0,
   'approval remains separate from applying the import');

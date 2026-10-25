@@ -2294,3 +2294,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 
 - **WorkPass336 validation correction:** Exposed the goal relationship receipt in the HTTP response, fixed the Unicode property escape in the source-isolated graph label helper, and switched the WorkPass293 script to Node's transform-types loader because that test imports a class using TypeScript parameter properties. The previous live HTTP smoke failed because the receipt was omitted by the server serializer, not because the core did not run the projection; exact-head retest is required.
+
+
+
+## 2026-10-25 — WorkPass337: preserve deferred semantic goal edges
+
+- Blocked activation if the source HMX stage is present but has not completed explicit canonical `apply`.
+- Preserve the current external goal's source-namespaced semantic node even when all candidate goal-to-goal edges are deferred; this enables a later explicitly activated peer goal to resolve and project the edge.
+- Made durable goal-activation receipts idempotent and tested that replay cannot replace evidence or increment activation metrics twice.
+- Exact-head validation pending after this change.

@@ -113,3 +113,10 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 
 
 - **WorkPass336 validation correction:** The first live-server check confirmed the core produced the goal relationship receipt but found the HTTP handler did not serialize it in the API response. The route now returns the receipt from the activation result/proposal. The same CI wave also found the new WorkPass293 test imports TypeScript parameter properties, which Node's strip-only loader cannot handle; its script now uses `--experimental-transform-types`. The graph-label helper's Unicode property-escape regex was corrected to match the canonical SemanticMemoryGraph normalizer. Fresh CI is pending.
+
+
+## WorkPass337 — activation ordering and deferred-goal edge recovery
+
+- A new external goal may only be activated while its original HMX stage is still available and marked `applied`; accepting/reviewing a document is not enough to promote its intent into active planning.
+- When an explicitly activated goal has HMX edges to another not-yet-activated external goal, NK1 now preserves the first goal's source-isolated semantic node while recording the edge as deferred. The second goal's later activation can then resolve its endpoint and project the edge.
+- The durable relationship receipt is idempotent: replayed activation evidence cannot replace its original counters/edge IDs or increment the activation metric again. Unit regression covers receipt replay; live server smoke covers explicit goal-to-memory projection. Fresh exact-head CI is pending.

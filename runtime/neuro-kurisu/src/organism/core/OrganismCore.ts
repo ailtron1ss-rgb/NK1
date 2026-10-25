@@ -3040,8 +3040,9 @@ export class OrganismCore {
             const relationshipReceipt: import('../integration/hexis/HexisAdaptationFabric.ts').HexisGoalRelationshipReceipt = {
                 sourceStageFound: false, candidateRelationships: 0, projected: 0, deferred: 0, semanticEdgeIds: [], at: Date.now(),
             };
+            const sourceStage = this.hexisAdaptation.getHmxStage(proposal.stageId);
+            if (sourceStage && sourceStage.status !== 'applied') throw new Error('hmx-stage-must-be-applied-before-goal-activation');
             try {
-                const sourceStage = this.hexisAdaptation.getHmxStage(proposal.stageId);
                 if (sourceStage && sourceStage.exportId === proposal.exportId && sourceStage.sourceLineageId === proposal.sourceLineageId) {
                     relationshipReceipt.sourceStageFound = true;
                     const relationshipRows = Array.isArray(sourceStage.stagedSections?.relationships)
@@ -3085,6 +3086,10 @@ export class OrganismCore {
                         const sourceKey = hexisImportedMemoryGraphSourceKey(proposal.sourceLineageId, ref, memoryRow.content);
                         return graphSnapshot().nodes.find(node => node.sourceKey === sourceKey) ?? null;
                     };
+                    // Preserve the activated goal's source-isolated graph node even when another
+                    // goal endpoint is still awaiting explicit activation. The later activation can
+                    // then complete the deferred edge without forging or merging an endpoint.
+                    const currentGoalNode = relationshipRows.length ? getOrCreateCurrentGoalNode() : null;
                     for (const relationship of relationshipRows as any[]) {
                         const sourceRef = String(relationship.source_ref ?? '');
                         const targetRef = String(relationship.target_ref ?? '');
@@ -3094,13 +3099,12 @@ export class OrganismCore {
                             continue;
                         }
                         const otherNode = resolveOtherEndpoint(otherRef);
-                        if (!otherNode) {
+                        if (!otherNode || !currentGoalNode) {
                             relationshipReceipt.deferred++;
                             continue;
                         }
-                        const currentNode = getOrCreateCurrentGoalNode();
-                        const from = sourceRef === proposal.sourceRef ? currentNode.id : otherNode.id;
-                        const to = targetRef === proposal.sourceRef ? currentNode.id : otherNode.id;
+                        const from = sourceRef === proposal.sourceRef ? currentGoalNode.id : otherNode.id;
+                        const to = targetRef === proposal.sourceRef ? currentGoalNode.id : otherNode.id;
                         if (from === to) {
                             relationshipReceipt.deferred++;
                             continue;
