@@ -35,7 +35,12 @@ export function adaptiveReplayOptions(base:ReplaySelectionOptions,h:LearningHeal
  const energy=h.energy01<.2?.5:h.energy01<.4?.75:1;
  const size=Math.max(1,Math.min(cap,Math.max(0,count),Math.round(cap*energy*(.65+.35*pressure))));
  const ratio=c(.35+.25*h.recentPredictionError01+.15*h.evidenceDebt01-.15*h.memoryPressure01);
- return{maxBatchSize:size,recentQuota:Math.max(0,Math.min(size,Math.round(size*ratio))),ageHalfLifeTicks:pressure>.7?512:Number.POSITIVE_INFINITY};
+ // An explicit caller quota is a contract, not merely a hint. Health adaptation
+ // may shrink the total batch; clamp the requested recent window to that size.
+ const recentQuota=base.recentQuota===undefined
+   ? Math.max(0,Math.min(size,Math.round(size*ratio)))
+   : Math.max(0,Math.min(size,Math.floor(f(base.recentQuota,0))));
+ return{maxBatchSize:size,recentQuota,ageHalfLifeTicks:pressure>.7?512:Number.POSITIVE_INFINITY};
 }
 /** Clipped importance weights and update rates stop noisy/rare events dominating. */
 export function importanceWeight01(probability01:number,beta01=.4):number{return c(Math.pow(Math.max(.0001,c(probability01)),-c(beta01))/10)}
