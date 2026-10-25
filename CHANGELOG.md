@@ -1,3 +1,9 @@
+## NK1 WorkPass554 — normalize nested WorkPass110 test commands (2026-10-25)
+
+- Extended the Node TypeScript transform-mode fix through the transitive `npm run` dependency graph used by WorkPass110, not only direct workflow entries. Composite scripts (including continual-metrics and experiment-plan commands) previously retained nested strip-only invocations.
+- All reachable test scripts that invoke TypeScript files now use `--experimental-transform-types` when required by Node 22/24 parameter-property syntax.
+- This is runner normalization only; assertions and runtime trust/approval gates remain unchanged. Latest-head WorkPass110 must rerun.
+
 ## NK1 WorkPass553 — normalize WorkPass110 TypeScript runner modes (2026-10-25)
 
 - CI showed the production runtime trusted-shadow scheduler test imports TypeScript constructor parameter properties, which Node 24.21 rejects under `--experimental-strip-types`.
