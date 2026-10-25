@@ -13,6 +13,7 @@ Validation: rerun WorkPass243 and the broader contract/learning workflows on the
 - Fixed a metric conflation in `IndependentSkillCandidateEvaluator`: a structurally valid executor result remains measurable as executable when the independent verifier is unavailable.
 - Kept verifier binding, successful task completion, and admissibility into the canonical verified-outcome ledger gated on the trusted verifier result. An unbound trace still cannot become a passed task or a promotion-grade outcome.
 - Added the WorkPass203 regression to the repository contract gate and wired both the evaluator source and test into its path filters.
+- The repository contract path filters also track the host-owned evaluation service and regression, plus both learning tests that previously surfaced source-hygiene failures.
 
 Validation: the WorkPass203 test must pass on the latest exact head; previous WorkPass110 run exposed the mismatch at its assertion.
 
