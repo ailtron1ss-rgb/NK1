@@ -1,5 +1,15 @@
 # NeuroCore — repository working rules
 
+## Latest durable checkpoint — WorkPass340 (2026-10-25)
+
+- Runtime typecheck has a pinned, runtime-local `@types/node` package and matching lockfile, and no longer includes the incomplete ambient Node shims in the semantic program. Strict TypeScript checking remains enabled.
+- Fixed several confirmed type errors in retention configuration, skill retrieval/context indexing, intrinsic experiment filters, compound-skill base-variant counters, cognitive dependency restore typing and runtime clock registration.
+- Core skips learning ingestion when an external causal record is rejected (null), and the causal-learning regression fixture now meets the explicit post-action grounding contract.
+- WorkPass336–339 fixes remain in place: correlation ID regex, duplicate cognitive-cycle verifier, replay option import, and a dedicated boundary regression wired into CI.
+- Exact-head workflows must confirm these changes; runtime typecheck is not yet claimed green. Release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass339 (2026-10-25)
 
 - A focused correlation-ID regression is being added and wired to execute before broader typecheck steps. It checks that malformed IDs are dropped and valid execution identity survives.
