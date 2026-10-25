@@ -6,17 +6,15 @@ The separate `app/` frontend is also typechecked and production-built in CI; it 
 
 ---
 
-## Current source-stack checkpoint — WorkPass319 (2026-10-25)
+## Current source-stack checkpoint — WorkPass320 (2026-10-25)
 
-- **Scope:** closes three functional defects in the unified cycle/motivation integration: contradictory restored counters, malformed missing-stage normalization, and B272 goal-value saturation that hid trusted intrinsic drive. The B272 literal-key validation error was also fixed.
-- **Behavior CI:** all three focused tests passed in [run 40189992050](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189992050).
-- **Typecheck blocker:** [run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) failed on 88 repository-wide TypeScript diagnostic lines, mostly in unchanged modules; one B272 issue from that run has since been fixed. The wider typecheck is still unresolved, so the PR remains draft.
-- **Work branch:** `nk1-ready-unified-cycle-restore-integrity-20261025`, based on source line `workpass206-runtime-evaluator-wiring`.
-- **Scope boundary:** no claim of learning uplift or full release readiness.
-
-See [WorkPass319 checkpoint](docs/WORKPASS319_UNIFIED_COGNITIVE_CYCLE_RESTORE_INTEGRITY_2026-10-25.md).
-
----
+- **Runnable runtime path:** Docker Compose starts the Node.js 24 cognitive runtime and bundled Russian UI; state is retained in a named volume, service runs as non-root, and the default host bind is 127.0.0.1.
+- **Dependency contract:** app and runtime installs are locked independently. Runtime semantic typecheck refuses global-compiler fallback. Both app/runtime typecheck and the app production build passed on the recorded code head.
+- **Cognitive/action integration:** the unified cycle, intrinsic motivation, P26 learning integrity/replay, causal replay, ActionGateway receipt/finalizer, planner wrapper and project reconciliation contracts passed.
+- **Boot and continuity checks:** organism smoke, HTTP/server security, restart persistence, Compose build/health and built-in UI smoke passed on [Actions run 40229027931](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40229027931), code head 974a8cf5dea2093cad936f76a3fc43c86783ae3e.
+- **P26 synthetic benchmark:** context-separated tasks were retained at 0.9375 and 0.93125 after mixed training (baseline 0.99375). This is a deterministic synthetic regression, not external proof of general learning gains.
+- **PR #129 remains draft:** [review the source branch](https://github.com/ailtron1ss-rgb/NK1/pull/129). Main remains unchanged. The GitHub Releases ZIP is still the October 19 WorkPass70 package and has not been rebuilt from this branch.
+- **Not yet established:** optional Gemini/local-model credentials, external voice/Live2D/camera resource configuration, browser/audio E2E, deployed isolated independent evaluator, target-device soak and licensing completeness.
 
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
