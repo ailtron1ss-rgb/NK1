@@ -62,7 +62,7 @@ for (const scenario of scenarios) {
     `${scenario.name}: fixture must exercise the weighted-threshold mismatch`,
   );
   const route = resolveCognitiveRoutingPolicy(
-    { wakeMask: frame.wakeMask, interrupt: frame.interrupt! },
+    { wakeMask: frame.wakeMask, interrupt: frame.interrupt },
     3,
   );
   assert.equal(route.maxCounterfactualBranches, 0, `${scenario.name}: critical condition must stop optional counterfactuals`);
@@ -84,7 +84,7 @@ for (const scenario of mixedSignalScenarios) {
   );
   assert.equal(frame.interrupt?.active, true);
   const route = resolveCognitiveRoutingPolicy(
-    { wakeMask: frame.wakeMask, interrupt: frame.interrupt! },
+    { wakeMask: frame.wakeMask, interrupt: frame.interrupt },
     3,
   );
   assert.equal(route.maxCounterfactualBranches, 0,
