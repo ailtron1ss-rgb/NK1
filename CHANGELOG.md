@@ -1,3 +1,11 @@
+## NK1 WorkPass531 — make the P36 maturity event discriminant explicit (2026-10-25)
+
+- Added `kind?: 'developmental-outcome'` to the P36 maturity input contract and engine method signature. The canonical normalized verifier tuple always carries the required `kind: 'developmental-outcome'`, and Core uses that discriminant to choose the maturity lane.
+- Expanded `p36-integration.mjs` to assert the discriminant explicitly before exercising linked and unlinked maturity receipts.
+- **Verification boundary:** type-level and regression-source changes are committed, but exact-HEAD TypeScript/tests are not confirmed by CI. No empirical maturity or learning gain is claimed.
+
+---
+
 ## NK1 WorkPass530 — reserve P36 evaluator registration to trusted host bootstrap (2026-10-25)
 
 - Added `OrganismConfig.p36IndependentEvaluator` as a host-provided construction-time capability. Core registers this adapter only after validating that it is non-destructive, has an executor, has a verifier and carries a bounded, explicit external-observation source identity.
