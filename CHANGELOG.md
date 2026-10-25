@@ -8,7 +8,7 @@
 - Added stress regressions for 120 valid command paths and 120 uniquely missing entry points (240 path cases), plus quoted paths, shell continuations, YAML quoting, traversal attempts, executable glob matches/non-matches, and eight source-file extensions.
 - Wired the dedicated validation workflow to this focused fix branch and its pull-request base so exact-head checks can run before integration.
 
-Validation is intentionally pending until the fresh branch's GitHub Actions results are inspected; test cases are coverage, not a claim that 120 independent production defects were already fixed.
+Validation (GitHub Actions, Node.js 24): all 25 repository-wiring regression tests passed; the end-to-end wiring audit passed across 22 workflows, 2,273 source files, 4,976 relative imports, 103 reachable npm scripts, and 3 package manifests. The WorkPass320 cognitive dependency restore and WorkPass324 interrupt-episode regressions also passed. The 240 generated path references are regression coverage, not 240 claimed production defects.
 
 - The exact-head run exposed and fixed a missing comma in the audit metrics object. The 23 focused tests then passed; the subsequent whole-repository audit exposed a glob-pattern false positive (`app/scripts/**/*.test.mjs`), now handled by a repository-local glob expander and covered by valid/empty-pattern regressions.
 ---
