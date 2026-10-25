@@ -1,3 +1,165 @@
+## NK1 WorkPass550 — verify emotion-continuity branch readiness (2026-10-25)
+
+- [EXACT-HEAD CI] The implementation head `9788ccd73a4bf9908b6b4a7ce8a6fc383858f3b0` completed all 15 reported GitHub check-runs successfully across 12 workflow runs, including the focused affect/Live2D tests, runtime and app typechecks, P26 learning validation, WorkPass110 learning metrics, signed outcomes/promotion, replay, verified experience lanes, cognitive contracts and WorkPass291/293/294.
+- [PR STATE] Pull request #114 is open, non-draft and reported mergeable against `feature/emotions`; no review submissions or inline review threads were returned by GitHub at this verification point.
+- [LIMIT] This verifies automated contracts and regression checks. Real browser/device Live2D playback was not performed by this CI evidence and is not represented as verified.
+- [REVALIDATION] This record-only commit touches the shared changelog, so check the new HEAD's changed-path validation before calling the branch fully validated.
+
+## NK1 WorkPass549 — close emotion-to-action and embodied expression continuity (2026-10-25)
+
+- Resolve P66 homeostasis hysteresis before incrementing mode counters or writing history. The mode returned by `observe()`, `lastMode`, the newest history entry and cycle counters now share one final decision.
+- Add a targeted P66 regression for a stable cycle where hysteresis retains exploration over the provisional engagement classification.
+- Cache the mapped Live2D expression so repeated identical emotion messages do not restart the same animation during mouth, gaze or body updates.
+- Keep causal-learning regressions aligned with the current trust boundary: imported external rows remain reviewable but do not count as trusted runtime outcomes or contribute restored learning aggregates; replay-diversity fixtures now represent grounded action transitions.
+- Run the P66 regression in affect CI and watch the Live2D viewer so changes to these files trigger the validation workflow.
+- [Node 24 CI] Run the skill-retrieval/reflection regression with `--experimental-transform-types`; the test imports a class using parameter properties, which Node's strip-only mode cannot execute.
+- [Node 24 full-sweep compatibility] Switched every WorkPass110 learning-test entry point and direct test command from strip-only mode to `--experimental-transform-types`. This retains every regression while supporting runtime TypeScript constructs used by imported classes.
+- [Fail-closed coordinator] Updated the trusted shadow-run coordinator regression to expect immediate synchronous throws when the trusted `OrganismCore` registrar is missing or when a baseline/control or non-shadow method is submitted. The production pre-spawn refusal remains unchanged.
+- [Skill rollback] Updated the lifecycle regression to supply the required rollback approval object and an explicit test-only rollback verifier. Repeated rollback now uses a complete approval and verifies refusal because the candidate is no longer active; production's default-deny verifier is unchanged.
+- [Durable skill store] Preserve the current five-field candidate ID contract and add backwards compatibility for pre-provenance schema-1 files. The atomic JSON-file adapter accepts old four-field identities only when revision provenance is absent; the new format remains validated and provenance-bound.
+- [P23 benchmark] Corrected the reversed-arrival-order fixture to use the verifier identity declared by the task manifest. The previous fixture used a different verifier ID, so every row was legitimately rejected and the bootstrap interval became `null`; no estimator behavior was changed.
+- **Validation boundary:** all changed-path tests and the broad workflow must pass on the exact final head.
+
+## NK1 WorkPass544 — close durable skill-store and independent-evaluation regressions (2026-10-25)
+
+- [DURABLE SKILL STORE] Aligned persisted candidate identity verification with the canonical five-field candidate ID, including validated revision-provenance fingerprint (or `null`). Restart coverage now checks both ordinary and provenance-bound candidates.
+- [SIGNED SHADOW E2E] Updated the fixture to use the canonical candidate-ID envelope so the end-to-end signed observation path reaches verification rather than failing on a stale hash formula.
+- [INDEPENDENT EVALUATION] Kept successful sandbox execution distinct from verifier trust. A failed verifier still blocks task success and trusted trace admission, but no longer mislabels an execution that actually ran as non-executable.
+- [HOST-OWNED EVALUATION] Restored the test executable's secure mode after the expected permission-denial assertion, so the following path-replacement test exercises the intended run-root identity guard.
+- [VALIDATION] Exact-head CI on `6ea1ea43ae2a151b2e6190a22214b4e38619e9dc`: all 12 active branch workflows completed successfully, including WorkPass110, WorkPass108, P26, emotion/Live2D, replay, reservoir, verified outcomes, experience lanes, cognitive contracts and WorkPass291/293/294. This documentation commit triggers a fresh run; keep the branch draft until that exact head is green.
+
+## NK1 WorkPass543 — harden emotion-to-action continuity and branch readiness (2026-10-25)
+
+- [AFFECT → AGENCY] Stale emotion/mood/attention contributions now decay in `EmotionAppraisalEngine.actionBias`; explicit evaluation time supports deterministic replay, while live homeostatic regulation remains active.
+- [P26 INPUT INTEGRITY] Training and feature-level updates reject non-finite/out-of-range targets, learning rates, weights, states and feature vectors before changing parameters. `trainBatch` preflights all samples; restored counters, diagnostics and freeze state are sanitized.
+- [CAUSAL LEARNING] Repeated authenticated signed-outcome ingestion is rejected as a duplicate attempt. Test fixtures now supply a real observed action transition, and external unverified imports remain quarantined rather than counting as trusted runtime outcomes.
+- [MOTIVATION] Endogenous goal valuation uses normalized goal/base similarity and leaves headroom for confidence-weighted intrinsic drive, preventing score saturation from hiding the drive contribution.
+- [CI / REGRESSIONS] Missing npm-script aliases were replaced by direct test entry points; Node 24 full TypeScript transforms are used where parameter properties require them. Payload-budget, replay-adaptation, verifier-ticket, floating-point boundary and stale-action-bias regressions were corrected without disabling assertions.
+- **Validation boundary:** the focused replay, payload, cognitive-goal, verified-outcome, causal-lane and postcondition checks passed on recent branch heads. Final exact-head CI is still running; keep PR #114 in draft until the full current check set passes.
+
+## NK1 WorkPass542 — decay stale affect-driven action bias (2026-10-25)
+
+- [AFFECT → AGENCY] `EmotionAppraisalEngine.actionBias` now time-bounds emotion-label, mood, attention-capture and emotion-context learning contributions. A prior episode can remain in memory without exerting the same immediate action pressure indefinitely.
+- [HOMEOSTASIS] Interoceptive regulation pressure remains available after the emotional episode ages out; old emotion-specific rewards are not substituted with a global reward when contextual evidence exists.
+- [DETERMINISM] Added an optional `atMs` argument for replayable decision evaluation and rejects invalid timestamps with zero affective bias.
+- [REGRESSION] Added a fresh-versus-stale action-bias comparison and invalid-time assertion to the emotion/interoception regression. Code and regression are committed; exact-head CI has not yet been observed, so this pass is not marked validated.
+
+## NK1 WorkPass541 — align affect contract with freshness projection (2026-10-25)
+
+- The latest focused CI run exposed one more brittle assertion in the affect UI contract: it searched for a generic `freshness01` token, while the avatar deliberately names the computed signal `feelingFreshness01` and places it in the shared affect projection.
+- Updated the test to assert that actual signal, preserving the time-bounded-feeling requirement rather than weakening or removing the contract.
+- **Validation boundary:** committed after the prior run; exact-head focused CI still needs to confirm the contract and other jobs pass.
+
+## NK1 WorkPass540 — repair P23 revision workflow command (2026-10-25)
+
+- The PR Actions run confirmed WorkPass292's direct test invocation passes, while WorkPass293 failed before executing assertions because its workflow referenced a missing npm script.
+- Changed the WorkPass293 workflow to execute the existing `tests/workpass293-autonomous-p23-revision.mjs` regression directly with Node.js 24 `--experimental-transform-types`.
+- **Validation boundary:** workflow fix committed; the new run must confirm the test itself passes. Other legacy workflow failures remain independently tracked.
+
+## NK1 WorkPass539 — repair the affect bridge contract regression (2026-10-25)
+
+- The exact-head affect workflow showed that the UI bridge contract test expected a direct `mood: snap.affect?.mood` expression, while the avatar intentionally routes mood through `affectiveSignalsFromSnapshot()` to calculate freshness and keep mood/feeling inputs consistent.
+- Updated the regression to assert the actual canonical projection assignment (`const mood = snap.affect?.mood`) rather than requiring an implementation shape the code does not use.
+- Exact-head Actions on the previous commit: runtime TypeScript, app TypeScript, emotion/interoception regression, and voice/Live2D regression passed; the affect API contract failed on this brittle assertion. The new commit must complete a fresh run before this pass is considered validated.
+
+## NK1 WorkPass535 — remove two stale affect-validation blockers (2026-10-25)
+
+- Fixed the app typecheck fixture to remove the optional `globalThis.window` property through `Reflect.deleteProperty`, avoiding TypeScript's required-global delete diagnostic while preserving the unavailable-storage test.
+- Updated the affect API bridge contract assertion to verify that avatar code consumes the canonical `snap.affect?.mood` projection without requiring one exact whitespace/defaulting expression. This keeps the contract meaningful while avoiding a brittle source-format assertion.
+- The focused run already confirms **runtime typecheck PASS**, **emotion/interoception regression PASS**, and **voice/Live2D regression PASS**. App typecheck and the API contract need a fresh run on these fixes before they can be called green.
+
+## NK1 WorkPass538 — preserve feeling-access evidence in causal memory (2026-10-25)
+
+- The canonical observation cycle now writes the associated feeling-access episode ID, intensity, interoceptive mismatch, self-access confidence and bodily focus into the emotion node's causal-memory metadata.
+- This keeps the distinction between the emotion appraisal and its body-linked feeling-access report, while making both available for later episodic analysis instead of leaving the latter only in the in-memory/serialized affect list.
+- Added an integration assertion over a real `OrganismCore` cycle to check that this metadata survives into the causal life graph and remains finite and bounded. The exact-head runtime test has not yet completed in CI.
+
+## NK1 WorkPass537 — prevent focused CI queue pile-up (2026-10-25)
+
+- Added a pull-request scoped concurrency group to the focused affect/embodiment workflow. New commits on the same PR cancel stale in-progress focused runs so the latest runtime/app checks do not repeatedly compete with obsolete revisions.
+- This controls future reruns; it does not imply that the already queued older Actions runs were cancelled or that the current revision has passed. The final head still needs a completed exact-head run.
+
+## NK1 WorkPass536 — time-decayed mood carry-over (2026-10-25)
+
+- Applied timestamp-aware decay to mood influence inside `EmotionAppraisalEngine.appraise()`: after a long interval without appraisal, prior arousal/valence/stress only weakly influences the next emotion instead of being treated as fresh context.
+- Reuse a single validated appraisal timestamp for episode identity and persistence, avoiding a tiny ID/time mismatch when no explicit timestamp is supplied.
+- Extended the runtime regression with a paired recent-versus-delayed appraisal test and a no-mood baseline. The Live2D/voice mapper now also decays mood influence while the organism is idle; the feeling episode keeps a faster freshness decay.
+- Explicitly default absent optional mood freshness for backwards-compatible app snapshots.
+- **Validation boundary:** source and regression are committed; fresh CI execution of the new time-decay assertion and typechecks is pending.
+
+## NK1 WorkPass535 — runtime type-contract repair and mood relaxation (2026-10-25)
+
+- Corrected a batch of runtime TypeScript contracts found by the dedicated CI job: typed B272 need keys; made intrinsic-association filter predicates strictly boolean; typed dependency-transition records; registered the compound-repair clock kind; narrowed optional causal policy features; imported replay-selection options from their declaring module; corrected the retention-gap argument; supplied the missing verified-non-holdout counter; pinned holdout/schema literals; and disambiguated the legacy extended cycle verifier from the newer cycle verifier.
+- Hardened outcome attribution for nullable causal events: replay learning, replay-validation learning and skill-repair learning now run only when the canonical causal recorder returned a valid event. The trusted shadow registrar contract now permits a synchronous receipt while the coordinator explicitly awaits registration before launching the child process.
+- Live2D mood influence now decays between appraisals (five-minute time constant) instead of remaining frozen indefinitely when no new appraisal arrives. A regression verifies that expired mood stops affecting voice pitch, expression intensity and posture, while a fresh persistent mood still carries forward.
+- **Validation boundary:** fixes and targeted regressions are committed, and the new CI run is queued. Exact-head runtime/app typecheck results and fresh browser/Live2D playback are not yet confirmed.
+
+## NK1 WorkPass534 — repair app typecheck fixtures for safe avatar storage (2026-10-25)
+
+- Fixed six TypeScript diagnostics in `safeLocalStorage.test.mjs`: annotated helper/test-double parameters and replaced direct deletion of the required `globalThis.window` property with `Reflect.deleteProperty`.
+- This removes unrelated legacy test-fixture errors that were masking type diagnostics in the new affect/embodiment app code. Behavior coverage remains the same; the next workflow run must confirm the app typecheck progresses.
+
+## NK1 WorkPass533 — preserve causal action identity in endogenous-goal feedback (2026-10-25)
+
+- Fixed a runtime crash observed by the emotion/interoception integration test: canonical planner feedback could send a different action than the action proposed by B272, violating B272's explicit outcome-attribution contract.
+- `OrganismCore.feedback()` now credits B272 goal/action learning only when the actually selected action matches the generated goal action. A mismatched proposal is not assigned reward for an action that did not occur; other feedback paths continue normally.
+- The existing emotion/interoception integration test exercises repeated observe/feedback cycles and should now reach its body-state comparisons instead of aborting on the first mismatch.
+- **Validation boundary:** the source fix is committed; the next focused CI run must confirm the regression progresses and passes. Runtime-wide TypeScript failures remain separate.
+
+## NK1 WorkPass532 — execute emotion regression with full Node 24 TypeScript transforms (2026-10-25)
+
+- Updated the targeted `test:big-pass-172` script to use Node 24's `--experimental-transform-types`; the previous strip-only loader could not execute imported runtime modules with TypeScript parameter properties.
+- This uses the transform support available in the workflow's Node.js 24 runtime and allows the behavioral regression to reach actual test assertions. The project still needs an explicit long-term decision for Node versions that remove this experimental flag, or a stable TS runner.
+- **Validation boundary:** test command changed; the next CI run must confirm it advances beyond module loading and whether the affect regressions pass.
+
+## NK1 WorkPass531 — fix focused workflow dependency-cache resolution (2026-10-25)
+
+- The first isolated-job attempt revealed that `setup-node` auto-detected a nonexistent root lockfile, so jobs failed before installing dependencies or reaching their checks.
+- Set `cache-dependency-path` explicitly to each workspace's real lockfile (`runtime/neuro-kurisu/package-lock.json` or `app/package-lock.json`) and retained the Node.js 24 workflow jobs. This fixes the CI setup boundary, not the source-level TypeScript errors already found in the runtime.
+- **Validation boundary:** the corrective workflow is committed; confirm the next Actions run before treating the setup fix as verified.
+
+## NK1 WorkPass530 — CI diagnostics and isolated affect validation (2026-10-25)
+
+- Addressed the new mood-state type error: the shared numeric-field validator narrows the record to numeric fields, so the validated label is explicitly restored through `unknown` to its separately validated `EmotionLabel` type.
+- Reworked the focused Node.js 24 workflow into independent runtime typecheck, emotion regression, affect API-contract, app typecheck, and avatar/voice regression jobs. One compile failure no longer prevents the unrelated focused tests from running and producing their own evidence.
+- Replaced checkout/setup-node v4 with v5 in this workflow to align the job actions with the Node.js 24 runner.
+- The previous run identified numerous pre-existing TypeScript failures elsewhere in runtime; those remain separate follow-up work and are not marked fixed by this pass.
+- **Validation boundary:** corrective code and workflow are committed; fresh run results must be checked before claiming improvement or a green build.
+
+## NK1 WorkPass529 — enforce runtime-to-avatar affect bridge contract (2026-10-24)
+
+- Added a cross-layer regression that checks the runtime UI snapshot, backend type contract, normalization layer and Live2D/voice adapter all carry the canonical mood and latest feeling-access signal.
+- Registered the contract test in the runtime package and the focused affect/embodiment CI workflow; this complements behavior tests and typechecks without claiming that any of them have already passed.
+
+## NK1 WorkPass528 — focused affect/embodiment CI gate (2026-10-24)
+
+- Added a pull-request workflow running runtime TypeScript checks and the canonical emotion/interoception regression, plus app TypeScript checks and the voice/Live2D affect regression on Node.js 24.
+- The workflow is scoped to the affect engine, runtime UI snapshot, app normalization, embodiment timeline, related tests, and lockfiles so this change has a targeted validation path instead of relying on unrelated learning-metrics CI.
+- **Validation boundary:** workflow definition is committed; a successful run is not claimed until GitHub completes the job.
+
+## NK1 WorkPass527 — bridge canonical mood and feeling access to embodiment (2026-10-24)
+
+- The organism UI snapshot now exposes a compact projection of the persisted affect engine: mood trajectory, latest feeling-access episode, and interoceptive regulation pressure. It does not serialize the full emotion history or calibration tables.
+- App types and normalization preserve the optional affect projection with bounded values and backward-compatible neutral defaults.
+- AvatarStage now uses canonical mood persistence and recent feeling-access confidence/intensity alongside live body needs to calibrate voice and Live2D. Feeling influence decays with age and is attenuated by interoceptive mismatch, so old reports cannot indefinitely drive expression.
+- Added regression coverage for mood carry-over despite a calm latest label, fresh feeling influence, stale feeling suppression, and bounded output.
+- **Validation boundary:** exact-head app/runtime typechecks and test execution remain unverified. No real browser/Live2D playback or subjective-consciousness claim is made.
+
+## NK1 WorkPass526 — body-aware voice and Live2D affect coupling (2026-10-24)
+
+- Added one bounded mapping from canonical emotion (label, valence, arousal, dominance) plus available body needs (energy, cognitive load, uncertainty, sleep pressure) to TTS rate/pitch, expression intensity, voice emphasis, head tilt and gaze offsets.
+- AvatarStage now uses the shared mapping for newly emitted speech and for the unified Live2D intent; existing protocol v1 fields and viewer validation remain unchanged.
+- Added focused regression cases for distinct calm/strained profiles, body-state influence, and finite/clamped output under malformed signals.
+- **Validation boundary:** source and regression updates are committed, but the exact-head app test/typecheck and real browser/Live2D playback have not been run here. This updates embodiment of existing signals; it does not prove subjective feeling.
+
+## NK1 WorkPass525 — persistent affective continuity and grounded feeling access (2026-10-24)
+
+- Added a backward-compatible persistent mood state that blends recent appraisal episodes, retaining valence, arousal, stress, confidence, dominant label and persistence across nearby events.
+- Recent mood now softly conditions later appraisal and bounded action tendencies; long gaps reduce historical carry-over so one episode does not permanently dominate.
+- Feeling inference now rejects malformed/non-finite normalized body signals before mutation and derives interoceptive mismatch from prediction error between supplied and last-observed energy/load, current uncertainty and episode stress.
+- Added regression assertions for mood continuity, salient mood transitions, rejected feeling inputs with unchanged state, and restoration of pre-mood persisted state.
+- **Validation boundary:** test source has been updated, but execution/typecheck on this exact commit is not yet verified. This is a functional affect/control model, not evidence of subjective consciousness.
+
 ## NK1 WorkPass524 — preserve appraisal-time homeostatic context (2026-10-24)
 
 - Emotion episodes now retain the homeostatic regulation-pressure band observed when they were appraised. Delayed outcome feedback for an older emotion is attributed to that historical context rather than the organism's current stress state.

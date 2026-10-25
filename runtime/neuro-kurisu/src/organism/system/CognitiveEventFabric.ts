@@ -391,7 +391,7 @@ export class CognitiveEventFabric {
     return ids;
   }
 
-  verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
+  verifyOperationalCycleWithOptionalStageEdges(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
     const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
     const optional = ['appraisal','attention','memory','goal','plan'] as const;
     const byId = new Map(this.events.map(event => [event.id, event] as const));

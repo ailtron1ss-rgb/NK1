@@ -25,4 +25,4 @@ jobs:
         run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
       - name: Verify causal experience isolation and learning provenance
         working-directory: runtime/neuro-kurisu
-        run: npm run test:workpass292:evidence-lanes
+        run: node --experimental-transform-types tests/workpass292-evidence-lanes.mjs

@@ -24,6 +24,12 @@ export interface EmotionEpisode {
 
 export interface FeelingEpisode { id:string; tick:number; at:number; label:EmotionLabel; intensity01:number; interoceptiveMismatch01:number; selfAccessConfidence01:number; bodilyFocus01:number; causeEmotionId:string; }
 
+/** Persistent affective summary across appraisals. This is a functional control state, not a claim of subjective consciousness. */
+export interface EmotionMoodState {
+  tick:number; at:number; valence01:number; arousal01:number; stress01:number; confidence01:number;
+  dominantLabel:EmotionLabel; persistence01:number; episodes:number;
+}
+
 export interface InteroceptiveAffectState {
   cycles:number;
   meanMismatch01:number;
@@ -48,6 +54,8 @@ export interface EmotionAppraisalState {
   meanArousal01:number; meanValence01:number; meanStress01:number; meanAttentionCapture01:number;
   history:EmotionEpisode[];
   feelings:FeelingEpisode[];
+  /** Backwards-compatible, slowly changing affective context derived from recent episodes. */
+  mood:EmotionMoodState;
   interoception:InteroceptiveAffectState;
   outcomes:Record<string,EmotionOutcomeCalibration>;
   /** Outcome calibrations bound to action + emotion label + regulation-pressure band. */
@@ -97,12 +105,46 @@ const normalizeFeeling=(value:unknown):FeelingEpisode|null=>{
      !unitFieldsAreValid(value,['intensity01','interoceptiveMismatch01','selfAccessConfidence01','bodilyFocus01']))return null;
   return structuredClone(value) as unknown as FeelingEpisode;
 };
+const normalizeMood=(value:unknown):EmotionMoodState|null=>{
+  if(!isRecord(value)||typeof value.tick!=='number'||!Number.isSafeInteger(value.tick)||value.tick< -1||
+     typeof value.at!=='number'||!Number.isFinite(value.at)||value.at<0||
+     typeof value.episodes!=='number'||!Number.isSafeInteger(value.episodes)||value.episodes<0||
+     !EMOTION_LABELS.includes(value.dominantLabel as EmotionLabel)||
+     !unitFieldsAreValid(value,['valence01','arousal01','stress01','confidence01','persistence01']))return null;
+  return {
+    tick:value.tick as number,at:value.at as number,valence01:value.valence01 as number,
+    arousal01:value.arousal01 as number,stress01:value.stress01 as number,
+    confidence01:value.confidence01 as number,dominantLabel:value.dominantLabel as unknown as EmotionLabel,
+    persistence01:value.persistence01 as number,episodes:value.episodes as number,
+  };
+};
+const transitionMood=(previous:EmotionMoodState,episode:EmotionEpisode):EmotionMoodState=>{
+  const elapsedMs=previous.episodes>0?Math.max(0,episode.at-previous.at):0;
+  // Nearby episodes retain context; a long gap allows the mood to relax toward the new evidence.
+  const retention=previous.episodes===0?0:c(.78*Math.exp(-Math.min(elapsedMs,86_400_000)/180_000));
+  const episodeStress=episode.interoceptiveDelta.stress01;
+  const previousSalience=previous.arousal01*.52+previous.stress01*.32+Math.abs(previous.valence01-.5)*.16;
+  const episodeSalience=episode.arousal01*.52+episodeStress*.32+Math.abs(episode.valence01-.5)*.16;
+  const dominantLabel=previous.episodes===0||retention<.42||episodeSalience>=previousSalience*.88
+    ?episode.label:previous.dominantLabel;
+  const persistenceTarget=c(.50+episode.arousal01*.35+Math.abs(episode.valence01-.5)*.30);
+  return {
+    tick:episode.tick,at:episode.at,
+    valence01:c(previous.valence01*retention+episode.valence01*(1-retention)),
+    arousal01:c(previous.arousal01*retention+episode.arousal01*(1-retention)),
+    stress01:c(previous.stress01*retention+episodeStress*(1-retention)),
+    confidence01:c(previous.confidence01*retention+episode.confidence01*(1-retention)),
+    dominantLabel,persistence01:c(previous.persistence01*retention+persistenceTarget*(1-retention)),
+    episodes:previous.episodes+1,
+  };
+};
+const emptyMood=():EmotionMoodState=>({tick:-1,at:0,valence01:.5,arousal01:.22,stress01:.2,confidence01:.5,dominantLabel:'calm',persistence01:0,episodes:0});
 const emptyInteroception=():InteroceptiveAffectState=>({
   cycles:0, meanMismatch01:.18, lastMismatch01:.18, regulationPressure01:.18, stability01:.72, recovery01:.5, predictionCalibration01:.5,
   lastObserved:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
   predicted:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
 });
-const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),outcomes:{},contextualOutcomes:{}});
+const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],mood:emptyMood(),interoception:emptyInteroception(),outcomes:{},contextualOutcomes:{}});
 
 export class EmotionAppraisalEngine {
   private state=empty();
@@ -153,6 +195,7 @@ export class EmotionAppraisalEngine {
       meanStress01:safeUnit(r.meanStress01,d.meanStress01),
       meanAttentionCapture01:safeUnit(r.meanAttentionCapture01,d.meanAttentionCapture01),
       history,feelings,
+      mood:normalizeMood(r.mood)??d.mood,
       interoception:{
         cycles:safeCounter(rawInteroception.cycles,dI.cycles),
         meanMismatch01:safeUnit(rawInteroception.meanMismatch01,dI.meanMismatch01),
@@ -267,10 +310,16 @@ export class EmotionAppraisalEngine {
        (input.external!==undefined&&typeof input.external!=='boolean')) {
       throw new RangeError('emotion-appraisal-values-invalid');
     }
+    const appraisalAt=Number(input.at??Date.now());
+    const priorMoodAgeMs=this.state.mood.episodes>0?Math.max(0,appraisalAt-this.state.mood.at):0;
+    const priorMoodFreshness01=this.state.mood.episodes>0?Math.exp(-Math.min(priorMoodAgeMs,86_400_000)/180_000):0;
     const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
-    const arousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09);
-    const valence=c(.5+(a.goalCongruence01-.5)*.48+a.controllability01*.10-(a.uncertainty01*.16)+((input.success01??.5)-.5)*.45);
-    const stress=c((1-a.controllability01)*.30+a.uncertainty01*.20+(input.predictionError01??0)*.22+(input.homeostaticPressure01??0)*.18+this.state.interoception.lastMismatch01*.10);
+    // Historical mood influences a new appraisal only while its timestamp is recent.
+    // This prevents a long idle gap from making the next emotion inherit stale arousal/stress.
+    const moodInfluence=this.state.mood.episodes>0?c(this.state.mood.persistence01*priorMoodFreshness01):0;
+    const arousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09+(this.state.mood.arousal01-.22)*.08*moodInfluence);
+    const valence=c(.5+(a.goalCongruence01-.5)*.48+a.controllability01*.10-(a.uncertainty01*.16)+((input.success01??.5)-.5)*.45+(this.state.mood.valence01-.5)*.10*moodInfluence);
+    const stress=c((1-a.controllability01)*.30+a.uncertainty01*.20+(input.predictionError01??0)*.22+(input.homeostaticPressure01??0)*.18+this.state.interoception.lastMismatch01*.10+(this.state.mood.stress01-.2)*.08*moodInfluence);
     const dominance=c(a.controllability01*.62+a.selfRelevance01*.18+(input.success01??.5)*.20);
     let label:EmotionLabel='calm'; let actionTendency:EmotionActionTendency='engage';
     if(stress>.72 && a.controllability01<.4){label='anxiety';actionTendency='verify';}
@@ -282,8 +331,9 @@ export class EmotionAppraisalEngine {
     else if(valence<.34 && dominance>.65){label='anger';actionTendency='protect';}
     const attentionCapture=c(arousal*.55+a.relevance01*.25+a.selfRelevance01*.20);
     const n=this.state.episodes+1;
-    const episode:EmotionEpisode={id:`emo:${input.tick}:${Number(input.at??Date.now())}:${n}`,tick:input.tick,at:Number(input.at??Date.now()),label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:a,interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},regulationPressure01:this.state.interoception.regulationPressure01,memorySalienceMultiplier01:c(.8+attentionCapture*.7),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state'};
-    this.state={...this.state,episodes:n,lastTick:episode.tick,lastAt:episode.at,lastLabel:episode.label,meanArousal01:c(this.state.meanArousal01*(n-1)/n+episode.arousal01/n),meanValence01:c(this.state.meanValence01*(n-1)/n+episode.valence01/n),meanStress01:c(this.state.meanStress01*(n-1)/n+stress/n),meanAttentionCapture01:c(this.state.meanAttentionCapture01*(n-1)/n+attentionCapture/n),history:[episode,...this.state.history].slice(0,128)};
+    const episode:EmotionEpisode={id:`emo:${input.tick}:${appraisalAt}:${n}`,tick:input.tick,at:appraisalAt,label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:a,interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},regulationPressure01:this.state.interoception.regulationPressure01,memorySalienceMultiplier01:c(.8+attentionCapture*.7),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state'};
+    const mood=transitionMood(this.state.mood,episode);
+    this.state={...this.state,episodes:n,lastTick:episode.tick,lastAt:episode.at,lastLabel:episode.label,mood,meanArousal01:c(this.state.meanArousal01*(n-1)/n+episode.arousal01/n),meanValence01:c(this.state.meanValence01*(n-1)/n+episode.valence01/n),meanStress01:c(this.state.meanStress01*(n-1)/n+stress/n),meanAttentionCapture01:c(this.state.meanAttentionCapture01*(n-1)/n+attentionCapture/n),history:[episode,...this.state.history].slice(0,128)};
     return structuredClone(episode);
   }
 
@@ -296,11 +346,20 @@ export class EmotionAppraisalEngine {
     if(!normalizedEpisode)throw new TypeError('emotion-feeling-episode-invalid');
     episode=normalizedEpisode;
     input=snapshotEmotionInput(input,'emotion-feeling-input-must-be-plain-data') as unknown as typeof input;
+    const unitInterval=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+    if(!unitInterval(input.energy01)||!unitInterval(input.cognitiveLoad01)||!unitInterval(input.uncertainty01)||
+       (input.selfFocus01!==undefined&&!unitInterval(input.selfFocus01)))throw new RangeError('emotion-feeling-values-invalid');
+    const body=this.state.interoception.lastObserved;
     const bodyMismatch=this.state.interoception.lastMismatch01;
-    const mismatch=c(bodyMismatch*.45 + Math.abs(episode.interoceptiveDelta.stress01-c(input.uncertainty01))*.30 + c(input.cognitiveLoad01)*.25);
+    const energyMismatch=Math.abs(input.energy01-body.energy01);
+    const loadMismatch=Math.abs(input.cognitiveLoad01-body.load01);
+    const stressMismatch=Math.abs(episode.interoceptiveDelta.stress01-input.uncertainty01);
+    const mismatch=c(bodyMismatch*.30+energyMismatch*.20+loadMismatch*.20+stressMismatch*.30);
     const bodilyFocus=c(.35+episode.interoceptiveDelta.attentionCapture01*.35+c(input.selfFocus01??.5)*.30);
-    const intensity=c(episode.arousal01*.52+Math.abs(episode.valence01-.5)*.28+episode.interoceptiveDelta.attentionCapture01*.20);
-    const feeling:FeelingEpisode={id:`feel:${episode.id}`,tick:episode.tick,at:episode.at,label:episode.label,intensity01:intensity,interoceptiveMismatch01:mismatch,selfAccessConfidence01:c(.46+episode.confidence01*.30+bodilyFocus*.24),bodilyFocus01:bodilyFocus,causeEmotionId:episode.id};
+    const mood=this.state.mood;
+    const moodCoherence=c(1-(Math.abs(mood.valence01-episode.valence01)+Math.abs(mood.arousal01-episode.arousal01))*.5);
+    const intensity=c(episode.arousal01*.45+Math.abs(episode.valence01-.5)*.24+episode.interoceptiveDelta.attentionCapture01*.19+mood.persistence01*.06+(1-mismatch)*.06);
+    const feeling:FeelingEpisode={id:`feel:${episode.id}`,tick:episode.tick,at:episode.at,label:episode.label,intensity01:intensity,interoceptiveMismatch01:mismatch,selfAccessConfidence01:c(.40+episode.confidence01*.28+bodilyFocus*.18+this.state.interoception.stability01*.12-mismatch*.12+moodCoherence*.05),bodilyFocus01:bodilyFocus,causeEmotionId:episode.id};
     this.state.feelings=[feeling,...this.state.feelings.filter(f=>f.id!==feeling.id)].slice(0,128);
     return structuredClone(feeling);
   }
@@ -308,29 +367,54 @@ export class EmotionAppraisalEngine {
 
   regulationPressure01():number{return this.state.interoception.regulationPressure01;}
 
-  actionBias(action:string):number{
+  /**
+   * Affective action bias is time-bounded: old episodes may remain useful memory,
+   * but their immediate motivational pull must fade during long idle gaps.
+   * Pass atMs explicitly for deterministic/replayed cycles; live calls use wall time.
+   */
+  actionBias(action:string,atMs=Date.now()):number{
     if(typeof action!=='string'||action.length===0||action.length>96||action.trim()!==action||
        ['__proto__','prototype','constructor','toString','hasOwnProperty'].includes(action))return 0;
+    if(typeof atMs!=='number'||!Number.isFinite(atMs)||atMs<0)return 0;
     const e=this.state.history[0]; if(!e)return 0;
+    const emotionAgeMs=atMs-e.at;
+    const emotionFreshness01=Number.isFinite(emotionAgeMs)&&emotionAgeMs>=0
+      ?Math.exp(-Math.min(emotionAgeMs,86_400_000)/180_000):0;
+    const mood=this.state.mood;
+    const moodAgeMs=atMs-mood.at;
+    const moodFreshness01=mood.episodes>0&&Number.isFinite(moodAgeMs)&&moodAgeMs>=0
+      ?Math.exp(-Math.min(moodAgeMs,86_400_000)/300_000):0;
     const match:Record<string,number>={explore:e.label==='curiosity'?0.08:0,verify:e.label==='anxiety'||e.label==='frustration'?0.06:0,reflect:e.label==='frustration'?0.055:0,rest:e.label==='protective'||e.label==='sadness'?0.04:0,protect:e.label==='protective'||e.label==='anger'?0.07:0,approach:e.label==='joy'?0.05:0,withdraw:e.label==='sadness'?0.06:0,engage:e.label==='calm'||e.label==='joy'?0.025:0};
     const intero=this.state.interoception;
     const regulation:Record<string,number>={rest:intero.regulationPressure01*.075,protect:intero.regulationPressure01*.055,verify:intero.regulationPressure01*.025,reflect:intero.regulationPressure01*.015,explore:-intero.regulationPressure01*.055,approach:-intero.regulationPressure01*.02,engage:-intero.regulationPressure01*.015,withdraw:intero.regulationPressure01*.01};
-    const contextualKey=contextOutcomeKey(action,e.label,this.state.interoception.regulationPressure01);
-    const contextualCalibration=Object.prototype.hasOwnProperty.call(this.state.contextualOutcomes,contextualKey)
+    const moodBias:Record<string,number>={
+      rest:mood.persistence01*moodFreshness01*mood.stress01*.025,
+      protect:mood.persistence01*moodFreshness01*mood.stress01*.018,
+      verify:mood.persistence01*moodFreshness01*mood.stress01*.012,
+      reflect:mood.persistence01*moodFreshness01*mood.arousal01*.012,
+      explore:mood.persistence01*moodFreshness01*(1-mood.stress01)*Math.max(0,mood.arousal01-.35)*.04,
+      approach:mood.persistence01*moodFreshness01*Math.max(0,mood.valence01-.55)*.08,
+      withdraw:mood.persistence01*moodFreshness01*Math.max(0,.45-mood.valence01)*.08,
+      engage:mood.persistence01*moodFreshness01*Math.max(0,mood.valence01-.45)*.02,
+    };
+    const contextualKey=contextOutcomeKey(action,e.label,intero.regulationPressure01);
+    const contextualCalibration=emotionFreshness01>.05&&Object.prototype.hasOwnProperty.call(this.state.contextualOutcomes,contextualKey)
       ?this.state.contextualOutcomes[contextualKey]:undefined;
     const hasContextualCalibrationForAction=Object.keys(this.state.contextualOutcomes).some(key=>{
       try{const parsed=JSON.parse(key);return Array.isArray(parsed)&&parsed[0]===action;}catch{return false;}
     });
-    // Once an action has context-bound outcome history, do not leak its global
-    // reward into a distinct emotional/homeostatic context with no matched data.
+    // Do not fall back to a global reward once this action has context-bound history:
+    // stale context is not evidence that a different affective state should inherit it.
     const calibration=contextualCalibration??(!hasContextualCalibrationForAction&&Object.prototype.hasOwnProperty.call(this.state.outcomes,action)?this.state.outcomes[action]:undefined);
-    const matchBias=Object.prototype.hasOwnProperty.call(match,action)?match[action]:0;
+    const matchBias=Object.prototype.hasOwnProperty.call(match,action)?match[action]*emotionFreshness01:0;
     const regulationBias=Object.prototype.hasOwnProperty.call(regulation,action)?regulation[action]:0;
-    const learned=calibration&&calibration.attempts>=3 ? (calibration.meanBenefit01-.5)*(contextualCalibration?.045:.015) : 0;
-    return c(Math.max(0,matchBias+regulationBias+learned))*c(.55+e.interoceptiveDelta.attentionCapture01*.45);
+    const learned=calibration&&calibration.attempts>=3?(calibration.meanBenefit01-.5)*(contextualCalibration?.045:.015):0;
+    const affectiveBias=Object.prototype.hasOwnProperty.call(moodBias,action)?moodBias[action]:0;
+    const attentionMultiplier=c(.55+e.interoceptiveDelta.attentionCapture01*.45*emotionFreshness01);
+    return c(Math.max(0,matchBias+regulationBias+learned+affectiveBias))*attentionMultiplier;
   }
 
-  summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes),contextualOutcomeContexts:Object.keys(this.state.contextualOutcomes).length};}
+  summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,mood:structuredClone(this.state.mood),interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes),contextualOutcomeContexts:Object.keys(this.state.contextualOutcomes).length};}
 
 }
 export const defaultEmotionAppraisalState=()=>empty();

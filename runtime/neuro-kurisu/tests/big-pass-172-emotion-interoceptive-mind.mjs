@@ -13,6 +13,9 @@ const first = e.appraise({tick:1,at:1001,novelty01:.8,uncertainty01:.5,predictio
 assert.ok(calmBody.cycles===1 && calmBody.lastMismatch01<.25);
 assert.equal(first.label,'curiosity');
 assert.ok(first.valence01>.55,'successful episode should be positively valenced');
+const initialMood=e.snapshot().mood;
+assert.equal(initialMood.episodes,1,'appraisal must initialize the persistent mood state');
+assert.equal(initialMood.dominantLabel,first.label,'the first mood must reflect the first appraisal');
 
 const beforeInvalidAppraisal = e.snapshot();
 assert.throws(() => e.appraise({ tick: 2, novelty01: Infinity }), /emotion-appraisal-values-invalid/);
@@ -25,11 +28,38 @@ assert.notEqual(first.id, firstAgain.id,'episode IDs must be unique within one p
 e.observeInteroception({energy01:.18,thermal01:.86,capacity01:.24,load01:.88,homeostaticPressure01:.9});
 const stressed = e.appraise({tick:3,at:1003,novelty01:.2,uncertainty01:.9,predictionError01:.85,homeostaticPressure01:.9,success01:.12,goalPressure01:.9,goalCongruence01:.15,controllability01:.15});
 assert.ok(['anxiety','frustration','protective'].includes(stressed.label));
+const moodAfterStress=e.snapshot().mood;
+assert.equal(moodAfterStress.episodes,3,'mood must persist across successive appraisal episodes');
+assert.ok(moodAfterStress.valence01>stressed.valence01,
+  'mood must transition gradually rather than being overwritten by one negative episode');
+assert.ok(moodAfterStress.stress01>initialMood.stress01,
+  'repeated body/appraisal stress must influence the persistent affective state');
+assert.equal(moodAfterStress.dominantLabel,stressed.label,
+  'a sufficiently salient new emotion must be able to become the dominant mood');
+
+// WorkPass535: a long silent gap attenuates mood influence on the next appraisal.
+const moodContextForDecay=e.snapshot();
+const decayInput={tick:4,novelty01:.2,uncertainty01:.3,predictionError01:.1,homeostaticPressure01:.1,goalPressure01:.2,goalCongruence01:.6,controllability01:.7,success01:.6};
+const recentMoodEngine=new EmotionAppraisalEngine(); recentMoodEngine.restore(moodContextForDecay);
+const recentMoodEpisode=recentMoodEngine.appraise({...decayInput,at:1004});
+const delayedMoodEngine=new EmotionAppraisalEngine(); delayedMoodEngine.restore(moodContextForDecay);
+const delayedMoodEpisode=delayedMoodEngine.appraise({...decayInput,at:601004});
+const noMoodState=structuredClone(moodContextForDecay); noMoodState.mood.persistence01=0;
+const noMoodEngine=new EmotionAppraisalEngine(); noMoodEngine.restore(noMoodState);
+const noMoodEpisode=noMoodEngine.appraise({...decayInput,at:601004});
+const affectDistance=(episode)=>Math.abs(episode.valence01-noMoodEpisode.valence01)+Math.abs(episode.arousal01-noMoodEpisode.arousal01)+Math.abs(episode.interoceptiveDelta.stress01-noMoodEpisode.interoceptiveDelta.stress01);
+assert.ok(affectDistance(delayedMoodEpisode)<affectDistance(recentMoodEpisode),
+  'mood must influence a near-future appraisal more strongly than an otherwise identical appraisal after a long gap');
 const feeling = e.inferFeeling(stressed,{energy01:.18,cognitiveLoad01:.88,uncertainty01:.9,selfFocus01:.8});
 assert.ok(feeling.interoceptiveMismatch01>.1 && feeling.bodilyFocus01>.5);
+const beforeInvalidFeeling=e.snapshot();
+assert.throws(()=>e.inferFeeling(stressed,{energy01:Infinity,cognitiveLoad01:.2,uncertainty01:.3}),/emotion-feeling-values-invalid/);
+assert.throws(()=>e.inferFeeling(stressed,{energy01:.8,cognitiveLoad01:'high',uncertainty01:.3}),/emotion-feeling-values-invalid/);
+assert.deepEqual(e.snapshot(),beforeInvalidFeeling,
+  'malformed body/feeling signals must be rejected without changing persistent affect');
 for(let i=0;i<4;i++) e.recordOutcome({action:'rest',success01:.9,surprise01:.1,regulationCost01:.2});
 assert.ok((e.outcomeCalibration('rest')?.attempts??0)===4);
-assert.ok(e.actionBias('rest')>e.actionBias('explore'),'high interoceptive pressure plus good rest outcomes should favor regulation');
+assert.ok(e.actionBias('rest',1003)>e.actionBias('explore',1003),'high interoceptive pressure plus good rest outcomes should favor regulation');
 
 // WorkPass452: action outcomes are bound to the emotion/pressure context that
 // preceded them, not generalized indiscriminately across all affective states.
@@ -40,7 +70,7 @@ const stressRestKey = Object.keys(contextBefore.contextualOutcomes).find(key => 
 });
 assert.ok(stressRestKey, 'outcomes from the current stress episode must create a context-bound row');
 assert.equal(contextBefore.contextualOutcomes[stressRestKey].attempts, 4);
-const stressRestBiasBefore = e.actionBias('rest');
+const stressRestBiasBefore = e.actionBias('rest',1003);
 e.recordOutcome({emotionId:first.id,action:'rest',success01:.1,surprise01:.8,regulationCost01:.8});
 const contextAfter = e.snapshot();
 const curiosityRestKey = Object.keys(contextAfter.contextualOutcomes).find(key => {
@@ -54,12 +84,22 @@ assert.notEqual(curiosityRestKey, stressRestKey);
 assert.equal(contextAfter.contextualOutcomes[stressRestKey].attempts, 4,
   'outcome attributed to an earlier emotion must not mutate the current stressed-context history');
 assert.equal(contextAfter.contextualOutcomes[curiosityRestKey].attempts, 1);
-assert.equal(e.actionBias('rest'), stressRestBiasBefore,
+assert.equal(e.actionBias('rest',1003), stressRestBiasBefore,
   'an outcome from another emotion context must not leak into the active action bias');
+const freshRestBias=e.actionBias('rest',1003);
+const staleRestBias=e.actionBias('rest',1003+20*60_000);
+assert.ok(staleRestBias<freshRestBias,
+  'emotion- and mood-derived action bias must fade after a long idle gap while live regulation pressure remains available');
+assert.equal(e.actionBias('rest',Number.NaN),0,
+  'invalid decision timestamps must not create affective action bias');
 assert.throws(() => e.recordOutcome({
   emotionId:'emotion-does-not-exist',action:'rest',success01:.5,surprise01:.5,
 }), /emotion-outcome-emotion-link-invalid/);
 const es=e.snapshot(); const er=new EmotionAppraisalEngine(); er.restore(es); assert.deepEqual(er.snapshot(),es);
+const legacyEmotion=new EmotionAppraisalEngine();
+legacyEmotion.restore({version:2,episodes:2,history:[first]});
+assert.equal(legacyEmotion.snapshot().mood.episodes,0,
+  'pre-mood persisted affect state must restore with a neutral backward-compatible mood default');
 
 // WorkPass330: restored affect state must not accept invalid counters, timestamps or malformed episodes.
 const corruptedEmotion = new EmotionAppraisalEngine();
@@ -234,6 +274,16 @@ assert.ok(stressCore.p66Summary().recoveryDebt01>stable.p66Summary().recoveryDeb
 const stressR=new OrganismCore(new FileStateStore(stressFile),{enableLanguage:false,performanceProfile:'mobile',checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1}); await stressR.init();
 assert.equal(stressR.emotionAppraisalSnapshot().interoception.cycles,stressS.interoception.cycles);
 assert.equal(stressR.p66Summary().recoveryDebt01,stressCore.p66Summary().recoveryDebt01);
+// Feeling access must be retained as causal evidence alongside the emotion node,
+// not merely as a UI-only self-report.
+const causalLife=stable.snapshot().system.causalLifeGraph;
+const feelingLinkedEmotion=causalLife.nodes.find(node=>node.kind==='emotion'&&typeof node.metadata?.feelingEpisodeId==='string');
+assert.ok(feelingLinkedEmotion,'causal memory should link an emotion node to its feeling-access episode');
+for(const key of ['feelingIntensity01','interoceptiveMismatch01','selfAccessConfidence01','bodilyFocus01']){
+  assert.ok(Number.isFinite(feelingLinkedEmotion.metadata[key]),`causal emotion metadata must retain finite ${key}`);
+  assert.ok(feelingLinkedEmotion.metadata[key]>=0&&feelingLinkedEmotion.metadata[key]<=1,`causal emotion metadata must bound ${key}`);
+}
+assert.ok(String(feelingLinkedEmotion.metadata.feelingEpisodeId).startsWith('feel:'));
 stable.stop?.(); stressCore.stop?.(); stressR.stop?.(); await rm(root,{recursive:true,force:true});
 
-console.log(JSON.stringify({pass:172,status:'PASS',direct:{episodeIdsUnique:true,positiveValence:first.valence01,stressLabel:stressed.label,feelingMismatch:feeling.interoceptiveMismatch01,restBias:e.actionBias('rest')},p66:{highMode:high.mode,highPressure:high.pressure01,recoveryDebtAfterRecovery:hs.recoveryDebt01},core:{stableInteroCycles:stableS.interoception.cycles,stressInteroCycles:stressS.interoception.cycles,stableRegulation:stableS.interoception.regulationPressure01,stressRegulation:stressS.interoception.regulationPressure01,stableMeanStress:stableS.meanStress01,stressMeanStress:stressS.meanStress01,stableRecoveryDebt:stable.p66Summary().recoveryDebt01,stressRecoveryDebt:stressCore.p66Summary().recoveryDebt01,restart:true}},null,2));
+console.log(JSON.stringify({pass:172,status:'PASS',direct:{episodeIdsUnique:true,positiveValence:first.valence01,stressLabel:stressed.label,feelingMismatch:feeling.interoceptiveMismatch01,restBias:e.actionBias('rest',1003)},p66:{highMode:high.mode,highPressure:high.pressure01,recoveryDebtAfterRecovery:hs.recoveryDebt01},core:{stableInteroCycles:stableS.interoception.cycles,stressInteroCycles:stressS.interoception.cycles,stableRegulation:stableS.interoception.regulationPressure01,stressRegulation:stressS.interoception.regulationPressure01,stableMeanStress:stableS.meanStress01,stressMeanStress:stressS.meanStress01,stableRecoveryDebt:stable.p66Summary().recoveryDebt01,stressRecoveryDebt:stressCore.p66Summary().recoveryDebt01,restart:true}},null,2));
