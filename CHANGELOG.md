@@ -1,3 +1,10 @@
+## [NK1][compat] Scope direct Gateway bypass checks to project dispatch (2026-10-25)
+
+- The route test previously searched the whole `OrganismCore.ts` for direct reconciliation calls, incorrectly flagging the canonical Core wrapper's own legitimate delegation to ActionGateway.
+- The test now scopes the no-bypass assertions to the project dispatch block, where fresh calls must use `this.executeTool` and resume paths must use `this.reconcileToolExecution`. Wrapper internals remain free to delegate to the Gateway.
+
+---
+
 ## [NK1][core] Route project execution through the canonical Core wrapper (2026-10-25)
 
 - The passing receipt-integrity fix uncovered a real production bypass in project tool execution: fresh project dispatch called `ActionGateway.executeTool` directly, and resume reconciliation also bypassed `OrganismCore`'s canonical wrapper.
