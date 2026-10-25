@@ -7,10 +7,10 @@ import { buildKnownEntityDossiers, projectKnownEntityPromptContext } from '../sy
 import { buildGradedTraitSalience } from '../language/GradedTraitSalience.ts';
 import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, type MemoryRetrievalBenchmarkOptions } from '../memory/MemoryRetrievalBenchmark.ts';
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
-import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisExecutionPlacement, type HexisGoalProposal } from '../integration/hexis/HexisAdaptationFabric.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
-import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
+import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismGoalExternalProvenance, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
@@ -1119,6 +1119,15 @@ function defaultPersisted(): PersistedOrganism {
 }
 function p29Reason(result: any): string { if (!result)
     return 'no-arbitration'; return `dominant=${result.dominantSource ?? 'none'};conflict=${Number(result.conflict01 ?? 0).toFixed(3)};budget=${Number(result.budgetScale01 ?? 0).toFixed(3)}`; }
+function externalGoalProvenance(proposal: HexisGoalProposal): OrganismGoalExternalProvenance {
+    return { adapter: 'hexis-hmx', exportId: proposal.exportId, sourceLineageId: proposal.sourceLineageId, sourceRef: proposal.sourceRef, proposalId: proposal.id, importedAt: proposal.createdAt };
+}
+function hasMatchingExternalGoalProvenance(goal: OrganismGoal, proposal: HexisGoalProposal): boolean {
+    const provenance = goal.externalProvenance;
+    return goal.source === 'external' && provenance?.adapter === 'hexis-hmx' &&
+        provenance.exportId === proposal.exportId && provenance.sourceLineageId === proposal.sourceLineageId &&
+        provenance.sourceRef === proposal.sourceRef && provenance.proposalId === proposal.id;
+}
 function goalScore(g: OrganismGoal): number {
     return clamp(g.importance * 0.34 +
         g.urgency * 0.18 +
@@ -2943,10 +2952,18 @@ export class OrganismCore {
             if (proposal.status === 'rejected') throw new Error('hmx-goal-proposal-was-rejected');
             if (proposal.status === 'materialized' && proposal.canonicalGoalId) {
                 const existingGoal = this.persisted.goals.find(goal => goal.id === proposal.canonicalGoalId) ?? null;
+                if (existingGoal && !hasMatchingExternalGoalProvenance(existingGoal, proposal)) throw new Error('hmx-goal-provenance-mismatch');
                 return { proposal, goal: existingGoal ? structuredClone(existingGoal) : null, requiresExplicitActivation: Boolean(existingGoal && existingGoal.activationApproved !== true) };
             }
             const goalId = proposal.canonicalGoalId ?? proposal.id;
             const existingById = this.persisted.goals.find(goal => goal.id === goalId);
+            const expectedExternalProvenance = externalGoalProvenance(proposal);
+            if (existingById && !hasMatchingExternalGoalProvenance(existingById, proposal)) {
+                const repairable = existingById.source === 'external' && existingById.id === proposal.id &&
+                    existingById.status === 'paused' && existingById.activationApproved === false && !existingById.externalProvenance;
+                if (!repairable) throw new Error('hmx-goal-id-or-provenance-conflict');
+                existingById.externalProvenance = expectedExternalProvenance;
+            }
             const sameTitle = this.persisted.goals.find(goal =>
                 goal.id !== goalId &&
                 goal.title.normalize('NFKC').trim().toLocaleLowerCase() === proposal.title.normalize('NFKC').trim().toLocaleLowerCase() &&
@@ -2967,6 +2984,7 @@ export class OrganismCore {
                     source: 'external',
                     status: 'paused',
                     activationApproved: false,
+                    externalProvenance: expectedExternalProvenance,
                     importance: Math.max(0.1, Math.min(0.9, Number(proposal.importance) || 0.48)),
                     urgency: Math.max(0.05, Math.min(0.78, Number(proposal.urgency) || 0.32)),
                     confidence: Math.max(0.05, Math.min(0.8, Number(proposal.confidence) || 0.42)),
@@ -2985,6 +3003,7 @@ export class OrganismCore {
             if (proposal.status !== 'materialized' || !proposal.canonicalGoalId) throw new Error('hmx-goal-must-be-approved-and-materialized-before-activation');
             const goal = this.persisted.goals.find(candidate => candidate.id === proposal.canonicalGoalId);
             if (!goal) throw new Error('canonical-hmx-goal-not-found');
+            if (!hasMatchingExternalGoalProvenance(goal, proposal)) throw new Error('hmx-goal-provenance-mismatch');
             if (goal.status === 'active' && goal.activationApproved === true) {
                 return { proposal, goal: structuredClone(goal), requiresExplicitActivation: false, alreadyActive: true };
             }
@@ -3001,7 +3020,7 @@ export class OrganismCore {
             goal.updatedAt = Date.now();
             this.memorySubsystem.events.append(makeEvent('goal-updated', this.persisted.state.tick, {
                 goalId: goal.id, title: goal.title, source: 'external', reason: 'explicitly-activated-reviewed-hmx-goal',
-                proposalId: proposal.id, identityContinuity01: identity01,
+                proposalId: proposal.id, exportId: proposal.exportId, sourceLineageId: proposal.sourceLineageId, sourceRef: proposal.sourceRef, identityContinuity01: identity01,
             } as any));
             const activated = this.hexisAdaptation.markGoalProposalActivated(proposalId, goal.id);
             this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
