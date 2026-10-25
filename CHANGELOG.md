@@ -1,3 +1,9 @@
+## NK1 Persistence — reject inconsistent migrated verification flags before retention (2026-10-25)
+
+- Hardened the migration retention filter again: even a candidate with a correct canonical identity fingerprint is rejected before the cap if its `verifiedExternal` flag disagrees with the normalized record's external-postcondition assessment.
+- Expanded the migration regression to include 2,100 genuine-fingerprint rows with forged `verifiedExternal: false` alongside 2,100 fingerprint-forged rows; neither group may crowd the valid original projection out of the 2,048-row window.
+- **Validation boundary:** migration hardening `04b761c0f811d13bd3ca33d93581c274c198c803` and regression `7ba1ee6f92b318a86552d9b0402af46053ec8601` are committed; hosted validation is pending.
+
 ## NK1 Persistence — validate migrated projection fingerprints before retention cap (2026-10-25)
 
 - Fixed the `StateMigrations` projection-index path so it no longer slices the raw tail before validation. It normalizes candidates, verifies the record execution ID and canonical SHA-256 projection fingerprint, then applies the 2,048-entry cap.
