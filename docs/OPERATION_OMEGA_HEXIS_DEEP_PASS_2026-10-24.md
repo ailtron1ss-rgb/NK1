@@ -39,7 +39,7 @@ NK1 remains the runtime and canonical memory owner. The upstream reference is [Q
 - The canonical projector and HMX decision layer now both reject memory mutation unless the staged candidate is `intent=port`, `strategy=additive`; unsupported analysis/authoritative strategies remain reviewable but write nothing.
 - Corrected P68's paused-goal traversal (the old loop iterated active goals only, making its paused-to-active transition unreachable). Native paused goals can again resume under the existing ecology conditions, but reactivation respects a four-active-goal cap. External goals without explicit activation remain paused and are protected from routine retention pruning, including older records that lack the new marker.
 - Failed HMX apply attempts are persisted by `OrganismCore` even when the projector throws, so a restart increments the attempt ID before retry instead of reusing a command receipt from a compensated write.
-- Extended tests for goal proposal deduplication across exports, immutable decisions, P68 not auto-reactivating externally imported paused goals, and same-label graph-node isolation. The latest exact-head workflow is still queued; these new tests must not be described as passed until the run finishes.
+- Extended tests for goal proposal deduplication across exports, immutable decisions, P68 not auto-reactivating externally imported paused goals, and same-label graph-node isolation. Exact-head run [40161146253](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161146253) at `d2e01c4d76f85f6582cb6b3f0c1904addc90243d` passed all five Hexis workflow steps, including the goal proposal regression and live HTTP server smoke.
 
 ## Explicit limits — not claimed complete
 
@@ -54,7 +54,7 @@ GitHub Actions run [40127691364](https://github.com/ailtron1ss-rgb/NK1/actions/r
 - partial semantic relationship projection, deduplication and graph rollback;
 - isolation of an existing same-text native memory from external HMX provenance.
 
-The latest addition tests deduplication across two exports with different HMX `export_id` values but the same lineage/record identity. Exact-head CI for that cross-export case is still queued, so it is not yet reported as passed.
+The WorkPass333 follow-up, including cross-export goal proposal deduplication and explicit external-goal activation, passed exact-head run [40161146253](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161146253) at commit `d2e01c4d76f85f6582cb6b3f0c1904addc90243d`. All five Hexis workflow steps passed, including the staging/import-boundary regression and live HTTP server smoke.
 
 The parallel WorkPass110 metrics workflow continues to fail on the separate `tests/big-pass-90-causal-learning-stream.mjs:18` assertion (`record` is null). That failure has not been attributed to Hexis.
 

@@ -2225,3 +2225,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added regressions for unsupported apply strategies, restart-safe attempt advancement, P68 native-goal reactivation, external-goal activation gating, and fail-closed proposal queue capacity.
 
 - P68 follow-up: paused-goal traversal is now reachable, native paused goals may resume again, and automatic reactivation is capped at four active goals. External goals lacking an explicit activation marker (including legacy records) remain paused and are protected from cleanup.
+
+
+
+## 2026-10-25 — WorkPass333 validation checkpoint
+
+- Exact branch-head Hexis workflow [40161146253](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161146253) at commit `d2e01c4d76f85f6582cb6b3f0c1904addc90243d` passed all five steps: review-inbox regression, epistemic provenance, source-monitor lineage, HMX staging/import boundary, and live server integration.
+- Fixed the cross-export goal proposal test fixture to reuse the same durable `HexisAdaptationFabric` owner across source re-exports. A separate instance represents a separate organism and cannot share the first instance's proposal registry.
+- The separate WorkPass110 causal-learning workflow still fails at `tests/big-pass-90-causal-learning-stream.mjs:18` because an expected record is null; this is not the Hexis workflow and remains unclaimed as fixed.
+- PR [#95](https://github.com/ailtron1ss-rgb/NK1/pull/95) remains open and unmerged. This checkpoint records successful validation, not a claim of full Hexis parity or production readiness.
