@@ -34,7 +34,7 @@ Config — JSON версии 1:
 - trusted-verifier-keys.json — JSON-объект verifierId -> PEM public key; private keys запрещены.
 - signed-artifacts/*.json — отдельные signed outcome artifacts с payload и signature.
 
-Bootstrap повторно проверяет подпись каждого артефакта на каждом старте. Он отказывает при неизвестном verifier, ошибочной подписи, повторном/конфликтующем исходе, неверном manifest, private key в keyring, невалидных файлах, symlink и group/world-writable source files, небезопасных относительных путях или неполном парном holdout-покрытии. Он требует, чтобы pinned сравнение имело достаточно полных парных seed (не менее четырёх) до регистрации tool. Это не считывает VerifiedOutcomeLedger snapshot как доказательство и не восстанавливает авторитет из одного JSON.
+Bootstrap повторно проверяет подпись каждого артефакта на каждом старте. Он отказывает при неизвестном verifier, ошибочной подписи, повторном/конфликтующем исходе, неверном manifest, private key в keyring, невалидных файлах, symlink, любых битах записи в trust-файлах/каталоге артефактов, небезопасных относительных путях или неполном парном holdout-покрытии. Production config/manifest/keyring/artifacts должны располагаться вне runtime-writable state; loader проверяет эту границу до регистрации evaluator. Он требует, чтобы pinned сравнение имело достаточно полных парных seed (не менее четырёх) до регистрации tool. Это не считывает VerifiedOutcomeLedger snapshot как доказательство и не восстанавливает авторитет из одного JSON.
 
 ### Developmental maturity: отдельный host module
 
