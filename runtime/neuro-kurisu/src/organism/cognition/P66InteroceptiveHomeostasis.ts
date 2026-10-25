@@ -62,12 +62,13 @@ export class P66InteroceptiveHomeostasis {
     capacity01:boundedMetric(rawSetpoints?.capacity01,sp.capacity01),load01:boundedMetric(rawSetpoints?.load01,sp.load01),
     awake01:boundedMetric(rawSetpoints?.awake01,sp.awake01)};
   const lastMode=typeof r.lastMode==='string'&&P66_MODES.has(r.lastMode as P66Mode)?r.lastMode as P66Mode:d.lastMode;
-  this.state={version:1,cycles:boundedCount(r.cycles),modeCounts,
+  const history=normalizeP66History(r.history);
+  this.state={version:1,cycles:Math.max(boundedCount(r.cycles),history.length),modeCounts,
     meanError01:boundedMetric(r.meanError01,d.meanError01),meanStress01:boundedMetric(r.meanStress01,d.meanStress01),
     meanCapacity01:boundedMetric(r.meanCapacity01,d.meanCapacity01),lastCapacity01:boundedMetric(r.lastCapacity01,d.lastCapacity01),
     lastError01:boundedMetric(r.lastError01,d.lastError01),lastStress01:boundedMetric(r.lastStress01,d.lastStress01),
     lastPressure01:boundedMetric(r.lastPressure01,d.lastPressure01),recoveryDebt01:boundedMetric(r.recoveryDebt01,d.recoveryDebt01),
-    stableCycles:boundedCount(r.stableCycles),lastMode,lastAt:boundedTimestamp(r.lastAt),setpoints,history:normalizeP66History(r.history)};
+    stableCycles:boundedCount(r.stableCycles),lastMode,lastAt:boundedTimestamp(r.lastAt),setpoints,history};
  }
  snapshot(){return structuredClone(this.state);}
  persistenceSnapshot(){
