@@ -1,16 +1,23 @@
+## NK1 Persistence — preserve outcome projection fingerprints during migration (2026-10-25)
+
+- Fixed `StateMigrations` normalization so `outcomeVerification.records` and the nested records inside `projectionIndex` retain the identity fields that participate in a receipt fingerprint, including `evidenceEventId` and `outcomeClass`. Quarantine audit markers are preserved across migration as well.
+- Root cause was a lossy schema-migration mapping: it removed `outcomeClass` from the history row while preserving it in the projection index. A legitimate single receipt then appeared to conflict on restart and was quarantined.
+- Extended `big-pass-64-external-observer.mjs` to assert a real persisted Core round-trip retains verified external observations and outcome identity without quarantining a valid execution.
+- **Validation boundary:** GitHub Actions run #96 is queued for regression commit `ff6cd5cda3cda17433808371a99691fd6719c688`; final pass/fail will be recorded once the hosted job completes.
+
 ## NK1 Emotion — prevent recalled-memory salience saturation (2026-10-25)
 
 - Fixed a salience multiplier saturation bug: `c(.8 + attentionCapture * .7)` clamps values to 1, so both ordinary and recall-boosted attention could become indistinguishable despite increased arousal.
 - The multiplier now uses an explicit bounded range of 0.8–1.35, allowing emotionally salient recalled memories to boost current memory weighting without turning salience into an unbounded signal.
 - The pre-existing `workpass564-recalled-affect-appraisal` regression directly covers the expected increase while also guarding against invented valence and present-threat inference.
-- **Validation boundary:** source fix is committed; hosted regression must pass to mark it validated.
+- **Validation:** GitHub Actions [run #92](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167647775) passed the recalled-affect regression (`baseArousal=0.2988`, `recalledArousal=0.3672`); the current run #96 also reruns it alongside the persistence regressions.
 
 ## NK1 Causal Projection — quarantine conflicting restored outcome identities (2026-10-25)
 
 - `OutcomeCognitionFabric.restore()` now checks restored projection-index identity against its record fingerprint, rejects the last-write-wins behavior for duplicate `executionId` values, and quarantines conflicting IDs in `CausalAccountabilityGraph` so the tombstone persists across restart.
 - Restored `verifiedExternal` is recomputed from the canonical external-postcondition contract rather than trusted as a stored boolean. Conflicting or causally quarantined outcomes remain as explicitly marked read-only audit records (`receiptQuarantined`); they are removed from the active projection index and evidence-revision ledger. Causal autobiography labels them `ambiguous-execution-quarantined`, and all new evidence/project/revision operations fail closed.
 - Project replay, external-observation attachment, authoritative-receipt revision, and `hasProjectionForExecution()` now respect quarantine. Added a regression that combines two individually plausible snapshots with conflicting tool/postcondition identities and verifies no later evidence can attach.
-- **Validation boundary:** GitHub Actions is running for regression commit `d422b86a549cd37f2f2b1236799672068f6a79bf`; result will be recorded after the hosted run completes.
+- **Validation boundary:** projection-restore conflict regression plus real Core persistence round-trip are being validated together in [Actions run #96](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167978971); the previous attempts exposed a lossy `StateMigrations` mapping, now fixed in commit `82e6af4008e9475806fc0d80a600503802138c8d`.
 
 ## NK1 WorkPass564 — bounded affect reactivation from retrieved memories (2026-10-25)
 
@@ -18,7 +25,7 @@
 - `EmotionAppraisalEngine` applies a bounded cue to relevance/arousal and surfaces `recalledAffect01` plus `recalledMemoryCount` in each new appraisal episode. Recalled emotional intensity does not directly alter valence or stress, so salience alone cannot be mistaken for positive meaning or present danger.
 - Added `workpass564-recalled-affect-appraisal.mjs` and wired it into the Node 24 reality-to-learning workflow, including both push and pull-request path filters.
 - The new appraisal metadata remains optional in the TypeScript snapshot contract, preserving compatibility with restored/constructed episodes that predate this pass.
-- **Validation:** implementation and regression wiring are committed. Exact-head GitHub Actions validation is pending; no pass is claimed until the triggered run completes.
+- **Validation:** [Actions run #92](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167647775) passed the recalled-affect appraisal regression; run #96 repeats it with the new restore-identity assertions.
 
 ## NK1 Causal Accountability — quarantine live execution receipt conflicts (2026-10-25)
 
