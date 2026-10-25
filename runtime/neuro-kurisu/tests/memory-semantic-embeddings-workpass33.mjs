@@ -58,7 +58,14 @@ add('credential-recovery', 'Login credential recovery restores account access wh
 add('network-decoy', 'Network socket routing and database endpoint configuration for server maintenance.');
 add('general-decoy', 'The avatar palette uses a blue background and compact interface controls.');
 const before = memory.snapshot();
+let lexicalPreviewCalls = 0;
+const originalPreviewRetrieve = memory.previewRetrieve.bind(memory);
+memory.previewRetrieve = (...args) => {
+  lexicalPreviewCalls++;
+  return originalPreviewRetrieve(...args);
+};
 const result = await memory.previewRetrieveWithEmbeddings('I cannot authenticate to my user profile', 3, 0, 0, { temporalMode: 'current', asOfAt: now });
+assert.equal(lexicalPreviewCalls, 1, 'semantic retrieval should reuse one isolated lexical preview for candidates and fallback');
 assert.equal(result.semantic.enabled, true);
 assert.equal(result.items[0]?.id, 'credential-recovery', 'semantic search should retrieve a conceptually related row despite low lexical overlap');
 assert.ok(result.semantic.indexedItems >= 3);
@@ -111,4 +118,36 @@ assert.equal(retryDiagnostics.remaining, 3);
 assert.equal(retryDiagnostics.waitingForRetry, 3);
 assert.equal(retryDiagnostics.nextRetryAt, diagnosticNow + 3_000);
 
-console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason, maintenance: { corpusItems: retryResult.corpusItems, considered: retryResult.considered, waitingForRetry: retryResult.waitingForRetry, nextRetryAt: retryResult.nextRetryAt } }));
+let racingMemory;
+class MutatingDuringEmbeddingProvider extends SemanticFixtureProvider {
+  providerId = 'fixture:mutating';
+  modelId = 'mutating';
+  async embedBatch(texts) {
+    const vectors = await super.embedBatch(texts);
+    racingMemory.reviseContent('race-target', 'Changed content during embedding', { reason: 'race-test-revision' });
+    return vectors;
+  }
+}
+racingMemory = new MemoryOS2({ embeddingProvider: new MutatingDuringEmbeddingProvider() });
+racingMemory.encode({
+  ...structuredClone(before.items[0]),
+  id: 'race-target',
+  content: 'Login credential recovery restores account access when authentication is lost.',
+  createdAt: Date.now() - 10_000,
+  lastAccessAt: Date.now() - 10_000,
+  validFromAt: Date.now() - 5_000,
+  validUntilAt: null,
+  supersedesId: null,
+  supersededById: null,
+  revisionGroupId: 'race-target',
+  revisionSequence: 1,
+  dormant: false,
+  epistemicStatus: 'fact',
+  semanticVector: [],
+}, { forceDistinct: true });
+const raceResult = await racingMemory.previewRetrieveWithEmbeddings('login credential recovery', 3, 0, 0, { temporalMode: 'current' });
+assert.equal(raceResult.semantic.newlyIndexed, 0, 'a vector must not be attached after its source memory is revised during the provider await');
+assert.equal(racingMemory.semanticEmbeddingIndex.has('race-target'), false, 'stale source vectors must not enter the semantic index');
+assert.ok(!raceResult.items.some(row => row.id === 'race-target'), 'the superseded source row must not be returned after the asynchronous revision');
+
+console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason, maintenance: { corpusItems: retryResult.corpusItems, considered: retryResult.considered, waitingForRetry: retryResult.waitingForRetry, nextRetryAt: retryResult.nextRetryAt }, staleWritePrevented: raceResult.semantic.newlyIndexed === 0 && !racingMemory.semanticEmbeddingIndex.has('race-target') }));
