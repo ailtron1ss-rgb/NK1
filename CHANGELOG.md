@@ -1,3 +1,9 @@
+## NK1 WorkPass551 — isolate persisted skill CAS tampering assertion (2026-10-25)
+
+- Adjusted the versioned-skill restore tamper fixture to keep the prior-version/rollback link structurally valid while mutating the persisted approval's `expectedActiveVersion` outside its signed payload.
+- This makes the regression reach the intended promotion CAS/activation guard instead of being intercepted earlier by the correct prior-candidate integrity guard.
+- No lifecycle guard is relaxed; the fixture now isolates the exact assertion stated by the test.
+
 ## NK1 WorkPass550 — align skill rollback regression with approval gate (2026-10-25)
 
 - Updated the versioned skill-store fixture to provide an explicit test-only rollback verifier and the required approval envelope (`approvedBy`, `approvedAt`, `expectedActiveVersion`) for the successful rollback path.
