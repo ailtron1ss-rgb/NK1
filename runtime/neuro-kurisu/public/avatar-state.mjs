@@ -107,24 +107,24 @@ function segmentSpeech(text, language) {
 
 function poseForSpeechGrapheme(grapheme) {
   const char = String(grapheme ?? '').toLocaleLowerCase().normalize('NFKC');
-  if (!char || /^\\s$/u.test(char)) return { open: 0.045, form: 0, viseme: 'neutral' };
+  if (!char || /^\s$/u.test(char)) return { open: 0.045, form: 0, viseme: 'neutral' };
   if (/^[.,!?;:…—–-]$/u.test(char)) return { ...CLOSED_POSE };
   if (/[мбп]/u.test(char) || /[bmp]/u.test(char)) return { open: 0.025, form: -0.05, viseme: 'closed' };
   if (/[фв]/u.test(char) || /[fv]/u.test(char)) return { open: 0.14, form: 0.18, viseme: 'teeth' };
   if (/[оуёю]/u.test(char) || /[ouw]/u.test(char)) return { open: 0.34, form: -0.46, viseme: 'round' };
   if (/[аяaæɑɒ]/iu.test(char)) return { open: 0.60, form: 0.10, viseme: 'open' };
   if (/[иыиеэ]/u.test(char) || /[eiy]/iu.test(char)) return { open: 0.25, form: 0.32, viseme: 'wide' };
-  if (/^[\\p{L}\\p{M}\\p{N}]$/u.test(char)) return { open: 0.16, form: 0.02, viseme: 'neutral' };
+  if (/^[\p{L}\p{M}\p{N}]$/u.test(char)) return { open: 0.16, form: 0.02, viseme: 'neutral' };
   return { ...CLOSED_POSE };
 }
 
 function speechWeight(grapheme) {
-  if (/^\\s$/u.test(grapheme)) return 0.55;
+  if (/^\s$/u.test(grapheme)) return 0.55;
   if (/^[.,!?;:…—–-]$/u.test(grapheme)) return grapheme === ',' || grapheme === ';' || grapheme === ':' ? 1.8 : 2.4;
   if (/[оуёю]/iu.test(grapheme) || /[ouw]/iu.test(grapheme)) return 1.55;
   if (/[аеёиоуыэюяaeiouy]/iu.test(grapheme)) return 1.35;
   if (/[мбпbmpфвfv]/iu.test(grapheme)) return 0.72;
-  if (/^[\\p{L}\\p{M}\\p{N}]$/u.test(grapheme)) return 0.86;
+  if (/^[\p{L}\p{M}\p{N}]$/u.test(grapheme)) return 0.86;
   return 0.6;
 }
 
@@ -135,7 +135,7 @@ function speechWeight(grapheme) {
  */
 export function buildAvatarSpeechTimeline(text, rate = 1, language = 'ru-RU') {
   if (typeof text !== 'string') return [];
-  const normalized = text.slice(0, 2000).replace(/[\\r\\n\\t]+/gu, ' ').trim();
+  const normalized = text.slice(0, 2000).replace(/[\r\n\t]+/gu, ' ').trim();
   if (!normalized) return [];
   const graphemes = segmentSpeech(normalized, language);
   const safeRate = clamp(rate, 0.5, 2, 1);
