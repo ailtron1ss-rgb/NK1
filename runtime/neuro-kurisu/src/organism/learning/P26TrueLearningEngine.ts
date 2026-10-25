@@ -115,6 +115,93 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
+  /**
+   * Train current experience while selectively rehearsing historical rows.
+   * Historical labels are screened against bounded same-action current examples;
+   * a near-identical context with a contradictory reward blocks the old row.
+   * This is a synthetic replay mechanism, not independent holdout evidence.
+   */
+  trainInterleaved(
+    current:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    historical:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'reward'|'td';currentLearningRate01?:number;replayLearningRate01?:number;conflictCandidateCap?:number}={}
+  ){
+    if(!Array.isArray(current)||!Array.isArray(historical)) throw new TypeError('interleaved-experience-must-be-arrays');
+    const every=Number.isSafeInteger(options.replayEveryNCurrent)&&Number(options.replayEveryNCurrent)>0
+      ?Math.min(4096,Number(options.replayEveryNCurrent)):16;
+    const maxAttempts=options.maxReplayUpdates===undefined?160
+      :(Number.isSafeInteger(options.maxReplayUpdates)&&options.maxReplayUpdates>=0?Math.min(4096,options.maxReplayUpdates):0);
+    const candidateCap=options.conflictCandidateCap===undefined?64
+      :(Number.isSafeInteger(options.conflictCandidateCap)?Math.max(8,Math.min(128,options.conflictCandidateCap)):64);
+    const currentRate=options.currentLearningRate01??.18;
+    const replayRate=options.replayLearningRate01??.045;
+    if(!Number.isFinite(currentRate)||currentRate<=0||currentRate>1) throw new RangeError('current-learning-rate-out-of-range');
+    if(!Number.isFinite(replayRate)||replayRate<=0||replayRate>1) throw new RangeError('replay-learning-rate-out-of-range');
+    const targetMode=options.targetMode??'td';
+    const validRow=(row:unknown):row is {state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}=>{
+      if(!row||typeof row!=='object')return false;
+      const r=row as any;
+      return Boolean(r.state&&typeof r.state==='object'&&r.nextState&&typeof r.nextState==='object'
+        &&ACTIONS.includes(r.action)&&typeof r.reward==='number'&&Number.isFinite(r.reward)
+        &&(r.surprise===undefined||(typeof r.surprise==='number'&&Number.isFinite(r.surprise))));
+    };
+    if(!current.every(validRow)||!historical.every(validRow))throw new TypeError('interleaved-experience-row-invalid');
+    const targetFor=(row:{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number})=>{
+      if(targetMode==='reward')return clamp(row.reward);
+      const next=Math.max(...this.learner.predict(row.nextState).map(p=>p.value),.5);
+      return clamp(row.reward+.78*next);
+    };
+    const byAction=new Map<ActionKind,Array<{features:number[];reward:number}>>();
+    for(const row of current){
+      const list=byAction.get(row.action)??[];
+      list.push({features:this.learner.features(row.state,undefined,row.action),reward:clamp(row.reward)});
+      byAction.set(row.action,list);
+    }
+    const conflictsWithCurrent=(prior:typeof historical[number])=>{
+      const candidates=byAction.get(prior.action)??[];
+      if(!candidates.length)return false;
+      const priorFeatures=this.learner.features(prior.state,undefined,prior.action);
+      const checks=Math.min(candidateCap,candidates.length);
+      for(let j=0;j<checks;j++){
+        const idx=checks===1?0:Math.floor(j*(candidates.length-1)/(checks-1));
+        const fresh=candidates[idx];
+        let maxDistance=0;
+        for(let k=0;k<Math.min(priorFeatures.length,fresh.features.length);k++)
+          maxDistance=Math.max(maxDistance,Math.abs(priorFeatures[k]-fresh.features[k]));
+        // Nearby states with contradictory targets indicate stale replay, while
+        // explicitly separated novelty/context lanes remain eligible for rehearsal.
+        if(maxDistance<=.22&&Math.abs(clamp(prior.reward)-fresh.reward)>=.30)return true;
+      }
+      return false;
+    };
+    let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,attempts=0,totalLoss=0;
+    let replayCursor=0;
+    for(let i=0;i<current.length;i++){
+      const row=current[i];
+      const trained=this.learner.train({state:row.state,action:row.action,target01:targetFor(row),learningRate01:currentRate});
+      onlineUpdates++;totalLoss+=trained.loss01;
+      if((i+1)%every!==0||attempts>=maxAttempts||!historical.length)continue;
+      const prior=historical[replayCursor%historical.length];replayCursor++;attempts++;
+      const candidates=byAction.get(prior.action)??[];
+      conflictComparisons+=Math.min(candidateCap,candidates.length);
+      if(conflictsWithCurrent(prior)){blockedReplayRows++;continue;}
+      eligibleReplayRows++;
+      const replayed=this.learner.train({state:prior.state,action:prior.action,target01:targetFor(prior),learningRate01:replayRate});
+      replayUpdates++;totalLoss+=replayed.loss01;
+    }
+    this.state.metrics.outcomeSamples+=onlineUpdates;
+    this.state.metrics.onlineUpdates+=onlineUpdates;
+    this.state.metrics.replayUpdates+=replayUpdates;
+    const totalUpdates=onlineUpdates+replayUpdates;
+    if(totalUpdates){
+      this.state.metrics.recentLoss01=clamp(totalLoss/totalUpdates);
+      this.state.metrics.trainingExposure01=clamp(Math.min(1,this.learner.snapshot().updates/160));
+      this.state.metrics.lastUpdatedAt=Date.now();
+    }
+    this.sync();
+    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap:candidateCap,meanLoss01:totalUpdates?totalLoss/totalUpdates:0};
+  }
+
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
     if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};
