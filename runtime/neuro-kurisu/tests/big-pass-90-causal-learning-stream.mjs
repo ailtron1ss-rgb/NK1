@@ -280,15 +280,22 @@ assert.equal(boundedDuplicateStream.summary().outcomes, outcomesBeforeEvictedRet
 
 const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
-  replayDiversity.recordOutcome({
-    ...trace, id: `replay-a-${i}`, tick: 10 + i,
+  const tick = 10 + i;
+  const replayTrace = {
+    ...trace, id: `replay-a-${i}`, tick, stateBefore: mkState({ tick }),
     selected: { ...trace.selected, goalId: "task-A" },
-  }, mkState({ tick: 11 + i }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+  };
+  replayDiversity.recordOutcome(replayTrace, mkState({
+    tick: tick + 1, lastAction: "explore", lastActionSuccess: .7,
+  }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 }
-replayDiversity.recordOutcome({
-  ...trace, id: "replay-b-0", tick: 20,
+const replayTraceB = {
+  ...trace, id: "replay-b-0", tick: 20, stateBefore: mkState({ tick: 20 }),
   selected: { ...trace.selected, goalId: "task-B" },
-}, mkState({ tick: 21 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+};
+replayDiversity.recordOutcome(replayTraceB, mkState({
+  tick: 21, lastAction: "explore", lastActionSuccess: .7,
+}), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
 assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
 assert.ok(replayBatch.some((row) => row.taskId === "task-B"),
@@ -354,8 +361,11 @@ const aggregateRestore = new CausalExperienceStream(64);
 aggregateRestore.restore(poisonedAggregates);
 const safeAggregateSnapshot = aggregateRestore.snapshot();
 assert.equal(safeAggregateSnapshot.observations, 0, "invalid persisted observation count must be reset");
-assert.equal(safeAggregateSnapshot.outcomes, safeAggregateSnapshot.records.length,
-  "invalid persisted outcome count must fall back to retained record count");
+assert.equal(safeAggregateSnapshot.outcomes, safeAggregateSnapshot.records.filter(row =>
+  row.provenance === "runtime-outcome" && row.stateGrounded === true &&
+  Array.isArray(row.policyFeatures01) && row.policyFeatures01.length >= 16 && row.policyFeatures01.length <= 64 &&
+  row.policyFeatures01.every(value => Number.isFinite(value) && value >= 0 && value <= 1),
+).length, "trusted outcome count must be recomputed from grounded runtime rows, not external records");
 assert.equal(safeAggregateSnapshot.consolidated, safeAggregateSnapshot.records.filter(row => row.consolidated).length,
   "invalid persisted consolidation count must fall back to retained consolidated rows");
 assert.equal(safeAggregateSnapshot.lastConsolidatedAt, 0, "invalid consolidation timestamp must be reset");

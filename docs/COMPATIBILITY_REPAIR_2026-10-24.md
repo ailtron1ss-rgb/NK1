@@ -55,3 +55,15 @@ The latest exact-head CI run passed the app regression suite, app typecheck and 
 These are now corrected on the PR branch. The causal regression also had stale assertions that treated external imports as trusted outcomes. It now tests the actual current contract: imported rows are idempotently stored for later adjudication but do not count as trusted outcomes or replay-eligible evidence.
 
 **Status remains IMPLEMENTED, CI pending.** No runtime or learning pass is claimed until a new exact-head run validates the third batch. The release artifact remains unchanged.
+
+## Fourth follow-up — causal evidence fixtures and CI wiring (2026-10-25)
+
+The newest Actions jobs confirmed the application typecheck and development bundle build passed and the main runtime typecheck advanced past its previous missing-Node-types blocker. The failures were then concentrated in regression setup and standalone workflow contracts:
+
+- The causal replay fixtures used incomplete before/after snapshots and never supplied the action receipt required by `recordOutcome`. They now provide a matching pre-action tick and explicit resulting action/success signal.
+- External imported rows are intentionally untrusted and excluded from grounded outcome totals. The aggregate restore test now checks counts derived from rows that actually meet the runtime-grounding contract.
+- Exact re-ingestion of the same signed outcome artifact is intended to be idempotent. The test now verifies acceptance without duplicate ledger rows instead of expecting a rejection.
+- Dedicated WorkPass291/293 workflows referenced npm scripts that did not exist. The aliases now point to the actual regression files and the intended P23 revision chain.
+- WorkPass294 previously ran strict runtime typecheck without installing the canonical TypeScript/@types dependencies. Its workflow now installs from the app lockfile first.
+
+**Status: code and workflow repairs committed; exact-head CI verification pending.** No end-to-end or production-readiness claim is made, and the published release ZIP was not rebuilt or replaced.

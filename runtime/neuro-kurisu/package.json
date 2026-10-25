@@ -1656,6 +1656,8 @@
     "test:workpass60-project-checkpoint": "node --experimental-strip-types tests/workpass60-project-step-checkpoint.mjs",
     "test:workpass60-project-reconciliation": "node --experimental-strip-types tests/workpass60-project-reconciliation-resume.mjs",
     "test:workpass60": "npm run typecheck && npm run test:workpass60-project-checkpoint && npm run test:workpass60-project-reconciliation && npm run test:workpass59",
+    "test:workpass291:payload-budget": "node --experimental-strip-types tests/workpass291-reflective-payload-budget.mjs",
+    "test:workpass293:p23-revision": "npm run test:workpass61:receipt-revision && npm run test:workpass61:core-reconciliation && node --experimental-strip-types tests/workpass172-compound-revision-coordinator.mjs && node --experimental-strip-types tests/workpass292-evidence-lanes.mjs && node --experimental-strip-types tests/workpass293-autonomous-p23-revision.mjs",
     "test:workpass61:receipt-revision": "node --experimental-strip-types tests/workpass61-authoritative-receipt-revision.mjs",
     "test:workpass61:core-reconciliation": "node --experimental-strip-types tests/workpass61-core-authoritative-reconciliation.mjs",
     "test:workpass61": "npm run typecheck && npm run test:workpass61:receipt-revision && npm run test:workpass61:core-reconciliation && npm run test:workpass60-project-checkpoint && npm run test:workpass60-project-reconciliation && npm run test:workpass59",

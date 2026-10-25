@@ -1,3 +1,11 @@
+## Strict compatibility follow-up — verified runtime fixtures and CI entry points (2026-10-25)
+
+- [FIX] Runtime causal replay fixtures now use a matching pre-action tick, a subsequent state tick, and an explicit action-result receipt. This lets the production evidence gate remain strict while the tests exercise its intended success path.
+- [FIX] Updated causal outcome aggregate assertions to distinguish externally imported/adjudication-only rows from grounded runtime outcomes. External evidence does not gain trusted status merely to satisfy tests.
+- [FIX] Updated the signed-artifact regression to assert idempotent acceptance for an exact signed retry, while verifying the ledger still contains only one outcome.
+- [FIX] Added missing npm script aliases used by the dedicated WorkPass291 and WorkPass293 workflows; installed the canonical app-lockfile compiler/types in WorkPass294 before strict runtime typecheck.
+- [EVIDENCE] Prior exact-head Actions passed app typecheck, development build, and the runtime typecheck in the main validation lane, then exposed the stale causal fixture and test expectations. The revised targeted suite and updated workflow runs must still pass before declaring full compatibility.
+
 
 ## Strict runtime compatibility — causal nullability and external evidence (2026-10-24)
 
