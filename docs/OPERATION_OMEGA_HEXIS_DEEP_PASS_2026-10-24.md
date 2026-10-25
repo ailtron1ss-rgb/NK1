@@ -98,3 +98,6 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 
 
 - **WorkPass335 registrar follow-up:** The broad typecheck narrowed to one remaining incompatibility: `OrganismCore` returns the registry receipt synchronously, while the minimal coordinator contract allows only void or an awaited result. The Core entry point now wraps the trusted registrar as an async void capability. Durable registration is still awaited before child spawn; the registry result is not leaked through the coordinator callback.
+
+
+- **WorkPass335 CI wiring follow-up:** The P23 autonomous-revision workflow also referenced a missing npm script (`test:workpass293:p23-revision`) despite the regression file being present. Added the script mapping to `tests/workpass293-autonomous-p23-revision.mjs`. The preceding workflow failed before invoking the test, so the new head must verify both script resolution and actual test behavior.

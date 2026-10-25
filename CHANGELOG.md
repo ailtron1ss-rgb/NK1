@@ -2277,3 +2277,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 
 - **WorkPass335 registrar follow-up:** Wrapped Core-owned trusted-shadow registration in an async void capability, preserving the awaited registration boundary while satisfying the coordinator contract. This addresses the last reported strict-type error on the previous checked head; fresh exact-head typecheck is pending.
+
+
+
+- **WorkPass335 CI wiring follow-up:** Added the missing `test:workpass293:p23-revision` npm script pointing to the existing autonomous P23 repair-revision test. Run [40162024733](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40162024733) failed before test execution because npm could not find the command; the new exact-head workflow will validate the underlying regression.
