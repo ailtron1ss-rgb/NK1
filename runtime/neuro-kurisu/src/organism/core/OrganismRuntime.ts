@@ -5,6 +5,7 @@ import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './Org
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
+import { PerceptionEngine } from '../cognition/PerceptionEngine.ts';
 import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
 import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
@@ -162,9 +163,14 @@ export class OrganismRuntime {
       includedSections: 0, truncatedSections: 0, omittedSections: 0, receipts: [], note: 'no-language-prompt-built-yet'
     };
   }
+  /** Read-only perception diagnostics for runtime monitoring and integration tests. */
+  perceptionSnapshot() {
+    return this.perceptionEngine.snapshot();
+  }
   private readonly clockScheduler = new RuntimeClockScheduler();
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
+  private readonly perceptionEngine = new PerceptionEngine();
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
   private readonly resourceEconomy = new CognitiveResourceEconomy();
   private readonly realityEvidence = new RealityEvidenceLedger(384);
@@ -585,13 +591,61 @@ export class OrganismRuntime {
     const observation = normalizeCognitiveCycleBoundaryInput(
       this.environment.toOrganismObservation(), 'full',
     ) as unknown as ReturnType<WorldEnvironment['toOrganismObservation']>;
+    // Keep sensor/world perception independent from the direct text-ingress path,
+    // so a conversational cycle does not starve telemetry baselining.
+    const perceptionEvent = this.perceptionEngine.perceive({
+      body,
+      world: observation.worldContext,
+      surprise: observation.surprise,
+    });
+    const perceptionHasSignal = perceptionEvent.kind !== 'quiet';
+    const perceptionEvidence = perceptionHasSignal
+      ? this.evidenceBus.publish({
+          tick: this.core.operationalStatusSnapshot().tick,
+          kind: 'observation',
+          source: 'perception-engine',
+          confidence01: perceptionEvent.confidence,
+          payload: {
+            eventId: perceptionEvent.id,
+            kind: perceptionEvent.kind,
+            source: perceptionEvent.source,
+            detail: perceptionEvent.detail,
+            salience01: perceptionEvent.salience,
+            novelty01: perceptionEvent.novelty,
+            evidence: perceptionEvent.evidence.slice(0, 8),
+          },
+        })
+      : null;
     const modalityEvents = [];
     if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:['user-input'], content:externalText }));
+    if (perceptionHasSignal) {
+      const modality = perceptionEvent.source === 'android'
+        ? 'sensor'
+        : perceptionEvent.source === 'social' ? 'text' : 'world';
+      modalityEvents.push(this.core.recordMultimodalObservation({
+        modality,
+        summary: `perception:${perceptionEvent.kind}:${perceptionEvent.detail}`.slice(0, 500),
+        confidence: perceptionEvent.confidence,
+        salience: perceptionEvent.salience,
+        evidence: perceptionEvent.evidence.slice(0, 8),
+        content: JSON.stringify({
+          id: perceptionEvent.id,
+          source: perceptionEvent.source,
+          novelty01: perceptionEvent.novelty,
+        }),
+      }));
+    }
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'sensor', summary:this.embodiment.resourceSummary(), confidence:body.sensoryFreshness01*.82, salience:Math.max(.18,Math.abs(body.telemetry.motion01 ?? 0)+.15), evidence:['device-telemetry'] }));
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'world', summary:observation.worldContext.facts.slice(-8).join(' | '), confidence:.7, salience:Math.max(.15,observation.surprise ?? .2), evidence:['world-model'] }));
     const fused = this.core.multimodalSnapshot();
     const cycle = await this.core.observe({
       ...observation,
+      surprise: perceptionHasSignal
+        ? clamp01(Math.max(Number(observation.surprise ?? 0), perceptionEvent.salience * 0.45 + perceptionEvent.novelty * 0.25))
+        : observation.surprise,
+      novelty: perceptionHasSignal
+        ? clamp01(Math.max(Number(observation.novelty ?? 0), perceptionEvent.novelty * perceptionEvent.confidence))
+        : observation.novelty,
       text: externalText,
       externalGoal: externalText ? { title: externalText.slice(0, 160), importance: 0.65, urgency: 0.4 } : undefined,
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
@@ -603,7 +657,20 @@ export class OrganismRuntime {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
     const internalAction = cycle.decision.selected?.action ?? 'wait';
-    const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
+    const observationEvidence = this.evidenceBus.publish({
+      tick: cycle.state.tick,
+      kind: 'observation',
+      source: 'runtime',
+      confidence01: perceptionHasSignal ? Math.max(0.72, perceptionEvent.confidence) : 0.72,
+      ...(perceptionEvidence ? { parentIds: [perceptionEvidence.id] } : {}),
+      payload: {
+        external: Boolean(externalText),
+        predictionError: cycle.state.predictionError,
+        selectedAction: internalAction,
+        perceptionKind: perceptionEvent.kind,
+        perceptionEventId: perceptionEvent.id,
+      },
+    });
     this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning');
     const plan = this.plans.build(cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null, internalAction, 4, 4);
     const simBudget=this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout');

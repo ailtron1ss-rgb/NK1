@@ -1,13 +1,15 @@
 ## NK1 [perception] — runtime sensor and world-context integrity (2026-10-25)
 
 - Fixed canonical runtime perception so one sensor event updates only its own baseline; simultaneous sensor changes are surfaced across successive perception cycles.
+- Wired runtime-owned `PerceptionEngine` events into multimodal observation and cognitive `novelty`/`surprise` ingress, with evidence-bus parent lineage into the canonical observation event; the runtime still keeps action selection inside `OrganismCore`.
+- Added a deterministic runtime integration regression proving fresh telemetry establishes a baseline and a subsequent motion change is visible through the runtime-owned perception diagnostic.
 - Added explicit `sensor-availability` events for signal loss/recovery. Missing readings are no longer confused with numeric zero or a confirmed absence of movement/proximity/light/network.
 - Sensor telemetry fails closed when freshness is out of range, stale duration is invalid/negative, or staleness exceeds the accepted bound.
 - World-object normalization now preserves knowledge state separately from fallback values: `valueKnown`, `visibilityKnown`, and `collectionKnown` distinguish unknown data from measured zero/false.
 - Preserved complete cognitive-cycle evidence lineage through bounded intermediate evidence nodes rather than truncating parent IDs; prevented endogenous-goal learning from receiving credit when the executed action came from another subsystem.
 - Repaired existing regression-suite defects discovered by the new CI path: malformed literal newlines in the unified-loop test, duplicate evaluator bindings, and Node typings incompatibility in the learning process supervisor.
 - Added focused perception/world-context CI and connected the regressions to the existing cognitive-contract workflow; both run Node.js 24, execute runtime integration, audit script/test references, and type-check the canonical runtime.
-- **Validation:** the cognitive-contract workflow passed on commit `67260c45f2e03703e2bb8ed35eb3cfd31362dbba`, including unified-cycle, intrinsic-motivation, endogenous-goal integration, sensor integrity, world-context normalization (including unknown-vs-observed flags), active-perception runtime integration, the 1,224-file MJS syntax audit, and canonical runtime typecheck. The dedicated perception workflow is completing the same focused checks; see [perception workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167248558) and [cognitive-contract workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167248769).
+- **Validation:** the cognitive-contract workflow passed on commit `67260c45f2e03703e2bb8ed35eb3cfd31362dbba`, including unified-cycle, intrinsic-motivation, endogenous-goal integration, sensor integrity, world-context normalization (including unknown-vs-observed flags), active-perception runtime integration, the 1,224-file MJS syntax audit, and canonical runtime typecheck. The prior dedicated perception workflow [passed](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167248558), as did the [cognitive-contract workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167248769). The runtime perception-ingress wiring in this commit is pending exact-head CI confirmation.
 
 ---
 
