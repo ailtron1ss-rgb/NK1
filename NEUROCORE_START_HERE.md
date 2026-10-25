@@ -1,3 +1,23 @@
+# WorkPass346 — active skills contain only observed actions
+
+Date: 2026-10-25
+
+## Failure mode
+B273 could store the entire `input.plan` as a skill after one credited outcome. Only `input.action` was executed; future plan steps were not observed. WorkPass345 prevented a mismatch at the first step, but the remaining sequence was still speculative.
+
+## Change
+- New skill prototypes store exactly `[input.action]`; their stable identity is goal fingerprint + actual action, not the speculative remainder of the plan.
+- Policy reuse and action bias only consume single-action primitives. Legacy multi-action rows remain visible as inert candidates and cannot influence policy before trajectory verification.
+- Diagnostics distinguish active single-action skills from legacy sequence candidates.
+- Old outcome rows missing `plannedAction` restore with unknown provenance and are excluded from plan/action alignment metrics.
+- Added regressions for atomic primitive creation, mismatch no-skill behavior, quarantine of legacy sequences, legacy outcome migration, the live B273 Core long-cycle path and independent synthetic policy comparison.
+- Updated WorkPass287–288 and WorkPass331 path filters and test steps.
+
+## Verification
+WorkPass345 focused and broad workflows passed on exact SHA `3e07300700012f2387810b869122729940eec48e`. WorkPass346 needs its own exact-head checks. Whole multi-step skill promotion remains open until complete actual trajectories are recorded and independently evaluated.
+
+---
+
 # WorkPass345 — bind skill credit to the action that ran
 
 Date: 2026-10-25

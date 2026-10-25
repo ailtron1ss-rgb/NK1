@@ -51,3 +51,8 @@ B2523 outcome calibration now uses the forecast at the selected horizon for the 
 ## WorkPass345 — plan/action skill-credit guard
 
 B273 now preserves the planned first action beside the actual outcome action, reports mismatches, and refuses to create/reinforce a multi-action skill when those differ. Goal learning still records the actual result, and old rows restore with unknown plan provenance instead of invented alignment. The focused and broad exact-head checks are pending; whole-trajectory skill verification remains an open gate.
+
+
+## WorkPass346 — distinguish observed action primitives from macro-plan candidates
+
+The active B273 skill store now creates only single-action primitives from the actual executed action. Multi-action legacy entries are preserved but no longer affect policy; their count is diagnostic. The focused and broad workflows now include B273 migration, live Core long-cycle and independent synthetic policy checks. Exact-head validation is pending, and genuine multi-step skill promotion still requires observed trajectories.

@@ -36,6 +36,7 @@ export interface B273GoalNode {
 }
 export interface B273SkillPrototype {
   id:string;
+  /** Active entries are single-action primitives; multi-action legacy sequences remain inert until full execution-trace evidence exists. */
   actions:ActionKind[];
   support01:number;
   success01:number;
@@ -257,7 +258,7 @@ export class B273AutonomousGoalLifecycle{
     const confidence=clamp01(.28+utility*.30+selfAlignment*.18+(1-conflict)*.16+autonomy*.08);
     const mode:B273State['lifecycleMode']=conflict>.66?'revising':longHorizon>.64?'pursuing':input.needs.energy01<.28?'recovering':'incubating';
     this.state.activeGoalId=goal.id;this.state.lastGoalVector=goal.vector.slice();this.state.lastActionPlan=plan;this.state.lastAction=action;this.state.lastDecisionConfidence01=confidence;this.state.autonomy01=clamp01(this.state.autonomy01*.88+autonomy*.12);this.state.goalConflict01=clamp01(this.state.goalConflict01*.84+conflict*.16);this.state.goalStability01=clamp01(this.state.goalStability01*.9+(1-Math.abs(goal.progress01-.5))*.1);this.state.selfAlignment01=clamp01(this.state.selfAlignment01*.9+selfAlignment*.1);this.state.longHorizonValue01=clamp01(this.state.longHorizonValue01*.9+longHorizon*.1);this.state.intrinsicDrive01=clamp01(this.state.intrinsicDrive01*.88+drive*.12);this.state.lifecycleMode=mode;
-    const skill=this.state.skills.filter(s=>s.actions[0]===action&&s.success01>=.58).sort((a,b)=>(b.success01+b.support01)-(a.success01+a.support01))[0];if(skill){skill.uses++;skill.lastUsedTick=input.tick;this.state.skillUses++;}
+    const skill=this.state.skills.filter(s=>s.actions.length===1&&s.actions[0]===action&&s.success01>=.58).sort((a,b)=>(b.success01+b.support01)-(a.success01+a.support01))[0];if(skill){skill.uses++;skill.lastUsedTick=input.tick;this.state.skillUses++;}
     return {goalId:goal.id,goalVector:goal.vector.slice(),action,plan,mode,autonomy01:this.state.autonomy01,confidence01:confidence,selfAlignment01:selfAlignment,longHorizonValue01:longHorizon,conflict01:conflict,created,revised,skillId:skill?.id??null};
   }
   learnFromOutcome(input:{tick:number;action:ActionKind;plan:ActionKind[];reward01:number;predictionError01:number;independentGain01:number;personalityAlignment01:number;externalEvidence01:number}):{accepted:boolean;revised:boolean;completed:boolean;abandoned:boolean;skillCreated:boolean;goalId:string|null;gain01:number}{
@@ -320,9 +321,12 @@ export class B273AutonomousGoalLifecycle{
     const goodSkill=planAligned && accepted && input.plan.length>=2 && input.plan.length<=5 && input.predictionError01<.72;
     let skillCreated=false;
     if(goodSkill){
-      const sid=`skill273-${hashVector(goal.vector)}-${input.plan.join('-')}`;let skill=this.state.skills.find(s=>s.id===sid);
-      if(!skill){skill={id:sid,actions:input.plan.slice(),support01:.18,success01:input.reward01,expectedGain01:clamp01(.5+gain*.4),uses:1,createdTick:input.tick,lastUsedTick:input.tick,goalFingerprint:hashVector(goal.vector)};this.state.skills=[...this.state.skills.slice(-47),skill];this.state.skillCreations++;skillCreated=true;}
-      else{skill.support01=clamp01(skill.support01*.82+.18);skill.success01=clamp01(skill.success01*.88+input.reward01*.12);skill.expectedGain01=clamp01(skill.expectedGain01*.86+(.5+gain*.4)*.14);skill.uses++;skill.lastUsedTick=input.tick;}
+      const goalFingerprint=hashVector(goal.vector);
+      // Store only what was actually observed. Future plan steps remain hypotheses, not an executable skill trajectory.
+      const sid=`skill273-${goalFingerprint}-${input.action}`;
+      let skill=this.state.skills.find(s=>s.actions.length===1&&(s.id===sid||(s.goalFingerprint===goalFingerprint&&s.actions[0]===input.action)));
+      if(!skill){skill={id:sid,actions:[input.action],support01:.18,success01:input.reward01,expectedGain01:clamp01(.5+gain*.4),uses:1,createdTick:input.tick,lastUsedTick:input.tick,goalFingerprint};this.state.skills=[...this.state.skills.slice(-47),skill];this.state.skillCreations++;skillCreated=true;}
+      else{skill.id=sid;skill.actions=[input.action];skill.support01=clamp01(skill.support01*.82+.18);skill.success01=clamp01(skill.success01*.88+input.reward01*.12);skill.expectedGain01=clamp01(skill.expectedGain01*.86+(.5+gain*.4)*.14);skill.uses++;skill.lastUsedTick=input.tick;}
     }
     this.state.outcomeHistory=[...this.state.outcomeHistory,{tick:input.tick,goalId:goal.id,action:input.action,plannedAction:input.plan[0]??null,reward01:input.reward01,predictionError01:input.predictionError01,independentGain01:input.independentGain01}].slice(-128);
     this.state.lastOutcomeTick=input.tick;
@@ -332,7 +336,7 @@ export class B273AutonomousGoalLifecycle{
   actionBias(action:ActionKind){
     const active=this.state.activeGoalId?this.state.goals.find(g=>g.id===this.state.activeGoalId):null; if(!active)return 0;
     const planIdx=this.state.lastActionPlan.indexOf(action); const planBias=planIdx>=0?(.034/(planIdx+1)):0;
-    const skill=this.state.skills.filter(s=>s.actions[0]===action&&s.success01>=.58).sort((a,b)=>(b.success01+b.support01)-(a.success01+a.support01))[0]; const skillBias=skill?clamp11((skill.success01-.5)*.04):0;
+    const skill=this.state.skills.filter(s=>s.actions.length===1&&s.actions[0]===action&&s.success01>=.58).sort((a,b)=>(b.success01+b.support01)-(a.success01+a.support01))[0]; const skillBias=skill?clamp11((skill.success01-.5)*.04):0;
     return clamp11(planBias+skillBias+.02*(this.state.autonomy01-.5));
   }
   current(){const g=this.state.activeGoalId?this.state.goals.find(g=>g.id===this.state.activeGoalId):null;return {goal:g?structuredClone(g):null,plan:this.state.lastActionPlan.slice(),action:this.state.lastAction,mode:this.state.lifecycleMode,autonomy01:this.state.autonomy01,confidence01:this.state.lastDecisionConfidence01,longHorizonValue01:this.state.longHorizonValue01};}
@@ -343,6 +347,8 @@ export class B273AutonomousGoalLifecycle{
     const hierarchical = this.state.goals.filter(g => g.parentId).length;
     const planBoundOutcomes=this.state.outcomeHistory.filter(outcome=>outcome.plannedAction!==null);
     const planActionMismatchCount=planBoundOutcomes.filter(outcome=>outcome.plannedAction!==outcome.action).length;
+    const singleActionSkills=this.state.skills.filter(skill=>skill.actions.length===1);
+    const legacySequenceCandidateCount=this.state.skills.filter(skill=>skill.actions.length>1).length;
     return {
       version: 1,
       cycles: this.state.cycles,
@@ -354,6 +360,8 @@ export class B273AutonomousGoalLifecycle{
       subgoalCreations: this.state.subgoalCreations,
       skillCreations: this.state.skillCreations,
       skillUses: this.state.skillUses,
+      singleActionSkillCount: singleActionSkills.length,
+      legacySequenceCandidateCount,
       planBoundOutcomes: planBoundOutcomes.length,
       planActionMismatchCount,
       planActionAlignment01: clamp01((planBoundOutcomes.length-planActionMismatchCount)/Math.max(1,planBoundOutcomes.length)),
@@ -372,7 +380,7 @@ export class B273AutonomousGoalLifecycle{
       lifecycleMode: this.state.lifecycleMode,
       activeGoalId: this.state.activeGoalId,
       skillDiversity01: clamp01(
-        new Set(this.state.skills.map(s => s.actions.join('>'))).size /
+        new Set(singleActionSkills.map(s => s.actions.join('>'))).size /
           Math.max(1, ACTIONS.length)
       ),
       goalDiversity01: clamp01(

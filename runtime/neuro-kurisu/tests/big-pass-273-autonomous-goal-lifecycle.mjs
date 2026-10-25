@@ -34,6 +34,9 @@ assert.ok(d.longHorizonValue01>.2,'B273 long-horizon value stayed inert');
 assert.ok(d.autonomy01>.2,'B273 autonomy stayed inert');
 assert.ok(d.skillCreations>0,'B273 did not create a behavioral skill');
 assert.ok(d.skillUses>0,'B273 did not reuse a learned behavioral skill');
+assert.ok(net.snapshot().skills.every(skill=>skill.actions.length===1),'promoted skills must contain only the action actually observed');
+assert.ok(d.singleActionSkillCount>0,'B273 did not retain any executable single-action skill primitives');
+assert.equal(d.legacySequenceCandidateCount,0,'current learning loop must not create new legacy multi-action plans');
 assert.equal(d.planActionMismatchCount,0,'aligned simulator trajectories must not report plan/action mismatches');
 assert.equal(d.planActionAlignment01,1,'plan alignment score must be perfect when all stored plan prefixes match executed actions');
 assert.ok(new Set(diagnosticsActions(net)).size>=2,'B273 plan/action diversity collapsed');
@@ -61,6 +64,35 @@ assert.equal(mismatchSnapshot.outcomeHistory.at(-1).action,wrongActualAction);
 assert.equal(mismatchSnapshot.outcomeHistory.at(-1).plannedAction,mismatchProposal.plan[0]);
 assert.equal(mismatchedNet.diagnostics().planActionMismatchCount,1,'the mismatch should remain visible in diagnostics');
 assert.equal(mismatchedNet.diagnostics().planActionAlignment01,0,'a lone mismatched plan/action outcome should score zero alignment');
+
+
+const primitiveNet=new B273AutonomousGoalLifecycle();
+const primitiveProposal=primitiveNet.step({...lastStepInput,tick:0});
+const primitiveOutcome=primitiveNet.learnFromOutcome({
+  tick:0,action:primitiveProposal.action,plan:primitiveProposal.plan,reward01:.98,predictionError01:.1,
+  independentGain01:.8,personalityAlignment01:.8,externalEvidence01:0,
+});
+assert.equal(primitiveOutcome.accepted,true);
+assert.equal(primitiveOutcome.skillCreated,true,'aligned successful action should create an atomic skill primitive');
+assert.deepEqual(primitiveNet.snapshot().skills.map(skill=>skill.actions),[[primitiveProposal.action]],
+  'the system must not promote imagined future steps as executed skill actions');
+
+const legacySequenceState=mismatchedNet.snapshot();
+legacySequenceState.skills=[{
+  id:'legacy-multi-step-plan',actions:['respond','explore'],support01:.95,success01:.99,expectedGain01:.95,
+  uses:4,createdTick:0,lastUsedTick:0,goalFingerprint:legacySequenceState.activeGoalId,
+}];
+const legacyWithSequence=new B273AutonomousGoalLifecycle(); legacyWithSequence.restore(legacySequenceState);
+const legacyBaselineState=structuredClone(legacySequenceState); legacyBaselineState.skills=[];
+const legacyBaseline=new B273AutonomousGoalLifecycle(); legacyBaseline.restore(legacyBaselineState);
+assert.equal(legacyWithSequence.diagnostics().legacySequenceCandidateCount,1,
+  'old multi-action skill must be retained as an inert legacy candidate');
+assert.equal(legacyWithSequence.diagnostics().singleActionSkillCount,0,
+  'old multi-action skill must not become an active primitive');
+for(const action of actions){
+  assert.equal(legacyWithSequence.actionBias(action),legacyBaseline.actionBias(action),
+    'legacy multi-action sequences must not influence live action policy before trajectory verification');
+}
 
 const snap=net.snapshot(); const restored=new B273AutonomousGoalLifecycle(); restored.restore(snap); assert.deepEqual(restored.snapshot(),snap,'B273 snapshot round-trip failed');
 console.log(JSON.stringify({pass:true,diagnostics:d,completed,revised,skills,current:net.current(),actionDiversity:new Set(diagnosticsActions(net)).size},null,2));

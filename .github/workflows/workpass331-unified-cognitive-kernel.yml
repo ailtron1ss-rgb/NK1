@@ -20,6 +20,9 @@ on:
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-273-autonomous-goal-lifecycle.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-migration.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-core-long-cycle.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-independent-lifecycle-evaluation.mjs"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
@@ -50,6 +53,9 @@ on:
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-273-autonomous-goal-lifecycle.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-migration.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-core-long-cycle.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-independent-lifecycle-evaluation.mjs"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
@@ -97,6 +103,12 @@ jobs:
       - name: Verify B273 goal outcome replay is rejected
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/big-pass-273-autonomous-goal-lifecycle.mjs
+      - name: Verify B273 legacy-skill migration and action primitives
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-273-migration.mjs
+      - name: Verify B273 live Core lifecycle and independent synthetic evaluation
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-273-core-long-cycle.mjs && node --experimental-strip-types tests/big-pass-273-independent-lifecycle-evaluation.mjs
       - name: Verify multi-horizon outcome attribution follows the executed action
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/big-pass-2523-counterfactual-outcome-attribution.mjs

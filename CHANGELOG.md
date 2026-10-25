@@ -1,3 +1,12 @@
+# WorkPass346 — promote observed action primitives, not imagined macro-plans
+
+- [LEARNING SEMANTICS] B273 previously stored the entire proposed plan as a skill after one outcome. Only its first action was actually executed and credited; remaining actions were speculative.
+- [FIX] A newly promoted B273 skill now contains only the action actually observed. Skill identity is goal fingerprint + actual action, so later outcomes can improve the same primitive rather than training on changing imagined continuations.
+- [SAFETY] Multi-action legacy skill records remain preserved in bounded state but are inert in action selection. Their count is exposed as `legacySequenceCandidateCount`; verified single-action primitives are counted separately. An old macro-plan is not silently treated as an executed trajectory.
+- [MIGRATION] Missing `plannedAction` on old outcome records remains unknown; legacy records do not count toward plan/action alignment metrics.
+- [TESTS] Added regressions for atomic skill representation, mismatch rejection, inert restored macro-plans, legacy outcome provenance, live Core long-cycle behavior and independent synthetic policy comparison. Both focused and broad workflows execute the expanded test set.
+- [STATUS] Exact-head tests/typecheck remain required. Full multi-step skills remain unpromoted until actual sequential execution evidence is recorded.
+
 # WorkPass345 — prevent unexecuted plans from becoming skills
 
 - [FIX] B273 now compares the actual outcome action with the first action of the proposed plan before creating or reinforcing a multi-action skill prototype. Goal outcome learning still proceeds for a valid actual action, but a plan mismatch cannot certify the unexecuted sequence as a skill.
