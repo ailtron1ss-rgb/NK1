@@ -139,6 +139,13 @@ for (const failureClass of persistedFailureClasses) {
   assert.ok(classReports.some((report) => report.failureClasses.includes(failureClass)),
     `persisted failure class ${failureClass} must survive replay-to-reflection diagnosis`);
 }
+assert.ok(classReports.every((report) => report.promotionEligible === false),
+  'replayed failure classes stay diagnostic-only and cannot authorize promotion');
+const classSummary = classHistory.learningSummary();
+assert.equal(classSummary.recentAttemptDiagnoses.length, persistedFailureClasses.length,
+  'the ordinary learning summary exposes all bounded persisted-class diagnoses');
+assert.ok(classSummary.recentAttemptDiagnoses.every((report) => report.promotionEligible === false),
+  'summary consumers receive the same non-promotable diagnostic boundary');
 assert.ok(recentReports.every((report) => report.promotionEligible === false),
   'diagnostic reports must never grant promotion authority');
 assert.equal(recent.diagnoseRecentLearningAttempts(0).length, 0);
