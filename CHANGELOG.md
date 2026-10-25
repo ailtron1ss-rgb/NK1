@@ -1,3 +1,11 @@
+## NK1 WorkPass100 — timed text visemes for Live2D (2026-10-25)
+
+- The runtime voice state now retains the active TTS event ID, cleaned utterance text, and speech-start timestamp. A compact `/api/organism/avatar-speech` endpoint lets the avatar animate speech without waiting for the slower cognitive snapshot.
+- Added a bounded Russian/English grapheme timeline with different closed-consonant, vowel, and punctuation poses. The animation loop now starts from the lightweight speech cursor, even while the cognitive snapshot is still loading; the browser regression checks that an open-vowel pose was actually observed.
+- Exact code/test/workflow run [40161279179](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161279179) passed on SHA `2f595140da3968f7b153c03c12b36a6e62fade50`: both viewers and both profiles, runtime speech/mapping/integrity tests, 14/14 embodiment timeline tests, render-budget test, and TypeScript typecheck.
+- Limitation: text-timed estimation is not acoustic/phoneme-accurate lip-sync; physical Android audio and device-level TTS/STT/power validation remain open.
+- Report: [WORKPASS100_LIVE2D_TIMED_SPEECH_2026-10-25.md](https://github.com/ailtron1ss-rgb/NK1/blob/feature/visual-embodiment/docs/WORKPASS100_LIVE2D_TIMED_SPEECH_2026-10-25.md).
+
 ## NK1 WorkPass99 — runtime Live2D wiring and local SDK ownership (2026-10-24)
 
 - Fixed the runtime avatar's state feed: it now consumes `/api/organism/ui-snapshot` rather than treating the asset-only avatar endpoint as a cognitive snapshot. Added a bounded mapper from the live organism action/emotion/voice snapshot to model expression, gaze, motion, and lip-sync.
