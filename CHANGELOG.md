@@ -1,3 +1,11 @@
+## NK1 WorkPass533 — use TypeScript transform mode for Hermes evidence binding (2026-10-25)
+
+- After the trusted-shadow entry test passed with Node 24 transform mode, WorkPass108 revealed the same strip-only incompatibility in the Hermes verified-evidence binding npm script: the dependency graph imports VersionedSkillCandidateStore, which contains TypeScript parameter properties.
+- Updated the script to use --experimental-transform-types; this changes only the test runner mode and does not bypass its assertions.
+- Latest full workflow must confirm subsequent Hermes evidence binding, production-promotion safety and runtime typecheck.
+
+---
+
 ## NK1 WorkPass532 — keep trusted shadow validation errors asynchronous (2026-10-25)
 
 - Fixed the next WorkPass108 CI blocker in TrustedShadowLearningRunCoordinator: its public API returns Promise<LearningProcessResult> and now also reports invalid registrar/runtime/run inputs as rejected promises, rather than synchronous throws that bypass assert.rejects callers.
