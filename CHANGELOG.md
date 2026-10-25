@@ -1,3 +1,9 @@
+## NK1 learning validation — isolate the conservative gain-threshold regression (2026-10-25)
+
+- The NaN minimum-gain regression now sets `minIndependentSeeds: 1` so it reaches the intended gain-threshold decision instead of stopping at the default three-seed provenance gate. Production defaults remain unchanged and continue to require three independent seeds.
+
+---
+
 ## NK1 learning validation — assert durable identity precedence during restore (2026-10-25)
 
 - Adjusted the P23 restore-integrity regression to reflect the safety invariant: accepted experience rows are reconciled into the bounded dedupe cache before uncorrelated cache-only IDs, so a full cache can never crowd out durable outcomes needed to prevent duplicate processing.
