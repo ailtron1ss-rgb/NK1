@@ -1,3 +1,8 @@
+## NK1 WorkPass567 — isolate host-owned run-root identity regression (2026-10-25)
+
+- Restored the executor fixture's safe `0700` permissions after the test intentionally changes it to group-writable `0720`.
+- The later run-root replacement assertion can now reach its intended directory-identity guard instead of failing early on the still-modified executable mode. The executable-permissions security check remains intact and tested independently.
+
 ## NK1 WorkPass566 — separate execution quality from evidence trust (2026-10-25)
 
 - Fixed a production evaluator defect exposed by the independent-candidate regression: a successful, structurally valid executor result was scored as non-executable whenever the verifier failed, because executability was gated on `bindingVerified`.
