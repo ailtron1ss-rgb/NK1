@@ -50,6 +50,7 @@ declare module 'node:fs' {
   export function existsSync(path: string): boolean;
   export function fsyncSync(fd: number): void;
   export function lstatSync(path: string): any;
+  export function linkSync(existingPath: string, newPath: string): void;
   export function mkdirSync(path: string, options?: any): string | undefined;
   export function openSync(path: string, flags: string | number, mode?: number): number;
   export function readFileSync(path: string, options?: any): any;
