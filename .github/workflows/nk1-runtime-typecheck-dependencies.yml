@@ -1,0 +1,86 @@
+name: NK1 Runtime Typecheck and Cognitive Integration
+
+on:
+  push:
+    branches:
+      - fix/runtime-typecheck-dependency-contracts-2026-10-25
+  pull_request:
+    branches:
+      - nk1-ready-unified-cycle-restore-integrity-20261025
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-runtime-typecheck-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runtime-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout source stack
+        uses: actions/checkout@v7
+
+      - name: Set up pinned project Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install canonical locked dependencies
+        id: install
+        run: npm ci --prefix app
+
+      - name: Semantic runtime TypeScript check
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+
+      - name: Verify compiler and typecheck dependency selection
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:typecheck-runtime-compiler-selection
+
+      - name: Unified cognitive-cycle contract
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass287:cognitive-cycle
+
+      - name: Intrinsic motivation contract
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass288:intrinsic-motivation
+
+      - name: Motivation-to-goal integration
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass292:motivation-to-goal
+
+      - name: Runtime cognitive-cycle wiring
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:cognitive-cycle-boundary-runtime-wiring
+
+      - name: Continual-learning replay regressions
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:learning-replay
+
+      - name: Causal replay runtime wiring
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:causal-replay-runtime-wiring
+
+      - name: Gateway and action lifecycle contracts
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: |
+          npm run test:workpass95:receipt-integrity
+          npm run test:workpass96:finalizer-boundary
+          npm run test:workpass97:planner-route
+          npm run test:workpass98:project-reconciliation-route
+          npm run test:workpass318:operational-microcycle-finite-input
