@@ -10,6 +10,10 @@ export interface P36VerifiedOutcomeLedgerEvaluatorConfig {
   ledger: VerifiedOutcomeLedger;
   manifest: readonly TaskManifestEntry[];
   evaluatorVersion: string;
+  /** Host-pinned comparison; callers cannot select a more flattering method pair. */
+  baselineMethod: string;
+  treatmentMethod: string;
+  taskFamily: string;
   sourceId: string;
   independenceKey: string;
   /** Paired seed-level comparisons; defaults to four to avoid single-seed claims. */
@@ -49,6 +53,9 @@ interface PreparedAuthority {
   manifestById: Map<string,TaskManifestEntry>;
   manifestFingerprint: string;
   evaluatorVersion: string;
+  baselineMethod: string;
+  treatmentMethod: string;
+  taskFamily: string;
   sourceId: string;
   independenceKey: string;
   minimumPairedSeeds: number;
@@ -59,7 +66,9 @@ const validIdentity=(value:unknown,max=180):value is string=>
 
 function prepareAuthority(config:P36VerifiedOutcomeLedgerEvaluatorConfig):PreparedAuthority {
   if(!config||!(config.ledger instanceof VerifiedOutcomeLedger)||!Array.isArray(config.manifest)||
-     !validIdentity(config.evaluatorVersion,64)||!validIdentity(config.sourceId,80)||!validIdentity(config.independenceKey,120)) {
+     !validIdentity(config.evaluatorVersion,64)||!validIdentity(config.baselineMethod,180)||
+     !validIdentity(config.treatmentMethod,180)||config.baselineMethod===config.treatmentMethod||
+     !validIdentity(config.taskFamily,96)||!validIdentity(config.sourceId,80)||!validIdentity(config.independenceKey,120)) {
     throw new Error('p36-verified-outcome-ledger-config-invalid');
   }
   const minimumPairedSeeds=config.minimumPairedSeeds??4;
@@ -79,6 +88,7 @@ function prepareAuthority(config:P36VerifiedOutcomeLedgerEvaluatorConfig):Prepar
     manifest:validator.snapshot().manifest as TaskManifestEntry[],
     manifestById:new Map(validator.snapshot().manifest.map(task=>[task.taskId,task] as const)),
     manifestFingerprint,evaluatorVersion:config.evaluatorVersion,
+    baselineMethod:config.baselineMethod,treatmentMethod:config.treatmentMethod,taskFamily:config.taskFamily,
     sourceId:config.sourceId,independenceKey:config.independenceKey,minimumPairedSeeds,
   };
 }
@@ -90,7 +100,8 @@ function measure(authority:PreparedAuthority,input:unknown):P36VerifiedOutcomeLe
   // retention, transfer, a self-report, a non-holdout split, or arbitrary context labels.
   if(q.evidenceSource!=='external-evaluator'||q.holdout!==true||q.delayMs!==0||
      q.evaluatorVersion!==authority.evaluatorVersion||q.manifestFingerprint!==authority.manifestFingerprint||
-     q.protocolId!==authority.manifestFingerprint||q.contextKey!==q.taskFamily||
+     q.protocolId!==authority.manifestFingerprint||q.baselineMethod!==authority.baselineMethod||
+     q.treatmentMethod!==authority.treatmentMethod||q.taskFamily!==authority.taskFamily||q.contextKey!==q.taskFamily||
      !validIdentity(q.taskFamily,96)||!validIdentity(q.baselineMethod,180)||
      !validIdentity(q.treatmentMethod,180)||q.baselineMethod===q.treatmentMethod) return null;
 
