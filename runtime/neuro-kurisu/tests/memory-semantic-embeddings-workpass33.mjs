@@ -109,8 +109,8 @@ const wideRows = [
     const createdAt = now - (index + 10) * 1_000;
     return {
       ...row,
-      id: \`wide-fallback-\${index}\`,
-      content: \`Fallback fixture record \${index} stores generic retained context for response recovery.\`,
+      id: 'wide-fallback-' + index,
+      content: 'Fallback fixture record ' + index + ' stores generic retained context for response recovery.',
       contentHash: undefined,
       createdAt,
       lastAccessAt: createdAt,
@@ -119,7 +119,7 @@ const wideRows = [
       validUntilAt: null,
       supersedesId: null,
       supersededById: null,
-      revisionGroupId: \`wide-fallback-\${index}\`,
+      revisionGroupId: 'wide-fallback-' + index,
       revisionSequence: 1,
       dormant: false,
       epistemicStatus: 'fact',
