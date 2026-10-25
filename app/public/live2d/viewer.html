@@ -128,7 +128,7 @@
     if(d.audioClockId!==null&&audioClockId===null)return null;
     if(d.speechPhase==='speaking'&&(!speechEventId||!audioClockId))return null;
     if(typeof d.audioTimeMs!=='number'||!Number.isFinite(d.audioTimeMs)||d.audioTimeMs<0)return null;
-    if(d.clockSource!=='none'&&d.clockSource!=='speech-synthesis-boundary-anchored-monotonic'&&d.clockSource!=='speech-synthesis-elapsed-time-anchored-monotonic')return null;
+    if(d.clockSource!=='none'&&d.clockSource!=='speech-synthesis-boundary-anchored-monotonic'&&d.clockSource!=='speech-synthesis-elapsed-time-anchored-monotonic'&&d.clockSource!=='runtime-tts-start-anchored-monotonic')return null;
     if(d.speechPhase==='speaking'&&d.clockSource==='none')return null;
     if(typeof d.priority!=='number'||!Number.isFinite(d.priority)||d.priority<0||d.priority>100)return null;
     const cancellationToken=d.cancellationToken===null?null:(typeof d.cancellationToken==='string'&&d.cancellationToken.length<=220?d.cancellationToken:null);
