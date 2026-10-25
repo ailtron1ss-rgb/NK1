@@ -84,7 +84,7 @@ export class EmotionAppraisalEngine {
    */
   scoreRecallContextRelevance01(queryText:string,memoryText:string,tags:string[]=[]):number{
     const stop=new Set(['the','and','for','that','with','this','from','have','your','you','are','was','were','will','what','when','where','how','why','into','onto','about','then','than','but','not','can','could','would','should','our','their','there','here','just','also','its','has','had','did','does','что','это','как','для','при','или','если','когда','где','почему','тогда','быть','был','была','были','есть','мой','моя','мои','твой','твоя','ваш','ваша','они','она','оно','его','ее','ему','нам','вам','так','уже','ещё','еще']);
-    const tokens=(value:string)=>new Set(String(value??'').toLocaleLowerCase().normalize('NFKC').match(/[\\p{L}\\p{N}]{3,}/gu)?.filter(token=>!stop.has(token))??[]);
+    const tokens=(value:string)=>new Set(String(value??'').toLocaleLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{3,}/gu)?.filter(token=>!stop.has(token))??[]);
     const query=tokens(queryText);
     if(query.size===0)return .1;
     const memory=tokens([memoryText,...tags].join(' '));
@@ -161,7 +161,8 @@ export class EmotionAppraisalEngine {
     // Retrieved emotional weight measures salience/intensity, not positive or negative valence.
     // It can modestly raise attention/arousal, but is deliberately excluded from valence and stress.
     const recalledMemoryCount=Math.max(0,Math.min(4,Math.floor(Number(input.recalledAffect?.evidenceCount??0))));
-    const recalledContextRelevance01=c(input.recalledAffect?.contextRelevance01??1);\n    const recalledAffect01=c(c(input.recalledAffect?.intensity01??0)*c(input.recalledAffect?.confidence01??0)*Math.min(1,recalledMemoryCount/2)*recalledContextRelevance01);
+    const recalledContextRelevance01=c(input.recalledAffect?.contextRelevance01??1);
+    const recalledAffect01=c(c(input.recalledAffect?.intensity01??0)*c(input.recalledAffect?.confidence01??0)*Math.min(1,recalledMemoryCount/2)*recalledContextRelevance01);
     const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
     const arousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09+recalledAffect01*.072);
     const valence=c(.5+(a.goalCongruence01-.5)*.48+a.controllability01*.10-(a.uncertainty01*.16)+((input.success01??.5)-.5)*.45);
