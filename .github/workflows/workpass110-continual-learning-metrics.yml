@@ -213,7 +213,7 @@ jobs:
         run: node --test app/scripts/legacy-sprite-deck-runtime.test.mjs
       - name: Run Live2D runtime and asset integrity regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/live2d-integrity.mjs
+        run: node --experimental-transform-types tests/live2d-integrity.mjs
       - name: Run continual-learning metric regressions
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:continual-metrics
@@ -222,10 +222,10 @@ jobs:
         run: npm run test:p23:seed-clustered-outcomes
       - name: Run evidence-gated replay admission regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-verified-replay-admission.mjs
+        run: node --experimental-transform-types tests/p23-verified-replay-admission.mjs
       - name: Run multi-source learning mechanisms regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-multi-source-learning-mechanisms.mjs
+        run: node --experimental-transform-types tests/p23-multi-source-learning-mechanisms.mjs
       - name: Run skill retrieval, reflection and curriculum regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:skill-retrieval-reflection-curriculum
@@ -237,7 +237,7 @@ jobs:
         run: npm run test:p23:verified-skill-promotion-proposal
       - name: Run signed outcome artifact authentication regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-verified-outcome-artifact-authentication.mjs
+        run: node --experimental-transform-types tests/p23-verified-outcome-artifact-authentication.mjs
       - name: Run signed shadow execution evidence regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:verified-skill-shadow-evidence
@@ -255,19 +255,19 @@ jobs:
         run: npm run test:p23:trusted-shadow-run-coordinator
       - name: Run versioned skill candidate lifecycle regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs
+        run: node --experimental-transform-types tests/p23-versioned-skill-candidate-store.mjs
       - name: Run runtime resolver verified skill lifecycle regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-learning-engine-verified-skill-lifecycle.mjs
+        run: node --experimental-transform-types tests/p23-learning-engine-verified-skill-lifecycle.mjs
       - name: Run three-level skill evaluation report regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-skill-evaluation-report.mjs
+        run: node --experimental-transform-types tests/p23-skill-evaluation-report.mjs
       - name: Run durable skill-store failure-boundary regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:skill-store-failure-boundaries
       - name: Run reset-retention evaluation regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-reset-retention-evaluation.mjs
+        run: node --experimental-transform-types tests/p23-reset-retention-evaluation.mjs
       - name: Run reproducible learning experiment plan regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:learning-experiment-plan
