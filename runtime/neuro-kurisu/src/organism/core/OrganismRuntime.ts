@@ -3,6 +3,7 @@ import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
 import { buildCognitiveFrame } from './CognitiveFrame.ts';
 import { CognitiveDependencyGraph, type CognitiveDependencyState } from './CognitiveDependencyGraph.ts';
+import { resolveCognitiveRoutingPolicy } from './CognitiveRoutingPolicy.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
@@ -655,12 +656,30 @@ export class OrganismRuntime {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
     const internalAction = cycle.decision.selected?.action ?? 'wait';
+    const routingPolicy = resolveCognitiveRoutingPolicy(dependencyState, resourceAllocation.maxCounterfactualBranches);
+    this.evidenceBus.publish({
+      tick: cycle.state.tick,
+      kind: 'resource',
+      source: 'cognitive-routing-policy',
+      confidence01: 1,
+      payload: {
+        reason: routingPolicy.reason,
+        resourceBranchBudget: resourceAllocation.maxCounterfactualBranches,
+        admittedBranchBudget: routingPolicy.maxCounterfactualBranches,
+        allowMatchedCounterfactual: routingPolicy.allowMatchedCounterfactual,
+        interruptActive: dependencyState.interrupt.active,
+        interruptPriority01: routingPolicy.interruptPriority01,
+        governanceWake: this.cognitiveDependencyGraph.shouldWake('governance'),
+      },
+    });
     const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
     this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning');
     const plan = this.plans.build(cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null, internalAction, 4, 4);
-    const simBudget=this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout');
-    const branches = simBudget.accepted
-      ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, resourceAllocation.maxCounterfactualBranches, 4)
+    const simBudget = routingPolicy.maxCounterfactualBranches > 0
+      ? this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout')
+      : { accepted: false };
+    const branches = simBudget.accepted && routingPolicy.maxCounterfactualBranches > 0
+      ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, routingPolicy.maxCounterfactualBranches, 4)
       : [];
     await this.core.recordCounterfactuals(branches);
     const worldAction = plan.steps[0]?.environmentAction ?? 'observe';
@@ -671,7 +690,9 @@ export class OrganismRuntime {
     // after reality arbitration decides that no authoritative external outcome exists.
     const shadowTransition = this.environment.simulate(worldAction, before);
     const transition = shadowTransition;
-    const matchedCandidates: import('../world/WorldEnvironment.ts').EnvironmentAction[] = ['observe','inspect','move','collect','rest','communicate'].filter((a): a is import('../world/WorldEnvironment.ts').EnvironmentAction => a !== worldAction);
+    const matchedCandidates: import('../world/WorldEnvironment.ts').EnvironmentAction[] = routingPolicy.allowMatchedCounterfactual
+      ? ['observe','inspect','move','collect','rest','communicate'].filter((a): a is import('../world/WorldEnvironment.ts').EnvironmentAction => a !== worldAction)
+      : [];
     const matchedProjections = matchedCandidates.map(action => ({ action, projection: this.environment.project(action, before) }));
     const matched = matchedProjections.filter(x => x.projection.valid).sort((a,b) => b.projection.reward-a.projection.reward)[0] ?? null;
     if (matched) {
