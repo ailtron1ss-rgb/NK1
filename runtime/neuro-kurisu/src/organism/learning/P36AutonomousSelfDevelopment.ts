@@ -427,7 +427,7 @@ export class P36AutonomousSelfDevelopmentEngine{
           ((e as DevelopmentEvidenceRecord).evidenceSource==='external-evaluator'||(e as DevelopmentEvidenceRecord).evidenceSource==='manual-observer')))
         .map(e=>({...e,independentVerified:false,observationId:undefined})):[],
       developmentalEvidenceReceiptIds:Array.isArray((r as any).developmentalEvidenceReceiptIds)?(r as any).developmentalEvidenceReceiptIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=256).slice(-512):[],
-      developmentalEvidenceObservationIds:Array.isArray((r as any).developmentalEvidenceObservationIds)?[...new Set((r as any).developmentalEvidenceObservationIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=180))].slice(-512):[],
+      developmentalEvidenceObservationIds:Array.isArray((r as any).developmentalEvidenceObservationIds)?[...new Set<string>((r as any).developmentalEvidenceObservationIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=180))].slice(-512):[],
       investmentDecisions:Array.isArray((r as any).investmentDecisions)?(r as any).investmentDecisions.slice(-96):[],
       learningBudget01:d.learningBudget01,spentBudget01:0,recovery01:d.recovery01,
       // Outcome-derived metrics, learned policy weights and mastery are not re-authenticated by JSON.
