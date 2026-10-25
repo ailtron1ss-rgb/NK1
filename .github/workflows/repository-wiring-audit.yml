@@ -60,7 +60,7 @@ permissions:
 jobs:
   contract:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 45
     steps:
       - name: Checkout candidate
         uses: actions/checkout@v7
@@ -112,3 +112,35 @@ jobs:
 
       - name: Verify routing policy remains connected to the live runtime
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-routing-policy-runtime-wiring
+
+      - name: Install locked app dependencies without install scripts
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+
+      - name: Run broad architecture, integrity, syntax, asset and wiring audit
+        run: npm run audit:quick
+
+      - name: Typecheck app and runtime
+        run: npm run typecheck
+
+      - name: Run app test suite
+        run: npm run test:ui
+
+      - name: Install pinned CPU-only research runtime
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-cache-dir -r research/requirements-ci.txt
+          python3 -c "import torch; print('RESEARCH_TORCH=' + torch.__version__)"
+
+      - name: Run cross-layer integration verifier
+        run: npm run test:integration
+
+      - name: Run runtime smoke test
+        run: npm run test:runtime:smoke
+
+      - name: Run recovered unified cognitive cycle regression set
+        run: npm --prefix runtime/neuro-kurisu run test:rebuild-recovered
+
+      - name: Run full-project audit
+        run: npm --prefix runtime/neuro-kurisu run audit:full
+
+      - name: Run aggregate runtime audit
+        run: npm --prefix runtime/neuro-kurisu run audit:all
