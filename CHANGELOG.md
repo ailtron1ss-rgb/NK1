@@ -1,3 +1,15 @@
+## NK1 WorkPass340 — make runtime typechecking self-contained and close learning nullability gaps (2026-10-25)
+
+- [DEPENDENCIES] Pinned `@types/node@22.20.4` in the runtime package and lockfile, including its locked `undici-types` dependency. Clean runtime installs no longer depend on the app workspace being installed just to discover Node declarations.
+- [TYPECHECK] Runtime TypeScript now compiles production source without automatically including the old partial `src/node-shims.d.ts`; the configuration resolves Node declarations from runtime-local types first and the app workspace second. Strict mode remains enabled.
+- [FIXED] Corrected supported retention option name (`gapMs`), safe indexing of sparse context feature vectors, missing `verifiedNonHoldoutExecutions` initialization, and intrinsic-generator filters that returned `string | false` rather than boolean.
+- [FIXED] Made B272 need keys a literal union and restored dependency counters an explicit record; registered `p23-compound-repair-revision` in the clock-kind union and whitelist.
+- [FIXED] Causal recordExternalLearningEvent results are nullable by contract. Core now checks each result before feeding it into unified learning; the trusted shadow registrar interface accepts the synchronous registration receipt actually returned by Core.
+- [REGRESSION] Updated the causal-learning stream fixture to include explicit post-action attribution (`lastAction` and `lastActionSuccess`), matching the grounded-transition gate instead of weakening production validation.
+- [VALIDATION] Changes are committed; a fresh runtime typecheck and the affected P26 / WorkPass110 / core regression workflows must verify the result on the current head. Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass339 — add an isolated correlation-ID boundary regression (2026-10-25)
 
 - [REGRESSION] Add a focused test for the corrected correlation-ID filter: valid gateway IDs are preserved, control-character-bearing IDs are omitted from the verifier's isolated context, and ordinary verifier output remains normalized.
