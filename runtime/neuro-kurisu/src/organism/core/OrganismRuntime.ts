@@ -228,6 +228,24 @@ export class OrganismRuntime {
   private lastContextBudgetLedger: ContextBudgetLedgerReport | null = null;
   private lastInternalDialogueReceipt: InternalDialogueReviewReceipt | null = null;
   internalDialogueReceiptSnapshot() { return this.lastInternalDialogueReceipt ? structuredClone(this.lastInternalDialogueReceipt) : null; }
+
+  private async restoreLastInternalDialogueReceipt(): Promise<void> {
+    this.lastInternalDialogueReceipt = null;
+    if (!this.journal.readRecent) return;
+    try {
+      const records = await this.journal.readRecent('runtime.internal-dialogue.review',32);
+      for (const record of records) {
+        const receipt = restoreInternalDialogueReceipt(record.data);
+        if (receipt) {
+          this.lastInternalDialogueReceipt = receipt;
+          return;
+        }
+      }
+    } catch {
+      // A missing or damaged optional journal receipt must not prevent runtime startup.
+      this.lastInternalDialogueReceipt = null;
+    }
+  }
   contextBudgetDiagnostics() {
     return this.lastContextBudgetLedger ? structuredClone(this.lastContextBudgetLedger) : {
       version: 1, owner: 'LanguageOrgan', policy: 'priority-bounded-loss-accounting', maxDynamicChars: 0,
@@ -382,6 +400,7 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      await this.restoreLastInternalDialogueReceipt();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
