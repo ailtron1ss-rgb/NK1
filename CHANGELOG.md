@@ -1,3 +1,17 @@
+## Learning lifecycle, evidence integrity, and cross-layer regression repairs — 2026-10-25
+
+- Updated the versioned-skill lifecycle regression to use the current rollback approval object. The production default-deny rollback verifier remains enforced, and the suite now checks that approval-shaped fields alone cannot authorize rollback.
+- Corrected the persisted-CAS tamper test to mutate the signed approval's expected active version without corrupting the historical rollback target first.
+- Fixed a real runtime/persistence identity mismatch: candidates without revision provenance retain the four-field legacy identity, while provenance-backed candidates bind the canonical provenance digest as a fifth field.
+- Added strict persisted revision-provenance checks for schema version, evaluation/plan/dataset/source fingerprints, allowed unique dimensions, and timestamp; added durable restart coverage for provenance-backed candidates.
+- Fixed independent candidate evaluation so execution capability is distinct from verifier trust. A valid, unique run can count as executable even if the verifier is unavailable; its run ID and trace remain unauthenticated and task success remains false.
+- Fixed the WorkPass243 host-owned-authority regression fixture to restore executable mode after testing group/world-writable rejection, allowing the subsequent run-root replacement case to reach its intended identity guard.
+- Expanded the PR-triggered validation workflow from the focused wiring/core-graph checks to the broad architecture/integrity/syntax/assets/wiring audit, app/runtime typecheck, app test suite, cross-layer integration verifier, runtime smoke test, recovered cognitive cycle suite, full-project audit, and aggregate runtime audit.
+
+Targeted WorkPass110 continual-learning and WorkPass293 P23-evidence checks passed on the prior code head. The rebased head still requires the new extended sweep to complete successfully before this broader pass can be marked validated.
+
+---
+
 ## Cognitive dependency frame integrity — 2026-10-25
 
 - The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
