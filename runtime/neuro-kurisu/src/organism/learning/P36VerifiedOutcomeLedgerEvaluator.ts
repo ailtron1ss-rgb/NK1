@@ -15,11 +15,16 @@ export interface P36VerifiedOutcomeLedgerEvaluatorConfig {
   minimumPairedSeeds?: number;
 }
 
-export interface P36VerifiedOutcomeLedgerQuery extends DevelopmentEvidenceVerificationBinding {
+export interface P36VerifiedOutcomeLedgerQuery extends Omit<DevelopmentEvidenceVerificationBinding,'control01'|'treatment01'> {
   baselineMethod: string;
   treatmentMethod: string;
   taskFamily: string;
   manifestFingerprint: string;
+}
+
+export interface P36VerifiedOutcomeLedgerRequest extends P36VerifiedOutcomeLedgerQuery {
+  control01:number;
+  treatment01:number;
 }
 
 export interface P36VerifiedOutcomeLedgerMeasurement {
@@ -86,9 +91,7 @@ function measure(authority:PreparedAuthority,input:unknown):P36VerifiedOutcomeLe
      q.evaluatorVersion!==authority.evaluatorVersion||q.manifestFingerprint!==authority.manifestFingerprint||
      q.protocolId!==authority.manifestFingerprint||q.contextKey!==q.taskFamily||
      !validIdentity(q.taskFamily,96)||!validIdentity(q.baselineMethod,180)||
-     !validIdentity(q.treatmentMethod,180)||q.baselineMethod===q.treatmentMethod||
-     typeof q.control01!=='number'||!Number.isFinite(q.control01)||q.control01<0||q.control01>1||
-     typeof q.treatment01!=='number'||!Number.isFinite(q.treatment01)||q.treatment01<0||q.treatment01>1) return null;
+     !validIdentity(q.treatmentMethod,180)||q.baselineMethod===q.treatmentMethod) return null;
 
   const tasks=authority.manifest.filter(task=>task.split==='holdout'&&task.family===q.taskFamily)
     .sort((a,b)=>a.taskId.localeCompare(b.taskId));
@@ -144,7 +147,7 @@ function measure(authority:PreparedAuthority,input:unknown):P36VerifiedOutcomeLe
 
 /**
  * Compute task-balanced pass rates from signed, authenticated holdout artifacts.
- * Call this once to prepare the score claims used in the ActionGateway request;
+ * This score-free query can be used to prepare the score claims for the ActionGateway request;
  * the registered executor recomputes them, so stale/fabricated claims fail closed.
  * This provider deliberately refuses delayMs > 0: the ledger proves holdout quality,
  * not longitudinal retention. A separate delayed evaluator must prove that gate.
@@ -181,7 +184,11 @@ export function createP36VerifiedOutcomeLedgerEvaluator(
       try {
         const result=measure(authority,input);
         if(!result)return {ok:false,effectStatus:'not-applied',error:'p36-verified-ledger-evidence-unavailable'};
-        const q=input as P36VerifiedOutcomeLedgerQuery;
+        const q=input as P36VerifiedOutcomeLedgerRequest;
+        if(typeof q.control01!=='number'||!Number.isFinite(q.control01)||q.control01<0||q.control01>1||
+           typeof q.treatment01!=='number'||!Number.isFinite(q.treatment01)||q.treatment01<0||q.treatment01>1) {
+          return {ok:false,effectStatus:'not-applied',error:'p36-verified-ledger-score-claim-invalid'};
+        }
         if(Math.abs(q.control01-result.control01)>1e-12||Math.abs(q.treatment01-result.treatment01)>1e-12) {
           return {ok:false,effectStatus:'not-applied',error:'p36-verified-ledger-score-claim-mismatch'};
         }
@@ -194,8 +201,10 @@ export function createP36VerifiedOutcomeLedgerEvaluator(
       try {
         const measurement=measure(authority,context.input);
         const result=context.result as Record<string,unknown>;
-        const q=context.input as unknown as P36VerifiedOutcomeLedgerQuery;
-        if(!measurement||result.ok!==true||result.evidenceKind!=='verified-outcome-ledger-holdout'||
+        const q=context.input as unknown as P36VerifiedOutcomeLedgerRequest;
+        if(!measurement||typeof q.control01!=='number'||!Number.isFinite(q.control01)||q.control01<0||q.control01>1||
+           typeof q.treatment01!=='number'||!Number.isFinite(q.treatment01)||q.treatment01<0||q.treatment01>1||
+           result.ok!==true||result.evidenceKind!=='verified-outcome-ledger-holdout'||
            Math.abs(q.control01-measurement.control01)>1e-12||Math.abs(q.treatment01-measurement.treatment01)>1e-12||
            result.observationId!==measurement.observationId||result.evidenceFingerprint!==measurement.evidenceFingerprint||
            result.manifestFingerprint!==measurement.manifestFingerprint||result.taskFamily!==measurement.taskFamily||
