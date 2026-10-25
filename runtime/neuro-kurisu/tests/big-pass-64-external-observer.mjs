@@ -188,6 +188,10 @@ try {
   });
   await restored.init();
   assert.ok(restored.externalObserverSnapshot().observations.length >= 1);
-  assert.ok(restored.outcomeCognitionSnapshot().records.some(r=>r.executionId===executed.executionId && r.externalObservations?.some(observation=>observation.verified)), 'restoration must preserve verified external observations without rewriting the original action receipt');
+  const restoredOutcomeSnapshot=restored.outcomeCognitionSnapshot();
+  const restoredVerifiedOutcome=restoredOutcomeSnapshot.records.find(r=>r.executionId===executed.executionId);
+  assert.ok(restoredVerifiedOutcome?.externalObservations?.some(observation=>observation.verified), 'restoration must preserve verified external observations without rewriting the original action receipt');
+  assert.notEqual(restoredVerifiedOutcome?.receiptQuarantined,true, 'a valid single-execution restore must not be quarantined by projection reconciliation');
+  assert.ok(!restoredOutcomeSnapshot.causal.quarantinedExecutionIds?.includes(executed.executionId), 'a valid single execution must remain eligible for future external evidence after restore');
   console.log('BIG_PASS_64_EXTERNAL_OBSERVER=PASS verified='+core.externalObserverSummary().verifiedCount+' contradicted='+core.externalObserverSummary().contradictedCount+' observations='+core.externalObserverSummary().observations);
 } finally { await rm(dir,{recursive:true,force:true}); }
