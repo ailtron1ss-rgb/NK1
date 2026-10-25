@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import {
   UnifiedCognitiveSubstrate,
   defaultUnifiedCognitiveSubstrate,
+  resolveUnifiedCognitiveWorkPolicy,
 } from '../src/organism/core/UnifiedCognitiveSubstrate.ts';
 
 const initial = new UnifiedCognitiveSubstrate();
@@ -157,11 +158,55 @@ assert.deepEqual(substrate.snapshot(), beforeRejectedInput, 'replayed ticks must
 assert.throws(() => substrate.integrate({ tick: Number.NaN, self: {}, world: {}, prediction: {}, resources: {} }), /tick must be a non-negative safe integer/);
 assert.deepEqual(substrate.snapshot(), beforeRejectedInput, 'invalid ticks must not mutate the active frame');
 
+
+// Optional-work governance is coupled to the integrated frame. It may
+// curtail simulation cost, but cannot choose the actual environment action.
+const grounded = new UnifiedCognitiveSubstrate();
+const groundedFrame = grounded.integrate({
+  tick: 1,
+  self: { continuity01: 0.9, coherence01: 0.9, agency01: 0.9, realityAlignment01: 0.9, mode: 'plan', lastAction: 'verify' },
+  world: { confidence01: 0.9, uncertainty01: 0.2, entityCount: 8, eventCount: 10, relationCount: 6, conflict01: 0.1, newEntityRate01: 0.2 },
+  prediction: { error01: 0.1, openCount: 1, agingCount: 0, expiredCount: 0, priority01: 0.2 },
+  resources: { battery01: 0.9, thermal01: 0.2, ramPressure01: 0.2, computeCapacity01: 0.9, scarcity01: 0.1, efficiency01: 0.9 },
+  memoryPressure01: 0.2,
+  evidenceCoverage01: 0.9,
+  realObservationCoverage01: 0.8,
+  unknown01: 0.1,
+});
+const groundedPolicy = resolveUnifiedCognitiveWorkPolicy(groundedFrame, 3);
+assert.equal(groundedPolicy.maxCounterfactualBranches, 3);
+assert.equal(groundedPolicy.allowMatchedCounterfactual, true);
+assert.match(groundedPolicy.reason, /substrate-budget-open/);
+
+const fallbackPolicy = resolveUnifiedCognitiveWorkPolicy(defaultUnifiedCognitiveSubstrate(), 3);
+assert.equal(fallbackPolicy.maxCounterfactualBranches, 1, 'unknown evidence must cap optional work');
+assert.equal(fallbackPolicy.allowMatchedCounterfactual, false, 'un-grounded state must not create matched credit');
+
+const critical = structuredClone(groundedFrame);
+critical.coupling.actionReadiness01 = 0.2;
+const criticalPolicy = resolveUnifiedCognitiveWorkPolicy(critical, 3);
+assert.equal(criticalPolicy.maxCounterfactualBranches, 0);
+assert.equal(criticalPolicy.allowMatchedCounterfactual, false);
+assert.match(criticalPolicy.reason, /critical-pressure/);
+for (const badBudget of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+  const policy = resolveUnifiedCognitiveWorkPolicy(groundedFrame, badBudget);
+  assert.equal(policy.maxCounterfactualBranches, 0);
+  assert.equal(policy.allowMatchedCounterfactual, false);
+  assert.equal(policy.reason, 'invalid-resource-budget');
+}
+const noBudget = resolveUnifiedCognitiveWorkPolicy(groundedFrame, 0);
+assert.equal(noBudget.maxCounterfactualBranches, 0);
+assert.equal(noBudget.allowMatchedCounterfactual, false);
+assert.equal(noBudget.reason, 'upstream-budget-zero');
+
 // The substrate is part of the actual runtime and durability path—not an
 // unreferenced module. Core remains the canonical action arbitration owner.
 const runtime = await readFile(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
 assert.match(runtime, /import \{ UnifiedCognitiveSubstrate, type UnifiedCognitiveSubstrateState \} from '\.\/UnifiedCognitiveSubstrate\.ts'/);
 assert.match(runtime, /private readonly unifiedCognitiveSubstrate = new UnifiedCognitiveSubstrate\(\)/);
+assert.match(runtime, /resolveUnifiedCognitiveWorkPolicy/);
+assert.match(runtime, /substrateWorkPolicy\.maxCounterfactualBranches/);
+assert.match(runtime, /baseRoutingPolicy\.allowMatchedCounterfactual && substrateWorkPolicy\.allowMatchedCounterfactual/);
 assert.match(runtime, /FileStateStore<UnifiedCognitiveSubstrateState>\(\x60\$\{config\.stateFile\}\.cognitive-substrate\.json\x60\)/);
 assert.match(runtime, /unifiedCognitiveSubstrate\.restore\(await this\.unifiedCognitiveSubstrateStore\.load\(\) \?\? undefined\)/);
 const observeAt = runtime.indexOf('const cycle = await this.core.observe(cycleObservation);');
