@@ -4,7 +4,7 @@ import { buildBudgetedLanguageContext, type ContextBudgetLedgerReport, type Cont
 import type { OrganismDecisionTrace, OrganismCycleResult, CognitiveProposal } from '../core/types.ts';
 import type { KnownEntityPromptContext } from '../system/KnownEntityDossier.ts';
 import { sanitizeAutonomousTopicText, type SocialInitiative } from '../system/AutonomousSocialInitiativeEngine.ts';
-import { InternalDialogueEngine, type InternalDialogueEvidence, type InternalDialogueClaim, type InternalDialogueReview } from '../cognition/InternalDialogueEngine.ts';
+import { InternalDialogueEngine, type InternalDialogueEvidence, type InternalDialogueClaim, type InternalDialogueReview, type InternalDialogueRole } from '../cognition/InternalDialogueEngine.ts';
 import { bindCognitiveEventEvidence } from '../cognition/CognitiveEventEvidenceBridge.ts';
 import type { CognitiveEventFabricSnapshot } from '../system/CognitiveEventFabric.ts';
 
@@ -87,6 +87,27 @@ function buildInternalDialogueReview(cycle: OrganismCycleResult, fusedObservatio
   });
 }
 
+export interface InternalDialogueReviewReceipt {
+  schemaVersion: 1;
+  tick: number;
+  status: InternalDialogueReview['status'];
+  rankingConfidence01: number;
+  uncertainty01: number;
+  evidenceCoverage01: number;
+  contradiction01: number;
+  leadingClaimId: string | null;
+  suggestedAction: InternalDialogueReview['suggestedAction'];
+  recommendedNextStep: InternalDialogueReview['recommendedNextStep'];
+  unresolvedQuestions: string[];
+  candidateScores: Array<Pick<InternalDialogueReview['candidateScores'][number],
+    'id' | 'action' | 'score01' | 'evidenceCoverage01' | 'contradiction01' | 'supportingEvidenceCount' | 'contradictingEvidenceCount'>>;
+  reviewedRoles: InternalDialogueRole[];
+  evidenceIds: string[];
+  evidenceMode: 'core-cef-snapshot' | 'prediction-only';
+  advisoryOnly: true;
+}
+
+/** Safe operational receipt; deliberately excludes the focus text and prose from internal review turns. */
 export interface LanguageRequest {
   system: string;
   user: string;
@@ -95,6 +116,8 @@ export interface LanguageRequest {
   /** Optional host cancellation signal for bounded inference. */
   signal?: AbortSignal;
   contextLedger?: ContextBudgetLedgerReport;
+  /** Host-side audit metadata; runtime adapters must strip it before provider submission. */
+  internalDialogueReceipt?: InternalDialogueReviewReceipt;
 }
 
 export interface LanguageResponse {
@@ -234,6 +257,32 @@ export function buildCognitiveProposalPrompt(cycle: OrganismCycleResult, fusedOb
     summary: internalDialogue.summary,
     advisoryOnly: true,
   };
+  const internalDialogueReceipt: InternalDialogueReviewReceipt = {
+    schemaVersion: 1,
+    tick: internalDialogue.tick,
+    status: internalDialogue.status,
+    rankingConfidence01: internalDialogue.rankingConfidence01,
+    uncertainty01: internalDialogue.uncertainty01,
+    evidenceCoverage01: internalDialogue.evidenceCoverage01,
+    contradiction01: internalDialogue.contradiction01,
+    leadingClaimId: internalDialogue.leadingClaimId,
+    suggestedAction: internalDialogue.suggestedAction,
+    recommendedNextStep: internalDialogue.recommendedNextStep,
+    unresolvedQuestions: internalDialogue.unresolvedQuestions.slice(0, 10),
+    candidateScores: internalDialogue.candidateScores.slice(0, 8).map((score) => ({
+      id: score.id,
+      action: score.action,
+      score01: score.score01,
+      evidenceCoverage01: score.evidenceCoverage01,
+      contradiction01: score.contradiction01,
+      supportingEvidenceCount: score.supportingEvidenceCount,
+      contradictingEvidenceCount: score.contradictingEvidenceCount,
+    })),
+    reviewedRoles: internalDialogue.turns.map((turn) => turn.role),
+    evidenceIds: [...new Set(internalDialogue.turns.flatMap((turn) => turn.evidenceIds))].slice(0, 32),
+    evidenceMode: causalSnapshot ? 'core-cef-snapshot' : 'prediction-only',
+    advisoryOnly: true,
+  };
   const sections: ContextSectionInput[] = [
     { id:'proposal-contract', slot:'system', priority:'critical', required:true, text:`You are a bounded reasoning organ inside a persistent artificial organism.\nReturn a concise JSON object only. Your proposal is advisory: the organism core retains action authority.\nDo not claim to see or know evidence that is not supplied.\nRun the bounded internal review as frame, hypothesis comparison, skeptic, evidence audit, confidence calibration, and synthesis. Predictions are weaker than observed outcomes. Treat low evidence coverage or contradictions as a reason to name an evidence gap, not invent certainty. Do not expose the private turn notes or raw internal review. The canonical organism core retains action authority.\nSchema: {"summary":string,"hypotheses":string[],"uncertainty":number,"suggestedAction":string|null,"evidenceNeeded":string[]}\nsuggestedAction must be one of respond,explore,verify,rest,reflect,wait,defer or null.` },
     ...(personalityContext ? [{ id:'graded-personality-tendencies', slot:'system' as const, priority:'high' as const, text:personalityContext }] : []),
@@ -245,7 +294,7 @@ export function buildCognitiveProposalPrompt(cycle: OrganismCycleResult, fusedOb
     { id:'workspace', slot:'user', priority:'high', sourceRef:`cycle:${cycle.state.tick}:workspace`, recallable:true, text:`[WORKSPACE]\n${JSON.stringify(cycle.workspace.content).slice(0, 6000)}` },
   ];
   const dynamic = buildBudgetedLanguageContext(sections, 10_000);
-  return { system:[kurisuCanonPrompt(),dynamic.system].filter(Boolean).join('\n'), user:dynamic.user, contextLedger:dynamic.ledger, maxTokens:380, temperature:0.2 };
+  return { system:[kurisuCanonPrompt(),dynamic.system].filter(Boolean).join('\n'), user:dynamic.user, contextLedger:dynamic.ledger, internalDialogueReceipt, maxTokens:380, temperature:0.2 };
 }
 
 export function parseCognitiveProposal(text: string, source: CognitiveProposal['source']='llm'): CognitiveProposal {
