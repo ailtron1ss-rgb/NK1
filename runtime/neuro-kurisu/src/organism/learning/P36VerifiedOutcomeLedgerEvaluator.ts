@@ -15,7 +15,7 @@ export interface P36VerifiedOutcomeLedgerEvaluatorConfig {
   minimumPairedSeeds?: number;
 }
 
-export interface P36VerifiedOutcomeLedgerQuery extends Omit<DevelopmentEvidenceVerificationBinding,'control01'|'treatment01'> {
+export interface P36VerifiedOutcomeLedgerQuery extends DevelopmentEvidenceVerificationBinding {
   baselineMethod: string;
   treatmentMethod: string;
   taskFamily: string;
@@ -49,7 +49,7 @@ interface PreparedAuthority {
 }
 
 const validIdentity=(value:unknown,max=180):value is string=>
-  typeof value==='string'&&value.length>0&&value.length<=max&&value===value.normalize('NFKC').trim()&&!/[\\u0000-\\u001f\\u007f-\\u009f]/.test(value);
+  typeof value==='string'&&value.length>0&&value.length<=max&&value===value.normalize('NFKC').trim()&&!/[\u0000-\u001f\u007f-\u009f]/.test(value);
 
 function prepareAuthority(config:P36VerifiedOutcomeLedgerEvaluatorConfig):PreparedAuthority {
   if(!config||!(config.ledger instanceof VerifiedOutcomeLedger)||!Array.isArray(config.manifest)||
