@@ -1,3 +1,10 @@
+## NK1 WorkPass565 — prevent recall-driven affect from reinforcing itself (2026-10-25)
+
+- The recalled-memory cue now enters current appraisal through one explicit arousal increment rather than also being added to appraisal relevance. The resulting attention capture can still feed the normal bounded emotion-to-action bias and current-experience salience path.
+- Added `EmotionAppraisalEngine.arousalWithoutRecall01()`: feedback reconsolidation can use decision-time affect while subtracting only the deterministic `0.072 × recalledAffect01` increment. The decision episode and causal trace retain the full affect; only the memory-strengthening signal is de-duplicated.
+- Extended `workpass564-recalled-affect-appraisal.mjs` to verify action-bias influence and exact removal of recall-only arousal, while preserving unchanged valence/stress and snapshot restore.
+- **Validation:** implementation and regression are committed; the exact-head Node 24 Actions result is pending. WorkPass564's earlier test passed on Actions run #104 before these WorkPass565 edits.
+
 ## NK1 Persistence — validate receipt revisions before migration truncation (2026-10-25)
 
 - Applied the same valid-before-cap rule to `StateMigrations`: malformed provider-receipt revision rows are filtered before the 2,048-row cap is applied. The runtime restore fix alone was insufficient because migration could already discard valid rows first.
