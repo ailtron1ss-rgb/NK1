@@ -6,7 +6,9 @@
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "typeRoots": ["../../app/node_modules/@types"],
+    "types": ["node"]
   },
   "include": [
     "src/organism/**/*.ts",

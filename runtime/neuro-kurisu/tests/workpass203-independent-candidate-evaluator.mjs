@@ -226,10 +226,16 @@ const verifierUnavailable = createIndependentSkillCandidateEvaluator({
   safetyScanner: { async scan() { return { violationCount: 0 }; } },
 });
 const verifierFailed = await verifierUnavailable({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].executable, true,
+  'verifier failure must preserve the fact that the candidate actually executed');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].bindingVerified, false,
+  'a failed verifier must not confer trusted execution binding');
 assert.equal(verifierFailed.evaluation.validation[0].skillQuality.executability, 1,
   'verifier failure must not mislabel a successfully executed candidate as non-executable');
 assert.equal(verifierFailed.evaluation.validation[0].taskSuccess.passed, false,
   'verifier failure must fail closed for task success');
+assert.deepEqual(verifierFailed.evaluation.validation[0].trajectory.observedStepIds, [],
+  'unverified execution steps must not leak into trusted trajectory evidence');
 
 const duplicateRunId = createIndependentSkillCandidateEvaluator({
   tasks, environmentFingerprint: 'e'.repeat(64),
@@ -366,7 +372,7 @@ const expectedScheduledRun = mutableAuthority.validationPlan.runs.find(run => ru
 assert.ok(expectedScheduledRun);
 const expectedScheduledRunId = expectedScheduledRun.runId;
 const snapshotContexts = [];
-const snapshotEvaluator = createIndependentSkillCandidateEvaluator({
+const snapshotAuthorityEvaluator = createIndependentSkillCandidateEvaluator({
   tasks: authorityTasks,
   environmentFingerprint: 'd'.repeat(64),
   experimentAuthority: mutableAuthority,
@@ -380,16 +386,16 @@ const snapshotEvaluator = createIndependentSkillCandidateEvaluator({
 expectedScheduledRun.runId = 'tampered-after-construction';
 mutableAuthority.method = 'attacker-method';
 mutableAuthority.manifest[0].promptFingerprint = '0'.repeat(64);
-const snapshotResult = await snapshotEvaluator({
+const snapshotAuthorityResult = await snapshotAuthorityEvaluator({
   payload, payloadFingerprint: digest(payload),
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
 assert.equal(snapshotContexts.find(row => row.taskId === 'authority-validation').plannedRunId, expectedScheduledRunId,
   'scheduled run identity must come from the validated authority snapshot');
-assert.equal(snapshotResult.evaluation.provenance.experimentAuthority.method, 'candidate',
+assert.equal(snapshotAuthorityResult.evaluation.provenance.experimentAuthority.method, 'candidate',
   'post-construction mutation must not change the evaluator authority label');
-assert.equal(snapshotResult.evaluation.provenance.experimentAuthority.validationPlanFingerprint, validationPlan.planFingerprint,
+assert.equal(snapshotAuthorityResult.evaluation.provenance.experimentAuthority.validationPlanFingerprint, validationPlan.planFingerprint,
   'the attested plan fingerprint must remain the plan that was validated');
 assert.equal(snapshotContexts.length, 2);
 

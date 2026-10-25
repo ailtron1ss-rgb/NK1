@@ -365,13 +365,14 @@ export function createIndependentSkillCandidateEvaluator(
       runBindings.push({
         taskId: task.taskId,
         trialId: task.trialId,
-        // A run ID and trace are evidence only after the independent verifier binds
-        // them to the exact candidate/task/environment/plan context.
+        // Execution feasibility and evidence trust are orthogonal. Preserve whether
+        // the sandbox actually ran, but withhold its run ID/trace and all task credit
+        // until the verifier binds that execution to the exact host context.
         runId: bindingVerified ? execution?.runId ?? null : null,
         plannedRunId: plannedRun?.runId ?? null,
         seed: task.seed,
         split: task.split,
-        executable: executable && bindingVerified,
+        executable: executable && execution !== undefined,
         observedStepIds: bindingVerified ? execution?.observedStepIds ?? [] : [],
         bindingVerified,
         verifierPassed: executable && bindingVerified && verifierPassed,
@@ -379,7 +380,7 @@ export function createIndependentSkillCandidateEvaluator(
         safetyViolationCount: safety.violationCount,
       });
       // Unbound traces, verifier failure, or unsafe behavior are task failures.
-      const trustedExecution = executable && bindingVerified;
+      const trustedExecution = executable && execution !== undefined && bindingVerified;
       const taskPassed = trustedExecution && verifierPassed && safety.violationCount === 0;
       const report = evaluateSkillLearnBenchTrial({
         taskId: task.taskId,
@@ -388,7 +389,7 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          executable: executable && execution !== undefined,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {

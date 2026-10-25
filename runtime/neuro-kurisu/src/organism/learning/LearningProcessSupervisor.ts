@@ -54,7 +54,7 @@ export interface LearningProcessResult {
 /** Trusted registration capability owned by the host runtime, never supplied by the child process. */
 export interface TrustedShadowRunRegistration {
   runtimeVersion: string;
-  register(context: { runId: string; taskId: string; seed: number; manifestFingerprint: string; runtimeVersion: string }): void | Promise<unknown>;
+  register(context: { runId: string; taskId: string; seed: number; manifestFingerprint: string; runtimeVersion: string }): unknown;
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -189,8 +189,8 @@ export async function runLearningProcess(
     explicitEnv: explicitEnvKeys.map(key => [key, env[key] ?? null]),
   }));
 
-  let stdout = Buffer.alloc(0);
-  let stderr = Buffer.alloc(0);
+  let stdout: Buffer = Buffer.alloc(0);
+  let stderr: Buffer = Buffer.alloc(0);
   let stdoutBytes = 0;
   let stderrBytes = 0;
   let outputTruncated = false;

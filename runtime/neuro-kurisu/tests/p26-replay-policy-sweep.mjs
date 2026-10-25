@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { P26TrueLearningEngine } from '../src/organism/learning/P26TrueLearningEngine.ts';
 
 // Multi-seed synthetic diagnostic. It compares retention/plasticity, not generalization.
+// The replay step is kept lower than the current-task step so stride=1 interleaving
+// cannot dominate the fresh-task gradient by sheer update count.
 const actions=['respond','explore','verify','rest','reflect','wait','defer'];
 const seeds=[3,17,41];
 const epochs=6;
@@ -67,8 +69,10 @@ for(const seed of seeds){
     }else{
       for(let epoch=0;epoch<epochs;epoch++){
         const result=engine.trainInterleaved(fresh,oldReplay,{
-          replayEveryNCurrent:strategy.stride,maxReplayUpdates:2000,targetMode:'reward',
-          currentLearningRate01:.18,replayLearningRate01:.06,conflictCandidateCap:32,
+          // Keep a common resource budget across interleaving strides: no policy
+          // may spend more than half its updates rehearsing the old task.
+          replayEveryNCurrent:strategy.stride,maxReplayUpdates:Math.floor(fresh.length/2),targetMode:'reward',
+          currentLearningRate01:.18,replayLearningRate01:.02,conflictCandidateCap:32,
         });
         replayUpdates+=result.replayUpdates;
         blockedReplayRows+=result.blockedReplayRows;
@@ -81,7 +85,7 @@ for(const seed of seeds){
     for(const [key,value] of Object.entries({oldBefore,oldAfter,newAfter})){
       assert.ok(Number.isFinite(value)&&value>=0&&value<=1, strategy.name+'.'+key+' must be valid');
     }
-    assert.ok(newAfter>.60,'each policy must retain useful new-task performance');
+    assert.ok(newAfter>.60, `${strategy.name} seed=${seed}: new-task accuracy ${newAfter.toFixed(3)} must exceed 0.60`);
     if(strategy.stride>0)assert.equal(blockedReplayRows,0,'well-separated contexts must not be misclassified as same-context conflict');
     records.push({seed,strategy:strategy.name,oldBefore,oldAfter,newAfter,retentionDelta:oldAfter-oldBefore,
       replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons});

@@ -1,3 +1,144 @@
+## Exact-head compatibility follow-up — trusted execution semantics and bounded interleaved replay (2026-10-25)
+
+- [FIX] Independent candidate evaluator now distinguishes “sandbox executed” from “execution was bound by the independent verifier.” A verifier outage preserves a successful execution's feasibility bit, but run ID, observed steps, capability coverage, task success, and trusted ledger credit remain unavailable until exact binding succeeds.
+- [TEST] Added explicit assertions for this distinction, including that a verifier failure marks execution as untrusted and leaves trusted trajectory steps empty.
+- [FIX] P26 replay policy sweep now uses `replayLearningRate01: 0.02` and a shared hard budget `maxReplayUpdates = floor(fresh.length / 2)` per epoch. This prevents stride-1 policy from applying an equal number of old-task updates and fresh-task updates while keeping the `new-task accuracy > 0.60` threshold unchanged and measuring the resulting retention/accuracy.
+- [EVIDENCE] On current head `11ea497`, P26 Learning Validation passed all tests, while Core regression still reported `interleave-1 seed=17 accuracy=0.520`; WorkPass110 reached the independent evaluator and exposed the execution-feasibility/trust conflation. Exact-head rerun must pass both before this is complete.
+
+
+## CI follow-up — drift-test precision, candidate ID fixture and replay balance (2026-10-25)
+
+- [TEST FIX] Adaptive-window drift regression now compares the running estimate with a small numeric tolerance; the detector’s exact floating-point accumulation yielded `0.19999999999999962` for a stationary stream of `0.2`.
+- [TEST FIX] The signed shadow-observation e2e fixture now includes the canonical fifth candidate-ID tuple element (`null` when revision provenance is absent). This matches the runtime signer/stager’s current identity contract and does not change production verification.
+- [BENCHMARK] P26 synthetic interleaved sweep now applies the same reduced replay update rate (`0.02`) to all interleave strategies while current-task updates remain at `0.18`. The prior `0.06` replay rate with `stride=1` caused replay updates at the same cadence as current updates and drove one seed’s new-task accuracy down to `0.520`; the `>0.60` task-performance threshold remains unchanged, and the benchmark continues to record old/new accuracy and replay counts.
+- [EVIDENCE] Current-head CI confirmed runtime/app typechecks and WorkPass293, WorkPass292 and WorkPass99 passes, then surfaced these three points. Fresh exact-head runs determine whether the replay policy now retains useful new-task accuracy.
+
+## CI follow-up — atomic candidate fingerprints and action-grounded goal learning (2026-10-25)
+
+- [FIX] Atomic skill-store validation now matches the candidate ID format used by the writer: the optional revision-provenance fingerprint is the fifth tuple element, represented as `null` for original candidates. Revision provenance is validated before hashing. This repairs a real persistence incompatibility that caused every new file-backed candidate write to be rejected by `isSnapshot`/CAS.
+- [FIX] B272 only receives outcome credit when the externally executed/selected action exactly matches the goal generator's current action. A policy-arbitrated alternative no longer turns a valid chat/world outcome into an exception or falsely trains the wrong goal; B272's strict action-boundary check remains intact.
+- [TEST FIX] The continual-transfer assertion now uses a small float tolerance, and P23 restore integrity expects the replay ID reconstructed from its valid durable replay row.
+- [DIAGNOSTIC] Replay-policy sweep failure text now includes strategy, seed and observed new-task accuracy to make the next exact-head report actionable without relaxing the `>0.60` requirement.
+- [EVIDENCE] The previous current-head run passed app typecheck, runtime typecheck, P26 input/recovery/curriculum, P23 integrated revision and multiple signed-evidence gates. It then exposed the file-backed candidate ID mismatch, B272 wrong-action credit path, and the small test/diagnostic issues above. Fresh exact-head CI remains required.
+
+## Restore identity precedence and rollback CAS fixture precision (2026-10-25)
+
+- [FIX] P23 restore now preserves the valid newest-first prefix of persisted processed/replayed identity caches, then unions IDs implied by durable experience/replay rows. This retains the newest dedupe IDs under capacity limits while still recovering missing IDs from durable rows.
+- [TEST FIX] The versioned-skill persistence test now tampers with the mirrored `approval.expectedActiveVersion` field rather than `candidate.baseVersion`; the latter correctly fails earlier at the prior-version rollback-target guard. The new mutation directly exercises the signed-approval/CAS binding assertion without bypassing the earlier integrity gate.
+- [EVIDENCE] On commit `5705d51`, WorkPass110 progressed through avatar/Live2D and learning regressions, then failed only on newest trace-ID retention; WorkPass108 passed all signature/authority integration scenarios and reached the P23 restore-integrity case, where the mutation triggered a different earlier guard than the expected regex. These adjustments align both test intents to the runtime contract.
+
+## Exact-head compatibility follow-up — replay cap, signed rollback, and cognitive contracts (2026-10-25)
+
+- [FIX] P26 interleaved learning now honors `conflictCandidateCap` from its options, validates the cap within 1–512, and returns the actual cap used. The multi-seed sweep's bound is now enforced by runtime rather than merely asserted by the test.
+- [FIX] B272 goal value now uses a bounded convex combination of aligned goal, calibrated intrinsic drive, available resources/conflict, candidate novelty and learned evidence. This prevents the additive score from saturating at 1 and washing out a high-confidence drive input.
+- [FIX] Replaced the remaining TypeScript constructor parameter property in `ContinualReplayBuffer` for Node 24 strip-only compatibility.
+- [FIX] Updated the versioned-skill lifecycle test to pass the new rollback-approval object and explicit test-only rollback verifier. Production default remains deny; rollback still requires identity, timestamp, compare-and-swap version and configured verifier.
+- [FIX] `HermesVerifiedEvidenceBinding` now validates the signature/authority on the exact receipt before reading its mutable payload's task/outcome claims. Tampered receipts produce the trust-boundary reason rather than being misclassified first as an outcome mismatch.
+- [FIX] Changed the blank-skill-ID coordinator test to assert the synchronous fail-closed throw and changed the server architecture smoke test to compare endpoint arrays to their validation-declared counts instead of stale hard-coded flow count 22.
+- [EVIDENCE] The e091 exact-head run passed runtime typecheck, P26 input integrity/recovery/continual matrix, WorkPass291, WorkPass292, WorkPass294 and WorkPass99; these changes target the remaining observed failures and need fresh exact-head runs.
+
+## Follow-up — strict P26 restore typing and synchronous coordinator guards (2026-10-25)
+
+- [FIX] Typed restored P26 metrics as `Partial<P26LearningMetrics>` so strict TypeScript can validate field accesses.
+- [FIX] Replaced the accidentally double-escaped control-character regex in processed-trace restoration with the real Unicode control-character matcher.
+- [FIX] Completed the independent evaluator test repair by giving the second scenario a distinct `snapshotAuthorityResult` binding as well as its own evaluator identifier.
+- [TEST FIX] Updated invalid-registrar and disallowed-lane coordinator tests to use `assert.throws` for synchronous fail-closed guards; the actual child-process/register failures remain tested as rejected promises.
+- [EVIDENCE] The latest run reached runtime typecheck and found the source-level typing/regex issues above, while WorkPass79's syntax audit caught the second duplicate binding. These fixes need exact-head CI confirmation.
+
+## Cognitive-cycle restore consistency fix (2026-10-25)
+
+- [FIX] `UnifiedCognitiveCycle.restore` now detects contradictions between persisted `incompleteCycles`, the recomputed complete/incomplete partition, and `brokenLineages`. If a snapshot claims the last cycle completed while those counters conflict, restore clears that completion claim and marks the missing-stage set as required work.
+- [EVIDENCE] Fresh WorkPass287 CI exposed an internally inconsistent persisted snapshot whose counters reconciled numerically but whose `lastComplete` flag remained trusted. The new exact-head cognitive contract run must pass before this is marked verified.
+
+## Exact-head CI repair — restore sanitization, Node 24 and regression integrity (2026-10-25)
+
+- [FIX] `ParametricPolicyLearner.restore` now sanitizes counters, diagnostics, timestamps and the freeze flag as well as weights/biases, preventing a corrupted snapshot from poisoning uncertainty or subsequent training.
+- [FIX] Updated `p26-true-learning.mjs` to require strict rejection of NaN/Infinity training controls and assert zero model mutation. The input-integrity contract already requires this behavior; the old learning test contradicted it.
+- [FIX] `P26TrueLearningEngine.restore` now validates state version, normalizes/deduplicates bounded holdout evidence IDs, sanitizes every persisted metric, derives generalization from the evidence list, and recomputes training exposure/holdout delta instead of trusting caller-supplied diagnostics.
+- [FIX] Removed the Node 24 strip-only parameter property from `P23TrustedShadowLearningScheduler`.
+- [FIX] Corrected stale integrity assertions: malformed cognitive-cycle history fails closed to all required stages; reverse-order outcome samples now use the verifier ID in the canonical manifest; the P23 baseline-lane guard is tested as a synchronous throw; and the independent evaluator regression no longer declares a duplicate top-level identifier.
+- [EVIDENCE] Latest exact-head CI had passing runtime typecheck, WorkPass291 payload budget, WorkPass292 experience lanes, WorkPass294 correlated postconditions, WorkPass99 replay strategy and WorkPass102 reservoir checks. These fixes address the remaining observed failures; fresh exact-head results are still required.
+
+## Node 24 compatibility and P26 learning input integrity follow-up (2026-10-25)
+
+- [FIX] Converted `P23CompoundRepairRevisionCoordinator` to explicit constructor field assignments so Node 24 strip-only execution can import the coordinator.
+- [FIX] `ParametricPolicyLearner` now rejects non-finite targets, rates, sample weights, unsupported actions, malformed/non-finite state and extra values, and non-finite feature vectors. `trainBatch` preflights the entire batch before mutating weights or metrics.
+- [FIX] Added the missing `P26TrueLearningEngine.trainInterleaved` path: it bounds replay updates, measures candidate comparisons, blocks same-context contradictory replay labels, interleaves fresh samples with eligible replay, and reports separate current/replay update counts. This supports the existing sequential-learning regression; it is not itself proof of real-world learning uplift.
+- [EVIDENCE] Exact-head CI passed the strict runtime typecheck, but the P26 integrity regression found that NaN targets were being silently clamped, and the P26 sequential benchmark called a missing method. WorkPass293 found another Node 24 strip-only parameter property. These changes need fresh exact-head validation.
+
+## Runtime compatibility follow-up — trusted persistence, replay budget and workflow entry points (2026-10-25)
+
+- [FIX] Replaced the remaining Node 24 strip-only-incompatible constructor parameter property in `AtomicFileSkillStorePersistence` with explicit field initialization.
+- [FIX] Replay selection now treats configured `recentQuota` as a guarantee (clamped to the adaptive batch size) instead of silently lowering it below the caller's requested minimum. Adaptive capacity remains a hard ceiling and may shrink below `maxBatchSize` under low pressure; the runtime test now reflects these distinct contracts.
+- [FIX] WorkPass294's source-level correlation assertion now checks the actual verifier and tool-call object shapes, proving explicit execution/decision ticket propagation rather than depending on an outdated shorthand syntax pattern.
+- [CI FIX] Added the three missing P26 npm aliases for existing input-integrity, recovery-benchmark and continual-matrix test files, and explicitly wired the P26 holdout-provenance regression into the dedicated workflow.
+- [EVIDENCE] The last exact-head run passed the P26 strict typecheck, WorkPass105 signed outcome tests, WorkPass291 byte-budget test and WorkPass292 experience-lanes test. It then surfaced the issues fixed here; the refreshed exact-head regressions remain required.
+
+## CI contract follow-up — evidence-lanes alias and canonical payload byte boundary (2026-10-25)
+
+- [CI FIX] Added `test:workpass292:evidence-lanes` to the runtime package because the dedicated WorkPass292 workflow referenced that script name but it was absent.
+- [TEST FIX] The WorkPass291 exact-byte-budget test now measures the serialized JSON payload. A JSON string has two surrounding quote bytes, so the fixture uses `MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES - 2` source characters and asserts the serialized size equals the configured cap. Production size validation and the limit remain unchanged.
+- [EVIDENCE] The previous exact-head run exposed both issues after the earlier strip-only/type errors were cleared. These are test/CI contract repairs and still require the new exact-head workflow results.
+
+## Align P26 validation environment with the canonical runtime toolchain (2026-10-25)
+
+- [CI FIX] P26 Learning Validation now selects Node from `.nvmrc` (Node 24), rather than hard-coding 22.12.0.
+- [CI FIX] Its compiler/type dependency setup now installs from the canonical `app/package-lock.json`, providing the pinned TypeScript compiler and `@types/node` used by `runtime/neuro-kurisu/tsconfig.clean.json`. The empty runtime lockfile is no longer treated as sufficient for strict typechecking.
+- [EVIDENCE] The main WorkPass294 run already confirmed runtime typecheck passes when these canonical dependencies are present; this closes the environment mismatch in the separate P26 gate. The refreshed P26 run still must pass before the learning compatibility pass is complete.
+
+## Live2D/runtime packaging compatibility follow-up (2026-10-25)
+
+- [FIX] Runtime-bundled Live2D viewer now caches the last successfully applied expression, avoids restarting an unchanged expression during lipsync/embodiment updates, updates lip and mouth-form targets from the incoming embodiment state, and keys motion restarts by the explicit motion token.
+- [FIX] Removed the remaining TypeScript constructor parameter property from `AtomicFileTrustedSkillShadowRunRegistry`, so Node 24 strip-only tests can import the registry module without that syntax error.
+- [CI] Added the missing `test:workpass294:correlated-postcondition` npm alias for the already-existing focused regression invoked by the dedicated WorkPass294 workflow.
+- [EVIDENCE] CI for the prior commit confirmed runtime typecheck passes in WorkPass294, but the focused postcondition workflow stopped after typecheck because its test alias was missing; P23 revision still hit another strip-only parameter property. The Live2D integrity check found that the runtime-bundled viewer lagged the canonical app viewer in expression caching/lipsync behavior.
+
+## P26 verification wiring follow-up (2026-10-25)
+
+- [FIX] Corrected the bounded-ID regex in P26 to test actual Unicode control characters rather than a literal escaped text pattern.
+- [CI] P26 Learning Validation now triggers when `P26TrueLearningEngine.ts` or `VersionedSkillCandidateStore.ts` changes, so the holdout-provenance contract and Node 24 strip-only compatibility are rechecked alongside related tests.
+- [VERIFICATION] Follow-up exact-head Actions remain pending; do not treat the API addition as demonstrated generalization or actual learning uplift.
+
+## Runtime compatibility follow-up — strip-only TypeScript and holdout provenance (2026-10-25)
+
+- [FIX] Replaced constructor parameter properties in `VersionedSkillCandidateStore` with explicit fields and assignments. The canonical Node 24 `--experimental-strip-types` runtime can now parse this module without changing the store's API or lifecycle checks.
+- [FIX] Added separate `trainingExposure01` and `independentHoldoutSamples` metrics to P26. Online/replay updates increase exposure only; they no longer masquerade as verified generalization evidence.
+- [FIX] Added bounded, deduplicated verified-holdout evidence tracking. Unverified/non-independent input is rejected; exact duplicate IDs cannot inflate the sample count; the evidence ledger survives state restore.
+- [FIX] Corrected the causal restore regression to expect untrusted external rolling learning signals to be reset, not preserved.
+- [EVIDENCE] The latest CI localized the next failures to Node strip-only syntax in `VersionedSkillCandidateStore`, an unimplemented P26 holdout-provenance contract, and the overly permissive expected external rolling metric. These changes await exact-head validation.
+
+## Strict compatibility follow-up — verified runtime fixtures and CI entry points (2026-10-25)
+
+- [FIX] Runtime causal replay fixtures now use a matching pre-action tick, a subsequent state tick, and an explicit action-result receipt. This lets the production evidence gate remain strict while the tests exercise its intended success path.
+- [FIX] Updated causal outcome aggregate assertions to distinguish externally imported/adjudication-only rows from grounded runtime outcomes. External evidence does not gain trusted status merely to satisfy tests.
+- [FIX] Updated the signed-artifact regression to assert idempotent acceptance for an exact signed retry, while verifying the ledger still contains only one outcome.
+- [FIX] Added missing npm script aliases used by the dedicated WorkPass291 and WorkPass293 workflows; installed the canonical app-lockfile compiler/types in WorkPass294 before strict runtime typecheck.
+- [EVIDENCE] Prior exact-head Actions passed app typecheck, development build, and the runtime typecheck in the main validation lane, then exposed the stale causal fixture and test expectations. The revised targeted suite and updated workflow runs must still pass before declaring full compatibility.
+
+
+## Strict runtime compatibility — causal nullability and external evidence (2026-10-24)
+
+- [FIX] Guarded unified-learning ingestion when the canonical causal ledger declines an external event with `null`; deduplicated, conflicted, or otherwise rejected evidence no longer dereferences a missing record or leaks into a second learner path.
+- [FIX] Made the bounded runtime-policy-vector validator a type predicate so the restore path only reads the vector after the guard proves it exists.
+- [FIX] Aligned cognitive goal-key narrowing, dream-input boolean filters, persisted dependency-transition typing, runtime clock-kind registration, trusted-run registrar return semantics, and Node Buffer output accumulator types.
+- [TEST] Updated causal-stream expectations to reflect the trust boundary: externally imported events are retained for deduplication/adjudication but do not increase the trusted `outcomes` count or become replay eligible. The suite now checks stored-row counts to verify duplicate suppression separately from trusted outcome counts.
+- [EVIDENCE] Prior exact-head run passed app typecheck and development build; runtime typecheck then reported remaining strict errors and the causal test identified this stale count expectation. The fixes are committed on the draft compatibility PR; fresh exact-head runtime and learning tests remain required.
+
+## Runtime compatibility follow-up (2026-10-24)
+
+- [FIX] Runtime typecheck now resolves the full Node.js declarations from the already-pinned `@types/node` dependency in the canonical app lockfile. Removed partial ambient stubs that masked missing APIs and caused false module/global type shapes; `strict` remains enabled.
+- [FIX] Corrected the `ReplaySelectionOptions` import to its defining module, aligned the retention helper input with `gapMs`, initialized `verifiedNonHoldoutExecutions`, guarded optional skill-query numbers, and preserved the literal dataset schema tags.
+- [FIX] Removed a duplicate cognitive-cycle verifier, retaining the implementation with additional optional-stage and parent-edge checks. Corrected the control-character regex to use actual Unicode escapes.
+- [FIX] Updated the causal-stream regression to include the observed action name and matching success field expected by the current causal-evidence gate.
+- [EVIDENCE] PR CI on the prior head passed app typecheck and app development build, then exposed runtime TypeScript errors and the stale causal test fixture. This batch is committed to the same draft PR; rerun results are still required. No production-readiness or learning-uplift claim is made.
+
+## Compatibility repair — avatar storage test typecheck (2026-10-24)
+
+- [DIAGNOSIS] Exact-head CI run [40061272363](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40061272363) passed the 232-test app script regression suite, then failed `npm --prefix app run typecheck` on six diagnostics in `app/src/legacy/avatar/safeLocalStorage.test.mjs`: implicit-any test-helper parameters and TypeScript's restriction on deleting a required property.
+- [FIX] Added narrow JSDoc parameter/map types while keeping `strict` and `checkJs` enabled; replaced direct `delete globalThis.window` expressions with `Reflect.deleteProperty`. Runtime test intent and assertions are unchanged.
+- [VERIFICATION] Patch created on `compat/avatar-storage-strict-types-20261024`. The targeted rerun, full app typecheck, app development build, runtime typecheck, and later cognitive/runtime regressions remain pending until a new exact-head Actions run returns actionable results.
+- [SCOPE] This repairs a concrete CI-blocking compatibility defect. It does not establish full project compatibility, production readiness, retrieval/learning improvement, or release-asset synchronization.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

@@ -17,8 +17,10 @@ assert.match(coreSource, /trace\.tick === trace\.stateBefore\.tick/,
   'a valid ticket alone cannot stand in for the exact persisted selected decision trace');
 assert.match(coreSource, /decisionLinkedExternalPostcondition \? options\.decisionId : undefined/,
   'observations without the exact join may be ingested, but cannot claim decision/temporal credit');
-assert.match(gatewaySource, /executionId,\s*\.\.\.(?:typeof context\.decisionId|typeof prior\.decisionId)/,
-  'gateway verification must carry the action execution and decision tickets');
+assert.match(gatewaySource, /this\.verifier\.verify\(\{\s*toolId:\s*id,\s*input,\s*result,\s*executionId:\s*prior\.executionId,\s*\.\.\.\(typeof prior\.decisionId==='string'\?\{decisionId:prior\.decisionId\}:\{\}\)/,
+  'reconciliation verification must carry the exact host execution and decision tickets');
+assert.match(gatewaySource, /tool\.execute\(input,\{\s*executionId,\s*idempotencyKey:context\.idempotencyKey,\s*decisionId:context\.decisionId,/,
+  'the canonical tool call must receive the execution and decision ticket tuple');
 assert.match(serviceSource, /trustedExternalPostconditionResults\.get\(value as object\)/,
   'correlation must be anchored to the exact verifier-minted object');
 
