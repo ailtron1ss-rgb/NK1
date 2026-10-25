@@ -2199,6 +2199,8 @@ async function route(req, res) {
                 goalsActive: snapshot.goals.filter(g => g.status === 'active').length,
                 memories: snapshot.memories.length,
                 events: snapshot.traces.length,
+                // Aggregate only numeric trends and fixed uncertainty categories; never expose question text here.
+                internalDialogueHistory: runtime.internalDialogueHistorySummarySnapshot(),
                 body: {
                     battery01: bodyState.telemetry.battery01,
                     thermalPressure01: bodyState.telemetry.thermalPressure01,
