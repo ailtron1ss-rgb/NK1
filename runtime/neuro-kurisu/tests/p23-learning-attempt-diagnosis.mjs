@@ -112,6 +112,8 @@ recent.restore({
     reward: 0.1, surprise: 0.9, outcomeAt: 101, failureClass: 'tool-error',
   }],
 });
+assert.deepEqual(recent.snapshot().experiences.map((row) => row.traceId), ['trace-uncertain-1', 'trace-fail-1'],
+  'the replay fixture uses canonical exp-${traceId} identities and survives strict persisted-row validation');
 const recentReports = recent.diagnoseRecentLearningAttempts(10);
 assert.equal(recentReports.length, 2);
 assert.equal(recentReports[0].taskId, 'trace-uncertain-1', 'diagnostics are newest-first');
