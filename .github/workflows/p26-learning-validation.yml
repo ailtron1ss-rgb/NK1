@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P26TrueLearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
       - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts"

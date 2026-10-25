@@ -75,3 +75,9 @@ The latest exact-head Actions run showed that several previously unexecuted regr
 The P26 holdout-provenance regression also exposed a gap between the test contract and the runtime: there was no distinct training-exposure metric or durable verified-holdout evidence list. P26 now tracks exposure separately from generalization, accepts only structurally bounded verified + independent evidence records, prevents duplicate evidence IDs from increasing maturity, and restores that evidence ledger across snapshots. A parameter update, a legacy holdout diagnostic, or an internal replay split does not count as independent generalization evidence. The causal restore test was adjusted to reject preserved external-only learning opportunity.
 
 **Status remains implemented, awaiting CI.** These contracts are code changes, not evidence of actual generalization uplift. The release ZIP remains unchanged.
+
+## Sixth follow-up — ensure verification runs when the owning contracts change
+
+The P26 true-learning engine's new bounded evidence-ID validator now rejects actual Unicode control characters. The P26 Learning Validation workflow's path filters also explicitly include `P26TrueLearningEngine.ts` and `VersionedSkillCandidateStore.ts`, ensuring the holdout provenance and Node strip-only compatibility changes cannot silently bypass their intended checks.
+
+The latest run on the previous commit still failed at the pre-fix Node 24 parameter-property parse and before the rolling-metric assertion had been updated on the runner. The next exact-head run is required to verify these fixes. No learning uplift or production-readiness claim is made.

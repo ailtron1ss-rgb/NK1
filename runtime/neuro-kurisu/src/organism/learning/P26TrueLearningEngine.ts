@@ -40,7 +40,7 @@ export interface P26TrueLearningState {
 const boundedEvidenceId=(value:unknown,max=256):string|null=>{
   if(typeof value!=='string')return null;
   const normalized=value.normalize('NFKC').trim();
-  if(!normalized||normalized.length>max||/[\\u0000-\\u001f\\u007f-\\u009f]/.test(normalized))return null;
+  if(!normalized||normalized.length>max||/[\u0000-\u001f\u007f-\u009f]/.test(normalized))return null;
   return normalized;
 };
 const isVerifiedHoldoutEvidence=(value:unknown):value is P26VerifiedHoldoutEvidence=>{

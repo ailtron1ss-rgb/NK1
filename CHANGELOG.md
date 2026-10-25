@@ -1,3 +1,9 @@
+## P26 verification wiring follow-up (2026-10-25)
+
+- [FIX] Corrected the bounded-ID regex in P26 to test actual Unicode control characters rather than a literal escaped text pattern.
+- [CI] P26 Learning Validation now triggers when `P26TrueLearningEngine.ts` or `VersionedSkillCandidateStore.ts` changes, so the holdout-provenance contract and Node 24 strip-only compatibility are rechecked alongside related tests.
+- [VERIFICATION] Follow-up exact-head Actions remain pending; do not treat the API addition as demonstrated generalization or actual learning uplift.
+
 ## Runtime compatibility follow-up — strip-only TypeScript and holdout provenance (2026-10-25)
 
 - [FIX] Replaced constructor parameter properties in `VersionedSkillCandidateStore` with explicit fields and assignments. The canonical Node 24 `--experimental-strip-types` runtime can now parse this module without changing the store's API or lifecycle checks.
