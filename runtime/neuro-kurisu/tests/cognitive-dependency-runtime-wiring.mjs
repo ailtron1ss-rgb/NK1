@@ -28,6 +28,13 @@ try {
   const first = runtime.cognitiveDependencySnapshot();
   assert.ok(first.lastTick > 0, 'the live runtime cycle must resolve a cognitive dependency frame');
   assert.ok(first.transitionCount >= 0);
+  const routingEvent = runtime.evidenceSnapshot().recent.find(event => event.source === 'cognitive-routing-policy');
+  assert.ok(routingEvent, 'the live runtime must publish its dependency-informed optional-work policy');
+  assert.ok(
+    Number(routingEvent.payload.admittedBranchBudget) <= Number(routingEvent.payload.resourceBranchBudget),
+    'dependency routing must never expand the resource allocator branch budget',
+  );
+  assert.equal(typeof routingEvent.payload.allowMatchedCounterfactual, 'boolean');
   await runtime.stop();
   runtime = undefined;
   const persisted = await new FileStateStore(dependencyStateFile).load();
