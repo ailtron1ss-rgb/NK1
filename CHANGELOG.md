@@ -1,3 +1,11 @@
+## NK1 embodiment — preserve stable Live2D expressions (2026-10-25)
+
+- Added expression-state caching in the Live2D viewer so repeated emotion/embodiment updates do not restart the same expression every frame or message.
+- The cache is updated only when a model expression handler is available and the expression call does not throw. A changed expression can still be applied normally.
+- Addresses the explicit source contract asserted by tests/live2d-integrity.mjs. Browser rendering and real-device Live2D E2E remain unverified in this pass.
+
+---
+
 ## NK1 P36 restore integrity — typed bounded identifier caches (2026-10-25)
 
 - Fixed the P36AutonomousSelfDevelopment.restore() TypeScript failure caused by inferring an unknown[] from a filtered persisted observation-ID array.
