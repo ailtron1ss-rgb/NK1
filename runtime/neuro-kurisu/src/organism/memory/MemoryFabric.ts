@@ -515,7 +515,11 @@ export class MemoryFabric {
       if(typeof value==='number'&&Number.isSafeInteger(value)&&value>=0)this.statsData[key]=value;
     }
     this.hotIds.length=0;
-    this.hotIds.push(...(Array.isArray(saved.hotIds)?saved.hotIds.filter((id):id is string=>typeof id==='string'&&id.length>0).slice(0,this.config.maxHotItems):[]));
+    const canonicalIds=new Set(this.memoryOS.snapshot({clone:false}).items.map(item=>item.id));
+    const restoredHotIds=Array.isArray(saved.hotIds)
+      ?[...new Set(saved.hotIds.filter((id):id is string=>typeof id==='string'&&id.length>0&&canonicalIds.has(id)))].slice(0,this.config.maxHotItems)
+      :[];
+    this.hotIds.push(...restoredHotIds);
     this.lastMaintenanceTick=-1;
     this.lastPolicyDecisionId=undefined;
     this.lastSemanticMaintenanceStartedAt=0;
