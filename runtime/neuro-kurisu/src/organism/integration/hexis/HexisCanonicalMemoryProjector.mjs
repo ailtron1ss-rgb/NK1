@@ -26,8 +26,8 @@ const memoryStatus = value => {
     return 'quarantined';
   }
   if (['hypothesis', 'candidate', 'proposed', 'pending', 'unverified', 'draft'].includes(status)) return 'hypothesis';
-  if (['fact', 'verified', 'confirmed'].includes(status)) return 'fact';
-  if (['belief', 'active', 'approved', 'accepted'].includes(status)) return 'belief';
+  // A foreign system's 'fact' label is not NK1 verification evidence.
+  if (['fact', 'verified', 'confirmed', 'belief', 'active', 'approved', 'accepted'].includes(status)) return 'belief';
   // Unknown source states must not be promoted to a belief by the adapter.
   return 'unknown';
 };
