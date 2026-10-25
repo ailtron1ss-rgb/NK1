@@ -6,6 +6,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/mem0/**"
       - "runtime/neuro-kurisu/tests/mem0-platform-adapter-workpass1.mjs"
+      - "runtime/neuro-kurisu/tests/mem0-live-contract-check.mjs"
       - "runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs"
       - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
@@ -18,6 +19,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/mem0/**"
       - "runtime/neuro-kurisu/tests/mem0-platform-adapter-workpass1.mjs"
+      - "runtime/neuro-kurisu/tests/mem0-live-contract-check.mjs"
       - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/language/LanguageOrgan.ts"
@@ -51,6 +53,9 @@ jobs:
       - name: Run isolated Mem0 adapter regressions
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/mem0-platform-adapter-workpass1.mjs
+      - name: Verify live contract probe is inert without opt-in
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/mem0-live-contract-check.mjs
       - name: Run disabled-provider Mem0 HTTP integration smoke
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/server-language-http-fake-provider.mjs

@@ -39,6 +39,20 @@ NK_MEM0_ALLOW_WRITES=1
 
 Keep MEM0_API_KEY out of source control, browser code, client-visible config, logs, query strings, and diagnostic responses. Use a separate stable NK_MEM0_USER_ID per data owner; the HTTP request body cannot choose the user scope. This first pass is a **single-owner-per-server** integration, not multi-tenant isolation: do not serve unrelated owners from the same Mem0 scope. A multi-tenant deployment needs a trusted authenticated-identity-to-user-ID resolver, never a client-supplied user ID. The base URL must be HTTPS; plain HTTP endpoints are rejected. The adapter has a bounded timeout and response-byte ceiling. `NK_MEM0_COGNITIVE_RECALL=1` is a second, independent gate: without both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1`, ordinary conversation turns do not query Mem0 for prompt context.
 
+## Optional live Mem0 API contract check (read-only)
+
+The dedicated CI workflow runs `tests/mem0-live-contract-check.mjs` without an opt-in flag to verify it skips safely and makes **no network request**. A real provider check is deliberately not automatic: it requires an operator to provide credentials and a dedicated test-only Mem0 scope.
+
+Run manually from `runtime/neuro-kurisu` after loading `MEM0_API_KEY` from a shell secret manager:
+
+~~~bash
+export NK_MEM0_LIVE_CONTRACT_CHECK=1
+export NK_MEM0_ENABLED=1
+export NK_MEM0_USER_ID='nk1-live-contract-smoke-youruniqueid'
+node --experimental-strip-types tests/mem0-live-contract-check.mjs
+~~~
+
+Use a new, isolated user ID with the `nk1-live-contract-` prefix for each test; do not point this check at a production user's memory scope. The canary issues only a synthetic, non-sensitive search query, forces writes off in its own adapter instance, never adds or deletes memories, and prints only a bounded status/count summary—never memory contents, IDs, or scores. An empty result is acceptable; a transport/API error or any returned row without matching owner provenance fails the canary. The live provider check has not been run because no live API key/test scope is provisioned in this environment.
 ## HTTP surfaces
 
 ### Read diagnostics
@@ -88,4 +102,4 @@ node --experimental-transform-types tests/server-language-http-fake-provider.mjs
 npm run server:smoke
 ~~~
 
-This pass adds a gated path into the live language context. **The latest targeted code checkpoint passed** in [run 40162143665](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40162143665) on head `e64b6f520075ac02379685d826ac0979d598e10f`: Node 24 check, server JavaScript syntax check, **14/14 adapter tests**, and disabled-provider HTTP smoke all passed. The regressions include scope rejection for a mismatched `metadata.user_id`, fail-closed rejection when a provider result has no owner provenance, and abort/timeout behavior without leaking the key. HTTP smoke returned 200 from the actual NK1 server, reached the fake local provider exactly once, and confirmed disabled Mem0 did not enter the language prompt. The smoke child server uses Node 24 `--experimental-transform-types` because the runtime transitively uses parameter properties unsupported by strip-only mode. Two runtime boot/data-attribution blockers uncovered by this test were fixed in `OutcomeVerificationService.ts` (the malformed escaped-control-character regex; commit `91d7daf5db14794fd046ac173e23b4114ae0fe24`) and `OrganismCore.ts` (only credit B272 when its generated action matches the selected action; commit `4ddec187c4004642e0f1ee2240f0b27b44618cf8`). The broader runtime typecheck remains red ([run 40161840799](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161840799)) with diagnostics elsewhere in the wider codebase; this does not establish a clean repository build. Remaining: live Mem0 API contract check on a disposable user scope, deletion/retention policy alignment, and independent RU/EN retrieval-quality holdout comparison. Keep cognitive recall disabled by default until provider/privacy and quality gates pass.
+This pass adds a gated path into the live language context. The latest pre-canary code run [40162262304](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40162262304) passed on head `18e6b93383dace653257f240fd321b6bf1e069c7`: Node 24, server syntax, all 14 adapter tests, and disabled-provider HTTP smoke. The smoke returned HTTP 200 from NK1, received one fake local-provider response, and confirmed disabled Mem0 did not enter the language prompt. This checkpoint predates the newly added live-canary script; its safe default-off path is now part of the targeted workflow, but actual API behavior remains unvalidated until a disposable test scope and live key are supplied. The broader runtime typecheck remains red ([run 40161840799](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161840799)) with diagnostics elsewhere in the wider codebase; this does not establish a clean repository build. Remaining: real read-only Mem0 API contract check, retention/deletion policy alignment, and independent RU/EN retrieval-quality holdout comparison. Keep cognitive recall disabled by default until provider/privacy and quality gates pass.
