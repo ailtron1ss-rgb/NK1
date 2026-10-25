@@ -17,6 +17,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
       - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
       - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs"
       - "runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-persistence.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs"

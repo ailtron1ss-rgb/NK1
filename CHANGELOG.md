@@ -1,3 +1,10 @@
+## NK1 P26 CI — exercise matched-evaluation validation on push (2026-10-25)
+
+- Added the independent candidate evaluator source and its matched independent evaluation regression to P26 push-path filters, matching the existing pull-request filters.
+- Ensures option-validation and confidence/seed-coverage changes receive immediate CI validation on the feature branch instead of waiting for an unrelated file to change.
+
+---
+
 ## NK1 learning evaluator — deterministic seed-option validation (2026-10-25)
 
 - Validate minimum validation/holdout family-seed limits before generic snapshotting, so non-finite and out-of-range knobs produce their documented field-specific errors.
