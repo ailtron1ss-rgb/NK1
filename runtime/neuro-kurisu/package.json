@@ -1787,7 +1787,8 @@
     "test:workpass505": "npm run typecheck && npm run test:workpass505:causal-event-identity",
     "test:workpass506:reality-evidence-ledger": "node --experimental-strip-types tests/workpass506-reality-evidence-event-ledger.mjs",
     "test:workpass506": "npm run typecheck && npm run test:workpass506:reality-evidence-ledger && npm run test:workpass505:causal-event-identity",
-    "test:p36:verified-ledger-evaluator": "node --experimental-strip-types tests/p36-verified-outcome-ledger-evaluator.mjs"
+    "test:p36:verified-ledger-evaluator": "node --experimental-strip-types tests/p36-verified-outcome-ledger-evaluator.mjs",
+    "test:p36:host-bootstrap": "node --experimental-strip-types tests/p36-host-evaluator-bootstrap.mjs"
   },
   "devDependencies": {
     "@types/node": "22.20.4"
