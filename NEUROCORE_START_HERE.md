@@ -1,3 +1,19 @@
+## Latest durable checkpoint — WorkPass336: bind goal learning to the action actually executed (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft and is not release-approved.
+
+- WorkPass335's extended CI exposed a genuine runtime fault after the Node/npm preflight, canonical kernel test, and live-kernel wiring test passed: `npm run test:smoke` failed at `OrganismCore.feedback` because `B272EndogenousGoalGenesis.learnFromOutcome` rejected an action different from the one B272 generated.
+- Cause: B272 is an action-bound goal/action-prototype learner, while the live runtime can legitimately select another action through the rest of its planning and gating path. Passing that different action into B272 violates its own learning contract.
+- Fix: both the no-world-transition and real-world-transition paths now call B272's strict outcome learner only when `trace.selected.action === currentGoal.action`. No validation was removed or relaxed; independent outcome learners still receive the executed action.
+- The exact failing workflow was PR merge SHA `59e814e9c953e58f9cd1a047fcb4d8f015b56611`; the new source commit triggers a fresh run. Do not treat the fix as validated until `test:smoke` and `test:restart` pass on the new head.
+
+### Next gates
+1. Confirm the smoke gate clears the B272 mismatch and observe whether the 30-cycle autonomous loop completes.
+2. Confirm restart persistence and all relevant cognitive/learning workflows on the resulting exact SHA.
+3. Continue to a real service/API startup and durable memory check; voice/Live2D E2E and release asset refresh remain open.
+
+---
+
 ## Latest durable checkpoint — WorkPass335: add boot and restart-persistence integration gates (2026-10-25)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains a draft. Do not treat these changes as a release-ready artifact.

@@ -1,3 +1,10 @@
+# WorkPass336 — preserve B272 action-to-outcome binding in the live loop (2026-10-25)
+
+- [FIXED] Added a runtime gate around both synthetic and real-world B272 outcome-learning call sites: the actual selected action must equal B272's generated action before B272 updates its action prototype and goal outcome memory.
+- [ROOT CAUSE] The new organism smoke gate exposed `RangeError: B272 outcome action must match the generated action` from `OrganismCore.feedback`. The runtime was crediting the goal generator for an action chosen by a different policy even when B272's own generated action had not executed.
+- [SAFETY] The strict validation in `B272EndogenousGoalGenesis.learnFromOutcome` remains unchanged. The core now skips only the mismatched B272 update; the actual outcome continues through the separate policy, neural, and runtime learners.
+- [VALIDATION] Observed under Node 24 in the WorkPass331 workflow on PR merge SHA `59e814e9c953e58f9cd1a047fcb4d8f015b56611`. This is a failure diagnosis, not a pass; the exact-head smoke and restart checks must run again after this fix.
+
 # WorkPass335 — runtime boot and restart-persistence gates (2026-10-25)
 
 - [CI] Extended `workpass331-unified-cognitive-kernel.yml` to run the existing organism smoke test and restart-persistence regression after the canonical kernel wiring test.
