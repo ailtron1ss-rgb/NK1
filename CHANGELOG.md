@@ -1,3 +1,10 @@
+## NK1 WorkPass550 — verify emotion-continuity branch readiness (2026-10-25)
+
+- [EXACT-HEAD CI] The implementation head `9788ccd73a4bf9908b6b4a7ce8a6fc383858f3b0` completed all 15 reported GitHub check-runs successfully across 12 workflow runs, including the focused affect/Live2D tests, runtime and app typechecks, P26 learning validation, WorkPass110 learning metrics, signed outcomes/promotion, replay, verified experience lanes, cognitive contracts and WorkPass291/293/294.
+- [PR STATE] Pull request #114 is open, non-draft and reported mergeable against `feature/emotions`; no review submissions or inline review threads were returned by GitHub at this verification point.
+- [LIMIT] This verifies automated contracts and regression checks. Real browser/device Live2D playback was not performed by this CI evidence and is not represented as verified.
+- [REVALIDATION] This record-only commit touches the shared changelog, so check the new HEAD's changed-path validation before calling the branch fully validated.
+
 ## NK1 WorkPass549 — close emotion-to-action and embodied expression continuity (2026-10-25)
 
 - Resolve P66 homeostasis hysteresis before incrementing mode counters or writing history. The mode returned by `observe()`, `lastMode`, the newest history entry and cycle counters now share one final decision.
