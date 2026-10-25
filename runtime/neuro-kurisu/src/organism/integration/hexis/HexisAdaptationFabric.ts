@@ -628,7 +628,9 @@ export class HexisAdaptationFabric {
             if (!ref || !ref.startsWith(stage.exportId + ':') || ref.length > 512) throw new Error('hmx-goal-ref-invalid:' + index);
             if (!isHmxText(title, 300)) throw new Error('hmx-goal-title-invalid:' + index);
             if (description.length > 2000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(description)) throw new Error('hmx-goal-description-invalid:' + index);
-            const stableRef = ref.slice(stage.exportId.length + 1);
+            // HMX refs are export-scoped. Prefer the original NK1 goal ID
+            // preserved by the adapter, falling back to the stable ref suffix.
+            const stableRef = String(nativeGoalMetadata.id ?? nativeGoalMetadata.goalId ?? nativeGoalMetadata.goal_id ?? ref.slice(stage.exportId.length + 1)).trim();
             const id = 'hexgoal:' + digest({ lineage, stableRef, title: title.normalize('NFKC'), description: description.normalize('NFKC') }).slice(0, 32);
             return {
                 id, stageId: stage.stagingId, exportId: stage.exportId, sourceLineageId: lineage,
