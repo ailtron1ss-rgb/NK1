@@ -1,3 +1,13 @@
+## [NK1][integration] Make runtime smoke deterministic and bounded (2026-10-25)
+
+- Replaced the shared repository-local `.verify-state` folder with a unique OS temporary directory so concurrent smoke runs cannot erase or mutate one another's state.
+- Replaced the fixed runtime/research ports and blind 3.5-second sleep with distinct ephemeral ports and bounded HTTP readiness probes for both actual endpoints.
+- Added bounded child-process output capture, graceful termination with force-kill fallback, process-spawn diagnostics, request timeouts, and 20-minute ceilings for app/runtime typechecks.
+- Corrected the integration script's file URL to filesystem path conversion for paths containing spaces or URL-escaped characters.
+- Added built-in Node tests for port isolation, HTTP readiness/timeout, command output/timeout, and bounded logs. These tests do not substitute for a full runtime/browser/live-avatar E2E.
+
+---
+
 ## [NK1][runtime] Align installer and doctor with the pinned Node.js toolchain (2026-10-25)
 
 - Removed the installer's hard-coded Node.js 22 requirement; `install:all` now validates the root `.nvmrc` pin, currently Node.js 24, and fails with a specific diagnostic when the active runtime is mismatched.
