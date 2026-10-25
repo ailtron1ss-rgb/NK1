@@ -211,4 +211,47 @@ assert.ok(
 );
 assert.equal(boundedRestore.indexDiagnostics().pass, true, 'budget eviction after restore must keep memory indexes consistent');
 
+
+// Reusing a runtime for checkpoint recovery must not preserve mutation receipts from
+// the previous organism state when the optional MemoryFabric facet is absent.
+const reusedRuntime = new MemorySubsystemRuntime();
+const retryableInput = {
+  content: 'A command receipt from the previous organism state must not suppress a fresh write.',
+  kind: 'episodic',
+  source: 'runtime-reuse-restore-regression',
+  tags: ['restore', 'idempotency'],
+  salience: 0.7,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.3,
+  goalRelevance: 0.5,
+  socialRelevance: 0.1,
+  predictionError: 0.2,
+  confidence: 0.8,
+  epistemicStatus: 'fact',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+};
+const firstWrite = reusedRuntime.fabric.encode(retryableInput, {
+  tick: 9,
+  commandId: 'runtime-reuse-restore-regression',
+  emitEvent: false,
+});
+assert.ok(firstWrite.id);
+assert.equal(reusedRuntime.memoryOS.size(), 1);
+assert.equal(reusedRuntime.fabric.snapshot().stats.encodes, 1);
+reusedRuntime.restoreFromPersisted({ advanced: {} });
+assert.equal(reusedRuntime.memoryOS.size(), 0, 'missing canonical memory must restore as an empty store');
+assert.equal(reusedRuntime.fabric.snapshot().stats.encodes, 0, 'missing fabric facet must reset old runtime counters');
+const retriedWrite = reusedRuntime.fabric.encode(retryableInput, {
+  tick: 9,
+  commandId: 'runtime-reuse-restore-regression',
+  emitEvent: false,
+});
+assert.ok(retriedWrite.id, 'the old command receipt must not suppress writes into the restored organism');
+assert.equal(reusedRuntime.memoryOS.size(), 1, 'a fresh state must accept the same external command ID');
+assert.equal(reusedRuntime.fabric.snapshot().stats.encodes, 1);
+
 console.log('MEMORY_CANONICAL_STORE_CHECKPOINT=PASS');
