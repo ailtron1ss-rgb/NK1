@@ -1,3 +1,9 @@
+# [Unreleased] — WorkPass333 Inner Imperative runtime contract (2026-10-25)
+
+- Added a runtime-level contract test for the endogenous intention path: bounded autonomous cycles run without an external command and are expected to drive B272 endogenous-goal generation/learning plus B273 autonomous-goal lifecycle creation.
+- Registered `test:workpass333:inner-imperative-runtime` in the runtime package scripts.
+- This is an integration checkpoint, not a claim that the five proposed architecture ideas are fully implemented. Execution must be confirmed on a Node.js 22.12+ environment; CI status is checked separately.
+
 # WorkPass333 — независимая оценка: execution ≠ verification (2026-10-24)
 
 - [FIXED] Независимый оценщик больше не превращает успешно выполненный sandbox-run в `executable=false`, если отдельный верификатор недоступен или не подтверждает привязку. Метрика исполнимости отражает факт корректного завершения исполнения, а не доверие к трассе.
