@@ -1,3 +1,8 @@
+## NK1 WorkPass537 — prevent focused CI queue pile-up (2026-10-25)
+
+- Added a pull-request scoped concurrency group to the focused affect/embodiment workflow. New commits on the same PR cancel stale in-progress focused runs so the latest runtime/app checks do not repeatedly compete with obsolete revisions.
+- This controls future reruns; it does not imply that the already queued older Actions runs were cancelled or that the current revision has passed. The final head still needs a completed exact-head run.
+
 ## NK1 WorkPass536 — time-decayed mood carry-over (2026-10-25)
 
 - Applied timestamp-aware decay to mood influence inside `EmotionAppraisalEngine.appraise()`: after a long interval without appraisal, prior arousal/valence/stress only weakly influences the next emotion instead of being treated as fresh context.
