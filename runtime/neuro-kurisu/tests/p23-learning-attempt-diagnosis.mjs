@@ -101,12 +101,12 @@ const recent = new P23LearningEngine();
 recent.restore({
   version: 1,
   experiences: [{
-    id: 'experience-trace-uncertain-1', traceId: 'trace-uncertain-1', tick: 2, at: 102,
+    id: 'exp-trace-uncertain-1', traceId: 'trace-uncertain-1', tick: 2, at: 102,
     contextKey: 'memory-recall', nextContextKey: 'memory-recall', action: 'reflect',
     predictedUtility: 0.6, predictedConfidence: 0.5, success: 0.55,
     reward: 0.5, surprise: 0.3, outcomeAt: 103,
   }, {
-    id: 'experience-trace-fail-1', traceId: 'trace-fail-1', tick: 1, at: 100,
+    id: 'exp-trace-fail-1', traceId: 'trace-fail-1', tick: 1, at: 100,
     contextKey: 'file-write', nextContextKey: 'file-read', action: 'verify',
     predictedUtility: 0.8, predictedConfidence: 0.7, success: 0.1,
     reward: 0.1, surprise: 0.9, outcomeAt: 101, failureClass: 'tool-error',
