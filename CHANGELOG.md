@@ -7,7 +7,7 @@
 - Preserved complete cognitive-cycle evidence lineage through bounded intermediate evidence nodes rather than truncating parent IDs; prevented endogenous-goal learning from receiving credit when the executed action came from another subsystem.
 - Repaired existing regression-suite defects discovered by the new CI path: malformed literal newlines in the unified-loop test, duplicate evaluator bindings, and Node typings incompatibility in the learning process supervisor.
 - Added focused perception/world-context CI and connected the regressions to the existing cognitive-contract workflow; both run Node.js 24, execute runtime integration, audit script/test references, and type-check the canonical runtime.
-- **Validation boundary:** focused perception/world-context/runtime integration, script integrity, and canonical runtime typecheck passed on commit `b1f2273b235574cf9a3b650978afca7e01318879`. The latest follow-up that adds explicit unknown-vs-observed object flags is being revalidated on the current branch head; see [perception workflow](https://github.com/ailtron1ss-rgb/NK1/actions).
+- **Validation:** the cognitive-contract workflow passed on commit `67260c45f2e03703e2bb8ed35eb3cfd31362dbba`, including unified-cycle, intrinsic-motivation, endogenous-goal integration, sensor integrity, world-context normalization (including unknown-vs-observed flags), active-perception runtime integration, the 1,224-file MJS syntax audit, and canonical runtime typecheck. The dedicated perception workflow is completing the same focused checks; see [perception workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167248558) and [cognitive-contract workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40167248769).
 
 ---
 
