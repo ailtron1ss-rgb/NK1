@@ -61,3 +61,11 @@ The parallel WorkPass110 metrics workflow continues to fail on the separate `tes
 ## Pull request status
 
 Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #95](https://github.com/ailtron1ss-rgb/NK1/pull/95). The PR is open and is not merged into its base branch.
+
+
+## WorkPass334 — canonical goal provenance chain
+
+- Canonical external goals now store the source HMX export ID, source lineage, source reference, reviewed proposal ID and import timestamp directly on `OrganismGoal`; this provenance survives restart and is included in subsequent organism exports.
+- Activation validates that the canonical goal's provenance still matches the reviewed proposal. An ID collision or a goal that has been changed to another source fails closed instead of granting external intent to an unrelated native goal.
+- A narrow recovery path only fills missing provenance for the exact same paused external goal and proposal after a partially completed materialization; it does not adopt native goals or overwrite mismatched source lineage.
+- The live server smoke now asserts that provenance exists after review/materialization and remains consistent after explicit activation.

@@ -94,10 +94,22 @@ try {
   if (!approvedGoal.ok || approvedGoal.proposal?.status !== 'materialized' || approvedGoal.goal?.status !== 'paused' || approvedGoal.goal?.activationApproved !== false || approvedGoal.goalActivated !== false) {
     throw new Error(`hexis-goal-approval:${JSON.stringify(approvedGoal)}`);
   }
+  if (approvedGoal.goal?.externalProvenance?.adapter !== 'hexis-hmx' ||
+      approvedGoal.goal.externalProvenance.proposalId !== goalProposal.id ||
+      approvedGoal.goal.externalProvenance.exportId !== goalProposal.exportId ||
+      approvedGoal.goal.externalProvenance.sourceLineageId !== goalProposal.sourceLineageId ||
+      approvedGoal.goal.externalProvenance.sourceRef !== goalProposal.sourceRef) {
+    throw new Error('hexis-goal-source-provenance-not-preserved');
+  }
   const activationResponse = await post('/api/organism/integration/hexis/hmx/goals/decide', { proposalId: goalProposal.id, decision: 'activate' });
   const activationResult = await activationResponse.json();
   if (!activationResult.ok || activationResult.goal?.status !== 'active' || activationResult.goal?.activationApproved !== true || activationResult.goalActivated !== true) {
     throw new Error(`hexis-goal-explicit-activation:${JSON.stringify({ status: activationResponse.status, body: activationResult })}`);
+  }
+  if (activationResult.goal?.externalProvenance?.proposalId !== goalProposal.id ||
+      activationResult.goal.externalProvenance.sourceLineageId !== goalProposal.sourceLineageId ||
+      activationResult.goal.externalProvenance.sourceRef !== goalProposal.sourceRef) {
+    throw new Error('hexis-goal-source-provenance-lost-on-activation');
   }
   const proposalListResponse = await (await fetch(`${base}/api/organism/integration/hexis/hmx/goals/proposals?status=materialized`)).json();
   if (!proposalListResponse.ok || !proposalListResponse.proposals?.some(item => item.id === goalProposal.id && item.canonicalGoalId === activationResult.goal.id)) {

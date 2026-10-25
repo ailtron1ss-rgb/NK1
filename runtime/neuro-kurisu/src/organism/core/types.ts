@@ -40,6 +40,15 @@ export interface OrganismState {
   worldContextVersion: number;
 }
 
+export interface OrganismGoalExternalProvenance {
+  adapter: 'hexis-hmx';
+  exportId: string;
+  sourceLineageId: string;
+  sourceRef: string;
+  proposalId: string;
+  importedAt: number;
+}
+
 export interface OrganismGoal {
   id: string;
   title: string;
@@ -55,6 +64,8 @@ export interface OrganismGoal {
   parentId?: string;
   /** External goals require explicit approval before the ecology may reactivate them. */
   activationApproved?: boolean;
+  /** Durable source chain; verified before a reviewed external goal can be activated. */
+  externalProvenance?: OrganismGoalExternalProvenance;
 }
 
 export interface IntentCandidate {

@@ -2234,3 +2234,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Fixed the cross-export goal proposal test fixture to reuse the same durable `HexisAdaptationFabric` owner across source re-exports. A separate instance represents a separate organism and cannot share the first instance's proposal registry.
 - The separate WorkPass110 causal-learning workflow still fails at `tests/big-pass-90-causal-learning-stream.mjs:18` because an expected record is null; this is not the Hexis workflow and remains unclaimed as fixed.
 - PR [#95](https://github.com/ailtron1ss-rgb/NK1/pull/95) remains open and unmerged. This checkpoint records successful validation, not a claim of full Hexis parity or production readiness.
+
+
+## 2026-10-25 — WorkPass334: durable provenance for external goals
+
+- Added typed `OrganismGoalExternalProvenance` with HMX export ID, lineage ID, source ref, reviewed proposal ID and import timestamp.
+- External-goal materialization persists this source chain in canonical NK1 goal state; repeat approvals and activations verify it rather than relying solely on proposal status or a matching goal ID.
+- Added a restricted recovery case for an interrupted same-proposal materialization and fail-closed handling for native/different-source ID collisions.
+- Extended the Hexis server smoke to verify source lineage and proposal provenance before and after activation. Exact-head validation is pending after this code change; no passing result is assumed yet.
