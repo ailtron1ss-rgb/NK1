@@ -107,10 +107,12 @@ function isConversationMemory(item:MemoryItem2):boolean{
  const context=item.context??{};
  // Only stable conversation/session IDs or keys count as lineage. A message index,
  // turn sequence, or speaker role identifies a fragment, not the dialogue it belongs to.
- const hasConversationIdentity=Object.entries(context).some(([key,value])=>
-  /^(?:conversation|dialogue|chat|transcript|session)(?:id|key)$/iu.test(key)&&
-  typeof value==='string'&&value.trim().length>0
- );
+ const hasConversationIdentity=Object.entries(context).some(([key,value])=>{
+  // Imported memories commonly use camelCase, snake_case, or kebab-case metadata.
+  const normalizedKey=key.replace(/[-_\\s]/gu,'').toLocaleLowerCase();
+  return /^(?:conversation|dialogue|chat|thread|transcript|session)(?:id|key)$/u.test(normalizedKey)&&
+   typeof value==='string'&&value.trim().length>0;
+ });
  if(hasConversationIdentity)return true;
  const metadata=[item.source,...Object.entries(context).flatMap(([key,value])=>[key,String(value??'')])].join(' ').normalize('NFKC');
  return /\b(?:conversation|dialogue|chat[-_ ]history|session[-_ ]history|transcript|message[-_ ]history|discussion[-_ ]summary)\b|разговор|диалог|чат|переписк|транскрипт|истори[яи] (?:бесед|диалог|разговор)|обсужден(?:ие|ия|ий)/iu.test(metadata);
