@@ -268,6 +268,16 @@ assert.ok(stressCore.p66Summary().recoveryDebt01>stable.p66Summary().recoveryDeb
 const stressR=new OrganismCore(new FileStateStore(stressFile),{enableLanguage:false,performanceProfile:'mobile',checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1}); await stressR.init();
 assert.equal(stressR.emotionAppraisalSnapshot().interoception.cycles,stressS.interoception.cycles);
 assert.equal(stressR.p66Summary().recoveryDebt01,stressCore.p66Summary().recoveryDebt01);
+// Feeling access must be retained as causal evidence alongside the emotion node,
+// not merely as a UI-only self-report.
+const causalLife=stable.snapshot().system.causalLifeGraph;
+const feelingLinkedEmotion=causalLife.nodes.find(node=>node.kind==='emotion'&&typeof node.metadata?.feelingEpisodeId==='string');
+assert.ok(feelingLinkedEmotion,'causal memory should link an emotion node to its feeling-access episode');
+for(const key of ['feelingIntensity01','interoceptiveMismatch01','selfAccessConfidence01','bodilyFocus01']){
+  assert.ok(Number.isFinite(feelingLinkedEmotion.metadata[key]),`causal emotion metadata must retain finite ${key}`);
+  assert.ok(feelingLinkedEmotion.metadata[key]>=0&&feelingLinkedEmotion.metadata[key]<=1,`causal emotion metadata must bound ${key}`);
+}
+assert.ok(String(feelingLinkedEmotion.metadata.feelingEpisodeId).startsWith('feel:'));
 stable.stop?.(); stressCore.stop?.(); stressR.stop?.(); await rm(root,{recursive:true,force:true});
 
 console.log(JSON.stringify({pass:172,status:'PASS',direct:{episodeIdsUnique:true,positiveValence:first.valence01,stressLabel:stressed.label,feelingMismatch:feeling.interoceptiveMismatch01,restBias:e.actionBias('rest')},p66:{highMode:high.mode,highPressure:high.pressure01,recoveryDebtAfterRecovery:hs.recoveryDebt01},core:{stableInteroCycles:stableS.interoception.cycles,stressInteroCycles:stressS.interoception.cycles,stableRegulation:stableS.interoception.regulationPressure01,stressRegulation:stressS.interoception.regulationPressure01,stableMeanStress:stableS.meanStress01,stressMeanStress:stressS.meanStress01,stableRecoveryDebt:stable.p66Summary().recoveryDebt01,stressRecoveryDebt:stressCore.p66Summary().recoveryDebt01,restart:true}},null,2));
