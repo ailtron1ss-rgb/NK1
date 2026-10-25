@@ -200,7 +200,43 @@ const dir=await mkdtemp(path.join(tmpdir(),'nk-p64-'));
 try {
   const core=new OrganismCore(new FileStateStore(path.join(dir,'state.json')),{enableLanguage:false});
   await core.init();
-  // State migration must retain bounded causal quarantine tombstones, not only the graph nodes/index.
+  // Invalid trailing rows must not crowd a valid provider-receipt revision out of the bounded restore ledger.
+{
+  const revisionFabric = new OutcomeCognitionFabric();
+  const digest = 'a'.repeat(64);
+  const validRevision = {
+    revisionId: 'outcome-revision:retained-after-noise',
+    executionId: 'exec:revision-retention',
+    tool: 'device.read',
+    revisionNumber: 1,
+    source: 'authoritative-provider-receipt',
+    providerReceiptHash: digest,
+    baseFingerprint: 'b'.repeat(64),
+    revisionFingerprint: 'c'.repeat(64),
+    at: 10,
+    tick: 1,
+    ok: true,
+    verified: true,
+    outcomeClass: 'verified',
+    basis: 'tool-contract',
+    confidence01: 0.9,
+    status: 'verified',
+  };
+  revisionFabric.restore({
+    records: [],
+    projectionIndex: [],
+    evidenceRevisions: [
+      validRevision,
+      ...Array.from({length: 2050}, (_, i) => ({revisionId: 'invalid-trailing-row-' + i})),
+    ],
+  });
+  assert.ok(
+    revisionFabric.snapshot().evidenceRevisions.some(row => row.revisionId === validRevision.revisionId),
+    'invalid trailing revision rows must not evict a valid older provider receipt before validation',
+  );
+}
+
+// State migration must retain bounded causal quarantine tombstones, not only the graph nodes/index.
   const migrationSeed=structuredClone(core.snapshot());
   migrationSeed.system.causalAccountability={
     version:1,nodes:[],edges:[],activeChains:[],lastAt:0,updatedAt:0,outcomeIndex:[],
