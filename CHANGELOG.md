@@ -1,3 +1,10 @@
+## NK1 WorkPass563 — broaden recall goldset across intent modes (2026-10-25)
+
+- Expanded the deterministic recall benchmark from 18 identity/episodic queries to 30 bilingual fixtures covering all six non-general query-intent modes: identity, episodic, procedural, goal, causal, and factual.
+- Added lexical-tied distractors for every fixture; factual queries pit the semantic target against an episodic decoy, goal fixtures carry a real `goalId`, and causal fixtures carry observation/decision/outcome lineage.
+- The benchmark reports intent accuracy, Recall@1, MRR, and per-intent sample counts. It remains a controlled synthetic ranking test and does not claim production-corpus quality.
+- Latest-head CI must pass before the expanded measurements are treated as validated.
+
 ## NK1 WorkPass562 — assert explicit action/decision ticket binding (2026-10-25)
 
 - Replaced an obsolete source-text regex in the WorkPass294 regression. It required the old shorthand `executionId, ...context.decisionId` syntax even though the current gateway explicitly passes `response.executionId` and `options.decisionId` to `isTrustedDecisionLinkedExternalPostcondition`.
