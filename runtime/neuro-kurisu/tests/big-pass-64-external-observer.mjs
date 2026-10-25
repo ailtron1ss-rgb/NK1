@@ -6,6 +6,7 @@ import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { ExternalObserverFabric } from '../src/organism/system/ExternalObserverFabric.ts';
 import { CausalAccountabilityGraph } from '../src/organism/system/CausalAccountabilityGraph.ts';
+import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
 
 // Conflicting persisted execution receipts must not let later evidence attach to
 // whichever duplicate happened to appear last in the snapshot.
@@ -69,6 +70,50 @@ assert.equal(liveReceiptGraph.resolveExternalVerification({
   'compaction must not rehabilitate a conflicting live execution ID');
 assert.equal(liveReceiptGraph.recordActionChain(liveReceipt).quarantined, true,
   'a later replay must not clear an existing live quarantine');
+
+// A restored projection index must not let the last conflicting duplicate execution ID win.
+const projectionBaseVerification = {
+  verified: true, basis: 'external-postcondition', confidence01: 0.93,
+  externalObservation: true, expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+  observationId: 'obs:projection-a',
+};
+const projectionA = new OutcomeCognitionFabric();
+projectionA.project({ tick: 10, tool: 'door.open', ok: true, verification: projectionBaseVerification, executionId: 'exec-projection-conflict', outcomeClass: 'executed-verified' });
+const projectionSnapshotA = projectionA.snapshot();
+const projectionB = new OutcomeCognitionFabric();
+projectionB.project({
+  tick: 11, tool: 'door.close', ok: true,
+  verification: { ...projectionBaseVerification, expectedPostcondition: 'door=closed', observedPostcondition: 'door=closed', observationId: 'obs:projection-b' },
+  executionId: 'exec-projection-conflict', outcomeClass: 'executed-verified',
+});
+const projectionSnapshotB = projectionB.snapshot();
+const projectionRestored = new OutcomeCognitionFabric();
+projectionRestored.restore({
+  version: 1,
+  records: [projectionSnapshotA.records[0], projectionSnapshotB.records[0]],
+  projectionIndex: [projectionSnapshotA.projectionIndex[0], projectionSnapshotB.projectionIndex[0]],
+  causal: projectionSnapshotA.causal,
+});
+const projectionAfterRestore = projectionRestored.snapshot();
+assert.ok(projectionAfterRestore.causal.quarantinedExecutionIds?.includes('exec-projection-conflict'),
+  'projection-index conflicts must be persisted as causal quarantine tombstones');
+assert.ok(!projectionAfterRestore.projectionIndex.some(row => row.executionId === 'exec-projection-conflict'),
+  'no duplicate projection may survive conflict quarantine');
+assert.ok(!projectionAfterRestore.records.some(row => row.executionId === 'exec-projection-conflict'),
+  'quarantined execution records must not remain available for fallback matching');
+assert.equal(projectionRestored.resolveExternalObservation({
+  tick: 12, executionId: 'exec-projection-conflict', tool: 'door.open', observationId: 'obs:late-projection',
+  verified: true, confidence01: 0.96, expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+  assessment: 'match', sourceId: 'world-sensor', sourceClass: 'world', independenceKey: 'sensor:door',
+}).reason, 'ambiguous-execution-receipt',
+  'late external evidence cannot attach to a quarantined projection ID');
+assert.equal(projectionRestored.hasProjectionForExecution('exec-projection-conflict'), false,
+  'quarantined identifiers must not be advertised as active projections');
+assert.throws(() => projectionRestored.project({
+  tick: 13, tool: 'door.open', ok: true, verification: projectionBaseVerification,
+  executionId: 'exec-projection-conflict', outcomeClass: 'executed-verified',
+}), /outcome-execution-id-conflict/,
+  'a later project call must not silently reintroduce the quarantined identity');
 
 const f=new ExternalObserverFabric();
 f.registerSource({id:'device-smoke',sourceClass:'device',channel:'sensor',independenceKey:'sensor:smoke',reliability01:.9});
