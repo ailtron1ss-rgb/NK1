@@ -1,3 +1,13 @@
+## Latest durable checkpoint — WorkPass531 P36 typed maturity event contract (2026-10-25)
+
+- Keep working in `feature/learning` / draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79), no duplicate branch or PR. `main` and the Release ZIP remain unchanged.
+- P36's maturity-event input now explicitly declares optional `kind?: 'developmental-outcome'`; the canonical verification tuple always includes `kind: 'developmental-outcome'`. This pins the discriminated event that `OrganismCore.finalizeToolOutcome` routes to `observeDevelopmentalOutcome` instead of `recordExternalEvidence`.
+- `p36-integration.mjs` asserts that the helper emits this discriminant before checking unlinked rejection, linked receipt acceptance and idempotent public replay.
+- WorkPass530 separately restricts the reserved evaluator to trusted Core construction config and blocks generic public registration.
+- **Validation:** current exact-head workflow/typecheck/tests remain unverified; GitHub has returned no current check run/status. Continue without claiming production readiness or measured learning gains until CI passes and a real host-owned evaluator completes independent holdout/retention/transfer validation.
+
+---
+
 ## Latest durable checkpoint — WorkPass530 P36 host-only evaluator registration (2026-10-25)
 
 - Continue on existing `feature/learning` and draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate PR. Leave `main` and the Release ZIP unchanged.
