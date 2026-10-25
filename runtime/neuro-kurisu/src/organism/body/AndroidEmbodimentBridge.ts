@@ -219,10 +219,10 @@ export async function speakViaTermuxWithOutcome(text: string, options: TermuxTts
       },750);
       (escalation as unknown as {unref?:()=>void}).unref?.();
     },boundedTimeout);
-    child.once('error',(error:{code?:string})=>{
+    child.once('error',(error: Error)=>{
       // The Node spawn error event is emitted when process creation failed, so no
       // Termux command could have accepted the utterance.
-      finish({status:'not-started',command:'termux-tts-speak',reason:error.code==='ENOENT'?'termux-tts-unavailable':'termux-tts-process-not-started'},true);
+      finish({status:'not-started',command:'termux-tts-speak',reason:(error as NodeJS.ErrnoException).code==='ENOENT'?'termux-tts-unavailable':'termux-tts-process-not-started'},true);
     });
     child.once('close',(code: number | null, signal: string | null)=>{
       if(timedOut) finish({status:'unknown',command:'termux-tts-speak',reason:'tts-timeout-after-process-start',operationId},true);
