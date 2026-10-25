@@ -1,10 +1,11 @@
 ## Durable skill candidate identity consistency — 2026-10-25
 
-- Fixed a real mismatch between `VersionedSkillCandidateStore` and `AtomicFileSkillStorePersistence`: candidates without revision provenance now keep the established four-field candidate ID, matching the durable adapter's restore validator.
-- Only evidence-directed revision candidates that contain revision provenance bind its canonical fingerprint as a fifth identity field.
-- This preserves legacy IDs and allows fresh file-backed candidate staging to pass the same integrity check used after restart, without relaxing candidate or approval validation.
+- Fixed the identity mismatch between `VersionedSkillCandidateStore` and `AtomicFileSkillStorePersistence`: candidates without revision provenance keep the established four-field ID; candidates with provenance bind its canonical fingerprint as a fifth field.
+- Updated the durable adapter to validate the provenance schema and reproduce the corresponding conditional identity, rather than assuming every persisted candidate uses the legacy four-field form.
+- Added a durable restart regression for a provenance-backed candidate, alongside the existing legacy candidate persistence check.
+- The validator now checks provenance version, evaluation/plan/dataset/source fingerprints, allowed unique dimensions and creation time before accepting a persisted candidate.
 
-Validation: the versioned-skill lifecycle workflow is rerunning after this fix; confirm the exact-head result before treating the durable-store path as closed.
+Validation: the exact-head WorkPass110 and repository contract runs must finish successfully before this durable-store path is considered closed.
 
 ---
 
