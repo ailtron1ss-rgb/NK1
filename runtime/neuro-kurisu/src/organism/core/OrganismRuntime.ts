@@ -608,16 +608,31 @@ export class OrganismRuntime {
     // The graph observes the already-normalized result at the real runtime boundary.
     // It is routing/diagnostic evidence only; canonical Core arbitration still owns action selection.
     const proposedCognitiveFrame = buildCognitiveFrame(cycle.state, cycleObservation);
-    const cognitiveDependencyTick = this.cognitiveDependencyGraph.snapshot().lastTick;
+    const previousDependencyState = this.cognitiveDependencyGraph.snapshot();
     // Bind the frame to this completed organism cycle. If recovery leaves the
     // sidecar ahead of the main snapshot, advance the routing identity without replaying it.
     const cognitiveFrame = {
       ...proposedCognitiveFrame,
-      tick: Math.max(cycle.state.tick, cognitiveDependencyTick + 1),
+      tick: Math.max(cycle.state.tick, previousDependencyState.lastTick + 1),
     };
     this.cognitiveDependencyGraph.resolve(cognitiveFrame);
     const dependencyState = this.cognitiveDependencyGraph.snapshot();
-    await this.cognitiveDependencyStore.save(dependencyState);
+    const dependencyStateChanged =
+      previousDependencyState.wakeMask !== dependencyState.wakeMask ||
+      previousDependencyState.dirtyCount !== dependencyState.dirtyCount ||
+      previousDependencyState.transitionCount !== dependencyState.transitionCount ||
+      previousDependencyState.interrupts !== dependencyState.interrupts ||
+      JSON.stringify(previousDependencyState.interrupt) !== JSON.stringify(dependencyState.interrupt);
+    // Avoid an extra fsync on every mobile runtime cycle. Persist on meaningful
+    // routing changes and bounded intervals; stop() always performs a final flush.
+    if (dependencyStateChanged || cycle.state.tick % 16 === 0) {
+      await this.cognitiveDependencyStore.save(dependencyState).catch(async error => {
+        await this.journal.write('warn', 'runtime.cognitive-dependency.persist-failed', {
+          tick: cycle.state.tick,
+          message: String((error as any)?.message ?? error).slice(0, 200),
+        }).catch(() => {});
+      });
+    }
     this.evidenceBus.publish({
       tick: cycle.state.tick,
       kind: 'model',
@@ -1490,6 +1505,12 @@ export class OrganismRuntime {
         memoryCount: runtimeView.memoryCount,
       });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+      await this.cognitiveDependencyStore.save(this.cognitiveDependencyGraph.snapshot()).catch(async error => {
+        await this.journal.write('warn', 'runtime.cognitive-dependency.final-flush-failed', {
+          tick: runtimeView.tick,
+          message: String((error as any)?.message ?? error).slice(0, 200),
+        }).catch(() => {});
+      });
       await this.core.flush();
       await this.checkpointWorld(true);
       await this.journal.write('info', 'runtime.stop.durable', {
