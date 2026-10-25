@@ -1,3 +1,182 @@
+## NK1 learning validation — restore executor fixture permissions between adversarial cases (2026-10-25)
+
+- Restored the host-owned executor's safe `0700` mode after the dedicated group/world-writable rejection assertion. The following run-root identity-replacement case now reaches the intended path-identity check instead of being masked by the prior test's leftover permissions.
+- Production permission validation and identity pinning remain unchanged.
+
+---
+
+## NK1 learning validation — align signed-shadow runtime fixture with candidate identity schema (2026-10-25)
+
+- Updated the signed-shadow end-to-end fixture to include the explicit `null` fifth candidate-ID component when no revision provenance is present. This matches the canonical identity used by `stageCandidate` and atomic persistence.
+- The change aligns fixture identity; verifier signatures and evidence bindings remain unchanged.
+
+---
+
+## NK1 learning validation — align durable candidate identity with revision lineage (2026-10-25)
+
+- Fixed a production mismatch between `stageCandidate` and the atomic-file trust-boundary validator: staged candidate identity includes a fifth component (revision-provenance fingerprint or explicit `null`), while durable restoration previously recomputed only the first four components. That rejected even ordinary first-time file-backed candidates at compare-and-swap.
+- Atomic persistence now validates optional revision provenance against the same canonical schema and recomputes the candidate ID using the same five-component material as the producer.
+- Extended the regression to cover atomic restart with both a candidate without lineage and one with valid lineage; non-canonical provenance remains rejected.
+
+---
+
+## NK1 learning validation — isolate signed activation metadata tampering (2026-10-25)
+
+- Adjusted the persistence-tamper regression to mutate only `active.activatedAt`, leaving the initial candidate's `baseVersion` and rollback-target chain structurally valid. Restore now reaches the intended signed CAS/activation metadata guard instead of correctly rejecting a fabricated missing prior version first.
+
+---
+
+## NK1 learning validation — exercise repeated rollback with a valid request shape (2026-10-25)
+
+- Updated the repeated-rollback assertion to use the current approval contract. The second attempt now passes identity/timestamp/CAS shape validation and fails because the candidate is already rolled back, which is the invariant the regression intends to verify.
+
+---
+
+## NK1 learning validation — verify authenticated rollback lifecycle (2026-10-25)
+
+- Updated the legacy versioned-skill lifecycle fixture to use the rollback API's explicit approval identity, timestamp and compare-and-swap version.
+- Added default-deny and stale-version checks plus Ed25519 rollback signature coverage: tampering with the restore-target fingerprint is rejected without changing the active skill, while the exact signed rollback restores the declared prior state.
+- Promotion and rollback remain separate authenticated actions; audit-shaped fields alone do not authorize either transition.
+
+---
+
+## NK1 learning validation — assert replay identity reconciliation order (2026-10-25)
+
+- Updated the P23 persistence test to verify that durable `replayUpdates` trace IDs are reconciled before cache-only `replayedTraceIds`, matching the processed-trace integrity invariant and preventing replayed outcomes from being forgotten at the bounded cache limit.
+
+---
+
+## NK1 learning validation — supply manifest versions in threshold fixtures (2026-10-25)
+
+- Added the required `taskVersion` to valid held-out observation fixtures used to test non-finite minimum thresholds. Without it, the plain-data parser correctly rejected every row and the test was not reaching its intended coverage or gain-threshold branch.
+- The NaN paired-count test still checks the minimum-pair fallback; the NaN gain test includes valid 100 paired tasks and one explicitly permitted independent seed so it reaches the 0.02 conservative default.
+
+---
+
+## NK1 learning validation — isolate the conservative gain-threshold regression (2026-10-25)
+
+- The NaN minimum-gain regression now sets `minIndependentSeeds: 1` so it reaches the intended gain-threshold decision instead of stopping at the default three-seed provenance gate. Production defaults remain unchanged and continue to require three independent seeds.
+
+---
+
+## NK1 learning validation — assert durable identity precedence during restore (2026-10-25)
+
+- Adjusted the P23 restore-integrity regression to reflect the safety invariant: accepted experience rows are reconciled into the bounded dedupe cache before uncorrelated cache-only IDs, so a full cache can never crowd out durable outcomes needed to prevent duplicate processing.
+- The test still verifies that a valid cache-only recent ID survives after the durable identities are retained.
+
+---
+
+## NK1 learning validation — fail closed on invalid SGD controls and throttle replay by resources (2026-10-25)
+
+- Updated P26 regression coverage to match the learner's fail-closed input contract: non-finite learning rates and sample weights must throw before any weights, bias, update count or diagnostics change.
+- Made adaptive experience replay use explicit energy and memory-pressure budgets under the configured hard batch cap, preserving a minimum one-item budget when work is available. Added assertions that low energy and high memory pressure reduce the budget.
+- These changes repair one stale P26 test expectation and implement the resource-aware behavior already asserted by the multi-source learning regression.
+
+---
+
+## NK1 learning validation — isolate signed-evidence, seed and cleanup regressions (2026-10-25)
+
+- The P36 host-bootstrap regression now restores write permission on its deliberately read-only fixture directory before cleanup; the trusted evaluator had passed its signature, private-key and tamper checks, and the test process had been failing only during teardown.
+- The Hermes stale-signature test now matches the tampered payload's pass/fail value so it reaches the stale-signature trust rejection instead of short-circuiting on a separate outcome mismatch.
+- The reverse-arrival seed-bootstrap fixture now uses the verifier ID in its manifest, so the intended order-invariance assertion compares authenticated outcomes rather than records rejected for a verifier mismatch.
+
+---
+
+## NK1 learning validation — preserve duplicate evidence rejection in ledger recovery (2026-10-25)
+
+- Added the canonical `duplicate-evidence-ref` rejection code to the durable restore allowlist. A legitimate snapshot containing a recorded duplicate-evidence rejection must round-trip without being misclassified as malformed.
+- Fixed the continual outcome matrix fixture to use unique evidence references per task, method and seed. Its prior static references caused the ledger to reject the very rows the test intended to use, so the test exercised missing-cell behavior instead of seed-set mismatch.
+- The runtime still rejects duplicate evidence references; only the persistence schema allowlist and test fixture are corrected.
+
+---
+
+## NK1 embodiment — cache the active Live2D expression (2026-10-25)
+
+- Restored the viewer's expression cache contract so repeated emotional-state updates do not restart an already active Live2D expression, while failed asynchronous applications clear the cached name for a safe retry.
+- Reset the cache on model creation; the change does not alter expression mapping or avatar message authority.
+
+---
+
+## NK1 learning validation — repair signed evidence and ledger recovery fixtures (2026-10-25)
+
+- Bound the P36 signed-ledger evaluator regression to the actual hypothesis created by its self-development engine, so the signed verifier input and recipient hypothesis have the same identity.
+- Added the canonical `invalid-evidence-reference` rejection code to durable `VerifiedOutcomeLedger` snapshot restoration. The ledger may record this validated rejection during ingestion; omitting it from the restore allowlist made a valid snapshot unrestorable.
+- These changes repair the test/evidence identity and recovery contract; they do not make a signed point-in-time holdout promotable or authorize unsigned restored rows.
+
+---
+
+## NK1 P36 integration — bind ActionGateway receipts to the decision tick (2026-10-25)
+
+- Corrected three decision-trace link guards in `OrganismCore`: the organism increments `state.tick` before constructing a decision, so a valid persisted trace has `trace.tick === trace.stateBefore.tick + 1`.
+- The previous equality guard rejected valid selected traces, blocking the real Core → ActionGateway → verifier → P36 evidence path despite a valid receipt and exact decision ID.
+- Updated the integration regression to assert the actual one-tick relation. Exact decision ID, selected-action requirement, verifier identity, tool ID and execution receipt checks remain unchanged.
+
+---
+
+## NK1 learning validation — bind P36 outcome fixtures to the discriminant (2026-10-25)
+
+- Updated authenticated developmental-outcome fixtures to include the required `kind: 'developmental-outcome'` discriminant that the runtime verifier gate checks explicitly.
+- The changes keep production fail-closed semantics intact and ensure the self-development tests exercise receipt acceptance and cross-route observation reuse, rather than failing early for a missing discriminant.
+
+---
+
+## NK1 learning validation — assert non-finite bootstrap rejection boundary (2026-10-25)
+
+- Updated the paired-seed confidence regression to expect the actual fail-closed plain-data boundary error for `NaN` samples. Empty and finite out-of-range samples remain covered by the dedicated invalid-values error.
+- This preserves the security contract: non-finite data is rejected before statistical work, not normalized or silently accepted.
+
+---
+
+## NK1 learning validation — repair trust-boundary fixture arguments (2026-10-25)
+
+- Corrected two adversarial evaluator test calls to pass `payloadFingerprint` under its actual API field name. The prior shorthand populated a non-existent field and unintentionally tested fingerprint rejection instead of accessor non-execution.
+- Fingerprint validation remains mandatory; only the test invocation contract was repaired.
+- **Verification boundary:** rerun the P26 suite on the updated head.
+
+---
+
+## NK1 learning validation — separate execution diagnostics from verification authority (2026-10-25)
+
+- Fixed independent candidate evaluation so a structurally valid executor result remains visible as an executability-quality diagnostic when the verifier is unavailable.
+- Fail-closed authority is unchanged: no verifier binding means no trusted run ID or observed steps, and task success still requires a bound successful verification plus a clean safety scan.
+- Expanded regression assertions for the split between diagnostic executability and evidence trust.
+
+- **Verification boundary:** exact-head P26 and related gates must pass before this validation PR is ready to merge.
+
+---
+
+## NK1 learning validation — isolate verifier failure fixture (2026-10-25)
+
+- Corrected the independent-evaluator test case for unavailable verifier: its executor now returns both expected steps, so the test measures verifier failure rather than incomplete execution.
+- Execution status remains distinct from verifier/task-success status; the test continues to require a fail-closed task verdict.
+- **Verification boundary:** exact-head P26 rerun is required.
+
+---
+
+## NK1 learning validation — align evaluator fingerprint fixture (2026-10-25)
+
+- Updated the snapshot regression's expected task-plan fingerprint to include the canonical `taskFamily` field (`null` when absent), matching the runtime's fingerprint material.
+- The test still checks that changing caller-owned task config after evaluator construction cannot change the captured plan fingerprint.
+- **Verification boundary:** a new exact-head P26 run is required; no pass is claimed until it finishes.
+
+---
+
+## NK1 learning validation — fix duplicate evaluator test binding (2026-10-25)
+
+- Gave the second independent evaluator and its result distinct local names in the regression so Node 24 can parse and execute both snapshot cases; behavioral assertions are preserved.
+- This was an existing test-harness syntax blocker surfaced after the learning runtime typecheck passed.
+- **Verification boundary:** fresh P26 rerun is required before this branch validation PR can be considered ready.
+
+---
+
+## NK1 learning — preserve typed failure clues in replay diagnosis (2026-10-25)
+
+- Fixed the P23 replay-to-reflection bridge: persisted failure taxonomy values (for example `tool-error`) are codes, not natural-language messages, so passing them directly through the text classifier silently dropped the class.
+- Added a bounded canonical text mapping for all seven stored failure classes and a regression that checks each class reaches recent-attempt diagnosis. No verified labels, promotion authority, or model-weight updates are introduced.
+- **Verification boundary:** this fix is committed to the validation PR; exact-HEAD P26 execution must pass before merge.
+
+---
+
 ## NK1 learning — fix bounded recent-outcome diagnosis ordering (2026-10-25)
 
 - Corrected `P23LearningEngine.diagnoseRecentLearningAttempts()` to select the newest-first prefix of the canonical experience history. The previous tail-and-reverse selection could report older outcomes when callers requested a small history window.

@@ -175,7 +175,8 @@ assert.ok(noisyComparison.holdoutFamilyLowerBoundMinimum < -0.10);
 assert.throws(() => compareMatchedIndependentEvaluations(
   twoSeedBaseline, twoSeedCandidate, familyPolicy,
   { minimumValidationFamilySeeds: Number.NaN, minimumHoldoutFamilySeeds: 3 },
-), /matched-independent-evaluation-minimum-validation-family-seeds-invalid/);
+), /independent-evaluator-snapshot-non-finite-number/,
+  'non-finite policy inputs must be rejected at the plain-data trust boundary before policy evaluation');
 assert.throws(() => compareMatchedIndependentEvaluations(
   twoSeedBaseline, twoSeedCandidate, familyPolicy,
   { minimumValidationFamilySeeds: 3, minimumHoldoutFamilySeeds: 1.5 },

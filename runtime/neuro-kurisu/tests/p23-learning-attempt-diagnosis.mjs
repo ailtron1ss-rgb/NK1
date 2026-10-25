@@ -101,12 +101,12 @@ const recent = new P23LearningEngine();
 recent.restore({
   version: 1,
   experiences: [{
-    id: 'experience-trace-uncertain-1', traceId: 'trace-uncertain-1', tick: 2, at: 102,
+    id: 'exp-trace-uncertain-1', traceId: 'trace-uncertain-1', tick: 2, at: 102,
     contextKey: 'memory-recall', nextContextKey: 'memory-recall', action: 'reflect',
     predictedUtility: 0.6, predictedConfidence: 0.5, success: 0.55,
     reward: 0.5, surprise: 0.3, outcomeAt: 103,
   }, {
-    id: 'experience-trace-fail-1', traceId: 'trace-fail-1', tick: 1, at: 100,
+    id: 'exp-trace-fail-1', traceId: 'trace-fail-1', tick: 1, at: 100,
     contextKey: 'file-write', nextContextKey: 'file-read', action: 'verify',
     predictedUtility: 0.8, predictedConfidence: 0.7, success: 0.1,
     reward: 0.1, surprise: 0.9, outcomeAt: 101, failureClass: 'tool-error',
@@ -118,11 +118,47 @@ assert.equal(recentReports[0].taskId, 'trace-uncertain-1', 'diagnostics are newe
 assert.equal(recentReports[0].outcome, 'unknown', 'middling outcomes are not forced into success/failure');
 assert.equal(recentReports[1].outcome, 'failure');
 assert.ok(recentReports[1].failureClasses.includes('tool-error'));
+
+const persistedFailureClasses = [
+  'tool-error', 'timeout', 'permission-denied', 'safety-block',
+  'postcondition-mismatch', 'resource-exhaustion', 'low-confidence',
+];
+const classHistory = new P23LearningEngine();
+classHistory.restore({
+  version: 1,
+  experiences: persistedFailureClasses.map((failureClass, index) => ({
+    id: `exp-class-trace-${index}`, traceId: `class-trace-${index}`,
+    tick: persistedFailureClasses.length - index, at: 200 + persistedFailureClasses.length - index,
+    contextKey: 'test-context', nextContextKey: 'test-next', action: 'verify',
+    predictedUtility: 0.8, predictedConfidence: 0.7, success: 0.1,
+    reward: 0.1, surprise: 0.9, outcomeAt: 300 + index, failureClass,
+  })),
+});
+const classReports = classHistory.diagnoseRecentLearningAttempts(10);
+for (const failureClass of persistedFailureClasses) {
+  assert.ok(classReports.some((report) => report.failureClasses.includes(failureClass)),
+    `persisted failure class ${failureClass} must survive replay-to-reflection diagnosis`);
+}
+assert.ok(classReports.every((report) => report.promotionEligible === false),
+  'replayed failure classes stay diagnostic-only and cannot authorize promotion');
+const classSummary = classHistory.learningSummary();
+assert.equal(classSummary.recentAttemptDiagnoses.length, persistedFailureClasses.length,
+  'the ordinary learning summary exposes all bounded persisted-class diagnoses');
+assert.ok(classSummary.recentAttemptDiagnoses.every((report) => report.promotionEligible === false),
+  'summary consumers receive the same non-promotable diagnostic boundary');
 assert.ok(recentReports.every((report) => report.promotionEligible === false),
   'diagnostic reports must never grant promotion authority');
 assert.equal(recent.diagnoseRecentLearningAttempts(0).length, 0);
 assert.equal(recent.diagnoseRecentLearningAttempts(1)[0].taskId, 'trace-uncertain-1',
   'bounded diagnostic window selects the newest outcome, not the oldest tail');
+assert.equal(recent.diagnoseRecentLearningAttempts(1.9)[0].taskId, 'trace-uncertain-1',
+  'fractional limits are floored before selecting recent outcomes');
+assert.equal(recent.diagnoseRecentLearningAttempts(-1).length, 0,
+  'negative limits cannot expose an unintended suffix of old history');
+assert.equal(recent.diagnoseRecentLearningAttempts(Number.NaN).length, 2,
+  'non-finite limits fall back to the bounded default rather than leaking invalid slicing behavior');
+assert.equal(recent.diagnoseRecentLearningAttempts(Number.POSITIVE_INFINITY).length, 2,
+  'infinite limits fall back to the bounded default');
 assert.equal(recent.diagnoseRecentLearningAttempts(1000).length, 2, 'requested history is bounded');
 const summary = recent.learningSummary();
 assert.equal(summary.recentAttemptDiagnoses.length, 2,

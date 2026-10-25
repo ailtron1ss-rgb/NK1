@@ -6,6 +6,7 @@ declare module 'node:crypto' {
   export function sign(algorithm: null | string, data: Uint8Array, key: unknown): any;
 }
 declare module 'node:fs/promises' {
+  export function readdir(path:string):Promise<string[]>;
   export function access(path:string, mode?:number): Promise<void>;
   export function appendFile(path:string,data:string|Uint8Array,encoding?:string):Promise<void>;
   export function copyFile(src:string,dest:string,mode?:number):Promise<void>;
@@ -111,4 +112,8 @@ declare class Buffer extends Uint8Array {
   toString(encoding?:string,start?:number,end?:number):string;
   subarray(begin?:number,end?:number):Buffer;
   write(value:string,offset?:number,encoding?:string):number;
+}
+
+declare module 'node:url' {
+  export function pathToFileURL(path:string): { href:string; toString():string };
 }

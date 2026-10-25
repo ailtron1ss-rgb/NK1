@@ -32,10 +32,14 @@ export function scoreReplayPriority(e:LearningExperience,newestTick:number,frequ
 /** Replay budget reacts to recent error, evidence debt, memory pressure and available energy. */
 export function adaptiveReplayOptions(base:ReplaySelectionOptions,h:LearningHealth,count:number):ReplaySelectionOptions{
  const cap=Math.max(1,Math.min(64,Math.floor(f(base.maxBatchSize??64,64))));
- const pressure=c(.35*h.recentPredictionError01+.25*h.replayTdError01+.2*h.evidenceDebt01+.2*h.memoryPressure01);
- // Keep the configured hard cap stable for reproducible ablations; health affects ranking and decay, not requested batch size.
- const size=Math.max(1,Math.min(cap,Math.max(0,count)));
- const ratio=c(.35+.25*h.recentPredictionError01+.15*h.evidenceDebt01-.15*h.memoryPressure01);
+ const energy=c(h.energy01),memoryPressure=c(h.memoryPressure01);
+ const pressure=c(.35*h.recentPredictionError01+.25*h.replayTdError01+.2*h.evidenceDebt01+.2*memoryPressure);
+ // Respect the configured hard cap while shrinking the replay budget under low energy
+ // or high memory pressure; the selected count can never exceed available experiences.
+ const energyBudget=Math.max(1,Math.floor(cap*(.35+.65*energy)));
+ const memoryBudget=Math.max(1,Math.floor(cap*(1-.55*memoryPressure)));
+ const size=Math.max(1,Math.min(cap,energyBudget,memoryBudget,Math.max(0,count)));
+ const ratio=c(.35+.25*h.recentPredictionError01+.15*h.evidenceDebt01-.15*memoryPressure);
  return{maxBatchSize:size,recentQuota:Math.max(0,Math.min(size,Math.round(size*ratio))),ageHalfLifeTicks:pressure>.7?512:Number.POSITIVE_INFINITY};
 }
 /** Clipped importance weights and update rates stop noisy/rare events dominating. */

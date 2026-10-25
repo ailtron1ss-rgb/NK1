@@ -88,7 +88,7 @@ assert.equal(forgedProposal.unauthenticatedEvidenceRows,20);
 // Non-finite thresholds must not turn minimum paired-task requirements into NaN bypasses.
 const tinyObservations = [];
 for (let i=0;i<2;i++) for (const [method,passed] of [['baseline',false],['candidate',true]]) {
-  tinyObservations.push({taskId:'tiny-'+i,family:'memory',split:'holdout',method,seed:1,attempt:1,passed,
+  tinyObservations.push({taskId:'tiny-'+i,taskVersion:'v1',family:'memory',split:'holdout',method,seed:1,attempt:1,passed,
     authority:'independent-verifier',verifierId:'v',expectedVerifierId:'v',evidenceRef:'e-'+i+'-'+method});
 }
 const nanThreshold = evaluateSkillRevision(tinyObservations,'baseline','candidate',{minPairedTasks:Number.NaN});
@@ -97,11 +97,11 @@ assert.equal(nanThreshold.reason,'insufficient-independent-heldout-pairs');
 
 const smallGainObservations = [];
 for (let i=0;i<100;i++) for (const [method,passed] of [['baseline',false],['candidate',i===0]]) {
-  smallGainObservations.push({taskId:'fraction-'+i,family:'general',split:'holdout',method,seed:1,attempt:1,passed,
+  smallGainObservations.push({taskId:'fraction-'+i,taskVersion:'v1',family:'general',split:'holdout',method,seed:1,attempt:1,passed,
     authority:'independent-verifier',verifierId:'v',expectedVerifierId:'v',evidenceRef:'fraction-'+i+'-'+method});
 }
 const nanGainThreshold = evaluateSkillRevision(smallGainObservations,'baseline','candidate',{
-  minPairedTasks:8,minAbsoluteGain:Number.NaN,
+  minPairedTasks:8,minIndependentSeeds:1,minAbsoluteGain:Number.NaN,
 });
 assert.equal(nanGainThreshold.accepted,false);
 assert.equal(nanGainThreshold.reason,'no-material-heldout-improvement',

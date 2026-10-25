@@ -173,14 +173,14 @@ const crossPathId='p36-cross-path-receipt';
 const crossPathEvidence=evidence(crossPathHypothesis.id,'cross-path-experiment',false,0);
 const crossPathProof=await mintProof(developmentEvidenceVerificationInput(crossPathEvidence),crossPathId);
 assert.equal(crossPathEngine.recordExternalEvidence({...crossPathEvidence,...crossPathProof}).independentCount,1);
-const crossPathOutcome={area:'learning',outcome01:.9,delayed:true,transfer:true};
+const crossPathOutcome={kind:'developmental-outcome',area:'learning',outcome01:.9,delayed:true,transfer:true};
 const crossPathOutcomeProof=await mintProof(developmentalOutcomeVerificationInput(crossPathOutcome),crossPathId,true,P36_DEVELOPMENTAL_OUTCOME_TOOL_ID);
 const crossPathMaturity=crossPathEngine.observeDevelopmentalOutcome({...crossPathOutcome,...crossPathOutcomeProof});
 assert.equal(crossPathMaturity.verifiedOutcomeCount,0,'same observation cannot be credited through a second learning route');
 
 // Maturity counts also require verifier provenance, and the same receipt can count only once.
 const maturityEngine=new P36AutonomousSelfDevelopmentEngine();
-const outcome={area:'learning',outcome01:.95,delayed:true,transfer:true};
+const outcome={kind:'developmental-outcome',area:'learning',outcome01:.95,delayed:true,transfer:true};
 const forgedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verified:true});
 assert.equal(forgedMaturity.verifiedOutcomeCount,0,'a caller boolean cannot certify developmental maturity');
 assert.equal(maturityEngine.diagnostics().rejectedMaturityReceipts,1,'blocked maturity assertions must be observable');
@@ -197,7 +197,7 @@ assert.equal(maturityEngine.diagnostics().rejectedMaturityReceipts,maturityRejec
 const copiedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,...outcomeProof,verification:structuredClone(outcomeProof.verification)});
 assert.equal(copiedMaturity.verifiedOutcomeCount,1,'a serialized copy cannot replay a trusted maturity receipt');
 const reusedMaturityProof=await mintProof(developmentalOutcomeVerificationInput({...outcome,area:'memory',outcome01:.8}),outcomeProof.verification.observationId,true,P36_DEVELOPMENTAL_OUTCOME_TOOL_ID);
-const reusedMaturity=maturityEngine.observeDevelopmentalOutcome({area:'memory',outcome01:.8,delayed:true,transfer:true,...reusedMaturityProof});
+const reusedMaturity=maturityEngine.observeDevelopmentalOutcome({kind:'developmental-outcome',area:'memory',outcome01:.8,delayed:true,transfer:true,...reusedMaturityProof});
 assert.equal(reusedMaturity.verifiedOutcomeCount,1,'one observation ID cannot certify two different developmental outcomes');
 
 // A restored snapshot is informative history, not authenticated proof of independent learning.

@@ -90,8 +90,10 @@ assert.equal(saved.facets.learning.p36.version,6,'runtime persistence must prese
 // Exercise the actual core -> ActionGateway -> decision-linked verifier -> P36 route.
 // The evaluator is a fixture; production must register a host-owned external evaluator
 // under this reserved tool ID, while the learner cannot mint its own receipt.
-const traceForEvidence=saved.traces.find(row=>row.selected!==null&&row.tick===row.stateBefore.tick);
+const traceForEvidence=saved.traces.find(row=>row.selected!==null&&row.tick===row.stateBefore.tick+1);
 assert.ok(traceForEvidence,'integration fixture needs a persisted decision trace for ActionGateway authority');
+assert.equal(traceForEvidence.tick,traceForEvidence.stateBefore.tick+1,
+  'a persisted selected decision links to the state revision one tick before it');
 const hypothesis=core.p36Propose()??core.p36Snapshot().hypotheses[0];
 assert.ok(hypothesis,'live core should have a P36 hypothesis to evaluate');
 const evidenceInput=developmentEvidenceVerificationInput({

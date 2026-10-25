@@ -86,7 +86,7 @@ const tampered = structuredClone(validObservation);
 tampered.artifact.payload.passed = false;
 // Keep the wrapper fingerprint consistent so the verifier must reject the stale signature itself.
 tampered.evidenceFingerprint = skillShadowPayloadFingerprint(tampered.artifact.payload);
-const tamperRejected = engine.bindReflectiveCandidateEvidence([report()], [tampered], candidate, verifier);
+const tamperRejected = engine.bindReflectiveCandidateEvidence([report('task-1', 'run-1', false)], [tampered], candidate, verifier);
 assert.equal(tamperRejected.accepted, false);
 assert.ok(tamperRejected.reasons.includes('signed-shadow-evidence-not-trusted'));
 

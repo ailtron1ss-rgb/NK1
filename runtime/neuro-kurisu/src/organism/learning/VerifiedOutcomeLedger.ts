@@ -441,7 +441,7 @@ export class VerifiedOutcomeLedger {
     if (ledger.outcomes.size !== snapshot.acceptedOutcomes) throw new Error('accepted outcome count mismatch');
     const allowed = new Set<OutcomeRejection['code']>([
       'unknown-task', 'version-mismatch', 'invalid-method', 'invalid-seed', 'invalid-attempt',
-      'self-report-not-authoritative', 'verifier-mismatch', 'missing-evidence', 'invalid-time', 'duplicate-attempt', 'invalid-outcome',
+      'self-report-not-authoritative', 'verifier-mismatch', 'missing-evidence', 'invalid-evidence-reference', 'invalid-time', 'duplicate-attempt', 'duplicate-evidence-ref', 'invalid-outcome',
     ]);
     for (const item of snapshot.rejections as OutcomeRejection[]) {
       if (!item || !allowed.has(item.code) || typeof item.taskId !== 'string' ||
