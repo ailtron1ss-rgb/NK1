@@ -58,7 +58,8 @@ window.addEventListener('message', (event) => {
   if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
   if (event.data?.type === 'live2d_ready') {
     fallback.style.display = 'none';
-    state.textContent = 'Live2D online';
+    // Keep the organism's latest action/emotion label; readiness is a separate channel.
+    if (state.textContent === 'инициализация…') state.textContent = 'Live2D online';
   } else if (event.data?.type === 'live2d_error') {
     fallback.style.display = 'grid';
     state.textContent = 'Live2D fallback';
