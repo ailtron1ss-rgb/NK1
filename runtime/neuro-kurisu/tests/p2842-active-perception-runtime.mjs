@@ -61,5 +61,28 @@ assert.ok(active.executed>=1,'active perception request should be measured');
 assert.ok(active.lastInformationGain01>=0);
 assert.ok(calibration.resolved>=1,'runtime must resolve the exact pre-action prediction ticket');
 assert.ok(calibration.records.some(x=>x.predictionId && x.verified01===1 && x.independent01===1));
-console.log(JSON.stringify({ok:true,tick:result.cycle.state.tick,active:{executed:active.executed,lastInformationGain01:active.lastInformationGain01},calibration:{resolved:calibration.resolved,last:calibration.records[0]}}));
+
+// A sensor becoming unavailable/recovering must be represented as availability,
+// not as a fabricated zero or a physical motion event; user text must not starve sensing.
+motion01 = null;
+await runtime.step('the motion sensor is unavailable');
+const lostMotion = runtime.perceptionSnapshot();
+assert.equal(lostMotion.lastEvent?.kind, 'sensor-availability');
+assert.ok(lostMotion.lastEvent?.evidence.includes('sensor=motion'));
+assert.equal(lostMotion.baseline.motion01, null);
+
+motion01 = 0.1;
+await runtime.step('the motion sensor is available again');
+const restoredMotion = runtime.perceptionSnapshot();
+assert.equal(restoredMotion.lastEvent?.kind, 'sensor-availability');
+assert.ok(restoredMotion.lastEvent?.evidence.includes('sensor=motion'));
+assert.equal(restoredMotion.baseline.motion01, 0.1);
+assert.equal(restoredMotion.sensorChanges, 3, 'one motion change plus loss and recovery should be counted');
+console.log(JSON.stringify({
+  ok: true,
+  tick: result.cycle.state.tick,
+  active: { executed: active.executed, lastInformationGain01: active.lastInformationGain01 },
+  calibration: { resolved: calibration.resolved, last: calibration.records[0] },
+  perception: { sensorChanges: restoredMotion.sensorChanges, availabilityTransitions: 2 },
+}));
 await runtime.stop?.();
