@@ -10915,7 +10915,7 @@ export class OrganismCore {
     p36RecordExternalEvidence(input: Parameters<P36AutonomousSelfDevelopmentEngine['recordExternalEvidence']>[0]) {
         const decisionId = typeof input.decisionId === 'string' ? input.decisionId.trim() : '';
         const linkedTrace = decisionId
-            ? this.persisted.traces.find(trace => trace.id === decisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick)
+            ? this.persisted.traces.find(trace => trace.id === decisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick + 1)
             : undefined;
         let verification: OutcomeVerification | undefined;
         if (input.toolId === P36_EXTERNAL_EVIDENCE_TOOL_ID && linkedTrace &&
@@ -10936,7 +10936,7 @@ export class OrganismCore {
     p36RecordDevelopmentalOutcome(input: Parameters<P36AutonomousSelfDevelopmentEngine['observeDevelopmentalOutcome']>[0]) {
         const decisionId = typeof input.decisionId === 'string' ? input.decisionId.trim() : '';
         const linkedTrace = decisionId
-            ? this.persisted.traces.find(trace => trace.id === decisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick)
+            ? this.persisted.traces.find(trace => trace.id === decisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick + 1)
             : undefined;
         let verification: OutcomeVerification | undefined;
         if (input.toolId === P36_DEVELOPMENTAL_OUTCOME_TOOL_ID && linkedTrace &&
@@ -11870,8 +11870,10 @@ export class OrganismCore {
         gatewayDecisionLinkedExternalPostcondition?: boolean,
     ): Promise<void> {
         const suppliedDecisionId = typeof options.decisionId === 'string' ? options.decisionId.trim() : '';
+        // Observe advances the organism tick before building the decision trace; a linked
+        // trace therefore belongs to stateBefore.tick + 1, not the pre-observation tick.
         const matchingDecisionTrace = suppliedDecisionId
-            ? this.persisted.traces.find(trace => trace.id === suppliedDecisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick)
+            ? this.persisted.traces.find(trace => trace.id === suppliedDecisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick + 1)
             : undefined;
         const verifierBound = gatewayDecisionLinkedExternalPostcondition === true ||
             (Boolean(suppliedDecisionId) && isTrustedDecisionLinkedExternalPostcondition(result.verification, {

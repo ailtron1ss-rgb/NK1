@@ -1,3 +1,11 @@
+## NK1 P36 integration — bind ActionGateway receipts to the decision tick (2026-10-25)
+
+- Corrected three decision-trace link guards in `OrganismCore`: the organism increments `state.tick` before constructing a decision, so a valid persisted trace has `trace.tick === trace.stateBefore.tick + 1`.
+- The previous equality guard rejected valid selected traces, blocking the real Core → ActionGateway → verifier → P36 evidence path despite a valid receipt and exact decision ID.
+- Updated the integration regression to assert the actual one-tick relation. Exact decision ID, selected-action requirement, verifier identity, tool ID and execution receipt checks remain unchanged.
+
+---
+
 ## NK1 learning validation — bind P36 outcome fixtures to the discriminant (2026-10-25)
 
 - Updated authenticated developmental-outcome fixtures to include the required `kind: 'developmental-outcome'` discriminant that the runtime verifier gate checks explicitly.
