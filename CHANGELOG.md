@@ -1,3 +1,13 @@
+## Unified CI dependency boundary correction — 2026-10-25
+
+- Removed a newly-added CI step pointing to `research/requirements-ci.txt`, which is not present in the repository.
+- The existing `research/requirements-nli.txt` is documented as an optional isolated dependency set for the NLI server; the general repository contract should not install its PyTorch/Transformers stack as part of every UI/runtime audit.
+- The workflow keeps the cross-layer integration, runtime smoke, cognitive-cycle recovery and aggregate audits. NLI model-serving dependencies remain isolated and should be validated in their own dedicated job when that service is explicitly in scope.
+
+Validation: rerun the broad contract gate after removing the invalid requirements reference.
+
+---
+
 ## Repository-pinned syntax audit portability — 2026-10-25
 
 - Removed the hard-coded TypeScript import from a global Node 22 installation. Under the Node 24 CI workflow that path does not exist, so `audit:quick` was unable to start its executable-syntax scan despite the locked app dependency being installed.
