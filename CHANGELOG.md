@@ -5,6 +5,7 @@
 - Core finalization routes `kind: 'developmental-outcome'` only through the maturity ID and routes baseline/treatment evidence only through the experiment ID. Cross-lane payloads fail closed and are recorded as rejected evidence; the P36 engine itself checks the maturity receipt's exact reserved ID.
 - Updated Core integration and self-development regressions to register and exercise both reserved capabilities separately, including public-registry takeover attempts and cross-lane submissions.
 - When both slots are configured, Core also rejects a shared `sourceId` or `independenceKey` between the experiment and maturity evaluators, preventing an accidental single-source alias from masquerading as independent maturity evidence. Added a constructor regression for that collision.
+- The collision guard compares NFKC-normalized, trimmed, case-folded source identities, so whitespace/case aliases cannot bypass the distinct-source requirement. Constructor regressions cover both a reused independence key and a canonicalized source-ID collision.
 - **Verification boundary:** code/tests are committed but exact-HEAD CI/typecheck has not been confirmed. The signed ledger adapter remains point-in-time holdout only and is not a maturity/retention evaluator. No empirical learning uplift is claimed.
 
 ---
