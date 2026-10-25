@@ -233,11 +233,27 @@ export class OutcomeCognitionFabric {
       acceptedRevisions.push({...row,providerReceiptHash:String(row.providerReceiptHash).toLowerCase(),baseFingerprint:String(row.baseFingerprint).toLowerCase(),revisionFingerprint:String(row.revisionFingerprint).toLowerCase(),confidence01:cap(Number(row.confidence01)),tick:Math.max(0,Math.floor(Number(row.tick))),at:Math.max(0,Number(row.at))});
     }
     this.evidenceRevisions=acceptedRevisions.reverse();
-    // Conflicting duplicate revision IDs indicate a damaged or hand-edited snapshot.
-    // Keep the first authenticated revision and discard later conflicting copies.
+    // A repeated revision ID must identify the exact same immutable row, not
+    // merely reuse its claimed fingerprint. Conflicting copies quarantine every
+    // implicated execution so future receipt reconciliation cannot trust ambiguity.
     const uniqueRevisions=new Map<string,OutcomeProjectionEvidenceRevision>();
-    for(const revision of this.evidenceRevisions){const prior=uniqueRevisions.get(revision.revisionId);if(!prior)uniqueRevisions.set(revision.revisionId,revision);else if(prior.revisionFingerprint!==revision.revisionFingerprint)continue;}
-    this.evidenceRevisions=[...uniqueRevisions.values()].slice(-this.maxEvidenceRevisions);
+    for(const revision of this.evidenceRevisions){
+      const prior=uniqueRevisions.get(revision.revisionId);
+      if(!prior){uniqueRevisions.set(revision.revisionId,revision);continue;}
+      if(sha256Stable(prior)!==sha256Stable(revision)){
+        quarantine(prior.executionId,'duplicate-record-conflict');
+        quarantine(revision.executionId,'duplicate-record-conflict');
+      }
+    }
+    if(quarantined.size){
+      this.causal.restore({...this.causal.snapshot(),quarantinedExecutionIds:[...quarantined]});
+      this.records=this.records.map(record=>{
+        const id=boundedText(record.executionId,180);
+        return id&&quarantined.has(id)?{...record,receiptQuarantined:true,receiptQuarantineReason:quarantineReasons.get(id)??'causal-graph'}:record;
+      });
+      for(const id of quarantined)this.projectionIndex.delete(id);
+    }
+    this.evidenceRevisions=[...uniqueRevisions.values()].filter(row=>!quarantined.has(row.executionId)).slice(-this.maxEvidenceRevisions);
   }
   private fingerprintFromRecord(record:OutcomeCognitionProjection['verificationRecord']):string{
     return sha256Stable({executionId:record.executionId??'',tool:record.tool,ok:Boolean(record.ok),outcomeClass:record.outcomeClass??null,verification:{verified:Boolean(record.verified),basis:record.basis,confidence01:cap(record.confidence01),externalObservation:Boolean(record.externalObservation),observationId:record.observationId??null,...(record.evidenceEventId?{evidenceEventId:record.evidenceEventId}:{}),expectedPostcondition:record.expectedPostcondition??null,observedPostcondition:record.observedPostcondition??null}});
