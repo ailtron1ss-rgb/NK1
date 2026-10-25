@@ -1,3 +1,11 @@
+## NK1 WorkPass342 — Make coordinator validation failures promise-safe (2026-10-25)
+
+- [API-CONTRACT] The trusted shadow-run coordinator is now declared `async`, so invalid registrar, runtime-version and execution-lane guards reject its declared `Promise<LearningProcessResult>` instead of escaping synchronously.
+- [TRUST-BOUNDARY] Registration remains awaited before child spawn; registry failures still prevent execution, and the registrar's domain return value is not confused with the supervisor callback result.
+- [VALIDATION] Coordinator and strict runtime checks are running against the current PR head; passing status remains unclaimed until exact-head jobs complete.
+
+---
+
 ## NK1 WorkPass341 — Restore the live cognitive-architecture HTTP projection (2026-10-25)
 
 - [HTTP-API] The read-only `/api/organism/cognitive-architecture` route now serves the canonical validated `CognitiveArchitectureMap` plus runtime tick and the real live subsystem-health projection.
