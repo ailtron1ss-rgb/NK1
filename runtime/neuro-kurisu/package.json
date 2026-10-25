@@ -1783,5 +1783,8 @@
     "@letta-ai/letta-code": {
       "optional": true
     }
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1"
   }
 }
