@@ -1,3 +1,11 @@
+## NK1 integration follow-up — repair two CI contract gaps (2026-10-25)
+
+- Corrected the Hermes signed-shadow tamper regression so it changes a signed payload field and recomputes only the unsigned transport fingerprint. The test now reaches the cryptographic verifier rather than failing earlier on a binary-outcome mismatch, and still requires rejection of the tampered signature.
+- Registered `test:workpass294:correlated-postcondition` in the runtime package scripts to match the existing WorkPass294 workflow and its actual test file. This closes a CI wiring gap; it does not weaken the postcondition verification logic.
+- The previous exact-head WorkPass294 job had already passed runtime typecheck before failing solely because the script was absent. New exact-head runs are required to validate both fixes.
+
+---
+
 ## NK1 cognition follow-up — harden cognitive restore boundaries (2026-10-25)
 
 - `IntrinsicMotivationEngine.restore()` and `UnifiedCognitiveCycle.restore()` now read only own data properties from persisted state. Prototype-inherited values can no longer forge internal drive urgency or a completed cognitive-cycle record, and accessor properties are ignored without being executed.
