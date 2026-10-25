@@ -1,3 +1,7 @@
+## NK1 WorkPass340 — P23 revision workflow entrypoint fix (2026-10-25)
+
+- [CI FIX] Replaced the nonexistent `test:workpass293:p23-revision` npm script with the direct Node 24 invocation of the existing `tests/workpass293-autonomous-p23-revision.mjs` regression file. This fixes test discovery/entrypoint only; the test result must be confirmed by the workflow run before treating the P23 revision path as validated.
+
 ## NK1 WorkPass340 — Hexis HMX 1.7 canonical-memory bridge (2026-10-25)
 
 - [IMPLEMENTED] Added a native NK1 → HMX 1.7 exporter that preserves source lineage and explicitly discloses that automatic sensitive-data redaction was not performed.
