@@ -19,7 +19,7 @@ try {
     await new Promise(r => setTimeout(r, 100));
     try { const response = await fetch(`${base}/api/health`); const data = await response.json(); if (response.ok && data.ready === true) { ready = true; break; } } catch {}
   }
-  if (!ready) throw new Error(`server-not-ready:${output.slice(-800)}`);
+  if (!ready) throw new Error(`server-not-ready; captured-process-output:\n${output.slice(-8000)}`);
   const overview = await (await fetch(`${base}/api/organism/integration/hexis`)).json();
   if (!overview.ok || overview.hexis?.source?.name !== 'Hexis-main') throw new Error('hexis-overview');
   const sync = await (await post('/api/organism/integration/hexis/sync-memory', { limit: 16 })).json();
