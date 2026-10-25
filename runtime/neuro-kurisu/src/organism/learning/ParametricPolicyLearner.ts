@@ -119,9 +119,24 @@ export class ParametricPolicyLearner{
         const value=oldIndex>=0?Number(savedWeights[oldIndex]??0):0;
         return Math.max(-4,Math.min(4,Number.isFinite(value)?value:0));
       });
-      const bias=Number(this.state.bias[a]??0);
-      this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
+      const bias=this.state.bias[a];
+      this.state.bias[a]=typeof bias==='number'&&Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+    // Snapshots may contain hand-edited, stale, or partially corrupted diagnostics.
+    // Sanitize every scalar before it can influence uncertainty or learning controls.
+    this.state.updates=typeof raw?.updates==='number'&&Number.isSafeInteger(raw.updates)&&raw.updates>=0
+      ?raw.updates:0;
+    this.state.tdAbsMean01=typeof raw?.tdAbsMean01==='number'&&Number.isFinite(raw.tdAbsMean01)
+      ?clamp(raw.tdAbsMean01):0;
+    this.state.trainRewardMean01=typeof raw?.trainRewardMean01==='number'&&Number.isFinite(raw.trainRewardMean01)
+      ?clamp(raw.trainRewardMean01):d.trainRewardMean01;
+    this.state.explorationRate01=typeof raw?.explorationRate01==='number'&&Number.isFinite(raw.explorationRate01)
+      ?clamp(raw.explorationRate01):d.explorationRate01;
+    this.state.lastLoss01=typeof raw?.lastLoss01==='number'&&Number.isFinite(raw.lastLoss01)
+      ?clamp(raw.lastLoss01):0;
+    this.state.lastTrainedAt=typeof raw?.lastTrainedAt==='number'&&Number.isFinite(raw.lastTrainedAt)&&raw.lastTrainedAt>=0
+      ?Math.floor(raw.lastTrainedAt):0;
+    this.state.frozen=raw?.frozen===true;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
