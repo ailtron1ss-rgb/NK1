@@ -2314,3 +2314,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 
 - **WorkPass338 follow-up:** Aligned the WorkPass287 test with fail-closed restore behavior: if prior tick metadata is invalid and the previous completion claim is rejected, all six cognitive-cycle stages are marked missing rather than trusting a partial stale list.
+
+
+
+- **WorkPass338 P26 follow-up:** Added missing script mappings for `test:p26:learning-recovery-benchmark` and `test:p26:learning-continual-matrix`, which the existing P26 workflow invoked but `package.json` did not declare. Both map to existing regressions using Node's transform-types mode.

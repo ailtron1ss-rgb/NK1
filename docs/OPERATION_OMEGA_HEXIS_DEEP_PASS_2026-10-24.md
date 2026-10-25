@@ -129,3 +129,6 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 
 
 - **WorkPass338 follow-up:** The WorkPass287 restore-contract test expected only `action` to be missing after restoring an invalid timestamp, while the implementation correctly fails closed to the full six-stage missing list when the previous completion claim is invalid. Updated that assertion to match the conservative restore invariant rather than weaken production validation.
+
+
+- **WorkPass338 P26 follow-up:** A comparison of the whole P26 workflow with `package.json` found two more missing commands that the workflow would reach only after its first regression: `test:p26:learning-recovery-benchmark` and `test:p26:learning-continual-matrix`. Both point to existing test files and have now been wired. The learning-validation workflow can now test the actual assertions instead of stopping at npm command resolution.
