@@ -8,6 +8,8 @@ on:
       - 'app/src/legacy/avatar/LegacySpriteDeck.tsx'
       - 'app/scripts/legacy-sprite-deck-runtime.test.mjs'
       - 'app/public/live2d/viewer.html'
+      - 'runtime/neuro-kurisu/public/live2d/viewer.html'
+      - 'runtime/neuro-kurisu/tests/live2d-integrity.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
       - 'runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs'
