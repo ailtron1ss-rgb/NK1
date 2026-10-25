@@ -82,10 +82,11 @@ Only these Markdown files were moved. Associated JSON snapshots remain at their 
 - [x] Markdown link scanner and regression tests.
 - [x] Exact-content SHA-256 inventory and candidate grouping.
 - [x] Root `audit:ordering` and `audit:quick` integration.
-- [x] Read an inventory output and triage exact-content groups and filename families; [the result report](DOCUMENTATION_INVENTORY_RESULTS_2026-10-24.md) binds the counts to the tested SHA and run URL.
+- [x] Read inventory outputs and triage exact-content groups and filename families; the [2026-10-24 historical report](DOCUMENTATION_INVENTORY_RESULTS_2026-10-24.md) and [2026-10-25 exact-head report](DOCUMENTATION_INVENTORY_RESULTS_2026-10-25.md) each bind results to a source SHA and Actions URL.
 - [x] Search local Markdown and scanned source/config/manifest references for three archive candidates; GitHub issue/PR path searches found no direct references for the three exact paths.
 - [x] Move three dated 2026-10-06 snapshots byte-for-byte with a reversible SHA-256/Git-blob manifest: `FINAL-STATUS-2026-10-06.md`, `INVENTORY.md`, and `CONFLICTS-AND-GAPS.md`; see `docs/history/reports/INDEX.md`.
 - [x] Move three dated WorkPass22/24/36 status reports byte-for-byte with a path/SHA-256/Git-blob manifest after path, local-reference and issue/PR review; see `docs/history/workpasses/project-status/INDEX.md`.
-- [ ] Confirm the latest exact-head run after adding this result report and its strict-link entry; runtime restore/release packaging and ZIP publication remain separate gates.
+- [x] Exact-head documentation/dependency audit passed on measurement commit `b8ff2b50b4e3208aedd6dd1e09c2839d7002bda8` in [Actions run 40168716043](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168716043); the next commit adds the 2026-10-25 report and its strict-link entry for follow-on verification.
+- [ ] Runtime restore/release packaging checks and ZIP publication remain separate gates.
 
 **Honest status:** the evidence-gathering mechanism is wired into CI, and two small historical-report batches have been archived with manifests. The remaining 323 no-inbound candidates still need individual provenance, semantic and path review. No wholesale cleanup, runtime-readiness claim or release ZIP refresh is implied.

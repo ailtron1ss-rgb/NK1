@@ -1,6 +1,6 @@
 # NeuroCore — repository working rules
 
-> **New-session entry point (updated 2026-10-24):** Read [the project map and ordering policy](docs/PROJECT_MAP_AND_ORDERING.md) first, then [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) as a historical continuation ledger. Refresh the exact live branch SHA, diff, open PRs and Actions status before coding. Do not treat a WorkPass number, an old checkpoint, or a newer timestamp as proof of ancestry/completeness. The observed `integration` and `operation-omega-hexis-2026-10-24` tips diverged; compare and port deliberately rather than merging whole histories. The newest release asset observed on 2026-10-24 was still WorkPass70 dated 2026-10-19; branch commits do not refresh that ZIP.
+> **New-session entry point (updated 2026-10-24):** Read [the project map and ordering policy](docs/PROJECT_MAP_AND_ORDERING.md) first, then [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) as a historical continuation ledger. Refresh the exact live branch SHA, diff, open PRs and Actions status before coding. Do not treat a WorkPass number, an old checkpoint, or a newer timestamp as proof of ancestry/completeness. The observed `integration` and `operation-omega-hexis-2026-10-24` tips diverged; compare and port deliberately rather than merging whole histories. The release assets rechecked on 2026-10-25 are still WorkPass70 ZIPs dated 2026-10-19; source branch commits do not refresh those binaries.
 
 ## Latest checkpoint policy
 
@@ -34,7 +34,9 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 - `npm run audit:ordering`: unified gate for Markdown link regressions, strict canonical navigation links, runtime dependency-boundary tests and transitive server import validation; `npm run audit:quick` invokes it.
 - `docs/architecture/module-dependency-contracts-ru.md`: target dependency directions and boundaries. Its tests establish only the rules they actually exercise; check exact-head Actions before calling the audit green.
 - `docs/DOCUMENTATION_INVENTORY_AND_ARCHIVE_POLICY_2026-10-24.md`: rules for reviewing exact duplicate and zero-inbound documentation candidates; never delete/move from a scan alone.
-- `docs/DOCUMENTATION_INVENTORY_RESULTS_2026-10-24.md`: exact-head tree counts, scan output, duplicate families, CI evidence and reversible archive moves. Its results are tied to the recorded commit SHA.
+- `docs/DOCUMENTATION_INVENTORY_RESULTS_2026-10-24.md`: historical measurement snapshot; do not treat its old SHA as current.
+- `docs/DOCUMENTATION_INVENTORY_RESULTS_2026-10-25.md`: latest measurement snapshot bound to the exact-head tree inventory and successful Actions run.
+- `docs/history/workpasses/project-status/INDEX.md` and `relocation-manifest.json`: reversible record for the 2026-10-25 status-report archive batch.
 - `docs/history/reports/INDEX.md`: records the first byte-identical historical report move and its hash manifest.
 - `research/`: isolated research candidates; `legacy/`: preserved historical source/provenance.
 - `docs/history/` and `docs/reports/`: historical and detailed records; old pass reports are not current status unless explicitly linked from a current handover.

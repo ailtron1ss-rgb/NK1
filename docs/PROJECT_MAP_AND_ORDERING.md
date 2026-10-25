@@ -1,6 +1,6 @@
 # NK1 — project map, source-of-truth rules and repository ordering
 
-**Snapshot date:** 2026-10-24  
+**Snapshot date:** 2026-10-25  
 **Purpose:** make the real codebase easier to navigate and safer to integrate without destroying useful history.  
 **Status:** governance/navigation change only. It does not claim that all branches are merged, that CI passed, or that the release ZIP was rebuilt.
 
@@ -20,6 +20,7 @@ Use this document as the repository's navigation and ordering index. It does not
 | Research and upstream candidates | [Research intake ledger](RESEARCH_INTAKE_LEDGER.md) | Queue only; a listed source is not automatically integrated or validated |
 | Branch reconciliation | [Branch inventory](BRANCH_INVENTORY_2026-10-24.md), [cross-branch inventory](CROSS_BRANCH_INTEGRATION_INVENTORY.md) and [integration workspace notes](INTEGRATION_WORKSPACE.md) | Initial 104-ref listing plus a later refresh to 124 refs; names/heads do not imply merge or test status |
 | Dependency boundaries | [Module dependency contracts](architecture/module-dependency-contracts-ru.md) | Target-layer rules and audit scope; only exact-head test evidence can establish the current status |
+| Latest measured inventory | [2026-10-25 inventory results](DOCUMENTATION_INVENTORY_RESULTS_2026-10-25.md) | Exact-head CI evidence for commit `b8ff2b50b4e3208aedd6dd1e09c2839d7002bda8`; the 2026-10-24 report remains historical |
 | Documentation cleanup | [Inventory results](DOCUMENTATION_INVENTORY_RESULTS_2026-10-24.md), [archive policy](DOCUMENTATION_INVENTORY_AND_ARCHIVE_POLICY_2026-10-24.md) and [historical reports index](history/reports/INDEX.md) | Exact SHA groups and unreferenced candidates are evidence, not automatic deletion permission |
 | Hexis source selection and adaptation | [Operation Omega report](OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md) | Explains source provenance, the archive boundary, and the limited NK1 adaptation |
 | Old handovers, numbered passes and research reports | `docs/history/`, `docs/reports/`, and older files in `docs/` | Historical evidence, not a live status authority unless linked from a current handover |
