@@ -1,3 +1,10 @@
+## NK1 P26 CI — run paired-seed bootstrap regressions on push (2026-10-25)
+
+- Added `PairedSeedConfidence.ts` and `workpass404-paired-seed-confidence.mjs` to the P26 push paths. The options were already tracked for pull requests but changes to their implementation did not independently trigger the feature-branch workflow.
+- Ensures the new field-specific NaN validation and non-invoking accessor checks run in CI on every relevant change.
+
+---
+
 ## NK1 paired-seed confidence utility — preserve specific validation errors (2026-10-25)
 
 - Validate numeric bootstrap samples and policy values by own data descriptors before generic snapshotting, so invalid numeric values produce the documented domain errors.
