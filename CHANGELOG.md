@@ -1,3 +1,14 @@
+## NK1 WorkPass344–345 — enforce runtime evidence contracts at source boundaries (2026-10-25)
+
+- [RUNTIME] Registered `appraisal` as a supported evidence-bus kind and added `p23-compound-repair-revision` to the scheduler allow-list to match active publishers and registration sites.
+- [LEARNING] Added `verifiedNonHoldoutExecutions: 0` to the compiled base variant, made retrieval query defaults accept optional values, and retained the exact `'holdout'` literal in the verified-session dataset.
+- [SAFETY] The trusted shadow registrar contract now permits its synchronous result as well as a promise; the supervisor awaits either before spawning the trusted candidate process.
+- [NULLABILITY] Forward causal-learning signals to the learner only when the causal experience store accepted the event, avoiding dereferencing a rejected/null record.
+- [VALIDATION] WorkPass291, WorkPass293 and WorkPass99 remain green on preceding heads; the type-check is being tightened from actual compiler diagnostics. This batch's exact-head CI is pending.
+- [SCOPE] All commits remain on the isolated PR branch; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass340–343 — repair strict runtime typing and duplicate cycle contract (2026-10-25)
 
 - [LEARNING] Corrected the `ReplaySelectionOptions` import to its defining module and fixed the forgetting-risk input key from `usageGapMs` to `gapMs`.
