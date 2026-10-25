@@ -3,6 +3,7 @@ import { defaultB349State } from '../system/B349NeuralDevelopmentalSpine.ts';
 import { defaultB2525State } from '../cognition/B2525LearnedLatentTransitionField.ts';
 import type { WorldModelSnapshot } from '../world/WorldModel.ts';
 import { sha256Stable } from '../core/StableSerialization.ts';
+import { assessExternalPostcondition } from '../system/OutcomeVerificationService.ts';
 import { defaultSelfModel } from '../cognition/SelfModelV2.ts';
 import { attend } from '../cognition/AttentionSchema.ts';
 import { DEFAULT_ADAPTIVE_VALUES } from '../cognition/ValuePlasticity.ts';
@@ -1263,7 +1264,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
             externalObservations:Array.isArray(entry.record.externalObservations)?entry.record.externalObservations.slice(-8).filter((o:any)=>o&&typeof o.observationId==='string'&&o.observationId.trim()).map((o:any)=>({observationId:String(o.observationId).slice(0,180),verified:Boolean(o.verified),confidence01:Math.max(0,Math.min(1,Number(o.confidence01??0))),expectedPostcondition:o.expectedPostcondition==null?undefined:String(o.expectedPostcondition).slice(0,1024),observedPostcondition:o.observedPostcondition==null?undefined:String(o.observedPostcondition).slice(0,1024),at:Math.max(0,Number(o.at??0)),reason:o.reason==null?undefined:String(o.reason).slice(0,160),assessment:['match','mismatch','unknown'].includes(o.assessment)?o.assessment:'unknown',sourceId:o.sourceId==null?undefined:String(o.sourceId).slice(0,180),sourceClass:['os','device','user','external-api','world','organism','simulator','unknown'].includes(o.sourceClass)?o.sourceClass:undefined,independenceKey:o.independenceKey==null?undefined:String(o.independenceKey).slice(0,120)})):[],
             externalEvidenceStatus:['none','corroborated','contradicted','mixed'].includes(entry.record.externalEvidenceStatus)?entry.record.externalEvidenceStatus:'none',
           },
-        })).filter((entry:any)=>entry.record.executionId===entry.executionId&&entry.fingerprint===sha256Stable({
+        })).filter((entry:any)=>entry.record.executionId===entry.executionId&&Boolean(entry.verifiedExternal)===Boolean(entry.record.ok&&assessExternalPostcondition(entry.record)==='match')&&entry.fingerprint===sha256Stable({
           executionId:entry.executionId,tool:entry.record.tool,ok:Boolean(entry.record.ok),outcomeClass:entry.record.outcomeClass??null,
           verification:{verified:Boolean(entry.record.verified),basis:entry.record.basis,confidence01:Math.max(0,Math.min(1,Number(entry.record.confidence01??0))),
             externalObservation:Boolean(entry.record.externalObservation),observationId:entry.record.observationId??null,
