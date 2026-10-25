@@ -302,7 +302,7 @@ export class HexisAdaptationFabric {
     }): HexisTemporalAssertion {
         const memoryId = String(input?.memoryId ?? '').trim();
         const summary = String(input?.summary ?? '').trim();
-        const rawValidFrom = input?.validFrom;
+        const rawValidFrom: unknown = input?.validFrom;
         const validFrom = typeof rawValidFrom === 'number'
             ? rawValidFrom
             : typeof rawValidFrom === 'string' && rawValidFrom.trim() !== ''
