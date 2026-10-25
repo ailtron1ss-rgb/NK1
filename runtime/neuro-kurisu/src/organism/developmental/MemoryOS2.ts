@@ -876,6 +876,7 @@ export class MemoryOS2{
     this.state.reconsolidations++;
     this.exactIndex.set(`${existing.kind}|${existing.source}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
     this.contentIndex.set(`${existing.kind}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
+    this.enforceByteBudget({maxBytes:this.state.byteBudget,protectedIds:[existing.id],reason:'encode-reconsolidation'});
     return options.clone===false?existing:structuredClone(existing);
    }
    const semanticVector=vectorize(input.content); const entities=[...new Set([...(input.entities??[]),...extractEntities(input.content)])];
@@ -908,7 +909,9 @@ export class MemoryOS2{
    this.contentIndex.set(`${item.kind}|${canonicalizeMemoryContent(item.content)}`,item.id);this.indexItem(item);this.lowerContentCache.delete(item.id);
    for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.linkUpdates++;}}
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
-   if(item.epistemicStatus==='quarantined')this.state.quarantined++;return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
+   if(item.epistemicStatus==='quarantined')this.state.quarantined++;
+   this.enforceByteBudget({maxBytes:this.state.byteBudget,protectedIds:[item.id],reason:'encode-insert'});
+   return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
  }
  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},clone=true){
    // Runtime callers include JS/plugin boundaries where the TS annotation provides no
