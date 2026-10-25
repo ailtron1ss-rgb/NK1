@@ -6,6 +6,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
       - 'runtime/neuro-kurisu/tests/p23-signed-outcome-artifact.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-persistence.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass105-verified-outcomes.yml'
       - 'runtime/neuro-kurisu/package-lock.json'
@@ -32,6 +33,9 @@ jobs:
       - name: Validate verifier authority, leakage and paired outcome metrics
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-verified-outcome-ledger.mjs
+      - name: Verify checksummed outcome-ledger persistence and rejection-history restoration
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-verified-outcome-ledger-persistence.mjs
       - name: Verify signed verifier artifact ingestion
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs
