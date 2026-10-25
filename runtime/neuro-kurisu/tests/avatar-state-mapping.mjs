@@ -60,6 +60,16 @@ assert.equal(buildAvatarPresentation({ ok: true, state: {}, emotion: null }), nu
 
 const visemes = buildAvatarSpeechTimeline('мама, мир', 1, 'ru-RU');
 const sharedTimeline = buildVisemeTimeline('мама, мир', 1, 'ru-RU');
+for (const source of ['Ку́рису 🙂', 'а🙂‍↔️б\\n', '🇳🇱 Курису']) {
+  const expected = buildVisemeTimeline(source, 0.96, 'ru-RU');
+  const actual = buildAvatarSpeechTimeline(source, 0.96, 'ru-RU');
+  assert.deepEqual(
+    actual.map(({ startMs, endMs, pose, grapheme }) => ({ startMs, endMs, pose, grapheme })),
+    expected.map(frame => ({ startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose, grapheme: source.slice(frame.charIndex, frame.endCharIndex) })),
+    'combining marks, joined emoji, flags and newlines must retain canonical UTF-16 grapheme windows',
+  );
+}
+
 assert.deepEqual(
   visemes.map(({ startMs, endMs, pose, grapheme }) => ({ startMs, endMs, pose, grapheme })),
   sharedTimeline.map(frame => ({
