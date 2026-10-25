@@ -527,7 +527,7 @@ const hostileExecutionEvaluator = createIndependentSkillCandidateEvaluator({
   } },
 });
 const hostileExecutionResult = await hostileExecutionEvaluator({
-  payload, workpass348PayloadFingerprint,
+  payload, payloadFingerprint: workpass348PayloadFingerprint,
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
@@ -547,7 +547,7 @@ const hostileVerifierEvaluator = createIndependentSkillCandidateEvaluator({
   } },
 });
 const hostileVerifierResult = await hostileVerifierEvaluator({
-  payload, workpass348PayloadFingerprint,
+  payload, payloadFingerprint: workpass348PayloadFingerprint,
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
