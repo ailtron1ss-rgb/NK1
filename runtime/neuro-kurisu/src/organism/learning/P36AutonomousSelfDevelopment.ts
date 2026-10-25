@@ -335,6 +335,8 @@ function focusFromState(state:OrganismState, extras:{worldError01?:number; selfE
 
 /** Reserved ActionGateway tool ID for host-owned independent P36 evaluation. */
 export const P36_EXTERNAL_EVIDENCE_TOOL_ID = 'organism.learning.p36.evaluate-evidence';
+/** Separate host authority for longitudinal maturity/retention observations. */
+export const P36_DEVELOPMENTAL_OUTCOME_TOOL_ID = 'organism.learning.p36.evaluate-maturity';
 
 export class P36AutonomousSelfDevelopmentEngine{
   private state=defaultState();
@@ -739,7 +741,7 @@ export class P36AutonomousSelfDevelopmentEngine{
     const actionBinding=typeof input.toolId==='string'&&typeof input.executionId==='string'&&typeof input.decisionId==='string'
       ? {toolId:input.toolId,input:binding,executionId:input.executionId,decisionId:input.decisionId}
       : null;
-    const verified=Boolean(input.toolId===P36_EXTERNAL_EVIDENCE_TOOL_ID&&actionBinding&&isTrustedDecisionLinkedExternalPostcondition(input.verification,actionBinding));
+    const verified=Boolean(input.kind==='developmental-outcome'&&input.toolId===P36_DEVELOPMENTAL_OUTCOME_TOOL_ID&&actionBinding&&isTrustedDecisionLinkedExternalPostcondition(input.verification,actionBinding));
     const outcome=binding.outcome01;
     const delayed=binding.delayed;
     const transfer=binding.transfer;
