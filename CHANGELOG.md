@@ -1,3 +1,9 @@
+## NK1 WorkPass541 — align affect contract with freshness projection (2026-10-25)
+
+- The latest focused CI run exposed one more brittle assertion in the affect UI contract: it searched for a generic `freshness01` token, while the avatar deliberately names the computed signal `feelingFreshness01` and places it in the shared affect projection.
+- Updated the test to assert that actual signal, preserving the time-bounded-feeling requirement rather than weakening or removing the contract.
+- **Validation boundary:** committed after the prior run; exact-head focused CI still needs to confirm the contract and other jobs pass.
+
 ## NK1 WorkPass540 — repair P23 revision workflow command (2026-10-25)
 
 - The PR Actions run confirmed WorkPass292's direct test invocation passes, while WorkPass293 failed before executing assertions because its workflow referenced a missing npm script.
