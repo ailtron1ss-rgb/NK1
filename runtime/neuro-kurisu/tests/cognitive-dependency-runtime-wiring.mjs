@@ -23,7 +23,40 @@ let runtime;
 try {
   runtime = new OrganismRuntime(runtimeConfig());
   await runtime.init();
+
+  // Deliberately separate capacity from memory pressure: a healthy capacity
+  // must not erase a high RAM sensor reading on the allocation path.
+  const originalSample = runtime.embodiment.sample.bind(runtime.embodiment);
+  runtime.embodiment.sample = async (...args) => {
+    const sampled = await originalSample(...args);
+    return {
+      ...sampled,
+      bodyEnergy01: 0.8,
+      cognitiveCapacity01: 0.85,
+      thermalStrain01: 0.2,
+      awake: true,
+      telemetry: { ...sampled.telemetry, ramPressure01: 0.88 },
+    };
+  };
+  const predictionDebt01 = Number(runtime.core.predictionDebtSnapshot()?.meanPriority01 ?? 0);
   await runtime.autonomousStep();
+
+  const resourceEvent = runtime.evidenceSnapshot().recent.find(event => event.source === 'cognitive-resource-economy');
+  assert.ok(resourceEvent, 'runtime must publish resource allocator evidence');
+  assert.equal(resourceEvent.payload.cognitiveCapacity01, 0.85);
+  assert.equal(resourceEvent.payload.ramPressure01, 0.88,
+    'resource evidence must preserve measured RAM pressure rather than reusing inverse capacity');
+  const expectedScarcity = Math.max(0, Math.min(1,
+    (1 - 0.8) * 0.30 +
+    (1 - 0.85) * 0.22 +
+    0.2 * 0.18 +
+    0.88 * 0.14 +
+    predictionDebt01 * 0.08,
+  ));
+  assert.ok(
+    Math.abs(runtime.resourceEconomy.snapshot().scarcity01 - expectedScarcity) < 1e-9,
+    'actual resource scarcity must use the measured RAM pressure input',
+  );
 
   const first = runtime.cognitiveDependencySnapshot();
   assert.ok(first.lastTick > 0, 'the live runtime cycle must resolve a cognitive dependency frame');
