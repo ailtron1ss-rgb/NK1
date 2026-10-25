@@ -482,9 +482,11 @@ export class MemoryOS2{
    const corpus:MemoryItem2[]=[];
    const corpusById=new Map<string,MemoryItem2>();
    const corpusIds=new Set<string>();
+   const corpusState=new Map<string,{contentHash:string;validFromAt:number;validUntilAt:number|null;dormant:boolean;epistemicStatus:EpistemicStatus}>();
    for(const item of this.state.items){
      if(!eligible(item))continue;
      corpus.push(item);corpusById.set(item.id,item);corpusIds.add(item.id);
+     corpusState.set(item.id,{contentHash:memoContentHash(item.content),validFromAt:Number(item.validFromAt??item.createdAt),validUntilAt:item.validUntilAt??null,dormant:item.dormant,epistemicStatus:item.epistemicStatus});
    }
    for(const id of this.semanticEmbeddingIndex.keys())if(!corpusIds.has(id))this.semanticEmbeddingIndex.delete(id);
    const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(performanceOptions.maxLexicalPool??Math.max(24,Math.min(64,safeLimit*8)))));
@@ -535,6 +537,8 @@ export class MemoryOS2{
      const semanticRows:Array<{item:MemoryItem2;score:number;similarity:number;lexicalRank:number}> = [];
      for(const item of corpus){
        if(!eligible(item))continue;
+       const state=corpusState.get(item.id);
+       if(!state||memoContentHash(item.content)!==state.contentHash||Number(item.validFromAt??item.createdAt)!==state.validFromAt||(item.validUntilAt??null)!==state.validUntilAt||item.dormant!==state.dormant||item.epistemicStatus!==state.epistemicStatus)continue;
        const cached=this.semanticEmbeddingIndex.get(item.id);
        if(!cached||cached.providerId!==provider.providerId||cached.contentHash!==memoContentHash(item.content)||cached.vector.length!==queryVector.length)continue;
        let dot=0,normA=0,normB=0;for(let i=0;i<queryVector.length;i++){dot+=queryVector[i]*cached.vector[i];normA+=queryVector[i]*queryVector[i];normB+=cached.vector[i]*cached.vector[i];}
