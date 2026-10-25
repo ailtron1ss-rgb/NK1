@@ -1,3 +1,16 @@
+## Latest durable checkpoint — WorkPass535 production P36 evaluator bootstrap (2026-10-25)
+
+- Continue in `feature/learning` / draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate PR. Keep `main` and the Release ZIP unchanged.
+- `server.mjs` now supports the explicit host environment variable `NEURO_P36_SIGNED_LEDGER_CONFIG_FILE`. When configured, the bootstrap reads a config JSON plus manifest, a public-only verifier keyring, and a directory of signed artifacts. Every artifact is re-ingested and signature-verified on startup. It rejects bad signatures/replays, private keys, unsafe file permissions, path traversal, and missing paired holdout coverage before enabling the experiment evaluator.
+- The config JSON is version 1 and names `manifestFile`, `trustedVerifierKeysFile`, `artifactsDirectory`, `evaluatorVersion`, `baselineMethod`, `treatmentMethod`, `taskFamily`, `sourceId`, `independenceKey`, and optionally `minimumPairedSeeds` (minimum 4). Relative paths must remain under the config directory.
+- `NEURO_P36_MATURITY_EVALUATOR_MODULE` can load a separately trusted host module exporting `createP36DevelopmentalOutcomeEvaluator({stateDirectory})` (or default factory). This is trusted executable host code, never a generated skill. If unset, maturity evaluation remains unavailable.
+- Added `npm run test:p36:host-bootstrap` and the P26 Learning Validation workflow step/path triggers. Regression covers a full 32-artifact signed fixture, rejection of a private key in the keyring, signature tampering, and separate maturity module loading.
+- **Validation:** exact-head CI/typecheck/test results remain unconfirmed; no current PASS is claimed. The repository contains no production verifier private key, signed production outcome corpus, or delayed-maturity provider. Production host must supply those via controlled read-only deployment configuration; no empirical learning gain is claimed.
+
+Full report: [WorkPass535 host bootstrap](docs/WORKPASS535_P36_HOST_EVALUATOR_BOOTSTRAP_RU.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass534 separates P36 evidence and maturity (2026-10-25)
 
 - Continue on `feature/learning` / draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); no duplicate PR. Keep `main` and the Release ZIP unchanged.
