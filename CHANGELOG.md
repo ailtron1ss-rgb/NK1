@@ -1,3 +1,11 @@
+## NK1 WorkPass354 — Make transfer-metric regression numerically robust (2026-10-25)
+
+- [NUMERICAL-CORRECTNESS] Changed the continual-transfer unit test to compare the computed (0.35 - 0.20) delta within a small floating-point tolerance. IEEE-754 subtraction can produce `0.14999999999999997`; the metric is correct, while exact decimal equality was brittle.
+- [NO-RELAXED-SEMANTICS] The accepted value remains constrained to within (10^{-12}) of the expected transfer delta; signed negative-transfer and snapshot-restore assertions remain unchanged.
+- [VALIDATION] The P26 Learning Validation workflow reruns against the current PR head after this test correction.
+
+---
+
 ## NK1 WorkPass351 — Repair strip-only runtime loading and durable skill CAS (2026-10-25)
 
 - [REPLAY-RUNTIME] Replaced the `ContinualReplayBuffer` constructor parameter property with an explicit field assignment so Node's strip-only TypeScript loader can import the module in replay CI.
