@@ -2242,3 +2242,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - External-goal materialization persists this source chain in canonical NK1 goal state; repeat approvals and activations verify it rather than relying solely on proposal status or a matching goal ID.
 - Added a restricted recovery case for an interrupted same-proposal materialization and fail-closed handling for native/different-source ID collisions.
 - Extended the Hexis server smoke to verify source lineage and proposal provenance before and after activation. Exact-head validation is pending after this code change; no passing result is assumed yet.
+
+
+
+## 2026-10-25 — WorkPass334: strict Hexis boundary typing
+
+- Narrowed HMX source and imported-goal metadata to validated records before accessing dynamic fields.
+- Added `HexisCanonicalMemoryProjector.d.mts` so strict NodeNext TypeScript resolves the existing `.mjs` projector with concrete canonical-memory and semantic-graph contracts.
+- Added an explicit guard before canonical HMX goal materialization to avoid an undefined-goal type path.
+- Fresh validation is required after this commit. The wider typecheck has also reported unrelated pre-existing nullability/contract errors elsewhere; no whole-runtime typecheck pass is claimed.

@@ -69,3 +69,10 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 - Activation validates that the canonical goal's provenance still matches the reviewed proposal. An ID collision or a goal that has been changed to another source fails closed instead of granting external intent to an unrelated native goal.
 - A narrow recovery path only fills missing provenance for the exact same paused external goal and proposal after a partially completed materialization; it does not adopt native goals or overwrite mismatched source lineage.
 - The live server smoke now asserts that provenance exists after review/materialization and remains consistent after explicit activation.
+
+
+## WorkPass334 — strict typing at Hexis boundaries
+
+- Narrowed untrusted HMX `source` and goal metadata to validated record objects before reading dynamic fields; this removes strict TypeScript errors without weakening runtime validation.
+- Added a NodeNext `.d.mts` declaration for `HexisCanonicalMemoryProjector.mjs`, connecting it to the canonical MemoryFabric, semantic graph, HMX stage and receipt types.
+- Added an explicit impossible-state guard before finalizing goal proposal materialization. The isolated Hexis workflow had passed on the prior code checkpoint; this type-boundary update requires fresh validation. The broader runtime typecheck still reports unrelated legacy nullability and contract errors; a green Hexis workflow is not being presented as a full-repository typecheck pass.

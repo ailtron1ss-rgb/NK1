@@ -2995,6 +2995,7 @@ export class OrganismCore {
                 this.persisted.goals.unshift(goal);
                 this.persisted.goals = this.persisted.goals.slice(0, 100);
             }
+            if (!goal) throw new Error('hmx-goal-materialization-failed');
             const materialized = this.hexisAdaptation.markGoalProposalMaterialized(proposalId, goal.id);
             this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
             return { proposal: materialized, goal: structuredClone(goal), requiresExplicitActivation: true };
