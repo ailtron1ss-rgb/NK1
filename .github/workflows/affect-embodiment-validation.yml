@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts'
