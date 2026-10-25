@@ -5,7 +5,8 @@
 - Cache the mapped Live2D expression so repeated identical emotion messages do not restart the same animation during mouth, gaze or body updates.
 - Keep causal-learning regressions aligned with the current trust boundary: imported external rows remain reviewable but do not count as trusted runtime outcomes or contribute restored learning aggregates; replay-diversity fixtures now represent grounded action transitions.
 - Run the P66 regression in affect CI and watch the Live2D viewer so changes to these files trigger the validation workflow.
-- **Validation boundary:** focused affect checks and the causal stream, avatar lifecycle, Live2D integrity and continual-learning metric subset must pass on the exact final head. Independent P23 seed-cluster comparison is tracked separately if it fails.
+- [P23 benchmark] Corrected the reversed-arrival-order fixture to use the verifier identity declared by the task manifest. The previous fixture used a different verifier ID, so every row was legitimately rejected and the bootstrap interval became `null`; no estimator behavior was changed.
+- **Validation boundary:** all changed-path tests and the broad workflow must pass on the exact final head.
 
 ## NK1 WorkPass543 — harden emotion-to-action continuity and branch readiness (2026-10-25)
 
