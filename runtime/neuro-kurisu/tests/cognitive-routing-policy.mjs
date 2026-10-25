@@ -68,4 +68,12 @@ const invalidBudget = resolveCognitiveRoutingPolicy({
 }, Number.NaN);
 assert.equal(invalidBudget.maxCounterfactualBranches, 0, 'invalid budget input must fail closed');
 
+const nearCritical = resolveCognitiveRoutingPolicy({
+  wakeMask: 8,
+  interrupt: { active: true, priority01: 0.899999, type: 'prediction-error', domains: ['agency'] },
+}, 2);
+assert.equal(nearCritical.reason, 'active-interrupt', 'priority just below the critical threshold must remain an ordinary interrupt');
+assert.equal(nearCritical.maxCounterfactualBranches, 1);
+assert.ok(nearCritical.cognitiveCycleDelayMultiplier01 < 1 && nearCritical.cognitiveCycleDelayMultiplier01 > 0.75);
+
 console.log('Cognitive routing policy: PASS');
