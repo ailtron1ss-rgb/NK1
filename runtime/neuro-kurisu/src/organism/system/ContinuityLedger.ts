@@ -97,11 +97,17 @@ export class ContinuityLedger {
       selected.push(line);
       selectedBytes += lineBytes;
     }
+    const output = selected.join('');
+    if (!output) {
+      // No complete record fits. Drop this over-budget batch without writing a fragment.
+      this.pendingLines = [];
+      this.pendingBytes = 0;
+      return;
+    }
+    // Keep the buffer until the write succeeds. A failed disk write must remain retryable.
+    await handle.write(output, null, 'utf8');
     this.pendingLines = [];
     this.pendingBytes = 0;
-    const output = selected.join('');
-    if (!output) return;
-    await handle.write(output, null, 'utf8');
     const written = new TextEncoder().encode(output).byteLength;
     this.stats = { ...this.stats, bytesWritten: this.stats.bytesWritten + written, lastWriteMs: Date.now() - started };
   }
