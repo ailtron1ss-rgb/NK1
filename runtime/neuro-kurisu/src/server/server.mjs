@@ -23,6 +23,7 @@ import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
+import { loadP36VerifiedOutcomeLedgerEvaluator, loadP36DevelopmentalOutcomeEvaluatorModule } from '../organism/learning/P36HostEvaluatorBootstrap.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -78,6 +79,27 @@ async function configureCompoundRepairRevision() {
     return { engine, provideInputs };
 }
 const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
+// Optional, fail-closed host configuration for P36. No evaluator is silently
+// fabricated when the signed ledger or longitudinal observer is not configured.
+const P36_SIGNED_LEDGER_CONFIG_FILE = String(process.env.NEURO_P36_SIGNED_LEDGER_CONFIG_FILE || '').trim();
+const P36_MATURITY_EVALUATOR_MODULE = String(process.env.NEURO_P36_MATURITY_EVALUATOR_MODULE || '').trim();
+async function configureP36HostEvaluators() {
+    const configured = {};
+    if (P36_SIGNED_LEDGER_CONFIG_FILE) {
+        const configPath = path.isAbsolute(P36_SIGNED_LEDGER_CONFIG_FILE)
+            ? P36_SIGNED_LEDGER_CONFIG_FILE
+            : path.resolve(ROOT, P36_SIGNED_LEDGER_CONFIG_FILE);
+        configured.p36IndependentEvaluator = await loadP36VerifiedOutcomeLedgerEvaluator(configPath);
+    }
+    if (P36_MATURITY_EVALUATOR_MODULE) {
+        const modulePath = path.isAbsolute(P36_MATURITY_EVALUATOR_MODULE)
+            ? P36_MATURITY_EVALUATOR_MODULE
+            : path.resolve(ROOT, P36_MATURITY_EVALUATOR_MODULE);
+        configured.p36DevelopmentalOutcomeEvaluator = await loadP36DevelopmentalOutcomeEvaluatorModule(modulePath, STATE);
+    }
+    return configured;
+}
+const P36_HOST_EVALUATORS = await configureP36HostEvaluators();
 const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
 const PHONE_MODE = PHONE_POLICY.mode !== 'research';
 const INTERVAL_MS = PHONE_POLICY.baseIntervalMs;
@@ -169,6 +191,8 @@ const runtime = new OrganismRuntime({
     worldStateStore: new FileStateStore(worldFile, { backupEverySaves: BACKUP_EVERY_SAVES, encoding: PHONE_MODE ? 'v8' : 'json' }),
     ...(TRUSTED_SHADOW_LEARNING ? { trustedShadowLearning: TRUSTED_SHADOW_LEARNING } : {}),
     ...(COMPOUND_REPAIR_REVISION ? { compoundRepairRevision: COMPOUND_REPAIR_REVISION } : {}),
+    ...(P36_HOST_EVALUATORS.p36IndependentEvaluator ? { p36IndependentEvaluator: P36_HOST_EVALUATORS.p36IndependentEvaluator } : {}),
+    ...(P36_HOST_EVALUATORS.p36DevelopmentalOutcomeEvaluator ? { p36DevelopmentalOutcomeEvaluator: P36_HOST_EVALUATORS.p36DevelopmentalOutcomeEvaluator } : {}),
 });
 let runtimeReady = false;
 const willSdk = new WillSdkFacade({ step: (message, options) => runtime.step(message, options), snapshot: () => runtime.core.snapshot(), flush: () => runtime.core.flush(), exportWillPma: () => runtime.core.exportWillPma(), validateWillPma: (pma) => runtime.core.validateWillPma(pma) }, { enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() }, 'kurisu');
