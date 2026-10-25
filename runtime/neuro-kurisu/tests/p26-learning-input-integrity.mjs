@@ -46,6 +46,11 @@ assert.equal(repaired.frozen, false, 'only literal boolean true may restore a fr
 const explicitlyFrozen = new ParametricPolicyLearner();
 explicitlyFrozen.restore({ ...initial, frozen: true });
 assert.equal(explicitlyFrozen.snapshot().frozen, true, 'literal boolean true must preserve an intentional safety freeze');
+const malformedFreezeSetter = new ParametricPolicyLearner();
+malformedFreezeSetter.setFrozen('false');
+assert.equal(malformedFreezeSetter.snapshot().frozen, false, 'truthy strings must not enable the policy freeze');
+malformedFreezeSetter.setFrozen(true);
+assert.equal(malformedFreezeSetter.snapshot().frozen, true, 'literal boolean true must enable the policy freeze');
 assert.equal(repaired.weights.respond[0], 0);
 assert.equal(repaired.weights.explore[1], 0);
 assert.equal(repaired.bias.verify, 0);
