@@ -709,10 +709,11 @@ export class ActionGateway {
       catch { return this.result(id,'unknown','provider-receipt-not-serializable','idempotency-recovery-required',prior.executionId,{error:'provider-receipt-not-serializable'},'provider receipt is not stable JSON and cannot be committed safely'); }
       if(bytes>48*1024) return this.result(id,'unknown','provider-receipt-too-large','idempotency-recovery-required',prior.executionId,{error:'provider-receipt-too-large',bytes},'provider result exceeds the bounded durable receipt size; adapter must return a concise canonical receipt');
       const toolOk=result.ok!==false;
+      const executionId=prior.executionId;
       const verification=await this.verifier.verify({
          toolId:id,input,result,
-         executionId:prior.executionId,
-         ...(typeof prior.decisionId==='string'?{decisionId:prior.decisionId}:{}),
+         executionId,
+         ...typeof prior.decisionId === 'string' ? {decisionId:prior.decisionId} : {},
        },tool.verify);
       const classified=classifyVerifiedExecution(toolOk,verification);
       const auditReason=classified.contradicted?'external-postcondition-contradicted':reason;
