@@ -26,12 +26,13 @@ const shutdown = (reason) => {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[super] shutting down (${reason})`);
+  const exitCode = reason === 'SIGINT' ? 130 : reason === 'SIGTERM' ? 143 : 1;
   for (const child of children) {
     if (child.exitCode === null && child.signalCode === null) {
       try { child.kill('SIGTERM'); } catch { /* child already exited */ }
     }
   }
-  setTimeout(() => process.exit(0), 800).unref();
+  setTimeout(() => process.exit(exitCode), 800).unref();
 };
 
 const launch = (label, command, args, env = {}) => {
