@@ -1,0 +1,62 @@
+name: NK1 personality character regression
+
+on:
+  push:
+    paths:
+      - "CHANGELOG.md"
+      - "runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P67AutonomousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/language/KurisuCanonProfile.ts"
+      - "runtime/neuro-kurisu/tests/p2702-persistent-personality-dynamics.mjs"
+      - "runtime/neuro-kurisu/tests/p67-value-self-change-loop.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
+      - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
+      - "runtime/neuro-kurisu/tests/learning-trust-boundary-contract.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-526-personality-live-generalization.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/personality-character-regression.yml"
+
+  pull_request:
+    paths:
+      - "CHANGELOG.md"
+      - "runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P67AutonomousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/language/KurisuCanonProfile.ts"
+      - "runtime/neuro-kurisu/tests/p2702-persistent-personality-dynamics.mjs"
+      - "runtime/neuro-kurisu/tests/p67-value-self-change-loop.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
+      - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
+      - "runtime/neuro-kurisu/tests/learning-trust-boundary-contract.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-526-personality-live-generalization.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/personality-character-regression.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-personality-character-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  personality-character:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Validate shared learning trust boundary
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/learning-trust-boundary-contract.mjs
+      - name: Verify P67 accepts absent optional drive labels
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p67-value-self-change-loop.mjs
+      - name: Exercise persistent character and personality
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2702-persistent-personality-dynamics.mjs
+      - name: Verify learned personality affects live Core after restart
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-transform-types tests/big-pass-526-personality-live-generalization.mjs

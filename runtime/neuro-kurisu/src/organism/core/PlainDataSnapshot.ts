@@ -8,9 +8,10 @@ export interface PlainDataSnapshotOptions {
   maxStringUnits?: number;
   allowNonFiniteNumbers?: boolean;
 }
+export const SNAPSHOT_MAX_NODES = 100_000;
 type SnapshotBudget = { nodes: number; stringUnits: number };
 export function snapshotPlainData<T = unknown>(input: unknown, options: PlainDataSnapshotOptions = {}): T {
-  const maxDepth=options.maxDepth??64, maxNodes=options.maxNodes??100_000, maxStringUnits=options.maxStringUnits??4*1024*1024;
+  const maxDepth=options.maxDepth??64, maxNodes=options.maxNodes??SNAPSHOT_MAX_NODES, maxStringUnits=options.maxStringUnits??4*1024*1024;
   const allowNonFiniteNumbers=options.allowNonFiniteNumbers??false, budget:SnapshotBudget={nodes:0,stringUnits:0};
   const visit=(value:unknown,ancestors:Set<object>,depth:number):unknown=>{
     if(typeof value==='string'){budget.stringUnits+=value.length;if(budget.stringUnits>maxStringUnits)throw new Error('plain-data-snapshot-size-limit');return value;}

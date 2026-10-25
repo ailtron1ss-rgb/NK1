@@ -106,6 +106,15 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
       continue;
     }
     consumedRuns.add(report.trialId);
+    // Do not derive even a rejection category from mutable receipt fields until
+    // their signature/context verifier succeeds. Otherwise a tampered payload can
+    // be mislabeled as a mere outcome mismatch before cryptographic verification.
+    let verified = false;
+    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
+    if (!verified) {
+      reasons.push('signed-shadow-evidence-not-trusted');
+      continue;
+    }
     if (payload.taskId !== report.taskId || payload.runId !== report.trialId) {
       reasons.push('reflective-trial-receipt-identity-mismatch');
       continue;
@@ -113,12 +122,6 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
     if (payload.passed !== report.taskSuccess?.passed ||
         report.taskSuccess?.passRate !== (payload.passed ? 1 : 0)) {
       reasons.push('reflective-trial-outcome-mismatch');
-      continue;
-    }
-    let verified = false;
-    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
-    if (!verified) {
-      reasons.push('signed-shadow-evidence-not-trusted');
       continue;
     }
     boundTrials += 1;

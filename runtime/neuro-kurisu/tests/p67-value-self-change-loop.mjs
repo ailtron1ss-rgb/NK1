@@ -24,4 +24,24 @@ assert.equal(results.truth.valueFocus,'responsibility');
 assert.ok(results.responsibility.reason.includes('value='));
 assert.ok(results.truth.reason.includes('value='));
 assert.ok(results.curiosity.reason.includes('value='));
+
+const nullableDominants = new P67AutonomousGoalGenesis().propose({
+  ...base,
+  valueWeights: highTruth,
+  motiveDominant: null,
+  attractorDominant: null,
+});
+assert.ok(nullableDominants, 'nullable drive labels from the live Core should be treated as absent optional metadata');
+
+const typedAdaptiveWeights = {
+  ...highTruth,
+  updatedAt: 1_800_000_000_000,
+  plasticityBudget: 0.08,
+};
+const metadataWeightsCandidate = new P67AutonomousGoalGenesis().propose({
+  ...base,
+  valueWeights: typedAdaptiveWeights,
+});
+assert.ok(metadataWeightsCandidate,
+  'real AdaptiveValueWeights metadata must not be mistaken for a value-score dimension');
 console.log(`P67_VALUE_SELF_CHANGE=PASS low=${results.low.importance.toFixed(4)} truth=${results.truth.importance.toFixed(4)} responsibility=${results.responsibility.importance.toFixed(4)} curiosity=${results.curiosity.importance.toFixed(4)}`);
