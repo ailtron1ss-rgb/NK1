@@ -23,17 +23,60 @@ export interface LearningTarget {
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const num=(x:number,d=0)=>Number.isFinite(x)?x:d;
 export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12):ReflectionHypothesis[]{
+  if(!Array.isArray(rows)) return [];
+
+  // Reflection is a hypothesis generator, not a label-cleaning mechanism.
+  // Invalid feedback must be discarded, not silently converted into failure.
+  const isEvidenceText=(value:unknown):value is string=>
+    typeof value==='string'&&value.length>0&&value.length<=512&&value.trim()===value&&
+    !/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
+  const isUnit=(value:unknown):value is number=>
+    typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+  const isTick=(value:unknown):value is number=>
+    Number.isSafeInteger(value)&&typeof value==='number'&&value>=0;
+  const isValid=(value:unknown):value is ReflectionExperience=>{
+    if(!value||typeof value!=='object'||Array.isArray(value))return false;
+    const e=value as Partial<ReflectionExperience>;
+    return isEvidenceText(e.id)&&isEvidenceText(e.contextKey)&&isEvidenceText(e.action)&&
+      isUnit(e.success)&&isUnit(e.predictedUtility)&&isUnit(e.surprise)&&isTick(e.tick)&&
+      (e.at===undefined||isTick(e.at));
+  };
+
+  // De-duplicate by stable experience identity. Exact redelivery is harmless;
+  // conflicting values for one ID invalidate that ID instead of letting input
+  // order decide which outcome gets to teach the reflection engine.
+  const byId=new Map<string,{fingerprint:string;row:ReflectionExperience}>();
+  const conflictedIds=new Set<string>();
+  for(const candidate of rows){
+    if(!isValid(candidate)) continue;
+    const e=candidate;
+    if(conflictedIds.has(e.id)) continue;
+    const fingerprint=JSON.stringify([
+      e.contextKey,e.action,e.success,e.predictedUtility,e.surprise,e.tick,e.at??null,
+    ]);
+    const existing=byId.get(e.id);
+    if(!existing) byId.set(e.id,{fingerprint,row:{...e}});
+    else if(existing.fingerprint!==fingerprint){
+      byId.delete(e.id);
+      conflictedIds.add(e.id);
+    }
+  }
+
   const groups=new Map<string,ReflectionExperience[]>();
-  for(const e of rows){
-    if(!e||!e.id||!e.contextKey||!e.action)continue;
-    const key=JSON.stringify([e.contextKey,e.action]),g=groups.get(key)??[];g.push(e);groups.set(key,g);
+  for(const {row:e} of byId.values()){
+    const key=JSON.stringify([e.contextKey,e.action]),g=groups.get(key)??[];
+    g.push(e);groups.set(key,g);
   }
   const out:ReflectionHypothesis[]=[];
   for(const [key,raw] of groups){
-    const ordered=[...raw].sort((a,b)=>a.tick-b.tick),recent=ordered.slice(-8);
-    const success=recent.reduce((s,e)=>s+c(e.success),0)/recent.length;
-    const predicted=recent.reduce((s,e)=>s+c(e.predictedUtility),0)/recent.length;
-    const surprise=recent.reduce((s,e)=>s+c(e.surprise),0)/recent.length;
+    // Tie-breaking by timestamp and ID makes the recent window independent of
+    // arrival order when several experiences share the same cognitive tick.
+    const ordered=[...raw].sort((a,b)=>
+      a.tick-b.tick||(a.at??-1)-(b.at??-1)||a.id.localeCompare(b.id));
+    const recent=ordered.slice(-8);
+    const success=recent.reduce((s,e)=>s+e.success,0)/recent.length;
+    const predicted=recent.reduce((s,e)=>s+e.predictedUtility,0)/recent.length;
+    const surprise=recent.reduce((s,e)=>s+e.surprise,0)/recent.length;
     const gap=Math.abs(success-predicted),failures=recent.filter(e=>e.success<.45).length;
     const kind:FailureKind=recent.length<4?'insufficient-evidence':failures>=3?'repeated-context-failure':
       gap>=.3?'prediction-gap':success<.45?'low-outcome':surprise>=.65?'unexpected-surprise':'insufficient-evidence';
@@ -51,7 +94,8 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
       evidenceNeeded:'At least one independent verifier or human-reviewed outcome on a held-out task; self-reflection alone is insufficient',
       confidence01:confidence,sourceExperienceIds:recent.map(e=>e.id)});
   }
-  return out.sort((a,b)=>b.priority01-a.priority01).slice(0,Math.max(1,Math.min(64,Math.floor(num(limit,12)))));
+  return out.sort((a,b)=>b.priority01-a.priority01||a.key.localeCompare(b.key))
+    .slice(0,Math.max(1,Math.min(64,Math.floor(num(limit,12)))));
 }
 export function scoreLearningTarget(t:Omit<LearningTarget,'score01'|'rationale'>):LearningTarget{
   const rationale:string[]=[];
