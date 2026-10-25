@@ -2,6 +2,7 @@
 
 - [CI] Extended `workpass331-unified-cognitive-kernel.yml` to run the existing organism smoke test and restart-persistence regression after the canonical kernel wiring test.
 - [TRIGGER] Added both tests to the workflow's `push` and `pull_request` path filters so the checks can run when those test contracts change.
+- [TRIGGER] Added `runtime/neuro-kurisu/package.json` to both path filters so future changes to runtime test scripts trigger the same gates.
 - [PURPOSE] The kernel wiring and cognitive-cycle contracts are useful but do not prove the organism starts cleanly or restores state after restart; the focused workflow now checks both scenarios on the same SHA as the kernel gate.
 - [VALIDATION] Workflow update committed as `468e2e68906f380ac0b9c65c822669879160b2aa`. Exact-head smoke/restart results are pending; the new tests are gates, not claimed passes.
 
