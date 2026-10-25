@@ -1,9 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const SOURCE_EXTENSIONS = '(?:mjs|cjs|js|ts)';
-const NODE_FILE = new RegExp('\\bnode\\s+(?:(?:--[\\w-]+)(?:=[^\\s]+)?\\s+)*([^\\s;&|\"\\x27]+\\.' + SOURCE_EXTENSIONS + ')(?=\\s|$)', 'g');
-const PYTHON_FILE = /\bpython3?\s+([^\s;&|"']+\.py)(?=\s|$)/g;
+const NODE_FILE = /\bnode\s+(?:(?:--[\w-]+)(?:=[^\s]+)?\s+)*(?:"([^"]+\.(?:mjs|cjs|js|ts|mts|cts|tsx|jsx))"|'([^']+\.(?:mjs|cjs|js|ts|mts|cts|tsx|jsx))'|([^\s;&|"'()]+\.(?:mjs|cjs|js|ts|mts|cts|tsx|jsx)))(?=\s|$)/g;
+const PYTHON_FILE = /\bpython3?\s+(?:"([^"]+\.py)"|'([^']+\.py)'|([^\s;&|"']+\.py))(?=\s|$)/g;
 const NPM_RUN = /\bnpm(?:\.cmd)?\s+(?:--prefix\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s+)?run\s+(?:"([^"]+)"|'([^']+)'|([A-Za-z0-9:_-]+))/g;
 
 function unquote(value) {
@@ -19,6 +18,30 @@ const CODE_EXTENSIONS = /\.(?:mjs|cjs|js|ts|tsx|mts|cts|jsx)$/i;
 const IGNORED_SOURCE_DIRECTORIES = new Set([
   '.git', 'node_modules', 'dist', 'build', 'coverage', '.next', '.cache', '.turbo', 'vendor', 'artifacts', 'out'
 ]);
+
+function canonicalPathWithMissingTail(candidatePath) {
+  let current = path.resolve(candidatePath);
+  const missingSegments = [];
+  while (true) {
+    try {
+      const realCurrent = fs.realpathSync(current);
+      return path.resolve(realCurrent, ...missingSegments.reverse());
+    } catch {
+      const parent = path.dirname(current);
+      if (parent === current) return path.resolve(candidatePath);
+      missingSegments.push(path.basename(current));
+      current = parent;
+    }
+  }
+}
+
+function isWithinRoot(rootDirectory, candidatePath) {
+  const canonicalRoot = canonicalPathWithMissingTail(rootDirectory);
+  const canonicalCandidate = canonicalPathWithMissingTail(candidatePath);
+  const relative = path.relative(canonicalRoot, canonicalCandidate);
+  return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith('..' + path.sep));
+}
+
 
 function walkCodeFiles(directory, rootDirectory = directory) {
   if (!fs.existsSync(directory)) return [];
@@ -95,11 +118,12 @@ function extractRelativeModuleSpecifiers(source) {
   return found;
 }
 
-function resolveRelativeModule(importerPath, specifier) {
+function resolveRelativeModule(importerPath, specifier, rootDirectory) {
   const cleanSpecifier = specifier.split(/[?#]/, 1)[0];
   // Dynamic/template-built paths cannot be statically resolved; avoid false positives.
   if (!cleanSpecifier || /[{}$*]/.test(cleanSpecifier)) return true;
   const base = path.resolve(path.dirname(importerPath), cleanSpecifier);
+  if (rootDirectory && !isWithinRoot(rootDirectory, base)) return false;
   const extension = path.extname(cleanSpecifier).toLowerCase();
   const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json']);
   const candidates = [base];
@@ -117,6 +141,149 @@ function resolveRelativeModule(importerPath, specifier) {
   return false;
 }
 
+function collectWorkflowJobs(content) {
+  const lines = content.split(/\r?\n/);
+  const jobsLine = lines.findIndex(line => /^(\s*)jobs:\s*(?:#.*)?$/.test(line));
+  if (jobsLine < 0) return { jobIds: new Set(), dependencies: [], jobCount: 0 };
+  const jobsIndent = lines[jobsLine].match(/^(\s*)/)[0].length;
+  let sectionEnd = jobsLine + 1;
+  while (sectionEnd < lines.length) {
+    const line = lines[sectionEnd];
+    if (line.trim() && line.match(/^\s*/)[0].length <= jobsIndent) break;
+    sectionEnd += 1;
+  }
+
+  const firstContentLine = lines.slice(jobsLine + 1, sectionEnd)
+    .find(line => line.trim() && !line.trimStart().startsWith('#'));
+  if (!firstContentLine) return { jobIds: new Set(), dependencies: [], jobCount: 0 };
+  const jobIndent = firstContentLine.match(/^\s*/)[0].length;
+  const jobPattern = /^(\s*)([A-Za-z0-9_-]+):\s*(?:#.*)?$/;
+  const jobStarts = [];
+  for (let index = jobsLine + 1; index < sectionEnd; index += 1) {
+    const match = lines[index].match(jobPattern);
+    if (match && match[1].length === jobIndent) jobStarts.push({ index, id: match[2] });
+  }
+
+  const jobIds = new Set(jobStarts.map(job => job.id));
+  const dependencies = [];
+  for (let position = 0; position < jobStarts.length; position += 1) {
+    const job = jobStarts[position];
+    const end = jobStarts[position + 1]?.index ?? sectionEnd;
+    const propertyIndent = lines.slice(job.index + 1, end)
+      .filter(line => line.trim() && !line.trimStart().startsWith('#'))
+      .map(line => line.match(/^\s*/)[0].length)
+      .filter(indent => indent > jobIndent)
+      .sort((left, right) => left - right)[0];
+    if (propertyIndent === undefined) continue;
+
+    for (let index = job.index + 1; index < end; index += 1) {
+      const field = lines[index].match(/^(\s*)needs:\s*(.*?)\s*$/);
+      if (!field || field[1].length !== propertyIndent) continue;
+      const tail = stripYamlComment(field[2]).trim();
+      let needed = [];
+      if (tail.startsWith('[') && tail.endsWith(']')) {
+        needed = tail.slice(1, -1).split(',').map(value => unquote(value.trim())).filter(Boolean);
+      } else if (tail) {
+        needed = [unquote(tail)];
+      } else {
+        for (let cursor = index + 1; cursor < end; cursor += 1) {
+          if (lines[cursor].trim() && lines[cursor].match(/^\s*/)[0].length <= propertyIndent) break;
+          const item = lines[cursor].match(/^\s*-\s*(.*?)\s*$/);
+          if (item) needed.push(unquote(stripYamlComment(item[1])));
+        }
+      }
+      for (const dependency of needed) {
+        if (!dependency || /[\x24{}*]/.test(dependency)) continue;
+        dependencies.push({ jobId: job.id, dependency });
+      }
+    }
+  }
+  return { jobIds, dependencies, jobCount: jobIds.size };
+}
+
+
+function hasGlobCharacters(value) {
+  return /[*?\[]/.test(value);
+}
+
+function globSegmentMatches(pattern, candidate) {
+  let source = '^';
+  for (let index = 0; index < pattern.length; index += 1) {
+    const character = pattern[index];
+    if (character === '*') {
+      source += '.*';
+    } else if (character === '?') {
+      source += '.';
+    } else if (character === '[') {
+      const close = pattern.indexOf(']', index + 1);
+      if (close > index + 1) {
+        let characterClass = pattern.slice(index + 1, close);
+        if (characterClass.startsWith('!')) characterClass = '^' + characterClass.slice(1);
+        source += '[' + characterClass + ']';
+        index = close;
+      } else {
+        source += '\\[';
+      }
+    } else {
+      source += character.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+    }
+  }
+  source += '$';
+  try { return new RegExp(source).test(candidate); } catch { return false; }
+}
+
+function collectGlobMatches(rootDirectory, absolutePattern) {
+  if (!isWithinRoot(rootDirectory, absolutePattern)) return [];
+  const relativePattern = path.relative(path.resolve(rootDirectory), path.resolve(absolutePattern));
+  const segments = relativePattern.split(path.sep).filter(Boolean);
+  let fixedCount = 0;
+  while (fixedCount < segments.length && !hasGlobCharacters(segments[fixedCount])) fixedCount += 1;
+  const fixedPath = path.resolve(rootDirectory, ...segments.slice(0, fixedCount));
+  if (!isWithinRoot(rootDirectory, fixedPath) || !fs.existsSync(fixedPath)) return [];
+
+  function expand(currentPath, segmentIndex) {
+    if (!isWithinRoot(rootDirectory, currentPath)) return [];
+    if (segmentIndex >= segments.length) {
+      try { return fs.statSync(currentPath).isFile() ? [currentPath] : []; } catch { return []; }
+    }
+    const segment = segments[segmentIndex];
+    if (segment === '**') {
+      const matches = expand(currentPath, segmentIndex + 1);
+      let entries = [];
+      try { entries = fs.readdirSync(currentPath, { withFileTypes: true }); } catch { return matches; }
+      const descendants = [];
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const child = path.join(currentPath, entry.name);
+        if (!isWithinRoot(rootDirectory, child)) continue;
+        descendants.push(...expand(child, segmentIndex));
+      }
+      return [...new Set([...matches, ...descendants])];
+    }
+    if (hasGlobCharacters(segment)) {
+      let entries = [];
+      try { entries = fs.readdirSync(currentPath, { withFileTypes: true }); } catch { return []; }
+      const matches = [];
+      for (const entry of entries) {
+        if (!globSegmentMatches(segment, entry.name)) continue;
+        const child = path.join(currentPath, entry.name);
+        if (!isWithinRoot(rootDirectory, child)) continue;
+        matches.push(...expand(child, segmentIndex + 1));
+      }
+      return [...new Set(matches)];
+    }
+    const child = path.resolve(currentPath, segment);
+    if (!isWithinRoot(rootDirectory, child)) return [];
+    if (segmentIndex === segments.length - 1) {
+      try { return fs.statSync(child).isFile() ? [child] : []; } catch { return []; }
+    }
+    try { if (!fs.statSync(child).isDirectory()) return []; } catch { return []; }
+    return expand(child, segmentIndex + 1);
+  }
+
+  return [...new Set(expand(fixedPath, fixedCount))];
+}
+
 function walkYamlFiles(directory) {
   if (!fs.existsSync(directory)) return [];
   const results = [];
@@ -129,9 +296,27 @@ function walkYamlFiles(directory) {
 }
 
 function stripYamlComment(value) {
-  return value.replace(/\s+#.*$/, '').trim();
+  const input = String(value ?? '');
+  let quote = null;
+  let escaped = false;
+  for (let index = 0; index < input.length; index += 1) {
+    const character = input[index];
+    if (quote === '"') {
+      if (escaped) { escaped = false; continue; }
+      if (character === '\\') { escaped = true; continue; }
+      if (character === '"') quote = null;
+      continue;
+    }
+    if (quote === "'") {
+      if (character === "'" && input[index + 1] === "'") { index += 1; continue; }
+      if (character === "'") quote = null;
+      continue;
+    }
+    if (character === '"' || character === "'") { quote = character; continue; }
+    if (character === '#' && (index === 0 || /\s/.test(input[index - 1]))) return input.slice(0, index).trimEnd();
+  }
+  return input.trimEnd();
 }
-
 function collectWorkflowRunNames(content) {
   const lines = content.split(/\r?\n/);
   const names = [];
@@ -171,17 +356,37 @@ function collectWorkflowRunNames(content) {
 
 function collectSteps(content) {
   const lines = content.split(/\r?\n/);
-  const starts = [];
-  for (let i = 0; i < lines.length; i += 1) {
-    if (/^ {6}- (?:name|uses|run|if|id|shell|working-directory|env|timeout-minutes):/.test(lines[i])) starts.push(i);
+  const steps = [];
+  for (let section = 0; section < lines.length; section += 1) {
+    const sectionMatch = lines[section].match(/^(\s*)steps:\s*(?:#.*)?$/);
+    if (!sectionMatch) continue;
+    const sectionIndent = sectionMatch[1].length;
+    let end = section + 1;
+    while (end < lines.length) {
+      const current = lines[end];
+      if (current.trim() && current.match(/^\s*/)[0].length <= sectionIndent) break;
+      end += 1;
+    }
+    let stepIndent = null;
+    const starts = [];
+    for (let cursor = section + 1; cursor < end; cursor += 1) {
+      const item = lines[cursor].match(/^(\s*)-\s+/);
+      if (!item) continue;
+      const indent = item[1].length;
+      if (stepIndent === null) stepIndent = indent;
+      if (indent === stepIndent) starts.push(cursor);
+    }
+    for (let index = 0; index < starts.length; index += 1) {
+      steps.push(lines.slice(starts[index], starts[index + 1] ?? end).join('\n'));
+    }
+    section = end - 1;
   }
-  return starts.map((start, index) => lines.slice(start, starts[index + 1] ?? lines.length).join('\n'));
+  return steps;
 }
-
 function extractRunText(step) {
   const lines = step.split(/\r?\n/);
   for (let i = 0; i < lines.length; i += 1) {
-    const match = lines[i].match(/^(\s*)run:\s*(.*?)\s*$/);
+    const match = lines[i].match(/^(\s*)(?:-\s*)?run:\s*(.*?)\s*$/);
     if (!match) continue;
     const indent = match[1].length;
     const tail = stripYamlComment(match[2]);
@@ -226,6 +431,9 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
   const activeScripts = new Set();
   const workflowFiles = walkYamlFiles(path.join(root, '.github', 'workflows'));
   const workflowNameToFile = new Map();
+  let workflowJobsChecked = 0;
+  let workflowDependenciesChecked = 0;
+  let localActionsChecked = 0;
 
   function report(message) {
     if (errorKeys.has(message)) return;
@@ -235,6 +443,11 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
 
   function readPackage(packageDirectory, origin) {
     const absoluteDirectory = path.resolve(packageDirectory);
+    if (!isWithinRoot(root, absoluteDirectory)) {
+      report(origin + ': npm package path escapes repository root: ' + path.relative(root, absoluteDirectory));
+      packageCache.set(absoluteDirectory, null);
+      return null;
+    }
     if (packageCache.has(absoluteDirectory)) return packageCache.get(absoluteDirectory);
     const packagePath = path.join(absoluteDirectory, 'package.json');
     if (!fs.existsSync(packagePath)) {
@@ -254,31 +467,54 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
     }
   }
 
+
   function checkLocalFile(candidate, origin) {
     const absolutePath = path.resolve(candidate);
+    if (!isWithinRoot(root, absolutePath)) {
+      report(origin + ': referenced path escapes repository root: ' + path.relative(root, absolutePath));
+      return;
+    }
     if (!fs.existsSync(absolutePath)) report(origin + ': referenced path not found: ' + path.relative(root, absolutePath));
   }
 
+  function checkExecutablePath(candidate, origin) {
+    const absolutePath = path.resolve(candidate);
+    if (!isWithinRoot(root, absolutePath)) {
+      report(origin + ': referenced path escapes repository root: ' + path.relative(root, absolutePath));
+      return;
+    }
+    if (hasGlobCharacters(absolutePath)) {
+      const matches = collectGlobMatches(root, absolutePath);
+      if (!matches.length) {
+        report(origin + ': executable glob pattern matched no files: ' + path.relative(root, absolutePath));
+      }
+      return;
+    }
+    checkLocalFile(absolutePath, origin);
+  }
+
+
   function auditShellCommands(commandText, workingDirectory, origin, ancestry = []) {
     let currentDirectory = path.resolve(workingDirectory);
-    const commandLines = String(commandText).split(/\\r?\\n/);
+    const normalizedCommands = String(commandText).replace(/\\\r?\n[ \t]*/g, ' ');
+    const commandLines = normalizedCommands.split(/\r?\n/);
     for (const line of commandLines) {
       // Build one ordered stream of statically recognizable operations. Resolving all
       // `cd` commands before file/script references loses shell evaluation order.
       const operations = [];
-      const cdPattern = /(?:^|&&|;)\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/g;
+      const cdPattern = /(?:^|&&|\|\||;)\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/g;
       for (const match of line.matchAll(cdPattern)) {
         operations.push({ index: match.index ?? 0, type: 'cd', target: match[1] ?? match[2] ?? match[3] });
       }
 
       NODE_FILE.lastIndex = 0;
       for (const match of line.matchAll(NODE_FILE)) {
-        operations.push({ index: match.index ?? 0, type: 'node', target: match[1] });
+        operations.push({ index: match.index ?? 0, type: 'node', target: match[1] ?? match[2] ?? match[3] });
       }
 
       PYTHON_FILE.lastIndex = 0;
       for (const match of line.matchAll(PYTHON_FILE)) {
-        operations.push({ index: match.index ?? 0, type: 'python', target: match[1] });
+        operations.push({ index: match.index ?? 0, type: 'python', target: match[1] ?? match[2] ?? match[3] });
       }
 
       NPM_RUN.lastIndex = 0;
@@ -296,7 +532,12 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
         if (operation.type === 'cd') {
           const destination = operation.target;
           if (destination && !destination.startsWith('$') && !destination.startsWith('<')) {
-            currentDirectory = path.resolve(currentDirectory, destination);
+            const nextDirectory = path.resolve(currentDirectory, destination);
+            if (!isWithinRoot(root, nextDirectory)) {
+              report(origin + ': cd target escapes repository root: ' + path.relative(root, nextDirectory));
+              continue;
+            }
+            currentDirectory = nextDirectory;
             if (!fs.existsSync(currentDirectory)) {
               report(origin + ': cd target not found: ' + path.relative(root, currentDirectory));
             }
@@ -305,7 +546,7 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
         }
 
         if (operation.target && !operation.target.startsWith('$') && !operation.target.startsWith('<')) {
-          checkLocalFile(path.resolve(currentDirectory, operation.target), origin);
+          checkExecutablePath(path.resolve(currentDirectory, operation.target), origin);
         }
 
         if (operation.type === 'npm') {
@@ -352,6 +593,15 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
   for (const workflowPath of workflowFiles) {
     const content = fs.readFileSync(workflowPath, 'utf8');
     const workflowRelative = path.relative(root, workflowPath);
+    const workflowJobs = collectWorkflowJobs(content);
+    workflowJobsChecked += workflowJobs.jobCount;
+    for (const edge of workflowJobs.dependencies) {
+      workflowDependenciesChecked += 1;
+      if (!workflowJobs.jobIds.has(edge.dependency)) {
+        report(workflowRelative + ': job "' + edge.jobId + '" needs missing workflow job "' + edge.dependency + '"');
+      }
+    }
+
     for (const workflowName of collectWorkflowRunNames(content)) {
       if (!workflowNameToFile.has(workflowName)) report(workflowRelative + ': workflow_run references missing workflow name: ' + workflowName);
     }
@@ -363,12 +613,45 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
       if (workingMatch) {
         const value = unquote(stripYamlComment(workingMatch[1]));
         if (value && !value.includes('$' + '{{') && !value.startsWith('$')) {
-          workingDirectory = path.resolve(root, value);
-          if (!fs.existsSync(workingDirectory)) report(origin + ': working-directory not found: ' + value);
+          const requestedWorkingDirectory = path.resolve(root, value);
+          if (!isWithinRoot(root, requestedWorkingDirectory)) {
+            report(origin + ': working-directory escapes repository root: ' + value);
+          } else {
+            workingDirectory = requestedWorkingDirectory;
+            if (!fs.existsSync(workingDirectory)) report(origin + ': working-directory not found: ' + value);
+          }
         }
       }
 
-      for (const match of step.matchAll(/^\s*uses:\s*(\.\/[^\s#]+)/gm)) checkLocalFile(path.resolve(root, match[1]), origin);
+      for (const match of step.matchAll(/^\s*(?:-\s*)?uses:\s*(\.\/[^\s#]+)/gm)) {
+        localActionsChecked += 1;
+        const actionPath = path.resolve(root, match[1]);
+        checkLocalFile(actionPath, origin);
+        if (!isWithinRoot(root, actionPath) || !fs.existsSync(actionPath)) continue;
+        let stat;
+        try { stat = fs.statSync(actionPath); } catch { continue; }
+        if (!stat.isDirectory()) {
+          report(origin + ': local action path must be a directory: ' + match[1]);
+          continue;
+        }
+        const manifestName = ['action.yml', 'action.yaml'].find(name => fs.existsSync(path.join(actionPath, name)));
+        if (!manifestName) {
+          report(origin + ': local action manifest not found (action.yml or action.yaml): ' + match[1]);
+          continue;
+        }
+        const manifestPath = path.join(actionPath, manifestName);
+        if (!isWithinRoot(root, manifestPath)) {
+          report(origin + ': local action manifest escapes repository root: ' + manifestPath);
+          continue;
+        }
+        try {
+          if (!fs.statSync(manifestPath).isFile()) {
+            report(origin + ': local action manifest is not a file: ' + manifestPath);
+          }
+        } catch {
+          report(origin + ': local action manifest is not readable: ' + manifestPath);
+        }
+      }
 
       for (const key of ['node-version-file', 'cache-dependency-path']) {
         const property = new RegExp('^\\s*' + key + ':\\s*([^\\n]+)', 'm');
@@ -406,7 +689,7 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
     }
     for (const specifier of extractRelativeModuleSpecifiers(source)) {
       relativeImportsChecked += 1;
-      if (!resolveRelativeModule(codePath, specifier)) {
+      if (!resolveRelativeModule(codePath, specifier, root)) {
         report(path.relative(root, codePath) + ': unresolved relative module import ' + JSON.stringify(specifier));
       }
     }
@@ -418,7 +701,10 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
     sourceFilesScanned: codeFiles.length,
     relativeImportsChecked,
     npmScriptsChecked: auditedScripts.size,
-    packagesRead: [...packageCache.values()].filter(Boolean).length
+    packagesRead: [...packageCache.values()].filter(Boolean).length,
+    workflowJobsChecked,
+    workflowDependenciesChecked,
+    localActionsChecked
   };
 }
 
