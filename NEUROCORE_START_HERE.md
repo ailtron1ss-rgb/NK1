@@ -1,11 +1,11 @@
 ## Latest durable checkpoint — WorkPass319 (2026-10-25)
 
-- **Target:** close the focused unified cognitive-cycle / intrinsic motivation / B272 integration gate.
-- **Changes:** restored cycle completion claims now require coherent counters; malformed missing-stage snapshots preserve recognized stage IDs; B272 uses bounded normalized goal-value components so confidence-weighted internal drive remains observable rather than saturating.
-- **Validation:** all three behavior steps passed in [run 40189833009](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189833009). [Run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) adds the runtime typecheck step and must be checked to its final conclusion.
+- **Target:** focused unified cognitive-cycle / intrinsic motivation / B272 integration gate.
+- **Changes:** restored cycle completion claims require coherent counters; malformed missing-stage snapshots preserve recognized stage IDs; B272 goal values use bounded normalized components so confidence-weighted internal drive remains observable; B272 need validation uses literal keys.
+- **Behavior validation:** all three tests passed in [run 40189992050](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189992050).
+- **Repository-wide typecheck:** [run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) failed with 88 diagnostic lines in the wider runtime. One B272 issue was fixed afterward, but the broad typecheck remains unresolved. Keep the PR draft and do not describe the runtime as typecheck-clean.
 - **Work branch:** `nk1-ready-unified-cycle-restore-integrity-20261025`.
-- **Scope boundary:** focused contract validation is not evidence of general learning uplift, full organism E2E, production readiness, or consciousness.
-- **Next:** confirm typecheck-enabled CI and final PR-head CI; keep release/metadata `main` separate.
+- **Scope boundary:** focused contract tests do not prove general learning uplift, full organism E2E, production readiness, or consciousness.
 
 See [WorkPass319 checkpoint](docs/WORKPASS319_UNIFIED_COGNITIVE_CYCLE_RESTORE_INTEGRITY_2026-10-25.md).
 
