@@ -1,3 +1,12 @@
+## [NK1][runtime] Align installer and doctor with the pinned Node.js toolchain (2026-10-25)
+
+- Removed the installer's hard-coded Node.js 22 requirement; `install:all` now validates the root `.nvmrc` pin, currently Node.js 24, and fails with a specific diagnostic when the active runtime is mismatched.
+- Updated `doctor` to resolve the repository root from its own file, validate the `.nvmrc` pin, and compare Node/npm against the root manifest's minimum engine ranges rather than hard-coded major versions.
+- Added a dependency-free runtime-version contract helper and regression tests for major/minor/exact pins, malformed aliases, and numeric minimum-version comparisons.
+- Wired the contract test into `audit:quick` and the repository-wiring CI workflow. Validation status is pending exact-head CI; no release or full-project test pass is claimed.
+
+---
+
 ## [NK1][learning] Assert the interleaved replay budget in the sequential benchmark (2026-10-25)
 
 - Added direct budget assertions for the default interleaved mode (replay attempts cannot exceed 50% of the fresh batch) and the context-aware retention mode (explicit ratio 1.0). In both modes, replayed plus blocked historical rows must fit the returned attempt cap.
