@@ -53,6 +53,18 @@ assert.throws(()=>new OrganismCore(new MemoryStateStore(),{
   },
 }),/p36-evaluator-authorities-must-be-distinct/,
 'host construction must not reuse one independence key for experiment evidence and maturity');
+assert.throws(()=>new OrganismCore(new MemoryStateStore(),{
+  p36IndependentEvaluator,
+  p36DevelopmentalOutcomeEvaluator:{
+    ...p36DevelopmentalOutcomeEvaluator,
+    observationSource:{
+      ...p36DevelopmentalOutcomeEvaluator.observationSource,
+      sourceId:'  P36-HOST-FIXTURE-EVALUATOR  ',
+      independenceKey:'different-name-but-same-canonical-source',
+    },
+  },
+}),/p36-evaluator-authorities-must-be-distinct/,
+'canonicalized source IDs cannot alias across experiment and maturity evaluators');
 const store=new MemoryStateStore();
 const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,p36IndependentEvaluator,p36DevelopmentalOutcomeEvaluator});
 await core.init();
