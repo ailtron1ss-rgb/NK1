@@ -5,6 +5,7 @@ on:
     branches:
       - workpass70-source
       - audit/repository-wiring-contracts-2026-10-25
+      - fix/wiring-audit-edge-cases-2026-10-25
     paths:
       - ".github/workflows/repository-wiring-audit.yml"
       - ".github/workflows/**"

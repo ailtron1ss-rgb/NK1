@@ -1,3 +1,25 @@
+## NK1 test-fixture compatibility — guarded rollback authority (2026-10-25)
+
+- Updated the versioned-skill rollback regression fixture to provide an explicit test-only rollback verifier and a compare-and-swap approval object.
+- This unblocks full-suite validation without weakening the production default-deny policy or removing stale-version rejection.
+
+---
+
+## Repository wiring audit hardening — 2026-10-25
+
+- Fixed quoted Node.js/Python entry-point parsing so paths containing spaces are checked as one path rather than truncated.
+- Corrected YAML comment handling so `#` inside quoted scalar names is not treated as a comment.
+- Reworked workflow-step discovery to respect each `steps:` block's indentation and parse both inline `- run:` / `- uses:` forms as well as multiline steps. Local `uses: ./...` references must resolve to a directory with `action.yml` or `action.yaml`.
+- Normalized shell line continuations and recognized `||` command boundaries as well as `&&` and `;`.
+- Added canonical-path boundary checks (including symlink resolution) for executable paths, nested npm package prefixes, working directories, `cd` targets, and relative imports; missing file tails are resolved against their nearest existing ancestor. Rejected `cd`/`working-directory` paths no longer contaminate later resolution, and the audit checks `needs` edges between workflow jobs.
+- Added stress regressions for 120 valid command paths and 120 uniquely missing entry points (240 path cases), plus quoted paths, shell continuations, YAML quoting, traversal attempts, executable glob matches/non-matches, and eight source-file extensions.
+- Wired the dedicated validation workflow to this focused fix branch and its pull-request base so exact-head checks can run before integration.
+
+Validation (GitHub Actions, Node.js 24): all 25 repository-wiring regression tests passed; the end-to-end wiring audit passed across 22 workflows, 2,273 source files, 4,976 relative imports, 103 reachable npm scripts, and 3 package manifests. The WorkPass320 cognitive dependency restore and WorkPass324 interrupt-episode regressions also passed. The 240 generated path references are regression coverage, not 240 claimed production defects.
+
+- The exact-head run exposed and fixed a missing comma in the audit metrics object. The 23 focused tests then passed; the subsequent whole-repository audit exposed a glob-pattern false positive (`app/scripts/**/*.test.mjs`), now handled by a repository-local glob expander and covered by valid/empty-pattern regressions.
+---
+
 ## Cognitive dependency frame integrity — 2026-10-25
 
 - The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
