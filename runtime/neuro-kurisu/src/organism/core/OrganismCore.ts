@@ -8503,7 +8503,7 @@ export class OrganismCore {
             // the decision-time emotional context.
             // Keep the full recalled-affect episode for the causal trace, but do not treat its recall-only arousal increment as new evidence when strengthening the same memory.
             const decisionArousal01 = decisionEmotion ? this.cognitiveRuntime.emotionAppraisal.arousalWithoutRecall01(decisionEmotion) : feedbackEmotion.arousal01;
-            const decisionMemorySalience01 = decisionEmotion?.memorySalienceMultiplier01 ?? 1;
+            const decisionMemorySalience01 = decisionEmotion ? this.cognitiveRuntime.emotionAppraisal.memorySalienceWithoutRecall01(decisionEmotion) : 1;
             const reconsolidationAffect01 = clamp(decisionArousal01 * .45 + feedbackEmotion.arousal01 * .35 + feedbackEmotion.interoceptiveDelta.attentionCapture01 * .20);
             const emotionalTarget = clamp(existing.emotionalWeight * (1 - .22 * memoryBlend) + reconsolidationAffect01 * .22 * memoryBlend);
             const predictionTarget = clamp(existing.predictionError * (1 - .38 * memoryBlend) + surprise * .38 * memoryBlend);
