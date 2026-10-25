@@ -1,3 +1,12 @@
+## NK1 WorkPass530 — connect learned value priorities to action selection (2026-10-25)
+
+- Wired the experience-adapted value weights in P2702 into action bias using each action's declared value-attribution map. Values now affect live preference as they move from the code-owned initial prior, rather than changing only the saved diagnostics vector.
+- Kept the initial personality prior behavior-neutral for this new term and bounded the value-derived contribution to avoid letting one learned preference overwhelm Core arbitration.
+- Added an isolated regression: increasing curiosity/autonomy alone raises explore bias while verify bias stays unchanged. This specifically tests a value-to-behavior causal path rather than a correlation with adaptive trait updates.
+- Implementation and regression are committed; fresh Node 24 CI confirmation is pending.
+
+---
+
 ## NK1 WorkPass529 — make signed outcome ingestion idempotent only across restart (2026-10-25)
 
 - Fixed the verified-outcome trust boundary exposed by the Node 24 WorkPass108 CI run: re-ingesting an already-authenticated signed artifact into the same live ledger now rejects as duplicate-attempt.
