@@ -205,3 +205,25 @@ test('terminateChildren escalates a SIGTERM-resistant process group', async () =
     assert.equal(child.signalCode, 'SIGKILL');
   }
 });
+
+test('terminateChildren treats an already-exited child as successfully stopped', async () => {
+  const child = spawnManaged(process.execPath, ['-e', 'process.exit(0)'], {
+    stdio: ['ignore', 'ignore', 'ignore'],
+  });
+  const [result] = await terminateChildren([child], { graceMs: 100, forceGraceMs: 100 });
+  assert.equal(result.stopped, true);
+  assert.equal(result.forced, false);
+  assert.equal(child.exitCode, 0);
+});
+
+test('terminateChildren reports a spawn failure without hanging cleanup', async () => {
+  const missingExecutable = process.platform === 'win32'
+    ? 'Z:\\nk1-missing-child.exe'
+    : '/nk1-missing-child';
+  const child = spawnManaged(missingExecutable, [], { stdio: 'ignore' });
+  child.on('error', () => {});
+  const [result] = await terminateChildren([child], { graceMs: 100, forceGraceMs: 100 });
+  assert.equal(result.stopped, true);
+  assert.equal(result.forced, false);
+  assert.ok(child.spawnfile);
+});
