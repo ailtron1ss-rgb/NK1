@@ -46,4 +46,16 @@ assert.ok(!avatarHtml.includes("fetch('/api/organism/avatar'"), 'asset inventory
 assert.ok(avatarHtml.includes('buildAvatarPresentation(snapshot)'), 'avatar UI must normalize the live snapshot before posting to its iframe');
 assert.ok(avatarHtml.includes("post('kurisu_embodiment', presentation.body)"), 'avatar UI must send body and affect state to Live2D');
 assert.ok(avatarHtml.includes("post('kurisu_lipsync', { value: presentation.lipsync })"), 'avatar UI must feed the shared speaking state into lip sync');
+const runtimeViewerSource=fs.readFileSync(path.join(root,'public/live2d/viewer.html'),'utf8');
+const avatarSource=fs.readFileSync(path.join(root,'public/avatar.html'),'utf8');
+const avatarStateSource=fs.readFileSync(path.join(root,'public/avatar-state.mjs'),'utf8');
+const serverSource=fs.readFileSync(path.join(root,'src/server/server.mjs'),'utf8');
+assert.ok(serverSource.includes("url.pathname === '/api/organism/avatar-speech'"), 'server must expose lightweight active speech cursor');
+assert.ok(serverSource.includes('state.lastSpeechEventId') && serverSource.includes('state.lastSpeechText') && serverSource.includes('state.speechStartedAt'),
+  'speech endpoint must publish the exact utterance id, text and start timestamp');
+assert.ok(avatarSource.includes("fetch('/api/organism/avatar-speech'"), 'avatar must sample current speech metadata');
+assert.ok(avatarSource.includes('requestAnimationFrame(animateSpeech)'), 'viseme cursor must animate independently of the slow cognitive snapshot');
+assert.ok(avatarStateSource.includes('export function buildAvatarSpeechTimeline'), 'avatar mapper must build grapheme pose windows');
+assert.ok(avatarStateSource.includes('export function sampleAvatarSpeechTimeline'), 'avatar mapper must sample time-indexed visemes');
+assert.ok(!avatarStateSource.includes('clamp(0.32 + arousal * 0.35'), 'mouth motion cannot be a constant amplitude while speaking');
 console.log(`LIVE2D_INTEGRITY=PASS qualityTextureBytes=${fs.statSync(path.join(root,'public/live2d/Kurisu/Kurisu.4096/texture_00.png')).size} mobileTextureBytes=${fs.statSync(path.join(root,'public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png')).size}`);
