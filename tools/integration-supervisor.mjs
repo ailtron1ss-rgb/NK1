@@ -70,7 +70,10 @@ export async function waitForHttp(url, {
     const requestTimer = setTimeout(() => controller.abort(new Error('readiness request timed out')), requestTimeoutMs);
     try {
       const response = await fetch(url, { signal: controller.signal });
-      if (response.ok) return response;
+      if (response.ok) {
+        await response.body?.cancel().catch(() => {});
+        return response;
+      }
       lastFailure = `HTTP ${response.status}`;
       await response.body?.cancel().catch(() => {});
     } catch (error) {
