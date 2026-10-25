@@ -1,5 +1,13 @@
 # NeuroCore — repository working rules
 
+## Latest durable checkpoint — WorkPass339 (2026-10-25)
+
+- A focused correlation-ID regression is being added and wired to execute before broader typecheck steps. It checks that malformed IDs are dropped and valid execution identity survives.
+- WorkPass336 fixed the actual broken regex and duplicate cycle verifier; WorkPass337 updated runtime Node.js type discovery; WorkPass338 hardened optional causal features and verified dataset literal schema types.
+- Exact-head runtime typecheck still requires a completed run. Release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass338 (2026-10-25)
 
 - Hardened causal experience restore by guarding optional policy feature arrays before access.
