@@ -1,3 +1,11 @@
+## NK1 WorkPass104 — align Live2D integrity assertions with EmbodimentIntent v1 (2026-10-25)
+
+- Corrected a stale runtime integrity test that still required the pre-v1 split `kurisu_embodiment` and `kurisu_lipsync` messages even though the runtime producer had already switched to one versioned `kurisu_embodiment_intent` envelope.
+- The test now checks the actual unified message, its time-indexed mouth pose, and bounded normalized head tilt. It continues to assert that legacy split messages are not emitted.
+- This repairs a contradictory test contract; it does **not** claim the Live2D workflow is green until Actions passes on the new commit SHA.
+
+---
+
 ## NK1 WorkPass103 — preserve organism status when Live2D becomes ready (2026-10-25)
 
 - Fixed a runtime viewer race where the asynchronous `live2d_ready` message overwrote the current organism action/emotion label (for example, `awake · respond · joy`) with the renderer status `Live2D online`. The readiness message now only fills the label while the page is still initializing; ongoing organism state remains visible.
