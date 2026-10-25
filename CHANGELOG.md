@@ -1,3 +1,13 @@
+## CI wiring for durable skill lifecycle — 2026-10-25
+
+- Added the versioned-skill lifecycle regression to the repository contract gate so the source, durable adapter and lifecycle test are exercised together on a fresh checkout.
+- Added both `VersionedSkillCandidateStore.ts`, `AtomicFileSkillStorePersistence.ts` and `p23-versioned-skill-candidate-store.mjs` to the workflow path filters.
+- The broader gate now checks both legacy candidate persistence and provenance-bound identity restore directly, not only when the continual-learning workflow happens to run.
+
+Validation: awaiting the latest contract workflow, including its new focused P23 lifecycle step.
+
+---
+
 ## Durable skill candidate identity consistency — 2026-10-25
 
 - Fixed the identity mismatch between `VersionedSkillCandidateStore` and `AtomicFileSkillStorePersistence`: candidates without revision provenance keep the established four-field ID; candidates with provenance bind its canonical fingerprint as a fifth field.
