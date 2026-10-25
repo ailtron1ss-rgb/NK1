@@ -63,7 +63,7 @@ export async function waitForHttp(url, {
   const deadline = Date.now() + timeoutMs;
   let lastFailure = 'no response yet';
   while (Date.now() < deadline) {
-    if (child && (child.exitCode !== null || child.signalCode !== null)) {
+    if (child && (!child.pid || child.exitCode !== null || child.signalCode !== null)) {
       throw new Error(`${label} exited before readiness (code=${child.exitCode ?? '—'}, signal=${child.signalCode ?? '—'}). ${diagnostic()}`);
     }
     const controller = new AbortController();
