@@ -82,6 +82,18 @@ jobs:
         working-directory: runtime/neuro-kurisu
         run: npm run test:learning-replay
 
+      - name: P26 malformed-input and snapshot integrity
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:learning-input-integrity
+
+      - name: P26 recovery and task-order robustness
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        working-directory: runtime/neuro-kurisu
+        run: |
+          npm run test:p26:learning-recovery-benchmark
+          npm run test:p26:learning-continual-matrix
+
       - name: Causal replay runtime wiring
         if: ${{ always() && steps.install.outcome == 'success' }}
         working-directory: runtime/neuro-kurisu
