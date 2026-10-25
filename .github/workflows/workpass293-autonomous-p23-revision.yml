@@ -6,6 +6,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/tests/workpass172-compound-revision-coordinator.mjs'
       - 'runtime/neuro-kurisu/tests/workpass292-evidence-lanes.mjs'
       - 'runtime/neuro-kurisu/tests/workpass293-autonomous-p23-revision.mjs'
