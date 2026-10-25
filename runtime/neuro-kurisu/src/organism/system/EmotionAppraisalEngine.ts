@@ -58,15 +58,144 @@ const emptyInteroception=():InteroceptiveAffectState=>({
 });
 const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),outcomes:{}});
 
+const EMOTION_LABELS=new Set<EmotionLabel>(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective']);
+const EMOTION_TENDENCIES=new Set<EmotionActionTendency>(['explore','engage','verify','reflect','rest','protect','withdraw','approach']);
+const safeRecord=(value:unknown):Record<string,unknown>|null=>{
+  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+  const prototype=Object.getPrototypeOf(value);
+  if(prototype!==Object.prototype&&prototype!==null)return null;
+  const descriptors=Object.getOwnPropertyDescriptors(value);
+  const result:Record<string,unknown>=Object.create(null);
+  for(const [key,descriptor] of Object.entries(descriptors)){
+    if(!('value' in descriptor))return null;
+    result[key]=descriptor.value;
+  }
+  return result;
+};
+const safeArray=(value:unknown,max=512):unknown[]=>{
+  if(!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype)return [];
+  const descriptor=Object.getOwnPropertyDescriptor(value,'length');
+  if(!descriptor||!('value' in descriptor)||!Number.isSafeInteger(descriptor.value)||descriptor.value<0||descriptor.value>max)return [];
+  const result:unknown[]=[];
+  for(let i=0;i<descriptor.value;i++){
+    const item=Object.getOwnPropertyDescriptor(value,String(i));
+    if(!item){result.push(undefined);continue;}
+    if(!('value' in item))return [];
+    result.push(item.value);
+  }
+  return result;
+};
+const safeIdentity=(value:unknown,max=256):value is string=>
+  typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&
+  !Array.from(value).some(ch=>{const point=ch.codePointAt(0)??0;return point<=0x1f||(point>=0x7f&&point<=0x9f);});
+const safeCount=(value:unknown,fallback=0,max=1_000_000_000):number=>
+  typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,max):fallback;
+const safeMetric=(value:unknown,fallback:number):number=>
+  typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+const safeTimestamp=(value:unknown,fallback=0):number=>
+  typeof value==='number'&&Number.isFinite(value)&&value>=0?value:fallback;
+const safeLabel=(value:unknown):EmotionLabel|null=>
+  typeof value==='string'&&EMOTION_LABELS.has(value as EmotionLabel)?value as EmotionLabel:null;
+
+function normalizeEmotionEpisode(value:unknown):EmotionEpisode|null{
+  const row=safeRecord(value);
+  if(!row||!safeIdentity(row.id)||!Number.isSafeInteger(row.tick)||Number(row.tick)<0||
+    typeof row.at!=='number'||!Number.isFinite(row.at)||row.at<0||
+    !safeLabel(row.label)||typeof row.actionTendency!=='string'||!EMOTION_TENDENCIES.has(row.actionTendency as EmotionActionTendency)||
+    !safeIdentity(row.cause,96))return null;
+  const appraisal=safeRecord(row.appraisal),delta=safeRecord(row.interoceptiveDelta);
+  if(!appraisal||!delta)return null;
+  const appraisalKeys=['relevance01','goalCongruence01','controllability01','novelty01','selfRelevance01','socialMeaning01','uncertainty01'] as const;
+  const deltaKeys=['stress01','energy01','load01','attentionCapture01'] as const;
+  const normalizedAppraisal={} as EmotionEpisode['appraisal'];
+  const normalizedDelta={} as EmotionEpisode['interoceptiveDelta'];
+  for(const key of appraisalKeys){
+    const n=safeMetric(appraisal[key],-1);
+    if(n<0)return null;
+    normalizedAppraisal[key]=n;
+  }
+  for(const key of deltaKeys){
+    const n=safeMetric(delta[key],-1);
+    if(n<0)return null;
+    normalizedDelta[key]=n;
+  }
+  const valence01=safeMetric(row.valence01,-1),arousal01=safeMetric(row.arousal01,-1),dominance01=safeMetric(row.dominance01,-1);
+  const memorySalienceMultiplier01=safeMetric(row.memorySalienceMultiplier01,-1),confidence01=safeMetric(row.confidence01,-1);
+  if([valence01,arousal01,dominance01,memorySalienceMultiplier01,confidence01].some(n=>n<0))return null;
+  return {id:row.id,tick:Number(row.tick),at:row.at,label:row.label as EmotionLabel,actionTendency:row.actionTendency as EmotionActionTendency,
+    valence01,arousal01,dominance01,appraisal:normalizedAppraisal,interoceptiveDelta:normalizedDelta,
+    memorySalienceMultiplier01,confidence01,cause:row.cause};
+}
+function normalizeFeelingEpisode(value:unknown):FeelingEpisode|null{
+  const row=safeRecord(value);
+  if(!row||!safeIdentity(row.id)||!safeIdentity(row.causeEmotionId)||!Number.isSafeInteger(row.tick)||Number(row.tick)<0||
+    typeof row.at!=='number'||!Number.isFinite(row.at)||row.at<0||!safeLabel(row.label))return null;
+  const intensity01=safeMetric(row.intensity01,-1),interoceptiveMismatch01=safeMetric(row.interoceptiveMismatch01,-1);
+  const selfAccessConfidence01=safeMetric(row.selfAccessConfidence01,-1),bodilyFocus01=safeMetric(row.bodilyFocus01,-1);
+  if([intensity01,interoceptiveMismatch01,selfAccessConfidence01,bodilyFocus01].some(n=>n<0))return null;
+  return {id:row.id,tick:Number(row.tick),at:row.at,label:row.label as EmotionLabel,intensity01,interoceptiveMismatch01,
+    selfAccessConfidence01,bodilyFocus01,causeEmotionId:row.causeEmotionId};
+}
+function normalizeInteroceptiveState(value:unknown):InteroceptiveAffectState{
+  const defaults=emptyInteroception(),row=safeRecord(value);
+  if(!row)return defaults;
+  const observed=safeRecord(row.lastObserved),predicted=safeRecord(row.predicted);
+  const normalizeVector=(input:Record<string,unknown>|null,fallback:InteroceptiveAffectState['lastObserved'])=>({
+    energy01:safeMetric(input?.energy01,fallback.energy01),
+    thermal01:safeMetric(input?.thermal01,fallback.thermal01),
+    capacity01:safeMetric(input?.capacity01,fallback.capacity01),
+    load01:safeMetric(input?.load01,fallback.load01),
+  });
+  return {cycles:safeCount(row.cycles),meanMismatch01:safeMetric(row.meanMismatch01,defaults.meanMismatch01),
+    lastMismatch01:safeMetric(row.lastMismatch01,defaults.lastMismatch01),
+    regulationPressure01:safeMetric(row.regulationPressure01,defaults.regulationPressure01),
+    stability01:safeMetric(row.stability01,defaults.stability01),recovery01:safeMetric(row.recovery01,defaults.recovery01),
+    predictionCalibration01:safeMetric(row.predictionCalibration01,defaults.predictionCalibration01),
+    lastObserved:normalizeVector(observed,defaults.lastObserved),predicted:normalizeVector(predicted,defaults.predicted)};
+}
+
 export class EmotionAppraisalEngine {
   private state=empty();
   restore(raw?:Partial<EmotionAppraisalState>|null){
-    const d=empty(); const r=raw as any ?? {};
-    this.state={...d,...r,version:2,episodes:Math.max(0,Number(r.episodes??0)),lastTick:Number(r.lastTick??-1),lastAt:Number(r.lastAt??0),
-      lastLabel:(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective'] as string[]).includes(String(r.lastLabel))?r.lastLabel as EmotionLabel:d.lastLabel,
-      history:Array.isArray(r.history)?r.history.slice(0,128):[], feelings:Array.isArray(r.feelings)?r.feelings.slice(0,128):[],
-      interoception:{...d.interoception,...(r.interoception??{}),lastObserved:{...d.interoception.lastObserved,...(r.interoception?.lastObserved??{})},predicted:{...d.interoception.predicted,...(r.interoception?.predicted??{})}},
-      outcomes:{...d.outcomes,...(r.outcomes??{})}};
+    const defaults=empty(),source=safeRecord(raw);
+    if(!source){this.state=defaults;return;}
+    if(source.version!==undefined&&source.version!==1&&source.version!==2)throw new RangeError('unsupported emotion-appraisal state version');
+    const history:EmotionEpisode[]=[];
+    const seenEpisodeIds=new Set<string>();
+    for(const candidate of safeArray(source.history,1024)){
+      const episode=normalizeEmotionEpisode(candidate);
+      if(!episode||seenEpisodeIds.has(episode.id))continue;
+      seenEpisodeIds.add(episode.id);history.push(episode);
+      if(history.length>=128)break;
+    }
+    const feelings:FeelingEpisode[]=[];
+    const seenFeelingIds=new Set<string>();
+    for(const candidate of safeArray(source.feelings,1024)){
+      const feeling=normalizeFeelingEpisode(candidate);
+      if(!feeling||seenFeelingIds.has(feeling.id))continue;
+      seenFeelingIds.add(feeling.id);feelings.push(feeling);
+      if(feelings.length>=128)break;
+    }
+    const rawOutcomes=safeRecord(source.outcomes),outcomes:Record<string,EmotionOutcomeCalibration>={};
+    if(rawOutcomes){
+      for(const key of Object.keys(rawOutcomes).slice(0,64)){
+        const item=safeRecord(rawOutcomes[key]);
+        if(!safeIdentity(key,96)||!item)continue;
+        const attempts=safeCount(item.attempts,-1);
+        const meanSuccess01=safeMetric(item.meanSuccess01,-1),meanSurprise01=safeMetric(item.meanSurprise01,-1),meanBenefit01=safeMetric(item.meanBenefit01,-1);
+        if(attempts<1||[meanSuccess01,meanSurprise01,meanBenefit01].some(n=>n<0))continue;
+        outcomes[key]={attempts,meanSuccess01,meanSurprise01,meanBenefit01};
+      }
+    }
+    const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
+    const lastLabel=safeLabel(source.lastLabel)??history[0]?.label??defaults.lastLabel;
+    const episodes=Math.max(safeCount(source.episodes),history.length);
+    this.state={version:2,episodes,lastTick,lastAt:safeTimestamp(source.lastAt),lastLabel,
+      meanArousal01:safeMetric(source.meanArousal01,defaults.meanArousal01),
+      meanValence01:safeMetric(source.meanValence01,defaults.meanValence01),
+      meanStress01:safeMetric(source.meanStress01,defaults.meanStress01),
+      meanAttentionCapture01:safeMetric(source.meanAttentionCapture01,defaults.meanAttentionCapture01),
+      history,feelings,interoception:normalizeInteroceptiveState(source.interoception),outcomes};
   }
   snapshot(){return structuredClone(this.state);}
 
