@@ -1,3 +1,10 @@
+## NK1 WorkPass564 — bounded affect reactivation from retrieved memories (2026-10-25)
+
+- `OrganismCore.observe()` now aggregates only retrieved memory records with positive recorded emotional weight, salience, and confidence, then supplies that evidence to current emotion appraisal.
+- `EmotionAppraisalEngine` applies a bounded cue to relevance/arousal and surfaces `recalledAffect01` plus `recalledMemoryCount` in each new appraisal episode. Recalled emotional intensity does not directly alter valence or stress, so salience alone cannot be mistaken for positive meaning or present danger.
+- Added `workpass564-recalled-affect-appraisal.mjs` and wired it into the Node 24 reality-to-learning workflow, including both push and pull-request path filters.
+- **Validation:** implementation and regression wiring are committed. Exact-head GitHub Actions validation is pending; no pass is claimed until the triggered run completes.
+
 ## NK1 Causal Accountability — quarantine live execution receipt conflicts (2026-10-25)
 
 - `CausalAccountabilityGraph.recordActionChain()` now treats an exact repeated execution receipt as an idempotent replay, but quarantines a reused `executionId` when its tool, tick, result, postconditions, observation identity, or confidence differs.
