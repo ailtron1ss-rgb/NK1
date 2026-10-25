@@ -26,6 +26,10 @@
 - восстановленный JSON-реестр не наследует in-process доверие без повторного ввода исходных signed artifacts;
 - результат остаётся моментальным holdout с `delayMs: 0`. Ни задержанная ретенция, ни transfer не подразумеваются.
 
+## Уточнение WorkPass534
+
+Host-owned method-pair evaluator работает только в экспериментальном P36 lane. Даже если signed holdout подтверждает улучшение baseline/treatment, это не означает, что навык удержан или перенесён. Для этих утверждений требуется другой зарезервированный ID — `organism.learning.p36.evaluate-maturity` — и отдельная доверенная host-конфигурация с реальной delayed-retention/transfer проверкой.
+
 ## Регрессионное покрытие
 
 `tests/p36-verified-outcome-ledger-evaluator.mjs` теперь также проверяет отказ от альтернативного treatment method и незарегистрированного семейства задач.
