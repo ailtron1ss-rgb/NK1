@@ -79,6 +79,12 @@ Run 6 kept every recorded top-five retrieval ID identical to baseline, returned 
 
 Run 5 recorded a temporal-chain p95 regression at the 800-item corpus (0.2430 → 0.2912 ms, +19.84%), while run 6 measured an improvement at that size (0.1758 → 0.1558 ms). This variability is a reason to treat tiny microbenchmarks as descriptive and repeat them; no production latency or SLO guarantee is claimed. Both runs retained retrieval-ranking parity.
 
+## Semantic embedding preview — consistency guard (2026-10-25)
+
+The asynchronous `previewRetrieveWithEmbeddings()` path now reuses one isolated lexical preview for both its fallback result and the semantic candidate pool. Before yielding to the provider it captures each eligible row's content hash and temporal/epistemic state. When the provider returns, it caches an embedding and includes a result only if that row still matches the captured state. This protects against revisions, expiry, dormancy changes, or quarantine while the provider request is in flight.
+
+Workflow [40168937886](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168937886) passed the one-preview assertion, the concurrent-revision fixture (`staleWritePrevented=true)), all focused regressions, and the paired ranking/temporal integrity benchmark. This workflow's microbenchmark primarily measures the lexical retrieval path; it does not measure end-to-end provider latency, so this change is validated for behavior and avoidance of duplicate work but no numerical latency improvement is claimed.
+
 ## Memory observations
 
 Run 2 reports absolute post-GC heap usage after each workload:
