@@ -113,3 +113,33 @@ jobs:
         if: ${{ always() && steps.install.outcome == 'success' }}
         working-directory: runtime/neuro-kurisu
         run: npm run test:restart
+
+      - name: Validate Compose configuration
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        run: docker compose config --quiet
+
+      - name: Build and boot the containerized cognitive runtime
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        run: |
+          docker compose up --build -d --wait --wait-timeout 180
+          node --input-type=module <<'NODE'
+          const response = await fetch('http://127.0.0.1:3000/health');
+          const health = await response.json();
+          if (!response.ok || health.ready !== true) {
+            throw new Error(`runtime-not-ready: ${JSON.stringify(health)}`);
+          }
+          const page = await fetch('http://127.0.0.1:3000/');
+          const html = await page.text();
+          if (!page.ok || !html.includes('Neuro‑Kurisu') || !html.includes('Unified Organism')) {
+            throw new Error('integrated-organism-ui-not-served');
+          }
+          console.log('COMPOSE_RUNTIME_SMOKE=PASS', JSON.stringify({ ready: health.ready, status: page.status }));
+          NODE
+
+      - name: Dump runtime container logs on failure
+        if: ${{ failure() }}
+        run: docker compose logs --no-color neuro-kurisu
+
+      - name: Remove test Compose container and volume
+        if: ${{ always() }}
+        run: docker compose down -v
