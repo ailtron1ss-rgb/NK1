@@ -6,6 +6,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/organism-smoke.mjs"
+      - "runtime/neuro-kurisu/tests/restart-persistence.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
@@ -23,6 +25,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/organism-smoke.mjs"
+      - "runtime/neuro-kurisu/tests/restart-persistence.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
@@ -63,3 +67,9 @@ jobs:
       - name: Verify live runtime uses the canonical kernel
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/canonical-cognitive-kernel-runtime-wiring.mjs
+      - name: Verify organism smoke startup
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:smoke
+      - name: Verify state survives runtime restart
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:restart
