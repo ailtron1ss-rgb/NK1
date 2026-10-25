@@ -89,3 +89,9 @@ The runtime-bundled Live2D viewer had drifted from the app's canonical viewer: i
 The latest WorkPass294 Actions run passed strict runtime typecheck, but then failed because the workflow invoked an npm alias that had no entry in `runtime/neuro-kurisu/package.json`; the alias now points to the existing focused test. WorkPass293 further uncovered a remaining TypeScript parameter property in the durable trusted-run registry; it now uses an explicit field/constructor assignment to work under Node 24 strip-only mode.
 
 The previous WorkPass110 run passed causal evidence and avatar lifecycle tests before failing its Live2D integrity assertion against the stale runtime viewer. The new exact-head run must confirm the behavior and remaining integrations. The release archive is still unchanged.
+
+## Eighth follow-up — align the P26 gate's compiler/runtime environment
+
+The standalone P26 Learning Validation workflow previously pinned Node 22.12.0 and installed only `runtime/neuro-kurisu/package-lock.json`, which contains no TypeScript or Node type dependency. The strict runtime config now intentionally imports the canonical Node types from `app/node_modules/@types`, and the project-level Node pin is 24. The workflow now follows `.nvmrc`, caches on `app/package-lock.json`, and installs the canonical app dependencies without lifecycle scripts before running strict runtime typecheck and learning tests.
+
+This removes a CI environment mismatch; it does not by itself verify the learning tests or establish generalization. Exact-head Actions is required.

@@ -41,12 +41,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "22.12.0"
+          node-version-file: ".nvmrc"
           cache: npm
-          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
-      - name: Install locked dependencies
-        working-directory: runtime/neuro-kurisu
-        run: npm ci
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned TypeScript compiler and Node.js types
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck

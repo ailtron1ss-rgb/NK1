@@ -1,3 +1,9 @@
+## Align P26 validation environment with the canonical runtime toolchain (2026-10-25)
+
+- [CI FIX] P26 Learning Validation now selects Node from `.nvmrc` (Node 24), rather than hard-coding 22.12.0.
+- [CI FIX] Its compiler/type dependency setup now installs from the canonical `app/package-lock.json`, providing the pinned TypeScript compiler and `@types/node` used by `runtime/neuro-kurisu/tsconfig.clean.json`. The empty runtime lockfile is no longer treated as sufficient for strict typechecking.
+- [EVIDENCE] The main WorkPass294 run already confirmed runtime typecheck passes when these canonical dependencies are present; this closes the environment mismatch in the separate P26 gate. The refreshed P26 run still must pass before the learning compatibility pass is complete.
+
 ## Live2D/runtime packaging compatibility follow-up (2026-10-25)
 
 - [FIX] Runtime-bundled Live2D viewer now caches the last successfully applied expression, avoids restarting an unchanged expression during lipsync/embodiment updates, updates lip and mouth-form targets from the incoming embodiment state, and keys motion restarts by the explicit motion token.
