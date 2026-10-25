@@ -1,3 +1,9 @@
+## NK1 WorkPass545 — ground replay-diversity regression traces (2026-10-25)
+
+- The rerun advanced past external evidence deduplication and exposed an independent stale replay fixture: its synthetic traces used ticks that disagreed with their pre-action states and omitted the selected action/outcome receipt from post-action states.
+- Updated the task-diversity fixture to construct state-grounded transitions for each task, preserving the production rule that replay candidates come only from observed runtime outcomes.
+- **Validation boundary:** the causal-learning workflow must pass this revised fixture before the branch is merged.
+
 ## NK1 WorkPass544 — align external learning counters with trust semantics (2026-10-25)
 
 - The full pull-request workflow exposed a stale assertion in the causal-learning stream regression: external imports were expected to increment the trusted runtime-outcome counter even though the ingestion boundary explicitly keeps imported evidence ungrounded.
