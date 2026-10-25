@@ -107,12 +107,12 @@ function isConversationMemory(item:MemoryItem2):boolean{
  const context=item.context??{};
  // Prefer structured turn lineage; do not infer dialogue identity from topic alone.
  const hasConversationIdentity=Object.entries(context).some(([key,value])=>
-  /^(?:conversation|dialogue|chat|transcript|message|turn)(?:id|key|index|type|role)?$/iu.test(key)&&
+  /^(?:conversation|dialogue|chat|transcript|message|turn|session)(?:id|key|index|sequence)?$/iu.test(key)&&
   typeof value==='string'&&value.trim().length>0
  );
  if(hasConversationIdentity)return true;
  const metadata=[item.source,...Object.entries(context).flatMap(([key,value])=>[key,String(value??'')])].join(' ').normalize('NFKC');
- return /\b(?:conversation|dialogue|chat[-_ ]history|transcript|message[-_ ]history|discussion[-_ ]summary)\b|разговор|диалог|чат|переписк|транскрипт|истори[яи] (?:бесед|диалог|разговор)|обсужден(?:ие|ия|ий)/iu.test(metadata);
+ return /\b(?:conversation|dialogue|chat[-_ ]history|session[-_ ]history|transcript|message[-_ ]history|discussion[-_ ]summary)\b|разговор|диалог|чат|переписк|транскрипт|истори[яи] (?:бесед|диалог|разговор)|обсужден(?:ие|ия|ий)/iu.test(metadata);
 }
 function memoryIntentFit(intent:MemoryQueryIntent,item:MemoryItem2):number{
  const hasGoal=Boolean(String(item.context?.goalId??'').trim())||item.goalRelevance>=.65;
