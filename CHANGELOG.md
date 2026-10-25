@@ -1,3 +1,16 @@
+## NK1 WorkPass330 — temporal memory integrity (2026-10-25)
+
+- [FIXED] `HexisAdaptationFabric.recordTemporalAssertion` now rejects blank memory IDs/summaries and non-finite or empty valid-time inputs before mutating state.
+- [FIXED] Temporal intervals and `supersedesId` are rebuilt by valid-time order after an insert, so late/backfilled assertions do not overlap newer history or close the wrong interval.
+- [HARDENED] Snapshot restore filters malformed temporal records and reconstructs intervals/supersession lineage, repairing legacy snapshots before any temporal query.
+- [HARDENED] Repeating an identical assertion at the same effective time is idempotent; a conflicting assertion at that timestamp is rejected rather than producing ambiguous history.
+- [HARDENED] `temporalAt` fails closed for blank memory IDs, non-finite query times, and malformed stored interval endpoints.
+- [TESTS ADDED] Extended the existing Hexis integration test with out-of-order insertion, interval boundaries, supersession lineage, same-time idempotency/conflict, invalid inputs, and repair of a legacy snapshot with invalid time data. Existing `test:hexis-adaptation` / `audit:hexis` scripts already include this test.
+- [VALIDATION] Tests and typecheck have not been executed in this pass; the GitHub connector permits source edits but not running the repository locally. The combined-status query for the test commit returned no status entries (not a green result); current Actions execution remains unverified.
+- [RELEASE] This is a working-branch change, not a release approval. No Release ZIP was rebuilt or published.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

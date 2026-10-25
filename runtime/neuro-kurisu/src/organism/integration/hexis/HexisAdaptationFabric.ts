@@ -208,12 +208,47 @@ export class HexisAdaptationFabric {
                 windowCount: Math.max(0, Math.floor(Number(policy?.windowCount ?? 0))),
               }))
             : [];
+        const normalizedTemporal = Array.isArray(value.temporal)
+            ? value.temporal
+                .filter((row: any) => {
+                    if (!row || typeof row !== 'object') return false;
+                    const rawValidFrom: unknown = row.validFrom;
+                    const validFrom = typeof rawValidFrom === 'number'
+                        ? rawValidFrom
+                        : typeof rawValidFrom === 'string' && rawValidFrom.trim() !== ''
+                            ? Number(rawValidFrom)
+                            : Number.NaN;
+                    return typeof row.memoryId === 'string' &&
+                        row.memoryId.trim() !== '' &&
+                        typeof row.summary === 'string' &&
+                        row.summary.trim() !== '' &&
+                        Number.isFinite(validFrom);
+                })
+                .slice(-4096)
+                .map((row: any) => {
+                    const rawValidFrom: unknown = row.validFrom;
+                    const validFrom = typeof rawValidFrom === 'number' ? rawValidFrom : Number(rawValidFrom);
+                    return {
+                        ...row,
+                        id: typeof row.id === 'string' && row.id ? row.id : randomUUID(),
+                        memoryId: row.memoryId.trim(),
+                        valueHash: typeof row.valueHash === 'string' && row.valueHash ? row.valueHash : digest(row.summary),
+                        summary: String(row.summary).trim().slice(0, 2000),
+                        confidence01: clamp(row.confidence01),
+                        validFrom,
+                        validUntil: null,
+                        supersedesId: typeof row.supersedesId === 'string' ? row.supersedesId : undefined,
+                        source: String(row.source ?? 'canonical-memory').trim() || 'canonical-memory',
+                        at: Number.isFinite(row.at) ? Number(row.at) : nowMs(),
+                    } as HexisTemporalAssertion;
+                })
+            : [];
         this.state = {
             ...defaults, ...value,
             source: { ...defaults.source, ...(value.source ?? {}) },
             beliefs: Array.isArray(value.beliefs) ? value.beliefs.slice(-1024) : [],
             beliefAudit: Array.isArray(value.beliefAudit) ? value.beliefAudit.slice(-2048) : [],
-            temporal: Array.isArray(value.temporal) ? value.temporal.slice(-4096) : [],
+            temporal: normalizedTemporal,
             learningReviews: Array.isArray(value.learningReviews) ? value.learningReviews.slice(-96) : [],
             retentionProposals: Array.isArray(value.retentionProposals) ? value.retentionProposals.slice(-512) : [],
             fidelityReceipts: Array.isArray(value.fidelityReceipts) ? value.fidelityReceipts.slice(-512) : [],
@@ -228,8 +263,29 @@ export class HexisAdaptationFabric {
             executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
             metrics: { ...defaults.metrics, ...(value.metrics ?? {}) },
         };
+        this.rebuildTemporalTimeline();
     }
     snapshot(): HexisAdaptationState { return structuredClone(this.state); }
+    private rebuildTemporalTimeline(memoryId?: string): void {
+        const memoryIds = memoryId
+            ? [memoryId]
+            : [...new Set(this.state.temporal
+                .filter((row) => row && typeof row.memoryId === 'string' && Number.isFinite(row.validFrom))
+                .map((row) => row.memoryId))];
+        for (const id of memoryIds) {
+            const timeline = this.state.temporal
+                .filter((row) => row.memoryId === id && Number.isFinite(row.validFrom))
+                .sort((a, b) => a.validFrom - b.validFrom || a.at - b.at);
+            for (let index = 0; index < timeline.length; index += 1) {
+                const current = timeline[index]!;
+                const previous = index > 0 ? timeline[index - 1] : undefined;
+                const next = timeline[index + 1];
+                current.validUntil = next?.validFrom ?? null;
+                if (previous) current.supersedesId = previous.id;
+                else delete current.supersedesId;
+            }
+        }
+    }
     diagnostics() {
         const pendingReviews = this.state.learningReviews.filter((r) => r.status === 'pending').length;
         const pendingOutbox = this.state.outbox.filter((x) => x.status === 'pending' || x.status === 'publishing').length;
@@ -299,9 +355,67 @@ export class HexisAdaptationFabric {
         validFrom: number;
         source?: string;
         value?: unknown;
-    }): HexisTemporalAssertion { const existing = this.state.temporal.find((x) => x.memoryId === input.memoryId && x.validUntil === null); const at = nowMs(); if (existing)
-        existing.validUntil = Math.max(existing.validFrom, Number(input.validFrom)); const created: HexisTemporalAssertion = { id: randomUUID(), memoryId: String(input.memoryId), valueHash: digest(input.value ?? input.summary), summary: String(input.summary).slice(0, 2000), confidence01: clamp(input.confidence01), validFrom: Number(input.validFrom), validUntil: null, supersedesId: existing?.id, source: String(input.source ?? 'canonical-memory'), at }; this.state.temporal.push(created); this.state.temporal = this.state.temporal.slice(-4096); return structuredClone(created); }
-    temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null { this.state.metrics.temporalQueries += 1; const rows = this.state.temporal.filter((x) => x.memoryId === memoryId && x.validFrom <= at && (x.validUntil === null || at < x.validUntil)).sort((a, b) => b.validFrom - a.validFrom); return rows[0] ? structuredClone(rows[0]) : null; }
+    }): HexisTemporalAssertion {
+        const memoryId = String(input?.memoryId ?? '').trim();
+        const summary = String(input?.summary ?? '').trim();
+        const rawValidFrom: unknown = input?.validFrom;
+        const validFrom = typeof rawValidFrom === 'number'
+            ? rawValidFrom
+            : typeof rawValidFrom === 'string' && rawValidFrom.trim() !== ''
+                ? Number(rawValidFrom)
+                : Number.NaN;
+        if (!memoryId) throw new TypeError('temporal_memory_id_required');
+        if (!summary) throw new TypeError('temporal_summary_required');
+        if (!Number.isFinite(validFrom)) throw new RangeError('temporal_valid_from_must_be_finite');
+
+        const normalizedSummary = summary.slice(0, 2000);
+        const source = String(input?.source ?? 'canonical-memory').trim() || 'canonical-memory';
+        const confidence01 = clamp(input?.confidence01);
+        const valueHash = digest(input?.value ?? normalizedSummary);
+        const existingAtTime = this.state.temporal.find((row) =>
+            row.memoryId === memoryId && Number.isFinite(row.validFrom) && row.validFrom === validFrom
+        );
+        if (existingAtTime) {
+            const isSameLogicalAssertion =
+                existingAtTime.valueHash === valueHash &&
+                existingAtTime.summary === normalizedSummary &&
+                existingAtTime.confidence01 === confidence01 &&
+                existingAtTime.source === source;
+            if (isSameLogicalAssertion) return structuredClone(existingAtTime);
+            throw new Error('temporal_valid_from_conflict');
+        }
+
+        const created: HexisTemporalAssertion = {
+            id: randomUUID(),
+            memoryId,
+            valueHash,
+            summary: normalizedSummary,
+            confidence01,
+            validFrom,
+            validUntil: null,
+            source,
+            at: nowMs(),
+        };
+        this.state.temporal.push(created);
+        this.state.temporal = this.state.temporal.slice(-4096);
+
+        this.rebuildTemporalTimeline(memoryId);
+        return structuredClone(created);
+    }
+    temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null {
+        this.state.metrics.temporalQueries += 1;
+        const normalizedMemoryId = String(memoryId ?? '').trim();
+        if (!normalizedMemoryId || !Number.isFinite(at)) return null;
+        const rows = this.state.temporal
+            .filter((row) =>
+                row.memoryId === normalizedMemoryId &&
+                Number.isFinite(row.validFrom) &&
+                row.validFrom <= at &&
+                (row.validUntil === null || (Number.isFinite(row.validUntil) && at < row.validUntil))
+            )
+            .sort((a, b) => b.validFrom - a.validFrom || b.at - a.at);
+        return rows[0] ? structuredClone(rows[0]) : null;
+    }
     temporalDiff(memoryId: string, fromAt: number, toAt: number) { this.state.metrics.temporalQueries += 1; const from = this.temporalAt(memoryId, fromAt); const to = this.temporalAt(memoryId, toAt); return { memoryId, from, to, changed: (from?.valueHash ?? null) !== (to?.valueHash ?? null) }; }
     createLearningReview(input: {
         periodStart: number;
