@@ -146,6 +146,13 @@ export function ingestSignedOutcomeArtifact(
     if (!exactMatch) {
       return { accepted: false, artifactFingerprint: fingerprint, rejection: 'conflicting-existing-outcome' };
     }
+    // A still-live ledger has already consumed this signed receipt: reject a
+    // second ingestion. After restore, the process-local WeakMap has no receipt,
+    // so the exact same signature may re-establish trust once without duplicating
+    // the persisted outcome row.
+    if (authenticatedEvidence.get(ledger)?.has(outcome.evidenceRef)) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: 'duplicate-attempt' };
+    }
   } else {
     const result = ledger.record(outcome);
     if (!result.accepted) {
