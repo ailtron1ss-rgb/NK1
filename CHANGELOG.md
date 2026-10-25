@@ -1,3 +1,12 @@
+## NK1 WorkPass358 — preserve newest-first P23 identity cache on restore (2026-10-25)
+
+- [MEMORY INTEGRITY] Fixed P23 restore ordering: persisted newest-first processed/replayed trace-ID caches now retain their order, while identities recovered from durable rows are appended only when absent. Previously prepending every retained experience could crowd out a newer cached ID when the 2,048-entry cap was reached.
+- [REGRESSION] The WorkPass310 restore-integrity test exposed the mismatch (`trace-127` appeared ahead of `trace-newest`). The change preserves bounded deduplication without discarding newest cache entries.
+- [VALIDATION] The exact-head rerun is pending; WorkPass110 had one final stale external-only outcome assertion and WorkPass108 surfaced this P23 cache-order regression after the signature-tampering test passed.
+- [SCOPE] Integration PR branch only; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass357 — finish external-only outcome expectation
 
 - [CAUSAL EVIDENCE] Corrected the last stale external-only `summary().outcomes` assertion after the first exact-head run exposed it at the overlong-runtime-trace guard. External-only streams must keep the trusted outcome count at zero.
