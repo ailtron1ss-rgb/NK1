@@ -5,7 +5,7 @@ import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectio
 import { selectCausalReplayBatch } from './CausalReplaySampler.ts';
 import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calibratedConfidence, forgettingRisk, repairOpportunity, scoreReplayPriority, transferConfidence, wilsonLowerBound } from './MultiSourceLearningMechanisms.ts';
 import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
-import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
+import { rankLearningTargets, reflectOnOutcomes, type LearningTarget, type ReflectionHypothesis } from './OutcomeReflectionCurriculum.ts';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
@@ -148,6 +148,20 @@ export interface P23LearningMetrics {
   recentPredictionError01:number;
   replayMeanAbsTdError01:number;
   lastLearningAt:number;
+}
+
+export interface AdvisoryOutcomeLearningContext {
+  advisoryOnly: true;
+  /** Number of retained experiences considered by the diagnostic subsystem; not a count of verified task proofs. */
+  experienceHistoryCount: number;
+  /** Cross-task patterns without source IDs or task-specific identity. These are suggestions, never labels. */
+  hypotheses: Array<Pick<ReflectionHypothesis,
+    'kind'|'action'|'occurrences'|'observedSuccess01'|'predictedSuccess01'|
+    'predictionGap01'|'priority01'|'confidence01'|'suggestedNextStep'|'evidenceNeeded'>>;
+  nextLearningTargets: Array<Pick<LearningTarget,
+    'family'|'uncertainty01'|'readiness01'|'transfer01'|'novelty01'|
+    'verificationCost01'|'repairValue01'|'score01'|'rationale'>>;
+  constraints: string[];
 }
 
 export type RevisedCandidateEvaluator = (input: {
@@ -532,6 +546,7 @@ export class P23LearningEngine {
       validationEvidence:SkillLearnBenchCandidateEvaluation['reports'];
       targets:SkillRevisionPlan['targets'];
       holdoutGeneralization:{gap01:number;requiresFreshIndependentEvaluation:true};
+      outcomeLearningContext:AdvisoryOutcomeLearningContext;
     })=>Promise<unknown>|unknown,
     evaluateRevisedCandidate:RevisedCandidateEvaluator,
     options:SkillLearnBenchCandidateGateOptions={},
@@ -569,6 +584,9 @@ export class P23LearningEngine {
       targets:structuredClone(plan.targets),
       // Directional scalar only: no holdout task text, trial IDs, or per-case outcomes.
       holdoutGeneralization:{gap01:fitness.holdoutDelta01,requiresFreshIndependentEvaluation:true},
+      // Historical reflection is advisory cross-task context only. It cannot certify
+      // this candidate, extend its evidence-backed targets, or replace fresh evaluation.
+      outcomeLearningContext:this.advisoryOutcomeLearningContext(6),
     });
     if(revisedPayload===undefined || revisedPayload===null || (typeof revisedPayload==='string'&&!revisedPayload.trim())) {
       throw new Error('skill revision generator returned an empty payload');
@@ -1108,6 +1126,50 @@ export class P23LearningEngine {
     const seen=new Set<string>();
     const candidates=[...debt,...reflected].filter(row=>{if(seen.has(row.id))return false;seen.add(row.id);return true;});
     return rankLearningTargets(candidates,limit);
+  }
+
+  /**
+   * Expose a small cross-task reflection summary to the revision generator.
+   * No raw experience IDs, context keys, validation task IDs, or holdout examples
+   * are included. The caller must keep these hints advisory and retain all existing
+   * task-specific evaluation, provenance, safety, shadow, and approval gates.
+   */
+  advisoryOutcomeLearningContext(limit=6):AdvisoryOutcomeLearningContext {
+    const boundedLimit=Math.max(1,Math.min(12,Math.floor(Number.isFinite(limit)?limit:6)));
+    const hypotheses=this.reflectionHypotheses(boundedLimit).map(row=>({
+      kind:row.kind,
+      action:row.action,
+      occurrences:row.occurrences,
+      observedSuccess01:row.observedSuccess01,
+      predictedSuccess01:row.predictedSuccess01,
+      predictionGap01:row.predictionGap01,
+      priority01:row.priority01,
+      confidence01:row.confidence01,
+      suggestedNextStep:row.suggestedNextStep,
+      evidenceNeeded:row.evidenceNeeded,
+    }));
+    const nextLearningTargets=this.recommendLearningTargets(boundedLimit).map(row=>({
+      family:row.family,
+      uncertainty01:row.uncertainty01,
+      readiness01:row.readiness01,
+      transfer01:row.transfer01,
+      novelty01:row.novelty01,
+      verificationCost01:row.verificationCost01,
+      repairValue01:row.repairValue01,
+      score01:row.score01,
+      rationale:[...row.rationale],
+    }));
+    return {
+      advisoryOnly:true,
+      experienceHistoryCount:this.state.experiences.length,
+      hypotheses,
+      nextLearningTargets,
+      constraints:[
+        'This is cross-task experience history, not candidate-specific evaluation evidence or a verified label.',
+        'Use these hints only to suggest diagnostic checks; do not override or enlarge the candidate-specific evidence-backed revision targets.',
+        'Never infer or inspect holdout examples from this context; a fresh independent evaluation of the exact generated payload remains mandatory.',
+      ],
+    };
   }
 
   private updateEvidenceDebt(e:LearningExperience):void {

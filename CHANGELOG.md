@@ -1,3 +1,10 @@
+# WorkPass341 — connect outcome reflection to skill revision (2026-10-25)
+
+- [INTEGRATED] The P23 revision generator now receives a bounded advisory summary of cross-task reflection hypotheses and ranked learning targets derived from its retained outcome history.
+- [BOUNDARY] The summary omits raw experience IDs, context keys, and task identifiers. It is explicitly labeled advisory; candidate-specific validation targets still define edit scope, and the exact generated payload still requires fresh independent evaluation, authenticated provenance, shadow evidence, and explicit approval before activation.
+- [TEST] Extended the signed-evidence revision-lineage regression to seed repeated poor outcomes, assert that the generator receives the corresponding reflection, and prove that source IDs are not exposed in the advisory context.
+- [CI] The focused Node.js 24 workflow continues to run the revision regression, outcome-admission checks, reflection-integrity checks, matched-seed gate, and strict TypeScript check.
+
 # WorkPass340 — reject malformed P23 outcome evidence (2026-10-25)
 
 - [TYPECHECK FIX] The first exact-head run exposed that TypeScript still regards `trace.selected` as nullable after the structural admission guard. The method now binds and explicitly narrows the selected candidate before storing it; rerun the full focused workflow on the correction commit.
