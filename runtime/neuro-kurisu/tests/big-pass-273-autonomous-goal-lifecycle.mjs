@@ -18,6 +18,7 @@ for(let t=0;t<220;t++){
 }
 const beforeReplay=net.snapshot();
 assert.equal(beforeReplay.lastOutcomeTick,219,'B273 must persist the last credited outcome tick');
+assert.ok(beforeReplay.outcomeHistory.every(row=>row.plannedAction===row.action),'aligned simulation outcomes must record the planned first action alongside actual action');
 assert.throws(()=>net.learnFromOutcome(lastOutcomeInput),/already been credited/);
 assert.deepEqual(net.snapshot(),beforeReplay,'replaying an already-credited B273 outcome must not mutate goal progress or learning counters');
 const restoredReplay=new B273AutonomousGoalLifecycle(); restoredReplay.restore(beforeReplay);
@@ -33,7 +34,34 @@ assert.ok(d.longHorizonValue01>.2,'B273 long-horizon value stayed inert');
 assert.ok(d.autonomy01>.2,'B273 autonomy stayed inert');
 assert.ok(d.skillCreations>0,'B273 did not create a behavioral skill');
 assert.ok(d.skillUses>0,'B273 did not reuse a learned behavioral skill');
+assert.equal(d.planActionMismatchCount,0,'aligned simulator trajectories must not report plan/action mismatches');
+assert.equal(d.planActionAlignment01,1,'plan alignment score must be perfect when all stored plan prefixes match executed actions');
 assert.ok(new Set(diagnosticsActions(net)).size>=2,'B273 plan/action diversity collapsed');
+
+const mismatchedNet=new B273AutonomousGoalLifecycle();
+const mismatchProposal=mismatchedNet.step({...lastStepInput,tick:0});
+assert.ok(mismatchProposal.plan.length>=2,'fixture must produce a multi-action plan');
+const wrongActualAction=actions.find(action=>action!==mismatchProposal.plan[0]);
+assert.ok(wrongActualAction,'fixture must choose an action different from the planned first action');
+const mismatchedOutcome=mismatchedNet.learnFromOutcome({
+  tick:0,
+  action:wrongActualAction,
+  plan:mismatchProposal.plan,
+  reward01:.98,
+  predictionError01:.1,
+  independentGain01:.8,
+  personalityAlignment01:.8,
+  externalEvidence01:0,
+});
+assert.equal(mismatchedOutcome.accepted,true,'the positive actual outcome should still update goal progress');
+assert.equal(mismatchedOutcome.skillCreated,false,'an unexecuted plan must not be promoted as an observed multi-action skill');
+const mismatchSnapshot=mismatchedNet.snapshot();
+assert.equal(mismatchSnapshot.skills.length,0,'no reusable skill may be created from a mismatched plan/action pair');
+assert.equal(mismatchSnapshot.outcomeHistory.at(-1).action,wrongActualAction);
+assert.equal(mismatchSnapshot.outcomeHistory.at(-1).plannedAction,mismatchProposal.plan[0]);
+assert.equal(mismatchedNet.diagnostics().planActionMismatchCount,1,'the mismatch should remain visible in diagnostics');
+assert.equal(mismatchedNet.diagnostics().planActionAlignment01,0,'a lone mismatched plan/action outcome should score zero alignment');
+
 const snap=net.snapshot(); const restored=new B273AutonomousGoalLifecycle(); restored.restore(snap); assert.deepEqual(restored.snapshot(),snap,'B273 snapshot round-trip failed');
 console.log(JSON.stringify({pass:true,diagnostics:d,completed,revised,skills,current:net.current(),actionDiversity:new Set(diagnosticsActions(net)).size},null,2));
 function diagnosticsActions(n){return n.snapshot().outcomeHistory.map(x=>x.action).concat(n.current().plan);}

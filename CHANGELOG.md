@@ -1,3 +1,11 @@
+# WorkPass345 — prevent unexecuted plans from becoming skills
+
+- [FIX] B273 now compares the actual outcome action with the first action of the proposed plan before creating or reinforcing a multi-action skill prototype. Goal outcome learning still proceeds for a valid actual action, but a plan mismatch cannot certify the unexecuted sequence as a skill.
+- [PROVENANCE] Outcome history stores both `plannedAction` and the actual `action`; legacy history restores with `plannedAction: null` so old records are not falsely treated as aligned evidence.
+- [OBSERVABILITY] Diagnostics now report known plan-bound outcome count, mismatch count, and bounded plan/action alignment.
+- [REGRESSION] Added a positive-result fixture where an alternate action actually executes; it must update the goal outcome while creating no skill. Existing aligned loop must retain skill creation and use.
+- [STATUS] Exact-head typecheck and broad runtime suite are required before marking this pass verified. This gate prevents false skill credit; it does not by itself verify whole multi-step trajectories.
+
 # WorkPass344 — attribute counterfactual error to the executed action
 
 - [FIX] B2523 previously compared every observed outcome with `lastValue01`, which represents the counterfactual leader, even when the runtime reported a different action as actually executed.

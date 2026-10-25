@@ -1,3 +1,22 @@
+# WorkPass345 — bind skill credit to the action that ran
+
+Date: 2026-10-25
+
+## Defect
+B273 created or reinforced a multi-action skill from `input.plan` after a successful outcome, without checking whether `input.action` (the actual selected action supplied by the runtime) matched the plan's first step. This could turn an unexecuted plan into a skill and feed its first action back into later policy bias.
+
+## Change
+- Require exact first-step alignment (`input.plan[0] === input.action`) before skill creation/reinforcement.
+- Continue updating the active goal from the valid actual outcome even when the proposed plan and executed action differ.
+- Record both planned first action and actual action in bounded outcome history. Old rows without planned-action provenance restore as unknown (`null`), not assumed aligned.
+- Add diagnostics for known plan-bound outcomes, mismatches and alignment rate.
+- Add regressions for aligned skill acquisition, mismatched actual action (goal updates but skill does not), and diagnostics.
+
+## Verification
+WorkPass344 broad runtime workflow passed at exact SHA `529b6fac1e5ba17e4b01495bd0a7a9ae7d799eed`, including runtime TypeScript typecheck and the counterfactual calibration regression. WorkPass345 needs its own exact-head checks. The current change proves first-step attribution only; full multi-step skill verification across a measured trajectory remains a further gate.
+
+---
+
 # WorkPass344 — action-aligned counterfactual calibration
 
 Date: 2026-10-25

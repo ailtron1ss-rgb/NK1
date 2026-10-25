@@ -76,7 +76,7 @@ export interface B273State {
   longHorizonValue01:number;
   intrinsicDrive01:number;
   lifecycleMode:'incubating'|'pursuing'|'revising'|'completing'|'recovering';
-  outcomeHistory:Array<{tick:number;goalId:string|null;action:ActionKind;reward01:number;predictionError01:number;independentGain01:number}>;
+  outcomeHistory:Array<{tick:number;goalId:string|null;action:ActionKind;plannedAction:ActionKind|null;reward01:number;predictionError01:number;independentGain01:number}>;
 }
 export interface B273StepInput {
   tick:number;
@@ -126,8 +126,9 @@ export class B273AutonomousGoalLifecycle{
       if(!Number.isSafeInteger(row.tick)||typeof row.tick!=='number'||row.tick<0||row.tick>restoredTick)return false;
       if(!(row.goalId===null||(typeof row.goalId==='string'&&row.goalId.length>0&&row.goalId.length<=256&&row.goalId.trim()===row.goalId)))return false;
       if(!isAction(row.action)||!isUnit(row.reward01)||!isUnit(row.predictionError01))return false;
+      if(row.plannedAction!==undefined&&row.plannedAction!==null&&!isAction(row.plannedAction))return false;
       return typeof row.independentGain01==='number'&&Number.isFinite(row.independentGain01)&&row.independentGain01>=-1&&row.independentGain01<=1;
-    }).map((row:any)=>({tick:row.tick,goalId:row.goalId,action:row.action,reward01:row.reward01,predictionError01:row.predictionError01,independentGain01:row.independentGain01})):[];
+    }).map((row:any)=>({tick:row.tick,goalId:row.goalId,action:row.action,plannedAction:row.plannedAction===undefined?null:row.plannedAction,reward01:row.reward01,predictionError01:row.predictionError01,independentGain01:row.independentGain01})):[];
     const historyLastOutcomeTick=restoredOutcomeHistory.reduce((last,row)=>Math.max(last,row.tick),-1);
     const storedLastOutcomeTick=typeof r.lastOutcomeTick==='number'&&Number.isSafeInteger(r.lastOutcomeTick)&&r.lastOutcomeTick>=-1&&r.lastOutcomeTick<=restoredTick?r.lastOutcomeTick:-1;
     const lastOutcomeTick=Math.max(historyLastOutcomeTick,storedLastOutcomeTick);
@@ -314,14 +315,16 @@ export class B273AutonomousGoalLifecycle{
         this.state.goalCreations++;
       }
     }
-    const goodSkill=accepted && input.plan.length>=2 && input.plan.length<=5 && input.predictionError01<.72;
+    // A result for a different executed action can update the goal's outcome, but it must not certify a skill made from an unexecuted plan prefix.
+    const planAligned=input.plan[0]===input.action;
+    const goodSkill=planAligned && accepted && input.plan.length>=2 && input.plan.length<=5 && input.predictionError01<.72;
     let skillCreated=false;
     if(goodSkill){
       const sid=`skill273-${hashVector(goal.vector)}-${input.plan.join('-')}`;let skill=this.state.skills.find(s=>s.id===sid);
       if(!skill){skill={id:sid,actions:input.plan.slice(),support01:.18,success01:input.reward01,expectedGain01:clamp01(.5+gain*.4),uses:1,createdTick:input.tick,lastUsedTick:input.tick,goalFingerprint:hashVector(goal.vector)};this.state.skills=[...this.state.skills.slice(-47),skill];this.state.skillCreations++;skillCreated=true;}
       else{skill.support01=clamp01(skill.support01*.82+.18);skill.success01=clamp01(skill.success01*.88+input.reward01*.12);skill.expectedGain01=clamp01(skill.expectedGain01*.86+(.5+gain*.4)*.14);skill.uses++;skill.lastUsedTick=input.tick;}
     }
-    this.state.outcomeHistory=[...this.state.outcomeHistory,{tick:input.tick,goalId:goal.id,action:input.action,reward01:input.reward01,predictionError01:input.predictionError01,independentGain01:input.independentGain01}].slice(-128);
+    this.state.outcomeHistory=[...this.state.outcomeHistory,{tick:input.tick,goalId:goal.id,action:input.action,plannedAction:input.plan[0]??null,reward01:input.reward01,predictionError01:input.predictionError01,independentGain01:input.independentGain01}].slice(-128);
     this.state.lastOutcomeTick=input.tick;
     this.state.learningUpdates++;
     return {accepted,revised,completed,abandoned,skillCreated,goalId:goal.id,gain01:gain};
@@ -338,6 +341,8 @@ export class B273AutonomousGoalLifecycle{
     const completed = this.state.goals.filter(g => g.status === 'completed').length;
     const abandoned = this.state.goals.filter(g => g.status === 'abandoned').length;
     const hierarchical = this.state.goals.filter(g => g.parentId).length;
+    const planBoundOutcomes=this.state.outcomeHistory.filter(outcome=>outcome.plannedAction!==null);
+    const planActionMismatchCount=planBoundOutcomes.filter(outcome=>outcome.plannedAction!==outcome.action).length;
     return {
       version: 1,
       cycles: this.state.cycles,
@@ -349,6 +354,9 @@ export class B273AutonomousGoalLifecycle{
       subgoalCreations: this.state.subgoalCreations,
       skillCreations: this.state.skillCreations,
       skillUses: this.state.skillUses,
+      planBoundOutcomes: planBoundOutcomes.length,
+      planActionMismatchCount,
+      planActionAlignment01: clamp01((planBoundOutcomes.length-planActionMismatchCount)/Math.max(1,planBoundOutcomes.length)),
       activeGoals: active,
       completedGoals: completed,
       abandonedGoals: abandoned,

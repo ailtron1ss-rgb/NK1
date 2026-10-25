@@ -46,3 +46,8 @@ The WorkPass331 workflow now installs the pinned TypeScript compiler and runs th
 ## WorkPass344 — align counterfactual scoring with the action that actually ran
 
 B2523 outcome calibration now uses the forecast at the selected horizon for the actual action, not the stored counterfactual leader. A focused test and the broad typecheck/runtime workflow were added for this contract. WorkPass344 requires a new exact-head successful run; no planning-quality uplift is inferred yet.
+
+
+## WorkPass345 — plan/action skill-credit guard
+
+B273 now preserves the planned first action beside the actual outcome action, reports mismatches, and refuses to create/reinforce a multi-action skill when those differ. Goal learning still records the actual result, and old rows restore with unknown plan provenance instead of invented alignment. The focused and broad exact-head checks are pending; whole-trajectory skill verification remains an open gate.
