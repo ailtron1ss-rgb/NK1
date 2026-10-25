@@ -9,7 +9,6 @@ on:
       - ".github/workflows/repository-wiring-audit.yml"
       - ".github/workflows/**"
       - "package.json"
-      - "package-lock.json"
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
       - "tools/verify-repository-wiring.mjs"
@@ -20,7 +19,6 @@ on:
     paths:
       - ".github/workflows/**"
       - "package.json"
-      - "package-lock.json"
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
       - "tools/verify-repository-wiring.mjs"
