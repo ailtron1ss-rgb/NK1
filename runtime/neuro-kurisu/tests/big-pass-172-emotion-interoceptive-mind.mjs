@@ -59,7 +59,7 @@ assert.deepEqual(e.snapshot(),beforeInvalidFeeling,
   'malformed body/feeling signals must be rejected without changing persistent affect');
 for(let i=0;i<4;i++) e.recordOutcome({action:'rest',success01:.9,surprise01:.1,regulationCost01:.2});
 assert.ok((e.outcomeCalibration('rest')?.attempts??0)===4);
-assert.ok(e.actionBias('rest')>e.actionBias('explore'),'high interoceptive pressure plus good rest outcomes should favor regulation');
+assert.ok(e.actionBias('rest',1003)>e.actionBias('explore',1003),'high interoceptive pressure plus good rest outcomes should favor regulation');
 
 // WorkPass452: action outcomes are bound to the emotion/pressure context that
 // preceded them, not generalized indiscriminately across all affective states.
@@ -70,7 +70,7 @@ const stressRestKey = Object.keys(contextBefore.contextualOutcomes).find(key => 
 });
 assert.ok(stressRestKey, 'outcomes from the current stress episode must create a context-bound row');
 assert.equal(contextBefore.contextualOutcomes[stressRestKey].attempts, 4);
-const stressRestBiasBefore = e.actionBias('rest');
+const stressRestBiasBefore = e.actionBias('rest',1003);
 e.recordOutcome({emotionId:first.id,action:'rest',success01:.1,surprise01:.8,regulationCost01:.8});
 const contextAfter = e.snapshot();
 const curiosityRestKey = Object.keys(contextAfter.contextualOutcomes).find(key => {
@@ -84,8 +84,14 @@ assert.notEqual(curiosityRestKey, stressRestKey);
 assert.equal(contextAfter.contextualOutcomes[stressRestKey].attempts, 4,
   'outcome attributed to an earlier emotion must not mutate the current stressed-context history');
 assert.equal(contextAfter.contextualOutcomes[curiosityRestKey].attempts, 1);
-assert.equal(e.actionBias('rest'), stressRestBiasBefore,
+assert.equal(e.actionBias('rest',1003), stressRestBiasBefore,
   'an outcome from another emotion context must not leak into the active action bias');
+const freshRestBias=e.actionBias('rest',1003);
+const staleRestBias=e.actionBias('rest',1003+20*60_000);
+assert.ok(staleRestBias<freshRestBias,
+  'emotion- and mood-derived action bias must fade after a long idle gap while live regulation pressure remains available');
+assert.equal(e.actionBias('rest',Number.NaN),0,
+  'invalid decision timestamps must not create affective action bias');
 assert.throws(() => e.recordOutcome({
   emotionId:'emotion-does-not-exist',action:'rest',success01:.5,surprise01:.5,
 }), /emotion-outcome-emotion-link-invalid/);
@@ -280,4 +286,4 @@ for(const key of ['feelingIntensity01','interoceptiveMismatch01','selfAccessConf
 assert.ok(String(feelingLinkedEmotion.metadata.feelingEpisodeId).startsWith('feel:'));
 stable.stop?.(); stressCore.stop?.(); stressR.stop?.(); await rm(root,{recursive:true,force:true});
 
-console.log(JSON.stringify({pass:172,status:'PASS',direct:{episodeIdsUnique:true,positiveValence:first.valence01,stressLabel:stressed.label,feelingMismatch:feeling.interoceptiveMismatch01,restBias:e.actionBias('rest')},p66:{highMode:high.mode,highPressure:high.pressure01,recoveryDebtAfterRecovery:hs.recoveryDebt01},core:{stableInteroCycles:stableS.interoception.cycles,stressInteroCycles:stressS.interoception.cycles,stableRegulation:stableS.interoception.regulationPressure01,stressRegulation:stressS.interoception.regulationPressure01,stableMeanStress:stableS.meanStress01,stressMeanStress:stressS.meanStress01,stableRecoveryDebt:stable.p66Summary().recoveryDebt01,stressRecoveryDebt:stressCore.p66Summary().recoveryDebt01,restart:true}},null,2));
+console.log(JSON.stringify({pass:172,status:'PASS',direct:{episodeIdsUnique:true,positiveValence:first.valence01,stressLabel:stressed.label,feelingMismatch:feeling.interoceptiveMismatch01,restBias:e.actionBias('rest',1003)},p66:{highMode:high.mode,highPressure:high.pressure01,recoveryDebtAfterRecovery:hs.recoveryDebt01},core:{stableInteroCycles:stableS.interoception.cycles,stressInteroCycles:stressS.interoception.cycles,stableRegulation:stableS.interoception.regulationPressure01,stressRegulation:stressS.interoception.regulationPressure01,stableMeanStress:stableS.meanStress01,stressMeanStress:stressS.meanStress01,stableRecoveryDebt:stable.p66Summary().recoveryDebt01,stressRecoveryDebt:stressCore.p66Summary().recoveryDebt01,restart:true}},null,2));
