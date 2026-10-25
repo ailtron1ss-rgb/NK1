@@ -175,3 +175,11 @@ The current exact-head run on `1ef8ee0` confirmed:
 - The replay policy sweep’s `interleave-1 seed=17` produced only `0.520` new-task accuracy. The benchmark interleaves one old record per fresh record at that stride, and the previous replay step `0.06` was a third of the fresh step `0.18`, allowing old-task updates to suppress the new task. The replay rate is now uniformly `0.02` across all interleaved strategies (same experiment across strategies), with the `>0.60` quality threshold kept intact. It still records retention and new-task accuracy so this is observable rather than hidden.
 
 **Status: committed; exact-head replay and signed-observation tests remain the acceptance gate.**
+
+## Seventeenth follow-up — distinguish execution feasibility from evidence authority; cap replay budget
+
+The exact-head matrix on `11ea497` had all P26 learning tests green and passed signed shadow observation, but showed two remaining issues:
+- The independent evaluator reported `executable=false` when the candidate actually ran successfully but the independent verifier threw. This conflated feasibility with trust. The result now preserves a valid execution-feasibility signal while setting `bindingVerified=false`, dropping run IDs/observed steps/capability credit, and keeping task success false. Additional assertions protect this separation.
+- The replay sweep still had the old `0.06` replay learning rate at the actual file head and allowed up to 2,000 replay updates per epoch, because an earlier bulk replacement overwrote the intended rate change. It now explicitly uses a 0.02 replay step and caps replay updates at half the number of fresh rows per epoch across all interleave strategies. The `>0.60` new-task score requirement is unchanged.
+
+Status: committed to draft PR for exact-head verification. These are not merged to the stable source branch, and the WorkPass70 release ZIP remains unchanged.

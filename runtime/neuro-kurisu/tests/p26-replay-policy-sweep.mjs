@@ -69,8 +69,10 @@ for(const seed of seeds){
     }else{
       for(let epoch=0;epoch<epochs;epoch++){
         const result=engine.trainInterleaved(fresh,oldReplay,{
-          replayEveryNCurrent:strategy.stride,maxReplayUpdates:2000,targetMode:'reward',
-          currentLearningRate01:.18,replayLearningRate01:.06,conflictCandidateCap:32,
+          // Keep a common resource budget across interleaving strides: no policy
+          // may spend more than half its updates rehearsing the old task.
+          replayEveryNCurrent:strategy.stride,maxReplayUpdates:Math.floor(fresh.length/2),targetMode:'reward',
+          currentLearningRate01:.18,replayLearningRate01:.02,conflictCandidateCap:32,
         });
         replayUpdates+=result.replayUpdates;
         blockedReplayRows+=result.blockedReplayRows;

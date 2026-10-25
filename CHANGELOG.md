@@ -1,3 +1,11 @@
+## Exact-head compatibility follow-up — trusted execution semantics and bounded interleaved replay (2026-10-25)
+
+- [FIX] Independent candidate evaluator now distinguishes “sandbox executed” from “execution was bound by the independent verifier.” A verifier outage preserves a successful execution's feasibility bit, but run ID, observed steps, capability coverage, task success, and trusted ledger credit remain unavailable until exact binding succeeds.
+- [TEST] Added explicit assertions for this distinction, including that a verifier failure marks execution as untrusted and leaves trusted trajectory steps empty.
+- [FIX] P26 replay policy sweep now uses `replayLearningRate01: 0.02` and a shared hard budget `maxReplayUpdates = floor(fresh.length / 2)` per epoch. This prevents stride-1 policy from applying an equal number of old-task updates and fresh-task updates while keeping the `new-task accuracy > 0.60` threshold unchanged and measuring the resulting retention/accuracy.
+- [EVIDENCE] On current head `11ea497`, P26 Learning Validation passed all tests, while Core regression still reported `interleave-1 seed=17 accuracy=0.520`; WorkPass110 reached the independent evaluator and exposed the execution-feasibility/trust conflation. Exact-head rerun must pass both before this is complete.
+
+
 ## CI follow-up — drift-test precision, candidate ID fixture and replay balance (2026-10-25)
 
 - [TEST FIX] Adaptive-window drift regression now compares the running estimate with a small numeric tolerance; the detector’s exact floating-point accumulation yielded `0.19999999999999962` for a stationary stream of `0.2`.

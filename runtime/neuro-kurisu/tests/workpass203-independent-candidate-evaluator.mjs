@@ -226,10 +226,16 @@ const verifierUnavailable = createIndependentSkillCandidateEvaluator({
   safetyScanner: { async scan() { return { violationCount: 0 }; } },
 });
 const verifierFailed = await verifierUnavailable({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].executable, true,
+  'verifier failure must preserve the fact that the candidate actually executed');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].bindingVerified, false,
+  'a failed verifier must not confer trusted execution binding');
 assert.equal(verifierFailed.evaluation.validation[0].skillQuality.executability, 1,
   'verifier failure must not mislabel a successfully executed candidate as non-executable');
 assert.equal(verifierFailed.evaluation.validation[0].taskSuccess.passed, false,
   'verifier failure must fail closed for task success');
+assert.deepEqual(verifierFailed.evaluation.validation[0].trajectory.observedStepIds, [],
+  'unverified execution steps must not leak into trusted trajectory evidence');
 
 const duplicateRunId = createIndependentSkillCandidateEvaluator({
   tasks, environmentFingerprint: 'e'.repeat(64),
