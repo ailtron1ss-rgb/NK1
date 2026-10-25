@@ -36,3 +36,8 @@ B273 now has a durable last-credit tick, validates new outcome inputs before mut
 ## WorkPass342 — regression fixture correction
 
 The first WorkPass287–288 run on commit `67fbc11b4a8dfc7d8f6c8ec7fbea477e0503a2e6` failed because the newly added motive-history fixture referenced `comparisonInput` before its declaration. The runtime code was not reached by that test. The fixture now uses a self-contained valid B272 input; re-run the focused workflow on the new exact HEAD before treating WorkPass340/341 as verified.
+
+
+## WorkPass343 — full runtime typecheck gate
+
+The WorkPass331 workflow now installs the pinned TypeScript compiler and runs the full runtime semantic typecheck, and it is triggered by the B272/B273 implementation/tests. The step is intentionally not recorded as passed until the exact-head Actions run produces a successful result.

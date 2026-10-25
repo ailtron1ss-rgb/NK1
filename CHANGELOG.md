@@ -1,3 +1,11 @@
+# WorkPass343 — broaden canonical-runtime type and lifecycle verification
+
+- [CI] WorkPass331 now triggers when B272/B273 goal-lifecycle owners or their focused regressions change.
+- [TYPECHECK] Install the pinned TypeScript compiler from the app lockfile, then run the full runtime semantic typecheck before lifecycle tests. The startup preflight remains before dependency installation to preserve clean-checkout coverage.
+- [REGRESSION] The broad workflow explicitly runs the B272 intrinsic-drive-to-goal tests and B273 duplicate-outcome guard as well as the existing kernel, autonomy, spontaneous-dialogue, background-clock and restart tests.
+- [OPERATIONS] Increased the workflow timeout to 20 minutes to accommodate dependency installation and the complete runtime check.
+- [STATUS] This is new CI wiring and requires a successful exact-head run; no typecheck or production-readiness claim is made until its actual conclusion is green.
+
 # WorkPass342 — make motive-provenance regression fixture self-contained
 
 - [FIX] The first WorkPass340 focused run exposed a test-only temporal-dead-zone bug: the new motive-history fixture referenced `comparisonInput` before its later declaration. It now uses a local, complete B272 input, without changing runtime behavior.

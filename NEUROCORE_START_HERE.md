@@ -1,3 +1,19 @@
+# WorkPass343 — full runtime typecheck and lifecycle workflow
+
+Date: 2026-10-25
+
+## Change
+- Extended WorkPass331 path filters to include B272/B273 canonical goal owners and their focused tests.
+- Kept clean-checkout startup preflight before dependency installation.
+- Added installation of the repository-pinned TypeScript compiler via `npm ci --prefix app --ignore-scripts --no-audit --no-fund`, followed by `npm run typecheck` in `runtime/neuro-kurisu`.
+- Added B272 same-cycle intrinsic-drive and B273 outcome-replay regressions to the broader canonical-runtime workflow.
+- Increased workflow timeout from 10 to 20 minutes for the additional full-runtime check.
+
+## Verification
+The focused WorkPass287–288 suite passed on `4df8e033483816f61dee3d62e70b14b6643576bf`. This workflow change requires new exact-head Actions results; typecheck is not claimed before that run passes.
+
+---
+
 # WorkPass342 — make motive-provenance regression fixture self-contained
 
 - [FIX] The first WorkPass340 focused run exposed a test-only temporal-dead-zone bug: the new motive-history fixture referenced `comparisonInput` before its later declaration. It now uses a local, complete B272 input, without changing runtime behavior.

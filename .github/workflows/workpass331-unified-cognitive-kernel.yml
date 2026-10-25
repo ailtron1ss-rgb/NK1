@@ -13,6 +13,11 @@ on:
       - "runtime/neuro-kurisu/tests/restart-persistence.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-autonomous-goal-lifecycle.mjs"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
@@ -36,6 +41,11 @@ on:
       - "runtime/neuro-kurisu/tests/restart-persistence.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-autonomous-goal-lifecycle.mjs"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
@@ -58,7 +68,7 @@ concurrency:
 jobs:
   canonical-cognitive-kernel:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -69,9 +79,20 @@ jobs:
         run: node --test tools/runtime-requirements.test.mjs
       - name: Verify clean-checkout startup preflight
         run: npm run doctor
+      - name: Install the repository-pinned TypeScript compiler
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Typecheck the full canonical runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
       - name: Verify canonical decision-to-learning causal loop
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/canonical-cognitive-kernel.mjs
+      - name: Verify intrinsic drive reaches B272 goal genesis and persists
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs && node --experimental-strip-types tests/big-pass-272-core-endogenous-goals.mjs
+      - name: Verify B273 goal outcome replay is rejected
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-273-autonomous-goal-lifecycle.mjs
       - name: Verify live runtime uses the canonical kernel
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/canonical-cognitive-kernel-runtime-wiring.mjs
