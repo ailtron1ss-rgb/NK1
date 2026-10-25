@@ -1,3 +1,12 @@
+## [NK1][runtime] Fail closed on malformed restored action receipts (2026-10-25)
+
+- Added a receipt validator tying persisted response `executionId` and tool ID back to the durable ledger row; it checks outcome/audit/verification consistency, bounded confidence values, known outcome classes and the 48 KiB serialized receipt limit.
+- `restoreExecutionLedger` now retains only structurally coherent embedded responses. Malformed responses become non-replayable recovery tombstones, and `replayLedgerEntry` repeats validation as defense in depth, including for archive-backed receipts.
+- A malformed receipt is never replayed as success and never causes automatic re-execution of a possibly completed side effect. This is structural integrity, not cryptographic authentication of an untrusted snapshot; durable-store access control remains required.
+- Validation pending on the new exact HEAD.
+
+---
+
 ## [NK1][learning] Align causal replay wiring regression with candidate construction order (2026-10-25)
 
 - Fixed a stale source-order assertion: P23 builds each candidate's `policyFeatures01` before invoking `selectCausalReplayBatch`, but the regression searched for that vector after the sampler call.
