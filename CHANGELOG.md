@@ -1,3 +1,19 @@
+## NK1 WorkPass359 — Restore conflict-gated P26 interleaved learning (2026-10-25)
+
+- [CONTINUAL-LEARNING] Restored the P26TrueLearningEngine.trainInterleaved API used by sequential-learning benchmarks: it updates fresh examples, periodically rehearses bounded historical samples, and tracks online/replay updates separately.
+- [CONFLICT-GATE] Replay comparisons are bounded to 8–128 same-action candidate records, compare normalized policy features and reward disagreement, and block stale replay only when a near-identical context has a contradictory outcome. Distinct context-separated tasks remain eligible for rehearsal.
+- [INPUT-GUARDS] Invalid rows and out-of-range replay options fail before the learning loop starts. Generalization maturity is not increased by this synthetic benchmark.
+
+---
+
+## NK1 WorkPass358 — Bind signed-shadow E2E to the persisted candidate (2026-10-25)
+
+- [E2E-IDENTITY] The signed-shadow observation fixture now stages a candidate through a Core backed by the test's durable state path, then reads the actual persisted candidate ID/version before configuring the execution scheduler.
+- [CORRELATION] The second runtime must reload that exact candidate from durable storage; command environment and scheduler use the persisted identity instead of assuming version 1. Signature and candidate checks remain enabled.
+- [VALIDATION] The signed-shadow lifecycle is being checked again on the updated PR head.
+
+---
+
 ## NK1 WorkPass360 — Isolate host-owned authority boundary test mutations (2026-10-25)
 
 - [TEST-ISOLATION] The host-owned independent-evaluation regression restores the test executable's private mode after deliberately making it group-writable for a rejection check.
