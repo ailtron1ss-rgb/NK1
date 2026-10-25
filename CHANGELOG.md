@@ -1,3 +1,15 @@
+## NK1 all-systems hardening — restore boundaries, affect continuity, memory and journal integrity (2026-10-25)
+
+- Hardened EmotionAppraisalEngine restore: plain-data-only snapshot reads, bounded/deduplicated emotion and feeling histories, validation of labels/tendencies, finite affect metrics, normalized interoception and calibrated outcome records. Getter-backed snapshots fail closed; invalid tick/timestamp inputs are rejected before an episode is recorded.
+- Hardened P66 interoceptive-homeostasis restore: validated bounded counters, pressure/energy setpoints, mode names and history rows; rejected accessor-backed state; reconciled its cycle counter with retained valid history. Clock inputs are checked before mutation.
+- Fixed a real post-hysteresis continuity defect: the effective homeostasis mode returned to the executive is now also reflected in `lastMode`, the newest history row and aggregate mode counts.
+- Hardened AdaptiveExperienceConsolidator ingest/restore: malformed records are rejected, numeric factors are normalized, tags and identities are bounded, accessor-backed records do not execute getters, and duplicate restored IDs retain the newest valid occurrence.
+- Fixed ContinuityLedger byte-cap truncation: the journal now writes only a whole prefix of JSONL records that fits the remaining UTF-8 byte budget, rather than slicing a serialized line by JavaScript string length. Added a multibyte stress regression that checks byte cap and JSON parseability.
+- Extended P26 Learning Validation path triggers and steps for emotion persistence, P66 homeostasis, adaptive-memory restore, and bounded continuity journal writes. These are part of the shared validation gate instead of untracked manual checks.
+- **Verification boundary:** source changes, regression fixtures and CI wiring are committed on `feature/learning`. Fresh exact-HEAD Actions/typecheck results are not yet confirmed. The draft PR remains open; no production-readiness, device-E2E, or empirical memory-retrieval-uplift claim is made.
+
+---
+
 ## NK1 CI wiring — execute persistence and runtime-avatar regressions (2026-10-25)
 
 - WorkPass105 now runs the checksummed verified-outcome-ledger persistence regression and triggers when that test changes; the existing round-trip test covers durable rejection history.
