@@ -1,3 +1,11 @@
+## NK1 WorkPass338 — tighten learning restore guards and preserve dataset schema literals (2026-10-25)
+
+- [FIXED] `CausalExperienceStream.restore()` now binds and checks the optional `policyFeatures01` array before reading its length or values. This keeps malformed persisted records from entering the grounded learning stream and fixes a TypeScript narrowing error.
+- [FIXED] `VerifiedSessionDataset` now preserves the literal `'holdout'` split and schema version `1` in aggregate and dataset identity objects, matching the externally declared schema instead of widening these values to generic strings/numbers.
+- [VALIDATION] Code updates are committed; the runtime typecheck and learning regressions must confirm the result on the newest head. Node declaration discovery from WorkPass337 has not yet been confirmed by a completed exact-head run. Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass337 — make the pinned Node.js declarations visible to runtime typecheck (2026-10-25)
 
 - [CONFIG] The runtime typecheck intentionally reuses the pinned TypeScript compiler installed by the app workspace, but TypeScript resolves ambient type packages relative to the runtime project and was not seeing the sibling `app/node_modules/@types/node`.
