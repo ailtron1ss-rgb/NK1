@@ -112,6 +112,31 @@ assert.equal(projectionRestored.resolveExternalObservation({
   'late external evidence cannot attach to a quarantined projection ID');
 assert.equal(projectionRestored.hasProjectionForExecution('exec-projection-conflict'), false,
   'quarantined identifiers must not be advertised as active projections');
+
+// Invalid trailing rows must not crowd a valid older projection out of the bounded restore index.
+const validProjectionSource = new OutcomeCognitionFabric();
+validProjectionSource.project({
+  tick: 14, tool: 'door.open', ok: true, verification: projectionBaseVerification,
+  executionId: 'exec-projection-valid', outcomeClass: 'executed-verified',
+});
+const validProjectionSnapshot = validProjectionSource.snapshot();
+const noisyProjectionRows = Array.from({ length: 900 }, (_, i) => ({
+  executionId: 'exec-invalid-projection-tail-' + i,
+  fingerprint: 'invalid',
+  record: null,
+  verifiedExternal: false,
+}));
+const noisyProjectionRestored = new OutcomeCognitionFabric();
+noisyProjectionRestored.restore({
+  version: 1,
+  records: validProjectionSnapshot.records,
+  projectionIndex: [...validProjectionSnapshot.projectionIndex, ...noisyProjectionRows],
+  causal: validProjectionSnapshot.causal,
+});
+assert.equal(noisyProjectionRestored.hasProjectionForExecution('exec-projection-valid'), true,
+  'invalid trailing projection rows must not evict a valid older active projection');
+assert.ok(!noisyProjectionRestored.snapshot().causal.quarantinedExecutionIds?.includes('exec-projection-valid'),
+  'valid older projections must not be quarantined merely because invalid rows follow them');
 assert.throws(() => projectionRestored.project({
   tick: 13, tool: 'door.open', ok: true, verification: projectionBaseVerification,
   executionId: 'exec-projection-conflict', outcomeClass: 'executed-verified',
