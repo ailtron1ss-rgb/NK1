@@ -1,4 +1,5 @@
-import type { ToolDefinition, OutcomeVerification, OutcomeVerificationContext } from '../system/ActionGateway.ts';
+import type { ToolDefinition } from '../system/ActionGateway.ts';
+import type { OutcomeVerification, OutcomeVerificationContext } from '../system/OutcomeVerificationService.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 import { hasAuthenticatedOutcomeEvidence } from './VerifiedOutcomeArtifact.ts';
 import { VerifiedOutcomeLedger, type TaskManifestEntry, type VerifiedTaskOutcome } from './VerifiedOutcomeLedger.ts';
