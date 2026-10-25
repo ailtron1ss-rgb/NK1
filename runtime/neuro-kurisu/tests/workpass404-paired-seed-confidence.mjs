@@ -22,7 +22,8 @@ const negative = bootstrapMeanConfidenceInterval([-0.2, -0.1, -0.15, -0.05], { s
 assert.ok(negative.upper < 0, 'uniformly regressing paired-seed deltas should have a negative upper bound');
 
 assert.throws(() => bootstrapMeanConfidenceInterval([]), /paired-seed-bootstrap-values-invalid/);
-assert.throws(() => bootstrapMeanConfidenceInterval([0.1, Number.NaN]), /paired-seed-bootstrap-values-invalid/);
+assert.throws(() => bootstrapMeanConfidenceInterval([0.1, Number.NaN]), /paired-seed-bootstrap-data-boundary-rejected/,
+  'non-finite samples must fail closed at the data boundary before bootstrap statistics run');
 assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 1.1]), /paired-seed-bootstrap-values-invalid/);
 assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { confidenceLevel: 1 }), /paired-seed-bootstrap-confidence-level-invalid/);
 assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { resamples: 99 }), /paired-seed-bootstrap-resamples-invalid/);
