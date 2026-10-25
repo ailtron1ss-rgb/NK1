@@ -106,6 +106,8 @@ jobs:
         run: npm --prefix app run test:scripts
       - name: Universal input interpreter regression (WorkPass328–333)
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/universal-input-interpreter.mjs
+      - name: Outcome verification correlation-ID boundary regression (WorkPass339)
+        run: npm --prefix runtime/neuro-kurisu run test:outcome-verification-correlation-boundary
       - name: App typecheck
         run: npm --prefix app run typecheck
       - name: App development bundle build
