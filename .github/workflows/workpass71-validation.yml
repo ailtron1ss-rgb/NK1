@@ -29,11 +29,6 @@ on:
       - "tools/super-install.mjs"
       - "tools/super-install.test.mjs"
       - "tools/super-doctor.mjs"
-      - "tools/runtime-pin.mjs"
-      - "tools/runtime-pin.test.mjs"
-      - "tools/super-install.mjs"
-      - "tools/super-install.test.mjs"
-      - "tools/super-doctor.mjs"
       - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
       - "docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md"
       - 'app/package-lock.json'
@@ -66,6 +61,11 @@ on:
       - "package.json"
       - "tools/verify-ci-reliability.mjs"
       - "tools/verify-ci-reliability.test.mjs"
+      - "tools/runtime-pin.mjs"
+      - "tools/runtime-pin.test.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-install.test.mjs"
+      - "tools/super-doctor.mjs"
       - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
       - "docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md"
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
