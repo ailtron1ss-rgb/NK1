@@ -152,7 +152,7 @@ const stageIds = causalFabric.recordOperationalCycle({
   prediction: { source: 'test-prediction', confidence01: .7, payload: { action: 'verify' } },
   plan: { source: 'test-plan', confidence01: .85, payload: { action: 'verify' } },
   action: { source: 'test-action', confidence01: .85, payload: { action: 'verify' } },
-  outcome: { source: 'test-outcome', external: true, confidence01: .94, payload: { success: true, reward: .92 } },
+  outcome: { source: 'test-outcome', external: true, confidence01: .94, payload: { success: .92, reward: null, surprise: .08 } },
   learning: { source: 'test-learning', confidence01: .8, payload: { updated: true } },
   selfUpdate: { source: 'test-self-update', confidence01: .8, payload: { reflected: true } },
 });
