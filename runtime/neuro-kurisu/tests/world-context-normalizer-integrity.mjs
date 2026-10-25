@@ -36,6 +36,9 @@ assert.deepEqual(normalized.events, ['user arrived']);
 assert.equal(normalized.objects[0].id, 'object:0');
 assert.equal(normalized.objects[0].label, 'unknown');
 assert.equal(normalized.objects[0].visible, false, 'the string "false" must not become true');
+assert.equal(normalized.objects[0].visibilityKnown, false, 'malformed visibility is unknown, not a confirmed negative observation');
+assert.equal(normalized.objects[0].collectionKnown, false, 'malformed collection state is unknown');
+assert.equal(normalized.objects[0].valueKnown, false, 'null object value is unknown, not a measured zero');
 assert.equal(normalized.objects[0].collected, false, 'numeric truthiness must not invent an interaction');
 assert.equal('evidenceKind' in normalized.objects[0], false, 'unknown evidence kinds must be rejected');
 assert.equal('sourceId' in normalized.objects[0], false, 'non-string source identity must be rejected');
@@ -45,8 +48,11 @@ assert.deepEqual(normalized.objects[1], {
   label: 'desk lamp',
   location: 'lab',
   value: 1,
+  valueKnown: true,
   visible: true,
+  visibilityKnown: true,
   collected: false,
+  collectionKnown: true,
   confidence01: 0.7,
   evidenceKind: 'observed',
   sourceId: 'camera-1',
