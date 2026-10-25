@@ -1,3 +1,10 @@
+## [NK1][learning] Improve multi-seed replay sweep diagnostics (2026-10-25)
+
+- Added the failing strategy, seed and measured new-task accuracy to the P26 replay-policy-sweep assertion message. The threshold remains unchanged at 0.60; this is diagnostic instrumentation, not a relaxation of the benchmark.
+- The prior run failed the existing plasticity threshold after the new interleaved replay method was added. The next exact-head result will identify the specific strategy/seed before changing replay balance.
+
+---
+
 ## [NK1][learning] Bind file-backed candidate IDs to revision provenance consistently (2026-10-25)
 
 - WorkPass110 exposed a production persistence mismatch: `VersionedSkillCandidateStore.stageCandidate` hashes a five-slot identity tuple, with a provenance fingerprint or explicit `null` as slot five, while the atomic-file adapter validated only the first four slots.
