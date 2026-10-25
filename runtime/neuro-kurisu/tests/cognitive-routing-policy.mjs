@@ -32,6 +32,14 @@ assert.equal(critical.allowMatchedCounterfactual, false);
 assert.equal(critical.reason, 'critical-interrupt');
 assert.equal(critical.cognitiveCycleDelayMultiplier01, 1, 'critical resource interrupts must not accelerate CPU work');
 
+const highPriority = resolveCognitiveRoutingPolicy({
+  wakeMask: 8,
+  interrupt: { active: true, priority01: 0.95, type: 'prediction-error', domains: ['agency'] },
+}, 3);
+assert.equal(highPriority.maxCounterfactualBranches, 0, 'a numerically critical interrupt must deny optional simulations independently of its label');
+assert.ok(highPriority.cognitiveCycleDelayMultiplier01 < 1, 'urgent non-resource interrupts should advance the next cognitive cycle');
+assert.equal(highPriority.allowMatchedCounterfactual, false);
+
 const governance = resolveCognitiveRoutingPolicy({
   wakeMask: 64,
   interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
