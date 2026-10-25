@@ -1782,7 +1782,10 @@ export class P23LearningEngine {
   diagnoseRecentLearningAttempts(limit=20) {
     const boundedLimit=Math.max(0,Math.min(100,Number.isFinite(limit)?Math.floor(limit):20));
     if(boundedLimit===0)return [];
-    return this.state.experiences.slice(-boundedLimit).reverse().map(experience=>{
+    // Experience history is canonical newest-first: recordExperience prepends,
+    // and restore preserves the validated newest-first prefix. Select that prefix
+    // directly; taking the tail and reversing can return old outcomes when bounded.
+    return this.state.experiences.slice(0,boundedLimit).map(experience=>{
       const outcome: 'success'|'failure'|'unknown' = experience.success>=.8
         ? 'success' : experience.success<=.2 ? 'failure' : 'unknown';
       const errors=experience.failureClass ? [experience.failureClass] : [];
