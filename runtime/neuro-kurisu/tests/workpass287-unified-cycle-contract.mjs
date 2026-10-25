@@ -121,6 +121,22 @@ const unsupportedVersion=new UnifiedCognitiveCycle();
 assert.throws(()=>unsupportedVersion.restore({version:2}),/version/);
 assert.equal(unsupportedVersion.snapshot().cycles,0);
 
+const inheritedCycleState=Object.create({
+  version:1,cycles:10,completeCycles:10,incompleteCycles:0,brokenLineages:0,
+  meanStageCoverage01:1,meanCausalContinuity01:1,lastTick:9,lastComplete:true,lastMissingStages:[],
+});
+const inheritedCycle=new UnifiedCognitiveCycle();
+inheritedCycle.restore(inheritedCycleState);
+assert.equal(inheritedCycle.snapshot().cycles,0,'prototype-injected counters must not restore a completed cycle');
+assert.equal(inheritedCycle.snapshot().lastComplete,false);
+assert.deepEqual(inheritedCycle.snapshot().lastMissingStages,['observation','prediction','action','outcome','learning','self-update']);
+
+const accessorCycleState={};
+Object.defineProperty(accessorCycleState,'cycles',{enumerable:true,get(){throw new Error('restore must not execute snapshot getters');}});
+const accessorCycle=new UnifiedCognitiveCycle();
+assert.doesNotThrow(()=>accessorCycle.restore(accessorCycleState),'restore must ignore accessor-backed counters');
+assert.equal(accessorCycle.snapshot().cycles,0);
+
 assert.throws(()=>cycle.evaluate(null),/input must be an object/);
 assert.throws(()=>cycle.evaluate({tick:6,stageIds:null,parentIntegrity01:1}),/stageIds/);
 const inheritedIds=Object.assign(Object.create({observation:'obs-from-prototype'}),{
