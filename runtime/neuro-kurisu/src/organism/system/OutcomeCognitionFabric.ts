@@ -196,9 +196,17 @@ export class OutcomeCognitionFabric {
     }
     this.trimProjectionIndex();
 
-    this.evidenceRevisions=Array.isArray(snapshot?.evidenceRevisions)
-      ? snapshot!.evidenceRevisions!.slice(-this.maxEvidenceRevisions).filter((row:any)=>row&&typeof row.revisionId==='string'&&row.revisionId.length<=180&&typeof row.executionId==='string'&&row.executionId.length<=180&&!quarantined.has(String(row.executionId).trim())&&typeof row.tool==='string'&&row.tool.length<=180&&Number.isInteger(row.revisionNumber)&&row.revisionNumber>0&&row.source==='authoritative-provider-receipt'&&/^[a-f0-9]{64}$/i.test(String(row.providerReceiptHash??''))&&/^[a-f0-9]{64}$/i.test(String(row.baseFingerprint??''))&&/^[a-f0-9]{64}$/i.test(String(row.revisionFingerprint??''))&&Number.isFinite(Number(row.at))&&Number.isFinite(Number(row.tick))&&typeof row.ok==='boolean'&&typeof row.verified==='boolean'&&['none','tool-contract','external-postcondition'].includes(row.basis)&&Number.isFinite(Number(row.confidence01))&&['verified','contradicted','unverified'].includes(row.status)&&typeof row.outcomeClass==='string').map((row:any)=>({...row,providerReceiptHash:String(row.providerReceiptHash).toLowerCase(),baseFingerprint:String(row.baseFingerprint).toLowerCase(),revisionFingerprint:String(row.revisionFingerprint).toLowerCase(),confidence01:cap(Number(row.confidence01)),tick:Math.max(0,Math.floor(Number(row.tick))),at:Math.max(0,Number(row.at))}))
-      : [];
+    const validRevision=(row:any):boolean=>Boolean(row&&typeof row.revisionId==='string'&&row.revisionId.length>0&&row.revisionId.length<=180&&typeof row.executionId==='string'&&row.executionId.length>0&&row.executionId.length<=180&&!quarantined.has(String(row.executionId).trim())&&typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&Number.isInteger(row.revisionNumber)&&row.revisionNumber>0&&row.source==='authoritative-provider-receipt'&&/^[a-f0-9]{64}$/i.test(String(row.providerReceiptHash??''))&&/^[a-f0-9]{64}$/i.test(String(row.baseFingerprint??''))&&/^[a-f0-9]{64}$/i.test(String(row.revisionFingerprint??''))&&Number.isFinite(Number(row.at))&&Number.isFinite(Number(row.tick))&&typeof row.ok==='boolean'&&typeof row.verified==='boolean'&&['none','tool-contract','external-postcondition'].includes(row.basis)&&Number.isFinite(Number(row.confidence01))&&['verified','contradicted','unverified'].includes(row.status)&&typeof row.outcomeClass==='string'&&row.outcomeClass.length<=64&&(row.observationId===undefined||(typeof row.observationId==='string'&&row.observationId.length<=180)));
+    const rawRevisions=Array.isArray(snapshot?.evidenceRevisions)?snapshot!.evidenceRevisions!:[];
+    const acceptedRevisions:OutcomeProjectionEvidenceRevision[]=[];
+    // Validate before applying the retention cap. Invalid trailing rows must not
+    // evict an older authenticated receipt revision from the bounded ledger.
+    for(let i=rawRevisions.length-1;i>=0&&acceptedRevisions.length<this.maxEvidenceRevisions;i--){
+      const row=rawRevisions[i];
+      if(!validRevision(row))continue;
+      acceptedRevisions.push({...row,providerReceiptHash:String(row.providerReceiptHash).toLowerCase(),baseFingerprint:String(row.baseFingerprint).toLowerCase(),revisionFingerprint:String(row.revisionFingerprint).toLowerCase(),confidence01:cap(Number(row.confidence01)),tick:Math.max(0,Math.floor(Number(row.tick))),at:Math.max(0,Number(row.at))});
+    }
+    this.evidenceRevisions=acceptedRevisions.reverse();
     // Conflicting duplicate revision IDs indicate a damaged or hand-edited snapshot.
     // Keep the first authenticated revision and discard later conflicting copies.
     const uniqueRevisions=new Map<string,OutcomeProjectionEvidenceRevision>();
