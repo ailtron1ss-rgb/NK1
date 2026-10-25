@@ -22,6 +22,7 @@ on:
       - 'app/src/components/AvatarStage.tsx'
       - 'app/src/components/avatar/embodimentTimeline.ts'
       - 'app/scripts/embodiment-timeline.test.mjs'
+      - 'app/src/legacy/avatar/safeLocalStorage.test.mjs'
       - 'app/src/organism/types.ts'
       - 'app/src/neuro-kurisu/types.ts'
       - 'app/src/neuro-kurisu/normalize.ts'
