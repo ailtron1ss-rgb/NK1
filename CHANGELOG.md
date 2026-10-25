@@ -1,3 +1,11 @@
+## NK1 P26 Node TypeScript execution — make transform mode consistent across replay tests
+
+- Replaced strip-only mode with `--experimental-transform-types` for all direct TypeScript-based P26 regressions, not just the first replay-buffer test.
+- Updated P26 package scripts likewise, since replay and continual-learning components use TypeScript parameter properties that strip-only mode explicitly rejects.
+- Node 24.21 remains pinned by the project; this is a test-launcher compatibility fix, not a source transpilation workaround.
+
+---
+
 ## NK1 Node 24 TypeScript runtime — enable transformation for replay-buffer test
 
 - Switched the P26 continual replay test to Node's `--experimental-transform-types` mode, which supports TypeScript parameter properties used by `ContinualReplayBuffer`; strip-only mode rejected this syntax before the test could run.
