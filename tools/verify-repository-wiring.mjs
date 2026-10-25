@@ -16,25 +16,80 @@ function unquote(value) {
 
 
 const CODE_EXTENSIONS = /\.(?:mjs|cjs|js|ts|tsx|mts|cts|jsx)$/i;
-const RELATIVE_MODULE_REFERENCE = /\b(?:from\s*|import\s*(?:\(\s*)?|require\s*\(\s*)(['"])(\.{1,2}\/[^'"]+)\1/g;
 const IGNORED_SOURCE_DIRECTORIES = new Set([
   '.git', 'node_modules', 'dist', 'build', 'coverage', '.next', '.cache', '.turbo', 'vendor', 'artifacts', 'out'
 ]);
 
-function walkCodeFiles(directory) {
+function walkCodeFiles(directory, rootDirectory = directory) {
   if (!fs.existsSync(directory)) return [];
   const results = [];
   let entries;
   try { entries = fs.readdirSync(directory, { withFileTypes: true }); }
   catch { return results; }
   for (const entry of entries) {
+    const fullPath = path.join(directory, entry.name);
+    const relative = path.relative(rootDirectory, fullPath).split(path.sep);
+    const historicalSnapshot = relative[0] === 'legacy';
+    const runtimeHistory = relative[0] === 'runtime' && relative[1] === 'neuro-kurisu' && (
+      (relative[2] === 'docs' && relative[3] === 'history') ||
+      (relative[2] === 'research' && relative[3] === 'history') ||
+      (relative[2] === 'tests' && relative[3] === 'history')
+    );
     if (entry.isDirectory()) {
-      if (!IGNORED_SOURCE_DIRECTORIES.has(entry.name)) results.push(...walkCodeFiles(path.join(directory, entry.name)));
-    } else if (entry.isFile() && CODE_EXTENSIONS.test(entry.name)) {
-      results.push(path.join(directory, entry.name));
+      if (!IGNORED_SOURCE_DIRECTORIES.has(entry.name) && !historicalSnapshot && !runtimeHistory) {
+        results.push(...walkCodeFiles(fullPath, rootDirectory));
+      }
+    } else if (entry.isFile() && CODE_EXTENSIONS.test(entry.name) && !historicalSnapshot && !runtimeHistory) {
+      results.push(fullPath);
     }
   }
   return results.sort();
+}
+
+function extractRelativeModuleSpecifiers(source) {
+  const found = [];
+  let index = 0;
+  while (index < source.length) {
+    const char = source[index];
+    if (char === '/' && source[index + 1] === '/') {
+      index += 2;
+      while (index < source.length && source[index] !== '\n') index += 1;
+      continue;
+    }
+    if (char === '/' && source[index + 1] === '*') {
+      const close = source.indexOf('*/', index + 2);
+      index = close < 0 ? source.length : close + 2;
+      continue;
+    }
+    if (char === "'" || char === '"' || char === String.fromCharCode(96)) {
+      const quote = char;
+      const stringStart = index;
+      let cursor = index + 1;
+      let value = '';
+      while (cursor < source.length) {
+        const current = source[cursor];
+        if (current === '\\') {
+          if (cursor + 1 < source.length) value += source[cursor + 1];
+          cursor += 2;
+          continue;
+        }
+        if (current === quote) break;
+        value += current;
+        cursor += 1;
+      }
+      const prefix = source.slice(Math.max(0, stringStart - 120), stringStart);
+      const isModuleSpecifier = /\bfrom\s*$/.test(prefix) ||
+        /\bimport\s*(?:\(\s*)?$/.test(prefix) ||
+        /\brequire\s*\(\s*$/.test(prefix);
+      if (isModuleSpecifier && (value.startsWith('./') || value.startsWith('../'))) {
+        found.push(value);
+      }
+      index = Math.min(source.length, cursor + 1);
+      continue;
+    }
+    index += 1;
+  }
+  return found;
 }
 
 function resolveRelativeModule(importerPath, specifier) {
@@ -321,10 +376,7 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
       report(path.relative(root, codePath) + ': unable to read source module (' + error.message + ')');
       continue;
     }
-    const searchable = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
-    RELATIVE_MODULE_REFERENCE.lastIndex = 0;
-    for (const match of searchable.matchAll(RELATIVE_MODULE_REFERENCE)) {
-      const specifier = match[2];
+    for (const specifier of extractRelativeModuleSpecifiers(source)) {
       relativeImportsChecked += 1;
       if (!resolveRelativeModule(codePath, specifier)) {
         report(path.relative(root, codePath) + ': unresolved relative module import ' + JSON.stringify(specifier));
