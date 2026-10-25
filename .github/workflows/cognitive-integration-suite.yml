@@ -35,6 +35,17 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
+      - ".nvmrc"
+      - "package.json"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "tools/project-runtime-pin.mjs"
+      - "tools/project-runtime-pin.test.mjs"
+      - "tools/integration-supervisor.mjs"
+      - "tools/integration-supervisor.test.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-doctor.mjs"
+      - "tools/verify-integration.mjs"
       - ".github/workflows/cognitive-integration-suite.yml"
 
 permissions:
