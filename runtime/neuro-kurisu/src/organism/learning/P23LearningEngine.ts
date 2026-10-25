@@ -591,6 +591,85 @@ export class P23LearningEngine {
     return rankLearningTargets(proposals,limit,'pareto-frontier');
   }
 
+
+  /**
+   * Diagnose a learning attempt without granting execution or promotion authority.
+   * The result is a set of testable hypotheses, not an assertion that learning occurred.
+   */
+  diagnoseLearningAttempt(input: {
+    taskId: string;
+    objective: string;
+    outcome: "success" | "failure" | "unknown";
+    observedBehavior: string;
+    expectedBehavior?: string;
+    errorMessages?: string[];
+    confidence?: number;
+  }): {
+    schemaVersion: 1;
+    taskId: string;
+    outcome: "success" | "failure" | "unknown";
+    failureSignals: string[];
+    hypotheses: string[];
+    nextExperiments: string[];
+    confidence: number;
+    promotionEligible: false;
+  } {
+    const normalize = (value: string): string =>
+      value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+    const objective = normalize(input.objective).slice(0, 1000);
+    const observed = normalize(input.observedBehavior).slice(0, 2000);
+    const expected = normalize(input.expectedBehavior ?? "").slice(0, 2000);
+    const errors = (input.errorMessages ?? [])
+      .map(normalize)
+      .filter(Boolean)
+      .slice(0, 12)
+      .map((value) => value.slice(0, 500));
+    const failureSignals: string[] = [];
+    if (input.outcome === "failure") failureSignals.push("task_failed");
+    if (errors.length) failureSignals.push("explicit_error_evidence");
+    if (!observed) failureSignals.push("missing_observation");
+    if (expected && observed && expected !== observed) failureSignals.push("expected_observed_mismatch");
+
+    const hypotheses: string[] = [];
+    const nextExperiments: string[] = [];
+    if (!observed) {
+      hypotheses.push("Insufficient observable evidence to diagnose the attempt reliably.");
+      nextExperiments.push("Repeat with structured input, action, output, and error capture.");
+    }
+    if (errors.length) {
+      hypotheses.push("A tool, runtime, or dependency error may have interrupted the intended trajectory.");
+      nextExperiments.push("Reproduce the first error in isolation and vary one dependency at a time.");
+    }
+    if (expected && observed && expected !== observed) {
+      hypotheses.push("Observed behavior diverges from the declared expected behavior.");
+      nextExperiments.push("Create a minimal counterexample and compare candidate against baseline.");
+    }
+    if (input.outcome === "failure" && errors.length === 0) {
+      hypotheses.push("Failure may stem from planning, reasoning, or acceptance criteria rather than a runtime exception.");
+      nextExperiments.push("Add an explicit success predicate and capture intermediate decisions before retrying.");
+    }
+    if (input.outcome === "unknown") {
+      hypotheses.push("Outcome is not labeled strongly enough to support a learning or promotion decision.");
+      nextExperiments.push("Obtain an independent evaluator verdict before changing the active skill.");
+    }
+    if (input.outcome === "success" && failureSignals.length === 0) {
+      hypotheses.push("Candidate success is not yet evidence of generalized skill improvement.");
+      nextExperiments.push("Run held-out cases and regression tests against the previous baseline.");
+    }
+    void objective; // retained for input hygiene; callers should persist the task objective with the report.
+    const rawConfidence = Number.isFinite(input.confidence) ? input.confidence! : 0.35;
+    return {
+      schemaVersion: 1,
+      taskId: normalize(input.taskId).slice(0, 200),
+      outcome: input.outcome,
+      failureSignals,
+      hypotheses,
+      nextExperiments,
+      confidence: Math.max(0, Math.min(1, rawConfidence)),
+      promotionEligible: false,
+    };
+  }
+
   /**
    * Opt into verified skill activation. When configured, the runtime resolver
    * uses only active versions from this store; locally inferred promotion labels
