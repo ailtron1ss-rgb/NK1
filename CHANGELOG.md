@@ -1,3 +1,11 @@
+## WorkPass349 — ground the Core skill-reuse regression in an accepted evidence source (2026-10-25)
+
+- Corrected the long-cycle fixture's unsupported `evidenceSource: 'external'` value to the runtime's recognized `external-api` evidence class.
+- Extended the deterministic Core loop with a stable final segment and strong bounded feedback so the test exercises both single-action skill creation and reuse instead of expecting execution credit from an unrecognized source label.
+- Strengthened assertions to require a single-action primitive and at least one actual skill-reuse outcome; no production learning threshold or security gate was weakened. Exact-head Actions must confirm the result.
+
+---
+
 # WorkPass348 — separate reward from success and count only actual skill reuse
 
 - [CAUSE] Core passed `gatedReward01` as B273's only outcome-quality signal even though it separately calculates `gatedSuccess01`. The reward scalar is transformed on a different scale and left useful primitives below the reuse threshold in live Core testing.
