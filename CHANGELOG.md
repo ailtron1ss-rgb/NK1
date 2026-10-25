@@ -1,11 +1,13 @@
-## NK1 [perception] — runtime sensor and world-context integrity (2026-10-24)
+## NK1 [perception] — runtime sensor and world-context integrity (2026-10-25)
 
-- Fixed canonical runtime perception so one sensor event updates only its own baseline; simultaneous changes remain detectable on subsequent perception cycles.
-- Stale or missing device telemetry now fails closed for sensor-event generation.
-- Hardened world-context normalization: null/blank/non-finite values use declared defaults, boolean flags require actual booleans, text arrays reject non-string entries, and invalid evidence kinds/source IDs are discarded.
-- Added runtime regressions `tests/perception-engine-signal-integrity.mjs` and `tests/world-context-normalizer-integrity.mjs`, plus package scripts for both.
-- Retired the disconnected UI-shell prototype after finding the existing canonical runtime perception owners.
-- **Validation boundary:** implementation and tests are committed on `feature/perception`; tests, typecheck and exact-head CI remain unverified.
+- Fixed canonical runtime perception so one sensor event updates only its own baseline; simultaneous sensor changes are surfaced across successive perception cycles.
+- Added explicit `sensor-availability` events for signal loss/recovery. Missing readings are no longer confused with numeric zero or a confirmed absence of movement/proximity/light/network.
+- Sensor telemetry fails closed when freshness is out of range, stale duration is invalid/negative, or staleness exceeds the accepted bound.
+- World-object normalization now preserves knowledge state separately from fallback values: `valueKnown`, `visibilityKnown`, and `collectionKnown` distinguish unknown data from measured zero/false.
+- Preserved complete cognitive-cycle evidence lineage through bounded intermediate evidence nodes rather than truncating parent IDs; prevented endogenous-goal learning from receiving credit when the executed action came from another subsystem.
+- Repaired existing regression-suite defects discovered by the new CI path: malformed literal newlines in the unified-loop test, duplicate evaluator bindings, and Node typings incompatibility in the learning process supervisor.
+- Added focused perception/world-context CI and connected the regressions to the existing cognitive-contract workflow; both run Node.js 24, execute runtime integration, audit script/test references, and type-check the canonical runtime.
+- **Validation boundary:** focused perception/world-context/runtime integration, script integrity, and canonical runtime typecheck passed on commit `b1f2273b235574cf9a3b650978afca7e01318879`. The latest follow-up that adds explicit unknown-vs-observed object flags is being revalidated on the current branch head; see [perception workflow](https://github.com/ailtron1ss-rgb/NK1/actions).
 
 ---
 
