@@ -59,7 +59,8 @@ assert.equal(restored.processedTraceIds[0],'trace-127','durable experience ident
 const newestCacheOnlyTraceIndex=restored.processedTraceIds.indexOf('trace-newest');
 assert.ok(newestCacheOnlyTraceIndex>0&&newestCacheOnlyTraceIndex<2048,
   'recent cache-only trace IDs must remain after the durable experience identities');
-assert.deepEqual(restored.replayedTraceIds,['replay-newest']);
+assert.deepEqual(restored.replayedTraceIds,['replay-1','replay-newest'],
+  'durable replay rows must lead the cache while cache-only replay IDs remain deduplicated');
 assert.equal(restored.checksum.digest,'');
 assert.equal(restored.checksum.verificationFailures,0);
 assert.equal(restored.metrics.outcomes,128,'outcome counter cannot be lower than persisted experience rows');
