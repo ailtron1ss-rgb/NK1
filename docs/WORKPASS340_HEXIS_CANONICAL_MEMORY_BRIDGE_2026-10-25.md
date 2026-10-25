@@ -26,13 +26,14 @@
 - При импорте статусы памяти отображаются консервативно: `quarantined`, `archived`, `deleted`, `forgotten`, `rejected`, `inactive` и `superseded` не становятся доступными убеждениями; неизвестный статус остаётся `unknown`. Внешняя метка `fact` также не может повысить запись до NK1-подтверждённого факта: она импортируется как `belief`.
 - Исправлена некорректная регулярка управляющих символов в `OutcomeVerificationService.ts`, из-за которой Node.js 24 прекращал загрузку runtime ещё до HMX-тестов.
 
-- Server smoke нашёл TypeScript-конструкцию parameter property в `VersionedSkillCandidateStore.ts`, несовместимую с Node strip-only режимом. Убрал параметр-свойства в пользу обычных полей с присваиваниями; `npm start` и smoke-запуск переключены на Node 24 `--experimental-transform-types`, который поддерживает такие конструкции. Этот исправленный запуск ещё требует нового подтверждения CI.
+- Server smoke выявил и устранён старый обходной путь в `OrganismCore.hexisDecideHmx`: wrapper автоматически писал staged memories при `accept`, обходя новый lifecycle. Теперь `accept`/`reject` только меняют статус этапа; только явный `apply` вызывает canonical projector. Снимок `MemoryOS2` сохраняется после успешного `apply`.
+- Для Node.js 24 `VersionedSkillCandidateStore` использует обычные поля с присваиваниями вместо parameter properties, а `npm start` и server smoke запускаются через `--experimental-transform-types`.
 
 ## Проверка
 
 CI разделён на независимые этапы из `runtime/neuro-kurisu`:
 
-- `npm run audit:hexis` — блокирующие регрессионные тесты экспортера, projector, server smoke и UI wiring.
-- `npm run typecheck` — отдельная диагностическая задача, потому что первый exact-head прогон остановился на общем typecheck и не дошёл до Hexis-тестов. Он сообщил множество ошибок по проекту, в том числе несколько локальных проблем строгой типизации этого моста. Для локальных проблем добавлены `.d.mts`-объявление и безопасные сужения типов; повторный результат ещё должен подтвердить исправление.
+- `npm run audit:hexis` — **PASS** на кодовом commit `db18a488112c004544d44c527344c101d9ecb356`: [Workflow run 73](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40168856449). Включает exporter/projector regressions, canonical-memory rollback and idempotence, source/status safety, P68 lifecycle, API accept/apply smoke и UI wiring.
+- `npm run typecheck` — отдельная диагностическая задача; она всё ещё сообщает много существующих ошибок по разным частям runtime. Это не считается успешной общей типизацией. В локальном блоке интеграции исправлены выявленные строгие типовые проблемы, но весь repository-wide typecheck требует отдельного прохода.
 
-Статус на момент обновления: первый прогон **FAILED** до запуска Hexis-регрессий; workflow изменён так, чтобы тесты запускались независимо от общего typecheck. Новый exact-head результат пока не подтверждён. До успешного прогона `audit:hexis` мост нельзя считать проверенным или production-ready.
+Функциональный audit Hexis моста теперь подтверждён CI. PR остаётся черновиком до ревью и согласования дальнейшего включения в `integration`; production deployment, release ZIP и отдельный learning-uplift benchmark этим проходом не выполнялись.
