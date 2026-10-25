@@ -79,6 +79,12 @@ Run 6 kept every recorded top-five retrieval ID identical to baseline, returned 
 
 Run 5 recorded a temporal-chain p95 regression at the 800-item corpus (0.2430 → 0.2912 ms, +19.84%), while run 6 measured an improvement at that size (0.1758 → 0.1558 ms). This variability is a reason to treat tiny microbenchmarks as descriptive and repeat them; no production latency or SLO guarantee is claimed. Both runs retained retrieval-ranking parity.
 
+## Semantic preview and fallback integrity (2026-10-25)
+
+The semantic preview reuses one lexical retrieval pass for both semantic candidate selection and the provider-failure fallback. The preview size is now `max(requestedLimit, maxLexicalPool)`, while the semantic candidate slice remains bounded by `maxLexicalPool`; a deliberately small candidate pool can no longer truncate the fallback response. During asynchronous embedding, changed source rows have any stale cached vector evicted, and startup prunes cached vectors with ineligible IDs, mismatched provider IDs/content hashes, or empty vectors.
+
+Workflow [40171003512](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40171003512) passed the focused regression suite and paired baseline/candidate benchmark. The semantic fixture confirmed `staleWritePrevented=true`; ranking and temporal parity gates passed. This validates behavior and the lexical retrieval benchmark, but does not quantify end-to-end embedding-provider latency or imply production-scale gains.
+
 ## Semantic embedding preview — consistency guard (2026-10-25)
 
 The asynchronous `previewRetrieveWithEmbeddings()` path now reuses one isolated lexical preview for both its fallback result and the semantic candidate pool. Before yielding to the provider it captures each eligible row's content hash and temporal/epistemic state. Before any new embedding request, the cache also prunes rows that are no longer eligible, use another provider, have an obsolete content hash, or have an empty vector. When the provider returns, it caches an embedding and includes a result only if that row still matches the captured state. This protects against revisions, expiry, dormancy changes, or quarantine while the provider request is in flight.
