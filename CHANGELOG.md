@@ -1,3 +1,12 @@
+## NK1 WorkPass333 — calibrate intrinsic drive in endogenous goal scoring (2026-10-25)
+
+- [FIX] Replaced the unbounded raw vector dot-product contribution with normalized cosine alignment in `B272EndogenousGoalGenesis`; scaled the four-way candidate index to `[0,1]` and rebalanced weights to keep intrinsic drive visible before `clamp01` saturation.
+- [SAFETY] The drive signal remains confidence-weighted, so a drive score with zero confidence falls back to the pre-existing intrinsic reward and cannot independently raise goal value.
+- [REGRESSION] The existing WorkPass272 comparison asserts a calibrated drive changes predicted goal value by more than `0.1` and that an untrusted drive has no effect. Exact-head CI execution is pending; no pass is claimed yet.
+- [SCOPE] Committed only to the PR's isolated integration branch; `main` and the Release ZIP remain untouched.
+
+---
+
 ## NK1 WorkPass332 — enforce full cognitive-cycle closure (2026-10-24)
 
 - [ARCHITECTURE] Ported `docs/architecture/module-dependency-contracts-ru.md` into the integration-based source branch, establishing one cycle owner, one action gateway, subsystem ports, single-writer state ownership, and candidate/holdout/promotion boundaries. The map is an enforceable target contract, not evidence that every current import has already been audited.
