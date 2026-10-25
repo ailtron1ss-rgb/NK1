@@ -73,8 +73,20 @@ const conversationContent = 'нейронная память экспериме�
 encode(conversationalMemory, { id: 'a-semantic-decoy', kind: 'semantic', content: conversationContent });
 encode(conversationalMemory, {
   id: 'z-social-conversation', kind: 'social', content: conversationContent,
-  context: { conversationId: 'conversation-42', sessionId: 'session-42' },
+  // A session ID may be the only durable conversation lineage available.
+  context: { sessionId: 'session-42' },
 });
+const conversationSnapshot = conversationalMemory.snapshot();
+const restoredConversation = new MemoryOS2({ embeddingProvider: null });
+restoredConversation.restore(conversationSnapshot);
+assert.equal(
+  restoredConversation.retrieve('Что мы обсуждали в прошлый раз про нейронную память и эксперимент?', 1, .1, .1)[0]?.id,
+  'z-social-conversation',
+  'session-backed social memory must survive snapshot/restore and beat a lexical-tied semantic note',
+);
+assert.equal(restoredConversation.get('z-social-conversation')?.context?.sessionId, 'session-42',
+  'conversation lineage must survive snapshot/restore');
+
 assert.equal(
   conversationalMemory.retrieve('Что мы обсуждали в прошлый раз про нейронную память и эксперимент?', 1, .1, .1)[0]?.id,
   'z-social-conversation',
@@ -85,7 +97,7 @@ const relationshipMemory = new MemoryOS2({ embeddingProvider: null });
 const relationshipContent = 'нейронная память эксперимент разговор';
 encode(relationshipMemory, {
   id: 'a-relationship-social', kind: 'social', content: relationshipContent,
-  context: { relationshipId: 'relationship-7' },
+  context: { relationshipId: 'relationship-7', conversationRole: 'assistant' },
 });
 encode(relationshipMemory, { id: 'z-actual-episode', kind: 'episodic', content: relationshipContent });
 assert.equal(
