@@ -1,3 +1,10 @@
+## [NK1][learning] Update the second rollback assertion for the signed request schema (2026-10-25)
+
+- A fresh WorkPass110 run passed the valid rollback path and then exposed one remaining legacy assertion: the second rollback attempt still supplied a numeric version instead of a request object.
+- The regression now sends a structurally valid, version-bound approval-shaped request and asserts that an already rolled-back candidate is rejected as `currently promoted`. The verifier remains explicitly test-only in the happy-path fixture; production remains deny-by-default.
+
+---
+
 ## [NK1][learning] Restore conflict-gated interleaved replay in P26 (2026-10-25)
 
 - Added the missing `P26TrueLearningEngine.trainInterleaved` API used by the sequential-learning regression. It trains current samples and rehearses a bounded number of historical samples in one pass.
