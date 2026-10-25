@@ -1,3 +1,12 @@
+## NK1 WorkPass530 — reserve P36 evaluator registration to trusted host bootstrap (2026-10-25)
+
+- Added `OrganismConfig.p36IndependentEvaluator` as a host-provided construction-time capability. Core registers this adapter only after validating that it is non-destructive, has an executor, has a verifier and carries a bounded, explicit external-observation source identity.
+- The public `OrganismCore.registerActionTool` now rejects `organism.learning.p36.evaluate-evidence`; a later general-purpose runtime tool registration cannot take over the reserved identity.
+- Updated the P36 Core integration fixture to register the evaluator through construction-time host config, assert that the reserved evaluator is actually present, and prove the generic public registry refuses a spoofed replacement.
+- **Verification boundary:** commits are present on `feature/learning`; exact-HEAD CI, runtime typecheck and the P36 test suite are not confirmed passing. Construction-time config is an integration boundary, not evidence that a real independent production evaluator has been deployed. No empirical learning uplift is claimed; `main` and the Release ZIP are unchanged.
+
+---
+
 ## NK1 WorkPass529 — separate P36 maturity evidence lane (2026-10-24)
 
 - Removed P36 maturity updates based on the generic `verifiedNow` boolean from internal world-transition/reward feedback. Those signals remain available to other learning loops but are not independent developmental-maturity proof.
