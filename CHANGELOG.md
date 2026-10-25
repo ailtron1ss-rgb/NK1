@@ -1,3 +1,10 @@
+## NK1 WorkPass552 — unify durable candidate identity and provenance validation (2026-10-25)
+
+- Fixed a real mismatch between `VersionedSkillCandidateStore` and `AtomicFileSkillStorePersistence`: candidate IDs now validate against the same five-part identity input, including a provenance fingerprint or explicit `null`.
+- Added atomic-persistence validation for reflective provenance schema, fingerprints, allowed learning dimensions, uniqueness, and timestamp bounds before accepting stored candidate rows.
+- Expanded the file-backed lifecycle regression to round-trip both ordinary and provenance-bearing candidates through durable JSON reconstruction, checking candidate identity and exact provenance equality.
+- This corrects the current WorkPass110 failure at durable `stageCandidate()`; latest-head CI is required to confirm the fix.
+
 ## NK1 WorkPass551 — isolate persisted skill CAS tampering assertion (2026-10-25)
 
 - Adjusted the versioned-skill restore tamper fixture to keep the prior-version/rollback link structurally valid while mutating the persisted approval's `expectedActiveVersion` outside its signed payload.
