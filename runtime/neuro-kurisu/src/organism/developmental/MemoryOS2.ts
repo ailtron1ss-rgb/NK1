@@ -541,7 +541,12 @@ export class MemoryOS2{
      for(const item of corpus){
        if(!eligible(item))continue;
        const state=corpusState.get(item.id);
-       if(!state||memoContentHash(item.content)!==state.contentHash||Number(item.validFromAt??item.createdAt)!==state.validFromAt||(item.validUntilAt??null)!==state.validUntilAt||item.dormant!==state.dormant||item.epistemicStatus!==state.epistemicStatus)continue;
+       if(!state){this.semanticEmbeddingIndex.delete(item.id);continue;}
+       if(memoContentHash(item.content)!==state.contentHash||Number(item.validFromAt??item.createdAt)!==state.validFromAt||(item.validUntilAt??null)!==state.validUntilAt||item.dormant!==state.dormant||item.epistemicStatus!==state.epistemicStatus){
+         // The provider may yield while canonical memory is revised. Drop any old
+         // vector for this ID so stale cache coverage cannot survive this request.
+         this.semanticEmbeddingIndex.delete(item.id);continue;
+       }
        const cached=this.semanticEmbeddingIndex.get(item.id);
        if(!cached||cached.providerId!==provider.providerId||cached.contentHash!==memoContentHash(item.content)||cached.vector.length!==queryVector.length)continue;
        let dot=0,normA=0,normB=0;for(let i=0;i<queryVector.length;i++){dot+=queryVector[i]*cached.vector[i];normA+=queryVector[i]*queryVector[i];normB+=cached.vector[i]*cached.vector[i];}
