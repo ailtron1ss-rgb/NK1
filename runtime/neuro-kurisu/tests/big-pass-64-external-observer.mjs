@@ -262,6 +262,49 @@ try {
   );
 }
 
+// Conflicting persisted provider-receipt revisions must quarantine the execution, even
+// when the duplicate rows reuse the same claimed revision fingerprint.
+{
+  const revisionConflictSource = new OutcomeCognitionFabric();
+  revisionConflictSource.project({
+    tick: 29, tool: 'device.read', ok: true, verification: projectionBaseVerification,
+    executionId: 'exec:conflicting-revision-restore', outcomeClass: 'executed-verified',
+  });
+  const revisionConflictSnapshot = revisionConflictSource.snapshot();
+  const baseRevision = {
+    revisionId: 'outcome-revision:conflicting-persisted-revision',
+    executionId: 'exec:conflicting-revision-restore',
+    tool: 'device.read',
+    revisionNumber: 1,
+    source: 'authoritative-provider-receipt',
+    providerReceiptHash: 'a'.repeat(64),
+    baseFingerprint: revisionConflictSnapshot.projectionIndex[0].fingerprint,
+    revisionFingerprint: 'c'.repeat(64),
+    at: 29,
+    tick: 29,
+    ok: true,
+    verified: true,
+    outcomeClass: 'verified',
+    basis: 'tool-contract',
+    confidence01: 0.9,
+    status: 'verified',
+  };
+  revisionConflictSnapshot.evidenceRevisions = [
+    baseRevision,
+    { ...baseRevision, ok: false, verified: false, status: 'contradicted' },
+  ];
+  const revisionConflictRestored = new OutcomeCognitionFabric();
+  revisionConflictRestored.restore(revisionConflictSnapshot);
+  assert.ok(revisionConflictRestored.snapshot().causal.quarantinedExecutionIds?.includes(baseRevision.executionId),
+    'conflicting copies of one revision ID must quarantine its execution identity');
+  assert.equal(revisionConflictRestored.snapshot().records.find(row => row.executionId === baseRevision.executionId)?.receiptQuarantined, true,
+    'revision conflicts must be visible in the restored outcome history');
+  assert.ok(!revisionConflictRestored.snapshot().projectionIndex.some(row => row.executionId === baseRevision.executionId),
+    'revision-conflicted execution must not remain in the active projection index');
+  assert.ok(!revisionConflictRestored.snapshot().evidenceRevisions.some(row => row.executionId === baseRevision.executionId),
+    'no conflicting revision may remain active after quarantine');
+}
+
 // State migration must retain bounded causal quarantine tombstones, not only the graph nodes/index.
   const migrationSeed=structuredClone(core.snapshot());
   migrationSeed.system.causalAccountability={
