@@ -14,6 +14,7 @@ import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../languag
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
 import type { OperationalRecord } from '../persistence/OperationalJournal.ts';
 import { sanitizeInternalDialogueText } from '../cognition/InternalDialogueEngine.ts';
+import { summarizeInternalDialogueHistory } from '../cognition/InternalDialogueHistory.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
@@ -227,23 +228,31 @@ export class OrganismRuntime {
   private initialized = false;
   private lastContextBudgetLedger: ContextBudgetLedgerReport | null = null;
   private lastInternalDialogueReceipt: InternalDialogueReviewReceipt | null = null;
+  private internalDialogueReceiptHistory: InternalDialogueReviewReceipt[] = [];
   internalDialogueReceiptSnapshot() { return this.lastInternalDialogueReceipt ? structuredClone(this.lastInternalDialogueReceipt) : null; }
+  internalDialogueHistorySummarySnapshot() { return summarizeInternalDialogueHistory(this.internalDialogueReceiptHistory); }
+
+  private rememberInternalDialogueReceipt(receipt: InternalDialogueReviewReceipt): void {
+    this.internalDialogueReceiptHistory = [...this.internalDialogueReceiptHistory, structuredClone(receipt)].slice(-32);
+  }
 
   private async restoreLastInternalDialogueReceipt(): Promise<void> {
     this.lastInternalDialogueReceipt = null;
+    this.internalDialogueReceiptHistory = [];
     if (!this.journal.readRecent) return;
     try {
-      const records = await this.journal.readRecent('runtime.internal-dialogue.review',32);
-      for (const record of records) {
+      // Reader returns newest-first; reverse before summarizing so trend direction stays chronological.
+      const records = await this.journal.readRecent('runtime.internal-dialogue.review',128);
+      for (const record of records.slice().reverse()) {
         const receipt = restoreInternalDialogueReceipt(record.data);
-        if (receipt) {
-          this.lastInternalDialogueReceipt = receipt;
-          return;
-        }
+        if (receipt) this.internalDialogueReceiptHistory.push(receipt);
       }
+      this.internalDialogueReceiptHistory = this.internalDialogueReceiptHistory.slice(-32);
+      this.lastInternalDialogueReceipt = this.internalDialogueReceiptHistory.at(-1) ?? null;
     } catch {
       // A missing or damaged optional journal receipt must not prevent runtime startup.
       this.lastInternalDialogueReceipt = null;
+      this.internalDialogueReceiptHistory = [];
     }
   }
   contextBudgetDiagnostics() {
@@ -609,6 +618,7 @@ export class OrganismRuntime {
     const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.cognitiveEventFabricSnapshot());
     if (request.internalDialogueReceipt) {
       this.lastInternalDialogueReceipt = structuredClone(request.internalDialogueReceipt);
+      this.rememberInternalDialogueReceipt(request.internalDialogueReceipt);
       // Journal only a bounded metadata receipt; never persist the user focus text or prose turn notes.
       try {
         await this.journal.write('info', 'runtime.internal-dialogue.review', { ...request.internalDialogueReceipt });
