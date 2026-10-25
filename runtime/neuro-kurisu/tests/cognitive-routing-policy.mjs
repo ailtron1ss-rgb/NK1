@@ -40,6 +40,14 @@ assert.equal(highPriority.maxCounterfactualBranches, 0, 'a numerically critical 
 assert.ok(highPriority.cognitiveCycleDelayMultiplier01 < 1, 'urgent non-resource interrupts should advance the next cognitive cycle');
 assert.equal(highPriority.allowMatchedCounterfactual, false);
 
+const exactCriticalBoundary = resolveCognitiveRoutingPolicy({
+  wakeMask: 8,
+  interrupt: { active: true, priority01: 0.90, type: 'prediction-error', domains: ['agency'] },
+}, 2);
+assert.equal(exactCriticalBoundary.reason, 'critical-interrupt', 'priority at the threshold must use the critical-interrupt route');
+assert.equal(exactCriticalBoundary.maxCounterfactualBranches, 0);
+assert.equal(exactCriticalBoundary.cognitiveCycleDelayMultiplier01, 0.775);
+
 const governance = resolveCognitiveRoutingPolicy({
   wakeMask: 64,
   interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
