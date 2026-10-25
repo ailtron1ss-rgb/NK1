@@ -1,3 +1,9 @@
+## NK1 WorkPass558 — align P23 restore test with durable-ID reconciliation order (2026-10-25)
+
+- Updated the P23 persisted-learning restore regression to match the implementation's intentional merge order: valid durable experience trace IDs are added first so their dedupe identity cannot be evicted by a polluted cache.
+- The test now asserts the first restored processed ID belongs to the newest valid experience and separately asserts the cache-only `trace-newest` survives within the 2048-item bound.
+- Restore logic remains unchanged; the regression now tests both durability and cache retention without assuming the cache overrides durable evidence order.
+
 ## NK1 WorkPass557 — fix cognitive-boundary and payload-budget CI contracts (2026-10-25)
 
 - Updated the cognitive-cycle prototype test to assert the intended fail-closed behavior for inherited stage IDs and verify rejected input does not mutate counters.
