@@ -1,3 +1,18 @@
+## Latest durable checkpoint — WorkPass342: verify live HTTP service startup (2026-10-25)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.
+
+- WorkPass341 calibrated B272 action handoff across 140 deterministic runtime-style cycles: every seventh action is intentionally mismatched, mismatch credit is rejected without mutation, exact counters/rates are checked, and telemetry must survive restore. The expanded handoff regression and all sibling cognitive/learning workflows passed on exact source SHA `83e2be0df7f8ac4a15dbc69b28541b35d3ceed49`; WorkPass331 run [40170774606](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40170774606) succeeded.
+- WorkPass342 adds the real server smoke test to the canonical kernel workflow: child-process startup in an isolated state directory, health readiness, memory inspector temporal bounds, release contract, camera idempotency preflight, read-only cognitive architecture, chat completion, voice status, and Will transport idempotency/collision/ACK behavior. This is a meaningful next step beyond in-process organism tests.
+- The new service smoke gate has not yet run on its new commit. Its result must be checked at exact HEAD before claiming live HTTP integration is green. It does not cover a configured external LLM provider, mobile device E2E, or an hour-long unattended soak.
+
+### Next gates
+1. Run WorkPass331 with the new live HTTP service smoke test; fix any startup/route failures without weakening API contracts.
+2. Add a longer, bounded unattended soak and inspect natural B272 handoff match/mismatch rates before changing planner weights.
+3. Complete UI/Live2D/voice end-to-end and refresh the release archive; these remain unverified.
+
+---
+
 ## Latest durable checkpoint — WorkPass341: long-run action-handoff calibration (2026-10-25)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) remains draft.

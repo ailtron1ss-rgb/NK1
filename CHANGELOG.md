@@ -1,3 +1,10 @@
+# WorkPass342 — gate real HTTP service startup in the cognitive-runtime workflow (2026-10-25)
+
+- [CI] Added the existing `npm run server:smoke` test after the in-process autonomy and persistence gates. It starts `src/server/server.mjs` as a child process with an isolated temporary state directory, waits for `/api/health`, then exercises the live root release marker, temporal memory inspector, release contract, camera idempotency preflight, read-only cognitive architecture, chat completion, voice status, and Will transport duplicate/collision/ACK semantics.
+- [TRIGGER] Added `src/server/server.mjs` and `tests/server-smoke.mjs` to both push and pull-request path filters, so changes to the actual HTTP service or its startup test re-run the integration gate.
+- [BOUNDS] Set the test's existing global deadline to 120 seconds (within its supported 10–180 second range). This checks local service wiring and deterministic fallback behavior; it does not establish external provider credentials, mobile UI/Live2D/voice device E2E, or long unattended operation.
+- [BASELINE] Exact-head WorkPass331 run `40170774606` and the sibling WorkPass99/102/105/108/110/287–294/P26 runs passed on `83e2be0df7f8ac4a15dbc69b28541b35d3ceed49`; WorkPass342 adds a new service gate and requires a fresh exact-head result.
+
 # WorkPass341 — calibrate B272 action handoff across 140 cycles (2026-10-25)
 
 - [TEST] Expanded `tests/b272-action-handoff-diagnostics.mjs` with a 140-cycle deterministic runtime-handoff calibration. Every seventh tick intentionally selects a different action from the generated endogenous goal; all other ticks select the generated action.

@@ -14,6 +14,8 @@ on:
       - "runtime/neuro-kurisu/tests/workpass50-autonomous-background-clock.mjs"
       - "runtime/neuro-kurisu/tests/workpass50-autonomous-runtime-loop.mjs"
       - "runtime/neuro-kurisu/tests/restart-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/server-smoke.mjs"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
@@ -40,6 +42,8 @@ on:
       - "runtime/neuro-kurisu/tests/workpass50-autonomous-background-clock.mjs"
       - "runtime/neuro-kurisu/tests/workpass50-autonomous-runtime-loop.mjs"
       - "runtime/neuro-kurisu/tests/restart-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/server-smoke.mjs"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
@@ -99,3 +103,8 @@ jobs:
       - name: Verify state survives runtime restart
         working-directory: runtime/neuro-kurisu
         run: npm run test:restart
+      - name: Verify live HTTP server, health, chat, memory inspector, and will idempotency
+        working-directory: runtime/neuro-kurisu
+        env:
+          NK_SERVER_SMOKE_TOTAL_TIMEOUT_MS: "120000"
+        run: npm run server:smoke
