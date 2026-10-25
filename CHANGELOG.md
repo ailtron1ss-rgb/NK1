@@ -1,3 +1,11 @@
+## NK1 learning validation — fix duplicate evaluator test binding (2026-10-25)
+
+- Renamed the second local evaluator in the independent-candidate-evaluator regression so Node 24 can parse and execute the suite; behavior and assertions are unchanged.
+- This was an existing test-harness syntax blocker surfaced after the learning runtime typecheck passed.
+- **Verification boundary:** fresh P26 rerun is required before this branch validation PR can be considered ready.
+
+---
+
 ## NK1 learning — preserve typed failure clues in replay diagnosis (2026-10-25)
 
 - Fixed the P23 replay-to-reflection bridge: persisted failure taxonomy values (for example `tool-error`) are codes, not natural-language messages, so passing them directly through the text classifier silently dropped the class.
