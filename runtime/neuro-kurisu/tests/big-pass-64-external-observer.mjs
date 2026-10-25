@@ -305,6 +305,11 @@ try {
         record: { ...migrationProjection.record, executionId: 'exec-migration-projection-forged-' + i },
         verifiedExternal: migrationProjection.verifiedExternal,
       })),
+      ...Array.from({ length: 2100 }, () => ({
+        ...migrationProjection,
+        // Identity fingerprint is genuine, but this trust flag contradicts the record.
+        verifiedExternal: false,
+      })),
     ],
   };
   const migratedProjection = migratePersistedOrganism(projectionMigrationSeed).system.outcomeVerification;
