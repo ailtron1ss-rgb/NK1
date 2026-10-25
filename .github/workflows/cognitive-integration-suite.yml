@@ -64,9 +64,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: |
-            app/package-lock.json
-            runtime/neuro-kurisu/package-lock.json
+          cache-dependency-path: app/package-lock.json
       - name: Verify project runtime pin contract
         run: npm run test:runtime-pin-contract
       - name: Test canonical installer contract
