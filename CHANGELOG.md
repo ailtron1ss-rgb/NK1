@@ -3,7 +3,7 @@
 - Recalled emotional memories now carry an explicit context-relevance estimate derived from lexical overlap between the current observation and the retrieved memory text/tags. The estimate is deliberately documented as a conservative lexical signal, not semantic understanding.
 - The runtime weights the recalled affect cue by that relevance score. Context-matched memories retain the prior bounded influence; weakly matching memories retain only a small floor, reducing emotional overgeneralization across superficially unrelated situations.
 - Added regression coverage for high-vs-low lexical overlap, backwards compatibility when older callers omit context relevance, and lower arousal transfer for low-relevance recall.
-- **Validation:** pending targeted test and exact-head GitHub Actions. No improvement in real-world transfer quality is claimed.
+- **Validation:** [GitHub Actions run #131](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40175283711) passed on code head `59db206921e236c56c46bf20247c77e99ec3ba37`; the targeted recalled-affect test and the full Reality-to-learning regression job passed. An earlier intermediate commit failed on an escaped-newline syntax typo; the follow-up corrected it before this passing run. No improvement in real-world transfer quality is claimed.
 
 ## NK1 Causal Accountability — quarantine conflicting persisted evidence revisions (2026-10-25)
 
