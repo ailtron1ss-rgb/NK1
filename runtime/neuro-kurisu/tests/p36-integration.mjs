@@ -86,6 +86,7 @@ assert.ok(afterEvaluator.facets.learning.p36.externalEvidence.some(row=>row.exec
 // Developmental maturity is a separate evidence lane. Legacy reward booleans do not update it;
 // only a second ActionGateway receipt bound to the exact maturity tuple can do so.
 const maturityInput=developmentalOutcomeVerificationInput({area:'learning',outcome01:.91,delayed:true,transfer:true});
+assert.equal(maturityInput.kind,'developmental-outcome','the maturity event must use the dedicated evidence discriminant');
 const maturityBefore=core.p36Diagnostics();
 const unlinkedMaturityResult=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,maturityInput,'p36-unlinked-maturity');
 assert.equal(unlinkedMaturityResult.verified,true);
