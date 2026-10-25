@@ -175,3 +175,37 @@ test('gateway aborts upstream work when the downstream client disconnects', asyn
     new Promise((_, reject) => setTimeout(() => reject(new Error('gateway did not abort upstream after client disconnect')), 2_000)),
   ]);
 });
+
+test('gateway strips hop-by-hop and Connection-nominated headers in both directions', async (t) => {
+  const { baseUrl } = await withGateway(t, {
+    runtimeHandler: (req, res) => {
+      assert.equal(req.headers['x-hop-secret'], undefined);
+      assert.equal(req.headers['x-forwarded-safe'], 'preserved');
+      res.writeHead(200, {
+        'content-type': 'application/json',
+        connection: 'x-response-secret, keep-alive',
+        'x-response-secret': 'must-not-cross-proxy',
+        'x-response-safe': 'preserved',
+      });
+      res.end(JSON.stringify({
+        hopSecret: req.headers['x-hop-secret'] ?? null,
+        safeHeader: req.headers['x-forwarded-safe'] ?? null,
+      }));
+    },
+  });
+
+  const response = await fetch(new URL('/api/organism/header-filter', baseUrl), {
+    headers: {
+      connection: 'x-hop-secret, keep-alive',
+      'x-hop-secret': 'must-not-cross-proxy',
+      'x-forwarded-safe': 'preserved',
+    },
+    signal: AbortSignal.timeout(3_000),
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { hopSecret: null, safeHeader: 'preserved' });
+  assert.equal(response.headers.get('x-response-secret'), null);
+  assert.equal(response.headers.get('x-response-safe'), 'preserved');
+  assert.equal(response.headers.get('connection'), null);
+});

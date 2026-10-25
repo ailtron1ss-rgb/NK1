@@ -1,3 +1,10 @@
+# NK1 gateway hop-by-hop header isolation regression (2026-10-25)
+
+- [SECURITY/PROXY] Added a gateway regression for request and response headers named by the `Connection` header. It asserts hop-by-hop metadata and nominated private headers are stripped while unrelated end-to-end headers remain intact.
+- [VALIDATION STATUS] The focused Node 24 workflow must confirm this regression on the exact commit.
+
+---
+
 # NK1 gateway request-body forwarding regression (2026-10-25)
 
 - [REGRESSION] Added an end-to-end HTTP test proving the gateway preserves POST method, content type, query string routing, and exact JSON body when forwarding to Runtime.
