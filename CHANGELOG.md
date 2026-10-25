@@ -1,3 +1,12 @@
+## NK1 WorkPass337 — make the pinned Node.js declarations visible to runtime typecheck (2026-10-25)
+
+- [CONFIG] The runtime typecheck intentionally reuses the pinned TypeScript compiler installed by the app workspace, but TypeScript resolves ambient type packages relative to the runtime project and was not seeing the sibling `app/node_modules/@types/node`.
+- [FIXED] Added explicit Node.js type package discovery to `tsconfig.clean.json`, preferring runtime-local types when present and otherwise using the app workspace's installed type root. Limited ambient auto-loading to `node` so React/UI global types do not leak into the runtime program.
+- [EXPECTED IMPACT] This targets the observed missing `node:fs`, `node:crypto`, `NodeJS`, `Buffer`, `path.resolve`, `process.platform`, and timer `unref` diagnostics without weakening strict mode or suppressing type errors.
+- [VALIDATION] Configuration change is committed; the exact-head runtime typecheck must confirm how many Node-related diagnostics it removes. Application code and runtime behavior are unchanged. Release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass336 — fix regression loader, cycle verifier duplicate, and learning type import (2026-10-25)
 
 - [FIXED] Corrected the correlation-ID control-character filter in `OutcomeVerificationService.ts`. The previous double-escaped character class threw a JavaScript syntax error at module load and blocked the real memory-to-action regression before assertions ran.
