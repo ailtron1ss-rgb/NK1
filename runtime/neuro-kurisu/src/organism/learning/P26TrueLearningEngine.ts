@@ -233,10 +233,13 @@ export class P26TrueLearningEngine{
     }
 
     const learningEnabled=!this.learner.snapshot().frozen;
-    // A replay step after every current step can otherwise give historical samples
-    // too much cumulative influence. Reduce the replay step size for dense schedules;
-    // once the stride reaches four, retain the caller's requested replay rate.
-    const effectiveReplayLearningRate01=replayLearningRate01*Math.min(1,replayEveryNCurrent/4);
+    // When replay is intentionally much slower than current learning, a dense
+    // schedule can still accumulate too much historical influence. Scale that
+    // lower replay rate for short strides, but preserve equal-rate rehearsal where
+    // both separated contexts need comparable reinforcement.
+    const replayRateIsMateriallyLower=replayLearningRate01<currentLearningRate01*.5;
+    const replayFrequencyScale=replayRateIsMateriallyLower?Math.min(1,replayEveryNCurrent/4):1;
+    const effectiveReplayLearningRate01=replayLearningRate01*replayFrequencyScale;
     let onlineUpdates=0,replayUpdates=0,lossSum=0;
     let eligibleCursor=0;
     const trainOne=(row:Experience,learningRate01:number)=>{
