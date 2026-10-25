@@ -108,3 +108,16 @@ console.log('MEMORY_QUERY_INTENT_AUTOBIOGRAPHICAL_RECALL=PASS', JSON.stringify({
   sessionRecallWinner: 'z-social-session-memory',
   roleOnlyGuard: 'z-actual-episode',
 }));
+
+const snakeSessionMemory = new MemoryOS2({ embeddingProvider: null });
+const snakeSessionContent = 'neural memory experiment dialogue';
+encode(snakeSessionMemory, { id: 'a-semantic-decoy', kind: 'semantic', content: snakeSessionContent });
+encode(snakeSessionMemory, {
+  id: 'z-session-snake-case', kind: 'social', content: snakeSessionContent,
+  context: { session_id: 'session-43' },
+});
+assert.equal(
+  snakeSessionMemory.retrieve('What did we discuss last time about the neural memory experiment?', 1, .1, .1)[0]?.id,
+  'z-session-snake-case',
+  'snake_case session identifiers from imported memory must retain conversation lineage',
+);
