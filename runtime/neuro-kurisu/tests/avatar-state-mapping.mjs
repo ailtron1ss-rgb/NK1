@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { buildAvatarPresentation, buildAvatarSpeechTimeline, sampleAvatarSpeechTimeline } from '../public/avatar-state.mjs';
+import { buildVisemeTimeline, sampleVisemeTimeline, poseForGrapheme } from '../public/speech-viseme-core.mjs';
 
 const explore = buildAvatarPresentation({
   ok: true,
@@ -58,6 +59,18 @@ assert.equal(buildAvatarPresentation(null), null);
 assert.equal(buildAvatarPresentation({ ok: true, state: {}, emotion: null }), null);
 
 const visemes = buildAvatarSpeechTimeline('мама, мир', 1, 'ru-RU');
+const sharedTimeline = buildVisemeTimeline('мама, мир', 1, 'ru-RU');
+assert.deepEqual(
+  visemes.map(({ startMs, endMs, pose, grapheme }) => ({ startMs, endMs, pose, grapheme })),
+  sharedTimeline.map(frame => ({
+    startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose,
+    grapheme: 'мама, мир'.slice(frame.charIndex, frame.endCharIndex),
+  })),
+  'runtime avatar must use the same frame times and mouth poses as the shared browser timeline',
+);
+assert.deepEqual(sampleAvatarSpeechTimeline(visemes, visemes[1].startMs + 1),
+  sampleVisemeTimeline(sharedTimeline, sharedTimeline[1].startMs + 1));
+assert.deepEqual(poseForGrapheme('а'), { open: 0.60, form: 0.10, viseme: 'open' });
 assert.ok(visemes.length >= 8);
 assert.ok(visemes.every((frame, index) => frame.endMs > frame.startMs && (index === 0 || frame.startMs >= visemes[index - 1].endMs)));
 assert.deepEqual(sampleAvatarSpeechTimeline(visemes, 0), { open: 0.025, form: -0.05, viseme: 'closed' });
