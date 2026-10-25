@@ -88,6 +88,16 @@ const multimodalVision = runtime.core.multimodalSnapshot().recent.find(
 assert.ok(multimodalVision, 'new P41 semantic vision should surface in runtime multimodal ingress');
 assert.ok(multimodalVision.confidence >= 0.84);
 
+const visionCycle = await runtime.step();
+const repeatedVisionEvents = runtime.core.multimodalSnapshot().recent.filter(
+  event => event.modality === 'vision' && event.summary.includes('scene=test-room'),
+);
+assert.equal(
+  repeatedVisionEvents.length,
+  1,
+  'an already integrated P41 vision snapshot must not be replayed on later cognitive cycles',
+);
+
 // A sensor becoming unavailable/recovering must be represented as availability,
 // not as a fabricated zero or a physical motion event; user text must not starve sensing.
 motion01 = null;
