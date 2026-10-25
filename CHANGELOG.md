@@ -1,5 +1,8 @@
 ## NK1 Optimization — indexed memory access hot path (2026-10-24)
 
+- [OPTIMIZED] Reworked `semanticEmbeddingMaintenanceDiagnostics()` into one corpus pass: counts eligible memories, current provider-bound vectors, retries awaiting backoff, and the earliest retry time without allocating corpus/pending/retry arrays. Provider/content-hash checks and eligibility semantics remain unchanged.
+- [REGRESSION] Extended `memory-semantic-embeddings-workpass33.mjs` to assert diagnostic corpus/index counts, remaining work, and retry fields after embedding retrieval.
+
 - [OPTIMIZED] Reused the pre-materialized query-token array during hybrid memory ranking instead of allocating it once per candidate.
 - [OPTIMIZED] Added a bounded 512-entry term-frequency cache alongside the existing token cache, so BM25 scoring reuses tokenization results and iterates the already-unique query terms instead of retokenizing each ranked candidate.
 - [OPTIMIZED] Added a bounded Unicode token-length cache to fuzzy ranking and materialize each candidate's document-token traversal once per query candidate, removing repeated code-point-array allocations inside the nested query/document token loop while preserving the same Dice similarity and length thresholds.
