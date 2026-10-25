@@ -73,8 +73,6 @@ const config={
 const unscoredQuery={
   hypothesisId:'p36-signed-ledger-hypothesis',
   contextKey:'memory',
-  control01:0,
-  treatment01:0,
   holdout:true,
   delayMs:0,
   evaluatorVersion:config.evaluatorVersion,
@@ -92,6 +90,12 @@ assert.equal(measurement.control01,.5,'task-balanced baseline is half-correct in
 assert.equal(measurement.treatment01,1,'task-balanced treatment is fully correct in each independent seed');
 assert.equal(measurement.evidenceRefs.length,32);
 assert.notEqual(measurement.observationId,'');
+assert.equal(measureP36VerifiedOutcomeLedger({...unscoredQuery,delayMs:6000},config),null,
+  'point-in-time ledger evidence must not pretend to prove delayed retention');
+assert.equal(measureP36VerifiedOutcomeLedger({...unscoredQuery,manifestFingerprint:'0'.repeat(64)},config),null,
+  'evidence must be bound to the exact canonical manifest fingerprint');
+assert.equal(measureP36VerifiedOutcomeLedger({...unscoredQuery,taskFamily:'relationship',contextKey:'relationship'},config),null,
+  'a task family with no signed holdout coverage cannot be measured');
 
 // The runtime-facing tuple carries claimed scores, but the registered evaluator
 // recomputes them from authenticated ledger rows on both execute and verify.
