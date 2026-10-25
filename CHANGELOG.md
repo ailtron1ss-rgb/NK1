@@ -1,3 +1,8 @@
+## NK1 WorkPass534 — repair app typecheck fixtures for safe avatar storage (2026-10-25)
+
+- Fixed six TypeScript diagnostics in `safeLocalStorage.test.mjs`: annotated helper/test-double parameters and replaced direct deletion of the required `globalThis.window` property with `Reflect.deleteProperty`.
+- This removes unrelated legacy test-fixture errors that were masking type diagnostics in the new affect/embodiment app code. Behavior coverage remains the same; the next workflow run must confirm the app typecheck progresses.
+
 ## NK1 WorkPass533 — preserve causal action identity in endogenous-goal feedback (2026-10-25)
 
 - Fixed a runtime crash observed by the emotion/interoception integration test: canonical planner feedback could send a different action than the action proposed by B272, violating B272's explicit outcome-attribution contract.
