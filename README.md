@@ -1,9 +1,9 @@
 ## Current source-stack checkpoint — WorkPass319 (2026-10-25)
 
-- **Fix:** `UnifiedCognitiveCycle.restore()` no longer preserves `lastComplete=true` when persisted cycle counters are missing or contradict the canonical partition.
-- **Regression:** covers contradictory counts, a coherent persisted partition, and a partial snapshot.
+- **Scope:** closes three defects in the unified cycle/motivation integration: contradictory restored cycle counters, malformed missing-stage normalization, and B272 goal-value saturation that hid trusted intrinsic drive.
+- **Regression/CI:** the three focused behavior tests passed in [run 40189833009](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189833009). [Run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) adds the runtime typecheck gate; confirm its final conclusion before merge.
 - **Work branch:** `nk1-ready-unified-cycle-restore-integrity-20261025`, based on source line `workpass206-runtime-evaluator-wiring`.
-- **Verification:** the focused WorkPass287-288 Actions workflow was triggered; check its exact-head result before merge. This is a restore-integrity fix, not evidence of learning uplift or full release readiness.
+- **Scope boundary:** not a claim of learning uplift or full release readiness.
 
 See [WorkPass319 checkpoint](docs/WORKPASS319_UNIFIED_COGNITIVE_CYCLE_RESTORE_INTEGRITY_2026-10-25.md).
 
