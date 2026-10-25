@@ -1,3 +1,11 @@
+## NK1 WorkPass529 — session-lineage recall continuity (2026-10-25)
+
+- Hardened conversation-memory recognition to accept session IDs/keys/indexes and explicit session-history metadata as conversational lineage.
+- Narrowed structural markers to actual identity/sequence keys; a role label such as `conversationRole=assistant` alone must not elevate a generic social record.
+- Extended the recall regression with a session-only social memory that survives MemoryOS2 snapshot/restore and remains retrievable for a prior-dialogue query.
+- Added the negative role-only guard to ensure social relationship metadata cannot impersonate a stored conversation.
+- **Validation boundary:** source and regression are committed; execution of the target runtime test and TypeScript typecheck remains unverified.
+
 ## NK1 WorkPass528 — bilingual autobiographical and conversation recall (2026-10-24)
 
 - Extended the canonical MemoryOS2 query-intent detector for Russian recollection phrases ("воспоминания", "что мы обсуждали", "прошлый разговор") and English prior-conversation prompts.
