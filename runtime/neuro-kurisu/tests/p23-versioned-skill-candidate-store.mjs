@@ -173,7 +173,7 @@ const tamperedPersistence = {
   compareAndSwap: () => false,
 };
 assert.throws(() => new VersionedSkillCandidateStore(tamperedPersistence, authenticatedApprovalVerifier, () => true),
-  /promotion CAS\/activation metadata is not bound to the signed approval/,
+  /persisted active candidate rollback target is not bound to a prior approved version/,
   'a structurally valid state file cannot rewrite the active skill base-version CAS metadata');
 
 const persistence = new InMemorySkillStorePersistence();
