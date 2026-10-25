@@ -1335,8 +1335,9 @@ export class OrganismCore {
         } as Required<OrganismConfig>;
         const p36Evaluator = config.p36IndependentEvaluator;
         if (p36Evaluator !== undefined) {
+            if (!p36Evaluator) throw new Error('p36-independent-evaluator-host-config-invalid');
             const source = p36Evaluator.observationSource;
-            if (!p36Evaluator || p36Evaluator.destructive !== false || typeof p36Evaluator.execute !== 'function' ||
+            if (p36Evaluator.destructive !== false || typeof p36Evaluator.execute !== 'function' ||
                 typeof p36Evaluator.verify !== 'function' || !source ||
                 typeof source.sourceId !== 'string' || !source.sourceId.trim() ||
                 typeof source.independenceKey !== 'string' || !source.independenceKey.trim() ||
