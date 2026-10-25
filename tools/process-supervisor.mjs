@@ -286,6 +286,14 @@ export async function waitForHttp(url, {
       const response = await fetchImpl(url, {
         signal: AbortSignal.timeout(Math.max(1, Math.min(requestTimeoutMs, remainingMs))),
       });
+      // Readiness probes only need status metadata. Release the response body
+      // without awaiting cancellation, so an unusual stream cannot extend the
+      // probe beyond its overall deadline.
+      try {
+        response.body?.cancel?.()?.catch?.(() => {});
+      } catch {
+        // Body disposal is best-effort; preserve the actual readiness result.
+      }
       if (response.ok) {
         return { ok: true, status: response.status, error: null, elapsedMs: Date.now() - startedAt };
       }
