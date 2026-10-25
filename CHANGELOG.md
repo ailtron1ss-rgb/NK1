@@ -1,3 +1,9 @@
+## NK1 WorkPass545 — normalize P26 TypeScript test execution mode (2026-10-25)
+
+- Updated direct P26 regression invocations to use `--experimental-transform-types` consistently. The workflow mixes tests that import simple erasable TypeScript with tests that import constructor parameter properties; Node 22.12 strip-only mode fails to parse the latter before the regression logic can run.
+- This is a runner/configuration fix, not a weakening of test assertions. The continual-replay constructor compatibility issue was verified from the actual GitHub Actions log.
+- Latest P26, causal replay and memory recall runs must pass on the final PR head.
+
 ## NK1 WorkPass544 — make causal replay fixture evidence-valid (2026-10-25)
 
 - Corrected the replay-diversity test to build decision traces whose trace tick matches the pre-action snapshot and whose after-state records the selected action plus observed success. The old fixture was intentionally rejected by the grounded-outcome gate, leaving an empty replay batch.
