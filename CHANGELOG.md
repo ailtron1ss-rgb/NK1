@@ -1,3 +1,11 @@
+# NK1 strict process deadline validation (2026-10-25)
+
+- [GUARD] `runCommand()`, `terminateChild()` and `waitForHttp()` now reject non-finite, negative, zero-where-invalid, or over-limit timer values. This prevents `Infinity` from disabling a watchdog and avoids Node timer overflow being silently interpreted as a near-immediate timeout.
+- [REGRESSION] Added tests for invalid command deadlines, cleanup grace values, readiness intervals, and request timeouts; invalid configuration is rejected before launching a child or starting a readiness loop.
+- [VALIDATION STATUS] The prior exact-head focused workflow passed at `0b35e425692eab652031ca55bf7d51b9a171cbc6`; the strict-deadline hardening requires a fresh exact-head CI run.
+
+---
+
 # NK1 gateway namespace routing and readiness response cleanup (2026-10-25)
 
 - [FIX] Gateway dispatch now matches the exact `/api/organism` and `/api/research` path segments (including their child paths), rather than routing every string with a matching prefix to a backend. Lookalike paths continue to the UI.
