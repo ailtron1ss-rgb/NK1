@@ -1,3 +1,10 @@
+## NK1 CI wiring follow-up — 2026-10-25
+
+- Restored the live cognitive dependency runtime-wiring regression in the audit PR head so every file named in the workflow path filters exists on the candidate branch. The test exercises runtime routing, branch-budget non-expansion, persistence at shutdown, and recovery after restart.
+- The missing-path root cause was confirmed from the failed GitHub Actions log; rerun results are pending after this commit.
+
+---
+
 ## NK1 CI wiring — run cognitive runtime checks for dependency-audit PRs (2026-10-25)
 
 - Added the live cognitive dependency runtime wiring test, OrganismCore/Runtime, and B272/B273 source tests to repository-wiring audit push and pull-request path filters.
