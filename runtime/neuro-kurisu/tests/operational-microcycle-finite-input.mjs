@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { finiteOr, normalizeOperationalMicroCycleSensors } from '../src/organism/core/OperationalMicroCycleRuntime.ts';
+import { finiteOr, normalizeOperationalMicroCycleSensors, OperationalMicroCycleRuntime } from '../src/organism/core/OperationalMicroCycleRuntime.ts';
 
 assert.equal(finiteOr(0.4, 0.2), 0.4);
 assert.equal(finiteOr('0.7', 0.2), 0.7);
@@ -101,6 +101,22 @@ assert.deepEqual(invalidFallbacks, {
   cpuLoad01: 0,
   ramPressure01: 0,
 });
+
+
+// The public entry point must reject malformed observations before touching host state.
+let contextProviderCalls = 0;
+const guardedRuntime = new OperationalMicroCycleRuntime(() => {
+  contextProviderCalls += 1;
+  return {};
+});
+for (const malformed of [null, undefined, [], 'not-an-observation', 42, true]) {
+  await assert.rejects(
+    guardedRuntime.run(malformed),
+    /cognitive-cycle-observation-must-be-object/,
+    'malformed observations must be rejected at the public runtime boundary',
+  );
+}
+assert.equal(contextProviderCalls, 0, 'malformed observations must not acquire or mutate host state');
 
 const runtimeSource = await readFile(new URL('../src/organism/core/OperationalMicroCycleRuntime.ts', import.meta.url), 'utf8');
 for (const guardedBoundary of [
