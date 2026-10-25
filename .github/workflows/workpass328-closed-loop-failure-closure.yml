@@ -1,0 +1,40 @@
+name: WorkPass328 closed-loop failure closure
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/RuntimeClosureLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CausalDomainClosureLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/tests/closed-loop-failure-closure.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/workpass328-closed-loop-failure-closure.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workpass328-closed-loop-failure-closure-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Enforce Node.js runtime
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Type-check runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Validate runtime and causal closed-loop failure closure
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p328:closed-loop-failure-closure
