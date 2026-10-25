@@ -1,3 +1,12 @@
+## NK1 WorkPass538 — bilingual autobiographical session recall (2026-10-25)
+
+- Expanded MemoryOS2 intent routing for Russian recollection prompts and English prior-conversation prompts, while prioritizing explicit user-profile recall as identity memory.
+- Conversation recall recognizes session IDs and session-history metadata as durable dialogue lineage. Role-only labels (for example `conversationRole=assistant`) do not qualify as a conversation identity key.
+- Added a session-only social-memory regression that verifies snapshot/restore preserves lineage and the previous-dialogue query can still select the conversation-backed memory over a lexical-tied semantic decoy.
+- Added a focused Memory Recall Validation workflow: runtime typecheck, bilingual recall regression, candidate-coverage regression, canonical memory snapshot/restore, and causal memory persistence projection.
+- MemoryOS2 remains the canonical writable store; no parallel memory store or new runtime dependency was introduced.
+- **Validation boundary:** original WorkPass538 CI run [#40161568229](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161568229) passed typecheck and all four focused memory checks on the original head; the rebased head must complete the same workflow before merge.
+
 ## NK1 WorkPass536 — enforce memory byte budget on live writes (2026-10-25)
 
 - Added budget enforcement to both new-record insertion and reconsolidation in `MemoryOS2.encode()`; the just-written record is protected during eviction so low-value older records are preferred.
