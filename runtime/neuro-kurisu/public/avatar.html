@@ -28,22 +28,26 @@
   <div class="hud"><span id="state" class="chip">инициализация…</span><span id="tick" class="chip">tick —</span></div>
 </div>
 <script type="module">
-import { buildAvatarPresentation } from './avatar-state.mjs';
+import {
+  buildAvatarPresentation,
+  buildAvatarSpeechTimeline,
+  sampleAvatarSpeechTimeline,
+} from './avatar-state.mjs';
 
 const frame = document.getElementById('live2d');
 const fallback = document.getElementById('fallback');
 const state = document.getElementById('state');
 const tick = document.getElementById('tick');
-let refreshInFlight = false;
+let snapshotInFlight = false;
+let speechInFlight = false;
+let latestPresentation = null;
+let speechCursor = null;
+let lastControlAt = 0;
+let mouthWasActive = false;
 
 function post(type, data = {}) {
-  try {
-    frame.contentWindow.postMessage({ type, ...data }, location.origin);
-  } catch {
-    // The iframe may still be navigating; the next snapshot will retry.
-  }
+  try { frame.contentWindow.postMessage({ type, ...data }, location.origin); } catch {}
 }
-
 window.addEventListener('message', (event) => {
   if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
   if (event.data?.type === 'live2d_ready') {
@@ -55,31 +59,102 @@ window.addEventListener('message', (event) => {
   }
 });
 
-async function refresh() {
-  if (refreshInFlight) return;
-  refreshInFlight = true;
+async function refreshSnapshot() {
+  if (snapshotInFlight) return;
+  snapshotInFlight = true;
   try {
-    // This endpoint exposes the actual organism UI state. /api/organism/avatar
-    // is deliberately an asset-inventory endpoint and has no emotion/action fields.
     const response = await fetch('/api/organism/ui-snapshot', { cache: 'no-store' });
     if (!response.ok) throw new Error('avatar-snapshot-http-' + response.status);
     const snapshot = await response.json();
     const presentation = buildAvatarPresentation(snapshot);
     if (!presentation) throw new Error('avatar-snapshot-invalid');
+    latestPresentation = presentation;
     state.textContent = (presentation.awake ? 'awake' : 'sleep') + ' · ' + presentation.action + ' · ' + presentation.emotion;
     tick.textContent = 'tick ' + presentation.tick;
     post('kurisu_expression', { expression: presentation.expression });
-    post('kurisu_embodiment', presentation.body);
-    post('kurisu_lipsync', { value: presentation.lipsync });
+    post('kurisu_embodiment', {
+      ...presentation.body, speaking: false, mouthOpen: 0.015, mouthForm: 0, voiceEmphasis: 0,
+    });
   } catch {
     state.textContent = 'organism offline';
   } finally {
-    refreshInFlight = false;
+    snapshotInFlight = false;
   }
 }
 
-void refresh();
-window.setInterval(() => { void refresh(); }, 5000);
+/** Poll only the compact runtime voice cursor; the full cognitive UI snapshot stays on a slow cadence. */
+async function refreshSpeech() {
+  if (speechInFlight) return;
+  speechInFlight = true;
+  try {
+    const response = await fetch('/api/organism/avatar-speech', { cache: 'no-store' });
+    if (!response.ok) return;
+    const speech = await response.json();
+    if (speech?.ok !== true || typeof speech.speaking !== 'boolean') return;
+    if (typeof speech.speechEventId !== 'string' || speech.speechEventId.length < 1
+        || speech.speechEventId.length > 140 || typeof speech.text !== 'string'
+        || !Number.isFinite(speech.startedAt) || speech.startedAt < 0) {
+      if (speechCursor) speechCursor.speaking = false;
+      return;
+    }
+    const identity = speech.speechEventId + ':' + speech.startedAt;
+    if (!speechCursor || speechCursor.identity !== identity) {
+      const timeline = buildAvatarSpeechTimeline(speech.text, speech.rate, 'ru-RU');
+      const now = performance.now();
+      speechCursor = {
+        identity, eventId: speech.speechEventId, startedAt: speech.startedAt,
+        timeline, speaking: speech.speaking,
+        // Bridge wall-clock speech start to the monotonic animation clock once per utterance.
+        elapsedAtAnchor: Math.max(0, Date.now() - speech.startedAt),
+        performanceAtAnchor: now,
+      };
+    } else {
+      speechCursor.speaking = speech.speaking;
+    }
+  } catch {
+    // Keep the last known cursor during a brief local API hiccup; stale closure is handled below.
+  } finally {
+    speechInFlight = false;
+  }
+}
+
+function animateSpeech(now) {
+  const active = Boolean(latestPresentation && speechCursor?.speaking && speechCursor.timeline.length);
+  if (active && now - lastControlAt >= 32) {
+    const elapsed = speechCursor.elapsedAtAnchor + Math.max(0, now - speechCursor.performanceAtAnchor);
+    const pose = sampleAvatarSpeechTimeline(speechCursor.timeline, elapsed);
+    const body = {
+      ...latestPresentation.body,
+      speaking: true,
+      mouthOpen: pose.open,
+      mouthForm: pose.form,
+      mouthViseme: pose.viseme,
+      voiceEmphasis: latestPresentation.body.voiceEmphasis,
+      motionGroup: 'Special',
+      motionIndex: 0,
+    };
+    post('kurisu_embodiment', body);
+    post('kurisu_lipsync', { value: pose.open });
+    mouthWasActive = true;
+    lastControlAt = now;
+  } else if (!active && mouthWasActive && now - lastControlAt >= 32) {
+    if (latestPresentation) {
+      post('kurisu_embodiment', {
+        ...latestPresentation.body, speaking: false, mouthOpen: 0.015, mouthForm: 0, voiceEmphasis: 0,
+      });
+      post('kurisu_lipsync', { value: 0.015 });
+    }
+    mouthWasActive = false;
+    lastControlAt = now;
+  }
+  window.requestAnimationFrame(animateSpeech);
+}
+
+void refreshSnapshot();
+void refreshSpeech();
+window.setInterval(() => { void refreshSnapshot(); }, 5000);
+window.setInterval(() => { void refreshSpeech(); }, 150);
+window.requestAnimationFrame(animateSpeech);
 </script>
 </body>
 </html>
