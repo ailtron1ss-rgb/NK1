@@ -24,7 +24,7 @@ assert.throws(() => learner.trainFeatures({ features, action: 'respond', target0
 assert.throws(() => learner.trainFeatures({ features: [...features, Number.NaN], action: 'respond', target01: .9, learningRate01: .06 }), /features-must-be-finite/);
 assert.deepEqual(learner.snapshot(), initial, 'rejected samples must not mutate policy weights or learning diagnostics');
 
-const features = learner.features(state, undefined, 'respond');
+
 assert.throws(() => learner.trainFeatures({ features: features.map((v, i) => i === 2 ? Number.NaN : v), action: 'respond', target01: .9, learningRate01: .06 }), /features-must-be-finite/);
 assert.deepEqual(learner.snapshot(), initial, 'invalid feature vectors must be rejected atomically');
 

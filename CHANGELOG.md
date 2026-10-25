@@ -1,3 +1,9 @@
+## NK1 P26 test fixture — remove duplicate shared-feature declaration (2026-10-25)
+
+- Removed the now-redundant second declaration after moving the feature vector above the negative training assertions; the test uses one immutable shared fixture throughout.
+
+---
+
 ## NK1 P26 input-integrity fixture — initialize shared features before negative cases (2026-10-25)
 
 - Moved the valid feature-vector fixture before negative trainFeatures assertions so the regression exercises numeric validation rather than hitting a JavaScript temporal-dead-zone ReferenceError.
