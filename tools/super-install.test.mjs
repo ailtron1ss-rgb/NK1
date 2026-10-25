@@ -52,9 +52,9 @@ function run(fixture, moreEnv = {}) {
 test('installer follows .nvmrc instead of assuming a hard-coded Node major', async t => {
   const f = await createFixture(t);
   const nextMajor = Number(process.versions.node.split('.')[0]) + 1;
-  await writeFile(path.join(f.root, '.nvmrc'), String(nextMajor) + '\\n');
+  await writeFile(path.join(f.root, '.nvmrc'), String(nextMajor) + '\n');
   const result = run(f);
-  assert.equal(result.status, 1, result.stdout + '\\n' + result.stderr);
+  assert.equal(result.status, 1, result.stdout + '\n' + result.stderr);
   assert.match(result.stderr, /SUPER_INSTALL=FAIL reason=node-version-mismatch/);
   assert.equal(await readFile(f.log, 'utf8').catch(() => ''), '');
 });
@@ -62,8 +62,8 @@ test('installer follows .nvmrc instead of assuming a hard-coded Node major', asy
 test('installer rejects npm below the manifest minimum before mutating workspaces', async t => {
   const f = await createFixture(t);
   const result = run(f, { NK_FAKE_NPM_VERSION: '10.7.9' });
-  assert.equal(result.status, 1, result.stdout + '\\n' + result.stderr);
-  assert.match(result.stderr, /reason=npm-version-required expected=>=10\\.8\\.0 actual=10\\.7\\.9/);
+  assert.equal(result.status, 1, result.stdout + '\n' + result.stderr);
+  assert.match(result.stderr, /reason=npm-version-required expected=>=10\.8\.0 actual=10\.7\.9/);
   assert.equal(await readFile(f.log, 'utf8').catch(() => ''), '');
 });
 
