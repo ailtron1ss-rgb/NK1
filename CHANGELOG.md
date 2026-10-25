@@ -1,3 +1,19 @@
+## NK1 WorkPass356 — Authenticate P26 holdout maturity and preserve candidate identity (2026-10-25)
+
+- [LEARNING-METRICS] Added explicit trainingExposure01 so online/replay parameter updates are tracked separately from generalization. Training exposure and a replay-derived split no longer count as independent generalization evidence.
+- [HOLDOUT-TRUST] P26TrueLearningEngine now accepts a verifier dependency for independent holdout records; the production default denies unauthenticated evidence. Accepted records are deduplicated and re-verified on restore, and only then contribute to the bounded generalization metric.
+- [DURABLE-ID] Restored the long-standing four-part candidate ID when no revision provenance is present; evidence-directed revisions use a fifth provenance digest. The atomic persistence validator now matches this contract without losing backward compatibility.
+- [REGRESSION] Expanded P26 holdout tests to cover training exposure, no generalization credit from ordinary updates, independent evidence persistence/deduplication, and default-deny behavior for self-asserted verification flags.
+
+---
+
+## NK1 WorkPass355 — Make drift mean assertion numerically tolerant (2026-10-25)
+
+- [TEST-ROBUSTNESS] Replaced strict equality for a repeated-value drift estimate with a 1e-12 tolerance. The computed mean can be 0.19999999999999962 due to floating-point accumulation; the test still requires the result to remain effectively 0.2.
+- [NO-WEAKENED-DETECTION] Drift detection, window width, and post-change adaptation assertions remain strict.
+
+---
+
 ## NK1 WorkPass354 — Make transfer-metric regression numerically robust (2026-10-25)
 
 - [NUMERICAL-CORRECTNESS] Changed the continual-transfer unit test to compare the computed (0.35 - 0.20) delta within a small floating-point tolerance. IEEE-754 subtraction can produce `0.14999999999999997`; the metric is correct, while exact decimal equality was brittle.
@@ -10,7 +26,7 @@
 
 - [REPLAY-RUNTIME] Replaced the `ContinualReplayBuffer` constructor parameter property with an explicit field assignment so Node's strip-only TypeScript loader can import the module in replay CI.
 - [LEARNING-INPUTS] Corrected the true-learning regression to require malformed `NaN` / `Infinity` rates to be rejected atomically, with learner weights, biases and update counters unchanged. This matches the new preflight validation rather than testing the old unsafe behavior.
-- [DURABLE-SKILLS] Fixed the atomic skill-store validator to calculate candidate IDs using the same five-part identity (including nullable revision provenance) as the store writer, while accepting legacy four-part IDs only when provenance is absent. Added validation for persisted provenance fields. This closes the concrete CAS rejection blocking durable skill staging and preserves restart compatibility.
+- [DURABLE-SKILLS] Reconciled the atomic skill-store validator with the candidate-ID contract: ordinary candidates retain the canonical four-part identity, while provenance-directed revisions bind an additional fifth digest. Restore validates provenance fields and accepts legacy four-part IDs when lineage is absent, preserving durable restart compatibility.
 
 ---
 
