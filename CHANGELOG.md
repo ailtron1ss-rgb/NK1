@@ -1,3 +1,13 @@
+## Host-owned evaluation fixture isolation — 2026-10-25
+
+- Fixed the WorkPass243 subprocess regression fixture: after its negative test sets the executor's shared inode to group-writable mode and verifies the runtime rejects it, the test now restores mode `0700` before testing scratch-root replacement.
+- The failure was an order-dependent fixture issue, not a reason to weaken executable permissions enforcement; the production guard remains unchanged.
+- Added the host-owned evaluator implementation and regression to the contract workflow's path filters, and the dedicated WorkPass243 test to the gate.
+
+Validation: rerun WorkPass243 and the broader contract/learning workflows on the final head; earlier WorkPass110 surfaced the fixture-state leak.
+
+---
+
 ## Independent candidate executability vs verifier trust — 2026-10-25
 
 - Fixed a metric conflation in `IndependentSkillCandidateEvaluator`: a structurally valid executor result remains measurable as executable when the independent verifier is unavailable.
