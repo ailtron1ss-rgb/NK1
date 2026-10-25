@@ -1,3 +1,13 @@
+## NK1 learning validation — separate execution diagnostics from verification authority (2026-10-25)
+
+- Fixed independent candidate evaluation so a structurally valid executor result remains visible as an executability-quality diagnostic when the verifier is unavailable.
+- Fail-closed authority is unchanged: no verifier binding means no trusted run ID or observed steps, and task success still requires a bound successful verification plus a clean safety scan.
+- Expanded regression assertions for the split between diagnostic executability and evidence trust.
+
+- **Verification boundary:** exact-head P26 and related gates must pass before this validation PR is ready to merge.
+
+---
+
 ## NK1 learning validation — isolate verifier failure fixture (2026-10-25)
 
 - Corrected the independent-evaluator test case for unavailable verifier: its executor now returns both expected steps, so the test measures verifier failure rather than incomplete execution.
