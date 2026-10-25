@@ -81,3 +81,11 @@ The P26 holdout-provenance regression also exposed a gap between the test contra
 The P26 true-learning engine's new bounded evidence-ID validator now rejects actual Unicode control characters. The P26 Learning Validation workflow's path filters also explicitly include `P26TrueLearningEngine.ts` and `VersionedSkillCandidateStore.ts`, ensuring the holdout provenance and Node strip-only compatibility changes cannot silently bypass their intended checks.
 
 The latest run on the previous commit still failed at the pre-fix Node 24 parameter-property parse and before the rolling-metric assertion had been updated on the runner. The next exact-head run is required to verify these fixes. No learning uplift or production-readiness claim is made.
+
+## Seventh follow-up — runtime Live2D mirror and final CI aliases
+
+The runtime-bundled Live2D viewer had drifted from the app's canonical viewer: it did not cache applied expressions and did not consistently update mouth-open/mouth-form targets from the current embodiment state. It now shares the important deduplication and lipsync mechanics while retaining the runtime bundle's current asset-loading model. Motion deduplication also uses the optional motion token rather than only group/index.
+
+The latest WorkPass294 Actions run passed strict runtime typecheck, but then failed because the workflow invoked an npm alias that had no entry in `runtime/neuro-kurisu/package.json`; the alias now points to the existing focused test. WorkPass293 further uncovered a remaining TypeScript parameter property in the durable trusted-run registry; it now uses an explicit field/constructor assignment to work under Node 24 strip-only mode.
+
+The previous WorkPass110 run passed causal evidence and avatar lifecycle tests before failing its Live2D integrity assertion against the stale runtime viewer. The new exact-head run must confirm the behavior and remaining integrations. The release archive is still unchanged.

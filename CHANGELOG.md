@@ -1,3 +1,10 @@
+## Live2D/runtime packaging compatibility follow-up (2026-10-25)
+
+- [FIX] Runtime-bundled Live2D viewer now caches the last successfully applied expression, avoids restarting an unchanged expression during lipsync/embodiment updates, updates lip and mouth-form targets from the incoming embodiment state, and keys motion restarts by the explicit motion token.
+- [FIX] Removed the remaining TypeScript constructor parameter property from `AtomicFileTrustedSkillShadowRunRegistry`, so Node 24 strip-only tests can import the registry module without that syntax error.
+- [CI] Added the missing `test:workpass294:correlated-postcondition` npm alias for the already-existing focused regression invoked by the dedicated WorkPass294 workflow.
+- [EVIDENCE] CI for the prior commit confirmed runtime typecheck passes in WorkPass294, but the focused postcondition workflow stopped after typecheck because its test alias was missing; P23 revision still hit another strip-only parameter property. The Live2D integrity check found that the runtime-bundled viewer lagged the canonical app viewer in expression caching/lipsync behavior.
+
 ## P26 verification wiring follow-up (2026-10-25)
 
 - [FIX] Corrected the bounded-ID regex in P26 to test actual Unicode control characters rather than a literal escaped text pattern.
