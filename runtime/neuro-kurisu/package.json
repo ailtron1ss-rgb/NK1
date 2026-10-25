@@ -1778,6 +1778,7 @@
     "test:workpass294:correlated-postcondition": "node --experimental-strip-types tests/workpass294-correlated-postcondition.mjs",
     "test:cognitive-dependency-runtime-wiring": "node --experimental-strip-types tests/cognitive-dependency-runtime-wiring.mjs",
     "test:cognitive-routing-policy": "node --experimental-strip-types tests/cognitive-routing-policy.mjs",
-    "test:cognitive-routing-policy-runtime-wiring": "node tests/cognitive-routing-policy-runtime-wiring.mjs"
+    "test:cognitive-routing-policy-runtime-wiring": "node tests/cognitive-routing-policy-runtime-wiring.mjs",
+    "test:cognitive-feedback-attribution-wiring": "node tests/cognitive-feedback-attribution-wiring.mjs"
   }
 }
