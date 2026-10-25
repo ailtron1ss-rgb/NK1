@@ -1,3 +1,12 @@
+## WorkPass327 — согласование с ограниченным HTTP timeout и чистые CI path filters (2026-10-25)
+
+- **Bridge timeout contract:** Python research bridge теперь даёт permission request/resolve/consume endpoint timeout до 12 сек по умолчанию (ограничен диапазоном 9–30 сек), что превышает 8-секундное окно bounded server retry. Остальные runtime POST остаются с timeout 4 сек.
+- **Regression:** test research bridge проверяет, что approval timeout остаётся больше retry budget, а обычные POST не получают избыточный timeout.
+- **CI path filters:** убраны повторяющиеся PR path filters; push filters теперь включают runtime system/server, approval bridge tests и NeuroCore/DeepCode Python dependency paths.
+- **Developer setup:** добавлена команда `npm run install:research:cpu` для явной установки CPU-only torch в окружениях, где используются полноценные PyTorch research probes. Она не включена в обязательный mobile/Node install, где CPU wheels могут быть недоступны.
+- **CI status:** WorkPass326 head уже подтвердил setup-python + CPU torch install, app/runtime typecheck/build, cognitive integration и `test:workpass53` (включая approval bridge E2E). Unified smoke ещё выполнялся на момент записи; WorkPass327 bridge timeout change требует нового exact-head evidence.
+- **Release boundary:** нет merge в main и нет изменения release ZIP. UI/Live2D/TTS, Android/Termux и long-soak/holdout learning остаются открытыми.
+
 ## WorkPass326 — approval persistence contention and research runtime dependencies (2026-10-25)
 
 - **Approval correctness:** distinguish the known transient `action-ledger-persistence-busy` checkpoint condition from permanent `approval-storage-failed`, while retaining rollback of newly created/resolved/consumed approval tickets.
