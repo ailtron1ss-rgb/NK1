@@ -151,6 +151,7 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    if(!Array.isArray(input.features)||!input.features.every(value=>typeof value==='number'&&Number.isFinite(value))) throw new RangeError('features-must-be-finite');
     if(!ACTIONS.includes(input.action)) throw new RangeError('invalid-action');
     if(typeof input.target01!=='number'||!Number.isFinite(input.target01)) throw new RangeError('target-must-be-finite');
     if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01)) throw new RangeError('rate-must-be-finite');
