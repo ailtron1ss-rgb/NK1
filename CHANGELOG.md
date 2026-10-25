@@ -1,3 +1,11 @@
+## [NK1][core] Preserve finalization context keys in the canonical wrapper (2026-10-25)
+
+- The compound-skill route now calls `OrganismCore.executeTool(..., Object.keys(runtimeInput))` as required, and strict TypeScript revealed the wrapper exposed only four arguments despite `finalizeToolOutcome` already supporting caller-supplied context keys.
+- Extended the canonical wrapper with an optional, defaulted `finalizationContextKeys` argument and forwarded it into `finalizeToolOutcome`. Existing four-argument callers retain the original `Object.keys(input)` behavior; the compound-skill path can explicitly preserve the intended runtime-context boundary.
+- This keeps one finalizer owner and fixes the compile-time contract rather than weakening the regression.
+
+---
+
 ## [NK1][core] Route compound skill steps through canonical execution wrapper (2026-10-25)
 
 - CI exposed a second real bypass: compound-skill steps called `ActionGateway.executeTool` directly, then duplicated some of Core's finalization logic locally. That split ownership could omit or double-apply outcome projections as the runtime changes.
