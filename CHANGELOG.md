@@ -1,3 +1,8 @@
+## NK1 WorkPass562 — assert explicit action/decision ticket binding (2026-10-25)
+
+- Replaced an obsolete source-text regex in the WorkPass294 regression. It required the old shorthand `executionId, ...context.decisionId` syntax even though the current gateway explicitly passes `response.executionId` and `options.decisionId` to `isTrustedDecisionLinkedExternalPostcondition`.
+- The new assertion is more specific: both exact tickets must appear together in the verifier call. Runtime lineage checks and fail-closed logic are unchanged.
+
 ## NK1 WorkPass560 — invoke the existing WorkPass294 regression (2026-10-25)
 
 - Replaced the nonexistent `test:workpass294:correlated-postcondition` npm alias with a direct invocation of the existing `workpass294-correlated-postcondition.mjs` file using Node's TypeScript transform mode.
