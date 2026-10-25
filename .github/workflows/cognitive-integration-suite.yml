@@ -28,6 +28,7 @@ on:
       - "feature/memory-budget-restore-integrity-20261025"
       - "workpass70-source"
       - "work/node24-project-pin-rebased-20261025"
+      - "fix/cognitive-interrupt-severity-normalization-2026-10-25"
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
       - "runtime/neuro-kurisu/tests/cognitive-*.mjs"
