@@ -50,6 +50,16 @@ assert.ok(avatarHtml.includes("window.setInterval(() => { void refreshSpeech(); 
 const runtimeViewerSource=fs.readFileSync(path.join(root,'public/live2d/viewer.html'),'utf8');
 const avatarSource=fs.readFileSync(path.join(root,'public/avatar.html'),'utf8');
 const avatarStateSource=fs.readFileSync(path.join(root,'public/avatar-state.mjs'),'utf8');
+const sharedVisemeCorePath=path.join(root,'public/speech-viseme-core.mjs');
+assert.ok(fs.existsSync(sharedVisemeCorePath),'the shared grapheme/viseme core must be shipped beside the runtime avatar');
+const sharedVisemeCore=fs.readFileSync(sharedVisemeCorePath,'utf8');
+assert.ok(avatarStateSource.includes("from './speech-viseme-core.mjs'"),'runtime avatar must import the canonical shared viseme core');
+assert.ok(avatarStateSource.includes('buildVisemeTimeline(normalized, rate, language)'), 'runtime avatar must delegate timing to the shared timeline');
+assert.ok(sharedVisemeCore.includes('export function buildVisemeTimeline') && sharedVisemeCore.includes('export function sampleVisemeTimeline'),
+  'shared core must own timeline construction and sampling');
+assert.ok(!avatarStateSource.includes('function speechWeight') && !avatarStateSource.includes('function poseForSpeechGrapheme'),
+  'runtime avatar must not contain a second viseme algorithm');
+
 const serverSource=fs.readFileSync(path.join(root,'src/server/server.mjs'),'utf8');
 assert.ok(serverSource.includes("url.pathname === '/api/organism/avatar-speech'"), 'server must expose lightweight active speech cursor');
 assert.ok(serverSource.includes('state.lastSpeechEventId') && serverSource.includes('state.lastSpeechText') && serverSource.includes('state.speechStartedAt'),
