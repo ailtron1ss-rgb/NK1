@@ -1,3 +1,10 @@
+## NK1 WorkPass542 — repair validation contract mismatches (2026-10-25)
+
+- Corrected P26 workflow commands to invoke the three existing regression files directly; the previous npm script names were absent from `package.json`, so validation stopped before executing them.
+- Aligned the causal-stream regression with the actual trust boundary: unverified external events stay queryable and idempotent but must leave trusted `summary().outcomes` at zero until a grounded runtime transition is observed.
+- Added explicit record-retention assertions so the tests still prove duplicate handling and persistence rather than merely lowering expected counters.
+- CI must rerun on this new head; this entry does not claim the broader learning pipelines now pass.
+
 ## NK1 WorkPass541 — verify normalized lineage separators (2026-10-25)
 
 - Corrected the key-normalization character class so underscore, hyphen, and whitespace separators are actually removed before checking stable conversation/session/thread identifiers.
