@@ -57,7 +57,7 @@ export function resolveCognitiveRoutingPolicy(
   }
   return {
     maxCounterfactualBranches: baseBranches,
-    allowMatchedCounterfactual: true,
+    allowMatchedCounterfactual: baseBranches > 0,
     reason: 'resource-budget',
     interruptPriority01: priority,
   };
