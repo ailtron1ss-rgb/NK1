@@ -1,3 +1,14 @@
+## Latest durable checkpoint — WorkPass532 signed-ledger P36 evaluator (2026-10-25)
+
+- Continue in existing `feature/learning` / draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate PR. `main` and the GitHub Release ZIP remain unchanged.
+- New `P36VerifiedOutcomeLedgerEvaluator.ts` implements a host-configurable evaluator for `OrganismConfig.p36IndependentEvaluator`. It computes task-balanced baseline/treatment pass rates from the in-memory `VerifiedOutcomeLedger`, and uses `hasAuthenticatedOutcomeEvidence` to admit only records backed by signed artifacts ingested through the canonical authentication boundary.
+- Requires identical manifest fingerprint, holdout split, declared task family, baseline/treatment pair, evaluator version, full matched task coverage on at least four independent seeds and caller score claims equal to recomputed ledger values. A restored plain ledger snapshot carries no in-process trust receipts and fails closed until signed artifacts are re-ingested.
+- P36 now preserves the evaluator protocol fields (baseline method, treatment method, family, manifest fingerprint) and does not mix promotion statistics across different protocols. Regression suite: `npm run test:p36:verified-ledger-evaluator`, wired into P26 Learning Validation.
+- **Important limit:** this is point-in-time holdout evidence only (`delayMs=0`). It deliberately does not certify retention or transfer. A separately authenticated delayed evaluator is still required. Production runtime must supply the adapter from trusted host construction config.
+- **Verification:** current exact-HEAD workflow/typecheck/tests are not confirmed passing; no current PASS is claimed. No measured learning uplift or production readiness claim is made.
+
+---
+
 ## Latest durable checkpoint — WorkPass531 P36 typed maturity event contract (2026-10-25)
 
 - Keep working in `feature/learning` / draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79), no duplicate branch or PR. `main` and the Release ZIP remain unchanged.
