@@ -120,6 +120,14 @@ test("maps emotion and body-state signals into bounded, synchronized voice and a
   });
   assert.ok(moodCarryover.stress01 > calm.stress01, "persistent canonical mood must carry into embodiment even when the newest label is calm");
   assert.ok(moodCarryover.speechPitch < calm.speechPitch, "dominant mood must softly affect later speech");
+  const expiredMood = deriveAffectiveEmbodiment({
+    label: "calm", valence01: 0.5, arousal01: 0.2, dominance01: 0.7,
+    energy01: 0.9, cognitiveLoad01: 0.1, uncertainty01: 0.1, sleepPressure01: 0.05,
+    mood: { valence01: 0.2, arousal01: 0.85, stress01: 0.8, confidence01: 0.9, dominantLabel: "anxiety", persistence01: 0.9, freshness01: 0 },
+  });
+  assert.equal(expiredMood.expressionIntensity, calm.expressionIntensity, "an expired mood must stop driving expression intensity");
+  assert.equal(expiredMood.speechPitch, calm.speechPitch, "an expired mood must stop biasing speech pitch");
+  assert.equal(expiredMood.headTilt, calm.headTilt, "an expired mood must stop biasing posture");
 
   const freshFeeling = deriveAffectiveEmbodiment({
     label: "calm", valence01: 0.5, arousal01: 0.2, dominance01: 0.7,
