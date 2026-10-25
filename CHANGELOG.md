@@ -1,3 +1,10 @@
+## NK1 learning lifecycle — align rollback regression with guarded approval API (2026-10-25)
+
+- Updated the versioned skill-store lifecycle test to pass an explicit test-only rollback authority and compare-and-swap approval record, matching the current guarded rollback API.
+- Kept production behavior fail-closed: the test harness alone injects the rollback verifier; the default remains deny-by-default and stale active versions are still rejected.
+
+---
+
 ## NK1 learning reliability — separate execution from trusted outcome evidence (2026-10-25)
 
 - Corrected P23 independent candidate evaluation so a valid sandbox execution remains marked executable even when its independent verifier fails or is unavailable.
