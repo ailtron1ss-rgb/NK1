@@ -126,3 +126,6 @@ Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #
 
 - Corrected three more workflow/package mismatches identified by exact GitHub Actions logs: WorkPass291 reflective payload budget, WorkPass294 correlated external postconditions and P26 learning input integrity all pointed at test files that existed but had no corresponding npm scripts.
 - Added the missing script entries using Node's transform-types loader, which supports the repository's TypeScript parameter-property syntax. The previous CI failures stopped at npm's `Missing script` error and did not establish whether the test assertions passed; that remains for the next exact-head run.
+
+
+- **WorkPass338 follow-up:** The WorkPass287 restore-contract test expected only `action` to be missing after restoring an invalid timestamp, while the implementation correctly fails closed to the full six-stage missing list when the previous completion claim is invalid. Updated that assertion to match the conservative restore invariant rather than weaken production validation.

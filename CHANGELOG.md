@@ -2310,3 +2310,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - Added `test:workpass291:payload-budget`, `test:workpass294:correlated-postcondition`, and `test:p26:learning-input-integrity` to `runtime/neuro-kurisu/package.json`, each mapped to its existing regression file.
 - The prior workflows failed before running those regressions because npm could not find the named commands. New CI must confirm the tests themselves pass; no pass is inferred from adding the entries.
+
+
+
+- **WorkPass338 follow-up:** Aligned the WorkPass287 test with fail-closed restore behavior: if prior tick metadata is invalid and the previous completion claim is rejected, all six cognitive-cycle stages are marked missing rather than trusting a partial stale list.
