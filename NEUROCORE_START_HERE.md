@@ -1,3 +1,13 @@
+## Latest durable checkpoint — WorkPass533 host-pinned P36 comparison (2026-10-25)
+
+- Continue in `feature/learning` / draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79). Do not create a duplicate PR; keep `main` and Release ZIP unchanged.
+- `P36VerifiedOutcomeLedgerEvaluatorConfig` now pins `baselineMethod`, `treatmentMethod`, and `taskFamily` during trusted host construction. The runtime request must exactly match this configured comparison; it cannot swap methods/families after viewing held-out outcomes.
+- The regression asserts that an alternate treatment method and an uncovered task family are refused. Evidence comes only from authenticated signed holdout rows on at least four fully paired independent seeds; scores are re-derived by both executor and verifier.
+- The adapter remains point-in-time only and explicitly requires `delayMs: 0`. A separate authenticated delayed observer is still required for retention/transfer gates.
+- **Validation:** exact-head typecheck/tests remain unverified; no current CI PASS is claimed. Report: [WorkPass533](docs/WORKPASS533_P36_METHOD_PAIR_AUTHORITY_RU.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass532 signed-ledger P36 evaluator (2026-10-25)
 
 - Continue in existing `feature/learning` / draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate PR. `main` and the GitHub Release ZIP remain unchanged.
