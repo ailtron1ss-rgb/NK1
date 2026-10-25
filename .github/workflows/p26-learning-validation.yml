@@ -72,6 +72,10 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/CorrectionRuleMemory.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
       - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/P36AutonomousSelfDevelopment.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P36VerifiedOutcomeLedgerEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P36HostEvaluatorBootstrap.ts"
@@ -230,6 +234,12 @@ jobs:
       - name: Run reflective promotion authority firewall regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-hermes-production-promotion-gate.mjs
+      - name: Run appraisal emotion persistence and hostile-restore regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-172-emotion-interoceptive-mind.mjs
+      - name: Run interoceptive homeostasis restore-integrity regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-190-p66-regression.mjs
       - name: Run P36 self-development evidence-provenance regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p36:self-development
