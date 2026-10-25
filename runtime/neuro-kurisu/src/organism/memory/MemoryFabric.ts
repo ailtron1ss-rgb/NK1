@@ -504,17 +504,33 @@ export class MemoryFabric {
   }
 
   restore(raw:MemoryFabricRestore|undefined){
-    if(!raw)return;
-    Object.assign(this.statsData,{...this.statsData,...raw.stats});
-    this.hotIds.length=0;this.hotIds.push(...(raw.hotIds??[]).slice(0,this.config.maxHotItems));
-    this.policyOutcomeLedger.restore(raw.policyOutcomeLedger);
+    // Restore is also used on a live runtime during checkpoint recovery. Never
+    // retain receipts, hot IDs, counters or in-flight handles from the previous
+    // organism state when the checkpoint omits this optional compatibility facet.
+    const saved=raw??{};
+    const defaults={encodes:0,newItems:0,reconsolidations:0,retrievals:0,retrievalHits:0,maintenanceRuns:0,compatibilityProjections:0};
+    Object.assign(this.statsData,defaults);
+    for(const key of Object.keys(defaults) as (keyof typeof defaults)[]){
+      const value=saved.stats?.[key];
+      if(typeof value==='number'&&Number.isSafeInteger(value)&&value>=0)this.statsData[key]=value;
+    }
+    this.hotIds.length=0;
+    this.hotIds.push(...(Array.isArray(saved.hotIds)?saved.hotIds.filter((id):id is string=>typeof id==='string'&&id.length>0).slice(0,this.config.maxHotItems):[]));
+    this.lastMaintenanceTick=-1;
+    this.lastPolicyDecisionId=undefined;
+    this.lastSemanticMaintenanceStartedAt=0;
+    this.lastCognitiveMemoryQueryAt=0;
+    this.cognitionSemanticInFlight=null;
+    this.semanticMaintenanceInFlight=null;
+    this.policyOutcomeLedger.restore(saved.policyOutcomeLedger);
     this.mutationReceipts.clear();
     this.retiredMutationReceiptBloom=new Uint8Array(RETIRED_RECEIPT_BLOOM_BYTES);
-    this.retiredMutationReceiptCount=Math.max(0,Math.floor(Number(raw.retiredMutationReceiptCount??0)));
-    this.retiredMutationReceiptBloomCorrupt=raw.retiredMutationReceiptBloomCorrupt===true;
-    if(typeof raw.retiredMutationReceiptBloom==='string'){
+    this.retiredMutationReceiptCount=Number.isSafeInteger(saved.retiredMutationReceiptCount)&&Number(saved.retiredMutationReceiptCount)>=0
+      ?Number(saved.retiredMutationReceiptCount):0;
+    this.retiredMutationReceiptBloomCorrupt=saved.retiredMutationReceiptBloomCorrupt===true;
+    if(typeof saved.retiredMutationReceiptBloom==='string'){
       try{
-        const decoded=decodeBase64Bytes(raw.retiredMutationReceiptBloom);
+        const decoded=decodeBase64Bytes(saved.retiredMutationReceiptBloom);
         if(decoded.byteLength!==RETIRED_RECEIPT_BLOOM_BYTES)throw new Error('invalid-bloom');
         this.retiredMutationReceiptBloom.set(decoded);
       }catch{this.retiredMutationReceiptBloomCorrupt=true;}
@@ -522,7 +538,7 @@ export class MemoryFabric {
       // Missing tombstones with a non-zero count is corrupt state. Fail closed on keyed writes.
       this.retiredMutationReceiptBloomCorrupt=true;
     }
-    for(const row of (raw.mutationReceipts??[]).slice(-this.maxMutationReceipts)){
+    for(const row of (Array.isArray(saved.mutationReceipts)?saved.mutationReceipts:[]).slice(-this.maxMutationReceipts)){
       if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||!['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
       this.mutationReceipts.set(row.commandId.slice(0,128),{...row,commandId:row.commandId.trim().slice(0,128),fingerprint:row.fingerprint.slice(0,64).toLowerCase(),at:Math.floor(Number(row.at))});
     }
