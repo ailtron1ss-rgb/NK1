@@ -20,6 +20,9 @@ on:
       - "tools/project-runtime-pin.test.mjs"
       - "tools/super-install.mjs"
       - "tools/super-doctor.mjs"
+      - "tools/integration-supervisor.mjs"
+      - "tools/integration-supervisor.test.mjs"
+      - "tools/verify-integration.mjs"
   pull_request:
     branches:
       - workpass70-source
@@ -36,6 +39,9 @@ on:
       - "tools/project-runtime-pin.test.mjs"
       - "tools/super-install.mjs"
       - "tools/super-doctor.mjs"
+      - "tools/integration-supervisor.mjs"
+      - "tools/integration-supervisor.test.mjs"
+      - "tools/verify-integration.mjs"
   workflow_dispatch:
 
 permissions:
@@ -69,6 +75,9 @@ jobs:
 
       - name: Test project Node/npm runtime pin contract
         run: npm run test:runtime-pin-contract
+
+      - name: Test integration process supervisor
+        run: npm run test:integration-supervisor
 
       - name: Test repository wiring audit fixtures
         run: npm run test:repo-wiring
