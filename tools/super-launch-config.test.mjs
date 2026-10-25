@@ -17,7 +17,7 @@ test('dev and production launchers target the canonical runtime entrypoint', () 
     assert.ok(source.includes(runtimeEntry), name + ' must launch the runtime from its actual workspace path');
     assert.ok(source.includes("fileURLToPath(new URL('..', import.meta.url))"), name + ' must resolve paths from its own location');
     assert.ok(source.includes('ORGANISM_RUNTIME_URL'), name + ' must pass the runtime URL to the research bridge');
-    assert.ok(source.includes('required runtime entrypoint missing'), name + ' must fail before spawning if the runtime entrypoint is missing');
+    assert.ok(source.includes('required ${label} missing') && source.includes('existsSync(file)'), name + ' must fail before spawning if a required entrypoint is missing');
     assert.ok(source.includes('shuttingDown'), name + ' must guard coordinated shutdown');
   }
   assert.ok(integration.includes(runtimeEntry), 'integration smoke is the canonical launch-path reference');
