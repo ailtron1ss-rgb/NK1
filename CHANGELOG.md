@@ -1,3 +1,11 @@
+## NK1 WorkPass351 — Repair strip-only runtime loading and durable skill CAS (2026-10-25)
+
+- [REPLAY-RUNTIME] Replaced the `ContinualReplayBuffer` constructor parameter property with an explicit field assignment so Node's strip-only TypeScript loader can import the module in replay CI.
+- [LEARNING-INPUTS] Corrected the true-learning regression to require malformed `NaN` / `Infinity` rates to be rejected atomically, with learner weights, biases and update counters unchanged. This matches the new preflight validation rather than testing the old unsafe behavior.
+- [DURABLE-SKILLS] Fixed the atomic skill-store validator to calculate candidate IDs using the same five-part identity (including nullable revision provenance) as the store writer, while accepting legacy four-part IDs only when provenance is absent. Added validation for persisted provenance fields. This closes the concrete CAS rejection blocking durable skill staging and preserves restart compatibility.
+
+---
+
 ## NK1 WorkPass352 — Align Core shadow-run test with async fail-closed API (2026-10-25)
 
 - [ASYNC-CONTRACT] The Core-owned trusted shadow-process entry test now awaits rejection when asking the coordinator to run an invalid baseline/control lane. The coordinator's declared Promise contract is tested rather than incorrectly expecting a synchronous throw.
