@@ -19,6 +19,7 @@ on:
   pull_request:
     branches:
       - workpass70-source
+      - audit/repository-wiring-contracts-2026-10-25
     paths:
       - ".github/workflows/**"
       - "package.json"
