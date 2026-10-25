@@ -83,6 +83,8 @@ export interface AffectiveEmbodimentInput {
     confidence01: number;
     dominantLabel: AffectiveEmotionLabel;
     persistence01: number;
+    /** Decays between runtime appraisals, preventing an old mood from freezing the avatar. */
+    freshness01?: number;
   };
   /** Recent functional self-access report; stale reports are ignored using freshness01. */
   feeling?: {
@@ -115,7 +117,9 @@ export interface AffectiveEmbodimentProfile {
 export function deriveAffectiveEmbodiment(input: AffectiveEmbodimentInput): AffectiveEmbodimentProfile {
   const unit = (value: number, fallback = 0.5): number =>
     Number.isFinite(value) ? clamp(value, 0, 1) : fallback;
-  const moodPersistence = input.mood ? unit(input.mood.persistence01, 0) : 0;
+  const moodPersistence = input.mood
+    ? unit(input.mood.persistence01, 0) * unit(input.mood.freshness01, 1)
+    : 0;
   const moodBlend = moodPersistence * 0.30;
   const currentValence = unit(input.valence01);
   const currentArousal = unit(input.arousal01);
