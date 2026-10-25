@@ -6,11 +6,13 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/InnerImperativeController.ts"
       - "runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs"
       - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
       - "runtime/neuro-kurisu/tests/workpass338-p23-successful-revision-provenance.mjs"
       - "runtime/neuro-kurisu/tests/workpass338-inner-imperative-input-normalization.mjs"
+      - "runtime/neuro-kurisu/tests/workpass339-reflection-evidence-normalization.mjs"
       - ".github/workflows/workpass335-paired-seed-growth.yml"
       - "docs/WORKPASS335_PAIRED_SEED_GROWTH_RU.md"
       - "CHANGELOG.md"
@@ -19,11 +21,13 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/InnerImperativeController.ts"
       - "runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs"
       - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
       - "runtime/neuro-kurisu/tests/workpass338-p23-successful-revision-provenance.mjs"
       - "runtime/neuro-kurisu/tests/workpass338-inner-imperative-input-normalization.mjs"
+      - "runtime/neuro-kurisu/tests/workpass339-reflection-evidence-normalization.mjs"
       - ".github/workflows/workpass335-paired-seed-growth.yml"
       - "docs/WORKPASS335_PAIRED_SEED_GROWTH_RU.md"
       - "CHANGELOG.md"
@@ -63,3 +67,6 @@ jobs:
       - name: TypeScript runtime syntax and semantic check
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
+      - name: Normalize reflection evidence before learning from it
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass339-reflection-evidence-normalization.mjs
