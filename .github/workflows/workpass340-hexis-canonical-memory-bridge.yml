@@ -1,0 +1,57 @@
+name: WorkPass340 — Hexis canonical memory bridge
+
+on:
+  push:
+    branches: [workpass340-hexis-canonical-memory-bridge-20261025]
+  pull_request:
+    branches: [integration]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workpass340-hexis-canonical-memory-bridge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hexis-canonical-memory-bridge:
+    name: Hexis HMX + canonical-memory regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install runtime dependencies
+        run: npm ci
+        working-directory: runtime/neuro-kurisu
+      - name: Hexis HMX and canonical-memory regressions
+        run: npm run audit:hexis
+        working-directory: runtime/neuro-kurisu
+
+  runtime-typecheck-diagnostic:
+    name: Repository-wide typecheck (diagnostic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install runtime dependencies
+        run: npm ci
+        working-directory: runtime/neuro-kurisu
+      - name: Runtime typecheck diagnostic
+        run: npm run typecheck
+        working-directory: runtime/neuro-kurisu

@@ -1,3 +1,23 @@
+## NK1 WorkPass340 — P23 revision workflow entrypoint fix (2026-10-25)
+
+- [CI FIX] Replaced the nonexistent `test:workpass293:p23-revision` npm script with the direct Node 24 invocation of the existing `tests/workpass293-autonomous-p23-revision.mjs` regression file. This fixes test discovery/entrypoint only; the test result must be confirmed by the workflow run before treating the P23 revision path as validated.
+
+## NK1 WorkPass340 — Hexis HMX 1.7 canonical-memory bridge (2026-10-25)
+
+- [IMPLEMENTED] Added a native NK1 → HMX 1.7 exporter that preserves source lineage and explicitly discloses that automatic sensitive-data redaction was not performed.
+- [IMPLEMENTED] Added a reviewed Hexis → NK1 memory projector that writes through the existing canonical MemoryFabric/MemoryOS2 owner and projects relationships into SemanticMemoryGraph only when both imported endpoints are known.
+- [SAFETY] Canonical import requires an accepted `port + additive` stage. The apply path validates the full memory batch before writes, compensates partial writes on failure, and keeps failed attempts retryable.
+- [TEST] Expanded exporter/projector regressions and the server smoke test for accept-without-write, explicit apply, persisted memory, and idempotent retry; added a Node.js 24 workflow.
+- [CI] The first exact-head run stopped at repository-wide `typecheck` and skipped Hexis regression tests. Added a `.d.mts` adapter contract and tightened HMX source/goal metadata typing; split `audit:hexis` into its own blocking job and kept the existing repository-wide typecheck as a separate diagnostic job.
+- [RUNTIME FIX] Fixed a malformed control-character regex that prevented Node.js 24 from loading `OutcomeVerificationService.ts` before tests could run.
+- [NODE 24 RUNTIME] Replaced parameter properties in `VersionedSkillCandidateStore` with explicit fields and switched `npm start` plus Hexis server smoke to `--experimental-transform-types` so the runtime can load non-erasable TS syntax under Node 24.
+- [GOAL LIFECYCLE] Fixed the P68 active-only traversal that made paused-goal reactivation unreachable; imported external goals remain activation-gated unless explicitly approved. Reactivation now also respects the four-active-goal capacity.
+- [IDEMPOTENCY] Projector now returns the stored receipt when replayed with an already-applied stage; a direct replay regression was added.
+- [MEMORY SAFETY] Imported quarantine/archive/deletion/rejection statuses remain quarantined; unknown statuses remain `unknown` instead of being promoted to beliefs. Added a recall-exclusion regression. Foreign `fact` labels are reduced to `belief`, never trusted as NK1-verified facts. The canonical `MemoryFabric` boundary now forwards `forceDistinct`, keeping same-text imported lineage separate from native records. `SemanticMemoryGraph` now respects `sourceKey`, preventing same-label native/imported nodes from collapsing.
+- [CANONICAL WRAPPER] Removed legacy `OrganismCore.hexisDecideHmx` behavior that wrote imported memories during `accept`. `accept` now records review state only; explicit `apply` invokes the canonical projector, then refreshes the persisted `MemoryOS2` snapshot.
+- [CI] `npm run audit:hexis` passed in WorkPass340 workflow run 73 at code commit `db18a488112c004544d44c527344c101d9ecb356` (export/projector regressions, server smoke, UI wiring). The server smoke confirms `stage` and `accept` are write-free and explicit `apply` persists through canonical memory.
+- [STATUS] Repository-wide typecheck remains red on existing errors across unrelated runtime modules and is tracked as diagnostic. PR #116 remains draft/unmerged pending review; no release ZIP, deployment, or learning-uplift benchmark is claimed.
+
 ## NK1 WorkPass331 — execute initiative regression guards in CI (2026-10-24)
 
 - [CI] Added `.github/workflows/initiative-regression.yml` on the `integration` branch to run the WorkPass329/330 initiative wiring regression tests with Node.js 22 on relevant pushes and pull requests.
