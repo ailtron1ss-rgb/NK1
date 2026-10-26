@@ -1,3 +1,16 @@
+## Latest checkpoint — WorkPass350 host-evaluator authority boundary (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Last code-validation SHA:** `5484b3567965870a4596336503a6b22985dbb17f`. Subsequent changes in this checkpoint block are documentation-only unless another code commit is explicitly recorded.
+
+- The independent evaluator loader now checks its module's parent directory permissions and compares provider/evaluator device+inode identity, not only path strings. Hard-link aliases and group/world-writable parent directories fail closed on POSIX.
+- Added two regressions to `tests/workpass330-production-revision-wiring.mjs`. WorkPass335 Actions run #40284703984 passed 15/15 evaluator wiring tests and `TYPECHECK=PASS`. WorkPass349 Actions run #40284698566 passed 10/10 native provider tests and `TYPECHECK=PASS`.
+- The source-stack draft PR is [#192](https://github.com/ailtron1ss-rgb/NK1/pull/192). Keep `main` stable; do not merge into it without separate verified release synchronization.
+- Remaining: completion of aggregate CI; independent paired-seed learning-uplift evidence; durable recall after restart; broader organism smoke; production UI/database build; browser/Live2D and Android/Termux device E2E; soak and license review.
+- These checks establish regression/type safety for the changed paths, not consciousness, autonomous-learning uplift, or production readiness.
+
+---
+
 ## Latest checkpoint — WorkPass349 signed-dataset path integrity (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
@@ -7,9 +20,9 @@
 - **Code committed:** `P23CompoundRepairRevisionProvider.ts` now binds the initial `lstat`, canonical `realpath/stat`, and open file descriptor to the same device/inode; it opens the original configured path with `O_NOFOLLOW` on POSIX and retains the pre-/post-read mutation checks.
 - **Regression committed:** the native Hermes/P23 suite tests device/inode identity mismatches and guards the configured-path-open / three-way-identity contract. Existing signature, payload fingerprint, unsafe permission, symlink and mutation checks remain in place.
 - **Change tracking:** WorkPass349 is recorded in `CHANGELOG.md` and at the top of `docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md`. No dependency was added.
-- **CI wiring:** the dedicated workflow `.github/workflows/workpass349-native-dataset-path-identity.yml` is now installed on the source-stack PR base and runs the signed-dataset provider regression plus runtime typecheck on matching pull requests. A new head update will trigger it; until an exact-head completed run is available, validation remains pending.
-- **Implementation status:** 4/4 WorkPass349 code/regression/documentation tasks committed. **Validation status:** exact-head native-provider test, runtime typecheck and broad workflow are still pending. Do not infer a pass from earlier WorkPass347/348 runs.
-- **Next required actions:** open/review a draft PR against the source stack (not `main`), obtain fresh actionable CI on the exact head, fix any observed failures, then run wider P23 learning/promotion and organism-smoke gates. Deployment-owned executor/verifier/scanner, independent paired-seed uplift, restart/retrieval proof, production UI/database build, browser/Live2D E2E, real Android/Termux audio, long soak and license review remain open release gates.
+- **CI wiring and evidence:** the dedicated `.github/workflows/workpass349-native-dataset-path-identity.yml` ran successfully on code SHA `5484b3567965870a4596336503a6b22985dbb17f` (10/10 P23 provider tests plus runtime typecheck). The WorkPass335 host-owned evaluator workflow on the same SHA also passed (15/15 wiring tests plus runtime typecheck).
+- **Implementation status:** WorkPass349 and WorkPass350 source fixes, focused regressions and tracking updates are committed. **Validation status:** both focused workflows and their runtime typechecks passed on code SHA `5484b3567965870a4596336503a6b22985dbb17f`. Broader aggregate workflows may be in progress; do not infer full release readiness from these focused passes.
+- **Next required actions:** review draft PR #192 against the source-stack branch (not `main`), finish the remaining aggregate CI gates, then run wider P23 learning/promotion, persistence/restart/retrieval and organism-smoke gates. Deployment-owned executor/verifier/scanner, independent paired-seed uplift, restart/retrieval proof, production UI/database build, browser/Live2D E2E, real Android/Termux audio, long soak and license review remain open release gates.
 - **Evidence boundary:** this change reduces a path-substitution race in signed dataset loading. It does not establish production readiness, autonomous-learning uplift, or consciousness.
 
 ---
