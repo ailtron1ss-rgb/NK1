@@ -68,6 +68,10 @@ assert.equal(projection?.salience, 0.71);
 assert.equal(projection?.sourceAuthority01, 0.55, 'self-reported external trust cannot boost source authority');
 assert.equal(projection?.epistemicStatus, 'belief');
 assert.equal(projection?.independenceKey, 'hexis:hexis-test-lineage');
+const protectedMemoryDoc = structuredClone(validHmx);
+protectedMemoryDoc.sections.memories[0].metadata.nk1_kind = 'identity';
+assert(validateHmxV17Document(protectedMemoryDoc, 'telepathy').some(issue => issue.kind === 'protected-memory-record'));
+
 assert.deepEqual(projection?.context, { topic: 'hexis' }, 'non-scalar imported context is discarded');
 
 const unsafeSections = structuredClone(validHmx);
@@ -114,11 +118,21 @@ const exportSnapshot = buildNk1HmxV17Document({
     tags: ['memory'],
     context: { channel: 'test', nested: { private: true } },
     entities: ['NK1'],
+  }, {
+    id: 'private-identity-memory',
+    content: 'identity marker should never be included in an ordinary portable export',
+    kind: 'identity',
+    confidence: 1,
+    salience: 1,
+    source: 'self-model',
+    epistemicStatus: 'belief',
+    protectedBelief: true,
   }],
 });
 assert.deepEqual(validateHmxV17Document(exportSnapshot, 'telepathy'), []);
 assert.equal(exportSnapshot.sections.memories[0].type, 'semantic');
 assert.equal(exportSnapshot.sections.memories[0].trust_level, 0.75);
+assert.equal(exportSnapshot.sections.memories.length, 1, 'protected self/identity memories are excluded from memory-only export');
 assert.equal(exportSnapshot.sections.memories[0].metadata.context.nested, undefined);
 
 const protectedStage = fabric.stageHmx({
