@@ -105,7 +105,7 @@ const ownArrayValues=(value:unknown,maxItems:number):unknown[]=>{
 };
 const hasOnlyCanonicalEventId=(value:unknown):value is string=>
   typeof value==='string'&&value.length>0&&value.length<=180&&value===value.trim()&&
-  !/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
+  !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
 export class CognitiveEventFabric {
