@@ -5,6 +5,8 @@
 - **Regression coverage:** oversized append payload fails without changing ledger total; oversized persisted row is skipped and a later valid row with the same ID is restored.
 - **Validation:** exact-head CI is required on the final branch SHA. Earlier runs did not include this budget change and do not validate it.
 
+- **Release freshness follow-up:** the metadata gate and regression tests now compare the candidate against the current WorkPass heading and dated current changelog heading, rather than accepting internally consistent historical metadata.
+
 ---
 ## WorkPass354d — narrow the validated receipt record in restore closures (2026-10-26)
 
