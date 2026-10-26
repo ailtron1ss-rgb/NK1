@@ -12019,7 +12019,7 @@ export class OrganismCore {
             integratedExternal&&realityClass!=='simulator'?'observation':realityClass==='simulator'?'counterfactual':'inference';
         const content=`tool-outcome:${eventId}:class=${realityClass}:status=${result.outcomeClass}:ok=${Boolean(result.ok)}:verified=${verified}:basis=${verification.basis}`;
         this.memorySubsystem.p65EpistemicLedger.record({
-            tick,at,kind,content,confidence01,source:p65Source,eventId,
+            tick,at,kind,content,confidence01,source:p65Source,eventId,parentIds:[parentEventId],
         });
         this.persisted.facets.advanced.p65EpistemicLedger=this.memorySubsystem.p65EpistemicLedger.snapshot();
         this.markPersistenceDirty();

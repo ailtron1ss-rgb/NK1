@@ -175,6 +175,15 @@ test('OrganismCore persists external evidence as a separate node parented by the
   assert.deepEqual(external.parentIds, [outcome.id]);
   assert.equal(external.payload.toolId, 'test.external-causal');
   assert.equal(external.payload.evidenceStatus, 'corroborated');
+  const externalOutcomeId = realityEvidenceEventId(first.executionId, 'tool-outcome', 'canonical');
+  const externalReality = core.snapshot().system.realityEvidenceLedger.recent.find(row => row.eventId === externalOutcomeId);
+  assert.ok(externalReality, 'verified external execution must project to reality evidence');
+  assert.equal(externalReality.realityClass, 'device-observation');
+  assert.ok(externalReality.parentIds.includes(outcome.id));
+  const externalP65 = core.p65Snapshot().claimsData.find(row => row.eventId === externalOutcomeId);
+  assert.ok(externalP65);
+  assert.equal(externalP65.kind, 'observation');
+  assert.ok(externalP65.parentIds.includes(outcome.id));
   assert.equal(JSON.stringify(external.payload).includes('relay state ON'), false, 'external CEF nodes retain hashes rather than raw claims');
   const replay = await core.executeTool('test.external-causal', { relay: 1 }, 'workpass44-external-causal-replay', actionOptions);
   assert.equal(replay.idempotentReplay, true);
@@ -224,7 +233,10 @@ test('OrganismCore projects a keyed tool receipt into the persisted causal fabri
   const p65Claim = p65BeforeReplay.claimsData.find((row) => row.eventId === projectedEventId);
   assert.ok(p65Claim, 'P65 must carry the same event ID for a cross-ledger join');
   assert.equal(p65Claim.kind, 'inference', 'a tool-contract receipt is an inference, not an independent external observation');
-  assert.ok(p65Claim.content.includes(first.executionId));
+  assert.ok(p65Claim.content.includes(projectedEventId),
+    'the human-readable P65 claim must carry the stable join key, not the raw execution identifier');
+  assert.ok(p65Claim.parentIds.includes(outcomeNode.id),
+    'P65 must preserve the same causal outcome parent as RealityEvidenceLedger');
   const realityTotalBeforeReplay = realityLedger.total;
 
   const replay = await core.executeTool('test.trace-once', {}, 'big-pass-379-replay', { idempotencyKey: 'big-pass-379-key', decisionId: plan.id });

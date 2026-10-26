@@ -1,3 +1,11 @@
+## NK1 [evidence] — preserve causal parents in P65 outcome projections (2026-10-26)
+
+- P65 outcome claims now retain the canonical CEF outcome/revision as their parent, matching the RealityEvidenceLedger causal edge.
+- Tightened the cross-ledger regression to assert the stable event-ID join key (rather than expecting the opaque execution ID inside claim text), and extended the verified device-observation case to check RealityEvidenceLedger/P65 classification and parent lineage.
+- The previous workflow failed on that stale test expectation; this patch aligns the assertion with the intentionally hashed stable identity and strengthens the actual lineage guarantee.
+
+---
+
 ## NK1 [validation] — run cross-ledger evidence regressions in CI (2026-10-26)
 
 - Extended the perception integrity workflow's path filters to include the P41 semantic snapshot contract, ActionGateway/CEF/RealityEvidenceLedger/P65 code, and the associated regressions.
