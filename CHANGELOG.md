@@ -5,7 +5,7 @@
 - **Regression:** в p23-versioned-skill-candidate-store.mjs проверяются valid canonical promotion/rollback, junk suffix, leading whitespace и truncated promotion signature.
 - **Изоляция интеграции:** security diff перенесён выборочно поверх актуальной WorkPass334 линии, без перезаписи новых соседних learning-gate файлов.
 
-**Validation status:** implementation/test committed on work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5; exact-head P23 regression, runtime typecheck and Actions CI remain pending. Existing lane scores and earlier PASS rows only apply to their originally tested baseline. No score uplift is claimed.
+**Validation status:** PASS on the current WorkPass339 PR merge commit `4a41db0` (base `3e22a06` + head `0a0f987`). Unified project integration suite #119 passed, including runtime `TYPECHECK=PASS` and `P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS`; WorkPass110 continual-learning metrics #4641 and project progress-ledger integrity #20 also passed. No progress-score uplift is claimed from this security fix.
 
 ---
 
