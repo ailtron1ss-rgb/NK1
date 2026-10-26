@@ -1,8 +1,9 @@
-## P23 rollback fixture contract repair — 2026-10-26
+## P23 skill-store trust-boundary fixture alignment — 2026-10-26
 
 - Updated the versioned skill-store lifecycle regression to use the current object-shaped rollback approval contract instead of the retired positional signature.
-- The fixture now injects an explicit test-only rollback verifier; production's default rollback verifier remains deny-by-default. No production authorization gate was weakened.
-- This repairs the WorkPass110 step that had stopped with `signed rollback approval identity, timestamp and active-version guard are required`. The updated exact-head Actions result is pending.
+- The fixture injects an explicit test-only rollback verifier; production's default rollback verifier remains deny-by-default. No production authorization gate was weakened.
+- Corrected the persisted-state tampering case to change only the unsigned `approval.expectedActiveVersion` wrapper while preserving the signed artifact and valid prior-version linkage. This now isolates the intended CAS-to-signed-approval guard instead of tripping the earlier rollback-target invariant.
+- The preceding WorkPass110 run passed the rollback cases but exposed this stale tamper fixture assertion. Exact-head revalidation after this adjustment is pending.
 
 ## Supervised service failure closure — 2026-10-26
 
