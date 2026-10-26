@@ -353,11 +353,27 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
       estimated_embedding_items: 0,
       estimated_embedding_tokens: 0,
       estimated_embedding_cost_units: null,
-      estimated_uncompressed_bytes: Buffer.byteLength(serialized, 'utf8'),
+      estimated_uncompressed_bytes: 0,
       nativeSkillRecordsMapped: rawSkills.length,
     },
   };
-  const normalizedBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+  // The output envelope, not the native input, defines this statistic. Stabilize the
+  // byte count because updating the numeric field can itself change the serialized size.
+  let normalizedBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+  for (let attempt = 0; attempt < 8; attempt++) {
+    normalized.statistics.estimated_uncompressed_bytes = normalizedBytes;
+    const measuredBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+    if (measuredBytes === normalizedBytes) break;
+    normalizedBytes = measuredBytes;
+  }
+  normalizedBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+  if (normalized.statistics.estimated_uncompressed_bytes !== normalizedBytes) {
+    normalized.statistics.estimated_uncompressed_bytes = normalizedBytes;
+    normalizedBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+  }
+  if (normalized.statistics.estimated_uncompressed_bytes !== normalizedBytes) {
+    throw new Error('NK1 normalized HMX export byte count did not stabilize');
+  }
   if (normalizedBytes > MAX_SOURCE_EXPORT_BYTES) {
     throw new RangeError('NK1 normalized HMX export exceeds the ' + MAX_SOURCE_EXPORT_BYTES + '-byte import staging limit');
   }
