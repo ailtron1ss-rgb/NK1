@@ -2988,6 +2988,7 @@ export class OrganismCore {
                 confidence: clamp(proposal.confidence),
             });
             const isNewImportedGoal = goal.source === 'external' && goal.reason === provenanceReason;
+            const sameLineageImportedGoal = goal.source === 'external' && goal.reason.startsWith('hexis-import:' + lineageHash + ':');
             const stage = this.hexisAdaptation.getHmxStage(proposal.stageId);
             const relationships = Array.isArray(stage?.stagedSections?.relationships)
                 ? stage.stagedSections.relationships.filter((value: any) =>
@@ -2998,9 +2999,13 @@ export class OrganismCore {
             let projected = 0;
             let deferred = relationships.length;
 
-            if (isNewImportedGoal && relationships.length) {
-                const goalNodeSourceKey = 'hexis-goal:' + lineageHash + ':' + proposal.id;
-                const goalNode = this.memorySubsystem.semanticMemory.upsertNode(goal.title, 'goal', goal.importance, goalNodeSourceKey);
+            if (sameLineageImportedGoal && relationships.length) {
+                // Reuse the semantic goal node for same-lineage duplicate proposals rather than forking graph identity by proposal ID.
+                const goalNodeSourceKey = 'hexis-goal:' + lineageHash + ':' + goal.id;
+                const existingGoalNode = this.memorySubsystem.semanticMemory.snapshot().nodes.find((node: any) => node.sourceKey === goalNodeSourceKey);
+                const goalNode = existingGoalNode
+                    ? { id: existingGoalNode.id }
+                    : this.memorySubsystem.semanticMemory.upsertNode(goal.title, 'goal', goal.importance, goalNodeSourceKey);
                 const canonicalItems = this.memorySubsystem.fabric.canonicalSnapshot().items ?? [];
                 const graphType = (nativeType: unknown): 'concept' | 'episode' | 'person' => {
                     const kind = String(nativeType ?? '').toLowerCase();
