@@ -32,6 +32,10 @@ on:
       - "tools/project-progress-ledger.test.mjs"
       - "docs/PROJECT_PROGRESS_TRACKER_2026-10-26_RU.*"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts"
+      - "runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs"
+      - "runtime/neuro-kurisu/tests/p23-stage-verified-skill-candidate.mjs"
+      - "runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs"
       - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - ".github/workflows/cognitive-integration-suite.yml"
   push:
@@ -70,6 +74,10 @@ on:
       - "tools/project-progress-ledger.test.mjs"
       - "docs/PROJECT_PROGRESS_TRACKER_2026-10-26_RU.*"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts"
+      - "runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs"
+      - "runtime/neuro-kurisu/tests/p23-stage-verified-skill-candidate.mjs"
+      - "runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs"
       - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - ".github/workflows/cognitive-integration-suite.yml"
 
