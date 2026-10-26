@@ -3063,7 +3063,7 @@ export class OrganismCore {
                 decision === 'correct' && requestedMemory && memory && requestedMemory.id !== memory.id &&
                 memory.supersedesId === requestedMemory.id &&
                 (memory.revisionGroupId ?? memory.id) === (expectedRevisionGroupId || requestedMemory.revisionGroupId || requestedMemory.id) &&
-                memory.source === 'hexis-learning-review' &&
+                memory.source === `hexis-learning-review:${reviewId}:${itemId}` &&
                 memory.content === canonicalizeMemoryContent(String(correction ?? ''))
             );
             if (requestedMemory && memory && requestedMemory.id !== memory.id && !recoveredCorrection) {
@@ -3087,7 +3087,7 @@ export class OrganismCore {
                     ? memory
                     : this.memorySubsystem.fabric.reviseContent(sourceMemoryId, String(correction).trim(), {
                         reason: 'hexis-learning-review-correction',
-                        source: 'hexis-learning-review',
+                        source: `hexis-learning-review:${reviewId}:${itemId}`,
                         confidence: memory.confidence,
                     }, {
                         tick: this.persisted.state.tick,
