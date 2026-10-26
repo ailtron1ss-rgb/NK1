@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass405 — keep Core as an orchestration boundary for canonical review/evidence writes (2026-10-26)
+
+- [ARCHITECTURE] Removed the duplicated review-decision and belief-projection implementations from `OrganismCore`. It now delegates review decisions to `OrganismSystemFabric.decideHexisLearningReview` and belief revisions to the already-bound `HexisAdaptationFabric` projector.
+- [PERSISTENCE] Core synchronizes canonical MemoryOS2, MemoryFabric, compatibility-memory projections, event log and Hexis state after the shared adapter completes; failures restore the captured runtime state and return an explicit failure result.
+- [VALIDATION] Production-core delegation committed to the existing draft PR. Automated execution is still not confirmed because the Actions endpoint has repeatedly returned failed workflow records without actionable step logs.
+
 ## [NK1][Hexis] WorkPass403 — expose safe learning-review semantics through the live server route (2026-10-26)
 
 - [API] The review decision route rejects unknown decisions with HTTP 400 instead of silently defaulting them to approval.
