@@ -3,10 +3,10 @@
   "snapshotDate": "2026-10-26",
   "project": "Neuro Kurisu / NK1",
   "sourceOfTruth": "https://github.com/ailtron1ss-rgb/NK1",
-  "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
-  "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
+  "sourceBranchAtSnapshot": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
+  "sourceHeadAtSnapshot": "b81ec539a1e2d442141e13929b376d2b549c9e64",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all four named workflows passed on that exact head. The newer combined code/test head bb7a76c55d83ff36358ded56e966b880b38cc7d9 includes WorkPass335 ledger preflight, WorkPass336 in-process evaluator-origin capability, and the already-present WorkPass339 strict Ed25519 approval-encoding patch. Exact-head CI for this combined state has not yet been returned; the separate narrow WorkPass339 workflow does not replace combined-head validation, so scores remain unchanged. The branch head immediately before this tracker update was e13255a52dbbac5f5dd5b300f1767fc5c748e707.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The current implementation/validation snapshot is anchored to exact code/test head b81ec539a1e2d442141e13929b376d2b549c9e64; Unified project integration suite, WorkPass110 continual-learning metrics, WorkPass108 paired evidence/promotion gate, and P26 Learning Validation all passed on this exact head. The runtime Node 24 + Python 3.12 setup, locked app/runtime installation, UI typecheck/build, runtime TypeScript, cognitive integration suite, governed approval E2E, 30-cycle substrate restore smoke, research bridge approval flow (NeuroCore/NOMEGA/DeepCode), and per-family distinct holdout task-coverage regressions passed. Learning-effectiveness and field-evidence scores remain unchanged because these changes strengthen integration/security gates rather than demonstrating higher real-world task success. Device/browser/Live2D/voice E2E, long soak, license review and reproducible release archive replacement remain open.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -240,35 +240,35 @@
   ],
   "ciSnapshot": {
     "observedAt": "2026-10-26",
-    "currentBaseHead": "f23c9aa4f5030987c2741808e930e7e100da077b",
+    "currentBaseHead": "11812cbf2146c677ec2059616e6f1d6b9a9a7cae",
     "statuses": [
       {
-        "name": "P26 Learning Validation",
+        "name": "Unified project integration suite",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251761024",
-        "testedHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
-        "scopeNote": "PASS on exact code head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; runtime TypeScript typecheck, learning input integrity and P26 learning regressions completed successfully."
-      },
-      {
-        "name": "WorkPass108 paired evidence identity and verified promotion gate",
-        "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251761163",
-        "testedHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
-        "scopeNote": "PASS on exact code head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; authenticated paired-evidence identity and verified-promotion checks passed."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622845",
+        "testedHead": "b81ec539a1e2d442141e13929b376d2b549c9e64",
+        "scopeNote": "PASS on exact combined code/test head. Node 24 + Python 3.12 CPU research setup, runtime-pin and canonical installer contracts, doctor, weighted ledger report, locked app/runtime install, supervisor tests, app typecheck/development build, cognitive typecheck and integration suite, approval gateway E2E, 30-cycle substrate/restart smoke, Research Bridge approval/probes (NeuroCore, NOMEGA, DeepCode), and final UI/runtime typechecks all passed."
       },
       {
         "name": "WorkPass110 continual learning metrics",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251760828",
-        "testedHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
-        "scopeNote": "PASS on exact code head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all 48 CI steps passed, including bounded independent evaluation timeout/cancellation regression, learning and promotion contracts, and runtime typecheck."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622606",
+        "testedHead": "b81ec539a1e2d442141e13929b376d2b549c9e64",
+        "scopeNote": "PASS on exact combined code/test head (48 successful job steps). P23/Hermes verified evidence binding, trusted shadow lifecycle, durable signed promotion, candidate staging and proposal gates, reset-retention/replay/evaluator regressions, and runtime typecheck passed."
       },
       {
-        "name": "Unified project integration suite",
+        "name": "WorkPass108 paired evidence identity and verified promotion gate",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251760885",
-        "testedHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
-        "scopeNote": "PASS on exact code head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; clean locked-workspace install, progress-ledger validation, app typecheck/build/tests, cognitive integration contracts, governed approval gateway E2E and unified runtime/research bridge smoke passed."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622678",
+        "testedHead": "b81ec539a1e2d442141e13929b376d2b549c9e64",
+        "scopeNote": "PASS on exact combined code/test head. Paired verified outcome identity, durable ledger roundtrip/corruption rejection, and promotion authorization regressions passed."
+      },
+      {
+        "name": "P26 Learning Validation",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622511",
+        "testedHead": "b81ec539a1e2d442141e13929b376d2b549c9e64",
+        "scopeNote": "PASS on exact combined code/test head. Runtime typecheck, P26 learning input integrity and validation regressions passed."
       }
     ]
   },
@@ -282,31 +282,45 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass339",
+    "id": "WorkPass341",
     "date": "2026-10-26",
-    "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5",
-    "codeCommit": "02372e4949c2094b5cd1a3c4420aeda86a2fdfa1",
-    "summary": "Strict canonical Base64 decoding for 64-byte Ed25519 skill promotion and rollback approval signatures.",
+    "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
+    "codeCommit": "b81ec539a1e2d442141e13929b376d2b549c9e64",
+    "summary": "Bind minimum distinct paired holdout-task coverage per required skill family into the authenticated verified-skill promotion proposal and production staging gate; merge with the strict Unified Cognitive Substrate runtime wiring while preserving WorkPass335/336 ledger/evaluator changes.",
     "testsAdded": [
-      "canonical promotion signature accepted",
-      "promotion signature with trailing junk rejected",
-      "promotion signature with leading whitespace rejected",
-      "truncated promotion signature rejected",
-      "canonical rollback signature accepted",
-      "rollback signature with trailing junk rejected"
+      "promotion policy parser validates operator-owned family gain/task-floor policy",
+      "family task coverage counts distinct attempt-1 paired baseline/candidate task IDs per family",
+      "under-covered families fail before gain-threshold assessment",
+      "family task policy and coverage bind into proposal identity",
+      "candidate staging remains durable and never activates skills automatically",
+      "30-cycle cognitive substrate runtime/restart smoke"
     ],
-    "validationStatus": "PASS on PR merge commit 4a41db0: Unified project integration suite #119 and runtime typecheck passed; WorkPass110 continual-learning metrics #4641 includes P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS; progress-ledger integrity #20 passed.",
+    "validationStatus": "PASS on exact code/test head b81ec539a1e2d442141e13929b376d2b549c9e64; Unified project integration suite, WorkPass110, WorkPass108 and P26 all succeeded.",
     "progressPercentagesChanged": false,
-    "testedMergeCommit": "4a41db0",
-    "testedBaseSha": "3e22a06c000337f10d15d8583eb8448882c1b063",
-    "testedHeadSha": "0a0f987f9035b99012b36b304029ff625dda1d7f",
+    "testedHeadSha": "b81ec539a1e2d442141e13929b376d2b549c9e64",
     "workflowRuns": [
-      40253553153,
-      40253553155,
-      40253553224
+      40255622845,
+      40255622606,
+      40255622678,
+      40255622511
     ]
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass341",
+      "date": "2026-10-26",
+      "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
+      "codeCommit": "b81ec539a1e2d442141e13929b376d2b549c9e64",
+      "summary": "Per-family distinct paired holdout-task coverage gate integrated with the live Unified Cognitive Substrate.",
+      "validationStatus": "PASS exact-head CI",
+      "progressPercentagesChanged": false,
+      "workflowRuns": [
+        40255622845,
+        40255622606,
+        40255622678,
+        40255622511
+      ]
+    },
     {
       "id": "WorkPass339",
       "date": "2026-10-26",
@@ -315,16 +329,30 @@
       "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending."
     }
   ],
-  "latestUnverifiedCodeTestHead": "bb7a76c55d83ff36358ded56e966b880b38cc7d9",
-  "branchHeadBeforeTrackerCommit": "e13255a52dbbac5f5dd5b300f1767fc5c748e707",
+  "latestUnverifiedCodeTestHead": null,
+  "branchHeadBeforeTrackerCommit": "b81ec539a1e2d442141e13929b376d2b549c9e64",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
       "name": "Strict canonical Base64 encoding for Ed25519 skill-promotion and rollback approval signatures",
-      "status": "present-in-combined-branch",
-      "exactCombinedHeadCiStatus": "pending",
+      "status": "present-and-verified-on-combined-head",
+      "exactCombinedHeadCiStatus": "success",
       "separateNarrowCiEvidence": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40253553153",
-      "note": "Separate narrow test passed on merge commit 4a41db0; this is not exact-head validation of the current combined branch."
+      "note": "Also included in the combined exact-head integration and P23 checks; the earlier narrow workflow is supplemental."
+    },
+    {
+      "id": "WorkPass340",
+      "name": "Unified Cognitive Substrate integrated into OrganismRuntime",
+      "status": "present-and-verified-on-combined-head",
+      "exactCombinedHeadCiStatus": "success",
+      "note": "Strict schema/restore, persistent sidecar, bounded optional-work routing and 30-cycle restart smoke passed."
+    },
+    {
+      "id": "WorkPass341",
+      "name": "Per-family distinct holdout task coverage for verified skill promotion",
+      "status": "present-and-verified-on-combined-head",
+      "exactCombinedHeadCiStatus": "success",
+      "note": "Minimum task coverage is checked before interpreting gain; family-policy and coverage are bound into the proposal identity; no automatic activation."
     }
   ]
 }
