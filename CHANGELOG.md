@@ -1,3 +1,9 @@
+## [NK1][WorkPass429] Reject malformed canonical-memory command IDs (2026-10-26)
+
+- `MemoryFabric.applyLifecycleCommand` now treats command IDs as exact idempotency keys: non-string, blank, padded, control-bearing and overlong IDs are rejected before fingerprinting or mutation, rather than coerced, trimmed or truncated.
+- Added a regression to `test:memory-lifecycle-command-workpass31` covering the 128-character valid boundary, replay stability, prefix-collision attempts and zero side effects for invalid IDs.
+- Verification status: source and regression are committed; execution remains unconfirmed because the current integration-head workflow jobs returned empty step metadata and GitHub log retrieval returned `BlobNotFound`. No test pass is claimed.
+
 ## [NK1][Hexis] Require a valid proposal ID before materialization (2026-10-26)
 
 - Remove the last coercive `String(input.proposalId || '')` call from Hexis POST ingress; materialization now rejects missing, blank, or non-string proposal IDs before invoking the core.
