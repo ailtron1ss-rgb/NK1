@@ -639,6 +639,56 @@ assert.equal(
 );
 assert.equal(postWriteRollbackHexis.snapshot().temporal.length, 2);
 
+// A compensator that returns without removing the committed record must not be
+// treated as successful rollback. The failure receipt must surface the residue.
+const uncompensatedRuntime = new MemorySubsystemRuntime();
+const realUncompensatedEncode = uncompensatedRuntime.fabric.encode.bind(uncompensatedRuntime.fabric);
+let injectUncompensatedWrite = true;
+const uncompensatedFabric = {
+  canonicalSnapshot: (...args) => uncompensatedRuntime.fabric.canonicalSnapshot(...args),
+  encode: (input, options) => {
+    const inserted = realUncompensatedEncode(input, options);
+    if (injectUncompensatedWrite) {
+      injectUncompensatedWrite = false;
+      throw new Error('injected-hmx-write-before-id-return');
+    }
+    return inserted;
+  },
+  forgetById: () => false,
+};
+const uncompensatedHexis = new HexisAdaptationFabric();
+const uncompensatedProjector = new HexisCanonicalMemoryProjector(
+  uncompensatedFabric, uncompensatedRuntime.semanticMemory, uncompensatedHexis,
+);
+uncompensatedHexis.bindCanonicalMemoryApply(candidate => uncompensatedProjector.apply(candidate));
+const uncompensatedStage = uncompensatedHexis.stageHmx({
+  document: normalizedNk1Export, intent: 'port', strategy: 'additive',
+});
+assert.equal(uncompensatedHexis.decideHmx(uncompensatedStage.stagingId, 'accept')?.status, 'accepted');
+assert.throws(
+  () => uncompensatedHexis.decideHmx(uncompensatedStage.stagingId, 'apply'),
+  /rollback-failures=canonical-uncompensated:/,
+  'a silent no-op compensator must be reported as an incomplete rollback, never as atomic failure recovery',
+);
+const uncompensatedResiduals = uncompensatedRuntime.fabric.canonicalSnapshot().items.filter(item =>
+  item.source.startsWith('hexis:') && item.context?.hexisExportId === normalizedNk1Export.export_id,
+);
+assert.equal(uncompensatedResiduals.length, 1,
+  'fault injection must leave exactly the one intentionally uncompensated memory');
+assert.equal(uncompensatedRuntime.semanticMemory.snapshot().nodes.length, 0,
+  'graph rollback still runs even when canonical compensation is incomplete');
+// Remove the test-only residue using the real store API so the isolated fixture
+// does not accidentally demonstrate a successful import.
+for (const residual of uncompensatedResiduals) {
+  uncompensatedRuntime.fabric.forgetById(residual.id, 'test-fixture-cleanup', {
+    commandId: 'test-fixture-cleanup:' + residual.id,
+  });
+}
+assert.equal(
+  uncompensatedRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length,
+  0,
+);
+
 // Fault injection after canonical writes: belief-state failure must roll back both
 // memory/graph writes and the temporal + belief ledgers as one HMX apply transaction.
 const beliefRollbackRuntime = new MemorySubsystemRuntime();
