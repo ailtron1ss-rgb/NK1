@@ -6,13 +6,18 @@ on:
       - workpass70-source
       - audit/repository-wiring-contracts-2026-10-25
       - audit/b276-execution-attribution-2026-10-26
-      - audit/b276-execution-attribution-2026-10-26
+      - hexis-h1-memory-evidence-lineage-2026-10-26
     paths:
       - ".github/workflows/repository-wiring-audit.yml"
       - ".github/workflows/**"
       - "package.json"
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts"
+      - "runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs"
+      - "runtime/neuro-kurisu/tests/integration/hexis-memory-evidence-lineage.mjs"
+      - "runtime/neuro-kurisu/tests/integration/hexis-server-smoke.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
@@ -42,11 +47,17 @@ on:
     branches:
       - workpass70-source
       - audit/repository-wiring-contracts-2026-10-25
+      - audit/b276-execution-attribution-2026-10-26
     paths:
       - ".github/workflows/**"
       - "package.json"
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts"
+      - "runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs"
+      - "runtime/neuro-kurisu/tests/integration/hexis-memory-evidence-lineage.mjs"
+      - "runtime/neuro-kurisu/tests/integration/hexis-server-smoke.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
