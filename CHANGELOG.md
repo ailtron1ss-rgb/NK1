@@ -2199,3 +2199,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+
+## NK1 Hexis H1 — fail-safe restoration of belief projections (2026-10-26)
+
+- **[FIX]** Normalize restored Hexis belief projections before the adapter uses them: reject missing/oversized memory IDs and invalid confidence/trust values; bound, trim, type-check and deduplicate evidence-key arrays; normalize malformed timestamps.
+- **[FIX]** Restore diagnostic counters only from finite non-negative safe integers so a malformed persisted sidecar cannot turn counters into `NaN` or string concatenation.
+- **[REGRESSION]** Extended `test:hexis-memory-evidence-lineage` with corrupt snapshot fixtures and a post-restore belief revision, covering both fail-safe filtering and continued adapter operation. The existing package script already wires this integration test.
+- **[VALIDATION]** Code and regression committed; exact-head Actions/typecheck result is not yet confirmed. This hardens restart reliability but does not claim retrieval uplift, better learning outcomes, or production readiness.
