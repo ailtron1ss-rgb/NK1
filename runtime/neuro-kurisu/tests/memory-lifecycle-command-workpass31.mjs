@@ -40,6 +40,40 @@ assert.equal(runtime.memoryOS.size(), sizeAfterEncode, 'replaying an encode comm
 assert.equal(runtime.fabric.snapshot().stats.encodes, encodeStatsAfterFirst, 'replay must not increment write stats');
 assert.equal(runtime.events.list().filter(event => event.type === 'memory-created').length, createEventCount, 'replay must not emit a duplicate create event');
 
+// WorkPass429: a command ID is an exact idempotency key. It may not be trimmed,
+// truncated or coerced, because aliases can replay an unrelated cached result.
+const idPrefix = 'wp31:command-id-boundary:';
+const validBoundaryCommandId = idPrefix + 'x'.repeat(128 - idPrefix.length);
+assert.equal(validBoundaryCommandId.length, 128, 'the maximum supported command ID length remains valid');
+const boundaryInput = makeInput('WP429 bounded command ID remains an exact canonical-memory key.');
+const boundaryItem = runtime.fabric.encode(boundaryInput, { commandId: validBoundaryCommandId, tick: 44 });
+assert.ok(boundaryItem?.id);
+assert.equal(runtime.fabric.encode(boundaryInput, { commandId: validBoundaryCommandId, tick: 45 })?.id, boundaryItem.id,
+  'a valid maximum-length ID must still replay its original receipt');
+const beforeInvalidCommandIds = {
+  size: runtime.memoryOS.size(),
+  stats: runtime.fabric.snapshot().stats,
+  events: runtime.events.list().length,
+};
+const invalidCommandIds = [
+  validBoundaryCommandId + 'x',
+  ' ' + validBoundaryCommandId,
+  validBoundaryCommandId + '\\n',
+  'wp31:bad\\u009fkey',
+  42,
+  '',
+];
+for (const invalidCommandId of invalidCommandIds) {
+  assert.throws(
+    () => runtime.fabric.encode(boundaryInput, { commandId: invalidCommandId }),
+    error => error instanceof TypeError && error.message === 'memory-lifecycle-command-id-invalid',
+    'malformed, non-string or overlong command IDs must be rejected, not normalized into another key',
+  );
+}
+assert.equal(runtime.memoryOS.size(), beforeInvalidCommandIds.size, 'invalid command IDs must not mutate canonical memory');
+assert.deepEqual(runtime.fabric.snapshot().stats, beforeInvalidCommandIds.stats, 'invalid command IDs must not alter memory counters');
+assert.equal(runtime.events.list().length, beforeInvalidCommandIds.events, 'invalid command IDs must not emit lifecycle events');
+
 // Legacy/multi-timescale imports also pass through the same mutation boundary.
 const legacyRow = {
   id: 'wp31-legacy-row-001', kind: 'episode', summary: 'WP31 imported legacy episode is represented by the canonical memory owner.',
