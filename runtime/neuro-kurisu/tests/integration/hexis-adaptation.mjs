@@ -526,6 +526,8 @@ const canonicalAfterCorrection = supersessionRuntime.fabric.canonicalSnapshot().
 assert(canonicalAfterCorrection.some(item => item.id === sourceVersionA.memory.id),
   'superseded canonical content must remain available for history and temporal inspection');
 assert.equal(canonicalAfterCorrection.find(item => item.id === sourceVersionA.memory.id)?.epistemicStatus, 'quarantined');
+assert(supersessionLedger.temporalAt(sourceVersionA.memory.id, Number.MAX_SAFE_INTEGER),
+  'superseding a belief must not erase its temporal assertion history');
 assert.equal(sourceVersionB.memory.epistemicStatus, 'belief');
 assert.equal(supersessionLedger.snapshot().beliefs.some(belief => belief.memoryId === sourceVersionA.memory.id), false,
   'superseded content must leave the active Hexis belief mirror');
