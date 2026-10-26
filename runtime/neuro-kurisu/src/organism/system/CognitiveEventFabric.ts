@@ -184,6 +184,27 @@ function cloneCognitiveEvent(event:CognitiveEventNode):CognitiveEventNode {
 }
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
+function assertSynchronousLedgerTransactionResult(value:unknown):void {
+  if(value===null||(typeof value!=='object'&&typeof value!=='function'))return;
+  const seen=new Set<object>();
+  let cursor:object|null=value as object;
+  while(cursor!==null){
+    if(seen.has(cursor))throw new TypeError('cognitive-event-ledger-transaction-result-prototype-cycle');
+    seen.add(cursor);
+    let descriptor:PropertyDescriptor|undefined;
+    try { descriptor=Object.getOwnPropertyDescriptor(cursor,'then'); }
+    catch { throw new TypeError('cognitive-event-ledger-transaction-result-not-inspectable'); }
+    if(descriptor){
+      // Never invoke a caller-controlled getter while deciding whether a callback
+      // crossed the synchronous transaction boundary.
+      if(!Object.hasOwn(descriptor,'value'))throw new TypeError('cognitive-event-ledger-transaction-then-accessor');
+      if(typeof descriptor.value==='function')throw new TypeError('cognitive-event-ledger-transaction-must-be-synchronous');
+      return;
+    }
+    try { cursor=Object.getPrototypeOf(cursor); }
+    catch { throw new TypeError('cognitive-event-ledger-transaction-result-not-inspectable'); }
+  }
+}
 export class CognitiveEventFabric {
   private readonly capacity:number;
   private events:CognitiveEventNode[]=[];
@@ -197,6 +218,19 @@ export class CognitiveEventFabric {
   }
 
 
+  /**
+   * Atomically coordinate synchronous work with the event ledger.
+   * A thrown validation/evaluation error restores event rows, counters and receipt replay references.
+   * Promise/thenable results are rejected so the transaction can never commit before an await.
+   */
+  withAtomicLedgerTransaction<T>(operation:()=>T):T{
+    if(typeof operation!=='function')throw new TypeError('cognitive-event-ledger-transaction-operation-required');
+    return this.withAtomicLedgerMutation(()=>{
+      const result=operation();
+      assertSynchronousLedgerTransactionResult(result);
+      return result;
+    });
+  }
   private withAtomicLedgerMutation<T>(operation:()=>T):T{
     const eventsBefore=this.events.slice();
     const totalBefore=this.total;

@@ -1,3 +1,13 @@
+## WorkPass371 — cross-ledger atomic operational-cycle commit (2026-10-26)
+
+- **Defect:** CEF wrote the operational event trace transactionally, but `OrganismRuntime` verified lineage and advanced `UnifiedCognitiveCycle` afterwards. A thrown verification/evaluation error could leave the event ledger populated while aggregate cycle counters remained unchanged; an evaluator that mutates and then throws could leave the aggregate partially advanced.
+- **Fix:** add `commitOperationalCognitiveCycleAtomically()` to coordinate CEF event writes, causal-lineage verification and unified-cycle evaluation. A synchronous ledger transaction rolls back event rows/counters/receipt replay references, while the coordinator restores the previous `UnifiedCognitiveCycle` snapshot on failure. The live runtime now uses this coordinator.
+- **Guard:** ledger transaction rejects Promise/thenable results without invoking a caller-controlled `then` getter; asynchronous work is not allowed to escape the synchronous rollback boundary.
+- **Regression:** simulate evaluator mutation followed by throw, invalid late-stage confidence, successful retry, exact stage/counter totals, and an accessor-backed thenable; all failed paths must leave both stores unchanged.
+- **Validation:** branch `work/nk1-cross-ledger-cycle-atomicity-2026-10-26-r1`; exact-head typecheck, cognitive integration, WorkPass110 and final release gate are required before merge.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
 ## WorkPass355 — bound aggregate text in causal payloads (2026-10-26)
 
 - **Defect:** the event fabric bounded object depth, node count, array size and key count but not aggregate string/key length; a single oversized text payload could still drive disproportionate memory use during append or restore.
