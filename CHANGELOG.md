@@ -1,3 +1,128 @@
+## [NK1][WorkPass386] Make ActionGateway restore descriptor-safe and atomic — 2026-10-26
+
+- **Defect:** ledger restore directly read persisted root/record/response/approval properties. Accessors could execute during restore; permissions validation also happened after ledger mutation.
+- **Fix:** read only own data descriptors for known root/row/approval fields; reject accessor-backed roots/rows, sparse arrays, unsupported versions and out-of-budget record arrays before mutating live state. Deep-copy nested response/preview values through bounded plain-data traversal; malformed nested receipts become reserved non-replayable tombstones.
+- **Atomicity:** preflight ledger and permission state locally, then replace both; if expiry/commit throws, rollback to the previous live maps. Missing/null snapshot is a no-op, not an implicit clear.
+- **Regression:** WP95 covers root/row getter non-execution, sparse ledger arrays, nested response getter tombstoning, and preservation/replayability of the pre-existing live key after failed restores.
+- **Validation:** exact-head runtime typecheck, WorkPass95, WorkPass71 rebuild and Repository Wiring Audit are required. Prior hosted Actions attempts on the previous SHA ended before the first step, so they provide no code-level result.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass384] Route project execution through canonical Core wrappers — 2026-10-26
+
+- **Failure:** WorkPass71 exposed a static contract mismatch in `workpass97-autonomous-planner-gateway-route.mjs`: the project executor called ActionGateway directly instead of the established Core wrappers.
+- **Fix:** fresh project operation now calls `this.executeTool(...)`; resumed operation calls `this.reconcileToolExecution(...)`. The Core wrapper preserves keyed execution's ActionGateway-owned finalization while canonicalizing tool IDs; reconciliation remains lookup-only and never re-executes a possible side effect.
+- **Validation:** Repository Wiring Audit passed on source head `17d89d3e464689b8d3466f8598cdb37b3ee79bbe`; WorkPass71 was cancelled before completion, so a fresh exact-head run is required.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass385] Validate Hexis evidence before duplicate-lineage no-op — 2026-10-26
+
+- **Defect:** `MemoryOS2.recordEvidence()` returned `ok:true / duplicate-source` before validating source, provenance class, confidence and timestamps. Invalid repeated input could be reported as accepted.
+- **Fix:** defer duplicate return until all field checks and `adaptHexisEvidence()` accept the canonical envelope. Valid duplicates remain true no-ops; malformed duplicates return a precise rejection without changing evidence trail, reconsolidations or confidence.
+- **Regression:** existing `paper:claim-1` lineage is retried with out-of-range/string confidence, invalid provenance, malformed observedAt/freshness, empty source and C0 control character source; every case must reject without memory mutation. Existing valid duplicate and restore-idempotency tests remain.
+- **Validation:** this exact-head delta requires Hexis evidence ingress, Repository Wiring Audit and WorkPass71 full runtime/rebuild workflows; no PASS is claimed before completion.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass383] Reject inconsistent restored ActionGateway receipts — 2026-10-26
+
+- **Failure reproduced:** WorkPass71 reached `test:workpass95:receipt-integrity` after causal replay wiring passed; a restored completed ledger row whose `response.executionId` differed from the owning entry was replayed as `ok:true`.
+- **Fix:** validate canonical entry execution ID/tool ID, response identity, audit identity, accepted/verified booleans, outcome-class consistency and the existing 48 KiB receipt bound before accepting a persisted response. Apply the same guard in `replayLedgerEntry`, including archive-loaded entries.
+- **Recovery semantics:** malformed payloads remain as completed, non-replayable tombstones with `responseOmitted`/recovery-required behavior. Never discard the idempotency key and never re-execute the side effect to “repair” a corrupt receipt.
+- **Regression:** WorkPass95 now includes forged tool identity and forged audit execution identity alongside response execution mismatch, verification contradiction, audit outcome mismatch and oversized receipt; every case must be blocked without incrementing the tool executor count.
+- **Validation:** new exact-head WorkPass95, WorkPass71 full rebuild, runtime typecheck and Repository Wiring Audit are required. This fixes a concrete fail-closed violation; it is not yet considered validated.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass382] Correct causal replay wiring contract assertion order — 2026-10-26
+
+- **Observed:** WorkPass71 reached `test:causal-replay-runtime-wiring.mjs` after the P26 sequential benchmark and policy sweep passed, then failed at a static assertion claiming the causal sampler's feature vector was absent.
+- **Root cause:** the test searched for `policyFeatures01` only after the `selectCausalReplayBatch(...)` call. The production code correctly builds feature-grounded candidates first, then invokes the sampler, and finally runs the adaptive multi-signal selector.
+- **Fix:** assert that `policyFeatures01` is built inside `replayPending`, after candidate construction and before the sampler call; preserve energy/goal pressure/outcome success and bounded-capacity assertions.
+- **Validation:** the changed test and current exact-head WorkPass71 rerun are required before this correction is considered validated. No runtime sampler behavior changed.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass381] Balance fresh-task plasticity against actual replay pressure — 2026-10-26
+
+- **Previous exact-head outcome:** WorkPass380 failed the context-aware sequential benchmark at `contextAware.taskBFinal`. The coprime permutation broke useful counterfactual pairing between equal-energy states in old/new contexts, so that algorithm is not kept.
+- **Correction:** restore context-aligned row selection. For each fresh row, increase its effective learning rate by the replay learning rate multiplied by the actually applied replay/current update ratio so an extra replay gradient does not silently dominate the fresh task. Cap the effective rate at the learner's supported maximum (0.30); skipped/blocked replay does not produce a boost.
+- **Regression:** interleaved contract verifies replay still runs first, the fresh gradient remains last, and a single replay at rates 0.06 / 0.18 yields effective fresh rate 0.24.
+- **Validation:** this is a new algorithm delta, not yet validated. P26 full sequential/interleaved + replay policy sweep and WorkPass71 runtime/rebuild must pass on one exact SHA.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass380] Dephase interleaved replay and current-example ordering — 2026-10-26
+
+- **Observed failure:** the multi-seed replay sweep isolated one violating case: `interleave-1`, seed 17 retained the old task at 0.93 but learned the new task at 0.52 after 5,040 replay updates; no replay candidate was blocked. The same current/replay arrays were paired by `i % replay.length`, causing persistent same-index old/new gradient contests.
+- **Fix:** use a deterministic coprime-stride permutation over replay rows, and rotate its starting offset between batches using the canonical online-update count. Sampling remains bounded; replay isn't disabled and no metric/benchmark threshold changes.
+- **Regression:** P26 interleaved contract now asserts replay/current rows are not permanently paired by index, current examples remain the final update in each slot, and the permutation rotates across consecutive batches.
+- **Validation:** exact-head P26 full sweep and WorkPass71 rebuild must pass before this algorithm change is considered validated. Previous WorkPass369 workflow failed on this exact seed/strategy; that failure is retained as baseline evidence.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass379] Preserve full P26 replay-policy failure evidence — 2026-10-26
+
+- **Observed:** the new interleaved engine contract and sequential benchmark passed, but the policy-sweep stopped at its first per-strategy `newAfter > 0.60` assertion and hid remaining seed/strategy metrics.
+- **Fix:** collect all paired seed/strategy outcomes and emit a diagnostic report before evaluating the same acceptance constraints. Keep the `newAfter > 0.60` gate and zero-unexpected-conflict gate unchanged; no threshold is weakened.
+- **Next decision:** use the exact failing strategy/seed report to repair replay scheduling/conflict attribution, then rerun the complete sweep and full replay chain.
+- **Validation:** this diagnostic-only test delta requires exact-head P26 and WorkPass71 runs. It is not a PASS or a claim of learning uplift.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass378] Restore P26 interleaved learning and strict evidence accounting — 2026-10-26
+
+- **Failure reproduced:** WorkPass71 runtime validation passed app typecheck/build and runtime typecheck, then failed in `test:p26:sequential-learning-benchmark.mjs` because `P26TrueLearningEngine.trainInterleaved()` was missing from the active engine.
+- **Implementation:** restore the bounded interleaved runtime contract with full-batch preflight, bounded conflict screening, replay-before-current gradient ordering, weight/metric rollback after a mid-batch error, and separately counted online/replay updates.
+- **Evidence integrity:** preserve strict `recordVerifiedHoldout()` admission and restore-safe deduplication; diagnostic/synthetic training and within-batch metrics do not certify independent generalization.
+- **Regression:** add `tests/p26-interleaved-contract.mjs` for the live API, current/replay ordering, provenance/duplicate behavior, persistence, malformed batches/accessors, and atomic rollback.
+- **CI wiring:** chain the contract test into `test:learning-replay`; make P26 Learning Validation trigger on `P26TrueLearningEngine.ts` and run the full replay chain; WorkPass71 already runs the full rebuild suite on this source PR.
+- **Validation:** WorkPass369's sibling branch supplies the adapted implementation/contract; the newly combined branch must pass its own exact-head runs. No PASS is claimed before those runs finish. Benchmark thresholds are not weakened.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass377] Route Hexis source-stack changes through full runtime validation — 2026-10-26
+
+- **Defect:** WorkPass71 contains app/runtime typechecks and broad rebuild regressions, but its push filter did not include the active WorkPass375 source branch and its pull-request base filter omitted the Hexis-H1 source-stack branch.
+- **Fix:** run WorkPass71 on pushes to workpass375-hexis-canonical-ingress-latest and on PRs targeting hexis-h1-memory-evidence-lineage-2026-10-26 when matching source, test, package or workflow paths change.
+- **Evidence:** the WorkPass376 Repository Wiring Audit passed on exact head 6890b8cbdc17b403de2aa4eae834dffda9b9c886; that workflow runs the focused Hexis/MemoryOS2, H1 lineage, HMX and Operation Omega checks. The WorkPass71 workflow is now routed for full runtime typecheck/rebuild validation.
+- **Validation:** this wiring delta needs its own exact-head run; no result from the prior SHA is treated as validation of this change.
+- **Release:** main and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass376] Reject ambiguous Hexis timestamps and C1 controls — 2026-10-26
+
+- **Defect:** Date.parse alone accepted ambiguous timestamp strings and may normalize invalid calendar dates; Hexis note/source validation rejected C0/DEL but allowed C1 controls.
+- **Fix:** require timezone-qualified ISO-8601 timestamps, validate calendar/time/offset components before parsing, canonicalize accepted instants to UTC milliseconds, and reject C0/DEL/C1 controls from normalized text.
+- **Regression:** extend tests/cognitive-hexis-evidence-adapter.mjs with shorthand, missing-timezone, rollover-date, invalid-hour/offset and C1 cases for note, label, author and source reference. The test is chained into test:hexis-memory-evidence-lineage.
+- **Validation:** prior WorkPass375 Actions results do not validate this delta; exact-head workflows must pass before claiming this fix validated.
+- **Release:** main and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass375] Route Hexis evidence through canonical MemoryOS2 ingress — 2026-10-26
+
+- **Integration:** wire the Hexis evidence adapter into the actual `MemoryOS2.recordEvidence()` write boundary. MemoryOS2 remains the only writable memory authority; no parallel memory store or runtime is introduced.
+- **Integrity:** own-data-descriptor snapshot rejects accessors/proxies and malformed source, provenance, authority, timestamps/freshness and identity values before mutation. Oversized or control-character lineage keys are rejected instead of truncated.
+- **Idempotency:** derive stable evidence identity from canonical memory + lineage. A known source remains a true no-op before mutation; evidence ingestion itself does not revise confidence.
+- **Learning boundary:** existing H1 Core/Hexis policy remains the only confidence-revision authority and still requires an applied belief revision plus a newly persisted canonical evidence receipt.
+- **Regression/CI:** add `test:cognitive-hexis-evidence-adapter`, chain it into `test:hexis-memory-evidence-lineage`, and extend repository-wiring push/PR base/path filters. Existing Omega source-monitor and review-inbox scripts remain in the package and audit. Checkpoint: `docs/WORKPASS375_HEXIS_CANONICAL_EVIDENCE_INGRESS_RU.md`.
+- **Validation:** exact-head runtime typecheck, adapter+MemoryOS2 integration, H1 lineage/restore, Omega source-monitor/review-inbox and repository-wiring workflows are pending. No memory-retrieval uplift or production-readiness claim is made.
+- **Release:** `main` and the published Release ZIP are unchanged.
+
+---
+
 ## [NK1][Hexis-H1 follow-up] Normalize evidence-lineage replay identities — 2026-10-26
 
 - Extended the canonical MemoryOS2/Hexis evidence-lineage regression with a replay attempt using full-width Unicode characters and surrounding whitespace that normalize to an already-recorded lineage key.
