@@ -1,3 +1,8 @@
+### WorkPass328 follow-up — preserve intrinsic-drive influence under saturation (2026-10-26)
+
+- CI exposed a saturation bug in `B272EndogenousGoalGenesis`: intrinsic drive was added before clipping the future-value score, so already-high model values could erase the difference between a calibrated drive and a baseline drive. Changed the score to a bounded convex blend of the evidence-based model value and trusted intrinsic drive. This preserves the confidence gate and guarantees that increasing a trusted drive has a proportional effect until the output's legal bounds.
+- The existing B272 regression compares identical states with calibrated drive 0 and 0.9, and verifies that confidence 0 does not bypass the drive gate.
+
 ### WorkPass328 follow-up — make signed artifact replay contract consistent (2026-10-26)
 
 - Updated the P23 signed-outcome regression that still expected `duplicate-attempt` on exact signed-artifact replay. The ingestion implementation deliberately allows the identical cryptographically valid artifact to re-establish its in-memory authenticated-evidence receipt after restart, while preserving a single ledger outcome and rejecting conflicting outcomes. The test now verifies that intended idempotent behavior.
