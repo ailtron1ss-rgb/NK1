@@ -261,7 +261,7 @@ export class CognitiveEventFabric {
       const length=lengthDescriptor.value;
       for(const ownKey of Object.keys(descriptors)){
         if(ownKey==='length')continue;
-        if(!/^(0|[1-9]\\d*)$/.test(ownKey)||Number(ownKey)>=length) {
+        if(!/^(0|[1-9]\d*)$/.test(ownKey)||Number(ownKey)>=length) {
           throw new TypeError('invalid-cognitive-event-fabric-snapshot-array-key:'+key);
         }
       }
@@ -289,6 +289,72 @@ export class CognitiveEventFabric {
       }
       return values;
     };
+    const cloneSnapshotPayload=(input:unknown,depth=0,state:{nodes:number;ancestors:Set<object>}={nodes:0,ancestors:new Set<object>()}):unknown=>{
+      state.nodes+=1;
+      if(state.nodes>16384)throw new RangeError('invalid-cognitive-event-payload-node-limit');
+      if(depth>32)throw new RangeError('invalid-cognitive-event-payload-depth-limit');
+      if(input===null||typeof input==='string'||typeof input==='boolean')return input;
+      if(typeof input==='number'){
+        if(!Number.isFinite(input))throw new TypeError('invalid-cognitive-event-payload-number');
+        return input;
+      }
+      if(typeof input!=='object')throw new TypeError('invalid-cognitive-event-payload-value');
+      if(state.ancestors.has(input))throw new TypeError('invalid-cognitive-event-payload-cycle');
+      state.ancestors.add(input);
+      try {
+        let array=false;
+        try { array=Array.isArray(input); } catch { throw new TypeError('invalid-cognitive-event-payload-array'); }
+        if(array){
+          let prototype:object|null;
+          let descriptors:Record<string,PropertyDescriptor>;
+          try {
+            prototype=Object.getPrototypeOf(input);
+            descriptors=Object.getOwnPropertyDescriptors(input) as Record<string,PropertyDescriptor>;
+          } catch { throw new TypeError('invalid-cognitive-event-payload-array'); }
+          if(prototype!==Array.prototype)throw new TypeError('invalid-cognitive-event-payload-array');
+          const lengthDescriptor=descriptors.length;
+          if(!lengthDescriptor||!Object.hasOwn(lengthDescriptor,'value')||
+            typeof lengthDescriptor.value!=='number'||!Number.isSafeInteger(lengthDescriptor.value)||
+            lengthDescriptor.value<0||lengthDescriptor.value>16384)throw new RangeError('invalid-cognitive-event-payload-array');
+          const length=lengthDescriptor.value;
+          const keys=Object.keys(descriptors).filter(key=>key!=='length');
+          if(keys.length!==length||keys.some(key=>!/^(0|[1-9]\d*)$/.test(key)||Number(key)>=length)) {
+            throw new TypeError('invalid-cognitive-event-payload-array-shape');
+          }
+          const copied:unknown[]=[];
+          for(let index=0;index<length;index+=1){
+            const descriptor=descriptors[String(index)];
+            if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value')) {
+              throw new TypeError('invalid-cognitive-event-payload-array-accessor');
+            }
+            copied.push(cloneSnapshotPayload(descriptor.value,depth+1,state));
+          }
+          return copied;
+        }
+        if(!isPlainRecord(input))throw new TypeError('invalid-cognitive-event-payload-record');
+        let descriptors:Record<string,PropertyDescriptor>;
+        try { descriptors=Object.getOwnPropertyDescriptors(input) as Record<string,PropertyDescriptor>; }
+        catch { throw new TypeError('invalid-cognitive-event-payload-record'); }
+        const keys=Object.keys(descriptors);
+        if(keys.length>8192)throw new RangeError('invalid-cognitive-event-payload-key-limit');
+        const copied:Record<string,unknown>={};
+        for(const key of keys.sort()){
+          if(key.length>512)throw new RangeError('invalid-cognitive-event-payload-key-length');
+          const descriptor=descriptors[key]!;
+          if(!descriptor.enumerable||!Object.hasOwn(descriptor,'value')) {
+            throw new TypeError('invalid-cognitive-event-payload-accessor');
+          }
+          Object.defineProperty(copied,key,{
+            configurable:true,enumerable:true,writable:true,
+            value:cloneSnapshotPayload(descriptor.value,depth+1,state),
+          });
+        }
+        return copied;
+      } finally {
+        state.ancestors.delete(input);
+      }
+    };
+
     const rowLimit=Math.max(512,this.capacity*4);
     const recentRows=readSnapshotArray('recent',rowLimit);
     const receiptEvents=readSnapshotArray('receiptEvents',rowLimit);
@@ -307,16 +373,23 @@ export class CognitiveEventFabric {
       const tick=value.tick;
       if(!id||id!==id.trim()||id.length>180||/[\u0000-\u001f\u007f-\u009f]/.test(id)||
         !COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0||seen.has(id))continue;
+      const atPresent=Object.hasOwn(value,'at');
       const rawAt=value.at;
-      if(rawAt!==undefined&&(typeof rawAt!=='number'||!Number.isFinite(rawAt)||rawAt<0))continue;
-      if(value.source!==undefined&&(typeof value.source!=='string'||!value.source.trim()||value.source!==value.source.trim()||value.source.length>120||/[\u0000-\u001f\u007f-\u009f]/.test(value.source)))continue;
-      if(value.external!==undefined&&typeof value.external!=='boolean')continue;
-      if(value.confidence01!==undefined&&(
-        typeof value.confidence01!=='number'||!Number.isFinite(value.confidence01)||value.confidence01<0||value.confidence01>1
+      if(atPresent&&(typeof rawAt!=='number'||!Number.isFinite(rawAt)||rawAt<0))continue;
+      const sourcePresent=Object.hasOwn(value,'source');
+      if(sourcePresent&&(typeof value.source!=='string'||!value.source.trim()||value.source!==value.source.trim()||
+        value.source.length>120||/[\u0000-\u001f\u007f-\u009f]/.test(value.source)))continue;
+      const externalPresent=Object.hasOwn(value,'external');
+      if(externalPresent&&typeof value.external!=='boolean')continue;
+      const confidencePresent=Object.hasOwn(value,'confidence01');
+      if(confidencePresent&&(
+        typeof value.confidence01!=='number'||!Number.isFinite(value.confidence01)||
+        value.confidence01<0||value.confidence01>1
       ))continue;
+      const parentsPresent=Object.hasOwn(value,'parentIds');
       const rawParentIds=value.parentIds;
-      if(rawParentIds!==undefined&&!Array.isArray(rawParentIds))continue;
-      const parentInput=Array.isArray(rawParentIds)?rawParentIds:[];
+      if(parentsPresent&&!Array.isArray(rawParentIds))continue;
+      const parentInput=parentsPresent?rawParentIds as unknown[]:[];
       if(parentInput.length>12)continue;
       const parentIds:string[]=[];
       let invalidParentLineage=false;
@@ -334,18 +407,24 @@ export class CognitiveEventFabric {
         parentIds.push(parent);
       }
       if(invalidParentLineage||new Set(parentIds).size!==parentIds.length)continue;
-      const at=rawAt===undefined?0:rawAt;
-      let payload:Record<string,unknown>;
-      try { payload=cleanPayload(value.payload); }
-      catch { continue; }
-      // Malformed rows do not reserve an ID: a later valid duplicate can still recover.
+      const at=atPresent?rawAt as number:0;
+      let payload:Record<string,unknown>={};
+      if(Object.hasOwn(value,'payload')){
+        if(!isPlainRecord(value.payload))continue;
+        try {
+          const cloned=cloneSnapshotPayload(value.payload);
+          if(!isRecord(cloned))continue;
+          payload=cloned;
+        } catch { continue; }
+      }
+      // Malformed rows do not reserve an ID: a later valid duplicate can recover.
       seen.add(id);
       restored.push({
-        id, stage:stage as CognitiveStage, tick,
-        at,
-        source:typeof value.source==='string'?value.source:'restored-unknown',
-        parentIds, external:typeof value.external==='boolean'?value.external:false,
-        confidence01:typeof value.confidence01==='number'?value.confidence01:.5,
+        id,stage:stage as CognitiveStage,tick,at,
+        source:sourcePresent?value.source as string:'restored-unknown',
+        parentIds,
+        external:externalPresent?value.external as boolean:false,
+        confidence01:confidencePresent?value.confidence01 as number:.5,
         payload,
       });
       if(restored.length>=this.capacity)break;
@@ -410,16 +489,59 @@ export class CognitiveEventFabric {
         };
         if(sha256Stable(reconstructedProjection)!==suppliedProjectionHash)continue;
       }
-      const externalObservations=Array.isArray(entry.externalObservations)?entry.externalObservations.slice(-32).filter((ref:any)=>{
-        if(!ref||typeof ref.observationId!=='string'||!ref.observationId.trim()||ref.observationId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
-        const event=restoredById.get(String(ref.eventId));
-        return event?.stage==='external-evidence'&&event.payload.executionId===entry.executionId&&event.payload.observationId===ref.observationId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase();
-      }).map((ref:any)=>({observationId:String(ref.observationId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt)})):[];
-      const receiptRevisions=Array.isArray((entry as ToolReceiptProjectionIndexEntry).receiptRevisions)?(entry as ToolReceiptProjectionIndexEntry).receiptRevisions!.slice(-32).filter((ref:any)=>{
-        if(!ref||typeof ref.revisionId!=='string'||!ref.revisionId.trim()||ref.revisionId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
-        const event=restoredById.get(String(ref.eventId));
-        return event?.stage==='tool-reconciliation'&&event.payload.executionId===entry.executionId&&event.payload.revisionId===ref.revisionId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase();
-      }).map((ref:any)=>({revisionId:String(ref.revisionId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt)})):[];
+      const decodeReceiptRefs=(field:'externalObservations'|'receiptRevisions')=>{
+        if(!Object.hasOwn(entry,field))return [];
+        const arrayValue=entry[field];
+        let isArray=false;
+        try { isArray=Array.isArray(arrayValue); } catch { /* rejected below */ }
+        if(!isArray)return null;
+        let prototype:object|null;
+        let descriptors:Record<string,PropertyDescriptor>;
+        try {
+          prototype=Object.getPrototypeOf(arrayValue as object);
+          descriptors=Object.getOwnPropertyDescriptors(arrayValue as object) as Record<string,PropertyDescriptor>;
+        } catch { return null; }
+        if(prototype!==Array.prototype)return null;
+        const lengthDescriptor=descriptors.length;
+        if(!lengthDescriptor||!Object.hasOwn(lengthDescriptor,'value')||
+          typeof lengthDescriptor.value!=='number'||!Number.isSafeInteger(lengthDescriptor.value)||
+          lengthDescriptor.value<0||lengthDescriptor.value>256)return null;
+        const length=lengthDescriptor.value;
+        const ownKeys=Object.keys(descriptors).filter(key=>key!=='length');
+        if(ownKeys.length!==length||ownKeys.some(key=>!/^(0|[1-9]\d*)$/.test(key)||Number(key)>=length))return null;
+        const accepted:Record<string,unknown>[]=[];
+        for(let index=0;index<length;index+=1){
+          const slot=descriptors[String(index)];
+          if(!slot||!slot.enumerable||!Object.hasOwn(slot,'value'))return null;
+          const refFields=field==='externalObservations'
+            ?['observationId','eventId','projectionHash','projectedAt']
+            :['revisionId','eventId','projectionHash','projectedAt'];
+          const ref=readDataRecord(slot.value,refFields);
+          if(!ref)return null;
+          const identity=field==='externalObservations'?ref.observationId:ref.revisionId;
+          const eventId=ref.eventId;
+          const projectionHash=ref.projectionHash;
+          const projectedAt=ref.projectedAt;
+          if(typeof identity!=='string'||!identity.trim()||identity!==identity.trim()||identity.length>180||
+            typeof eventId!=='string'||!eventId.trim()||eventId!==eventId.trim()||eventId.length>180||
+            typeof projectionHash!=='string'||!/^[a-f0-9]{64}$/i.test(projectionHash)||
+            typeof projectedAt!=='number'||!Number.isFinite(projectedAt)||projectedAt<0)return null;
+          const event=restoredById.get(eventId);
+          if(field==='externalObservations'){
+            if(event?.stage!=='external-evidence'||event.payload.executionId!==entry.executionId||
+              event.payload.observationId!==identity||event.payload.projectionHash!==projectionHash.toLowerCase())return null;
+            accepted.push({observationId:identity,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt});
+          }else{
+            if(event?.stage!=='tool-reconciliation'||event.payload.executionId!==entry.executionId||
+              event.payload.revisionId!==identity||event.payload.projectionHash!==projectionHash.toLowerCase())return null;
+            accepted.push({revisionId:identity,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt});
+          }
+        }
+        return accepted.slice(-32);
+      };
+      const externalObservations=decodeReceiptRefs('externalObservations');
+      const receiptRevisions=decodeReceiptRefs('receiptRevisions');
+      if(externalObservations===null||receiptRevisions===null)continue;
       restoredReceiptProjectionIndex.set(entry.executionId,{executionId:entry.executionId,actionEventId:entry.actionEventId.slice(0,180),outcomeEventId:entry.outcomeEventId.slice(0,180),evidenceEventId:entry.evidenceEventId.slice(0,180),projectedAt,...(/^[a-f0-9]{64}$/i.test(String(entry.projectionHash??''))?{projectionHash:String(entry.projectionHash).toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
       if(restoredReceiptProjectionIndex.size>=256) break;
     }
