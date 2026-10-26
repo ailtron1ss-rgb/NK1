@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass427 — distinguish HMX envelope from native extensions (2026-10-26)
+
+- [DATA FIDELITY] The native export bridge now treats standard HMX root fields (`hmx_version`, `record_type`, `created_at`, `intent`, `strategy`, `source` and aliases) as consumed envelope metadata instead of misclassifying them as unknown-extension data.
+- [REGRESSION] Extended the unknown-root fixture to include a complete HMX envelope and assert that only the genuinely unknown `legacyExporterState` is placed in the lossless extension bucket.
+- [VALIDATION] Static source checks only; the Actions runner still provides no step logs for executable validation.
+
 ## [NK1][Hexis] WorkPass426 — make outbound delivery retries evidence-gated (2026-10-26)
 
 - [DELIVERY SAFETY] A negative outbox ACK and an expired `publishing` lease now transition to `uncertain`; neither can be claimed for another send until a reconciliation endpoint records an evidence reference and confirms `published` or `not-published`.
