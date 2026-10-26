@@ -61,6 +61,7 @@ on:
       - "workpass70-source"
       - "work/node24-project-pin-rebased-20261025"
       - "fix/cognitive-interrupt-severity-normalization-2026-10-25"
+      - "fix/mega-cognitive-progress-tracking-2026-10-26-r3"
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
       - "runtime/neuro-kurisu/src/organism/system/**"
