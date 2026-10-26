@@ -1,3 +1,12 @@
+## WorkPass365 — fail closed on malformed live resource telemetry (2026-10-26)
+
+- **Runtime fix:** `CognitiveResourceEconomy.allocate()` now distinguishes an omitted optional value from an explicitly invalid one. Missing inputs retain documented defaults; malformed/out-of-range energy, load, uncertainty, novelty, prediction-debt, thermal, RAM and performance fields use risk-aware fallbacks. In particular NaN RAM/thermal/debt/load no longer collapses to zero pressure.
+- **Budget effect:** corrupt load/thermal/RAM/debt inputs drive scarcity to the critical range, disable counterfactual branches, and prevent expensive language calls. Host performance pressure remains diagnostic-only in the allocation formula, consistent with the module contract.
+- **Regression/CI:** extended the existing WorkPass322 resource-economy test with malformed and missing-input fixtures, and wired that test into the unified substrate workflow with matching path filters so future changes cannot silently skip it.
+- **Validation:** exact-head unified substrate and WorkPass110 runs are pending for this commit; prior-head passes do not substitute for them.
+
+---
+
 ## WorkPass364 — preserve prediction-debt corruption signals across normalization (2026-10-26)
 
 - **Defect:** `counter()` safely coerces an invalid negative debt count to `0`; if the same frame carried an apparently low priority, the normalized state could lose evidence that debt metadata was corrupt.

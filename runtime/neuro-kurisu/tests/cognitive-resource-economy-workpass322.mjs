@@ -63,3 +63,28 @@ copy.cycles = 1;
 assert.equal(economy.snapshot().cycles, Number.MAX_SAFE_INTEGER, 'snapshot must not expose mutable live state');
 
 console.log('WorkPass322 cognitive resource restore hardening: PASS');
+
+// Malformed live values must not become 'healthy' zero pressure via clamp01(NaN).
+const defensiveEconomy = new CognitiveResourceEconomy();
+const defensiveAllocation = defensiveEconomy.allocate({
+  tick: 1,
+  energy01: 0.2,
+  cognitiveLoad01: Number.NaN,
+  uncertainty01: Number.NaN,
+  novelty01: 0.8,
+  predictionDebt01: Number.NaN,
+  thermalStrain01: -0.1,
+  ramPressure01: Number.NaN,
+  performancePressure01: Number.NaN,
+});
+const defensiveState = defensiveEconomy.snapshot();
+assert.equal(defensiveState.predictionDebt01, 1, 'invalid prediction debt is conservatively urgent');
+assert.equal(defensiveState.performancePressure01, 1, 'invalid performance telemetry is reported conservatively');
+assert.equal(defensiveAllocation.mode, 'critical', 'invalid load/thermal/RAM/debt sensors must prevent optimistic allocation');
+assert.equal(defensiveAllocation.maxCounterfactualBranches, 0, 'critical malformed telemetry shuts off optional branches');
+assert.equal(defensiveAllocation.permitExpensiveLanguage, false, 'critical malformed telemetry blocks expensive language calls');
+
+const missingValuesKeepDefaults = new CognitiveResourceEconomy();
+missingValuesKeepDefaults.allocate({ tick: 1 });
+assert.equal(missingValuesKeepDefaults.snapshot().predictionDebt01, 0, 'omitted optional debt preserves the documented initial default');
+assert.ok(missingValuesKeepDefaults.snapshot().scarcity01 < defensiveState.scarcity01, 'missing optional inputs are distinct from explicitly malformed inputs');

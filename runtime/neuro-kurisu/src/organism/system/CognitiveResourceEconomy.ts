@@ -44,6 +44,11 @@ const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafe
 const safeTick=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=-1?value:-1;
 const safeTimestamp=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:0;
 const safeUnit=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):fallback;
+const inputUnit=(value:unknown,missingFallback:number,invalidFallback:number):number=>{
+  if(value===undefined)return missingFallback;
+  if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>1)return invalidFallback;
+  return value;
+};
 
 export const defaultCognitiveResourceEconomy = (): CognitiveResourceEconomyState => ({
   version: 1, cycles: 0,
@@ -78,17 +83,19 @@ export class CognitiveResourceEconomy {
   }
 
   allocate(input:{tick:number;at?:number;energy01?:number;cognitiveLoad01?:number;uncertainty01?:number;novelty01?:number;predictionDebt01?:number;thermalStrain01?:number;ramPressure01?:number;performancePressure01?:number;awake?:boolean}):CognitiveResourceAllocation {
-    const energy = clamp01(input.energy01 ?? .8);
-    const load = clamp01(input.cognitiveLoad01 ?? .2);
-    const uncertainty = clamp01(input.uncertainty01 ?? .35);
-    const novelty = clamp01(input.novelty01 ?? .4);
-    const debt = clamp01(input.predictionDebt01 ?? 0);
-    const thermal = clamp01(input.thermalStrain01 ?? .2);
-    const ram = clamp01(input.ramPressure01 ?? .2);
+    // Undefined inputs retain documented defaults. Explicitly malformed
+    // telemetry uses risk-aware fallbacks instead of clamp01(NaN) -> 0.
+    const energy = inputUnit(input.energy01, .8, 0);
+    const load = inputUnit(input.cognitiveLoad01, .2, 1);
+    const uncertainty = inputUnit(input.uncertainty01, .35, 1);
+    const novelty = inputUnit(input.novelty01, .4, 0);
+    const debt = inputUnit(input.predictionDebt01, 0, 1);
+    const thermal = inputUnit(input.thermalStrain01, .2, 1);
+    const ram = inputUnit(input.ramPressure01, .2, 1);
     const awake = input.awake !== false;
     const tick = typeof input.tick==='number'&&Number.isFinite(input.tick)?Math.max(0,Math.min(Number.MAX_SAFE_INTEGER,Math.floor(input.tick))):0;
     const at = typeof input.at==='number'&&Number.isFinite(input.at)&&input.at>=0?input.at:Date.now();
-    const performancePressure = clamp01(input.performancePressure01 ?? this.state.performancePressure01);
+    const performancePressure = inputUnit(input.performancePressure01, this.state.performancePressure01, 1);
 
     const scarcity = clamp01(
       (1-energy)*.30 + load*.22 + thermal*.18 + ram*.14 + (awake ? 0 : .08) + debt*.08
