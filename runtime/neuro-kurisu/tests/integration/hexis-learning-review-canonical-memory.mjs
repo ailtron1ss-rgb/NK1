@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { MemoryOS2 } from '../../src/organism/developmental/MemoryOS2.ts';
 import { HexisAdaptationFabric } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
+import { P65EpistemicLedger } from '../../src/organism/memory/P65EpistemicLedger.ts';
+import { SourceMonitor } from '../../src/organism/memory/SourceMonitor.ts';
 
 function encode(memoryOS, content, kind = 'semantic', source = 'learning-review-fixture') {
   return memoryOS.encode({
@@ -103,6 +106,57 @@ assert.ok(body.includes('alreadyAbsent: true'), 'forget retries must be safely i
 assert.ok(body.includes('reviewEvidence.revisionGroupId'), 'review decisions must retain their reviewed revision anchor');
 assert.ok(body.includes("review-source-memory-superseded"), 'stale reviews must not mutate a newer revision');
 assert.ok(body.includes('expectedGroupRows.length'), 'an absent reviewed row must not be mistaken for a completed forget while its revision chain remains');
+
+assert.ok(body.includes('p65EpistemicLedger.record'), 'review events must enter the canonical P65 epistemic ledger');
+assert.ok(body.includes('sourceMonitor.record'), 'review events must enter the SourceMonitor lineage graph');
+assert.ok(body.includes("evidenceClass: 'unverified' as const"), 'review metadata must not masquerade as external corroboration');
+assert.ok(body.includes('priorReviewClaim') && body.includes('priorReviewTrace'), 'review provenance writes must be replay-safe across partial restore');
+
+// The same review event is an observable system event and an explicitly unverified epistemic claim.
+const p65 = new P65EpistemicLedger();
+const sourceMonitor = new SourceMonitor();
+const sourceId = 'hexis-review:review-fixture:item-fixture';
+const capturedAt = 1_800_000_000_700;
+const eventFingerprint = createHash('sha256').update(JSON.stringify({
+  schemaVersion: 1, reviewId: 'review-fixture', itemId: 'item-fixture', decision: 'correct',
+  sourceMemoryId: corrected.id, correctionHash: createHash('sha256').update(corrected.content).digest('hex'),
+})).digest('hex');
+const eventContent = 'Hexis learning-review request correct; review=review-fixture; item=item-fixture; memory=' + corrected.id + '. This is process provenance, not external truth.';
+const provenance = {
+  sourceId,
+  sourceKind: 'hexis-learning-review',
+  capturedAt,
+  evidenceClass: 'unverified',
+  contentFingerprint: eventFingerprint,
+  citation: 'memory:' + corrected.id,
+};
+const p65ClaimId = p65.record({
+  tick: 7,
+  at: capturedAt,
+  kind: 'observation',
+  content: eventContent,
+  confidence01: .5,
+  source: 'hexis-review',
+  provenance,
+});
+assert.ok(p65ClaimId);
+sourceMonitor.record({
+  id: sourceId,
+  source: 'system',
+  kind: 'hexis-learning-review',
+  confidence: .5,
+  epistemicStatus: 'observation',
+  at: capturedAt,
+  provenance,
+});
+assert.equal(p65.snapshot().claimsData.find(row => row.id === p65ClaimId)?.provenance?.evidenceClass, 'unverified');
+assert.equal(sourceMonitor.lineage(sourceId)[0]?.provenance?.contentFingerprint, eventFingerprint);
+const restoredP65 = new P65EpistemicLedger();
+restoredP65.restore(p65.persistenceSnapshot());
+const restoredSourceMonitor = new SourceMonitor();
+restoredSourceMonitor.restore(sourceMonitor.snapshot());
+assert.equal(restoredP65.sourceLineage(p65ClaimId)[0]?.provenance?.sourceId, sourceId);
+assert.equal(restoredSourceMonitor.lineage(sourceId)[0]?.provenance?.evidenceClass, 'unverified');
 
 console.log('HEXIS_LEARNING_REVIEW_CANONICAL_MEMORY=PASS', JSON.stringify({
   originalMemory: original.id,
