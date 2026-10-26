@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { MemoryOS2 } from "../src/organism/developmental/MemoryOS2.ts";
 import { sha256Stable } from "../src/organism/core/StableSerialization.ts";
 import { adaptHexisEvidence } from "../src/organism/memory/HexisEvidenceAdapter.ts";
@@ -317,6 +318,35 @@ if (serverStampPending.status === "review-pending") {
   );
   assert.equal(approved.status, "decided", "legacy server-receipt review digest must remain approvable");
 }
+
+// 8) Legacy in-process belief-revision entry point must not bypass canonical review.
+const organismCoreSource = await readFile(
+  new URL("../src/organism/core/OrganismCore.ts", import.meta.url),
+  "utf8",
+);
+const legacyRevisionStart = organismCoreSource.indexOf("async hexisReviseBelief(input: {");
+const legacyRevisionEnd = organismCoreSource.indexOf(
+  "/** Temporal views delegate to MemoryOS2",
+  legacyRevisionStart,
+);
+assert.ok(legacyRevisionStart >= 0, "legacy Hexis revision compatibility method must remain explicit");
+assert.ok(legacyRevisionEnd > legacyRevisionStart, "legacy Hexis revision method boundary must remain identifiable");
+const legacyRevisionMethod = organismCoreSource.slice(legacyRevisionStart, legacyRevisionEnd);
+assert.match(
+  legacyRevisionMethod,
+  /await this\.ingestHexisEvidenceForReview\(/,
+  "legacy revisions must enqueue canonical evidence review",
+);
+assert.match(
+  legacyRevisionMethod,
+  /requiresExplicitReview:\s*true/,
+  "legacy entry point must report that an explicit review is required",
+);
+assert.doesNotMatch(
+  legacyRevisionMethod,
+  /this\.hexisAdaptation\.reviseBelief\(|this\.memorySubsystem\.fabric\.updateSignals\(/,
+  "legacy entry point must not mutate belief confidence directly",
+);
 
 console.log("Hexis evidence → canonical MemoryOS2 → gated Hexis review: PASS", JSON.stringify({
   approvalChangesCanonicalConfidence: true,
