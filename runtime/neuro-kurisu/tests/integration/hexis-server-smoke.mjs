@@ -75,6 +75,8 @@ try {
   const pendingGoals = await (await fetch(`${base}/api/organism/integration/hexis/hmx/goals/proposals?status=pending`)).json();
   const pendingGoal = pendingGoals.proposals?.find(proposal => proposal.id === prepareGoals.proposals[0].id);
   if (!pendingGoals.ok || !pendingGoal || pendingGoal.status !== 'pending') throw new Error('hexis-hmx-goal-proposal-list');
+  const prematureMaterialization = await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: true });
+  if (prematureMaterialization.status !== 409) throw new Error('hexis-hmx-goal-review-required:' + prematureMaterialization.status);
   const goalDecision = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/decide', { proposalId: pendingGoal.id, decision: 'approve' })).json();
   if (!goalDecision.ok || goalDecision.proposal?.status !== 'approved') throw new Error('hexis-hmx-goal-proposal-approve');
   const invalidGoalStatus = await fetch(`${base}/api/organism/integration/hexis/hmx/goals/proposals?status=activate`);
