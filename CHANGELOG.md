@@ -1,3 +1,13 @@
+## WorkPass376 — bounded HMX transport and rollback reconciliation (2026-10-26)
+
+- Added a dedicated HMX stage request budget, separately configurable and hard-capped at 8 MiB; ordinary API routes retain their original 256 KB default limit. HTTP 413 responses now report the actual route-specific limit.
+- Added a server smoke fixture with a 300 KB valid HMX stage document to guard the route-specific transport boundary.
+- The canonical projector now keeps an immutable initial ID set and a separate per-batch seen-ID set. If a lower-level canonical write commits and throws before returning its ID, rollback reconciles the live memory IDs against the pre-apply snapshot and compensates the hidden row too.
+- Strengthened fault injection so the second memory encode commits a row and then throws before the projector receives its ID; the test asserts no imported memories, graph nodes, or temporal assertions survive and the accepted stage remains retryable.
+- Validation remains blocked by GitHub Actions runner startup: latest observed jobs ended with runner_id=0 and steps=[]; no test pass is claimed. main and the published Release ZIP remain unchanged.
+
+---
+
 ## WorkPass375 — HMX operator UI and confirmation boundary (2026-10-26)
 
 - Added frontend API bindings for HMX canonical apply and goal proposal preparation/list/review/materialization.
