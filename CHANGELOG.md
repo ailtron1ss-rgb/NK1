@@ -1,3 +1,21 @@
+## WorkPass384 — Fail closed on evidence-shaped legacy Hexis reviews (2026-10-26)
+
+- The generic `reviews/decide` endpoint now rejects evidence-like semantic-belief items without the canonical pipeline marker instead of silently falling through to legacy review mutation. Such records must be re-ingested through the strict evidence adapter; ordinary non-evidence retrospective reviews retain their existing path.
+- Validation is pending on the exact current integration head.
+
+## WorkPass383 — Assert the actual canonical confidence outcome (2026-10-26)
+
+- Replaced a brittle smoke assertion that demanded every supporting review increase confidence. If confidence is already at the policy ceiling, a valid approval may be a numerical no-op.
+- The smoke now requires the canonical decision shape and audit ID, then reconciles its reported confidence and `confidenceChanged` flag with the persisted MemoryOS2 record.
+- Validation is pending on the exact current integration head.
+
+## WorkPass382 — Bind Hexis review decisions to canonical evidence digest (2026-10-26)
+
+- Re-canonicalize pending-review evidence through the strict Hexis adapter at decision time, recompute SHA-256, and compare the resulting evidence against the exact canonical MemoryOS2 receipt before approval.
+- Reject changed source reference/label, note, timestamp, stance, confidence or other canonical evidence changes, even when the persisted review snapshot retains the original digest string.
+- Preserve `server-receipt` timestamp-origin normalization in review payloads and include six tampering regressions plus a positive server-stamped review regression.
+- Validation status: implementation and regressions are committed; exact-head typecheck, focused review test, unified integration and release gates remain pending. No retrieval/learning uplift or production-readiness claim.
+
 ## WorkPass387 — durable idempotency for server-generated Hexis receipt time (2026-10-26)
 
 - Code/test commits: 
