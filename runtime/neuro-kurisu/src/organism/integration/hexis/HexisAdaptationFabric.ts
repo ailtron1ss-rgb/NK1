@@ -876,6 +876,9 @@ export class HexisAdaptationFabric {
             stage.applicationAttempts = Math.max(0, Math.floor(Number(stage.applicationAttempts ?? 0))) + 1;
             // The attempt counter is persisted on the stage; a compensated retry uses fresh command IDs.
             const receipt = this.canonicalMemoryApply(structuredClone(stage));
+            // Validate the same stage/export/lineage/digest contract on first apply
+            // that is required when the persisted receipt is replayed after restore.
+            if (!isValidHmxApplyReceipt(stage, receipt)) throw new Error('hmx-apply-receipt-invalid');
             stage.application = structuredClone(receipt);
             stage.status = 'applied';
             this.state.metrics.hmxApplied += 1;
