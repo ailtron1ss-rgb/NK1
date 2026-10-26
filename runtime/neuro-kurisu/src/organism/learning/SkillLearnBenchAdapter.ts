@@ -172,6 +172,7 @@ export function aggregateSkillLearnBenchReports(
     const inRange = (value: unknown): value is number =>
       typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
     if (!report || !isNonEmptyString(report.taskId) || !isNonEmptyString(report.trialId) ||
+        (report.taskFamily !== undefined && !isNonEmptyString(report.taskFamily)) ||
         typeof report.taskSuccess?.passed !== 'boolean' ||
         !inRange(report.taskSuccess?.passRate) ||
         report.taskSuccess.passRate !== (report.taskSuccess.passed ? 1 : 0) ||
@@ -231,6 +232,12 @@ export interface SkillLearnBenchCandidateGateOptions {
   minimumValidationTaskSuccess01?: number;
   /** Minimum distinct validation tasks; multiple trials of one task are not breadth. */
   minimumValidationTasks?: number;
+  /** Required task families taken from the canonical manifest. Missing families fail closed. */
+  requiredTaskFamilies?: string[];
+  /** Minimum verified task success in every family; defaults to the global validation floor. */
+  minimumFamilyValidationTaskSuccess01?: number;
+  /** Maximum regression in any individual held-out family; defaults to the global tolerance. */
+  maximumFamilyHoldoutRegression01?: number;
 }
 
 export interface SkillLearnBenchCandidateGateReport {
@@ -245,6 +252,25 @@ export interface SkillLearnBenchCandidateGateReport {
   pairedValidationTrials: number;
   pairedHoldoutTrials: number;
   holdoutTaskCount: number;
+  validationTaskSuccess01: number;
+  /** Fraction of required family evidence that has metadata and paired validation + holdout coverage. */
+  taskFamilyCoverage01: number;
+  /** Separate metrics prevent high scores in one family from masking another family's failure. */
+  familyResults: Array<{
+    family: string;
+    validationTaskCount: number;
+    baselineValidationTaskSuccess01: number | null;
+    validationTaskSuccess01: number | null;
+    baselineValidation01: number | null;
+    candidateValidation01: number | null;
+    validationGain01: number | null;
+    holdoutTaskCount: number;
+    baselineHoldoutTaskSuccess01: number | null;
+    holdoutTaskSuccess01: number | null;
+    baselineHoldout01: number | null;
+    candidateHoldout01: number | null;
+    holdoutDelta01: number | null;
+  }>;
   feedback: string[];
 }
 
@@ -282,9 +308,12 @@ function validateCandidateReports(
         report.trajectoryQuality.aggregate !== Number(((report.trajectoryQuality.keyPointRecall + report.trajectoryQuality.executionOrder + report.trajectoryQuality.completeness) / 3).toFixed(6))) {
       throw new Error(`candidate-${label}-report-invalid`);
     }
-    const key = JSON.stringify([report.taskId.trim(), report.trialId.trim()]);
+    const taskId = report.taskId.trim();
+    const trialId = report.trialId.trim();
+    const family = report.taskFamily === undefined ? undefined : report.taskFamily.trim();
+    const key = JSON.stringify([taskId, trialId]);
     if (keyed.has(key)) throw new Error(`candidate-${label}-duplicate-trial`);
-    keyed.set(key, report);
+    keyed.set(key, { ...report, taskId, trialId, ...(family === undefined ? {} : { taskFamily: family }) });
   }
   return keyed;
 }
@@ -300,6 +329,11 @@ function pairedCandidateMean(
   }
   const baselineReports = keys.map((key) => baseline.get(key)!);
   const candidateReports = keys.map((key) => candidate.get(key)!);
+  for (let index = 0; index < keys.length; index += 1) {
+    if (baselineReports[index]!.taskFamily !== candidateReports[index]!.taskFamily) {
+      throw new Error(`candidate-${label}-task-family-mismatch`);
+    }
+  }
   const macroTaskMean = (reports: SkillLearnBenchTrialReport[]): number => {
     const byTask = new Map<string, number[]>();
     for (const report of reports) {
