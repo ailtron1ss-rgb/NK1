@@ -1,3 +1,9 @@
+## WorkPass392 — Verify pending Hexis review survives a real process restart (2026-10-26)
+
+- Extended `hexis-server-smoke.mjs` to stop the running server after an evidence review is staged, restart it using the same temporary `STATE_DIR`, and assert the exact pending review/item and canonical pipeline marker were restored before approval.
+- The test then continues to decide the same restored review, exercising persistence across process lifetime rather than only in-memory/unit state.
+- Validation status: pending exact-head focused smoke and Unified integration. No release readiness or memory/learning uplift claimed.
+
 ## WorkPass391 — Preserve pending server-receipt review compatibility (2026-10-26)
 
 - Existing pending reviews created by an older build could contain the raw server-receipt timestamp in their payload digest while the canonical MemoryOS2 receipt used the new normalized digest.
