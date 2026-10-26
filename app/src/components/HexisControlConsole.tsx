@@ -5,6 +5,20 @@ import { neuroApi } from "@/neuro-kurisu/api";
 
 const fmt = (value: unknown) => JSON.stringify(value, null, 2);
 
+// Several Hexis routes deliberately return HTTP 200 with a domain-level result envelope.
+// Never let a rejected Core mutation masquerade as a successful operator action.
+function operationFailure(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const envelope = value as Record<string, unknown>;
+  const nested = envelope.result && typeof envelope.result === "object" && !Array.isArray(envelope.result)
+    ? envelope.result as Record<string, unknown>
+    : null;
+  const failure = envelope.ok === false ? envelope : nested?.ok === false ? nested : null;
+  return failure
+    ? String(failure.error ?? failure.message ?? "The operation was rejected by the runtime.")
+    : null;
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return <div className="rounded-md border border-border bg-bg p-2"><p className="text-[10px] uppercase tracking-wider text-subtle">{label}</p><p className="mt-1 break-all font-mono text-sm text-fg">{value}</p></div>;
 }
@@ -54,6 +68,8 @@ export function HexisControlConsole() {
     setMessage("");
     try {
       const result = await operation();
+      const failure = operationFailure(result);
+      if (failure) throw new Error(failure);
       setPanel(fmt(result));
       setMessage(`${label}: OK`);
       const next = await neuroApi.hexis();
