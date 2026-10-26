@@ -249,4 +249,46 @@ assert.throws(() => kernel.beginDecisionCycle({
  assert.deepEqual(originalEnvelope?.payload, canonicalEvent.payload);
  assert.deepEqual(originalEnvelope?.parentIds, canonicalEvent.parentIds);
 
+ // Payload state must be detached from caller-owned nested objects and returned event objects.
+ const callerPayload = { nested: { value: 'canonical' } };
+ const detached = idempotencyFabric.append({
+   ...canonicalEvent,
+   id: 'cef:external:detached-payload',
+   at: 1202,
+   payload: callerPayload,
+ });
+ callerPayload.nested.value = 'caller-mutated';
+ detached.payload.nested.value = 'returned-object-mutated';
+ assert.equal(idempotencyFabric.getById('cef:external:detached-payload')?.payload.nested.value, 'canonical');
+ assert.equal(idempotencyFabric.snapshot().total, firstEnvelopeTotal + 1);
+
+ // Invalid payloads must fail before append can increment the journal or leave a partial node.
+ const cyclicEventPayload = {};
+ cyclicEventPayload.self = cyclicEventPayload;
+ const beforeCyclicAppend = idempotencyFabric.snapshot().total;
+ assert.throws(() => idempotencyFabric.append({
+   ...canonicalEvent,
+   id: 'cef:external:cyclic-payload',
+   tick: 14,
+   at: 1400,
+   payload: cyclicEventPayload,
+ }), /circular/);
+ assert.equal(idempotencyFabric.snapshot().total, beforeCyclicAppend);
+ assert.equal(idempotencyFabric.getById('cef:external:cyclic-payload'), null);
+
+ let payloadGetterExecuted = false;
+ const accessorPayload = {};
+ Object.defineProperty(accessorPayload, 'secret', {
+   enumerable: true,
+   get() { payloadGetterExecuted = true; throw new Error('event payload getter must not run'); },
+ });
+ const accessorEvent = idempotencyFabric.append({
+   ...canonicalEvent,
+   id: 'cef:external:accessor-payload',
+   at: 1203,
+   payload: accessorPayload,
+ });
+ assert.equal(payloadGetterExecuted, false, 'top-level payload accessors must be omitted without execution');
+ assert.deepEqual(accessorEvent.payload, {});
+
 console.log('WorkPass351 canonical cognitive kernel: PASS');
