@@ -47,6 +47,11 @@ async function writePhase(stateFile, worldStateFile) {
     const row = findCanonicalMemoryRecord(snapshot, MARKER);
     assert.ok(row, 'the actual OrganismRuntime step must persist the marker as a canonical memory record');
     assert.ok(typeof row.id === 'string' && row.id.length > 0);
+    // Exercise the same bounded Core memory-inspector query used by the HTTP
+    // endpoint, not just direct inspection of the persisted state snapshot.
+    const publicRecall = runtime.core.memoryInspectorSearch(MARKER, 8);
+    assert.ok(publicRecall.some(item => item.id === row.id),
+      'the running Core memory search must retrieve its canonical MemoryOS2 item');
     const tick = Number(runtime.core.operationalStatusSnapshot().tick);
     assert.ok(Number.isFinite(tick) && tick >= 1);
     await runtime.stop();
@@ -69,6 +74,11 @@ async function readPhase(stateFile, worldStateFile, expectedTick, expectedMemory
     assert.ok(row, 'the restarted OrganismRuntime must expose the persisted canonical memory');
     assert.equal(row.id, expectedMemoryId, 'memory identity must survive the runtime process boundary');
     assert.ok(row.content.includes('outcome-persisted-991'));
+    // After restart, prove the normal Core retrieval surface can still find
+    // this same ID; no recursive scan or direct store lookup substitutes for recall.
+    const publicRecall = runtime.core.memoryInspectorSearch(MARKER, 8);
+    assert.ok(publicRecall.some(item => item.id === expectedMemoryId),
+      'the restarted Core memory search must retrieve the same canonical memory ID');
     const integrity = runtime.core.persistentContinuityDiagnostics?.();
     if (integrity && typeof integrity.verified === 'boolean') {
       assert.equal(integrity.verified, true, 'organism continuity ledger must remain verified after restart');
