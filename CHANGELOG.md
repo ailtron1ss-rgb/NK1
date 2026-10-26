@@ -3,7 +3,7 @@
 - [RESTORE] External-observation replay refs are accepted only when the event is marked external, links to the indexed action/outcome and has the outcome as a parent.
 - [RESTORE] Provider revision refs now require the originating outcome parent, matching base-outcome metadata, and a monotonic chain whose `previousRevisionEventId` matches the actual previous accepted revision and parent edge.
 - [REPLAY] Idempotent revision/observation replay revalidates the stored event, payload identity, fingerprint and causal parent links instead of trusting a stale index reference.
-- [REGRESSION] Add valid two-revision replay-after-restore coverage and tampered-parent snapshots proving that events still present in the buffer cannot be replayed as trusted evidence after their links are severed.
+- [REGRESSION] Add valid two-revision replay-after-restore coverage plus tampered-parent snapshots for both provider revisions and external observations. Events that remain in the buffer cannot be replayed as trusted evidence after their outcome/previous-revision links are severed.
 - [VALIDATION] Exact-head CI is required; implementation is not labelled PASS before the current source/test SHA runs.
 - [RELEASE] `main` and the published Release ZIP remain unchanged.
 
