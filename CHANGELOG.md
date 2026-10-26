@@ -29,7 +29,7 @@
 - Updated the versioned skill-store lifecycle regression to use the current object-shaped rollback approval contract; the fixture injects a test-only rollback verifier while production's default rollback verifier remains deny-by-default.
 - Corrected the persisted-state tampering case to change only the unsigned `approval.expectedActiveVersion` wrapper, preserving the signed artifact and valid prior-version linkage. This isolates the intended CAS-to-signed-approval guard.
 - Fixed a production persistence mismatch: `VersionedSkillCandidateStore` includes the revision-provenance fingerprint (or `null`) in each new candidate ID, but `AtomicFileSkillStorePersistence` validated only the old four-field formula and rejected valid durable writes. The file adapter now verifies provenance and the matching five-field identity while accepting legacy four-field IDs only when provenance is absent.
-- Added file-backed restart coverage for both ordinary candidates and provenance-bearing candidates. Exact-head WorkPass110 validation is pending.
+- Added file-backed restart coverage for ordinary candidates and provenance-bearing candidates both with and without an optional evaluation digest. The persistence validator now matches the declared optional type while still validating any supplied digest. Exact-head WorkPass110 validation is pending.
 
 ## Supervised service failure closure — 2026-10-26
 
