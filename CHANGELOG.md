@@ -1,3 +1,14 @@
+## [NK1][WorkPass383] Reject inconsistent restored ActionGateway receipts — 2026-10-26
+
+- **Failure reproduced:** WorkPass71 reached `test:workpass95:receipt-integrity` after causal replay wiring passed; a restored completed ledger row whose `response.executionId` differed from the owning entry was replayed as `ok:true`.
+- **Fix:** validate canonical entry execution ID/tool ID, response identity, audit identity, accepted/verified booleans, outcome-class consistency and the existing 48 KiB receipt bound before accepting a persisted response. Apply the same guard in `replayLedgerEntry`, including archive-loaded entries.
+- **Recovery semantics:** malformed payloads remain as completed, non-replayable tombstones with `responseOmitted`/recovery-required behavior. Never discard the idempotency key and never re-execute the side effect to “repair” a corrupt receipt.
+- **Regression:** WorkPass95 now includes forged tool identity and forged audit execution identity alongside response execution mismatch, verification contradiction, audit outcome mismatch and oversized receipt; every case must be blocked without incrementing the tool executor count.
+- **Validation:** new exact-head WorkPass95, WorkPass71 full rebuild, runtime typecheck and Repository Wiring Audit are required. This fixes a concrete fail-closed violation; it is not yet considered validated.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][WorkPass382] Correct causal replay wiring contract assertion order — 2026-10-26
 
 - **Observed:** WorkPass71 reached `test:causal-replay-runtime-wiring.mjs` after the P26 sequential benchmark and policy sweep passed, then failed at a static assertion claiming the causal sampler's feature vector was absent.
