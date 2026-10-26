@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head CI PASS on PR head 0ad66d5519aedbadc317684504ed0e5a8e79412c: Unified project integration (#40289492932), progress-ledger integrity (#40289492966), WorkPass110 (#40289492891), P26 validation (#40289492875) and nine additional focused workflows all passed. Historical 13-row ciSnapshot remains pinned to 621864d0d7f2676245383adab86f1dcc6d0f741f; new validationRuns are recorded separately. No readiness scores were increased. WorkPass356 adds strict descriptor-only input ingress and non-coercive validation for CEF tool receipt trace, authoritative receipt revision and external observation APIs. Current code/test checkpoint c6845a5258a2c3bcdccce1089615cfabbfd4b750 on branch fix/workpass356-strict-tool-receipt-ingress-2026-10-26 is pending exact-head CI. The prior WorkPass355 exact-head validation record is preserved, as are all historical ciSnapshot SHAs and the existing progress scores. WorkPass356 exact PR-head CI PASS on d4ddbbe2495ca6523d4b2c4f04129bf487ab189b: Unified project integration (#40290594913), project progress-ledger integrity (#40290595259), WorkPass110 (#40290594892), P26 (#40290594766), and nine additional focused workflows all succeeded. The unified workflow passed cognitive integration contracts, governed approval E2E, public service startup, runtime/research bridge smoke and final release gates without publishing an archive. The legacy ciSnapshot remains pinned to its original tested SHA; these new exact-head results are listed separately. Readiness scores unchanged. WorkPass375 connects Hexis evidence to canonical MemoryOS2 using evidence digests, stance/provenance records and a bounded replay filter; exact-head validation is pending, scores remain unchanged, and no Release ZIP was changed. WorkPass380 repairs the Hexis review rollback regression: it tests absence of the canonical evidence receipt, replay identity and source trail, and verifies the same evidence ID can retry after the injected review-store failure is removed. Exact-head CI is pending for code/test commit 90f8b111d3e1d5b6b6e7b82f187eaf9ddb365e28; previous failing run is historical and not a PASS for this head. Readiness/progress scores are unchanged; main and canonical Release ZIP remain untouched. WorkPass381 updates the Hexis rollback regression to normalize missing optional fields to boolean checks; the fresh prior unified run 40304978396 failed only at the earlier assertion on the then-current head 1bc3f644ead3eb46c2eeddf10b9852d256ed98bc. The replacement code/test head is d6fbf28a61024f6739bcf4dfe1be58627cdf0da6 and needs fresh exact-head validation; no pass or readiness/retrieval uplift is claimed. Main and canonical Release ZIP remain unchanged. WorkPass383 fixes Hexis event-clock semantics at the canonical MemoryFabric boundary. Logical event tick now follows the latest valid event counter, not Date.parse(observedAt); integration assertions seed tick 27 and require evidence and approval events to retain it. Code/test head 7c62bebea1564b067f31343914c40004dc87d28e awaits fresh exact-head validation. Progress/readiness scores remain unchanged; main and the canonical Release ZIP are untouched. WorkPass385 waits for the Hexis server to exit before smoke-test temporary-state cleanup. Exact-head validation pending at a9f741deb4cece36459f121f9064cf6cf99069d0; no readiness or retrieval uplift claimed. WorkPass386 stabilizes legacy Hexis retries without an explicit observedAt by reusing the canonical record's existing timestamp. Exact-head validation remains pending at 287f312aa982863f10f60cfd6a42db69dd8d97d1; no readiness or retrieval uplift claimed. WorkPass387 replaced the unsuccessful read-only-memory projection lookup with a durable receipt-time marker: only server-generated observedAt is normalized in the digest; public canonical ingress rejects that marker and all evidence payload fields remain bound. Exact-head validation pending at 843964cdf0f5b2dc9d770b9fa60c5d294b0f2bad.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head CI PASS on PR head 0ad66d5519aedbadc317684504ed0e5a8e79412c: Unified project integration (#40289492932), progress-ledger integrity (#40289492966), WorkPass110 (#40289492891), P26 validation (#40289492875) and nine additional focused workflows all passed. Historical 13-row ciSnapshot remains pinned to 621864d0d7f2676245383adab86f1dcc6d0f741f; new validationRuns are recorded separately. No readiness scores were increased. WorkPass356 adds strict descriptor-only input ingress and non-coercive validation for CEF tool receipt trace, authoritative receipt revision and external observation APIs. Current code/test checkpoint c6845a5258a2c3bcdccce1089615cfabbfd4b750 on branch fix/workpass356-strict-tool-receipt-ingress-2026-10-26 is pending exact-head CI. The prior WorkPass355 exact-head validation record is preserved, as are all historical ciSnapshot SHAs and the existing progress scores. WorkPass356 exact PR-head CI PASS on d4ddbbe2495ca6523d4b2c4f04129bf487ab189b: Unified project integration (#40290594913), project progress-ledger integrity (#40290595259), WorkPass110 (#40290594892), P26 (#40290594766), and nine additional focused workflows all succeeded. The unified workflow passed cognitive integration contracts, governed approval E2E, public service startup, runtime/research bridge smoke and final release gates without publishing an archive. The legacy ciSnapshot remains pinned to its original tested SHA; these new exact-head results are listed separately. Readiness scores unchanged. WorkPass375 connects Hexis evidence to canonical MemoryOS2 using evidence digests, stance/provenance records and a bounded replay filter; exact-head validation is pending, scores remain unchanged, and no Release ZIP was changed. WorkPass380 repairs the Hexis review rollback regression: it tests absence of the canonical evidence receipt, replay identity and source trail, and verifies the same evidence ID can retry after the injected review-store failure is removed. Exact-head CI is pending for code/test commit 90f8b111d3e1d5b6b6e7b82f187eaf9ddb365e28; previous failing run is historical and not a PASS for this head. Readiness/progress scores are unchanged; main and canonical Release ZIP remain untouched. WorkPass381 updates the Hexis rollback regression to normalize missing optional fields to boolean checks; the fresh prior unified run 40304978396 failed only at the earlier assertion on the then-current head 1bc3f644ead3eb46c2eeddf10b9852d256ed98bc. The replacement code/test head is d6fbf28a61024f6739bcf4dfe1be58627cdf0da6 and needs fresh exact-head validation; no pass or readiness/retrieval uplift is claimed. Main and canonical Release ZIP remain unchanged. WorkPass383 fixes Hexis event-clock semantics at the canonical MemoryFabric boundary. Logical event tick now follows the latest valid event counter, not Date.parse(observedAt); integration assertions seed tick 27 and require evidence and approval events to retain it. Code/test head 7c62bebea1564b067f31343914c40004dc87d28e awaits fresh exact-head validation. Progress/readiness scores remain unchanged; main and the canonical Release ZIP are untouched. WorkPass385 waits for the Hexis server to exit before smoke-test temporary-state cleanup. Exact-head validation pending at a9f741deb4cece36459f121f9064cf6cf99069d0; no readiness or retrieval uplift claimed. WorkPass386 stabilizes legacy Hexis retries without an explicit observedAt by reusing the canonical record's existing timestamp. Exact-head validation remains pending at 287f312aa982863f10f60cfd6a42db69dd8d97d1; no readiness or retrieval uplift claimed. WorkPass387 replaced the unsuccessful read-only-memory projection lookup with a durable receipt-time marker: only server-generated observedAt is normalized in the digest; public canonical ingress rejects that marker and all evidence payload fields remain bound. Exact-head validation pending at 843964cdf0f5b2dc9d770b9fa60c5d294b0f2bad. WorkPass389 makes generic Hexis review dispatch ask the canonical gate first and permits legacy fallback only for explicit not-a-valid-hexis-evidence-review. Full validation is still pending because Actions on the diagnostic and code heads failed before steps/logs were emitted; do not count those runs as code-test failures or passes. Progress/readiness scores unchanged; main and canonical Release ZIP untouched.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -359,20 +359,17 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass387",
+    "id": "WorkPass389",
     "date": "2026-10-26",
     "branch": "work/hexis-evidence-adapter-2026-10-26",
-    "codeCommit": "843964cdf0f5b2dc9d770b9fa60c5d294b0f2bad",
-    "summary": "Made legacy Hexis evidence replay idempotent when observedAt is omitted by marking server-generated receipt time as internal metadata and normalizing only that timestamp in the canonical digest. Client evidence fields remain digest-bound; public canonical ingress rejects the internal marker.",
+    "codeCommit": "7c22337ae263f68c568ac398c9af1d68a6af2bf0",
+    "summary": "Changed the generic Hexis review dispatcher to ask the canonical evidence-review gate first, instead of deciding from the public review-list projection. Legacy fallback is allowed only on explicit not-a-valid-hexis-evidence-review; other canonical failures fail closed with HTTP 409.",
     "testsAdded": [
-      "adapter accepts only the recognized internal timestamp-origin marker",
-      "replaying identical server-receipt evidence with a different receipt timestamp returns duplicate",
-      "changing the evidence note with the same evidence ID remains conflict",
-      "changing a caller-supplied timestamp remains conflict",
-      "public canonical HTTP endpoint rejects client-supplied internal marker",
-      "legacy HTTP smoke retries an unchanged request without observedAt"
+      "generic review endpoint is exercised with a real pending evidence review through the canonical gate",
+      "smoke error retains gate result details if approval fails",
+      "stale/missing-receipt failures cannot fall through to generic review mutation"
     ],
-    "validationStatus": "PENDING fresh exact-head typecheck, focused evidence tests, Hexis server smoke and Unified project integration.",
+    "validationStatus": "PENDING exact-head typecheck and Unified integration. Previous fully logged Unified run at ac6d07607977b2280b6d924e0c13dd7c6b332e90 failed at the generic-review smoke assertion. Subsequent runs on 62871903fad4f9d19c9235fb061e1f37f010a7cc and 7c22337ae263f68c568ac398c9af1d68a6af2bf0 failed before job steps/logs were available.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
@@ -600,10 +597,35 @@
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
+    },
+    {
+      "id": "WorkPass388",
+      "date": "2026-10-26",
+      "branch": "work/hexis-evidence-adapter-2026-10-26",
+      "codeCommit": "62871903fad4f9d19c9235fb061e1f37f010a7cc",
+      "summary": "Improved the server smoke diagnostic so a failed generic review decision reports the returned canonical gate result instead of a generic assertion string.",
+      "validationStatus": "No new validation evidence: all runs for this diagnostic head finished before job steps/logs were available.",
+      "progressPercentagesChanged": false
+    },
+    {
+      "id": "WorkPass389",
+      "date": "2026-10-26",
+      "branch": "work/hexis-evidence-adapter-2026-10-26",
+      "codeCommit": "7c22337ae263f68c568ac398c9af1d68a6af2bf0",
+      "summary": "Changed the generic Hexis review dispatcher to ask the canonical evidence-review gate first, instead of deciding from the public review-list projection. Legacy fallback is allowed only on explicit not-a-valid-hexis-evidence-review; other canonical failures fail closed with HTTP 409.",
+      "testsAdded": [
+        "generic review endpoint is exercised with a real pending evidence review through the canonical gate",
+        "smoke error retains gate result details if approval fails",
+        "stale/missing-receipt failures cannot fall through to generic review mutation"
+      ],
+      "validationStatus": "PENDING exact-head typecheck and Unified integration. Previous fully logged Unified run at ac6d07607977b2280b6d924e0c13dd7c6b332e90 failed at the generic-review smoke assertion. Subsequent runs on 62871903fad4f9d19c9235fb061e1f37f010a7cc and 7c22337ae263f68c568ac398c9af1d68a6af2bf0 failed before job steps/logs were available.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
     }
   ],
-  "latestUnverifiedCodeTestHead": "843964cdf0f5b2dc9d770b9fa60c5d294b0f2bad",
-  "branchHeadBeforeTrackerCommit": "843964cdf0f5b2dc9d770b9fa60c5d294b0f2bad",
+  "latestUnverifiedCodeTestHead": "7c22337ae263f68c568ac398c9af1d68a6af2bf0",
+  "branchHeadBeforeTrackerCommit": "7c22337ae263f68c568ac398c9af1d68a6af2bf0",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -643,11 +665,11 @@
     }
   ],
   "latestEngineeringCheckpoint": {
-    "workpass": "WorkPass387",
+    "workpass": "WorkPass389",
     "sourceBranch": "work/hexis-evidence-adapter-2026-10-26",
-    "codeTestHead": "843964cdf0f5b2dc9d770b9fa60c5d294b0f2bad",
+    "codeTestHead": "7c22337ae263f68c568ac398c9af1d68a6af2bf0",
     "validationStatus": "pending-exact-head-ci",
-    "summary": "Made legacy Hexis evidence replay idempotent when observedAt is omitted by marking server-generated receipt time as internal metadata and normalizing only that timestamp in the canonical digest. Client evidence fields remain digest-bound; public canonical ingress rejects the internal marker. Readiness/recall scores unchanged; main and canonical Release ZIP untouched.",
+    "summary": "Changed the generic Hexis review dispatcher to ask the canonical evidence-review gate first, instead of deciding from the public review-list projection. Legacy fallback is allowed only on explicit not-a-valid-hexis-evidence-review; other canonical failures fail closed with HTTP 409. Readiness/recall scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   },
