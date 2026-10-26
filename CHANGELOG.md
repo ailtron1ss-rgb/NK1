@@ -1,3 +1,14 @@
+# WorkPass364 — non-coercive CognitiveEventFabric append boundary (2026-10-26)
+
+- [FIXED] Reject non-safe, fractional, negative and non-numeric causal ticks instead of silently rounding/clamping them.
+- [FIXED] Validate stage, timestamp, external flag, confidence, parent IDs and source types before writes; reject malformed values without mutating the journal.
+- [HARDENED] Use the same bounded plain-JSON clone for appended payloads and persisted restore; nested getters/cycles/unsupported values fail before ledger mutation.
+- [REGRESSION] Add direct append ingress cases and assert every rejection preserves the existing snapshot; valid appended events must survive restore.
+- [VALIDATION] Exact-head CI is required; this entry records implementation, not a test PASS.
+- [RELEASE] main and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass363 — reject malformed event-fabric root schema atomically (2026-10-26)
 
 - [FIXED] Distinguish a genuinely omitted legacy schema version from a present but invalid value such as `version: undefined`.
