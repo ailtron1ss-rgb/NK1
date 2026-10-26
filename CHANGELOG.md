@@ -4,7 +4,7 @@
 - [IDENTITY] Malformed memory rows are discarded before index reconstruction. Any ID collision causes all rows for that ID to be dropped, avoiding a split state where the item array keeps duplicates while the ID index silently overwrites one.
 - [INTEGRITY] Restore now recomputes content hashes instead of trusting persisted derived hashes; normalizes core score fields and epistemic status; bounds semantic vectors and links; rejects vectors containing non-finite values; and filters malformed entity/link data.
 - [TEST] Added `tests/workpass356-memoryos-restore-boundary.mjs` covering fail-before-mutation on future schema/array state, legacy versionless migration, duplicate-ID removal, malformed-row filtering, derived-hash repair and scalar/vector/link sanitation.
-- [VALIDATION] Exact-head focused CI is running on source/test SHA `8ed25644b3728ae033d7b9696d013804f21df315`. Do not mark this pass green until the new MemoryOS restore test and runtime typecheck finish successfully. Earlier green runs predate WorkPass356.
+- [VALIDATION] Focused workflow [#40290234073](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290234073) passed on code/test SHA `40991fca3c441ed874ce8c58791d29a9c92ebb21`: native provider 10/10, evaluator-config 16/16, `WORKPASS356_MEMORYOS_RESTORE_BOUNDARY=PASS`, and runtime `TYPECHECK=PASS`. The earlier run on `8ed2564` exposed a misplaced link-filter edit; the normalizer was corrected and this fresh run passed. No release-readiness or retrieval-uplift claim.
 - [LIMIT] This protects the canonical MemoryOS restore boundary; it does not yet prove end-to-end durable recall across a real process restart or independent retrieval uplift.
 
 # WorkPass355 — centralize learner environment filtering (2026-10-26)
