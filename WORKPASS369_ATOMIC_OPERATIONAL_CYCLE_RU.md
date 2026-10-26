@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** workpass369-atomic-operational-cycle  
 **База:** WorkPass368 head `a45b3700ad3e6029e49cf77e7d6a07004e865448`  
-**Статус:** реализация и регрессии добавлены; exact-head CI ожидает проверки.
+**Статус:** typecheck прошёл; первый canonical-kernel run выявил ошибочную expected-string у phase-accessor test, исправлено в a43577446a02eed1b6f8a19bd8205811db280705. Нужен повтор exact-head CI.
 
 ## Найденный дефект
 
