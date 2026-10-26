@@ -48,3 +48,15 @@
 - [Project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843566).
 
 This validates the combined source/test checkpoint, not a measured improvement in external task success or transfer. Scores remain unchanged; release readiness remains unclaimed.
+
+
+## Latest WorkPass344 exact-head evidence (2026-10-26)
+
+The later ledger/promotion trust-boundary checkpoint passed all five required workflows on exact code/test HEAD `60c038454cfcf3bdb710d75f73632f585dcf65ff`:
+- [WorkPass110 continual-learning metrics + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298598)
+- [WorkPass108 paired evidence identity / verified promotion gate](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298708)
+- [WorkPass105 verified outcome ledger](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298611)
+- [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298596)
+- [Project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298594)
+
+This newer result supersedes no historical result; it records that the combined WorkPass344 code/test checkpoint passed after the strict-options test was aligned to the fail-closed contract. No score uplift or release-readiness claim is made.
