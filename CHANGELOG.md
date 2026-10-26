@@ -1,3 +1,10 @@
+# WorkPass362 — clean production UI build + migration/schema contracts (2026-10-26)
+
+- [CI] Added `.github/workflows/workpass362-clean-app-build.yml` on Node 24. It runs the clean-checkout doctor before package installation, installs the app and runtime from their own locked dependency trees, runs the app dependency/script contracts, performs the combined app/runtime typecheck, builds the production UI through the existing env/assets wrapper, and then runs UI→runtime API linkage, schema and asset consistency audits.
+- [MIGRATION] The production build invokes the existing `app/scripts/migrate.mjs`; without `DATABASE_URL`, the migrator must explicitly report that it skipped external PostgreSQL migration (PGLite/local startup migrations are separately tested). No fake database credentials are supplied.
+- [SCOPE] This is a real clean-checkout build gate, but it does not prove a deployed PostgreSQL migration against a production-like database or browser/Live2D/device E2E.
+- [VALIDATION] Focused WorkPass362 workflow is expected to run on its matching app/runtime paths; record the exact head and all step conclusions before marking green.
+
 # WorkPass361 — broad runtime smoke and persistence continuity validation (2026-10-26)
 
 - [CI] Added a dedicated Node 24 workflow that runs runtime typecheck, standard organism smoke, legacy restart-persistence, canonical persistence/restore continuity, persistent-continuity organism integration, and verified autonomous-life restart regression on the same checkout.
