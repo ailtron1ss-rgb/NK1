@@ -68,8 +68,8 @@ const boundaryControlContext = await service.verify({
   toolId: 'device.set-state',
   input,
   result: { accepted: true },
-  executionId: '\\nexec-12345678-valid',
-  decisionId: 'decision-12345678-valid\\t',
+  executionId: '\nexec-12345678-valid',
+  decisionId: 'decision-12345678-valid\t',
 }, async (context) => {
   assert.equal(context.executionId, undefined,
     'leading LF must be rejected before trim can erase it');
@@ -79,5 +79,21 @@ const boundaryControlContext = await service.verify({
 });
 assert.equal(boundaryControlContext.verified, false,
   'boundary control characters must fail closed');
+
+const validCorrelationContext = await service.verify({
+  toolId: 'device.set-state',
+  input,
+  result: { accepted: true },
+  executionId: 'exec-12345678-valid',
+  decisionId: 'decision-12345678-valid',
+}, async (context) => {
+  assert.equal(context.executionId, 'exec-12345678-valid',
+    'well-formed execution IDs containing digits must survive normalization');
+  assert.equal(context.decisionId, 'decision-12345678-valid',
+    'well-formed decision IDs containing digits must survive normalization');
+  return { verified: false, basis: 'none', confidence01: 0 };
+});
+assert.equal(validCorrelationContext.verified, false,
+  'valid correlation identifiers do not by themselves authorize verification');
 
 console.log('WORKPASS94_VERIFICATION_INPUT_BINDING=PASS exact-structural-match partial-input-rejected nested-change-rejected copied-token-rejected malformed-input-rejected');
