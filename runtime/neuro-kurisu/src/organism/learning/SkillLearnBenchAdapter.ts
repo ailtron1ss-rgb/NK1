@@ -215,6 +215,8 @@ export interface SkillLearnBenchCandidateGateOptions {
   maximumHoldoutRegression01?: number;
   /** Minimum number of distinct holdout tasks; empty holdout must never pass. */
   minimumHoldoutTasks?: number;
+  /** Minimum macro-average independently verified validation task success for eligibility. */
+  minimumValidationTaskSuccess01?: number;
 }
 
 export interface SkillLearnBenchCandidateGateReport {
@@ -329,6 +331,7 @@ export function evaluateSkillLearnBenchCandidate(
   const minGain = options.minimumValidationGain01 ?? 0.005;
   const maxRegression = options.maximumHoldoutRegression01 ?? 0.02;
   const minHoldoutTasks = options.minimumHoldoutTasks ?? 2;
+  const minValidationTaskSuccess = options.minimumValidationTaskSuccess01 ?? 0.8;
   if (!Number.isFinite(minGain) || minGain < 0 || minGain > 1) {
     throw new RangeError('candidate-minimum-validation-gain-invalid');
   }
@@ -337,6 +340,9 @@ export function evaluateSkillLearnBenchCandidate(
   }
   if (!Number.isSafeInteger(minHoldoutTasks) || minHoldoutTasks < 1) {
     throw new RangeError('candidate-minimum-holdout-tasks-invalid');
+  }
+  if (!Number.isFinite(minValidationTaskSuccess) || minValidationTaskSuccess < 0 || minValidationTaskSuccess > 1) {
+    throw new RangeError('candidate-minimum-validation-task-success-invalid');
   }
 
   const baselineValidation = validateCandidateReports(baseline.validation, 'baseline-validation');
@@ -352,19 +358,6 @@ export function evaluateSkillLearnBenchCandidate(
   const holdout = pairedCandidateMean(baselineHoldout, candidateHoldout, 'holdout');
   const validationGain = validation.candidateMean - validation.baselineMean;
   const holdoutDelta = holdout.candidateMean - holdout.baselineMean;
-  const reasons: string[] = [];
-  const feedback: string[] = [];
-
-  if (validationGain < minGain) reasons.push('validation-improvement-below-threshold');
-  if (holdout.taskCount < minHoldoutTasks) reasons.push('holdout-task-coverage-insufficient');
-  if (holdoutDelta < -maxRegression) reasons.push('holdout-regression-exceeds-tolerance');
-
-  const allCandidateReports = [...validation.candidateReports, ...holdout.candidateReports];
-  const safetyViolations = allCandidateReports.reduce(
-    (sum, report) => sum + report.skillQuality.safetyViolationCount, 0,
-  );
-  if (safetyViolations > 0) reasons.push('candidate-safety-violations-present');
-
   const macroTaskMetric = (reports: SkillLearnBenchTrialReport[], selector: (r: SkillLearnBenchTrialReport) => number) => {
     const byTask = new Map<string, number[]>();
     for (const report of reports) {
@@ -379,9 +372,23 @@ export function evaluateSkillLearnBenchCandidate(
     return taskMeans.reduce((sum, value) => sum + value, 0) / taskMeans.length;
   };
   const validationTaskSuccess = macroTaskMetric(validation.candidateReports, (r) => r.taskSuccess.passRate);
+  const reasons: string[] = [];
+  const feedback: string[] = [];
+
+  if (validationGain < minGain) reasons.push('validation-improvement-below-threshold');
+  if (validationTaskSuccess < minValidationTaskSuccess) reasons.push('validation-task-success-below-threshold');
+  if (holdout.taskCount < minHoldoutTasks) reasons.push('holdout-task-coverage-insufficient');
+  if (holdoutDelta < -maxRegression) reasons.push('holdout-regression-exceeds-tolerance');
+
+  const allCandidateReports = [...validation.candidateReports, ...holdout.candidateReports];
+  const safetyViolations = allCandidateReports.reduce(
+    (sum, report) => sum + report.skillQuality.safetyViolationCount, 0,
+  );
+  if (safetyViolations > 0) reasons.push('candidate-safety-violations-present');
+
   const validationTrajectory = macroTaskMetric(validation.candidateReports, (r) => r.trajectoryQuality.aggregate);
   const validationSkill = macroTaskMetric(validation.candidateReports, (r) => r.skillQuality.aggregate);
-  if (validationTaskSuccess < 0.8) feedback.push('Improve independently verified task success before promotion.');
+  if (validationTaskSuccess < minValidationTaskSuccess) feedback.push('Independent validation task success is below the promotion threshold; improve task success before promotion.');
   if (validationTrajectory < 0.8) feedback.push('Inspect missing or out-of-order trajectory steps and revise the procedure.');
   if (validationSkill < 0.8) feedback.push('Increase required-capability coverage and confirm the skill remains executable.');
   if (holdoutDelta < 0) feedback.push('Aggregate holdout evaluation indicates regression; revise generality without inspecting holdout examples, then request a fresh independent evaluation.');
