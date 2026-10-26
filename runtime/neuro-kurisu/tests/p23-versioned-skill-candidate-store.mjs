@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AtomicFileSkillStorePersistence } from '../src/organism/learning/AtomicFileSkillStorePersistence.ts';
@@ -223,6 +223,22 @@ try {
     item.candidateId === noEvaluationDigestCandidate.candidateId &&
     item.revisionProvenance?.evaluationFingerprint === undefined), true,
     'optional evaluationFingerprint remains optional across durable restart');
+
+  // Provenance is part of the candidate identity; persisted JSON cannot alter
+  // lineage while keeping the original candidateId and still pass restoration.
+  const tamperedProvenancePath = join(tempRoot, 'state', 'tampered-provenance.json');
+  const tamperedProvenanceSnapshot = JSON.parse(readFileSync(filePath, 'utf8'));
+  const persistedProvenanceCandidate = tamperedProvenanceSnapshot.candidates.find(
+    item => item.candidateId === provenanceCandidate.candidateId,
+  );
+  assert.ok(persistedProvenanceCandidate, 'provenance-bearing candidate is present in durable state');
+  persistedProvenanceCandidate.revisionProvenance.planFingerprint = '9'.repeat(64);
+  writeFileSync(tamperedProvenancePath, JSON.stringify(tamperedProvenanceSnapshot));
+  assert.throws(
+    () => new AtomicFileSkillStorePersistence(tamperedProvenancePath).read(),
+    /invalid persisted versioned skill store snapshot/,
+    'tampered provenance cannot be restored under the original candidate identity',
+  );
   assert.throws(() => durableStore.stageCandidate(
     proposal('j'), 'file-backed-provenance-invalid-digest', { instruction: 'invalid digest is rejected' },
     { ...provenanceWithoutEvaluationDigest, evaluationFingerprint: 'not-a-sha256-digest' },

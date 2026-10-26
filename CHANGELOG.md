@@ -1,3 +1,9 @@
+## P23 durable provenance tamper regression — 2026-10-26
+
+- Added a durable-store tamper case that edits the persisted `revisionProvenance.planFingerprint` without updating the candidate identity.
+- Recovery must reject the altered JSON at the persistence boundary; ordinary/provenance-bearing round-trips and optional `evaluationFingerprint` behavior remain covered.
+- WorkPass110 exact-head rerun will be checked after the branch update.
+
 ## Gateway public-origin forwarding contract — 2026-10-26
 
 - The gateway rewrote `Host` to the internal upstream port but did not send the public `Host:port` or protocol as forwarded origin metadata. The Vite auth-popup middleware reads `x-forwarded-host`/`x-forwarded-proto`, so the missing headers could produce redirects scoped to the internal `:8081` port.
