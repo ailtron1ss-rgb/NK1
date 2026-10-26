@@ -5,6 +5,7 @@ on:
     branches:
       - fix/restored-action-receipt-integrity-2026-10-25
     paths:
+      - ".github/workflows/nk1-compose-smoke.yml"
       - "Dockerfile"
       - "docker-compose.yml"
       - ".dockerignore"
@@ -32,6 +33,7 @@ on:
     branches:
       - fix/restored-action-receipt-integrity-2026-10-25
     paths:
+      - ".github/workflows/nk1-compose-smoke.yml"
       - "Dockerfile"
       - "docker-compose.yml"
       - ".dockerignore"
