@@ -64,8 +64,9 @@ export class FeedbackDeliveryGuard {
         || !ACTIONS.includes(prior.action as ActionKind)) {
         throw new Error('feedback delivery receipt is malformed; refusing replay');
       }
-      if (prior.tick >= input.tick) {
-        if (prior.tick === input.tick) {
+      const priorTick = prior.tick as number;
+      if (priorTick >= input.tick) {
+        if (priorTick === input.tick) {
           throw new Error(`feedback for organism tick ${input.tick} has already been finalized`);
         }
         throw new Error('feedback delivery receipt is from a future tick; refusing clock regression');
