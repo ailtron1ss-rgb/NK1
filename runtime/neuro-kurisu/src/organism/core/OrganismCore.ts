@@ -2867,14 +2867,14 @@ export class OrganismCore {
             return { ok: false, error: 'invalid-evidence-confidence', memoryId: memory.id };
 
         const note = rawNote ?? input.context;
+        // Evidence identity is source-bound. Mutable review metadata (stance,
+        // label, note, confidence) belongs in the digest and must conflict if
+        // changed on replay; it must not mint another independent evidence ID.
         const identity = JSON.stringify([
             memory.id,
-            input.stance,
-            rawRef ?? null,
+            'legacy-hexis-belief-revise',
+            sourceRef,
             contentHash ?? null,
-            label ?? null,
-            evidenceConfidence,
-            note ?? null,
         ]);
         const evidenceId = 'hexis:legacy:' + createHash('sha256').update(identity).digest('hex');
         const result = await this.ingestHexisEvidenceForReview({
