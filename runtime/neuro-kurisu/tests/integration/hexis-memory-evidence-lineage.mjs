@@ -112,6 +112,41 @@ assert.ok(revisionBody.includes('memoryOS.recordEvidence'), 'Core must write evi
 assert.ok(revisionBody.includes('canonicalDuplicate: duplicateEvidence'), 'Core must pass canonical duplicate status to the belief policy');
 assert.ok(revisionBody.includes('audit.applied && evidenceReceipt?.added === true'), 'confidence updates require both an applied revision and a new canonical evidence receipt');
 
+// Corrupt sidecar state must not poison the canonical cognitive runtime on restart.
+const recoveredProjection = new HexisAdaptationFabric();
+recoveredProjection.restore({
+  beliefs: [
+    null,
+    { memoryId: '', confidence01: .4, trust01: .5, sourceKeys: [], contradictingSourceKeys: [], updatedAt: 1 },
+    { memoryId: 'bad-confidence', confidence01: Number.NaN, trust01: .5, sourceKeys: [], contradictingSourceKeys: [], updatedAt: 1 },
+    { memoryId: 'bad-trust', confidence01: .4, trust01: Number.NaN, sourceKeys: [], contradictingSourceKeys: [], updatedAt: 1 },
+    {
+      memoryId: 'survivor-memory',
+      confidence01: .62,
+      trust01: .75,
+      sourceKeys: [' source-a ', '', 7, 'source-a'],
+      contradictingSourceKeys: null,
+      updatedAt: Number.NaN,
+    },
+  ],
+  metrics: { beliefRevisions: 'corrupt-counter', duplicateEvidence: -1 },
+});
+const recoveredState = recoveredProjection.snapshot();
+assert.equal(recoveredState.beliefs.length, 1, 'invalid belief projections are dropped without discarding valid memory-side state');
+assert.deepEqual(recoveredState.beliefs[0].sourceKeys, ['source-a'], 'replayed keys are trimmed, deduplicated and type-checked');
+assert.deepEqual(recoveredState.beliefs[0].contradictingSourceKeys, [], 'malformed key arrays normalize to empty arrays');
+assert.equal(recoveredState.beliefs[0].updatedAt, 0, 'invalid projection timestamps normalize conservatively');
+assert.equal(recoveredState.metrics.beliefRevisions, 0, 'corrupt counters cannot poison diagnostic arithmetic');
+assert.equal(recoveredState.metrics.duplicateEvidence, 0, 'negative counters are rejected during restore');
+const postRestoreRevision = recoveredProjection.reviseBelief({
+  memoryId: 'survivor-memory',
+  confidence01: .62,
+  trust01: .75,
+  evidence: { ref: 'https://evidence.example/post-restore' },
+  stance: 'supports',
+  at: 5000,
+});
+assert.equal(postRestoreRevision.applied, true, 'valid belief updates remain usable after a damaged sidecar is restored');
 console.log('HEXIS_MEMORY_EVIDENCE_LINEAGE=PASS', JSON.stringify({
   priorConfidence,
   posteriorConfidence: firstAudit.posteriorConfidence01,
