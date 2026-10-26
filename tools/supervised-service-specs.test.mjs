@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSupervisedServiceSpecs, missingServiceRequirements } from './supervised-service-specs.mjs';
+import { buildSupervisedDevelopmentServiceSpecs, buildSupervisedServiceSpecs, missingServiceRequirements } from './supervised-service-specs.mjs';
 
 const root = '/opt/neuro-kurisu';
 const stateDir = '/opt/neuro-kurisu/.super-state';
@@ -60,6 +60,29 @@ test('service specs reject missing launch inputs instead of constructing unusabl
   assert.throws(() => buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable: '' }), /Node executable is required/);
 });
 
+
+test('development specs use the runtime workspace and repository-level bridge/UI paths', () => {
+  const specs = buildSupervisedDevelopmentServiceSpecs({ root, stateDir, nodeExecutable });
+  assert.deepEqual(specs.map(spec => spec.label), ['neuro-kurisu', 'research-bridge', 'ui']);
+  const runtime = specs.find(spec => spec.label === 'neuro-kurisu');
+  assert.equal(runtime.cwd, '/opt/neuro-kurisu/runtime/neuro-kurisu');
+  assert.equal(runtime.env.NODE_ENV, 'development');
+  assert.equal(runtime.command, nodeExecutable);
+  assert.deepEqual(runtime.args, ['--experimental-strip-types', 'src/server/server.mjs']);
+  assert.equal(specs.find(spec => spec.label === 'research-bridge').cwd, root);
+  assert.equal(specs.find(spec => spec.label === 'ui').cwd, root);
+  assert.deepEqual(specs.find(spec => spec.label === 'ui').args, ['--prefix', 'app', 'run', 'dev']);
+  assert.deepEqual(missingServiceRequirements(specs, () => true), []);
+});
+
+test('development supervisor uses shared launch specs and fail-closed child policy', () => {
+  const actualRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
+  const devSource = readFileSync(resolve(actualRoot, 'tools/super-dev.mjs'), 'utf8');
+  assert.match(devSource, /buildSupervisedDevelopmentServiceSpecs/);
+  assert.match(devSource, /decideSupervisedChildExit/);
+  assert.match(devSource, /decideSupervisedChildSpawnError/);
+  assert.match(devSource, /inspectSupervisorToolchain/);
+});
 
 test('required service prerequisites are checked before local state is created', () => {
   const specs = buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable });

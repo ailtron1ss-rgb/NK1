@@ -24,6 +24,9 @@ on:
       - "tools/supervisor-exit-policy.test.mjs"
       - "tools/supervised-service-specs.mjs"
       - "tools/supervised-service-specs.test.mjs"
+      - "tools/supervisor-preflight.mjs"
+      - "tools/supervisor-preflight.test.mjs"
+      - "tools/super-dev.mjs"
       - ".github/workflows/toolchain-contract.yml"
   pull_request:
     paths:
@@ -44,6 +47,9 @@ on:
       - "tools/supervisor-exit-policy.test.mjs"
       - "tools/supervised-service-specs.mjs"
       - "tools/supervised-service-specs.test.mjs"
+      - "tools/supervisor-preflight.mjs"
+      - "tools/supervisor-preflight.test.mjs"
+      - "tools/super-dev.mjs"
       - ".github/workflows/toolchain-contract.yml"
   workflow_dispatch:
 
@@ -68,6 +74,8 @@ jobs:
           package-manager-cache: false
       - name: Validate toolchain contract logic
         run: npm run test:toolchain-contract
+      - name: Validate shared supervisor toolchain preflight
+        run: npm run test:supervisor-preflight
       - name: Validate fail-closed runtime TypeScript compiler contract
         run: npm run test:runtime-typecheck-contract
       - name: Validate supervised service exit policy
@@ -79,6 +87,8 @@ jobs:
           node --check tools/super-doctor.mjs
           node --check tools/super-install.mjs
           node --check tools/super-start.mjs
+          node --check tools/super-dev.mjs
+          node --check tools/supervisor-preflight.mjs
           node --check tools/supervisor-exit-policy.mjs
           node --check tools/supervised-service-specs.mjs
           node --check runtime/neuro-kurisu/scripts/typecheck-runtime.mjs

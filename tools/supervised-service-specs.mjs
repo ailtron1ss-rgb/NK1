@@ -4,14 +4,22 @@ import { resolve } from 'node:path';
  * Canonical launch contracts for the services owned by the top-level supervisor.
  * Commands and relative script paths are evaluated from each spec's cwd.
  */
-export function buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable }) {
+function resolveServiceRoots({ root, stateDir, nodeExecutable }) {
   if (typeof root !== 'string' || !root.trim()) throw new Error('supervisor root is required');
   if (typeof stateDir !== 'string' || !stateDir.trim()) throw new Error('supervisor state directory is required');
   if (typeof nodeExecutable !== 'string' || !nodeExecutable.trim()) throw new Error('Node executable is required');
 
   const projectRoot = resolve(root);
-  const runtimeRoot = resolve(projectRoot, 'runtime/neuro-kurisu');
-  const durableState = resolve(stateDir);
+  return {
+    projectRoot,
+    runtimeRoot: resolve(projectRoot, 'runtime/neuro-kurisu'),
+    durableState: resolve(stateDir),
+    nodeExecutable,
+  };
+}
+
+export function buildSupervisedServiceSpecs(input) {
+  const { projectRoot, runtimeRoot, durableState, nodeExecutable } = resolveServiceRoots(input);
 
   return [
     {
@@ -59,6 +67,45 @@ export function buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable }) 
   ];
 }
 
+
+/**
+ * Development launch manifest. It intentionally uses the same canonical runtime
+ * workspace and repo-root ownership as production while selecting Vite dev mode.
+ */
+export function buildSupervisedDevelopmentServiceSpecs(input) {
+  const { projectRoot, runtimeRoot, durableState, nodeExecutable } = resolveServiceRoots(input);
+  return [
+    {
+      label: 'neuro-kurisu',
+      command: nodeExecutable,
+      args: ['--experimental-strip-types', 'src/server/server.mjs'],
+      cwd: runtimeRoot,
+      preflightPaths: ['src/server/server.mjs'],
+      env: {
+        PORT: '3310',
+        HOST: '127.0.0.1',
+        STATE_DIR: resolve(durableState, 'organism'),
+        NODE_ENV: 'development',
+      },
+    },
+    {
+      label: 'research-bridge',
+      command: 'python3',
+      args: ['research/research_bridge.py'],
+      cwd: projectRoot,
+      preflightPaths: ['research/research_bridge.py'],
+      env: { RESEARCH_PORT: '8765' },
+    },
+    {
+      label: 'ui',
+      command: 'npm',
+      args: ['--prefix', 'app', 'run', 'dev'],
+      cwd: projectRoot,
+      preflightPaths: ['app/package.json', 'app/node_modules/vite/bin/vite.js'],
+      env: {},
+    },
+  ];
+}
 
 /**
  * Return unavailable service prerequisites without creating state or launching

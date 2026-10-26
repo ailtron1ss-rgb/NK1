@@ -1,3 +1,11 @@
+## Development startup and shared supervisor preflight — 2026-10-26
+
+- Fixed the same relative-entrypoint defect in `npm run dev`: Neuro Kurisu now launches from `runtime/neuro-kurisu`, while the bridge and Vite dev server remain rooted at the repository.
+- Development and production now share the same Node/npm/`.nvmrc` preflight; development fails before state creation when the active toolchain does not match the repository contract.
+- Development service exits and spawn failures now stop sibling services and return a non-zero status instead of leaving a partial organism running.
+- Added regression coverage for development launch specs, actual entrypoint paths, shared preflight behavior and supervisor wiring.
+- Exact-head CI validation is pending.
+
 ## Preflight required services before startup side effects — 2026-10-26
 
 - `super-start` now resolves the service launch manifest and validates the Python interpreter, runtime/research/gateway entrypoints, the installed Vite executable, and built UI output before creating `.super-state` or launching any child.

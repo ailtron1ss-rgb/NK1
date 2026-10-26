@@ -1,42 +1,72 @@
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { formatSupervisorToolchainFailure, inspectSupervisorToolchain } from './supervisor-preflight.mjs';
+import { decideSupervisedChildExit, decideSupervisedChildSpawnError } from './supervisor-exit-policy.mjs';
+import { buildSupervisedDevelopmentServiceSpecs, missingServiceRequirements } from './supervised-service-specs.mjs';
 
-const ROOT = resolve(new URL('..', import.meta.url).pathname);
+const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const toolchain = inspectSupervisorToolchain(ROOT);
+if (!toolchain.ready) {
+  console.error(formatSupervisorToolchainFailure(toolchain, 'SUPER_DEV'));
+  process.exit(1);
+}
+
+function commandAvailable(command, args = ['--version']) {
+  try { execFileSync(command, args, { stdio: 'ignore' }); return true; }
+  catch { return false; }
+}
+if (!commandAvailable('python3')) {
+  console.error('SUPER_DEV=FAIL reason=required-executable-missing service=research-bridge command=python3');
+  process.exit(1);
+}
+
 const stateDir = resolve(ROOT, '.super-state');
-mkdirSync(stateDir, { recursive: true });
+const serviceSpecs = buildSupervisedDevelopmentServiceSpecs({
+  root: ROOT, stateDir, nodeExecutable: process.execPath,
+});
+const missingRequirements = missingServiceRequirements(serviceSpecs, existsSync);
+if (missingRequirements.length) {
+  const details = missingRequirements.map(item => `${item.label}:${item.path}`).join('; ');
+  console.error(`SUPER_DEV=FAIL reason=service-prerequisite-missing details=[${details}]`);
+  process.exit(1);
+}
 
+mkdirSync(stateDir, { recursive: true });
 const children = [];
-function launch(label, command, args, env = {}) {
-  const child = spawn(command, args, {
-    cwd: ROOT,
-    env: { ...process.env, ...env },
-    stdio: 'inherit',
+let shuttingDown = false;
+const shutdown = (reason, exitCode = 0) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[super-dev] shutting down (${reason})`);
+  for (const child of children) child.kill('SIGTERM');
+  setTimeout(() => process.exit(exitCode), 800).unref();
+};
+
+function launch({ label, command, args, cwd, env = {} }) {
+  const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, stdio: 'inherit' });
+  child.on('error', error => {
+    const decision = decideSupervisedChildSpawnError({
+      label,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      shuttingDown,
+    });
+    if (decision.action === 'ignore') return;
+    console.error(decision.message);
+    void shutdown(decision.reason, decision.exitCode);
   });
   child.on('exit', (code, signal) => {
-    if (signal) console.log(`[super] ${label} exited via ${signal}`);
-    else if (code !== 0) console.error(`[super] ${label} exited with ${code}`);
+    const decision = decideSupervisedChildExit({ label, code, signal, shuttingDown });
+    if (decision.action === 'ignore') return;
+    console.error(decision.message);
+    void shutdown(decision.reason, decision.exitCode);
   });
   children.push(child);
   return child;
 }
 
-if (!existsSync(resolve(ROOT, 'app/package.json'))) throw new Error('app/package.json missing');
-launch('neuro-kurisu', 'node', ['--experimental-strip-types', 'src/server/server.mjs'], {
-  PORT: '3310',
-  HOST: '127.0.0.1',
-  STATE_DIR: resolve(stateDir, 'organism'),
-  NODE_ENV: 'development',
-});
-launch('research-bridge', 'python3', ['research/research_bridge.py'], {
-  RESEARCH_PORT: '8765',
-});
-launch('ui', 'npm', ['--prefix', 'app', 'run', 'dev']);
+for (const spec of serviceSpecs) launch(spec);
 
-const shutdown = (signal) => {
-  console.log(`[super] shutting down (${signal})`);
-  for (const child of children) child.kill('SIGTERM');
-  setTimeout(() => process.exit(0), 800).unref();
-};
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT', 130));
+process.on('SIGTERM', () => shutdown('SIGTERM', 143));
