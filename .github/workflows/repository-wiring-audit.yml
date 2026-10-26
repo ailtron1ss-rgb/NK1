@@ -15,6 +15,15 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B274AutonomousSkillLaboratory.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-274-autonomous-skill-laboratory.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-274-independent-skill-evaluation.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-274-migration.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-274-core-autonomous-skill.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-autonomous-goal-lifecycle.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-migration.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-core-autonomous-lifecycle.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/core/FeedbackDeliveryGuard.ts"
       - "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts"
@@ -40,6 +49,15 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B274AutonomousSkillLaboratory.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-274-autonomous-skill-laboratory.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-274-independent-skill-evaluation.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-274-migration.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-274-core-autonomous-skill.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-autonomous-goal-lifecycle.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-migration.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-273-core-autonomous-lifecycle.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/core/FeedbackDeliveryGuard.ts"
       - "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts"
@@ -97,6 +115,27 @@ jobs:
 
       - name: Test B272 endogenous goal and outcome attribution
         run: npm --prefix runtime/neuro-kurisu run test:workpass292:motivation-to-goal
+
+      - name: Test B273 autonomous goal lifecycle attribution
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-273
+
+      - name: Test B273 persisted-state migration
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-273:migration
+
+      - name: Test B273 Core integration
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-273:core
+
+      - name: Test B274 skill candidate attribution
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-274
+
+      - name: Test B274 independent skill evaluation
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-274:evaluator
+
+      - name: Test B274 persisted-state migration
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-274:migration
+
+      - name: Test B274 Core integration
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-274:core
 
       - name: Verify B272 credit attribution in both feedback paths
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-feedback-attribution-wiring
