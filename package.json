@@ -190,6 +190,7 @@
     "test:supervisor-preflight": "node --test tools/supervisor-preflight.test.mjs",
     "test:supervisor-exit-policy": "node --test tools/supervisor-exit-policy.test.mjs",
     "test:supervised-service-specs": "node --test tools/supervised-service-specs.test.mjs",
+    "test:supervisor-start-smoke": "node tools/supervisor-start-smoke.mjs",
     "test:super-gateway-headers": "node --test tools/super-gateway-headers.test.mjs",
     "test:runtime-typecheck-contract": "node tools/typecheck-runtime-contract.test.mjs"
   },

@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatSupervisorToolchainFailure, inspectSupervisorToolchain } from './supervisor-preflight.mjs';
 import { decideSupervisedChildExit, decideSupervisedChildSpawnError } from './supervisor-exit-policy.mjs';
-import { buildSupervisedDevelopmentServiceSpecs, missingServiceRequirements } from './supervised-service-specs.mjs';
+import { buildSupervisedDevelopmentServiceSpecs, missingServiceRequirements, resolveSupervisorStateDir } from './supervised-service-specs.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const toolchain = inspectSupervisorToolchain(ROOT);
@@ -22,7 +22,7 @@ if (!commandAvailable('python3')) {
   process.exit(1);
 }
 
-const stateDir = resolve(ROOT, '.super-state');
+const stateDir = resolveSupervisorStateDir(ROOT);
 const serviceSpecs = buildSupervisedDevelopmentServiceSpecs({
   root: ROOT, stateDir, nodeExecutable: process.execPath,
 });

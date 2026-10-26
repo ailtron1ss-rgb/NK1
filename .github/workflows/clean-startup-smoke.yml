@@ -1,0 +1,80 @@
+name: NK1 clean install, build and supervised startup smoke
+
+on:
+  pull_request:
+    paths:
+      - ".nvmrc"
+      - "package.json"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "app/vite.config.ts"
+      - "app/src/**"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/src/**"
+      - "research/research_bridge.py"
+      - "tools/super-start.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/supervised-service-specs.mjs"
+      - "tools/supervisor-start-smoke.mjs"
+      - ".github/workflows/clean-startup-smoke.yml"
+  push:
+    branches:
+      - "work/**"
+      - "rebuild"
+    paths:
+      - ".nvmrc"
+      - "package.json"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "app/vite.config.ts"
+      - "app/src/**"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/src/**"
+      - "research/research_bridge.py"
+      - "tools/super-start.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/supervised-service-specs.mjs"
+      - "tools/supervisor-start-smoke.mjs"
+      - ".github/workflows/clean-startup-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-clean-startup-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clean-install-build-startup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up repository Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Report host interpreters
+        run: |
+          node --version
+          npm --version
+          python3 --version
+      - name: Clean install runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --no-audit --no-fund
+      - name: Clean install app dependencies
+        run: npm ci --prefix app --no-audit --no-fund
+      - name: Build production UI and apply local migrations
+        run: npm run build
+      - name: Typecheck app and runtime
+        run: npm run typecheck
+      - name: Smoke-test autonomous runtime core
+        run: npm run test:runtime:smoke
+      - name: Verify mandatory service launch prerequisites
+        run: npm run test:supervised-service-specs
+      - name: Start the full supervised production stack and probe public endpoints
+        run: npm run test:supervisor-start-smoke

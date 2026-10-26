@@ -4,6 +4,13 @@ import { resolve } from 'node:path';
  * Canonical launch contracts for the services owned by the top-level supervisor.
  * Commands and relative script paths are evaluated from each spec's cwd.
  */
+export function resolveSupervisorStateDir(root, override = process.env.NK_SUPER_STATE_DIR) {
+  if (typeof root !== 'string' || !root.trim()) throw new Error('supervisor root is required');
+  const projectRoot = resolve(root);
+  const requested = typeof override === 'string' && override.trim() ? override.trim() : '.super-state';
+  return resolve(projectRoot, requested);
+}
+
 function resolveServiceRoots({ root, stateDir, nodeExecutable }) {
   if (typeof root !== 'string' || !root.trim()) throw new Error('supervisor root is required');
   if (typeof stateDir !== 'string' || !stateDir.trim()) throw new Error('supervisor state directory is required');

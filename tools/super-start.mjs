@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatSupervisorToolchainFailure, inspectSupervisorToolchain } from './supervisor-preflight.mjs';
 import { decideSupervisedChildExit, decideSupervisedChildSpawnError } from './supervisor-exit-policy.mjs';
-import { buildSupervisedServiceSpecs, missingServiceRequirements } from './supervised-service-specs.mjs';
+import { buildSupervisedServiceSpecs, missingServiceRequirements, resolveSupervisorStateDir } from './supervised-service-specs.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 function commandAvailable(bin, args = ['--version']) {
@@ -17,7 +17,7 @@ if (!toolchain.ready) {
   process.exit(1);
 }
 
-const stateDir = resolve(ROOT, '.super-state');
+const stateDir = resolveSupervisorStateDir(ROOT);
 const serviceSpecs = buildSupervisedServiceSpecs({
   root: ROOT,
   stateDir,

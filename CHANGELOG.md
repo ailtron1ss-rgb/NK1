@@ -4,6 +4,13 @@
 - Prevented a discarded outcome from being attached to the next selected action. Invalid receipts also suppress unsafe learning without freezing the spine-only cycle.
 - Verified by focused Repository wiring contract audit [#40255940523](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255940523): all workflow steps succeeded. PR [#157](https://github.com/ailtron1ss-rgb/NK1/pull/157) squash-merged into the audit branch (merge commit `a3e8119113be6493507b31a0ac49afeab59c150b`).
 
+## Clean-install production startup smoke — 2026-10-26
+
+- Added an isolated four-service startup smoke runner: it starts the production supervisor with a temporary state directory and waits for UI HTML, runtime snapshot/version and research status through the public gateway.
+- Added `NK_SUPER_STATE_DIR` as an optional supervisor state-path override; the default remains repository-local `.super-state`. Both `start` and `dev` use the same resolver, and a regression verifies default, relative and absolute overrides.
+- Added a clean GitHub Actions lane that installs both locked workspaces, builds the UI, typechecks the app/runtime, runs the organism smoke test, then starts the full service group and probes all public endpoints. The smoke runner terminates child processes and removes its temporary state.
+- Exact-head clean install/build/live startup validation is pending.
+
 ## Gateway TLS-terminator protocol preservation — 2026-10-26
 
 - The gateway previously passed a hard-coded `http` value into upstream header construction, which overwrote `x-forwarded-proto: https` from the trusted local TLS terminator. That could make authentication redirects use HTTP even when the public service was HTTPS.

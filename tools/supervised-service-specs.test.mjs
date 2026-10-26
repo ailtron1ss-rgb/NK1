@@ -3,11 +3,18 @@ import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSupervisedDevelopmentServiceSpecs, buildSupervisedServiceSpecs, missingServiceRequirements } from './supervised-service-specs.mjs';
+import { buildSupervisedDevelopmentServiceSpecs, buildSupervisedServiceSpecs, missingServiceRequirements, resolveSupervisorStateDir } from './supervised-service-specs.mjs';
 
 const root = '/opt/neuro-kurisu';
 const stateDir = '/opt/neuro-kurisu/.super-state';
 const nodeExecutable = '/usr/local/bin/node';
+
+test('supervisor state directory defaults safely and supports an isolated explicit override', () => {
+  assert.equal(resolveSupervisorStateDir(root), '/opt/neuro-kurisu/.super-state');
+  assert.equal(resolveSupervisorStateDir(root, '/tmp/nk1-supervisor-smoke/state'), '/tmp/nk1-supervisor-smoke/state');
+  assert.equal(resolveSupervisorStateDir(root, 'test-state'), '/opt/neuro-kurisu/test-state');
+  assert.throws(() => resolveSupervisorStateDir(''), /root is required/);
+});
 
 test('runtime service resolves its relative entrypoint from the runtime workspace', () => {
   const specs = buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable });
