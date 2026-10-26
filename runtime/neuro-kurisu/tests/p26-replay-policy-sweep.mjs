@@ -52,6 +52,7 @@ const strategies=[
   {name:'interleave-1',stride:1},
 ];
 const records=[];
+const violations=[];
 for(const seed of seeds){
   for(const strategy of strategies){
     const engine=new P26TrueLearningEngine();
@@ -81,8 +82,8 @@ for(const seed of seeds){
     for(const [key,value] of Object.entries({oldBefore,oldAfter,newAfter})){
       assert.ok(Number.isFinite(value)&&value>=0&&value<=1, strategy.name+'.'+key+' must be valid');
     }
-    assert.ok(newAfter>.60,`${strategy.name} seed=${seed} newAfter=${newAfter.toFixed(3)} oldBefore=${oldBefore.toFixed(3)} oldAfter=${oldAfter.toFixed(3)} replayUpdates=${replayUpdates} blockedReplayRows=${blockedReplayRows} must retain useful new-task performance`);
-    if(strategy.stride>0)assert.equal(blockedReplayRows,0,'well-separated contexts must not be misclassified as same-context conflict');
+    if(newAfter<=.60)violations.push({kind:'new-task-retention',strategy:strategy.name,seed,newAfter,oldBefore,oldAfter,replayUpdates,blockedReplayRows});
+    if(strategy.stride>0&&blockedReplayRows!==0)violations.push({kind:'unexpected-conflict-block',strategy:strategy.name,seed,blockedReplayRows});
     records.push({seed,strategy:strategy.name,oldBefore,oldAfter,newAfter,retentionDelta:oldAfter-oldBefore,
       replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons});
   }
@@ -94,6 +95,8 @@ const summary=strategies.map(strategy=>{
     meanNewTask:mean('newAfter'),meanRetentionDelta:mean('retentionDelta'),meanReplayUpdates:mean('replayUpdates'),
     meanConflictComparisons:mean('conflictComparisons')};
 });
+console.log('P26_REPLAY_POLICY_SWEEP_DIAGNOSTIC='+JSON.stringify({violations,summary,records},null,2));
+assert.equal(violations.length,0,'policy sweep constraints violated: '+JSON.stringify(violations));
 assert.equal(records.length,seeds.length*strategies.length);
 assert.ok(summary.every(row=>row.seeds===seeds.length));
 console.log('P26_REPLAY_POLICY_SWEEP=PASS');
