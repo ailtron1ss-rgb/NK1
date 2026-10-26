@@ -1,9 +1,45 @@
 import { createHash } from 'node:crypto';
+import { sha256Stable } from '../../core/StableSerialization.ts';
 
 type JsonRecord = Record<string, unknown>;
 
 const isRecord = (value: unknown): value is JsonRecord =>
     value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * Rebuild the exact digest payload used when stageHmx creates the staged review record.
+ * Keep staged payload bytes out of this digest cache; only the actual staged data belongs
+ * to the digest. This is integrity checking, not a signature against a malicious writer.
+ */
+export function calculateHmxStageDigest(stageValue: unknown): string | null {
+    if (!isRecord(stageValue) ||
+        !isRecord(stageValue.sectionCounts) ||
+        !Array.isArray(stageValue.protectedSections) ||
+        !stageValue.protectedSections.every((item: unknown) => typeof item === 'string') ||
+        !Array.isArray(stageValue.conflicts) ||
+        !isRecord(stageValue.stagedSections)) return null;
+    try {
+        return sha256Stable({
+            exportId: stageValue.exportId,
+            intent: stageValue.intent,
+            strategy: stageValue.strategy,
+            sourceSubjectId: stageValue.sourceSubjectId,
+            sourceLineageId: stageValue.sourceLineageId,
+            sectionCounts: stageValue.sectionCounts,
+            protectedSections: stageValue.protectedSections,
+            conflicts: stageValue.conflicts,
+            stagedSections: stageValue.stagedSections,
+        }, 'legacy');
+    } catch {
+        return null;
+    }
+}
+
+export function hasValidHmxStageDigest(stageValue: unknown): boolean {
+    if (!isRecord(stageValue) || stageValue.status === 'applied') return false;
+    const computed = calculateHmxStageDigest(stageValue);
+    return typeof stageValue.digest === 'string' && computed !== null && computed === stageValue.digest;
+}
 
 /**
  * Shared integrity gate for persisted HMX application receipts.
