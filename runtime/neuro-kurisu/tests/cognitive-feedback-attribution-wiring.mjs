@@ -50,9 +50,9 @@ assert.ok(unselectedMethod.includes('this.state.rejectedGoals++'));
 assert.doesNotMatch(unselectedMethod, /actionPrototypeWeights|goalWeights|goalOutcomeMemory|outcomeHistory/,
   'an unselected proposal must not train action prototypes or pollute executed-action outcome memory');
 
-assert.match(stateMigrations, /feedbackDeliveryReceipt\\?: unknown;/,
+assert.ok(stateMigrations.includes('feedbackDeliveryReceipt?: unknown;'),
   'PersistedOrganism must type the receipt as an untrusted migration boundary');
-assert.match(stateMigrations, /feedbackDeliveryReceipt: raw\\.system\\?\\.feedbackDeliveryReceipt/,
+assert.ok(stateMigrations.includes('feedbackDeliveryReceipt: raw.system?.feedbackDeliveryReceipt'),
   'state migration must preserve the receipt so restart cannot silently reopen feedback replay');
 
 assert.ok(core.includes("private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard()"),
