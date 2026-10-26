@@ -540,12 +540,12 @@ export class MemoryFabric {
     if(Array.isArray(rawReceipts)&&rawReceipts.length>this.maxMutationReceipts)this.retiredMutationReceiptBloomCorrupt=true;
     const validReceipt=(row:any):boolean=>{
       if(!row||typeof row.commandId!=='string'||row.commandId.length===0||row.commandId.length>128||
-        row.commandId!==row.commandId.trim()||/[\u0000-\u001f\u007f]/.test(row.commandId)||
+        row.commandId!==row.commandId.trim()||/[\u0000-\u001f\u007f-\u009f]/.test(row.commandId)||
         typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||
         !['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||
         !['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||
         typeof row.at!=='number'||!Number.isFinite(row.at)||row.at<0||
-        (row.memoryId!==undefined&&(typeof row.memoryId!=='string'||!row.memoryId||row.memoryId.length>256||/[\u0000-\u001f\u007f]/.test(row.memoryId)))||
+        (row.memoryId!==undefined&&(typeof row.memoryId!=='string'||!row.memoryId||row.memoryId.length>256||/[\u0000-\u001f\u007f-\u009f]/.test(row.memoryId)))||
         (row.booleanValue!==undefined&&typeof row.booleanValue!=='boolean'))return false;
       if((row.resultKind==='memory'||row.resultKind==='context')&&(typeof row.memoryId!=='string'||!row.memoryId))return false;
       if(row.resultKind==='boolean'&&typeof row.booleanValue!=='boolean')return false;
