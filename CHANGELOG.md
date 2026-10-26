@@ -1,3 +1,13 @@
+## [NK1][WorkPass382] Correct causal replay wiring contract assertion order — 2026-10-26
+
+- **Observed:** WorkPass71 reached `test:causal-replay-runtime-wiring.mjs` after the P26 sequential benchmark and policy sweep passed, then failed at a static assertion claiming the causal sampler's feature vector was absent.
+- **Root cause:** the test searched for `policyFeatures01` only after the `selectCausalReplayBatch(...)` call. The production code correctly builds feature-grounded candidates first, then invokes the sampler, and finally runs the adaptive multi-signal selector.
+- **Fix:** assert that `policyFeatures01` is built inside `replayPending`, after candidate construction and before the sampler call; preserve energy/goal pressure/outcome success and bounded-capacity assertions.
+- **Validation:** the changed test and current exact-head WorkPass71 rerun are required before this correction is considered validated. No runtime sampler behavior changed.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][WorkPass381] Balance fresh-task plasticity against actual replay pressure — 2026-10-26
 
 - **Previous exact-head outcome:** WorkPass380 failed the context-aware sequential benchmark at `contextAware.taskBFinal`. The coprime permutation broke useful counterfactual pairing between equal-energy states in old/new contexts, so that algorithm is not kept.
