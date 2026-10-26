@@ -1,16 +1,18 @@
 # NeuroCore — repository working rules
 
-> **Current continuation point (2026-10-26):** read `NEUROCORE_START_HERE.md` first. Current cumulative code branch: `workpass349-native-dataset-path-identity-2026-10-26` (WorkPass349–351). Keep `main` stable.
+> **Current continuation point (2026-10-26):** read `NEUROCORE_START_HERE.md` first. Cumulative source branch: `workpass349-native-dataset-path-identity-2026-10-26` (WorkPass349–352). Keep `main` stable.
 >
-> **WorkPass349:** bind native signed-dataset `lstat`, canonical target and opened descriptor to one device/inode, opening the configured path with `O_NOFOLLOW` on POSIX.
+> **WorkPass349:** signed dataset validation/opening binds original path, canonical target and file descriptor identity.
 >
-> **WorkPass350:** host evaluator config must not be in a group/world-writable parent directory, and its file identity must differ from the repair provider even under hard-link aliases.
+> **WorkPass350:** host evaluator config rejects group/world-writable parent directories and provider/evaluator hard-link aliases.
 >
-> **WorkPass351:** reject invalid process environment before allocating per-run storage; remove pre-spawn scratch directories if trusted-run registration fails or cancellation is detected before spawn.
+> **WorkPass351:** learning supervisor validates environment before scratch allocation and cleans pre-spawn scratch directories when trusted registration fails or cancellation is observed.
 >
-> **Validation:** WorkPass349 run #40285085066 passes native provider tests 10/10, supervisor cleanup regression and runtime `TYPECHECK=PASS` on SHA `0d1af65888b7d89fd3b0484bc2fbca8b9f369b9b`. WorkPass335 evaluator wiring passed 15/15 plus typecheck on prior code checkpoint `5484b3567965870a4596336503a6b22985dbb17f`. Broad CI and actual device/deployment gates are distinct; do not claim production readiness or measured learning uplift from focused test passes.
+> **WorkPass352:** host executor/verifier/scanner executable parent permissions and device/inode identity are validated at setup and each dispatch; regressions guard writable parents and replaced directories.
 >
-> Continue code-first, preserve canonical runtime/ledger ownership, add regression tests for defects, avoid duplicated sources of truth, and do not merge the source stack into `main` without separate release synchronization and verification.
+> **Validation:** dedicated WorkPass349 workflow #40285352614 passed native dataset tests 10/10, supervisor cleanup, host-owned executable path regressions and runtime `TYPECHECK=PASS` on SHA `b9e0e90710e1380cac0ee57e1a0deaf74e214cf1`. Older broad workflow results apply to their stated code SHAs. Full production readiness, independent learning uplift and real device E2E remain unproven.
+>
+> Never treat filesystem checks as a substitute for an OS sandbox. Keep the source stack out of `main` until separately verified release synchronization is authorized and complete.
 
 ## Project objective
 
