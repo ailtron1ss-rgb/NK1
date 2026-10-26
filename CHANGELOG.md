@@ -1,3 +1,11 @@
+## [NK1][Hexis] WorkPass390 — recover partial canonical writes and keep temporal replays idempotent (2026-10-26)
+
+- [FIX] The HMX projector now verifies that candidate canonical memory IDs were actually removed during compensation. A writer that commits then throws, followed by a failed/non-effective forget, is reported as an incomplete rollback instead of silently presenting a clean failure.
+- [FIX] Retries now repair temporal indexing for every memory in the application receipt, including a canonical row retained by a failed compensation. This lets a later idempotent adoption finish graph and temporal projections without duplicating the memory.
+- [FIX] Temporal replay identity is stable across export IDs and respects both finite and open-ended intervals, including assertions whose validity already expired. Re-importing an identical expired assertion no longer appends a duplicate timeline row.
+- [TEST] Added fault injection for post-commit writer exceptions, failed compensation, retained-row recovery, and repeat import of an expired HMX assertion.
+- [VALIDATION] Code and regressions are committed; no runtime test or TypeScript pass is claimed because Actions jobs continue failing before runner allocation. No release ZIP was changed.
+
 ## [NK1][Hexis] WorkPass389 — preserve chronology for out-of-order temporal imports (2026-10-26)
 
 - [FIX] Temporal assertions now close only earlier intervals that cover the inserted timestamp; historical assertions received after newer ones are capped at the next known start instead of wiping out future history.
