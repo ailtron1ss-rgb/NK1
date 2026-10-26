@@ -199,9 +199,10 @@
     "test:super-gateway-headers": "node --test tools/super-gateway-headers.test.mjs",
     "test:supervisor-start-smoke": "node tools/supervisor-start-smoke.mjs",
     "test:final-release-verifier": "node --test tools/verify-final-release.test.mjs",
-    "release:verify:ci": "node tools/verify-final-release.mjs --allow-generated-python-cache"
+    "release:verify:ci": "node tools/verify-final-release.mjs --allow-generated-python-cache",
+    "audit:workpass353": "npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite && npm --prefix runtime/neuro-kurisu run test:memory-retrieval-benchmark && npm run typecheck && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm run test:final-release-verifier"
   },
-  "version": "35.0.0-super-workpass70",
+  "version": "35.0.0-super-workpass353",
   "packageManager": "npm@10.9.2",
   "engines": {
     "node": ">=24.0.0",
