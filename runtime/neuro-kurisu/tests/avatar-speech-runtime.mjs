@@ -54,3 +54,20 @@ assert.equal(offsetTimeline.at(-1).charIndex, offsetProbe.length - 1);
 assert.equal(offsetTimeline.at(-1).endCharIndex, offsetProbe.length);
 assert.equal(offsetTimeline.at(-1).pose.viseme, 'neutral');
 console.log('AVATAR_SPEECH_UTF16=PASS original-label/normalized-pose/offset-contract');
+const identityRuntime = new EmbodimentRuntime();
+identityRuntime.body = { ...defaultBodyState(), ttsAvailable: true };
+const generatedSpeechIds = [];
+identityRuntime.setSpeechGatewayDispatcher(async (_text, _options, speechEventId) => {
+  generatedSpeechIds.push(speechEventId);
+  return { ok: true };
+});
+assert.equal(await identityRuntime.speak('Одна и та же фраза'), true);
+assert.equal(await identityRuntime.speak('Одна и та же фраза'), true);
+assert.equal(generatedSpeechIds.length, 2);
+assert.notEqual(generatedSpeechIds[0], generatedSpeechIds[1],
+  'independent calls without an explicit speechEventId must not share the ActionGateway idempotency key');
+assert.match(generatedSpeechIds[0], /^speech-[0-9a-f-]{36}$/);
+assert.match(generatedSpeechIds[1], /^speech-[0-9a-f-]{36}$/);
+assert.equal(identityRuntime.voiceSnapshot().state.utteranceCount, 2);
+console.log('AVATAR_SPEECH_IDENTITY=PASS distinct-default-operations/explicit-id-preserved');
+
