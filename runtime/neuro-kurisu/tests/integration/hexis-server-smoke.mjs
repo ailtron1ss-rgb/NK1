@@ -153,6 +153,32 @@ try {
   if (importedMemory.epistemicStatus !== 'belief' || Number(importedMemory.confidence) > 0.55 ||
       importedMemory.source !== 'hexis-hmx-import') throw new Error('hexis-hmx-external-trust-firewall');
 
+  // Re-importing the same export must not duplicate the same kind/content row.
+  const duplicateStageResponse = await post('/api/organism/integration/hexis/hmx/stage', {
+    document: externalDocument, intent: 'telepathy', strategy: 'additive',
+  });
+  const duplicateStage = await duplicateStageResponse.json();
+  if (!duplicateStageResponse.ok || duplicateStage.stage?.conflicts?.length !== 0) {
+    throw new Error('hexis-hmx-duplicate-stage');
+  }
+  const duplicateImportResponse = await post('/api/organism/integration/hexis/hmx/decide', {
+    stagingId: duplicateStage.stage.stagingId, decision: 'accept',
+  });
+  const duplicateImport = await duplicateImportResponse.json();
+  if (!duplicateImportResponse.ok ||
+      duplicateImport.stage?.importResult?.status !== 'applied' ||
+      duplicateImport.stage?.importResult?.created !== 0 ||
+      duplicateImport.stage?.importResult?.reused !== 1 ||
+      duplicateImport.stage?.importResult?.skipped !== 0) {
+    throw new Error('hexis-hmx-duplicate-reimport-idempotency');
+  }
+  const duplicateIndexResponse = await fetch(base + '/api/organism/integration/hexis/memories?limit=128');
+  const duplicateIndex = await duplicateIndexResponse.json();
+  if (duplicateIndex.memoryIndex?.filter(item => item.summary === externalContent).length !== 1) {
+    throw new Error('hexis-hmx-duplicate-created-second-memory');
+  }
+
+
   // A typo must not silently turn into a different retention proposal such as
   // compress; bind action choice to the API's explicit allowlist.
   const invalidRetentionResponse = await post('/api/organism/integration/hexis/retention/propose', {
