@@ -62,12 +62,30 @@ const statusDateCandidate = String(superVersion?.date ?? '');
 const statusDateValid = isIsoCalendarDate(statusDateCandidate);
 check('release-date-is-valid-iso-calendar-date', statusDateValid,
   statusDateCandidate ? `date=${statusDateCandidate}` : 'SUPER_VERSION.date is missing');
+
 const statusDate = statusDateValid ? statusDateCandidate : 'invalid-date';
+// A self-consistent old manifest is still stale if the current changelog has
+// progressed beyond its declared WorkPass. Use the highest pass explicitly
+// recorded in CHANGELOG.md as a conservative freshness floor.
+const changelogPasses = [...changelog.matchAll(/\\bWorkPass\\s*(\\d+)\\b/gi)]
+  .map(match => Number(match[1]))
+  .filter(Number.isSafeInteger);
+const latestChangelogPass = changelogPasses.length ? Math.max(...changelogPasses) : 0;
+// The first dated changelog entry is the current entry; historical dates may
+// legitimately be older than this release candidate.
+const firstChangelogLine = changelog.split(/\\r?\\n/, 1)[0] || '';
+const firstChangelogDate = firstChangelogLine.match(/\\b(\\d{4}-\\d{2}-\\d{2})\\b/)?.[1] || '';
 const statusReport = await text(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${currentPassTag}.md`);
 const statusInventory = await json(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${currentPassTag}.json`);
 const scorecard = await json(`docs/PROJECT_PROGRESS_SCORECARD_${statusDate}_${currentPassTag}.json`);
 
 if (rootPkg && superVersion) {
+  check('release-manifest-not-behind-changelog-workpass',
+    currentPass > 0 && (latestChangelogPass === 0 || currentPass >= latestChangelogPass),
+    `manifestPass=${currentPass || '(missing/invalid)'}; latestChangelogPass=${latestChangelogPass || '(none found)'}`);
+  check('release-date-not-before-current-changelog-entry',
+    !firstChangelogDate || (statusDateValid && isIsoCalendarDate(firstChangelogDate) && statusDateCandidate >= firstChangelogDate),
+    `releaseDate=${statusDateCandidate || '(missing/invalid)'}; currentChangelogDate=${firstChangelogDate || '(not dated)'}`);
   check('root-version-aligned', rootPkg.version === superVersion.version,
     `package.json=${rootPkg.version}; SUPER_VERSION.json=${superVersion.version}`);
   check('runtime-version-aligned', superVersion.canonicalRuntime === `Neuro-Kurisu ${runtimePkg?.version}`,
