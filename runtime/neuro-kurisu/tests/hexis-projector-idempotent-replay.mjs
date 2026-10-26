@@ -360,4 +360,119 @@ assert.equal(isValidHmxApplyReceipt(prototypeAppliedStage, prototypeSectionRecei
 console.log('WorkPass426 HMX application attempt integrity: PASS');
 console.log('WorkPass427 HMX apply receipt semantic integrity: PASS');
 console.log('WorkPass428 HMX deferred-section and receipt identity integrity: PASS');
+// WorkPass428: an exception after canonical write and graph projection must compensate all stores.
+const rollbackCanonicalItems = [];
+const rollbackMemoryFabric = {
+  canonicalSnapshot() { return { items: structuredClone(rollbackCanonicalItems) }; },
+  encode(input) {
+    const record = structuredClone(input);
+    rollbackCanonicalItems.push(record);
+    return structuredClone(record);
+  },
+  forgetById(id) {
+    const index = rollbackCanonicalItems.findIndex(item => item.id === id);
+    if (index >= 0) rollbackCanonicalItems.splice(index, 1);
+    return index >= 0;
+  },
+  revise(id, epistemicStatus) {
+    const item = rollbackCanonicalItems.find(candidate => candidate.id === id);
+    if (item) item.epistemicStatus = epistemicStatus;
+    return item ?? null;
+  },
+};
+const rollbackGraphState = { nodes: [], edges: [] };
+const rollbackSemanticGraph = {
+  snapshot() { return structuredClone(rollbackGraphState); },
+  restore(snapshot) {
+    rollbackGraphState.nodes = structuredClone(snapshot.nodes);
+    rollbackGraphState.edges = structuredClone(snapshot.edges);
+    return true;
+  },
+  upsertNode(label, type, salience, sourceKey) {
+    const prior = rollbackGraphState.nodes.find(node =>
+      node.label === String(label).toLowerCase() && node.type === type && node.sourceKey === sourceKey);
+    if (prior) return prior;
+    const node = { id: 'rollback-graph:' + (rollbackGraphState.nodes.length + 1), label: String(label).toLowerCase(), type, salience, sourceKey };
+    rollbackGraphState.nodes.push(node);
+    return node;
+  },
+  connect(from, to, relation, weight) {
+    const edge = { id: 'rollback-edge:' + (rollbackGraphState.edges.length + 1), from, to, relation, weight };
+    rollbackGraphState.edges.push(edge);
+    return edge;
+  },
+};
+const rollbackTemporalState = { assertions: [], beliefs: [] };
+let failFirstTemporalAssertion = true;
+const rollbackTemporalLedger = {
+  snapshot() { return structuredClone(rollbackTemporalState); },
+  restore(snapshot) {
+    rollbackTemporalState.assertions = structuredClone(snapshot.assertions);
+    rollbackTemporalState.beliefs = structuredClone(snapshot.beliefs);
+    return true;
+  },
+  recordTemporalAssertion(assertion) {
+    rollbackTemporalState.assertions.push(structuredClone(assertion));
+    if (failFirstTemporalAssertion) {
+      failFirstTemporalAssertion = false;
+      throw new Error('injected-hmx-temporal-write-failure');
+    }
+    return { id: 'rollback-temporal:' + rollbackTemporalState.assertions.length };
+  },
+  registerOrUpdateBelief(belief) {
+    rollbackTemporalState.beliefs = rollbackTemporalState.beliefs.filter(item => item.memoryId !== belief.memoryId);
+    rollbackTemporalState.beliefs.push(structuredClone(belief));
+    return true;
+  },
+  removeBeliefProjection(memoryId) {
+    rollbackTemporalState.beliefs = rollbackTemporalState.beliefs.filter(item => item.memoryId !== memoryId);
+    return true;
+  },
+};
+const rollbackStage = {
+  ...stage,
+  status: 'accepted',
+  stagingId: 'stage-atomic-rollback',
+  digest: '',
+  lifecycleDigest: '',
+  applicationAttempts: 0,
+  application: undefined,
+  sectionCounts: { memories: 1 },
+  stagedSections: {
+    memories: [{
+      ref: stage.exportId + ':rollback-memory',
+      type: 'semantic',
+      content: 'Atomic HMX rollback fixture',
+      status: 'belief',
+    }],
+  },
+};
+rollbackStage.digest = computeHmxStageDigest(rollbackStage);
+refreshHmxStageLifecycleDigest(rollbackStage);
+const rollbackProjector = new HexisCanonicalMemoryProjector(
+  rollbackMemoryFabric, rollbackSemanticGraph, rollbackTemporalLedger,
+);
+assert.throws(
+  () => rollbackProjector.apply(rollbackStage),
+  /hmx-canonical-apply-failed:injected-hmx-temporal-write-failure/,
+  'a failure after canonical write and graph projection must propagate after compensation',
+);
+assert.deepEqual(rollbackMemoryFabric.canonicalSnapshot().items, [],
+  'canonical memory must return to baseline when a downstream temporal write fails');
+assert.deepEqual(rollbackSemanticGraph.snapshot(), { nodes: [], edges: [] },
+  'semantic graph nodes and edges must return to baseline when temporal projection fails');
+assert.deepEqual(rollbackTemporalLedger.snapshot(), { assertions: [], beliefs: [] },
+  'partially written temporal assertions must be rolled back');
+const rollbackRetryReceipt = rollbackProjector.apply(rollbackStage);
+assert.equal(rollbackRetryReceipt.status, 'applied',
+  'the same staged HMX import must be retryable after a successful compensation');
+assert.equal(rollbackMemoryFabric.canonicalSnapshot().items.length, 1,
+  'the retry must create exactly one canonical memory');
+assert.equal(rollbackSemanticGraph.snapshot().nodes.length, 1,
+  'the retry must create exactly one semantic projection');
+assert.equal(rollbackTemporalLedger.snapshot().assertions.length, 1,
+  'the retry must create exactly one temporal assertion');
+assert.equal(rollbackTemporalLedger.snapshot().beliefs.length, 1,
+  'the retry must register exactly one belief projection');
+
 console.log('HEXIS_PROJECTOR_IDEMPOTENT_REPLAY=PASS', JSON.stringify({ writes, receiptDigest: receipt.digest }));
