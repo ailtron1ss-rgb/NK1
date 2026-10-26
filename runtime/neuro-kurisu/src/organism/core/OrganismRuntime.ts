@@ -324,6 +324,17 @@ export class OrganismRuntime {
       this.cognitiveDependencyGraph.restore(await this.cognitiveDependencyStore.load() ?? undefined);
       try {
         this.unifiedCognitiveSubstrate.restore(await this.unifiedCognitiveSubstrateStore.load() ?? undefined);
+        const canonicalCoreTick = this.core.operationalStatusSnapshot().tick;
+        const restoredSubstrateTick = this.unifiedCognitiveSubstrate.snapshot().lastTick;
+        if (this.unifiedCognitiveSubstrate.reconcileLastTick(canonicalCoreTick)) {
+          // The substrate is derived sidecar state. After a crash, it can have
+          // reached a later tick than the durable Core snapshot; preserve its
+          // metrics but re-anchor its clock so future cycles remain admissible.
+          await this.journal.write('warn', 'runtime.unified-cognitive-substrate.tick-reconciled', {
+            restoredSubstrateTick,
+            canonicalCoreTick,
+          }).catch(() => {});
+        }
       } catch (error) {
         // This projection is derived state: an incompatible sidecar must not prevent organism boot.
         this.unifiedCognitiveSubstrate.restore();

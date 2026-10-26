@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The current combined source code/test snapshot is 621864d0d7f2676245383adab86f1dcc6d0f741f, merged into fix/mega-cognitive-progress-tracking-2026-10-26-r3 as source merge commit 39af7eb67c9ab05efd45d01cbd4b4d1d44751454. Unified integration, strict cognitive substrate plus 30-cycle restart smoke, application/runtime typechecks, supervised launch, owner-approved Research Bridge probes, continual-learning/P23 gates and ledger integrity all passed on the tested code/test head. The prior scoring snapshot head was b8bc8316e996700a5562b93f38fd354f1ea5d69b; all lane scores are intentionally unchanged because these tests validate integration and safety, not greater external learning/transfer. Physical Android/Termux audio/sensors, browser/Live2D hardware E2E, extended soak, licensing review and reproducible release-archive replacement remain open. WorkPass343 hardens ledger data ingress and strict promotion-option validation; exact combined-head validation is pending. Scores remain unchanged.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; thirteen named workflows passed on that exact head. The newer WorkPass343 code/test head 8b38a354e7a32ea8822e4cd44866c73f00ce0d1c adds canonical Core/derived-sidecar tick reconciliation, a MAX_SAFE_INTEGER restore regression, a real runtime restart smoke with a corrupted future sidecar, and explicit workflow path filters. Exact-head CI evidence has not yet been returned; scores remain unchanged until validation. WorkPass335/336 and WorkPass339 are included in the validated code/test snapshot 621864d0d7f2676245383adab86f1dcc6d0f741f. Branch head before this tracker update: ba629fde5976dfea07d1658d6c3e6078353dbd9f. WorkPass344 hardens verified-outcome ledger and promotion policy ingress; the synchronized combined source/test head is pending exact-head validation. Scores remain unchanged; no empirical learning uplift is inferred.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -26,8 +26,9 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "Проверить весь end-to-end цикл на точном HEAD после недавних интеграций",
-        "Нет независимого доказательства длительной автономной работы"
+        "WorkPass343 now includes a real runtime restart regression for a future sidecar tick; exact-head CI confirmation for code/test head 8b38a354e7a32ea8822e4cd44866c73f00ce0d1c is pending",
+        "Long-duration process-kill/restart soak tests and real device/browser/voice/avatar integration remain open",
+        "Independent external task benchmarks are required before raising field evidence or learning-effectiveness scores"
       ],
       "evidence": [
         "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts",
@@ -358,24 +359,32 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass343",
+    "id": "WorkPass344",
     "date": "2026-10-26",
     "branch": "work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1",
-    "codeCommit": "15087438701ccb07ae825933ab0b4bab6f345de3",
-    "summary": "Synchronized signed-outcome and strict skill-promotion changes onto the latest cognitive base, then hardened verified-outcome ledger input and restore boundaries with descriptor-based snapshots and regression tests.",
+    "codeCommit": "9c9fd069046bd8040c382d0e7355da2a50ef8d88",
+    "summary": "Strict descriptor-backed validation of verified outcome ledger and signed-artifact inputs, plus strict runtime policy validation at the actual skill promotion producer; keeps newer family-wise holdout coverage and cognitive substrate code intact.",
     "testsAdded": [
-      "manifest/outcome data accessors rejected without executing getters",
-      "unknown properties ignored instead of being copied through object spread",
-      "sparse manifest arrays and array subclasses rejected",
-      "restored snapshot top-level getters and array-index accessors rejected",
-      "valid ledger snapshot round trip preserves outcome and rejection counts",
-      "signed outcome ingestion uses canonical validated manifest snapshot for task lookup",
-      "promotion producer rejects invalid thresholds, null options and accessor-based configuration"
+      "manifest and outcome getters denied without invoking accessor bodies",
+      "unknown caller metadata getters ignored rather than copied into trusted rows",
+      "sparse arrays and array subclasses rejected at ledger boundaries",
+      "snapshot restore rejects accessors and preserves valid round-trip counts",
+      "signed outcome signatures require canonical 64-byte Ed25519 Base64",
+      "signed outcome envelope/payload getters and unknown v1 fields rejected",
+      "promotion producer rejects invalid thresholds, null options and accessor-backed policy"
     ],
-    "validationStatus": "PENDING on synchronized combined code/test HEAD; earlier WorkPass336/342 successes do not validate this tree.",
+    "validationStatus": "PENDING exact combined-head CI; historical P23/WorkPass342 passes do not validate this combined tree.",
     "progressPercentagesChanged": false
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass343",
+      "date": "2026-10-26",
+      "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
+      "codeCommit": "6ec9d696f965bcd7ee46f6560a16a0dd0c15acc1",
+      "summary": "Reconcile persisted Unified Cognitive Substrate lastTick against canonical Core tick after sidecar restore.",
+      "validationStatus": "PENDING exact-head CI on the substrate tick reconciliation pass."
+    },
     {
       "id": "WorkPass342",
       "date": "2026-10-26",
@@ -437,8 +446,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": null,
-  "branchHeadBeforeTrackerCommit": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454",
+  "latestUnverifiedCodeTestHead": "8b38a354e7a32ea8822e4cd44866c73f00ce0d1c",
+  "branchHeadBeforeTrackerCommit": "ba629fde5976dfea07d1658d6c3e6078353dbd9f",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",

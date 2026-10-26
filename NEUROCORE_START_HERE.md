@@ -1,10 +1,10 @@
-## Latest integration checkpoint — WorkPass343 verified-outcome ledger boundary (2026-10-26)
+## Latest integration checkpoint — WorkPass344 verified-outcome trust boundary (2026-10-26)
 
-- **Branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`; synchronized with current cognitive-progress base `22e37b72e20086053d2308d9adf83f18e5828696`. The primary release branch and release ZIP are unchanged.
-- **Changes:** manifest, outcome and snapshot ingestion now uses descriptor-backed data snapshots; sparse arrays and array subclasses are rejected; signed outcome ingestion reuses a canonical manifest snapshot; promotion policy options reject invalid thresholds rather than clamp them.
-- **Tests:** added getter non-execution checks, sparse/subclass array rejection, restore snapshot round-trip and malformed snapshot tests, plus producer-level invalid-threshold/options regressions.
-- **Validation:** exact combined HEAD CI is pending. Historical WorkPass336/342 PASS runs are not substitutes for this combined checkpoint.
-- **Evidence boundary:** scores unchanged; no measured learning uplift. External held-out transfer/retrieval, target-device voice/Live2D, soak, licensing and reproducible release ZIP remain open.
+- **Branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`; checkpoint is built on the currently observed cognitive-progress base `cddb58ae48dace8952fe29b37b7e33efae0cdec5`. No direct merge into `main` or release ZIP replacement was performed.
+- **Runtime:** ledger manifest/outcome/snapshot inputs use descriptor snapshots, signed outcome verification reuses the validated manifest snapshot, and promotion producer options fail closed instead of clamping invalid thresholds.
+- **Regressions:** getter non-execution, unknown metadata, sparse/subclass arrays, snapshot restore, canonical signed outcome encoding/schema and strict producer policy are covered.
+- **Validation:** earlier exact-head runs exposed a missing closing brace in `snapshotPromotionOptions`; it is fixed. The latest combined source/test head requires a fresh CI pass.
+- **Evidence boundary:** progress scores unchanged; external transfer/retrieval, device voice/Live2D, long soak, licensing and reproducible release ZIP gates remain open.
 
 ---
 

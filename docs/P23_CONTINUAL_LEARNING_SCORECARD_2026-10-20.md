@@ -1,3 +1,14 @@
+## WorkPass343 engineering note — validation pending (2026-10-26)
+
+- **Learning-effectiveness scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
+- **Runtime defect corrected:** a persisted derived cognitive-substrate sidecar can contain a valid but future `lastTick`, including `Number.MAX_SAFE_INTEGER`. Runtime now reconciles it with the canonical Core tick on startup, preserving cognitive metrics while preventing the sidecar clock from advancing indefinitely beyond durable state.
+- **Regression added:** the unit test restores `Number.MAX_SAFE_INTEGER`, re-anchors to Core tick 7, preserves other fields, and successfully integrates tick 8. The runtime restart smoke now corrupts the durable sidecar to the maximum safe tick, re-initializes `OrganismRuntime`, checks alignment with Core and executes another autonomous step. Invalid reconciliation input is verified non-mutating.
+- **Exact-head evidence boundary:** last combined verified head remains `621864d0d7f2676245383adab86f1dcc6d0f741f`, with 13 successful workflow suites recorded in the progress tracker. WorkPass343's new code/test head `8b38a354e7a32ea8822e4cd44866c73f00ce0d1c` has no exact-head run/check status returned yet. The updated workflow explicitly includes the wiring-test path, but previous CI does not certify this newest change; status remains implemented / validation pending.
+- **Why no uplift:** this is recovery robustness for derived runtime continuity, not an empirical measure of task success, generalization, transfer, or autonomous self-development.
+- Details: [WorkPass343 checkpoint](WORKPASS343_SUBSTRATE_TICK_RECONCILIATION_RU.md) and [current weighted tracker](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.md).
+
+---
+
 ## Combined-head validation boundary — WorkPass335/336 plus WorkPass339 (2026-10-26)
 
 - The combined code/test head `bb7a76c55d83ff36358ded56e966b880b38cc7d9` includes WorkPass335 ledger preflight, WorkPass336 evaluator-origin capability, and the strict Ed25519 approval-encoding patch WorkPass339 already present in this PR diff.

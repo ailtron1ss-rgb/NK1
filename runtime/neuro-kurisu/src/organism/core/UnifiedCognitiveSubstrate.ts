@@ -190,6 +190,21 @@ export class UnifiedCognitiveSubstrate {
 
   snapshot(): UnifiedCognitiveSubstrateState { return structuredClone(this.state); }
 
+  /**
+   * Reconcile this derived projection's timeline with the canonical organism
+   * tick. A persisted sidecar can be newer than the durable Core snapshot after
+   * an interrupted flush; it must not permanently advance the projection clock
+   * into an unreachable future (including Number.MAX_SAFE_INTEGER).
+   */
+  reconcileLastTick(canonicalTick: number): boolean {
+    if (!Number.isSafeInteger(canonicalTick) || canonicalTick < 0) {
+      throw new RangeError('unified cognitive substrate canonical tick must be a non-negative safe integer');
+    }
+    if (this.state.lastTick <= canonicalTick) return false;
+    this.state = { ...this.state, lastTick: canonicalTick };
+    return true;
+  }
+
   integrate(input: {
     tick:number;
     self:UnifiedCognitiveSubstrateState['self'];

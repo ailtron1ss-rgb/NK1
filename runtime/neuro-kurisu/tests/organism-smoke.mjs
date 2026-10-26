@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
@@ -18,6 +18,13 @@ try {
   if (substrate.cycles < 30 || substrate.lastTick < 30) throw new Error('unified cognitive substrate did not integrate live runtime cycles');
   if (!Number.isFinite(substrate.coupling.actionReadiness01)) throw new Error('unified substrate coupling is not finite');
   await r.stop();
+  // Simulate a crash window where the derived sidecar persisted a future
+  // tick but the canonical organism store has an older/newly recovered tick.
+  // This must not make every next cycle fail its monotonic tick guard.
+  const substrateSidecarPath = path.join(dir, 'state.json.cognitive-substrate.json');
+  const sidecar = JSON.parse(await readFile(substrateSidecarPath, 'utf8'));
+  sidecar.lastTick = Number.MAX_SAFE_INTEGER;
+  await writeFile(substrateSidecarPath, JSON.stringify(sidecar), 'utf8');
   const restarted = new OrganismRuntime({
     stateFile:path.join(dir,'state.json'),
     worldStateFile:path.join(dir,'world.json'),
@@ -30,8 +37,13 @@ try {
   });
   await restarted.init();
   const restoredSubstrate = restarted.unifiedCognitiveSubstrateSnapshot();
-  if (restoredSubstrate.cycles < 30 || restoredSubstrate.lastTick < substrate.lastTick) {
-    throw new Error('unified cognitive substrate did not survive stop/re-init');
+  if (restoredSubstrate.cycles < 30 || restoredSubstrate.lastTick > substrate.lastTick) {
+    throw new Error('future substrate sidecar tick was not reconciled to the canonical Core tick');
+  }
+  await restarted.autonomousStep();
+  const afterReconciledCycle = restarted.unifiedCognitiveSubstrateSnapshot();
+  if (afterReconciledCycle.lastTick <= restoredSubstrate.lastTick || afterReconciledCycle.cycles <= restoredSubstrate.cycles) {
+    throw new Error('runtime did not resume substrate integration after future-tick recovery');
   }
   await restarted.stop();
   console.log('CLEAN_ORGANISM_SMOKE=PASS');
