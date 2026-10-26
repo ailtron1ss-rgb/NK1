@@ -109,6 +109,21 @@ try {
     connectorId: { id: 'object' }, actionKind: 'send', autonomous: 'false',
   });
   if (invalidPolicyEvaluation.status !== 400) throw new Error('hexis-policy-evaluation-must-reject-coercion:' + invalidPolicyEvaluation.status);
+  const strictInputCases = [
+    ['/api/organism/integration/hexis/reviews/decide', { reviewId: {}, itemId: 'item', decision: 'approve' }, 'hexis-review-id'],
+    ['/api/organism/integration/hexis/retention/propose', { memoryId: {}, action: 'archive' }, 'hexis-retention-memory-id'],
+    ['/api/organism/integration/hexis/retention/apply', { proposalId: 'missing-proposal', confirmed: 'true' }, 'hexis-retention-confirmation-type'],
+    ['/api/organism/integration/hexis/hmx/stage', { document: {}, intent: 'autonomous-admin', strategy: 'additive' }, 'hexis-hmx-stage-intent'],
+    ['/api/organism/integration/hexis/hmx/decide', { stagingId: {}, decision: 'apply' }, 'hexis-hmx-staging-id'],
+    ['/api/organism/integration/hexis/goals/prepare', { stagingId: {} }, 'hexis-goal-staging-id'],
+    ['/api/organism/integration/hexis/goals/decide', { proposalId: {}, decision: 'approve' }, 'hexis-goal-proposal-id'],
+    ['/api/organism/integration/hexis/outbox/claim', { id: {} }, 'hexis-outbox-claim-id'],
+    ['/api/organism/integration/hexis/policy/revoke', { id: {} }, 'hexis-policy-revoke-id'],
+  ];
+  for (const [route, payload, label] of strictInputCases) {
+    const response = await post(route, payload);
+    if (response.status !== 400) throw new Error(label + ':expected-400-got-' + response.status);
+  }
   // Permission booleans must never be inferred through JavaScript truthiness.
   const coercedAutonomyGrant = await post('/api/organism/integration/hexis/policy', {
     connectorId: 'nk1-coercion-regression',
