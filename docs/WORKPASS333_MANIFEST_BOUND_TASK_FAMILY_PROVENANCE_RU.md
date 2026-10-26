@@ -18,6 +18,10 @@
 5. **Matched comparison.** Отчёт семьи сверяется со своим run binding; baseline и candidate должны иметь одну family для каждой парной записи. Модифицированный JSON с пересчитанным envelope digest не получает доверия просто потому, что стал самосогласованным.
 6. **Signed shadow evidence join.** `HermesVerifiedEvidenceBinding` дополнительно сверяет report family и binding family. Данное сравнение обеспечивает consistency, но не объявляет обычное поле JSON подписью: подлинность run/outcome остаётся обязанностью signed artifact verifier, manifest fingerprint и P23 gates.
 
+## Дополнительная прямая регрессия ledger
+
+`workpass203-independent-candidate-evaluator.mjs` теперь строит реальный manifest-backed evaluation, проверяет `taskFamily='summarization'` в validation/holdout reports и обоих run bindings, затем отдельно подменяет family в отчёте и binding и пересчитывает envelope fingerprint. Оба случая обязаны завершиться отказом до записи любых verified outcomes в `VerifiedOutcomeLedger`. Это проверяет контракт именно на write boundary, а не только в report UI.
+
 ## Исправление регрессии CI
 
 На промежуточном HEAD `c3179f878a80dff9b01907e549d6f37488d0f5ee` WorkPass108 и P26 прошли. WorkPass110 упал в `workpass203-independent-candidate-evaluator.mjs`: ожидаемый плановый fingerprint был вычислен по старому списку полей, без `taskFamily`. Это не была ошибка автономного evaluator: после изменения контракта fixture должен включать `taskFamily: null` при отсутствующем experiment manifest. Ожидаемая формула исправлена, но требуется зелёный повторный запуск на новом commit.
