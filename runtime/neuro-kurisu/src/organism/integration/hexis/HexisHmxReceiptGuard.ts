@@ -84,10 +84,13 @@ export function hasValidHmxApplicationReceipt(stageValue: unknown): boolean {
     try {
         const { digest: receiptDigest, ...base } = receipt;
         const serialized = JSON.stringify(base);
+        const legacyOrderedDigest = typeof serialized === 'string'
+            ? createHash('sha256').update(serialized).digest('hex')
+            : null;
+        const canonicalDigest = sha256Stable(base, 'legacy');
         return typeof receiptDigest === 'string' &&
             /^[a-f0-9]{64}$/.test(receiptDigest) &&
-            typeof serialized === 'string' &&
-            createHash('sha256').update(serialized).digest('hex') === receiptDigest;
+            (receiptDigest === legacyOrderedDigest || receiptDigest === canonicalDigest);
     } catch {
         return false;
     }
