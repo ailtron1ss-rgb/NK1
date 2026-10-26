@@ -46,7 +46,14 @@ assert.ok(!avatarHtml.includes("fetch('/api/organism/avatar'"), 'asset inventory
 assert.ok(avatarHtml.includes('buildAvatarPresentation(snapshot)'), 'avatar UI must normalize the live snapshot before posting to its iframe');
 assert.ok(avatarHtml.includes("post('kurisu_embodiment_intent', intent)"), 'avatar UI must send one versioned EmbodimentIntent to Live2D');
 assert.ok(avatarHtml.includes("mouth: { open: pose.open, form: pose.form, viseme: pose.viseme }"), 'avatar UI must carry the sampled time-indexed mouth pose in the unified intent');
-assert.ok(avatarHtml.includes("headTilt: Math.max(-0.15, Math.min(0.15, Number(body.headTilt) || 0))"), 'avatar UI must normalize body state before sending it to Live2D');
+assert.ok(avatarHtml.includes("headTilt: affect.headTilt"), 'avatar UI must send bounded, smoothed head tilt to Live2D');
+assert.ok(avatarHtml.includes("import { smoothEmbodimentAffect } from './embodiment-affect-core.mjs'"),
+  'standalone runtime must import the canonical shared affect smoother');
+const affectCorePath=path.join(root,'public/embodiment-affect-core.mjs');
+assert.ok(fs.existsSync(affectCorePath),'the shared affect smoother must be shipped beside the runtime avatar');
+const affectCoreSource=fs.readFileSync(affectCorePath,'utf8');
+assert.ok(affectCoreSource.includes('export function smoothEmbodimentAffect'),
+  'the shared affect core must own the interpolation algorithm');
 assert.ok(avatarHtml.includes("window.setInterval(() => { void refreshSpeech(); }, 150)"), 'speech cursor refresh must remain separate from the slow cognitive snapshot');
 const runtimeViewerSource=fs.readFileSync(path.join(root,'public/live2d/viewer.html'),'utf8');
 const avatarSource=fs.readFileSync(path.join(root,'public/avatar.html'),'utf8');
