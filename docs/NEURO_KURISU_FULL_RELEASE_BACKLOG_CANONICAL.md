@@ -5,9 +5,9 @@
 - [x] Apply the same attribution rule to B273's current action before recording goal-lifecycle learning.
 - [x] Extend the world-transition outcome path with the same guard, leaving actual-outcome learning for the wider organism intact.
 - [x] Add Core.ts to the focused workflow path filters so this regression cannot silently skip CI.
-- [ ] Finish exact-head workflow [#40291145587](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291145587): full runtime restart and memory recall regression, then runtime typecheck must pass.
+- [x] Focused workflow [#40291145587](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291145587) passed on head `1ed262e350c41b4031680cb61fea70ae77a5b126` (Core fix commit `25c2363688be0cb76ca203d693df538c0cdc5456`): P23 10/10, evaluator-config 16/16, WorkPass356 restore boundary PASS, WorkPass357 file-backed process recall PASS, WorkPass358 full OrganismRuntime restart + canonical memory PASS, and runtime `TYPECHECK=PASS`.
 - [ ] Run wider organism smoke, persistent continuity restart, action receipt/causal-lineage, and clean startup checks on the new Core head.
-- **Status:** source fix and workflow wiring committed; full CI is in progress. B272 gate was not weakened; mismatch is treated as ineligible causal credit, not as proof that its proposed action occurred.
+- **Status:** source fix and workflow wiring committed and CI-validated on head `1ed262e350c41b4031680cb61fea70ae77a5b126`. B272 gate was not weakened; mismatch is treated as ineligible causal credit, not as proof that its proposed action occurred.
 
 ---
 
