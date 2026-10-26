@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "title": "NK1 current implementation status",
+  "date": "2026-10-26",
+  "workpass": 353,
+  "branch": "work/nk1-changelog-freshness-and-current-status-2026-10-26-r1",
+  "checkpointBaseSha": "18afd253dcd7413c02136537ea1acc10b7764768",
+  "validationStatus": "pending exact-head CI after release metadata freshness changes",
+  "counts": {
+    "DONE": 2,
+    "PARTIAL": 4,
+    "TODO": 6
+  },
+  "items": [
+    {
+      "id": "REL-001",
+      "status": "DONE",
+      "title": "Final release verifier contains UI wiring, architecture, release-metadata and final-tree hygiene gates",
+      "evidence": "tools/verify-final-release.mjs; tools/verify-final-release.test.mjs",
+      "note": "Fresh exact-head verification is still required after subsequent edits."
+    },
+    {
+      "id": "CEF-353",
+      "status": "DONE",
+      "title": "WorkPass353 causal event ingress/identity hardening is present in the release-candidate line",
+      "evidence": "CHANGELOG.md; PR #180 and PR #190 merged into the release-candidate line",
+      "note": "Do not treat this entry alone as exact-head CI or field evidence."
+    },
+    {
+      "id": "REL-003",
+      "status": "PARTIAL",
+      "title": "Metadata freshness gate rejects a manifest that trails the latest WorkPass in CHANGELOG",
+      "evidence": "tools/verify-release-metadata.mjs; tools/verify-release-metadata.test.mjs",
+      "blocker": "Run the new regression suite and the complete exact-head release gate."
+    },
+    {
+      "id": "REL-004",
+      "status": "PARTIAL",
+      "title": "SUPER_VERSION, root package, README and task list updated to the WorkPass353 implementation checkpoint",
+      "evidence": "SUPER_VERSION.json; package.json; README.md; Список дел.md",
+      "blocker": "Verify consistency with all current status files and successful exact-head CI."
+    },
+    {
+      "id": "BRANCH-001",
+      "status": "PARTIAL",
+      "title": "Historical/duplicate branches and stacked PRs reconciled against the canonical release candidate",
+      "evidence": "GitHub branch and PR inventory",
+      "blocker": "Finish the complete unique-commit/file matrix; preserve unique unmerged changes."
+    },
+    {
+      "id": "CEF-354",
+      "status": "PARTIAL",
+      "title": "Snapshot restore atomicity and completion-anchor provenance fixes",
+      "evidence": "PR #194 and PR #173",
+      "blocker": "Selectively integrate only after checking their current bases/heads, then test restore atomicity and anchor identity."
+    },
+    {
+      "id": "CYCLE-369",
+      "status": "TODO",
+      "title": "Atomic operational cognitive-cycle writes integrated into the canonical release candidate",
+      "evidence": "PR #202",
+      "blocker": "Resolve stack dependency, integrate after current base is confirmed, and run fault-injection regressions."
+    },
+    {
+      "id": "P26-369",
+      "status": "TODO",
+      "title": "P26 interleaved training and independent holdout provenance integrated and validated",
+      "evidence": "PR #197",
+      "blocker": "Run the latest policy/seed matrix; verify training exposure never increases certified generalization evidence."
+    },
+    {
+      "id": "MEM-001",
+      "status": "TODO",
+      "title": "Independent RU/EN cross-session memory and memory-grounded-action evaluation",
+      "evidence": "Existing memory retrieval and P26 test suites",
+      "blocker": "Create fixed held-out tasks and report baseline/delta/confidence intervals."
+    },
+    {
+      "id": "EMB-001",
+      "status": "TODO",
+      "title": "Real browser/Live2D/Android voice-avatar end-to-end and long-duration soak",
+      "evidence": "Target platform testing",
+      "blocker": "Run on real target devices/providers; record latency, failures and recovery."
+    },
+    {
+      "id": "INSTALL-001",
+      "status": "TODO",
+      "title": "Clean-room install/build/start/restart acceptance on the supported environment",
+      "evidence": "Root installer, doctor and runtime/app scripts",
+      "blocker": "Run without existing local dependencies/caches and preserve logs."
+    },
+    {
+      "id": "REL-005",
+      "status": "TODO",
+      "title": "New release archive built from the exact passing code SHA and published with verified SHA-256",
+      "evidence": "GitHub Releases and clean-extraction test",
+      "blocker": "Do not reuse the WorkPass70 ZIP; finish license/provenance review, generate manifest/checksum, reinstall and smoke-test."
+    }
+  ]
+}
