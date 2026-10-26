@@ -1,3 +1,10 @@
+## NK1 WorkPass328 — validate restored outcome projection indexes (2026-10-26)
+
+- [FIX] A restored OutcomeCognition projection index is accepted only when its executionId agrees with the embedded record and its fingerprint recomputes from the immutable outcome fields. The derived external-verification flag is rebuilt from the record, not trusted independently.
+- [RECOVERY] Conflicting duplicate index entries are discarded and reconstructed from retained canonical outcome records, preventing an altered snapshot from returning another execution's receipt or permanently poisoning same-key replay.
+- [TEST] Extended the existing Pass 63 outcome-fabric regression with identity substitution, stale 64-hex fingerprint, and conflicting duplicate metadata cases.
+- [VALIDATION] Source and regression assertions were statically checked. GitHub Actions runner startup has been unreliable across this project; full runtime execution is not yet confirmed for this branch.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
