@@ -60,3 +60,8 @@
 ## Follow-up found during continued route validation (2026-10-26)
 
 The updated `workpass97-autonomous-planner-gateway-route.mjs` failure exposed a real regression in the current PR140 runtime, not just a brittle test: the project-execution path called `cognitiveRuntime.actionGateway.executeTool` directly and recovered receipts through `cognitiveRuntime.actionGateway.reconcileToolExecution`. The validated r3 tree uses `OrganismCore.executeTool` and `OrganismCore.reconcileToolExecution` instead. Both current-branch call sites have now been routed through the canonical Core wrappers in commit `94460f8740cddb0eaadf7a983f534ab3ad2ab4b0`; exact-head CI is pending. This route matters because Core owns alias normalization and finalization for unkeyed tool outcomes.
+
+
+## Runtime deployment follow-up (2026-10-26)
+
+Added a reproducible Compose launch path: Node.js 24 + Python research bridge + UI/gateway, with persistent state and loopback-only host publication. The gateway's listening address remains loopback by default and accepts an all-interface bind only via an explicit `SUPER_GATEWAY_HOST=0.0.0.0`. Torch remains an opt-in image build argument because the Python research probes use it only in selected experiments. Compose configuration, image build and container healthcheck are under exact-head CI; no successful image build or full production readiness is claimed at this point.
