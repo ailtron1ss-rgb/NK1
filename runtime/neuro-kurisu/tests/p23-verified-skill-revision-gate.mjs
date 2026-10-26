@@ -87,4 +87,13 @@ assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', { maxFa
 // Validation/train observations are deliberately excluded.
 result = evaluateSkillRevision(rows.map(x=>({...x,split:'train'})),'baseline','candidate');
 assert.equal(result.pairedN,0);
+// Exact boundary values are valid configurations; no silent clamping is needed.
+const strictBoundary = evaluateSkillRevision(rows, 'baseline', 'candidate', {
+  minPairedTasks: 10, minAbsoluteGain: 0.2, maxFamilyRegression: 0,
+});
+assert.equal(strictBoundary.accepted, true,
+  'finite threshold boundary values remain supported when evidence meets the configured gate');
+assert.equal(strictBoundary.pairedN, 10);
+assert.equal(strictBoundary.absoluteGain, 0.2);
+
 console.log('P23_VERIFIED_SKILL_REVISION_GATE=PASS');
