@@ -307,7 +307,7 @@ test("AvatarStage exposes a persisted, validated Live2D performance profile sele
   assert.match(source, /value=\{runtimeProfile\}/u);
   assert.match(source, /setViewerAttempt\(\(attempt\) => attempt \+ 1\)/u,
     "changing profile must remount the static viewer instead of leaving its old policy active");
-  assert.match(source, /src=\{\`\/live2d\/viewer\.html\?profile=\$\{runtimeProfile\}\`\}/u,
+  assert.ok(source.includes('src={`/live2d/viewer.html?profile=${runtimeProfile}`}'),
     "the chosen safe profile must flow into the viewer URL");
   for (const profile of ["auto", "mobile", "balanced", "quality"]) {
     assert.ok(source.includes(`<option value="${profile}">`), `profile option ${profile} must be selectable`);
