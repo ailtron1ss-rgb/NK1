@@ -1,15 +1,19 @@
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inspectToolchainVersions } from './toolchain-contract.mjs';
 import { decideSupervisedChildExit, decideSupervisedChildSpawnError } from './supervisor-exit-policy.mjs';
-import { buildSupervisedServiceSpecs } from './supervised-service-specs.mjs';
+import { buildSupervisedServiceSpecs, missingServiceRequirements } from './supervised-service-specs.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 function version(bin, args = ['--version']) {
   try { return execFileSync(bin, args, { encoding: 'utf8' }).trim(); }
   catch { return null; }
+}
+function commandAvailable(bin, args = ['--version']) {
+  try { execFileSync(bin, args, { stdio: 'ignore' }); return true; }
+  catch { return false; }
 }
 function readManifest(relativePath) {
   try { return JSON.parse(readFileSync(resolve(ROOT, relativePath), 'utf8')); }
@@ -44,6 +48,29 @@ if (!nodeReady || !npmReady) {
 }
 
 const stateDir = resolve(ROOT, '.super-state');
+const serviceSpecs = buildSupervisedServiceSpecs({
+  root: ROOT,
+  stateDir,
+  nodeExecutable: process.execPath,
+});
+
+// Validate every mandatory child before creating local state or launching the
+// first process. A missing research interpreter or an unbuilt preview otherwise
+// causes a short-lived partial stack and leaves misleading state artifacts.
+if (!commandAvailable('python3')) {
+  console.error('SUPER_START=FAIL reason=required-executable-missing service=research-bridge command=python3');
+  process.exit(1);
+}
+const missingRequirements = missingServiceRequirements(serviceSpecs, existsSync);
+if (missingRequirements.length) {
+  const details = missingRequirements.map(item => `${item.label}:${item.path}`).join('; ');
+  console.error(`SUPER_START=FAIL reason=service-prerequisite-missing details=[${details}]`);
+  if (missingRequirements.some(item => item.label === 'ui-preview' && item.path === resolve(ROOT, 'app/dist/index.html'))) {
+    console.error('Build the UI before production-style start: npm --prefix app run build');
+  }
+  process.exit(1);
+}
+
 mkdirSync(stateDir, { recursive: true });
 
 const children = [];
@@ -70,11 +97,7 @@ const launch = ({ label, command, args, env = {}, cwd = ROOT }) => {
   return child;
 };
 
-for (const spec of buildSupervisedServiceSpecs({
-  root: ROOT,
-  stateDir,
-  nodeExecutable: process.execPath,
-})) launch(spec);
+for (const spec of serviceSpecs) launch(spec);
 
 const shutdown = (signal, exitCode = 0) => {
   if (shuttingDown) return;
