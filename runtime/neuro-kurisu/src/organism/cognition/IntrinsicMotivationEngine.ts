@@ -1,3 +1,5 @@
+import { isBoundedPlainDataTree } from '../core/BoundedPlainData.ts';
+
 export interface IntrinsicDriveState {
   epistemic: number;
   novelty: number;
@@ -33,6 +35,7 @@ export class IntrinsicMotivationEngine {
   snapshot(){ return structuredClone(this.state); }
 
   restore(value:Partial<IntrinsicDriveState>|null|undefined):void {
+    if(value!==undefined&&value!==null&&!isBoundedPlainDataTree(value))throw new TypeError('intrinsic drive state must contain only bounded plain data properties');
     const source:object=value!==null&&value!==undefined&&typeof value==='object'&&!Array.isArray(value)?value:{};
     const restoredDominant=ownDataValue(source,'dominant');
     const drives:Record<DriveName,number>={
