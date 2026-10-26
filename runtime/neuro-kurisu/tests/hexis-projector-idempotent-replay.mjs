@@ -363,16 +363,19 @@ assert.equal(Object.hasOwn(prototypeSectionReceipt.deferredSections, '__proto__'
   'prototype-named HMX sections must be preserved in the receipt');
 assert.equal(prototypeSectionReceipt.deferredSections.__proto__, 1);
 assert.equal(prototypeSectionReceipt.status, 'noop');
+const persistedPrototypeReceipt = JSON.parse(JSON.stringify(prototypeSectionReceipt));
+assert.equal(Object.hasOwn(persistedPrototypeReceipt.deferredSections, '__proto__'), true,
+  'the __proto__ deferred key must survive JSON persistence as an own data property');
 const prototypeAppliedStage = {
   ...prototypeSectionStage,
   status: 'applied',
-  applicationAttempts: prototypeSectionReceipt.attempt,
-  application: prototypeSectionReceipt,
+  applicationAttempts: persistedPrototypeReceipt.attempt,
+  application: persistedPrototypeReceipt,
   lifecycleDigest: '',
 };
 refreshHmxStageLifecycleDigest(prototypeAppliedStage);
-assert.equal(isValidHmxApplyReceipt(prototypeAppliedStage, prototypeSectionReceipt), true,
-  'receipt validation must retain and verify prototype-named deferred sections');
+assert.equal(isValidHmxApplyReceipt(prototypeAppliedStage, persistedPrototypeReceipt), true,
+  'receipt validation must retain and verify prototype-named deferred sections after JSON round-trip');
 
 console.log('WorkPass426 HMX application attempt integrity: PASS');
 console.log('WorkPass427 HMX apply receipt semantic integrity: PASS');
