@@ -141,7 +141,11 @@ try {
   // domains, must not promote on their own, and must not create duplicate MemoryOS2 notes.
   researchQueryHash='9'.repeat(64);
   const lineageClaim='System is safe for deployment';
-  const syndicatedBody='System is safe for deployment. The independent review examined the release configuration, dependency inventory, access policy, network boundaries, persistent state, failure recovery, audit logs, and user-facing workflow. Reviewers also inspected rollback procedure, permission boundaries, secret handling, operational monitoring, version alignment, backup recovery, incident response, and failure containment. The published report states that the candidate passed the specified checks in the tested environment while documenting limitations around prolonged operation, external providers, and model confidence. Operators should preserve the original source material and repeat relevant procedures whenever the deployed configuration changes. The report does not claim that every possible failure mode has been eliminated.';
+  const syndicatedBody = [
+    "System is safe for deployment. The independent review examined the release configuration, dependency inventory, access policy, network boundaries, persistent state, failure recovery, audit logs, and user-facing workflow. Reviewers also inspected rollback procedure, permission boundaries, secret ",
+    "handling, operational monitoring, version alignment, backup recovery, incident response, and failure containment. The published report states that the candidate passed the specified checks in the tested environment while documenting limitations around prolonged operation, external providers, and ",
+    "model confidence. Operators should preserve the original source material and repeat relevant procedures whenever the deployed configuration changes. The report does not claim that every possible failure mode has been eliminated.",
+  ].join('');
   const lineageStart=await core.ingestExternalProjectResearch(mkResearch('alpha.wire-example.test','wire-example.test','4'.repeat(64),Date.now()-2500,syndicatedBody,lineageClaim));
   assert.equal(lineageStart.promoted,false);
   const lineageCopy=await core.ingestExternalProjectResearch(mkResearch('beta.republisher-example.test','republisher-example.test','5'.repeat(64),Date.now()-2200,`Reprinted story: ${syndicatedBody} Publisher contact details follow.`,lineageClaim));
