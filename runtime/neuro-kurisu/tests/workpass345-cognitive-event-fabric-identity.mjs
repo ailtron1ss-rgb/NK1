@@ -535,5 +535,6 @@ assert.equal(eventIdGetterCalls,0);
 assert.equal(payloadGetterCalls,0);
 assert.equal(atomicRecovered.getById('cef:test:restore:row-accessor')?.payload.recovered,true);
 assert.equal(atomicRecovered.getById('cef:test:restore:payload-accessor')?.payload.recovered,true);
+assert.equal(atomicRecovered.getById('cef:test:restore:payload-accessor')?.payload.recovered,true);
 
 console.log('WorkPass345 CognitiveEventFabric identity: PASS');
