@@ -11903,11 +11903,6 @@ export class OrganismCore {
             return;
         }
         const projected = this.cognitiveRuntime.outcomeCognition.project({ tick: this.persisted.state.tick, tool: id, ok: result.ok, verification: result.verification, reason, inputKeys, predictedAction: this.persisted.state.predictedNextAction, predictionConfidence01: this.persisted.state.lastPredictionConfidence, executionId: result.executionId, outcomeClass: result.outcomeClass });
-        this.persistToolOutcomeEvidence({
-            toolId:id,result,tick:projected.verificationRecord.tick,at:result.audit.at,parentEventId:receiptTrace.outcomeEventId,
-            externalObservation:integratedExternal?externalIntegration.observation:undefined,
-            externalAssessment:integratedExternal?externalIntegration.assessment:undefined,
-        });
         { const outcomeSnapshot = this.cognitiveRuntime.outcomeCognition.snapshot(); this.persisted.system.outcomeVerification = { version: 1, records: [...outcomeSnapshot.records], projectionIndex: [...outcomeSnapshot.projectionIndex], evidenceRevisions: [...outcomeSnapshot.evidenceRevisions] }; }
         this.persisted.system.causalAccountability = projected.causal;
         const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false);
@@ -11962,6 +11957,11 @@ export class OrganismCore {
             });
             if (!projection.resolved) throw new Error(`external-tool-evidence-projection-failed:${projection.reason ?? 'unknown'}`);
         }
+        this.persistToolOutcomeEvidence({
+            toolId:id,result,tick:projected.verificationRecord.tick,at:result.audit.at,parentEventId:receiptTrace.outcomeEventId,
+            externalObservation:integratedExternal?externalIntegration.observation:undefined,
+            externalAssessment:integratedExternal?externalIntegration.assessment:undefined,
+        });
         this.persisted.system.cognitiveEventFabric = this.cognitiveRuntime.cognitiveEventFabric.snapshot();
         this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
     }

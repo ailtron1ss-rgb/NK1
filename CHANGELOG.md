@@ -1,3 +1,10 @@
+## NK1 [evidence] — sequence outcome projection after causal receipt creation (2026-10-26)
+
+- Moved the canonical RealityEvidenceLedger/P65 projection after `appendToolReceiptTrace` and optional external-evidence append, so its parent CEF outcome ID is available and external-observation variables are initialized.
+- This corrects the use-before-declaration errors found by the exact-head Node.js 24 workflow; that previous run failed typecheck before validating the integration.
+
+---
+
 ## NK1 [evidence] — validate event IDs without over-escaping controls (2026-10-26)
 
 - Corrected P65 event-ID validation to test Unicode control-code points directly, so valid canonical IDs containing ordinary letters such as `u` are not accidentally rejected.
