@@ -56,8 +56,12 @@ for (let index = 0; index < 9; index++) {
 const retainedBytes = owner.snapshot().hmxStages.reduce((sum, stage) => sum + (stage.stagedBytes ?? 0), 0);
 assert(retainedBytes <= RETAINED_LIMIT_BYTES,
   'the retained stage payload must never exceed the configured 16 MiB budget');
+const firstStoredStage = owner.snapshot().hmxStages.find(stage => stage.stagingId === stages[0].stagingId);
+assert.equal(firstStoredStage?.stagedSections.memories.length, ROW_COUNT,
+  'rejecting a later payload must not mutate the earlier retained payload in owner state');
+assert.equal(firstStoredStage?.stagedBytes, stages[0].stagedBytes);
 assert.equal(stages[0].stagedSections.memories.length, ROW_COUNT,
-  'rejecting a later payload must not mutate earlier reviewable stages');
+  'the original staging receipt remains unchanged for the caller');
 assert.equal(stages[0].stagedBytes > 0, true);
 assert.equal(stages[8].stagedBytes, 0);
 
