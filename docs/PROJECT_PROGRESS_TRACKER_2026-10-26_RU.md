@@ -1,3 +1,13 @@
+## WorkPass422 — bounded snapshot недоверенной memory-записи перед нормализацией (2026-10-26)
+
+- **Код нормализатора:** `58f57b806590477c0d6558b162d82a78675e8397`; **регрессия:** `b380123afe87987a10456065504982bdf4a02af1`.
+- `normalizeHmxV17Memory` теперь захватывает raw row через bounded plain-JSON snapshot до чтения полей. Прямые вызовы не могут исполнить root/nested getters, передать custom-prototype запись или менять значения по ходу trust checks.
+- При этом сохраняется `null` для некорректной metadata/unsafe input; canonical stage application продолжает работать с ограниченным snapshot стадии. Добавлена защита поверх проверок confidence, provenance, references и типов metadata.
+- Регрессии покрывают root getter suppression, nested metadata getter suppression и отказ от custom-prototype row.
+- **Валидация:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass421 — отклонять некорректный HMX source_attribution вместо молчаливого удаления (2026-10-26)
 
 - **Код адаптера:** `77c57d9283f2805711a1c5e3db11c38af8b826f2`; **регрессия:** `d7be9e5da89bb8523e42d422533112e9a0304461`.
