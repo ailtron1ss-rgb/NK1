@@ -51,16 +51,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Read only own data properties; caller-controlled getters are never executed. */
 function dataSnapshot(value: unknown, allowed: readonly string[]): Record<string, unknown> | null {
-  if (!isRecord(value)) return null;
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  const result: Record<string, unknown> = Object.create(null);
-  for (const key of allowed) {
-    const descriptor = descriptors[key];
-    if (!descriptor) continue;
-    if (!("value" in descriptor)) return null;
-    result[key] = descriptor.value;
+  try {
+    if (!isRecord(value)) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const result: Record<string, unknown> = Object.create(null);
+    for (const key of allowed) {
+      const descriptor = descriptors[key];
+      if (!descriptor) continue;
+      if (!("value" in descriptor)) return null;
+      result[key] = descriptor.value;
+    }
+    return result;
+  } catch {
+    // Proxies can throw from getPrototypeOf / ownKeys / descriptor traps.
+    // Treat that as malformed untrusted ingress rather than crashing the caller.
+    return null;
   }
-  return result;
 }
 
 function cleanText(value: unknown, max = MAX_TEXT): string | undefined {
