@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head typecheck and integration CI are pending. Historical CI rows and their tested SHAs remain unchanged; no readiness scores were increased.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -500,5 +500,13 @@
       "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
       "mergeCommit": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
     }
-  ]
+  ],
+  "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass355",
+    "sourceBranch": "fix/workpass355-safe-snapshot-restore-2026-10-26",
+    "codeTestHead": "38b17bf610c06de1a23ba5e54d21cb4a1b7ac905",
+    "baseHead": "18afd253dcd7413c02136537ea1acc10b7764768",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "CognitiveEventFabric.restore reads own data descriptors, avoids getters/iterators on snapshots, bounds arrays and builds restored events plus receipt replay index off-ledger before committing atomically."
+  }
 }
