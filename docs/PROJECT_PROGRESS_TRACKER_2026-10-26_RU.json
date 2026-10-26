@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all four named workflows passed on that exact head. Newer WorkPass335/336 code/test head bb7a76c55d83ff36358ded56e966b880b38cc7d9 adds ledger-binding schema checks and an in-process evaluator-origin capability, but exact-head CI evidence has not yet been returned; therefore this snapshot intentionally does not raise scores for these passes. The branch head immediately before this tracker update was 5e05c44f2a605c5e33309f47946cf335eedd3729.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all four named workflows passed on that exact head. The newer combined code/test head bb7a76c55d83ff36358ded56e966b880b38cc7d9 includes WorkPass335 ledger preflight, WorkPass336 in-process evaluator-origin capability, and the already-present WorkPass339 strict Ed25519 approval-encoding patch. Exact-head CI for this combined state has not yet been returned; the separate narrow WorkPass339 workflow does not replace combined-head validation, so scores remain unchanged. The branch head immediately before this tracker update was e13255a52dbbac5f5dd5b300f1767fc5c748e707.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -135,9 +135,9 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "WorkPass335/336 added runtime preflight and in-process evaluator-origin capability, but the newer code/test head still requires exact-head CI confirmation",
+        "WorkPass335/336 add ledger preflight and in-process evaluator-origin capability, and WorkPass339 strictens Ed25519 approval encoding; the combined code/test head still needs exact-head CI confirmation",
         "Family-aware evaluation and bounded deadlines improve evidence integrity, not measured generalization on external held-out tasks",
-        "Serialized or cross-process evidence still requires separate trusted signed-receipt verification",
+        "Serialized or cross-process evaluation evidence still requires a trusted signed-receipt verifier",
         "Need independently measured tool-use/transfer uplift and regression resistance before raising learning-effectiveness scores"
       ],
       "evidence": [
@@ -316,5 +316,15 @@
     }
   ],
   "latestUnverifiedCodeTestHead": "bb7a76c55d83ff36358ded56e966b880b38cc7d9",
-  "branchHeadBeforeTrackerCommit": "5e05c44f2a605c5e33309f47946cf335eedd3729"
+  "branchHeadBeforeTrackerCommit": "e13255a52dbbac5f5dd5b300f1767fc5c748e707",
+  "additionalChangesInCombinedHead": [
+    {
+      "id": "WorkPass339",
+      "name": "Strict canonical Base64 encoding for Ed25519 skill-promotion and rollback approval signatures",
+      "status": "present-in-combined-branch",
+      "exactCombinedHeadCiStatus": "pending",
+      "separateNarrowCiEvidence": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40253553153",
+      "note": "Separate narrow test passed on merge commit 4a41db0; this is not exact-head validation of the current combined branch."
+    }
+  ]
 }
