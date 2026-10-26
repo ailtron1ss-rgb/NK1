@@ -1,3 +1,17 @@
+## WorkPass332 — per-family SkillLearnBench gate and weighted progress ledger (2026-10-26)
+
+- **Learning-evaluation code:** added optional task-family labels to SkillLearnBench trial input/report; aggregate output now preserves family metadata and rejects a single task changing family between trials.
+- **Candidate gate:** adds separately reported validation success, baseline/candidate composite, validation gain, holdout success and holdout delta per family. Missing family labels, incomplete paired validation/holdout coverage, low independently verified family success, family-local validation regressions, and family-local holdout regression now block eligibility.
+- **Test:** added a counterexample where nine memory tasks improve and pass, while tool-use and transfer tasks gain trajectory/skill score but fail the independent verifier. Aggregate task success clears the global floor; the family-specific floors still reject the candidate. Added missing metadata, family identity mismatch and duplicate required-family regressions.
+- **Progress tracking:** created a 12-domain JSON ledger with weights summing to 100% and distinct implementation, automated-validation, external-evidence and release-readiness dimensions. Added a built-in-Node reporter/unit test and exposed `npm run test:progress-ledger` / `npm run progress:report`.
+- **CI:** the unified integration workflow now runs the progress-ledger assertions/reporter and watches the learning gate/test paths. The P26 workflow already watches SkillLearnBench adapter and Hermes gate test paths.
+- **Evidence boundary:** these are engineering and contract changes, not proof of generalization or a measured improvement in intelligence. The task-family label must come from the canonical manifest/evaluator; this adapter enforces presence/consistency but does not cryptographically authenticate the label. Signed P23 evidence/promotion remains a separate gate.
+- **Validation status:** exact-head P26 typecheck/regression and unified clean-install/build CI are pending a runner on this draft PR. No local test pass is claimed.
+- **Release status:** main and the release ZIP are unchanged. The published main archive has not been rebuilt from this branch; full release readiness, real tool-use/transfer evidence, Live2D/voice E2E, soak tests and license/provenance closure remain open.
+- **Detailed checkpoint:** `docs/WORKPASS332_FAMILYWISE_LEARNING_AND_PROGRESS_LEDGER_RU.md`.
+
+---
+
 ## WorkPass331 — bind task-family floors to verified skill proposals (2026-10-26)
 
 - **Gap:** authenticated proposal generation blocked significant regressions by family, but an aggregate positive result could still pass if an important family had zero gain. The family results were reported, yet callers could not require improvement on the task families a particular skill is meant to serve.
