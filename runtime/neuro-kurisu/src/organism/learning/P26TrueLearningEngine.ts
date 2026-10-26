@@ -123,6 +123,14 @@ export class P26TrueLearningEngine{
     const replayRate=options.replayLearningRate01??.035;
     if(!validRate(replayRate))throw new Error('replay-learning-rate-invalid');
     const conflictCandidateCap=Math.max(8,Math.min(128,Math.floor(options.conflictCandidateCap??64)));
+    const validState=(state:OrganismState)=>{
+      if(!state||typeof state!=='object'||!state.needs||typeof state.needs!=='object')throw new Error('interleaved-state-invalid');
+      const needs=state.needs;
+      const values=[needs.energy,needs.cognitiveLoad,needs.uncertainty,needs.socialNeed,needs.novelty,
+        needs.identityCoherence,needs.goalPressure,state.predictionError,state.attentionBudget,
+        state.selfPredictionError,state.autonomyScore,state.lastPredictionConfidence];
+      if(values.some(value=>typeof value!=='number'||!Number.isFinite(value)||value<0||value>1))throw new Error('interleaved-state-invalid');
+    };
     const validRows=(rows:typeof currentRows)=>{
       for(const row of rows){
         if(!row||typeof row!=='object'||!ACTIONS.includes(row.action)||
@@ -130,6 +138,8 @@ export class P26TrueLearningEngine{
           (row.surprise!==undefined&&(typeof row.surprise!=='number'||!Number.isFinite(row.surprise)||row.surprise<0||row.surprise>1))){
           throw new Error('interleaved-row-invalid');
         }
+        validState(row.state);
+        validState(row.nextState);
       }
     };
     // Validate the whole input before the first update so malformed later rows
