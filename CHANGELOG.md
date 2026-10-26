@@ -1,3 +1,13 @@
+## WorkPass422 — snapshot untrusted memory rows before normalization (2026-10-26)
+
+- **Normalizer code commit:** `58f57b806590477c0d6558b162d82a78675e8397`; **regression commit:** `b380123afe87987a10456065504982bdf4a02af1`.
+- `normalizeHmxV17Memory` now captures its raw row through the same bounded plain-JSON snapshot boundary before reading fields. Direct callers cannot trigger root/nested getters, feed a custom-prototype row, or mutate values during the normalizer's trust checks.
+- The normalizer still returns `null` for malformed typed metadata or unsafe input; canonical stage application continues to use the bounded stage snapshot. This adds defense-in-depth without weakening the previous confidence, provenance, reference or metadata rules.
+- Regressions cover root getter suppression, nested metadata getter suppression and custom-prototype row rejection.
+- **Validation:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass421 — reject malformed HMX source attribution instead of silently dropping it (2026-10-26)
 
 - **Adapter code commit:** `77c57d9283f2805711a1c5e3db11c38af8b826f2`; **regression commit:** `d7be9e5da89bb8523e42d422533112e9a0304461`.
