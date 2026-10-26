@@ -1,3 +1,11 @@
+## WorkPass377 — fix production launcher filesystem import (2026-10-26)
+
+- **Clean-start CI finding:** `npm run install:all` and `npm --prefix app run build` passed. The stack-start step failed immediately because `tools/super-start.mjs` imported `mkdirSync` from `node:path`; Node reports that this module has no such export.
+- **Fix:** moved `mkdirSync` to the `node:fs` import, kept `resolve` in `node:path`, and added an explicit regression that prevents reintroducing the incorrect named import.
+- **Validation:** clean install/build must be re-run on the new exact HEAD; the previous run is evidence that dependency installation and Vite production build worked, but not that the full runtime stack started.
+
+---
+
 ## WorkPass376 — fix runtime workspace directory and add clean-start CI (2026-10-26)
 
 - **Critical startup bug:** both `tools/super-start.mjs` and `tools/super-dev.mjs` launched `src/server/server.mjs` with `cwd` set to the monorepo root. The entrypoint is actually `runtime/neuro-kurisu/src/server/server.mjs`; therefore both advertised launch commands could fail before the organism runtime boots.

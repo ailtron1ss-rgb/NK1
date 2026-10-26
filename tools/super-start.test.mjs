@@ -8,6 +8,12 @@ const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const start = await readFile(path.join(root, 'tools', 'super-start.mjs'), 'utf8');
 const dev = await readFile(path.join(root, 'tools', 'super-dev.mjs'), 'utf8');
 
+test('production launcher imports filesystem operations from node:fs', () => {
+  assert.match(start, /import \{ mkdirSync \} from 'node:fs';/);
+  assert.match(start, /import \{ resolve \} from 'node:path';/);
+  assert.doesNotMatch(start, /import \{[^}]*mkdirSync[^}]*\} from 'node:path';/);
+});
+
 test('production start launches runtime from the runtime workspace', () => {
   assert.match(start, /const launch = \(label, command, args, env = \{\}, cwd = ROOT\)/);
   assert.match(start, /launch\('neuro-kurisu',[\s\S]*?resolve\(ROOT, 'runtime\/neuro-kurisu'\)\);/);

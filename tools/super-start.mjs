@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { mkdirSync, resolve } from 'node:path';
+import { mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
