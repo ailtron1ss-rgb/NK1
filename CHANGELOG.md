@@ -1,3 +1,10 @@
+## NK1 P26 verification — compare transfer metrics with numeric tolerance (2026-10-26)
+
+- Fixed a brittle regression assertion in `p26-continual-transfer-tracker.mjs`: the computed `0.35 - 0.2` can be represented as `0.14999999999999997`, so the test now uses a strict `1e-12` absolute tolerance like the neighboring transfer-metric assertions.
+- The metric formula, transfer direction, signed regression behavior, and baseline logic are unchanged. Exact-head P26 CI must be rerun to verify the suite beyond this first failing assertion.
+
+---
+
 ## NK1 P26 Node TypeScript execution — make transform mode consistent across replay tests
 
 - Replaced strip-only mode with `--experimental-transform-types` for all direct TypeScript-based P26 regressions, not just the first replay-buffer test.
