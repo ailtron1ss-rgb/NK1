@@ -24,6 +24,9 @@ on:
       - "tools/supervisor-exit-policy.test.mjs"
       - "tools/supervised-service-specs.mjs"
       - "tools/supervised-service-specs.test.mjs"
+      - "tools/super-gateway.mjs"
+      - "tools/super-gateway-headers.mjs"
+      - "tools/super-gateway-headers.test.mjs"
       - "tools/supervisor-preflight.mjs"
       - "tools/supervisor-preflight.test.mjs"
       - "tools/super-dev.mjs"
@@ -47,6 +50,9 @@ on:
       - "tools/supervisor-exit-policy.test.mjs"
       - "tools/supervised-service-specs.mjs"
       - "tools/supervised-service-specs.test.mjs"
+      - "tools/super-gateway.mjs"
+      - "tools/super-gateway-headers.mjs"
+      - "tools/super-gateway-headers.test.mjs"
       - "tools/supervisor-preflight.mjs"
       - "tools/supervisor-preflight.test.mjs"
       - "tools/super-dev.mjs"
@@ -82,6 +88,8 @@ jobs:
         run: npm run test:supervisor-exit-policy
       - name: Validate supervised service launch specifications
         run: npm run test:supervised-service-specs
+      - name: Validate gateway public-origin forwarding
+        run: npm run test:super-gateway-headers
       - name: Check startup and installation script syntax
         run: |
           node --check tools/super-doctor.mjs
@@ -91,6 +99,8 @@ jobs:
           node --check tools/supervisor-preflight.mjs
           node --check tools/supervisor-exit-policy.mjs
           node --check tools/supervised-service-specs.mjs
+          node --check tools/super-gateway.mjs
+          node --check tools/super-gateway-headers.mjs
           node --check runtime/neuro-kurisu/scripts/typecheck-runtime.mjs
       - name: Run environment doctor
         run: npm run doctor

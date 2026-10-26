@@ -1,3 +1,10 @@
+## Gateway public-origin forwarding contract — 2026-10-26
+
+- The gateway rewrote `Host` to the internal upstream port but did not send the public `Host:port` or protocol as forwarded origin metadata. The Vite auth-popup middleware reads `x-forwarded-host`/`x-forwarded-proto`, so the missing headers could produce redirects scoped to the internal `:8081` port.
+- Added a pure, validated header builder. It rewrites `Host` for upstream routing while deriving `x-forwarded-host` only from the actual incoming Host header and explicitly setting the transport protocol.
+- Added regression tests for public-host preservation, upstream host rewrite, HTTP/HTTPS protocol binding, absent host handling and invalid target rejection.
+- Wired the regression and syntax checks into the Node 24 toolchain workflow and `audit:quick`. Exact-head CI validation is pending.
+
 ## Development startup and shared supervisor preflight — 2026-10-26
 
 - Fixed the same relative-entrypoint defect in `npm run dev`: Neuro Kurisu now launches from `runtime/neuro-kurisu`, while the bridge and Vite dev server remain rooted at the repository.
