@@ -18,6 +18,8 @@ export type HexisEvidenceInput = {
   stance: HexisEvidenceStance;
   source: HexisEvidenceSource;
   observedAt: string;
+  /** Internal compatibility marker: timestamp is server receipt time, not source data. */
+  observedAtOrigin?: "server-receipt";
   confidence: number;
   note?: string;
   protectedMemory?: boolean;
@@ -29,6 +31,8 @@ export type CanonicalHexisEvidence = Readonly<{
   stance: HexisEvidenceStance;
   source: Readonly<{ kind: string; ref: string; label?: string; author?: string }>;
   observedAt: string;
+  /** Excludes a generated receipt clock from identity digest, preserving retry semantics. */
+  observedAtOrigin?: "server-receipt";
   confidence: number;
   note?: string;
   protectedMemory: boolean;
@@ -98,7 +102,7 @@ export function adaptHexisEvidence(
   knownEvidenceIds: ReadonlySet<string> = new Set<string>(),
 ): EvidenceIngressResult {
   const row = dataSnapshot(input, [
-    "memoryId", "evidenceId", "stance", "source", "observedAt",
+    "memoryId", "evidenceId", "stance", "source", "observedAt", "observedAtOrigin",
     "confidence", "note", "protectedMemory",
   ]);
   if (!row) return { accepted: false, reason: "invalid-evidence-envelope" };
@@ -113,6 +117,9 @@ export function adaptHexisEvidence(
   }
   if (row.protectedMemory !== undefined && typeof row.protectedMemory !== "boolean") {
     return { accepted: false, reason: "invalid-protected-memory-flag" };
+  }
+  if (row.observedAtOrigin !== undefined && row.observedAtOrigin !== "server-receipt") {
+    return { accepted: false, reason: "invalid-evidence-timestamp-origin" };
   }
   const observedAt = cleanText(row.observedAt, 64);
   if (!observedAt || !Number.isFinite(Date.parse(observedAt))) {
@@ -138,6 +145,7 @@ export function adaptHexisEvidence(
     stance: row.stance,
     source: Object.freeze({ kind, ref, ...(label ? { label } : {}), ...(author ? { author } : {}) }),
     observedAt: new Date(observedAt).toISOString(),
+    ...(row.observedAtOrigin === "server-receipt" ? { observedAtOrigin: "server-receipt" as const } : {}),
     confidence: row.confidence,
     ...(note ? { note } : {}),
     protectedMemory: row.protectedMemory === true,
