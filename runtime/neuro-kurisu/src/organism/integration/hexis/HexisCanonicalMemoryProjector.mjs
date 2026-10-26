@@ -241,7 +241,7 @@ export class HexisCanonicalMemoryProjector {
                 duplicate.id,
                 targetStatus,
                 'hexis-source-status-reconciliation:' + (typeof row.status === 'string' ? row.status.slice(0, 64) : 'unknown'),
-                { commandId: 'hexis-status:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + targetStatus).slice(0, 48) },
+                { commandId: 'hexis-status:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + targetStatus + ':' + attempt).slice(0, 48) },
               );
             }
             if (targetStatus === 'quarantined' || targetStatus === 'unknown') this.removeSemanticProjection(graphSourceKey);
