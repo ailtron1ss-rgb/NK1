@@ -1,3 +1,14 @@
+## WorkPass389 — route generic Hexis reviews through the canonical gate first (2026-10-26)
+
+- **Code commit:** `7c22337ae263f68c568ac398c9af1d68a6af2bf0`; diagnostic assertion in the smoke test: `62871903fad4f9d19c9235fb061e1f37f010a7cc`.
+- The generic `/reviews/decide` dispatcher previously selected the guarded path only when `hexisListLearningReviews()` exposed the item's internal `pipeline` field. That projection-dependent branch let evidence reviews fall through to the generic review mutation when the evidence payload wasn't present in the list projection.
+- The dispatcher now calls `decideHexisEvidenceReview` first. It falls back to the generic review handler only when the canonical gate explicitly returns `not-a-valid-hexis-evidence-review`; every other rejection fails closed with HTTP 409.
+- The HTTP smoke assertion now includes the canonical-gate response details to aid diagnosis.
+- **Validation:** the earlier Unified run at `ac6d07607977b2280b6d924e0c13dd7c6b332e90` failed the generic-review smoke assertion. Runs triggered by diagnostic commit `62871903fad4f9d19c9235fb061e1f37f010a7cc` and code commit `7c22337ae263f68c568ac398c9af1d68a6af2bf0` ended before job steps/logs were available; fresh exact-head validation remains unconfirmed. No readiness or recall-uplift claim.
+- `main` and the canonical Release ZIP are unchanged.
+
+---
+
 ## WorkPass387 — durable idempotency for server-generated Hexis receipt time (2026-10-26)
 
 - Code/test commits: 
