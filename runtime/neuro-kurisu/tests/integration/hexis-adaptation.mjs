@@ -440,7 +440,10 @@ const duplicateGoalPreparation = applyFabric.prepareGoalProposals(duplicateStage
 assert.equal(duplicateGoalPreparation.created, 0, 'same lineage/reference/content goal proposals must deduplicate across re-exports');
 assert.equal(duplicateGoalPreparation.duplicates, preparedGoals.proposals.length);
 
+const temporalCountBeforeDuplicateApply = applyFabric.snapshot().temporal.length;
 const duplicateApply = applyFabric.decideHmx(duplicateStage.stagingId, 'apply');
+assert.equal(applyFabric.snapshot().temporal.length, temporalCountBeforeDuplicateApply,
+  're-exporting the same source lineage must not duplicate temporal assertions for an already-indexed memory');
 assert.equal(duplicateApply?.application?.importedCount, 0);
 assert.equal(duplicateApply?.application?.deduplicatedCount, 2);
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
