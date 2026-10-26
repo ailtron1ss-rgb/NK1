@@ -1,3 +1,12 @@
+## WorkPass416 — enforce HMX mode allowlists inside the adaptation fabric (2026-10-26)
+
+- **Fabric code commit:** `d82d5f9c77a303322b6a379e9b664111917f9bf0`; **direct-call regression:** `b1595b492f0424b754e50e600aadebd2d379f7ae`.
+- Added the same intent/strategy allowlists to `HexisAdaptationFabric.stageHmx`, not only the HTTP route. Direct/internal callers now receive `hmx-invalid-intent` or `hmx-invalid-strategy` before document snapshotting, stage creation, or stage metrics mutate.
+- Regression calls the fabric directly with an unknown intent and unknown strategy and requires both to throw while the stage ledger remains empty. Together with WorkPass415's HTTP-smoke regression, the enum contract is checked at both public entry layers.
+- **Validation:** PENDING exact-head HMX adaptation, server smoke, runtime typecheck and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass415 — validate HMX stage intent and strategy at the HTTP boundary (2026-10-26)
 
 - **Server code commit:** `9f9601df7a72d9d0f6c46e24030052c554087237`; **server-smoke regression:** `bd2f036238b7b3582c6e9a17ee49991a66e0df54`.
