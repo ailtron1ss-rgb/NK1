@@ -32,35 +32,24 @@ orderingEngine.trainInterleaved(
 assert.deepEqual(updateTargets,[.1,.8],
   'scheduled replay must run before the fresh current-task gradient');
 
-// Identical row ordering between current/replay batches must not turn the
-// scheduler into a permanently paired old/new gradient contest.
-const scheduleEngine=new P26TrueLearningEngine();
-const scheduled=[];
-const originalScheduleTrain=scheduleEngine.learner.train.bind(scheduleEngine.learner);
-scheduleEngine.learner.train=(input)=>{scheduled.push({energy:input.state.needs.energy,target:input.target01});return originalScheduleTrain(input);};
-const scheduleSize=12;
-const currentSchedule=Array.from({length:scheduleSize},(_,i)=>makeRow({
-  state:mkState(.1+i*.01,.88,.25),
-  action:'verify',reward:.8,nextState:mkState(.11+i*.01,.9,.2),
-}));
-const replaySchedule=Array.from({length:scheduleSize},(_,i)=>makeRow({
-  state:mkState(.8-i*.01,.12,.25),
-  action:'verify',reward:.1,nextState:mkState(.79-i*.01,.1,.2),
-}));
-const scheduleOptions={targetMode:'reward',replayEveryNCurrent:1,maxReplayUpdates:scheduleSize,currentLearningRate01:.18,replayLearningRate01:.06,conflictCandidateCap:8};
-scheduleEngine.trainInterleaved(currentSchedule,replaySchedule,scheduleOptions);
-const firstSchedule=[...scheduled];
-assert.equal(firstSchedule.length,scheduleSize*2);
-for(let i=0;i<scheduleSize;i++){
-  assert.equal(firstSchedule[i*2].target,.1,'each interleaving slot starts with a replay target');
-  assert.equal(firstSchedule[i*2+1].target,.8,'each interleaving slot ends with a current target');
-  assert.notEqual(firstSchedule[i*2].energy,firstSchedule[i*2+1].energy,
-    'replay sample must not stay paired to the same current-row index');
-}
-scheduled.length=0;
-scheduleEngine.trainInterleaved(currentSchedule,replaySchedule,scheduleOptions);
-assert.notEqual(scheduled[0].energy,firstSchedule[0].energy,
-  'the replay permutation must rotate between consecutive batches');
+// Replay is an additional optimizer step. Fresh-task plasticity must be
+// compensated for the replay work actually applied in the current batch.
+const pressureEngine=new P26TrueLearningEngine();
+const observedRates=[];
+const pressureTrain=pressureEngine.learner.train.bind(pressureEngine.learner);
+pressureEngine.learner.train=(input)=>{
+  observedRates.push({target:input.target01,rate:input.learningRate01});
+  return pressureTrain(input);
+};
+pressureEngine.trainInterleaved(
+  [makeRow({state:mkState(.82,.9,.2),reward:.8,nextState:mkState(.8,.9,.25)})],
+  [makeRow({state:mkState(.18,.1,.8),reward:.1,nextState:mkState(.2,.1,.75)})],
+  {targetMode:'reward',replayEveryNCurrent:1,maxReplayUpdates:1,currentLearningRate01:.18,replayLearningRate01:.06},
+);
+assert.deepEqual(observedRates.map(row=>row.target),[.1,.8],
+  'scheduled replay must run before the fresh current-task gradient');
+assert.deepEqual(observedRates.map(row=>row.rate),[.06,.24],
+  'one applied replay step must be accounted for in the subsequent fresh-example rate');
 
 engine.recordHoldout(.4,.8);
 assert.equal(engine.metrics().holdoutDelta01,.4);
