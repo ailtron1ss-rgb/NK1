@@ -618,6 +618,21 @@ const rollbackMemoryFabric = {
     );
     return true;
   },
+  commitSignalCompensations(tokens) {
+    const transactions = tokens.map(token => {
+      const compensation = rollbackSignalCompensations.get(token);
+      if (!compensation) throw new Error('test-signal-compensation-token-invalid');
+      for (const sourceCommandId of compensation.sourceCommandIds) {
+        const receipt = rollbackSignalReceipts.get(sourceCommandId);
+        if (!receipt || receipt.action !== 'update-signals' || receipt.id !== compensation.id) {
+          throw new Error('test-signal-compensation-source-receipt-invalid');
+        }
+      }
+      return { token, compensation };
+    });
+    for (const { token } of transactions) rollbackSignalCompensations.delete(token);
+    return true;
+  },
 };
 const rollbackGraphState = {
   nodes: [{ id: 'rollback-graph:prior', label: 'old hmx content', type: 'concept', sourceKey: 'hexis:prior-graph-key' }],
