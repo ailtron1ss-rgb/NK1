@@ -351,29 +351,38 @@ export class P26TrueLearningEngine{
     };
     try{
       for(let i=0;i<current.length;i++){
+        // Rehearse before the current observation so the freshest experience has the
+        // final gradient in each scheduled slot. This prevents stride=1 replay from
+        // systematically overwriting the just-processed current-task update.
+        if(replay.length&&maxReplay>0&&(i+1)%replayEvery===0&&replayUpdates<maxReplay){
+          const candidateIndex=i%replay.length;
+          const candidate=replay[candidateIndex];
+          const startIndex=candidateIndex%current.length;
+          let conflict=false;
+          const comparisons=Math.min(conflictCandidateCap,current.length);
+          for(let offset=0;offset<comparisons;offset++){
+            // Deterministically spread the bounded screen across the full current batch;
+            // scanning only a contiguous slice can miss a nearby contradictory example.
+            const rowIndex=(startIndex+Math.floor(offset*current.length/comparisons))%current.length;
+            const row=current[rowIndex];
+            conflictComparisons++;
+            if(row.action!==candidate.action||Math.abs(row.reward-candidate.reward)<.45)continue;
+            let maxFeatureDelta=0;
+            for(let k=0;k<Math.min(row.features.length,candidate.features.length)-1;k++){
+              maxFeatureDelta=Math.max(maxFeatureDelta,Math.abs(row.features[k]-candidate.features[k]));
+              if(maxFeatureDelta>.18)break;
+            }
+            if(maxFeatureDelta<=.18){conflict=true;break;}
+          }
+          if(conflict)blockedReplayRows++;
+          else {
+            eligibleReplayRows++;
+            trainOne(candidate,replayRate);
+            if(!frozen)replayUpdates++;
+          }
+        }
         trainOne(current[i],currentRate);
         if(!frozen)onlineUpdates++;
-        if(!replay.length||maxReplay===0||(i+1)%replayEvery!==0||replayUpdates>=maxReplay)continue;
-        const candidateIndex=i%replay.length;
-        const candidate=replay[candidateIndex];
-        const start=candidateIndex%current.length;
-        let conflict=false;
-        const comparisons=Math.min(conflictCandidateCap,current.length);
-        for(let offset=0;offset<comparisons;offset++){
-          const row=current[(start+offset)%current.length];
-          conflictComparisons++;
-          if(row.action!==candidate.action||Math.abs(row.reward-candidate.reward)<.45)continue;
-          let maxFeatureDelta=0;
-          for(let k=0;k<Math.min(row.features.length,candidate.features.length)-1;k++){
-            maxFeatureDelta=Math.max(maxFeatureDelta,Math.abs(row.features[k]-candidate.features[k]));
-            if(maxFeatureDelta>.18)break;
-          }
-          if(maxFeatureDelta<=.18){conflict=true;break;}
-        }
-        if(conflict){blockedReplayRows++;continue;}
-        eligibleReplayRows++;
-        trainOne(candidate,replayRate);
-        if(!frozen)replayUpdates++;
       }
       this.state.metrics.onlineUpdates+=onlineUpdates;
       this.state.metrics.replayUpdates+=replayUpdates;
