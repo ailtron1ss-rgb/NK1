@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The scored progress and CI evidence remain anchored to source checkpoint b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass335 is a separate, unscored security patch on work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3; its exact-HEAD P23 regression, typecheck and CI are pending. Documentation-only commits do not change scored code. Do not infer that earlier PASS rows validate the WorkPass335 patch.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass339 is a separate, unscored security patch on work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3; exact-head P23 regression, typecheck and CI remain pending. Previous PASS rows are not evidence that this patch is validated.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -281,7 +281,7 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass335",
+    "id": "WorkPass339",
     "date": "2026-10-26",
     "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3",
     "codeCommit": "ad812aa0db98ec1283aaed36d777ce36a8268b13",
@@ -294,7 +294,16 @@
       "canonical rollback signature accepted",
       "rollback signature with trailing junk rejected"
     ],
-    "validationStatus": "pending exact-head P23 regression, runtime typecheck, and CI",
+    "validationStatus": "pending exact-head P23 regression, runtime typecheck, and Actions CI",
     "progressPercentagesChanged": false
-  }
+  },
+  "recentEngineeringPasses": [
+    {
+      "id": "WorkPass339",
+      "date": "2026-10-26",
+      "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3",
+      "codeCommit": "ad812aa0db98ec1283aaed36d777ce36a8268b13",
+      "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending."
+    }
+  ]
 }
