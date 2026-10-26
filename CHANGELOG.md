@@ -1,3 +1,13 @@
+## WorkPass356 — strict tool receipt ingress (2026-10-26)
+
+- **Defect:** the public CEF receipt/revision/observation methods read caller fields directly and could execute getters. Revision/external-observation ingress also coerced values to strings/booleans, truncated identifiers and clamped confidence, allowing malformed evidence to alias a valid identity.
+- **Fix:** `appendToolReceiptTrace()` now validates own data fields before replay lookup, requires canonical execution/tool/decision/observation IDs and confidence in `[0, 1]`. `appendToolReceiptRevision()` now rejects non-canonical or overlong IDs, invalid hashes/numbers/statuses, non-boolean outcomes, invalid confidence and malformed text rather than coercing/truncating. `appendToolExternalObservation()` uses the same accessor-safe ingress, validates IDs/booleans/confidence/timestamps and rejects values of the wrong type instead of stringifying or truncating them.
+- **Regression:** `runtime/neuro-kurisu/tests/cognitive-tool-receipt-input-boundary.mjs` exercises accessors, ID normalization collisions, overlong IDs, invalid booleans/confidence, fractional counters, non-string hashes and evidence text with hostile `toString()`; it verifies rejected calls do not mutate the event journal or replay index and that exact valid revision replay remains idempotent.
+- **Integration:** the test is wired into `test:cognitive-integration-suite` and matches the cognitive workflow path filter.
+- **Validation:** code/test checkpoint `c6845a5258a2c3bcdccce1089615cfabbfd4b750`; exact-head typecheck and CI pending. No readiness scores increased.
+
+---
+
 ## WorkPass355 — safe and transactional CognitiveEventFabric snapshot restore (2026-10-26)
 
 - **Defect:** `restore()` directly read snapshot fields and used array spread/iteration, so a corrupt or hostile snapshot could execute getters on the envelope, event rows, parent arrays or receipt projection index. A late exception could leave the live event ledger replaced while its replay index was only partially rebuilt.
