@@ -133,7 +133,8 @@ export class HexisCanonicalMemoryProjector {
     const semanticGraphBefore = this.semanticGraph?.snapshot();
     const temporalLedgerBefore = this.temporalLedger?.snapshot();
     const semanticNodeIdsByRef = new Map();
-    const beforeIds = new Set(existingItems.map(item => item.id));
+    const originalIds = new Set(existingItems.map(item => item.id));
+    const seenIds = new Set(originalIds);
     const existingImportKeys = new Set(existingItems
       .filter(item => String(item.source ?? '').startsWith('hexis:'))
       .map(item => String(item.source) + '\0' + stableRecordContent(item.content)));
@@ -231,11 +232,11 @@ export class HexisCanonicalMemoryProjector {
         const inserted = this.memoryFabric.encode(memoryInput, { commandId, syncCompatibility: false, forceDistinct: true });
         if (!inserted?.id) throw new Error('hmx-apply-canonical-write-returned-no-id:' + ref);
         importedIds.push(inserted.id);
-        if (beforeIds.has(inserted.id)) {
+        if (seenIds.has(inserted.id)) {
           deduplicatedCount++;
         } else {
           createdIds.push(inserted.id);
-          beforeIds.add(inserted.id);
+          seenIds.add(inserted.id);
           importedCount++;
         }
         this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
@@ -286,7 +287,18 @@ export class HexisCanonicalMemoryProjector {
       }
     } catch (error) {
       const rollbackErrors = [];
-      for (const id of [...createdIds].reverse()) {
+      // A downstream command can commit a canonical row and throw before returning its ID.
+      // Reconcile against the immutable pre-apply snapshot so compensation also catches
+      // these write-then-throw cases, rather than trusting only successfully returned IDs.
+      const rollbackIds = new Set(createdIds);
+      try {
+        for (const item of (this.memoryFabric.canonicalSnapshot().items ?? [])) {
+          if (!originalIds.has(item.id)) rollbackIds.add(item.id);
+        }
+      } catch (snapshotRollbackError) {
+        rollbackErrors.push('canonical-snapshot:' + String(snapshotRollbackError?.message ?? snapshotRollbackError).slice(0, 220));
+      }
+      for (const id of [...rollbackIds].reverse()) {
         try {
           this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
             commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
