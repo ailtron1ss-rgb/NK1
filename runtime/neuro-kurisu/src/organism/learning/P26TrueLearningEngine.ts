@@ -37,6 +37,17 @@ export interface StoredVerifiedHoldoutEvidence extends VerifiedHoldoutEvidenceIn
   recordedAt:number;
 }
 
+/**
+ * Trusted host-owned verifier. It must resolve/validate the evidence against
+ * independent evaluator records; caller-provided booleans alone are not authority.
+ * Keep this function out of untrusted plugin payloads and candidate-controlled code.
+ */
+export type P26HoldoutEvidenceVerifier = (input:Readonly<VerifiedHoldoutEvidenceInput>)=>boolean;
+
+export interface P26TrueLearningOptions {
+  verifyHoldoutEvidence?:P26HoldoutEvidenceVerifier;
+}
+
 export interface P26TrueLearningState {
   version:1;
   policy:ParametricPolicyState;
@@ -72,6 +83,17 @@ export interface BodyExtras { external01?:number;boredom01?:number;resourceRisk0
 export class P26TrueLearningEngine{
   readonly learner=new ParametricPolicyLearner();
   private state=defaultP26TrueLearning();
+  private readonly verifyHoldoutEvidence?:P26HoldoutEvidenceVerifier;
+
+  constructor(options:P26TrueLearningOptions={}){
+    this.verifyHoldoutEvidence=typeof options.verifyHoldoutEvidence==='function'?options.verifyHoldoutEvidence:undefined;
+  }
+
+  private isTrustedHoldoutEvidence(input:Readonly<VerifiedHoldoutEvidenceInput>):boolean{
+    if(!this.verifyHoldoutEvidence)return false;
+    try{return this.verifyHoldoutEvidence(input)===true;}catch{return false;}
+  }
+
   restore(raw?:Partial<P26TrueLearningState>|null){
     const d=defaultP26TrueLearning();
     const restoredEvidence:StoredVerifiedHoldoutEvidence[]=[];
@@ -87,6 +109,9 @@ export class P26TrueLearningEngine{
       if(!evidenceId||!taskId||!protocolId||!verifierId||!sampleSetHash)continue;
       const row:StoredVerifiedHoldoutEvidence={evidenceId,taskId,protocolId,verifierId,sampleSetHash,
         baseline01:value.baseline01,learned01:value.learned01,verified:true,independent:true,recordedAt:value.recordedAt};
+      // Persisted flags are claims. Revalidate each saved record against the
+      // host-owned verifier before it can affect the generalization maturity score.
+      if(!this.isTrustedHoldoutEvidence(row))continue;
       const identity=holdoutIdentityKey(row);
       if(seenIds.has(evidenceId)||seenSamples.has(identity))continue;
       seenIds.add(evidenceId);seenSamples.add(identity);restoredEvidence.push(row);
@@ -324,8 +349,16 @@ export class P26TrueLearningEngine{
       this.refreshDerivedMetrics();
       return {accepted:false,reason:'holdout-evidence-not-verified-independent',generalizationEvidence01:this.state.metrics.generalizationEvidence01,independentHoldoutSamples:this.state.metrics.independentHoldoutSamples};
     }
+    if(!this.verifyHoldoutEvidence){
+      this.refreshDerivedMetrics();
+      return {accepted:false,reason:'trusted-holdout-verifier-not-configured',generalizationEvidence01:this.state.metrics.generalizationEvidence01,independentHoldoutSamples:this.state.metrics.independentHoldoutSamples};
+    }
     const row:StoredVerifiedHoldoutEvidence={evidenceId,taskId,protocolId,verifierId,sampleSetHash,
       baseline01:input.baseline01,learned01:input.learned01,verified:true,independent:true,recordedAt:Date.now()};
+    if(!this.isTrustedHoldoutEvidence(row)){
+      this.refreshDerivedMetrics();
+      return {accepted:false,reason:'holdout-evidence-not-authenticated',generalizationEvidence01:this.state.metrics.generalizationEvidence01,independentHoldoutSamples:this.state.metrics.independentHoldoutSamples};
+    }
     const idKey=holdoutIdKey(evidenceId),sampleKey=holdoutIdentityKey(row);
     const used=new Set(this.state.usedHoldoutEvidenceKeys??[]);
     if(used.has(idKey)||used.has(sampleKey)){
