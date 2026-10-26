@@ -1,3 +1,10 @@
+## [NK1][Hexis] Keep risk-based approval mandatory (2026-10-26)
+
+- High-risk execution plans (`risk01 >= 0.6`) now require approval even when an API caller explicitly passes `requiresApproval: false`; low-risk explicit approvals and permitted opt-outs remain intact.
+- Reject malformed risk values, invalid placements, non-boolean approval flags and non-numeric outbox-reclaim ages at the server boundary before planning/reclaiming.
+- Add unit and server-smoke regressions for attempted high-risk approval suppression and malformed action parameters.
+- Validation status: committed with tests; exact-head execution still unverified because hosted jobs have no usable step records/logs.
+
 ## [NK1][Hexis] Reject unknown retention actions at ingress (2026-10-26)
 
 - Remove the HTTP fallback that converted unknown retention actions into `compress`; only `compress`, `archive`, or `forget` are accepted.
