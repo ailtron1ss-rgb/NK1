@@ -1222,6 +1222,27 @@ assert.throws(
 );
 const reviewedGoal = goalPipelineSystems.hexisAdaptation.decideGoalProposal(goalProposal.id, 'approve');
 assert.equal(reviewedGoal?.status, 'approved');
+
+// Approval is bound to the exact proposal content, not merely its stable ID.
+// Mutating any reviewed field in a restored snapshot must block materialization.
+const approvedGoalStateBeforeTamper = goalPipelineSystems.hexisAdaptation.snapshot();
+const tamperedApprovedGoalState = structuredClone(approvedGoalStateBeforeTamper);
+const tamperedApprovedGoal = tamperedApprovedGoalState.goalProposals.find(item => item.id === goalProposal.id);
+assert(tamperedApprovedGoal);
+tamperedApprovedGoal.title = 'Substituted title after explicit approval';
+goalPipelineSystems.hexisAdaptation.restore(tamperedApprovedGoalState);
+assert.throws(
+  () => goalPipelineSystems.materializeApprovedHexisGoalProposal(goalProposal.id),
+  /hmx-goal-approval-digest-invalid/,
+  'an approved proposal whose title changed after review must not enter agency project ownership',
+);
+assert.equal(
+  goalPipelineSystems.agency.selfProjects.snapshot().projects.some(project => project.hexisProposalId === goalProposal.id),
+  false,
+  'rejected proposal tampering must not create a canonical agency project',
+);
+goalPipelineSystems.hexisAdaptation.restore(approvedGoalStateBeforeTamper);
+
 const materializedGoal = goalPipelineSystems.materializeApprovedHexisGoalProposal(goalProposal.id);
 assert.equal(materializedGoal.proposal.status, 'materialized');
 assert.equal(materializedGoal.project.status, 'paused');
@@ -1230,6 +1251,32 @@ assert(materializedGoal.project.reason?.includes('independent observations'),
   'materialized agency project must retain the reviewed Hexis goal description');
 assert.equal(goalPipelineSystems.agency.selfProjects.activeProjects().some(project => project.hexisProposalId === goalProposal.id), false,
   'a materialized proposal must not be auto-selected by ensureActiveProject');
+
+// The review attestation remains binding after materialization and across restore.
+// Change the source lineage/content after approval; activation must fail before
+// making the paused project active or touching graph state.
+const materializedGoalStateBeforeTamper = goalPipelineSystems.hexisAdaptation.snapshot();
+const tamperedMaterializedGoalState = structuredClone(materializedGoalStateBeforeTamper);
+const tamperedMaterializedGoal = tamperedMaterializedGoalState.goalProposals.find(item => item.id === goalProposal.id);
+assert(tamperedMaterializedGoal);
+tamperedMaterializedGoal.sourceRef = goalExportId + ':goal:substituted-after-approval';
+goalPipelineSystems.hexisAdaptation.restore(tamperedMaterializedGoalState);
+const graphBeforeApprovedContentTamper = goalPipelineSystems.memory.semanticMemory.snapshot();
+assert.throws(
+  () => goalPipelineSystems.activateHexisGoalProposal(goalProposal.id),
+  /hmx-goal-approval-digest-invalid/,
+  'a materialized goal whose source reference changed after approval must not activate',
+);
+assert.equal(
+  goalPipelineSystems.agency.selfProjects.snapshot().projects.find(project => project.hexisProposalId === goalProposal.id)?.status,
+  'paused',
+  'approval-content mismatch must leave agency project paused',
+);
+assert.deepEqual(goalPipelineSystems.memory.semanticMemory.snapshot(), graphBeforeApprovedContentTamper,
+  'approval-content mismatch must not project semantic graph edges');
+assert.equal(goalPipelineSystems.hexisAdaptation.getGoalProposal(goalProposal.id)?.goalRelationshipReceipt, undefined,
+  'approval-content mismatch must not create an activation receipt');
+goalPipelineSystems.hexisAdaptation.restore(materializedGoalStateBeforeTamper);
 
 // Staged relationship content can be restored or edited after the goal proposal
 // has been reviewed. Activation must revalidate its source stage before changing
