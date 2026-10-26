@@ -872,10 +872,22 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/decide') {
             const input = await body(req);
-            const decision = ['approve', 'correct', 'forget'].includes(String(input.decision)) ? String(input.decision) : 'approve';
-            const result = runtime.core.hexisDecideLearningReview(String(input.reviewId || ''), String(input.itemId || ''), decision, input.correction ? String(input.correction) : undefined);
-            await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), result });
+            const decision = String(input.decision ?? '');
+            if (!['approve', 'correct', 'forget'].includes(decision)) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-review-decision' });
+            }
+            try {
+                const result = runtime.core.hexisDecideLearningReview(String(input.reviewId || ''), String(input.itemId || ''), decision, input.correction ? String(input.correction) : undefined);
+                await runtime.core.flush();
+                if (result?.ok === false) {
+                    const status = /not-found|missing/.test(String(result.error ?? '')) ? 404 : 409;
+                    return json(res, status, { ok: false, result });
+                }
+                return json(res, 200, { ok: true, result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                return json(res, 409, { ok: false, error: String(error?.message ?? error) });
+            }
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/retention/propose') {
             const input = await body(req);
