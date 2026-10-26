@@ -1,3 +1,8 @@
+## [NK1][Hexis] WorkPass410 — reject malformed belief stances at the HTTP boundary (2026-10-26)
+
+- [API GUARD] The belief-revision endpoint no longer silently maps an unknown stance to `supports`; only `supports` and `contradicts` are accepted.
+- [SMOKE] Added status checks for invalid stance (400) and missing canonical memory target (404).
+
 ## [NK1][Hexis] WorkPass409 — propagate belief-write failures to HTTP callers (2026-10-26)
 
 - [API FIX] The belief-revision route now preserves the Core result status instead of wrapping `{ok:false}` as an HTTP 200 success. Missing memory targets return 404; other guarded/rejected belief writes return 409.
