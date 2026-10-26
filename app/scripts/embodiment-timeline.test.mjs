@@ -172,6 +172,26 @@ test("AvatarStage publishes one versioned embodiment intent and rejects stale ut
   assert.doesNotMatch(viewer, /d\.type==='kurisu_lipsync'|d\.type==='kurisu_embodiment'|d\.type==='kurisu_expression'/, "viewer must accept the unified control contract, not competing writers");
 });
 
+test("avatar UI switches to the persistent NK1 Original design and exposes real appearance controls", async () => {
+  const stage = await readFile(join(root, "src/components/AvatarStage.tsx"), "utf8");
+  const original = await readFile(join(root, "src/components/KurisuOriginalStage.tsx"), "utf8");
+  assert.ok(stage.includes('type ViewMode = "live2d" | "legacy" | "original"'));
+  assert.ok(stage.includes('setMode("original")'));
+  assert.ok(stage.includes('<KurisuOriginalStage emotion={snap.emotion.label}'));
+  assert.ok(stage.includes('saved === "legacy" || saved === "original"'), "the selected variant can be restored after a reload");
+  assert.ok(original.includes('data-testid="kurisu-original-stage"'));
+  for (const persistedSetting of [
+    "kurisu-original-outfit", "kurisu-original-eyes", "kurisu-original-hair",
+    "kurisu-original-accent", "kurisu-original-motion", "kurisu-original-scale",
+  ]) assert.ok(original.includes(persistedSetting), `missing persisted visual setting: ${persistedSetting}`);
+  for (const control of ["Лаборатория", "Город", "Ночной режим", "Аметист", "Морская волна", "Красное дерево", "Выразительное", "Масштаб персонажа"]) {
+    assert.ok(original.includes(control), `missing original avatar appearance control: ${control}`);
+  }
+  assert.ok(original.includes("scale(\${scale})"), "scale slider must affect the actual SVG");
+  assert.ok(original.includes("prefers-reduced-motion"), "decorative animation must respect reduced-motion preference");
+  assert.ok(original.includes("mouthPose.open"), "mouth animation must use the shared speech-timed viseme pose");
+});
+
 test("AvatarStage exposes an explicit retry path after a Live2D viewer failure", async () => {
   const source = await readFile(join(root, "src/components/AvatarStage.tsx"), "utf8");
   assert.match(source, /const \[viewerAttempt, setViewerAttempt\] = useState\(0\)/);
