@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head CI PASS on PR head 0ad66d5519aedbadc317684504ed0e5a8e79412c: Unified project integration (#40289492932), progress-ledger integrity (#40289492966), WorkPass110 (#40289492891), P26 validation (#40289492875) and nine additional focused workflows all passed. Historical 13-row ciSnapshot remains pinned to 621864d0d7f2676245383adab86f1dcc6d0f741f; new validationRuns are recorded separately. No readiness scores were increased.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head CI PASS on PR head 0ad66d5519aedbadc317684504ed0e5a8e79412c: Unified project integration (#40289492932), progress-ledger integrity (#40289492966), WorkPass110 (#40289492891), P26 validation (#40289492875) and nine additional focused workflows all passed. Historical 13-row ciSnapshot remains pinned to 621864d0d7f2676245383adab86f1dcc6d0f741f; new validationRuns are recorded separately. No readiness scores were increased. WorkPass356 adds strict descriptor-only input ingress and non-coercive validation for CEF tool receipt trace, authoritative receipt revision and external observation APIs. Current code/test checkpoint c6845a5258a2c3bcdccce1089615cfabbfd4b750 on branch fix/workpass356-strict-tool-receipt-ingress-2026-10-26 is pending exact-head CI. The prior WorkPass355 exact-head validation record is preserved, as are all historical ciSnapshot SHAs and the existing progress scores.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -359,38 +359,42 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass342",
+    "id": "WorkPass356",
     "date": "2026-10-26",
-    "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
-    "codeCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
-    "summary": "Bound the integration client deadline to each CPU research probe: quick control/approval requests retain 8 seconds; NeuroCore/NOMEGA have 60 seconds; DeepCode CPU smoke has 200 seconds, safely above its 180-second subprocess limit. Revalidated the complete suite with WorkPass340 substrate and WorkPass341 task-family promotion coverage present.",
+    "branch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26",
+    "codeCommit": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
+    "summary": "Hardened the three public CEF receipt ingress paths against getters/accessors, coercive type conversion, identifier truncation and malformed confidence/revision fields; added regression coverage and wired it into the cognitive integration suite.",
     "testsAdded": [
-      "bounded, per-probe timeout config rejects invalid bounds",
-      "full runtime/research bridge smoke completes all post-approval probes within their appropriate finite deadlines",
-      "NeuroCore, NOMEGA and DeepCode approval-denial and explicit-owner-approval paths pass on the same smoke",
-      "UI and runtime typechecks pass after the full integration run"
+      "receipt trace rejects accessor-backed inputs without getter execution or journal mutation",
+      "receipt trace rejects padded/overlong IDs, non-boolean flags and confidence outside [0,1]",
+      "provider receipt revisions reject accessors, lossy identifiers, invalid hashes/counters/flags/confidence without mutation",
+      "external observations reject accessors, coercion, overlong/non-canonical identifiers and malformed evidence values",
+      "valid revision remains idempotent; rejected calls preserve event journal and replay index"
     ],
-    "validationStatus": "PASS on exact combined code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; merged to active source branch as 39af7eb67c9ab05efd45d01cbd4b4d1d44751454. Unified project integration, WorkPass110, WorkPass108, P26 and progress-ledger integrity all passed.",
+    "validationStatus": "pending exact-head CI",
     "progressPercentagesChanged": false,
-    "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
-    "workflowRuns": [
-      40257525157,
-      40257525071,
-      40257525093,
-      40257525095,
-      40257525008,
-      40257525009,
-      40257525022,
-      40257525001,
-      40257525128,
-      40257525003,
-      40257525076,
-      40257525205,
-      40257525121
-    ],
-    "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
+    "testedHeadSha": null,
+    "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass356",
+      "date": "2026-10-26",
+      "branch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26",
+      "codeCommit": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
+      "summary": "Hardened the three public CEF receipt ingress paths against getters/accessors, coercive type conversion, identifier truncation and malformed confidence/revision fields; added regression coverage and wired it into the cognitive integration suite.",
+      "testsAdded": [
+        "receipt trace rejects accessor-backed inputs without getter execution or journal mutation",
+        "receipt trace rejects padded/overlong IDs, non-boolean flags and confidence outside [0,1]",
+        "provider receipt revisions reject accessors, lossy identifiers, invalid hashes/counters/flags/confidence without mutation",
+        "external observations reject accessors, coercion, overlong/non-canonical identifiers and malformed evidence values",
+        "valid revision remains idempotent; rejected calls preserve event journal and replay index"
+      ],
+      "validationStatus": "pending exact-head CI",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass342",
       "date": "2026-10-26",
@@ -461,8 +465,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
-  "branchHeadBeforeTrackerCommit": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
+  "latestUnverifiedCodeTestHead": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
+  "branchHeadBeforeTrackerCommit": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -502,6 +506,16 @@
     }
   ],
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass356",
+    "sourceBranch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26",
+    "codeTestHead": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
+    "baseHead": "fce603ecc674887d20ebb2da187103ddce43171a",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Strict own-data-field ingress for CEF tool receipt traces, authoritative receipt revisions, and external observations; reject lossy IDs, type coercion, confidence outside [0,1], invalid counters and accessor-backed inputs.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass355",
     "sourceBranch": "fix/workpass355-safe-snapshot-restore-2026-10-26",
     "codeTestHead": "38b17bf610c06de1a23ba5e54d21cb4a1b7ac905",
