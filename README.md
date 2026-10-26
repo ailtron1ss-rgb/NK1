@@ -1,3 +1,32 @@
+# Neuro Kurisu / NK1 — запуск и текущее состояние
+
+**Источник проекта:** [ailtron1ss-rgb/NK1](https://github.com/ailtron1ss-rgb/NK1). Продолжай работу с актуальной source-ветки; `main` и опубликованный большой ZIP не являются заменой текущего полного source tree.
+
+## Запуск из чистого checkout
+
+Требуется Node.js 24 (пин в `.nvmrc`); Python 3.12 используется исследовательским мостом.
+
+```bash
+npm run install:all
+npm run install:research:cpu
+npm run doctor
+npm run test:final-release-verifier
+npm run release:verify
+npm run start
+```
+
+Локальные endpoints: gateway/UI `http://127.0.0.1:8080`, runtime `127.0.0.1:3310`, Research Bridge `127.0.0.1:8765`. Запускай через root supervisor, не создавай отдельные копии runtime/bridge-процессов. Внешние исследовательские действия требуют явного owner approval и allowlist.
+
+## Последний подтверждённый когнитивный checkpoint
+
+WorkPass340–342 были объединены в source-ветку коммитом `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. На code/test head `621864d0d7f2676245383adab86f1dcc6d0f741f` прошли runtime/app typecheck, Unified Cognitive Substrate wiring/restore, 30-цикловый stop/re-init smoke, supervisor launch, P23/learning gates и owner-approved Research Bridge probes.
+
+Source-база после этого добавила WorkPass343 для сверки будущего persisted substrate tick с canonical Core tick. WorkPass344 добавляет fail-closed metadata check в release verifier. **Оба свежих изменения ожидают combined-head CI; предыдущий PASS не переносится на новый HEAD автоматически.**
+
+**Важно:** source CI не означает, что большой опубликованный GitHub Release ZIP пересобран. ZIP остаётся старым; physical Android/Termux sensor/audio E2E, browser/Live2D hardware E2E, длительный soak и license/provenance review остаются открыты.
+
+---
+
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
