@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass397 — report the normalized HMX byte size (2026-10-26)
+
+- [FIX] `statistics.estimated_uncompressed_bytes` now reports the normalized HMX envelope size, not the size of the NK1-native source that was converted into it.
+- [FIX] Stabilize the output byte count after updating the statistic itself, and enforce the 8 MiB staging limit against the same serialized payload whose size is reported.
+- [TEST] Added an assertion that the reported statistic exactly matches the UTF-8 byte length of the normalized export.
+- [VALIDATION] Regression is part of the HMX integration suite; runtime execution remains unverified while GitHub Actions is failing before test steps start.
+
 ## [NK1][Memory][Hexis] WorkPass396 — share canonical-memory capacity contract (2026-10-26)
 
 - [FIX] Added `CANONICAL_MEMORY_CAPACITY` as the single capacity contract shared by MemoryOS2 and the HMX projector's capacity preflight. The preflight can no longer silently drift from the store limit and allow an import to evict pre-existing canonical memory.
