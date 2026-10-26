@@ -1,0 +1,35 @@
+services:
+  neuro-kurisu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_RESEARCH_TORCH: ${INSTALL_RESEARCH_TORCH:-false}
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      SUPER_GATEWAY_HOST: "0.0.0.0"
+      SUPER_GATEWAY_PORT: "8080"
+      SUPER_UI_PORT: "8081"
+      SUPER_RUNTIME_PORT: "3310"
+      SUPER_RESEARCH_PORT: "8765"
+      PORT: "3310"
+      HOST: "127.0.0.1"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - nk1-state:/opt/neuro-kurisu/.super-state
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/').then((r) => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 5m
+
+volumes:
+  nk1-state:
