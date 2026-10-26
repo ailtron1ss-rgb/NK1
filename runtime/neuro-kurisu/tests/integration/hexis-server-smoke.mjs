@@ -53,8 +53,10 @@ try {
   applyDocument.sections.goals = [
     { ref: applyExportId + ':goal:smoke-goal', title: 'Review imported goal', description: 'Must remain unmaterialized until explicit local approval.', metadata: { nk1NativeGoal: { id: 'smoke-goal', importance: .6, urgency: .4, confidence: .7 } } },
   ];
+  const applyGoalRef = applyExportId + ':goal:smoke-goal';
   applyDocument.sections.relationships = [
     { ref: applyExportId + ':relationship:smoke-supports-a-b', source_ref: applyRefA, target_ref: applyRefB, edge_type: 'supports', properties: { weight: .8 } },
+    { ref: applyExportId + ':relationship:smoke-goal-a', source_ref: applyGoalRef, target_ref: applyRefA, edge_type: 'supports', properties: { weight: .7 } },
   ];
   const applyStageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: applyDocument, intent: 'port', strategy: 'additive' })).json();
   if (!applyStageRes.ok || applyStageRes.stage?.status !== 'staged' || applyStageRes.stage?.conflicts?.length) {
@@ -84,6 +86,21 @@ try {
   }
   const applyReplay = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply' })).json();
   if (!applyReplay.ok || applyReplay.stage?.application?.digest !== applyRes.stage.application.digest) throw new Error('hexis-hmx-apply-replay');
+
+  // Materialization requires explicit confirmation and follows review approval; it creates a candidate, not an active goal.
+  const materializeBlocked = await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: false });
+  if (materializeBlocked.status !== 403) throw new Error('hexis-hmx-goal-materialization-confirmation:' + materializeBlocked.status);
+  const materializedGoal = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: true })).json();
+  if (!materializedGoal.ok || materializedGoal.goal?.status !== 'candidate' || materializedGoal.proposal?.status !== 'materialized') {
+    throw new Error('hexis-hmx-goal-materialization:' + JSON.stringify(materializedGoal));
+  }
+  if (materializedGoal.relationships?.projected !== 1 || materializedGoal.relationships?.deferred !== 0) {
+    throw new Error('hexis-hmx-goal-relationship-projection:' + JSON.stringify(materializedGoal.relationships));
+  }
+  const materializedReplay = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: true })).json();
+  if (!materializedReplay.ok || materializedReplay.replayed !== true || materializedReplay.goal?.id !== materializedGoal.goal.id) {
+    throw new Error('hexis-hmx-goal-materialization-replay:' + JSON.stringify(materializedReplay));
+  }
   const invalidDecision = await fetch(`${base}/api/organism/integration/hexis/hmx/decide`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ stagingId: applyStageRes.stage.stagingId, decision: 'activate-everything' }),
