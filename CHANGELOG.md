@@ -2,7 +2,7 @@
 
 - [FIX] A restored OutcomeCognition projection index is accepted only when its executionId agrees with the embedded record and its fingerprint recomputes from immutable outcome fields. The derived external-verification flag is rebuilt from the record, not trusted independently.
 - [RECOVERY] Conflicting or stale index entries are reconstructed from retained canonical outcome records; the index is treated as a cache rather than authority for mutable evidence.
-- [INTEGRITY] Added a complete-record cache digest for new snapshots. Legacy snapshots remain readable, while malformed confidence, tick, execution ID, and external-observation rows fail closed.
+- [INTEGRITY] Added a complete-record cache digest for new snapshots. Legacy snapshots remain readable, while malformed confidence, tick, execution ID, external-observation shapes, and control characters fail closed.
 - [TEST] The Pass 63 regression now covers identity substitution, stale fingerprints, out-of-range confidence, conflicting duplicate metadata, and a self-consistent stale cache attempting to inject fake external evidence.
 - [CI] The targeted Pass 63 regression is wired into WorkPass71 core validation after runtime typecheck.
 - [VALIDATION] Source and fixture assertions were statically inspected. GitHub Actions still terminates before a runner starts, so full runtime execution is not yet confirmed.

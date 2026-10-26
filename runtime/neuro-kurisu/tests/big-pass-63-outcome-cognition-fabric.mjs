@@ -88,7 +88,7 @@ assert.equal(restoredMutableEvidence.records[0].externalEvidenceStatus,originalI
 assert.deepEqual(restoredMutableEvidence.projectionIndex[0].record.externalObservations,originalIndexSnapshot.records[0].externalObservations,'index cache must be rebuilt from the canonical record when both exist');
 // Corrupt control characters in restored external evidence are rejected instead of becoming replay metadata.
 const controlCharacterSnapshot=structuredClone(originalIndexSnapshot);
-const invalidExternalObservation={observationId:'bad\\u0000observation',verified:true,confidence01:1,at:1,assessment:'match',sourceId:'device-a',sourceClass:'device',independenceKey:'device-bus'};
+const invalidExternalObservation={observationId:'bad\u0000observation',verified:true,confidence01:1,at:1,assessment:'match',sourceId:'device-a',sourceClass:'device',independenceKey:'device-bus'};
 controlCharacterSnapshot.records[0].externalObservations=[invalidExternalObservation];
 controlCharacterSnapshot.projectionIndex[0].record.externalObservations=[invalidExternalObservation];
 controlCharacterSnapshot.projectionIndex[0].recordDigest=sha256Stable(controlCharacterSnapshot.projectionIndex[0].record);
