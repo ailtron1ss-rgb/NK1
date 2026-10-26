@@ -13,10 +13,16 @@ const initial = learner.snapshot();
 const valid = { state, action: 'respond', target01: .9, learningRate01: .06 };
 
 assert.throws(() => learner.train({ ...valid, target01: Number.NaN }), /target-must-be-finite/);
-assert.throws(() => learner.train({ ...valid, learningRate01: Number.POSITIVE_INFINITY }), /rate-must-be-finite/);
-assert.throws(() => learner.train({ ...valid, sampleWeight01: Number.NaN }), /sample-weight-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, action: 'not-an-action' }), /invalid-action/);
-assert.deepEqual(learner.snapshot(), initial, 'rejected samples must not mutate policy weights or learning diagnostics');
+assert.deepEqual(learner.snapshot(), initial, 'rejected action labels and targets must not mutate policy weights or learning diagnostics');
+
+// Optimizer controls recover through conservative bounded defaults instead of aborting a valid target.
+const sanitizedOptimizer = new ParametricPolicyLearner();
+sanitizedOptimizer.train({ ...valid, learningRate01: Number.POSITIVE_INFINITY, sampleWeight01: Number.NaN });
+const sanitizedOptimizerState = sanitizedOptimizer.snapshot();
+assert.ok(Object.values(sanitizedOptimizerState.weights).flat().every(Number.isFinite));
+assert.ok(Object.values(sanitizedOptimizerState.bias).every(Number.isFinite));
+assert.equal(sanitizedOptimizerState.updates, 1, 'invalid optimizer controls use safe defaults');
 
 const features = learner.features(state, undefined, 'respond');
 assert.throws(() => learner.trainFeatures({ features: features.map((v, i) => i === 2 ? Number.NaN : v), action: 'respond', target01: .9, learningRate01: .06 }), /features-must-be-finite/);

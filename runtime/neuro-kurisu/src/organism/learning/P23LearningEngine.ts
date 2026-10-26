@@ -429,10 +429,11 @@ export class P23LearningEngine {
     const processedTraceIds=sanitizeIdList([
       ...(Array.isArray(source.processedTraceIds)?source.processedTraceIds:[]),...experiences.map(row=>row.traceId),
     ],2048);
-    const replayedTraceIds=sanitizeIdList([
-      ...(Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[]),...replayUpdates.map(row=>row.traceId),
-    ],2048);
-    const checksum=sanitizeChecksum(source.checksum,d.checksum);
+    // Keep the newest-first persisted dedup cache authoritative; replay update rows
+    // are validated independently and should not evict newer cache entries.
+    const replayedTraceIds=sanitizeIdList(
+      Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[],2048,
+    );    const checksum=sanitizeChecksum(source.checksum,d.checksum);
     const metrics=sanitizeMetrics(source.metrics,d.metrics);
     metrics.outcomes=Math.max(metrics.outcomes,experiences.length);
     metrics.evidenceDebtOpen=evidenceDebt.filter(row=>row.priority01>.45).length;

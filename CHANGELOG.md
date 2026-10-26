@@ -1,3 +1,9 @@
+### WorkPass328 follow-up — reconcile learning recovery contracts (2026-10-26)
+
+- Split the P26 input-integrity test into non-recoverable inputs (invalid action labels and non-finite targets throw before mutation) versus recoverable optimizer controls (NaN/Infinity learning rate or sample weight use conservative bounded defaults and still produce finite weights).
+- Kept P23 `replayedTraceIds` as the persisted newest-first dedup cache instead of appending older `replayUpdates` IDs that could evict newer entries from the bounded cache.
+- Changed causal-stream restore to sanitize rolling metrics independently: valid normalized diagnostics survive, while non-finite or out-of-range fields reset to zero. Trusted outcome/consolidation/behavioral totals continue to be recomputed only from grounded runtime records; quarantined imports cannot manufacture outcome evidence.
+
 ### WorkPass328 follow-up — preserve fail-safe learning inputs and restore recency order (2026-10-26)
 
 - `ParametricPolicyLearner` now continues safely when the optimizer controls themselves are corrupted: non-finite learning rates and sample weights already fall back to conservative defaults at the mutation site, while finite controls are bounded. The validation boundary still rejects invalid action labels, invalid/non-finite targets, malformed state features, and non-finite extras before weights can change.

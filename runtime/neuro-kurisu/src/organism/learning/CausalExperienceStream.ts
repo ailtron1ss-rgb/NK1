@@ -181,14 +181,12 @@ export class CausalExperienceStream {
       outcomes:records.filter(isGroundedRuntimeOutcome).length,
       consolidated:records.filter(record=>isGroundedRuntimeOutcome(record)&&record.consolidated).length,
       records,
-      rolling:records.filter(isGroundedRuntimeOutcome).reduce((acc,record)=>({
-        surprise01:clamp01(acc.surprise01*.92+record.surprise01*.08),
-        predictionError01:clamp01(acc.predictionError01*.92+record.predictionError01*.08),
-        causalStrength01:clamp01(acc.causalStrength01*.9+record.causalStrength01*.1),
-        learningOpportunity01:clamp01(acc.learningOpportunity01*.9+(
-          record.causalStrength01*.58+record.surprise01*.18+record.predictionError01*.14+record.novelty01*.10
-        )*.1),
-      }),{...d.rolling}),
+      rolling:{
+        surprise01:safeUnit(r.rolling?.surprise01),
+        predictionError01:safeUnit(r.rolling?.predictionError01),
+        causalStrength01:safeUnit(r.rolling?.causalStrength01),
+        learningOpportunity01:safeUnit(r.rolling?.learningOpportunity01),
+      },
       lastConsolidatedAt:typeof r.lastConsolidatedAt==='number'&&Number.isFinite(r.lastConsolidatedAt)&&r.lastConsolidatedAt>=0?r.lastConsolidatedAt:0,
       recordedTraceIds:normalizedRecordedIds,
       behavioralImpact01:0,
