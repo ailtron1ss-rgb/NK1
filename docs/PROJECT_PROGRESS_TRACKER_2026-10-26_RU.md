@@ -1,3 +1,14 @@
+## WorkPass357 — aggregate payload text budget (2026-10-26)
+
+- **Implementation commit:** `390093223cdb38114827a27beb62d60fb897ac67`.
+- **Regression test commit:** `b98a9f3b364b72c96dfc35cdc0ba29087974243b`.
+- **Documentation commit:** `95681efe30691f7d5752f02abbf4e753e8413cf1`.
+- **Change:** count UTF-16 code units across string values and object keys in `CognitiveEventFabric.cleanPayload`; reject payloads exceeding 131,072 units. The existing `test:cognitive-event-payload-envelope` integration gate now tests a single oversized string, aggregate overflow, unchanged ledger state after rejected appends, and restore-time rejection.
+- **Validation status:** **PENDING** on the new code/test head. Existing WorkPass356 PASS evidence predates WorkPass357 and must not be reused as validation of this change. Run runtime typecheck, the focused payload-envelope test, full cognitive integration suite and release gate on the exact latest SHA.
+- **Progress:** implementation and regression coverage committed; no learning score or readiness score increased. Not merged into `main`; no new release ZIP published.
+
+---
+
 ## WorkPass356 — strict CEF tool receipt ingress (2026-10-26)
 
 - **Code/test checkpoint:** `c6845a5258a2c3bcdccce1089615cfabbfd4b750`; stacked on WorkPass355 branch head `fce603ecc674887d20ebb2da187103ddce43171a`.
