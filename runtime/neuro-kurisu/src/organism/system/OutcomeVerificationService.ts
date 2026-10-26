@@ -121,7 +121,6 @@ const boundedCorrelationId = (value: unknown, max: number): string | undefined =
   const trimmed = normalized.trim();
   if (!trimmed || trimmed.length > max) return undefined;
   return trimmed;
-  if (!normalized || normalized.length > max || /[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
 };
 
 /** Evidence text is validated, never truncated: truncation can make distinct postconditions collide. */
