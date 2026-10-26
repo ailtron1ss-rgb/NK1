@@ -2633,3 +2633,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [FIX] Register a duplicate-memory rollback token before the first status or trust mutation, then refresh its expected-current seal immediately before compensation. A synchronous adapter error after a partial commit can no longer escape because the token was not yet registered.
 - [REGRESSION] Inject an error after MemoryFabric commits an archival status change and assert the original status, signal metadata and revision history are restored with no pending tokens.
 - [VALIDATION] Source-level contract checks only; runtime/typecheck is still unverified pending execution by a GitHub Actions runner.
+
+
+## [NK1][Hexis] WorkPass435 — fail closed at signal-compensation capacity (2026-10-26)
+
+- [FIX] When the bounded rollback-token journal reaches 512 entries, refuse to issue another token before its caller mutates a canonical record; do not silently evict an earlier transaction's live rollback capability.
+- [LIFECYCLE] Invalidate process-local compensation capabilities when restoring a persisted MemoryFabric snapshot, because those capabilities are deliberately not part of the persisted state.
+- [REGRESSION] Cover capacity exhaustion, preservation of every previously issued token, token cleanup, and invalidation across snapshot restoration.
+- [VALIDATION] Added regression coverage and source changes; runtime execution and typecheck remain unverified until Actions runs actual steps.
