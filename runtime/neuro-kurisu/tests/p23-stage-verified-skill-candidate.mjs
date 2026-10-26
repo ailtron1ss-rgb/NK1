@@ -11,6 +11,7 @@ import { stageVerifiedSkillCandidateBundle } from '../scripts/stage-verified-ski
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'nk1-stage-verified-candidate-'));
 const previousKeys = process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON;
+const previousFamilyPolicy = process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON;
 try {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
   const verifierId = 'stage-fixture-verifier';
@@ -77,34 +78,40 @@ try {
   const stateFile = path.join(root, 'organism.json');
   const validBundle = {
     schemaVersion: 1, manifest, baselineMethod: 'baseline', candidateMethod: 'candidate', skill,
-    promotionPolicy: { minimumFamilyGainByFamily: { memory: 0.2 } }, artifacts,
+    artifacts,
   };
-  const missingPolicyBundle = { ...validBundle };
-  delete missingPolicyBundle.promotionPolicy;
-  await writeFile(bundlePath, JSON.stringify(missingPolicyBundle));
+  delete process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON;
+  await writeFile(bundlePath, JSON.stringify(validBundle));
   await assert.rejects(
     () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
-    /promotionPolicy\.minimumFamilyGainByFamily/,
+    /NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON is required/,
   );
-  const unmeasuredFamilyBundle = {
+
+  // The untrusted candidate bundle cannot select or weaken its promotion policy.
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { memory: 0.2 } });
+  const embeddedPolicyBundle = {
     ...validBundle,
-    promotionPolicy: { minimumFamilyGainByFamily: { transfer: 0.01 } },
+    promotionPolicy: { minimumFamilyGainByFamily: { memory: 0.0001 } },
   };
-  await writeFile(bundlePath, JSON.stringify(unmeasuredFamilyBundle));
+  await writeFile(bundlePath, JSON.stringify(embeddedPolicyBundle));
+  await assert.rejects(
+    () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
+    /unknown top-level fields/,
+  );
+
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { transfer: 0.01 } });
+  await writeFile(bundlePath, JSON.stringify(validBundle));
   await assert.rejects(
     () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
     /not represented in holdout manifest: transfer/,
   );
-  const nonPositiveFloorBundle = {
-    ...validBundle,
-    promotionPolicy: { minimumFamilyGainByFamily: { memory: 0 } },
-  };
-  await writeFile(bundlePath, JSON.stringify(nonPositiveFloorBundle));
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { memory: 0 } });
   await assert.rejects(
     () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
     /thresholds must be finite numbers in \(0, 1\]/,
   );
 
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { memory: 0.2 } });
   await writeFile(bundlePath, JSON.stringify(validBundle));
   const staged = await stageVerifiedSkillCandidateBundle({ bundlePath, stateFile });
   assert.equal(staged.status, 'staged');
@@ -147,9 +154,9 @@ try {
   assert.deepEqual(afterInvalidSkill.active, []);
 
   // An aggregate gain of 0.20 is still rejected when the required memory family has zero gain.
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { memory: 0.01 } });
   const zeroMemoryGainBundle = {
     ...validBundle,
-    promotionPolicy: { minimumFamilyGainByFamily: { memory: 0.01 } },
     artifacts: createArtifacts(i => i < 6, i => i < 8),
   };
   await writeFile(bundlePath, JSON.stringify(zeroMemoryGainBundle));
@@ -165,5 +172,7 @@ try {
 } finally {
   if (previousKeys === undefined) delete process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON;
   else process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = previousKeys;
+  if (previousFamilyPolicy === undefined) delete process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON;
+  else process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = previousFamilyPolicy;
   await rm(root, { recursive: true, force: true });
 }

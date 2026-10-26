@@ -1,3 +1,12 @@
+## WorkPass333 — move promotion family floors into trusted host configuration (2026-10-26)
+
+- **Security boundary:** WorkPass332 made a family floor mandatory but placed it inside the candidate bundle. That bundle is external input, so its author could lower the threshold that was supposed to constrain the candidate.
+- **Code:** `stage-verified-skill-candidate.mjs` now reads `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON` from host process configuration. The JSON is keyed by exact skill ID, and each skill entry maps intended holdout task-family names to positive finite gain floors. No matching skill entry, no floor, an unmeasured family, and any threshold outside `(0, 1]` all fail closed.
+- **Anti-override:** candidate bundles no longer accept a `promotionPolicy` field. An embedded attempt to override host thresholds is rejected as an unknown top-level field; the trusted map is passed to `proposeVerifiedSkillPromotion` and returned with measured family gains.
+- **Regression:** end-to-end tests cover missing host policy, attempted bundle override, unmeasured family, zero floor, a valid per-skill policy, and an aggregate gain of `+0.20` with zero required memory-family gain. All rejected candidates must leave storage unchanged and none can activate a skill.
+- **Validation:** new-head CI must be checked after this prepared commit is moved onto the branch. No PASS is claimed for this commit before its own tests and typecheck complete.
+- **Configuration example:** `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON='{"stage-memory-repair":{"memory":0.20}}'` alongside the trusted verifier-key environment variable. Operators should maintain the policy outside candidate bundles and manage it as trusted deployment configuration.
+
 ## WorkPass332 — enforce per-skill task-family floors in candidate staging (2026-10-26)
 
 - **Integration gap:** WorkPass331 added authenticated family-aware promotion criteria, but the real `stage-verified-skill-candidate.mjs` caller still used only aggregate settings. The production staging route could therefore bypass the per-family guard by omitting its optional argument.

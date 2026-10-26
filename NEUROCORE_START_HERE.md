@@ -1,11 +1,11 @@
-## Latest checkpoint — WorkPass332 (2026-10-26)
+## Latest checkpoint — WorkPass333 (2026-10-26)
 
-- **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; continue in draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), targeting `work/node24-project-pin-rebased-20261025`. No merge to `main`; no release ZIP update.
-- **Code path fixed:** `runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs` now requires an explicit `promotionPolicy.minimumFamilyGainByFamily` in each signed bundle and passes that policy into `proposeVerifiedSkillPromotion`. This closes the caller gap left after WorkPass331.
-- **Fail-closed contract:** at least one intended family must be configured; every configured family must be represented in the holdout manifest and have a positive finite gain floor in `(0, 1]`. Missing policy, an unmeasured family, and a zero floor are rejected before candidate staging.
-- **Regression coverage:** the valid signed fixture demonstrates actual memory-family gain, while a paired evidence fixture with aggregate gain +0.20 but zero memory gain is rejected when memory gain is required. Tests also assert rejection does not add a candidate or activate a skill.
-- **Validation state:** pending CI for this exact WorkPass332 head. The previous WorkPass331 head was verified by P26 Learning Validation, WorkPass110, unified integration suite, WorkPass108 promotion gate and the P23 repair workflow; none of those results means the new WorkPass332 tests already passed.
-- **Next:** after exact-head CI, build independently held-out real tool-use/transfer datasets and evaluate actual uplift. Synthetic fixtures are regression evidence, not proof of production learning efficacy. Keep voice/Live2D, Android audio, long-soak, release archive and licensing as separate release gates.
+- **Branch / PR:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`, draft [PR #135](https://github.com/ailtron1ss-rgb/NK1/pull/135); target remains `work/node24-project-pin-rebased-20261025`. No merge to `main`; no release ZIP update.
+- **Security correction:** per-family thresholds are now sourced from trusted host environment variable `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`, keyed by the exact skill ID. The candidate bundle cannot choose, lower, or replace its own threshold.
+- **Fail-closed behavior:** missing skill policy, empty family map, invalid/zero floor, and a family absent from the holdout manifest all block staging before the candidate store is mutated.
+- **Regression set:** confirms host policy cannot be overridden by an embedded bundle field, validates an actual scoped gain, and rejects aggregate `+0.20` with zero gain in the required memory family. Failed staging leaves existing candidates unchanged.
+- **Validation state:** CI must be read against the final WorkPass333 branch head before declaring test/typecheck PASS. The currently running WorkPass332 checks use its prior head and will not validate this hardening by themselves.
+- **Next:** after the new head passes, gather real independently held-out task-family evidence (especially tool-use/transfer), measure uplift rather than infer it from fixtures, and retain separate voice/Live2D, Android audio, soak, release archive, and license gates.
 
 ## Latest checkpoint — WorkPass330 (2026-10-26)
 

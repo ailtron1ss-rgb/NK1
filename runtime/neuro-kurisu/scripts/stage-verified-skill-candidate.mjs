@@ -12,15 +12,28 @@ const MAX_BUNDLE_BYTES = 10 * 1024 * 1024;
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const nonEmpty = value => typeof value === 'string' && value.trim().length > 0;
 
-function validatePromotionPolicy(policy, manifest) {
-  const policyError = 'candidate bundle requires a non-empty promotionPolicy.minimumFamilyGainByFamily map';
-  if (!isRecord(policy) || Object.keys(policy).some(key => key !== 'minimumFamilyGainByFamily')) {
-    throw new Error(policyError);
+function readPromotionFamilyPolicy(raw, skillId, manifest) {
+  const missingPolicy = 'NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON is required as a JSON object keyed by skill ID';
+  if (!nonEmpty(raw)) throw new Error(missingPolicy);
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch { throw new Error('NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON must be valid JSON'); }
+  if (!isRecord(parsed) || Object.keys(parsed).length === 0 || Object.keys(parsed).length > 256) {
+    throw new Error('NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON must map 1 to 256 skill IDs to family-gain maps');
   }
-  const floors = policy.minimumFamilyGainByFamily;
-  if (!isRecord(floors)) throw new Error(policyError);
-  const entries = Object.entries(floors).sort(([a], [b]) => a.localeCompare(b));
-  if (entries.length === 0) throw new Error(policyError);
+  for (const [configuredSkillId, configuredFloors] of Object.entries(parsed)) {
+    if (!configuredSkillId || configuredSkillId !== configuredSkillId.trim() ||
+        configuredSkillId.length > 128 || !isRecord(configuredFloors)) {
+      throw new Error('trusted skill promotion family policy contains an invalid skill entry');
+    }
+  }
+  if (!Object.prototype.hasOwnProperty.call(parsed, skillId)) {
+    throw new Error(`trusted promotion policy is missing for skill: ${skillId}`);
+  }
+  const entries = Object.entries(parsed[skillId]).sort(([a], [b]) => a.localeCompare(b));
+  if (entries.length === 0) {
+    throw new Error(`trusted promotion policy has no intended task families for skill: ${skillId}`);
+  }
   const holdoutFamilies = new Set(manifest
     .filter(task => isRecord(task) && task.split === 'holdout' && nonEmpty(task.family))
     .map(task => task.family));
@@ -31,7 +44,7 @@ function validatePromotionPolicy(policy, manifest) {
       return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
     });
     if (!family || family !== family.trim() || family.length > 128 || hasControlCharacter) {
-      throw new Error('promotion policy contains an invalid task-family name');
+      throw new Error('trusted promotion policy contains an invalid task-family name');
     }
     if (!holdoutFamilies.has(family)) {
       throw new Error(`promotion policy family is not represented in holdout manifest: ${family}`);
@@ -43,7 +56,6 @@ function validatePromotionPolicy(policy, manifest) {
   }
   return Object.fromEntries(normalized);
 }
-
 function readTrustedVerifierKeys(raw) {
   if (!nonEmpty(raw)) throw new Error('NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON is required to stage a verified candidate');
   let parsed;
@@ -67,7 +79,7 @@ function validateBundle(bundle) {
   if (!isRecord(bundle) || bundle.schemaVersion !== 1) {
     throw new Error('candidate bundle must be a schemaVersion 1 JSON object');
   }
-  const allowed = new Set(['schemaVersion', 'manifest', 'baselineMethod', 'candidateMethod', 'skill', 'artifacts', 'promotionPolicy']);
+  const allowed = new Set(['schemaVersion', 'manifest', 'baselineMethod', 'candidateMethod', 'skill', 'artifacts']);
   if (Object.keys(bundle).some(key => !allowed.has(key))) throw new Error('candidate bundle contains unknown top-level fields');
   if (!Array.isArray(bundle.manifest) || bundle.manifest.length < 2 || !Array.isArray(bundle.artifacts) || bundle.artifacts.length < 1) {
     throw new Error('candidate bundle requires a manifest and signed outcome artifacts');
@@ -109,7 +121,11 @@ export async function stageVerifiedSkillCandidateBundle({ bundlePath, stateFile 
   try { bundle = JSON.parse(await readFile(absoluteBundlePath, 'utf8')); }
   catch (error) { throw new Error(`candidate bundle JSON could not be read: ${String(error?.message || error)}`); }
   const skill = validateBundle(bundle);
-  const minimumFamilyGainByFamily = validatePromotionPolicy(bundle.promotionPolicy, bundle.manifest);
+  const minimumFamilyGainByFamily = readPromotionFamilyPolicy(
+    process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON,
+    skill.id,
+    bundle.manifest,
+  );
   const trustedKeys = readTrustedVerifierKeys(process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON);
   const ledger = new VerifiedOutcomeLedger(bundle.manifest);
   for (let i = 0; i < bundle.artifacts.length; i++) {
@@ -164,7 +180,7 @@ const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve
 if (isMain) {
   const [, , bundlePath, stateFile] = process.argv;
   if (!bundlePath || !stateFile) {
-    console.error('Usage: node --experimental-strip-types scripts/stage-verified-skill-candidate.mjs <signed-bundle.json> <organism-state-file.json>');
+    console.error('Usage: NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON=\'<Ed25519 public keys JSON>\' NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON=\'{"<skill-id>":{"<holdout-family>":0.05}}\' node --experimental-strip-types scripts/stage-verified-skill-candidate.mjs <signed-bundle.json> <organism-state-file.json>');
     process.exitCode = 2;
   } else {
     try {
