@@ -1,3 +1,15 @@
+## NK1 WorkPass110 — causal outcome contract fixtures and restore safety (2026-10-26)
+
+- Corrected causal-stream regression fixtures to include the observed last action and bounded success score required by `recordOutcome()`; action attribution remains enforced rather than weakened.
+- Updated replay-diversity cases to use matching pre-action ticks and corresponding post-action transitions. Imported external events remain quarantined from trusted outcome counts and rolling learning metrics, and assertions now reflect that separation.
+- Hardened causal-stream restore validation by checking that persisted `policyFeatures01` is actually an array before reading its length or iterating it. Malformed persisted data is rejected safely rather than throwing.
+- This fix is isolated from the avatar work and is based on the current `feature/visual-embodiment` base, which previously failed the WorkPass110 test at `assert.ok(record)`.
+
+- Registered the existing WorkPass292 evidence-lane contract test in `runtime/neuro-kurisu/package.json`, restoring the script referenced by CI instead of bypassing the workflow.
+- Corrected the seed-clustered verification fixture to use its declared verifier identity (`v1`), so independently verified holdout rows are admitted under the same identity contract as the rest of the test.
+
+---
+
 ## NK1 WorkPass105 — align runtime viseme labels with normalized speech text (2026-10-25)
 
 - Fixed a UTF-16 offset mismatch in the standalone avatar speech timeline: its frame times were built after CR/LF/tab normalization, while the displayed grapheme labels were sliced from the unnormalized source. Real line breaks could therefore label a viseme with the wrong character.
