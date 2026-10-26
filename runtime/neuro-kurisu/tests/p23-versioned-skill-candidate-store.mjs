@@ -48,7 +48,7 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
     gate: { accepted }, canActivateAutomatically: false, authenticatedEvidenceRows, unauthenticatedEvidenceRows,
   };
 }
-const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true); // explicit test-only approval/evidence adapters
+const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true, () => true); // explicit test-only promotion/evidence/rollback adapters
 const defaultDenyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
 const defaultDenyCandidate = defaultDenyStore.stageCandidate(proposal('f'), 'deny-shadow-test', { instruction: 'must not enter shadow' });
 assert.throws(() => defaultDenyStore.recordShadowObservation(defaultDenyCandidate.candidateId, {
@@ -93,7 +93,9 @@ const active2 = store.approveAndPromote(c2.candidateId, {
 });
 assert.equal(active2.version, 2);
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 2);
-const restored = store.rollback(c2.candidateId, 2, Date.now());
+const restored = store.rollback(c2.candidateId, {
+  approvedBy: 'human-rollback-reviewer-1', approvedAt: Date.now(), expectedActiveVersion: 2,
+});
 assert.equal(restored.version, 1);
 assert.equal(restored.payload.instruction, 'version one');
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 1);
@@ -102,7 +104,9 @@ assert.equal(store.snapshot().candidates.find(item => item.candidateId === c1.ca
   'rollback restores the prior version lifecycle status as well as its payload');
 assert.equal(store.snapshot().candidates.find(item => item.candidateId === c2.candidateId).approval.approvedBy, 'human-reviewer-1',
   'promotion approval is retained as an audit record');
-assert.throws(() => store.rollback(c2.candidateId, 2), /currently promoted/);
+assert.throws(() => store.rollback(c2.candidateId, {
+  approvedBy: 'human-rollback-reviewer-1', approvedAt: Date.now(), expectedActiveVersion: 2,
+}), /currently promoted/);
 
 // The production-safe default denies promotion even if a caller fabricates plausible audit fields.
 const denyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => false, () => true); // allow fixture shadow rows while testing default-deny approval
@@ -157,6 +161,23 @@ const validApproval = {
 const signedActive = signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3);
 assert.equal(signedActive.version, 1);
 assert.equal(signedApprovalStore.snapshot().candidates[0].approval.artifact.payload.candidateId, approvalCandidate.candidateId);
+
+// Rollback is a separate privileged transition from promotion.
+assert.throws(() => signedApprovalStore.rollback(approvalCandidate.candidateId, {
+  approvedBy: 'operator-key-1', approvedAt: Date.now(), expectedActiveVersion: null,
+}), /signed rollback approval identity, timestamp and active-version guard are required/,
+'rollback without an expected active version fails before mutation');
+assert.throws(() => signedApprovalStore.rollback(approvalCandidate.candidateId, {
+  approvedBy: 'operator-key-1', approvedAt: Date.now(), expectedActiveVersion: 1,
+}), /rollback approval is not authenticated by the configured authority/,
+'caller-supplied approval fields do not authorize rollback without a trusted verifier');
+const afterDeniedRollback = signedApprovalStore.snapshot();
+assert.equal(afterDeniedRollback.active[0].version, 1,
+  'denied rollback must not replace the active skill');
+assert.equal(afterDeniedRollback.candidates[0].status, 'active',
+  'denied rollback must not change candidate lifecycle state');
+assert.equal(afterDeniedRollback.candidates[0].rollbackApproval, undefined,
+  'denied rollback must not persist approval-shaped input');
 assert.throws(() => signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3),
   /must complete shadow staging/,
   'the same signed approval cannot activate the same candidate twice');
