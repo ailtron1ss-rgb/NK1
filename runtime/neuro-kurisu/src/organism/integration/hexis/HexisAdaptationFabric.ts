@@ -203,7 +203,7 @@ export interface HexisAdaptationState {
 }
 const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
 const digest = (value: unknown) => sha256Stable(value, 'legacy');
-const normalizeEvidenceKey = (value: unknown) => String(value ?? '').trim().normalize('NFKC').slice(0, 96).toLocaleLowerCase();
+const normalizeEvidenceKey = (value: unknown) => String(value ?? '').trim().normalize('NFKC').toLowerCase().slice(0, 96);
 const sourceKey = (source: HexisEvidenceSource) => normalizeEvidenceKey(source.ref || source.label || source.contentHash || digest(source));
 const nowMs = () => Date.now();
 const MAX_OUTBOX_TERMINAL_ROWS = 512;
