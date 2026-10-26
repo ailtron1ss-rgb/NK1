@@ -828,7 +828,7 @@ async function route(req, res) {
             const input = await body(req);
             const evidence = input?.evidence && typeof input.evidence === 'object' ? input.evidence : input;
             // This marker is server-internal and may not be supplied through the public canonical route.
-            if (Object.prototype.hasOwnProperty.call(evidence, 'observedAtOrigin'))
+            if (evidence !== null && typeof evidence === 'object' && Object.prototype.hasOwnProperty.call(evidence, 'observedAtOrigin'))
                 return json(res, 400, { ok: false, error: 'invalid-evidence-timestamp-origin' });
             const result = await runtime.core.ingestHexisEvidenceForReview(evidence);
             const status = result.status === 'review-pending' ? 202
