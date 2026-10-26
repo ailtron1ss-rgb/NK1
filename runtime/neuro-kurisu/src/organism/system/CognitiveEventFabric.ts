@@ -133,6 +133,8 @@ function inspectSnapshotArray(value:unknown,maxItems:number,fromEnd=false):Snaps
   return {ok:true,dense,truncated:length>count,length,items};
 }
 
+const isCanonicalCognitiveIdentifier=(value:unknown,maxLength:number):value is string=>
+  typeof value==='string'&&value.length>0&&value===value.trim()&&value.length<=maxLength&&!/[\x00-\x1f\x7f-\x9f]/.test(value);
 const OMIT_PAYLOAD_VALUE=Symbol('omit-cognitive-payload-value');
 const MAX_COGNITIVE_PAYLOAD_DEPTH=32;
 const MAX_COGNITIVE_PAYLOAD_NODES=16384;
@@ -611,16 +613,24 @@ export class CognitiveEventFabric {
     expectedPostcondition?:string; observedPostcondition?:string;
     observationIntegrated:boolean; at?:number;
   }): { replayed:boolean; executionId:string; actionEventId:string; outcomeEventId:string; evidenceEventId:string } {
+    const safeInput=readOwnDataFields(input,[
+      'tick','executionId','toolId','decisionId','ok','verified','outcomeClass','confidence01',
+      'verificationBasis','externalObservation','observationId','expectedPostcondition',
+      'observedPostcondition','observationIntegrated','at',
+    ]);
+    if(!safeInput)throw new TypeError('invalid-tool-receipt-input');
+    input=safeInput as unknown as typeof input;
+
     if(typeof input.executionId!=='string')throw new TypeError('invalid-tool-receipt-execution-id');
-    const executionId=input.executionId.trim();
+    const executionId=input.executionId;
     if(!executionId)throw new Error('tool-receipt-execution-id-required');
-    if(executionId.length>180)throw new RangeError('invalid-tool-receipt-execution-id');
-    if(typeof input.toolId!=='string'||!input.toolId.trim())throw new TypeError('invalid-tool-receipt-tool-id');
-    if(input.toolId.length>64)throw new RangeError('invalid-tool-receipt-tool-id');
+    if(!isCanonicalCognitiveIdentifier(executionId,180))throw new RangeError('invalid-tool-receipt-execution-id');
+    if(typeof input.toolId!=='string'||!input.toolId)throw new TypeError('invalid-tool-receipt-tool-id');
+    if(!isCanonicalCognitiveIdentifier(input.toolId,64))throw new RangeError('invalid-tool-receipt-tool-id');
     if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('invalid-cognitive-event-tick');
     if(input.at!==undefined&&(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0))throw new RangeError('invalid-cognitive-event-timestamp');
     if(typeof input.ok!=='boolean'||typeof input.verified!=='boolean'||typeof input.externalObservation!=='boolean'||typeof input.observationIntegrated!=='boolean')throw new TypeError('invalid-tool-receipt-boolean');
-    if(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01))throw new TypeError('invalid-cognitive-event-confidence');
+    if(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01)||input.confidence01<0||input.confidence01>1)throw new TypeError('invalid-cognitive-event-confidence');
     const optionalText=(value:unknown,key:string,maxLength:number):string|undefined=>{
       if(value===undefined||value===null)return undefined;
       if(typeof value!=='string')throw new TypeError(`invalid-tool-receipt-${key}`);
@@ -628,10 +638,12 @@ export class CognitiveEventFabric {
       return value;
     };
     const decisionValue=optionalText(input.decisionId,'decision-id',180);
-    const decisionId=decisionValue?.trim()||undefined;
+    if(decisionValue&&!isCanonicalCognitiveIdentifier(decisionValue,180))throw new TypeError('invalid-tool-receipt-decision-id');
+    const decisionId=decisionValue||undefined;
     const outcomeClass=optionalText(input.outcomeClass,'outcome-class',64)??'unknown';
     const verificationBasis=optionalText(input.verificationBasis,'verification-basis',48)??'none';
     const observationValue=optionalText(input.observationId,'observation-id',180)??'';
+    if(observationValue&&!isCanonicalCognitiveIdentifier(observationValue,180))throw new TypeError('invalid-tool-receipt-observation-id');
     const expectedPostcondition=optionalText(input.expectedPostcondition,'expected-postcondition',16384)??'';
     const observedPostcondition=optionalText(input.observedPostcondition,'observed-postcondition',16384)??'';
     const safeTool=input.toolId;
