@@ -6,6 +6,11 @@
 
 ## UI build diagnostic test contract — 2026-10-26
 
+- Replaced the path-escaped regex for the Vercel output diagnostic with two explicit string assertions. This keeps the fixture checking both the build command and exact output location without ambiguous slash escaping.
+- The production supervisor remains fail-closed on missing output; no guard was weakened.
+
+
+
 - Updated the supervisor prerequisite regression to match the real Vercel/Nitro UI output path and the corresponding `npm run build` diagnostic.
 - The clean-install attempt confirmed installs, production build, app/runtime typechecks and the organism smoke all pass; the stack run is still blocked by this stale assertion before the next live-stack rerun.
 - No production checks were relaxed.

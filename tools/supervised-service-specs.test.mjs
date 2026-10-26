@@ -109,5 +109,6 @@ test('required service prerequisites are checked before local state is created',
     'missing mandatory Python runtime must fail before creating state');
   assert.ok(requirementsCheck >= 0 && stateCreation > requirementsCheck,
     'missing entrypoints/build output must fail before creating state');
-  assert.match(startup, /Build the UI before production-style start: npm run build .*app\\/\\.vercel\\/output\\/static\\/index\\.html/);
+  assert.ok(startup.includes('Build the UI before production-style start: npm run build'));
+  assert.ok(startup.includes('app/.vercel/output/static/index.html'));
 });
