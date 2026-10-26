@@ -67,6 +67,45 @@ const restoredConflict=restoredOutbox.enqueueOutbox({idempotencyKey:'k1',kind:'n
 assert.equal(restoredConflict.error,'idempotency-key-conflict');
 assert.equal(restoredOutbox.snapshot().metrics.outboxIdempotencyConflicts,2,'outbox conflict telemetry survives snapshot/restore');
 
+// Pending deliveries are obligations and must not disappear when terminal history rotates.
+const pendingQueue = new HexisAdaptationFabric();
+let oldestPending;
+for (let i = 0; i < 520; i += 1) {
+ const entry = pendingQueue.enqueueOutbox({idempotencyKey:`pending-${i}`,kind:'notify',channel:'test',payload:{i}});
+ assert.ok(entry.id, 'pending outbox entry should be accepted');
+ if (i === 0) oldestPending = entry;
+}
+assert.equal(pendingQueue.snapshot().outbox.length, 520, 'active outbox rows must survive beyond the terminal history window');
+assert.equal(pendingQueue.snapshot().outbox.find(x => x.id === oldestPending.id)?.status, 'pending');
+assert.equal(pendingQueue.enqueueOutbox({idempotencyKey:'pending-0',kind:'notify',channel:'test',payload:{i:0}}).id, oldestPending.id);
+
+// A terminal row may rotate out, but its exact idempotency receipt must remain durable.
+const longHorizon = new HexisAdaptationFabric();
+const retired = longHorizon.enqueueOutbox({idempotencyKey:'retired-key',kind:'notify',channel:'test',payload:{message:'already sent'}});
+assert.ok(retired.id);
+longHorizon.claimOutbox(retired.id);
+longHorizon.ackOutbox(retired.id, true);
+for (let i = 0; i < 520; i += 1) {
+ const entry = longHorizon.enqueueOutbox({idempotencyKey:`terminal-${i}`,kind:'notify',channel:'test',payload:{i}});
+ assert.ok(entry.id);
+ longHorizon.claimOutbox(entry.id);
+ longHorizon.ackOutbox(entry.id, true);
+}
+assert.equal(longHorizon.snapshot().outbox.length, 512, 'terminal outbox rows remain bounded');
+assert.equal(longHorizon.snapshot().outbox.some(x => x.id === retired.id), false, 'old terminal payload must rotate out');
+const retiredReplay = longHorizon.enqueueOutbox({idempotencyKey:'retired-key',kind:'notify',channel:'test',payload:{message:'already sent'}});
+assert.equal(retiredReplay.ok, false, 'same key must not create a new side effect after its row was retired');
+assert.equal(retiredReplay.error, 'idempotency-key-history-expired');
+assert.equal(retiredReplay.existingId, retired.id);
+const retiredConflict = longHorizon.enqueueOutbox({idempotencyKey:'retired-key',kind:'notify',channel:'test',payload:{message:'different action'}});
+assert.equal(retiredConflict.error, 'idempotency-key-conflict');
+const longHorizonRestored = new HexisAdaptationFabric();
+longHorizonRestored.restore(longHorizon.snapshot());
+const restoredRetiredReplay = longHorizonRestored.enqueueOutbox({idempotencyKey:'retired-key',kind:'notify',channel:'test',payload:{message:'already sent'}});
+assert.equal(restoredRetiredReplay.error, 'idempotency-key-history-expired', 'retired key guard must survive snapshot/restore');
+assert.equal(longHorizonRestored.snapshot().metrics.outboxRetiredKeyReplays, 2);
+assert.equal(longHorizonRestored.enqueueOutbox({idempotencyKey:'x'.repeat(257),kind:'notify',channel:'test',payload:{}}).error, 'idempotency-key-too-long');
+
 const policy = fabric.grantConnectorPolicy({connectorId:'telegram',actionKind:'send',contexts:['chat'],requiresApproval:true,allowedTargets:['123'],maxPerWindow:1,windowMs:60_000});
 assert.equal(fabric.evaluateConnectorAction({connectorId:'telegram',actionKind:'send',context:'chat',target:'123'}).allowed,false);
 assert.equal(fabric.evaluateConnectorAction({connectorId:'telegram',actionKind:'send',context:'chat',target:'123',confirmed:true}).allowed,true);
