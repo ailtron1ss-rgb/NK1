@@ -198,7 +198,8 @@
     "test:toolchain-contract": "node --test tools/toolchain-contract.test.mjs",
     "test:super-gateway-headers": "node --test tools/super-gateway-headers.test.mjs",
     "test:supervisor-start-smoke": "node tools/supervisor-start-smoke.mjs",
-    "test:final-release-verifier": "node --test tools/verify-final-release.test.mjs"
+    "test:final-release-verifier": "node --test tools/verify-final-release.test.mjs",
+    "release:verify:ci": "node tools/verify-final-release.mjs --allow-generated-python-cache"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
