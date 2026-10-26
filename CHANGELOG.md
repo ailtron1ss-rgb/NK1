@@ -9,6 +9,7 @@
 - Correct the persisted CAS tamper fixture to alter the signed approval claim without breaking the candidate's prior-version chain, so it reaches the assertion it intends to cover.
 - Correct cross-family holdout-pair accounting: baseline/candidate rows with mismatched task families remain excluded and now increment `rejectedRows`; the regression asserts both the paired denominator and rejection count.
 - Reject invalid gate thresholds instead of silently clipping them; paired-task minimum must be an integer in range, and gain/regression thresholds must be finite values in `[0, 1]`.
+- Align the promotion-proposal regression with the strict contract: `NaN` thresholds are expected to throw instead of relying on implicit defaults.
 
 Validation: code and regression tests are committed on the working branch. Local runtime tests were not run in this environment; CI results remain pending.
 
