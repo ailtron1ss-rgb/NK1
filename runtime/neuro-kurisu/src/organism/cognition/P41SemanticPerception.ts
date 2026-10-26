@@ -61,6 +61,8 @@ export interface P41PerceptualSnapshot {
   id:string;
   tick:number;
   at:number;
+  /** Semantic modalities contributed by this exact ingress; excludes unresolved model requests. */
+  modalities?:P41Modality[];
   scene:string;
   entityIds:string[];
   eventIds:string[];
@@ -166,8 +168,16 @@ export class P41SemanticPerceptionEngine {
     this.state.metrics.temporalGrounding01=this.state.continuity.temporalGrounding01;
     this.state.epistemic=this.epistemic.snapshot();
     this.state.metrics.evidenceTraceability01=clamp(Math.min(1,this.state.epistemic.claims.length/32));
+    const semanticModalities:P41Modality[]=[
+      ...(input.text?.trim()?['text' as const]:[]),
+      ...(input.vision?.semantic===true?['vision' as const]:[]),
+      ...(input.audio?.semantic===true?['audio' as const]:[]),
+      ...(input.sensor?['sensor' as const]:[]),
+      ...(input.world?['world' as const]:[]),
+    ];
     this.state.snapshots.unshift({
       id:stableId('snapshot',`${this.state.tick}:${at}:${this.state.scene.label}`),tick:this.state.tick,at,
+      modalities:semanticModalities,
       scene:this.state.scene.label,entityIds:this.state.entities.filter(e=>e.present01>.25).slice(0,32).map(e=>e.id),
       eventIds:this.state.events.slice(0,16).map(e=>e.id),relationIds:this.state.relations.slice(0,32).map(r=>r.id),
       uncertainty01:clamp(1-this.state.metrics.crossModalAgreement01),coherence01:clamp((this.state.metrics.grounding01+this.state.metrics.temporalBinding01)/2),selfLocation: this.state.entities.find(e=>e.kind==='body')?.label??'unknown'

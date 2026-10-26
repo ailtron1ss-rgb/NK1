@@ -97,6 +97,14 @@ runtime.core.p41PerceptionIngest({
   vision: { semantic: true, sceneLabel: 'test-room-latest', confidence01: 0.91, objects: [{ label: 'window', kind: 'object', confidence01: 0.85 }], latencyMs: 10 },
   at: sampleAt + 300,
 });
+const queuedVisionSnapshots = runtime.core.p41PerceptionSnapshot().snapshots
+  .filter(snapshot => Array.isArray(snapshot.modalities) && snapshot.modalities.includes('vision'))
+  .slice(0, 2);
+assert.deepEqual(
+  queuedVisionSnapshots.map(snapshot => snapshot.scene),
+  ['test-room-latest', 'test-room-intermediate'],
+  'vision snapshots must be explicitly tagged independently of sensor-only ingress snapshots',
+);
 await runtime.step();
 const intermediateVision = runtime.core.multimodalSnapshot().recent.filter(
   event => event.modality === 'vision' && event.summary.includes('scene=test-room-intermediate'),

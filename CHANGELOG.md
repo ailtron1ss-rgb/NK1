@@ -1,3 +1,12 @@
+## NK1 [perception] — drain semantic vision frames independent of sensor snapshots (2026-10-26)
+
+- Fixed P41 frame selection: the semantic perception engine also creates snapshots for sensor/text/world ingress, so slicing the raw snapshot ring by the vision observation counter could select non-vision state and starve a pending frame.
+- Each P41 snapshot now records which semantic modalities actually contributed to that ingress. OrganismRuntime filters to explicitly tagged semantic-vision snapshots before draining the oldest pending frame per cycle.
+- Extended the active-perception runtime regression to verify the burst queue is explicitly tagged and both intermediate/latest frames are integrated once in order.
+- **Validation boundary:** source and regression are committed; the previous exact-head Action run confirmed the failure at the second frame assertion. Awaiting fresh workflow execution after this correction.
+
+---
+
 ## NK1 [evidence] — sequence outcome projection after causal receipt creation (2026-10-26)
 
 - Moved the canonical RealityEvidenceLedger/P65 projection after `appendToolReceiptTrace` and optional external-evidence append, so its parent CEF outcome ID is available and external-observation variables are initialized.

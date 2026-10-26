@@ -630,9 +630,11 @@ export class OrganismRuntime {
       novelty01: number; summary: string; evidence: string[]; content: string; evidenceId: string;
     } | null = null;
     if (p41VisionObservationDelta > 0) {
-      const availableSnapshots = Array.isArray(p41Semantic?.snapshots) ? p41Semantic.snapshots : [];
-      // Snapshots are newest-first. Drain the oldest unseen frame first so a burst
-      // of camera observations is integrated over successive runtime cycles.
+      const availableSnapshots = Array.isArray(p41Semantic?.snapshots)
+        ? p41Semantic.snapshots.filter((snapshot:any)=>Array.isArray(snapshot?.modalities)&&snapshot.modalities.includes('vision'))
+        : [];
+      // The semantic engine also snapshots sensor/text-only ingresses. Filter to actual
+      // semantic vision updates first, then drain those newest-first entries oldest-first.
       const semanticSnapshot = availableSnapshots.slice(0, Math.min(128, p41VisionObservationDelta)).at(-1) ?? null;
       if (semanticSnapshot && typeof semanticSnapshot.id === 'string') {
         const entityIds = new Set(Array.isArray(semanticSnapshot.entityIds) ? semanticSnapshot.entityIds : []);
