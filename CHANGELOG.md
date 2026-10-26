@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass417 — reject ambiguous native-reference aliases in HMX export (2026-10-26)
+
+- [INTEGRATION] Reference indexing no longer uses last-write-wins for colliding `id/ref/key/name/title` aliases; unresolved references cannot silently attach relationships, episode references or parent links to another record.
+- [DIAGNOSTICS] The exporter emits a summary warning with the ambiguous-alias count without echoing the conflicting alias values.
+- [TEST] Added a regression for ambiguous versus unique relationship references and wired it into Hexis adaptation, canonical-apply, integration-idempotency and release checks.
+- [VALIDATION] Source changes are committed to the draft Hexis PR branch. Runtime execution remains unverified because the existing Actions records fail without usable step logs; no PASS is claimed.
+
 ## [NK1][Hexis] WorkPass416 — wire canonical replay regression into CI (2026-10-26)
 
 - [INTEGRATION] Added `tests/hexis-projector-idempotent-replay.mjs` to `test:hexis-canonical-apply`; the workflow now executes the idempotent replay/receipt-tamper contract instead of leaving that test unreferenced.
