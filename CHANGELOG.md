@@ -1,3 +1,15 @@
+## WorkPass344 — final release verifier requires metadata consistency — 2026-10-26
+
+- **Defect:** `npm run release:verify` omitted the independent release-metadata validator, so the final tree could report green while version/lockfile/current-status metadata were inconsistent.
+- **Fix:** `verify-final-release.mjs` now makes UI wiring, architecture and release metadata mandatory fail-closed gates. It supports isolated `--root` fixtures and rejects unknown arguments.
+- **Regression:** four tests cover valid metadata, invalid metadata, a missing validator and an unknown argument.
+- **Launch integration:** the regression is included in `audit:workpass70`; the Unified project integration workflow now runs `test:final-release-verifier` and `release:verify` after the runtime/research smoke. Workflow path filters include the verifier and metadata inputs.
+- **CI finding:** the first combined run passed the four release-verifier tests, then found a false positive in the architecture scanner because the substrate wiring test contained a literal import assertion. The assertion is now assembled from tokens, preserving its check without presenting a fake import edge.
+
+**Validation status:** pending exact-head CI on code/test checkpoint `6cf87a07f28b208b809506925f4cbd6fb163636c`. Historical WorkPass340–342 PASS evidence remains tied to its original SHA and does not validate WorkPass344. Progress scores remain unchanged.
+
+---
+
 ## WorkPass343 — reconcile future cognitive-substrate sidecar ticks (2026-10-26)
 
 - **Defect:** a restored sidecar could contain a valid but future `lastTick`, including `Number.MAX_SAFE_INTEGER`. Because runtime used `Math.max(coreTick, sidecarTick + 1)`, the derived projection's clock kept moving ahead of the canonical Core clock and eventually supplied an unsafe tick to `integrate()`, preventing future integration.
