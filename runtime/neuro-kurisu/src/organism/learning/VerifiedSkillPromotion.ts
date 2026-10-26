@@ -286,10 +286,12 @@ export function proposeVerifiedSkillPromotion(
     ...gate, accepted: false, reason: 'insufficient-independent-heldout-task-coverage',
   } : !seedCoverageOkay ? {
     ...gate, accepted: false, reason: 'insufficient-complete-holdout-seed-coverage',
-  } : requiredFamilyFailure ? {
-    ...gate, accepted: false, reason: requiredFamilyFailure.reason,
+  // Require adequate independent task breadth before interpreting per-family gain.
+  // With an under-covered family, the gain estimate is not actionable promotion evidence.
   } : requiredFamilyTaskFailure ? {
     ...gate, accepted: false, reason: requiredFamilyTaskFailure.reason,
+  } : requiredFamilyFailure ? {
+    ...gate, accepted: false, reason: requiredFamilyFailure.reason,
   } : familyRegression ? {
     ...gate, accepted: false, reason: 'seed-clustered-family-regression',
   } : !seedClusteredGainOkay ? {
