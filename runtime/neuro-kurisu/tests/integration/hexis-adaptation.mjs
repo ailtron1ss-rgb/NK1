@@ -162,6 +162,16 @@ const normalizedStage = importedNormalizedExport.stageHmx({
 });
 assert.deepEqual(normalizedStage.conflicts, [], 'NK1 native export adapter must emit a conflict-free HMX 1.7 envelope');
 assert.equal(importedNormalizedExport.decideHmx(normalizedStage.stagingId, 'accept')?.status, 'accepted');
+const goalProposalBatch = importedNormalizedExport.prepareGoalProposals(normalizedStage.stagingId);
+assert.equal(goalProposalBatch.created, 1, 'an accepted native HMX goal should be converted to a review proposal');
+assert.equal(goalProposalBatch.proposals[0]?.status, 'pending', 'imported goals must not auto-activate');
+const goalProposalReplay = importedNormalizedExport.prepareGoalProposals(normalizedStage.stagingId);
+assert.equal(goalProposalReplay.created, 0, 'goal proposal retries must not duplicate proposals');
+assert.equal(goalProposalReplay.duplicates, 1);
+assert.equal(goalProposalReplay.proposals[0]?.id, goalProposalBatch.proposals[0]?.id);
+const goalApproved = importedNormalizedExport.decideGoalProposal(goalProposalBatch.proposals[0].id, 'approve');
+assert.equal(goalApproved?.status, 'approved', 'approval changes review state only; it does not materialize a canonical goal');
+assert.throws(() => importedNormalizedExport.decideGoalProposal(goalProposalBatch.proposals[0].id, 'reject'), /hmx-goal-proposal-already-reviewed/);
 
 
 function makeHmxDocument(exportId, sections) {
