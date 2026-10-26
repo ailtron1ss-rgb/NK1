@@ -269,8 +269,8 @@ const rollbackMemory = rollbackMemoryOS.encode({
   contradictionLinks: [],
 }, { clone: false });
 const rollbackFabric = new HexisAdaptationFabric();
-const rollbackMemoryBefore = structuredClone(rollbackMemoryOS.snapshot());
 const rollbackFabricBefore = rollbackFabric.snapshot();
+const createLearningReviewBeforeFailure = rollbackFabric.createLearningReview.bind(rollbackFabric);
 rollbackFabric.createLearningReview = () => { throw new Error("injected-review-store-failure"); };
 const failedReview = ingestHexisEvidenceForReview(rollbackMemoryOS, rollbackFabric, {
   ...reviewEvidence,
@@ -280,24 +280,36 @@ const failedReview = ingestHexisEvidenceForReview(rollbackMemoryOS, rollbackFabr
 });
 assert.equal(failedReview.status, "rejected");
 if (failedReview.status === "rejected") assert.equal(failedReview.reason, "hexis-review-ingress-failed");
-const rolledBackMemory = target(rollbackMemoryOS, rollbackMemory.id);
+const rolledBackMemory = rollbackMemoryOS.get(rollbackMemory.id);
+assert.ok(rolledBackMemory, "rollback must preserve the original canonical memory");
 assert.equal(
-  rolledBackMemory.evidenceRecords?.some((row) => row.evidenceId === rollbackEvidence.evidenceId),
+  rolledBackMemory.evidenceRecords?.some((row) => row.evidenceId === "hexis:evidence:review-rollback"),
   false,
   "failed review creation must remove the newly appended canonical evidence receipt",
 );
 assert.equal(
-  rollbackMemoryOS.hasEvidenceId(rollbackMemory.id, rollbackEvidence.evidenceId),
+  rollbackMemoryOS.hasEvidenceId(rollbackMemory.id, "hexis:evidence:review-rollback"),
   false,
   "failed review creation must remove the evidence replay identity",
 );
 assert.equal(
-  rollbackMemoryOS.evidenceTrail(rollbackMemory.id)?.sources.some((source) => source.source.includes(rollbackEvidence.source.ref)),
+  rollbackMemoryOS.evidenceTrail(rollbackMemory.id)?.sources.some((source) => source.source.includes("sha256:review-rollback-source")),
   false,
   "failed review creation must not leave the rejected source in canonical provenance",
 );
 assert.equal(rolledBackMemory.confidence, rollbackMemory.confidence, "review preparation failure must not revise belief confidence");
 assert.deepEqual(rollbackFabric.snapshot(), rollbackFabricBefore, "failed review creation must roll back Hexis review state");
+
+// Once the review-store failure is removed, the same evidence ID must be
+// accepted again; rollback must clear both the receipt and its replay identity.
+rollbackFabric.createLearningReview = createLearningReviewBeforeFailure;
+const retryAfterRollback = ingestHexisEvidenceForReview(rollbackMemoryOS, rollbackFabric, {
+  ...reviewEvidence,
+  memoryId: rollbackMemory.id,
+  evidenceId: "hexis:evidence:review-rollback",
+  source: { kind: "document", ref: "sha256:review-rollback-source" },
+});
+assert.equal(retryAfterRollback.status, "review-pending", "the same ID must be retryable after atomic rollback");
 
 // If the canonical memory changes after preview, approval is rejected as stale
 // and the review remains pending rather than overwriting newer state.
