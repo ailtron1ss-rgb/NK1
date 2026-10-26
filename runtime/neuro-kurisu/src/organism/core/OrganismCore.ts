@@ -2777,44 +2777,16 @@ export class OrganismCore {
     }) {
         const memoryId=String(input.memoryId??'').trim();
         const memory=this.memorySubsystem.memoryOS.get(memoryId);
-        if(!memory) return { ok:false, error:'memory-not-found', memoryId };
+        if(!memory) return {ok:false,error:'memory-not-found',memoryId};
         const memoryOSBefore=this.memorySubsystem.memoryOS.snapshot();
         const memoryFabricBefore=this.memorySubsystem.fabric.snapshot();
         const memoriesBefore=this.memorySubsystem.memories.snapshot();
         const eventsBefore=this.memorySubsystem.events.list();
         const hexisBefore=this.hexisAdaptation.snapshot();
-
-        // Bind the belief revision to the canonical owner before Hexis commits its
-        // local belief/audit. Canonical evidence lineage protects against replay even
-        // when Hexis persistence is restored independently.
-        this.hexisAdaptation.bindCanonicalBeliefProjection(projection=>{
-            const canonical=this.memorySubsystem.memoryOS.get(String(projection.memoryId));
-            if(!canonical) return 'unavailable';
-            const evidenceDigest=sha256Stable(projection.evidenceKey,'legacy');
-            const independenceKey='hexis-belief:'+evidenceDigest;
-            const canonicalLineageKey='lineage:'+independenceKey.toLowerCase();
-            const priorSources=Array.isArray(canonical.evidenceSources)?canonical.evidenceSources:[];
-            const alreadyKnown=canonical.evidenceLineageKeys?.includes(canonicalLineageKey)||
-                priorSources.some((source:any)=>String(source.independenceKey??'').trim().normalize('NFKC').toLowerCase()===independenceKey.toLowerCase());
-            if(alreadyKnown) return 'duplicate';
-            const evidenceSource={
-                source:'hexis-evidence:'+evidenceDigest,
-                provenanceClass:'external' as const,
-                sourceAuthority01:projection.evidenceTrust01,
-                independenceKey,
-                observedAt:projection.at,
-                evidenceFreshnessAt:projection.at,
-            };
-            const updated=this.memorySubsystem.fabric.updateSignals(
-                projection.memoryId,
-                {confidence:projection.posteriorConfidence01,evidenceSources:[evidenceSource]},
-                'hexis-belief-revision:'+projection.stance+':'+evidenceDigest.slice(0,16),
-                {commandId:'hexis-belief-revision:'+projection.auditId,tick:this.persisted.state.tick},
-            );
-            if(!updated) throw new Error('hexis-canonical-belief-projection-failed');
-            return 'projected';
-        });
-        try{
+        try {
+            // OrganismSystemFabric owns the canonical projection callback. Core only
+            // coordinates persistence and rollback; it does not maintain a duplicate
+            // Hexis→MemoryOS evidence-lineage implementation.
             const audit=this.hexisAdaptation.reviseBelief({
                 memoryId:memory.id,
                 confidence01:memory.confidence,
@@ -2825,14 +2797,18 @@ export class OrganismCore {
                 protectedBelief:memory.kind==='identity'||memory.kind==='autobiographical',
                 at:Date.now(),
             });
-            this.memorySubsystem.fabric.consolidateCompatibility(this.memorySubsystem.memories.snapshot({clone:false}),96,this.persisted.state.tick);
+            this.memorySubsystem.fabric.consolidateCompatibility(
+                this.memorySubsystem.memories.snapshot({clone:false}),96,this.persisted.state.tick,
+            );
             this.persisted.facets.advanced.memoryOS=this.memorySubsystem.memoryOS.snapshot();
             this.persisted.facets.advanced.memoryFabric=this.memorySubsystem.fabric.snapshot();
             this.persisted.facets.memory.eventLog=this.memorySubsystem.events.list();
-            this.persisted.facets.memory.autobiographicalMemories=this.memorySubsystem.memorySubstrate.projectCompatibilityRecords(this.memorySubsystem.memoryOS.snapshot({clone:false}),48);
+            this.persisted.facets.memory.autobiographicalMemories=this.memorySubsystem.memorySubstrate.projectCompatibilityRecords(
+                this.memorySubsystem.memoryOS.snapshot({clone:false}),48,
+            );
             this.persisted.system.hexisAdaptation=this.hexisAdaptation.snapshot();
             return {ok:true,audit,memory:this.memorySubsystem.memoryOS.get(memory.id)};
-        }catch(error){
+        } catch(error) {
             this.memorySubsystem.memoryOS.restore(memoryOSBefore);
             this.memorySubsystem.fabric.restore(memoryFabricBefore);
             this.memorySubsystem.memories.restore(memoriesBefore);
@@ -2842,7 +2818,7 @@ export class OrganismCore {
             this.persisted.facets.advanced.memoryFabric=this.memorySubsystem.fabric.snapshot();
             this.persisted.facets.memory.eventLog=this.memorySubsystem.events.list();
             this.persisted.system.hexisAdaptation=this.hexisAdaptation.snapshot();
-            throw error;
+            return {ok:false,error:String((error as any)?.message??error),memoryId};
         }
     }
     /** Temporal views delegate to MemoryOS2; Hexis temporal rows remain audit/export projections only. */
@@ -2889,159 +2865,24 @@ export class OrganismCore {
         return review;
     }
     hexisDecideLearningReview(reviewId: string, itemId: string, decision: HexisReviewDecision, correction?: string) {
-        const reviewKey=String(reviewId??'').trim();
-        const itemKey=String(itemId??'').trim();
-        if(!reviewKey||reviewKey.length>160||!itemKey||itemKey.length>160) return { ok:false, error:'hexis-review-id-invalid' };
-        if(!['approve','correct','forget'].includes(decision)) return { ok:false, error:'hexis-review-decision-invalid' };
-        const before=this.hexisAdaptation.snapshot();
-        const review=before.learningReviews.find((row:any)=>row.id===reviewKey);
-        const item=review?.items.find((row:any)=>row.id===itemKey);
-        if(!review||!item) return { ok:false, error:'review-item-not-found-or-invalid' };
-        const expectedStatus=decision==='approve'?'approved':decision==='correct'?'corrected':'forgotten';
-        if(item.status!=='pending'){
-            if(item.status!==expectedStatus) return { ok:false, error:'hexis-learning-review-already-decided-differently' };
-            const existingId=item.canonicalMemoryId??item.sourceMemoryId;
-            const existingMemory=existingId?this.memorySubsystem.memoryOS.get(existingId):null;
-            if(existingId&&!existingMemory) return { ok:false, error:'hexis-learning-review-canonical-memory-missing' };
-            return { ok:true, result:item, memory:existingMemory, reviewId:reviewKey, disposition:'replayed' };
-        }
-        const correctedText=String(correction??'').trim().slice(0,2000);
-        if(decision==='correct'&&!correctedText) return { ok:false, error:'hexis-review-correction-required' };
-
-        const canonicalBefore=this.memorySubsystem.memoryOS.snapshot({clone:false}).items;
-        const canonicalById=new Map(canonicalBefore.map((memory:any)=>[memory.id,memory] as const));
-        const resolveCurrent=(id:string)=>{
-            let memory=canonicalById.get(id)??null;
-            const visited=new Set<string>();
-            while(memory?.supersededById&&!visited.has(memory.id)){
-                visited.add(memory.id);
-                const next=canonicalById.get(memory.supersededById);
-                if(!next) break;
-                memory=next;
-            }
-            return memory;
-        };
-        const sourceMemory=item.sourceMemoryId?resolveCurrent(String(item.sourceMemoryId)):null;
-        if(item.sourceMemoryId&&!sourceMemory) return { ok:false, error:'hexis-learning-review-source-memory-missing' };
-        if(decision==='forget'&&sourceMemory&&(
-            sourceMemory.kind==='identity'||sourceMemory.kind==='autobiographical'||sourceMemory.epistemicStatus==='quarantined'
-        )) return { ok:false, error:'hexis-learning-review-forget-protected-memory' };
-
-        const memoryOSBefore=this.memorySubsystem.memoryOS.snapshot();
-        const memoryFabricBefore=this.memorySubsystem.fabric.snapshot();
-        const memoriesBefore=this.memorySubsystem.memories.snapshot();
-        const eventsBefore=this.memorySubsystem.events.list();
-        const stableKey=sha256Stable({reviewId:reviewKey,itemId:itemKey},'legacy').slice(0,40);
-        const commandBase='hexis-review:'+stableKey;
-        const evidenceDigest=sha256Stable(item.evidence,'legacy').slice(0,32);
-        const reviewAt=Number.isFinite(Number(review.periodEnd))?Math.max(0,Number(review.periodEnd)):Math.max(0,Number(item.createdAt));
-        const contextPatch:Record<string,string>={
-            hexisLearningReviewId:reviewKey,
-            hexisLearningItemId:itemKey,
-            hexisLearningDecision:decision==='approve'?'approved':decision==='correct'?'corrected':'forgotten',
-            hexisLearningReviewedAt:String(reviewAt),
-            hexisLearningEvidenceDigest:evidenceDigest,
-            ...(decision==='correct'?{hexisLearningCorrectionDigest:sha256Stable(correctedText,'legacy').slice(0,32)}:{}),
-        };
-        const sourceIdentity='hexis-review:'+stableKey;
-        const encodeCandidate=(body:string)=>{
-            const kind:'semantic'|'procedural'=(item.kind==='new_procedure'||item.kind==='proposed_skill')?'procedural':'semantic';
-            const value=this.memorySubsystem.fabric.encode({
-                content:body,
-                tags:['hexis-learning-review','hexis-learning-kind:'+item.kind,'hexis-review:'+sha256Stable(reviewKey,'legacy').slice(0,12)],
-                context:contextPatch,
-                kind,
-                salience:0.45,
-                emotionalWeight:0.05,
-                identityRelevance:0.08,
-                goalRelevance:0.12,
-                socialRelevance:0.05,
-                predictionError:0,
-                confidence:0.42,
-                epistemicStatus:'hypothesis',
-                source:sourceIdentity,
-                entities:[],
-                semanticLinks:[],
-                temporalLinks:[],
-                causalLinks:[],
-                provenanceClass:'external',
-                sourceAuthority01:0.4,
-                independenceKey:sourceIdentity,
-                evidenceFreshnessAt:reviewAt,
-            },{commandId:commandBase+':encode',tick:this.persisted.state.tick});
-            if(!value?.id) throw new Error('hexis-learning-canonical-encode-failed');
-            return value;
-        };
-
-        try{
-            let memory:any=null;
-            let disposition:'approved-existing'|'corrected-existing'|'quarantined-existing'|'materialized-candidate'|'review-only';
-            if(decision==='forget'){
-                if(sourceMemory){
-                    if(sourceMemory.epistemicStatus!=='quarantined'){
-                        this.memorySubsystem.fabric.revise(sourceMemory.id,'quarantined','hexis-learning-review-forget:'+reviewKey,{commandId:commandBase+':quarantine',tick:this.persisted.state.tick});
-                    }
-                    const updated=this.memorySubsystem.fabric.updateContext(sourceMemory.id,contextPatch,{commandId:commandBase+':context',tick:this.persisted.state.tick});
-                    if(!updated) throw new Error('hexis-learning-quarantine-target-missing');
-                    memory=this.memorySubsystem.memoryOS.get(sourceMemory.id);
-                    if(!memory||memory.epistemicStatus!=='quarantined') throw new Error('hexis-learning-quarantine-not-applied');
-                    disposition='quarantined-existing';
-                }else{
-                    disposition='review-only';
-                }
-            }else if(decision==='correct'){
-                if(sourceMemory){
-                    memory=this.memorySubsystem.fabric.reviseContent(sourceMemory.id,correctedText,{
-                        reason:'hexis-learning-review-correction:'+reviewKey,
-                        validAt:reviewAt,
-                        source:sourceMemory.source,
-                        epistemicStatus:sourceMemory.epistemicStatus,
-                        salience:sourceMemory.salience,
-                        confidence:sourceMemory.confidence,
-                    },{commandId:commandBase+':revise',tick:this.persisted.state.tick});
-                    if(!memory) throw new Error('hexis-learning-canonical-revision-failed');
-                    disposition='corrected-existing';
-                }else{
-                    memory=encodeCandidate(correctedText);
-                    disposition='materialized-candidate';
-                }
-                const updated=this.memorySubsystem.fabric.updateContext(memory.id,contextPatch,{commandId:commandBase+':context',tick:this.persisted.state.tick});
-                if(!updated) throw new Error('hexis-learning-correction-context-failed');
-                memory=this.memorySubsystem.memoryOS.get(memory.id);
-            }else if(sourceMemory){
-                // Approval records provenance only. It deliberately never changes confidence.
-                const updated=this.memorySubsystem.fabric.updateContext(sourceMemory.id,contextPatch,{commandId:commandBase+':context',tick:this.persisted.state.tick});
-                if(!updated) throw new Error('hexis-learning-approval-context-failed');
-                memory=this.memorySubsystem.memoryOS.get(sourceMemory.id);
-                disposition='approved-existing';
-            }else{
-                const body=String(item.content||item.title).trim().slice(0,2000);
-                if(!body) throw new Error('hexis-learning-candidate-content-empty');
-                memory=encodeCandidate(body);
-                disposition='materialized-candidate';
-            }
-
-            this.memorySubsystem.fabric.consolidateCompatibility(this.memorySubsystem.memories.snapshot({clone:false}),96,this.persisted.state.tick);
-            const result=this.hexisAdaptation.decideLearningReview(reviewKey,itemKey,decision,decision==='correct'?correctedText:undefined,memory?.id);
-            if(!result) throw new Error('hexis-learning-review-decision-not-committed');
-
+        try {
+            const integrated=this.organismSystems.decideHexisLearningReview(reviewId,itemId,decision,correction);
             this.persisted.system.hexisAdaptation=this.hexisAdaptation.snapshot();
             this.persisted.facets.advanced.memoryOS=this.memorySubsystem.memoryOS.snapshot();
             this.persisted.facets.advanced.memoryFabric=this.memorySubsystem.fabric.snapshot();
             this.persisted.facets.memory.eventLog=this.memorySubsystem.events.list();
-            this.persisted.facets.memory.autobiographicalMemories=this.memorySubsystem.memorySubstrate.projectCompatibilityRecords(this.memorySubsystem.memoryOS.snapshot({clone:false}),48);
-            return { ok:true, result, memory, reviewId:reviewKey, disposition };
-        }catch(error){
-            this.memorySubsystem.memoryOS.restore(memoryOSBefore);
-            this.memorySubsystem.fabric.restore(memoryFabricBefore);
-            this.memorySubsystem.memories.restore(memoriesBefore);
-            this.memorySubsystem.events.restore(eventsBefore);
-            this.hexisAdaptation.restore(before);
-            this.persisted.system.hexisAdaptation=this.hexisAdaptation.snapshot();
-            this.persisted.facets.advanced.memoryOS=this.memorySubsystem.memoryOS.snapshot();
-            this.persisted.facets.advanced.memoryFabric=this.memorySubsystem.fabric.snapshot();
-            this.persisted.facets.memory.eventLog=this.memorySubsystem.events.list();
-            throw error;
+            this.persisted.facets.memory.autobiographicalMemories=this.memorySubsystem.memorySubstrate.projectCompatibilityRecords(
+                this.memorySubsystem.memoryOS.snapshot({clone:false}),48,
+            );
+            return {
+                ok:true,
+                result:integrated.item,
+                memory:integrated.memory,
+                reviewId,
+                disposition:integrated.disposition,
+            };
+        } catch(error) {
+            return {ok:false,error:String((error as any)?.message??error)};
         }
     }
     hexisListLearningReviews(status = 'pending') { const rows = this.hexisAdaptation.snapshot().learningReviews; return status === 'all' ? rows : rows.filter((x) => x.status === status); }
