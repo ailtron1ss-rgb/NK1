@@ -76,6 +76,12 @@ const statusInventory = await json(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${
 const scorecard = await json(`docs/PROJECT_PROGRESS_SCORECARD_${statusDate}_${currentPassTag}.json`);
 
 if (rootPkg && superVersion) {
+  check('release-manifest-not-behind-changelog-workpass',
+    currentPass > 0 && (latestChangelogPass === 0 || currentPass >= latestChangelogPass),
+    `manifestPass=${currentPass || '(missing/invalid)'}; latestChangelogPass=${latestChangelogPass || '(none found)'}`);
+  check('release-date-not-before-current-changelog-entry',
+    !firstChangelogDate || (statusDateValid && isIsoCalendarDate(firstChangelogDate) && statusDateCandidate >= firstChangelogDate),
+    `releaseDate=${statusDateCandidate || '(missing/invalid)'}; currentChangelogDate=${firstChangelogDate || '(not dated)'}`);
   check('root-version-aligned', rootPkg.version === superVersion.version,
     `package.json=${rootPkg.version}; SUPER_VERSION.json=${superVersion.version}`);
   check('runtime-version-aligned', superVersion.canonicalRuntime === `Neuro-Kurisu ${runtimePkg?.version}`,
