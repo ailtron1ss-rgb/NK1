@@ -1,3 +1,45 @@
+## NK1 WorkPass110 — guard tokenless memory retrieval (2026-10-26)
+
+- Fixed an empty-query edge case in `MemoryOS2.retrieve()`: tokenless inputs no longer fall through to the recent-memory candidate fallback or receive a false exact-match boost from `content.includes('')`.
+- Added tests for empty, punctuation/whitespace/emoji-only, and one-character queries. They must return zero rows/candidates and must not touch row access timestamps, retrieval counts, or temperatures.
+- Dedicated retrieval workflow [40308173225](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40308173225) **passed** on tested head `c429bca441158bc68951a40dfacdf7903ec92014`: candidate coverage, superseded-current recall, benchmark truth/holdout safeguards, three-seed retrieval experiment determinism, semantic embeddings with lexical fallback, and cognition wiring.
+- The broad runtime TypeScript check remains independently blocked by existing errors in other modules. An introduced `Set.length` error was fixed to `Set.size`; this retrieval workflow does not claim the whole runtime typecheck is clean.
+- Report: [WORKPASS110_TOKENLESS_MEMORY_RETRIEVAL_2026-10-26.md](https://github.com/ailtron1ss-rgb/NK1/blob/feature/visual-embodiment/docs/WORKPASS110_TOKENLESS_MEMORY_RETRIEVAL_2026-10-26.md).
+
+---
+
+## NK1 WorkPass109 — validate TTS operation IDs before dispatch (2026-10-26)
+
+- Explicit speech event IDs containing leading/trailing whitespace or Unicode C0/C1 control characters now fail closed with `tts-invalid-context`; the speech gateway is not called. Independent operations without an ID still receive a fresh UUID.
+- [Live2D runtime validation 40306694824](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40306694824) **passed** on code/test SHA `4646d67f52b42cc61ec96f6c652cc85dfcf68b6c`, including `AVATAR_SPEECH_ID_VALIDATION=PASS`, `AVATAR_SPEECH_IDENTITY=PASS`, UTF-16 regression, 16/16 app timeline tests, browser smoke and app typecheck.
+- Report: [WORKPASS109_TTS_ID_VALIDATION_2026-10-26.md](https://github.com/ailtron1ss-rgb/NK1/blob/feature/visual-embodiment/docs/WORKPASS109_TTS_ID_VALIDATION_2026-10-26.md).
+
+---
+
+## NK1 WorkPass108 — unique IDs for independent TTS calls (2026-10-26)
+
+- Omitted speech IDs now resolve to `speech-${randomUUID()}`, avoiding ActionGateway idempotency-key collisions for separate identical utterances. Explicit valid IDs remain stable for retries of the same operation.
+- [Live2D runtime validation 40306429226](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40306429226) **passed** on tested head `b88672116d4fa63489aaef929b302967636eaeb9`; identical independent phrases received distinct IDs, 16/16 app timeline tests passed, and app typecheck was green.
+- Report: [WORKPASS108_TTS_OPERATION_IDENTITY_2026-10-26.md](https://github.com/ailtron1ss-rgb/NK1/blob/feature/visual-embodiment/docs/WORKPASS108_TTS_OPERATION_IDENTITY_2026-10-26.md).
+
+---
+
+## NK1 WorkPass107 — share affect smoothing between avatar renderers (2026-10-26)
+
+- Extracted the bounded 180ms exponential affect smoother into `embodiment-affect-core.mjs` and wired React and the standalone runtime viewer to the same implementation. Expression intensity, gaze, head tilt, and voice emphasis ease to targets; mouth visemes remain on the speech clock.
+- [Live2D runtime validation 40305957435](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40305957435) **passed** on tested head `af1f6caa3b257153d8398024a55180596fbb7608`: 24/24 resources, mobile/quality browser profiles, runtime wiring, 16/16 timeline tests and app typecheck.
+- Report: [WORKPASS107_SHARED_AVATAR_AFFECT_SMOOTHING_2026-10-26.md](https://github.com/ailtron1ss-rgb/NK1/blob/feature/visual-embodiment/docs/WORKPASS107_SHARED_AVATAR_AFFECT_SMOOTHING_2026-10-26.md).
+
+---
+
+## NK1 WorkPass106 — preserve source viseme labels and UTF-16 offsets (2026-10-26)
+
+- Kept original grapheme labels while normalizing CR/LF/tab only for timing/pose calculation, so display labels and Web Speech UTF-16 boundaries stay aligned. Both React/runtime parity assertions now express the same contract.
+- [Live2D runtime validation 40305120587](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40305120587) **passed** on tested source/test SHA `8cf467f0fb0ecf6c55afce233ac64f86df3f6b91`: 15/15 app timeline tests and the browser/runtime checks passed.
+- Report: [WORKPASS106_LIVE2D_SOURCE_LABEL_PARITY_2026-10-26.md](https://github.com/ailtron1ss-rgb/NK1/blob/feature/visual-embodiment/docs/WORKPASS106_LIVE2D_SOURCE_LABEL_PARITY_2026-10-26.md).
+
+---
+
 ## NK1 WorkPass105 — align runtime viseme labels with normalized speech text (2026-10-25)
 
 - Fixed a UTF-16 offset mismatch in the standalone avatar speech timeline: its frame times were built after CR/LF/tab normalization, while the displayed grapheme labels were sliced from the unnormalized source. Real line breaks could therefore label a viseme with the wrong character.
