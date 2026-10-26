@@ -70,6 +70,10 @@ export const isValidHmxStageDigest = stage => {
     // But a persisted success receipt may never coexist with a non-applied status:
     // otherwise changing only status could re-enter the write path on replay.
     if (stage.status !== 'applied' && Object.hasOwn(stage, 'application') && stage.application !== undefined) return false;
+    // This counter is intentionally outside the reviewed content digest, but it still
+    // controls command IDs and receipt identity. Validate it as lifecycle metadata.
+    if (Object.hasOwn(stage, 'applicationAttempts') &&
+        (!Number.isSafeInteger(stage.applicationAttempts) || stage.applicationAttempts < 0)) return false;
     if (!isRecord(stage.sectionCounts) || !Array.isArray(stage.protectedSections) ||
         !Array.isArray(stage.conflicts) || !isRecord(stage.stagedSections)) return false;
     return computeHmxStageDigest(stage) === stage.digest;
