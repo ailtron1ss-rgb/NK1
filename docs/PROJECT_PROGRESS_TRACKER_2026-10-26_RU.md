@@ -1,3 +1,13 @@
+## WorkPass404 — единая проверка JSON body на всей Hexis API-границе (2026-10-26)
+
+- **Код сервера:** `9e67b36842b28042de4b82ad049452e5b01ad747`; **smoke regression:** `0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a`.
+- Общий guard применён ко всем 17 POST-маршрутам Hexis: peer consult, sync-memory, belief/review, retention, HMX, outbox, connector policies и execution-plan.
+- JSON `null`, массивы и primitive values возвращают HTTP 400 `hexis-invalid-request-body` до чтения полей или изменения состояния.
+- Smoke отправляет `null` по всем 17 маршрутам и требует идентичный отказ; дополнительные invalid-decision/action и HMX integrity regression сохранены.
+- **Валидация:** PENDING exact-head runtime typecheck, HMX adaptation, server smoke и Unified integration. PASS не заявляется; Actions не предоставляют usable step/log evidence. Прогресс не повышен; `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass403 — строгая проверка завершения HMX import receipt (2026-10-26)
 
 - **Код:** `ed92b4abf74395cc3d6946eadd0482eca2f839d2`; **регрессия:** `8969a6401719d9105162e50d00a35c79f4e98b51`.
