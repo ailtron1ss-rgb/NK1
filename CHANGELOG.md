@@ -1,3 +1,11 @@
+## WorkPass398 — fail closed on unknown Hexis decisions (2026-10-26)
+
+- **Server code:** `7df90658a7633fcaee746a69197f9522818cc452`; **server-smoke regression:** `86edc9df9a802ce8aa6965c8091454eb779429d5`.
+- The learning-review route no longer maps an unknown decision to `approve`; it returns HTTP 400 `hexis-review-invalid-decision` before calling the review mutation.
+- The HMX route no longer maps every non-`accept` value to `reject`; it returns HTTP 400 `hmx-invalid-decision` before touching the stage or flushing state.
+- Server smoke now tries invalid review/HMX decisions. It then explicitly accepts the same valid HMX stage, proving the invalid decision did not consume or reject it.
+- **Validation:** PENDING exact-head typecheck, `test:hexis-adaptation`, `test:hexis-server-smoke` and Unified integration. These regressions are authored but have not passed a usable exact-head run; current Actions failures expose no steps/logs. No PASS or readiness uplift claimed. `main` and canonical Release ZIP remain unchanged.
+
 ## NK1 × QuixiAI/Hexis — remote peer + HMX 1.7 memory bridge (2026-10-26)
 
 - Added an opt-in `HexisRemoteApiBridge` for the documented QuixiAI/Hexis health/model/chat endpoints, with explicit per-request confirmation, bounded allowlisted context, transport/auth/redirect guards, and advisory-only result semantics. Added status/consult routes and a user-controlled panel in the existing Hexis console.
