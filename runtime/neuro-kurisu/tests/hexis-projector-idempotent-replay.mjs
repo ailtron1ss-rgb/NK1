@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { HexisCanonicalMemoryProjector } from '../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
+import { calculateHmxStageDigest } from '../src/organism/integration/hexis/HexisHmxReceiptGuard.ts';
 
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
 const stage = {
@@ -79,12 +80,17 @@ const acceptedCandidate = {
   exportId: 'exp_0123456789abcdef',
   sourceLineageId: 'trusted-lineage-1',
   stagingId: 'stage-accepted-1',
-  digest: 'a'.repeat(64),
+  digest: '',
   intent: 'port',
   strategy: 'additive',
+  sectionCounts: { memories: 0 },
+  protectedSections: [],
   conflicts: [],
   stagedSections: { memories: [] },
 };
+acceptedCandidate.digest = calculateHmxStageDigest(acceptedCandidate);
+assert.equal(typeof acceptedCandidate.digest, 'string');
+
 assert.throws(
   () => projector.apply({ ...acceptedCandidate, stagingId: '' }),
   /hmx-stage-identity-required/,
@@ -95,18 +101,32 @@ assert.throws(
   /hmx-stage-has-conflicts/,
   'direct projector callers must not bypass the staging conflict gate',
 );
+const duplicateCandidate = {
+  ...acceptedCandidate,
+  stagedSections: {
+    memories: [
+      { ref: acceptedCandidate.exportId + ':duplicate', type: 'semantic', content: 'Same content.' },
+      { ref: acceptedCandidate.exportId + ':duplicate', type: 'procedural', content: 'Same content.' },
+    ],
+  },
+};
+duplicateCandidate.digest = calculateHmxStageDigest(duplicateCandidate);
 assert.throws(
-  () => projector.apply({
-    ...acceptedCandidate,
-    stagedSections: {
-      memories: [
-        { ref: acceptedCandidate.exportId + ':duplicate', type: 'semantic', content: 'Same content.' },
-        { ref: acceptedCandidate.exportId + ':duplicate', type: 'procedural', content: 'Same content.' },
-      ],
-    },
-  }),
+  () => projector.apply(duplicateCandidate),
   /hmx-apply-duplicate-ref-conflict/,
   'canonical apply must reject duplicate refs even if a caller bypasses stageHmx',
+);
+
+const tamperedAcceptedStage = {
+  ...acceptedCandidate,
+  stagedSections: {
+    memories: [{ ref: acceptedCandidate.exportId + ':tampered', type: 'semantic', content: 'Payload changed after staging.' }],
+  },
+};
+assert.throws(
+  () => projector.apply(tamperedAcceptedStage),
+  /hmx-stage-digest-invalid/,
+  'a payload changed after staging must not be applied under the original digest',
 );
 assert.equal(writes, 0, 'invalid accepted-stage payloads must fail before reading or writing canonical storage');
 
