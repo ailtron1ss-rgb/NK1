@@ -819,7 +819,11 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const result = runtime.core.hexisSyncMemoryProjection(Math.max(1, Math.min(256, Number(input.limit || 96))));
+            const limit = input.limit === undefined ? 96 : input.limit;
+            if (typeof limit !== 'number' || !Number.isSafeInteger(limit) || limit < 1 || limit > 256) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-memory-sync-limit' });
+            }
+            const result = runtime.core.hexisSyncMemoryProjection(limit);
             await runtime.core.flush();
             return json(res, 200, { ok: true, ...result, hexis: runtime.core.hexisDiagnostics() });
         }
@@ -829,23 +833,54 @@ async function route(req, res) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
             try {
+                if (typeof input.memoryId !== 'string' || !input.memoryId.trim() || input.memoryId.length > 256) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-belief-memory-id' });
+                }
+                if (typeof input.confidence01 !== 'number' || !Number.isFinite(input.confidence01) || input.confidence01 < 0 || input.confidence01 > 1) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-belief-confidence' });
+                }
+                if (input.trust01 !== undefined &&
+                    (typeof input.trust01 !== 'number' || !Number.isFinite(input.trust01) || input.trust01 < 0 || input.trust01 > 1)) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-belief-trust' });
+                }
+                if (input.protectedBelief !== undefined && typeof input.protectedBelief !== 'boolean') {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-belief-protection-flag' });
+                }
+                if (input.context !== undefined && (typeof input.context !== 'string' || input.context.length > 512)) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-belief-context' });
+                }
+                const evidenceInput = input.evidence === undefined ? {} : input.evidence;
+                if (!evidenceInput || typeof evidenceInput !== 'object' || Array.isArray(evidenceInput)) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-belief-evidence' });
+                }
+                for (const key of ['ref', 'label', 'contentHash', 'note']) {
+                    if (evidenceInput[key] !== undefined && typeof evidenceInput[key] !== 'string') {
+                        return json(res, 400, { ok: false, error: 'invalid-hexis-belief-evidence-field', field: key });
+                    }
+                }
+                if (evidenceInput.trust01 !== undefined &&
+                    (typeof evidenceInput.trust01 !== 'number' || !Number.isFinite(evidenceInput.trust01) || evidenceInput.trust01 < 0 || evidenceInput.trust01 > 1)) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-belief-evidence-trust' });
+                }
                 const evidence = {
-                    ref: input.evidence?.ref ? String(input.evidence.ref) : undefined,
-                    label: input.evidence?.label ? String(input.evidence.label) : undefined,
-                    contentHash: input.evidence?.contentHash ? String(input.evidence.contentHash) : undefined,
-                    trust01: input.evidence?.trust01 === undefined ? undefined : Number(input.evidence.trust01),
-                    note: input.evidence?.note ? String(input.evidence.note) : undefined,
+                    ref: evidenceInput.ref || undefined,
+                    label: evidenceInput.label || undefined,
+                    contentHash: evidenceInput.contentHash || undefined,
+                    trust01: evidenceInput.trust01,
+                    note: evidenceInput.note || undefined,
                 };
-                const stance = String(input.stance ?? '');
-                if (!['supports', 'contradicts'].includes(stance)) return json(res, 400, { ok: false, error: 'invalid-hexis-belief-stance' });
+                const stance = input.stance;
+                if (typeof stance !== 'string' || !['supports', 'contradicts'].includes(stance)) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-belief-stance' });
+                }
                 const result = runtime.core.hexisReviseBelief({
-                    memoryId: String(input.memoryId || ''),
-                    confidence01: Number(input.confidence01),
-                    trust01: input.trust01 === undefined ? undefined : Number(input.trust01),
+                    memoryId: input.memoryId,
+                    confidence01: input.confidence01,
+                    trust01: input.trust01,
                     stance,
                     evidence,
-                    context: input.context ? String(input.context) : undefined,
-                    protectedBelief: Boolean(input.protectedBelief),
+                    context: input.context,
+                    protectedBelief: input.protectedBelief,
                 });
                 await runtime.core.flush();
                 if (result?.ok === false) {
@@ -1074,7 +1109,18 @@ async function route(req, res) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
             try {
-                const result = runtime.core.hexisEnqueueOutbox({ idempotencyKey: String(input.idempotencyKey || ''), kind: String(input.kind || 'notify'), channel: String(input.channel || 'generic'), payload: input.payload });
+                if (typeof input.idempotencyKey !== 'string' || !input.idempotencyKey.trim() || input.idempotencyKey.length > 512 ||
+                    (input.kind !== undefined && (typeof input.kind !== 'string' || !input.kind.trim() || input.kind.length > 128)) ||
+                    (input.channel !== undefined && (typeof input.channel !== 'string' || !input.channel.trim() || input.channel.length > 128)) ||
+                    !Object.prototype.hasOwnProperty.call(input, 'payload')) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-outbox-entry' });
+                }
+                const result = runtime.core.hexisEnqueueOutbox({
+                    idempotencyKey: input.idempotencyKey,
+                    kind: input.kind ?? 'notify',
+                    channel: input.channel ?? 'generic',
+                    payload: input.payload,
+                });
                 await runtime.core.flush();
                 if (result && result.ok === false && result.error) return json(res, result.error === 'idempotency-key-conflict' ? 409 : 400, result);
                 return json(res, 200, { ok: true, result });
@@ -1097,7 +1143,12 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const result = runtime.core.hexisAckOutbox(String(input.id || ''), input.published === true, input.error ? String(input.error) : undefined);
+            if (typeof input.id !== 'string' || !input.id.trim() ||
+                (input.published !== undefined && typeof input.published !== 'boolean') ||
+                (input.error !== undefined && (typeof input.error !== 'string' || input.error.length > 2048))) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-outbox-ack' });
+            }
+            const result = runtime.core.hexisAckOutbox(input.id, input.published === true, input.error || undefined);
             await runtime.core.flush();
             return json(res, 200, { ok: Boolean(result), result });
         }
@@ -1172,7 +1223,22 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const result = runtime.core.hexisEvaluateConnectorAction({ connectorId: String(input.connectorId || ''), actionKind: String(input.actionKind || ''), context: String(input.context || 'chat'), target: input.target === undefined ? undefined : String(input.target), confirmed: input.confirmed === true, autonomous: input.autonomous === true });
+            if (typeof input.connectorId !== 'string' || !input.connectorId.trim() || input.connectorId.length > 128 ||
+                typeof input.actionKind !== 'string' || !input.actionKind.trim() || input.actionKind.length > 128 ||
+                (input.context !== undefined && (typeof input.context !== 'string' || !input.context.trim() || input.context.length > 128)) ||
+                (input.target !== undefined && (typeof input.target !== 'string' || input.target.length > 512)) ||
+                (input.confirmed !== undefined && typeof input.confirmed !== 'boolean') ||
+                (input.autonomous !== undefined && typeof input.autonomous !== 'boolean')) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-policy-evaluation' });
+            }
+            const result = runtime.core.hexisEvaluateConnectorAction({
+                connectorId: input.connectorId,
+                actionKind: input.actionKind,
+                context: input.context ?? 'chat',
+                target: input.target,
+                confirmed: input.confirmed ?? false,
+                autonomous: input.autonomous ?? false,
+            });
             await runtime.core.flush();
             return json(res, result.allowed ? 200 : 403, { ok: result.allowed, result });
         }
