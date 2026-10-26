@@ -132,7 +132,7 @@ corruptedPolicySource.grantConnectorPolicy({
   allowedTargets:['123'], maxPerWindow:1, windowMs:60_000,
 });
 const corruptedPolicySnapshot = corruptedPolicySource.snapshot();
-corruptedPolicySnapshot.connectorPolicies[0].windowCount = Number.NaN;
+corruptedPolicySnapshot.connectorPolicies[0].windowCount = 'corrupt-counter';
 const restoredCorruptedPolicy = new HexisAdaptationFabric();
 restoredCorruptedPolicy.restore(corruptedPolicySnapshot);
 assert.equal(restoredCorruptedPolicy.snapshot().connectorPolicies.length, 0,
