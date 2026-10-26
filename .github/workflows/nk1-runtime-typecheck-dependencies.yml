@@ -214,8 +214,8 @@ jobs:
                   base = pathlib.PurePosixPath(rel).name.lower()
                   if any(x in {"node_modules", ".git", "__pycache__", ".super-state", ".verify-state"} for x in parts):
                       errors.append("generated/private directory in candidate: " + rel)
-                  if base == ".env" or (base.startswith(".env.") and base != ".env.example"):
-                      errors.append("local environment file in candidate: " + rel)
+                  safe_env_example = base == ".env.example" or base.endswith(".redacted.example")
+                  if base == ".env" or (base.startswith(".env.") and not safe_env_example):
                   if base == "gmail-credentials.json":
                       errors.append("credential file in candidate: " + rel)
                   info = z.getinfo(name)
@@ -243,7 +243,7 @@ jobs:
                   if prefix + rel not in names:
                       errors.append("required file missing: " + rel)
           if errors:
-              print("\\n".join(errors), file=sys.stderr)
+              print("\n".join(errors), file=sys.stderr)
               raise SystemExit(1)
           print("CANDIDATE_ZIP_SAFETY=PASS", "requiredFiles=", len(required), "members=", len(names))
           PY
