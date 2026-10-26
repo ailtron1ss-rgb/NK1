@@ -1442,7 +1442,7 @@ export class MemoryOS2{
   const independenceKey=row.independenceKey.trim().normalize('NFKC');
   if(!independenceKey)return {ok:false as const,added:false as const,reason:'independence-key-required' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
   // Never truncate independent identity: truncation would let two distinct sources alias.
-  if(independenceKey.length>96)return {ok:false as const,added:false as const,reason:'invalid-evidence-independence-key' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  if(independenceKey.length>96||/[\u0000-\u001f\u007f-\u009f]/.test(independenceKey))return {ok:false as const,added:false as const,reason:'invalid-evidence-independence-key' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
   const previous=this.normalizeEvidenceSources(item);
   if(this.hasEvidenceLineage(item.id,independenceKey))return {ok:true as const,added:false as const,reason:'duplicate-source' as const,memoryId:item.id,independentSources:previous.length};
 
