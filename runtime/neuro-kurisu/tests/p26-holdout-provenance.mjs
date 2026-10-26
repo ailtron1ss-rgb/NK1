@@ -8,14 +8,14 @@ const mkState=(energy=.42)=>({
   selfPredictionError:.1,predictedNextAction:'none',lastPredictionConfidence:.5,worldContextVersion:1,
 });
 const trustedEvidence=new Map([['e1',{
-  taskId:'task-a',protocolId:'frozen-v1',verifierId:'oracle-a',sampleSetHash:'sha-a',baseline01:.4,learned01:.8,
+  taskId:'task-a',protocolId:'frozen-v1',verifierId:'oracle-a',sampleSetHash:'sha-a',baseline01:.4,learned01:.8,signature:'signed-e1-fixture',
 }]]);
 const verifyHoldoutEvidence=input=>{
   const expected=trustedEvidence.get(input.evidenceId);
   return Boolean(expected&&input.verified===true&&input.independent===true&&
     input.taskId===expected.taskId&&input.protocolId===expected.protocolId&&
     input.verifierId===expected.verifierId&&input.sampleSetHash===expected.sampleSetHash&&
-    input.baseline01===expected.baseline01&&input.learned01===expected.learned01);
+    input.signature===expected.signature&&input.baseline01===expected.baseline01&&input.learned01===expected.learned01);
 };
 const engine=new P26TrueLearningEngine({verifyHoldoutEvidence});
 const state=mkState();
@@ -30,7 +30,7 @@ const weak=engine.recordVerifiedHoldout({evidenceId:'e0',taskId:'task-a',protoco
 assert.equal(weak.accepted,false,'unverified holdout must be rejected');
 assert.equal(engine.metrics().generalizationEvidence01,0);
 
-const evidence={evidenceId:'e1',taskId:'task-a',protocolId:'frozen-v1',verifierId:'oracle-a',sampleSetHash:'sha-a',baseline01:.4,learned01:.8,verified:true,independent:true};
+const evidence={evidenceId:'e1',taskId:'task-a',protocolId:'frozen-v1',verifierId:'oracle-a',sampleSetHash:'sha-a',baseline01:.4,learned01:.8,verified:true,independent:true,signature:'signed-e1-fixture'};
 const unguarded=new P26TrueLearningEngine();
 assert.equal(unguarded.recordVerifiedHoldout({...evidence,evidenceId:'caller-asserted'}).reason,'trusted-holdout-verifier-not-configured',
   'caller-provided verified/independent flags must not be authority');
@@ -50,7 +50,7 @@ assert.equal(restored.recordVerifiedHoldout(evidence).accepted,false,'duplicate 
 // Restore must repair corrupt counters/diagnostics and preserve newest-first
 // trace guards. Otherwise a restart may suppress old traces but relearn the newest.
 const damaged=engine.snapshot();
-damaged.holdoutEvidence.push({evidenceId:'forged',taskId:'task-a',protocolId:'frozen-v1',verifierId:'oracle-a',sampleSetHash:'attacker-sample',baseline01:0,learned01:1,verified:true,independent:true,recordedAt:Date.now()});
+damaged.holdoutEvidence.push({evidenceId:'forged',taskId:'task-a',protocolId:'frozen-v1',verifierId:'oracle-a',sampleSetHash:'attacker-sample',baseline01:0,learned01:1,verified:true,independent:true,signature:'forged-signature',recordedAt:Date.now()});
 damaged.metrics.outcomeSamples=Number.NaN;
 damaged.metrics.onlineUpdates=Number.POSITIVE_INFINITY;
 damaged.metrics.replayUpdates=-4;
