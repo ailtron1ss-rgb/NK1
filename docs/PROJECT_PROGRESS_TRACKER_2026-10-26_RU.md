@@ -1,3 +1,13 @@
+## WorkPass417 — снимок HMX request envelope без выполнения getters (2026-10-26)
+
+- **Код fabric:** `ff87945607101053a2ec4dad99eb41772d989a56`; **регрессия:** `cc2bf0633fbc61f1da5862c0df214f688cf9ac07`.
+- `stageHmx` теперь извлекает `document`, `intent` и `strategy` через собственные data descriptors из plain request envelope. Accessors, унаследованные/custom-prototype envelopes и дополнительные поля отвергаются с `hmx-unsafe-stage-request` до чтения значений, валидации документа, создания стадии или изменения метрик.
+- Само поле `document` по-прежнему проходит через существующий bounded HMX snapshot; поэтому текущая диагностика некорректного HMX payload сохраняется. Запросные getters больше не могут менять metadata между allowlist validation и staging.
+- Регрессии требуют, чтобы getters для intent/document не исполнялись, запросы были отвергнуты и stage ledger оставался пустым. Runtime allowlist intent/strategy сохраняется после capture.
+- **Валидация:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass416 — allowlist intent/strategy внутри HexisAdaptationFabric (2026-10-26)
 
 - **Код fabric:** `d82d5f9c77a303322b6a379e9b664111917f9bf0`; **direct-call регрессия:** `b1595b492f0424b754e50e600aadebd2d379f7ae`.
