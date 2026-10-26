@@ -599,13 +599,34 @@ assert.deepEqual(coordinatedCycle.snapshot(),coordinatedBeforeCycle,
   'evaluation failure after aggregate mutation must restore monotonic cycle counters');
 coordinatedCycle.evaluate=originalCycleEvaluate;
 
-const rejectedCycleInput={...coordinatedInput,tick:62,selfUpdate:{source:'coordinator.self-update',confidence01:1.1,payload:{mustNotWrite:true}}};
+const cyclicLatePayload={};cyclicLatePayload.self=cyclicLatePayload;
+const rejectedCycleInput={...coordinatedInput,tick:62,selfUpdate:{source:'coordinator.self-update',payload:cyclicLatePayload}};
 assert.throws(
   ()=>commitOperationalCognitiveCycleAtomically({eventFabric:coordinatedFabric,unifiedCycle:coordinatedCycle,cycleInput:rejectedCycleInput}),
-  /invalid-cognitive-event-confidence/,
+  /circular-cognitive-event-payload/,
 );
 assert.deepEqual(coordinatedFabric.snapshot(),coordinatedBeforeFabric,
-  'invalid late-stage confidence must leave no partial operational cycle');
+  'invalid late-stage payload must leave no partial operational cycle');
+assert.deepEqual(coordinatedCycle.snapshot(),coordinatedBeforeCycle);
+
+const beforeInjectedAppendFailure=coordinatedFabric.snapshot();
+const appendBeforeInjectedFailure=coordinatedFabric.append.bind(coordinatedFabric);
+let crossLedgerAppendCount=0;
+coordinatedFabric.append=(eventInput)=>{
+  crossLedgerAppendCount+=1;
+  if(crossLedgerAppendCount===5)throw new Error('injected-cross-ledger-event-append-failure');
+  return appendBeforeInjectedFailure(eventInput);
+};
+assert.throws(
+  ()=>commitOperationalCognitiveCycleAtomically({
+    eventFabric:coordinatedFabric,unifiedCycle:coordinatedCycle,
+    cycleInput:{...coordinatedInput,tick:63},
+  }),
+  /injected-cross-ledger-event-append-failure/,
+);
+coordinatedFabric.append=appendBeforeInjectedFailure;
+assert.deepEqual(coordinatedFabric.snapshot(),beforeInjectedAppendFailure,
+  'append failure in a later phase must roll back all earlier causal events');
 assert.deepEqual(coordinatedCycle.snapshot(),coordinatedBeforeCycle);
 
 const committedCycle=commitOperationalCognitiveCycleAtomically({
