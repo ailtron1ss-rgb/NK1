@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { HexisCanonicalMemoryProjector } from '../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
-import { computeHmxStageDigest } from '../src/organism/integration/hexis/HexisStageIntegrity.mjs';
+import { computeHmxStageDigest, refreshHmxStageLifecycleDigest } from '../src/organism/integration/hexis/HexisStageIntegrity.mjs';
 
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
 const stage = {
@@ -10,6 +10,8 @@ const stage = {
   sourceLineageId: 'trusted-lineage-1',
   stagingId: 'stage-1',
   digest: '',
+  lifecycleDigest: '',
+  applicationAttempts: 1,
   intent: 'port',
   strategy: 'additive',
   sectionCounts: {},
@@ -46,6 +48,7 @@ const makeReceipt = (overrides = {}) => {
 };
 const receipt = makeReceipt();
 stage.application = receipt;
+refreshHmxStageLifecycleDigest(stage);
 
 let writes = 0;
 const memoryFabric = {
@@ -79,16 +82,20 @@ assert.throws(
 assert.equal(writes, 0, 'lifecycle tampering must be rejected before canonical storage is touched');
 
 // A receipt copied from another stage must not be accepted as the result of this stage.
+const copiedReceiptStage = { ...stage, application: makeReceipt({ stageId: 'some-other-stage' }), lifecycleDigest: '' };
+refreshHmxStageLifecycleDigest(copiedReceiptStage);
 assert.throws(
-  () => projector.apply({ ...stage, application: makeReceipt({ stageId: 'some-other-stage' }) }),
+  () => projector.apply(copiedReceiptStage),
   /hmx-applied-receipt-invalid/,
 );
 // A modified receipt that no longer matches its integrity digest must fail closed.
 const tamperedStage = structuredClone(stage);
 tamperedStage.application.importedCount = 1;
 assert.throws(() => projector.apply(tamperedStage), /hmx-applied-receipt-invalid/);
+const malformedReceiptStage = { ...stage, application: { status: 'applied' }, lifecycleDigest: '' };
+refreshHmxStageLifecycleDigest(malformedReceiptStage);
 assert.throws(
-  () => projector.apply({ ...stage, application: { status: 'applied' } }),
+  () => projector.apply(malformedReceiptStage),
   /hmx-applied-receipt-invalid/,
 );
 assert.throws(
