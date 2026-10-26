@@ -1,3 +1,10 @@
+## WorkPass362 — correct regular-expression escaping in prediction-debt regression (2026-10-26)
+
+- Corrected escaping in the source-level regression's regex literal so it matches the actual `predictionDebt.meanPriority01` ternary fallback across line breaks. This is test-only; runtime code is unchanged.
+- The exact-head substrate/runtime workflow is the authority for verification.
+
+---
+
 ## WorkPass361 — make prediction-priority source assertion whitespace-independent (2026-10-26)
 
 - Corrected the static runtime wiring regression to match the actual multiline conditional expression used to assign priority `1` on invalid debt input. The previous assertion depended on a colon/newline sequence that did not exist in the source formatting; runtime behavior was not changed.
