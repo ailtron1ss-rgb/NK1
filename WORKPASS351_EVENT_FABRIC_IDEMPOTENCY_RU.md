@@ -30,7 +30,7 @@
 
 Существующий `.github/workflows/workpass331-unified-cognitive-kernel.yml` уже включает `CognitiveEventFabric.ts` и `canonical-cognitive-kernel.mjs` в push/PR path filters и выполняет runtime typecheck, canonical kernel contract, live Core, smoke, autonomous action selection, background initiative и restart persistence. Новая зависимость и второй тестовый framework не добавлялись.
 
-После последнего изменения созданного PR требуется дождаться exact-head workflow. До завершения тесты не считаются успешно выполненными.
+Первый exact-head запуск обнаружил ошибку в regex-проверке event ID: в переписанном методе control-character escape оказался экранирован дважды, поэтому kernel event ID ошибочно отклонялся. Regex исправлен коммитом [d33a975](https://github.com/ailtron1ss-rgb/NK1/commit/d33a975f05e0963e60991f3e82ba5a318ce5da21). Требуется повторный exact-head workflow; до него исправление не считается validated.
 
 ```bash
 cd runtime/neuro-kurisu
