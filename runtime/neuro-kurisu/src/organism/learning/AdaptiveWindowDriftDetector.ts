@@ -10,6 +10,8 @@
  * Input is a trusted, comparable scalar in [0, 1] (e.g. held-out error or
  * quality mapped consistently across time). Never feed untrusted self-reports.
  */
+import { isBoundedPlainDataTree } from '../core/BoundedPlainData.ts';
+
 export interface AdaptiveWindowOptions {
   delta?: number;
   clock?: number;
@@ -152,7 +154,9 @@ export class AdaptiveWindowDriftDetector {
   }
 
   restore(raw: unknown): void {
-    if (!raw || typeof raw !== 'object') throw new TypeError('adwin-snapshot-invalid');
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !isBoundedPlainDataTree(raw)) {
+      throw new TypeError('adwin-snapshot-invalid');
+    }
     const snapshot = raw as Partial<AdaptiveWindowSnapshot>;
     if (snapshot.version !== 1 || !snapshot.options || !Array.isArray(snapshot.values) ||
         !integerAtLeast(snapshot.totalSeen, 0) || !integerAtLeast(snapshot.detections, 0) ||
