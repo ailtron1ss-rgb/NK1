@@ -260,8 +260,21 @@ export function createIndependentSkillCandidateEvaluator(
     method: config.experimentAuthority.method,
     ...(config.experimentAuthority.attempt === undefined ? {} : { attempt: config.experimentAuthority.attempt }),
   } : undefined;
-  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) =>
-    ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }))));
+  // Task-family identity is selected from the canonical manifest, never from
+  // caller task payload or candidate output. Include it in the plan fingerprint.
+  const taskFamilyById = new Map<string, string>(
+    authority ? authority.manifest.map(entry => [entry.taskId, entry.family] as const) : [],
+  );
+  const planFingerprint = sha256(canonical(tasks.map(task => ({
+    taskId: task.taskId,
+    trialId: task.trialId,
+    seed: task.seed,
+    split: task.split,
+    input: task.input,
+    requiredCapabilityIds: task.requiredCapabilityIds,
+    expectedStepIds: task.expectedStepIds,
+    taskFamily: taskFamilyById.get(task.taskId) ?? null,
+  }))));
   return async ({ payload, payloadFingerprint }) => {
     // Snapshot the candidate once, before the first asynchronous boundary. Re-cloning
     // the caller-owned object per trial would allow a retained reference to change
@@ -279,7 +292,7 @@ export function createIndependentSkillCandidateEvaluator(
     const reports: Record<'validation' | 'holdout', SkillLearnBenchTrialReport[]> = {
       validation: [], holdout: [],
     };
-    const runBindings: Array<{ taskId: string; trialId: string; runId: string | null; plannedRunId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
+    const runBindings: Array<{ taskId: string; trialId: string; taskFamily: string | null; runId: string | null; plannedRunId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
     const seenRunIds = new Set<string>();
     for (const task of tasks) {
       const experimentPlan = authority
@@ -362,9 +375,11 @@ export function createIndependentSkillCandidateEvaluator(
       if (!safety || !Number.isSafeInteger(safety.violationCount) || safety.violationCount < 0) {
         throw new Error('independent-candidate-safety-result-invalid');
       }
+      const taskFamily = taskFamilyById.get(task.taskId) ?? null;
       runBindings.push({
         taskId: task.taskId,
         trialId: task.trialId,
+        taskFamily,
         // A run ID and trace are evidence only after the independent verifier binds
         // them to the exact candidate/task/environment/plan context.
         runId: bindingVerified ? execution?.runId ?? null : null,
@@ -386,6 +401,7 @@ export function createIndependentSkillCandidateEvaluator(
       const report = evaluateSkillLearnBenchTrial({
         taskId: task.taskId,
         trialId: task.trialId,
+        ...(taskFamily === null ? {} : { taskFamily }),
         verifierPassed: taskPassed,
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
