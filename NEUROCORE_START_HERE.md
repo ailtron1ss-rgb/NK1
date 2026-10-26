@@ -3,7 +3,8 @@
 - **Scope:** adds a separate minimum number of distinct paired holdout tasks for every skill family where trusted promotion policy demands a gain. Repeated seeds cannot inflate the unique-task coverage.
 - **Security:** thresholds are read from operator-owned `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`, not candidate bundle fields; family floors and per-family task coverage participate in the authenticated proposal identity.
 - **Activation:** this is still proposal/staging only. Verified candidates cannot activate automatically; owner/authority approval and canary/shadow evidence remain separate.
-- **Validation:** exact-head CI pending. Do not increase progress/learning scores until the new tests and full workflow pass.
+- **Validation:** exact code/test head `b81ec539a1e2d442141e13929b376d2b549c9e64` passed the Unified project integration suite [#40255622845](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622845), WorkPass110 [#40255622606](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622606), WorkPass108 [#40255622678](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622678) and P26 Learning Validation [#40255622511]. The logs show `CLEAN_ORGANISM_SMOKE=PASS`, `P23_STAGE_VERIFIED_SKILL_CANDIDATE=PASS`, `P23_VERIFIED_SKILL_PROMOTION_PROPOSAL=PASS`, UI/runtime typecheck PASS, and all three governed Research Bridge probes pass after explicit owner approval.
+- **Scores:** unchanged; this validates implementation integrity and gates, not improved external learning/transfer. Android/Termux audio, physical-sensor calibration, hardware/browser Live2D E2E, extended soak, license review and release ZIP replacement remain open.
 
 ---
 
