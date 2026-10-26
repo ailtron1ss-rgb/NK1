@@ -4,7 +4,7 @@ import path from 'node:path';
 const SOURCE_EXTENSIONS = '(?:mjs|cjs|js|ts)';
 const NODE_FILE = new RegExp('\\bnode\\s+(?:(?:--[\\w-]+)(?:=[^\\s]+)?\\s+)*([^\\s;&|\"\\x27]+\\.' + SOURCE_EXTENSIONS + ')(?=\\s|$)', 'g');
 const PYTHON_FILE = /\bpython3?\s+([^\s;&|"']+\.py)(?=\s|$)/g;
-const NPM_RUN = /\bnpm(?:\.cmd)?\s+(?:--prefix\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s+)?run\s+(?:"([^"]+)"|'([^']+)'|([A-Za-z0-9:_-]+))/g;
+const NPM_RUN = /\bnpm(?:\.cmd)?\s+(?:--prefix\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s+)?run\s+(?:"([^"]+)"|'([^']+)'|([A-Za-z0-9:_-]+))(?:\s+--prefix\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+)))?/g;
 
 function unquote(value) {
   const trimmed = String(value ?? '').trim();
@@ -300,7 +300,7 @@ export function auditRepositoryWiring(rootDirectory = process.cwd()) {
 
         NPM_RUN.lastIndex = 0;
         for (const match of command.matchAll(NPM_RUN)) {
-          const prefix = match[1] ?? match[2] ?? match[3];
+          const prefix = match[1] ?? match[2] ?? match[3] ?? match[7] ?? match[8] ?? match[9];
           const scriptName = match[4] ?? match[5] ?? match[6];
           const packageDirectory = prefix ? path.resolve(currentDirectory, prefix) : currentDirectory;
           auditNpmScript(packageDirectory, scriptName, origin, ancestry);

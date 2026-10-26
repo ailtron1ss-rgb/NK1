@@ -179,3 +179,16 @@ test('reports unresolved relative imports, not only broken workflow commands', (
     ));
   });
 });
+
+test('resolves npm --prefix after the run script instead of looking in the root package', () => {
+  withFixture(root => {
+    const workflowPath = path.join(root, '.github/workflows/core.yml');
+    const workflow = fs.readFileSync(workflowPath, 'utf8').replace(
+      'npm run test:nested',
+      'npm run test --prefix runtime'
+    );
+    fs.writeFileSync(workflowPath, workflow);
+    const result = auditRepositoryWiring(root);
+    assert.deepEqual(result.errors, []);
+  });
+});

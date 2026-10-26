@@ -1,3 +1,13 @@
+## WorkPass337 — исправлен разбор npm --prefix после run в wiring-аудите (2026-10-26)
+
+- **Корневая причина CI-сбоя:** регулярное выражение в `tools/verify-repository-wiring.mjs` поддерживало только `npm --prefix <path> run <script>`, но не эквивалентный вариант `npm run <script> --prefix <path>`. Из-за этого три корректные команды runtime-workspace ошибочно проверялись как scripts корневого package.json.
+- **Исправление:** аудитор теперь разрешает `--prefix` как до, так и после команды `run`; фактический каталог выбранного package.json проверяется до поиска script.
+- **Регрессия:** добавлен fixture, в котором postfix-`--prefix` должен найти script runtime-пакета, а не выдать ложный missing-script.
+- **Проверка:** требуется новый exact-HEAD run `Repository wiring contract audit`; ранее упавший run на `d0d8e739...` остаётся свидетельством старой версии аудитора, не результатом новой.
+- Никакие проверки не ослаблены, пороги не изменены; `main` и release ZIP не тронуты.
+
+---
+
 ## Unified cognitive substrate runtime wiring — 2026-10-25
 
 - Replaced unsafe nested-object spreading in `UnifiedCognitiveSubstrate.restore()` with schema-aware own-property reads, finite [0,1] metric normalization, safe non-negative counters, bounded text, and an explicit state-version guard.
