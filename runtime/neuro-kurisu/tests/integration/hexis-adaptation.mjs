@@ -236,6 +236,66 @@ assert.equal(overflowOutbox.error,'outbox-capacity-reached');
 assert.equal(boundedOutbox.snapshot().outbox.length,512,
   'the outbox must fail closed rather than evicting rows to make space');
 
+const oversizedOutboxPayload = terminalArchiveFixture => terminalArchiveFixture.enqueueOutbox({
+  idempotencyKey:'oversized-outbox-payload',kind:'notify',channel:'test',payload:{text:'x'.repeat(65*1024)},
+});
+assert.equal(oversizedOutboxPayload(boundedOutbox).error,'invalid-outbox-payload',
+  'one direct caller must not bypass the outbox payload size limit');
+const circularOutboxPayload = {};
+circularOutboxPayload.self = circularOutboxPayload;
+assert.equal(boundedOutbox.enqueueOutbox({
+  idempotencyKey:'circular-outbox-payload',kind:'notify',channel:'test',payload:circularOutboxPayload,
+}).error,'invalid-outbox-payload',
+  'circular payloads must be rejected before entering persisted state');
+
+// Completed deliveries can move to a compact tombstone archive, freeing live queue
+// capacity without evicting their idempotency keys or allowing a second delivery.
+const terminalArchive = new HexisAdaptationFabric();
+let firstTerminal;
+for (let i=0;i<512;i++) {
+  const row=terminalArchive.enqueueOutbox({
+    idempotencyKey:`terminal-outbox-${i}`,kind:'notify',channel:'test',payload:{index:i},
+  });
+  assert(row && !('ok' in row && row.ok === false));
+  if(i===0) firstTerminal=row;
+  assert.equal(terminalArchive.claimOutbox(row.id)?.status,'publishing');
+  assert.equal(terminalArchive.ackOutbox(row.id,true)?.status,'published');
+}
+const terminalSnapshot=terminalArchive.snapshot();
+terminalSnapshot.outbox.forEach((row,index)=>{
+  row.createdAt=index+1;
+  row.updatedAt=index+1;
+  row.publishedAt=index+1;
+});
+terminalArchive.restore(terminalSnapshot);
+const afterCompaction=terminalArchive.enqueueOutbox({
+  idempotencyKey:'terminal-outbox-new',kind:'notify',channel:'test',payload:{index:512},
+});
+assert(!('ok' in afterCompaction && afterCompaction.ok === false),
+  'a confirmed terminal row must be compactable when queue capacity is needed');
+assert.equal(terminalArchive.snapshot().outbox.length,512);
+assert.equal(terminalArchive.snapshot().outboxTombstones.length,1);
+const oldestTombstone=terminalArchive.snapshot().outboxTombstones[0];
+assert.equal(oldestTombstone.id,firstTerminal.id,
+  'the oldest terminal receipt is compacted first with its original identity');
+const archivedReplay=terminalArchive.enqueueOutbox({
+  idempotencyKey:'terminal-outbox-0',kind:'notify',channel:'test',payload:{index:0},
+});
+assert.equal(archivedReplay.id,firstTerminal.id);
+assert.equal(archivedReplay.archived,true,
+  'an archived duplicate returns the compact receipt, not a fresh delivery ticket');
+const archivedConflict=terminalArchive.enqueueOutbox({
+  idempotencyKey:'terminal-outbox-0',kind:'notify',channel:'test',payload:{index:'different'},
+});
+assert.equal(archivedConflict.error,'idempotency-key-conflict');
+const restoredArchive=new HexisAdaptationFabric();
+restoredArchive.restore(terminalArchive.snapshot());
+const restoredArchivedReplay=restoredArchive.enqueueOutbox({
+  idempotencyKey:'terminal-outbox-0',kind:'notify',channel:'test',payload:{index:0},
+});
+assert.equal(restoredArchivedReplay.id,firstTerminal.id);
+assert.equal(restoredArchivedReplay.archived,true,
+  'tombstone key identity survives snapshot/restore');
 
 const policy = fabric.grantConnectorPolicy({connectorId:'telegram',actionKind:'send',contexts:['chat'],requiresApproval:true,allowedTargets:['123'],maxPerWindow:1,windowMs:60_000});
 assert.equal(fabric.evaluateConnectorAction({connectorId:'telegram',actionKind:'send',context:'chat',target:'123'}).allowed,false);
