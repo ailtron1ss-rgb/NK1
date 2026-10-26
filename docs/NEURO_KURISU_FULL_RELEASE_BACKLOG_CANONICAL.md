@@ -1,3 +1,17 @@
+## WorkPass351 — pre-spawn learning process failure cleanup (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code/workflow SHA:** `0d1af65888b7d89fd3b0484bc2fbca8b9f369b9b`.
+
+- [x] Validate inherited and explicit environment entries before creating the run root/scratch directory.
+- [x] Remove the allocated per-run directory when trusted shadow-run registration rejects or cancellation is detected before spawn.
+- [x] Add regressions asserting invalid environment input creates no run-root directory and rejected registration leaves no orphan child directory.
+- [x] Dedicated WorkPass349 workflow #40285085066 passes native P23 dataset tests 10/10, supervisor regression, and runtime `TYPECHECK=PASS`.
+- [ ] Continue full operational checks of executor/verifier/scanner deployments, restart/retrieval, broader organism smoke, browser/Live2D and Android/Termux E2E, long soak, and license review.
+- **Status:** the pre-spawn cleanup contract is implemented and CI-validated; release/deployment gates remain open.
+
+---
+
 ## WorkPass350 — host-evaluator module identity and parent-directory integrity (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
