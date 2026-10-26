@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass401 — canonicalize application receipt digests (2026-10-26)
+
+- [FIX] New HMX application receipts use the shared stable legacy serializer for digest computation, so their integrity digest is independent of JSON object-key insertion order after persistence/reload.
+- [COMPAT] The shared receipt validator continues to accept legacy receipts whose digest was computed from the original ordered `JSON.stringify(base)` representation, avoiding unnecessary invalidation of existing applied-stage receipts.
+- [TEST] Added a receipt round-trip regression that reverses all receipt payload keys and confirms the canonical digest still validates, alongside the legacy ordered-format fixture.
+- [VALIDATION] Test wiring exists in `audit:hexis` and WorkPass71; exact-head execution still awaits a GitHub Actions runner that reaches the test steps.
+
 ## [NK1][Hexis] WorkPass400 — reject inconsistent applied-stage transitions (2026-10-26)
 
 - [SAFETY] The shared stage integrity guard now rejects non-applied stages that still carry an application receipt. A persisted `applied → accepted` downgrade can no longer re-enter canonical apply while preserving an old receipt.
