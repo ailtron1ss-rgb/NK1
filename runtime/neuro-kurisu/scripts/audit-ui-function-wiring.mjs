@@ -22,7 +22,13 @@ const atlasMethods=['status','statusLite','inspect','systemGraph','subsystems','
 const allMethods=[...methods,...lettaMethods,...conscioMethods,...hexisMethods,...atlasMethods];
 const methodUsage=Object.fromEntries(allMethods.map(m=>[m, allUi.includes(`neuroApi.${m}`) || (atlasMethods.includes(m) && allUi.includes('neuroApi[key]') && allUi.includes(`\"${m}\"`))]));
 const unused=allMethods.filter(m=>!methodUsage[m]);
-const result={ok:missing.length===0&&unused.length===0,apiRoutes:unique.length,missingServerRoutes:missing,methodUsage,unusedUiMethods:unused,interfaceComponent:existsSync(path.join(app,'src/components/IntegrationConsole.tsx'))&&existsSync(path.join(app,'src/components/HexisControlConsole.tsx'))&&existsSync(path.join(app,'src/components/RuntimeAtlas.tsx'))&&existsSync(path.join(app,'src/components/LettaGovernanceConsole.tsx'))&&existsSync(path.join(app,'src/components/ConscioControlConsole.tsx')),lettaMethods,conscioMethods,hexisMethods,atlasMethods,checkedAt:new Date().toISOString()};
+const hmxOutcomeIsExplicit =
+  hexisUi.includes('const acceptHmxStage = async () =>') &&
+  hexisUi.includes('receipt.status === "uncertain"') &&
+  hexisUi.includes('Do not retry this stage') &&
+  hexisUi.includes('receipt.status === "pending"') &&
+  hexisUi.includes('onClick={() => void acceptHmxStage()}');
+const result={ok:missing.length===0&&unused.length===0&&hmxOutcomeIsExplicit,apiRoutes:unique.length,missingServerRoutes:missing,methodUsage,unusedUiMethods:unused,hmxTerminalOutcomeIsExplicit:hmxOutcomeIsExplicit,interfaceComponent:existsSync(path.join(app,'src/components/IntegrationConsole.tsx'))&&existsSync(path.join(app,'src/components/HexisControlConsole.tsx'))&&existsSync(path.join(app,'src/components/RuntimeAtlas.tsx'))&&existsSync(path.join(app,'src/components/LettaGovernanceConsole.tsx'))&&existsSync(path.join(app,'src/components/ConscioControlConsole.tsx')),lettaMethods,conscioMethods,hexisMethods,atlasMethods,checkedAt:new Date().toISOString()};
 await import('node:fs/promises').then(fs=>fs.writeFile(path.join(root,'INTERFACE_FUNCTION_MATRIX_2026-10-08.json'),JSON.stringify(result,null,2)+'\n'));
 console.log(JSON.stringify(result,null,2));
 if(!result.ok) process.exitCode=1;
