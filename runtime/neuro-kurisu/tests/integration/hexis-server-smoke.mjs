@@ -97,7 +97,7 @@ try {
   const proposalId=preparedGoals.proposals[0].id;
   const pendingMaterializeResponse=await post('/api/organism/integration/hexis/goals/materialize',{proposalId});
   if(pendingMaterializeResponse.status!==409) throw new Error('hexis-goal-pending-must-not-materialize:'+pendingMaterializeResponse.status);
-  const goalList=await (await fetch(\`\${base}/api/organism/integration/hexis/goals?status=pending&limit=8\`)).json();
+  const goalList=await (await fetch(`${base}/api/organism/integration/hexis/goals?status=pending&limit=8`)).json();
   if(!goalList.ok||!goalList.proposals?.some(proposal=>proposal.id===proposalId)) throw new Error('hexis-goal-list');
   const invalidGoalDecisionResponse=await post('/api/organism/integration/hexis/goals/decide',{proposalId,decision:'activate'});
   if(invalidGoalDecisionResponse.status!==400) throw new Error('hexis-goal-decision-validation');
