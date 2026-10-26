@@ -48,11 +48,14 @@ try {
     ['/api/organism/integration/hexis/policy/revoke', 'hexis-policy-revoke-null-body'],
     ['/api/organism/integration/hexis/execution-plan', 'hexis-execution-plan-null-body'],
   ];
+  const invalidJsonBodies = [null, [], 'invalid-json-record', 1, false];
   for (const [route, label] of nullBodyCases) {
-    const response = await post(route, null);
-    const result = await response.json();
-    if (response.status !== 400 || result.error !== 'hexis-invalid-request-body') {
-      throw new Error(label + ': expected HTTP 400 for JSON null body');
+    for (const invalidBody of invalidJsonBodies) {
+      const response = await post(route, invalidBody);
+      const result = await response.json();
+      if (response.status !== 400 || result.error !== 'hexis-invalid-request-body') {
+        throw new Error(label + ': expected HTTP 400 for non-record JSON body ' + JSON.stringify(invalidBody));
+      }
     }
   }
 
