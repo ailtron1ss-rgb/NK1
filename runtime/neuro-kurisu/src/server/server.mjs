@@ -955,8 +955,16 @@ async function route(req, res) {
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/stage') {
             const input = await body(req);
             if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
+            const intent = input.intent === undefined ? 'analysis' : input.intent;
+            const strategy = input.strategy === undefined ? 'analysis_only' : input.strategy;
+            if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(intent)) {
+                return json(res, 400, { ok: false, error: 'hmx-invalid-intent' });
+            }
+            if (!['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(strategy)) {
+                return json(res, 400, { ok: false, error: 'hmx-invalid-strategy' });
+            }
             try {
-                const result = runtime.core.hexisStageHmx(input.document, input.intent || 'analysis', input.strategy || 'analysis_only');
+                const result = runtime.core.hexisStageHmx(input.document, intent, strategy);
                 await runtime.core.flush();
                 return json(res, 200, { ok: true, stage: result });
             }
