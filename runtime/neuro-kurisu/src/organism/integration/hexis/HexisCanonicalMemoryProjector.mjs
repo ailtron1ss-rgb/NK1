@@ -137,6 +137,8 @@ export class HexisCanonicalMemoryProjector {
       return structuredClone(stage.application);
     }
     if (!isRecord(stage) || stage.status !== 'accepted') throw new Error('hmx-stage-must-be-accepted-before-apply');
+    if (!asText(stage.stagingId, 128) || !asText(stage.digest, 128)) throw new Error('hmx-stage-identity-required');
+    if (!Array.isArray(stage.conflicts) || stage.conflicts.length > 0) throw new Error('hmx-stage-has-conflicts');
     if (stage.intent !== 'port' || stage.strategy !== 'additive') throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
     const sections = isRecord(stage.stagedSections) ? stage.stagedSections : {};
     const records = Array.isArray(sections.memories) ? sections.memories : [];
@@ -160,8 +162,7 @@ export class HexisCanonicalMemoryProjector {
       if (!content) throw new Error('hmx-apply-memory-content-required:' + index);
       const prior = seenRefs.get(ref);
       const contentHash = hash(content);
-      if (prior && prior !== contentHash) throw new Error('hmx-apply-duplicate-ref-conflict:' + ref);
-      if (prior) continue;
+      if (prior) throw new Error('hmx-apply-duplicate-ref-conflict:' + ref);
       seenRefs.set(ref, contentHash);
       normalized.push({ row, ref, type, content, contentHash });
     }
