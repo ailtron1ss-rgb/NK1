@@ -1,3 +1,10 @@
+## NK1 WorkPass94 — исправить контроль управляющих символов в correlation IDs (2026-10-26)
+
+- Исправлено двойное экранирование диапазонов C0/C1 в `boundedCorrelationId`: regex теперь проверяет реальные управляющие символы, а не буквальные последовательности и обычные цифры.
+- Граничные регрессии теперь передают настоящие LF и TAB, чтобы проверять отклонение до `trim()`.
+- Добавлена регрессия, подтверждающая, что корректные execution/decision ID с цифрами не теряются при нормализации.
+- Код и тесты обновлены в `fix/correlation-control-char-regex-2026-10-26`. Exact-head CI/typecheck ещё не подтверждены; `main` и опубликованный Release ZIP не менялись.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
