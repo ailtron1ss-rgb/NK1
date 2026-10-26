@@ -168,6 +168,8 @@ export class CausalExperienceStream {
     const records=uniqueRows.filter(record=>!conflictingTraceIds.has(record.traceId));
     const safeCounter=(value:unknown,fallback=0):number=>
       typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+    const safeUnit=(value:unknown):number=>
+      typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:0;
     const normalizedRecordedIds=Array.isArray(r.recordedTraceIds)
       ? [...new Set(r.recordedTraceIds.map(normalizeTraceId).filter(Boolean))].slice(-this.maxRecordedTraceIds)
       : [];
