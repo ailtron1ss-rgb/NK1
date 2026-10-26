@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 import { HexisRemoteApiBridge, HexisRemoteBridgeError, parseHexisRemoteApiConfig } from '../../src/organism/integration/hexis/HexisRemoteApiBridge.ts';
+import { buildNk1HmxV17Document, normalizeHmxV17Memory, validateHmxV17Document } from '../../src/organism/integration/hexis/HexisHmxV17Adapter.ts';
 
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
@@ -22,12 +23,119 @@ const review = fabric.createLearningReview({periodStart:0,periodEnd:1,summary:'t
 const decided = fabric.decideLearningReview(review.id,review.items[0].id,'approve');
 assert.equal(decided?.status,'approved');
 
-const stage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e1',sections:{memories:[{id:'m'}],goals:[{id:'g'}]}},intent:'port',strategy:'additive'});
-assert.equal(stage.status,'staged');
-assert.equal(fabric.decideHmx(stage.stagingId,'accept')?.status,'accepted');
+const validHmx = {
+  hmx_version: '1.7',
+  export_id: 'exp_0123456789abcdef',
+  export_intent: 'telepathy',
+  exported_at: '2026-10-26T10:00:00.000Z',
+  source: {
+    instance_id: 'hexis-test-instance',
+    schema_version: '1.7',
+    embedding_model: 'test-embedding',
+    embedding_dimension: 2,
+    hexis_lineage_id: 'hexis-test-lineage',
+  },
+  sections: {
+    memories: [{
+      ref: 'exp_0123456789abcdef:memory:1',
+      type: 'semantic',
+      content: 'A canonical imported fact.',
+      trust_level: 0.82,
+      importance: 0.73,
+      created_at: '2026-10-20T10:00:00.000Z',
+      updated_at: '2026-10-25T10:00:00.000Z',
+      valid_from: '2026-10-20T10:00:00.000Z',
+      valid_until: null,
+      access_count: 3,
+      last_accessed: null,
+      source_attribution: { origin: 'test' },
+      metadata: { nk1_kind: 'semantic', nk1_confidence: 0.77, nk1_salience: 0.71, nk1_epistemic_status: 'belief', tags: ['external'], context: { topic: 'hexis', ignoredObject: { secret: 'dropped' } }, entities: ['NK1'] },
+      provenance: { acquisition_mode: 'experienced', origin_instance: 'hexis-test-lineage' },
+    }],
+  },
+};
+assert.deepEqual(validateHmxV17Document(validHmx, 'telepathy'), []);
+assert.equal(validateHmxV17Document(validHmx, 'port').some(issue => issue.kind === 'intent-mismatch'), true);
+assert.equal(validateHmxV17Document({ ...validHmx, export_id: 'random-uuid' }, 'telepathy').some(issue => issue.path === 'export_id'), true);
 
-const protectedStage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e2',sections:{identity:[{id:'self'}]}},intent:'telepathy',strategy:'analysis_only'});
-assert.equal(fabric.decideHmx(protectedStage.stagingId,'accept')?.status,'staged');
+const projection = normalizeHmxV17Memory(validHmx.sections.memories[0], {
+  exportId: validHmx.export_id,
+  sourceSubjectId: validHmx.source.hexis_lineage_id,
+});
+assert.equal(projection?.kind, 'semantic');
+assert.equal(projection?.confidence, 0.77);
+assert.equal(projection?.salience, 0.71);
+assert.equal(projection?.sourceAuthority01, 0.82);
+assert.equal(projection?.epistemicStatus, 'belief');
+assert.equal(projection?.independenceKey, 'hexis:hexis-test-lineage');
+assert.deepEqual(projection?.context, { topic: 'hexis' }, 'non-scalar imported context is discarded');
+
+const unsafeSections = structuredClone(validHmx);
+unsafeSections.sections.identity = [{ key: 'identity', content: 'must not auto-merge' }];
+const unsafeStage = fabric.stageHmx({ document: unsafeSections, intent: 'telepathy', strategy: 'additive' });
+assert(unsafeStage.conflicts.some(issue => issue.kind === 'unsupported-import-section'));
+assert(unsafeStage.conflicts.some(issue => issue.kind === 'protected-by-intent'));
+assert.equal(fabric.decideHmx(unsafeStage.stagingId, 'accept')?.status, 'staged', 'protected/unsupported sections cannot be accepted');
+
+const stage = fabric.stageHmx({ document: validHmx, intent: 'telepathy', strategy: 'additive' });
+assert.equal(stage.status, 'staged');
+assert.equal(stage.applicationMode, 'memory-merge');
+assert.equal(stage.importResult?.status, 'pending');
+assert.equal(fabric.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
+assert.equal(fabric.getHmxStage(stage.stagingId)?.importResult?.status, 'pending', 'fabric acceptance alone is not evidence that the canonical-memory import has been applied');
+const importRecorded = fabric.recordHmxImportResult(stage.stagingId, { status: 'applied', created: 1, reused: 0, skipped: 0 });
+assert.equal(importRecorded?.importResult?.status, 'applied');
+assert.equal(importRecorded?.importResult?.created, 1);
+assert.equal(fabric.recordHmxImportResult(stage.stagingId, { status: 'applied', created: 10, reused: 0 })?.importResult?.created, 1, 'completed import receipts cannot be replayed to rewrite counts');
+
+const emptySnapshot = buildNk1HmxV17Document({ subjectId: 'nk1-empty', memories: [], exportedAt: Date.parse('2026-10-26T10:00:00.000Z') });
+assert.match(String(emptySnapshot.export_id), /^exp_[0-9a-f]{16}$/);
+assert.equal(emptySnapshot.export_intent, 'telepathy');
+assert.deepEqual(validateHmxV17Document(emptySnapshot, 'telepathy'), [], 'valid empty memory snapshots remain exportable');
+
+const exportSnapshot = buildNk1HmxV17Document({
+  subjectId: 'nk1-test',
+  exportedAt: Date.parse('2026-10-26T10:00:00.000Z'),
+  memories: [{
+    id: 'memory-7',
+    content: 'exported memory',
+    kind: 'semantic',
+    confidence: 0.8,
+    salience: 0.7,
+    source: 'canonical-memory',
+    sourceAuthority01: 0.75,
+    createdAt: Date.parse('2026-10-20T10:00:00.000Z'),
+    observedAt: Date.parse('2026-10-25T10:00:00.000Z'),
+    validFromAt: Date.parse('2026-10-20T10:00:00.000Z'),
+    validUntilAt: null,
+    epistemicStatus: 'belief',
+    dormant: false,
+    retrievalCount: 2,
+    tags: ['memory'],
+    context: { channel: 'test', nested: { private: true } },
+    entities: ['NK1'],
+  }],
+});
+assert.deepEqual(validateHmxV17Document(exportSnapshot, 'telepathy'), []);
+assert.equal(exportSnapshot.sections.memories[0].type, 'semantic');
+assert.equal(exportSnapshot.sections.memories[0].trust_level, 0.75);
+assert.equal(exportSnapshot.sections.memories[0].metadata.context.nested, undefined);
+
+const protectedStage = fabric.stageHmx({
+  document: {
+    ...validHmx,
+    export_id: 'exp_abcdef0123456789',
+    sections: {
+      memories: validHmx.sections.memories,
+      identity: [{ key: 'self', content: 'protected' }],
+    },
+  },
+  intent: 'telepathy',
+  strategy: 'analysis_only',
+});
+assert(protectedStage.conflicts.length > 0);
+assert.equal(protectedStage.applicationMode, 'preview-only');
+assert.equal(fabric.decideHmx(protectedStage.stagingId, 'accept')?.status, 'staged');
 
 const out = fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'x',meta:{b:2,a:1}}});
 assert.equal(fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{meta:{a:1,b:2},text:'x'}}).id,out.id);
