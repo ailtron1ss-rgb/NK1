@@ -208,7 +208,7 @@ export class CognitiveEventFabric {
         !COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0||seen.has(id))continue;
       const rawAt=value.at;
       if(rawAt!==undefined&&(typeof rawAt!=='number'||!Number.isFinite(rawAt)||rawAt<0))continue;
-      if(value.source!==undefined&&(typeof value.source!=='string'||value.source.length>120||/[\u0000-\u001f\u007f]/.test(value.source)))continue;
+      if(value.source!==undefined&&(typeof value.source!=='string'||!value.source.trim()||value.source!==value.source.trim()||value.source.length>120||/[\u0000-\u001f\u007f]/.test(value.source)))continue;
       if(value.external!==undefined&&typeof value.external!=='boolean')continue;
       if(value.confidence01!==undefined&&(typeof value.confidence01!=='number'||!Number.isFinite(value.confidence01)))continue;
       const rawParentIds=value.parentIds;
@@ -326,7 +326,7 @@ export class CognitiveEventFabric {
     if(typeof input.source!=='string') throw new TypeError('invalid-cognitive-event-source');
     // Identity-bearing fields must be rejected when oversized/non-canonical, never
     // truncated: normalization can alias distinct causal envelopes into one fingerprint.
-    if(input.source.length>120||/[\u0000-\u001f\u007f]/.test(input.source)) {
+    if(!input.source.trim()||input.source!==input.source.trim()||input.source.length>120||/[\u0000-\u001f\u007f]/.test(input.source)) {
       throw new RangeError('invalid-cognitive-event-source');
     }
     if(input.parentIds!==undefined&&!Array.isArray(input.parentIds)) throw new TypeError('invalid-cognitive-event-parents');
