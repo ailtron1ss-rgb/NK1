@@ -498,11 +498,11 @@ export class CognitiveEventFabric {
         };
         if(sha256Stable(reconstructedProjection)!==suppliedProjectionHash)continue;
       }
-      function decodeReceiptRefs(field:'externalObservations'):ExternalObservationProjectionRef[]|null;
-      function decodeReceiptRefs(field:'receiptRevisions'):ToolReceiptRevisionProjectionRef[]|null;
-      function decodeReceiptRefs(field:'externalObservations'|'receiptRevisions'):ExternalObservationProjectionRef[]|ToolReceiptRevisionProjectionRef[]|null {
-        if(!Object.hasOwn(entry,field))return [];
-        const arrayValue=entry[field];
+      function decodeReceiptRefs(field:'externalObservations',receipt:Record<string,unknown>):ExternalObservationProjectionRef[]|null;
+      function decodeReceiptRefs(field:'receiptRevisions',receipt:Record<string,unknown>):ToolReceiptRevisionProjectionRef[]|null;
+      function decodeReceiptRefs(field:'externalObservations'|'receiptRevisions',receipt:Record<string,unknown>):ExternalObservationProjectionRef[]|ToolReceiptRevisionProjectionRef[]|null {
+        if(!Object.hasOwn(receipt,field))return [];
+        const arrayValue=receipt[field];
         let isArray=false;
         try { isArray=Array.isArray(arrayValue); } catch { /* rejected below */ }
         if(!isArray)return null;
@@ -551,8 +551,8 @@ export class CognitiveEventFabric {
         }
         return field==='externalObservations'?acceptedExternal.slice(-32):acceptedRevisions.slice(-32);
       }
-      const externalObservations=decodeReceiptRefs('externalObservations');
-      const receiptRevisions=decodeReceiptRefs('receiptRevisions');
+      const externalObservations=decodeReceiptRefs('externalObservations',entry);
+      const receiptRevisions=decodeReceiptRefs('receiptRevisions',entry);
       if(externalObservations===null||receiptRevisions===null)continue;
       restoredReceiptProjectionIndex.set(executionId,{executionId,actionEventId,outcomeEventId,evidenceEventId,projectedAt,...(/^[a-f0-9]{64}$/i.test(String(entry.projectionHash??''))?{projectionHash:String(entry.projectionHash).toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
       if(restoredReceiptProjectionIndex.size>=256) break;
