@@ -106,7 +106,14 @@ function resultFromCanonicalMemory(
   }
   const observedAt = Date.parse(evidence.observedAt);
   const provenanceClass = provenanceClassForHexisSource(evidence.source.kind);
-  const digest = sha256Stable(evidence, "legacy");
+  // Legacy clients may omit observedAt. In that case the server supplies a
+  // receipt timestamp for provenance, but it is not part of request identity.
+  // Normalize only that generated clock; every caller-supplied evidence field
+  // (source, stance, confidence, note, etc.) remains covered by the digest.
+  const digestInput = evidence.observedAtOrigin === "server-receipt"
+    ? { ...evidence, observedAt: "<server-receipt-time>" }
+    : evidence;
+  const digest = sha256Stable(digestInput, "legacy");
   // Detect both visible conflicts and replay after the detailed evidence ring
   // rotated. This check prevents a retry from creating a second pending review.
   const canonicalMemory = memoryOS.snapshot().items.find((item) => item.id === evidence.memoryId);
