@@ -1,3 +1,13 @@
+## WorkPass374 — Hexis evidence/provenance adapter (2026-10-26)
+
+- **Source mapping:** adapts the QuixiAI Hexis evidence/provenance and belief-revision concepts into NK1's existing memory/learning boundaries; it does not import Hexis as a second runtime or database.
+- **Implementation:** added `HexisEvidenceAdapter.ts`, a pure ingress adapter that validates evidence identity, stance, source provenance, timestamps, confidence and protected-memory flags; canonicalizes timestamps; freezes normalized output; and emits an explicit idempotent duplicate result.
+- **Safety:** own-data-property reads avoid caller getters; malformed proxies and accessors fail closed. The adapter does not write memory, alter belief confidence, bypass the existing evaluator, or promote a candidate.
+- **Regression:** added `tests/cognitive-hexis-evidence-adapter.mjs` and registered it in the runtime package's focused cognitive integration suite.
+- **Validation:** exact-head typecheck, focused test, unified integration and release gate are pending. No Hexis memory benchmark uplift or production-readiness improvement is claimed. No `main` or Release ZIP changes.
+
+---
+
 ## WorkPass373 — enforce aggregate cognitive payload text budget (2026-10-26)
 
 - **Defect:** the active `CognitiveEventFabric` payload clone bounded depth, node count, array size and key count, but did not count aggregate string/key text. Many individually valid strings could exceed the intended payload memory budget.
