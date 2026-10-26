@@ -11,7 +11,7 @@ import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvide
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
-import { FeedbackDeliveryGuard } from './FeedbackDeliveryGuard.ts';
+import { FeedbackDeliveryGuard, type FeedbackDeliveryReceipt, type FeedbackDeliveryToken } from './FeedbackDeliveryGuard.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
@@ -1242,9 +1242,14 @@ export class OrganismCore {
     private persisted: PersistedOrganism = defaultPersisted();
     /** Reject duplicate terminal feedback before it can mutate any learning subsystem. */
     private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard();
+    /** Small atomic sidecar keeps the replay barrier durable without forcing a full neural-state projection. */
+    private readonly feedbackDeliveryReceiptStore: FileStateStore<FeedbackDeliveryReceipt> | null;
     private ready = false;
     constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
         this.store = store;
+        this.feedbackDeliveryReceiptStore = store instanceof FileStateStore
+            ? new FileStateStore<FeedbackDeliveryReceipt>(store.siblingPath('feedback-delivery-receipt.json'))
+            : null;
         const candidateStorePath = store instanceof FileStateStore
             ? store.siblingPath('verified-skill-candidates.json')
             : (process.env.NEURO_SKILL_CANDIDATE_STORE_PATH || 'state/verified-skill-candidates.json');
@@ -1437,6 +1442,21 @@ export class OrganismCore {
                 cognition: { ...defaultCognitionFacet(), ...(facets.cognition ?? {}) },
                 advanced: { ...defaultAdvancedFacet(), ...(facets.advanced ?? {}) },
             }, system: { ...defaultPersisted().system, ...(this.persisted.system ?? {}) } };
+        if (this.feedbackDeliveryReceiptStore) {
+            try {
+                const sidecarReceipt = await this.feedbackDeliveryReceiptStore.load();
+                if (sidecarReceipt !== null) (this.persisted.system as any).feedbackDeliveryReceipt = sidecarReceipt;
+            } catch (error) {
+                // Do not prevent the organism from starting because a tiny sidecar is corrupt;
+                // instead preserve an invalid sentinel so the feedback guard refuses unsafe replay.
+                (this.persisted.system as any).feedbackDeliveryReceipt = {
+                    version: -1, tick: this.persisted.state.tick,
+                    decisionId: 'corrupt-feedback-delivery-receipt', action: 'wait', status: 'corrupt',
+                    reason: String((error as Error)?.message ?? error).slice(0, 160),
+                };
+                console.error('[OrganismCore] feedback receipt sidecar unreadable; feedback replay is disabled until repaired.');
+            }
+        }
         this.persisted.system.lastEncodedMemoryIds = Array.isArray(this.persisted.system.lastEncodedMemoryIds) ? this.persisted.system.lastEncodedMemoryIds.slice(0, 16) : [];
         this.persisted.system.subjectIdentity = ensureSubjectIdentity(this.persisted.system);
         await this.actionExecutionLedgerArchive?.load();
@@ -3858,6 +3878,32 @@ export class OrganismCore {
             await this.checkpoint(false);
         return { state: structuredClone(state), goals: this.persisted.goals.slice(0, 16).map(g => ({ ...g })), memories: [], workspace, decision };
     }
+    private async beginFeedbackDelivery(input: { tick: number; decisionId: string; action: ActionKind }): Promise<FeedbackDeliveryToken> {
+        const token = this.feedbackDeliveryGuard.begin({
+            ...input,
+            previousReceipt: (this.persisted.system as any).feedbackDeliveryReceipt,
+        });
+        const pendingReceipt: FeedbackDeliveryReceipt = {
+            version: 1, tick: token.tick, decisionId: token.decisionId, action: token.action, status: 'in-progress',
+        };
+        // Durably record intent before any learner updates. If a process dies mid-feedback,
+        // startup can refuse replay of the affected tick without serializing the full neural graph.
+        await this.feedbackDeliveryReceiptStore?.save(pendingReceipt);
+        (this.persisted.system as any).feedbackDeliveryReceipt = pendingReceipt;
+        return token;
+    }
+
+    private async completeFeedbackDelivery(token: FeedbackDeliveryToken): Promise<void> {
+        const receipt: FeedbackDeliveryReceipt = {
+            version: 1, tick: token.tick, decisionId: token.decisionId, action: token.action, status: 'completed',
+        };
+        // The atomic sidecar is the durability boundary; the main organism snapshot may be
+        // intentionally deferred by the projection governor.
+        await this.feedbackDeliveryReceiptStore?.save(receipt);
+        (this.persisted.system as any).feedbackDeliveryReceipt = receipt;
+        this.feedbackDeliveryGuard.complete(token);
+    }
+
     private async feedbackSpineOnly(outcome: {
         success?: number;
         reward?: number;
@@ -3871,9 +3917,8 @@ export class OrganismCore {
         const trace = this.persisted.traces[0];
         if (!trace?.selected)
             return;
-        const feedbackDeliveryToken = this.feedbackDeliveryGuard.begin({
+        const feedbackDeliveryToken = await this.beginFeedbackDelivery({
             tick: state.tick, decisionId: trace.id, action: trace.selected.action,
-            previousReceipt: (this.persisted.system as any).feedbackDeliveryReceipt,
         });
         const success = clamp(outcome.success ?? (outcome.reward == null ? .5 : .5 + outcome.reward * .5));
         const surprise = clamp(outcome.surprise ?? Math.abs(.5 - success));
@@ -3963,7 +4008,7 @@ export class OrganismCore {
         }
         if (trace.selected)
             trace.outcome = { success, reward: outcome.reward, surprise, notes: outcome.notes, at: Date.now() };
-        (this.persisted.system as any).feedbackDeliveryReceipt = this.feedbackDeliveryGuard.complete(feedbackDeliveryToken);
+        await this.completeFeedbackDelivery(feedbackDeliveryToken);
         this.markPersistenceDirty();
     }
     private expectedClosureDomains(observation: OrganismObservation, normalizedObservation: OrganismObservation): CognitiveDomain[] {
@@ -8377,9 +8422,8 @@ export class OrganismCore {
         const state = this.persisted.state;
         const feedbackTraceForDelivery = this.persisted.traces[0];
         const feedbackDeliveryToken = feedbackTraceForDelivery?.selected
-            ? this.feedbackDeliveryGuard.begin({
+            ? await this.beginFeedbackDelivery({
                 tick: state.tick, decisionId: feedbackTraceForDelivery.id, action: feedbackTraceForDelivery.selected.action,
-                previousReceipt: (this.persisted.system as any).feedbackDeliveryReceipt,
             })
             : null;
         // P80 is read-only during feedback; keep one detached view instead of cloning it
@@ -10378,7 +10422,7 @@ export class OrganismCore {
         this.persisted.facets.learning.researchGradeOrganism = this.developmentalNeural.researchGradeOrganism.snapshot();
         this.persisted.facets.learning.operationalLife = this.developmentalNeural.operationalLife.snapshot();
         if (feedbackDeliveryToken) {
-            (this.persisted.system as any).feedbackDeliveryReceipt = this.feedbackDeliveryGuard.complete(feedbackDeliveryToken);
+            await this.completeFeedbackDelivery(feedbackDeliveryToken);
         }
         await this.checkpoint(false);
     }
