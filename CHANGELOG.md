@@ -1,3 +1,9 @@
+## [NK1][Hexis] Validate query limits and temporal requirements (2026-10-26)
+
+- Read-only memory and goal list endpoints now reject invalid/non-integer/out-of-range limits and unknown goal status filters instead of passing `NaN` into core methods.
+- Temporal reads/diffs now reject missing timestamps explicitly; `Number(null) === 0` no longer makes a missing timestamp look valid.
+- Add smoke cases for bad list limits/status and missing temporal time bounds.
+
 ## [NK1][Hexis] Show canonical apply receipt in the console (2026-10-26)
 
 - Replace the remaining untyped HMX conflict rendering with typed conflict data, show section counts for the staged document, and display canonical apply receipt totals, completeness, and warnings directly in the stage card.
