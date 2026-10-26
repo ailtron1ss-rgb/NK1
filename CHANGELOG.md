@@ -16,6 +16,7 @@
 
 - [CONSISTENCY] Newly imported HMX versions now include native memory type in canonical identity alongside source lineage/ref/content. Exact persisted versions reuse their prior identity for replay compatibility; a type-only correction (for example, semantic → procedural) quarantines the old canonical row and withdraws its active graph/belief projections.
 - [REGRESSION] Added type-only reclassification coverage proving the canonical kind changes under a new ID, the old version stays as quarantined history, projections move to the corrected version, and later re-export stays idempotent.
+- [CONTRACT] The projector declaration now exposes the optional `removeBeliefProjection(memoryId): boolean` hook used to withdraw stale mirror state.
 - [VALIDATION] Source and regression are committed but not executed in a working runtime. The latest HMX Actions job still exposes no executed steps, so no PASS is claimed.
 
 ## [NK1][Hexis] WorkPass425 — retire stale projections on source-content correction (2026-10-26)
