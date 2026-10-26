@@ -1,3 +1,9 @@
+## [NK1][WorkPass431] Restore MemoryFabric command-ID validation (2026-10-26)
+
+- Fixed the malformed Unicode control-character regular expression in `MemoryFabric.applyLifecycleCommand`; it now compiles and rejects C0/C1 control characters before any fingerprinting or mutation.
+- Wired the existing memory lifecycle regression test (including control-character IDs) into `test:hexis-canonical-apply` so the Hexis transaction suite imports and exercises the same mutation boundary.
+- Source-level regex probe: PASS (pattern compiles; control characters match; ordinary command text does not). Full project test execution and CI remain unconfirmed in this pass; `main` and the published Release ZIP were not changed.
+
 ## [NK1][WorkPass430] Restore existing-memory trust signals when HMX apply rolls back (2026-10-26)
 
 - HMX canonical apply now captures opaque, one-use signal compensation tokens before lowering authority/confidence on existing duplicate memories. The projector cannot provide a caller-forged snapshot to authorize trust restoration.
