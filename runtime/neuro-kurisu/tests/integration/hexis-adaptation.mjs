@@ -127,6 +127,23 @@ const validHmx = {
 };
 assert.deepEqual(validateHmxV17Document(validHmx, 'telepathy'), []);
 
+// The adaptation fabric enforces the enum contract independently of the HTTP
+// route, so internal callers cannot create malformed or preview-only surprise stages.
+const invalidHmxModesFabric = new HexisAdaptationFabric();
+assert.throws(() => invalidHmxModesFabric.stageHmx({
+  document: validHmx,
+  intent: 'telepahy',
+  strategy: 'additive',
+}), /hmx-invalid-intent/);
+assert.throws(() => invalidHmxModesFabric.stageHmx({
+  document: validHmx,
+  intent: 'telepathy',
+  strategy: 'unrestricted',
+}), /hmx-invalid-strategy/);
+assert.equal(invalidHmxModesFabric.snapshot().hmxStages.length, 0,
+  'invalid mode values must be refused before creating a stage or incrementing stage state');
+
+
 // Stage HMX arrays atomically: over-capacity or malformed source data must
 // not leave a misleading valid-looking prefix in stagedSections.
 const oversizedExportId = 'exp_3333333333333333';
