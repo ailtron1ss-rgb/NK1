@@ -105,14 +105,16 @@ const CLOSED_POSE = Object.freeze({ open: CLOSED_MOUTH.open, form: CLOSED_MOUTH.
  */
 export function buildAvatarSpeechTimeline(text, rate = 1, language = 'ru-RU') {
   if (typeof text !== 'string') return [];
-  // The canonical timeline replaces control whitespace before calculating UTF-16 offsets.
-  // Normalize here too so grapheme labels use the exact same source string as the frames.
-  const normalized = text.slice(0, 2000).replace(/[\r\n\t]/gu, ' ');
+  // Replace each control-whitespace code unit for stable timing, but keep the original
+  // source for labels: CR/LF/tab normalization is one-code-unit-to-one-code-unit, so
+  // UTF-16 offsets remain valid and match Web Speech boundary events.
+  const source = text.slice(0, 2000);
+  const normalized = source.replace(/[\r\n\t]/gu, ' ');
   if (!normalized.trim()) return [];
   return buildVisemeTimeline(normalized, rate, language).map(frame => ({
     ...frame,
     pose: { ...frame.pose },
-    grapheme: normalized.slice(frame.charIndex, frame.endCharIndex),
+    grapheme: source.slice(frame.charIndex, frame.endCharIndex),
   }));
 }
 
