@@ -1,3 +1,9 @@
+## Supervised-runtime failure exit status — 2026-10-26
+
+- Unexpected exit and spawn-error decisions now carry a non-zero supervisor exit status; the supervisor no longer logs a child failure and then reports success with exit code 0.
+- Explicit host SIGINT and SIGTERM shutdowns preserve conventional exit statuses 130 and 143. Added regression assertions for fail/ignore exit-status decisions.
+- Exact-head CI validation is pending.
+
 ## P23 durable skill-store identity and trust-boundary regression — 2026-10-26
 
 - Updated the versioned skill-store lifecycle regression to use the current object-shaped rollback approval contract; the fixture injects a test-only rollback verifier while production's default rollback verifier remains deny-by-default.
