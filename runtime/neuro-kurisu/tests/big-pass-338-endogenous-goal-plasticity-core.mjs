@@ -8,9 +8,8 @@ import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOp
 
 const coreSource = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const goalStart = coreSource.indexOf('// B338: close the endogenous-goal learning loop on real runtime outcomes.');
-const goalEnd = coreSource.indexOf('// B299: one shared outcome-to-policy', goalStart);
-assert.ok(goalStart >= 0 && goalEnd > goalStart, 'B338 embodied outcome-to-goal block must remain identifiable');
-const goalLearningBlock = coreSource.slice(goalStart, goalEnd);
+assert.ok(goalStart >= 0, 'B338 embodied outcome-to-goal block must remain identifiable');
+const goalLearningBlock = coreSource.slice(goalStart, goalStart + 5000);
 assert.ok(
   goalLearningBlock.includes('b338GoalSnapshot.tick === state.tick && trace.selected.action === b338GoalState.action'),
   'B272 credit assignment must be bound to the exact current tick and selected action',

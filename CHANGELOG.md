@@ -1,3 +1,12 @@
+## WorkPass355 — стабилизированы B272 contract tests и authority fixture (2026-10-26)
+
+- Исправлен source-contract между world-transition и endogenous-goal learner: assertion теперь ищет новую tick+action guard, а не устаревший action-only marker.
+- Runtime regression B338 использует ограниченное окно исходного блока, а не нестабильный следующий комментарий как конец секции.
+- В тесте host-owned evaluator после проверки запрета небезопасного режима права исполнителя возвращаются к `0700`; проверка замены run-root теперь действительно доходит до identity guard, а не повторно падает на предыдущем permission guard.
+- Production-проверки не ослаблены: это правки к тестовым маркерам и изоляции сценариев.
+
+---
+
 ## WorkPass354 — independent evaluator различает исполнение и trust binding в regression suite (2026-10-26)
 
 - В тест кандидата добавлены два независимых ожидания после сбоя verifier: execution capability остаётся `true`, но `bindingVerified` становится `false`.
