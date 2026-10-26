@@ -518,6 +518,71 @@ assert.equal(missingAnchorCompletion.completionRecorded, false,
   'missing anchors may be retained as incomplete outcome evidence rather than blocking late feedback');
 assert.equal(missingAnchorFabric.getById('cef:kernel:43:outcome')?.stage, 'outcome');
 
+// Restored event rows must preserve the persisted identity instead of coercing malformed values.
+const restoreSourceFabric = new CognitiveEventFabric(128);
+const restoreSourceEvent = restoreSourceFabric.append({
+  id:'restore:valid-event', tick:55, at:5500, stage:'observation',
+  source:'restore-test', parentIds:[], external:false, confidence01:0.8,
+  payload:{stable:true},
+});
+const validRestoreSnapshot = restoreSourceFabric.snapshot();
+const validRestoreFabric = new CognitiveEventFabric(128);
+validRestoreFabric.restore(validRestoreSnapshot);
+assert.equal(validRestoreFabric.getById(restoreSourceEvent.id)?.tick,55,
+  'a valid canonical event snapshot must remain restorable');
+
+const malformedRestoreRows = [
+  {...restoreSourceEvent,id:' restore:whitespace-id '},
+  {...restoreSourceEvent,id:'restore:string-tick',tick:'55'},
+  {...restoreSourceEvent,id:'restore:fractional-tick',tick:55.5},
+  {...restoreSourceEvent,id:'restore:string-external',external:'false'},
+  {...restoreSourceEvent,id:'restore:string-confidence',confidence01:'0.8'},
+  {...restoreSourceEvent,id:'restore:malformed-parent',parentIds:[' restore:parent ']},
+];
+const cyclicRestorePayload = {};
+cyclicRestorePayload.self = cyclicRestorePayload;
+malformedRestoreRows.push({...restoreSourceEvent,id:'restore:cyclic-payload',payload:cyclicRestorePayload});
+const strictRestoreFabric = new CognitiveEventFabric(128);
+strictRestoreFabric.restore({version:1,total:0,recent:malformedRestoreRows});
+assert.equal(strictRestoreFabric.snapshot().recent.length,0,
+  'malformed IDs, ticks, boolean flags, confidence, parent IDs and cyclic payloads must not become causal events');
+
+let restoreGetterExecuted = false;
+const accessorRow = {...restoreSourceEvent,id:'restore:accessor-id'};
+Object.defineProperty(accessorRow,'id',{
+  configurable:true,
+  enumerable:true,
+  get(){restoreGetterExecuted=true;throw new Error('snapshot event getter must not run');},
+});
+const accessorRowFabric = new CognitiveEventFabric(128);
+accessorRowFabric.restore({version:1,total:0,recent:[accessorRow]});
+assert.equal(restoreGetterExecuted,false,'restoring an accessor-backed event field must not execute its getter');
+assert.equal(accessorRowFabric.snapshot().recent.length,0,'accessor-backed identity must not be accepted');
+
+let rootGetterExecuted = false;
+const accessorSnapshot = {version:1,total:0};
+Object.defineProperty(accessorSnapshot,'recent',{
+  configurable:true,
+  enumerable:true,
+  get(){rootGetterExecuted=true;throw new Error('snapshot collection getter must not run');},
+});
+const accessorRootFabric = new CognitiveEventFabric(128);
+accessorRootFabric.restore(accessorSnapshot);
+assert.equal(rootGetterExecuted,false,'restoring the collection field must not execute a snapshot getter');
+assert.equal(accessorRootFabric.snapshot().recent.length,0);
+
+const atomicRestoreFabric = new CognitiveEventFabric(128);
+const atomicRestoreNode = atomicRestoreFabric.append({
+  id:'restore:atomic-baseline',tick:56,at:5600,stage:'observation',
+  source:'restore-test',parentIds:[],external:false,confidence01:0.7,payload:{kept:true},
+});
+const beforeUnsupportedRestore = atomicRestoreFabric.snapshot();
+assert.throws(()=>atomicRestoreFabric.restore({version:2,recent:[]}),/unsupported-cognitive-event-fabric-snapshot-version/,
+  'unknown event-fabric schemas must be rejected before mutating the current ledger');
+assert.deepEqual(atomicRestoreFabric.snapshot(),beforeUnsupportedRestore,
+  'rejected schema versions must leave all current event state unchanged');
+assert.equal(atomicRestoreFabric.getById(atomicRestoreNode.id)?.payload.kept,true);
+
 console.log('WorkPass354 completion anchor provenance: PASS');
 console.log('WorkPass353 canonical completion replay/preflight: PASS');
 
