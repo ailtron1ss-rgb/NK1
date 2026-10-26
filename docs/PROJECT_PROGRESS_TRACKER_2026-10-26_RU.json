@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all four named workflows passed on that exact head. Newer WorkPass335 code/test head ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745 adds fail-closed validation before ledger writes but exact-head CI evidence has not yet been returned; therefore this snapshot intentionally does not raise scores for WorkPass335. Branch documentation head at this update is d43846db3451caae5062cb4b5c92533765b60f21.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all four named workflows passed on that exact head. Newer WorkPass335 code/test head ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745 adds fail-closed validation before ledger writes but exact-head CI evidence has not yet been returned; therefore this snapshot intentionally does not raise scores for WorkPass335. The branch head immediately before this tracker update was d43846db3451caae5062cb4b5c92533765b60f21.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -315,6 +315,6 @@
       "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending."
     }
   ],
-  "latestBranchHeadAtUpdate": "d43846db3451caae5062cb4b5c92533765b60f21",
-  "latestUnverifiedCodeTestHead": "ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745"
+  "latestUnverifiedCodeTestHead": "ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745",
+  "branchHeadBeforeTrackerCommit": "d43846db3451caae5062cb4b5c92533765b60f21"
 }
