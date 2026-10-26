@@ -1,3 +1,10 @@
+## NK1 [evidence] — validate event IDs without over-escaping controls (2026-10-26)
+
+- Corrected P65 event-ID validation to test Unicode control-code points directly, so valid canonical IDs containing ordinary letters such as `u` are not accidentally rejected.
+- Added a regression that still rejects control-bearing IDs while retaining the cross-ledger event identity check.
+
+---
+
 ## NK1 [evidence] — connect gateway outcome, reality ledger and P65 (2026-10-26)
 
 - The canonical `OrganismCore.finalizeToolOutcome` path now projects action outcomes to `RealityEvidenceLedger` and P65 using a shared stable event ID; the reality record is parented to the canonical CEF outcome (or authoritative receipt-revision) node.

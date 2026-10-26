@@ -14,7 +14,7 @@ export interface P65State {version:2;claims:number;observations:number;inference
 export const defaultP65=():P65State=>({version:2,claims:0,observations:0,inferences:0,beliefs:0,predictions:0,counterfactuals:0,resolvedPredictions:0,meanConfidence01:.5,meanPredictionError01:.5,unresolved:0,claimsData:[],recentIds:[],beliefHalfLifeMs:7*24*60*60*1000,expiredBeliefs:0,staleBeliefs:0});
 const sourceTrust=(source:string):number=>{ const s=String(source||'unknown').toLowerCase(); if(s==='os'||s==='android'||s==='termux') return .82; if(s==='device'||s==='sensor') return .76; if(s==='user') return .68; if(s==='external-api'||s==='web') return .84; if(s==='world') return .55; if(s==='simulated-world-environment') return .20; if(s==='organism') return .28; return .45; };
 function stableId(tick:number,kind:P65Kind,content:string,source:string){let h=2166136261>>>0;for(const c of `${tick}|${kind}|${source}|${content.slice(0,220)}`)h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;return `p65:${tick}:${kind}:${h.toString(16)}`;}
-const validEventId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&value.normalize('NFKC')===value&&!/[\\u0000-\\u001f\\u007f-\\u009f]/.test(value);
+const validEventId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&value.normalize('NFKC')===value&&!Array.from(value).some((character)=>{const code=character.charCodeAt(0);return code<=0x1f||(code>=0x7f&&code<=0x9f);});
 function eventFingerprint(value:unknown):string{return createHash('sha256').update(JSON.stringify(value)??'undefined').digest('hex');}
 export class P65EpistemicLedger{
  private state=defaultP65();

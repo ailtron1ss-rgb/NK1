@@ -254,4 +254,5 @@ test('P65 event identity survives restore, ignores processing time and rejects c
   restored.restore(ledger.snapshot());
   assert.equal(restored.record({ ...input, at: input.at + 6000 }), first);
   assert.throws(() => restored.record({ ...input, confidence01: 0.99 }), /p65-event-identity-conflict/);
+  assert.throws(() => ledger.record({ ...input, eventId: 'bad\\nid' }), /p65-event-identity-invalid/);
 });
