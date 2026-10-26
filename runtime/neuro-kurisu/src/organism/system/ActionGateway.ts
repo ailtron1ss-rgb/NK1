@@ -605,7 +605,8 @@ export class ActionGateway {
       if(typeof decisionId==='string' && decisionId.length>0 && decisionId.length<=180 && !/[\u0000-\u001f\u007f]/.test(decisionId)) safe.decisionId=decisionId;
       if(typeof autonomous==='boolean') safe.autonomous=autonomous;
       if(status==='completed') {
-        const responseOmitted=actionLedgerOwnField(value,'responseOmitted').value===true;
+        const responseOmittedField=actionLedgerOwnField(value,'responseOmitted');
+        const responseOmitted=responseOmittedField.present && responseOmittedField.value!==false;
         const responseField=actionLedgerOwnField(value,'response');
         if(responseOmitted) {
           safe.responseOmitted=true;
@@ -652,14 +653,14 @@ export class ActionGateway {
     for(const item of requestRows.slice(-128)) {
       if(!actionLedgerIsPlainRecord(item)) continue;
       try { actionLedgerAssertDataRecord(item,'action-ledger-approval'); } catch { continue; }
-      const approvalId=item.id;
-      const toolId=item.toolId;
-      const permissionClass=item.permissionClass;
-      const operation=item.operation;
-      const requestHash=item.requestHash;
-      const status=item.status;
-      const createdAt=item.createdAt;
-      const expiresAt=item.expiresAt;
+      const approvalId=actionLedgerOwnField(item,'id').value;
+      const toolId=actionLedgerOwnField(item,'toolId').value;
+      const permissionClass=actionLedgerOwnField(item,'permissionClass').value;
+      const operation=actionLedgerOwnField(item,'operation').value;
+      const requestHash=actionLedgerOwnField(item,'requestHash').value;
+      const status=actionLedgerOwnField(item,'status').value;
+      const createdAt=actionLedgerOwnField(item,'createdAt').value;
+      const expiresAt=actionLedgerOwnField(item,'expiresAt').value;
       if(typeof approvalId!=='string' || !/^approval-[a-z0-9-]{8,100}$/i.test(approvalId)
         || typeof toolId!=='string' || !/^[a-z0-9._-]{2,64}$/i.test(toolId)
         || typeof permissionClass!=='string' || !validClasses.includes(permissionClass)
@@ -689,13 +690,17 @@ export class ActionGateway {
         id:approvalId,toolId,permissionClass:permissionClass as ActionToolPermissionClass,
         operation:operation as ActionToolApprovalOperation,requestHash:requestHash.toLowerCase(),
         status:status as ActionToolApprovalStatus,createdAt,expiresAt,
-        reasonCode:typeof item.reasonCode==='string'?item.reasonCode.replace(/[\r\n\t]+/g,' ').slice(0,120):'restored-approval',
-        inputKeys,inputPreview,autonomous:typeof item.autonomous==='boolean'?item.autonomous:false,
+        reasonCode:typeof actionLedgerOwnField(item,'reasonCode').value==='string'?(actionLedgerOwnField(item,'reasonCode').value as string).replace(/[\r\n\t]+/g,' ').slice(0,120):'restored-approval',
+        inputKeys,inputPreview,autonomous:typeof actionLedgerOwnField(item,'autonomous').value==='boolean'?(actionLedgerOwnField(item,'autonomous').value as boolean):false,
       };
-      if(typeof item.resolvedAt==='number' && Number.isSafeInteger(item.resolvedAt) && item.resolvedAt>=0) record.resolvedAt=item.resolvedAt;
-      if(typeof item.consumedAt==='number' && Number.isSafeInteger(item.consumedAt) && item.consumedAt>=0) record.consumedAt=item.consumedAt;
-      if(typeof item.actor==='string') record.actor=item.actor.slice(0,40);
-      if(typeof item.decisionId==='string' && item.decisionId.length>0 && item.decisionId.length<=180 && !/[\u0000-\u001f\u007f]/.test(item.decisionId)) record.decisionId=item.decisionId;
+      const resolvedAt=actionLedgerOwnField(item,'resolvedAt').value;
+      if(typeof resolvedAt==='number' && Number.isSafeInteger(resolvedAt) && resolvedAt>=0) record.resolvedAt=resolvedAt;
+      const consumedAt=actionLedgerOwnField(item,'consumedAt').value;
+      if(typeof consumedAt==='number' && Number.isSafeInteger(consumedAt) && consumedAt>=0) record.consumedAt=consumedAt;
+      const actor=actionLedgerOwnField(item,'actor').value;
+      if(typeof actor==='string') record.actor=actor.slice(0,40);
+      const decisionId=actionLedgerOwnField(item,'decisionId').value;
+      if(typeof decisionId==='string' && decisionId.length>0 && decisionId.length<=180 && !/[\u0000-\u001f\u007f]/.test(decisionId)) record.decisionId=decisionId;
       cleanRequests.push(record);
     }
 
