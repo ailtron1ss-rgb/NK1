@@ -996,19 +996,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
   );
   const rawMutationReceipts=memoryFabricRaw.mutationReceipts;
   const mutationReceiptRows=Array.isArray(rawMutationReceipts)?rawMutationReceipts.slice(-512):[];
-  const mutationReceiptSeenIds=new Set<string>();
-  const duplicateMutationReceiptId=mutationReceiptRows.some((row:any)=>{
-    if(!validMutationReceipt(row))return false;
-    if(mutationReceiptSeenIds.has(row.commandId))return true;
-    mutationReceiptSeenIds.add(row.commandId);
-    return false;
-  });
-  const emittedMutationReceiptIds=new Set<string>();
-  const mutationReceipts=mutationReceiptRows.filter((row:any)=>{
-    if(!validMutationReceipt(row)||emittedMutationReceiptIds.has(row.commandId))return false;
-    emittedMutationReceiptIds.add(row.commandId);
-    return true;
-  }).map((row:any)=>({
+  const mutationReceipts=mutationReceiptRows.filter(validMutationReceipt).map((row:any)=>({
     commandId:row.commandId,
     fingerprint:String(row.fingerprint).slice(0,64).toLowerCase(),
     action:String(row.action),
@@ -1018,7 +1006,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
     ...(typeof row.memoryId==='string'&&row.memoryId?{memoryId:row.memoryId}:{}),
     ...(typeof row.booleanValue==='boolean'?{booleanValue:row.booleanValue}:{}),
   }));
-  const mutationReceiptJournalCorrupt=rawMutationReceipts!==undefined&&(!Array.isArray(rawMutationReceipts)||rawMutationReceipts.length>512||mutationReceiptRows.some((row:any)=>!validMutationReceipt(row))||duplicateMutationReceiptId);
+  const mutationReceiptJournalCorrupt=rawMutationReceipts!==undefined&&(!Array.isArray(rawMutationReceipts)||rawMutationReceipts.length>512||mutationReceiptRows.some((row:any)=>!validMutationReceipt(row)));
   const retiredMutationReceiptBloomCorrupt = memoryFabricRaw.retiredMutationReceiptBloomCorrupt === true ||
     (rawRetiredMutationReceiptBloom!==undefined&&(typeof rawRetiredMutationReceiptBloom!=='string'||!retiredMutationReceiptBloomValid)) ||
     (Boolean(retiredMutationReceiptBloomRaw) && !retiredMutationReceiptBloomValid) ||
