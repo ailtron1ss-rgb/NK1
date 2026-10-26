@@ -321,50 +321,6 @@ export class P26TrueLearningEngine{
     };
   }
 
-  replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
-    const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
-    if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};
-    const holdout=usable.filter((_,i)=>(i+1)%4===0),train=usable.filter((_,i)=>(i+1)%4!==0);
-    const score=(rows:typeof usable)=>rows.length?rows.reduce((sum,r)=>sum+this.learner.predictFromFeatures(r.policyFeatures01!,r.action),0)/rows.length:0;
-    const baseline=score(holdout); let loss=0;
-    for(const r of train){
-      const next=Math.max(...this.learner.actionList().map(a=>this.learner.predictFromFeatures(r.policyFeatures01!,a)),.5);
-      const target=clamp(r.reward01+.78*next); const priority=clamp(r.replayPriority01??(.24*r.surprise01+.20*clamp(r.causalStrength01??.5)+.56*(r.learningQuality01??.5))); const weight=clamp((r.learningQuality01??.5)*(.45+.35*clamp(r.causalStrength01??.5)+.20*priority));
-      loss+=this.learner.trainFeatures({features:r.policyFeatures01!,action:r.action,target01:target,learningRate01:.022+clamp(r.surprise01)*.028+priority*.018,sampleWeight01:weight}).loss01;
-    }
-    const learned=score(holdout); this.state.metrics.replayUpdates+=train.length; this.state.metrics.recentLoss01=clamp(train.length?loss/train.length:0);
-    this.state.metrics.trainingExposure01=clamp(Math.min(1,this.learner.snapshot().updates/160));
-    // These in-memory split rows are useful diagnostics, not independent verified evidence.
-    this.state.metrics.holdoutBaseline01=baseline; this.state.metrics.holdoutLearned01=learned; this.state.metrics.holdoutDelta01=learned-baseline; this.state.metrics.lastUpdatedAt=Date.now(); this.sync();
-    return {updates:train.length,meanLoss01:train.length?loss/train.length:0,holdoutBaseline01:baseline,holdoutLearned01:learned,holdoutDelta01:learned-baseline};
-  }
-
-  recordVerifiedHoldout(evidence:{
-    evidenceId:string;taskId:string;protocolId:string;verifierId:string;sampleSetHash:string;
-    baseline01:number;learned01:number;verified:boolean;independent:boolean;
-  }):{accepted:boolean;reason?:string}{
-    if(!evidence||typeof evidence!=='object')return {accepted:false,reason:'invalid-holdout-evidence'};
-    if(evidence.verified!==true)return {accepted:false,reason:'holdout-evidence-not-verified'};
-    if(evidence.independent!==true)return {accepted:false,reason:'holdout-evidence-not-independent'};
-    for(const key of ['evidenceId','taskId','protocolId','verifierId','sampleSetHash'] as const){
-      if(typeof evidence[key]!=='string'||!evidence[key].trim())return {accepted:false,reason:'holdout-evidence-identity-invalid'};
-    }
-    for(const key of ['baseline01','learned01'] as const){
-      const value=evidence[key];
-      if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>1)return {accepted:false,reason:'holdout-score-out-of-range'};
-    }
-    if(this.state.verifiedHoldoutEvidenceIds.includes(evidence.evidenceId))return {accepted:false,reason:'duplicate-holdout-evidence'};
-    this.state.verifiedHoldoutEvidenceIds=[evidence.evidenceId,...this.state.verifiedHoldoutEvidenceIds].slice(0,4096);
-    this.state.metrics.independentHoldoutSamples=this.state.verifiedHoldoutEvidenceIds.length;
-    this.state.metrics.generalizationEvidence01=clamp(Math.min(1,this.state.metrics.independentHoldoutSamples/20));
-    this.state.metrics.holdoutBaseline01=evidence.baseline01;
-    this.state.metrics.holdoutLearned01=evidence.learned01;
-    this.state.metrics.holdoutDelta01=evidence.learned01-evidence.baseline01;
-    this.state.metrics.lastUpdatedAt=Date.now();
-    this.sync();
-    return {accepted:true};
-  }
-
   recordHoldout(baseline01:number,learned01:number){
     this.state.metrics.holdoutBaseline01=clamp(baseline01);this.state.metrics.holdoutLearned01=clamp(learned01);this.state.metrics.holdoutDelta01=learned01-baseline01;this.sync();
     return this.state.metrics.holdoutDelta01;

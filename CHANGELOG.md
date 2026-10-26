@@ -1,3 +1,11 @@
+## WorkPass351 — устранены повторные helper methods после P26 cherry-pick (2026-10-26)
+
+- Исправлена граница переноса `trainInterleaved`: из donor-блока удалены дублирующие реализации `replayCausalRecords` и `recordVerifiedHoldout`; оригинальные версии, уже присутствовавшие в NK1, сохранены.
+- В runtime остаётся ровно по одной реализации `trainInterleaved`, `replayCausalRecords`, `recordVerifiedHoldout` и `recordHoldout`.
+- TypeScript сообщил о дублированных методах на предыдущем exact HEAD; после исправления требуется новый runtime typecheck и последовательный benchmark.
+
+---
+
 ## WorkPass350 — ActionGateway receipt restore regression включён в CI (2026-10-26)
 
 - Добавлен end-to-end regression с четырьмя повреждёнными receipt (execution ID mismatch, противоречивое verification, несогласованный audit outcome, oversized payload) и валидным idempotent replay.
