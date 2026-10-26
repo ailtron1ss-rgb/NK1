@@ -1,3 +1,13 @@
+## WorkPass343 — reconcile future cognitive-substrate sidecar ticks (2026-10-26)
+
+- **Defect:** a restored sidecar could contain a valid but future `lastTick`, including `Number.MAX_SAFE_INTEGER`. Because runtime used `Math.max(coreTick, sidecarTick + 1)`, the derived projection's clock kept moving ahead of the canonical Core clock and eventually supplied an unsafe tick to `integrate()`, preventing future integration.
+- **Fix:** added `UnifiedCognitiveSubstrate.reconcileLastTick(canonicalCoreTick)` and wired it into `OrganismRuntime.init()` after sidecar restore. If the sidecar is ahead of the durable Core tick, only its clock is re-anchored; cognitive metrics and cycle count are preserved. Invalid canonical ticks fail closed and the existing derived-state recovery path handles the failure.
+- **Regression:** unified-substrate runtime-wiring test restores `Number.MAX_SAFE_INTEGER`, reconciles to Core tick 7, checks other fields stay intact, checks invalid input is non-mutating, and verifies the next integration tick 8 succeeds. Runtime source contract checks startup wiring and warning event.
+- **Validation:** code and regression committed. The previous combined CI passed on code/test head `621864d0d7f2676245383adab86f1dcc6d0f741f`; WorkPass343's newer code/test HEAD still requires its own exact-head CI result.
+- **Checkpoint:** `docs/WORKPASS343_SUBSTRATE_TICK_RECONCILIATION_RU.md`.
+
+---
+
 ## WorkPass342 — bound CPU research probe deadlines (2026-10-26)
 
 - Made the smoke runner's HTTP request deadline configurable, validated as a finite safe integer no greater than 240 seconds.
