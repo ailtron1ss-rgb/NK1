@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** workpass364-event-fabric-append-ingress  
 **База:** WorkPass363 head 9b507034237c9366b9842829adcd58fbbfdd0494  
-**Статус:** первый runtime typecheck поймал TS2322 в сужении типа event ID — исправлено (`f6a15d15ddc3a40263d758c160567cf746652ada`). Следующий canonical-kernel запуск выявил совместимый legacy-контракт top-level payload accessors — исправлено в 5427e299302f24b413e260537a3c1031e3fa9aee. Нужна свежая проверка exact-head.
+**Статус:** первый runtime typecheck поймал TS2322 в сужении типа event ID — исправлено (`f6a15d15ddc3a40263d758c160567cf746652ada`). Canonical-kernel затем обнаружил, что legacy top-level payload accessor compatibility была ошибочно изменена в restore; исправлено правильное место append в 6e925824e07c9bf9d4e5127f308eecdf72b7fe89. Exact-head CI должен перепройти.
 
 ## Найденный разрыв
 
