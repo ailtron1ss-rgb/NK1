@@ -1,3 +1,14 @@
+## WorkPass335 — каноническая кодировка подписей Ed25519 — 2026-10-26
+
+- **Runtime fix:** promotion и rollback approval verifier теперь проверяют detached Ed25519 signature как канонический Base64, представляющий ровно 64 байта: фиксированная длина, строгий алфавит, ожидаемый padding и round-trip декодирование/кодирование без изменения строки.
+- **Защищённые границы:** проверка включена в оба пути — первичное продвижение skill и авторизованный откат. Неканоническое значение отвергается до вызова криптографического verifier; default-deny, независимая оценка, подпись evidence и ручное одобрение остаются обязательными.
+- **Regression:** расширен `p23-versioned-skill-candidate-store.mjs`: canonical promotion/rollback signature остаётся допустимой; мусорный суффикс, ведущий пробел и обрезанное значение для promotion отклоняются, мусорный суффикс для rollback отклоняется.
+- **Branch integration:** изменение перенесено выборочно из изолированной security-ветки в актуальную линию WorkPass334; не заменены целиком более новые файлы learning/runtime из старой sibling-ветки.
+
+**Validation status:** код и regression committed в `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r1`. Точный P23 test, TypeScript runtime typecheck и связанные CI jobs ещё не подтверждены на этом HEAD. Этот фикс усиливает целостность формата подписи, но сам по себе не подтверждает независимость evaluator, полевое улучшение обучения или production readiness.
+
+---
+
 ## WorkPass334 — общий deadline независимой оценки навыка (2026-10-26)
 
 - **Runtime:** `IndependentSkillCandidateEvaluator` теперь ограничивает не только каждый вызов sandbox/verifier/safety scanner, но и весь прогон validation + holdout одним wall-clock budget. Настройка `evaluationTimeoutMs`: default 300000 ms, допустимо 10–1800000 ms; существующий `serviceTimeoutMs` остаётся отдельным локальным пределом.
