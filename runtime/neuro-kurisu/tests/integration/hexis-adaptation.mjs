@@ -289,6 +289,20 @@ assert.equal(normalizeHmxV17Memory(validHmx.sections.memories[0], {
   sourceSubjectId: validHmx.source.hexis_lineage_id,
 }), null, 'non-string export IDs must not be coerced to bind a memory reference');
 
+assert.equal(normalizeHmxV17Memory(validHmx.sections.memories[0], {
+  exportId: validHmx.export_id,
+  sourceSubjectId: 's'.repeat(181),
+}), null, 'normalizer sourceSubjectId must obey the 180-character cap');
+
+assert.equal(normalizeHmxV17Memory(validHmx.sections.memories[0], {
+  exportId: validHmx.export_id,
+  exportedAt: 'x'.repeat(65),
+}), null, 'normalizer exportedAt must be bounded before date parsing');
+assert.equal(normalizeHmxV17Memory(validHmx.sections.memories[0], {
+  exportId: validHmx.export_id,
+  exportedAt: 'not-a-date',
+}), null, 'normalizer exportedAt must be an ISO date-time when supplied');
+
 
 
 const malformedAuthorityHmx = {
