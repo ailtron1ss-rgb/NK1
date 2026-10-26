@@ -28,7 +28,11 @@ const hmxOutcomeIsExplicit =
   hexisUi.includes('Do not retry this stage') &&
   hexisUi.includes('receipt.status === "pending"') &&
   hexisUi.includes('onClick={() => void acceptHmxStage()}');
-const result={ok:missing.length===0&&unused.length===0&&hmxOutcomeIsExplicit,apiRoutes:unique.length,missingServerRoutes:missing,methodUsage,unusedUiMethods:unused,hmxTerminalOutcomeIsExplicit:hmxOutcomeIsExplicit,interfaceComponent:existsSync(path.join(app,'src/components/IntegrationConsole.tsx'))&&existsSync(path.join(app,'src/components/HexisControlConsole.tsx'))&&existsSync(path.join(app,'src/components/RuntimeAtlas.tsx'))&&existsSync(path.join(app,'src/components/LettaGovernanceConsole.tsx'))&&existsSync(path.join(app,'src/components/ConscioControlConsole.tsx')),lettaMethods,conscioMethods,hexisMethods,atlasMethods,checkedAt:new Date().toISOString()};
+const operationResultSurvivesRefreshFailure =
+  hexisUi.includes('catch (refreshError)') &&
+  hexisUi.includes('action completed; refresh failed:') &&
+  hexisUi.includes('return result;');
+const result={ok:missing.length===0&&unused.length===0&&hmxOutcomeIsExplicit&&operationResultSurvivesRefreshFailure,apiRoutes:unique.length,missingServerRoutes:missing,methodUsage,unusedUiMethods:unused,hmxTerminalOutcomeIsExplicit:hmxOutcomeIsExplicit,operationResultSurvivesRefreshFailure,interfaceComponent:existsSync(path.join(app,'src/components/IntegrationConsole.tsx'))&&existsSync(path.join(app,'src/components/HexisControlConsole.tsx'))&&existsSync(path.join(app,'src/components/RuntimeAtlas.tsx'))&&existsSync(path.join(app,'src/components/LettaGovernanceConsole.tsx'))&&existsSync(path.join(app,'src/components/ConscioControlConsole.tsx')),lettaMethods,conscioMethods,hexisMethods,atlasMethods,checkedAt:new Date().toISOString()};
 await import('node:fs/promises').then(fs=>fs.writeFile(path.join(root,'INTERFACE_FUNCTION_MATRIX_2026-10-08.json'),JSON.stringify(result,null,2)+'\n'));
 console.log(JSON.stringify(result,null,2));
 if(!result.ok) process.exitCode=1;
