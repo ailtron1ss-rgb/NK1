@@ -1,8 +1,15 @@
 import { spawn } from 'node:child_process';
-import { mkdirSync, resolve } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+import {
+  PROJECT_ROOT as ROOT,
+  RUNTIME_SERVER_PATH,
+  SUPER_STATE_DIRECTORY as stateDir,
+} from './super-paths.mjs';
 
-const ROOT = resolve(new URL('..', import.meta.url).pathname);
-const stateDir = resolve(ROOT, '.super-state');
+if (!existsSync(RUNTIME_SERVER_PATH)) {
+  throw new Error('NeuroCore runtime server entrypoint missing: ' + RUNTIME_SERVER_PATH);
+}
 mkdirSync(stateDir, { recursive: true });
 
 const children = [];
@@ -19,7 +26,7 @@ const launch = (label, command, args, env = {}) => {
   return child;
 };
 
-launch('neuro-kurisu', 'node', ['--experimental-strip-types', 'src/server/server.mjs'], {
+launch('neuro-kurisu', 'node', ['--experimental-strip-types', RUNTIME_SERVER_PATH], {
   PORT: '3310', HOST: '127.0.0.1', STATE_DIR: resolve(stateDir, 'organism'), NODE_ENV: 'production'
 });
 launch('research-bridge', 'python3', ['research/research_bridge.py'], { RESEARCH_PORT: '8765' });
