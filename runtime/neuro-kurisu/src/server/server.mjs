@@ -1094,7 +1094,11 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const result = runtime.core.hexisReclaimOutbox(Math.max(1000, Math.min(86400000, Number(input.maxAgeMs || 60000))));
+            const requestedMaxAgeMs = input.maxAgeMs === undefined ? 60000 : input.maxAgeMs;
+            if (typeof requestedMaxAgeMs !== 'number' || !Number.isFinite(requestedMaxAgeMs)) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-outbox-reclaim-age' });
+            }
+            const result = runtime.core.hexisReclaimOutbox(Math.max(1000, Math.min(86400000, requestedMaxAgeMs)));
             await runtime.core.flush();
             return json(res, 200, { ok: true, ...result });
         }
@@ -1174,8 +1178,33 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const requested = ['local', 'sandbox', 'remote', 'companion'].includes(String(input.requestedPlacement)) ? String(input.requestedPlacement) : undefined;
-            const result = runtime.core.hexisPlanExecution({ actionKind: String(input.actionKind || 'tool.execute'), requestedPlacement: requested, risk01: Number(input.risk01 || 0), rationale: input.rationale ? String(input.rationale) : undefined, requiresApproval: input.requiresApproval === undefined ? undefined : Boolean(input.requiresApproval) });
+            if (input.actionKind !== undefined &&
+                (typeof input.actionKind !== 'string' || !input.actionKind.trim() || input.actionKind.length > 128)) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-execution-action' });
+            }
+            if (input.requestedPlacement !== undefined &&
+                !['local', 'sandbox', 'remote', 'companion'].includes(input.requestedPlacement)) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-execution-placement' });
+            }
+            if (input.risk01 !== undefined &&
+                (typeof input.risk01 !== 'number' || !Number.isFinite(input.risk01) || input.risk01 < 0 || input.risk01 > 1)) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-execution-risk' });
+            }
+            if (input.requiresApproval !== undefined && typeof input.requiresApproval !== 'boolean') {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-execution-approval' });
+            }
+            if (input.rationale !== undefined &&
+                (typeof input.rationale !== 'string' || input.rationale.length > 1000)) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-execution-rationale' });
+            }
+            const requested = input.requestedPlacement;
+            const result = runtime.core.hexisPlanExecution({
+                actionKind: input.actionKind ?? 'tool.execute',
+                requestedPlacement: requested,
+                risk01: input.risk01 ?? 0,
+                rationale: input.rationale,
+                requiresApproval: input.requiresApproval,
+            });
             await runtime.core.flush();
             return json(res, 200, { ok: true, plan: result });
         }
