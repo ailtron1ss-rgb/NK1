@@ -252,6 +252,47 @@ assert.equal(conflictRestoredFabric.getHmxStage(conflictStage.stagingId)?.status
 assert.equal(conflictRestoredFabric.decideHmx(conflictStage.stagingId, 'accept')?.status, 'staged',
   'a validly digested stage with source-validation conflicts remains available for review');
 
+// If the process stopped after HMX acceptance but before the import receipt was
+// persisted, restore must terminally quarantine the result instead of replaying
+// an accepted stage whose canonical-memory side effects are not known.
+const interruptedFabric = new HexisAdaptationFabric();
+const interruptedStage = interruptedFabric.stageHmx({
+  document: validHmx,
+  intent: 'telepathy',
+  strategy: 'additive',
+});
+assert.equal(interruptedStage.conflicts.length, 0);
+assert.equal(interruptedFabric.decideHmx(interruptedStage.stagingId, 'accept')?.status, 'accepted');
+assert.equal(interruptedFabric.getHmxStage(interruptedStage.stagingId)?.importResult?.status, 'pending');
+const interruptedSnapshot = interruptedFabric.snapshot();
+const restoredInterruptedFabric = new HexisAdaptationFabric();
+restoredInterruptedFabric.restore(interruptedSnapshot);
+const restoredInterruptedStage = restoredInterruptedFabric.getHmxStage(interruptedStage.stagingId);
+assert.equal(restoredInterruptedStage?.status, 'accepted',
+  'the operator acceptance decision remains recorded');
+assert.equal(restoredInterruptedStage?.importResult?.status, 'uncertain',
+  'accepted+pending must be terminally uncertain after restore, never automatically retried');
+assert.equal(restoredInterruptedStage?.importResult?.skipped, restoredInterruptedStage?.sectionCounts.memories,
+  'the uncertain receipt conservatively accounts for every source row without claiming a success');
+assert.equal(restoredInterruptedStage?.importResult?.reason, 'accepted-stage-import-interrupted-after-restore');
+assert.equal(restoredInterruptedFabric.decideHmx(interruptedStage.stagingId, 'accept')?.importResult?.status, 'uncertain',
+  'a repeated accept cannot turn an interrupted restore into a new import attempt');
+
+// Tampering with an accepted stage before restore is also surfaced for review;
+// it must not re-enable import merely because a new receipt was synthesized.
+const interruptedTamperedSnapshot = interruptedFabric.snapshot();
+const interruptedTampered = interruptedTamperedSnapshot.hmxStages.find(row => row.stagingId === interruptedStage.stagingId);
+assert.ok(interruptedTampered);
+interruptedTampered.stagedSections.memories[0].content = 'Mutated during an interrupted HMX import.';
+const restoredTamperedInterruptedFabric = new HexisAdaptationFabric();
+restoredTamperedInterruptedFabric.restore(interruptedTamperedSnapshot);
+const restoredTamperedInterrupted = restoredTamperedInterruptedFabric.getHmxStage(interruptedStage.stagingId);
+assert.equal(restoredTamperedInterrupted?.importResult?.status, 'uncertain');
+assert(restoredTamperedInterrupted?.conflicts.some(issue =>
+  issue.kind === 'persisted-stage-integrity-failure'));
+assert.equal(restoredTamperedInterruptedFabric.decideHmx(interruptedStage.stagingId, 'accept')?.importResult?.status, 'uncertain');
+
+
 // Untrusted section names must not mutate the prototypes of stage diagnostics.
 const protoKeyHmx = structuredClone(validHmx);
 Object.defineProperty(protoKeyHmx.sections, '__proto__', {
