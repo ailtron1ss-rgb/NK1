@@ -121,8 +121,8 @@ const experience = (energy, novelty, action, reward, worldContextVersion=1) => (
   assert.equal(result.replayUpdates, 1);
   assert.equal(result.contextSeparatedReplayRows, 1,
     'only a context-separated row with enough distant neighbors should receive the replay-rate uplift');
-  assert.ok(Math.abs(result.contextSeparatedReplayLearningRate01 - 0.036) < 1e-12,
-    'context-separated replay gets only a bounded uplift, not the full current-step rate');
+  assert.ok(Math.abs(result.contextSeparatedReplayLearningRate01 - 0.018) < 1e-12,
+    'context separation alone must not bypass the dense-replay cadence cap');
   assert.equal(result.blockedReplayRows, 0);
 }
 
