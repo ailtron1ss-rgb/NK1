@@ -55,3 +55,8 @@
 ## Ограничения обхода
 
 Этот проход сравнил recursive Git trees и blob SHA по текущим branch heads, проверил пути/манифесты/workflow linkage и прочитал проблемные источники/тесты, которые воспроизводились в CI. Поскольку активные ветки продолжали получать pushes во время чтения, это не заменяет повторное сравнение непосредственно перед merge. Дерево не читает все строки каждого из ~9,600 файлов одновременно; для полного семантического source review нужен последовательный послойный проход по runtime modules с CI для каждого exact head.
+
+
+## Follow-up found during continued route validation (2026-10-26)
+
+The updated `workpass97-autonomous-planner-gateway-route.mjs` failure exposed a real regression in the current PR140 runtime, not just a brittle test: the project-execution path called `cognitiveRuntime.actionGateway.executeTool` directly and recovered receipts through `cognitiveRuntime.actionGateway.reconcileToolExecution`. The validated r3 tree uses `OrganismCore.executeTool` and `OrganismCore.reconcileToolExecution` instead. Both current-branch call sites have now been routed through the canonical Core wrappers in commit `94460f8740cddb0eaadf7a983f534ab3ad2ab4b0`; exact-head CI is pending. This route matters because Core owns alias normalization and finalization for unkeyed tool outcomes.
