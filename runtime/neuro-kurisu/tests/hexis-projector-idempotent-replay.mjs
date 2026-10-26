@@ -105,6 +105,37 @@ assert.throws(
 assert.equal(writes, 0);
 
 // WorkPass428: the exported receipt validator is a trust boundary, not only a digest check.
+const coherentAppliedStage = {
+  ...stage,
+  status: 'applied',
+  stagingId: 'stage-coherent-non-noop',
+  digest: '',
+  lifecycleDigest: '',
+  applicationAttempts: 1,
+  application: undefined,
+  stagedSections: {
+    memories: [{ ref: stage.exportId + ':mem-1', type: 'semantic', content: 'valid staged memory' }],
+  },
+};
+coherentAppliedStage.digest = computeHmxStageDigest(coherentAppliedStage);
+const coherentAppliedReceipt = makeReceipt({
+  stageId: coherentAppliedStage.stagingId,
+  stageDigest: coherentAppliedStage.digest,
+  status: 'applied',
+  complete: true,
+  candidateMemoryRecords: 1,
+  uniqueMemoryRecords: 1,
+  importedCount: 1,
+  deduplicatedCount: 0,
+  memoryIds: ['memory-1'],
+  createdMemoryIds: ['memory-1'],
+});
+coherentAppliedStage.application = coherentAppliedReceipt;
+refreshHmxStageLifecycleDigest(coherentAppliedStage);
+assert.equal(isValidHmxApplyReceipt(coherentAppliedStage, coherentAppliedReceipt), true,
+  'a semantically coherent applied receipt must remain valid');
+assert.deepEqual(projector.apply(coherentAppliedStage), coherentAppliedReceipt,
+  'a valid applied receipt replays without accessing canonical storage');
 const impossibleBase = {
   stageDigest: coherentAppliedStage.digest,
   status: 'applied',
