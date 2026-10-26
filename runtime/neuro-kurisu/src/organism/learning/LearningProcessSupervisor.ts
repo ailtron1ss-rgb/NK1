@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export interface LearningProcessRun {
@@ -70,6 +70,62 @@ function nonEmpty(value: unknown): value is string {
 }
 function safeInteger(value: unknown, minimum: number, maximum: number): value is number {
   return Number.isSafeInteger(value) && Number(value) >= minimum && Number(value) <= maximum;
+}
+
+interface PrivateStorageDirectory {
+  path: string;
+  identity: string;
+}
+
+function normalizedPath(value: string): string {
+  const resolved = path.resolve(value);
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
+
+function areStoragePathsDisjoint(left: string, right: string): boolean {
+  const a = normalizedPath(left);
+  const b = normalizedPath(right);
+  return a !== b && !a.startsWith(b + path.sep) && !b.startsWith(a + path.sep);
+}
+
+async function preparePrivateStorageDirectory(
+  configuredPath: string,
+  label: 'run-root' | 'survive-root',
+): Promise<PrivateStorageDirectory> {
+  const requestedPath = path.resolve(configuredPath);
+  await mkdir(requestedPath, { recursive: true, mode: 0o700 });
+  const entry = await lstat(requestedPath);
+  if (entry.isSymbolicLink() || !entry.isDirectory()) {
+    throw new Error('learning-process-' + label + '-must-be-a-real-directory');
+  }
+  const canonicalPath = await realpath(requestedPath);
+  const actual = await stat(canonicalPath);
+  if (!actual.isDirectory() || actual.dev !== entry.dev || actual.ino !== entry.ino) {
+    throw new Error('learning-process-' + label + '-identity-changed-during-resolution');
+  }
+  if (process.platform !== 'win32' && (actual.mode & 0o077) !== 0) {
+    throw new Error('learning-process-' + label + '-permissions-must-be-private');
+  }
+
+  // A private directory is still replaceable if its immediate parent is
+  // group/world-writable without the sticky bit. Do not treat chmod(0700) on
+  // the child as sufficient protection against replacement of the path entry.
+  const parentPath = path.dirname(canonicalPath);
+  const parent = await stat(parentPath);
+  if (!parent.isDirectory()) {
+    throw new Error('learning-process-' + label + '-parent-must-be-directory');
+  }
+  if (process.platform !== 'win32' &&
+      (parent.mode & 0o022) !== 0 &&
+      (parent.mode & 0o1000) === 0) {
+    throw new Error('learning-process-' + label + '-parent-must-not-be-group-or-world-writable');
+  }
+  return {
+    path: canonicalPath,
+    identity: process.platform === 'win32'
+      ? canonicalPath.toLowerCase()
+      : String(actual.dev) + ':' + String(actual.ino),
+  };
 }
 
 /**
@@ -149,12 +205,24 @@ export async function runLearningProcess(
     if (!/^[A-Z_][A-Z0-9_]*$/i.test(key) || typeof value !== 'string') throw new Error('invalid environment entry');
   }
 
+  const configuredRunRoot = path.resolve(command.runRoot);
+  const configuredSurviveRoot = path.resolve(command.surviveDir);
+  if (!areStoragePathsDisjoint(configuredRunRoot, configuredSurviveRoot)) {
+    throw new Error('learning-process-storage-roots-must-be-disjoint');
+  }
+  const [runStorage, surviveStorage] = await Promise.all([
+    preparePrivateStorageDirectory(configuredRunRoot, 'run-root'),
+    preparePrivateStorageDirectory(configuredSurviveRoot, 'survive-root'),
+  ]);
+  if (!areStoragePathsDisjoint(runStorage.path, surviveStorage.path) ||
+      runStorage.identity === surviveStorage.identity) {
+    throw new Error('learning-process-storage-roots-must-be-disjoint');
+  }
+
   const executionId = randomUUID();
   const startedAt = Date.now();
-  await mkdir(path.resolve(command.runRoot), { recursive: true });
-  await mkdir(path.resolve(command.surviveDir), { recursive: true });
-  const runDirectory = await mkdtemp(path.join(path.resolve(command.runRoot), 'nk1-learning-'));
-  const surviveDirectory = path.resolve(command.surviveDir);
+  const runDirectory = await mkdtemp(path.join(runStorage.path, 'nk1-learning-'));
+  const surviveDirectory = surviveStorage.path;
   const env: NodeJS.ProcessEnv = {};
   for (const key of inheritedEnvironment) {
     const value = process.env[key];
@@ -199,6 +267,10 @@ export async function runLearningProcess(
     executable: command.executable,
     args: command.args,
     cwd: workingDirectory,
+    runRoot: runStorage.path,
+    runRootIdentity: runStorage.identity,
+    surviveDirectory: surviveStorage.path,
+    surviveDirectoryIdentity: surviveStorage.identity,
     inheritedEnv: inheritedEnvKeys.map(key => [key, env[key] ?? null]),
     explicitEnv: explicitEnvKeys.map(key => [key, env[key] ?? null]),
   }));
@@ -316,7 +388,7 @@ export async function runLearningProcess(
       'A child can access paths permitted by the host OS; the survive directory is not tamper-proof.',
     ],
   };
-  const receiptDirectory = path.join(path.resolve(command.runRoot), 'receipts');
+  const receiptDirectory = path.join(runStorage.path, 'receipts');
   await mkdir(receiptDirectory, { recursive: true });
   const receiptPath = path.join(receiptDirectory, `${executionId}.json`);
   const temporaryPath = `${receiptPath}.tmp`;
