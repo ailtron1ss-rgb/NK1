@@ -675,5 +675,93 @@ appendRestore.restore(appendBoundaryFabric.snapshot());
 assert.equal(appendRestore.getById(appendBaseline.id)?.payload.stable.value,1,
   'a valid appended event must survive the strict restore projection');
 console.log('WorkPass364 event-fabric append ingress: PASS');
+
+// WorkPass365: strict tool-receipt projection, durable fingerprint binding and atomic writes.
+const receiptFabric = new CognitiveEventFabric(128);
+const receiptDecision = receiptFabric.append({
+  id:'receipt-test:decision',tick:10,at:1000,stage:'action',source:'receipt-test',
+  parentIds:[],external:false,confidence01:0.8,payload:{intent:'test'},
+});
+const receiptInput = {
+  tick:11,executionId:'receipt-test:execution-1',toolId:'test-tool',decisionId:receiptDecision.id,
+  ok:true,verified:true,outcomeClass:'success',confidence01:0.8,verificationBasis:'independent-check',
+  externalObservation:true,observationId:'receipt-test:observation-1',
+  expectedPostcondition:'  VALUE = 2  ',observedPostcondition:'Value = 2',
+  observationIntegrated:true,at:1100,
+};
+const receiptTrace = receiptFabric.appendToolReceiptTrace(receiptInput);
+assert.equal(receiptTrace.replayed,false);
+assert.equal(receiptFabric.snapshot().total,4,'one receipt projection must append exactly three causal nodes');
+const receiptEvidence = receiptFabric.getById(receiptTrace.evidenceEventId);
+assert.equal(typeof receiptEvidence?.payload.projectionHash,'string','receipt fingerprint must be stored in the evidence node');
+assert.match(receiptEvidence.payload.projectionHash,/^[a-f0-9]{64}$/);
+assert.equal(typeof receiptEvidence.payload.expectedPostconditionHash,'string');
+assert.equal(receiptEvidence.payload.expectedPostconditionHash,receiptEvidence.payload.observedPostconditionHash,
+  'canonicalized postcondition hashes must be deterministic and locale-independent');
+const firstReceiptSnapshot = receiptFabric.snapshot();
+const receiptReplay = receiptFabric.appendToolReceiptTrace(receiptInput);
+assert.equal(receiptReplay.replayed,true);
+assert.equal(receiptReplay.actionEventId,receiptTrace.actionEventId);
+assert.equal(receiptFabric.snapshot().total,firstReceiptSnapshot.total,'receipt replay must not append duplicate events');
+const receiptRestored = new CognitiveEventFabric(128);
+receiptRestored.restore(firstReceiptSnapshot);
+const restoredReceiptReplay = receiptRestored.appendToolReceiptTrace(receiptInput);
+assert.equal(restoredReceiptReplay.replayed,true,'the receipt fingerprint and causal links must survive restart restore');
+assert.equal(restoredReceiptReplay.evidenceEventId,receiptTrace.evidenceEventId);
+
+const tamperedReceiptSnapshot = receiptFabric.snapshot();
+tamperedReceiptSnapshot.receiptProjectionIndex[0].projectionHash='f'.repeat(64);
+const tamperedReceiptRestore = new CognitiveEventFabric(128);
+tamperedReceiptRestore.restore(tamperedReceiptSnapshot);
+assert.equal(tamperedReceiptRestore.hasToolReceiptTrace(receiptInput.executionId),false,
+  'a receipt index whose hash conflicts with its three causal event hashes must not be restored');
+const tamperedEvidenceSnapshot = receiptFabric.snapshot();
+const tamperedEvidenceNode = tamperedEvidenceSnapshot.recent.find(event=>event.id===receiptTrace.evidenceEventId);
+assert.ok(tamperedEvidenceNode);
+tamperedEvidenceNode.payload.projectionHash='e'.repeat(64);
+const tamperedEvidenceRestore = new CognitiveEventFabric(128);
+tamperedEvidenceRestore.restore(tamperedEvidenceSnapshot);
+assert.equal(tamperedEvidenceRestore.hasToolReceiptTrace(receiptInput.executionId),false,
+  'tampering with an event-bound receipt fingerprint must invalidate the replay index');
+
+const receiptNoMutationFabric = new CognitiveEventFabric(128);
+receiptNoMutationFabric.append({id:'receipt-test:anchor',tick:20,at:2000,stage:'action',source:'receipt-test',parentIds:[],payload:{anchor:true}});
+const receiptNoMutationBefore = receiptNoMutationFabric.snapshot();
+const invalidReceiptCases = [
+  {patch:{tick:20.5},pattern:/tool-receipt-tick-invalid/,label:'fractional receipt ticks must be rejected'},
+  {patch:{executionId:' receipt-test:bad-id '},pattern:/tool-receipt-execution-id-invalid/,label:'receipt IDs must be canonical without trim/truncate aliasing'},
+  {patch:{ok:'false'},pattern:/tool-receipt-ok-must-be-boolean/,label:'string false must not become a successful action receipt'},
+  {patch:{verified:0},pattern:/tool-receipt-verified-must-be-boolean/,label:'numeric verification flags must not become booleans'},
+  {patch:{externalObservation:'false'},pattern:/tool-receipt-external-observation-must-be-boolean/,label:'string external flags must not become true'},
+  {patch:{observationIntegrated:'false'},pattern:/tool-receipt-observation-integrated-must-be-boolean/,label:'string integration flags must not be accepted'},
+  {patch:{confidence01:1.01},pattern:/tool-receipt-confidence-invalid/,label:'out-of-range confidence must fail rather than clamp'},
+  {patch:{at:-1},pattern:/tool-receipt-timestamp-invalid/,label:'negative receipt timestamp must fail before writes'},
+  {patch:{expectedPostcondition:7},pattern:/tool-receipt-expected-postcondition-invalid/,label:'non-string postconditions must be rejected'},
+  {patch:{decisionId:'receipt-test:missing-anchor'},pattern:/tool-receipt-decision-anchor-not-found/,label:'a declared decision link must resolve before receipt projection'},
+];
+for(const item of invalidReceiptCases) {
+  assert.throws(()=>receiptNoMutationFabric.appendToolReceiptTrace({...receiptInput,...item.patch}),item.pattern,item.label);
+  assert.deepEqual(receiptNoMutationFabric.snapshot(),receiptNoMutationBefore,item.label+'; failed receipt projection must not mutate the ledger');
+}
+const accessorReceiptInput={...receiptInput,executionId:'receipt-test:accessor'};
+let receiptGetterExecuted=false;
+Object.defineProperty(accessorReceiptInput,'ok',{enumerable:true,get(){receiptGetterExecuted=true;throw new Error('receipt getter must not run');}});
+assert.throws(()=>receiptNoMutationFabric.appendToolReceiptTrace(accessorReceiptInput),/tool-receipt-input-field-accessor:ok/);
+assert.equal(receiptGetterExecuted,false,'receipt input accessors must not be evaluated');
+
+const atomicReceiptFabric = new CognitiveEventFabric(128);
+const atomicReceiptBefore = atomicReceiptFabric.snapshot();
+const originalAtomicAppend=atomicReceiptFabric.append.bind(atomicReceiptFabric);
+let atomicAppendCalls=0;
+atomicReceiptFabric.append=(eventInput)=>{
+  atomicAppendCalls+=1;
+  if(atomicAppendCalls===2)throw new Error('injected-receipt-middle-write-failure');
+  return originalAtomicAppend(eventInput);
+};
+assert.throws(()=>atomicReceiptFabric.appendToolReceiptTrace({...receiptInput,executionId:'receipt-test:atomic-failure',decisionId:undefined}),/injected-receipt-middle-write-failure/);
+atomicReceiptFabric.append=originalAtomicAppend;
+assert.deepEqual(atomicReceiptFabric.snapshot(),atomicReceiptBefore,
+  'if a receipt trace fails mid-write, events, total and replay index must roll back atomically');
+console.log('WorkPass365 receipt projection fingerprint and atomicity: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 

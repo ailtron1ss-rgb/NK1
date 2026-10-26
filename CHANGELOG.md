@@ -1,3 +1,16 @@
+# WorkPass365 — atomic tool-receipt projection and fingerprint binding (2026-10-26)
+
+- [HARDENED] Snapshot receipt inputs through own data descriptors; reject accessor-backed fields, unsafe ticks/timestamps, non-boolean evidence flags, invalid confidence and non-canonical identity strings before mutation.
+- [FIXED] Stop coercing strings such as `"false"` into positive receipt evidence; exact typed booleans are required.
+- [INTEGRITY] Bind the immutable projection hash to action, outcome and evidence nodes; store normalized expected/observed postcondition hashes on the evidence node.
+- [RESTORE] Reconstruct the receipt replay index only when new event-bound hashes agree; retain legacy pre-WorkPass365 snapshots whose event payloads lack the hash fields.
+- [ATOMICITY] Roll back all three causal appends, count changes and replay-index edits if the receipt trace cannot complete.
+- [REGRESSION] Add direct tests for malformed receipts, accessor safety, deterministic postcondition hashes, exact replay after restore, hash tampering and injected middle-write failure.
+- [VALIDATION] Exact-head CI is required; this entry records implementation, not a test PASS.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass364 — non-coercive CognitiveEventFabric append boundary (2026-10-26)
 
 - [CI-DRIVEN CORRECTION] Follow-up log review showed the compatibility adjustment first matched the same clone line in `restore()` instead of `append()`. The current patch restores strict nested-payload decoding there and applies top-level accessor omission to `append()` specifically; this exact source SHA requires fresh validation.
