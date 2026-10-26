@@ -260,6 +260,22 @@ try {
   const afterRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
   assert.equal(afterRestart.snapshot().candidates[0].candidateId, durableCandidate.candidateId,
     'atomic file adapter restores candidate state across store reconstruction');
+  const durableProvenanceCandidate = durableStore.stageCandidate(
+    proposal('i'), 'file-backed-provenance-skill', { instruction: 'persisted with revision provenance' },
+    {
+      schemaVersion: 1,
+      evaluationFingerprint: 'a'.repeat(64),
+      sourceCandidateId: null,
+      planFingerprint: 'b'.repeat(64),
+      datasetFingerprint: 'c'.repeat(64),
+      sourceEvidenceFingerprint: 'd'.repeat(64),
+      dimensions: ['task-success', 'executability'],
+      createdAt: Date.now(),
+    },
+  );
+  const afterProvenanceRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
+  assert.equal(afterProvenanceRestart.snapshot().candidates.some(item => item.candidateId === durableProvenanceCandidate.candidateId), true,
+    'atomic file validator uses the same candidate-ID tuple when revision provenance is present');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
 } finally {
