@@ -1,3 +1,14 @@
+# WorkPass367 — verify trusted receipt lineage before promotion (2026-10-26)
+
+- [HARDENED] `hasToolReceiptTrace()` no longer treats three stage names as sufficient evidence: it checks canonical lookup identity, same execution ID/tool, valid causal parent edges, typed outcome/evidence metadata and the event-bound projection fingerprint.
+- [FIXED] Reject whitespace/aliased or non-string execution IDs instead of trimming/stringifying them into an existing receipt lookup key.
+- [INTEGRITY] For current receipt records, require all three SHA-256 fingerprints to agree with the replay index and verify postcondition digest shape; legacy traces without event-bound hashes remain supported.
+- [REGRESSION] Add tests for normal/restore lineage, wrong parent edges despite matching stage/IDs, aliased lookup keys and tampered replay-index fingerprint.
+- [VALIDATION] Exact-head TypeScript and canonical-kernel/metrics workflows are required; no PASS is claimed until hosted CI reports it.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass366 — strict provider revision and external evidence ingress (2026-10-26)
 
 - [REGRESSION] Extend snapshot isolation coverage to nested `receiptRevisions` and `externalObservations` refs: tampering their exported fingerprints must not affect either live idempotency guard.
