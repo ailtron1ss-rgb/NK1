@@ -354,9 +354,37 @@ export class HexisAdaptationFabric {
         sectionCounts[name] = Array.isArray(records) ? records.length : 1;
         stagedSections[name] = Array.isArray(records) ? structuredClone(records.slice(0, 64)) : structuredClone(records);
     } const base = { exportId: String(document.export_id ?? randomUUID()), intent: input.intent, strategy: input.strategy, sourceSubjectId: document.source_subject_id ? String(document.source_subject_id) : undefined, sectionCounts, protectedSections: names.filter((name) => protectedSections.has(name)), conflicts, stagedSections }; const stage: HexisHmxStage = { ...base, stagingId: randomUUID(), status: 'staged', createdAt: nowMs(), digest: digest(base) }; this.state.hmxStages.push(stage); this.state.hmxStages = this.state.hmxStages.slice(-32); this.state.metrics.hmxStaged += 1; return structuredClone(stage); }
-    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length))
-        return stage ? structuredClone(stage) : null; stage.status = decision === 'accept' ? 'accepted' : 'rejected'; if (decision === 'accept')
-        this.state.metrics.hmxAccepted += 1; return structuredClone(stage); }
+    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null {
+        const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId);
+        if (!stage || stage.status !== 'staged')
+            return stage ? structuredClone(stage) : null;
+        // The staged payload is an approval boundary. Re-hash its exact source fields before accepting it.
+        const base = {
+            exportId: stage.exportId,
+            intent: stage.intent,
+            strategy: stage.strategy,
+            sourceSubjectId: stage.sourceSubjectId,
+            sectionCounts: stage.sectionCounts,
+            protectedSections: stage.protectedSections,
+            conflicts: stage.conflicts,
+            stagedSections: stage.stagedSections,
+        };
+        if (digest(base) !== stage.digest) {
+            stage.status = 'rejected';
+            stage.conflicts = [...stage.conflicts, {
+                path: 'digest',
+                kind: 'digest-mismatch',
+                detail: 'Staged HMX payload changed after validation; accepting it is forbidden.',
+            }].slice(-64);
+            return structuredClone(stage);
+        }
+        if (decision === 'accept' && stage.conflicts.length)
+            return structuredClone(stage);
+        stage.status = decision === 'accept' ? 'accepted' : 'rejected';
+        if (decision === 'accept')
+            this.state.metrics.hmxAccepted += 1;
+        return structuredClone(stage);
+    }
     getHmxStage(stagingId: string) { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); return stage ? structuredClone(stage) : null; }
     enqueueOutbox(input: {
         idempotencyKey: string;
