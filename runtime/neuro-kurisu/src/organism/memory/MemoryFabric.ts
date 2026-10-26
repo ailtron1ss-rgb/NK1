@@ -599,6 +599,43 @@ export class MemoryFabric {
     return this.applyLifecycleCommand({action:'update-signals',id,patch,reason,...context}) as MemoryItem2|null;
   }
 
+  /**
+   * Restore only the signal fields changed by an HMX apply that later failed.
+   * This is compensation, not new evidence: authority and evidence lineage may
+   * return to their captured pre-transaction state. Only the HMX rollback caller
+   * can supply the strict source/rollback command-ID pair.
+   */
+  restoreSignalsForCompensation(
+    id:string,
+    snapshot:MemoryItem2,
+    reason='hexis-hmx-apply-rollback',
+    context:{tick?:number;commandId?:string;sourceCommandIds?:string[]}={},
+  ):boolean{
+    const rollbackCommandId=String(context.commandId??'').trim();
+    const sourceCommandIds=Array.isArray(context.sourceCommandIds)?context.sourceCommandIds:[];
+    if(reason!=='hexis-hmx-apply-rollback'||
+      !/^hexis-signals-rollback:[a-f0-9]{48}$/.test(rollbackCommandId)||
+      sourceCommandIds.length<1||sourceCommandIds.length>256||
+      sourceCommandIds.some(commandId=>typeof commandId!=='string'||!/^hexis-authority:[a-f0-9]{48}$/.test(commandId))){
+      throw new Error('memory-signals-compensation-command-invalid');
+    }
+    for(const sourceCommandId of sourceCommandIds){
+      const prior=this.mutationReceipts.get(sourceCommandId);
+      if(prior&&prior.action!=='update-signals')throw new Error('memory-signals-compensation-source-command-mismatch');
+    }
+    const restored=this.memoryOS.restoreSignalsForCompensation(id,snapshot);
+    if(!restored)return false;
+    // The source mutation was compensated. Remove its hot receipt so an exact retry
+    // of the still-uncommitted HMX transaction is not mistaken for a committed signal update.
+    for(const sourceCommandId of sourceCommandIds)this.mutationReceipts.delete(sourceCommandId);
+    const tick=Number.isSafeInteger(context.tick)&&Number(context.tick)>=0?Number(context.tick):0;
+    this.events.append(makeEvent('memory-lifecycle',tick,{
+      action:'restore-signals-compensation',memoryId:id,reason,commandId:rollbackCommandId,
+      sourceCommandIds:[...sourceCommandIds],
+    }));
+    return true;
+  }
+
   updateContext(id:string, patch:Record<string,string|undefined>, context:{tick?:number;commandId?:string}={}){
     return this.applyLifecycleCommand({action:'update-context',id,patch,...context}) as Record<string,string> | null;
   }
