@@ -139,6 +139,22 @@ assert.equal(safeRetryClaim?.resolutionHistory?.length,1,
 assert.equal(fabric.ackOutbox(uncertainOut.id,false,'second ambiguous outcome')?.status,'uncertain');
 assert.equal(fabric.claimOutbox(uncertainOut.id),null);
 
+// A delayed positive acknowledgement can supersede a previous absence check, but
+// it must not leave the receipt's current fields claiming both outcomes at once.
+const lateAckOut = fabric.enqueueOutbox({
+  idempotencyKey:'k-late-positive-ack',kind:'notify',channel:'telegram',payload:{text:'delayed success ACK'},
+});
+assert.equal(fabric.claimOutbox(lateAckOut.id)?.status,'publishing');
+assert.equal(fabric.ackOutbox(lateAckOut.id,false,'initial ambiguous ACK')?.status,'uncertain');
+assert.equal(fabric.resolveOutbox(lateAckOut.id,'not-published','provider-query:temporary-absence')?.status,'pending');
+const delayedPositiveAck = fabric.ackOutbox(lateAckOut.id,true,'provider later acknowledged the send');
+assert.equal(delayedPositiveAck?.status,'published');
+assert.equal(delayedPositiveAck?.resolution,undefined,
+  'a late success ACK must clear contradictory current not-published fields');
+assert.equal(delayedPositiveAck?.resolutionHistory?.length,1,
+  'the earlier provider check remains in append-only history');
+assert.equal(fabric.claimOutbox(lateAckOut.id),null);
+
 const staleOut=fabric.enqueueOutbox({idempotencyKey:'k-stale-publishing',kind:'notify',channel:'telegram',payload:{text:'worker may have sent before process death'}});
 assert.equal(fabric.claimOutbox(staleOut.id)?.status,'publishing');
 const staleSnapshot=fabric.snapshot();
