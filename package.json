@@ -14,7 +14,7 @@
     "research": "python3 research/research_bridge.py",
     "audit:assets": "node tools/audit-assets.mjs",
     "inventory": "node tools/super-inventory.mjs",
-    "audit:quick": "npm run inventory && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax && npm run audit:repo-wiring && npm run test:repo-wiring && npm run test:project-runtime-pin && npm run test:super-install && npm run test:super-launch-paths && npm run test:super-ui-build",
+    "audit:quick": "npm run inventory && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax && npm run audit:repo-wiring && npm run test:repo-wiring && npm run test:project-runtime-pin && npm run test:super-install && npm run test:super-launch-paths && npm run test:super-ui-build && npm run test:super-gateway-bind",
     "doctor": "node tools/super-doctor.mjs",
     "install:all": "node tools/super-install.mjs",
     "backup": "node tools/super-backup.mjs",
@@ -188,7 +188,8 @@
     "test:repo-wiring": "node --test tools/verify-repository-wiring.test.mjs",
     "test:project-runtime-pin": "node --test tools/project-runtime-pin.test.mjs",
     "test:super-launch-paths": "node --test tools/super-launch-paths.test.mjs",
-    "test:super-ui-build": "node --test tools/super-ui-build.test.mjs"
+    "test:super-ui-build": "node --test tools/super-ui-build.test.mjs",
+    "test:super-gateway-bind": "node --test tools/super-gateway-config.test.mjs"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
