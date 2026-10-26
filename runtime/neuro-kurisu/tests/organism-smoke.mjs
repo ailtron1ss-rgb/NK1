@@ -90,8 +90,14 @@ try {
   // Corrupt a procedural-skill record that throws inside restore(). The runtime
   // should discard only this derived skill cache, log the failure and still boot.
   const skillSidecarPath = path.join(dir, 'state.json.procedural-skills.json');
-  const skillSidecar = JSON.parse(await readFile(skillSidecarPath, 'utf8'));
-  skillSidecar.skills = [null];
+  const skillSidecar = {
+    version: 8,
+    skills: [null],
+    compoundSkills: [],
+    promotions: 0,
+    demotions: 0,
+    compoundPromotions: 0,
+  };
   await writeFile(skillSidecarPath, JSON.stringify(skillSidecar), 'utf8');
   const recoveredFromInvalidSkills = new OrganismRuntime({
     stateFile:path.join(dir,'state.json'),
