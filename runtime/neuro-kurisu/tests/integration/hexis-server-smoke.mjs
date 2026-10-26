@@ -221,7 +221,15 @@ try {
 
   const goalApproval=await (await post('/api/organism/integration/hexis/goals/decide',{proposalId,decision:'approve'})).json();
   if(!goalApproval.ok||goalApproval.proposal?.status!=='approved') throw new Error('hexis-goal-explicit-approval');
-  const materializedGoal=await (await post('/api/organism/integration/hexis/goals/materialize',{proposalId})).json();
+  const unconfirmedMaterialization = await post('/api/organism/integration/hexis/goals/materialize', { proposalId, confirmed: false });
+  if (unconfirmedMaterialization.status !== 403) {
+    throw new Error('hexis-goal-materialization-requires-explicit-confirmation:' + unconfirmedMaterialization.status);
+  }
+  const stillApprovedGoals = await (await fetch(`${base}/api/organism/integration/hexis/goals?status=approved&limit=8`)).json();
+  if (!stillApprovedGoals.ok || !stillApprovedGoals.proposals?.some(proposal => proposal.id === proposalId && proposal.status === 'approved')) {
+    throw new Error('hexis-unconfirmed-materialization-must-not-change-proposal');
+  }
+  const materializedGoal=await (await post('/api/organism/integration/hexis/goals/materialize',{proposalId,confirmed:true})).json();
   if(!materializedGoal.ok||materializedGoal.project?.status!=='paused'||
      materializedGoal.project?.pauseReason!=='hexis-approved-awaiting-explicit-activation') {
     throw new Error('hexis-goal-paused-materialization:'+JSON.stringify(materializedGoal));
