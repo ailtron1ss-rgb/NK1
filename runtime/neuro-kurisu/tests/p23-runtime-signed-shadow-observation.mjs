@@ -77,7 +77,6 @@ try {
     return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
   };
   const payloadFingerprint = createHash('sha256').update(canonical(skill)).digest('hex');
-  // Candidate identity includes the provenance fingerprint slot even when provenance is absent.
   const expectedCandidateId = createHash('sha256')
     .update(JSON.stringify([skill.id, 1, proposal.proposalId, payloadFingerprint, null]))
     .digest('hex');
