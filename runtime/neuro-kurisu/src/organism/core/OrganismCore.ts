@@ -206,7 +206,7 @@ import { AdvancedResilienceEngine, defaultAdvancedResilience } from '../learning
 import { P23LearningEngine, defaultP23Learning, type PolicySkillRecord } from '../learning/P23LearningEngine.ts';
 import type { VerifiedSkillPromotionProposal } from '../learning/VerifiedSkillPromotion.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../learning/VerifiedSkillLifecycleBootstrap.ts';
-import { runTrustedShadowLearningProcess as executeTrustedShadowLearningProcess, type TrustedShadowLearningRunInput, type TrustedShadowRunContext } from '../learning/TrustedShadowLearningRunCoordinator.ts';
+import { runTrustedShadowLearningProcess as executeTrustedShadowLearningProcess, type TrustedShadowLearningRunInput, type TrustedShadowRunContext, type TrustedShadowRunRegistrar } from '../learning/TrustedShadowLearningRunCoordinator.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from '../learning/TrustedSkillShadowRunRegistry.ts';
 import type { TrustedShadowExecutionContext } from '../learning/VerifiedSkillShadowEvidence.ts';
 import type { SkillPromotionApproval, SkillRollbackApproval, SkillShadowObservation } from '../learning/VersionedSkillCandidateStore.ts';
@@ -11024,7 +11024,7 @@ export class OrganismCore {
      * the registrar: this Core instance records provenance before child spawn.
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
-        return executeTrustedShadowLearningProcess({ ...input, core: this });
+        return executeTrustedShadowLearningProcess({ ...input, core: this as unknown as TrustedShadowRunRegistrar });
     }
     /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
     verifiedSkillCandidateSnapshot() {
