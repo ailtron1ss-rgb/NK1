@@ -1,3 +1,8 @@
+## [NK1][Hexis] Add UI wiring audits to canonical HMX gate (2026-10-26)
+
+- The Hexis CI workflow now runs the existing UI action-wiring and UI/API/runtime linkage audits in addition to frontend and runtime typechecks and the canonical HMX regression suite.
+- The workflow path filter includes the audit scripts and the Hexis UI/API/type contracts.
+
 ## [NK1][Hexis] WorkPass427 — seal HMX lifecycle transitions independently (2026-10-26)
 
 - [REPLAY SAFETY] Added a lifecycle seal separate from the reviewed payload digest; status and apply-attempt mutations now invalidate the persisted stage unless the normal decision path refreshes the seal.
