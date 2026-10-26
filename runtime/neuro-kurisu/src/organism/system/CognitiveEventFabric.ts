@@ -241,18 +241,19 @@ export class CognitiveEventFabric {
       const projectionHashValid=/^[a-f0-9]{64}$/.test(suppliedProjectionHash);
       const expectedHash=evidence.payload.expectedPostconditionHash;
       const observedHash=evidence.payload.observedPostconditionHash;
-      const hasExpectedHash=typeof expectedHash==='string';
-      const hasObservedHash=typeof observedHash==='string';
-      // Legacy snapshots stored the full fingerprint only in the projection index.
-      // Modern snapshots store the postcondition hashes on the evidence node too,
-      // allowing the index fingerprint to be recomputed and checked against its evidence.
-      const legacyHashless=!hasExpectedHash&&!hasObservedHash;
-      if(!projectionHashValid||hasExpectedHash!==hasObservedHash)continue;
+      // The presence of these fields distinguishes modern receipts with null hashes
+      // (empty postcondition text) from legacy snapshots that predate event-level hashes.
+      const hasExpectedHashField=Object.hasOwn(evidence.payload,'expectedPostconditionHash');
+      const hasObservedHashField=Object.hasOwn(evidence.payload,'observedPostconditionHash');
+      const legacyHashless=!hasExpectedHashField&&!hasObservedHashField;
+      if(!projectionHashValid||hasExpectedHashField!==hasObservedHashField)continue;
       if(legacyHashless) {
-        // Keep the documented compatibility path for old snapshots that have a valid
-        // full-input projection fingerprint but no event-level postcondition hashes.
+        // Keep the compatibility path only for an intact old full-input fingerprint.
+        continue;
       } else {
-        if(!/^[a-f0-9]{64}$/i.test(expectedHash as string)||!/^[a-f0-9]{64}$/i.test(observedHash as string))continue;
+        const hashValueIsValid=(value:unknown):boolean=>value===null||
+          (typeof value==='string'&&/^[a-f0-9]{64}$/i.test(value));
+        if(!hashValueIsValid(expectedHash)||!hashValueIsValid(observedHash))continue;
         if(typeof action.payload.tool!=='string'||typeof outcome.payload.ok!=='boolean'||
           typeof outcome.payload.verified!=='boolean'||typeof outcome.payload.outcomeClass!=='string'||
           typeof evidence.payload.verificationBasis!=='string'||

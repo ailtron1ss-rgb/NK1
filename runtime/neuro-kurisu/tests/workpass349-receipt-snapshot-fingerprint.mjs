@@ -104,4 +104,33 @@ assert.equal(legacyFabric.snapshot().receiptProjectionIndex.length, 1, 'legacy p
 assert.equal(legacyFabric.appendToolReceiptTrace(receipt()).replayed,true);
 assert.equal(legacyFabric.snapshot().total,legacyTotal);
 
+
+const emptyClaimReceipt=receipt({
+  executionId:'exec:workpass349:null-hashes',
+  expectedPostcondition:'',
+  observedPostcondition:'',
+});
+const emptyClaimFabric=new CognitiveEventFabric(128);
+const emptyClaimEntry=emptyClaimFabric.appendToolReceiptTrace(emptyClaimReceipt);
+const emptyClaimSnapshot=emptyClaimFabric.snapshot();
+const emptyEvidence=emptyClaimSnapshot.recent.find(event=>event.id===emptyClaimEntry.evidenceEventId);
+assert.equal(emptyEvidence.payload.expectedPostconditionHash,null);
+assert.equal(emptyEvidence.payload.observedPostconditionHash,null);
+const emptyClaimRestored=new CognitiveEventFabric(128);
+emptyClaimRestored.restore(emptyClaimSnapshot);
+assert.equal(emptyClaimRestored.snapshot().receiptProjectionIndex.length,1,'modern null hash fields must be fingerprint-validated');
+const emptyClaimTotal=emptyClaimRestored.snapshot().total;
+assert.equal(emptyClaimRestored.appendToolReceiptTrace(emptyClaimReceipt).replayed,true);
+assert.equal(emptyClaimRestored.snapshot().total,emptyClaimTotal);
+
+// A null-hash receipt with a modified projection fingerprint must not install its saved index.
+const emptyHashTampered=new CognitiveEventFabric(128);
+emptyHashTampered.restore({
+  ...emptyClaimSnapshot,
+  receiptProjectionIndex:emptyClaimSnapshot.receiptProjectionIndex.map(entry=>({...entry,projectionHash:'e'.repeat(64)})),
+});
+assert.equal(emptyHashTampered.snapshot().receiptProjectionIndex.length,0);
+assert.equal(emptyHashTampered.appendToolReceiptTrace(emptyClaimReceipt).replayed,true);
+assert.equal(emptyHashTampered.snapshot().receiptProjectionIndex.length,1);
+
 console.log('WorkPass349 receipt snapshot fingerprint: PASS');
