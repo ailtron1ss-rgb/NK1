@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inspectToolchainVersions } from './toolchain-contract.mjs';
 import { decideSupervisedChildExit, decideSupervisedChildSpawnError } from './supervisor-exit-policy.mjs';
+import { buildSupervisedServiceSpecs } from './supervised-service-specs.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 function version(bin, args = ['--version']) {
@@ -47,8 +48,8 @@ mkdirSync(stateDir, { recursive: true });
 
 const children = [];
 let shuttingDown = false;
-const launch = (label, command, args, env = {}) => {
-  const child = spawn(command, args, { cwd: ROOT, env: { ...process.env, ...env }, stdio: 'inherit' });
+const launch = ({ label, command, args, env = {}, cwd = ROOT }) => {
+  const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, stdio: 'inherit' });
   child.on('error', (error) => {
     const failure = decideSupervisedChildSpawnError({
       label,
@@ -69,12 +70,11 @@ const launch = (label, command, args, env = {}) => {
   return child;
 };
 
-launch('neuro-kurisu', process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], {
-  PORT: '3310', HOST: '127.0.0.1', STATE_DIR: resolve(stateDir, 'organism'), NODE_ENV: 'production'
-});
-launch('research-bridge', 'python3', ['research/research_bridge.py'], { RESEARCH_PORT: '8765' });
-launch('ui-preview', 'npm', ['--prefix', 'app', 'run', 'preview']);
-launch('gateway', process.execPath, ['tools/super-gateway.mjs'], { SUPER_GATEWAY_PORT: '8080', SUPER_UI_PORT: '8081', SUPER_RUNTIME_PORT: '3310', SUPER_RESEARCH_PORT: '8765' });
+for (const spec of buildSupervisedServiceSpecs({
+  root: ROOT,
+  stateDir,
+  nodeExecutable: process.execPath,
+})) launch(spec);
 
 const shutdown = (signal, exitCode = 0) => {
   if (shuttingDown) return;
