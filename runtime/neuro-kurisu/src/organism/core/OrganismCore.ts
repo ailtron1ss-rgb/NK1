@@ -2968,6 +2968,35 @@ export class OrganismCore {
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return stage;
     }
+    hexisPrepareGoalProposals(stagingId: string) {
+        const result=this.hexisAdaptation.prepareGoalProposals(String(stagingId??''));
+        this.persisted.system.hexisAdaptation=this.hexisAdaptation.snapshot();
+        return result;
+    }
+    hexisListGoalProposals(status?: string, limit=64) {
+        const allowed=new Set(['pending','approved','rejected','materialized']);
+        if(status&&!allowed.has(status)) throw new Error('invalid-hexis-goal-proposal-status');
+        return this.hexisAdaptation.listGoalProposals({status:status as any,limit});
+    }
+    hexisDecideGoalProposal(proposalId: string, decision: 'approve'|'reject') {
+        const result=this.hexisAdaptation.decideGoalProposal(String(proposalId??''),decision);
+        this.persisted.system.hexisAdaptation=this.hexisAdaptation.snapshot();
+        return result;
+    }
+    hexisMaterializeGoalProposal(proposalId: string) {
+        const result=this.organismSystems.materializeApprovedHexisGoalProposal(String(proposalId??''));
+        this.persisted.system.hexisAdaptation=this.hexisAdaptation.snapshot();
+        this.persisted.facets.evolution.selfProjects=this.agencySubsystem.selfProjects.snapshot();
+        return result;
+    }
+    hexisActivateGoalProposal(proposalId: string) {
+        const result=this.organismSystems.activateHexisGoalProposal(String(proposalId??''));
+        this.persisted.system.hexisAdaptation=this.hexisAdaptation.snapshot();
+        this.persisted.facets.evolution.selfProjects=this.agencySubsystem.selfProjects.snapshot();
+        this.persisted.facets.evolution.agency=this.agencySubsystem.deliberation.snapshot();
+        this.persisted.facets.memory.semanticGraph=this.memorySubsystem.semanticMemory.snapshot();
+        return result;
+    }
     hexisEnqueueOutbox(input: {
         idempotencyKey: string;
         kind: string;
