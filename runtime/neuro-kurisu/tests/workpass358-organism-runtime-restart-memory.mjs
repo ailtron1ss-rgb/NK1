@@ -9,27 +9,18 @@ import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 const MARKER = 'nk1 runtime restart causal memory marker-358 observer-8031 outcome-persisted-991';
 const ENTRYPOINT = fileURLToPath(import.meta.url);
 
-function findMemoryRecord(root, marker, maxNodes = 500_000) {
-  const visited = new WeakSet();
-  let nodes = 0;
-  const walk = (value, depth) => {
-    if (!value || typeof value !== 'object' || depth > 72 || nodes++ >= maxNodes || visited.has(value)) return null;
-    visited.add(value);
-    if (!Array.isArray(value) &&
-        typeof value.id === 'string' &&
-        typeof value.content === 'string' &&
-        typeof value.kind === 'string' &&
-        value.content.includes(marker)) {
-      return value;
-    }
-    const children = Array.isArray(value) ? value : Object.values(value);
-    for (const child of children) {
-      const found = walk(child, depth + 1);
-      if (found) return found;
-    }
-    return null;
-  };
-  return walk(root, 0);
+function findCanonicalMemoryRecord(coreSnapshot, marker) {
+  const memoryState = coreSnapshot?.facets?.advanced?.memoryOS;
+  assert.ok(memoryState && Number.isSafeInteger(memoryState.version),
+    'OrganismCore snapshot must expose the canonical MemoryOS2 state under facets.advanced.memoryOS');
+  assert.ok(Array.isArray(memoryState.items),
+    'canonical MemoryOS2 snapshot must expose its own item collection');
+  return memoryState.items.find(item =>
+    item && typeof item.id === 'string' &&
+    typeof item.content === 'string' &&
+    typeof item.kind === 'string' &&
+    item.content.includes(marker),
+  ) ?? null;
 }
 
 function makeRuntime(stateFile, worldStateFile) {
@@ -53,7 +44,7 @@ async function writePhase(stateFile, worldStateFile) {
     await runtime.step(MARKER, { deliberate: true });
     await runtime.flush();
     const snapshot = runtime.core.snapshot();
-    const row = findMemoryRecord(snapshot, MARKER);
+    const row = findCanonicalMemoryRecord(snapshot, MARKER);
     assert.ok(row, 'the actual OrganismRuntime step must persist the marker as a canonical memory record');
     assert.ok(typeof row.id === 'string' && row.id.length > 0);
     const tick = Number(runtime.core.operationalStatusSnapshot().tick);
@@ -74,7 +65,7 @@ async function readPhase(stateFile, worldStateFile, expectedTick, expectedMemory
     const tick = Number(runtime.core.operationalStatusSnapshot().tick);
     assert.ok(tick >= expectedTick, 'whole-organism tick must survive a fresh-process restart');
     const snapshot = runtime.core.snapshot();
-    const row = findMemoryRecord(snapshot, MARKER);
+    const row = findCanonicalMemoryRecord(snapshot, MARKER);
     assert.ok(row, 'the restarted OrganismRuntime must expose the persisted canonical memory');
     assert.equal(row.id, expectedMemoryId, 'memory identity must survive the runtime process boundary');
     assert.ok(row.content.includes('outcome-persisted-991'));
