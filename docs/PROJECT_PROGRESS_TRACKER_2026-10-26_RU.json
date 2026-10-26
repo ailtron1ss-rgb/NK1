@@ -359,22 +359,20 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass400",
+    "id": "WorkPass401",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "416c8df040e778c431ac999242d0d339a0a5940f",
-    "testCommit": "6132b9112a398d37d1dc975fe08bff0b48a9d6f5",
-    "codeTestHead": "6132b9112a398d37d1dc975fe08bff0b48a9d6f5",
-    "summary": "Add JSON-object guards to Hexis review decision, retention proposal, HMX stage and HMX decision routes, preventing JSON null/arrays/primitives from reaching route-specific property reads and mutation calls.",
+    "codeCommit": "47d88fcc1a8b5737cca6c542a51e3d0011f8281a",
+    "testCommit": "76830a380ab2cdbd825994062de793c2a1a0c2f0",
+    "codeTestHead": "76830a380ab2cdbd825994062de793c2a1a0c2f0",
+    "summary": "Use null-prototype HMX section-count/staging maps to prevent '__proto__' section names from changing object prototypes or disappearing from diagnostic accounting.",
     "testsAdded": [
-      "JSON null body to review decision returns HTTP 400",
-      "JSON null body to retention proposal returns HTTP 400",
-      "JSON null body to HMX stage returns HTTP 400",
-      "JSON null body to HMX decision returns HTTP 400",
-      "invalid review decisions and HMX decisions still fail closed",
-      "invalid retention action is rejected before proposal creation"
+      "prototype-like '__proto__' HMX section is blocked as unsupported",
+      "source count remains a visible own key in sectionCounts",
+      "conflicted __proto__ section is omitted from stagedSections",
+      "staging maps have null prototypes and remain unacceptably conflicted"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regressions are authored but not confirmed on a usable exact-head CI run; no PASS/readiness uplift claimed.",
+    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Code/tests are committed but no usable exact-head PASS is available; no readiness/progress uplift is claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
@@ -548,8 +546,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "6132b9112a398d37d1dc975fe08bff0b48a9d6f5",
-  "branchHeadBeforeTrackerCommit": "6132b9112a398d37d1dc975fe08bff0b48a9d6f5",
+  "latestUnverifiedCodeTestHead": "76830a380ab2cdbd825994062de793c2a1a0c2f0",
+  "branchHeadBeforeTrackerCommit": "76830a380ab2cdbd825994062de793c2a1a0c2f0",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -589,37 +587,41 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass399",
+    "id": "WorkPass400",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "06f21b03255da079f93ec59e87f35c27e423d2e7",
-    "testCommit": "f27003b53e336ffeca4df1f540691de865701e0f",
-    "codeTestHead": "f27003b53e336ffeca4df1f540691de865701e0f",
-    "summary": "Reject unknown Hexis retention proposal actions at the HTTP boundary instead of silently mapping a typo to compress.",
+    "codeCommit": "416c8df040e778c431ac999242d0d339a0a5940f",
+    "testCommit": "6132b9112a398d37d1dc975fe08bff0b48a9d6f5",
+    "codeTestHead": "6132b9112a398d37d1dc975fe08bff0b48a9d6f5",
+    "summary": "Add JSON-object guards to Hexis review decision, retention proposal, HMX stage and HMX decision routes, preventing JSON null/arrays/primitives from reaching route-specific property reads and mutation calls.",
     "testsAdded": [
-      "unknown retention action returns HTTP 400",
-      "invalid action is rejected against an existing imported-memory fixture before proposal creation"
+      "JSON null body to review decision returns HTTP 400",
+      "JSON null body to retention proposal returns HTTP 400",
+      "JSON null body to HMX stage returns HTTP 400",
+      "JSON null body to HMX decision returns HTTP 400",
+      "invalid review decisions and HMX decisions still fail closed",
+      "invalid retention action is rejected before proposal creation"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, focused Hexis adaptation, server smoke and Unified project integration. Regressions are authored but not confirmed on a usable exact-head run; no PASS or readiness uplift claimed.",
+    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regressions are authored but not confirmed on a usable exact-head CI run; no PASS/readiness uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass401",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "76830a380ab2cdbd825994062de793c2a1a0c2f0",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Use null-prototype HMX section-count/staging maps to prevent '__proto__' section names from changing object prototypes or disappearing from diagnostic accounting. WorkPass396–400 add atomic HMX staging, safe snapshots, explicit decision/action allowlists and strict JSON-body validation. Scores remain unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass400",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "6132b9112a398d37d1dc975fe08bff0b48a9d6f5",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Add JSON-object guards to Hexis review decision, retention proposal, HMX stage and HMX decision routes, preventing JSON null/arrays/primitives from reaching route-specific property reads and mutation calls. WorkPass396–399 additionally enforce atomic HMX staging, bounded safe snapshots and explicit action allowlists. Readiness/progress/recall scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass399",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "f27003b53e336ffeca4df1f540691de865701e0f",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Reject unknown Hexis retention proposal actions at the HTTP boundary instead of silently mapping a typo to compress. WorkPass396–398 cover atomic HMX staging, accessor-free input snapshots and explicit decision allowlists. Readiness/recall/progress scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
