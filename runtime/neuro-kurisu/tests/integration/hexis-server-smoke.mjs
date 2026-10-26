@@ -82,6 +82,33 @@ try {
   if (invalidRetentionAction.status !== 400) {
     throw new Error('hexis-retention-must-reject-unknown-action:' + invalidRetentionAction.status);
   }
+  // Reject coercible-but-invalid values before they reach the canonical memory/action adapters.
+  const invalidSyncLimit = await post('/api/organism/integration/hexis/sync-memory', { limit: 'not-a-number' });
+  if (invalidSyncLimit.status !== 400) throw new Error('hexis-sync-limit-must-be-numeric:' + invalidSyncLimit.status);
+
+  const invalidBeliefConfidence = await post('/api/organism/integration/hexis/belief/revise', {
+    memoryId: 'invalid-input-test-memory', confidence01: '0.8', stance: 'supports', evidence: {},
+  });
+  if (invalidBeliefConfidence.status !== 400) throw new Error('hexis-belief-confidence-must-be-numeric:' + invalidBeliefConfidence.status);
+  const invalidBeliefProtection = await post('/api/organism/integration/hexis/belief/revise', {
+    memoryId: 'invalid-input-test-memory', confidence01: 0.8, stance: 'supports',
+    protectedBelief: 'false', evidence: {},
+  });
+  if (invalidBeliefProtection.status !== 400) throw new Error('hexis-belief-protection-must-be-boolean:' + invalidBeliefProtection.status);
+
+  const invalidOutboxKey = await post('/api/organism/integration/hexis/outbox/enqueue', {
+    idempotencyKey: { key: 'object' }, payload: { text: 'should not enqueue' },
+  });
+  if (invalidOutboxKey.status !== 400) throw new Error('hexis-outbox-key-must-be-string:' + invalidOutboxKey.status);
+  const invalidOutboxAck = await post('/api/organism/integration/hexis/outbox/ack', {
+    id: 'missing-row', published: 'false',
+  });
+  if (invalidOutboxAck.status !== 400) throw new Error('hexis-outbox-published-must-be-boolean:' + invalidOutboxAck.status);
+
+  const invalidPolicyEvaluation = await post('/api/organism/integration/hexis/policy/evaluate', {
+    connectorId: { id: 'object' }, actionKind: 'send', autonomous: 'false',
+  });
+  if (invalidPolicyEvaluation.status !== 400) throw new Error('hexis-policy-evaluation-must-reject-coercion:' + invalidPolicyEvaluation.status);
   // Permission booleans must never be inferred through JavaScript truthiness.
   const coercedAutonomyGrant = await post('/api/organism/integration/hexis/policy', {
     connectorId: 'nk1-coercion-regression',
