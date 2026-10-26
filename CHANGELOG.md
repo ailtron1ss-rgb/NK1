@@ -1,3 +1,12 @@
+## WorkPass373 — cross-ledger rollback regression (2026-10-26)
+
+- **Gap closed:** the operational-cycle atomicity test covered event-fabric append failures but did not directly prove rollback when the unified aggregate mutates successfully and a later step throws.
+- **Regression:** inject a failure immediately after the real `UnifiedCognitiveCycle.evaluate()` updates its counters, then assert both the event ledger and aggregate return exactly to their pre-transaction state.
+- **Integration:** extends the existing WorkPass347 test already included in the cognitive integration suite; no new test runner or dependency is introduced.
+- **Evidence boundary:** regression authored; exact-head CI must execute before marking it passed. No maturity or field-learning score increase.
+
+---
+
 ## WorkPass372 — strict unified cognitive-cycle input and restore integrity (2026-10-26)
 
 - **Defect:** `UnifiedCognitiveCycle.evaluate()` and `restore()` read external object fields/arrays directly. Accessor properties could execute during validation, proxy traps were not consistently converted to closed rejection, and sparse or malformed `lastMissingStages` could distort whether a restored cycle appeared complete.

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabric.ts';
+import { UnifiedCognitiveCycle } from '../src/organism/system/UnifiedCognitiveCycle.ts';
+import { commitOperationalCognitiveCycleAtomically } from '../src/organism/core/CognitiveCycleCommitCoordinator.ts';
 
 const cycleInput = (overrides = {}) => ({
   tick: 41,
