@@ -440,6 +440,60 @@ for (let index = 0; index < statusCases.length; index++) {
   );
 }
 
+// Migration regression: a pre-existing persisted HMX row can carry values written by
+// the older permissive importer. A replay under the new policy must cap both the
+// canonical signal and its external evidence trail, not just new inserts.
+const legacyTrustRuntime = new MemorySubsystemRuntime();
+const legacyTrustLedger = new HexisAdaptationFabric();
+const legacyTrustProjector = new HexisCanonicalMemoryProjector(
+  legacyTrustRuntime.fabric, legacyTrustRuntime.semanticMemory, legacyTrustLedger,
+);
+legacyTrustLedger.bindCanonicalMemoryApply(stage => legacyTrustProjector.apply(stage));
+const legacyTrustContent = 'Persisted HMX memory predating the authority cap.';
+const applyLegacyTrust = exportId => {
+  const stage = legacyTrustLedger.stageHmx({
+    document: makeHmxDocument(exportId, {
+      memories: [{
+        ref: exportId + ':legacy-trust-record',
+        type: 'semantic',
+        content: legacyTrustContent,
+        status: 'active',
+        trust_level: 0.99,
+      }],
+    }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert.deepEqual(stage.conflicts, []);
+  assert.equal(legacyTrustLedger.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
+  assert.equal(legacyTrustLedger.decideHmx(stage.stagingId, 'apply')?.status, 'applied');
+};
+applyLegacyTrust('exp_0000000000009201');
+const importedLegacyTrust = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.content === legacyTrustContent);
+assert(importedLegacyTrust);
+const legacyMemorySnapshot = legacyTrustRuntime.memoryOS.snapshot();
+legacyTrustRuntime.memoryOS.restore({
+  ...legacyMemorySnapshot,
+  items: legacyMemorySnapshot.items.map(item => item.id === importedLegacyTrust.id ? {
+    ...item,
+    confidence: 0.99,
+    sourceAuthority01: 0.99,
+    evidenceSources: (item.evidenceSources ?? []).map(evidence => ({ ...evidence, sourceAuthority01: 0.99 })),
+  } : item),
+});
+const overTrustedSnapshot = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.id === importedLegacyTrust.id);
+assert.equal(overTrustedSnapshot?.confidence, 0.99, 'fixture emulates a persisted pre-policy import');
+assert.equal(overTrustedSnapshot?.sourceAuthority01, 0.99);
+applyLegacyTrust('exp_0000000000009202');
+const remediatedLegacyTrust = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.id === importedLegacyTrust.id);
+assert(remediatedLegacyTrust);
+assert.equal(remediatedLegacyTrust.confidence, 0.65, 're-import must cap an old persisted confidence');
+assert.equal(remediatedLegacyTrust.sourceAuthority01, 0.65, 're-import must cap old canonical authority');
+assert((remediatedLegacyTrust.evidenceSources ?? [])
+  .filter(evidence => evidence.provenanceClass === 'external' && String(evidence.source ?? '').startsWith('hexis:'))
+  .every(evidence => evidence.sourceAuthority01 <= 0.65),
+  're-import must cap old external evidence authorities too');
+
 // A re-export may demote the same memory, but an active-looking later export must
 // never resurrect a source that was already archived/quarantined.
 const transitionRuntime = new MemorySubsystemRuntime();
