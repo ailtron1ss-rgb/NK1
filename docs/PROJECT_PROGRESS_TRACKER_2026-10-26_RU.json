@@ -359,24 +359,40 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass409",
+    "id": "WorkPass410",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "895b4c338a0a40e3441af5ee51a5c8a63bcc46f2",
-    "testCommit": "cee8f2841d34bddda5b1780844c5908133bececa",
-    "codeTestHead": "cee8f2841d34bddda5b1780844c5908133bececa",
-    "summary": "Preserve a completed Hexis operation's returned result if the subsequent state/memory refresh fails. A separate refresh-error path reports the problem without discarding the original HMX import receipt or blocking the caller's status rendering.",
+    "codeCommit": "306b075e22f610b60783d489015f8a8519d77212",
+    "testCommit": "85c700822e22ce7d6c9140986296fd924417f511",
+    "codeTestHead": "85c700822e22ce7d6c9140986296fd924417f511",
+    "summary": "Clarify that created/reused/skipped counts shown for an uncertain HMX receipt are not verified after incomplete rollback. The UI instructs operators not to retry and to inspect canonical memory and the stored receipt; UI wiring audit enforces this wording.",
     "testsAdded": [
-      "UI-wiring audit requires a separate refreshError handler",
-      "UI-wiring audit requires a refresh-failed message distinct from action failure",
-      "UI-wiring audit requires returning the original operation result"
+      "UI wiring audit requires the not-verified uncertain-count wording",
+      "UI wiring audit preserves the no-retry warning and terminal uncertain path"
     ],
-    "validationStatus": "PENDING frontend build and audit-ui-function-wiring; HMX adaptation, server smoke, runtime typecheck and Unified integration remain unverified on an exact usable CI head. No readiness/progress uplift claimed.",
+    "validationStatus": "PENDING frontend build and audit-ui-function-wiring; no exact-head PASS/readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass410",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "306b075e22f610b60783d489015f8a8519d77212",
+      "testCommit": "85c700822e22ce7d6c9140986296fd924417f511",
+      "codeTestHead": "85c700822e22ce7d6c9140986296fd924417f511",
+      "summary": "Clarify that created/reused/skipped counts shown for an uncertain HMX receipt are not verified after incomplete rollback. The UI instructs operators not to retry and to inspect canonical memory and the stored receipt; UI wiring audit enforces this wording.",
+      "testsAdded": [
+        "UI wiring audit requires the not-verified uncertain-count wording",
+        "UI wiring audit preserves the no-retry warning and terminal uncertain path"
+      ],
+      "validationStatus": "PENDING frontend build and audit-ui-function-wiring; no exact-head PASS/readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass409",
       "date": "2026-10-26",
@@ -391,25 +407,6 @@
         "UI-wiring audit requires returning the original operation result"
       ],
       "validationStatus": "PENDING frontend build and audit-ui-function-wiring; HMX adaptation, server smoke, runtime typecheck and Unified integration remain unverified on an exact usable CI head. No readiness/progress uplift claimed.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
-    {
-      "id": "WorkPass408",
-      "date": "2026-10-26",
-      "branch": "hexis-remote-bridge-20261026",
-      "codeCommit": "f12ad52ed62a852df476c88150a16abab8e56288",
-      "testCommit": "7456ba64763ec253cb86ec33619a23c0e3210a15",
-      "codeTestHead": "7456ba64763ec253cb86ec33619a23c0e3210a15",
-      "summary": "Close the accepted+pending HMX restart replay window. Restore converts accepted memory-merge stages with pending receipt to terminal uncertain, accounts for source rows, and retains an integrity conflict if saved stage payload/digest is invalid.",
-      "testsAdded": [
-        "accepted pending stage becomes uncertain on restore",
-        "repeated accept after restore cannot restart an interrupted import",
-        "uncertain restored receipt accounts for source memory records",
-        "tampered accepted stage retains persisted-stage-integrity-failure conflict and remains uncertain"
-      ],
-      "validationStatus": "PENDING exact-head test:hexis-adaptation, test:hexis-server-smoke, runtime typecheck and Unified project integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
@@ -582,8 +579,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "cee8f2841d34bddda5b1780844c5908133bececa",
-  "branchHeadBeforeTrackerCommit": "cee8f2841d34bddda5b1780844c5908133bececa",
+  "latestUnverifiedCodeTestHead": "85c700822e22ce7d6c9140986296fd924417f511",
+  "branchHeadBeforeTrackerCommit": "85c700822e22ce7d6c9140986296fd924417f511",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -623,39 +620,38 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass408",
+    "id": "WorkPass409",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "f12ad52ed62a852df476c88150a16abab8e56288",
-    "testCommit": "7456ba64763ec253cb86ec33619a23c0e3210a15",
-    "codeTestHead": "7456ba64763ec253cb86ec33619a23c0e3210a15",
-    "summary": "Close the accepted+pending HMX restart replay window. Restore converts accepted memory-merge stages with pending receipt to terminal uncertain, accounts for source rows, and retains an integrity conflict if saved stage payload/digest is invalid.",
+    "codeCommit": "895b4c338a0a40e3441af5ee51a5c8a63bcc46f2",
+    "testCommit": "cee8f2841d34bddda5b1780844c5908133bececa",
+    "codeTestHead": "cee8f2841d34bddda5b1780844c5908133bececa",
+    "summary": "Preserve a completed Hexis operation's returned result if the subsequent state/memory refresh fails. A separate refresh-error path reports the problem without discarding the original HMX import receipt or blocking the caller's status rendering.",
     "testsAdded": [
-      "accepted pending stage becomes uncertain on restore",
-      "repeated accept after restore cannot restart an interrupted import",
-      "uncertain restored receipt accounts for source memory records",
-      "tampered accepted stage retains persisted-stage-integrity-failure conflict and remains uncertain"
+      "UI-wiring audit requires a separate refreshError handler",
+      "UI-wiring audit requires a refresh-failed message distinct from action failure",
+      "UI-wiring audit requires returning the original operation result"
     ],
-    "validationStatus": "PENDING exact-head test:hexis-adaptation, test:hexis-server-smoke, runtime typecheck and Unified project integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+    "validationStatus": "PENDING frontend build and audit-ui-function-wiring; HMX adaptation, server smoke, runtime typecheck and Unified integration remain unverified on an exact usable CI head. No readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass410",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "85c700822e22ce7d6c9140986296fd924417f511",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Explicitly mark counts on an uncertain HMX import receipt as reported but unverified, preventing the UI from implying confirmed canonical mutations after an incomplete rollback. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass409",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "cee8f2841d34bddda5b1780844c5908133bececa",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Keep mutation results/receipts available to the originating UI handler even if post-mutation dashboard refresh fails, so HMX terminal receipt states still display correctly. Scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass408",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "7456ba64763ec253cb86ec33619a23c0e3210a15",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Prevent process-restart replay after HMX acceptance when the canonical import receipt was not persisted: quarantine accepted+pending stages as terminal uncertain on restore, with integrity conflict preserved where appropriate. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
