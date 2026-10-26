@@ -1139,5 +1139,119 @@ assert.throws(()=>atomicKernelFabric.withAtomicLedgerTransaction(()=>Promise.res
 assert.deepEqual(atomicKernelFabric.snapshot(),beforeAsyncTransaction,
   'ledger transaction boundaries must reject thenables instead of committing before async completion');
 console.log('WorkPass370 atomic canonical kernel writes: PASS');
+
+// WorkPass371: canonical-kernel root, anchor and phase ingress must be data-only and non-coercive.
+const ingressFabric=new CognitiveEventFabric(128);
+const ingressCycle=new UnifiedCognitiveCycle();
+const ingressKernel=new CanonicalCognitiveKernel(ingressFabric,ingressCycle);
+const ingressEmptyEvents=ingressFabric.snapshot();
+const ingressEmptyCycle=ingressCycle.snapshot();
+
+const accessorDecisionInput={...decisionInput(),tick:81,at:8100};
+let kernelTickGetterExecuted=false;
+Object.defineProperty(accessorDecisionInput,'tick',{
+  enumerable:true,
+  get(){kernelTickGetterExecuted=true;throw new Error('canonical tick getter must not execute');},
+});
+assert.throws(()=>ingressKernel.beginDecisionCycle(accessorDecisionInput),
+  /canonical-cognitive-kernel-input-field-accessor:tick/);
+assert.equal(kernelTickGetterExecuted,false,'canonical decision root getters must not execute');
+assert.deepEqual(ingressFabric.snapshot(),ingressEmptyEvents);
+
+const accessorDecisionPhase={...stage('kernel-ingress.observation',{kind:'user'})};
+let kernelPhaseGetterExecuted=false;
+Object.defineProperty(accessorDecisionPhase,'confidence01',{
+  enumerable:true,
+  get(){kernelPhaseGetterExecuted=true;throw new Error('canonical phase getter must not execute');},
+});
+assert.throws(()=>ingressKernel.beginDecisionCycle({
+  ...decisionInput(),tick:82,at:8200,observation:accessorDecisionPhase,
+}),/canonical-cognitive-kernel-observation-stage-field-accessor:confidence01/);
+assert.equal(kernelPhaseGetterExecuted,false,'canonical stage getters must not execute');
+assert.deepEqual(ingressFabric.snapshot(),ingressEmptyEvents);
+
+assert.throws(()=>ingressKernel.beginDecisionCycle({
+  ...decisionInput(),tick:83,at:8300,
+  observation:{...stage('kernel-ingress.observation'),external:'false'},
+}),/canonical-cognitive-kernel-observation-external-must-be-boolean/,
+'string false must not be coerced into a canonical external evidence flag');
+assert.deepEqual(ingressFabric.snapshot(),ingressEmptyEvents);
+
+let kernelNestedPayloadGetterExecuted=false;
+const kernelNestedAccessor={};
+Object.defineProperty(kernelNestedAccessor,'secret',{
+  enumerable:true,
+  get(){kernelNestedPayloadGetterExecuted=true;throw new Error('canonical nested payload getter must not execute');},
+});
+assert.throws(()=>ingressKernel.beginDecisionCycle({
+  ...decisionInput(),tick:84,at:8400,
+  observation:stage('kernel-ingress.observation',{nested:kernelNestedAccessor}),
+}),/event-payload-accessor/);
+assert.equal(kernelNestedPayloadGetterExecuted,false,'canonical nested payload getters must not execute');
+assert.deepEqual(ingressFabric.snapshot(),ingressEmptyEvents);
+assert.deepEqual(ingressCycle.snapshot(),ingressEmptyCycle);
+
+const ingressDecision=ingressKernel.beginDecisionCycle({...decisionInput(),tick:85,at:8500});
+const ingressDecisionSnapshot=ingressFabric.snapshot();
+const ingressCycleBeforeCompletion=ingressCycle.snapshot();
+const ingressCompletionInput={
+  anchors:ingressDecision.anchors,
+  fallbackTick:86,
+  at:8600,
+  outcome:stage('kernel-ingress.outcome',{ok:true}),
+  learning:stage('kernel-ingress.learning',{updated:true}),
+  selfUpdate:stage('kernel-ingress.self-update',{integrated:true}),
+};
+const accessorCompletionInput={...ingressCompletionInput};
+let fallbackTickGetterExecuted=false;
+Object.defineProperty(accessorCompletionInput,'fallbackTick',{
+  enumerable:true,
+  get(){fallbackTickGetterExecuted=true;throw new Error('fallback tick getter must not execute');},
+});
+assert.throws(()=>ingressKernel.completeCycle(accessorCompletionInput),
+  /canonical-cognitive-kernel-completion-input-field-accessor:fallbackTick/);
+assert.equal(fallbackTickGetterExecuted,false,'completion root getters must not execute');
+assert.deepEqual(ingressFabric.snapshot(),ingressDecisionSnapshot);
+assert.deepEqual(ingressCycle.snapshot(),ingressCycleBeforeCompletion);
+
+const accessorAnchors={...ingressDecision.anchors};
+let anchorGetterExecuted=false;
+Object.defineProperty(accessorAnchors,'action',{
+  enumerable:true,
+  get(){anchorGetterExecuted=true;throw new Error('anchor getter must not execute');},
+});
+assert.throws(()=>ingressKernel.completeCycle({...ingressCompletionInput,anchors:accessorAnchors}),
+  /canonical-cognitive-kernel-anchors-field-accessor:action/);
+assert.equal(anchorGetterExecuted,false,'completion anchor getters must not execute');
+assert.deepEqual(ingressFabric.snapshot(),ingressDecisionSnapshot);
+assert.deepEqual(ingressCycle.snapshot(),ingressCycleBeforeCompletion);
+
+assert.throws(()=>ingressKernel.completeCycle({
+  ...ingressCompletionInput,
+  outcome:{...stage('kernel-ingress.outcome',{ok:true}),external:'false'},
+}),/canonical-cognitive-kernel-outcome-external-must-be-boolean/,
+'completion booleans must remain typed, not coerced');
+assert.deepEqual(ingressFabric.snapshot(),ingressDecisionSnapshot);
+assert.deepEqual(ingressCycle.snapshot(),ingressCycleBeforeCompletion);
+
+let completionNestedGetterExecuted=false;
+const completionNestedAccessor={};
+Object.defineProperty(completionNestedAccessor,'secret',{
+  enumerable:true,
+  get(){completionNestedGetterExecuted=true;throw new Error('completion nested getter must not execute');},
+});
+assert.throws(()=>ingressKernel.completeCycle({
+  ...ingressCompletionInput,
+  outcome:stage('kernel-ingress.outcome',{nested:completionNestedAccessor}),
+}),/event-payload-accessor/);
+assert.equal(completionNestedGetterExecuted,false,'completion nested payload getters must not execute');
+assert.deepEqual(ingressFabric.snapshot(),ingressDecisionSnapshot);
+assert.deepEqual(ingressCycle.snapshot(),ingressCycleBeforeCompletion);
+
+const ingressSuccessfulCompletion=ingressKernel.completeCycle(ingressCompletionInput);
+assert.equal(ingressSuccessfulCompletion.completionRecorded,true);
+assert.equal(ingressFabric.snapshot().total,11,
+  'failed ingress attempts leave no partial records; the valid decision+completion contains eleven events');
+console.log('WorkPass371 canonical kernel ingress boundary: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
