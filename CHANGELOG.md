@@ -1,3 +1,11 @@
+# WorkPass359 — preserve action/goal attribution under executive arbitration (2026-10-26)
+
+- [RUNTIME BUG] A full `OrganismRuntime.step` could throw `RangeError: B272 outcome action must match the generated action` when the canonical decision/policy selected an action different from the endogenous B272 goal generator's proposed action.
+- [FIX] The Core now credits the B272 goal generator only when the actual selected action matches its current generated action. B273 goal-lifecycle learning is independently gated by agreement with B273's current action. World-transition feedback applies the same checks. The action/outcome still flows through the broader organism learning path; the generated goal is simply not taught a consequence for an action it did not propose.
+- [SAFETY] The B272 strict action validation remains unchanged; mismatched outcomes are not rewritten or forged to pass the gate. This prevents a genuine policy arbitration mismatch from crashing the organism while preserving causal credit boundaries.
+- [REGRESSION] The new full-runtime writer/reader test (WorkPass358) drives a real `OrganismRuntime.step`, persists the canonical memory, stops the runtime in one process, and reopens it in a new process. The WorkPass349 CI workflow now watches `OrganismCore.ts` and runs the complete regression stack.
+- [VALIDATION] Exact-head WorkPass349 workflow [#40291145587](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291145587) is running. WorkPass331 kernel contract passed on Core fix commit `25c2363688be0cb76ca203d693df538c0cdc5456`; full runtime restart + memory retrieval and runtime typecheck still await completion. No production-readiness claim.
+ 
 # WorkPass357 — cross-process durable memory recall regression (2026-10-26)
 
 - [INTEGRATION] Added a file-backed MemoryOS lifecycle regression using two independent Node processes: writer normalizes and persists the canonical memory snapshot through `FileStateStore`; reader reopens the file, restores `MemoryOS2`, rebuilds indexes, retrieves the target causal/autobiographical memory, verifies the causal link, and runs the read-only memory doctor.
