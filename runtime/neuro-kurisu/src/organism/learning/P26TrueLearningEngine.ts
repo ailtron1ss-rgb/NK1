@@ -61,6 +61,8 @@ export interface P26InterleavedTrainingResult {
   eligibleReplayRows:number;
   conflictComparisons:number;
   conflictCandidateCap:number;
+  /** Actual replay rate after bounding historical influence by replay cadence. */
+  effectiveReplayLearningRate01:number;
   meanLoss01:number;
 }
 
@@ -204,6 +206,13 @@ export class P26TrueLearningEngine{
       ? clamp(options.currentLearningRate01!) : .05;
     const replayLearningRate01=Number.isFinite(options.replayLearningRate01)
       ? clamp(options.replayLearningRate01!) : .035;
+    // Dense replay must not outweigh fresh updates simply because a replay is
+    // scheduled after every current sample. Bound per-sample historical weight
+    // to 10% of the current step, scaling the allowance with the replay stride.
+    const effectiveReplayLearningRate01=Math.min(
+      replayLearningRate01,
+      currentLearningRate01 * 0.1 * replayEveryNCurrent,
+    );
 
     const candidatesByActionAndEnergy=new Map<string,P26InterleavedExperience[]>();
     const energyBucket=(state:OrganismState)=>Math.round(readStateNeed(state,'energy')*20);
@@ -257,7 +266,7 @@ export class P26TrueLearningEngine{
           eligibleReplayRows+=1;
           const replayResult=this.learner.train({
             state:historical.state,action:historical.action,target01:targetFor(historical),
-            learningRate01:replayLearningRate01,extras,
+            learningRate01:effectiveReplayLearningRate01,extras,
           });
           replayUpdates+=1;
           replayLoss+=replayResult.loss01;
@@ -285,6 +294,7 @@ export class P26TrueLearningEngine{
     return {
       onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,
       conflictComparisons,conflictCandidateCap:candidateCap,
+      effectiveReplayLearningRate01,
       meanLoss01:total?(onlineLoss+replayLoss)/total:0,
     };
   }
