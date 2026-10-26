@@ -298,6 +298,78 @@ test("versioned EmbodimentIntent JSON schema is present and pins all synchronize
 });
 
 
+test("Live2D profile presets have enforceable frame budgets in both shipped viewers", async () => {
+  const viewers = [
+    { name: "app", path: join(root, "public/live2d/viewer.html") },
+    { name: "runtime", path: join(root, "../runtime/neuro-kurisu/public/live2d/viewer.html") },
+  ];
+  const serializedPolicies = [];
+  for (const viewer of viewers) {
+    const html = await readFile(viewer.path, "utf8");
+    const policy = html.match(/const PROFILE_POLICY=Object\.freeze\([\s\S]*?\);/u)?.[0];
+    const chooseProfile = html.match(/function chooseProfile\(\)\{[\s\S]*?\n  \}/u)?.[0];
+    const modelForProfile = html.match(/function modelForProfile\(profile\)\{[\s\S]*?\n  \}/u)?.[0];
+    const tickerBudget = html.match(/function updateTickerBudget\(\)\{[^\n]*\}/u)?.[0];
+    assert.ok(policy, `${viewer.name}: profile policy catalog must exist`);
+    assert.ok(chooseProfile, `${viewer.name}: profile selector must exist`);
+    assert.ok(modelForProfile, `${viewer.name}: model selection must use the catalog`);
+    assert.ok(tickerBudget, `${viewer.name}: frame budget must use the selected profile`);
+    assert.match(html, /powerPreference:PROFILE_POLICY\[assetProfile\]\.powerPreference/u,
+      `${viewer.name}: renderer power preference must match selected profile`);
+    const sandbox = {
+      URLSearchParams,
+      location: { search: "?profile=quality" },
+      navigator: { deviceMemory: 8, maxTouchPoints: 0 },
+      innerWidth: 1200,
+      innerHeight: 800,
+      assetProfile: "quality",
+      bodySignal: { speaking: true },
+      app: { ticker: { maxFPS: 0 } },
+      visualStateIsActive(signal = {}) {
+        return Boolean(signal?.speaking || signal?.gesture || signal?.expressionIntensity > 0.5);
+      },
+    };
+    const api = vm.runInNewContext(
+      [policy, chooseProfile, modelForProfile, tickerBudget,
+        "({ PROFILE_POLICY, chooseProfile, modelForProfile, updateTickerBudget })"].join("\n"),
+      sandbox,
+      { filename: `${viewer.name}-live2d-profile-policy.js`, timeout: 1000 },
+    );
+    const normalizedPolicy = JSON.parse(JSON.stringify(api.PROFILE_POLICY));
+    assert.deepEqual(Object.keys(normalizedPolicy).sort(), ["balanced", "mobile", "quality"]);
+    assert.equal(api.chooseProfile(), "quality");
+    assert.equal(api.modelForProfile("mobile"), "./Kurisu.mobile/Kurisu-mobile.model3.json");
+    assert.equal(api.modelForProfile("balanced"), "./Kurisu/Kurisu.model3.json");
+    assert.equal(api.modelForProfile("quality"), "./Kurisu/Kurisu.model3.json");
+    assert.deepEqual(normalizedPolicy.mobile, {
+      modelPath: "./Kurisu.mobile/Kurisu-mobile.model3.json", activeFps: 24, idleFps: 10, powerPreference: "low-power",
+    });
+    assert.deepEqual(normalizedPolicy.balanced, {
+      modelPath: "./Kurisu/Kurisu.model3.json", activeFps: 30, idleFps: 14, powerPreference: "low-power",
+    });
+    assert.deepEqual(normalizedPolicy.quality, {
+      modelPath: "./Kurisu/Kurisu.model3.json", activeFps: 60, idleFps: 24, powerPreference: "high-performance",
+    });
+    for (const [profile, activeFps, idleFps] of [
+      ["mobile", 24, 10], ["balanced", 30, 14], ["quality", 60, 24],
+    ]) {
+      sandbox.assetProfile = profile;
+      sandbox.bodySignal = { speaking: true };
+      api.updateTickerBudget();
+      assert.equal(sandbox.app.ticker.maxFPS, activeFps, `${viewer.name}: ${profile} active budget`);
+      sandbox.bodySignal = {};
+      api.updateTickerBudget();
+      assert.equal(sandbox.app.ticker.maxFPS, idleFps, `${viewer.name}: ${profile} idle budget`);
+    }
+    sandbox.location.search = "?profile=unsupported";
+    sandbox.navigator.deviceMemory = 4;
+    assert.equal(api.chooseProfile(), "mobile", `${viewer.name}: unknown profile falls back to device policy`);
+    serializedPolicies.push(JSON.stringify(normalizedPolicy));
+  }
+  assert.equal(serializedPolicies[0], serializedPolicies[1],
+    "app and standalone runtime must ship the same model and frame-budget profiles");
+});
+
 test("actual Live2D viewer message handler accepts current state and rejects duplicate, rewound and wrong-cancel messages", async () => {
   const html = await readFile(join(root, "public/live2d/viewer.html"), "utf8");
   const match = html.match(/<script>\s*([\s\S]*?)<\/script>/u);

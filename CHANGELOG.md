@@ -1,3 +1,12 @@
+## NK1 WorkPass108 — truthful Live2D performance profiles (2026-10-26)
+
+- Replaced the previously cosmetic `quality` profile acceptance with an explicit profile policy catalog in both the app viewer and standalone runtime viewer. All model URLs remain pinned to the bundled allowlist; `mobile` uses the mobile model, while `balanced` and `quality` use the full model.
+- Profiles now drive real runtime behavior: `mobile` caps at 24 FPS active / 10 FPS idle with low-power rendering; `balanced` uses 30 / 14 FPS and low-power rendering; explicit `quality` uses 60 / 24 FPS and requests high-performance rendering. Hidden tabs are still paused by the existing visibility path.
+- Added executable regression checks against both shipped viewer implementations for profile selection, exact local model paths, frame budgets, power preference, unknown-profile handling, and app/runtime policy parity.
+- This is a rendering/performance policy change, not a claim that a separate higher-resolution Cubism model was authored; `quality` currently reuses the full bundled model asset.
+
+---
+
 ## NK1 WorkPass107 — selectable original avatar and appearance controls (2026-10-26)
 
 - Added `app/src/components/KurisuOriginalStage.tsx`: separate authored SVG concept body with layered hair/face/coat/legs, affect-driven pose and expression, procedural idle/hair/breath animation, reduced-motion support, and speech-clock-linked mouth opening.
