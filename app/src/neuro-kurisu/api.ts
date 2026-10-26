@@ -263,6 +263,8 @@ export const neuroApi = {
   hexisPolicyEvaluate: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/integration/hexis/policy/evaluate", { method: "POST", body: JSON.stringify(payload) }),
   hexisPolicyRevoke: (id: string) => request<Record<string, unknown>>("/api/organism/integration/hexis/policy/revoke", { method: "POST", body: JSON.stringify({ id }) }),
   hexisExecutionPlan: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/integration/hexis/execution-plan", { method: "POST", body: JSON.stringify(payload) }),
+  hexisRemotePeerStatus: () => request<Record<string, unknown>>("/api/organism/integration/hexis/peer/status"),
+  hexisRemotePeerConsult: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/integration/hexis/peer/consult", { method: "POST", body: JSON.stringify(payload) }),
   voiceSpeak: (text: string, approvalId?: string) => request<Record<string, unknown>>("/api/organism/voice/speak", { method: "POST", body: JSON.stringify({ text, ...(approvalId ? { approvalId } : {}) }) }),
   voiceListen: (approvalId?: string) => request<Record<string, unknown>>("/api/organism/voice/listen", { method: "POST", body: JSON.stringify({ ...(approvalId ? { approvalId } : {}) }) }),
   voiceTurn: (speak = true, deliberate = true, approvalId?: string) => request<Record<string, unknown>>("/api/organism/voice/turn", { method: "POST", body: JSON.stringify({ speak, deliberate, ...(approvalId ? { approvalId } : {}) }) }),

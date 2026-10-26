@@ -1,3 +1,279 @@
+## WorkPass424 — bound HMX normalizer option strings before parsing (2026-10-26)
+
+- **Normalizer code commit:** `27dc3f6e37377346ba317f8d9349af98ac5091bc`; **regression commit:** `3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e`.
+- The safe options envelope now requires any supplied `sourceSubjectId` to be a non-empty string no longer than 180 characters, and `exportedAt` to be a bounded ISO date-time (maximum 64 characters) before the value reaches `Date.parse`.
+- This closes a direct-call resource/shape bypass around the HMX document's normal snapshot size bounds. Valid canonical export IDs and optional normalizer fields are otherwise unchanged.
+- Regression rejects an overlong source identifier, an overlong exportedAt string and a malformed date string.
+- **Validation:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass423 — bind HMX memory projections to validated export options (2026-10-26)
+
+- **Normalizer code commit:** `49a5a2e90a2d98980572f44152afaf20921a08a7`; **regression commit:** `bfb55498ff8e258caa52aec95f365bac7fc0f94b`.
+- `normalizeHmxV17Memory` now validates the small options envelope through own data descriptors, accepting only the documented keys and a canonical `exportId`; optional source/date values must have the expected types. Accessor-backed options are rejected without evaluation.
+- A row is only projected when its `ref` starts with the exact supplied `exportId` plus `:`. A row from another export or a non-string export id is refused instead of being normalized under the wrong source lineage.
+- Regressions cover mismatched export ID, a getter-backed `exportId` that must not execute, and an object-valued export ID. The prior malformed-row getter/prototype and source-attribution checks remain.
+- **Validation:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass422 — snapshot untrusted memory rows before normalization (2026-10-26)
+
+- **Normalizer code commit:** `58f57b806590477c0d6558b162d82a78675e8397`; **regression commit:** `b380123afe87987a10456065504982bdf4a02af1`.
+- `normalizeHmxV17Memory` now captures its raw row through the same bounded plain-JSON snapshot boundary before reading fields. Direct callers cannot trigger root/nested getters, feed a custom-prototype row, or mutate values during the normalizer's trust checks.
+- The normalizer still returns `null` for malformed typed metadata or unsafe input; canonical stage application continues to use the bounded stage snapshot. This adds defense-in-depth without weakening the previous confidence, provenance, reference or metadata rules.
+- Regressions cover root getter suppression, nested metadata getter suppression and custom-prototype row rejection.
+- **Validation:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass421 — reject malformed HMX source attribution instead of silently dropping it (2026-10-26)
+
+- **Adapter code commit:** `77c57d9283f2805711a1c5e3db11c38af8b826f2`; **regression commit:** `d7be9e5da89bb8523e42d422533112e9a0304461`.
+- The memory schema now requires `source_attribution` to be an object when supplied. The normalizer returns `null` for scalar/array source-attribution values rather than converting the row to an apparently source-less imported memory.
+- This complements the existing `source_authority_01` numeric range check: when attribution is present but malformed, the stage emits a schema conflict and the whole memories section remains ineligible for canonical merge.
+- Regression verifies no throw, a path-specific schema issue, and a null memory projection for a string-valued source_attribution.
+- **Validation:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass420 — validate HMX from the existing bounded snapshot (2026-10-26)
+
+- **Adapter refactor commit:** `86ec7974749de51ef1a78375e0da45d4772c34c7`; **fabric wiring:** `619535a9cf23e3463ca4a8b1809a07811e512f00`; **regression:** `b801a6eb2b67a6270f4f2a4dc745a3bf32433100`.
+- Added `snapshotAndValidateHmxV17Document`: it captures untrusted input once, validates the detached plain-JSON value, and returns both the snapshot and issues. The public `validateHmxV17Document` still snapshots arbitrary inputs itself, while `stageHmx` now consumes the combined result without a second full deep copy/serialization pass.
+- Existing restore-time validation remains on the safe public API because its input is persisted state, while the initial staging route has the detached data required for staging. That keeps the trust boundary explicit and avoids broad changes to callers that do not need a document snapshot.
+- Regression checks that the combined result returns a detached value, valid data has no issues, and accessor-backed top-level input is rejected without executing getters. Existing stage snapshot isolation and malformed-metadata fail-closed cases remain in the focused suite.
+- **Validation:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass419 — reject malformed HMX metadata before coercion (2026-10-26)
+
+- **Adapter code commits:** `718478b8fb815909c4b2c31098921b2a0cac23bf`, `3bc3bee2f68a0c3f99920e1cc1d898cc9797afa3`, `c39fd277fc2e5c79495a92df1d215171502539c0`; **regression commits:** `f6f3ee592273430e787dc2d60f865d0abca0128b`, `693567b8100b83ab0d8ff1ffad8c31fcf3bca8cb`, `f6ff13bb81276752e1500181ea83f9f75f57a657`, `19afcc0376e55b26511713776a09438bcc4a7e79`.
+- Replaced coercive validation of `export_intent`, privacy policy values and memory `nk1_kind` with explicit type checks. HMX memory metadata now validates confidence/salience/trust numbers, `tags`/`entities` arrays and context shape before a record can enter the additive memory path.
+- `normalizeHmxV17Memory` now returns `null` for malformed typed fields instead of coercing null-prototype objects to strings/numbers; numeric clamping is also exception-safe. Memory references are bounded to 512 characters and source-authority values are validated when supplied.
+- Regressions cover null-prototype objects in export intent, privacy fields, metadata kind/confidence/tags, memory type and source authority; they require schema issues or a null projection rather than a thrown coercion error. An oversized memory ref is rejected as a schema conflict.
+- A stage-level regression also requires malformed memory metadata to produce a visible conflict, omit the whole conflicted memories section, and remain unacceptably staged rather than reaching canonical apply.
+- **Validation:** PENDING exact-head HMX adaptation, server smoke, runtime typecheck and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass418 — avoid redundant deep copies after the bounded HMX snapshot (2026-10-26)
+
+- **Fabric code commit:** `8325edfe46cc263b79a146dee94268e14c07c6d0`; **isolation regression:** `849453058df8ca197e623432b66d6d17bad0e945`.
+- `stageHmx` now reuses its detached bounded plain-JSON snapshot for staged section references instead of cloning every array/object a second time. The method still returns a structured clone of the complete stage, so callers cannot mutate persisted stage state.
+- This reduces duplicate allocation on larger valid HMX imports while keeping the accessor/prototype/resource-bound checks and atomic section omission rules unchanged.
+- Regression mutates the original HMX document and the returned stage object independently and requires the persisted stage's content to remain unchanged in both cases.
+- **Validation:** PENDING exact-head HMX adaptation test, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass417 — snapshot the HMX stage request envelope without executing getters (2026-10-26)
+
+- **Fabric code commit:** `ff87945607101053a2ec4dad99eb41772d989a56`; **regression commit:** `cc2bf0633fbc61f1da5862c0df214f688cf9ac07`.
+- `stageHmx` now captures the exact `document`, `intent` and `strategy` values via own data descriptors from a plain request envelope. Accessors, inherited/custom-prototype envelopes and extra keys are rejected as `hmx-unsafe-stage-request` before field reads, document validation, stage creation or metric mutation.
+- The captured `document` still goes through the existing bounded HMX document snapshot, preserving the existing diagnostic-stage behavior for malformed HMX payloads. This prevents getter-backed request metadata from changing between allowlist validation and staging.
+- Regressions require intent and document getter functions not to run, require both requests to fail closed, and verify the stage ledger stays empty. Runtime enum allowlist checks remain in place after capture.
+- **Validation:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass416 — enforce HMX mode allowlists inside the adaptation fabric (2026-10-26)
+
+- **Fabric code commit:** `d82d5f9c77a303322b6a379e9b664111917f9bf0`; **direct-call regression:** `b1595b492f0424b754e50e600aadebd2d379f7ae`.
+- Added the same intent/strategy allowlists to `HexisAdaptationFabric.stageHmx`, not only the HTTP route. Direct/internal callers now receive `hmx-invalid-intent` or `hmx-invalid-strategy` before document snapshotting, stage creation, or stage metrics mutate.
+- Regression calls the fabric directly with an unknown intent and unknown strategy and requires both to throw while the stage ledger remains empty. Together with WorkPass415's HTTP-smoke regression, the enum contract is checked at both public entry layers.
+- **Validation:** PENDING exact-head HMX adaptation, server smoke, runtime typecheck and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass415 — validate HMX stage intent and strategy at the HTTP boundary (2026-10-26)
+
+- **Server code commit:** `9f9601df7a72d9d0f6c46e24030052c554087237`; **server-smoke regression:** `bd2f036238b7b3582c6e9a17ee49991a66e0df54`.
+- The HMX staging route now accepts only the documented intent allowlist (`port`, `duplicate`, `telepathy`, `analysis`) and strategy allowlist (`additive`, `authoritative`, `deliberative`, `analysis_only`). Missing fields retain the explicit preview-only defaults; provided invalid types/values return HTTP 400 before calling the staging fabric.
+- Regression sends a typo intent and an unsupported strategy, requires `hmx-invalid-intent` / `hmx-invalid-strategy`, then continues with a valid telepathy/additive stage to prove the normal route still works.
+- **Validation:** PENDING exact-head `test:hexis-server-smoke`, runtime typecheck, HMX adaptation and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass414 — block duplicate accept before the HMX receipt is persisted (2026-10-26)
+
+- **Adapter code commit:** `0fc2a3880ef1276106e78dbcd4ab15ce53feb1d2`; **regression commit:** `daa458f2abd935f136b249d1cb3ae6b9ccccf0c5`.
+- Broadened the WorkPass413 replay guard. Any second decision against an already accepted `memory-merge` stage whose receipt is still `pending` now closes that receipt as `uncertain` before returning to the core, whether the second decision is `accept` or `reject`.
+- The first explicit acceptance remains eligible for the normal import because it enters `decideHmx` from `staged`. Repeated accept and late reject each receive a distinct reason code; neither can return `accepted + pending` to the core's state-based import gate.
+- Regression covers duplicate accept, terminal reason, and further accepts remaining non-replayable alongside the existing late-reject case.
+- **Validation:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass413 — prevent a late HMX reject from re-triggering accepted import (2026-10-26)
+
+- **Adapter code commit:** `443d5d83635645e967c7da245f2a75a8af284e03`; **regression commit:** `a4fba62670b3e6a5215b9083853a530b41c5fc79`.
+- Found a decision-order edge case: the core gates canonical import on the returned stage being `accepted + pending`. A later `reject` against a stage already accepted did not change the stage, so it could inadvertently return that same apply-eligible combination.
+- `HexisAdaptationFabric.decideHmx` now converts that late-reject case to terminal `uncertain` with reason `reject-request-after-accept-before-import-receipt`. It preserves the recorded operator acceptance because a reject cannot safely undo unknown prior side effects, but blocks the core's state-based import gate from replaying the batch.
+- Regression covers acceptance, a subsequent reject, the terminal receipt reason and a later accept that remains unable to replay.
+- **Validation:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass412 — test interrupted HMX recovery through JSON persistence (2026-10-26)
+
+- **Regression commit:** `dccd678206df42ac6ed7c1f057e741619c0d453e`.
+- Strengthened WorkPass408 restore regressions to serialize the full Hexis adaptation snapshot through `JSON.stringify/JSON.parse` before restoring it. Both ordinary interrupted acceptance and tampered-payload recovery now cross the same JSON persistence boundary used by the runtime instead of relying only on an in-memory clone.
+- The assertions still require terminal `uncertain`, preserved operator acceptance, exact source-count accounting, non-replay on a repeated decision and integrity-conflict retention.
+- **Validation:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass411 — do not assume rollback for every uncertain HMX receipt (2026-10-26)
+
+- **UI wording commit:** `1f45d8ec3cc7eb16efa8e75da262197c4ff73cb9`; **wiring-audit commit:** `545b8e01a234e9e959b1d6e8ab33462ad5e27617`.
+- Corrected an inaccurate operator warning: `uncertain` can mean either incomplete rollback or a process interruption before the receipt was saved. The UI now describes the result as unconfirmed instead of asserting that rollback failed.
+- The message labels all counters as unverified bookkeeping, explicitly says they do not prove which rows were applied, and asks the operator to inspect canonical memory and the stored receipt before remediation.
+- The interface wiring audit now requires the cause-neutral wording and the explicit no-retry instruction.
+- **Validation:** PENDING frontend build and UI wiring audit; no exact-head PASS/readiness uplift claimed. `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass410 — label HMX uncertain counts as unverified (2026-10-26)
+
+- **UI wording commit:** `306b075e22f610b60783d489015f8a8519d77212`; **wiring-audit commit:** `85c700822e22ce7d6c9140986296fd924417f511`.
+- The `UNCERTAIN` receipt message no longer labels count fields as verified creations/reuse. It explicitly says the counts were reported by the interrupted attempt and are not verified, and asks the operator to inspect canonical memory and the receipt before any remediation.
+- The wiring audit requires this uncertainty wording alongside the no-retry warning.
+- **Validation:** PENDING frontend build and UI wiring audit; no exact-head PASS/readiness uplift claimed. `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass409 — preserve mutation receipts when the dashboard refresh fails (2026-10-26)
+
+- **UI code commit:** `895b4c338a0a40e3441af5ee51a5c8a63bcc46f2`; **wiring-audit commit:** `cee8f2841d34bddda5b1780844c5908133bececa`.
+- The shared Hexis panel runner no longer treats a failed post-action state/memory refresh as if the original action itself failed. The action's result is returned to its caller while refresh failure is reported separately.
+- This prevents a valid HMX import receipt from being discarded before the specialized accept handler can show `APPLIED`, `PARTIAL`, `SKIPPED` or `UNCERTAIN`.
+- `audit-ui-function-wiring.mjs` now asserts the mutation result is preserved across a separate refresh-error branch.
+- **Validation:** PENDING frontend build and UI wiring audit; HMX adaptation/server smoke, runtime typecheck and Unified integration remain unverified on an exact usable CI head. No PASS/readiness uplift claimed. `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass408 — quarantine accepted HMX imports interrupted before receipt persistence (2026-10-26)
+
+- **Code commit:** `f12ad52ed62a852df476c88150a16abab8e56288`; **regression commit:** `7456ba64763ec253cb86ec33619a23c0e3210a15`.
+- Found a restart replay window not covered by pending-stage integrity checks: a process could stop after an HMX stage became `accepted` but before the canonical import receipt was persisted. Restore previously left that stage as `accepted + pending`, allowing a repeated accept to invoke the import path again.
+- Restore now turns accepted, memory-merge stages with pending receipts into terminal `uncertain`. It preserves the operator's acceptance state, conservatively accounts for source rows without claiming they were applied/skipped in reality, and records a reason. If the persisted stage digest is invalid, it also retains a `persisted-stage-integrity-failure` conflict.
+- Regressions cover an ordinary interrupted accepted stage, repeated accept after restore, source-row accounting and an interrupted stage whose saved payload was tampered with.
+- **Validation:** PENDING exact-head `test:hexis-adaptation`, server smoke, runtime typecheck and Unified integration. No PASS/readiness uplift claimed. `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass407 — exercise non-record JSON body types across every Hexis POST route (2026-10-26)
+
+- **Server-smoke regression:** `1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3`.
+- Extended the shared request-boundary matrix across all 17 Hexis POST endpoints. Each now receives JSON `null`, an array, a string, a number and a boolean.
+- Every non-record body must return HTTP 400 `hexis-invalid-request-body`; failures include the route label and exact JSON value. This checks the contract beyond the previous all-routes-`null` case.
+- **Validation:** PENDING exact-head `test:hexis-server-smoke`, runtime typecheck and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass406 — surface terminal HMX import outcomes in the operator UI (2026-10-26)
+
+- **UI code commit:** `a330d9bd1ca2602e3cfcc0fe75d513a8f67e7875`; **wiring-audit commit:** `ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122`.
+- The HMX accept control now inspects the returned import receipt and displays explicit `APPLIED`, `PARTIAL`, `SKIPPED`, `PENDING` or `UNCERTAIN` feedback with counts/reason when available.
+- A pending or uncertain outcome is no longer left under the generic `Accept HMX: OK` message. Local accept controls are cleared after a terminal receipt; the UI warns not to retry the same stage when canonical memory outcome is unconfirmed.
+- The interface-wiring audit now checks that the explicit uncertain/pending branch is present and wired to the accept control.
+- **Validation:** PENDING frontend build, UI wiring audit, exact-head runtime typecheck, HMX adaptation/server smoke and Unified integration. No PASS/readiness uplift claimed. `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass405 — quarantine HMX imports with an incomplete rollback (2026-10-26)
+
+- **Code commit:** `7c50f4a34dfc1198b9ec1347b1938d38fd7e73cc`; **regression commit:** `637429b82ae8913760b89b9544cd21a00457c3bd`.
+- Found a receipt dead-end in the WorkPass403 accounting guard: the core's `rollback-incomplete` path can report a syntactically `partial` result whose counters do not match the source row count, leaving an already-accepted import stuck at `pending`.
+- The receipt ledger now distinguishes terminal `uncertain` from ordinary `partial`. For the explicit `memory-encode-failed-rollback-incomplete` reason, it keeps only positively reported created/reused counts, derives the remaining source count, validates exact accounting, and closes the receipt. A later accept cannot replay the same stage or rewrite the terminal result.
+- Regression verifies an incomplete-rollback result is persisted as `uncertain`, its counters account for the source record, and a subsequent nominal `applied` receipt cannot overwrite it.
+- **Validation:** PENDING exact-head runtime typecheck, `test:hexis-adaptation`, server smoke and Unified integration. No PASS/readiness uplift claimed until an exact-head run exposes usable steps/logs. `main` and canonical Release ZIP unchanged.
+
+---
+
+## WorkPass404 — uniform non-object body rejection across Hexis API (2026-10-26)
+
+- **Server code:** `9e67b36842b28042de4b82ad049452e5b01ad747`; **server-smoke regression:** `0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a`.
+- Applied the shared JSON-object guard to all 17 Hexis POST routes, covering remote consult, sync-memory, belief revision, review creation/decision, retention proposal/application, HMX stage/decision, outbox queue/claim/ack/reclaim, connector-policy grant/evaluation/revoke and execution planning.
+- Literal JSON `null`, arrays and primitives now receive HTTP 400 `hexis-invalid-request-body` before they can silently create a review, grant/revoke policy, claim/ack an outbox item or enter another mutation path.
+- Server smoke sends JSON `null` to all 17 routes and requires the same refusal contract. Existing malformed decision/action and HMX integrity tests remain enabled.
+- **Validation:** PENDING exact-head runtime typecheck, HMX adaptation test, server smoke and Unified integration. No PASS or readiness increase claimed; recent Actions still fail without step/log evidence. `main` and canonical Release ZIP unchanged.
+
+## WorkPass403 — validate HMX import receipts before completion (2026-10-26)
+
+- **Code commit:** `ed92b4abf74395cc3d6946eadd0482eca2f839d2`; **regression commit:** `8969a6401719d9105162e50d00a35c79f4e98b51`.
+- `recordHmxImportResult` no longer clamps/floors malformed values into a completed receipt. It requires known status, non-negative safe-integer counts, bounded string reason, and exact accounting of every source memory (`created + reused + skipped === sectionCounts.memories`).
+- An `applied` receipt cannot report skipped rows; a `skipped` receipt cannot report created/reused rows; a `partial` receipt must actually describe both retained and skipped rows. Invalid results leave the receipt pending and never impersonate successful canonical apply.
+- Regression covers non-finite count, missing source-record accounting and inconsistent partial status, then proves a valid receipt still completes and exact replay cannot rewrite its counts.
+- **Validation:** PENDING exact-head typecheck, HMX adaptation, server smoke and Unified integration. No PASS or readiness uplift claimed; `main` and canonical Release ZIP remain unchanged.
+
+## WorkPass402 — revalidate pending HMX stage integrity after restore (2026-10-26)
+
+- **Code commits:** `307b1317100bd9d4e3d62094f552a074fb1f663c` (digest + schema revalidation and restore quarantine) and `66927b5571704895f78f7c02897cd42e12fce8ea` (preserve expected validation-conflict staging); **regression commits:** `6f40c41ec9ff705561c1389fb8760956d41cfee1` and `388156d09c62dc736b5dcbe44a43fce303dedc0a`.
+- Reconstruct the pending stage's canonical digest input before a transition and validate the saved section snapshot again. On restore or accept, a stale/tampered pending-stage digest is quarantined as `rejected` with `persisted-stage-integrity-failure`; its import receipt becomes skipped and cannot be applied through the stage transition.
+- Existing, correctly digested stages with source-schema conflicts remain `staged` for inspection/rejection; the operator-accept gate still refuses them. This preserves the distinction between a valid rejected import and damaged persisted state.
+- Regressions mutate a pending record after snapshot and require restore to quarantine it; a separate conflict-stage regression verifies that expected validation issues stay inspectable and unaccepted.
+- **Validation:** PENDING exact-head typecheck, `test:hexis-adaptation`, server smoke and Unified project integration. No PASS or readiness uplift claimed; recent Actions still fail without usable job steps/logs. `main` and canonical Release ZIP remain untouched.
+
+## WorkPass401 — prototype-free HMX staging maps (2026-10-26)
+
+- **Code commit:** `47d88fcc1a8b5737cca6c542a51e3d0011f8281a`; **regression:** `76830a380ab2cdbd825994062de793c2a1a0c2f0`.
+- `sectionCounts` and `stagedSections` are now null-prototype dictionaries. An untrusted HMX section named `__proto__` remains a diagnostic key instead of invoking an inherited setter or changing the dictionary prototype.
+- Regression requires the section to be reported as unsupported, the source count to remain visible, the staged payload to omit the conflicted section, both dictionaries to have no prototype, and acceptance to remain blocked.
+- **Validation:** PENDING exact-head typecheck, HMX adaptation test, server smoke and Unified integration. No PASS claimed; exact-head runner output remains unavailable. Progress/readiness scores unchanged; `main` and canonical Release ZIP unchanged.
+
+## WorkPass400 — guard Hexis routes against non-object JSON bodies (2026-10-26)
+
+- **Server code:** `416c8df040e778c431ac999242d0d339a0a5940f`; **smoke regression:** `6132b9112a398d37d1dc975fe08bff0b48a9d6f5`.
+- Added `isJsonRecord` validation to learning-review decision, retention proposal, HMX staging and HMX decision endpoints. JSON `null`, arrays and primitive values now return HTTP 400 `hexis-invalid-request-body` before route-specific property reads or mutation calls.
+- Server smoke now sends JSON `null` to all four endpoints and requires the same explicit 400 contract. Existing invalid-decision and retention-action cases remain in the smoke.
+- **Validation:** PENDING exact-head runtime typecheck, HMX adaptation, server smoke and Unified integration. No PASS claimed; recent Actions continue to fail without step/log output. Scores remain unchanged; `main` and canonical Release ZIP untouched.
+
+## WorkPass399 — reject unknown Hexis retention actions (2026-10-26)
+
+- **Server code:** `06f21b03255da079f93ec59e87f35c27e423d2e7`; **smoke regression:** `f27003b53e336ffeca4df1f540691de865701e0f`.
+- The retention proposal endpoint no longer silently maps an unknown action to `compress`. It validates the exact `compress | archive | forget` allowlist and returns HTTP 400 before creating a proposal for an unintended operation.
+- Server smoke attempts `forgett` against an imported-memory fixture and requires `hexis-retention-invalid-action`.
+- **Validation:** PENDING exact-head runtime typecheck, focused HMX tests, server smoke and Unified integration. No PASS claimed; recent exact-head Actions still provide no usable steps/logs. Readiness/progress scores unchanged; `main` and canonical Release ZIP untouched.
+
+## WorkPass398 — fail closed on unknown Hexis decisions (2026-10-26)
+
+- **Server code:** `7df90658a7633fcaee746a69197f9522818cc452`; **server-smoke regression:** `86edc9df9a802ce8aa6965c8091454eb779429d5`.
+- The learning-review route no longer maps an unknown decision to `approve`; it returns HTTP 400 `hexis-review-invalid-decision` before calling the review mutation.
+- The HMX route no longer maps every non-`accept` value to `reject`; it returns HTTP 400 `hmx-invalid-decision` before touching the stage or flushing state.
+- Server smoke now tries invalid review/HMX decisions. It then explicitly accepts the same valid HMX stage, proving the invalid decision did not consume or reject it.
+- **Validation:** PENDING exact-head typecheck, `test:hexis-adaptation`, `test:hexis-server-smoke` and Unified integration. These regressions are authored but have not passed a usable exact-head run; current Actions failures expose no steps/logs. No PASS or readiness uplift claimed. `main` and canonical Release ZIP remain unchanged.
+
+## NK1 × QuixiAI/Hexis — remote peer + HMX 1.7 memory bridge (2026-10-26)
+
+- Added an opt-in `HexisRemoteApiBridge` for the documented QuixiAI/Hexis health/model/chat endpoints, with explicit per-request confirmation, bounded allowlisted context, transport/auth/redirect guards, and advisory-only result semantics. Added status/consult routes and a user-controlled panel in the existing Hexis console.
+- Rebuilt `HexisHmxV17Adapter.ts` into one canonical implementation after detecting duplicated exported declarations in the earlier file. It takes a bounded plain-JSON snapshot without invoking accessors, checks HMX 1.7 envelope/source/intent/ref/date/hash constraints, blocks populated unmapped/protected sections and protected memory kinds, and exports canonical MemoryOS2 rows as a bounded memory-only HMX document.
+- Added local HMX JSON-file/paste import in the existing console. Only `telepathy + additive` may merge ordinary memories through the canonical MemoryFabric/MemoryOS2 path after explicit staging/approval. Imported trust/confidence is capped; external metadata cannot promote an import to verified fact. Stage receipts distinguish applied/partial/skipped and track counts.
+- The HMX accept route now returns HTTP 409 for conflicts instead of reporting a false success. Tests cover untrusted remote responses, HMX envelope/provenance/hash validation, accessor-backed getters, custom prototypes, cycles, sparse arrays and size bounds, protected-section refusal, and a server E2E memory retrieval assertion.
+- Wired `audit:hexis` into the mandatory cognitive integration suite, including the focused adapter/server smoke and server-import/API/UI wiring audits.
+- **Validation status:** latest GitHub Actions jobs are failing within seconds without step records or downloadable logs; the current integration tests/typecheck are therefore not claimed as passed. Earlier successful generic CI predates the final HMX test wiring and is not sufficient evidence. Keep PR #224 draft until a full exact-head runner completes. No live external Hexis service was contacted; `main` and the canonical GitHub Release ZIP remain unchanged.
+
+---
+
+## WorkPass397 — safe HMX snapshot and accessor-free validation (2026-10-26)
+
+- **Code commits:** `aead364e098b462b5f99f48e65b76585f927975f` (bounded HMX plain-JSON snapshot) and `83343d9ba5765050c734218a64d8bbe6e9883f2f` (stage from that same snapshot); **regressions:** `0f9c34c54ad2b858a142c5e14d0de28fb763f5b5` and `28920aa46a888ddff4a0297ae8a93526e879da85`.
+- HMX validation now first snapshots a bounded plain-JSON tree using own data descriptors. Accessors, sparse/extended arrays, unsupported object prototypes, cycles, non-finite numbers and resource-bound violations are rejected before schema inspection; JSON serialization and staging operate on the captured data rather than the caller's original object.
+- `stageHmx` uses the same captured document for validation and section staging, avoiding a validate-one-value/stage-another discrepancy.
+- Added root and nested getter regressions plus sparse-array, cyclic-metadata, non-finite-number and custom-prototype cases. Tests require zero getter executions, an explicit `unsafe-input` conflict, no staged memory payload and refusal of acceptance. These complement WorkPass396's atomic over-limit/malformed section tests.
+- **Validation:** PENDING exact-head typecheck, `test:hexis-adaptation`, Hexis server smoke and unified cognitive integration. The tests are authored but have not executed successfully on this exact head; no PASS/readiness claim. `main` and the canonical Release ZIP remain untouched.
+
+## WorkPass396 — atomic HMX section staging (2026-10-26)
+
+- **Code commit:** `eb4b719d011bd035d05ae53f65599d15b5d7ae43`; **regression commit:** `c8fc71acd48348469dfa6d9cabd01ba9ea92fce6` on `hexis-remote-bridge-20261026`.
+- HMX array sections that exceed the 256-record bound or contain any section-level/schema conflict are now omitted as a whole from `stagedSections`; NK1 no longer retains a valid-looking prefix next to the original source count.
+- Diagnostics still preserve the source record count and the validation conflict, and the existing stage conflict blocks acceptance into canonical memory.
+- Added regressions for a 257-memory HMX export and an invalid row inside an otherwise valid memory array. Both require whole-section omission and continued rejection by `decideHmx(..., "accept")`.
+- **Validation:** PENDING exact-head typecheck, `test:hexis-adaptation`, Hexis server smoke and unified cognitive integration. Tests are authored but have not run successfully on this exact head; no PASS or production-readiness claim. No dependency/store added; `main` and canonical Release ZIP remain untouched.
+
 ## WorkPass357 — prevent getter execution in restored parent lineage arrays (2026-10-26)
 
 - **Defect:** snapshot restore validated parent-array elements with property descriptors but read `parentIds.length` directly twice. A proxy `get` trap could execute and report a forged length, silently dropping causal parent links or running attacker-controlled code during restore.

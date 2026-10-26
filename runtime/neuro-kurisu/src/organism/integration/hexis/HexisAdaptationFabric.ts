@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
+import { snapshotAndValidateHmxV17Document, validateHmxV17Document } from './HexisHmxV17Adapter.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
@@ -113,6 +114,16 @@ export interface HexisHmxStage {
     createdAt: number;
     digest: string;
     stagedSections: Record<string, unknown>;
+    /** Explicitly states whether operator acceptance can mutate canonical NK1 memory. */
+    applicationMode: 'memory-merge' | 'preview-only';
+    importResult?: {
+        status: 'pending' | 'applied' | 'partial' | 'skipped' | 'uncertain';
+        created: number;
+        reused: number;
+        skipped?: number;
+        reason?: string;
+        completedAt?: number;
+    };
 }
 export interface HexisOutboxEntry {
     id: string;
@@ -190,6 +201,92 @@ export interface HexisAdaptationState {
 }
 const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
 const digest = (value: unknown) => sha256Stable(value, 'legacy');
+function hmxStageDigestInput(stage: HexisHmxStage) {
+    return {
+        exportId: stage.exportId,
+        intent: stage.intent,
+        strategy: stage.strategy,
+        sourceSubjectId: stage.sourceSubjectId,
+        sectionCounts: stage.sectionCounts,
+        protectedSections: stage.protectedSections,
+        conflicts: stage.conflicts,
+        stagedSections: stage.stagedSections,
+        applicationMode: stage.applicationMode,
+    };
+}
+
+/**
+ * Revalidate a pending HMX stage before any state transition. The original
+ * source is never read again; only the bounded staged snapshot is rechecked.
+ */
+function pendingHmxStageIntegrityIssue(stage: HexisHmxStage): string | null {
+    try {
+        if (!stage || typeof stage !== 'object' ||
+            typeof stage.stagingId !== 'string' ||
+            typeof stage.exportId !== 'string' ||
+            !/^exp_[0-9a-f]{16}$/.test(stage.exportId) ||
+            !['port', 'duplicate', 'telepathy', 'analysis'].includes(stage.intent) ||
+            !['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(stage.strategy) ||
+            !Number.isFinite(stage.createdAt) ||
+            !Array.isArray(stage.protectedSections) ||
+            !Array.isArray(stage.conflicts) ||
+            !stage.sectionCounts || typeof stage.sectionCounts !== 'object' || Array.isArray(stage.sectionCounts) ||
+            !stage.stagedSections || typeof stage.stagedSections !== 'object' || Array.isArray(stage.stagedSections)) {
+            return 'persisted-stage-shape-invalid';
+        }
+
+        const expectedMode = stage.intent === 'telepathy' && stage.strategy === 'additive'
+            ? 'memory-merge'
+            : 'preview-only';
+        if (stage.applicationMode !== expectedMode) return 'persisted-stage-application-mode-mismatch';
+        if (typeof stage.digest !== 'string' || digest(hmxStageDigestInput(stage)) !== stage.digest) {
+            return 'persisted-stage-digest-mismatch';
+        }
+        // A correctly digested stage may already carry validation conflicts. Keep it staged for inspection/rejection; the existing accept gate blocks it without misclassifying expected validation failures as corrupted persistence.
+        if (stage.conflicts.length > 0) return null;
+
+        const countKeys = Object.keys(stage.sectionCounts).sort();
+        const stagedKeys = Object.keys(stage.stagedSections).sort();
+        if (countKeys.length !== stagedKeys.length ||
+            countKeys.some((key, index) => key !== stagedKeys[index])) {
+            return 'persisted-stage-section-count-keys-mismatch';
+        }
+        for (const key of stagedKeys) {
+            const declaredCount = stage.sectionCounts[key];
+            const value = stage.stagedSections[key];
+            const actualCount = Array.isArray(value) ? value.length
+                : value && typeof value === 'object' ? Object.keys(value as Record<string, unknown>).length
+                : 1;
+            if (!Number.isSafeInteger(declaredCount) || declaredCount < 0 || declaredCount !== actualCount) {
+                return 'persisted-stage-section-count-mismatch:' + key;
+            }
+        }
+
+        const sourceSubjectId = typeof stage.sourceSubjectId === 'string' && stage.sourceSubjectId.trim()
+            ? stage.sourceSubjectId
+            : 'nk1-stage-validation';
+        const validationIssues = validateHmxV17Document({
+            hmx_version: '1.7',
+            export_id: stage.exportId,
+            export_intent: stage.intent,
+            exported_at: '2026-10-26T00:00:00.000Z',
+            source: {
+                instance_id: sourceSubjectId,
+                schema_version: '1.7',
+                embedding_model: 'nk1-stage-validation',
+                embedding_dimension: 1,
+                hexis_lineage_id: sourceSubjectId,
+            },
+            sections: stage.stagedSections,
+        }, stage.intent);
+        if (validationIssues.length > 0) {
+            return 'persisted-stage-schema-revalidation-failed:' + validationIssues[0].kind;
+        }
+        return null;
+    } catch {
+        return 'persisted-stage-integrity-check-failed';
+    }
+}
 const sourceKey = (source: HexisEvidenceSource) => String(source.ref || source.label || source.contentHash || digest(source));
 const nowMs = () => Date.now();
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
@@ -218,10 +315,64 @@ export class HexisAdaptationFabric {
             retentionProposals: Array.isArray(value.retentionProposals) ? value.retentionProposals.slice(-512) : [],
             fidelityReceipts: Array.isArray(value.fidelityReceipts) ? value.fidelityReceipts.slice(-512) : [],
             hmxStages: Array.isArray(value.hmxStages)
-                ? value.hmxStages.slice(-32).map((stage: any) => ({
-                    ...stage,
-                    stagedSections: stage?.stagedSections && typeof stage.stagedSections === 'object' ? stage.stagedSections : {},
-                  }))
+                ? value.hmxStages.slice(-32).map((rawStage: any) => {
+                    const stage: HexisHmxStage = {
+                        ...rawStage,
+                        stagedSections: rawStage?.stagedSections && typeof rawStage.stagedSections === 'object' && !Array.isArray(rawStage.stagedSections)
+                            ? rawStage.stagedSections
+                            : Object.create(null),
+                    };
+                    // An accepted import can be interrupted after writes but before its receipt is persisted.
+                    // Never replay accepted+pending memory-merge stages after restore: the side effects are unknown.
+                    if (stage.status === 'accepted' &&
+                        stage.applicationMode === 'memory-merge' &&
+                        stage.importResult?.status === 'pending') {
+                        const integrityIssue = pendingHmxStageIntegrityIssue(stage);
+                        const conflicts = [...(Array.isArray(stage.conflicts) ? stage.conflicts : [])];
+                        if (integrityIssue) {
+                            conflicts.push({
+                                path: '$',
+                                kind: 'persisted-stage-integrity-failure',
+                                detail: integrityIssue,
+                            });
+                        }
+                        return {
+                            ...stage,
+                            conflicts: conflicts.slice(-64),
+                            importResult: {
+                                status: 'uncertain' as const,
+                                created: 0,
+                                reused: 0,
+                                skipped: Math.max(0, Number(stage.sectionCounts?.memories) || 0),
+                                reason: integrityIssue
+                                    ? 'accepted-stage-import-interrupted-after-restore-integrity-failure'
+                                    : 'accepted-stage-import-interrupted-after-restore',
+                                completedAt: nowMs(),
+                            },
+                        };
+                    }
+                    if (stage.status !== 'staged') return stage;
+                    const integrityIssue = pendingHmxStageIntegrityIssue(stage);
+                    if (!integrityIssue) return stage;
+                    const conflict = {
+                        path: '$',
+                        kind: 'persisted-stage-integrity-failure',
+                        detail: integrityIssue,
+                    };
+                    return {
+                        ...stage,
+                        status: 'rejected' as const,
+                        conflicts: [...(Array.isArray(stage.conflicts) ? stage.conflicts : []), conflict].slice(-64),
+                        importResult: {
+                            status: 'skipped' as const,
+                            created: 0,
+                            reused: 0,
+                            skipped: Math.max(0, Number(stage.sectionCounts?.memories) || 0),
+                            reason: 'persisted-stage-integrity-failure',
+                            completedAt: nowMs(),
+                        },
+                    };
+                  })
                 : [],
             outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
             connectorPolicies: normalizedPolicies,
@@ -340,16 +491,251 @@ export class HexisAdaptationFabric {
         document: unknown;
         intent: HexisHmxIntent;
         strategy: HexisHmxStrategy;
-    }): HexisHmxStage { const document = input.document && typeof input.document === 'object' ? input.document as Record<string, unknown> : {}; const sections = document.sections && typeof document.sections === 'object' && !Array.isArray(document.sections) ? document.sections as Record<string, unknown> : {}; const conflicts: HexisHmxStage['conflicts'] = []; if (document.hmx_version && !String(document.hmx_version).startsWith('1.'))
-        conflicts.push({ path: 'hmx_version', kind: 'unsupported-major', detail: `Hexis adapter accepts HMX 1.x, got ${String(document.hmx_version)}` }); if (!Object.keys(sections).length)
-        conflicts.push({ path: 'sections', kind: 'schema', detail: 'sections must be a non-empty object' }); const names = Object.keys(sections); const blocked = (input.intent === 'telepathy' || input.intent === 'analysis') ? names.filter((name) => protectedSections.has(name)) : []; if (blocked.length)
-        conflicts.push({ path: 'sections', kind: 'protected-by-intent', detail: `protected sections require explicit replacement protocol: ${blocked.join(', ')}` }); const sectionCounts: Record<string, number> = {}; const stagedSections: Record<string, unknown> = {}; for (const [name, records] of Object.entries(sections)) {
-        sectionCounts[name] = Array.isArray(records) ? records.length : 1;
-        stagedSections[name] = Array.isArray(records) ? structuredClone(records.slice(0, 64)) : structuredClone(records);
-    } const base = { exportId: String(document.export_id ?? randomUUID()), intent: input.intent, strategy: input.strategy, sourceSubjectId: document.source_subject_id ? String(document.source_subject_id) : undefined, sectionCounts, protectedSections: names.filter((name) => protectedSections.has(name)), conflicts, stagedSections }; const stage: HexisHmxStage = { ...base, stagingId: randomUUID(), status: 'staged', createdAt: nowMs(), digest: digest(base) }; this.state.hmxStages.push(stage); this.state.hmxStages = this.state.hmxStages.slice(-32); this.state.metrics.hmxStaged += 1; return structuredClone(stage); }
-    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length))
-        return stage ? structuredClone(stage) : null; stage.status = decision === 'accept' ? 'accepted' : 'rejected'; if (decision === 'accept')
-        this.state.metrics.hmxAccepted += 1; return structuredClone(stage); }
+    }): HexisHmxStage {
+        // Capture the request envelope through own data descriptors before reading
+        // any field. This prevents accessor-backed intent/strategy/document values
+        // from running code or changing between validation and staging.
+        let requestDescriptors: PropertyDescriptorMap;
+        try {
+            const prototype = Object.getPrototypeOf(input);
+            const keys = Reflect.ownKeys(input);
+            if ((prototype !== Object.prototype && prototype !== null) ||
+                keys.length !== 3 ||
+                keys.some((key) => typeof key !== 'string' ||
+                    !['document', 'intent', 'strategy'].includes(key))) {
+                throw new Error('invalid-stage-request-shape');
+            }
+            requestDescriptors = Object.getOwnPropertyDescriptors(input);
+        } catch {
+            throw new TypeError('hmx-unsafe-stage-request');
+        }
+        const documentDescriptor = requestDescriptors.document;
+        const intentDescriptor = requestDescriptors.intent;
+        const strategyDescriptor = requestDescriptors.strategy;
+        if (!documentDescriptor || !documentDescriptor.enumerable || !('value' in documentDescriptor) ||
+            !intentDescriptor || !intentDescriptor.enumerable || !('value' in intentDescriptor) ||
+            !strategyDescriptor || !strategyDescriptor.enumerable || !('value' in strategyDescriptor)) {
+            throw new TypeError('hmx-unsafe-stage-request');
+        }
+        const sourceDocument = documentDescriptor.value;
+        const intent = intentDescriptor.value;
+        const strategy = strategyDescriptor.value;
+
+        // Keep the fabric's public mutation boundary strict as well as the HTTP
+        // route: internal callers and tests must not stage unknown runtime enum values.
+        if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(intent as HexisHmxIntent)) {
+            throw new TypeError('hmx-invalid-intent');
+        }
+        if (!['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(strategy as HexisHmxStrategy)) {
+            throw new TypeError('hmx-invalid-strategy');
+        }
+        // Snapshot and validate the same detached payload in one pass. The
+        // public validator remains safe for arbitrary callers, while this staging
+        // path avoids serializing and deep-copying the bounded tree a second time.
+        const captured = snapshotAndValidateHmxV17Document(sourceDocument, intent as HexisHmxIntent);
+        const capturedDocument = captured.ok ? captured.value : undefined;
+        const document = capturedDocument && typeof capturedDocument === 'object' && !Array.isArray(capturedDocument)
+            ? capturedDocument as Record<string, unknown>
+            : {};
+        const sections = document.sections && typeof document.sections === 'object' && !Array.isArray(document.sections)
+            ? document.sections as Record<string, unknown>
+            : {};
+        const conflicts: HexisHmxStage['conflicts'] = captured.ok
+            ? captured.issues.map((issue) => ({ path: issue.path, kind: issue.kind, detail: issue.detail }))
+            : [{ path: captured.issue.path, kind: captured.issue.kind, detail: captured.issue.detail }];
+        const names = Object.keys(sections);
+        // Section names originate in untrusted HMX. Null-prototype dictionaries
+        // keep "__proto__" and similar names as ordinary keys, never setters.
+        const sectionCounts: Record<string, number> = Object.create(null);
+        const stagedSections: Record<string, unknown> = Object.create(null);
+        for (const [name, records] of Object.entries(sections)) {
+            sectionCounts[name] = Array.isArray(records)
+                ? records.length
+                : records && typeof records === 'object'
+                    ? Object.keys(records as Record<string, unknown>).length
+                    : 1;
+
+            if (Array.isArray(records)) {
+                // A conflicted section is never represented by a truncated or
+                // filtered prefix. Downstream consumers and diagnostics must
+                // not mistake partial staging for a complete source section.
+                const sectionPrefix = 'sections.' + name;
+                const sectionHasConflict = conflicts.some((conflict) =>
+                    conflict.path === sectionPrefix || conflict.path.startsWith(sectionPrefix + '[')
+                );
+                if (records.length > 256 || sectionHasConflict) {
+                    // Preserve the original source count but omit the entire
+                    // section. The retained conflict keeps the stage ineligible
+                    // for acceptance until the caller narrows/fixes the export.
+                    continue;
+                }
+                // The bounded document snapshot already owns this data; reuse
+                // its detached section here and clone only the full stage returned
+                // to the caller, avoiding one extra deep copy per accepted section.
+                stagedSections[name] = records;
+                continue;
+            }
+
+            // This object is also detached by snapshotHmxV17Document.
+            stagedSections[name] = records;
+        }
+        const source = document.source && typeof document.source === 'object' && !Array.isArray(document.source)
+            ? document.source as Record<string, unknown>
+            : {};
+        const base = {
+            exportId: String(document.export_id ?? randomUUID()),
+            intent: intent as HexisHmxIntent,
+            strategy: strategy as HexisHmxStrategy,
+            sourceSubjectId: String(source.hexis_lineage_id ?? source.instance_id ?? document.source_subject_id ?? '').slice(0, 180) || undefined,
+            sectionCounts,
+            protectedSections: names.filter((name) => protectedSections.has(name)),
+            conflicts,
+            stagedSections,
+            applicationMode: intent === 'telepathy' && strategy === 'additive'
+                ? 'memory-merge' as const
+                : 'preview-only' as const,
+        };
+        const stage: HexisHmxStage = {
+            ...base,
+            stagingId: randomUUID(),
+            status: 'staged',
+            createdAt: nowMs(),
+            digest: digest(base),
+            importResult: {
+                status: 'pending',
+                created: 0,
+                reused: 0,
+                reason: 'awaiting-explicit-decision',
+            },
+        };
+        this.state.hmxStages.push(stage);
+        this.state.hmxStages = this.state.hmxStages.slice(-8);
+        this.state.metrics.hmxStaged += 1;
+        return structuredClone(stage);
+    }
+    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null {
+        const stage = this.state.hmxStages.find((item) => item.stagingId === stagingId);
+        if (!stage) return null;
+        // Once accepted, a memory-merge operation may already have started even
+        // if its final import receipt is still pending. Repeated accept or a later
+        // reject cannot safely undo or replay unknown canonical side effects.
+        if (stage.status === 'accepted' &&
+            stage.applicationMode === 'memory-merge' &&
+            stage.importResult?.status === 'pending') {
+            stage.importResult = {
+                status: 'uncertain',
+                created: 0,
+                reused: 0,
+                skipped: Math.max(0, Number(stage.sectionCounts?.memories) || 0),
+                reason: decision === 'reject'
+                    ? 'reject-request-after-accept-before-import-receipt'
+                    : 'repeat-accept-after-accept-before-import-receipt',
+                completedAt: nowMs(),
+            };
+            return structuredClone(stage);
+        }
+        if (stage.status === 'staged') {
+            const integrityIssue = pendingHmxStageIntegrityIssue(stage);
+            if (integrityIssue) {
+                const conflict = {
+                    path: '$',
+                    kind: 'persisted-stage-integrity-failure',
+                    detail: integrityIssue,
+                };
+                stage.status = 'rejected';
+                stage.conflicts = [...(Array.isArray(stage.conflicts) ? stage.conflicts : []), conflict].slice(-64);
+                stage.importResult = {
+                    status: 'skipped',
+                    created: 0,
+                    reused: 0,
+                    skipped: Math.max(0, Number(stage.sectionCounts?.memories) || 0),
+                    reason: 'persisted-stage-integrity-failure',
+                    completedAt: nowMs(),
+                };
+                return structuredClone(stage);
+            }
+        }
+        if (stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length)) {
+            return structuredClone(stage);
+        }
+        stage.status = decision === 'accept' ? 'accepted' : 'rejected';
+        if (decision === 'reject') {
+            stage.importResult = {
+                status: 'skipped',
+                created: 0,
+                reused: 0,
+                reason: 'rejected-by-operator',
+                completedAt: nowMs(),
+            };
+        } else if (stage.applicationMode === 'preview-only') {
+            stage.importResult = {
+                status: 'skipped',
+                created: 0,
+                reused: 0,
+                reason: 'accepted-as-preview-only',
+                completedAt: nowMs(),
+            };
+        }
+        if (decision === 'accept') this.state.metrics.hmxAccepted += 1;
+        return structuredClone(stage);
+    }
+    recordHmxImportResult(stagingId: string, result: {
+        status: 'applied' | 'partial' | 'skipped';
+        created: number;
+        reused: number;
+        skipped?: number;
+        reason?: string;
+    }): HexisHmxStage | null {
+        const stage = this.state.hmxStages.find((item) => item.stagingId === stagingId);
+        if (!stage || stage.status !== 'accepted' || stage.applicationMode !== 'memory-merge' ||
+            !stage.importResult || stage.importResult.status !== 'pending') {
+            return stage ? structuredClone(stage) : null;
+        }
+
+        // Import receipts are part of the persistent trust boundary. Never
+        // coerce NaN/fractions/negative values or accept a count set which
+        // cannot account for every source memory in this stage.
+        if (!result || typeof result !== 'object' ||
+            !['applied', 'partial', 'skipped'].includes(result.status) ||
+            !Number.isSafeInteger(result.created) || result.created < 0 ||
+            !Number.isSafeInteger(result.reused) || result.reused < 0 ||
+            (result.skipped !== undefined && (!Number.isSafeInteger(result.skipped) || result.skipped < 0)) ||
+            (result.reason !== undefined && (typeof result.reason !== 'string' || result.reason.length > 240))) {
+            return structuredClone(stage);
+        }
+        const expectedSourceCount = stage.sectionCounts?.memories;
+        // A failed rollback is not a normal partial success: the canonical store
+        // may contain effects that the failed encoder did not return. In that
+        // case, retain only positively returned created/reused counts, derive
+        // the unaccounted source count, and persist a terminal 'uncertain'
+        // receipt. This prevents a second accept from replaying a batch whose
+        // first attempt may already have left side effects behind.
+        const uncertainRollback = result.status === 'partial' &&
+            result.reason === 'memory-encode-failed-rollback-incomplete';
+        const skipped = uncertainRollback &&
+            Number.isSafeInteger(expectedSourceCount) && expectedSourceCount >= 0
+            ? expectedSourceCount - result.created - result.reused
+            : result.skipped ?? 0;
+        const storedStatus = uncertainRollback ? 'uncertain' : result.status;
+        if (!Number.isSafeInteger(expectedSourceCount) || expectedSourceCount < 0 ||
+            !Number.isSafeInteger(skipped) || skipped < 0 ||
+            result.created + result.reused + skipped !== expectedSourceCount ||
+            (storedStatus === 'applied' && skipped !== 0) ||
+            (storedStatus === 'skipped' && (result.created !== 0 || result.reused !== 0)) ||
+            (storedStatus === 'partial' && (skipped === 0 || result.created + result.reused === 0)) ||
+            (storedStatus === 'uncertain' && (result.reason !== 'memory-encode-failed-rollback-incomplete' || expectedSourceCount === 0))) {
+            return structuredClone(stage);
+        }
+        stage.importResult = {
+            status: storedStatus,
+            created: result.created,
+            reused: result.reused,
+            skipped,
+            ...(result.reason ? { reason: result.reason } : {}),
+            completedAt: nowMs(),
+        };
+        return structuredClone(stage);
+    }
     getHmxStage(stagingId: string) { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); return stage ? structuredClone(stage) : null; }
     enqueueOutbox(input: {
         idempotencyKey: string;

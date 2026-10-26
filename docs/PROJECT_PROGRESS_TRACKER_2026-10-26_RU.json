@@ -359,37 +359,63 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass357",
+    "id": "WorkPass424",
     "date": "2026-10-26",
-    "branch": "fix/workpass357-parent-lineage-proxy-restore-2026-10-26-r2",
-    "codeCommit": "810f60f2227db466dd1f96b1e3edf39741951f9d",
-    "summary": "Removed direct parentIds.length reads at the snapshot restore boundary. Added bounded descriptor-only nested-array inspection, with regressions for forged proxy length, getter suppression, descriptor trap failure and later valid duplicate recovery.",
+    "branch": "hexis-remote-bridge-20261026",
+    "codeCommit": "27dc3f6e37377346ba317f8d9349af98ac5091bc",
+    "testCommit": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+    "codeTestHead": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+    "summary": "Bound normalizer option strings before parsing: sourceSubjectId must be a non-empty string of at most 180 characters; supplied exportedAt must be an ISO date-time no longer than 64 characters.",
     "testsAdded": [
-      "proxy length trap cannot erase restored parent IDs",
-      "direct slot getters are not executed",
-      "descriptor enumeration failure is caught and malformed row is skipped",
-      "later valid row with the same ID can recover"
+      "overlong sourceSubjectId returns null",
+      "exportedAt exceeding 64 characters returns null before date parsing",
+      "malformed exportedAt returns null",
+      "valid normalized memory refs remain bound to the exact export ID"
     ],
-    "validationStatus": "PASS on exact PR head a1f0e250eac1e0f6990a0c25e62d7c33bb8b1bd1; Unified integration, progress ledger, WorkPass110, P26 and nine additional focused workflows passed.",
+    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
-    "testedHeadSha": "a1f0e250eac1e0f6990a0c25e62d7c33bb8b1bd1",
-    "workflowRuns": [
-      40292091015,
-      40292091024,
-      40292091053,
-      40292091054,
-      40292091017,
-      40292092055,
-      40292091074,
-      40292091012,
-      40292091019,
-      40292090997,
-      40292090968,
-      40292090972,
-      40292091029
-    ]
+    "testedHeadSha": null,
+    "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass424",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "27dc3f6e37377346ba317f8d9349af98ac5091bc",
+      "testCommit": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+      "codeTestHead": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+      "summary": "Bound normalizer option strings before parsing: sourceSubjectId must be a non-empty string of at most 180 characters; supplied exportedAt must be an ISO date-time no longer than 64 characters.",
+      "testsAdded": [
+        "overlong sourceSubjectId returns null",
+        "exportedAt exceeding 64 characters returns null before date parsing",
+        "malformed exportedAt returns null",
+        "valid normalized memory refs remain bound to the exact export ID"
+      ],
+      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
+    {
+      "id": "WorkPass423",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "49a5a2e90a2d98980572f44152afaf20921a08a7",
+      "testCommit": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+      "codeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+      "summary": "Validate the exported memory-normalizer options envelope using own data descriptors, require a canonical exportId, bind memory refs to that export, and reject accessor/custom-prototype option objects without coercion.",
+      "testsAdded": [
+        "a memory ref from another export ID returns null",
+        "a getter-backed exportId is rejected without execution",
+        "object-valued exportId is rejected without coercion",
+        "prior raw-row root/nested getter and custom-prototype guards remain"
+      ],
+      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass357",
       "date": "2026-10-26",
@@ -558,8 +584,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "810f60f2227db466dd1f96b1e3edf39741951f9d",
-  "branchHeadBeforeTrackerCommit": "810f60f2227db466dd1f96b1e3edf39741951f9d",
+  "latestUnverifiedCodeTestHead": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+  "branchHeadBeforeTrackerCommit": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -599,215 +625,40 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass356",
+    "id": "WorkPass423",
     "date": "2026-10-26",
-    "branch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26-r2",
-    "codeCommit": "ae9a66a6f831b73d9c8457de4ea4454c376e3c1a",
-    "summary": "Hardened the three public CEF receipt ingress paths against getter/accessor execution, lossy identifier normalization and type coercion; added event/replay-ledger preservation and idempotent replay regressions.",
+    "branch": "hexis-remote-bridge-20261026",
+    "codeCommit": "49a5a2e90a2d98980572f44152afaf20921a08a7",
+    "testCommit": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+    "codeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+    "summary": "Validate the exported memory-normalizer options envelope using own data descriptors, require a canonical exportId, bind memory refs to that export, and reject accessor/custom-prototype option objects without coercion.",
     "testsAdded": [
-      "receipt trace rejects accessor-backed inputs without getter execution or ledger mutation",
-      "trace rejects padded/overlong IDs, non-boolean fields and confidence outside [0,1]",
-      "provider receipt revisions reject accessors, lossy IDs, invalid hashes/counters/flags/confidence without mutation",
-      "external observations reject accessors, coercion, overlong/non-canonical IDs and malformed evidence fields",
-      "valid receipt revision remains idempotent"
+      "a memory ref from another export ID returns null",
+      "a getter-backed exportId is rejected without execution",
+      "object-valued exportId is rejected without coercion",
+      "prior raw-row root/nested getter and custom-prototype guards remain"
     ],
-    "validationStatus": "PASS on exact PR head 1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee; all 13 focused workflows, including Unified project integration, passed.",
+    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
-    "testedHeadSha": "1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee",
-    "workflowRuns": [
-      40291855092,
-      40291855384,
-      40291855118,
-      40291855059,
-      40291855416,
-      40291855111,
-      40291855115,
-      40291855354,
-      40291855090,
-      40291855399,
-      40291855392,
-      40291855347,
-      40291855360
-    ]
+    "testedHeadSha": null,
+    "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
-    "workpass": "WorkPass357",
-    "sourceBranch": "fix/workpass357-parent-lineage-proxy-restore-2026-10-26-r2",
-    "codeTestHead": "810f60f2227db466dd1f96b1e3edf39741951f9d",
-    "baseHead": "1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee",
-    "validationStatus": "exact-pr-head-ci-pass",
-    "summary": "CognitiveEventFabric.restore now inspects nested parentIds arrays through own data descriptors and a bounded dense-array validator; it never reads proxy-backed .length or slots directly, and malformed lineage rows do not reserve IDs.",
+    "workpass": "WorkPass424",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Bound sourceSubjectId and exportedAt normalizer options before any parsing or lineage calculations, preventing direct callers from bypassing the bounded HMX document input with oversized option values. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
-    "validationRuns": [
-      {
-        "name": "Unified project integration suite",
-        "runId": 40292091015,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091015",
-        "conclusion": "success"
-      },
-      {
-        "name": "Project progress ledger integrity",
-        "runId": 40292091024,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091024",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass110 continual learning metrics",
-        "runId": 40292091053,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091053",
-        "conclusion": "success"
-      },
-      {
-        "name": "P26 Learning Validation",
-        "runId": 40292091054,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091054",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass108 paired evidence identity and verified promotion gate",
-        "runId": 40292091017,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091017",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass105 verified outcome ledger",
-        "runId": 40292092055,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292092055",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass99 replay strategy benchmark",
-        "runId": 40292091074,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091074",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass102 reservoir replay baseline",
-        "runId": 40292091012,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091012",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass292 verified experience lanes",
-        "runId": 40292091019,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091019",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass291 reflective payload budget",
-        "runId": 40292090997,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292090997",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass293 autonomous P23 repair revision",
-        "runId": 40292090968,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292090968",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass294 correlated external postconditions",
-        "runId": 40292090972,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292090972",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass287-288 cognitive contracts",
-        "runId": 40292091029,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091029",
-        "conclusion": "success"
-      }
-    ],
-    "validatedPrHead": "a1f0e250eac1e0f6990a0c25e62d7c33bb8b1bd1"
+    "validationRuns": []
   },
   "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass356",
-    "sourceBranch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26-r2",
-    "codeTestHead": "ae9a66a6f831b73d9c8457de4ea4454c376e3c1a",
-    "baseHead": "084c80745446c38bf514c43000844c433110f0c4",
-    "validationStatus": "exact-pr-head-ci-pass",
-    "summary": "Strict descriptor-only ingress for CEF tool receipt traces, authoritative receipt revisions, and external observations. Reject lossy IDs, coercive booleans/text, invalid clocks/counters and confidence outside [0,1]. Rebased directly on the latest target while preserving its stronger bounded transactional snapshot restore and payload-budget checks.",
+    "workpass": "WorkPass423",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Bind the memory-row projection to a valid canonical HMX export ID using a safe options envelope; refuse rows whose refs do not belong to that export, and reject accessor-backed options before reading values. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
-    "validationRuns": [
-      {
-        "name": "Unified project integration suite",
-        "runId": 40291855092,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855092",
-        "conclusion": "success"
-      },
-      {
-        "name": "Project progress ledger integrity",
-        "runId": 40291855384,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855384",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass110 continual learning metrics",
-        "runId": 40291855118,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855118",
-        "conclusion": "success"
-      },
-      {
-        "name": "P26 Learning Validation",
-        "runId": 40291855059,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855059",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass108 paired evidence identity and verified promotion gate",
-        "runId": 40291855416,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855416",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass105 verified outcome ledger",
-        "runId": 40291855111,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855111",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass99 replay strategy benchmark",
-        "runId": 40291855115,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855115",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass102 reservoir replay baseline",
-        "runId": 40291855354,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855354",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass292 verified experience lanes",
-        "runId": 40291855090,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855090",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass291 reflective payload budget",
-        "runId": 40291855399,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855399",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass293 autonomous P23 repair revision",
-        "runId": 40291855392,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855392",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass294 correlated external postconditions",
-        "runId": 40291855347,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855347",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass287-288 cognitive contracts",
-        "runId": 40291855360,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855360",
-        "conclusion": "success"
-      }
-    ],
-    "validatedPrHead": "1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee"
+    "validationRuns": []
   }
 }

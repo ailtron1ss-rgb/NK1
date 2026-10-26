@@ -24,6 +24,7 @@ import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
+import { HexisRemoteApiBridge, HexisRemoteBridgeError } from '../organism/integration/hexis/HexisRemoteApiBridge.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -157,6 +158,7 @@ async function invokeLanguage(request) {
     }
     return { ...response, preferredBackend, latencyMs: finishedAt - started };
 }
+const hexisRemotePeer = new HexisRemoteApiBridge(process.env);
 const runtime = new OrganismRuntime({
     stateFile,
     worldStateFile: worldFile,
@@ -280,6 +282,9 @@ async function body(req) {
     }
     const source = Buffer.concat(chunks).toString('utf8');
     return source ? JSON.parse(source) : {};
+}
+function isJsonRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 function localFallback(request) {
     const action = /selected_action=([a-z-]+)/i.exec(request.system)?.[1] || 'reflect';
@@ -814,18 +819,42 @@ async function route(req, res) {
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis') {
             return json(res, 200, { ok: true, hexis: runtime.core.hexisDiagnostics(), memoryIndex: runtime.core.hexisMemoryIndex(64), reviews: runtime.core.hexisListLearningReviews(), outbox: runtime.core.hexisOutbox() });
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/peer/status') {
+            const peer = await hexisRemotePeer.status();
+            return json(res, 200, { ok: true, peer });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/peer/consult') {
+            const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
+            try {
+                const result = await hexisRemotePeer.consult({
+                    question: input.question,
+                    context: input.context,
+                    confirmExternalConsult: input.confirmExternalConsult === true,
+                });
+                return json(res, 200, { ok: true, result });
+            }
+            catch (error) {
+                const known = error instanceof HexisRemoteBridgeError;
+                const code = known ? error.code : 'hexis-remote-unavailable';
+                const status = known ? error.httpStatus : 503;
+                return json(res, status, { ok: false, error: code, advisoryOnly: true, nk1StateChanged: false });
+            }
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/memories') {
             const limit = Math.max(1, Math.min(128, Number(url.searchParams.get('limit') || 64)));
             return json(res, 200, { ok: true, memoryIndex: runtime.core.hexisMemoryIndex(limit) });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/sync-memory') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisSyncMemoryProjection(Math.max(1, Math.min(256, Number(input.limit || 96))));
             await runtime.core.flush();
             return json(res, 200, { ok: true, ...result, hexis: runtime.core.hexisDiagnostics() });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/belief/revise') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             try {
                 const evidence = {
                     ref: input.evidence?.ref ? String(input.evidence.ref) : undefined,
@@ -870,21 +899,30 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/create') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisCreateLearningReview();
             await runtime.core.flush();
             return json(res, 200, { ok: true, review: result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/decide') {
             const input = await body(req);
-            const decision = ['approve', 'correct', 'forget'].includes(String(input.decision)) ? String(input.decision) : 'approve';
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
+            if (!['approve', 'correct', 'forget'].includes(input.decision)) {
+                return json(res, 400, { ok: false, error: 'hexis-review-invalid-decision' });
+            }
+            const decision = input.decision;
             const result = runtime.core.hexisDecideLearningReview(String(input.reviewId || ''), String(input.itemId || ''), decision, input.correction ? String(input.correction) : undefined);
             await runtime.core.flush();
             return json(res, 200, { ok: Boolean(result), result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/retention/propose') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
+            if (!['compress', 'archive', 'forget'].includes(input.action)) {
+                return json(res, 400, { ok: false, error: 'hexis-retention-invalid-action' });
+            }
             try {
-                const action = ['compress', 'archive', 'forget'].includes(String(input.action)) ? String(input.action) : 'compress';
+                const action = input.action;
                 const result = runtime.core.hexisProposeRetention(String(input.memoryId || ''), action, input.reason ? String(input.reason) : 'operator-review');
                 await runtime.core.flush();
                 return json(res, result.ok === false ? 404 : 200, { ok: result.ok, ...result });
@@ -895,6 +933,7 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/retention/apply') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             try {
                 const result = await runtime.core.hexisApplyRetention(String(input.proposalId || ''), input.confirmed === true);
                 const status = result.ok ? 200 : (result.error === 'retention-explicit-confirmation-required' ? 403 : result.error === 'retention-proposal-not-found' ? 404 : 400);
@@ -915,8 +954,17 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/stage') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
+            const intent = input.intent === undefined ? 'analysis' : input.intent;
+            const strategy = input.strategy === undefined ? 'analysis_only' : input.strategy;
+            if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(intent)) {
+                return json(res, 400, { ok: false, error: 'hmx-invalid-intent' });
+            }
+            if (!['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(strategy)) {
+                return json(res, 400, { ok: false, error: 'hmx-invalid-strategy' });
+            }
             try {
-                const result = runtime.core.hexisStageHmx(input.document, input.intent || 'analysis', input.strategy || 'analysis_only');
+                const result = runtime.core.hexisStageHmx(input.document, intent, strategy);
                 await runtime.core.flush();
                 return json(res, 200, { ok: true, stage: result });
             }
@@ -926,16 +974,29 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/decide') {
             const input = await body(req);
-            const decision = input.decision === 'accept' ? 'accept' : 'reject';
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
+            if (input.decision !== 'accept' && input.decision !== 'reject') {
+                return json(res, 400, { ok: false, error: 'hmx-invalid-decision' });
+            }
+            const decision = input.decision;
             const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
             await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), stage: result });
+            if (!result) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
+            if (decision === 'accept' && result.status !== 'accepted') {
+                return json(res, 409, {
+                    ok: false,
+                    error: result.conflicts?.length ? 'hmx-stage-has-conflicts' : 'hmx-stage-not-acceptable',
+                    stage: result,
+                });
+            }
+            return json(res, 200, { ok: true, stage: result });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/enqueue') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             try {
                 const result = runtime.core.hexisEnqueueOutbox({ idempotencyKey: String(input.idempotencyKey || ''), kind: String(input.kind || 'notify'), channel: String(input.channel || 'generic'), payload: input.payload });
                 await runtime.core.flush();
@@ -948,42 +1009,49 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/claim') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisClaimOutbox(String(input.id || ''));
             await runtime.core.flush();
             return json(res, 200, { ok: Boolean(result), result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/ack') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisAckOutbox(String(input.id || ''), input.published === true, input.error ? String(input.error) : undefined);
             await runtime.core.flush();
             return json(res, 200, { ok: Boolean(result), result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/reclaim') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisReclaimOutbox(Math.max(1000, Math.min(86400000, Number(input.maxAgeMs || 60000))));
             await runtime.core.flush();
             return json(res, 200, { ok: true, ...result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/policy') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisGrantConnectorPolicy({ connectorId: String(input.connectorId || ''), actionKind: String(input.actionKind || ''), contexts: Array.isArray(input.contexts) ? input.contexts.map(String) : ['chat'], allowAutonomous: Boolean(input.allowAutonomous), requiresApproval: input.requiresApproval !== false, allowedTargets: Array.isArray(input.allowedTargets) ? input.allowedTargets.map(String) : [], deniedTargets: Array.isArray(input.deniedTargets) ? input.deniedTargets.map(String) : [], maxPerWindow: input.maxPerWindow === undefined ? undefined : Number(input.maxPerWindow), windowMs: input.windowMs === undefined ? undefined : Number(input.windowMs), expiresAt: input.expiresAt === undefined ? undefined : Number(input.expiresAt) });
             await runtime.core.flush();
             return json(res, 200, { ok: true, policy: result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/policy/evaluate') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisEvaluateConnectorAction({ connectorId: String(input.connectorId || ''), actionKind: String(input.actionKind || ''), context: String(input.context || 'chat'), target: input.target === undefined ? undefined : String(input.target), confirmed: input.confirmed === true, autonomous: input.autonomous === true });
             await runtime.core.flush();
             return json(res, result.allowed ? 200 : 403, { ok: result.allowed, result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/policy/revoke') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisRevokeConnectorPolicy(String(input.id || ''));
             await runtime.core.flush();
             return json(res, 200, { ok: result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/execution-plan') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const requested = ['local', 'sandbox', 'remote', 'companion'].includes(String(input.requestedPlacement)) ? String(input.requestedPlacement) : undefined;
             const result = runtime.core.hexisPlanExecution({ actionKind: String(input.actionKind || 'tool.execute'), requestedPlacement: requested, risk01: Number(input.risk01 || 0), rationale: input.rationale ? String(input.rationale) : undefined, requiresApproval: input.requiresApproval === undefined ? undefined : Boolean(input.requiresApproval) });
             await runtime.core.flush();

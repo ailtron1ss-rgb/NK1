@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Archive, Brain, CheckCircle2, Clock3, Download, History, RefreshCw, Send, ShieldCheck, Workflow } from "lucide-react";
+import { Archive, Brain, CheckCircle2, Clock3, Download, History, Radio, RefreshCw, Send, ShieldCheck, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { neuroApi } from "@/neuro-kurisu/api";
 
@@ -42,12 +42,18 @@ export function HexisControlConsole() {
   const [policyWindowMs, setPolicyWindowMs] = useState("60000");
   const [confirmed, setConfirmed] = useState(false);
   const [stageId, setStageId] = useState("");
-  const [hmxIntent, setHmxIntent] = useState<"port" | "duplicate" | "telepathy" | "analysis">("port");
+  const [hmxIntent, setHmxIntent] = useState<"port" | "duplicate" | "telepathy" | "analysis">("telepathy");
   const [hmxStrategy, setHmxStrategy] = useState<"additive" | "authoritative" | "deliberative" | "analysis_only">("additive");
   const [hmxConfirmed, setHmxConfirmed] = useState(false);
+  const [hmxImportText, setHmxImportText] = useState("");
+  const [hmxImportName, setHmxImportName] = useState("");
   const [placement, setPlacement] = useState("local");
   const [executionAction, setExecutionAction] = useState("tool.execute");
   const [risk, setRisk] = useState("0.4");
+  const [remotePeerStatus, setRemotePeerStatus] = useState<any | null>(null);
+  const [remoteQuestion, setRemoteQuestion] = useState("");
+  const [remoteConfirmation, setRemoteConfirmation] = useState(false);
+  const [remoteResult, setRemoteResult] = useState<any | null>(null);
 
   const run = async (label: string, operation: () => Promise<unknown>) => {
     setBusy(true);
@@ -56,10 +62,18 @@ export function HexisControlConsole() {
       const result = await operation();
       setPanel(fmt(result));
       setMessage(`${label}: OK`);
-      const next = await neuroApi.hexis();
-      setState(next);
-      const memoryResult = await neuroApi.hexisMemories(64);
-      setMemories(Array.isArray((memoryResult as any)?.memoryIndex) ? (memoryResult as any).memoryIndex : []);
+
+      // The mutation result is authoritative for this interaction. A later
+      // dashboard/memory refresh can fail independently and must not erase a
+      // successful HMX receipt before its caller can render APPLIED/UNCERTAIN.
+      try {
+        const next = await neuroApi.hexis();
+        setState(next);
+        const memoryResult = await neuroApi.hexisMemories(64);
+        setMemories(Array.isArray((memoryResult as any)?.memoryIndex) ? (memoryResult as any).memoryIndex : []);
+      } catch (refreshError) {
+        setMessage(`${label}: action completed; refresh failed: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
+      }
       return result;
     } catch (error) {
       setMessage(`${label}: ${error instanceof Error ? error.message : String(error)}`);
@@ -80,9 +94,9 @@ export function HexisControlConsole() {
 
   const exportHmx = async () => {
     const result = await run("Export HMX", () => neuroApi.hexisHmxExport());
-    const document = (result as any)?.document;
-    if (!document) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
+    const hmxDocument = (result as any)?.document;
+    if (!hmxDocument) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(hmxDocument, null, 2)], { type: "application/json" }));
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = "neuro-kurisu-hexis-hmx.json";
@@ -91,10 +105,79 @@ export function HexisControlConsole() {
   };
 
   const stageCurrentHmx = async () => {
+    setHmxConfirmed(false);
+    setStageId("");
     const exported = await neuroApi.hexisHmxExport();
     const staged = await run("Stage HMX", () => neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy }));
     const nextId = (staged as any)?.stage?.stagingId;
     if (nextId) setStageId(String(nextId));
+  };
+
+  const stageImportedHmx = async () => {
+    setHmxConfirmed(false);
+    setStageId("");
+    let hmxDocument: unknown;
+    try {
+      hmxDocument = JSON.parse(hmxImportText);
+    } catch {
+      setMessage("Stage imported HMX: input is not valid JSON");
+      return;
+    }
+    if (!hmxDocument || typeof hmxDocument !== "object" || Array.isArray(hmxDocument)) {
+      setMessage("Stage imported HMX: expected a JSON object");
+      return;
+    }
+    const staged = await run("Stage imported HMX", () => neuroApi.hexisHmxStage({
+      document: hmxDocument,
+      intent: hmxIntent,
+      strategy: hmxStrategy,
+    }));
+    const nextId = (staged as any)?.stage?.stagingId;
+    if (nextId) setStageId(String(nextId));
+  };
+
+  const acceptHmxStage = async () => {
+    const accepted = await run("Accept HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"));
+    const stage = (accepted as any)?.stage;
+    const receipt = stage?.importResult;
+    if (!receipt || typeof receipt !== "object" || typeof receipt.status !== "string") return;
+
+    // All import-result statuses are terminal. Clear the local accept controls
+    // and explain the outcome so a pending/uncertain receipt is never presented
+    // as a clean success or accidentally retried from this UI surface.
+    setHmxConfirmed(false);
+    setStageId("");
+    const created = Number.isSafeInteger(receipt.created) ? receipt.created : 0;
+    const reused = Number.isSafeInteger(receipt.reused) ? receipt.reused : 0;
+    const skipped = Number.isSafeInteger(receipt.skipped) ? receipt.skipped : 0;
+    if (receipt.status === "uncertain") {
+      setMessage(`Accept HMX: UNCERTAIN — the import outcome could not be confirmed; memory changes may have survived. Do not retry this stage. Unverified bookkeeping counts (not proof of applied rows): created ${created}, reused ${reused}, remaining/unconfirmed ${skipped}. Inspect canonical memories and the import receipt before remediation.`);
+      return;
+    }
+    if (receipt.status === "pending") {
+      setMessage("Accept HMX: RECEIPT PENDING — canonical import outcome is not confirmed. Do not retry this stage; inspect the canonical memory state and receipt.");
+      return;
+    }
+    const reason = typeof receipt.reason === "string" && receipt.reason ? ` (${receipt.reason})` : "";
+    setMessage(`Accept HMX: ${receipt.status.toUpperCase()} — created ${created}, reused ${reused}, skipped ${skipped}${reason}`);
+  };
+
+  const checkRemotePeer = async () => {
+    const result = await run("Remote Hexis status", () => neuroApi.hexisRemotePeerStatus());
+    if (result && typeof result === "object") setRemotePeerStatus((result as any).peer ?? result);
+  };
+
+  const consultRemotePeer = async () => {
+    setRemoteConfirmation(false);
+    const result = await run("Consult QuixiAI/Hexis", () => neuroApi.hexisRemotePeerConsult({
+      question: remoteQuestion,
+      context: {},
+      confirmExternalConsult: true,
+    }));
+    if (result && typeof result === "object") {
+      setRemoteResult((result as any).result ?? result);
+      setRemoteConfirmation(false);
+    }
   };
 
   const approveFirstReview = async () => {
@@ -184,19 +267,93 @@ export function HexisControlConsole() {
           <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={retentionConfirmed} onChange={e => setRetentionConfirmed(e.target.checked)} /> I explicitly approve this memory-retention change.</label>
         </Panel>
 
-        <Panel title="Portable HMX" icon={<Download className="size-4" />}>
+        <Panel title="Portable HMX 1.7" icon={<Download className="size-4" />}>
+          <p className="mb-2 text-[11px] leading-relaxed text-muted">
+            NK1 exports a bounded memory-only HMX 1.7 document. It is not redacted: inspect content and consent before sharing it. For ordinary memory import, use telepathy + additive. Unknown or protected populated sections are rejected instead of silently dropped; other intent/strategy pairs stage as preview-only.
+          </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            <select value={hmxIntent} onChange={e => setHmxIntent(e.target.value as typeof hmxIntent)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="port">port</option><option value="duplicate">duplicate</option><option value="telepathy">telepathy</option><option value="analysis">analysis</option></select>
-            <select value={hmxStrategy} onChange={e => setHmxStrategy(e.target.value as typeof hmxStrategy)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="additive">additive</option><option value="authoritative">authoritative</option><option value="deliberative">deliberative</option><option value="analysis_only">analysis_only</option></select>
+            <select value={hmxIntent} onChange={e => { setHmxIntent(e.target.value as typeof hmxIntent); setHmxConfirmed(false); setStageId(""); }} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="port">port</option><option value="duplicate">duplicate</option><option value="telepathy">telepathy</option><option value="analysis">analysis</option></select>
+            <select value={hmxStrategy} onChange={e => { setHmxStrategy(e.target.value as typeof hmxStrategy); setHmxConfirmed(false); setStageId(""); }} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="additive">additive</option><option value="authoritative">authoritative</option><option value="deliberative">deliberative</option><option value="analysis_only">analysis_only</option></select>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button disabled={busy} onClick={() => void exportHmx()}>Export HMX</Button>
             <Button variant="outline" disabled={busy} onClick={() => void stageCurrentHmx()}>Stage current HMX</Button>
-            <input value={stageId} onChange={e => setStageId(e.target.value)} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
-            <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void run("Accept HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"))}>Accept staged</Button>
+            <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
+            <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void acceptHmxStage()}>Accept staged</Button>
             <Button variant="outline" disabled={busy || !stageId} onClick={() => void run("Reject HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"))}>Reject</Button>
           </div>
-          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX import.</label>
+          <div className="mt-3 rounded-md border border-border p-3">
+            <p className="text-xs font-medium text-fg">Import an external Hexis HMX file</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted">Choose a JSON file exported by your Hexis instance, or paste its contents below. This is a local file operation; it is not sent to the remote chat peer. For memory merging choose the source document's own intent (normally telepathy) and additive strategy. The server validates before staging.</p>
+            <input
+              type="file"
+              accept=".json,application/json"
+              disabled={busy}
+              onChange={async e => {
+                const file = e.target.files?.[0];
+                setHmxConfirmed(false);
+                setStageId("");
+                if (!file) return;
+                if (file.size > 2 * 1024 * 1024) {
+                  setMessage("Import HMX: file exceeds 2 MiB");
+                  e.target.value = "";
+                  return;
+                }
+                try {
+                  const text = await file.text();
+                  setHmxImportText(text);
+                  setHmxImportName(file.name);
+                  setMessage("Loaded HMX file locally: " + file.name);
+                } catch {
+                  setMessage("Import HMX: could not read the selected file");
+                }
+              }}
+              className="mt-2 block w-full text-[11px] text-muted file:mr-3 file:rounded-md file:border-0 file:bg-bg file:px-3 file:py-2 file:text-fg"
+            />
+            {hmxImportName ? <p className="mt-1 text-[10px] text-subtle">Loaded: {hmxImportName}</p> : null}
+            <textarea
+              value={hmxImportText}
+              onChange={e => { setHmxImportText(e.target.value); setHmxImportName(""); setHmxConfirmed(false); setStageId(""); }}
+              rows={4}
+              maxLength={2 * 1024 * 1024}
+              placeholder="Paste an HMX 1.7 JSON document…"
+              className="mt-2 w-full rounded-md border border-border bg-bg px-3 py-2 font-mono text-[10px] leading-relaxed text-fg"
+            />
+            <Button variant="outline" className="mt-2" disabled={busy || !hmxImportText.trim()} onClick={() => void stageImportedHmx()}>Validate & stage imported HMX</Button>
+          </div>
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX operation after checking its conflicts, source and application mode.</label>
+        </Panel>
+
+        <Panel title="QuixiAI/Hexis remote peer" icon={<Radio className="size-4" />}>
+          <p className="mb-2 text-[11px] leading-relaxed text-muted">
+            Optional external cognitive peer. Status checks are user-triggered. A consultation sends only the question entered here, not NK1 memory or chat history. The remote Hexis agent may have its own tools enabled, so treat every answer as advisory.
+          </p>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <Button variant="outline" disabled={busy} onClick={() => void checkRemotePeer()}>Check remote status</Button>
+            <span className="text-[10px] text-subtle">
+              {remotePeerStatus?.reachable === true ? "reachable" : remotePeerStatus?.reason ? String(remotePeerStatus.reason) : "not checked"}
+            </span>
+          </div>
+          <pre className="mb-3 max-h-24 overflow-auto rounded-md border border-border bg-bg p-2 text-[10px] leading-relaxed text-muted">{remotePeerStatus ? fmt(remotePeerStatus) : "No remote status loaded. The remote connector is disabled until configured by the operator."}</pre>
+          <textarea
+            value={remoteQuestion}
+            onChange={e => { setRemoteQuestion(e.target.value); setRemoteConfirmation(false); }}
+            maxLength={6000}
+            rows={3}
+            placeholder="Ask a focused question for the external Hexis peer…"
+            className="w-full rounded-md border border-border bg-bg px-3 py-2 text-xs leading-relaxed text-fg"
+          />
+          <label className="mt-2 flex items-start gap-2 text-[11px] leading-relaxed text-muted">
+            <input type="checkbox" checked={remoteConfirmation} onChange={e => setRemoteConfirmation(e.target.checked)} />
+            I confirm that this question will be sent to a separately configured Hexis service. Its own tool permissions apply.
+          </label>
+          <Button
+            className="mt-2"
+            disabled={busy || !remoteQuestion.trim() || !remoteConfirmation || remotePeerStatus?.reachable !== true || remotePeerStatus?.consultEnabled !== true}
+            onClick={() => void consultRemotePeer()}
+          >Consult remote Hexis</Button>
+          <p className="mt-2 text-[10px] leading-relaxed text-subtle">A response never counts as verified evidence and cannot change NK1 memory or activate a skill. Importable data must still pass the HMX stage and explicit NK1 decision.</p>
+          {remoteResult ? <pre className="mt-3 max-h-56 overflow-auto rounded-md border border-border bg-bg p-3 text-[10px] leading-relaxed text-muted">{fmt(remoteResult)}</pre> : null}
         </Panel>
 
         <Panel title="Transactional outbox" icon={<Send className="size-4" />}>

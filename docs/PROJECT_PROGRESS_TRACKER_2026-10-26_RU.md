@@ -1,3 +1,274 @@
+## WorkPass424 — ограничить строки options до date parsing (2026-10-26)
+
+- **Код нормализатора:** `27dc3f6e37377346ba317f8d9349af98ac5091bc`; **регрессия:** `3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e`.
+- `sourceSubjectId` при наличии теперь должен быть непустой строкой длиной не больше 180 символов, а `exportedAt` — корректным bounded ISO date-time не длиннее 64 символов до передачи в `Date.parse`.
+- Это закрывает bypass по размеру/форме прямого вызова нормализатора вне обычного snapshot лимита HMX-документа. Контракт canonical export ID и допустимых optional fields сохранён.
+- Регрессии проверяют отказ для слишком длинного source ID, слишком длинного `exportedAt` и неверной даты.
+- **Валидация:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass423 — привязать memory projection к проверенному export options (2026-10-26)
+
+- **Код нормализатора:** `49a5a2e90a2d98980572f44152afaf20921a08a7`; **регрессия:** `bfb55498ff8e258caa52aec95f365bac7fc0f94b`.
+- `normalizeHmxV17Memory` теперь проверяет options envelope через собственные data descriptors, принимает только известные поля и canonical `exportId`; необязательные source/date значения должны иметь ожидаемые типы. Accessor-backed options отклоняются без выполнения.
+- Memory row нормализуется только если `ref` начинается с конкретного переданного `exportId` и `:`. Запись из другого экспорта или object-valued export ID отклоняется, а не связывается с неправильным lineage.
+- Регрессии покрывают несовпадающий export ID, getter в `exportId` без исполнения и object-valued export ID. Сохранены тесты getter/prototype для rows и source attribution.
+- **Валидация:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass422 — bounded snapshot недоверенной memory-записи перед нормализацией (2026-10-26)
+
+- **Код нормализатора:** `58f57b806590477c0d6558b162d82a78675e8397`; **регрессия:** `b380123afe87987a10456065504982bdf4a02af1`.
+- `normalizeHmxV17Memory` теперь захватывает raw row через bounded plain-JSON snapshot до чтения полей. Прямые вызовы не могут исполнить root/nested getters, передать custom-prototype запись или менять значения по ходу trust checks.
+- При этом сохраняется `null` для некорректной metadata/unsafe input; canonical stage application продолжает работать с ограниченным snapshot стадии. Добавлена защита поверх проверок confidence, provenance, references и типов metadata.
+- Регрессии покрывают root getter suppression, nested metadata getter suppression и отказ от custom-prototype row.
+- **Валидация:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass421 — отклонять некорректный HMX source_attribution вместо молчаливого удаления (2026-10-26)
+
+- **Код адаптера:** `77c57d9283f2805711a1c5e3db11c38af8b826f2`; **регрессия:** `d7be9e5da89bb8523e42d422533112e9a0304461`.
+- Schema теперь требует, чтобы `source_attribution` был объектом, если поле присутствует. Normalizer возвращает `null` для scalar/array вместо превращения записи в якобы не имеющую источника.
+- Это дополняет проверку числового диапазона `source_authority_01`: malformed attribution создаёт schema conflict, поэтому полная секция memories не может попасть в canonical merge.
+- Регрессия проверяет отсутствие исключения, path-specific schema issue и null projection для строкового `source_attribution`.
+- **Валидация:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass420 — валидация HMX поверх уже созданного bounded snapshot (2026-10-26)
+
+- **Рефакторинг адаптера:** `86ec7974749de51ef1a78375e0da45d4772c34c7`; **связка fabric:** `619535a9cf23e3463ca4a8b1809a07811e512f00`; **регрессия:** `b801a6eb2b67a6270f4f2a4dc745a3bf32433100`.
+- Добавлена `snapshotAndValidateHmxV17Document`: она единожды захватывает недоверенный input, валидирует отделённое plain-JSON дерево и возвращает snapshot вместе с issues. Публичная `validateHmxV17Document` по-прежнему безопасно захватывает произвольный raw input, а `stageHmx` использует combined result без второго полного deep copy/serialization прохода.
+- Restore-time validation по-прежнему вызывает публичную safe API, потому что проверяет сохранённое состояние. Первичный staging уже имеет отделённый snapshot, поэтому его дополнительное копирование не нужно; прочие callers не менялись.
+- Регрессия проверяет отделённый объект результата, отсутствие schema issues у валидного документа и отказ от accessor-backed input без выполнения getter. В focused suite сохранены изоляция stage snapshot и fail-closed проверки malformed metadata.
+- **Валидация:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass419 — строгая проверка типов HMX metadata до coercion (2026-10-26)
+
+- **Код адаптера:** `718478b8fb815909c4b2c31098921b2a0cac23bf`, `3bc3bee2f68a0c3f99920e1cc1d898cc9797afa3`, `c39fd277fc2e5c79495a92df1d215171502539c0`; **регрессии:** `f6f3ee592273430e787dc2d60f865d0abca0128b`, `693567b8100b83ab0d8ff1ffad8c31fcf3bca8cb`, `f6ff13bb81276752e1500181ea83f9f75f57a657`, `19afcc0376e55b26511713776a09438bcc4a7e79`.
+- Проверки `export_intent`, privacy policy values и memory `nk1_kind` заменены на явную проверку типов. Metadata перед импортом проверяет confidence/salience/trust числа, массивы `tags`/`entities` и форму context.
+- `normalizeHmxV17Memory` теперь возвращает `null` для неверных типов вместо coercion null-prototype objects в строки/числа; numeric clamp также стал exception-safe. HMX refs ограничены 512 символами, а source-authority валидируется при наличии.
+- Регрессии покрывают null-prototype объекты в export intent, privacy, metadata kind/confidence/tags, type и source-authority; требуется schema issue либо null projection вместо исключения. Ссылка памяти длиной выше лимита отклоняется.
+- Дополнительный stage-level тест требует, чтобы некорректная metadata создавала visible conflict, приводила к атомарному исключению всей секции memories и оставляла стадию недоступной для canonical apply.
+- **Валидация:** PENDING exact-head HMX adaptation, server smoke, runtime typecheck и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass418 — исключить дублирующее глубокое копирование после bounded HMX snapshot (2026-10-26)
+
+- **Код fabric:** `8325edfe46cc263b79a146dee94268e14c07c6d0`; **регрессия изоляции:** `849453058df8ca197e623432b66d6d17bad0e945`.
+- `stageHmx` использует ссылки на секции внутри уже изолированного bounded plain-JSON snapshot вместо повторного deep clone каждого массива/объекта. Метод по-прежнему возвращает `structuredClone` всей стадии, поэтому caller не получает доступ к сохранённому внутреннему состоянию.
+- Это снижает дублирующие аллокации на больших HMX-файлах, сохраняя проверку accessors/prototypes/resource bounds и атомарное исключение conflicted-секций.
+- Регрессия независимо меняет исходный HMX документ и возвращённый объект стадии и проверяет, что сохранённое содержимое не меняется ни в одном случае.
+- **Валидация:** PENDING exact-head HMX adaptation test, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass417 — снимок HMX request envelope без выполнения getters (2026-10-26)
+
+- **Код fabric:** `ff87945607101053a2ec4dad99eb41772d989a56`; **регрессия:** `cc2bf0633fbc61f1da5862c0df214f688cf9ac07`.
+- `stageHmx` теперь извлекает `document`, `intent` и `strategy` через собственные data descriptors из plain request envelope. Accessors, унаследованные/custom-prototype envelopes и дополнительные поля отвергаются с `hmx-unsafe-stage-request` до чтения значений, валидации документа, создания стадии или изменения метрик.
+- Само поле `document` по-прежнему проходит через существующий bounded HMX snapshot; поэтому текущая диагностика некорректного HMX payload сохраняется. Запросные getters больше не могут менять metadata между allowlist validation и staging.
+- Регрессии требуют, чтобы getters для intent/document не исполнялись, запросы были отвергнуты и stage ledger оставался пустым. Runtime allowlist intent/strategy сохраняется после capture.
+- **Валидация:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass416 — allowlist intent/strategy внутри HexisAdaptationFabric (2026-10-26)
+
+- **Код fabric:** `d82d5f9c77a303322b6a379e9b664111917f9bf0`; **direct-call регрессия:** `b1595b492f0424b754e50e600aadebd2d379f7ae`.
+- Те же allowlists добавлены в `HexisAdaptationFabric.stageHmx`, а не только в HTTP route. Прямые/internal callers получают `hmx-invalid-intent` или `hmx-invalid-strategy` до snapshot входного документа, создания стадии или изменения метрик.
+- Регрессия вызывает fabric напрямую с неизвестными intent/strategy и требует исключения с пустым stage ledger. Вместе с WorkPass415 HTTP-smoke контракт теперь проверяется на обоих входных слоях.
+- **Валидация:** PENDING exact-head HMX adaptation, server smoke, runtime typecheck и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass415 — проверка intent/strategy HMX на HTTP-границе (2026-10-26)
+
+- **Код сервера:** `9f9601df7a72d9d0f6c46e24030052c554087237`; **server-smoke:** `bd2f036238b7b3582c6e9a17ee49991a66e0df54`.
+- HMX staging route теперь принимает только разрешённые значения intent (`port`, `duplicate`, `telepathy`, `analysis`) и strategy (`additive`, `authoritative`, `deliberative`, `analysis_only`). Отсутствующие поля сохраняют явные preview-only defaults; переданные неверные типы/значения получают HTTP 400 до вызова fabric.
+- Регрессия отправляет ошибочный intent и недопустимую strategy, проверяет `hmx-invalid-intent`/`hmx-invalid-strategy`, затем продолжает с валидным telepathy/additive stage.
+- **Валидация:** PENDING exact-head `test:hexis-server-smoke`, runtime typecheck, HMX adaptation и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass414 — блокировка повторного accept до сохранения HMX-квитанции (2026-10-26)
+
+- **Код адаптера:** `0fc2a3880ef1276106e78dbcd4ab15ce53feb1d2`; **регрессия:** `daa458f2abd935f136b249d1cb3ae6b9ccccf0c5`.
+- Расширен guard WorkPass413: любое повторное решение уже принятой memory-merge стадии с квитанцией `pending` теперь закрывает её как `uncertain` до возврата в core — как при повторном `accept`, так и при позднем `reject`.
+- Первое явное принятие не затронуто: оно входит в `decideHmx` из состояния `staged`. Повторные accept/reject получают разные reason-коды и больше не возвращают комбинацию `accepted + pending` к state-based guard канонического импорта.
+- Регрессия покрывает повторный accept, terminal reason и дальнейшие accept, оставшиеся без replay; тест позднего reject также сохранён.
+- **Валидация:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass413 — поздний reject не должен повторно запускать HMX-импорт (2026-10-26)
+
+- **Код адаптера:** `443d5d83635645e967c7da245f2a75a8af284e03`; **регрессия:** `a4fba62670b3e6a5215b9083853a530b41c5fc79`.
+- Обнаружена ошибка порядка решений: core запускает импорт по комбинации `accepted + pending`. Если повторный запрос `reject` приходил уже после принятия, стадия оставалась в том же состоянии и могла снова попасть под импортный guard.
+- `HexisAdaptationFabric.decideHmx` теперь переводит такой поздний reject в терминальный `uncertain` с причиной `reject-request-after-accept-before-import-receipt`. Факт уже записанного операторского принятия сохраняется — отклонение не может безопасно отменить неизвестные побочные эффекты, — но core больше не получает apply-eligible стадию для replay.
+- Регрессия проверяет accept → поздний reject → terminal receipt → повторный accept без запуска нового импорта.
+- **Валидация:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass412 — проверить HMX recovery после реального JSON round-trip (2026-10-26)
+
+- **Регрессия:** `dccd678206df42ac6ed7c1f057e741619c0d453e`.
+- Усилены тесты WorkPass408: перед восстановлением вся Hexis adaptation snapshot сериализуется через `JSON.stringify/JSON.parse`. Обычный прерванный accept и восстановление изменённого payload теперь проходят через ту же JSON-границу, что использует сохранённое состояние runtime, а не только через копию в памяти.
+- Остаются обязательными проверки терминального `uncertain`, сохранения решения оператора, точного учёта исходных записей, защиты от повторного accept и сохранения конфликта integrity.
+- **Валидация:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass411 — не приписывать каждому uncertain HMX откату (2026-10-26)
+
+- **Текст UI:** `1f45d8ec3cc7eb16efa8e75da262197c4ff73cb9`; **wiring-audit:** `545b8e01a234e9e959b1d6e8ab33462ad5e27617`.
+- Исправлено неточное предупреждение: `uncertain` может обозначать как неполный rollback, так и остановку процесса до сохранения квитанции. Интерфейс теперь говорит, что исход импорта не подтверждён, а не утверждает, будто откат точно провалился.
+- Все счётчики помечены как непроверенные служебные значения, не доказывающие, какие строки применились. Пользователю предлагается проверить каноническую память и сохранённую квитанцию до дальнейших действий.
+- UI wiring audit требует нейтральную к причине формулировку и явный запрет на повторный импорт.
+- **Валидация:** PENDING frontend build и UI wiring audit; exact-head PASS не подтверждён, оценки не повышены. `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass410 — явно пометить счётчики uncertain HMX как непроверенные (2026-10-26)
+
+- **Текст UI:** `306b075e22f610b60783d489015f8a8519d77212`; **wiring-audit:** `85c700822e22ce7d6c9140986296fd924417f511`.
+- Сообщение `UNCERTAIN` больше не представляет счётчики как подтверждённые создания/повторное использование. Оно прямо сообщает, что значения лишь возвращены прерванной операцией и не проверены, и требует сверить каноническую память и квитанцию до дальнейших действий.
+- Wiring-audit требует эту формулировку вместе с предупреждением не повторять импорт.
+- **Валидация:** PENDING frontend build и UI wiring audit; exact-head PASS не подтверждён, оценки не повышены. `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass409 — сохранить результат операции при ошибке обновления панели (2026-10-26)
+
+- **UI-код:** `895b4c338a0a40e3441af5ee51a5c8a63bcc46f2`; **wiring-audit:** `cee8f2841d34bddda5b1780844c5908133bececa`.
+- Общий обработчик консоли больше не считает успешно завершённое действие неудачным, если после него упал отдельный запрос обновления состояния/списка памяти. Результат исходной операции возвращается вызывающему обработчику, а ошибка refresh отображается отдельно.
+- Это не позволяет потерять HMX import receipt до того, как специализированный обработчик покажет `APPLIED`, `PARTIAL`, `SKIPPED` или `UNCERTAIN`.
+- `audit-ui-function-wiring.mjs` теперь проверяет, что результат операции сохраняется при отдельной ошибке refresh.
+- **Валидация:** PENDING frontend build и UI wiring audit; HMX adaptation/server smoke, runtime typecheck и Unified integration не подтверждены на пригодном exact-head CI. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass408 — карантин HMX-импорта, прерванного до сохранения квитанции (2026-10-26)
+
+- **Код:** `f12ad52ed62a852df476c88150a16abab8e56288`; **регрессия:** `7456ba64763ec253cb86ec33619a23c0e3210a15`.
+- Найдено окно replay при перезапуске: процесс мог остановиться после перехода HMX-стадии в `accepted`, но до записи итоговой квитанции канонической памяти. Restore оставлял `accepted + pending`, позволяя повторному accept повторно запустить импорт.
+- Restore теперь переводит принятые memory-merge стадии с pending-квитанцией в терминальный `uncertain`. Решение оператора сохраняется; исходные строки учитываются без заявления о фактическом успешном/неуспешном применении. При несоответствии сохранённого digest дополнительно сохраняется конфликт `persisted-stage-integrity-failure`.
+- Регрессии покрывают обычное прерывание принятого импорта, повторный accept после восстановления, учёт исходных строк и tampering payload до restore.
+- **Валидация:** PENDING exact-head `test:hexis-adaptation`, server smoke, runtime typecheck и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass407 — полная матрица неверных JSON body для Hexis POST (2026-10-26)
+
+- **Server-smoke regression:** `1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3`.
+- Расширен smoke для всех 17 POST-маршрутов Hexis: каждый получает JSON `null`, массив, строку, число и boolean.
+- Каждый некорректный тип обязан возвращать HTTP 400 `hexis-invalid-request-body`; сообщение ошибки включает маршрут и конкретное значение. Проверка теперь не опирается только на один вариант `null`.
+- **Валидация:** PENDING exact-head `test:hexis-server-smoke`, runtime typecheck и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass406 — UI явно показывает итог HMX import receipt (2026-10-26)
+
+- **UI-код:** `a330d9bd1ca2602e3cfcc0fe75d513a8f67e7875`; **audit regression:** `ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122`.
+- Кнопка принятия HMX теперь анализирует квитанцию и выводит отдельный итог `APPLIED`, `PARTIAL`, `SKIPPED`, `PENDING` или `UNCERTAIN`, включая счётчики/причину при наличии.
+- Неопределённый или оставшийся pending результат больше не маскируется под обычное `Accept HMX: OK`. После терминальной квитанции локальные controls сбрасываются; при неизвестном результате интерфейс предупреждает не повторять эту стадию и проверить каноническую память/квитанцию.
+- `audit-ui-function-wiring.mjs` теперь проверяет, что warning для uncertain/pending существует и связан с кнопкой принятия.
+- **Валидация:** PENDING frontend build, UI wiring audit, exact-head runtime typecheck, HMX adaptation/server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass405 — неопределённый результат HMX при неполном rollback (2026-10-26)
+
+- **Код:** `7c50f4a34dfc1198b9ec1347b1938d38fd7e73cc`; **регрессия:** `637429b82ae8913760b89b9544cd21a00457c3bd`.
+- Обнаружен тупик квитанции после WorkPass403: при `rollback-incomplete` core мог передать статус `partial` с несогласованными счётчиками. Уже принятая стадия тогда оставалась `pending`, что позволяло повторный запуск импорта с потенциально сохранившимися побочными эффектами.
+- Добавлен терминальный статус `uncertain` для результата `memory-encode-failed-rollback-incomplete`. Квитанция сохраняет только подтверждённые счётчики `created/reused`, пересчитывает остаток исходных строк и закрывает стадию без заявления об успешном применении. Повторная квитанция не может заменить её на `applied`.
+- Регрессия проверяет точный учёт исходной записи, терминальность `uncertain` и защиту от replay.
+- **Валидация:** PENDING exact-head typecheck, `test:hexis-adaptation`, server smoke и Unified integration. PASS не заявляется: требуются usable exact-head CI steps/logs. Прогресс и оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass404 — единая проверка JSON body на всей Hexis API-границе (2026-10-26)
+
+- **Код сервера:** `9e67b36842b28042de4b82ad049452e5b01ad747`; **smoke regression:** `0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a`.
+- Общий guard применён ко всем 17 POST-маршрутам Hexis: peer consult, sync-memory, belief/review, retention, HMX, outbox, connector policies и execution-plan.
+- JSON `null`, массивы и primitive values возвращают HTTP 400 `hexis-invalid-request-body` до чтения полей или изменения состояния.
+- Smoke отправляет `null` по всем 17 маршрутам и требует идентичный отказ; дополнительные invalid-decision/action и HMX integrity regression сохранены.
+- **Валидация:** PENDING exact-head runtime typecheck, HMX adaptation, server smoke и Unified integration. PASS не заявляется; Actions не предоставляют usable step/log evidence. Прогресс не повышен; `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass403 — строгая проверка завершения HMX import receipt (2026-10-26)
+
+- **Код:** `ed92b4abf74395cc3d6946eadd0482eca2f839d2`; **регрессия:** `8969a6401719d9105162e50d00a35c79f4e98b51`.
+- `recordHmxImportResult` не нормализует некорректные значения через clamp/floor. Принимаются только известные статусы, неотрицательные safe-integer counts, bounded reason и точный учёт исходных memory records: `created + reused + skipped === sectionCounts.memories`.
+- `applied` не может содержать skipped rows, `skipped` не может иметь created/reused, а `partial` должен действительно отражать частичное применение. Некорректный receipt оставляет статус `pending`.
+- Тесты покрывают NaN, неучтённые записи и несовместимый partial-status; затем валидный receipt завершается, а повтор не переписывает counts.
+- **Валидация:** PENDING exact-head typecheck, HMX adaptation, server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass402 — повторная проверка integrity pending HMX stage (2026-10-26)
+
+- **Код:** `307b1317100bd9d4e3d62094f552a074fb1f663c` и `66927b5571704895f78f7c02897cd42e12fce8ea`; **регрессии:** `6f40c41ec9ff705561c1389fb8760956d41cfee1` и `388156d09c62dc736b5dcbe44a43fce303dedc0a`.
+- При восстановлении и решении pending-stage повторно проверяется digest исходного staging-снимка и HMX схема. Изменённая после проверки стадия становится `rejected` с `persisted-stage-integrity-failure`; import receipt не считается применённым.
+- Корректная стадия с исходными schema-конфликтами остаётся `staged` для просмотра/отклонения; явное принятие по-прежнему блокируется.
+- Тест изменяет сохранённое содержимое pending evidence до восстановления и требует quarantine; отдельный тест сохраняет поведение ожидаемых validation-конфликтов.
+- **Валидация:** PENDING exact-head typecheck, `test:hexis-adaptation`, server smoke и Unified integration. PASS не заявляется. Прогресс/готовность/recall не повышались; `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass401 — защита staging-словарей от `__proto__` (2026-10-26)
+
+- **Код:** `47d88fcc1a8b5737cca6c542a51e3d0011f8281a`; **регрессия:** `76830a380ab2cdbd825994062de793c2a1a0c2f0`.
+- `sectionCounts` и `stagedSections` теперь создаются без prototype. Враждебное имя секции `__proto__` остаётся обычным диагностическим ключом и не меняет прототип словаря.
+- Тест проверяет отказ секции, сохранение исходного количества, отсутствие её в staged payload, prototype-free карты и запрет acceptance.
+- **Валидация:** PENDING exact-head typecheck, HMX adaptation, server smoke и Unified integration. PASS не заявляется; пригодный exact-head CI-вывод пока недоступен. Оценки не повышены; `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass400 — guard Hexis endpoints от не-объектного JSON (2026-10-26)
+
+- **Код сервера:** `416c8df040e778c431ac999242d0d339a0a5940f`; **smoke regression:** `6132b9112a398d37d1dc975fe08bff0b48a9d6f5`.
+- Learning-review decision, retention propose, HMX stage и HMX decision теперь требуют JSON object. Литеральный `null`, массив или primitive возвращает HTTP 400 `hexis-invalid-request-body` до чтения route-specific полей и до mutation.
+- Smoke отправляет `null` во все 4 endpoint и проверяет идентичный 400-контракт; тесты неверных decision/action сохранены.
+- **Валидация:** PENDING exact-head typecheck, HMX adaptation, server smoke и Unified integration. PASS не заявляется; Actions не предоставляют пригодные логи. Оценки неизменны; `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass398 — неизвестные Hexis decisions отклоняются на HTTP-границе (2026-10-26)
+
+- **Серверный код:** `7df90658a7633fcaee746a69197f9522818cc452`; **server-smoke regression:** `86edc9df9a802ce8aa6965c8091454eb779429d5`.
+- Ранее неизвестное решение review неявно превращалось в `approve`, а неизвестное HMX-решение — в `reject`. Теперь обе API-границы требуют точного значения из allowlist и возвращают HTTP 400 до вызова mutation/flush.
+- Smoke проверяет invalid decision для review и HMX; после неверного HMX-решения тот же валидный stage успешно отправляется на явный `accept` в рамках теста.
+- **Валидация:** PENDING exact-head typecheck, `test:hexis-adaptation`, `test:hexis-server-smoke`, Unified integration. Actions пока падают до предоставления шагов/логов, поэтому PASS не заявляется. Оценки прогресса не менялись; `main` и canonical Release ZIP не изменялись.
+
+---
+
+## WorkPass397 — безопасный HMX snapshot на границе импорта (2026-10-26)
+
+- **Кодовые коммиты:** `aead364e098b462b5f99f48e65b76585f927975f` (ограниченный plain-JSON snapshot) и `83343d9ba5765050c734218a64d8bbe6e9883f2f` (staging использует тот же snapshot); **регрессии:** `0f9c34c54ad2b858a142c5e14d0de28fb763f5b5` и `28920aa46a888ddff4a0297ae8a93526e879da85`.
+- До schema inspection HMX копируется через own-data descriptors с ограничениями по глубине/узлам/байтам. Accessors, sparse/extended arrays, неподдерживаемые прототипы, циклы и non-finite numbers отклоняются без чтения свойств через getter.
+- Validation и stage работают с захваченным снимком, а не с исходным объектом; это убирает расхождение «проверили одно, сохранили другое».
+- Регрессии проверяют root/вложенный getter (0 вызовов), sparse array, цикл, non-finite number и нестандартный prototype. Во всех случаях появляется `unsafe-input`, memory payload не попадает в staging, принять stage нельзя.
+- **Валидация:** PENDING exact-head typecheck, `test:hexis-adaptation`, server smoke и Unified integration. Тесты добавлены, но не подтверждены успешным запуском. Проценты/оценки не повышены; `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass396 — атомарный staging массивов HMX (2026-10-26)
+
+- **Код:** `eb4b719d011bd035d05ae53f65599d15b5d7ae43`; **регрессии:** `c8fc71acd48348469dfa6d9cabd01ba9ea92fce6`.
+- Массивы с более чем 256 записями и массивы с некорректным элементом целиком исключаются из `stagedSections`; исходный размер и причины конфликта сохраняются. Нельзя принять частичный префикс массива как будто это полный экспорт.
+- Тесты требуют полного отказа для 257 записей и для ошибочной записи внутри корректного массива. Exact-head validation ожидает запуска.
+
+---
+
 ## WorkPass357 — descriptor-only nested parent lineage restore (2026-10-26)
 
 - **Code/test checkpoint:** `810f60f2227db466dd1f96b1e3edf39741951f9d`; stacked on WorkPass356 branch head `1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee`.
