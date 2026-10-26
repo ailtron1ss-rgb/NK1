@@ -254,6 +254,9 @@ function describeSection(section: string, value: unknown, exportId: string, issu
           issues.push({ path: path + '[' + index + '].metadata', kind: 'schema', detail: 'Memory metadata must be an object when supplied.' });
         }
         const metadata = record(row.metadata) ?? {};
+        if (row.source_attribution != null && !record(row.source_attribution)) {
+          issues.push({ path: path + '[' + index + '].source_attribution', kind: 'schema', detail: 'source_attribution must be an object when supplied.' });
+        }
         const sourceAttribution = record(row.source_attribution) ?? {};
         if (sourceAttribution.source_authority_01 != null &&
             !isUnitIntervalNumber(sourceAttribution.source_authority_01)) {
@@ -614,6 +617,7 @@ export function normalizeHmxV17Memory(
       row.content.length > MAX_MEMORY_CHARS || typeof row.ref !== 'string' ||
       row.ref.length > 512 || !REF_PATTERN.test(row.ref)) return null;
   if (row.metadata != null && !record(row.metadata)) return null;
+  if (row.source_attribution != null && !record(row.source_attribution)) return null;
   const metadata = record(row.metadata) ?? {};
   const source = record(row.source_attribution) ?? {};
   if (source.source_authority_01 != null && !isUnitIntervalNumber(source.source_authority_01)) return null;
