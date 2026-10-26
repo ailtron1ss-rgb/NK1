@@ -1,8 +1,9 @@
 declare module 'node:crypto' { export function randomUUID(): string;
-  export function createPublicKey(key: string | Uint8Array): { asymmetricKeyType?: string };
+  export interface KeyObject { asymmetricKeyType?: string; }
+  export function createPublicKey(key: string | Uint8Array | KeyObject): KeyObject;
   export function createHash(algorithm: string): { update(data: string | Uint8Array): any; digest(encoding: string): string };
-  export function verify(algorithm: null | string, data: Uint8Array, key: string | Uint8Array, signature: Uint8Array): boolean;
-  export function sign(algorithm: null | string, data: Uint8Array, key: string | Uint8Array): any; }
+  export function verify(algorithm: null | string, data: Uint8Array, key: string | Uint8Array | KeyObject, signature: Uint8Array): boolean;
+  export function sign(algorithm: null | string, data: Uint8Array, key: string | Uint8Array | KeyObject): any; }
 declare module 'node:fs' {
   export const constants: Record<string,number>;
   export function accessSync(path:string, mode?:number):void;
@@ -16,6 +17,7 @@ declare module 'node:fs' {
   export function renameSync(oldPath:string,newPath:string):void;
   export function unlinkSync(path:string):void;
   export function writeFileSync(path:string,data:string|Uint8Array, options?:string|{encoding?:string;mode?:number;flag?:string}):void;
+  export function writeFileSync(fd:number,data:string|Uint8Array, options?:string|{encoding?:string;mode?:number;flag?:string}):void;
 }
 declare module 'node:fs/promises' {
   export function access(path:string, mode?:number): Promise<void>;
