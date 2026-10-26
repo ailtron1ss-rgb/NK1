@@ -531,6 +531,12 @@ validRestoreFabric.restore(validRestoreSnapshot);
 assert.equal(validRestoreFabric.getById(restoreSourceEvent.id)?.tick,55,
   'a valid canonical event snapshot must remain restorable');
 
+let nestedRestoreGetterExecuted=false;
+const nestedAccessorPayload={stable:true};
+Object.defineProperty(nestedAccessorPayload,'hidden',{
+  enumerable:true,
+  get(){nestedRestoreGetterExecuted=true;throw new Error('nested payload getter must not run');},
+});
 const malformedRestoreRows = [
   {...restoreSourceEvent,id:' restore:whitespace-id '},
   {...restoreSourceEvent,id:'restore:string-tick',tick:'55'},
@@ -538,6 +544,7 @@ const malformedRestoreRows = [
   {...restoreSourceEvent,id:'restore:string-external',external:'false'},
   {...restoreSourceEvent,id:'restore:string-confidence',confidence01:'0.8'},
   {...restoreSourceEvent,id:'restore:malformed-parent',parentIds:[' restore:parent ']},
+  {...restoreSourceEvent,id:'restore:nested-accessor-payload',payload:{nested:nestedAccessorPayload}},
 ];
 const cyclicRestorePayload = {};
 cyclicRestorePayload.self = cyclicRestorePayload;
@@ -546,6 +553,8 @@ const strictRestoreFabric = new CognitiveEventFabric(128);
 strictRestoreFabric.restore({version:1,total:0,recent:malformedRestoreRows});
 assert.equal(strictRestoreFabric.snapshot().recent.length,0,
   'malformed IDs, ticks, boolean flags, confidence, parent IDs and cyclic payloads must not become causal events');
+assert.equal(nestedRestoreGetterExecuted,false,
+  'restoring nested payload objects must not execute accessors while cloning event data');
 
 let restoreGetterExecuted = false;
 const accessorRow = {...restoreSourceEvent,id:'restore:accessor-id'};
@@ -567,9 +576,17 @@ Object.defineProperty(accessorSnapshot,'recent',{
   get(){rootGetterExecuted=true;throw new Error('snapshot collection getter must not run');},
 });
 const accessorRootFabric = new CognitiveEventFabric(128);
-accessorRootFabric.restore(accessorSnapshot);
+const accessorRootBaseline = accessorRootFabric.append({
+  id:'restore:root-accessor-baseline',tick:57,at:5700,stage:'observation',
+  source:'restore-test',parentIds:[],external:false,confidence01:0.6,payload:{preserve:true},
+});
+const beforeAccessorRootRestore = accessorRootFabric.snapshot();
+assert.throws(()=>accessorRootFabric.restore(accessorSnapshot),/snapshot-field-accessor:recent/,
+  'accessor-backed snapshot roots must fail before touching the current ledger');
 assert.equal(rootGetterExecuted,false,'restoring the collection field must not execute a snapshot getter');
-assert.equal(accessorRootFabric.snapshot().recent.length,0);
+assert.deepEqual(accessorRootFabric.snapshot(),beforeAccessorRootRestore,
+  'unsafe root accessors must leave the existing event ledger unchanged');
+assert.equal(accessorRootFabric.getById(accessorRootBaseline.id)?.payload.preserve,true);
 
 const atomicRestoreFabric = new CognitiveEventFabric(128);
 const atomicRestoreNode = atomicRestoreFabric.append({
