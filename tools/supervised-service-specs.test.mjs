@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSupervisedServiceSpecs } from './supervised-service-specs.mjs';
+import { buildSupervisedServiceSpecs, missingServiceRequirements } from './supervised-service-specs.mjs';
 
 const root = '/opt/neuro-kurisu';
 const stateDir = '/opt/neuro-kurisu/.super-state';
@@ -58,4 +58,26 @@ test('service specs reject missing launch inputs instead of constructing unusabl
   assert.throws(() => buildSupervisedServiceSpecs({ root: '', stateDir, nodeExecutable }), /root is required/);
   assert.throws(() => buildSupervisedServiceSpecs({ root, stateDir: '', nodeExecutable }), /state directory is required/);
   assert.throws(() => buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable: '' }), /Node executable is required/);
+});
+
+
+test('required service prerequisites are checked before local state is created', () => {
+  const specs = buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable });
+  assert.deepEqual(missingServiceRequirements(specs, () => true), []);
+
+  const uiBuildOutput = resolve(root, 'app/dist/index.html');
+  const missingUi = missingServiceRequirements(specs, candidate => candidate !== uiBuildOutput);
+  assert.deepEqual(missingUi, [{ label: 'ui-preview', path: uiBuildOutput }],
+    'an unbuilt UI preview must be reported before the supervisor launches any child');
+
+  const actualRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
+  const startup = readFileSync(resolve(actualRoot, 'tools/super-start.mjs'), 'utf8');
+  const interpreterCheck = startup.indexOf("commandAvailable('python3')");
+  const requirementsCheck = startup.indexOf('missingServiceRequirements(serviceSpecs, existsSync)');
+  const stateCreation = startup.indexOf('mkdirSync(stateDir, { recursive: true })');
+  assert.ok(interpreterCheck >= 0 && stateCreation > interpreterCheck,
+    'missing mandatory Python runtime must fail before creating state');
+  assert.ok(requirementsCheck >= 0 && stateCreation > requirementsCheck,
+    'missing entrypoints/build output must fail before creating state');
+  assert.match(startup, /Build the UI before production-style start: npm --prefix app run build/);
 });
