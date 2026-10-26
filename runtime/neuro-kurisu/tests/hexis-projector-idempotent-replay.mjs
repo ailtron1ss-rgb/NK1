@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { HexisCanonicalMemoryProjector } from '../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
 import { calculateHmxStageDigest } from '../src/organism/integration/hexis/HexisHmxReceiptGuard.ts';
+import { sha256Stable } from '../src/organism/core/StableSerialization.ts';
 
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
 const stage = {
@@ -56,6 +57,23 @@ assert.notEqual(replay.warnings, receipt.warnings, 'nested receipt data is clone
 replay.warnings.push('caller-mutation');
 assert.deepEqual(receipt.warnings, ['previously-applied']);
 assert.equal(writes, 0, 'idempotent replay must not touch canonical storage');
+
+// New receipts use canonical serialization; the same receipt must remain valid when
+// persistence restores identical fields in a different object-key order.
+const { digest: legacyReceiptDigest, ...receiptPayload } = receipt;
+const canonicalReceipt = {
+  ...receiptPayload,
+  digest: sha256Stable(receiptPayload, 'legacy'),
+};
+const reorderedCanonicalReceipt = {
+  ...Object.fromEntries(Object.entries(receiptPayload).reverse()),
+  digest: canonicalReceipt.digest,
+};
+assert.deepEqual(
+  projector.apply({ ...stage, application: reorderedCanonicalReceipt }),
+  reorderedCanonicalReceipt,
+  'canonical receipt verification must be independent of JSON object-key order',
+);
 
 // A receipt copied from another stage must not be accepted as the result of this stage.
 assert.throws(
