@@ -1,3 +1,12 @@
+## WorkPass348 — deterministic postcondition identity and legacy receipt replay (2026-10-26)
+
+- **FIXED:** postcondition fingerprinting no longer uses locale-sensitive lowercasing; case-sensitive differences remain distinct across hosts.
+- **COMPATIBILITY:** a legacy restored receipt without event-level postcondition hashes can replay only when its retained projection index contains the exact full-input fingerprint. Without that independent fingerprint, replay still fails closed.
+- **REGRESSION:** added case-only postcondition conflict and legacy-index compatibility coverage.
+- **VALIDATION:** exact-head CI required on this commit.
+
+---
+
 ## WorkPass347 — preserve verified postcondition identity across restore (2026-10-26)
 
 - **FIXED:** the active causal event journal now persists hashes of the expected and observed postconditions in the sanitized receipt-evidence event, without storing raw postcondition text.

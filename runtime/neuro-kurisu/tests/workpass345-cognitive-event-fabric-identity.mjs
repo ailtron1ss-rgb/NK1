@@ -146,10 +146,33 @@ assert.equal(fabric.snapshot().recent.some(event => event.id === 'cef:test:ident
  indexless.restore({...receiptSnapshot,receiptProjectionIndex:[]});
  const beforeReceiptConflict=indexless.snapshot().total;
  assert.throws(()=>indexless.appendToolReceiptTrace({
+   ...receiptInput,expectedPostcondition:'Report.json exists and has expected digest',
+ }),/tool-receipt-execution-id-conflict/,'case-sensitive postcondition changes must not collapse into the same receipt fingerprint');
+ assert.equal(indexless.snapshot().total,beforeReceiptConflict);
+ assert.throws(()=>indexless.appendToolReceiptTrace({
    ...receiptInput,expectedPostcondition:'a different expected state that is still nonempty',
  }),/tool-receipt-execution-id-conflict/);
  assert.equal(indexless.snapshot().total,beforeReceiptConflict);
  assert.equal(indexless.appendToolReceiptTrace(receiptInput).replayed,true);
  assert.equal(indexless.snapshot().total,beforeReceiptConflict);
+
+ // Upgrade compatibility: an older persisted receipt without event-level hashes
+ // may replay only when its retained index proves the complete original input hash.
+ const legacyReceiptSnapshot={
+   ...receiptSnapshot,
+   recent:receiptSnapshot.recent.map(event=>{
+     if(event.id!==firstReceipt.evidenceEventId)return event;
+     const payload={...event.payload};
+     delete payload.expectedPostconditionHash;
+     delete payload.observedPostconditionHash;
+     return {...event,payload};
+   }),
+ };
+ const legacyReceiptFabric=new CognitiveEventFabric(128);
+ legacyReceiptFabric.restore(legacyReceiptSnapshot);
+ const legacyTotal=legacyReceiptFabric.snapshot().total;
+ assert.equal(legacyReceiptFabric.appendToolReceiptTrace(receiptInput).replayed,true,
+   'legacy exact replay remains valid when the persisted projection hash verifies the complete input');
+ assert.equal(legacyReceiptFabric.snapshot().total,legacyTotal);
 
 console.log('WorkPass345 CognitiveEventFabric identity: PASS');

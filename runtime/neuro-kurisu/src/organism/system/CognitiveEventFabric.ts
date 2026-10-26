@@ -330,8 +330,8 @@ export class CognitiveEventFabric {
       expectedPostconditionPresent:Boolean(String(input.expectedPostcondition??'').trim()),
       observedPostconditionPresent:Boolean(String(input.observedPostcondition??'').trim()),
       // Hash canonical claims into the immutable receipt fingerprint without writing raw postcondition text into CEF.
-      expectedPostconditionHash:String(input.expectedPostcondition??'').trim()?sha256Stable(String(input.expectedPostcondition).normalize('NFKC').trim().toLocaleLowerCase()):null,
-      observedPostconditionHash:String(input.observedPostcondition??'').trim()?sha256Stable(String(input.observedPostcondition).normalize('NFKC').trim().toLocaleLowerCase()):null,
+      expectedPostconditionHash:String(input.expectedPostcondition??'').trim()?sha256Stable(String(input.expectedPostcondition).normalize('NFKC').trim()):null,
+      observedPostconditionHash:String(input.observedPostcondition??'').trim()?sha256Stable(String(input.observedPostcondition).normalize('NFKC').trim()):null,
       observationIntegrated:Boolean(input.observationIntegrated),
     };
     const projectionHash=sha256Stable(normalized);
@@ -357,8 +357,10 @@ export class CognitiveEventFabric {
           evidence!.payload.observationId===normalized.observationId&&evidence!.payload.observationIntegrated===normalized.observationIntegrated&&
           evidence!.payload.expectedPostconditionPresent===normalized.expectedPostconditionPresent&&
           evidence!.payload.observedPostconditionPresent===normalized.observedPostconditionPresent&&
-          evidence!.payload.expectedPostconditionHash===normalized.expectedPostconditionHash&&
-          evidence!.payload.observedPostconditionHash===normalized.observedPostconditionHash;
+          (evidence!.payload.expectedPostconditionHash===normalized.expectedPostconditionHash||
+            (typeof evidence!.payload.expectedPostconditionHash!=='string'&&prior?.projectionHash===projectionHash))&&
+          (evidence!.payload.observedPostconditionHash===normalized.observedPostconditionHash||
+            (typeof evidence!.payload.observedPostconditionHash!=='string'&&prior?.projectionHash===projectionHash));
         if(!storedMatches||(prior?.projectionHash&&prior.projectionHash!==projectionHash))throw new Error('tool-receipt-execution-id-conflict');
         const replayEntry:ToolReceiptProjectionIndexEntry={executionId,actionEventId:action!.id,outcomeEventId:outcome!.id,evidenceEventId:evidence!.id,projectedAt:prior?.projectedAt??action!.at,projectionHash};
         this.receiptProjectionIndex.set(executionId,replayEntry);
@@ -466,8 +468,8 @@ export class CognitiveEventFabric {
     const outcome=entry?byId.get(entry.outcomeEventId):this.events.find(event=>event.stage==='tool-outcome'&&event.payload.executionId===executionId);
     if(!action||!outcome||action.stage!=='tool-action'||outcome.stage!=='tool-outcome'||!outcome.parentIds.includes(action.id))return {resolved:false,reason:'no-canonical-tool-receipt'};
     if(String(action.payload.tool??'')!==toolId||String(outcome.payload.tool??'')!==toolId)return {resolved:false,reason:'execution-tool-mismatch'};
-    const expected=String(input.expectedPostcondition??'').normalize('NFKC').trim().toLocaleLowerCase();
-    const observed=String(input.observedPostcondition??'').normalize('NFKC').trim().toLocaleLowerCase();
+    const expected=String(input.expectedPostcondition??'').normalize('NFKC').trim();
+    const observed=String(input.observedPostcondition??'').normalize('NFKC').trim();
     const safePayload={executionId,toolId,observationId,verified:Boolean(input.verified),confidence01:clamp01(input.confidence01),sourceId:String(input.sourceId??'unknown').slice(0,80),sourceClass:String(input.sourceClass??'unknown').slice(0,32),channel:String(input.channel??'unknown').slice(0,32),independenceKey:String(input.independenceKey??'').slice(0,120),expectedPostconditionHash:expected?sha256Stable(expected):null,observedPostconditionHash:observed?sha256Stable(observed):null,expectedPostconditionPresent:Boolean(expected),observedPostconditionPresent:Boolean(observed),reason:String(input.reason??'').slice(0,160)};
     const projectionHash=sha256Stable(safePayload);
     const refs=entry?.externalObservations??[];
