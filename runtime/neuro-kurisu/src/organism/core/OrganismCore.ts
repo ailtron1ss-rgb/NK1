@@ -2903,21 +2903,24 @@ export class OrganismCore {
         if (!stage) return null;
 
         // Only an explicit additive HMX telepathy decision may mutate canonical memory.
-        // Port/duplicate/analysis and non-additive strategies remain governed previews.
         if (stage.status === 'accepted' && stage.applicationMode === 'memory-merge' &&
             stage.importResult?.status === 'pending') {
-            const rows = Array.isArray(stage.stagedSections?.memories) ? stage.stagedSections.memories : [];
-            const existingItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
-            const existingKeys = new Set(existingItems.map((memory) => String(memory.kind) + '|' + String(memory.content)));
-            let created = 0;
+            const rows = Array.isArray(stage.stagedSections?.memories) ? stage.stagedSections.memories.slice(0, 256) : [];
+            const originalItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
+            const existingKeys = new Set(originalItems.map((memory) => String(memory.kind) + '|' + String(memory.content)));
+            const knownIds = new Set(originalItems.map((memory) => String(memory.id)));
+            const plannedKeys = new Set<string>();
+            const plans: Array<{ projected: NonNullable<ReturnType<typeof normalizeHmxV17Memory>>; key: string }> = [];
             let reused = 0;
+            let reusedBeforeTransaction = 0;
             let skipped = 0;
-            let failed = false;
 
-            for (const raw of rows.slice(0, 256)) {
+            // Validate and deduplicate the full stage before the first mutation.
+            for (const raw of rows) {
                 const projected = normalizeHmxV17Memory(raw, {
                     exportId: stage.exportId,
                     sourceSubjectId: stage.sourceSubjectId,
+                    exportedAt: undefined,
                 });
                 if (!projected) {
                     skipped += 1;
@@ -2926,64 +2929,112 @@ export class OrganismCore {
                 const key = projected.kind + '|' + projected.content;
                 if (existingKeys.has(key)) {
                     reused += 1;
+                    reusedBeforeTransaction += 1;
                     continue;
                 }
+                if (plannedKeys.has(key)) {
+                    reused += 1;
+                    continue;
+                }
+                plannedKeys.add(key);
+                plans.push({ projected, key });
+            }
 
-                const importedMemory = {
-                    content: projected.content,
-                    kind: projected.kind,
-                    source: 'hexis-hmx-import',
-                    tags: projected.tags,
-                    context: {
-                        ...projected.context,
-                        hmx_source_ref: projected.ref,
-                        hmx_export_id: stage.exportId,
-                        hmx_source_lineage: String(stage.sourceSubjectId ?? 'unknown').slice(0, 180),
-                    },
-                    salience: projected.salience,
-                    emotionalWeight: 0.1,
-                    identityRelevance: 0,
-                    goalRelevance: 0,
-                    socialRelevance: 0,
-                    predictionError: 0,
-                    confidence: projected.confidence,
-                    epistemicStatus: projected.epistemicStatus,
-                    entities: projected.entities,
-                    semanticLinks: [],
-                    temporalLinks: [],
-                    causalLinks: [],
-                    contradictionLinks: [],
-                    provenanceClass: 'external' as const,
-                    sourceAuthority01: projected.sourceAuthority01,
-                    independenceKey: projected.independenceKey,
-                    evidenceFreshnessAt: projected.evidenceFreshnessAt,
-                    ...(projected.createdAt !== undefined ? { createdAt: projected.createdAt } : {}),
-                    validFromAt: projected.validFromAt,
-                    validUntilAt: projected.validUntilAt,
-                    observedAt: projected.observedAt,
-                };
+            const memoryOSBefore = this.memorySubsystem.memoryOS.snapshot();
+            const fabricBefore = this.memorySubsystem.fabric.snapshot();
+            let created = 0;
+            let failed = false;
+            let rollbackSucceeded = true;
 
-                try {
-                    this.memorySubsystem.fabric.encode(importedMemory, { tick: this.persisted.state.tick });
+            try {
+                for (const { projected, key } of plans) {
+                    const importedMemory = {
+                        content: projected.content,
+                        kind: projected.kind,
+                        source: 'hexis-hmx-import',
+                        tags: projected.tags,
+                        context: {
+                            ...projected.context,
+                            hmx_source_ref: projected.ref,
+                            hmx_export_id: stage.exportId,
+                            hmx_source_lineage: String(stage.sourceSubjectId ?? 'unknown').slice(0, 180),
+                        },
+                        salience: projected.salience,
+                        emotionalWeight: 0.1,
+                        identityRelevance: 0,
+                        goalRelevance: 0,
+                        socialRelevance: 0,
+                        predictionError: 0,
+                        confidence: projected.confidence,
+                        epistemicStatus: projected.epistemicStatus,
+                        entities: projected.entities,
+                        semanticLinks: [],
+                        temporalLinks: [],
+                        causalLinks: [],
+                        contradictionLinks: [],
+                        provenanceClass: 'external' as const,
+                        sourceAuthority01: projected.sourceAuthority01,
+                        independenceKey: projected.independenceKey,
+                        evidenceFreshnessAt: projected.evidenceFreshnessAt,
+                        ...(projected.createdAt !== undefined ? { createdAt: projected.createdAt } : {}),
+                        validFromAt: projected.validFromAt,
+                        validUntilAt: projected.validUntilAt,
+                        observedAt: projected.observedAt,
+                    };
+
+                    // Keep event emission and compatibility projection outside the
+                    // transaction; HMX provenance is carried on the canonical row.
+                    const encoded = this.memorySubsystem.fabric.encode(importedMemory, {
+                        tick: this.persisted.state.tick,
+                        emitEvent: false,
+                        syncCompatibility: false,
+                        commandId: 'hmx-import:' + sha256Stable({ stagingId: stage.stagingId, sourceRef: projected.ref }),
+                    });
+                    if (knownIds.has(String(encoded.id))) {
+                        reused += 1;
+                    } else {
+                        created += 1;
+                        knownIds.add(String(encoded.id));
+                    }
                     existingKeys.add(key);
-                    created += 1;
+                }
+            } catch {
+                failed = true;
+                // No import row emits a lifecycle event while the batch is
+                // provisional. Restore both canonical items and lifecycle receipts.
+                try {
+                    this.memorySubsystem.memoryOS.restore(memoryOSBefore);
                 } catch {
+                    rollbackSucceeded = false;
+                }
+                try {
+                    this.memorySubsystem.fabric.restore(fabricBefore);
+                } catch {
+                    rollbackSucceeded = false;
+                }
+                if (rollbackSucceeded) {
+                    created = 0;
+                    reused = reusedBeforeTransaction;
+                    skipped += plans.length;
+                } else {
                     skipped += 1;
-                    failed = true;
-                    break;
                 }
             }
 
             this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
             const importStatus = failed
-                ? ((created > 0 || reused > 0) ? 'partial' : 'skipped')
-                : ((created > 0 || reused > 0) ? 'applied' : 'skipped');
+                ? (rollbackSucceeded ? 'skipped' as const : 'partial' as const)
+                : (skipped > 0 && (created > 0 || reused > 0)
+                    ? 'partial' as const
+                    : ((created > 0 || reused > 0) ? 'applied' as const : 'skipped' as const));
             this.hexisAdaptation.recordHmxImportResult(stage.stagingId, {
                 status: importStatus,
                 created,
                 reused,
                 skipped,
-                ...(failed ? { reason: 'memory-encode-failed' } : importStatus === 'skipped' ? { reason: 'no-importable-memory-records' } : {}),
+                ...(failed
+                    ? { reason: rollbackSucceeded ? 'memory-encode-failed-rolled-back' : 'memory-encode-failed-rollback-incomplete' }
+                    : importStatus === 'skipped' ? { reason: 'no-importable-memory-records' } : {}),
             });
         }
 
