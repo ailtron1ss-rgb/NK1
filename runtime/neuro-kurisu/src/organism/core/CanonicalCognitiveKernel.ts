@@ -286,27 +286,29 @@ export class CanonicalCognitiveKernel {
       };
     }
 
-    const events=new Map<CognitiveStage,CognitiveEventNode>();
-    for(const item of prepared) {
-      events.set(item.stage,this.appendPreparedStage(input.tick,item.stage,item.eventInput));
-    }
-    const observationEvent=events.get('observation')!;
-    const predictionEvent=events.get('prediction')!;
-    const appraisalEvent=events.get('appraisal')!;
-    const attentionEvent=events.get('attention')!;
-    const memoryEvent=events.get('memory')!;
-    const goalEvent=events.get('goal')!;
-    const planEvent=events.get('plan')!;
-    const actionEvent=events.get('action')!;
-    const anchors:CanonicalDecisionCycleAnchors={
-      tick:input.tick,at,observation:observationEvent.id,prediction:predictionEvent.id,
-      appraisal:appraisalEvent.id,attention:attentionEvent.id,memory:memoryEvent.id,
-      goal:goalEvent.id,plan:planEvent.id,action:actionEvent.id,
-    };
-    return {
-      anchors,observationEvent,predictionEvent,appraisalEvent,attentionEvent,
-      memoryEvent,goalEvent,planEvent,actionEvent,
-    };
+    return this.eventFabric.withAtomicLedgerTransaction(()=>{
+      const events=new Map<CognitiveStage,CognitiveEventNode>();
+      for(const item of prepared) {
+        events.set(item.stage,this.appendPreparedStage(input.tick,item.stage,item.eventInput));
+      }
+      const observationEvent=events.get('observation')!;
+      const predictionEvent=events.get('prediction')!;
+      const appraisalEvent=events.get('appraisal')!;
+      const attentionEvent=events.get('attention')!;
+      const memoryEvent=events.get('memory')!;
+      const goalEvent=events.get('goal')!;
+      const planEvent=events.get('plan')!;
+      const actionEvent=events.get('action')!;
+      const anchors:CanonicalDecisionCycleAnchors={
+        tick:input.tick,at,observation:observationEvent.id,prediction:predictionEvent.id,
+        appraisal:appraisalEvent.id,attention:attentionEvent.id,memory:memoryEvent.id,
+        goal:goalEvent.id,plan:planEvent.id,action:actionEvent.id,
+      };
+      return {
+        anchors,observationEvent,predictionEvent,appraisalEvent,attentionEvent,
+        memoryEvent,goalEvent,planEvent,actionEvent,
+      };
+    });
   }
 
   completeCycle(input: {
@@ -481,20 +483,29 @@ export class CanonicalCognitiveKernel {
       }
     }
 
-    const outcomeEvent=this.appendPreparedStage(tick,prepared[0]!.stage,prepared[0]!.eventInput);
-    const learningEvent=this.appendPreparedStage(tick,prepared[1]!.stage,prepared[1]!.eventInput);
-    const selfUpdateEvent=this.appendPreparedStage(tick,prepared[2]!.stage,prepared[2]!.eventInput);
-    const cycleLineage=this.eventFabric.verifyOperationalCycle(stageIds);
-    const cycleResult=this.unifiedCycle.evaluate({
-      tick,
-      stageIds,
-      parentIntegrity01:cycleLineage.complete?cycleLineage.integrity01:0,
-    });
-    return {
-      tick,outcomeEvent,learningEvent,selfUpdateEvent,cycleLineage,cycleResult,
-      completionRecorded:Boolean(cycleResult.complete),
-      replayed:false,
-    };
+    try {
+      return this.eventFabric.withAtomicLedgerTransaction(()=>{
+        const outcomeEvent=this.appendPreparedStage(tick,prepared[0]!.stage,prepared[0]!.eventInput);
+        const learningEvent=this.appendPreparedStage(tick,prepared[1]!.stage,prepared[1]!.eventInput);
+        const selfUpdateEvent=this.appendPreparedStage(tick,prepared[2]!.stage,prepared[2]!.eventInput);
+        const cycleLineage=this.eventFabric.verifyOperationalCycle(stageIds);
+        const cycleResult=this.unifiedCycle.evaluate({
+          tick,
+          stageIds,
+          parentIntegrity01:cycleLineage.complete?cycleLineage.integrity01:0,
+        });
+        return {
+          tick,outcomeEvent,learningEvent,selfUpdateEvent,cycleLineage,cycleResult,
+          completionRecorded:Boolean(cycleResult.complete),
+          replayed:false,
+        };
+      });
+    } catch(error) {
+      // The event-fabric transaction rolls back the causal nodes; restore the
+      // monotonic aggregate ledger as well so a failed completion can be retried.
+      this.unifiedCycle.restore(prior);
+      throw error;
+    }
   }
 
 }

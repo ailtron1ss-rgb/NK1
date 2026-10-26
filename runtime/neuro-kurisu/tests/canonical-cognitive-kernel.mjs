@@ -1085,5 +1085,59 @@ assert.ok(atomicCycleFabric.getById(completedAtomicCycle.outcome)?.parentIds.inc
 assert.ok(atomicCycleFabric.getById(completedAtomicCycle.learning)?.parentIds.includes(completedAtomicCycle.outcome));
 assert.ok(atomicCycleFabric.getById(completedAtomicCycle.selfUpdate)?.parentIds.includes(completedAtomicCycle.learning));
 console.log('WorkPass369 atomic operational cycle: PASS');
+
+// WorkPass370: the live canonical kernel's multi-event write paths also use the ledger transaction boundary.
+const atomicKernelFabric=new CognitiveEventFabric(128);
+const atomicKernelCycle=new UnifiedCognitiveCycle();
+const atomicKernel=new CanonicalCognitiveKernel(atomicKernelFabric,atomicKernelCycle);
+const emptyKernelSnapshot=atomicKernelFabric.snapshot();
+const originalKernelAppend=atomicKernelFabric.append.bind(atomicKernelFabric);
+let decisionAppendCount=0;
+atomicKernelFabric.append=(eventInput)=>{
+  decisionAppendCount+=1;
+  if(decisionAppendCount===4)throw new Error('injected-canonical-decision-fourth-write-failure');
+  return originalKernelAppend(eventInput);
+};
+assert.throws(()=>atomicKernel.beginDecisionCycle({...decisionInput(),tick:70,at:7000}),/injected-canonical-decision-fourth-write-failure/);
+atomicKernelFabric.append=originalKernelAppend;
+assert.deepEqual(atomicKernelFabric.snapshot(),emptyKernelSnapshot,
+  'a partial failure during the eight-stage canonical decision must roll back every earlier event');
+const atomicDecision=atomicKernel.beginDecisionCycle({...decisionInput(),tick:70,at:7000});
+assert.equal(atomicKernelFabric.snapshot().total,8,'the retry after rollback must create exactly one canonical decision');
+
+const cycleLedgerBeforeFailedCompletion=atomicKernelCycle.snapshot();
+const eventsBeforeFailedCompletion=atomicKernelFabric.snapshot();
+let completionAppendCount=0;
+atomicKernelFabric.append=(eventInput)=>{
+  completionAppendCount+=1;
+  if(completionAppendCount===2)throw new Error('injected-canonical-completion-second-write-failure');
+  return originalKernelAppend(eventInput);
+};
+const completionRetryInput={
+  anchors:atomicDecision.anchors,
+  fallbackTick:71,
+  at:7100,
+  outcome:stage('atomic-kernel.outcome',{success:true}),
+  learning:stage('atomic-kernel.learning',{updated:true}),
+  selfUpdate:stage('atomic-kernel.self-update',{integrated:true}),
+};
+assert.throws(()=>atomicKernel.completeCycle(completionRetryInput),/injected-canonical-completion-second-write-failure/);
+atomicKernelFabric.append=originalKernelAppend;
+assert.deepEqual(atomicKernelFabric.snapshot(),eventsBeforeFailedCompletion,
+  'a partial failure during outcome/learning/self-update must roll back the causal journal');
+assert.deepEqual(atomicKernelCycle.snapshot(),cycleLedgerBeforeFailedCompletion,
+  'a failed completion must not advance the unified-cycle aggregate counters');
+const successfulAtomicCompletion=atomicKernel.completeCycle(completionRetryInput);
+assert.equal(successfulAtomicCompletion.completionRecorded,true,
+  'completion must be safely retryable after a rolled-back write failure');
+assert.equal(successfulAtomicCompletion.replayed,false);
+assert.equal(atomicKernelFabric.snapshot().total,11,'successful retry appends exactly the three completion events');
+
+const beforeAsyncTransaction=atomicKernelFabric.snapshot();
+assert.throws(()=>atomicKernelFabric.withAtomicLedgerTransaction(()=>Promise.resolve('not-synchronous')),
+  /cognitive-event-ledger-transaction-must-be-synchronous/);
+assert.deepEqual(atomicKernelFabric.snapshot(),beforeAsyncTransaction,
+  'ledger transaction boundaries must reject thenables instead of committing before async completion');
+console.log('WorkPass370 atomic canonical kernel writes: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
