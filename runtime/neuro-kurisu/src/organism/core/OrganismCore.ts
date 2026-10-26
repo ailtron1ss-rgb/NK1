@@ -11,7 +11,7 @@ import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvide
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
-import { FeedbackDeliveryGuard, type FeedbackDeliveryReceipt, type FeedbackDeliveryToken } from './FeedbackDeliveryGuard.ts';
+import type { FeedbackDeliveryReceipt, FeedbackDeliveryToken } from './FeedbackDeliveryGuard.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
@@ -1240,8 +1240,8 @@ export class OrganismCore {
     private b297FacadeCache = { identity01: .5, agency01: .5, budget01: .5, memoryPressure01: .2, embodimentCapacity01: .75 };
     private cognitiveCycleAnchors: Partial<Record<'observation' | 'prediction' | 'appraisal' | 'attention' | 'memory' | 'goal' | 'plan' | 'action', string>> = {};
     private persisted: PersistedOrganism = defaultPersisted();
-    /** Reject duplicate terminal feedback before it can mutate any learning subsystem. */
-    private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard();
+    /** Persistence runtime owns the durable feedback-replay barrier and its in-memory guard. */
+    private get feedbackDeliveryGuard() { return this.persistence.feedbackDeliveryGuard; }
     /** Small atomic sidecar keeps the replay barrier durable without forcing a full neural-state projection. */
     private readonly feedbackDeliveryReceiptStore: FileStateStore<FeedbackDeliveryReceipt> | null;
     private ready = false;
