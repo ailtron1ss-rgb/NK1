@@ -1,3 +1,14 @@
+## Latest checkpoint — WorkPass343 final release verifier (pending validation)
+
+- **Branch:** `work/nk1-final-release-gate-2026-10-26-r1`; based on the active source branch after WorkPass340–342 were merged and passed exact-head CI.
+- **Code-bearing checkpoint:** `4db623c6168f58277009c6f3dd12d060619b8f1b`. `npm run release:verify` now combines UI wiring, runtime architecture and release metadata validation; metadata failure or a missing validator fails closed.
+- **Regression authored:** valid metadata passes; invalid metadata and missing metadata validator fail; unknown command-line flags return usage error.
+- **Startup docs:** README now leads with the canonical flow: `npm run install:all`, `npm run install:research:cpu`, `npm run doctor`, `npm run release:verify`, `npm run start`.
+- **Validation:** pending exact-head CI. Earlier source head `621864d0d7f2676245383adab86f1dcc6d0f741f` passed the combined cognitive/runtime/approval/research suite; that result does not validate WorkPass343. No score changes.
+- **Release remains incomplete:** no refreshed large GitHub Release ZIP yet; physical Android/Termux audio/sensor E2E, browser/Live2D hardware E2E, extended soak and license/provenance review remain open.
+
+---
+
 ## Latest checkpoint — WorkPass342 validated / WorkPass340–342 merged (2026-10-26)
 
 - **Merged PR:** #154 integrated WorkPass340–342 into `fix/mega-cognitive-progress-tracking-2026-10-26-r3`; merge commit `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. It does not change `main` or publish a release ZIP.
