@@ -83,6 +83,11 @@ const arrayOfText = value => Array.isArray(value)
   ? [...new Set(value.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim().slice(0, 160)))].slice(0, 32)
   : [];
 const stableRecordContent = value => String(value ?? '').normalize('NFKC').trim();
+const stableHmxMemoryRef = value => {
+  const ref = asText(value, 512);
+  const match = /^exp_[a-f0-9]{16}:(.+)$/.exec(ref);
+  return match ? match[1] : ref;
+};
 
 function deferredSectionCounts(sections) {
   const result = {};
@@ -210,6 +215,7 @@ export class HexisCanonicalMemoryProjector {
       .map(item => String(item.source) + '\0' + stableRecordContent(item.content)));
     const createdIds = [];
     const revisedStatuses = [];
+    const supersededIds = [];
     const warnings = [];
     const importedIds = [];
     const semanticEdgeIds = [];
@@ -231,6 +237,39 @@ export class HexisCanonicalMemoryProjector {
         const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' + hash(stableRefKey + '\0' + contentHash).slice(0, 24);
         const existingKey = source + '\0' + stableRecordContent(memoryText);
         const salience = clamp01(Number.isFinite(Number(row.importance)) ? Number(row.importance) : 0.55);
+
+        // A stable HMX ref identifies one external record across exports. If its
+        // content changes, retain the previous canonical rows as history but withdraw
+        // their active belief/semantic projections before duplicate short-circuiting.
+        // This also handles a source reverting to an older, already quarantined value:
+        // no stale newer version may remain active, and an old value is never revived.
+        const priorVersions = existingItems.filter(candidate =>
+          candidate?.id &&
+          String(candidate.source ?? '').startsWith('hexis:') &&
+          String(candidate.context?.hexisSourceLineageId ?? '') === lineageId &&
+          stableHmxMemoryRef(candidate.context?.hexisMemoryRef) === stableRefKey &&
+          stableRecordContent(candidate.content) !== stableRecordContent(memoryText),
+        );
+        for (const prior of priorVersions) {
+          if (!supersededIds.includes(prior.id)) supersededIds.push(prior.id);
+          if (prior.epistemicStatus !== 'quarantined') {
+            if (!revisedStatuses.some(entry => entry.id === prior.id)) {
+              revisedStatuses.push({ id: prior.id, previousStatus: prior.epistemicStatus });
+            }
+            this.memoryFabric.revise(
+              prior.id,
+              'quarantined',
+              'hexis-source-content-superseded:' + hash(stableRefKey + '\0' + contentHash).slice(0, 16),
+              { commandId: 'hexis-supersede:' + hash(String(stage.stagingId) + ':' + prior.id + ':' + contentHash + ':' + attempt).slice(0, 48) },
+            );
+          }
+          const priorGraphSource = asText(prior.context?.hexisGraphSourceKey, 512) || asText(prior.source, 512);
+          if (priorGraphSource) this.removeSemanticProjection(priorGraphSource);
+          if (this.temporalLedger && typeof this.temporalLedger.removeBeliefProjection === 'function') {
+            this.temporalLedger.removeBeliefProjection(prior.id);
+          }
+        }
+
         if (existingImportKeys.has(existingKey)) {
           const duplicate = existingItems.find(candidate => candidate.source === source && stableRecordContent(candidate.content) === stableRecordContent(memoryText));
           if (duplicate?.id) {
@@ -517,6 +556,9 @@ export class HexisCanonicalMemoryProjector {
       throw new Error('hmx-canonical-apply-failed:' + reason + (rollbackErrors.length ? ';rollback-failures=' + rollbackErrors.join('|') : ''));
     }
 
+    if (supersededIds.length) {
+      warnings.push('Changed HMX source content superseded ' + supersededIds.length + ' prior canonical version(s); historical records remain stored while their active belief and semantic projections are withdrawn.');
+    }
     const deferredSections = deferredSectionCounts(sections);
     if (Array.isArray(sections.relationships)) {
       if (deferredRelationships > 0) deferredSections.relationships = deferredRelationships;
