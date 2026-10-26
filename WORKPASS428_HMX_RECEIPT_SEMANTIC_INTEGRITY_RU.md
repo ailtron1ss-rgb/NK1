@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** fix/outcome-projection-index-restore-2026-10-26  
 **База:** current consolidated PR #236 branch; updated through WorkPass428 commits  
-**Статус:** код и регрессии опубликованы; exact-head GitHub Actions завершились с `failure`, но job steps/log blobs недоступны (`BlobNotFound`), поэтому точная причина пока не подтверждена. Найденный дефект test-fixture исправлен в `4a159dfd32c8c24c67a5e4ba97c9c6df062848b1`; после него добавлены дублированные semantic-edge, bound-ID и cross-store rollback/retry регрессии. Latest exact-head CI still requires a run with readable steps/logs; recent connector responses remain `BlobNotFound`.
+**Статус:** код и регрессии опубликованы; подтверждённого PASS на последнем head нет. На предыдущем видимом head `51d47591fc5391885389621885005457a6172804` пять доступных WorkPass71/core regression workflow завершились `failure` (runs `40349232624`, `40349232786`, `40349232574`, `40349232670`, `40349232563`), но job steps пусты, а log requests возвращают `BlobNotFound`. Для новейшего head отдельный HMX run не виден в доступном списке; exact cause остаётся неподтверждённой. Ранее найденный test-fixture mismatch исправлен; после него добавлены semantic-edge uniqueness, bounded IDs/warnings, scalar deferred-section, deep-tree bypass и cross-store rollback/retry регрессии.
 
 ## Почему потребовался отдельный проход
 
