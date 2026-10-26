@@ -1,3 +1,11 @@
+## WorkPass396 — atomic HMX section staging (2026-10-26)
+
+- **Code commit:** `eb4b719d011bd035d05ae53f65599d15b5d7ae43`; **regression commit:** `c8fc71acd48348469dfa6d9cabd01ba9ea92fce6` on `hexis-remote-bridge-20261026`.
+- HMX array sections that exceed the 256-record bound or contain any section-level/schema conflict are now omitted as a whole from `stagedSections`; NK1 no longer retains a valid-looking prefix next to the original source count.
+- Diagnostics still preserve the source record count and the validation conflict, and the existing stage conflict blocks acceptance into canonical memory.
+- Added regressions for a 257-memory HMX export and an invalid row inside an otherwise valid memory array. Both require whole-section omission and continued rejection by `decideHmx(..., "accept")`.
+- **Validation:** PENDING exact-head typecheck, `test:hexis-adaptation`, Hexis server smoke and unified cognitive integration. Tests are authored but have not run successfully on this exact head; no PASS or production-readiness claim. No dependency/store added; `main` and canonical Release ZIP remain untouched.
+
 ## WorkPass357 — prevent getter execution in restored parent lineage arrays (2026-10-26)
 
 - **Defect:** snapshot restore validated parent-array elements with property descriptors but read `parentIds.length` directly twice. A proxy `get` trap could execute and report a forged length, silently dropping causal parent links or running attacker-controlled code during restore.
