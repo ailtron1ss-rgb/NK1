@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { MemoryOS2 } from "../src/organism/developmental/MemoryOS2.ts";
-import { ingestHexisEvidenceIntoMemory } from "../src/organism/memory/HexisEvidenceMemoryBridge.ts";
+import { decideHexisEvidenceReview, ingestHexisEvidenceForReview, ingestHexisEvidenceIntoMemory } from "../src/organism/memory/HexisEvidenceMemoryBridge.ts";
+import { HexisAdaptationFabric } from "../src/organism/integration/hexis/HexisAdaptationFabric.ts";
 
 const memoryOS = new MemoryOS2({ signalFusionProfile: "balanced" });
 const memory = memoryOS.encode({
@@ -190,6 +191,117 @@ assert.deepEqual(rolloverMemoryOS.snapshot().items.find((item) => item.id === ro
 const afterRolloverRestore = new MemoryOS2({ signalFusionProfile: "balanced" });
 afterRolloverRestore.restore(rolloverMemoryOS.snapshot());
 assert.equal(ingestHexisEvidenceIntoMemory(afterRolloverRestore, makeEvidence(0)).status, "duplicate", "replay guard must survive restart/restore after rollover");
+
+// Review lifecycle: evidence is persisted first, but canonical belief confidence
+// changes only after an explicit approve decision with the exact pending receipt.
+const reviewMemoryOS = new MemoryOS2({ signalFusionProfile: "balanced" });
+const reviewMemory = reviewMemoryOS.encode({
+  content: "Memory used to test a reviewed belief revision.",
+  kind: "semantic",
+  source: "hexis-review-regression",
+  tags: ["hexis", "review"],
+  context: { regression: "hexis-review-lifecycle" },
+  salience: 0.6,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.2,
+  goalRelevance: 0.4,
+  socialRelevance: 0.1,
+  predictionError: 0.1,
+  confidence: 0.8,
+  epistemicStatus: "belief",
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+}, { clone: false });
+const reviewFabric = new HexisAdaptationFabric();
+const reviewEvidence = {
+  memoryId: reviewMemory.id,
+  evidenceId: "hexis:evidence:review-approve",
+  stance: "contradicts",
+  source: { kind: "document", ref: "sha256:review-source-1", label: "Review source" },
+  observedAt: "2026-10-26T10:01:00Z",
+  confidence: 0.95,
+  note: "Contradicting evidence must wait for explicit review approval.",
+};
+const confidenceBeforeReview = reviewMemoryOS.get(reviewMemory.id).confidence;
+const reviewPending = ingestHexisEvidenceForReview(reviewMemoryOS, reviewFabric, reviewEvidence);
+assert.equal(reviewPending.status, "review-pending");
+if (!("reviewId" in reviewPending)) throw new Error("review pending result must carry review identifiers");
+assert.equal(reviewMemoryOS.get(reviewMemory.id).confidence, confidenceBeforeReview, "preview must not revise canonical confidence");
+const pendingRecord = reviewFabric.getLearningReview(reviewPending.reviewId);
+assert.ok(pendingRecord);
+assert.equal(pendingRecord.status, "pending");
+assert.equal(pendingRecord.items[0].status, "pending");
+assert.equal(reviewPending.previewApplied, true);
+const approvedReview = decideHexisEvidenceReview(
+  reviewMemoryOS, reviewFabric, reviewPending.reviewId, reviewPending.reviewItemId, "approve",
+);
+assert.equal(approvedReview.status, "decided");
+if (approvedReview.status === "decided") {
+  assert.equal(approvedReview.confidenceChanged, true);
+  assert.ok(approvedReview.confidence01 < confidenceBeforeReview);
+}
+assert.ok(reviewFabric.getLearningReview(reviewPending.reviewId)?.items[0].status === "approved");
+
+// A failed review-store operation must roll back both owners so a retry is not
+// permanently trapped behind a canonical duplicate-evidence receipt.
+const rollbackMemoryOS = new MemoryOS2({ signalFusionProfile: "balanced" });
+const rollbackMemory = rollbackMemoryOS.encode({
+  content: "Memory used to test cross-ledger rollback.",
+  kind: "semantic",
+  source: "hexis-review-rollback-regression",
+  tags: ["hexis", "rollback"],
+  context: { regression: "hexis-review-ingress-rollback" },
+  salience: 0.5,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.1,
+  goalRelevance: 0.3,
+  socialRelevance: 0.1,
+  predictionError: 0.1,
+  confidence: 0.6,
+  epistemicStatus: "belief",
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+}, { clone: false });
+const rollbackFabric = new HexisAdaptationFabric();
+const rollbackMemoryBefore = structuredClone(rollbackMemoryOS.snapshot());
+const rollbackFabricBefore = rollbackFabric.snapshot();
+rollbackFabric.createLearningReview = () => { throw new Error("injected-review-store-failure"); };
+const failedReview = ingestHexisEvidenceForReview(rollbackMemoryOS, rollbackFabric, {
+  ...reviewEvidence,
+  memoryId: rollbackMemory.id,
+  evidenceId: "hexis:evidence:review-rollback",
+  source: { kind: "document", ref: "sha256:review-rollback-source" },
+});
+assert.equal(failedReview.status, "rejected");
+if (failedReview.status === "rejected") assert.equal(failedReview.reason, "hexis-review-ingress-failed");
+assert.deepEqual(rollbackMemoryOS.snapshot(), rollbackMemoryBefore, "failed review creation must roll back canonical evidence");
+assert.deepEqual(rollbackFabric.snapshot(), rollbackFabricBefore, "failed review creation must roll back Hexis review state");
+
+// If the canonical memory changes after preview, approval is rejected as stale
+// and the review remains pending rather than overwriting newer state.
+const stalePending = ingestHexisEvidenceForReview(reviewMemoryOS, reviewFabric, {
+  ...reviewEvidence,
+  evidenceId: "hexis:evidence:review-stale",
+  source: { kind: "document", ref: "sha256:review-source-2" },
+  observedAt: "2026-10-26T10:02:00Z",
+});
+assert.equal(stalePending.status, "review-pending");
+if (!("reviewId" in stalePending)) throw new Error("stale test requires pending review identifiers");
+reviewMemoryOS.updateSignals(reviewMemory.id, { confidence: 0.2 }, "external-confidence-change");
+const beforeStaleDecision = structuredClone(reviewMemoryOS.snapshot());
+const staleDecision = decideHexisEvidenceReview(
+  reviewMemoryOS, reviewFabric, stalePending.reviewId, stalePending.reviewItemId, "approve",
+);
+assert.equal(staleDecision.status, "rejected");
+if (staleDecision.status === "rejected") assert.equal(staleDecision.reason, "stale-review-canonical-confidence-changed");
+assert.deepEqual(reviewMemoryOS.snapshot(), beforeStaleDecision, "stale approval must not overwrite newer canonical confidence");
+assert.equal(reviewFabric.getLearningReview(stalePending.reviewId)?.items[0].status, "pending");
 
 console.log("Hexis evidence → canonical MemoryOS2 bridge: PASS", JSON.stringify({
   confidencePreserved: memoryOS.get(memory.id).confidence === initialConfidence,
