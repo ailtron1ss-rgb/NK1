@@ -1,3 +1,12 @@
+## WorkPass390 — fail closed on null Hexis HTTP envelopes (2026-10-26)
+
+- **Code/test commits:** `f7dab0d78bd33ede255c04ff5a37c2f635dd4f6e`, `9d00c3001a97d5551145cf0bb2c51fcdfebe7424`.
+- The public evidence-route timestamp-origin guard now checks that the envelope is a non-null object before using `hasOwnProperty`, allowing malformed bodies to reach schema validation instead of throwing a route-level `TypeError`.
+- HTTP smoke now requires a JSON `null` evidence body to return 400, while still requiring that client-supplied internal timestamp markers return 400.
+- **Validation:** exact-head execution is pending. Recent Actions for the earlier route fix ended without job steps/logs, so they do not verify WorkPass389/390. Progress and readiness scores unchanged; `main` and the canonical Release ZIP untouched.
+
+---
+
 ## WorkPass389 — route generic Hexis reviews through the canonical gate first (2026-10-26)
 
 - **Code commit:** `7c22337ae263f68c568ac398c9af1d68a6af2bf0`; diagnostic assertion in the smoke test: `62871903fad4f9d19c9235fb061e1f37f010a7cc`.
