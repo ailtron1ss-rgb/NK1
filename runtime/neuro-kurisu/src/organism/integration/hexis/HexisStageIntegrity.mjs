@@ -48,7 +48,7 @@ export const refreshHmxStageLifecycleDigest = stage => {
   return stage.lifecycleDigest;
 };
 
-export function isSafeJsonTree(value, ancestors = new Set(), depth = 0, budget = { nodes: 0 }) {
+function isSafeJsonTreeNode(value, ancestors, depth, budget) {
   if (value === null || value === undefined || typeof value === 'string' || typeof value === 'boolean') return true;
   if (typeof value === 'number') return Number.isFinite(value);
   if (typeof value !== 'object' || depth > 64 || ++budget.nodes > 100000) return false;
@@ -62,7 +62,7 @@ export function isSafeJsonTree(value, ancestors = new Set(), depth = 0, budget =
       if (!lengthDescriptor || !('value' in lengthDescriptor) || !Number.isSafeInteger(length) || length < 0 || length > 4096) return false;
       for (let index = 0; index < length; index++) {
         const descriptor = descriptors[String(index)];
-        if (!descriptor || !descriptor.enumerable || !('value' in descriptor) || !isSafeJsonTree(descriptor.value, ancestors, depth + 1, budget)) return false;
+        if (!descriptor || !descriptor.enumerable || !('value' in descriptor) || !isSafeJsonTreeNode(descriptor.value, ancestors, depth + 1, budget)) return false;
       }
       return Reflect.ownKeys(descriptors).every(key => key === 'length' || (typeof key === 'string' && /^(0|[1-9][0-9]*)$/.test(key) && Number(key) < length));
     }
@@ -70,7 +70,7 @@ export function isSafeJsonTree(value, ancestors = new Set(), depth = 0, budget =
     if (prototype !== Object.prototype && prototype !== null) return false;
     if (Reflect.ownKeys(value).some(key => typeof key !== 'string')) return false;
     for (const descriptor of Object.values(descriptors)) {
-      if (!descriptor.enumerable || !('value' in descriptor) || !isSafeJsonTree(descriptor.value, ancestors, depth + 1, budget)) return false;
+      if (!descriptor.enumerable || !('value' in descriptor) || !isSafeJsonTreeNode(descriptor.value, ancestors, depth + 1, budget)) return false;
     }
     return true;
   } catch {
@@ -78,6 +78,12 @@ export function isSafeJsonTree(value, ancestors = new Set(), depth = 0, budget =
   } finally {
     ancestors.delete(value);
   }
+}
+
+
+export function isSafeJsonTree(value) {
+  // Depth/node budgets are internal policy and cannot be weakened by JS callers.
+  return isSafeJsonTreeNode(value, new Set(), 0, { nodes: 0 });
 }
 
 export const isValidHmxStageDigest = stage => {
