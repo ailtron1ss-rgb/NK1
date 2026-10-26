@@ -1,3 +1,12 @@
+## WorkPass390 — безопасная обработка null-envelope в Hexis HTTP API (2026-10-26)
+
+- **Коммиты кода/теста:** `f7dab0d78bd33ede255c04ff5a37c2f635dd4f6e`, `9d00c3001a97d5551145cf0bb2c51fcdfebe7424`.
+- Guard внутреннего `observedAtOrigin` сначала проверяет, что тело — ненулевой объект. Невалидное тело доходит до schema validation вместо того, чтобы вызвать route-level `TypeError`.
+- Smoke требует HTTP 400 для JSON `null` и для попытки передать внутренний timestamp marker.
+- **Валидация:** точный head ожидает проверки. Предыдущие Actions по исправлению generic review завершались без шагов/логов, поэтому WorkPass389/390 пока не подтверждены. Прогресс не увеличен; `main` и Release ZIP не менялись.
+
+---
+
 ## WorkPass389 — канонический gate для общего review endpoint (2026-10-26)
 
 - **Коммит исправления:** `7c22337ae263f68c568ac398c9af1d68a6af2bf0`; диагностический тест — `62871903fad4f9d19c9235fb061e1f37f010a7cc`.
