@@ -2,8 +2,8 @@
 
 Дата: 2026-10-26  
 Ветка: `fix/mega-cognitive-progress-tracking-2026-10-26-r3`  
-Code/test HEAD: `330dc7632839822225cfff0620fe9cdd390acdc4`  
-Статус: **код и регрессия записаны; точная Unified Integration Suite выполняется** — [run #40280652324](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40280652324).
+Code/test HEAD: `63137b842d8954436526106756fb39f3b2f8c150`  
+Статус: **PASS на точном code/test HEAD `63137b842d8954436526106756fb39f3b2f8c150`** — Unified project integration suite [run #40280885928](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40280885928) завершился успешно.
 
 ## Обнаруженный путь отказа
 
@@ -21,4 +21,8 @@ Code/test HEAD: `330dc7632839822225cfff0620fe9cdd390acdc4`
 
 ## Статус проверки
 
-Ветка уже настроена запускать Unified project integration suite на push; текущая точная проверка code/test HEAD `330dc7632839822225cfff0620fe9cdd390acdc4` — run [#40280652324](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40280652324). До завершения этого run WP346 остаётся pending. WorkPass343–344 ранее прошли на `a5aafc5274f44974aadf52e155213e12200cc4da` ([run #40279636593](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279636593)), а WorkPass345 — на `216d79086bfac2dd5f25e2c995fe6b5a44b61476` ([run #40279847281](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279847281)).
+Полный Unified project integration suite прошёл на точном code/test HEAD `63137b842d8954436526106756fb39f3b2f8c150`: [run #40280885928](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40280885928). Проверка включала source-contract и runtime smoke; после исправления слишком строгого regex следующий полный прогон завершился успешно.
+
+История проверки: первый запуск на `330dc7632839822225cfff0620fe9cdd390acdc4` ([run #40280652324](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40280652324)) выявил только несоответствие тестового regex из-за комментариев в catch-блоке. Кодовый fallback и детерминированный sidecar fixture сохранены; изменён matcher, а не ослаблена runtime-проверка.
+
+WorkPass343–344 ранее прошли на `a5aafc5274f44974aadf52e155213e12200cc4da` ([run #40279636593](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279636593)), WorkPass345 — на `216d79086bfac2dd5f25e2c995fe6b5a44b61476` ([run #40279847281](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279847281)). Общие progress scores и learning engineering score 57/100 не изменены: эти изменения усиливают устойчивость запуска, но не доказывают полевое улучшение навыков.

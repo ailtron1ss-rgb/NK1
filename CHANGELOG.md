@@ -3,8 +3,7 @@
 - **Defect:** `ProceduralSkillLibrary.restore()` could throw on a malformed persisted skill record, and the call in `OrganismRuntime.init()` had no recovery boundary. That could block Core startup because of a corrupt derived skill cache.
 - **Fix:** wrap the store load and restore; on error, reset only the procedural skill library to safe defaults and log `runtime.procedural-skills.restore-failed`.
 - **Regression:** the runtime wiring contract asserts the guarded restore path; restart smoke writes a deterministic `skills: [null]` fixture, verifies initialization and one subsequent autonomous cycle.
-- **Validation:** code/test head `330dc7632839822225cfff0620fe9cdd390acdc4`; Unified project integration run [#40280652324](https://github.com/ailtron1ss/NK1/actions/runs/40280652324) is in progress. No pass claimed until completion.
-
+- **Validation:** PASS on exact code/test head `63137b842d8954436526106756fb39f3b2f8c150`; Unified project integration run [#40280885928](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40280885928) completed successfully. An earlier attempt on `330dc7632839822225cfff0620fe9cdd390acdc4` failed at an overly strict source-contract regex; the matcher was corrected in the tested commit.
 ## WorkPass345 — fail-open recovery for invalid cognitive-dependency sidecars (2026-10-26)
 
 - **Defect:** `CognitiveDependencyGraph.restore()` was outside a recovery boundary in `OrganismRuntime.init()`. An unsupported sidecar schema or load/parse error could abort the whole organism startup even though this graph is derived routing state.

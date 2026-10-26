@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores and the historical 13-row CI snapshot remain anchored to code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. WorkPass343–344 passed exact-head Unified integration on a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593), and WorkPass345 passed on 216d79086bfac2dd5f25e2c995fe6b5a44b61476 (run #40279847281). WorkPass346 adds fail-open recovery for malformed procedural-skill sidecars; code/test head 330dc7632839822225cfff0620fe9cdd390acdc4 is in Unified integration run #40280652324. Scores stay unchanged until this latest regression is validated; no empirical task-success/transfer/retention uplift is claimed.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores and the historical 13-row CI snapshot remain anchored to code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. WorkPass343–344 passed exact-head Unified integration on a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593), WorkPass345 passed on 216d79086bfac2dd5f25e2c995fe6b5a44b61476 (run #40279847281), and WorkPass346 passed on exact code/test head 63137b842d8954436526106756fb39f3b2f8c150 (run #40280885928). The initial WP346 attempt on 330dc7632839822225cfff0620fe9cdd390acdc4 failed only at a static source-contract regex that did not allow explanatory comments inside catch; that matcher was corrected before the passing run. These recovery changes do not establish independent task-success, transfer or retention uplift, so weighted estimates and the 57/100 learning engineering score remain unchanged.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -26,9 +26,7 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "WorkPass346 malformed procedural-skill sidecar recovery is pending exact-head CI for 330dc7632839822225cfff0620fe9cdd390acdc4 (run #40280652324). WorkPass343–345 have passed exact-head Unified integration; long-duration restart soak, real device/browser/voice/avatar integration and independent external task benchmarks remain open.",
-        "Long-duration process-kill/restart soak tests and real device/browser/voice/avatar integration remain open",
-        "Independent external task benchmarks are required before raising field evidence or learning-effectiveness scores"
+        "Long-duration process-kill/restart soak, clean Android/Termux setup, real browser/Live2D/voice/avatar integration and independent external task benchmarks remain open."
       ],
       "evidence": [
         "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts",
@@ -362,19 +360,18 @@
     "id": "WorkPass346",
     "date": "2026-10-26",
     "branch": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
-    "codeCommit": "330dc7632839822225cfff0620fe9cdd390acdc4",
+    "codeCommit": "63137b842d8954436526106756fb39f3b2f8c150",
     "summary": "Protect ProceduralSkillLibrary restore from malformed/corrupt persisted skill state so derived skill-cache damage does not abort OrganismRuntime startup; reset only the skill cache and log a warning.",
     "testsAdded": [
-      "source contract verifies procedural-skill restore is wrapped in try/catch and warning event is present",
+      "source contract verifies procedural-skill restore is guarded by try/catch and warning event is present",
       "runtime restart smoke writes a self-contained skills:[null] corruption fixture",
       "startup proceeds with an empty recovered skill library and a subsequent autonomous cycle completes"
     ],
-    "validationStatus": "PENDING: Unified project integration suite run #40280652324 is in progress on exact code/test head 330dc7632839822225cfff0620fe9cdd390acdc4; no pass claimed.",
+    "validationStatus": "PASS on exact code/test head 63137b842d8954436526106756fb39f3b2f8c150; Unified project integration suite run #40280885928 completed successfully. The earlier attempt on 330dc7632839822225cfff0620fe9cdd390acdc4 failed only at an overly strict source-contract regex; the corrected assertion passed in the full suite.",
     "progressPercentagesChanged": false,
-    "testedHeadSha": null,
-    "workflowRuns": [],
-    "activeWorkflowRuns": [
-      40280652324
+    "testedHeadSha": "63137b842d8954436526106756fb39f3b2f8c150",
+    "workflowRuns": [
+      40280885928
     ]
   },
   "recentEngineeringPasses": [
@@ -382,19 +379,18 @@
       "id": "WorkPass346",
       "date": "2026-10-26",
       "branch": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
-      "codeCommit": "330dc7632839822225cfff0620fe9cdd390acdc4",
+      "codeCommit": "63137b842d8954436526106756fb39f3b2f8c150",
       "summary": "Protect ProceduralSkillLibrary restore from malformed/corrupt persisted skill state so derived skill-cache damage does not abort OrganismRuntime startup; reset only the skill cache and log a warning.",
       "testsAdded": [
-        "source contract verifies procedural-skill restore is wrapped in try/catch and warning event is present",
+        "source contract verifies procedural-skill restore is guarded by try/catch and warning event is present",
         "runtime restart smoke writes a self-contained skills:[null] corruption fixture",
         "startup proceeds with an empty recovered skill library and a subsequent autonomous cycle completes"
       ],
-      "validationStatus": "PENDING: Unified project integration suite run #40280652324 is in progress on exact code/test head 330dc7632839822225cfff0620fe9cdd390acdc4; no pass claimed.",
+      "validationStatus": "PASS on exact code/test head 63137b842d8954436526106756fb39f3b2f8c150; Unified project integration suite run #40280885928 completed successfully. The earlier attempt on 330dc7632839822225cfff0620fe9cdd390acdc4 failed only at an overly strict source-contract regex; the corrected assertion passed in the full suite.",
       "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": [],
-      "activeWorkflowRuns": [
-        40280652324
+      "testedHeadSha": "63137b842d8954436526106756fb39f3b2f8c150",
+      "workflowRuns": [
+        40280885928
       ]
     },
     {
@@ -512,8 +508,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "330dc7632839822225cfff0620fe9cdd390acdc4",
-  "branchHeadBeforeTrackerCommit": "330dc7632839822225cfff0620fe9cdd390acdc4",
+  "latestUnverifiedCodeTestHead": null,
+  "branchHeadBeforeTrackerCommit": "63137b842d8954436526106756fb39f3b2f8c150",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",

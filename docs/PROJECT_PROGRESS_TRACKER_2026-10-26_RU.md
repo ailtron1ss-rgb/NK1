@@ -73,11 +73,11 @@
 - WorkPass343–344 также подтверждены полным прогоном на `a5aafc5274f44974aadf52e155213e12200cc4da` ([run #40279636593](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279636593)).
 - Общие инженерные оценки и оценка обучения 57/100 не изменены: эти исправления повышают устойчивость восстановления, но не доказывают полевой рост успешности задач, переноса навыков или удержания памяти.
 
-## WorkPass346 — восстановление после повреждённой библиотеки навыков (pending)
+## WorkPass346 — восстановление после повреждённой библиотеки навыков: PASS
 
 - Runtime больше не прекращает весь запуск, если запись в `procedural-skills.json` приводит к исключению в `ProceduralSkillLibrary.restore()`. Сбрасывается только восстановимая библиотека навыков; Core и основная память не затрагиваются, в журнал пишется `runtime.procedural-skills.restore-failed`.
 - Smoke создаёт собственный fixture `skills: [null]`, подтверждает успешный init и следующий автономный цикл.
-- Точный code/test HEAD `330dc7632839822225cfff0620fe9cdd390acdc4`; полный Unified suite [run #40280652324](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40280652324) выполняется. Оценки не повышаются до завершения.
+- PASS на точном code/test HEAD `63137b842d8954436526106756fb39f3b2f8c150`: полный Unified suite [run #40280885928](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40280885928) завершился успешно. Первая попытка падала на слишком строгом source-contract regex; matcher исправлен, полный повторный прогон прошёл.
 - Предыдущие passes: WorkPass343–344 — [#40279636593](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279636593); WorkPass345 — [#40279847281](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279847281).
 
 ## Незакрытые релизные ворота
