@@ -1,3 +1,9 @@
+## Feedback delivery idempotence — 2026-10-26
+
+- Added a tick-scoped feedback delivery guard at the entry to both normal and spine-only feedback paths, before any downstream learning/state mutation.
+- The guard rejects concurrent duplicate delivery, persisted same-tick replays after restart, and malformed current-tick receipts; a failed in-flight delivery remains blocked in-process rather than being replayed against partially updated learners.
+- Completed receipts are stored in the existing persisted system snapshot and included in the normal feedback checkpoint. The current focused CI validation is pending.
+
 ## Cognitive dependency frame integrity — 2026-10-25
 
 - The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
