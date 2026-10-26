@@ -359,40 +359,22 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass396",
+    "id": "WorkPass397",
     "date": "2026-10-26",
     "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
-    "codeCommit": "bb38a516fe2b3671dad929a9c756c339428c0ded",
-    "testCommit": "282462422fedb7202f3c35be95541a3cbaff6bd5",
-    "summary": "Removed the legacy in-process Hexis confidence mutation path. OrganismCore.hexisReviseBelief now validates its legacy evidence envelope, creates a stable server-receipt evidence ID and stages it through the canonical transactional evidence-to-review path; no direct reviseBelief/updateSignals mutation remains in that method.",
+    "codeCommit": "05a349cdcbff7a8397e29f0ecf4cd8db15ddd8f5",
+    "testCommit": "14f25b449177d7de15824c433ababe5b81233362",
+    "summary": "Bound the legacy hexisReviseBelief evidence ID to canonical memory ID plus fixed legacy source kind, source reference and content hash. Mutable stance/label/note/confidence stay in the evidence digest; changing any of them on replay now conflicts under the same evidence ID rather than minting a new ID.",
     "testsAdded": [
-      "static source contract checks legacy hexisReviseBelief delegates to ingestHexisEvidenceForReview",
-      "static source contract forbids direct hexisAdaptation.reviseBelief and MemoryFabric.updateSignals calls in the legacy method",
-      "static source contract checks guards for malformed evidence, invalid stance, invalid legacy text, missing source reference and invalid confidence"
+      "static source contract checks the exact stable identity tuple",
+      "static source contract forbids stance, label, confidence or note from being part of the idempotency key"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, cognitive-hexis-evidence-review.mjs, Hexis server smoke and Unified project integration. Recent GitHub Actions runs are marked failed but return no step details or downloadable logs, so no pass/failure attribution is possible.",
+    "validationStatus": "PENDING exact-head typecheck, cognitive-hexis-evidence-review.mjs, Hexis server smoke and Unified integration. GitHub Actions attempts currently expose no step logs, so no pass/failure attribution is possible.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
-    {
-      "id": "WorkPass394",
-      "date": "2026-10-26",
-      "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
-      "codeCommit": "c8ad7c0327edf63a03ce9152577d9397097fdf1a",
-      "summary": "Strengthened the Hexis server smoke to SIGKILL the server after an acknowledged evidence-review response, restart with the same STATE_DIR, require the exact pending review/item to be restored, and approve it through the canonical gate. The smoke now fails closed if the canonical memory fixture is absent.",
-      "testsAdded": [
-        "process crash uses SIGKILL rather than graceful SIGTERM after review staging response",
-        "pending review and item must be restored after restart on the same STATE_DIR",
-        "restored review must be approved through the canonical evidence gate",
-        "empty canonical memory fixture is a hard test failure rather than a skipped scenario"
-      ],
-      "validationStatus": "PENDING exact-head typecheck, focused Hexis review tests, server smoke and Unified project integration. GitHub Actions attempts on recent heads are marked failed but steps/logs are unavailable (BlobNotFound), so they do not establish a code failure or a pass.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
     {
       "id": "WorkPass356",
       "date": "2026-10-26",
@@ -690,10 +672,26 @@
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
+    },
+    {
+      "id": "WorkPass397",
+      "date": "2026-10-26",
+      "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
+      "codeCommit": "05a349cdcbff7a8397e29f0ecf4cd8db15ddd8f5",
+      "testCommit": "14f25b449177d7de15824c433ababe5b81233362",
+      "summary": "Bound the legacy hexisReviseBelief evidence ID to canonical memory ID plus fixed legacy source kind, source reference and content hash. Mutable stance/label/note/confidence stay in the evidence digest; changing any of them on replay now conflicts under the same evidence ID rather than minting a new ID.",
+      "testsAdded": [
+        "static source contract checks the exact stable identity tuple",
+        "static source contract forbids stance, label, confidence or note from being part of the idempotency key"
+      ],
+      "validationStatus": "PENDING exact-head typecheck, cognitive-hexis-evidence-review.mjs, Hexis server smoke and Unified integration. GitHub Actions attempts currently expose no step logs, so no pass/failure attribution is possible.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
     }
   ],
-  "latestUnverifiedCodeTestHead": "282462422fedb7202f3c35be95541a3cbaff6bd5",
-  "branchHeadBeforeTrackerCommit": "282462422fedb7202f3c35be95541a3cbaff6bd5",
+  "latestUnverifiedCodeTestHead": "14f25b449177d7de15824c433ababe5b81233362",
+  "branchHeadBeforeTrackerCommit": "14f25b449177d7de15824c433ababe5b81233362",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -733,11 +731,11 @@
     }
   ],
   "latestEngineeringCheckpoint": {
-    "workpass": "WorkPass396",
+    "workpass": "WorkPass397",
     "sourceBranch": "fix/hexis-review-digest-binding-live-2026-10-26",
-    "codeTestHead": "282462422fedb7202f3c35be95541a3cbaff6bd5",
+    "codeTestHead": "14f25b449177d7de15824c433ababe5b81233362",
     "validationStatus": "pending-exact-head-ci",
-    "summary": "Removed the legacy in-process Hexis confidence mutation path. OrganismCore.hexisReviseBelief now validates its legacy evidence envelope, creates a stable server-receipt evidence ID and stages it through the canonical transactional evidence-to-review path; no direct reviseBelief/updateSignals mutation remains in that method. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
+    "summary": "Bound the legacy hexisReviseBelief evidence ID to canonical memory ID plus fixed legacy source kind, source reference and content hash. Mutable stance/label/note/confidence stay in the evidence digest; changing any of them on replay now conflicts under the same evidence ID rather than minting a new ID. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   },
