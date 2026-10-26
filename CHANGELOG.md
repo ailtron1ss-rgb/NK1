@@ -1,3 +1,9 @@
+### WorkPass328 follow-up — deterministic replay and Node 24 compatibility (2026-10-26)
+
+- Removed Node 24 strip-only TypeScript-incompatible parameter properties from `P23CompoundRepairRevisionCoordinator`.
+- Explicit `P23LearningEngine.configureReplaySelection()` settings now provide a deterministic bounded replay ablation; health-adaptive batch sizing remains active on the default path. The configured recent quota stays paired with its explicit batch ceiling.
+- Corrected the payload-budget test to count JSON string quotes in the canonical serialized byte budget, and updated the correlated-postcondition source contract to assert the exact execution/decision-ticket join implemented by `ActionGateway`.
+
 ### WorkPass328 follow-up — repair CI entry points and Node 24 runtime compatibility (2026-10-26)
 
 - Restored missing npm aliases for the WorkPass291/292/293/294 regressions and three existing P26 learning tests. Each alias now points at an actual test file or the existing compound-revision test chain, instead of letting the workflow fail before exercising code.

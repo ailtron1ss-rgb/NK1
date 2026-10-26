@@ -398,6 +398,8 @@ function canonicalize(value:unknown, ancestors = new Set<object>()):string {
 export class P23LearningEngine {
   private state = defaultP23Learning();
   private replaySelectionOptions: ReplaySelectionOptions = { maxBatchSize:64, recentQuota:32 };
+  /** Explicit ablation configuration is deterministic; adaptive sizing applies to the default path. */
+  private replaySelectionConfigured = false;
   private verifiedSkillStore: VersionedSkillCandidateStore | null = null;
 
   /** Configure a bounded replay ablation; defaults remain 64 total / 32 recent. */
@@ -406,6 +408,7 @@ export class P23LearningEngine {
     const maxBatchSize = Math.max(1, Math.min(64, requestedCapacity));
     const requestedRecent = options.recentQuota === undefined ? Math.floor(maxBatchSize / 2) : Math.floor(Number.isFinite(options.recentQuota) ? options.recentQuota : Math.floor(maxBatchSize / 2));
     this.replaySelectionOptions = { maxBatchSize, recentQuota:Math.max(0, Math.min(maxBatchSize, requestedRecent)) };
+    this.replaySelectionConfigured = true;
   }
 
   restore(raw?:Partial<P23LearningState>|null):void {
@@ -842,11 +845,13 @@ export class P23LearningEngine {
       };
     });
     const metrics=this.state.metrics;
-    const options=adaptiveReplayOptions(this.replaySelectionOptions,{
-      predictionError01:metrics.predictionError01,recentPredictionError01:metrics.recentPredictionError01,
-      replayTdError01:metrics.replayMeanAbsTdError01,evidenceDebt01:clamp(metrics.evidenceDebtOpen/16),
-      memoryPressure01:clamp(this.state.experiences.length/1024),energy01:1,
-    },ranked.length);
+    const options=this.replaySelectionConfigured
+      ? { ...this.replaySelectionOptions }
+      : adaptiveReplayOptions(this.replaySelectionOptions,{
+          predictionError01:metrics.predictionError01,recentPredictionError01:metrics.recentPredictionError01,
+          replayTdError01:metrics.replayMeanAbsTdError01,evidenceDebt01:clamp(metrics.evidenceDebtOpen/16),
+          memoryPressure01:clamp(this.state.experiences.length/1024),energy01:1,
+        },ranked.length);
     // Use the causal sampler as a bounded diversity prefilter, then retain the
     // adaptive multi-signal selector as the final authority for the replay batch.
     // This connects causal/recent-stratum coverage without discarding existing
