@@ -79,8 +79,18 @@ function sha256(value: string): string {
 }
 
 function clamp01(value: unknown, fallback: number): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
+  // JSON objects (including null-prototype snapshots) must never be coerced
+  // through user-defined/toString primitive conversion during memory import.
+  try {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function isUnitIntervalNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
 function dateMs(value: unknown): number | undefined {
@@ -239,8 +249,40 @@ function describeSection(section: string, value: unknown, exportId: string, issu
           issues.push({ path: path + '[' + index + '].content', kind: 'record-too-large', detail: 'NK1 imports at most 12000 characters per memory record.' });
         }
 
+        if (row.metadata != null && !record(row.metadata)) {
+          issues.push({ path: path + '[' + index + '].metadata', kind: 'schema', detail: 'Memory metadata must be an object when supplied.' });
+        }
         const metadata = record(row.metadata) ?? {};
-        const declaredKind = String(metadata.nk1_kind ?? row.type ?? '').trim().toLowerCase();
+        if (metadata.nk1_kind != null && typeof metadata.nk1_kind !== 'string') {
+          issues.push({ path: path + '[' + index + '].metadata.nk1_kind', kind: 'schema', detail: 'nk1_kind must be a string when supplied.' });
+        }
+        if (metadata.nk1_epistemic_status != null && typeof metadata.nk1_epistemic_status !== 'string') {
+          issues.push({ path: path + '[' + index + '].metadata.nk1_epistemic_status', kind: 'schema', detail: 'nk1_epistemic_status must be a string when supplied.' });
+        }
+        for (const field of ['trust_level', 'importance'] as const) {
+          if (row[field] != null && !isUnitIntervalNumber(row[field])) {
+            issues.push({ path: path + '[' + index + '].' + field, kind: 'schema', detail: field + ' must be a finite number between 0 and 1 when supplied.' });
+          }
+        }
+        for (const field of ['nk1_confidence', 'nk1_salience'] as const) {
+          if (metadata[field] != null && !isUnitIntervalNumber(metadata[field])) {
+            issues.push({ path: path + '[' + index + '].metadata.' + field, kind: 'schema', detail: field + ' must be a finite number between 0 and 1 when supplied.' });
+          }
+        }
+        if (metadata.tags != null &&
+            (!Array.isArray(metadata.tags) || metadata.tags.some((tag) => typeof tag !== 'string'))) {
+          issues.push({ path: path + '[' + index + '].metadata.tags', kind: 'schema', detail: 'metadata.tags must be an array of strings when supplied.' });
+        }
+        if (metadata.entities != null &&
+            (!Array.isArray(metadata.entities) || metadata.entities.some((entity) => typeof entity !== 'string'))) {
+          issues.push({ path: path + '[' + index + '].metadata.entities', kind: 'schema', detail: 'metadata.entities must be an array of strings when supplied.' });
+        }
+        if (metadata.context != null && !record(metadata.context)) {
+          issues.push({ path: path + '[' + index + '].metadata.context', kind: 'schema', detail: 'metadata.context must be an object when supplied.' });
+        }
+        const declaredKind = typeof metadata.nk1_kind === 'string'
+          ? metadata.nk1_kind.trim().toLowerCase()
+          : row.type.trim().toLowerCase();
         if (PROTECTED_MEMORY_KINDS.has(declaredKind) ||
             row.protected === true || row.protectedBelief === true ||
             metadata.protected === true || metadata.nk1_protected === true ||
@@ -319,7 +361,8 @@ export function validateHmxV17Document(raw: unknown, requestedIntent?: Canonical
     issues.push({ path: 'export_id', kind: 'schema', detail: 'HMX export_id must match exp_ followed by 16 lowercase hex characters.' });
   }
   const documentIntent = document.export_intent;
-  if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(String(documentIntent))) {
+  if (typeof documentIntent !== 'string' ||
+      !['port', 'duplicate', 'telepathy', 'analysis'].includes(documentIntent)) {
     issues.push({ path: 'export_intent', kind: 'schema', detail: 'HMX 1.7 requires an explicit valid export_intent.' });
   } else if (requestedIntent && documentIntent !== requestedIntent) {
     issues.push({ path: 'export_intent', kind: 'intent-mismatch', detail: 'The chosen NK1 import intent must match the source document intent; reclassification is not allowed.' });
@@ -355,13 +398,15 @@ export function validateHmxV17Document(raw: unknown, requestedIntent?: Canonical
     if (!privacy) {
       issues.push({ path: 'privacy', kind: 'schema', detail: 'privacy must be an object when present.' });
     } else {
-      if (!['none', 'basic', 'strict', 'custom'].includes(String(privacy.redaction_policy))) {
+      if (typeof privacy.redaction_policy !== 'string' ||
+          !['none', 'basic', 'strict', 'custom'].includes(privacy.redaction_policy)) {
         issues.push({ path: 'privacy.redaction_policy', kind: 'schema', detail: 'Unknown HMX redaction policy.' });
       }
       if (typeof privacy.contains_sensitive_content !== 'boolean') {
         issues.push({ path: 'privacy.contains_sensitive_content', kind: 'schema', detail: 'contains_sensitive_content must be boolean.' });
       }
-      if (!['backup', 'migration', 'third_party_transfer', 'unspecified'].includes(String(privacy.consent_scope))) {
+      if (typeof privacy.consent_scope !== 'string' ||
+          !['backup', 'migration', 'third_party_transfer', 'unspecified'].includes(privacy.consent_scope)) {
         issues.push({ path: 'privacy.consent_scope', kind: 'schema', detail: 'Unknown HMX consent scope.' });
       }
     }
@@ -531,14 +576,30 @@ export function normalizeHmxV17Memory(
   input: { exportId: string; sourceSubjectId?: string; exportedAt?: string },
 ): Nk1HmxMemoryProjection | null {
   const row = record(raw);
-  if (!row || typeof row.content !== 'string' || !row.content.trim() || typeof row.ref !== 'string') return null;
+  if (!row || typeof row.content !== 'string' || !row.content.trim() ||
+      row.content.length > MAX_MEMORY_CHARS || typeof row.ref !== 'string' ||
+      row.ref.length > 512 || !REF_PATTERN.test(row.ref)) return null;
+  if (row.metadata != null && !record(row.metadata)) return null;
   const metadata = record(row.metadata) ?? {};
   const source = record(row.source_attribution) ?? {};
+  if (metadata.nk1_kind != null && typeof metadata.nk1_kind !== 'string') return null;
+  if (metadata.nk1_epistemic_status != null && typeof metadata.nk1_epistemic_status !== 'string') return null;
+  for (const value of [row.trust_level, row.importance, metadata.nk1_confidence, metadata.nk1_salience]) {
+    if (value != null && !isUnitIntervalNumber(value)) return null;
+  }
+  if (metadata.tags != null &&
+      (!Array.isArray(metadata.tags) || metadata.tags.some((tag) => typeof tag !== 'string'))) return null;
+  if (metadata.entities != null &&
+      (!Array.isArray(metadata.entities) || metadata.entities.some((entity) => typeof entity !== 'string'))) return null;
+  if (metadata.context != null && !record(metadata.context)) return null;
   const validKinds = new Set(['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream']);
-  const rawKind = String(metadata.nk1_kind ?? row.type ?? 'semantic').trim().toLowerCase();
+  const rawKind = (typeof metadata.nk1_kind === 'string'
+    ? metadata.nk1_kind
+    : typeof row.type === 'string' ? row.type : 'semantic').trim().toLowerCase();
   const kind = (validKinds.has(rawKind) ? rawKind : 'semantic') as Nk1HmxMemoryProjection['kind'];
   const validStatus = new Set(['fact', 'belief', 'hypothesis', 'unknown', 'quarantined']);
-  const rawStatus = String(metadata.nk1_epistemic_status ?? 'belief').trim().toLowerCase();
+  const rawStatus = (typeof metadata.nk1_epistemic_status === 'string'
+    ? metadata.nk1_epistemic_status : 'belief').trim().toLowerCase();
   const proposedStatus = validStatus.has(rawStatus) ? rawStatus : 'belief';
   const epistemicStatus = (proposedStatus === 'quarantined' ? 'quarantined'
     : proposedStatus === 'unknown' ? 'unknown'
@@ -550,9 +611,9 @@ export function normalizeHmxV17Memory(
   const observedAt = dateMs(row.updated_at) ?? createdAt ?? dateMs(input.exportedAt) ?? Date.now();
   const validFromAt = dateMs(row.valid_from) ?? createdAt ?? observedAt;
   const validUntilAt = row.valid_until == null ? null : dateMs(row.valid_until) ?? null;
-  const tags = Array.isArray(metadata.tags) ? metadata.tags.map(String).map((x) => x.slice(0, 80)).slice(0, 24) : ['hexis', 'hmx'];
+  const tags = Array.isArray(metadata.tags) ? metadata.tags.map((x) => x.slice(0, 80)).slice(0, 24) : ['hexis', 'hmx'];
   const context = safeContext(metadata.context);
-  const entities = Array.isArray(metadata.entities) ? metadata.entities.map(String).map((x) => x.slice(0, 120)).slice(0, 12) : [];
+  const entities = Array.isArray(metadata.entities) ? metadata.entities.map((x) => x.slice(0, 120)).slice(0, 12) : [];
 
   return {
     ref: row.ref,
