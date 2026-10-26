@@ -195,24 +195,24 @@ try {
 }
 
 const b273LearnGuard = b273.slice(b273.indexOf('private assertGeneratedDecision'), b273.indexOf('  learnFromOutcome('));
-assert.ok(b273LearnGuard.includes("input.action!==this.state.lastAction"),
-  'B273 learning must validate that the rewarded action matches the generated action');
+assert.ok(b273LearnGuard.includes('!this.state.lastActionPlan.includes(input.action)'),
+  'B273 learning must validate that the rewarded action belongs to the generated plan');
 assert.ok(b273.includes('recordUnselectedAction(input:'),
   'B273 must retain bounded evidence for an unselected proposal without reward credit');
 
 const b273PathStart = core.indexOf('const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();');
 const b273PathEnd = core.indexOf('const b274Diag', b273PathStart);
 const b273Path = core.slice(b273PathStart, b273PathEnd);
-assert.ok(b273Path.includes('trace.selected.action === b273Current.action'),
-  'normal feedback must compare the canonical selected action with B273 generated action');
+assert.ok(b273Path.includes('b273Current.plan.includes(trace.selected.action)'),
+  'normal feedback must restrict B273 learning to actions offered by the generated plan');
 assert.ok(b273Path.includes('b273Learner.recordUnselectedAction('),
   'normal feedback must not reward a B273 action that lost arbitration');
 
 const b338PathStart = core.indexOf('const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();');
 const b338PathEnd = core.indexOf('this.persisted.system.autonomousGoalLifecycleB273 = this.developmentalNeural.autonomousGoalLifecycleB273.snapshot();', b338PathStart);
 const b338Path = core.slice(b338PathStart, b338PathEnd);
-assert.ok(b338Path.includes('trace.selected.action === b338Lifecycle.action'),
-  'world-transition feedback must gate B273 learning on the generated action');
+assert.ok(b338Path.includes('b338Lifecycle.plan.includes(trace.selected.action)'),
+  'world-transition feedback must restrict B273 learning to actions offered by the generated plan');
 assert.ok(b338Path.includes('b273Learner.recordUnselectedAction('),
   'world-transition feedback must record rejected B273 proposals without credit');
 
