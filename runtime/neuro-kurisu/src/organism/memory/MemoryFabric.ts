@@ -1,6 +1,6 @@
 import type { OrganismEvent } from './EventSourcing.ts';
 import { EventLog, makeEvent } from './EventSourcing.ts';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { MemoryOS2, type MemoryItem2, type MemoryOSState2, type MemorySignalRollbackSnapshot, type MemoryTemporalQueryOptions, type SemanticIndexMaintenanceResult } from '../developmental/MemoryOS2.ts';
 import { MultiTimescaleMemory, type MemoryRecord } from './MultiTimescaleMemory.ts';
 import { MemorySubstrateCoordinator } from '../developmental/MemorySubstrateCoordinator.ts';
@@ -18,9 +18,15 @@ export type MemoryLifecycleCommand =
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
-  | { action:'restore-signals'; id:string; snapshot:MemorySignalRollbackSnapshot; expectedCurrent:MemorySignalRollbackSnapshot; reason:string; commandId?:string; tick?:number }
+  | { action:'restore-signals'; compensationToken:string; reason:string; commandId?:string; tick?:number }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
   | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number };
+
+interface MemorySignalCompensationReceipt {
+  memoryId:string;
+  snapshot:MemorySignalRollbackSnapshot;
+  expectedCurrent:MemorySignalRollbackSnapshot;
+}
 
 interface MemoryLifecycleReceipt {
   commandId:string;
@@ -40,6 +46,18 @@ export class MemoryLifecycleCommandConflictError extends Error {
 /** A receipt aged out of the hot journal. Refuse ambiguous retries instead of silently repeating a mutation. */
 export class MemoryLifecycleCommandRecoveryRequiredError extends Error {
   constructor(commandId:string){super(`Memory lifecycle command ${commandId} may have been committed before its hot receipt expired; reconcile before retrying.`);this.name='MemoryLifecycleCommandRecoveryRequiredError';}
+}
+
+function memorySignalRollbackSnapshot(item:MemoryItem2):MemorySignalRollbackSnapshot {
+  return {
+    confidence:item.confidence,
+    sourceAuthority01:item.sourceAuthority01,
+    evidenceSources:item.evidenceSources===undefined?undefined:structuredClone(item.evidenceSources),
+    evidenceLineageKeys:item.evidenceLineageKeys===undefined?undefined:[...item.evidenceLineageKeys],
+    lastAccessAt:item.lastAccessAt,
+    temperature01:item.temperature01,
+    revisionHistory:structuredClone(item.revisionHistory??[]),
+  };
 }
 
 function stableCommandJson(value:any):string {
@@ -135,6 +153,8 @@ export class MemoryFabric {
   private lastMaintenanceTick=-1;
   private readonly policyOutcomeLedger=defaultMemoryPolicyOutcomeLedger();
   private readonly mutationReceipts=new Map<string,MemoryLifecycleReceipt>();
+  /** One-time in-process capabilities: snapshots cannot be supplied by callers. */
+  private readonly signalCompensations=new Map<string,MemorySignalCompensationReceipt>();
   private retiredMutationReceiptBloom=new Uint8Array(RETIRED_RECEIPT_BLOOM_BYTES);
   private retiredMutationReceiptCount=0;
   private retiredMutationReceiptBloomCorrupt=false;
@@ -256,7 +276,19 @@ export class MemoryFabric {
         break;
       }
       case 'restore-signals': {
-        const item=this.memoryOS.restoreSignalsForCompensation(command.id,command.snapshot,command.expectedCurrent);
+        const compensation=this.signalCompensations.get(command.compensationToken);
+        if(!compensation)throw new Error('memory-signal-compensation-token-invalid');
+        // Consume before performing the restoration: a conflicting/stale compensation
+        // must fail closed and must never be replayed with a different command ID.
+        this.signalCompensations.delete(command.compensationToken);
+        const memoryOS=this.memoryOS as unknown as {
+          restoreSignalsForCompensation:(id:string,snapshot:MemorySignalRollbackSnapshot,expectedCurrent:MemorySignalRollbackSnapshot)=>MemoryItem2;
+        };
+        const item=memoryOS.restoreSignalsForCompensation(
+          compensation.memoryId,
+          compensation.snapshot,
+          compensation.expectedCurrent,
+        );
         result=item; memoryId=item.id; outcome='applied';
         eventPayload={
           action,
@@ -608,24 +640,43 @@ export class MemoryFabric {
     return this.applyLifecycleCommand({action:'revise-content',id,newContent,options,...context}) as MemoryItem2|null;
   }
 
-  updateSignals(id:string, patch:Parameters<MemoryOS2['updateSignals']>[1], reason='reconsolidation', context:{tick?:number;commandId?:string}={}){
-    return this.applyLifecycleCommand({action:'update-signals',id,patch,reason,...context}) as MemoryItem2|null;
+  /**
+   * Apply a signal update while capturing an internal, one-time rollback capability.
+   * The caller receives no prior snapshot, only a token that can undo this update.
+   */
+  updateSignalsWithCompensation(
+    id:string,
+    patch:Parameters<MemoryOS2['updateSignals']>[1],
+    reason:string,
+    context:{tick?:number;commandId?:string}={},
+  ) {
+    const before=this.findCanonical(id);
+    if(!before)return null;
+    const snapshot=memorySignalRollbackSnapshot(before);
+    const item=this.updateSignals(id,patch,reason,context);
+    if(!item)return null;
+    const compensationToken=randomUUID();
+    this.signalCompensations.set(compensationToken,{
+      memoryId:id,
+      snapshot,
+      expectedCurrent:memorySignalRollbackSnapshot(item),
+    });
+    while(this.signalCompensations.size>512){
+      const oldest=this.signalCompensations.keys().next().value as string|undefined;
+      if(oldest===undefined)break;
+      this.signalCompensations.delete(oldest);
+    }
+    return {item,compensationToken};
   }
 
-  /**
-   * Exact signal-state compensation for a failed multi-component transaction.
-   * This is not a normal confidence/authority update: it restores a prior canonical
-   * snapshot only if the expected post-mutation signal state still matches.
-   */
+  /** Consume a one-time capability issued by updateSignalsWithCompensation(). */
   restoreSignalsForCompensation(
-    id:string,
-    snapshot:MemorySignalRollbackSnapshot,
-    expectedCurrent:MemorySignalRollbackSnapshot,
+    compensationToken:string,
     reason:string,
     context:{tick?:number;commandId?:string}={},
   ) {
     return this.applyLifecycleCommand({
-      action:'restore-signals',id,snapshot,expectedCurrent,reason,...context,
+      action:'restore-signals',compensationToken,reason,...context,
     }) as MemoryItem2;
   }
 

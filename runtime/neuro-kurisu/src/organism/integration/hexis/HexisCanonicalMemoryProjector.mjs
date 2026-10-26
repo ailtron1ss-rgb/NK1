@@ -409,7 +409,7 @@ export class HexisCanonicalMemoryProjector {
             );
             if (priorConfidence > incomingAuthorityCap || priorAuthority > incomingAuthorityCap || hasOverCapHmxEvidence) {
               const previousSignals = signalRollbackSnapshot(duplicate);
-              const cappedMemory = this.memoryFabric.updateSignals(
+              const compensation = this.memoryFabric.updateSignalsWithCompensation(
                 duplicate.id,
                 {
                   confidence: Math.min(priorConfidence, incomingAuthorityCap),
@@ -421,11 +421,13 @@ export class HexisCanonicalMemoryProjector {
                 'hexis-import-authority-cap',
                 { commandId: 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48) },
               );
-              if (!cappedMemory) throw new Error('hmx-import-authority-cap-memory-missing:' + duplicate.id);
+              if (!compensation?.item || !compensation.compensationToken) {
+                throw new Error('hmx-import-authority-cap-memory-missing:' + duplicate.id);
+              }
               revisedSignals.push({
                 id: duplicate.id,
                 previous: previousSignals,
-                expectedCurrent: signalRollbackSnapshot(cappedMemory),
+                compensationToken: compensation.compensationToken,
               });
             }
           }
@@ -656,9 +658,7 @@ export class HexisCanonicalMemoryProjector {
       for (const revision of [...revisedSignals].reverse()) {
         try {
           this.memoryFabric.restoreSignalsForCompensation(
-            revision.id,
-            revision.previous,
-            revision.expectedCurrent,
+            revision.compensationToken,
             'hexis-hmx-apply-signal-rollback',
             {
               commandId: 'hexis-signal-rollback:' + hash(

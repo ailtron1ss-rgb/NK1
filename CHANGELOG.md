@@ -2606,3 +2606,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [ROLLBACK] On downstream failure, restore the prior confidence, authority, evidence trail/lineage, access temperature and item revision history alongside the existing status, graph, and temporal compensation.
 - [REGRESSION] Add fault injection after trust reconciliation and a subsequent row insert; assert that existing trust state is restored, the new row is removed, and the accepted HMX stage remains retryable. Also verify the compensation receipt survives MemoryFabric snapshot restore.
 - [VALIDATION] Source, integration test and CHANGELOG are committed below; exact-head runtime/typecheck/Actions execution is still required and is not claimed as PASS.
+
+## [NK1][Hexis] WorkPass431 — scope HMX compensation to one-time capabilities (2026-10-26)
+
+- [SAFETY] Remove caller-supplied prior/expected signal snapshots from the public compensation contract. MemoryFabric now issues an internal one-time token only after a real canonical signal update.
+- [INTEGRITY] The private MemoryOS2 restore primitive is invoked only from MemoryFabric's token-validated lifecycle path; tokens are consumed on use and bounded in memory.
+- [REGRESSION] Assert that a forged compensation token is rejected and leaves canonical trust state unchanged. Persisted receipt validation continues to allow the named compensation lifecycle action.
+- [VALIDATION] Commit-level source checks completed; runtime execution/typecheck remains blocked by GitHub Actions jobs that terminate with `runner_id=0` and `steps=[]`.

@@ -1010,7 +1010,7 @@ export class MemoryOS2{
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    return structuredClone(m.context??{});
  }
- restoreSignalsForCompensation(
+ private restoreSignalsForCompensation(
   id:string,
   snapshot:MemorySignalRollbackSnapshot,
   expectedCurrent:MemorySignalRollbackSnapshot,

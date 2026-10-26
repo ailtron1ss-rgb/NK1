@@ -1067,6 +1067,22 @@ assert.equal(
 );
 assert.equal(signalRollbackHexis.getHmxStage(failedSignalStage.stagingId)?.status, 'accepted',
   'the compensated HMX stage remains retryable and is not marked applied');
+
+assert.throws(
+  () => signalRollbackRuntime.fabric.restoreSignalsForCompensation(
+    'forged-compensation-token',
+    'must-not-restore-arbitrary-trust-state',
+    { commandId: 'test-forged-signal-restore' },
+  ),
+  /memory-signal-compensation-token-invalid/,
+  'the compensation API must reject caller-invented tokens rather than accept arbitrary snapshots',
+);
+assert.deepEqual(
+  signalSnapshot(signalRollbackRuntime.fabric.canonicalSnapshot().items.find(item => item.id === seededSignalMemory.id)),
+  beforeSignalRollback,
+  'an invalid compensation token must not mutate canonical trust state',
+);
+
 const postCompensationMemoryFabricSnapshot = signalRollbackRuntime.fabric.snapshot();
 signalRollbackRuntime.fabric.restore(postCompensationMemoryFabricSnapshot);
 assert.equal(signalRollbackRuntime.fabric.inspect().mutationReceiptJournal.corrupt, false,
