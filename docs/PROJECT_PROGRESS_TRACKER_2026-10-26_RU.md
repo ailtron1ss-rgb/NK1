@@ -1,3 +1,13 @@
+## WorkPass396 — убрать legacy-обход Hexis review gate (2026-10-26)
+
+- **Код:** `f30d889e15192cf05eaf540614cc1479912314d6`; **регрессионный контракт:** `621b774d8721dffaa42c010241644924a9a8b0bb` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`.
+- Найден оставшийся in-process путь: `OrganismCore.hexisReviseBelief` раньше напрямую вызывал `HexisAdaptationFabric.reviseBelief` и `MemoryFabric.updateSignals`, меняя confidence без pending review. Теперь он преобразует legacy envelope в стабильный server-receipt evidence ID и вызывает существующий transactional `ingestHexisEvidenceForReview`.
+- Legacy helper отклоняет отсутствие source reference, неизвестный stance и некорректную confidence. После этого confidence может измениться только через явное решение canonical review.
+- В `cognitive-hexis-evidence-review.mjs` добавлен статический source-contract, запрещающий вернуть прямой вызов revise/update в legacy method.
+- **Валидация:** PENDING exact-head typecheck, focused Hexis review test, server smoke и Unified integration. Последние Actions возвращают failure без шагов/логов; причинность не установлена, PASS не заявляется. Прогресс/readiness/recall оценки не повышены; `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass395 — привязка всех Hexis review decisions к каноническому evidence (2026-10-26)
 
 - **Код:** `c43d05d2e6be965e4c16bcc0d803d5ee48e30f85`; **регрессии:** `98421af0dfc17fe6c5855490554ae77116c74755`; ветка `fix/hexis-review-digest-binding-live-2026-10-26`.
