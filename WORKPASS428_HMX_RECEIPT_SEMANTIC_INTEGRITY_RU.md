@@ -21,6 +21,8 @@
 
 ## Регрессии
 
+- Повтор одного `semanticEdgeId` в квитанции отклоняется даже при согласованных `projectedRelationships` и staged relationship count.
+
 - Rehashed but semantically impossible receipt variants.
 - Attempt counter mismatch и invalid lifecycle attempts (существующий WorkPass426 тест сохранён).
 - Direct exported validator с getter-backed stage/receipt: getters должны оставаться неисполненными.
