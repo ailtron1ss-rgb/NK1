@@ -58,6 +58,7 @@ Object.defineProperty(permissionAccessor.permissions,'created',{
 });
 const invalidSnapshots=[
   {...structuredClone(baseline),version:2},
+  {version:1},
   {...structuredClone(baseline),records:'not-an-array'},
   rootAccessor,
   rowAccessor,
