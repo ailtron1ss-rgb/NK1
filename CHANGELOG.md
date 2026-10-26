@@ -1,3 +1,27 @@
+## WorkPass347 — preserve postcondition fingerprints in restored receipt traces (2026-10-26)
+
+- **FIXED:** `appendToolReceiptTrace()` now persists hashes of expected and observed postconditions inside its sanitized evidence event, without storing raw postcondition text.
+- **FIXED:** receipt replay compares both hashes against the submitted receipt even when the bounded projection index is absent or has been lost during restore.
+- **REGRESSION:** added an indexless restore scenario proving a changed-but-nonempty postcondition conflicts before new events are appended, while an exact receipt replay remains idempotent.
+- **CI finding and fix:** the first exact-head integration run exposed a double-escaped event-ID control-character regex that rejected ordinary IDs containing digits. The guard now uses the actual control-character range, with a direct regression for control characters.
+- **Additional validation:** invalid tick/timestamp, non-finite capacity, array-index getter, overridden Date method, depth/array/key/node limits and recovery from a malformed row followed by a valid row with the same ID are covered by regressions.
+- **VALIDATION:** fresh exact-head CI is required after these fixes; earlier failures are retained as regression evidence, not hidden.
+
+---
+
+## WorkPass346 — enforce event identity and payload immutability in active runtime (2026-10-26)
+
+- **FIXED:** active `CognitiveEventFabric.append()` now validates the complete stable-ID envelope (tick, timestamp, stage, source, causal parents, external flag, confidence and canonical payload). Reusing an ID with changed evidence fails before mutation.
+- **FIXED:** accepted payloads are deeply detached; caller/reader mutation cannot rewrite the causal ledger. Circular, unsupported, excessive-depth and oversized structures fail before append; accessors are skipped without invoking getters.
+- **HARDENED:** exact replay without a supplied finite timestamp reuses the stored event timestamp, preserving idempotency across retries.
+- **HARDENED:** added a detached read-only `getById()` lookup and skip malformed persisted payload rows during restore rather than aborting recovery of healthy events.
+- **INPUT CONTRACT:** invalid supplied source types, non-string causal parents, and non-object top-level payloads (except absent/null payload) fail closed before event-ledger mutation; regressions prove caller-defined string coercion is not invoked.
+- **REGRESSION:** event-fabric test now covers equivalent key order, conflicting payload/parents/timestamp/source/stage/tick, nested mutation, omitted timestamps, cyclic payloads and side-effecting getters.
+- **WIRING:** `test:cognitive-integration-suite` now runs the event-fabric regression as a required step.
+- **VALIDATION:** exact-head CI must pass on the resulting commit; no device/field or learning-uplift claim is made.
+
+---
+
 ## WorkPass345 — fail-closed release-date contract — 2026-10-26
 
 - **Defect:** `verify-release-metadata.mjs` silently substituted the historical date `2026-10-10` when `SUPER_VERSION.date` was missing or malformed. That fallback could make an incomplete release manifest resolve an old status report instead of failing on the missing date.

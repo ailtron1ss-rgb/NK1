@@ -13,6 +13,7 @@ on:
       - "research/deepcode/**"
       - "research/neurocore-v143/**"
       - "runtime/neuro-kurisu/tests/cognitive-*.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-161-cognitive-event-fabric.mjs"
       - "runtime/neuro-kurisu/tests/memory-budget-restore-integrity.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
@@ -79,6 +80,7 @@ on:
       - "research/deepcode/**"
       - "research/neurocore-v143/**"
       - "runtime/neuro-kurisu/tests/cognitive-*.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-161-cognitive-event-fabric.mjs"
       - "runtime/neuro-kurisu/tests/memory-budget-restore-integrity.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
@@ -179,7 +181,7 @@ jobs:
           npm run test:supervisor-preflight
           npm run test:toolchain-contract
           npm run test:super-gateway-headers
-      - name: Verify cognitive integration contracts
+      - name: Verify cognitive integration contracts and event-envelope integrity
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite
       - name: Run governed approval gateway and bridge E2E
         run: npm --prefix runtime/neuro-kurisu run test:workpass53
