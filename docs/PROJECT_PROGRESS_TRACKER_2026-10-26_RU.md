@@ -1,3 +1,21 @@
+## WorkPass397 — безопасный HMX snapshot на границе импорта (2026-10-26)
+
+- **Кодовые коммиты:** `aead364e098b462b5f99f48e65b76585f927975f` (ограниченный plain-JSON snapshot) и `83343d9ba5765050c734218a64d8bbe6e9883f2f` (staging использует тот же snapshot); **регрессии:** `0f9c34c54ad2b858a142c5e14d0de28fb763f5b5`.
+- До schema inspection HMX копируется через own-data descriptors с ограничениями по глубине/узлам/байтам. Accessors, sparse/extended arrays, неподдерживаемые прототипы, циклы и non-finite numbers отклоняются без чтения свойств через getter.
+- Validation и stage работают с захваченным снимком, а не с исходным объектом; это убирает расхождение «проверили одно, сохранили другое».
+- Регрессии проверяют root и вложенный getter: число вызовов равно нулю, создаётся `unsafe-input`, memory payload не попадает в staging, принять stage нельзя.
+- **Валидация:** PENDING exact-head typecheck, `test:hexis-adaptation`, server smoke и Unified integration. Тесты добавлены, но не подтверждены успешным запуском. Проценты/оценки не повышены; `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass396 — атомарный staging массивов HMX (2026-10-26)
+
+- **Код:** `eb4b719d011bd035d05ae53f65599d15b5d7ae43`; **регрессии:** `c8fc71acd48348469dfa6d9cabd01ba9ea92fce6`.
+- Массивы с более чем 256 записями и массивы с некорректным элементом целиком исключаются из `stagedSections`; исходный размер и причины конфликта сохраняются. Нельзя принять частичный префикс массива как будто это полный экспорт.
+- Тесты требуют полного отказа для 257 записей и для ошибочной записи внутри корректного массива. Exact-head validation ожидает запуска.
+
+---
+
 ## WorkPass357 — descriptor-only nested parent lineage restore (2026-10-26)
 
 - **Code/test checkpoint:** `810f60f2227db466dd1f96b1e3edf39741951f9d`; stacked on WorkPass356 branch head `1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee`.
