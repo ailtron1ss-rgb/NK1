@@ -1,3 +1,15 @@
+## WorkPass336 — реальное подключение Unified Cognitive Substrate — 2026-10-26
+
+- **Runtime integration:** добавлен durable sidecar `*.cognitive-substrate.json`; слой восстанавливается при старте, агрегирует каждый завершённый Core cycle и сохраняется при изменении существенных сигналов/каждые 16 тиков, плюс финальный flush на остановке.
+- **Cross-system frame:** объединяются self/continuity, world uncertainty/conflict, prediction debt, device resources, memory pressure и provenance/coverage из живого runtime, а не отдельного демонстрационного вызова.
+- **Governed planning:** counterfactual branch budget и matched simulation admission теперь являются пересечением ресурсо-политики, dependency graph/interruption policy и substrate work policy. Substrate может только урезать необязательные симуляции; канонический выбор action остаётся у `OrganismCore`.
+- **Restore hardening:** упрощённый адаптер заменён строгой схемой с проверкой версии, own-property reads, безопасной нормализацией finite metrics/counters/text и отказом от невалидного состояния. Повреждение производного sidecar логируется и не должно само по себе блокировать запуск организма.
+- **Regression/CI wiring:** добавлен `tests/unified-substrate-runtime-wiring.mjs`; test подключён к `test:cognitive-integration-suite` и `test:rebuild-recovered`. Новых runtime dependencies не добавлено.
+
+**Validation status:** exact-head typecheck, behavioral test and CI are pending. No progress scores were increased before validation.
+
+---
+
 ## WorkPass338 — отключён автокэш npm в standalone ledger CI (2026-10-26)
 
 - Первый запуск WorkPass336 остановился на `actions/setup-node@v6` до тестов: автокэш искал lockfile в корне, где его нет (lockfiles находятся в отдельных workspaces).
