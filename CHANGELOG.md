@@ -1,3 +1,10 @@
+## NK1 P26 verification — stabilize ADWIN mean assertion (2026-10-26)
+
+- Replaced the exact comparison for the adaptive-window detector's stationary mean with an absolute `1e-12` tolerance. Repeated online updates accumulate normal IEEE-754 rounding, so a constant 0.2 stream may produce `0.19999999999999962`.
+- Detection thresholds, window pruning, and the measured mean calculation are unchanged; the test still checks zero false detections on the stationary stream and successful detection after the step change.
+
+---
+
 ## NK1 P23 restore boundary — cover cyclic, aliased, and sparse snapshots (2026-10-26)
 
 - Extended WorkPass310 with explicit rejection tests for cyclic objects, shared-object aliases, and sparse arrays. Each regression also verifies that a rejected restore leaves the current learner snapshot unchanged.
