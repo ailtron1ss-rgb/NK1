@@ -1,3 +1,12 @@
+## Container startup path — Docker Compose and explicit gateway binding (2026-10-26)
+
+- Added a Node.js 24 slim `Dockerfile`, `docker-compose.yml`, `.dockerignore`, and Russian container quick-start guide. The stack persists `.super-state`, exposes the UI gateway only on host loopback by default, and includes a health check.
+- The gateway remains loopback-only for normal `npm start`; Docker Compose must explicitly set `SUPER_GATEWAY_HOST=0.0.0.0` inside the container. A dedicated config resolver rejects unrecognized bind addresses, reducing accidental LAN exposure.
+- The container can optionally install CPU-only Torch research dependencies through `INSTALL_RESEARCH_TORCH=true`. By default the main runtime, UI, gateway and Python bridge run without the large optional ML dependency.
+- Added regression coverage for gateway bind defaults and container opt-in. Compose config/image build and healthcheck execution remain pending exact-head CI; this entry does not claim a production image has already built.
+
+---
+
 ## First-run UI readiness — build preview artifact before launching services (2026-10-26)
 
 - Root `npm start` previously started Vite Preview without checking for `app/dist/index.html`; a fresh checkout after `npm run install:all` could therefore start the gateway/runtime while the UI build artifact was absent.
