@@ -75,6 +75,32 @@ assert.throws(
   /candidate-minimum-validation-task-success-invalid/,
 );
 
+const oneTaskValidationBaseline = {
+  validation: [trial('task-a', 'v1', 'weak'), trial('task-a', 'v2', 'weak')],
+  holdout: baseline.holdout,
+};
+const oneTaskValidationCandidate = {
+  validation: [trial('task-a', 'v1', 'good'), trial('task-a', 'v2', 'good')],
+  holdout: baseline.holdout,
+};
+const oneTaskValidationGate = evaluateSkillLearnBenchCandidate(
+  oneTaskValidationBaseline,
+  oneTaskValidationCandidate,
+);
+assert.equal(oneTaskValidationGate.validationGain01 > 0.005, true);
+assert.equal(oneTaskValidationGate.eligible, false,
+  'many repetitions on one validation task must not count as broad task coverage');
+assert.ok(oneTaskValidationGate.reasons.includes('validation-task-coverage-insufficient'));
+assert.equal(
+  evaluateSkillLearnBenchCandidate(oneTaskValidationBaseline, oneTaskValidationCandidate, { minimumValidationTasks: 1 }).eligible,
+  true,
+  'deployment may intentionally lower the task-count floor while keeping the setting explicit',
+);
+assert.throws(
+  () => evaluateSkillLearnBenchCandidate(oneTaskValidationBaseline, oneTaskValidationCandidate, { minimumValidationTasks: 0 }),
+  /candidate-minimum-validation-tasks-invalid/,
+);
+
 // Task macro-average: repeating one task must not give it extra weight.
 const imbalanced = {
   validation: [
