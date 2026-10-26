@@ -447,6 +447,46 @@ assert.equal(anchorProvenanceFabric.getById('cef:kernel:42:self-update'), null);
 assert.equal(anchorProvenanceCycle.snapshot().cycles, 0,
   'cross-tick anchor rejection must not advance the cycle ledger');
 
+// Duplicate unknown IDs and non-canonical whitespace IDs must not enter causal parent lists.
+const ambiguousAnchorFabric = new CognitiveEventFabric(256);
+const ambiguousAnchorCycle = new UnifiedCognitiveCycle();
+const ambiguousAnchorKernel = new CanonicalCognitiveKernel(ambiguousAnchorFabric, ambiguousAnchorCycle);
+const ambiguousAnchors = ambiguousAnchorKernel.beginDecisionCycle({
+  ...decisionInput(), tick: 44, at: 4400,
+});
+const ambiguousBefore = ambiguousAnchorFabric.snapshot().total;
+const duplicateUnknownId = 'retention-missing-anchor';
+assert.throws(() => ambiguousAnchorKernel.completeCycle({
+  anchors: {
+    ...ambiguousAnchors.anchors,
+    observation: duplicateUnknownId,
+    prediction: duplicateUnknownId,
+  },
+  fallbackTick: 44,
+  at: 4401,
+  outcome: stage('outcome.verifier', { success01: 0.5 }),
+  learning: stage('learning.update'),
+  selfUpdate: stage('self-model.update'),
+}), /anchor-provenance-conflict/,
+'one missing event ID cannot stand for two distinct cognitive stages');
+assert.equal(ambiguousAnchorFabric.snapshot().total, ambiguousBefore,
+  'duplicate anchor IDs must be rejected before any completion write');
+
+assert.throws(() => ambiguousAnchorKernel.completeCycle({
+  anchors: {
+    ...ambiguousAnchors.anchors,
+    observation: ` ${ambiguousAnchors.anchors.observation}`,
+  },
+  fallbackTick: 44,
+  at: 4402,
+  outcome: stage('outcome.verifier', { success01: 0.5 }),
+  learning: stage('learning.update'),
+  selfUpdate: stage('self-model.update'),
+}), /anchor-provenance-conflict/,
+'event lookup normalization must not allow a whitespace-altered causal parent ID');
+assert.equal(ambiguousAnchorFabric.snapshot().total, ambiguousBefore,
+  'non-canonical anchor IDs must be rejected before any completion write');
+
 // Missing retained records remain allowed so late outcomes can be recorded as incomplete evidence.
 const missingAnchorFabric = new CognitiveEventFabric(256);
 const missingAnchorCycle = new UnifiedCognitiveCycle();
