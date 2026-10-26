@@ -11,3 +11,4 @@ export interface HmxStageDigestInput {
 }
 export declare function computeHmxStageDigest(stage: HmxStageDigestInput): string;
 export declare function isValidHmxStageDigest(stage: unknown): boolean;
+export declare function isSafeJsonTree(value: unknown): boolean;
