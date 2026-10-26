@@ -1,3 +1,11 @@
+## WorkPass403 — validate HMX import receipts before completion (2026-10-26)
+
+- **Code commit:** `ed92b4abf74395cc3d6946eadd0482eca2f839d2`; **regression commit:** `8969a6401719d9105162e50d00a35c79f4e98b51`.
+- `recordHmxImportResult` no longer clamps/floors malformed values into a completed receipt. It requires known status, non-negative safe-integer counts, bounded string reason, and exact accounting of every source memory (`created + reused + skipped === sectionCounts.memories`).
+- An `applied` receipt cannot report skipped rows; a `skipped` receipt cannot report created/reused rows; a `partial` receipt must actually describe both retained and skipped rows. Invalid results leave the receipt pending and never impersonate successful canonical apply.
+- Regression covers non-finite count, missing source-record accounting and inconsistent partial status, then proves a valid receipt still completes and exact replay cannot rewrite its counts.
+- **Validation:** PENDING exact-head typecheck, HMX adaptation, server smoke and Unified integration. No PASS or readiness uplift claimed; `main` and canonical Release ZIP remain unchanged.
+
 ## WorkPass402 — revalidate pending HMX stage integrity after restore (2026-10-26)
 
 - **Code commits:** `307b1317100bd9d4e3d62094f552a074fb1f663c` (digest + schema revalidation and restore quarantine) and `66927b5571704895f78f7c02897cd42e12fce8ea` (preserve expected validation-conflict staging); **regression commits:** `6f40c41ec9ff705561c1389fb8760956d41cfee1` and `388156d09c62dc736b5dcbe44a43fce303dedc0a`.
