@@ -1,3 +1,12 @@
+## WorkPass385 — детерминированная очистка Hexis smoke-теста (2026-10-26)
+
+- Коммит исправления: `a9f741deb4cece36459f121f9064cf6cf99069d0`.
+- Unified integration прошёл typecheck и Hexis adapter/bridge/review/MemoryFabric ingress; следующий отказ — `ENOTEMPTY` при удалении временного каталога до завершения дочернего сервера.
+- Smoke-тест теперь ждёт завершения процесса перед очисткой и использует ограниченный аварийный выход; проверки маршрутов не ослаблены.
+- Проверка нового точного head ожидается. Готовность и recall-uplift не повышены. `main` и Release ZIP не менялись.
+
+---
+
 ## WorkPass383 — keep Hexis lifecycle events on logical organism ticks (2026-10-26)
 
 - **Code/test head:** `7c62bebea1564b067f31343914c40004dc87d28e` on `work/hexis-evidence-adapter-2026-10-26`; bridge implementation commit `26837c72cece9145bbcce864949e2922b4d42f21`.
