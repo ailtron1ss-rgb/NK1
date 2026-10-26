@@ -9488,9 +9488,29 @@ export class OrganismCore {
                 this.developmentalNeural.neuralAutobiographicalCoreB271.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, traits: this.developmentalNeural.neuralGerminalOrganismB270.autonomousSnapshot().traitValues, goal: this.developmentalNeural.neuralAutobiographicalCoreB271.snapshotAutobiography().proposedGoal, acceptedExternalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b272GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b272IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                const b272Learning = this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal });
+                // Goal learning must only credit the action that B272 actually generated.
+                // Executive arbitration may select a different action; that outcome still
+                // teaches the broader organism, but is not evidence for this goal's action.
+                if (trace.selected.action === b272GoalState.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
+                        tick: state.tick, action: b272GoalState.action, reward01: gatedReward01,
+                        predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b272IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    });
+                }
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
+                // B273 owns a separate goal/plan; do not attach an arbitrated action to it
+                // unless it agrees with the action that its current decision proposed.
+                if (b273Current.action === trace.selected.action) {
+                    this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
+                        tick: state.tick, action: trace.selected.action, plan: b273Current.plan,
+                        reward01: gatedReward01, predictionError01: state.predictionError,
+                        independentGain01: b272IndependentGain,
+                        personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                    });
+                }
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
                 const b274CandidateId = b274Diag.activeCandidateId;
                 if (b274CandidateId) {
@@ -9771,26 +9791,32 @@ export class OrganismCore {
             if (outcome.worldTransition) {
                 const b338GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                    independentEvaluatorGain01: b338IndependentGain,
-                    acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
-                });
+                // A real world transition does not automatically prove the generated
+                // B272 action was executed: the policy/embodied gateway may redirect it.
+                if (trace.selected.action === b338GoalState.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
+                        tick: state.tick,
+                        action: b338GoalState.action,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b338IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    });
+                }
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    plan: b338Lifecycle.plan,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    independentGain01: b338IndependentGain,
-                    personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                });
+                if (b338Lifecycle.action === trace.selected.action) {
+                    this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
+                        tick: state.tick,
+                        action: trace.selected.action,
+                        plan: b338Lifecycle.plan,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        independentGain01: b338IndependentGain,
+                        personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                    });
+                }
                 this.persisted.system.endogenousGoalGenesisB272 = this.developmentalNeural.endogenousGoalGenesisB272.snapshot();
                 this.persisted.system.autonomousGoalLifecycleB273 = this.developmentalNeural.autonomousGoalLifecycleB273.snapshot();
             }
