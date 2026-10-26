@@ -631,6 +631,36 @@ export class MemoryFabric {
     return token;
   }
 
+  /** Commit a successful HMX signal transaction and release its protected receipts. */
+  commitSignalCompensations(tokens:object[]):boolean{
+    if(!Array.isArray(tokens)||tokens.length>256)throw new Error('memory-signals-compensation-token-list-invalid');
+    const unique=new Set<object>();
+    const transactions:Array<{token:object;memoryId:string;snapshotToken:object;sourceCommandIds:string[]}>= [];
+    for(const token of tokens){
+      if(!token||typeof token!=='object'||unique.has(token))throw new Error('memory-signals-compensation-token-invalid');
+      unique.add(token);
+      const state=this.signalCompensations.get(token);
+      if(!state)throw new Error('memory-signals-compensation-token-invalid');
+      for(const sourceCommandId of state.sourceCommandIds){
+        const prior=this.mutationReceipts.get(sourceCommandId);
+        if(!prior||prior.action!=='update-signals'||prior.memoryId!==state.memoryId)
+          throw new Error('memory-signals-compensation-source-command-mismatch');
+      }
+      transactions.push({token,memoryId:state.memoryId,snapshotToken:state.snapshotToken,sourceCommandIds:state.sourceCommandIds});
+    }
+    // Validate the whole batch before consuming any token, so the projector's catch
+    // can still compensate every mutation if this transaction cannot be committed.
+    for(const transaction of transactions){
+      if(!this.memoryOS.discardSignalCompensation(transaction.snapshotToken))
+        throw new Error('memory-signals-compensation-capture-missing');
+    }
+    for(const transaction of transactions){
+      for(const sourceCommandId of transaction.sourceCommandIds)this.protectedSignalReceiptIds.delete(sourceCommandId);
+      this.signalCompensations.delete(transaction.token);
+    }
+    return true;
+  }
+
   /**
    * Restore only the signal fields changed by an HMX apply that later failed.
    * This is compensation, not new evidence: authority and evidence lineage may
