@@ -1,3 +1,12 @@
+# WorkPass365 — live PostgreSQL migration apply/rerun/rollback test (2026-10-26)
+
+- [TEST] Added `app/scripts/migrate-postgres.integration.mjs`, which runs the actual `app/scripts/migrate.mjs` against a disposable PostgreSQL service. It creates a temporary migration file and verifies the first apply creates a table and a single `_migrations` ledger row.
+- [IDEMPOTENCY] The integration test reruns the migrator and asserts the successful migration is not applied twice: the table data and ledger remain unchanged.
+- [ROLLBACK] It then injects a separate temporary migration whose SQL creates a table and fails later in the same transaction. The migrator must fail, the partially created table must not exist, no ledger row may be written, and the previously successful migration must remain intact.
+- [CLEANUP] Temporary migration files, ledger rows and tables are removed in `finally`; no product schema or dependency/lockfile was changed.
+- [CI] Expanded the clean app build workflow with a PostgreSQL 17 service and a dedicated integration step using a step-scoped `DATABASE_URL`. The production UI build still runs without fake DB credentials; the live DB contract runs only in the dedicated step.
+- [VALIDATION] Workflow [#40293547992](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293547992) is running on exact head `73eb50b60300f7a69532e3d0fc0f4b4bab4e04fd`; do not mark WP365 complete until the PostgreSQL service and the new integration step pass.
+ 
 # WorkPass364 — keep typecheck dependencies installed in clean build CI (2026-10-26)
 
 - [DIAGNOSTIC] WorkPass362 run [#40292700286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292700286) failed with `TS2688: Cannot find type definition file for 'pg'`. Root cause: job-level `NODE_ENV=production` made `npm ci` omit devDependencies, including the already-locked `@types/pg`.
