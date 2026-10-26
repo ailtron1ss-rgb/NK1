@@ -909,8 +909,11 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/retention/propose') {
             const input = await body(req);
+            if (!['compress', 'archive', 'forget'].includes(input.action)) {
+                return json(res, 400, { ok: false, error: 'hexis-retention-invalid-action' });
+            }
             try {
-                const action = ['compress', 'archive', 'forget'].includes(String(input.action)) ? String(input.action) : 'compress';
+                const action = input.action;
                 const result = runtime.core.hexisProposeRetention(String(input.memoryId || ''), action, input.reason ? String(input.reason) : 'operator-review');
                 await runtime.core.flush();
                 return json(res, result.ok === false ? 404 : 200, { ok: result.ok, ...result });
