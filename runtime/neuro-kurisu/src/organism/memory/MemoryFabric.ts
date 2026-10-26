@@ -640,7 +640,8 @@ export class MemoryFabric {
       if(!token||typeof token!=='object'||unique.has(token))throw new Error('memory-signals-compensation-token-invalid');
       unique.add(token);
       const state=this.signalCompensations.get(token);
-      if(!state)throw new Error('memory-signals-compensation-token-invalid');
+      if(!state||!this.memoryOS.hasSignalCompensation(state.snapshotToken))
+        throw new Error('memory-signals-compensation-token-invalid');
       for(const sourceCommandId of state.sourceCommandIds){
         const prior=this.mutationReceipts.get(sourceCommandId);
         if(!prior||prior.action!=='update-signals'||prior.memoryId!==state.memoryId)
