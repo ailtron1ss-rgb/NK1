@@ -298,7 +298,7 @@ export class OrganismSystemFabric {
     if(decision==='correct'&&!correctedText) throw new Error('hexis-review-correction-required');
 
     const canonicalBefore=this.memory.fabric.canonicalSnapshot().items;
-    const canonicalById=new Map(canonicalBefore.map(memory=>[memory.id,memory]));
+    const canonicalById=new Map<string,import('../developmental/MemoryOS2.ts').MemoryItem2>(canonicalBefore.map(memory=>[memory.id,memory] as const));
     const resolveCurrent=(id:string)=>{
       let memory=canonicalById.get(id)??null;
       const visited=new Set<string>();
@@ -409,7 +409,7 @@ export class OrganismSystemFabric {
         disposition='materialized-candidate';
       }
 
-      const decided=this.hexisAdaptation.decideLearningReview(reviewKey,itemKey,decision,decision==='correct'?correctedText:correction,memory?.id);
+      const decided=this.hexisAdaptation.decideLearningReview(reviewKey,itemKey,decision,decision==='correct'?correctedText:undefined,memory?.id);
       if(!decided) throw new Error('hexis-learning-review-decision-not-committed');
       return {item:decided,memory,disposition};
     }catch(error){
