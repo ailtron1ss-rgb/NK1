@@ -643,6 +643,8 @@ export class MemoryFabric {
       if(!state||!this.memoryOS.hasSignalCompensation(state.snapshotToken))
         throw new Error('memory-signals-compensation-token-invalid');
       for(const sourceCommandId of state.sourceCommandIds){
+        if(!/^hexis-authority:[a-f0-9]{48}$/.test(sourceCommandId))
+          throw new Error('memory-signals-compensation-source-command-invalid');
         const prior=this.mutationReceipts.get(sourceCommandId);
         if(!prior||prior.action!=='update-signals'||prior.memoryId!==state.memoryId)
           throw new Error('memory-signals-compensation-source-command-mismatch');
