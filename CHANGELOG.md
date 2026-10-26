@@ -1,3 +1,13 @@
+## WorkPass420 — validate HMX from the existing bounded snapshot (2026-10-26)
+
+- **Adapter refactor commit:** `86ec7974749de51ef1a78375e0da45d4772c34c7`; **fabric wiring:** `619535a9cf23e3463ca4a8b1809a07811e512f00`; **regression:** `b801a6eb2b67a6270f4f2a4dc745a3bf32433100`.
+- Added `snapshotAndValidateHmxV17Document`: it captures untrusted input once, validates the detached plain-JSON value, and returns both the snapshot and issues. The public `validateHmxV17Document` still snapshots arbitrary inputs itself, while `stageHmx` now consumes the combined result without a second full deep copy/serialization pass.
+- Existing restore-time validation remains on the safe public API because its input is persisted state, while the initial staging route has the detached data required for staging. That keeps the trust boundary explicit and avoids broad changes to callers that do not need a document snapshot.
+- Regression checks that the combined result returns a detached value, valid data has no issues, and accessor-backed top-level input is rejected without executing getters. Existing stage snapshot isolation and malformed-metadata fail-closed cases remain in the focused suite.
+- **Validation:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass419 — reject malformed HMX metadata before coercion (2026-10-26)
 
 - **Adapter code commits:** `718478b8fb815909c4b2c31098921b2a0cac23bf`, `3bc3bee2f68a0c3f99920e1cc1d898cc9797afa3`, `c39fd277fc2e5c79495a92df1d215171502539c0`; **regression commits:** `f6f3ee592273430e787dc2d60f865d0abca0128b`, `693567b8100b83ab0d8ff1ffad8c31fcf3bca8cb`, `f6ff13bb81276752e1500181ea83f9f75f57a657`, `19afcc0376e55b26511713776a09438bcc4a7e79`.
