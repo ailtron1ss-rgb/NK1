@@ -4,7 +4,7 @@
 - **Defect:** snapshot restore used `parentIds.length` directly. A proxy `get` trap could execute and provide a falsified length, which silently discarded lineage.
 - **Fix:** bounded nested-array inspector validates prototype, length descriptor, dense indexed data descriptors and shape; parent validation only receives a regular array built from descriptors. Invalid rows are skipped before reserving IDs.
 - **Regression:** a proxy attempts to report length zero and throws on direct slot reads; restore must not trigger either getter and must preserve the descriptor-backed parent. Another proxy throws during descriptor enumeration; restore catches it, skips the malformed row and recovers from a later valid duplicate.
-- **Validation:** exact-head CI pending. Historical CI evidence and readiness scores remain unchanged.
+- **Exact-head CI PASS:** PR head `a1f0e250eac1e0f6990a0c25e62d7c33bb8b1bd1` passed Unified project integration [#40292091015](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091015), progress-ledger integrity [#40292091024](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091024), WorkPass110 [#40292091053](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091053), P26 [#40292091054](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091054), and nine additional focused workflows. The Unified run passed cognitive integration, approval E2E, service/public gateway, runtime/research bridge smoke and final release gates without publishing an archive. The code/test checkpoint `810f60f2227db466dd1f96b1e3edf39741951f9d` is included in that tested head; only tracker/changelog commits followed. Historical CI evidence and scores remain unchanged.
 
 ---
 
@@ -15,7 +15,7 @@
 - **Fix:** descriptor-only ingress; canonical IDs; strict string hashes, booleans, safe integer counters/ticks, finite timestamps and confidence in `[0,1]`; no truncation or Boolean/String coercion. Rejections occur before replay lookup and leave the journal and receipt projection index unchanged.
 - **Regression:** `runtime/neuro-kurisu/tests/cognitive-tool-receipt-input-boundary.mjs` checks accessors/getters, hostile `toString()`, padded/overlong IDs, invalid boolean/confidence/revision counter, hashes/text type and unchanged ledger state. Exact valid revision replay remains idempotent. The test is wired into `test:cognitive-integration-suite`.
 - **Base preservation:** newer bounded payload-clone and transactional snapshot restore in `084c80745446c38bf514c43000844c433110f0c4` are retained; this branch changes receipt ingress and test wiring only.
-- **Validation:** exact-head CI pending. Historical `ciSnapshot` records and all readiness scores unchanged.
+- **Exact-head CI PASS:** WorkPass356 PR head `1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee` passed Unified integration [#40291855092](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855092), progress-ledger integrity [#40291855384](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855384), WorkPass110 [#40291855118](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855118), P26 [#40291855059](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291855059), and nine additional focused workflows. The unified run passed all steps through final release gates without publishing an archive. Historical `ciSnapshot` rows and all readiness scores unchanged.
 
 ---
 
