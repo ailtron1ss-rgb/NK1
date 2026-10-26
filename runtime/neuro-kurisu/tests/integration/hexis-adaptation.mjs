@@ -140,6 +140,7 @@ assert.equal(exec.resolvedPlacement,'sandbox');
 import { normalizeNk1HmxExport } from '../../src/organism/integration/hexis/Nk1HmxExportAdapter.mjs';
 import { HexisCanonicalMemoryProjector } from '../../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
 import { MemorySubsystemRuntime } from '../../src/organism/core/MemorySubsystemRuntime.ts';
+import { OrganismSystemFabric } from '../../src/organism/core/OrganismSystemFabric.ts';
 
 const nativeNk1Export = {
   hmx_version: '1.7',
@@ -588,6 +589,73 @@ assert.equal(beliefRollbackHexis.snapshot().beliefs.length, 2,
   'retry must seed each belief exactly once after a compensated failure');
 assert.equal(beliefRollbackHexis.snapshot().temporal.length, 2,
   'retry must materialize each temporal assertion exactly once');
+
+
+// Real composition-root wiring: independent Hexis evidence changes the confidence
+// used by canonical NK1 recall; duplicate sources cannot reapply the same revision.
+const beliefProjectionSystems = new OrganismSystemFabric();
+const beliefProjectionMemory = beliefProjectionSystems.memory.fabric.encode({
+  content: 'Belief projection integration fixture.',
+  tags: ['belief-projection-test'],
+  context: {},
+  kind: 'semantic',
+  salience: 0.6,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.1,
+  goalRelevance: 0.1,
+  socialRelevance: 0.1,
+  predictionError: 0,
+  confidence: 0.5,
+  epistemicStatus: 'belief',
+  source: 'integration-test',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  provenanceClass: 'external',
+  sourceAuthority01: 0.5,
+  independenceKey: 'belief-projection-fixture',
+});
+const supportAudit = beliefProjectionSystems.hexisAdaptation.reviseBelief({
+  memoryId: beliefProjectionMemory.id,
+  confidence01: beliefProjectionMemory.confidence,
+  trust01: 0.4,
+  evidence: { ref: 'independent-evidence-a', trust01: 0.9 },
+  stance: 'supports',
+  at: 1700000000000,
+});
+assert.equal(supportAudit.applied, true);
+let projectedBeliefMemory = beliefProjectionSystems.memory.fabric.canonicalSnapshot().items.find(item => item.id === beliefProjectionMemory.id);
+assert.equal(projectedBeliefMemory?.confidence, supportAudit.posteriorConfidence01,
+  'the shared cognitive composition must project the posterior confidence into canonical memory');
+assert(projectedBeliefMemory?.revisionHistory.at(-1)?.reason.startsWith('hexis-belief-revision:supports:'));
+const canonicalConfidenceAfterSupport = projectedBeliefMemory.confidence;
+const duplicateSupportAudit = beliefProjectionSystems.hexisAdaptation.reviseBelief({
+  memoryId: beliefProjectionMemory.id,
+  confidence01: canonicalConfidenceAfterSupport,
+  trust01: supportAudit.posteriorTrust01,
+  evidence: { ref: 'independent-evidence-a', trust01: 0.9 },
+  stance: 'supports',
+});
+assert.equal(duplicateSupportAudit.applied, false);
+assert.equal(duplicateSupportAudit.reason, 'duplicate_source');
+projectedBeliefMemory = beliefProjectionSystems.memory.fabric.canonicalSnapshot().items.find(item => item.id === beliefProjectionMemory.id);
+assert.equal(projectedBeliefMemory?.confidence, canonicalConfidenceAfterSupport,
+  'duplicate source replay must not update canonical recall confidence a second time');
+const contradictionAudit = beliefProjectionSystems.hexisAdaptation.reviseBelief({
+  memoryId: beliefProjectionMemory.id,
+  confidence01: canonicalConfidenceAfterSupport,
+  trust01: supportAudit.posteriorTrust01,
+  evidence: { ref: 'independent-counter-evidence', trust01: 0.8 },
+  stance: 'contradicts',
+});
+assert.equal(contradictionAudit.applied, true);
+projectedBeliefMemory = beliefProjectionSystems.memory.fabric.canonicalSnapshot().items.find(item => item.id === beliefProjectionMemory.id);
+assert.equal(projectedBeliefMemory?.confidence, contradictionAudit.posteriorConfidence01);
+assert(projectedBeliefMemory.confidence < canonicalConfidenceAfterSupport,
+  'independent contradictory evidence must lower canonical confidence used by retrieval');
+assert.equal(beliefProjectionSystems.hexisAdaptation.snapshot().beliefAudit.length, 3,
+  'support, duplicate and contradiction events must each remain auditable');
 
 
 console.log('HEXIS_ADAPTATION_PASS');
