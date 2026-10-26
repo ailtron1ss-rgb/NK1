@@ -1,10 +1,17 @@
+# WorkPass357 — cross-process durable memory recall regression (2026-10-26)
+
+- [INTEGRATION] Added a file-backed MemoryOS lifecycle regression using two independent Node processes: writer normalizes and persists the canonical memory snapshot through `FileStateStore`; reader reopens the file, restores `MemoryOS2`, rebuilds indexes, retrieves the target causal/autobiographical memory, verifies the causal link, and runs the read-only memory doctor.
+- [ASSERTION] The test checks exact memory identity and evidence-bearing content after process separation, rather than only comparing two objects in one process.
+- [CI] Focused workflow [#40290445048](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290445048) passed on head SHA `aba212a52e6f058ff834fa0e036e37c1b10e7497`: native P23 10/10, evaluator config 16/16, WorkPass356 restore boundary PASS, WorkPass357 separate-process memory recall PASS, runtime `TYPECHECK=PASS`.
+- [LIMIT] This proves a bounded memory state can survive a file-backed process boundary in the regression fixture. It does not yet prove that the full running organism restores every memory owner consistently, that recall beats an independent baseline, or that production deployment is ready.
+
 # WorkPass356 — safe restoration of canonical long-term memory (2026-10-26)
 
 - [RESTORE GATE] `MemoryOS2.restore` now rejects non-plain top-level state and unsupported/future schema versions before touching the live memory graph. Versionless/older states remain eligible for the existing migration path.
 - [IDENTITY] Malformed memory rows are discarded before index reconstruction. Any ID collision causes all rows for that ID to be dropped, avoiding a split state where the item array keeps duplicates while the ID index silently overwrites one.
 - [INTEGRITY] Restore now recomputes content hashes instead of trusting persisted derived hashes; normalizes core score fields and epistemic status; bounds semantic vectors and links; rejects vectors containing non-finite values; and filters malformed entity/link data.
 - [TEST] Added `tests/workpass356-memoryos-restore-boundary.mjs` covering fail-before-mutation on future schema/array state, legacy versionless migration, duplicate-ID removal, malformed-row filtering, derived-hash repair and scalar/vector/link sanitation.
-- [VALIDATION] Focused workflow [#40290234073](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290234073) passed on code/test SHA `40991fca3c441ed874ce8c58791d29a9c92ebb21`: native provider 10/10, evaluator-config 16/16, `WORKPASS356_MEMORYOS_RESTORE_BOUNDARY=PASS`, and runtime `TYPECHECK=PASS`. The earlier run on `8ed2564` exposed a misplaced link-filter edit; the normalizer was corrected and this fresh run passed. No release-readiness or retrieval-uplift claim.
+- [VALIDATION] Focused workflow [#40290445048](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290445048) passed on head `aba212a52e6f058ff834fa0e036e37c1b10e7497`: native provider 10/10, evaluator-config 16/16, `WORKPASS356_MEMORYOS_RESTORE_BOUNDARY=PASS`, separate-process `WORKPASS357_FILE_BACKED_MEMORY_RESTART=PASS`, and runtime `TYPECHECK=PASS`. The earlier run on `8ed2564` exposed a misplaced link-filter edit; that normalizer correction is covered by this green run.
 - [LIMIT] This protects the canonical MemoryOS restore boundary; it does not yet prove end-to-end durable recall across a real process restart or independent retrieval uplift.
 
 # WorkPass355 — centralize learner environment filtering (2026-10-26)
