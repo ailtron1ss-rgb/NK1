@@ -174,6 +174,36 @@ assert.equal(restoreBounds.getById(boundedRestoreId)?.payload.recovered,'id');
 assert.equal(restoreBounds.getById('cef:test:restore:bounded-parent')?.payload.recovered,'parent');
 assert.equal(restoreBounds.getById('cef:test:restore:bounded-source')?.payload.recovered,'source');
 
+// Restore must skip malformed clock/evidence types instead of flooring/coercing them.
+// Invalid rows must not reserve their IDs, so a following valid copy can be recovered.
+const strictRestore=new CognitiveEventFabric(128);
+const restorePairs=[
+  {id:'cef:test:restore:fractional-tick',bad:{tick:7.5},good:{tick:7}},
+  {id:'cef:test:restore:unsafe-tick',bad:{tick:Number.MAX_SAFE_INTEGER+1},good:{tick:7}},
+  {id:'cef:test:restore:string-at',bad:{at:'700'},good:{at:700}},
+  {id:'cef:test:restore:string-confidence',bad:{confidence01:'0.9'},good:{confidence01:0.9}},
+  {id:'cef:test:restore:nonboolean-external',bad:{external:'false'},good:{external:false}},
+  {id:'cef:test:restore:oversized-source',bad:{source:'s'.repeat(121)},good:{source:'source-valid'}},
+];
+const strictRestoreRows=[];
+for(const pair of restorePairs){
+  strictRestoreRows.push(makeEvent({id:pair.id,...pair.bad}));
+  strictRestoreRows.push(makeEvent({id:pair.id,...pair.good}));
+}
+strictRestore.restore({
+  version:1,capacity:128,total:strictRestoreRows.length,buffered:strictRestoreRows.length,
+  linkedParentEvents:0,danglingParentLinks:0,lineageIntegrity01:1,cycleCoverage01:0,
+  causalDensity01:0,recentTicks:0,recent:strictRestoreRows,
+});
+for(const pair of restorePairs){
+  assert.ok(strictRestore.getById(pair.id),`valid row must recover after malformed row: ${pair.id}`);
+}
+assert.equal(strictRestore.getById('cef:test:restore:fractional-tick')?.tick,7);
+assert.equal(strictRestore.getById('cef:test:restore:string-at')?.at,700);
+assert.equal(strictRestore.getById('cef:test:restore:string-confidence')?.confidence01,0.9);
+assert.equal(strictRestore.getById('cef:test:restore:nonboolean-external')?.external,false);
+assert.equal(strictRestore.getById('cef:test:restore:oversized-source')?.source,'source-valid');
+
 
  // Event identity must cover the normalized causal envelope and reject invalid clocks.
  assert.equal(new CognitiveEventFabric(Number.NaN).snapshot().capacity,512);
