@@ -1,3 +1,7 @@
+## [NK1][Hexis] WorkPass397 — keep agency guardrail regression within initialized fixture scope (2026-10-26)
+
+- [TEST FIX] Moved the direct control-character rejection assertion after the goal-pipeline fixture is initialized, removing a temporal-dead-zone ReferenceError in the test itself.
+
 ## [NK1][Hexis] WorkPass396 — exercise an actual newline in the input guard regression (2026-10-26)
 
 - [TEST] Ensure the invalid-title fixture contains a real newline at runtime, so the control-character regression tests the intended boundary rather than a literal backslash sequence.
