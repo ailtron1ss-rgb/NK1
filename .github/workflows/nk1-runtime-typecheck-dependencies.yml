@@ -133,7 +133,7 @@ jobs:
       - name: Build and boot the containerized cognitive runtime
         if: ${{ always() && steps.install.outcome == 'success' }}
         run: |
-          docker compose up --build -d --wait --wait-timeout 180
+          docker compose up --build -d --wait --wait-timeout 240
           node --input-type=module <<'NODE'
           const response = await fetch('http://127.0.0.1:8080/healthz');
           const gatewayHealth = await response.text();

@@ -10,6 +10,7 @@ services:
       HOST: "0.0.0.0"
       PORT: "3310"
       STATE_DIR: "/var/lib/neuro-kurisu"
+      NEURO_API_TOKEN: ${NEURO_API_TOKEN:-nk1-local-compose-internal-token-change-me}
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-15000}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-}
@@ -74,6 +75,8 @@ services:
     image: caddy:2-alpine
     init: true
     restart: unless-stopped
+    environment:
+      NEURO_API_TOKEN: ${NEURO_API_TOKEN:-nk1-local-compose-internal-token-change-me}
     ports:
       - "${NK1_BIND_ADDR:-127.0.0.1}:8080:80"
     volumes:

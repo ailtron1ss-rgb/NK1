@@ -1,6 +1,6 @@
 # Neuro Kurisu — quick start
 
-**Run the unified React UI + canonical cognitive runtime:** see [the Docker Compose quickstart](docs/QUICKSTART_NEURO_KURISU_RU.md). With Docker Compose v2, copy `.env.example` to `.env`, run `docker compose up --build -d --wait --wait-timeout 240`, and open `http://127.0.0.1:8080`. Caddy routes same-origin organism API calls to the canonical runtime; organism and app-database state use persistent volumes. Optional external model credentials stay in the ignored local `.env` file.
+**Run the unified React UI + canonical cognitive runtime:** see [the Docker Compose quickstart](docs/QUICKSTART_NEURO_KURISU_RU.md). With Docker Compose v2, copy `.env.example` to `.env`, run `docker compose up --build -d --wait --wait-timeout 240`, and open `http://127.0.0.1:8080`. Caddy routes same-origin organism API calls to the canonical runtime with an internal `NEURO_API_TOKEN`; organism and app-database state use persistent volumes. Keep the default binding on `127.0.0.1`; replace the example token and add a real authenticated reverse proxy before remote exposure. Optional external model credentials stay in the ignored local `.env` file.
 
 The Compose stack builds the modern `app/` UI with Nitro's standalone Node preset, keeps the canonical organism server private on the Compose network, and exposes only the local gateway port by default.
 
