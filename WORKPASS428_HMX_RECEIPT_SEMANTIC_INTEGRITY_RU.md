@@ -21,6 +21,10 @@
 
 ## Регрессии
 
+- Непустые скалярные будущие секции (`string`, ненулевое конечное число, `true`) учитываются как одна отложенная задача, а не теряются в `deferredSections`.
+- Warning-текст проверяется на управляющие символы.
+- Failure-injection: отказ temporal ledger после canonical write и semantic-node projection должен откатить memory, graph и temporal ledger к baseline; повторная попытка должна создать ровно по одному объекту без дублей.
+
 - Повтор одного `semanticEdgeId` в квитанции отклоняется даже при согласованных `projectedRelationships` и staged relationship count.
 - Ограничены длина receipt ID (512 символов) и warning-текстов (2048 символов); control characters и неканонические пробелы в stage identity отклоняются.
 
