@@ -8,6 +8,7 @@ on:
       - audit/b276-execution-attribution-2026-10-26
       - hexis-h1-memory-evidence-lineage-2026-10-26
       - workpass375-hexis-canonical-ingress-latest
+      - workpass376-hexis-source-to-canonical-memory
     paths:
       - ".github/workflows/repository-wiring-audit.yml"
       - ".github/workflows/**"
@@ -16,6 +17,8 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/memory/HexisEvidenceAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisCanonicalEvidenceBridge.ts"
+      - "runtime/neuro-kurisu/tests/integration/hexis-canonical-evidence-bridge.mjs"
       - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts"
       - "runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs"
       - "runtime/neuro-kurisu/tests/integration/hexis-memory-evidence-lineage.mjs"
@@ -60,6 +63,7 @@ on:
       - audit/repository-wiring-contracts-2026-10-25
       - audit/b276-execution-attribution-2026-10-26
       - hexis-h1-memory-evidence-lineage-2026-10-26
+      - workpass375-hexis-canonical-ingress-latest
     paths:
       - ".github/workflows/**"
       - "package.json"
@@ -67,6 +71,8 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/memory/HexisEvidenceAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisCanonicalEvidenceBridge.ts"
+      - "runtime/neuro-kurisu/tests/integration/hexis-canonical-evidence-bridge.mjs"
       - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts"
       - "runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs"
       - "runtime/neuro-kurisu/tests/integration/hexis-memory-evidence-lineage.mjs"
