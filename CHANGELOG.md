@@ -1,3 +1,8 @@
+### WorkPass328 follow-up — finish Node 24 storage compatibility and clarify quarantined event counters (2026-10-26)
+
+- Converted `AtomicFileSkillStorePersistence` away from a TypeScript constructor parameter property so Node 24 strip-only imports can execute the durable candidate/approval store in the P23 and P26 workflows.
+- Corrected a causal-stream regression expectation: imported external records are deliberately retained as quarantined records and deduplicated by normalized trace ID, but they do not increment `summary().outcomes`, which counts trusted grounded runtime outcomes. The test now asserts one retained record, zero trusted outcomes, and no count change after a conflicting duplicate.
+
 ### WorkPass328 follow-up — deterministic replay and Node 24 compatibility (2026-10-26)
 
 - Removed Node 24 strip-only TypeScript-incompatible parameter properties from `P23CompoundRepairRevisionCoordinator`.
