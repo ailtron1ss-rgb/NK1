@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { MemoryOS2 } from '../../src/organism/developmental/MemoryOS2.ts';
+import { OrganismCore } from '../../src/organism/core/OrganismCore.ts';
 import { HexisAdaptationFabric } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 import { P65EpistemicLedger } from '../../src/organism/memory/P65EpistemicLedger.ts';
 import { SourceMonitor } from '../../src/organism/memory/SourceMonitor.ts';
@@ -171,6 +172,9 @@ assert.ok(body.includes('p65EpistemicLedger.record'), 'review events must enter 
 assert.ok(body.includes('sourceMonitor.record'), 'review events must enter the SourceMonitor lineage graph');
 assert.ok(body.includes("evidenceClass: 'unverified' as const"), 'review metadata must not masquerade as external corroboration');
 assert.ok(body.includes('priorReviewClaim') && body.includes('priorReviewTrace'), 'review provenance writes must be replay-safe across partial restore');
+assert.ok(body.includes("if (item.status !== 'pending')"), 'finalized review submissions must have an explicit idempotent replay path');
+assert.ok(body.includes("review-decision-already-finalized"), 'conflicting repeated decisions must fail closed');
+assert.ok(body.includes("review-finalization-memory-incomplete"), 'completed corrections must be verified against canonical memory before replay success');
 
 // The same review event is an observable system event and an explicitly unverified epistemic claim.
 const p65 = new P65EpistemicLedger();
@@ -217,6 +221,70 @@ const restoredSourceMonitor = new SourceMonitor();
 restoredSourceMonitor.restore(sourceMonitor.snapshot());
 assert.equal(restoredP65.sourceLineage(p65ClaimId)[0]?.provenance?.sourceId, sourceId);
 assert.equal(restoredSourceMonitor.lineage(sourceId)[0]?.provenance?.evidenceClass, 'unverified');
+
+// Exercise the actual OrganismCore review coordinator with real MemoryOS2, MemoryFabric, P65 and SourceMonitor owners.
+const coordinatorOS = new MemoryOS2({ signalFusionProfile: 'balanced' });
+const coordinatorEvents = new EventLog(128);
+const coordinatorFabric = makeMemoryFabric(coordinatorOS, coordinatorEvents);
+const coordinatorMemory = encode(coordinatorOS, 'A reviewable canonical semantic fact.', 'semantic', 'core-coordinator-fixture');
+const coordinatorHexis = new HexisAdaptationFabric();
+const coordinatorP65 = new P65EpistemicLedger();
+const coordinatorSourceMonitor = new SourceMonitor();
+const core = Object.create(OrganismCore.prototype);
+core.hexisAdaptation = coordinatorHexis;
+core.memorySubsystem = {
+  memoryOS: coordinatorOS,
+  fabric: coordinatorFabric,
+  p65EpistemicLedger: coordinatorP65,
+};
+core.cognitiveRuntime = { sourceMonitor: coordinatorSourceMonitor };
+core.persisted = {
+  state: { tick: 42 },
+  system: {},
+  facets: { advanced: {}, cognition: {}, memory: {} },
+};
+const coreReview = OrganismCore.prototype.hexisCreateLearningReview.call(core, {
+  summary: 'Exercise the actual Core review coordinator.',
+  memoryIds: [coordinatorMemory.id],
+});
+assert.equal(coreReview.items.length, 1);
+const coreReviewItem = coreReview.items[0];
+const coreCorrection = 'The   corrected fact from the actual Core coordinator.';
+const coreDecision = OrganismCore.prototype.hexisDecideLearningReview.call(
+  core, coreReview.id, coreReviewItem.id, 'correct', coreCorrection,
+);
+assert.equal(coreDecision.ok, true, 'actual Core review correction should succeed');
+assert.equal(coreDecision.memoryMutation.kind, 'correct');
+assert.equal(coreDecision.memoryMutation.recovered, false);
+const canonicalCorrected = coordinatorOS.snapshot({ clone: false }).items.find(row =>
+  row.revisionGroupId === (coordinatorMemory.revisionGroupId ?? coordinatorMemory.id) &&
+  row.validUntilAt == null
+);
+assert.ok(canonicalCorrected);
+assert.equal(canonicalCorrected.content, 'The corrected fact from the actual Core coordinator.');
+assert.equal(canonicalCorrected.source, `hexis-learning-review:${coreReview.id}:${coreReviewItem.id}`);
+const actualReviewSourceId = `hexis-review:${coreReview.id}:${coreReviewItem.id}`;
+assert.ok(coordinatorP65.snapshot().claimsData.some(row => row.provenance?.sourceId === actualReviewSourceId),
+  'the actual Core decision must write P65 provenance');
+assert.ok(coordinatorSourceMonitor.snapshot().traces.some(row => row.id === actualReviewSourceId),
+  'the actual Core decision must write SourceMonitor provenance');
+assert.equal(coordinatorOS.hasEvidenceLineage(
+  canonicalCorrected.id,
+  `hexis-review:${sha256Stable({ reviewId: coreReview.id, itemId: coreReviewItem.id }, 'legacy')}`,
+), true);
+const replayedCoreDecision = OrganismCore.prototype.hexisDecideLearningReview.call(
+  core, coreReview.id, coreReviewItem.id, 'correct', coreCorrection,
+);
+assert.equal(replayedCoreDecision.ok, true, 'retry after completed review must return idempotent success');
+assert.equal(replayedCoreDecision.replayed, true);
+assert.equal(replayedCoreDecision.result.status, 'corrected');
+assert.equal(coordinatorOS.temporalChain(coordinatorMemory.id).length, 2,
+  'a repeated completed review must not create a second correction revision');
+const conflictingCoreDecision = OrganismCore.prototype.hexisDecideLearningReview.call(
+  core, coreReview.id, coreReviewItem.id, 'correct', 'A different correction payload.',
+);
+assert.equal(conflictingCoreDecision.ok, false, 'a conflicting completed review retry must fail closed');
+assert.ok(['review-evidence-conflict', 'review-finalization-memory-incomplete'].includes(conflictingCoreDecision.error));
 
 // The live operator surface must display domain rejection as an error, even when HTTP status is 200.
 const uiSource = await readFile(new URL('../../../../app/src/components/HexisControlConsole.tsx', import.meta.url), 'utf8');
