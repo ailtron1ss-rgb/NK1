@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
-import { FeedbackDeliveryGuard, type FeedbackDeliveryReceipt } from '../src/organism/core/FeedbackDeliveryGuard.ts';
+import { FeedbackDeliveryGuard } from '../src/organism/core/FeedbackDeliveryGuard.ts';
 
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const b272 = await readFile(new URL('../src/organism/cognition/B272EndogenousGoalGenesis.ts', import.meta.url), 'utf8');
@@ -132,10 +132,10 @@ assert.ok(core.includes('await this.feedbackDeliveryReceiptStore?.load()'),
 
 const receiptDirectory = await mkdtemp(join(tmpdir(), 'nk1-feedback-delivery-'));
 try {
-  const receiptStore = new FileStateStore<FeedbackDeliveryReceipt>(join(receiptDirectory, 'receipt.json'), {
+  const receiptStore = new FileStateStore(join(receiptDirectory, 'receipt.json'), {
     backupEverySaves: 1, directoryFsyncEverySaves: 1, strictDirectoryFsync: true,
   });
-  const pendingReceipt: FeedbackDeliveryReceipt = {
+  const pendingReceipt = {
     version: 1, tick: 27, decisionId: 'decision-27', action: 'verify', status: 'in-progress',
   };
   await receiptStore.save(pendingReceipt);
@@ -148,7 +148,7 @@ try {
     'a crash-recovered in-progress receipt must block replay of its tick',
   );
 
-  const completedReceipt: FeedbackDeliveryReceipt = { ...pendingReceipt, status: 'completed' };
+  const completedReceipt = { ...pendingReceipt, status: 'completed' };
   await receiptStore.save(completedReceipt);
   const recoveredCompleted = await receiptStore.load();
   assert.deepEqual(recoveredCompleted, completedReceipt, 'completed feedback receipt must survive file-store restart');
