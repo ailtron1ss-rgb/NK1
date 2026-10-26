@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "snapshotDate": "2026-10-26",
+  "project": "Neuro Kurisu / NK1",
+  "sourceOfTruth": "https://github.com/ailtron1ss-rgb/NK1",
+  "sourceBranchAtSnapshot": "fix/cognitive-interrupt-severity-normalization-2026-10-25",
+  "sourceHeadAtSnapshot": "f23c9aa4f5030987c2741808e930e7e100da077b",
+  "methodology": {
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Percentages describe each lane against the repository's stated goals; they must be revised when new source/CI evidence arrives.",
+    "dimensions": {
+      "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
+      "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
+      "fieldEvidencePercent": "Strength of independently verified results on realistic external tasks. Synthetic fixtures and internal unit tests do not count as field evidence.",
+      "releaseReadinessPercent": "Estimated completion of clean-machine install, runtime services, UI/voice, security, soak, licensing and reproducible archive requirements."
+    },
+    "weightsTotalPercent": 100,
+    "scoreScale": "0 = absent/unproven; 100 = evidenced against the lane's full stated release requirements."
+  },
+  "lanes": [
+    {
+      "id": "cognitive-core",
+      "name": "Единый когнитивный цикл и runtime",
+      "weightPercent": 15,
+      "implementationPercent": 72,
+      "automatedValidationPercent": 76,
+      "fieldEvidencePercent": 20,
+      "releaseReadinessPercent": 42,
+      "blockers": [
+        "Проверить весь end-to-end цикл на точном HEAD после недавних интеграций",
+        "Нет независимого доказательства длительной автономной работы"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts",
+        "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700338"
+      ]
+    },
+    {
+      "id": "world-model-routing",
+      "name": "Модель мира, прогнозирование и когнитивная маршрутизация",
+      "weightPercent": 10,
+      "implementationPercent": 64,
+      "automatedValidationPercent": 67,
+      "fieldEvidencePercent": 15,
+      "releaseReadinessPercent": 32,
+      "blockers": [
+        "Нужны причинные multi-step тесты с held-out сценариями",
+        "Реальная среда и сенсоры покрыты частично"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/core/CognitiveRoutingPolicy.ts",
+        "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
+      ]
+    },
+    {
+      "id": "memory-continuity",
+      "name": "Память, консолидация, восстановление и временная непрерывность",
+      "weightPercent": 10,
+      "implementationPercent": 68,
+      "automatedValidationPercent": 75,
+      "fieldEvidencePercent": 20,
+      "releaseReadinessPercent": 38,
+      "blockers": [
+        "Проверить длительное восстановление после перезапуска на целевом устройстве",
+        "Нужна внешняя оценка точности и забывания на новых разговорах"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/memory",
+        "runtime/neuro-kurisu/src/organism/persistence",
+        "runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs"
+      ]
+    },
+    {
+      "id": "motivation-goals",
+      "name": "Внутренняя мотивация, домашостаз и генерация целей",
+      "weightPercent": 8,
+      "implementationPercent": 68,
+      "automatedValidationPercent": 73,
+      "fieldEvidencePercent": 15,
+      "releaseReadinessPercent": 35,
+      "blockers": [
+        "Синтетические контракты не доказывают устойчивую полезную инициативу",
+        "Нужны длительные тесты конфликта целей и энергетических ограничений"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts",
+        "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700184"
+      ]
+    },
+    {
+      "id": "action-grounding",
+      "name": "Планирование, ActionGateway, идемпотентность и проверка последствий",
+      "weightPercent": 10,
+      "implementationPercent": 72,
+      "automatedValidationPercent": 85,
+      "fieldEvidencePercent": 20,
+      "releaseReadinessPercent": 42,
+      "blockers": [
+        "Нужен подтверждённый живой provider/device postcondition E2E",
+        "Проверить реальное поведение при таймаутах и падении внешнего сервиса"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts",
+        "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts",
+        "runtime/neuro-kurisu/tests/workpass294-correlated-postcondition.mjs"
+      ]
+    },
+    {
+      "id": "continual-learning",
+      "name": "Обучение, causal replay, перенос и устойчивость к забыванию",
+      "weightPercent": 10,
+      "implementationPercent": 72,
+      "automatedValidationPercent": 84,
+      "fieldEvidencePercent": 18,
+      "releaseReadinessPercent": 38,
+      "blockers": [
+        "Replay uplift измерен на синтетическом proxy, не на реальных пользовательских задачах",
+        "Семейства tool-use и transfer в существующем proxy-сравнении показывали gain 0"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/learning/P26TrueLearningEngine.ts",
+        "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts",
+        "docs/WORKPASS329_LEARNING_EVIDENCE_RU.md",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700299"
+      ]
+    },
+    {
+      "id": "skill-evolution",
+      "name": "Hermes-style рефлексия, кандидаты навыков и защищённое продвижение",
+      "weightPercent": 10,
+      "implementationPercent": 78,
+      "automatedValidationPercent": 88,
+      "fieldEvidencePercent": 20,
+      "releaseReadinessPercent": 42,
+      "blockers": [
+        "Прирост ещё не доказан на независимом реальном held-out benchmark",
+        "Проверить семейную сегментацию отчётов на точном HEAD"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts",
+        "runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts",
+        "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs",
+        "runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs"
+      ]
+    },
+    {
+      "id": "self-user-ethical-models",
+      "name": "SelfModel/UserModel, ToM и EthicalGate",
+      "weightPercent": 5,
+      "implementationPercent": 42,
+      "automatedValidationPercent": 41,
+      "fieldEvidencePercent": 8,
+      "releaseReadinessPercent": 20,
+      "blockers": [
+        "Не доказана связность моделей пользователя/себя во всех режимах ответа",
+        "Нужны независимые стресс-тесты моральных и приватностных границ"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/cognition",
+        "runtime/neuro-kurisu/src/organism/verification"
+      ]
+    },
+    {
+      "id": "embodiment",
+      "name": "Live2D/avatar, выражение эмоций и синхронизация тела",
+      "weightPercent": 5,
+      "implementationPercent": 62,
+      "automatedValidationPercent": 54,
+      "fieldEvidencePercent": 8,
+      "releaseReadinessPercent": 18,
+      "blockers": [
+        "Нужна проверка на реальном браузере/мобильном устройстве",
+        "Проверить непрерывную синхронизацию внутреннего состояния, выражения и речи"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/public/live2d/viewer.html",
+        "runtime/neuro-kurisu/tests/live2d-integrity.mjs",
+        "app/scripts/embodiment-timeline.test.mjs"
+      ]
+    },
+    {
+      "id": "voice-audio",
+      "name": "Голос, TTS/STT и мобильное аудио",
+      "weightPercent": 4,
+      "implementationPercent": 42,
+      "automatedValidationPercent": 28,
+      "fieldEvidencePercent": 0,
+      "releaseReadinessPercent": 8,
+      "blockers": [
+        "Нет подтверждённого полного voice/audio E2E на целевом устройстве",
+        "TTS provider/model credentials и Android/Termux аудио требуют отдельной проверки"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/body",
+        "runtime/neuro-kurisu/docs/02_INTEGRATIONS"
+      ]
+    },
+    {
+      "id": "app-install-ci",
+      "name": "App, зависимости, единая установка и CI",
+      "weightPercent": 8,
+      "implementationPercent": 70,
+      "automatedValidationPercent": 86,
+      "fieldEvidencePercent": 35,
+      "releaseReadinessPercent": 48,
+      "blockers": [
+        "Перепроверить установку на чистой машине после текущих изменений",
+        "CI для текущего HEAD ещё выполняется; старые успешные runs не заменяют проверку нового HEAD"
+      ],
+      "evidence": [
+        "package.json",
+        "app/package-lock.json",
+        "runtime/neuro-kurisu/package-lock.json",
+        "tools/super-doctor.mjs",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700338"
+      ]
+    },
+    {
+      "id": "external-evidence-release",
+      "name": "Внешняя проверка задач, лицензии и релизный ZIP",
+      "weightPercent": 5,
+      "implementationPercent": 38,
+      "automatedValidationPercent": 38,
+      "fieldEvidencePercent": 5,
+      "releaseReadinessPercent": 10,
+      "blockers": [
+        "Нужны независимые tool-use/transfer/retrieval benchmark с парными seed-ами",
+        "Полный лицензионный/provenance review ещё не закрыт",
+        "Основной релизный архив не пересобран из нового HEAD; опубликованный ZIP остался WorkPass70 Hotfix1 от 19 октября"
+      ],
+      "evidence": [
+        "docs/WORKPASS329_LEARNING_EVIDENCE_RU.md",
+        "https://github.com/ailtron1ss-rgb/NK1/releases"
+      ]
+    }
+  ],
+  "ciSnapshot": {
+    "observedAt": "2026-10-26",
+    "currentBaseHead": "f23c9aa4f5030987c2741808e930e7e100da077b",
+    "statuses": [
+      {
+        "name": "WorkPass292 verified experience lanes",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700184",
+        "scopeNote": "Success on this exact base SHA; narrow workflow only."
+      },
+      {
+        "name": "WorkPass294 correlated external postconditions",
+        "status": "in_progress",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700164",
+        "scopeNote": "Not yet a pass or failure at snapshot time."
+      },
+      {
+        "name": "P26 Learning Validation",
+        "status": "queued",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700299",
+        "scopeNote": "Must rerun on the new family-evaluation head."
+      },
+      {
+        "name": "Unified project integration suite",
+        "status": "queued",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700338",
+        "scopeNote": "Must validate clean install/build on the new exact head."
+      }
+    ]
+  }
+}
