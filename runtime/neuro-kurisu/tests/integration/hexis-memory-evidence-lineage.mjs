@@ -130,6 +130,7 @@ const longLineageInput = (index, overrides = {}) => ({
   contradictionLinks: [],
 });
 const longTrailMemory = longTrailOS.encode(longLineageInput(0, { confidence: .45 }), { clone: false });
+assert.equal(longTrailMemory.evidenceLineageFilter, undefined, 'ordinary memories do not pay the Bloom-filter storage cost before lineage rollover');
 for (let index = 1; index <= 140; index++) longTrailOS.encode(longLineageInput(index), { clone: false });
 const longTrailBeforeReplay = longTrailOS.snapshot().items.find(row => row.id === longTrailMemory.id);
 assert.equal(longTrailBeforeReplay.evidenceLineageKeys.length, 32, 'exact lineage ring remains bounded');
@@ -145,6 +146,19 @@ const restoredLongTrailConfidence = longTrailRestored.snapshot().items.find(row 
 longTrailRestored.encode(longLineageInput(0, { confidence: .99, sourceAuthority01: 1 }), { clone: false });
 assert.equal(longTrailRestored.snapshot().items.find(row => row.id === longTrailMemory.id).confidence, restoredLongTrailConfidence, 'restored oldest-lineage replay cannot ratchet confidence');
 assert.equal(longTrailRestored.indexDiagnostics().pass, true, 'long-horizon provenance filter preserves canonical memory indexes');
+
+// A malformed persisted filter must fail closed instead of forgetting lineage and re-voting old evidence.
+const corruptFilterSnapshot = structuredClone(longTrailOS.snapshot());
+const corruptFilterRow = corruptFilterSnapshot.items.find(row => row.id === longTrailMemory.id);
+assert.ok(corruptFilterRow?.evidenceLineageFilter?.segments?.length, 'fixture contains a persisted Bloom segment');
+corruptFilterRow.evidenceLineageFilter.segments[0].bits = 'tampered-bitset';
+const failClosedMemory = new MemoryOS2();
+failClosedMemory.restore(corruptFilterSnapshot);
+assert.equal(failClosedMemory.hasEvidenceLineage(longTrailMemory.id, 'brand-new-unseen-lineage'), true, 'invalid persisted bitsets deny unverified lineage membership conservatively');
+const failClosedConfidence = failClosedMemory.snapshot().items.find(row => row.id === longTrailMemory.id).confidence;
+failClosedMemory.encode(longLineageInput(200, { confidence: .99, sourceAuthority01: 1 }), { clone: false });
+assert.equal(failClosedMemory.snapshot().items.find(row => row.id === longTrailMemory.id).confidence, failClosedConfidence, 'corrupt filter recovery cannot inflate confidence through an unverified source');
+assert.equal(failClosedMemory.indexDiagnostics().pass, true, 'fail-closed filter recovery retains index integrity');
 // Guard the production composition path as well as the isolated policy object.
 const coreSource = await readFile(new URL('../../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const revisionStart = coreSource.indexOf('hexisReviseBelief(input: {');
