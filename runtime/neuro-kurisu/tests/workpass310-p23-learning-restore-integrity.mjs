@@ -106,4 +106,23 @@ assert.throws(()=>engine.restore(nestedAccessor),/plain data properties/,
   'accessors nested in a durable row must be rejected before row parsing');
 assert.deepEqual(engine.snapshot(),beforeUnsupported,'nested accessor state must not partially mutate the learner');
 
+const cyclicSnapshot={...beforeUnsupported};
+cyclicSnapshot.self=cyclicSnapshot;
+assert.throws(()=>engine.restore(cyclicSnapshot),/plain data properties/,
+  'cyclic snapshots must be rejected before any learner state is replaced');
+assert.deepEqual(engine.snapshot(),beforeUnsupported,'cyclic state must not partially mutate the learner');
+
+const aliasedCache={marker:'shared'};
+const aliasedSnapshot={...beforeUnsupported,extraOne:aliasedCache,extraTwo:aliasedCache};
+assert.throws(()=>engine.restore(aliasedSnapshot),/plain data properties/,
+  'non-tree object graphs must be rejected rather than interpreted as persisted JSON');
+assert.deepEqual(engine.snapshot(),beforeUnsupported,'aliased object graph must not partially mutate the learner');
+
+const sparseSnapshot={...beforeUnsupported,processedTraceIds:[]};
+sparseSnapshot.processedTraceIds.length=2;
+sparseSnapshot.processedTraceIds[1]='trace-sparse';
+assert.throws(()=>engine.restore(sparseSnapshot),/plain data properties/,
+  'sparse arrays must be rejected before iteration can silently skip missing entries');
+assert.deepEqual(engine.snapshot(),beforeUnsupported,'sparse cache must not partially mutate the learner');
+
 console.log('WORKPASS310_P23_RESTORE_INTEGRITY=PASS');
