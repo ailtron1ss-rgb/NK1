@@ -633,12 +633,25 @@ export class HexisAdaptationFabric {
                 const safeRows = value;
                 const sectionConflictStart = conflicts.length;
                 if (name === 'memories') {
+                    const firstMemoryIndexByRef = new Map<string, number>();
                     safeRows.forEach((record, index) => {
                         const ref = record.ref, type = record.type, content = record.content;
                         if (typeof ref !== 'string' || !/^exp_[a-f0-9]{16}:.+$/.test(ref)) {
                             conflicts.push({ path: 'sections.memories[' + index + '].ref', kind: 'schema', detail: 'memory ref must use the HMX exp_<16 lowercase hex>:<record> namespace' });
                         } else if (typeof exportId === 'string' && /^exp_[a-f0-9]{16}$/.test(exportId) && !ref.startsWith(exportId + ':')) {
                             conflicts.push({ path: 'sections.memories[' + index + '].ref', kind: 'reference-export-mismatch', detail: 'memory ref belongs to a different HMX export namespace' });
+                        }
+                        if (typeof ref === 'string' && /^exp_[a-f0-9]{16}:.+$/.test(ref)) {
+                            const firstIndex = firstMemoryIndexByRef.get(ref);
+                            if (firstIndex !== undefined) {
+                                conflicts.push({
+                                    path: 'sections.memories[' + index + '].ref',
+                                    kind: 'duplicate-reference',
+                                    detail: 'memory ref duplicates sections.memories[' + firstIndex + ']; memory refs must be unique within an HMX export',
+                                });
+                            } else {
+                                firstMemoryIndexByRef.set(ref, index);
+                            }
                         }
                         if (!isHmxText(type, 128)) conflicts.push({ path: 'sections.memories[' + index + '].type', kind: 'schema', detail: 'memory type must be a non-empty string' });
                         if (!isHmxText(content, 250000)) conflicts.push({ path: 'sections.memories[' + index + '].content', kind: 'schema', detail: 'memory content must be a non-empty string within the per-record limit' });
