@@ -302,9 +302,9 @@ test('ActionGateway snapshots side-effect inputs before hashing or awaiting and 
       await wait(5);
       return { ok: true, value: input.nested?.value ?? input.value };
     },
-    verify: ({ result }) => ({
+    verify: () => ({
       verified: true, basis: 'tool-contract', confidence01: .9,
-      externalObservation: false, notes: String(result.value),
+      externalObservation: false, notes: 'detached input checked',
     }),
   });
 
