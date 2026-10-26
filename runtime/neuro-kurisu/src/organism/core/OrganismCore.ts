@@ -2775,16 +2775,75 @@ export class OrganismCore {
         };
         context?: string;
     }) {
-        const memory = this.memorySubsystem.memoryOS.get(String(input.memoryId));
-        if (!memory)
-            return { ok: false, error: 'memory-not-found', memoryId: String(input.memoryId) };
-        const audit = this.hexisAdaptation.reviseBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: Number(memory.sourceAuthority01 ?? 0.5), evidence: input.evidence, stance: input.stance, context: input.context, protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical', at: Date.now() });
-        if (audit.applied) {
-            this.memorySubsystem.fabric.updateSignals(memory.id, { confidence: audit.posteriorConfidence01 }, 'hexis-belief-revision', { tick: this.persisted.state.tick });
+        const memoryId=String(input.memoryId??'').trim();
+        const memory=this.memorySubsystem.memoryOS.get(memoryId);
+        if(!memory) return { ok:false, error:'memory-not-found', memoryId };
+        const memoryOSBefore=this.memorySubsystem.memoryOS.snapshot();
+        const memoryFabricBefore=this.memorySubsystem.fabric.snapshot();
+        const memoriesBefore=this.memorySubsystem.memories.snapshot();
+        const eventsBefore=this.memorySubsystem.events.list();
+        const hexisBefore=this.hexisAdaptation.snapshot();
+
+        // Bind the belief revision to the canonical owner before Hexis commits its
+        // local belief/audit. Canonical evidence lineage protects against replay even
+        // when Hexis persistence is restored independently.
+        this.hexisAdaptation.bindCanonicalBeliefProjection(projection=>{
+            const canonical=this.memorySubsystem.memoryOS.get(String(projection.memoryId));
+            if(!canonical) return 'unavailable';
+            const evidenceDigest=sha256Stable(projection.evidenceKey,'legacy');
+            const independenceKey='hexis-belief:'+evidenceDigest;
+            const canonicalLineageKey='lineage:'+independenceKey.toLowerCase();
+            const priorSources=Array.isArray(canonical.evidenceSources)?canonical.evidenceSources:[];
+            const alreadyKnown=canonical.evidenceLineageKeys?.includes(canonicalLineageKey)||
+                priorSources.some((source:any)=>String(source.independenceKey??'').trim().normalize('NFKC').toLowerCase()===independenceKey.toLowerCase());
+            if(alreadyKnown) return 'duplicate';
+            const evidenceSource={
+                source:'hexis-evidence:'+evidenceDigest,
+                provenanceClass:'external' as const,
+                sourceAuthority01:projection.evidenceTrust01,
+                independenceKey,
+                observedAt:projection.at,
+                evidenceFreshnessAt:projection.at,
+            };
+            const updated=this.memorySubsystem.fabric.updateSignals(
+                projection.memoryId,
+                {confidence:projection.posteriorConfidence01,evidenceSources:[evidenceSource]},
+                'hexis-belief-revision:'+projection.stance+':'+evidenceDigest.slice(0,16),
+                {commandId:'hexis-belief-revision:'+projection.auditId,tick:this.persisted.state.tick},
+            );
+            if(!updated) throw new Error('hexis-canonical-belief-projection-failed');
+            return 'projected';
+        });
+        try{
+            const audit=this.hexisAdaptation.reviseBelief({
+                memoryId:memory.id,
+                confidence01:memory.confidence,
+                trust01:Number(memory.sourceAuthority01??0.5),
+                evidence:input.evidence,
+                stance:input.stance,
+                context:input.context,
+                protectedBelief:memory.kind==='identity'||memory.kind==='autobiographical',
+                at:Date.now(),
+            });
+            this.memorySubsystem.fabric.consolidateCompatibility(this.memorySubsystem.memories.snapshot({clone:false}),96,this.persisted.state.tick);
+            this.persisted.facets.advanced.memoryOS=this.memorySubsystem.memoryOS.snapshot();
+            this.persisted.facets.advanced.memoryFabric=this.memorySubsystem.fabric.snapshot();
+            this.persisted.facets.memory.eventLog=this.memorySubsystem.events.list();
+            this.persisted.facets.memory.autobiographicalMemories=this.memorySubsystem.memorySubstrate.projectCompatibilityRecords(this.memorySubsystem.memoryOS.snapshot({clone:false}),48);
+            this.persisted.system.hexisAdaptation=this.hexisAdaptation.snapshot();
+            return {ok:true,audit,memory:this.memorySubsystem.memoryOS.get(memory.id)};
+        }catch(error){
+            this.memorySubsystem.memoryOS.restore(memoryOSBefore);
+            this.memorySubsystem.fabric.restore(memoryFabricBefore);
+            this.memorySubsystem.memories.restore(memoriesBefore);
+            this.memorySubsystem.events.restore(eventsBefore);
+            this.hexisAdaptation.restore(hexisBefore);
+            this.persisted.facets.advanced.memoryOS=this.memorySubsystem.memoryOS.snapshot();
+            this.persisted.facets.advanced.memoryFabric=this.memorySubsystem.fabric.snapshot();
+            this.persisted.facets.memory.eventLog=this.memorySubsystem.events.list();
+            this.persisted.system.hexisAdaptation=this.hexisAdaptation.snapshot();
+            throw error;
         }
-        this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
-        this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
-        return { ok: true, audit, memory: this.memorySubsystem.memoryOS.get(memory.id) };
     }
     /** Temporal views delegate to MemoryOS2; Hexis temporal rows remain audit/export projections only. */
     hexisTemporalAt(memoryId: string, at: number) {
