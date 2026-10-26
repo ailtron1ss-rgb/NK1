@@ -1,13 +1,14 @@
 ## WorkPass340 — реальное подключение Unified Cognitive Substrate — 2026-10-26
 
 - **Runtime integration:** добавлен durable sidecar `*.cognitive-substrate.json`; слой восстанавливается при старте, агрегирует каждый завершённый Core cycle и сохраняется при изменении существенных сигналов/каждые 16 тиков, плюс финальный flush на остановке.
-- **Cross-system frame:** объединяются self/continuity, world uncertainty/conflict, prediction debt, device resources, memory pressure и provenance/coverage из живого runtime, а не отдельного демонстрационного вызова.
-- **Governed planning:** counterfactual branch budget и matched simulation admission являются пересечением ресурсной политики, dependency graph/interruption policy и substrate work policy. Substrate может только урезать необязательные симуляции; канонический выбор action остаётся у `OrganismCore`.
-- **Restore hardening:** слой проверяет версию схемы, own-property reads, finite metrics/counters/text; повреждённое производное состояние сбрасывается с operational warning вместо блокировки старта.
-- **Live regression:** добавлен read-only `unifiedCognitiveSubstrateSnapshot()`; расширен `organism-smoke.mjs` — после 30 реальных runtime cycles он проверяет, что substrate tick/cycle продвигается, coupling остаётся конечным и snapshot восстанавливается после stop/re-init. Отдельный тест покрывает hostile persisted inputs и fail-closed work-budget.
-- **CI wiring:** `tests/unified-substrate-runtime-wiring.mjs` плюс runtime smoke подключены к `test:cognitive-integration-suite` и `test:rebuild-recovered`. Новых runtime dependencies не добавлено.
+- **Cross-system frame:** объединяются self/continuity, world uncertainty/conflict, prediction debt, device resource telemetry, memory pressure и provenance/coverage.
+- **Governed planning:** counterfactual budget и matched projection admission ограничиваются пересечением resource policy, dependency/interruption policy и substrate work policy. Substrate только сокращает необязательные симуляции; `OrganismCore` остаётся каноническим арбитром действия.
+- **Restore hardening:** проверяются schema version, own-property reads, конечность метрик/счётчиков и текстовые поля. Повреждённое производное состояние сбрасывается с operational warning, не блокируя весь запуск.
+- **Live regression:** `unifiedCognitiveSubstrateSnapshot()` и 30-cycle `organism-smoke.mjs` проверяют фактический прогресс substrate, конечные coupling metrics и восстановление sidecar после stop/re-init. Отдельный тест проверяет hostile persisted inputs и fail-closed work budget.
+- **CI integration:** оба теста подключены к `test:cognitive-integration-suite` и `test:rebuild-recovered`; runtime dependencies не добавлялись.
+- **CI-driven correction:** первый integration run дошёл до TypeScript runtime typecheck и нашёл два ошибки контракта: небезопасный cast `PredictionDebtState` и чтение отсутствующего `cycleObservation.vision`. Исправлено: cast проходит через `unknown`, а relation count больше не выдумывается — он равен 0, пока P41 не предоставляет типизированный relation snapshot.
 
-**Validation status:** code and tests are committed; exact-head typecheck, behavioral tests and CI remain pending. Progress scores were not increased before validation.
+**Validation status:** exact-head TypeScript typecheck, behavioral regression and Actions CI must pass on the corrected HEAD. The earlier failure is recorded as a real typecheck failure, not a pass; scores remain unchanged.
 
 ---
 
