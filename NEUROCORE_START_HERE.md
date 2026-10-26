@@ -1,3 +1,18 @@
+## Latest checkpoint — WorkPass349 signed-dataset path integrity (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Base:** WorkPass348 source commit `71e9286f9fe11c6afec851359a96f9e9b0011259`.  
+**Release line:** keep `main` stable; do not merge this source stack into `main` without a separately verified release sync.
+
+- **Code committed:** `P23CompoundRepairRevisionProvider.ts` now binds the initial `lstat`, canonical `realpath/stat`, and open file descriptor to the same device/inode; it opens the original configured path with `O_NOFOLLOW` on POSIX and retains the pre-/post-read mutation checks.
+- **Regression committed:** the native Hermes/P23 suite tests device/inode identity mismatches and guards the configured-path-open / three-way-identity contract. Existing signature, payload fingerprint, unsafe permission, symlink and mutation checks remain in place.
+- **Change tracking:** WorkPass349 is recorded in `CHANGELOG.md` and at the top of `docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md`. No dependency was added.
+- **Implementation status:** 4/4 WorkPass349 code/regression/documentation tasks committed. **Validation status:** exact-head native-provider test, runtime typecheck and broad workflow are still pending. Do not infer a pass from earlier WorkPass347/348 runs.
+- **Next required actions:** open/review a draft PR against the source stack (not `main`), obtain fresh actionable CI on the exact head, fix any observed failures, then run wider P23 learning/promotion and organism-smoke gates. Deployment-owned executor/verifier/scanner, independent paired-seed uplift, restart/retrieval proof, production UI/database build, browser/Live2D E2E, real Android/Termux audio, long soak and license review remain open release gates.
+- **Evidence boundary:** this change reduces a path-substitution race in signed dataset loading. It does not establish production readiness, autonomous-learning uplift, or consciousness.
+
+---
+
 ## Latest checkpoint — WorkPass345 emotion evidence-source grounding (2026-10-24)
 
 - Core feedback previously labelled any nonempty `evidenceSource` as an external emotion cause. In runtime paths that provide `LearningProvenance`, a simulated/shadow outcome could have a nonempty source name and be misclassified.
