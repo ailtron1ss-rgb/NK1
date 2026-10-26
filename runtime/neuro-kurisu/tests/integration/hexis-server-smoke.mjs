@@ -52,6 +52,7 @@ try {
   ];
   applyDocument.sections.goals = [
     { ref: applyExportId + ':goal:smoke-goal', title: 'Review imported goal', description: 'Must remain unmaterialized until explicit local approval.', metadata: { nk1NativeGoal: { id: 'smoke-goal', importance: .6, urgency: .4, confidence: .7 } } },
+    { ref: applyExportId + ':goal:smoke-goal-duplicate', title: 'Review imported goal', description: 'Must remain unmaterialized until explicit local approval.', metadata: { nk1NativeGoal: { id: 'smoke-goal-duplicate', importance: .5, urgency: .3, confidence: .6 } } },
   ];
   const applyGoalRef = applyExportId + ':goal:smoke-goal';
   applyDocument.sections.relationships = [
@@ -67,18 +68,22 @@ try {
 
   // Imported goals become pending proposals, never active canonical goals by themselves.
   const prepareGoals = await (await post('/api/organism/integration/hexis/hmx/goals/prepare', { stagingId: applyStageRes.stage.stagingId })).json();
-  if (!prepareGoals.ok || prepareGoals.created !== 1 || prepareGoals.proposals?.[0]?.status !== 'pending') {
+  if (!prepareGoals.ok || prepareGoals.created !== 2 || prepareGoals.proposals?.some(proposal => proposal.status !== 'pending')) {
     throw new Error('hexis-hmx-goal-proposal-prepare:' + JSON.stringify(prepareGoals));
   }
   const replayGoals = await (await post('/api/organism/integration/hexis/hmx/goals/prepare', { stagingId: applyStageRes.stage.stagingId })).json();
-  if (!replayGoals.ok || replayGoals.created !== 0 || replayGoals.duplicates !== 1) throw new Error('hexis-hmx-goal-proposal-idempotency');
+  if (!replayGoals.ok || replayGoals.created !== 0 || replayGoals.duplicates !== 2) throw new Error('hexis-hmx-goal-proposal-idempotency');
   const pendingGoals = await (await fetch(`${base}/api/organism/integration/hexis/hmx/goals/proposals?status=pending`)).json();
   const pendingGoal = pendingGoals.proposals?.find(proposal => proposal.id === prepareGoals.proposals[0].id);
-  if (!pendingGoals.ok || !pendingGoal || pendingGoal.status !== 'pending') throw new Error('hexis-hmx-goal-proposal-list');
+  const duplicatePendingGoal = pendingGoals.proposals?.find(proposal => proposal.id === prepareGoals.proposals[1].id);
+  if (!pendingGoals.ok || !pendingGoal || pendingGoal.status !== 'pending' ||
+      !duplicatePendingGoal || duplicatePendingGoal.status !== 'pending') throw new Error('hexis-hmx-goal-proposal-list');
   const prematureMaterialization = await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: true });
   if (prematureMaterialization.status !== 409) throw new Error('hexis-hmx-goal-review-required:' + prematureMaterialization.status);
   const goalDecision = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/decide', { proposalId: pendingGoal.id, decision: 'approve' })).json();
   if (!goalDecision.ok || goalDecision.proposal?.status !== 'approved') throw new Error('hexis-hmx-goal-proposal-approve');
+  const duplicateGoalDecision = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/decide', { proposalId: duplicatePendingGoal.id, decision: 'approve' })).json();
+  if (!duplicateGoalDecision.ok || duplicateGoalDecision.proposal?.status !== 'approved') throw new Error('hexis-hmx-duplicate-goal-proposal-approve');
   const invalidGoalStatus = await fetch(`${base}/api/organism/integration/hexis/hmx/goals/proposals?status=activate`);
   if (invalidGoalStatus.status !== 400) throw new Error('hexis-hmx-goal-proposal-status-validation:' + invalidGoalStatus.status);
 
@@ -104,6 +109,11 @@ try {
   if (!materializedReplay.ok || materializedReplay.replayed !== true ||
       materializedReplay.reusedExistingGoal !== false || materializedReplay.goal?.id !== materializedGoal.goal.id) {
     throw new Error('hexis-hmx-goal-materialization-replay:' + JSON.stringify(materializedReplay));
+  }
+  const duplicateMaterialized = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: duplicatePendingGoal.id, confirmed: true })).json();
+  if (!duplicateMaterialized.ok || duplicateMaterialized.reusedExistingGoal !== true ||
+      duplicateMaterialized.goal?.id !== materializedGoal.goal.id || duplicateMaterialized.goal?.status !== 'candidate') {
+    throw new Error('hexis-hmx-same-title-goal-deduplication:' + JSON.stringify(duplicateMaterialized));
   }
   const invalidDecision = await fetch(`${base}/api/organism/integration/hexis/hmx/decide`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
