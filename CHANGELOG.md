@@ -6,12 +6,13 @@
 - The 3-seed synthetic sweep reports `interleave-1` mean old-task accuracy `0.540` and new-task accuracy `0.843` with 5,040 replay updates; compared with the prior 12% cap run (`0.513` old / `0.863` new; [P26 run #40281969248](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40281969248)), the 15% cap gives a small old-task gain while retaining new-task accuracy above the unchanged threshold. The broader sweep passed [run #40282385646](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282385646).
 - This is synthetic benchmark evidence only. Old-task retention remains weak overall; catastrophic forgetting is **not** solved, and these scores do not establish generalization on external tasks. Stronger replay remains explicit when the caller chooses a replay rate at or above the current-step rate; an unverified context-separation signal cannot bypass the dense cadence cap.
 
-## P26 replay ordering and signed-shadow candidate identity — 2026-10-26
+## P26 replay policy and signed-shadow candidate identity — 2026-10-26
 
-- Reordered admitted interleaved rehearsal so each current experience is trained after its historical sample. This protects new-task plasticity when replay is dense without bypassing contradiction screening or the replay-update budget.
-- Corrected the bounded replay contract fixture to include one conflicting historical sample and one admissible same-action sample in a distinct novelty context.
-- Updated the signed-shadow end-to-end fixture to derive its expected candidate ID using the canonical five-field identity, including explicit `null` when revision provenance is absent. The runtime must continue to authenticate the resulting signed observation normally.
-- Validation snapshot before these follow-on changes: P26 replay-policy sweep failed at seed 17 / `interleave-1` (new-task accuracy 0.520), and signed-shadow observation failed on candidate-ID mismatch. The exact new head still needs CI confirmation; no replay-policy improvement is claimed yet.
+- Kept canonical current-experience-before-replay update order. A trial that put replay first protected new-task performance but broke the context-aware retention benchmark, so that ordering was reverted.
+- The live replay policy now applies a cadence cap when the configured replay rate is lower than the current update rate. A context-separation signal alone does not bypass that cap; high replay weight is only accepted when explicitly configured by the caller.
+- Updated the signed-shadow end-to-end fixture to derive its expected candidate ID using the canonical five-field identity, including explicit `null` when revision provenance is absent. The runtime still validates the signed observation normally.
+- Exact-head P26 contract, sequential benchmark, and multi-seed replay sweep passed in [run #40282385646](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282385646). The independent signed-shadow/lifecycle checks passed in [WorkPass110 #40282385636](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282385636).
+
 
 ## Bounded P26 interleaved replay and exact-head regression — 2026-10-26
 
