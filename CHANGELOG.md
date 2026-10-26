@@ -1,3 +1,14 @@
+# WorkPass367 — receipt extension lineage and replay verification (2026-10-26)
+
+- [INTEGRITY] Validate external-observation lineage against the referenced action/outcome nodes during restore and replay; mismatched parent IDs or receipt-link payload fields cannot be re-adopted by deterministic event ID.
+- [INTEGRITY] Validate provider-revision base outcome, prior-revision edge and tool binding before restoring or replaying the revision.
+- [INTEGRITY] Strengthen `hasToolReceiptTrace()` to check execution ID, tool consistency, action→outcome→evidence edges and event-bound fingerprint agreement.
+- [REGRESSION] Add snapshot-tampering cases for external observation parents/receipt link, provider revision parent/chain and base receipt lineage.
+- [VALIDATION] Exact-head CI is required; this entry records implementation, not a test PASS.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass366 — strict provider revision and external evidence ingress (2026-10-26)
 
 - [REGRESSION] Extend snapshot isolation coverage to nested `receiptRevisions` and `externalObservations` refs: tampering their exported fingerprints must not affect either live idempotency guard.
