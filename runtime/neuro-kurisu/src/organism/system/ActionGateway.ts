@@ -318,11 +318,66 @@ function actionLedgerReadArray(value:unknown,label:string,maxLength:number):unkn
   return output;
 }
 
-function actionLedgerCloneJson(value:unknown,depth=0,budget:{nodes:number}={nodes:0},seen=new Set<object>()):unknown {
+
+function actionLedgerIsTrustedReceipt(entry:ActionExecutionLedgerEntry,response:Record<string,unknown>):boolean {
+  const identity=actionLedgerOwnField(response,'executionId').value;
+  const tool=actionLedgerOwnField(response,'tool').value;
+  const capability=actionLedgerOwnField(response,'capability').value;
+  const ok=actionLedgerOwnField(response,'ok').value;
+  const verified=actionLedgerOwnField(response,'verified').value;
+  const outcomeClass=actionLedgerOwnField(response,'outcomeClass').value;
+  const result=actionLedgerOwnField(response,'result').value;
+  const audit=actionLedgerOwnField(response,'audit').value;
+  const verification=actionLedgerOwnField(response,'verification').value;
+  if(typeof entry.executionId!=='string' || !/^exec-[a-z0-9-]{8,80}$/i.test(entry.executionId)
+    || typeof entry.toolId!=='string' || !/^[a-z0-9._-]{2,64}$/i.test(entry.toolId)
+    || identity!==entry.executionId || tool!==entry.toolId
+    || typeof capability!=='string' || !capability.trim() || capability.length>120
+    || typeof ok!=='boolean' || typeof verified!=='boolean'
+    || !['unavailable','competence-insufficient','gate-check-failed','policy-refused','execution-failed',
+      'executed-unverified','executed-verified','executed-contradicted','idempotency-conflict',
+      'idempotency-recovery-required','idempotency-storage-failed','idempotency-ledger-full',
+      'failed-no-effect','executed-partial','reconciled-not-executed','idempotency-key-required',
+      'approval-required','approval-invalid','approval-storage-failed'].includes(String(outcomeClass))
+    || !actionLedgerIsPlainRecord(result) || !actionLedgerIsPlainRecord(audit) || !actionLedgerIsPlainRecord(verification)) return false;
+  if(verified && !ok) return false;
+  if(verified!==(outcomeClass==='executed-verified')) return false;
+  const auditExecutionId=actionLedgerOwnField(audit,'executionId').value;
+  const auditTool=actionLedgerOwnField(audit,'tool').value;
+  const auditAction=actionLedgerOwnField(audit,'action').value;
+  const auditAccepted=actionLedgerOwnField(audit,'accepted').value;
+  const auditVerified=actionLedgerOwnField(audit,'verified').value;
+  const auditOutcome=actionLedgerOwnField(audit,'outcomeClass').value;
+  const auditMode=actionLedgerOwnField(audit,'mode').value;
+  const auditAt=actionLedgerOwnField(audit,'at').value;
+  if(auditExecutionId!==entry.executionId || auditTool!==entry.toolId || auditAction!=='tool'
+    || auditAccepted!==ok || auditVerified!==verified || auditOutcome!==outcomeClass
+    || (auditMode!=='live' && auditMode!=='dry-run')
+    || typeof auditAt!=='number' || !Number.isSafeInteger(auditAt) || auditAt<0) return false;
+  const verificationVerified=actionLedgerOwnField(verification,'verified').value;
+  const basis=actionLedgerOwnField(verification,'basis').value;
+  const confidence=actionLedgerOwnField(verification,'confidence01').value;
+  const externalObservation=actionLedgerOwnField(verification,'externalObservation').value;
+  const notes=actionLedgerOwnField(verification,'notes').value;
+  if(verificationVerified!==verified || !['none','tool-contract','external-postcondition'].includes(String(basis))
+    || typeof confidence!=='number' || !Number.isFinite(confidence) || confidence<0 || confidence>1
+    || typeof externalObservation!=='boolean' || typeof notes!=='string') return false;
+  const auditBasis=actionLedgerOwnField(audit,'verificationBasis').value;
+  const auditConfidence=actionLedgerOwnField(audit,'verificationConfidence01').value;
+  if(auditBasis!==basis || auditConfidence!==confidence) return false;
+  return true;
+}
+
+function actionLedgerCloneJson(value:unknown,depth=0,budget:{nodes:number;bytes?:number}={nodes:0,bytes:0},seen=new Set<object>()):unknown {
   if(depth>32) throw new Error('action-ledger-response-depth-limit');
   budget.nodes++;
   if(budget.nodes>16_384) throw new Error('action-ledger-response-node-limit');
-  if(value===null || typeof value==='string' || typeof value==='boolean') return value;
+  if(value===null || typeof value==='boolean') return value;
+  if(typeof value==='string') {
+    budget.bytes=(budget.bytes??0)+value.length;
+    if(budget.bytes>32_768) throw new Error('action-ledger-response-byte-limit');
+    return value;
+  }
   if(typeof value==='number') {
     if(!Number.isFinite(value)) throw new Error('action-ledger-response-nonfinite-number');
     return value;
@@ -348,6 +403,8 @@ function actionLedgerCloneJson(value:unknown,depth=0,budget:{nodes:number}={node
       if(!descriptor || !Object.prototype.hasOwnProperty.call(descriptor,'value')) {
         throw new Error('action-ledger-response-accessor');
       }
+      budget.bytes=(budget.bytes??0)+key.length;
+      if(budget.bytes>32_768) throw new Error('action-ledger-response-byte-limit');
       if(descriptor.value===undefined) continue;
       Object.defineProperty(result,key,{
         value:actionLedgerCloneJson(descriptor.value,depth+1,budget,seen),
@@ -613,8 +670,9 @@ export class ActionGateway {
         } else if(responseField.present && !responseField.accessor && actionLedgerIsPlainRecord(responseField.value)) {
           try {
             const response=actionLedgerCloneJson(responseField.value);
-            if(actionLedgerIsPlainRecord(response)) safe.response=response as unknown as ToolExecution;
-            else safe.responseOmitted=true;
+            if(actionLedgerIsPlainRecord(response) && actionLedgerIsTrustedReceipt(safe,response)) {
+              safe.response=response as unknown as ToolExecution;
+            } else safe.responseOmitted=true;
           } catch {
             // Keep the key as a completed tombstone; never re-run an opaque receipt.
             safe.responseOmitted=true;
