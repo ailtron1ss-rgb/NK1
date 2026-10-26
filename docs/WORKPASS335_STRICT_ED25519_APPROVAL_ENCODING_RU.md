@@ -29,9 +29,10 @@
 
 - Некорректная запись, где task/family/method/verifier/evidence вместо строки содержит число, объект или null, отвергается как row; gate продолжает обрабатывать остальные валидные пары.
 - Не-массив observations, неверное имя метода или некорректный объект options дают явную ошибку конфигурации.
+- Producer `proposeVerifiedSkillPromotion` теперь применяет такой же строгий контракт до построения proposal: для `minPairedTasks`, `minAbsoluteGain`, `maxFamilyRegression` и `minCompleteSeeds` не происходит clamp/fallback при явно переданном невалидном значении; null/non-object options отклоняются сразу.
 - `minPairedTasks` требует целое значение от 2 до 10 000; `minAbsoluteGain` и `maxFamilyRegression` — конечные числа в диапазоне `[0, 1]`. Значения не подрезаются и не заменяются молча.
 - Пара baseline/candidate с несовпадающими task families исключается из знаменателя и учитывается как один rejected pair.
-- В `p23-verified-skill-revision-gate.mjs` добавлены проверки повреждённых rows, mismatched-family accounting, строгих порогов и допустимых граничных значений. В proposal regression `NaN` теперь должен приводить к явному отказу.
+- В `p23-verified-skill-revision-gate.mjs` добавлены проверки повреждённых rows, mismatched-family accounting, строгих порогов и допустимых граничных значений. В `p23-verified-skill-promotion-proposal.mjs` добавлены producer-level регрессии для NaN/out-of-range threshold, недопустимого complete-seed count и null options.
 
 Результат остаётся proposal-only: даже прошедший gate не активирует навык и не заменяет аутентификацию outcome/shadow evidence, независимую оценку или подписанное одобрение.
 
