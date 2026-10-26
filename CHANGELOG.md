@@ -1,3 +1,15 @@
+## NK1 WorkPass331 — reality-learning state integrity (2026-10-26)
+
+- [HARDENED] `RealityLearningGate.restore()` now reconstructs the state from an explicit allowlist rather than spreading arbitrary persisted properties over defaults.
+- [HARDENED] Negative, fractional, unsafe or non-finite counters fall back to safe values; source-specific decision counts are reconciled with the total, and subset counters cannot exceed total decisions.
+- [HARDENED] Persisted means are checked for finiteness and clamped to `[0, 1]`; malformed decision rows and rows with unknown outcome sources are discarded.
+- [FIXED] History restoration now preserves the newest-first head (`slice(0, 256)`) rather than the oldest tail, and restores `last` from the first valid history row when the saved last decision is malformed.
+- [TESTS ADDED] Expanded `tests/p2840-reality-learning-gate.mjs` to cover poisoned counters, NaN/Infinity means, out-of-range means, malformed last/history, post-restore finiteness, and 300-row newest-first history trimming. Existing `test:p2840:learning-gate` command already runs this file.
+- [VALIDATION] The regression script and runtime typecheck were not executed in this pass; GitHub source-editing tools do not execute project code. CI status must be verified separately.
+- [RELEASE] Changes are on `workpass331-reality-learning-state-integrity`; no release ZIP was changed and no production approval is claimed.
+
+---
+
 ## NK1 WorkPass330 — temporal memory integrity (2026-10-25)
 
 - [FIXED] `HexisAdaptationFabric.recordTemporalAssertion` now rejects blank memory IDs/summaries and non-finite or empty valid-time inputs before mutating state.
