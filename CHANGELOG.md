@@ -1,21 +1,12 @@
-## WorkPass353 — reject oversized causal identity fields and malformed restore rows (2026-10-26)
+## WorkPass353 — reject oversized and non-canonical causal identity fields (2026-10-26)
 
-- **Defect:** `CognitiveEventFabric.append()` silently truncated source strings, parent IDs and oversized parent lists. Restore also truncated event IDs/sources/parents and coerced fractional/unsafe ticks, nonnumeric timestamps/confidence and nonboolean flags into apparently valid records.
-- **Fix:** reject oversized identity fields before append; restore now skips malformed identity/clock/evidence rows without reserving IDs, allowing later valid copies to recover. Missing legacy optional fields retain safe defaults; explicitly malformed fields do not.
-- **Regression coverage:** same-ID replay with oversized source/parent suffixes, 13 parents rejected without ledger mutation, 12-parent boundary accepted, restore recovery from oversized ID/source/parent data and malformed tick/time/confidence/boolean values.
-- **CI correction:** first exact-head integration attempt caught an over-escaped control-character character class that rejected ordinary parent IDs (for example `parent:1`). Replaced it with the intended literal Unicode control ranges; the failed run is retained as evidence and does not count as a pass.
-- **Validation:** PR #180 / branch `work/nk1-event-envelope-bounds-2026-10-26-r2`; exact-head CI must pass after the final commit. Prior runs on earlier commits are not evidence for the final head.
-
----
-## WorkPass348 — deterministic postcondition identity and legacy receipt replay (2026-10-26)
-
-- **FIXED:** postcondition fingerprinting no longer uses locale-sensitive lowercasing; case-sensitive differences remain distinct across hosts.
-- **COMPATIBILITY:** a legacy restored receipt without event-level postcondition hashes can replay only when its retained projection index contains the exact full-input fingerprint. Without that independent fingerprint, replay still fails closed.
-- **REGRESSION:** added case-only postcondition conflict and legacy-index compatibility coverage.
-- **VALIDATION:** exact-head CI required on this commit.
+- **Defect:** `CognitiveEventFabric.append()` silently truncated source strings, parent IDs and oversized parent lists. Snapshot restore also previously truncated IDs/sources/parents and coerced malformed ticks/timestamps/confidence/flags into valid-looking records.
+- **Fix:** reject oversized/control-character source values, padded event/parent IDs and parent-list overflow before mutation. Restore skips invalid identity/clock/evidence rows without reserving IDs, so later valid rows can recover.
+- **Regression coverage:** source/parent suffix collisions, canonical ID/source/parent requirements, parent-count boundary, malformed restore ID/source/parents/tick/time/confidence/boolean fields and valid duplicate recovery.
+- **CI correction:** the first exact-head attempt caught an over-escaped control-character regex that rejected ordinary IDs such as `parent:1`. Fixed the literal character class and retained the failure as evidence.
+- **Validation:** PR #180 / branch `work/nk1-event-envelope-bounds-2026-10-26-r2`. Only a fresh exact-head CI after these final edits may count; earlier failed/passing runs are not evidence for the current head.
 
 ---
-
 ## WorkPass347 — preserve verified postcondition identity across restore (2026-10-26)
 
 - **FIXED:** the active causal event journal now persists hashes of the expected and observed postconditions in the sanitized receipt-evidence event, without storing raw postcondition text.
