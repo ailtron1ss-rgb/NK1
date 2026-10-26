@@ -1,3 +1,11 @@
+## WorkPass347 — atomic operational-cycle recording — 2026-10-26
+
+- **Defect:** `CognitiveEventFabric.recordOperationalCycle()` appended stages as it read/validated them. A malformed late `learning`/`selfUpdate` field or unexpected append failure could leave earlier observation/plan events in the ledger even though the logical cycle failed.
+- **Fix:** preflight the cycle clock and all provided phase metadata/payloads before any writes; normalize phase data once; record stages through a single ordered specification; roll back event buffer, lifetime total and receipt projection index if an unexpected append failure occurs.
+- **Regression coverage:** normal parent links/order, cyclic late payload with zero writes, invalid late source with zero writes and injected mid-cycle append exception with full rollback.
+- **Validation:** exact-head CI is required for this branch. No pass is claimed until runtime typecheck, the dedicated test and unified integration suite complete on the same SHA.
+
+---
 ## WorkPass347 — preserve unlinked decision IDs in receipt replay — 2026-10-26
 
 - **Defect:** `appendToolReceiptTrace()` fingerprints a supplied `decisionId`, but the action event stored `decisionId: null` when that event was not present in the bounded CEF window. Exact replay without the projection index then failed with `tool-receipt-execution-id-conflict`.
