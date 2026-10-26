@@ -11,6 +11,13 @@
 **Машиночитаемый источник процентов:** [PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json).  
 **Проверка таблицы:** `npm run test:progress-ledger`; **сводный отчёт:** `npm run progress:report`.
 
+## WorkPass344 — fail-closed final release verification (pending CI)
+
+- `npm run release:verify` now runs UI wiring, runtime architecture and release metadata checks as mandatory gates; failure/missing validator blocks a green result.
+- Four focused regressions cover valid metadata, invalid metadata, missing validator and unknown CLI arguments.
+- The first run passed all four focused tests but revealed a false positive in architecture audit because the substrate wiring test held the import as a string literal. The assertion now assembles the string from tokens. The corrected combined head still needs CI.
+- Earlier WorkPass340–342 PASS statuses remain anchored to their historical exact SHA. Current source includes WorkPass343 substrate tick reconciliation; no progress scores have been increased.
+
 ## Как читать проценты
 
 Это начальная инженерная оценка по 12 направлениям, а не измерение «разума». Веса суммируются до 100%; скрипт считает четыре раздельных взвешенных показателя:
