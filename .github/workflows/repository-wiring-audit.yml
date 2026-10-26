@@ -5,6 +5,8 @@ on:
     branches:
       - workpass70-source
       - audit/repository-wiring-contracts-2026-10-25
+      - audit/b276-execution-attribution-2026-10-26
+      - audit/b276-execution-attribution-2026-10-26
     paths:
       - ".github/workflows/repository-wiring-audit.yml"
       - ".github/workflows/**"
@@ -148,3 +150,5 @@ jobs:
 
       - name: Verify routing policy remains connected to the live runtime
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-routing-policy-runtime-wiring
+      - name: Verify Hexis evidence lineage, HMX integrity, and live API wiring
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-adaptation && npm --prefix runtime/neuro-kurisu run test:hexis-memory-evidence-lineage && npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
