@@ -467,7 +467,7 @@ export class CanonicalCognitiveKernel {
       if(
         anchorId!==anchorId.trim()||
         anchorId.length>180||
-        /[\\u0000-\\u001f\\u007f-\\u009f]/u.test(anchorId)
+        /[\u0000-\u001f\u007f-\u009f]/u.test(anchorId)
       ) {
         throw new Error('canonical-cognitive-kernel-anchor-provenance-conflict');
       }
