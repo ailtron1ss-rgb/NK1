@@ -1,3 +1,13 @@
+## WorkPass414 — block duplicate accept before the HMX receipt is persisted (2026-10-26)
+
+- **Adapter code commit:** `0fc2a3880ef1276106e78dbcd4ab15ce53feb1d2`; **regression commit:** `daa458f2abd935f136b249d1cb3ae6b9ccccf0c5`.
+- Broadened the WorkPass413 replay guard. Any second decision against an already accepted `memory-merge` stage whose receipt is still `pending` now closes that receipt as `uncertain` before returning to the core, whether the second decision is `accept` or `reject`.
+- The first explicit acceptance remains eligible for the normal import because it enters `decideHmx` from `staged`. Repeated accept and late reject each receive a distinct reason code; neither can return `accepted + pending` to the core's state-based import gate.
+- Regression covers duplicate accept, terminal reason, and further accepts remaining non-replayable alongside the existing late-reject case.
+- **Validation:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass413 — prevent a late HMX reject from re-triggering accepted import (2026-10-26)
 
 - **Adapter code commit:** `443d5d83635645e967c7da245f2a75a8af284e03`; **regression commit:** `a4fba62670b3e6a5215b9083853a530b41c5fc79`.
