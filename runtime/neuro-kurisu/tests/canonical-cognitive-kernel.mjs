@@ -792,6 +792,36 @@ assert.equal(restoredRevisionReplay.resolved,true);
 assert.equal(restoredRevisionReplay.replayed,true,'revision IDs/hashes must survive restore');
 assert.equal(restoredRevisionReplay.eventId,revisionResult.eventId);
 
+const secondRevisionInput={
+  ...revisionInput,revisionId:'receipt-test:revision-2',revisionNumber:2,
+  providerReceiptHash:'c'.repeat(64),revisionFingerprint:'d'.repeat(64),
+  revisionFingerprint:'d'.repeat(64),reason:'provider signed correction',at:1210,
+};
+const secondRevisionResult=receiptFabric.appendToolReceiptRevision(secondRevisionInput);
+assert.equal(secondRevisionResult.resolved,true);
+assert.equal(secondRevisionResult.replayed,false);
+const chainedRevisionSnapshot=receiptFabric.snapshot();
+const chainedRevisionRestored=new CognitiveEventFabric(128);
+chainedRevisionRestored.restore(chainedRevisionSnapshot);
+const chainedRevisionReplay=chainedRevisionRestored.appendToolReceiptRevision(secondRevisionInput);
+assert.equal(chainedRevisionReplay.resolved,true);
+assert.equal(chainedRevisionReplay.replayed,true,
+  'an intact monotonic revision chain must preserve idempotency after restore');
+
+// A tampered revision may remain present in the event buffer, but without the parent
+// link it must not be promoted to an idempotent trusted revision after restore.
+const tamperedRevisionLineageSnapshot=receiptFabric.snapshot();
+const tamperedRevisionNode=tamperedRevisionLineageSnapshot.recent.find(event=>event.id===revisionResult.eventId);
+assert.ok(tamperedRevisionNode);
+tamperedRevisionNode.parentIds=[];
+const tamperedRevisionLineageRestored=new CognitiveEventFabric(128);
+tamperedRevisionLineageRestored.restore(tamperedRevisionLineageSnapshot);
+assert.equal(tamperedRevisionLineageRestored.hasToolReceiptTrace(receiptInput.executionId),true,
+  'the canonical receipt trio remains intact even if an ancillary revision was tampered with');
+assert.throws(()=>tamperedRevisionLineageRestored.appendToolReceiptRevision(revisionInput),
+  /tool-receipt-revision-lineage-conflict/,
+  'a deterministic revision event with missing causal parents must not be reported as replayed');
+
 const externalObservationInput = {
   tick:13,executionId:receiptInput.executionId,toolId:receiptInput.toolId,
   observationId:'receipt-test:independent-observation-1',verified:true,confidence01:0.92,
