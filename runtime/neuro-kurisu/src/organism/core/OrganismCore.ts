@@ -2971,7 +2971,6 @@ export class OrganismCore {
                     sourceAuthority01: projected.sourceAuthority01,
                     independenceKey: projected.independenceKey,
                     evidenceFreshnessAt: projected.evidenceFreshnessAt,
-                    ...(projected.createdAt !== undefined ? { createdAt: projected.createdAt } : {}),
                     validFromAt: projected.validFromAt,
                     validUntilAt: projected.validUntilAt,
                     observedAt: projected.observedAt,
@@ -3026,7 +3025,7 @@ export class OrganismCore {
                         exportId: stage.exportId,
                         stagingId: stage.stagingId,
                         created: transaction.created,
-                        reused: transaction.reused + reusedBeforeTransaction,
+                        reused,
                         memoryIds: transaction.createdIds.slice(0, 256),
                     }));
                 } catch {
