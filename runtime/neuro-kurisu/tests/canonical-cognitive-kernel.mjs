@@ -602,5 +602,5 @@ assert.equal(atomicRestoreFabric.getById(atomicRestoreNode.id)?.payload.kept,tru
 
 console.log('WorkPass354 completion anchor provenance: PASS');
 console.log('WorkPass353 canonical completion replay/preflight: PASS');
-console.log('WorkPass359 event-fabric restore boundary: PASS');
+console.log('WorkPass362 event-fabric restore boundary: PASS');
 
