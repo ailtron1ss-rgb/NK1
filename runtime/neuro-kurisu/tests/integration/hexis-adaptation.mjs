@@ -297,6 +297,67 @@ function makeHmxDocument(exportId, sections) {
   });
 }
 
+// A restored stage is untrusted persisted data. Mutating staged memory content
+// without updating the recorded digest must block the canonical apply before the
+// bound writer is called.
+const stageDigestFabric = new HexisAdaptationFabric();
+const stageDigestExportId = 'exp_8282828282828282';
+const stageDigestStage = stageDigestFabric.stageHmx({
+  document: makeHmxDocument(stageDigestExportId, {
+    memories: [{ ref: stageDigestExportId + ':memory-1', type: 'semantic', content: 'Original reviewed memory payload.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(stageDigestStage.conflicts, []);
+assert.equal(stageDigestFabric.decideHmx(stageDigestStage.stagingId, 'accept')?.status, 'accepted');
+const mutatedStageState = stageDigestFabric.snapshot();
+const mutatedStage = mutatedStageState.hmxStages.find(candidate => candidate.stagingId === stageDigestStage.stagingId);
+assert(mutatedStage);
+mutatedStage.stagedSections.memories[0].content = 'Tampered after approval; digest was not refreshed.';
+const restoredStageDigestFabric = new HexisAdaptationFabric();
+restoredStageDigestFabric.restore(mutatedStageState);
+let untrustedStageApplyCalls = 0;
+restoredStageDigestFabric.bindCanonicalMemoryApply(() => {
+  untrustedStageApplyCalls += 1;
+  return {};
+});
+assert.throws(
+  () => restoredStageDigestFabric.decideHmx(stageDigestStage.stagingId, 'apply'),
+  /hmx-stage-digest-invalid/,
+);
+assert.equal(untrustedStageApplyCalls, 0,
+  'an altered restored stage must be rejected before invoking the canonical memory writer');
+assert.equal(restoredStageDigestFabric.getHmxStage(stageDigestStage.stagingId)?.status, 'accepted',
+  'digest failure must leave the stage unpromoted');
+
+
+// Goal proposal preparation also consumes restored staged content, so it must
+// enforce the same digest before creating any new agency proposal.
+const goalDigestFabric = new HexisAdaptationFabric();
+const goalDigestExportId = 'exp_8383838383838383';
+const goalDigestStage = goalDigestFabric.stageHmx({
+  document: makeHmxDocument(goalDigestExportId, {
+    goals: [{ ref: goalDigestExportId + ':goal-1', title: 'Reviewed goal title', description: 'Reviewed goal description.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(goalDigestStage.conflicts, []);
+assert.equal(goalDigestFabric.decideHmx(goalDigestStage.stagingId, 'accept')?.status, 'accepted');
+const mutatedGoalState = goalDigestFabric.snapshot();
+const mutatedGoalStage = mutatedGoalState.hmxStages.find(candidate => candidate.stagingId === goalDigestStage.stagingId);
+assert(mutatedGoalStage);
+mutatedGoalStage.stagedSections.goals[0].title = 'Unreviewed substituted goal';
+const restoredGoalDigestFabric = new HexisAdaptationFabric();
+restoredGoalDigestFabric.restore(mutatedGoalState);
+assert.throws(
+  () => restoredGoalDigestFabric.prepareGoalProposals(goalDigestStage.stagingId),
+  /hmx-stage-digest-invalid/,
+);
+assert.equal(restoredGoalDigestFabric.snapshot().goalProposals.length, 0,
+  'tampered goal payload must not create a proposal during restored-stage preparation');
+
 // The first apply must validate its returned receipt before committing status.
 // A bad handler response must not be stored as a successful stage or inflate metrics.
 const invalidReceiptHexis = new HexisAdaptationFabric();
