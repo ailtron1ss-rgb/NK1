@@ -314,7 +314,7 @@ function cloneActionGatewayJson(value:unknown,state:{seen:Set<object>;nodes:numb
       throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-uninspectable-value');
     }
     if(Array.isArray(value)) {
-      if(prototype!==Array.prototype||ownKeys.some(key=>typeof key!=='string'&&key!=='length')) {
+      if(prototype!==Array.prototype||ownKeys.some(key=>typeof key!=='string')) {
         throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-invalid-array');
       }
       let lengthDescriptor:PropertyDescriptor|undefined;
@@ -724,7 +724,7 @@ export class ActionGateway {
     } catch(error) {
       const safeId=typeof id==='string'&&/^[a-z0-9._-]{2,64}$/i.test(id)?id:'unknown';
       const code=error instanceof ActionGatewayIngressError?error.outcomeCode:'action-gateway-input-invalid';
-      return this.result(safeId,this.tools.get(safeId)?.capability??'unknown',code,'idempotency-conflict',`exec-${randomUUID()}`,{error:code});
+      return this.result(safeId,this.tools.get(safeId)?.capability??'unknown',code,'idempotency-conflict',`exec-${randomUUID()}`,{error:code},'tool execution input was rejected before any tool side effect');
     }
     const rawKey=options.idempotencyKey;
     if(rawKey===undefined || rawKey===null || rawKey==='') {
@@ -773,7 +773,7 @@ export class ActionGateway {
     } catch(error) {
       const safeId=typeof id==='string'&&/^[a-z0-9._-]{2,64}$/i.test(id)?id:'unknown';
       const code=error instanceof ActionGatewayIngressError?error.outcomeCode:'action-gateway-input-invalid';
-      return this.result(safeId,this.tools.get(safeId)?.capability??'unknown',code,'idempotency-conflict',`exec-${randomUUID()}`,{error:code});
+      return this.result(safeId,this.tools.get(safeId)?.capability??'unknown',code,'idempotency-conflict',`exec-${randomUUID()}`,{error:code},'reconciliation input was rejected before any provider lookup or tool side effect');
     }
     const rawKey=options.idempotencyKey;
     if(rawKey===undefined||rawKey===null||rawKey==='') return this.result(id,'unknown','reconciliation-idempotency-key-required','idempotency-recovery-required',`exec-${randomUUID()}`,{error:'reconciliation-idempotency-key-required'},'receipt reconciliation requires the original idempotency key');
