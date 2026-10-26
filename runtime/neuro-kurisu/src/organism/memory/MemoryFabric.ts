@@ -176,7 +176,7 @@ export class MemoryFabric {
    * makes the side effect and lifecycle event idempotent across snapshot/restore.
    * MemoryOS2 remains the only writable store; projections are updated explicitly.
    */
-  applyLifecycleCommand(command:MemoryLifecycleCommand):MemoryItem2|Record<string,string>|boolean|void|null {
+  applyLifecycleCommand(command:MemoryLifecycleCommand):MemoryItem2|Record<string,string>|boolean|void|null|ReturnType<MemoryOS2['recordEvidence']> {
     const action=command.action;
     const commandId=String(command.commandId??'').trim().slice(0,128);
     const semanticPayload:any={...command};
@@ -196,7 +196,7 @@ export class MemoryFabric {
         throw new MemoryLifecycleCommandRecoveryRequiredError(commandId);
     }
 
-    let result:MemoryItem2|Record<string,string>|boolean|void|null=null;
+    let result:MemoryItem2|Record<string,string>|boolean|void|null|ReturnType<MemoryOS2['recordEvidence']>=null;
     let outcome:'applied'|'noop'='noop';
     let memoryId:string|undefined;
     let booleanValue:boolean|undefined;
