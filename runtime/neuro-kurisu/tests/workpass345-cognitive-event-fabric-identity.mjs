@@ -107,6 +107,73 @@ assert.throws(() => fabric.append(makeEvent({
 assert.equal(fabric.snapshot().total, beforeInvalidPayload);
 assert.equal(fabric.snapshot().recent.some(event => event.id === 'cef:test:identity:cyclic'), false);
 
+// Identity-bearing source and parent fields reject overflow instead of aliasing.
+const boundedSource='s'.repeat(120);
+const boundedSourceEvent=fabric.append(makeEvent({
+  id:'cef:test:identity:source-boundary',
+  source:boundedSource,
+}));
+const afterBoundedSource=fabric.snapshot().total;
+assert.equal(boundedSourceEvent.source.length,120);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:boundedSourceEvent.id,source:boundedSource+'different-suffix'})),
+  /invalid-cognitive-event-source/,
+  'oversized source must be rejected instead of truncated into a matching replay',
+);
+assert.equal(fabric.snapshot().total,afterBoundedSource);
+
+const boundedParent='p'.repeat(180);
+const boundedParentEvent=fabric.append(makeEvent({
+  id:'cef:test:identity:parent-boundary',
+  parentIds:[boundedParent],
+}));
+const afterBoundedParent=fabric.snapshot().total;
+assert.equal(boundedParentEvent.parentIds[0].length,180);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:boundedParentEvent.id,parentIds:[boundedParent+'different-suffix']})),
+  /invalid-cognitive-event-parent-id/,
+  'oversized parent IDs must be rejected instead of truncated into a matching replay',
+);
+assert.equal(fabric.snapshot().total,afterBoundedParent);
+
+const beforeTooManyParents=fabric.snapshot().total;
+assert.throws(
+  ()=>fabric.append(makeEvent({
+    id:'cef:test:identity:too-many-parents',
+    parentIds:Array.from({length:13},(_,index)=>`parent:${index}`),
+  })),
+  /invalid-cognitive-event-parent-count/,
+);
+assert.equal(fabric.snapshot().total,beforeTooManyParents,'parent-count overflow must not mutate the ledger');
+
+const acceptedMaximumParents=fabric.append(makeEvent({
+  id:'cef:test:identity:max-parents',
+  parentIds:Array.from({length:12},(_,index)=>`parent:${index}`),
+}));
+assert.equal(acceptedMaximumParents.parentIds.length,12);
+
+// Restore must skip malformed long IDs/lineage instead of truncating them to alias a later valid row.
+const restoreBounds=new CognitiveEventFabric(128);
+const boundedRestoreId='cef:test:restore:bounded-id';
+const validAfterBadId={...makeEvent({id:boundedRestoreId}),payload:{recovered:'id'}};
+const validAfterBadParent={...makeEvent({id:'cef:test:restore:bounded-parent'}),payload:{recovered:'parent'},parentIds:['parent:valid']};
+const validAfterBadSource={...makeEvent({id:'cef:test:restore:bounded-source'}),payload:{recovered:'source'},source:'valid-source'};
+restoreBounds.restore({
+  version:1,capacity:128,total:5,buffered:5,linkedParentEvents:0,danglingParentLinks:0,
+  lineageIntegrity01:1,cycleCoverage01:0,causalDensity01:0,recentTicks:0,
+  recent:[
+    {...validAfterBadId,id:boundedRestoreId+'x'.repeat(181)},
+    validAfterBadId,
+    {...validAfterBadParent,parentIds:['p'.repeat(181)]},
+    validAfterBadParent,
+    {...validAfterBadSource,source:'s'.repeat(121)},
+    validAfterBadSource,
+  ],
+});
+assert.equal(restoreBounds.getById(boundedRestoreId)?.payload.recovered,'id');
+assert.equal(restoreBounds.getById('cef:test:restore:bounded-parent')?.payload.recovered,'parent');
+assert.equal(restoreBounds.getById('cef:test:restore:bounded-source')?.payload.recovered,'source');
+
 
  // Event identity must cover the normalized causal envelope and reject invalid clocks.
  assert.equal(new CognitiveEventFabric(Number.NaN).snapshot().capacity,512);
