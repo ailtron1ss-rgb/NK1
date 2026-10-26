@@ -1,3 +1,15 @@
+## WorkPass336 — реальное подключение Unified Cognitive Substrate — 2026-10-26
+
+- **Runtime integration:** добавлен durable sidecar `*.cognitive-substrate.json`; слой восстанавливается при старте, агрегирует каждый завершённый Core cycle и сохраняется при изменении существенных сигналов/каждые 16 тиков, плюс финальный flush на остановке.
+- **Cross-system frame:** объединяются self/continuity, world uncertainty/conflict, prediction debt, device resources, memory pressure и provenance/coverage из живого runtime, а не отдельного демонстрационного вызова.
+- **Governed planning:** counterfactual branch budget и matched simulation admission теперь являются пересечением ресурсо-политики, dependency graph/interruption policy и substrate work policy. Substrate может только урезать необязательные симуляции; канонический выбор action остаётся у `OrganismCore`.
+- **Restore hardening:** упрощённый адаптер заменён строгой схемой с проверкой версии, own-property reads, безопасной нормализацией finite metrics/counters/text и отказом от невалидного состояния. Повреждение производного sidecar логируется и не должно само по себе блокировать запуск организма.
+- **Regression/CI wiring:** добавлен `tests/unified-substrate-runtime-wiring.mjs`; test подключён к `test:cognitive-integration-suite` и `test:rebuild-recovered`. Новых runtime dependencies не добавлено.
+
+**Validation status:** изменения находятся в отдельной draft-ветке; exact-head typecheck, behavioral test и CI пока не объявлены PASS. В этом окружении невозможно скачать ветку для локального запуска, так как DNS не разрешает `github.com`. Оценки прогресса не повышены до результата CI.
+
+---
+
 ## WorkPass336 — отдельная exact-head CI для прогресс-реестра (2026-10-26)
 
 - Добавлен небольшой GitHub Actions workflow на Node.js 24, который запускает регрессии и отчёт реестра на точном checkout события.
