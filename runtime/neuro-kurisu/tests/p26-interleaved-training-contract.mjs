@@ -105,6 +105,27 @@ const experience = (energy, novelty, action, reward, worldContextVersion=1) => (
 
 {
   const engine = new P26TrueLearningEngine();
+  const result = engine.trainInterleaved(
+    [
+      experience(0.3, 0.72, 'rest', 0.1),
+      experience(0.3, 0.78, 'rest', 0.1),
+      experience(0.3, 0.84, 'rest', 0.1),
+      experience(0.3, 0.9, 'rest', 0.1),
+    ],
+    [experience(0.3, 0.1, 'rest', 0.9)],
+    {
+      replayEveryNCurrent: 1, maxReplayUpdates: 1, conflictCandidateCap: 8, targetMode: 'reward',
+      currentLearningRate01: 0.18, replayLearningRate01: 0.06,
+    },
+  );
+  assert.equal(result.replayUpdates, 1);
+  assert.equal(result.contextSeparatedReplayRows, 1,
+    'only a context-separated row with enough distant neighbors should receive the balanced-retention rate');
+  assert.equal(result.blockedReplayRows, 0);
+}
+
+{
+  const engine = new P26TrueLearningEngine();
   const noReplay = engine.trainInterleaved(
     [experience(0.4, 0.2, 'respond', 0.7)],
     [experience(0.4, 0.2, 'respond', 0.7)],
