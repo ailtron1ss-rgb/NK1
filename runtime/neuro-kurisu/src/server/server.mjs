@@ -24,6 +24,7 @@ import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
+import { HexisRemoteApiBridge, HexisRemoteBridgeError } from '../organism/integration/hexis/HexisRemoteApiBridge.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -174,6 +175,7 @@ const runtime = new OrganismRuntime({
     ...(TRUSTED_SHADOW_LEARNING ? { trustedShadowLearning: TRUSTED_SHADOW_LEARNING } : {}),
     ...(COMPOUND_REPAIR_REVISION ? { compoundRepairRevision: COMPOUND_REPAIR_REVISION } : {}),
 });
+const hexisRemotePeer = new HexisRemoteApiBridge(process.env);
 let runtimeReady = false;
 const willSdk = new WillSdkFacade({ step: (message, options) => runtime.step(message, options), snapshot: () => runtime.core.snapshot(), flush: () => runtime.core.flush(), exportWillPma: () => runtime.core.exportWillPma(), validateWillPma: (pma) => runtime.core.validateWillPma(pma) }, { enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() }, 'kurisu');
 const willMcp = new WillMcpJsonRpcServer(willSdk);
@@ -813,6 +815,27 @@ async function route(req, res) {
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis') {
             return json(res, 200, { ok: true, hexis: runtime.core.hexisDiagnostics(), memoryIndex: runtime.core.hexisMemoryIndex(64), reviews: runtime.core.hexisListLearningReviews(), outbox: runtime.core.hexisOutbox() });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/peer/status') {
+            const peer = await hexisRemotePeer.status();
+            return json(res, 200, { ok: true, peer });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/peer/consult') {
+            const input = await body(req);
+            try {
+                const result = await hexisRemotePeer.consult({
+                    question: input.question,
+                    context: input.context,
+                    confirmExternalConsult: input.confirmExternalConsult === true,
+                });
+                return json(res, 200, { ok: true, result });
+            }
+            catch (error) {
+                const known = error instanceof HexisRemoteBridgeError;
+                const code = known ? error.code : 'hexis-remote-unavailable';
+                const status = known ? error.httpStatus : 503;
+                return json(res, status, { ok: false, error: code, advisoryOnly: true, nk1StateChanged: false });
+            }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/memories') {
             const limit = Math.max(1, Math.min(128, Number(url.searchParams.get('limit') || 64)));
