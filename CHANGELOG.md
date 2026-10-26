@@ -1,3 +1,15 @@
+## WorkPass346 — enforce event identity and payload immutability in active runtime (2026-10-26)
+
+- **FIXED:** active `CognitiveEventFabric.append()` now validates the complete stable-ID envelope (tick, timestamp, stage, source, causal parents, external flag, confidence and canonical payload). Reusing an ID with changed evidence fails before mutation.
+- **FIXED:** accepted payloads are deeply detached; caller/reader mutation cannot rewrite the causal ledger. Circular, unsupported, excessive-depth and oversized structures fail before append; accessors are skipped without invoking getters.
+- **HARDENED:** exact replay without a supplied finite timestamp reuses the stored event timestamp, preserving idempotency across retries.
+- **HARDENED:** added a detached read-only `getById()` lookup and skip malformed persisted payload rows during restore rather than aborting recovery of healthy events.
+- **REGRESSION:** event-fabric test now covers equivalent key order, conflicting payload/parents/timestamp/source/stage/tick, nested mutation, omitted timestamps, cyclic payloads and side-effecting getters.
+- **WIRING:** `test:cognitive-integration-suite` now runs the event-fabric regression as a required step.
+- **VALIDATION:** exact-head CI must pass on the resulting commit; no device/field or learning-uplift claim is made.
+
+---
+
 ## WorkPass344 — финальный release gate: metadata, architecture и hygiene — 2026-10-26
 
 - **Gate:** `release:verify` теперь требует UI wiring, архитектуру и каноническую release metadata; любой отсутствующий или падающий gate блокирует PASS.
