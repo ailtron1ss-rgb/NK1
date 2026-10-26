@@ -205,14 +205,102 @@ export class CognitiveEventFabric {
   }
 
   restore(raw?:Partial<CognitiveEventFabricSnapshot>|null):void{
-    const recentRows=Array.isArray(raw?.recent)?raw!.recent:[];
-    const receiptEvents=Array.isArray((raw as CognitiveEventFabricSnapshot | undefined)?.receiptEvents)
-      ? (raw as CognitiveEventFabricSnapshot).receiptEvents! : [];
+    // Preserve the historical empty-reset behavior for an absent snapshot. Any supplied
+    // object must validate before the live event ledger or receipt index is mutated.
+    if(raw===undefined||raw===null){
+      this.events=[];
+      this.receiptProjectionIndex.clear();
+      this.total=0;
+      return;
+    }
+    if(!isPlainRecord(raw))throw new TypeError('invalid-cognitive-event-fabric-snapshot-root');
+
+    let rootDescriptors:Record<string,PropertyDescriptor>;
+    try {
+      rootDescriptors=Object.getOwnPropertyDescriptors(raw) as Record<string,PropertyDescriptor>;
+    } catch {
+      throw new TypeError('invalid-cognitive-event-fabric-snapshot-root');
+    }
+    if(Object.values(rootDescriptors).some(descriptor=>!Object.hasOwn(descriptor,'value'))) {
+      throw new TypeError('cognitive-event-fabric-snapshot-root-accessor');
+    }
+    const rootHas=(key:string)=>Object.hasOwn(rootDescriptors,key);
+    const rootValue=(key:string):unknown=>rootHas(key)?rootDescriptors[key]!.value:undefined;
+    if(rootHas('version')&&rootValue('version')!==1) {
+      throw new RangeError('unsupported-cognitive-event-fabric-snapshot-version');
+    }
+    if(rootHas('capacity')&&(
+      typeof rootValue('capacity')!=='number'||!Number.isSafeInteger(rootValue('capacity'))||
+      (rootValue('capacity') as number)<1||(rootValue('capacity') as number)>4096
+    ))throw new TypeError('invalid-cognitive-event-fabric-snapshot-capacity');
+    if(rootHas('total')&&(
+      typeof rootValue('total')!=='number'||!Number.isSafeInteger(rootValue('total'))||(rootValue('total') as number)<0
+    ))throw new TypeError('invalid-cognitive-event-fabric-snapshot-total');
+
+    const readSnapshotArray=(key:string,limit:number):unknown[]=>{
+      if(!rootHas(key))return [];
+      const candidate=rootValue(key);
+      let array=false;
+      try { array=Array.isArray(candidate); } catch { /* reject below */ }
+      if(!array)throw new TypeError('invalid-cognitive-event-fabric-snapshot-array:'+key);
+      let prototype:object|null;
+      let descriptors:Record<string,PropertyDescriptor>;
+      try {
+        prototype=Object.getPrototypeOf(candidate as object);
+        descriptors=Object.getOwnPropertyDescriptors(candidate as object) as Record<string,PropertyDescriptor>;
+      } catch {
+        throw new TypeError('invalid-cognitive-event-fabric-snapshot-array:'+key);
+      }
+      if(prototype!==Array.prototype)throw new TypeError('invalid-cognitive-event-fabric-snapshot-array:'+key);
+      const lengthDescriptor=descriptors.length;
+      if(!lengthDescriptor||!Object.hasOwn(lengthDescriptor,'value')||
+        typeof lengthDescriptor.value!=='number'||!Number.isSafeInteger(lengthDescriptor.value)||
+        lengthDescriptor.value<0||lengthDescriptor.value>limit) {
+        throw new RangeError('invalid-cognitive-event-fabric-snapshot-array-length:'+key);
+      }
+      const length=lengthDescriptor.value;
+      for(const ownKey of Object.keys(descriptors)){
+        if(ownKey==='length')continue;
+        if(!/^(0|[1-9]\\d*)$/.test(ownKey)||Number(ownKey)>=length) {
+          throw new TypeError('invalid-cognitive-event-fabric-snapshot-array-key:'+key);
+        }
+      }
+      const result:unknown[]=[];
+      for(let index=0;index<length;index+=1){
+        const descriptor=descriptors[String(index)];
+        if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value')) {
+          throw new TypeError('invalid-cognitive-event-fabric-snapshot-array-slot:'+key);
+        }
+        result.push(descriptor.value);
+      }
+      return result;
+    };
+    const readDataRecord=(candidate:unknown,fields:readonly string[]):Record<string,unknown>|null=>{
+      if(!isPlainRecord(candidate))return null;
+      let descriptors:Record<string,PropertyDescriptor>;
+      try { descriptors=Object.getOwnPropertyDescriptors(candidate) as Record<string,PropertyDescriptor>; }
+      catch { return null; }
+      const values:Record<string,unknown>=Object.create(null) as Record<string,unknown>;
+      for(const field of fields){
+        const descriptor=descriptors[field];
+        if(!descriptor)continue;
+        if(!Object.hasOwn(descriptor,'value'))return null;
+        values[field]=descriptor.value;
+      }
+      return values;
+    };
+    const rowLimit=Math.max(512,this.capacity*4);
+    const recentRows=readSnapshotArray('recent',rowLimit);
+    const receiptEvents=readSnapshotArray('receiptEvents',rowLimit);
+    const receiptRows=readSnapshotArray('receiptProjectionIndex',256);
     const rows=[...recentRows,...receiptEvents];
     const seen=new Set<string>();
     const restored:CognitiveEventNode[]=[];
-    for(const value of rows){
-      if(!isRecord(value))continue;
+    for(const candidate of rows){
+      const value=readDataRecord(candidate,[
+        'id','stage','tick','at','source','parentIds','external','confidence01','payload',
+      ]);
+      if(!value)continue;
       const id=typeof value.id==='string'?value.id:'';
       const stage=typeof value.stage==='string'?value.stage as CognitiveStage:undefined;
       // Restore strictly typed identity and clocks; do not coerce malformed values into valid events.
@@ -262,12 +350,14 @@ export class CognitiveEventFabric {
       });
       if(restored.length>=this.capacity)break;
     }
-    this.events=restored;
-    this.receiptProjectionIndex.clear();
-    const restoredById=new Map(this.events.map(event=>[event.id,event] as const));
-    const receiptRows=Array.isArray((raw as CognitiveEventFabricSnapshot | undefined)?.receiptProjectionIndex)
-      ? (raw as CognitiveEventFabricSnapshot).receiptProjectionIndex! : [];
-    for(const entry of receiptRows) {
+    const restoredById=new Map(restored.map(event=>[event.id,event] as const));
+    const restoredReceiptProjectionIndex=new Map<string,ToolReceiptProjectionIndexEntry>();
+    for(const candidateEntry of receiptRows) {
+      const entry=readDataRecord(candidateEntry,[
+        'executionId','actionEventId','outcomeEventId','evidenceEventId','projectedAt',
+        'projectionHash','externalObservations','receiptRevisions',
+      ]);
+      if(!entry)continue;
       if(!entry || typeof entry.executionId!=='string' || !entry.executionId.trim() || entry.executionId.length>180) continue;
       if(typeof entry.actionEventId!=='string' || typeof entry.outcomeEventId!=='string' || typeof entry.evidenceEventId!=='string') continue;
       const projectedAt=Number(entry.projectedAt);
@@ -330,11 +420,16 @@ export class CognitiveEventFabric {
         const event=restoredById.get(String(ref.eventId));
         return event?.stage==='tool-reconciliation'&&event.payload.executionId===entry.executionId&&event.payload.revisionId===ref.revisionId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase();
       }).map((ref:any)=>({revisionId:String(ref.revisionId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt)})):[];
-      this.receiptProjectionIndex.set(entry.executionId,{executionId:entry.executionId,actionEventId:entry.actionEventId.slice(0,180),outcomeEventId:entry.outcomeEventId.slice(0,180),evidenceEventId:entry.evidenceEventId.slice(0,180),projectedAt,...(/^[a-f0-9]{64}$/i.test(String(entry.projectionHash??''))?{projectionHash:String(entry.projectionHash).toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
-      if(this.receiptProjectionIndex.size>=256) break;
+      restoredReceiptProjectionIndex.set(entry.executionId,{executionId:entry.executionId,actionEventId:entry.actionEventId.slice(0,180),outcomeEventId:entry.outcomeEventId.slice(0,180),evidenceEventId:entry.evidenceEventId.slice(0,180),projectedAt,...(/^[a-f0-9]{64}$/i.test(String(entry.projectionHash??''))?{projectionHash:String(entry.projectionHash).toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
+      if(restoredReceiptProjectionIndex.size>=256) break;
     }
-    const rawTotal=Number(raw?.total??this.events.length);
-    this.total=Math.max(this.events.length,Number.isFinite(rawTotal)?Math.max(0,Math.floor(rawTotal)):this.events.length);
+    const rawTotal=rootHas('total')?rootValue('total') as number:restored.length;
+    const restoredTotal=Math.max(restored.length,rawTotal);
+    // Commit all staged state only after root validation and receipt projections complete.
+    this.events=restored;
+    this.receiptProjectionIndex.clear();
+    for(const [executionId,entry] of restoredReceiptProjectionIndex)this.receiptProjectionIndex.set(executionId,entry);
+    this.total=restoredTotal;
   }
 
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
