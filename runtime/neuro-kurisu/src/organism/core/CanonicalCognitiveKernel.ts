@@ -464,6 +464,13 @@ export class CanonicalCognitiveKernel {
       if(typeof anchorId!=='string'||!anchorId.trim()) {
         throw new TypeError(`canonical-cognitive-kernel-anchor-${stage}-must-be-a-non-empty-string`);
       }
+      if(
+        anchorId!==anchorId.trim()||
+        anchorId.length>180||
+        /[\\u0000-\\u001f\\u007f-\\u009f]/u.test(anchorId)
+      ) {
+        throw new Error('canonical-cognitive-kernel-anchor-provenance-conflict');
+      }
       if(seenAnchorIds.has(anchorId)) {
         throw new Error('canonical-cognitive-kernel-anchor-provenance-conflict');
       }
