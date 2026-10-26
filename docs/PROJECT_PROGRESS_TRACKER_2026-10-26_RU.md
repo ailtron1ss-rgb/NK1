@@ -1,3 +1,13 @@
+## WorkPass406 — UI явно показывает итог HMX import receipt (2026-10-26)
+
+- **UI-код:** `a330d9bd1ca2602e3cfcc0fe75d513a8f67e7875`; **audit regression:** `ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122`.
+- Кнопка принятия HMX теперь анализирует квитанцию и выводит отдельный итог `APPLIED`, `PARTIAL`, `SKIPPED`, `PENDING` или `UNCERTAIN`, включая счётчики/причину при наличии.
+- Неопределённый или оставшийся pending результат больше не маскируется под обычное `Accept HMX: OK`. После терминальной квитанции локальные controls сбрасываются; при неизвестном результате интерфейс предупреждает не повторять эту стадию и проверить каноническую память/квитанцию.
+- `audit-ui-function-wiring.mjs` теперь проверяет, что warning для uncertain/pending существует и связан с кнопкой принятия.
+- **Валидация:** PENDING frontend build, UI wiring audit, exact-head runtime typecheck, HMX adaptation/server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass405 — неопределённый результат HMX при неполном rollback (2026-10-26)
 
 - **Код:** `7c50f4a34dfc1198b9ec1347b1938d38fd7e73cc`; **регрессия:** `637429b82ae8913760b89b9544cd21a00457c3bd`.
