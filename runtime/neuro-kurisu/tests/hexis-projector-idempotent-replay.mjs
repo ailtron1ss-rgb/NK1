@@ -60,7 +60,7 @@ assert.equal(writes, 0, 'idempotent replay must not touch canonical storage');
 
 // New receipts use canonical serialization; the same receipt must remain valid when
 // persistence restores identical fields in a different object-key order.
-const { digest: legacyReceiptDigest, ...receiptPayload } = receipt;
+const receiptPayload = Object.fromEntries(Object.entries(receipt).filter(([key]) => key !== 'digest'));
 const canonicalReceipt = {
   ...receiptPayload,
   digest: sha256Stable(receiptPayload, 'legacy'),
