@@ -17,6 +17,35 @@ assert.equal(fabric.temporalAt('mem-1',1500)?.valueHash, t1.valueHash);
 assert.equal(fabric.temporalAt('mem-1',2500)?.summary, 'beta');
 assert.equal(fabric.temporalDiff('mem-1',1500,2500).changed, true);
 
+const late = fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'late arrival',confidence01:.65,validFrom:1500,source:'test-late',value:'late'});
+assert.equal(fabric.temporalAt('mem-1',1250)?.summary, 'alpha', 'earlier assertion interval must end at the next effective timestamp');
+assert.equal(fabric.temporalAt('mem-1',1750)?.id, late.id, 'late-arriving assertion must be inserted into valid-time order');
+assert.equal(fabric.temporalAt('mem-1',2500)?.summary, 'beta', 'late assertion must not overwrite the later version');
+const temporalHistory = fabric.snapshot().temporal.filter(x => x.memoryId === 'mem-1').sort((a,b) => a.validFrom-b.validFrom);
+assert.deepEqual(temporalHistory.map(x => [x.validFrom,x.validUntil]), [[1000,1500],[1500,2000],[2000,null]]);
+assert.equal(temporalHistory[1].supersedesId, temporalHistory[0].id);
+assert.equal(temporalHistory[2].supersedesId, temporalHistory[1].id);
+
+const beforeTemporalReplay = fabric.snapshot().temporal.filter(x => x.memoryId === 'mem-1').length;
+const replayedLate = fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'late arrival',confidence01:.65,validFrom:1500,source:'different-retry-source',value:'late'});
+assert.equal(replayedLate.id, late.id, 'same semantic event at the same effective time must be idempotent');
+assert.equal(fabric.snapshot().temporal.filter(x => x.memoryId === 'mem-1').length, beforeTemporalReplay);
+
+const beforeTemporalConflict = fabric.snapshot();
+assert.throws(
+ () => fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'conflicting event',confidence01:.8,validFrom:1500,source:'test',value:'conflict'}),
+ /temporal_assertion_timestamp_conflict/,
+);
+assert.deepEqual(fabric.snapshot(), beforeTemporalConflict, 'a conflicting event must not partially mutate temporal history');
+assert.throws(
+ () => fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'invalid time',confidence01:.5,validFrom:Number.NaN}),
+ /temporal_valid_from_invalid/,
+);
+const restoredTemporal = new HexisAdaptationFabric();
+restoredTemporal.restore(fabric.snapshot());
+assert.equal(restoredTemporal.temporalAt('mem-1',1750)?.id, late.id, 'valid-time chain must survive restore');
+
+
 const review = fabric.createLearningReview({periodStart:0,periodEnd:1,summary:'test review',items:[{kind:'semantic_belief',title:'x',content:'y',sourceMemoryId:'mem-1',evidence:{}}]});
 const decided = fabric.decideLearningReview(review.id,review.items[0].id,'approve');
 assert.equal(decided?.status,'approved');
