@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** `workpass362-event-fabric-restore-boundary`  
 **База:** `work/nk1-substrate-restore-integrity-2026-10-26-r1` (stack поверх WorkPass355–361)  
-**Статус:** код и регрессии добавлены; точная CI-проверка ожидается.
+**Статус:** PASS на source/test HEAD `1f92e8eed3e17ff0aa2722b3af7165da056bcb3a`. Последующие коммиты меняют только checkpoint/CHANGELOG.
 
 ## Дефект
 
@@ -24,10 +24,14 @@
 2. Отбрасываются строковый/дробный tick, строковый external, некорректная confidence, malformed parent ID и циклический payload.
 3. Ни event ID getter, ни root collection getter, ни вложенный payload getter не выполняются.
 4. Неизвестная версия и root accessor не меняют текущий журнал.
-5. Добавлен маркер `WorkPass361 event-fabric restore boundary: PASS`; `npm run test:canonical-cognitive-kernel` уже зарегистрирован.
+5. Добавлен маркер `WorkPass362 event-fabric restore boundary: PASS`; `npm run test:canonical-cognitive-kernel` уже зарегистрирован.
 
 ## CI и границы
 
-Соседний WorkPass360 запуск прошёл runtime typecheck и substrate unit test, затем упал в wiring assertion из-за точного строкового ожидания прежнего импорта; это было исправлено в upstream WorkPass361. В WorkPass362 не перенесён альтернативный вариант этого upstream test fix — сохранён актуальный test file из base. Точный WorkPass331 запуск на этом HEAD должен завершиться успешно прежде, чем проход можно считать validated.
+**Exact-head PASS на source/test snapshot `1f92e8eed3e17ff0aa2722b3af7165da056bcb3a`:**
+- [WorkPass331 unified cognitive kernel #40282530812](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282530812) — success, все 23 шага; runtime typecheck, substrate restore/wiring, canonical loop, live runtime, smoke/autonomy/dialogue/background initiative/restart.
+- [WorkPass110 continual-learning metrics #40282530835](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282530835) — success, все 48 шагов.
+
+Более ранний WorkPass360 запуск действительно падал на старом exact-string wiring assertion; это upstream-изменение исправлено до указанного source/test snapshot. Документационные коммиты после указанного SHA не меняют runtime/test файлы.
 
 Локальное исполнение Node/TypeScript не заявляется. Это hardening восстановления причинного журнала, а не доказательство прироста обучаемости/интеллекта. `main` не изменён; Release ZIP не пересобирался.
