@@ -176,6 +176,25 @@ assert.equal(cycleLedger.snapshot().incompleteCycles, 1);
  assert.equal(collisionFabric.snapshot().total,beforePlanCollision,'conflicting staged input must be rejected atomically');
  assert.equal(collisionFabric.getById('cef:kernel:7:observation'),null);
 
+ // Non-JSON payloads are rejected while preparing the batch, before the first event is written.
+ const circularFabric=new CognitiveEventFabric(256);
+ const circularLedger=new UnifiedCognitiveCycle();
+ const circularKernel=new CanonicalCognitiveKernel(circularFabric,circularLedger);
+ const cyclicPayload={};
+ cyclicPayload.self=cyclicPayload;
+ assert.throws(()=>circularKernel.beginDecisionCycle({
+   tick:8,at:800,
+   observation:stage('sensor.observation',cyclicPayload),
+   prediction:stage('world.predict',{selectedAction:'explore'}),
+   appraisal:stage('homeostasis.appraise',{stress01:0.2}),
+   attention:stage('workspace.attention',{selectedItems:['curiosity']}),
+   memory:stage('memory.retrieve',{memoryIds:['m-1']}),
+   goal:stage('motivation.goal',{goalId:'g-1'}),
+   plan:stage('planner.plan',{candidateCount:3}),
+   action:stage('policy.action',{action:'explore'}),
+ }),/circular/,'non-serializable stage data must fail during preflight');
+ assert.equal(circularFabric.snapshot().total,0,'a cyclic later-stage payload must not leave partial decision events');
+
 assert.throws(() => kernel.beginDecisionCycle({
   tick: -1, at: 500,
   observation: stage('o'), prediction: stage('p'), appraisal: stage('a'),
