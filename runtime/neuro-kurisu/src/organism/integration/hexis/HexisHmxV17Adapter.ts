@@ -612,7 +612,12 @@ export function normalizeHmxV17Memory(
   input: { exportId: string; sourceSubjectId?: string; exportedAt?: string },
 ): Nk1HmxMemoryProjection | null {
   if (!input || typeof input !== 'object') return null;
-  const row = record(raw);
+  // This helper is exported and may be called outside the trusted staging path.
+  // Snapshot the row independently so direct callers cannot execute getters,
+  // pass custom prototypes, or mutate values between projection checks.
+  const captured = snapshotHmxV17Document(raw);
+  if (!captured.ok) return null;
+  const row = record(captured.value);
   if (!row || typeof row.content !== 'string' || !row.content.trim() ||
       row.content.length > MAX_MEMORY_CHARS || typeof row.ref !== 'string' ||
       row.ref.length > 512 || !REF_PATTERN.test(row.ref)) return null;
