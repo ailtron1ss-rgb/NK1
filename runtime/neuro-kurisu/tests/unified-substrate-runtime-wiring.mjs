@@ -223,13 +223,13 @@ assert.match(runtime, /runtime\.unified-cognitive-substrate\.restore-failed/);
 assert.match(runtime, /memoryPressure01: 1 - resourceAllocation\.memory01/);
 
 
-assert.match(runtime, /const predictionDebt = this\.core\.predictionDebtSnapshot\(\);/);
-assert.doesNotMatch(runtime, /predictionDebtSnapshot\(\)\s+as Record<string, unknown>/);
-assert.match(runtime, /openCount: debtCount\(predictionDebt\.openCount\)/);
-assert.match(runtime, /agingCount: debtCount\(predictionDebt\.agingCount\)/);
-assert.match(runtime, /expiredCount: debtCount\(predictionDebt\.expiredCount\)/);
-assert.match(runtime, /relationCount: this\.core\.p41PerceptionSnapshot\(\)\.relations\.length/);
-assert.doesNotMatch(runtime, /cycleObservation\.vision\?\.relations/);
+assert.ok(runtime.includes('const predictionDebt = this.core.predictionDebtSnapshot();'));
+assert.ok(!runtime.includes('predictionDebtSnapshot() as Record<string, unknown>'));
+assert.ok(runtime.includes('openCount: debtCount(predictionDebt.openCount)'));
+assert.ok(runtime.includes('agingCount: debtCount(predictionDebt.agingCount)'));
+assert.ok(runtime.includes('expiredCount: debtCount(predictionDebt.expiredCount)'));
+assert.ok(runtime.includes('relationCount: this.core.p41PerceptionSnapshot().relations.length'));
+assert.ok(!runtime.includes('cycleObservation.vision?.relations'));
 const observeAt = runtime.indexOf('const cycle = await this.core.observe(cycleObservation);');
 const integrateAt = runtime.indexOf('this.unifiedCognitiveSubstrate.integrate(', observeAt);
 const routingAt = runtime.indexOf('resolveCognitiveRoutingPolicy(dependencyState', observeAt);
