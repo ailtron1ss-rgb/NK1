@@ -346,7 +346,25 @@ export class HexisCanonicalMemoryProjector {
 
     } catch (error) {
       const rollbackErrors = [];
-      for (const id of [...createdIds].reverse()) {
+      // The canonical MemoryFabric can commit an encode before a downstream
+      // adapter throws. In that case the returned ID never reaches createdIds.
+      // Reconcile against the baseline snapshot and compensate only newly-added
+      // records from this export; never forget pre-existing/native memories.
+      const rollbackIds = new Set(createdIds);
+      try {
+        const afterFailure = this.memoryFabric.canonicalSnapshot().items ?? [];
+        for (const item of afterFailure) {
+          if (
+            item?.id &&
+            !beforeIds.has(item.id) &&
+            String(item.source ?? '').startsWith('hexis:') &&
+            String(item.context?.hexisExportId ?? '') === exportId
+          ) rollbackIds.add(item.id);
+        }
+      } catch (snapshotError) {
+        rollbackErrors.push('canonical-reconcile:' + String(snapshotError?.message ?? snapshotError).slice(0, 220));
+      }
+      for (const id of [...rollbackIds].reverse()) {
         try {
           this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
             commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
