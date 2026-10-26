@@ -1,3 +1,15 @@
+## Latest checkpoint — WorkPass330 (2026-10-26)
+
+- **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; continuation PR recorded in this handover as [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135). No merge to `main` and no release ZIP update.
+- **Code commits:** gate change `c180e9afbfb54c4ee5ec5566d74e54b990b78cf6`; regression `a7e0c0f9d16b52065c1c1d57f6a90a9d8f9b0aee`.
+- **Defect fixed:** `SkillLearnBenchAdapter` previously used `validationTaskSuccess < 0.8` to add feedback only. Stronger trajectory/skill sub-scores could still make a low-success candidate eligible. The gate now has configurable `minimumValidationTaskSuccess01` (default 0.80), validates its range and rejects below-threshold candidates with `validation-task-success-below-threshold`.
+- **Regression added:** constructs a candidate with 50% verified task success but positive composite gain; confirms default denial, explicit 0.50 override behavior and rejection of an out-of-range threshold.
+- **Validation:** test/typecheck have not been executed in this pass. Connector status/PR workflow lookup did not return exact-head check records; do not count that as either PASS or test failure. Verify P26 Learning Validation on the current PR head, including runtime typecheck and `p29-hermes-reflective-candidate-gate.mjs`.
+- **Next code-first priorities:** (1) inspect exact-head CI and fix any concrete failures; (2) move beyond synthetic candidate gates to independently held-out tool-use/transfer tasks with paired seeds and task-family reporting; (3) bind promotion criteria to per-family evidence without letting aggregate memory gains hide zero tool-use/transfer; (4) trace a real accepted action through external postcondition proof and learning credit.
+- **Do not overclaim:** this closes a promotion-gate logic gap. It does not demonstrate improved actual learning, general intelligence, consciousness or production readiness.
+
+---
+
 ## Learning evidence addendum — WorkPass329 (2026-10-25)
 
 - Exact code checkpoint `9d0e1fa5d7cb94e0e252cce09bdfca4551d0ddba` passed the independent CI workflows: WorkPass110, P26 Learning Validation, WorkPass99 replay benchmark, WorkPass105 verified outcome ledger, WorkPass108 signed evidence/promotion gate, WorkPass287–288 cognitive contracts and WorkPass291–294.
