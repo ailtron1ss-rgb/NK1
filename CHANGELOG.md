@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass422 — verify staged payload integrity after restore (2026-10-26)
+
+- [TRUST BOUNDARY] The duplicate trailing HMX implementation block was removed from `HexisAdaptationFabric.ts`; it began in the middle of a method after the class had already closed. This restores one syntactically coherent implementation of the adapter.
+- [INTEGRITY] HMX stage digests are now recomputed from the stored payload before stage decisions and goal-proposal preparation. Altered memory records cannot reach the canonical writer, and altered goal records cannot create agency proposals with a stale digest.
+- [RECEIPTS] First-apply receipt validation remains in the active implementation; goal preparation also requires a valid receipt when consuming a stage already marked applied.
+- [REGRESSION] Added restored-state tampering cases for memory import and goal proposal preparation. Runtime/typecheck still need a functioning CI runner; this commit is not marked tested.
+
 ## [NK1][Hexis] Prevent imported-memory resurrection and cap external authority (2026-10-26)
 
 - [FIX] HMX status is now mapped explicitly: missing/future statuses remain `unknown`; archived, quarantined, deleted, rejected, superseded and inactive records remain quarantined; external `fact` labels do not become NK1-verified facts.
