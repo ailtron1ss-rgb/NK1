@@ -248,6 +248,34 @@ export class HexisCanonicalMemoryProjector {
             }
             if (targetStatus === 'quarantined' || targetStatus === 'unknown') this.removeSemanticProjection(graphSourceKey);
             else this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
+
+            // Existing state may predate this importer's confidence cap. Reconcile it
+            // downward on replay, including its external HMX evidence trail; never raise
+            // canonical trust from an upstream claim.
+            const trustValue = row.trust_level ?? row.trustLevel ?? row.provenance?.confidence;
+            const sourceTrustClaim = Number.isFinite(Number(trustValue)) ? clamp01(Number(trustValue)) : 0.45;
+            const incomingAuthorityCap = Math.min(sourceTrustClaim, MAX_IMPORTED_EXTERNAL_CONFIDENCE);
+            const priorConfidence = clamp01(duplicate.confidence ?? 0.45);
+            const priorAuthority = clamp01(duplicate.sourceAuthority01 ?? duplicate.confidence ?? 0.45);
+            const hasOverCapHmxEvidence = Array.isArray(duplicate.evidenceSources) && duplicate.evidenceSources.some(
+              evidence => evidence.provenanceClass === 'external' &&
+                String(evidence.source ?? '').startsWith('hexis:') &&
+                clamp01(evidence.sourceAuthority01) > incomingAuthorityCap,
+            );
+            if (priorConfidence > incomingAuthorityCap || priorAuthority > incomingAuthorityCap || hasOverCapHmxEvidence) {
+              this.memoryFabric.updateSignals(
+                duplicate.id,
+                {
+                  confidence: Math.min(priorConfidence, incomingAuthorityCap),
+                  sourceAuthority01: Math.min(priorAuthority, incomingAuthorityCap),
+                  evidenceSources: Array.isArray(duplicate.evidenceSources)
+                    ? duplicate.evidenceSources.map(evidence => ({ ...evidence }))
+                    : [],
+                },
+                'hexis-import-authority-cap',
+                { commandId: 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48) },
+              );
+            }
           }
           deduplicatedCount++;
           continue;
