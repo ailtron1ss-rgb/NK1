@@ -1,3 +1,8 @@
+## [NK1][Hexis] Reject mistyped HMX confirmation flags (2026-10-26)
+
+- Extend the server smoke matrix so `confirmed: "true"` is rejected as a type error rather than being treated as an approval signal.
+- CI execution is still not verifiable from the current GitHub Actions log service; a local checkout is also blocked by unavailable network DNS in this execution environment.
+
 ## [NK1][Hexis] Enforce HMX accept/apply confirmation on the server (2026-10-26)
 
 - Require `confirmed: true` on both `accept` and `apply` decisions in the HMX endpoint; reject a wrongly typed confirmation flag as HTTP 400 and unconfirmed transitions as HTTP 403.
