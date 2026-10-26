@@ -30,7 +30,7 @@ const viewerCandidates=[
 const viewerPath=viewerCandidates.find(candidate=>fs.existsSync(candidate)&&fs.statSync(candidate).size>1000);
 assert.ok(viewerPath,'canonical app Live2D viewer is missing from the workspace');
 const viewer=fs.readFileSync(viewerPath,'utf8');
-for(const token of ['Kurisu.mobile/Kurisu-mobile.model3.json','Kurisu/Kurisu.model3.json','kurisu_expression','kurisu_embodiment','kurisu_lipsync','TapHead','TapBody']) assert.ok(viewer.includes(token),`viewer missing ${token}`);
+for(const token of ['Kurisu.mobile/Kurisu-mobile.model3.json','Kurisu/Kurisu.model3.json','kurisu_embodiment','lastAppliedExpression','ParamMouthOpenY','TapHead','TapBody']) assert.ok(viewer.includes(token),`viewer missing ${token}`);
 assert.ok(viewer.includes('lastAppliedExpression'), 'viewer must cache the last applied expression');
 assert.ok(viewer.includes('expressionName===lastAppliedExpression'), 'mouth/embodiment updates must not restart an unchanged expression');
 const rootModel=JSON.parse(fs.readFileSync(path.join(root,'public/live2d/Kurisu/Kurisu.model3.json'),'utf8'));
