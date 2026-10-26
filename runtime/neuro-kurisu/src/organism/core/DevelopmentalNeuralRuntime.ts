@@ -108,6 +108,7 @@ import { NeuroDigitalEvolutionEngine } from '../system/NeuroDigitalEvolutionEngi
 import { P23LearningEngine, defaultP23Learning } from '../learning/P23LearningEngine.ts';
 import { P25ScientificDevelopmentEngine, defaultP25ScientificDevelopment } from '../learning/P25ScientificDevelopmentEngine.ts';
 import { P26TrueLearningEngine, defaultP26TrueLearning } from '../learning/P26TrueLearningEngine.ts';
+import { createP26HoldoutEvidenceVerifierFromEnv } from '../learning/P26TrustedHoldoutEvidenceAuthority.ts';
 import { P28PlasticitySubstrate, defaultP28Plasticity } from '../learning/P28PlasticitySubstrate.ts';
 import { P29LearningGovernanceEngine, defaultP29Governance } from '../learning/P29LearningGovernance.ts';
 import { P30ContinualIntelligenceEngine, defaultP30Continual } from '../learning/P30ContinualIntelligence.ts';
@@ -154,7 +155,7 @@ export class DevelopmentalNeuralRuntime {
   readonly neuroDigitalEvolution = new NeuroDigitalEvolutionEngine();
   readonly p23Learning = new P23LearningEngine();
   readonly p25ScientificDevelopment = new P25ScientificDevelopmentEngine();
-  readonly p26TrueLearning = new P26TrueLearningEngine();
+  readonly p26TrueLearning = new P26TrueLearningEngine({ verifyHoldoutEvidence: createP26HoldoutEvidenceVerifierFromEnv() });
   readonly p28Plasticity = new P28PlasticitySubstrate();
   readonly p29Learning = new P29LearningGovernanceEngine();
   readonly p30Continual = new P30ContinualIntelligenceEngine();
