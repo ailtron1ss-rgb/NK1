@@ -10999,6 +10999,11 @@ export class OrganismCore {
         (this.persisted.facets.advanced as any).neuromodulatoryPlasticity = this.cognitiveRuntime.neuromodulatoryPlasticity.snapshot();
         return d;
     }
+    p26VerifiedHoldoutRecord(input: import('../learning/P26TrueLearningEngine.ts').VerifiedHoldoutEvidenceInput) {
+        const result = this.developmentalNeural.p26TrueLearning.recordVerifiedHoldout(input);
+        if (result.accepted) this.persisted.facets.learning.p26 = this.developmentalNeural.p26TrueLearning.snapshot();
+        return result;
+    }
     p25Snapshot() { return this.developmentalNeural.p25ScientificDevelopment.snapshot(); }
     p25RecordControlledExperiment(input: Parameters<P25ScientificDevelopmentEngine['recordControlledExperiment']>[0]) {
         const r = this.developmentalNeural.p25ScientificDevelopment.recordControlledExperiment(input);
