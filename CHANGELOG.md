@@ -1,3 +1,16 @@
+# WorkPass361 — strict, atomic cognitive event-fabric restore (2026-10-26)
+
+- [FIXED] Validate a present event-fabric snapshot schema version before mutation. Unknown versions and accessor-backed root fields fail closed without replacing the previous live ledger.
+- [HARDENED] Event rows are reconstructed only from own data descriptors. Non-canonical IDs, fractional/unsafe ticks, invalid timestamps, string booleans, out-of-range confidence and malformed parent lists are discarded rather than coerced into valid-looking causal evidence.
+- [HARDENED] Recursively copy payload JSON without evaluating getters. Nested accessors, cycles, sparse/extended arrays, unsupported prototypes, non-JSON values and excessive depth/node count invalidate the row safely.
+- [ATOMICITY] Build restored events, receipt-index entries and references in local collections; publish events/index/total only after the bounded restore projection completes.
+- [COMPATIBILITY] Permit older snapshots that omit optional version/node fields with conservative defaults. Invalid present values are not normalized into stronger evidence.
+- [REGRESSION] Add coverage for malformed identities/fields, cycles and nested accessors, event/root getters, unknown schema rejection and preservation of the previous snapshot on failure.
+- [CI] WorkPass331 already filters `CognitiveEventFabric.ts` and `canonical-cognitive-kernel.mjs`. Exact-head runtime typecheck + kernel/live-runtime workflow is the acceptance gate.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass360 — make floating-point feedback assertions numerically robust (2026-10-26)
 
 - [FIXED] Change the damaged-feedback regression to use a tight tolerance for the mathematically-one weighted sum (IEEE-754 produced 0.9999999999999999); production normalization remains bounded and unchanged.
