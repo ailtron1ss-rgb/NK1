@@ -1,52 +1,13 @@
-## WorkPass349 — verify restored receipt projection fingerprints — 2026-10-26
+## WorkPass353 — reject oversized and non-canonical causal identity fields (2026-10-26)
 
-- **Defect:** snapshot restore accepted a syntactically valid `receiptProjectionIndex.projectionHash` without checking it against the action/outcome/evidence nodes it referenced. A damaged snapshot could therefore restore a false replay guard and create spurious receipt conflicts.
-- **Fix:** when event-level postcondition hashes are present, reconstruct the normalized receipt fingerprint from the retained causal nodes and restore the index only when the calculated hash matches. Reject partial hash pairs. Preserve the legacy path only when both event-level hashes are absent and the old full-input fingerprint is valid.
-- **Regression coverage:** tampered index hash is discarded while exact retained evidence can rebuild it; tampered/partial event hashes discard the index and conflicting replay is rejected; legacy hashless snapshots remain compatible.
-- **Validation:** exact-head CI is required; no PASS is claimed before the dedicated test and all required checks finish on the same SHA.
-
----
-## WorkPass348 — atomic tool-receipt projection — 2026-10-26
-
-- **Defect:** `appendToolReceiptTrace()` appended action, outcome and evidence records sequentially without rollback. A failure on the second/third append could leave an incomplete receipt. Replay also floored invalid fractional ticks before its existing-receipt branch and coerced malformed booleans/IDs into normalized values.
-- **Fix:** introduce a shared ledger transaction boundary and use it for both operational cycles and three-event receipts; strictly validate receipt tick, timestamp, booleans, confidence and text fields before fingerprint/replay; reject oversized identity fields instead of truncating them into collisions.
-- **Regression coverage:** invalid inputs against an existing receipt must reject without mutation; an injected third-append failure must restore event buffer/total/projection index and allow a clean retry.
-- **Validation:** exact-head CI is required; no pass is claimed until all required checks complete on the final branch SHA.
+- **Defect:** `CognitiveEventFabric.append()` silently truncated source strings, parent IDs and oversized parent lists. Snapshot restore also previously truncated IDs/sources/parents and coerced malformed ticks/timestamps/confidence/flags into valid-looking records.
+- **Fix:** reject empty, padded, oversized or control-character source values; reject padded/oversized event and parent IDs and parent-list overflow before mutation. Parent arrays must be dense data arrays; sparse slots and accessor elements are rejected without invoking getters. Restore skips invalid identity/clock/evidence rows without reserving IDs, so later valid rows can recover.
+- **Regression coverage:** source/parent suffix collisions, canonical ID/source/parent requirements, parent-count boundary, sparse/accessor parent arrays at append and restore, malformed restore ID/source/parents/tick/time/confidence/boolean fields and valid duplicate recovery.
+- **CI correction:** the first exact-head attempt caught an over-escaped control-character regex that rejected ordinary IDs such as `parent:1`. Fixed the literal character class and retained the failure as evidence.
+- **Test correction:** while reviewing the regression fixture, found two test literals that encoded a backslash-plus-`n` instead of a newline. Corrected the fixture so both append and restore paths exercise actual control characters.
+- **Validation:** PR #180 / branch `work/nk1-event-envelope-bounds-2026-10-26-r2`. Only a fresh exact-head CI after these final edits may count; earlier failed/passing runs are not evidence for the current head.
 
 ---
-## WorkPass347 — atomic operational-cycle recording — 2026-10-26
-
-- **Defect:** `CognitiveEventFabric.recordOperationalCycle()` appended stages as it read/validated them. A malformed late `learning`/`selfUpdate` field or unexpected append failure could leave earlier observation/plan events in the ledger even though the logical cycle failed.
-- **Fix:** preflight the cycle clock and all provided phase metadata/payloads before any writes; normalize phase data once; record stages through a single ordered specification; roll back event buffer, lifetime total and receipt projection index if an unexpected append failure occurs.
-- **Regression coverage:** normal parent links/order, cyclic late payload with zero writes, invalid late source with zero writes and injected mid-cycle append exception with full rollback.
-- **Validation:** exact-head CI is required for this branch. No pass is claimed until runtime typecheck, the dedicated test and unified integration suite complete on the same SHA.
-
----
-## WorkPass347 — preserve unlinked decision IDs in receipt replay — 2026-10-26
-
-- **Defect:** `appendToolReceiptTrace()` fingerprints a supplied `decisionId`, but the action event stored `decisionId: null` when that event was not present in the bounded CEF window. Exact replay without the projection index then failed with `tool-receipt-execution-id-conflict`.
-- **Fix:** store the supplied decision identifier separately as `requestedDecisionId`; retain `decisionId` and `decisionLinked` as the actual resolved causal relationship. Replay matching uses the requested ID when present and falls back to the legacy field for older snapshots.
-- **Regression:** the indexless receipt test now asserts that unresolved decisions are not forged into parent links, exact replay succeeds, and changing the requested decision ID is rejected without ledger mutation.
-- **Validation:** exact-head integration suite must complete successfully on the resulting commit; previous failed runs do not count.
-
----
-## WorkPass349 — correct control-character validation in event IDs (2026-10-26)
-
-- **CI finding:** the first exact-head runtime integration run failed in the new event identity regression because the control-character regex was over-escaped and rejected ordinary IDs containing characters such as `f`.
-- **Fix:** restore the intended literal Unicode control ranges `[\\u0000-\\u001f\\u007f]` in source regex syntax, so normal stable IDs are accepted while control characters are rejected.
-- **Validation:** the failed exact-head run is retained as evidence; a new exact-head CI run is required for this correction.
-
----
-
-## WorkPass348 — deterministic postcondition identity and legacy receipt replay (2026-10-26)
-
-- **FIXED:** postcondition fingerprinting no longer uses locale-sensitive lowercasing; case-sensitive differences remain distinct across hosts.
-- **COMPATIBILITY:** a legacy restored receipt without event-level postcondition hashes can replay only when its retained projection index contains the exact full-input fingerprint. Without that independent fingerprint, replay still fails closed.
-- **REGRESSION:** added case-only postcondition conflict and legacy-index compatibility coverage.
-- **VALIDATION:** exact-head CI required on this commit.
-
----
-
 ## WorkPass347 — preserve verified postcondition identity across restore (2026-10-26)
 
 - **FIXED:** the active causal event journal now persists hashes of the expected and observed postconditions in the sanitized receipt-evidence event, without storing raw postcondition text.

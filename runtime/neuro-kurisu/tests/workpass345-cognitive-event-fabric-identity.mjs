@@ -107,6 +107,199 @@ assert.throws(() => fabric.append(makeEvent({
 assert.equal(fabric.snapshot().total, beforeInvalidPayload);
 assert.equal(fabric.snapshot().recent.some(event => event.id === 'cef:test:identity:cyclic'), false);
 
+// Identity and source values must be canonical at write time, so trim-based aliases
+// cannot be accepted as replays and cannot disappear after a restart.
+const beforeNonCanonical=fabric.snapshot().total;
+assert.throws(
+  ()=>fabric.append(makeEvent({id:' cef:test:identity:padded-id',source:'identity-test'})),
+  /invalid-cognitive-event-id/,
+);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:control-source',source:'bad\nsource'})),
+  /invalid-cognitive-event-source/,
+);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:empty-source',source:''})),
+  /invalid-cognitive-event-source/,
+);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:padded-source',source:' padded-source '})),
+  /invalid-cognitive-event-source/,
+);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:padded-parent',parentIds:[' parent:1']})),
+  /invalid-cognitive-event-parent-id/,
+);
+assert.equal(fabric.snapshot().total,beforeNonCanonical,'non-canonical identity fields must fail before ledger mutation');
+
+// Causal parent arrays must be dense data arrays; holes/accessors cannot create
+// undefined parent references or execute caller code during normalization.
+let parentGetterCalls=0;
+const accessorParents=[];
+Object.defineProperty(accessorParents,'0',{enumerable:true,configurable:true,get(){parentGetterCalls+=1;throw new Error('parent getter must not run');}});
+accessorParents.length=1;
+const beforeAccessorParents=fabric.snapshot().total;
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:parent-accessor',parentIds:accessorParents})),
+  /invalid-cognitive-event-parent-id/,
+);
+assert.equal(parentGetterCalls,0);
+assert.equal(fabric.snapshot().total,beforeAccessorParents);
+
+const sparseParents=Array(1);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:parent-hole',parentIds:sparseParents})),
+  /invalid-cognitive-event-parent-id/,
+);
+assert.equal(fabric.snapshot().total,beforeAccessorParents);
+
+// Identity-bearing source and parent fields reject overflow instead of aliasing.
+const boundedSource='s'.repeat(120);
+const boundedSourceEvent=fabric.append(makeEvent({
+  id:'cef:test:identity:source-boundary',
+  source:boundedSource,
+}));
+const afterBoundedSource=fabric.snapshot().total;
+assert.equal(boundedSourceEvent.source.length,120);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:boundedSourceEvent.id,source:boundedSource+'different-suffix'})),
+  /invalid-cognitive-event-source/,
+  'oversized source must be rejected instead of truncated into a matching replay',
+);
+assert.equal(fabric.snapshot().total,afterBoundedSource);
+
+const boundedParent='p'.repeat(180);
+const boundedParentEvent=fabric.append(makeEvent({
+  id:'cef:test:identity:parent-boundary',
+  parentIds:[boundedParent],
+}));
+const afterBoundedParent=fabric.snapshot().total;
+assert.equal(boundedParentEvent.parentIds[0].length,180);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:boundedParentEvent.id,parentIds:[boundedParent+'different-suffix']})),
+  /invalid-cognitive-event-parent-id/,
+  'oversized parent IDs must be rejected instead of truncated into a matching replay',
+);
+assert.equal(fabric.snapshot().total,afterBoundedParent);
+
+const beforeTooManyParents=fabric.snapshot().total;
+assert.throws(
+  ()=>fabric.append(makeEvent({
+    id:'cef:test:identity:too-many-parents',
+    parentIds:Array.from({length:13},(_,index)=>`parent:${index}`),
+  })),
+  /invalid-cognitive-event-parent-count/,
+);
+assert.equal(fabric.snapshot().total,beforeTooManyParents,'parent-count overflow must not mutate the ledger');
+
+const acceptedMaximumParents=fabric.append(makeEvent({
+  id:'cef:test:identity:max-parents',
+  parentIds:Array.from({length:12},(_,index)=>`parent:${index}`),
+}));
+assert.equal(acceptedMaximumParents.parentIds.length,12);
+
+// Restore must skip malformed long IDs/lineage instead of truncating them to alias a later valid row.
+const restoreBounds=new CognitiveEventFabric(128);
+const boundedRestoreId='cef:test:restore:bounded-id';
+const validAfterBadId={...makeEvent({id:boundedRestoreId}),payload:{recovered:'id'}};
+const validAfterBadParent={...makeEvent({id:'cef:test:restore:bounded-parent'}),payload:{recovered:'parent'},parentIds:['parent:valid']};
+const validAfterBadSource={...makeEvent({id:'cef:test:restore:bounded-source'}),payload:{recovered:'source'},source:'valid-source'};
+restoreBounds.restore({
+  version:1,capacity:128,total:5,buffered:5,linkedParentEvents:0,danglingParentLinks:0,
+  lineageIntegrity01:1,cycleCoverage01:0,causalDensity01:0,recentTicks:0,
+  recent:[
+    {...validAfterBadId,id:boundedRestoreId+'x'.repeat(181)},
+    validAfterBadId,
+    {...validAfterBadParent,parentIds:['p'.repeat(181)]},
+    validAfterBadParent,
+    {...validAfterBadSource,source:'s'.repeat(121)},
+    validAfterBadSource,
+  ],
+});
+assert.equal(restoreBounds.getById(boundedRestoreId)?.payload.recovered,'id');
+assert.equal(restoreBounds.getById('cef:test:restore:bounded-parent')?.payload.recovered,'parent');
+assert.equal(restoreBounds.getById('cef:test:restore:bounded-source')?.payload.recovered,'source');
+
+const nonCanonicalRestore=new CognitiveEventFabric(128);
+const canonicalId='cef:test:restore:canonical-id';
+const canonicalParentId='cef:test:restore:canonical-parent';
+const canonicalSourceId='cef:test:restore:canonical-source';
+const canonicalRows=[
+  {...makeEvent({id:` ${canonicalId}`}),payload:{recovered:false}},
+  {...makeEvent({id:canonicalId}),payload:{recovered:true}},
+  {...makeEvent({id:canonicalParentId,parentIds:[' parent:1']}),payload:{recovered:false}},
+  {...makeEvent({id:canonicalParentId,parentIds:['parent:1']}),payload:{recovered:true}},
+  {...makeEvent({id:canonicalSourceId,source:'bad\nsource'}),payload:{recovered:false}},
+  {...makeEvent({id:canonicalSourceId,source:'source-valid'}),payload:{recovered:true}},
+  {...makeEvent({id:'cef:test:restore:empty-source',source:''}),payload:{recovered:false}},
+  {...makeEvent({id:'cef:test:restore:empty-source',source:'source-valid'}),payload:{recovered:true}},
+  {...makeEvent({id:'cef:test:restore:padded-source',source:' padded-source '}),payload:{recovered:false}},
+  {...makeEvent({id:'cef:test:restore:padded-source',source:'source-valid'}),payload:{recovered:true}},
+];
+nonCanonicalRestore.restore({
+  version:1,capacity:128,total:canonicalRows.length,buffered:canonicalRows.length,
+  linkedParentEvents:0,danglingParentLinks:0,lineageIntegrity01:1,cycleCoverage01:0,
+  causalDensity01:0,recentTicks:0,recent:canonicalRows,
+});
+assert.equal(nonCanonicalRestore.getById(canonicalId)?.payload.recovered,true);
+assert.equal(nonCanonicalRestore.getById(canonicalParentId)?.payload.recovered,true);
+assert.equal(nonCanonicalRestore.getById(canonicalSourceId)?.payload.recovered,true);
+assert.equal(nonCanonicalRestore.getById('cef:test:restore:empty-source')?.payload.recovered,true);
+assert.equal(nonCanonicalRestore.getById('cef:test:restore:padded-source')?.payload.recovered,true);
+
+// Snapshot restore also ignores holes/accessors in the parent list without executing
+// caller code or reserving the event ID before a later valid recovery row.
+const restoreParentGetter=[];
+let restoreParentGetterCalls=0;
+Object.defineProperty(restoreParentGetter,'0',{enumerable:true,configurable:true,get(){restoreParentGetterCalls+=1;throw new Error('restore parent getter must not run');}});
+restoreParentGetter.length=1;
+const restoreParentAccessorId='cef:test:restore:parent-accessor';
+const restoreSparseId='cef:test:restore:parent-hole';
+const restoreAccessorFabric=new CognitiveEventFabric(128);
+restoreAccessorFabric.restore({
+  version:1,capacity:128,total:4,buffered:4,linkedParentEvents:0,danglingParentLinks:0,
+  lineageIntegrity01:1,cycleCoverage01:0,causalDensity01:0,recentTicks:0,
+  recent:[
+    {...makeEvent({id:restoreParentAccessorId,parentIds:restoreParentGetter}),payload:{recovered:false}},
+    {...makeEvent({id:restoreParentAccessorId,parentIds:['parent:valid']}),payload:{recovered:true}},
+    {...makeEvent({id:restoreSparseId,parentIds:Array(1)}),payload:{recovered:false}},
+    {...makeEvent({id:restoreSparseId,parentIds:['parent:valid']}),payload:{recovered:true}},
+  ],
+});
+assert.equal(restoreParentGetterCalls,0);
+assert.equal(restoreAccessorFabric.getById(restoreParentAccessorId)?.payload.recovered,true);
+assert.equal(restoreAccessorFabric.getById(restoreSparseId)?.payload.recovered,true);
+
+// Restore must skip malformed clock/evidence types instead of flooring/coercing them.
+// Invalid rows must not reserve their IDs, so a following valid copy can be recovered.
+const strictRestore=new CognitiveEventFabric(128);
+const restorePairs=[
+  {id:'cef:test:restore:fractional-tick',bad:{tick:7.5},good:{tick:7}},
+  {id:'cef:test:restore:unsafe-tick',bad:{tick:Number.MAX_SAFE_INTEGER+1},good:{tick:7}},
+  {id:'cef:test:restore:string-at',bad:{at:'700'},good:{at:700}},
+  {id:'cef:test:restore:string-confidence',bad:{confidence01:'0.9'},good:{confidence01:0.9}},
+  {id:'cef:test:restore:nonboolean-external',bad:{external:'false'},good:{external:false}},
+  {id:'cef:test:restore:oversized-source',bad:{source:'s'.repeat(121)},good:{source:'source-valid'}},
+];
+const strictRestoreRows=[];
+for(const pair of restorePairs){
+  strictRestoreRows.push(makeEvent({id:pair.id,...pair.bad}));
+  strictRestoreRows.push(makeEvent({id:pair.id,...pair.good}));
+}
+strictRestore.restore({
+  version:1,capacity:128,total:strictRestoreRows.length,buffered:strictRestoreRows.length,
+  linkedParentEvents:0,danglingParentLinks:0,lineageIntegrity01:1,cycleCoverage01:0,
+  causalDensity01:0,recentTicks:0,recent:strictRestoreRows,
+});
+for(const pair of restorePairs){
+  assert.ok(strictRestore.getById(pair.id),`valid row must recover after malformed row: ${pair.id}`);
+}
+assert.equal(strictRestore.getById('cef:test:restore:fractional-tick')?.tick,7);
+assert.equal(strictRestore.getById('cef:test:restore:string-at')?.at,700);
+assert.equal(strictRestore.getById('cef:test:restore:string-confidence')?.confidence01,0.9);
+assert.equal(strictRestore.getById('cef:test:restore:nonboolean-external')?.external,false);
+assert.equal(strictRestore.getById('cef:test:restore:oversized-source')?.source,'source-valid');
+
 
  // Event identity must cover the normalized causal envelope and reject invalid clocks.
  assert.equal(new CognitiveEventFabric(Number.NaN).snapshot().capacity,512);
