@@ -1,3 +1,13 @@
+## WorkPass414 — блокировка повторного accept до сохранения HMX-квитанции (2026-10-26)
+
+- **Код адаптера:** `0fc2a3880ef1276106e78dbcd4ab15ce53feb1d2`; **регрессия:** `daa458f2abd935f136b249d1cb3ae6b9ccccf0c5`.
+- Расширен guard WorkPass413: любое повторное решение уже принятой memory-merge стадии с квитанцией `pending` теперь закрывает её как `uncertain` до возврата в core — как при повторном `accept`, так и при позднем `reject`.
+- Первое явное принятие не затронуто: оно входит в `decideHmx` из состояния `staged`. Повторные accept/reject получают разные reason-коды и больше не возвращают комбинацию `accepted + pending` к state-based guard канонического импорта.
+- Регрессия покрывает повторный accept, terminal reason и дальнейшие accept, оставшиеся без replay; тест позднего reject также сохранён.
+- **Валидация:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass413 — поздний reject не должен повторно запускать HMX-импорт (2026-10-26)
 
 - **Код адаптера:** `443d5d83635645e967c7da245f2a75a8af284e03`; **регрессия:** `a4fba62670b3e6a5215b9083853a530b41c5fc79`.
