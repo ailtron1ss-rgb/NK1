@@ -40,11 +40,17 @@
   function applyEmbodiment(d){
     bodySignal=d||{};
     updateTickerBudget();
-    setCore('ParamAngleX',clamp(bodySignal.gazeX,-1,1)*30);
-    setCore('ParamAngleY',clamp(bodySignal.gazeY,-1,1)*20);
+    const gazeX=clamp(bodySignal.gazeX,-1,1),gazeY=clamp(bodySignal.gazeY,-1,1);
+    const headAngleX=clamp(bodySignal.headAngleX===undefined?gazeX:bodySignal.headAngleX,-1,1);
+    const headAngleY=clamp(bodySignal.headAngleY===undefined?gazeY:bodySignal.headAngleY,-1,1);
+    setCore('ParamAngleX',headAngleX*30);
+    setCore('ParamAngleY',headAngleY*20);
     setCore('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35);
-    setCore('ParamEyeBallX',clamp(bodySignal.gazeX,-1,1));
-    setCore('ParamEyeBallY',clamp(bodySignal.gazeY,-1,1));
+    setCore('ParamEyeBallX',gazeX);
+    setCore('ParamEyeBallY',gazeY);
+    setCore('ParamBodyAngleX',clamp(bodySignal.bodyAngleX,-1,1)*10);
+    setCore('ParamBodyAngleY',clamp(bodySignal.bodyAngleY,-1,1)*10);
+    setCore('ParamBodyAngleZ',clamp(bodySignal.bodyAngleZ,-1,1)*10);
     const mouth=clamp(bodySignal.mouthOpen,0,1), emph=clamp(bodySignal.voiceEmphasis,0,1), intensity=clamp(bodySignal.expressionIntensity,.0,1);
     lipTarget=bodySignal.speaking?mouth:0.015;
     lipFormTarget=bodySignal.speaking?clamp(bodySignal.mouthForm,-1,1):0;
@@ -93,6 +99,7 @@
         if(!model)return;
         const now=performance.now();
         model.__nkLastFrame=now;
+        setCore('ParamBreath',0.5+Math.sin(now/1100)*(0.045+clamp(bodySignal.breathIntensity,0,1)*0.08));
         lipCurrent+=(lipTarget-lipCurrent)*.30;
         lipFormCurrent+=(lipFormTarget-lipFormCurrent)*.30;
         eyeX+=(targetEyeX-eyeX)*.08;eyeY+=(targetEyeY-eyeY)*.08;
@@ -143,6 +150,10 @@
     if(typeof d.gaze.driven!=='boolean'||typeof d.body.gesture!=='boolean')return null;
     if(typeof d.body.motionGroup!=='string'||!/^[a-zA-Z0-9_-]{1,32}$/.test(d.body.motionGroup))return null;
     if(!Number.isInteger(d.body.motionIndex)||d.body.motionIndex<0||d.body.motionIndex>32||!Number.isSafeInteger(d.body.motionToken)||d.body.motionToken<0)return null;
+    for(const [key,min,max] of [['headAngleX',-1,1],['headAngleY',-1,1],['bodyAngleX',-1,1],['bodyAngleY',-1,1],['bodyAngleZ',-1,1],['breathIntensity',0,1]]){
+      const value=d.body[key];
+      if(value!==undefined&&(typeof value!=='number'||!Number.isFinite(value)||value<min||value>max))return null;
+    }
     return {
       protocolVersion:1,
       stateVersion:d.stateVersion,
@@ -163,6 +174,12 @@
       gazeX:finiteNumber(d.gaze.x,-1,1),
       gazeY:finiteNumber(d.gaze.y,-1,1),
       gazeDriven:d.gaze.driven,
+      headAngleX:finiteNumber(d.body.headAngleX === undefined ? d.gaze.x : d.body.headAngleX,-1,1),
+      headAngleY:finiteNumber(d.body.headAngleY === undefined ? d.gaze.y : d.body.headAngleY,-1,1),
+      bodyAngleX:finiteNumber(d.body.bodyAngleX,-1,1),
+      bodyAngleY:finiteNumber(d.body.bodyAngleY,-1,1),
+      bodyAngleZ:finiteNumber(d.body.bodyAngleZ,-1,1),
+      breathIntensity:finiteNumber(d.body.breathIntensity === undefined ? 0.35 : d.body.breathIntensity,0,1),
       headTilt:finiteNumber(d.body.headTilt,-.15,.15),
       gesture:d.body.gesture,
       motionGroup:d.body.motionGroup,
