@@ -236,8 +236,9 @@ function describeSection(section: string, value: unknown, exportId: string, issu
         return;
       }
       if (section === 'memories') {
-        if (!nonEmptyString(row.ref) || !REF_PATTERN.test(row.ref) || !row.ref.startsWith(exportId + ':')) {
-          issues.push({ path: path + '[' + index + '].ref', kind: 'schema', detail: 'Memory refs must be unique export-scoped HMX references for this document.' });
+        if (!nonEmptyString(row.ref) || row.ref.length > 512 ||
+            !REF_PATTERN.test(row.ref) || !row.ref.startsWith(exportId + ':')) {
+          issues.push({ path: path + '[' + index + '].ref', kind: 'schema', detail: 'Memory refs must be bounded, unique export-scoped HMX references for this document.' });
         }
         if (!nonEmptyString(row.type)) {
           issues.push({ path: path + '[' + index + '].type', kind: 'schema', detail: 'Memory records require a type string.' });
@@ -253,6 +254,11 @@ function describeSection(section: string, value: unknown, exportId: string, issu
           issues.push({ path: path + '[' + index + '].metadata', kind: 'schema', detail: 'Memory metadata must be an object when supplied.' });
         }
         const metadata = record(row.metadata) ?? {};
+        const sourceAttribution = record(row.source_attribution) ?? {};
+        if (sourceAttribution.source_authority_01 != null &&
+            !isUnitIntervalNumber(sourceAttribution.source_authority_01)) {
+          issues.push({ path: path + '[' + index + '].source_attribution.source_authority_01', kind: 'schema', detail: 'source_authority_01 must be a finite number between 0 and 1 when supplied.' });
+        }
         if (metadata.nk1_kind != null && typeof metadata.nk1_kind !== 'string') {
           issues.push({ path: path + '[' + index + '].metadata.nk1_kind', kind: 'schema', detail: 'nk1_kind must be a string when supplied.' });
         }
@@ -575,6 +581,7 @@ export function normalizeHmxV17Memory(
   raw: unknown,
   input: { exportId: string; sourceSubjectId?: string; exportedAt?: string },
 ): Nk1HmxMemoryProjection | null {
+  if (!input || typeof input !== 'object') return null;
   const row = record(raw);
   if (!row || typeof row.content !== 'string' || !row.content.trim() ||
       row.content.length > MAX_MEMORY_CHARS || typeof row.ref !== 'string' ||
@@ -582,6 +589,7 @@ export function normalizeHmxV17Memory(
   if (row.metadata != null && !record(row.metadata)) return null;
   const metadata = record(row.metadata) ?? {};
   const source = record(row.source_attribution) ?? {};
+  if (source.source_authority_01 != null && !isUnitIntervalNumber(source.source_authority_01)) return null;
   if (metadata.nk1_kind != null && typeof metadata.nk1_kind !== 'string') return null;
   if (metadata.nk1_epistemic_status != null && typeof metadata.nk1_epistemic_status !== 'string') return null;
   for (const value of [row.trust_level, row.importance, metadata.nk1_confidence, metadata.nk1_salience]) {
@@ -630,7 +638,9 @@ export function normalizeHmxV17Memory(
     tags,
     context,
     entities,
-    independenceKey: 'hexis:' + String(input.sourceSubjectId ?? input.exportId).slice(0, 180),
+    independenceKey: 'hexis:' + (typeof input.sourceSubjectId === 'string'
+      ? input.sourceSubjectId
+      : typeof input.exportId === 'string' ? input.exportId : 'unknown').slice(0, 180),
     evidenceFreshnessAt: observedAt,
   };
 }
