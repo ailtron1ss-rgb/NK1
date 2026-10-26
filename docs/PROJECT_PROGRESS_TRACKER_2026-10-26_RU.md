@@ -1,6 +1,6 @@
 # NK1 — общая панель инженерного прогресса (2026-10-26)
 
-**Источник:** `ailtron1ss-rgb/NK1`, линия WorkPass332–336. WorkPass336 combines signed-outcome artifact hardening with the latest evaluator-origin and ledger-preflight changes; exact-head CI on the combined branch has not been confirmed. Historical PASS for earlier commits is not counted as validation of the current combined head; scores remain unchanged.  
+**Источник:** `ailtron1ss-rgb/NK1`, линия WorkPass332–336. WorkPass336 exact code/test HEAD `338902ce5587c8d887acc20ae5c5181f79cd1f87` прошёл пять workflow: WorkPass110, WorkPass108, WorkPass105, unified integration и progress-ledger integrity. Security/integration проверки подтверждены; баллы эффективности обучения оставлены без изменений, поскольку внешнего learning/transfer uplift эти проверки не измеряют.  
 **Машиночитаемый источник процентов:** [PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json).  
 **Проверка таблицы:** `npm run test:progress-ledger`; **сводный отчёт:** `npm run progress:report`.
 

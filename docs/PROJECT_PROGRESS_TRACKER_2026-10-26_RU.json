@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Historical WorkPass335 and WorkPass339 PASS evidence remains recorded in CHANGELOG. WorkPass336 combines signed-outcome artifact trust-boundary hardening with the evaluator-origin attestation and ledger-preflight base; exact-combined-head CI is still pending. Older workflow IDs/tested heads are not reused as proof for this branch. Scores are unchanged; no empirical learning uplift is claimed.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. WorkPass336 combined source/test HEAD 338902ce5587c8d887acc20ae5c5181f79cd1f87 passed all five required workflows: WorkPass110 P23 regressions/runtime typecheck, WorkPass108, WorkPass105, Unified project integration suite, and project progress ledger integrity. These verify runtime and evidence-boundary behavior, not external learning or transfer uplift. Scores remain unchanged.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -287,21 +287,28 @@
     "branch": "work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1",
     "codeCommit": "4c817208c27d623474e08b6db1dbf2e81cc82991",
     "regressionCommit": "05fad9f67960af1d1cb9f7ed535aba3e49b2973f",
-    "summary": "Sync signed outcome evidence trust-boundary hardening with the latest learning-provenance base, including evaluator-origin attestation, ledger preflight and canonical skill approval signatures. Exact plain-data snapshots prevent accessors; v1 payloads reject extra fields and Ed25519 signatures require canonical Base64.",
+    "summary": "Signed outcome artifact ingress now snapshots exact plain-data v1 records without invoking getters, rejects unknown fields and requires canonical Ed25519 signature encoding. Combined branch preserves evaluator-origin attestation, ledger preflight and strict promotion/rollback approval signatures.",
     "testsAdded": [
-      "non-canonical signed outcome signatures rejected before crypto verification",
+      "non-canonical signed outcome signatures with junk, truncated padding, or malformed padding rejected",
       "payload accessors rejected without invoking getters",
       "artifact-envelope accessors rejected without invoking getters",
-      "unexpected fields rejected from schemaVersion 1 outcome payloads",
-      "valid signed outcome fixture still ingests after malformed artifact cases",
-      "upstream evaluator-origin attestation and full ledger preflight changes preserved"
+      "unknown fields rejected from schemaVersion 1 outcome payloads",
+      "valid signed outcome artifact remains accepted after negative malformed-artifact cases",
+      "verified skill revision gate malformed-row and threshold regressions",
+      "verified skill promotion producer rejects invalid runtime policy options"
     ],
-    "validationStatus": "PENDING exact combined HEAD CI. Historical WorkPass335/WorkPass339 PASS evidence is retained, but does not validate this combined WorkPass336 tree.",
+    "validationStatus": "PASS on exact code/test HEAD 338902ce5587c8d887acc20ae5c5181f79cd1f87: WorkPass110 + runtime typecheck (https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843579); WorkPass108 (https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843575); WorkPass105 (https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843582); Unified project integration suite (https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843740); project progress ledger integrity (https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843566).",
     "progressPercentagesChanged": false,
-    "testedMergeCommit": null,
-    "testedBaseSha": null,
-    "testedHeadSha": null,
-    "workflowRuns": []
+    "testedMergeCommit": "338902ce5587c8d887acc20ae5c5181f79cd1f87",
+    "testedBaseSha": "11812cbf2146c677ec2059616e6f1d6b9a9a7cae",
+    "testedHeadSha": "338902ce5587c8d887acc20ae5c5181f79cd1f87",
+    "workflowRuns": [
+      40254843579,
+      40254843575,
+      40254843582,
+      40254843740,
+      40254843566
+    ]
   },
   "recentEngineeringPasses": [
     {
@@ -312,16 +319,23 @@
       "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending."
     }
   ],
-  "latestUnverifiedCodeTestHead": "2022efe754ec9c2e81b03e4c7cabbf7a3ba3d44b",
-  "branchHeadBeforeTrackerCommit": "2022efe754ec9c2e81b03e4c7cabbf7a3ba3d44b",
+  "latestUnverifiedCodeTestHead": null,
+  "branchHeadBeforeTrackerCommit": "338902ce5587c8d887acc20ae5c5181f79cd1f87",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
       "name": "Strict canonical Base64 encoding for Ed25519 skill-promotion and rollback approval signatures",
       "status": "present-in-combined-branch",
-      "exactCombinedHeadCiStatus": "pending",
+      "exactCombinedHeadCiStatus": "PASS on combined head 338902ce5587c8d887acc20ae5c5181f79cd1f87",
       "separateNarrowCiEvidence": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40253553153",
-      "note": "Separate narrow test passed on merge commit 4a41db0; this is not exact-head validation of the current combined branch."
+      "note": "The earlier narrow WorkPass339 run remains historical evidence; the current combined-head workflows now also pass.",
+      "combinedHeadCiEvidence": [
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843579",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843575",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843582",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843740",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843566"
+      ]
     }
   ]
 }

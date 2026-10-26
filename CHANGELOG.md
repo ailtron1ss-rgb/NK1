@@ -3,7 +3,7 @@
 - [CODE] `VerifiedOutcomeArtifact.ts` now accepts only exact plain-data v1 artifact/payload records and snapshots descriptor values before validation, preventing payload or envelope getters from running during evidence ingestion.
 - [CRYPTO] Signed outcome Ed25519 signatures now require canonical standard Base64 for exactly 64 bytes, matching the activation/rollback approval boundary.
 - [REGRESSION] Expanded the signed-outcome lifecycle test for junk-prefixed, truncated, and malformed-padding signatures; accessor-bearing payload/envelope objects; and extra unbound fields in the v1 payload.
-- [VALIDATION] CI is pending for the exact branch checkpoint. No PASS is claimed until Actions complete against that head.
+- [VALIDATION] All five required workflows passed on exact code/test HEAD `338902ce5587c8d887acc20ae5c5181f79cd1f87`: [WorkPass110 P23 regressions + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843579), [WorkPass108 paired evidence / promotion gate](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843575), [WorkPass105 verified outcome ledger](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843582), [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843740) and [project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843566). The signed outcome artifact regression passed within WorkPass110; unified integration included app typecheck/build/tests, cognitive contracts, approval gateway E2E and runtime/research bridge smoke.
 - [SCOPE] Security-boundary hardening only; scores remain unchanged and no empirical learning uplift or full release readiness is claimed.
 
 ---

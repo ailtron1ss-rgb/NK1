@@ -4,7 +4,7 @@
 **Ветка:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`  
 **Code commit:** `4c817208c27d623474e08b6db1dbf2e81cc82991`  
 **Regression commit:** `05fad9f67960af1d1cb9f7ed535aba3e49b2973f`  
-**Статус после синхронизации:** изменения включены поверх текущей базы `e13255a52dbbac5f5dd5b300f1767fc5c748e707`; CI ожидает проверки точного объединённого HEAD.
+**Статус:** PASS на exact code/test HEAD `338902ce5587c8d887acc20ae5c5181f79cd1f87` после синхронизации с базой `11812cbf2146c677ec2059616e6f1d6b9a9a7cae`.
 
 ## Что изменено
 
@@ -35,3 +35,16 @@
 Этот проход укрепляет целостность и форму внешних signed outcome artifacts. Успешные unit/CI тесты сами по себе не доказывают непредвзятость внешнего verifier, реальный рост способности обучаться, надёжность на независимом внешнем holdout или production readiness. Оценки прогресса не повышались; `main` и release ZIP не затрагивались.
 
 **Проверка:** текущее объединённое дерево ожидает exact-HEAD Actions. Старые PASS на прежних HEAD не засчитываются как проверка этой интеграции.
+
+
+## Exact-head validation evidence
+
+Все пять обязательных workflow завершились `success` на code/test HEAD `338902ce5587c8d887acc20ae5c5181f79cd1f87`:
+
+- [WorkPass110 — P23 regressions + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843579), включая signed outcome artifact authentication regression, verified revision gate, promotion proposal и persisted learning restore checks.
+- [WorkPass108 — paired evidence and promotion gate](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843575).
+- [WorkPass105 — verified outcome ledger](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843582).
+- [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843740): locked install, app typecheck/build/tests, cognitive integration contracts, governed approval gateway/bridge E2E, runtime/research bridge smoke; runtime typecheck emitted `TYPECHECK=PASS`.
+- [Project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843566).
+
+This validates the combined source/test checkpoint, not a measured improvement in external task success or transfer. Scores remain unchanged; release readiness remains unclaimed.

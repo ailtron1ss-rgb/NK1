@@ -1,12 +1,12 @@
 ## Latest integration checkpoint — WorkPass336 signed outcome boundary (2026-10-26)
 
-- **Latest synchronized base:** `e13255a52dbbac5f5dd5b300f1767fc5c748e707`; the branch includes both this base's evaluator-origin attestation work and the signed-outcome artifact hardening below.
+- **Latest synchronized base:** `11812cbf2146c677ec2059616e6f1d6b9a9a7cae`; the branch includes both this base's evaluator-origin attestation work and the signed-outcome artifact hardening below.
 
-- **Integration branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`, with current base `e13255a52dbbac5f5dd5b300f1767fc5c748e707` incorporated as a merge parent at `e13255a52dbbac5f5dd5b300f1767fc5c748e707` HEAD `e13255a52dbbac5f5dd5b300f1767fc5c748e707`. `main` and the release ZIP remain unchanged.
+- **Integration branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`, with current base `11812cbf2146c677ec2059616e6f1d6b9a9a7cae` incorporated as a merge parent at `11812cbf2146c677ec2059616e6f1d6b9a9a7cae` HEAD `11812cbf2146c677ec2059616e6f1d6b9a9a7cae`. `main` and the release ZIP remain unchanged.
 - **Code/test commits:** signed outcome trust-boundary runtime fix `4c817208c27d623474e08b6db1dbf2e81cc82991`; regression additions `05fad9f67960af1d1cb9f7ed535aba3e49b2973f`. The current combined tree preserves base WorkPass335 ledger preflight and WorkPass339 approval-signature hardening as well as this branch's strict revision gate and proposal producer.
 - **Runtime change:** `VerifiedOutcomeArtifact.ts` requires exact plain-data artifact/payload records, snapshots property descriptors without invoking getters, rejects extra fields from signed schema v1, and verifies only canonical Base64 encoding for 64-byte Ed25519 signatures.
 - **Regressions:** junk-prefixed, truncated and malformed-padding signatures; payload and envelope getters; unknown payload keys. The synchronized base also retains the independent-evaluator-origin capability and its regression in `docs/WORKPASS336_EVALUATOR_ORIGIN_ATTESTATION_RU.md`.
-- **Validation:** the new combined checkpoint awaits exact-HEAD Actions. Earlier WorkPass335 and WorkPass339 successes are historical evidence only, not a replacement for current WorkPass336 checks.
+- **Validation PASS on exact code/test HEAD `338902ce5587c8d887acc20ae5c5181f79cd1f87`:** [WorkPass110 P23 regressions + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843579), [WorkPass108](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843575), [WorkPass105](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843582), [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843740), and [progress-ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843566). These are current combined-head runs, distinct from historical WorkPass335/WorkPass339 evidence.
 - **Progress evidence:** scores remain unchanged. No measured learning/transfer uplift or production readiness is claimed; external holdout, device/voice/Live2D, soak, licensing and reproducible release-archive gates remain open.
 
 ---
