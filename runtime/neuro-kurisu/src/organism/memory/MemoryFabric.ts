@@ -679,8 +679,17 @@ export class MemoryFabric {
     if(reason!=='hexis-hmx-apply-rollback'||
       !/^hexis-signals-rollback:[a-f0-9]{48}$/.test(rollbackCommandId)||
       !compensation||compensation.memoryId!==String(id)||
-      compensation.sourceCommandIds.length<1||compensation.sourceCommandIds.length>256){
+      compensation.sourceCommandIds.length>256){
       throw new Error('memory-signals-compensation-command-invalid');
+    }
+    // A keyed update can be a prior idempotent replay and therefore make no mutation
+    // under this fresh capture. Release that unused capture without rolling back state
+    // that predates the current HMX attempt.
+    if(compensation.sourceCommandIds.length===0){
+      const released=this.memoryOS.discardSignalCompensation(compensation.snapshotToken);
+      if(!released)return false;
+      this.signalCompensations.delete(token);
+      return true;
     }
     for(const sourceCommandId of compensation.sourceCommandIds){
       if(!/^hexis-authority:[a-f0-9]{48}$/.test(sourceCommandId))throw new Error('memory-signals-compensation-source-command-invalid');
