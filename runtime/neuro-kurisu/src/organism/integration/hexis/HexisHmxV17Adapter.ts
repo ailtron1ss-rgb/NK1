@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 export type CanonicalHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
 
@@ -208,7 +208,7 @@ export function createNk1HmxExportId(randomHex: string): string {
 export interface Nk1HmxMemoryProjection {
   ref: string;
   content: string;
-  kind: string;
+  kind: 'sensory' | 'working' | 'episodic' | 'semantic' | 'procedural' | 'social' | 'dream';
   confidence: number;
   salience: number;
   sourceAuthority01: number;
@@ -250,7 +250,7 @@ export function buildNk1HmxV17Document(input: {
   exportedAt?: number;
 }): Record<string, unknown> {
   const exportedAt = Number.isFinite(input.exportedAt) ? Number(input.exportedAt) : Date.now();
-  const exportId = createNk1HmxExportId(sha256(String(input.subjectId) + ':' + String(exportedAt) + ':' + Math.random()).slice(0, 16));
+  const exportId = createNk1HmxExportId(randomUUID());
   const sourceSubject = String(input.subjectId || 'nk1-local').slice(0, 180);
   const candidates = input.memories
     .map(record)
