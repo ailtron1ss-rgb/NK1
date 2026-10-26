@@ -827,6 +827,9 @@ async function route(req, res) {
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/evidence/review') {
             const input = await body(req);
             const evidence = input?.evidence && typeof input.evidence === 'object' ? input.evidence : input;
+            // This marker is server-internal and may not be supplied through the public canonical route.
+            if (Object.prototype.hasOwnProperty.call(evidence, 'observedAtOrigin'))
+                return json(res, 400, { ok: false, error: 'invalid-evidence-timestamp-origin' });
             const result = await runtime.core.ingestHexisEvidenceForReview(evidence);
             const status = result.status === 'review-pending' ? 202
                 : result.status === 'duplicate' ? 200
@@ -872,31 +875,13 @@ async function route(req, res) {
             const evidenceId = String(input?.evidenceId || input?.evidence?.evidenceId || (
                 'hexis-legacy:' + createHash('sha256').update(JSON.stringify(identity)).digest('hex')
             ));
-            // The legacy endpoint synthesizes the receipt timestamp. On retry,
-            // reuse the canonical timestamp for this evidence ID; otherwise an
-            // identical old-client request would hash a new timestamp and conflict.
-            let observedAt = input?.observedAt === undefined ? undefined : String(input.observedAt);
-            if (observedAt === undefined) {
-                const canonicalMemory = runtime.core.memoryInspectorSnapshot(1600)
-                    .find(memory => memory.id === memoryId);
-                const existingEvidence = canonicalMemory?.evidenceRecords?.find(record => record.evidenceId === evidenceId);
-                // The diagnostic memory projection may omit private receipt metadata;
-                // the durable review item also retains the canonical observedAt.
-                const existingReviewEvidence = runtime.core.hexisListLearningReviews()
-                    .flatMap(review => Array.isArray(review.items) ? review.items : [])
-                    .map(item => item.evidence)
-                    .find(item => item?.pipeline === 'nk1.hexis-evidence-review.v1' &&
-                        item.memoryId === memoryId && item.evidenceId === evidenceId);
-                const rawStoredTime = existingEvidence?.observedAt ?? existingReviewEvidence?.observedAt;
-                const storedObservedAt = typeof rawStoredTime === 'number'
-                    ? rawStoredTime
-                    : Date.parse(String(rawStoredTime ?? ''));
-                const storedDate = new Date(storedObservedAt);
-                observedAt = Number.isFinite(storedObservedAt) && storedObservedAt >= 0 &&
-                    Number.isFinite(storedDate.getTime())
-                    ? storedDate.toISOString()
-                    : new Date().toISOString();
-            }
+            const suppliedObservedAt = input?.observedAt !== undefined
+                ? input.observedAt
+                : input?.evidence?.observedAt;
+            const observedAtFromReceipt = suppliedObservedAt === undefined;
+            const observedAt = observedAtFromReceipt
+                ? new Date().toISOString()
+                : String(suppliedObservedAt);
             const envelope = {
                 memoryId,
                 evidenceId,
@@ -908,6 +893,7 @@ async function route(req, res) {
                     ...(input?.evidence?.author ? { author: String(input.evidence.author) } : {}),
                 },
                 observedAt,
+                ...(observedAtFromReceipt ? { observedAtOrigin: 'server-receipt' } : {}),
                 confidence,
                 ...(input?.evidence?.note ? { note: String(input.evidence.note) } : {}),
                 ...(input?.protectedBelief === true ? { protectedMemory: true } : {}),
