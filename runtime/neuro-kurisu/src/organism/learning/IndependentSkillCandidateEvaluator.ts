@@ -593,8 +593,17 @@ export function recordIndependentEvaluationOutcomes(
     throw new Error('independent-evaluation-ledger-plan-coverage-incomplete');
   }
   for (const binding of bindings) {
-    if (!binding.bindingVerified || !binding.runId || !binding.plannedRunId ||
+    // This is a public commit boundary: do not rely on TypeScript types or on
+    // fields having been produced by the evaluator. Validate every persisted
+    // evidence reference before the first outcome is written, so malformed later
+    // rows cannot leave an earlier prefix of the experiment committed.
+    if (!binding || binding.bindingVerified !== true ||
+        typeof binding.taskId !== 'string' || !binding.taskId.trim() ||
+        typeof binding.trialId !== 'string' || !binding.trialId.trim() ||
+        typeof binding.runId !== 'string' || !isSafeRunId(binding.runId) ||
+        typeof binding.plannedRunId !== 'string' || !isSafeRunId(binding.plannedRunId) ||
         !Number.isSafeInteger(binding.seed) || binding.seed < 0 ||
+        !Number.isSafeInteger(binding.safetyViolationCount) || binding.safetyViolationCount < 0 ||
         !['validation', 'holdout'].includes(binding.split)) {
       throw new Error('independent-evaluation-ledger-unbound-run');
     }
