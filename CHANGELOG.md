@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass427 — seal HMX lifecycle transitions independently (2026-10-26)
+
+- [REPLAY SAFETY] Added a lifecycle seal separate from the reviewed payload digest; status and apply-attempt mutations now invalidate the persisted stage unless the normal decision path refreshes the seal.
+- [REGRESSION] Added rejected → accepted tampering coverage proving neither canonical memory apply nor goal-proposal preparation runs, plus a migration check for never-reviewed legacy staged rows.
+- [COMPATIBILITY] Unsealed legacy stages are accepted only while still staged and unattempted; previously reviewed legacy stages fail closed because their lifecycle cannot be proven.
+- [VALIDATION] Source and tests are committed but not runtime-validated; current hosted Actions jobs have not exposed executable steps/logs.
+
 ## [NK1][Hexis] Validate memory, outbox and policy ingress (2026-10-26)
 
 - Reject non-numeric memory sync limits, malformed belief confidence/trust/protection values, coercible outbox identifiers/status flags and invalid policy evaluation fields before adapter calls.
