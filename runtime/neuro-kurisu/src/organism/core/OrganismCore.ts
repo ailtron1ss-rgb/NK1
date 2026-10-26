@@ -3010,7 +3010,7 @@ export class OrganismCore {
         const before = this.hexisAdaptation.snapshot();
         const review = before.learningReviews.find((x) => x.id === reviewId);
         const item = review?.items.find((x) => x.id === itemId);
-        if (!item || item.status !== 'pending' || !['approve', 'correct', 'forget'].includes(decision) || (decision === 'correct' && !String(correction ?? '').trim())) {
+        if (!item || !['approve', 'correct', 'forget'].includes(decision) || (decision === 'correct' && !String(correction ?? '').trim())) {
             return { ok: false, error: 'review-item-not-found-or-invalid' };
         }
         let memoryMutation: Record<string, unknown> = { kind: 'none' };
@@ -3051,6 +3051,40 @@ export class OrganismCore {
             contentFingerprint: reviewFingerprint,
             citation: reviewedMemoryId ? `memory:${reviewedMemoryId}` : `review:${reviewId}`,
         };
+        if (item.status !== 'pending') {
+            const expectedStatus = decision === 'approve' ? 'approved' : decision === 'correct' ? 'corrected' : 'forgotten';
+            const sameCorrection = decision !== 'correct' ||
+                canonicalizeMemoryContent(String(item.correction ?? '')) === canonicalizeMemoryContent(String(correction ?? ''));
+            if (item.status !== expectedStatus || !sameCorrection)
+                return { ok: false, error: 'review-decision-already-finalized', reviewId, itemId, status: item.status };
+            if (!priorReviewClaim || !priorReviewTrace)
+                return { ok: false, error: 'review-finalization-provenance-incomplete', reviewId, itemId };
+            if (decision === 'correct') {
+                const memoryState = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+                const revisionGroupId = String((item.evidence as Record<string, unknown>)?.revisionGroupId ?? sourceMemoryId);
+                const correctedMemory = memoryState.items.find((row) =>
+                    (row.revisionGroupId ?? row.id) === revisionGroupId &&
+                    row.validUntilAt == null &&
+                    row.source === `hexis-learning-review:${reviewId}:${itemId}` &&
+                    row.content === canonicalizeMemoryContent(String(correction ?? ''))
+                );
+                const evidenceKey = `hexis-review:${sha256Stable({ reviewId, itemId }, 'legacy')}`;
+                if (!correctedMemory || !this.memorySubsystem.memoryOS.hasEvidenceLineage(correctedMemory.id, evidenceKey))
+                    return { ok: false, error: 'review-finalization-memory-incomplete', reviewId, itemId };
+                memoryMutation = { kind: 'correct', memoryId: correctedMemory.id, alreadyCommitted: true, replayed: true };
+            } else if (decision === 'forget') {
+                const memoryState = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+                const revisionGroupId = String((item.evidence as Record<string, unknown>)?.revisionGroupId ?? sourceMemoryId);
+                const activeMemory = memoryState.items.find((row) =>
+                    (row.revisionGroupId ?? row.id) === revisionGroupId && row.validUntilAt == null);
+                if (activeMemory)
+                    return { ok: false, error: 'review-finalization-memory-conflict', reviewId, itemId, memoryId: activeMemory.id };
+                memoryMutation = { kind: 'forget', sourceMemoryId, alreadyAbsent: true, replayed: true };
+            } else {
+                memoryMutation = { kind: 'approve', sourceMemoryId, alreadyCommitted: true, replayed: true };
+            }
+            return { ok: true, result: item, reviewId, memoryMutation, replayed: true };
+        }
         if (decision === 'correct' || decision === 'forget') {
             if (!sourceMemoryId)
                 return { ok: false, error: 'review-source-memory-required' };
