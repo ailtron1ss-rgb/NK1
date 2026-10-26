@@ -59,6 +59,7 @@ const corruptSnapshot = {
   lastTick: Number.MAX_SAFE_INTEGER + 1,
   self: {
     ...defaultUnifiedCognitiveSubstrate().self,
+    continuity01: 1.5,
     agency01: Number.NaN,
     mode: 'bad\u0001'.repeat(90),
   },
@@ -73,6 +74,7 @@ corruptGuard.restore(corruptSnapshot);
 const sanitized = corruptGuard.snapshot();
 assert.equal(sanitized.cycles, 0);
 assert.equal(sanitized.lastTick, 0);
+assert.equal(sanitized.self.continuity01, 0);
 assert.equal(sanitized.self.agency01, 0);
 assert.equal(sanitized.resources.thermal01, 1);
 assert.ok(sanitized.self.mode.length <= 64);
@@ -145,6 +147,8 @@ const criticalPolicy = resolveUnifiedCognitiveWorkPolicy(criticalPolicyState, 3)
 assert.equal(criticalPolicy.maxCounterfactualBranches, 0);
 assert.equal(criticalPolicy.allowMatchedCounterfactual, false);
 assert.match(criticalPolicy.reason, /critical-pressure/);
+const oversizedBudgetPolicy = resolveUnifiedCognitiveWorkPolicy(out, 99);
+assert.equal(oversizedBudgetPolicy.maxCounterfactualBranches, 3);
 const invalidBudgetPolicy = resolveUnifiedCognitiveWorkPolicy(out, Number.NaN);
 assert.equal(invalidBudgetPolicy.maxCounterfactualBranches, 0);
 assert.equal(invalidBudgetPolicy.reason, 'invalid-resource-budget');

@@ -1,3 +1,12 @@
+# WorkPass358 — conservative persisted identity and bounded optional work (2026-10-26)
+
+- [FIXED] Stop clamping corrupt persisted self-continuity values into potentially optimistic high confidence; malformed or out-of-range continuity now falls back conservatively to zero (or the default only when absent).
+- [HARDENED] Cap the exported substrate work policy at three counterfactual branches even if a future caller requests a larger value; retain the stricter one-branch limit under uncertainty/pressure.
+- [REGRESSION] Add corrupt identity-metric and oversized work-budget tests.
+- [VALIDATION] WorkPass357's exact-head WorkPass331 workflow passed, including the extended restart persistence assertions. WorkPass358 needs its own exact-head run.
+
+---
+
 # WorkPass357 — close substrate policy type boundary (2026-10-26)
 
 - [FIXED] CI found TS18046 errors because validated properties remained typed as unknown after Object.values checks; make the policy's local post-read representation explicit numeric values while retaining runtime rejection of non-numeric/out-of-range data.

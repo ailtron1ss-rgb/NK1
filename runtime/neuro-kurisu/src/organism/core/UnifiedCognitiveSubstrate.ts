@@ -34,9 +34,6 @@ const section = (record:UnknownRecord, key:string):UnknownRecord => {
   return isRecord(value) ? value : {};
 };
 
-const metric = (value:unknown, fallback:number):number =>
-  typeof value === 'number' && Number.isFinite(value) ? clamp(value) : fallback;
-
 const trustedMetric = (value:unknown, missingFallback:number, invalidFallback:number):number => {
   if (value === undefined) return missingFallback;
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
@@ -117,6 +114,7 @@ export function resolveUnifiedCognitiveWorkPolicy(
     return rejected('invalid-resource-budget');
   }
   if (requestedMaxBranches === 0) return rejected('upstream-budget-zero');
+  const boundedRequestedMaxBranches = Math.min(3, requestedMaxBranches);
   if (!isRecord(state)) return rejected('invalid-substrate-state');
   const root = state as unknown as UnknownRecord;
   const nested = ['coupling','provenance','resources','world','prediction'];
@@ -156,7 +154,7 @@ export function resolveUnifiedCognitiveWorkPolicy(
   const constrained = m.readiness < .55 || m.grounding < .45 || m.error > .75 ||
     m.priority > .8 || m.unknown > .75 || m.battery < .25 || m.compute < .35 ||
     m.efficiency < .35 || m.scarcity > .75 || m.ram > .85 || m.thermal > .9;
-  const maxCounterfactualBranches = constrained ? Math.min(1, requestedMaxBranches) : requestedMaxBranches;
+  const maxCounterfactualBranches = constrained ? Math.min(1, boundedRequestedMaxBranches) : boundedRequestedMaxBranches;
   const allowMatchedCounterfactual = maxCounterfactualBranches > 0 &&
     m.readiness >= .45 && m.grounding >= .5 && m.error <= .65 && m.priority <= .7 &&
     m.evidence >= .3 && m.unknown <= .7 && m.battery >= .2 && m.compute >= .5 &&
@@ -219,7 +217,7 @@ export class UnifiedCognitiveSubstrate {
       cycles:counter(own(source, 'cycles'), d.cycles),
       lastTick:counter(own(source, 'lastTick'), d.lastTick),
       self:{
-        continuity01:metric(own(self, 'continuity01'), d.self.continuity01),
+        continuity01:sectionMetric(self, selfMalformed, 'continuity01', d.self.continuity01, 0),
         coherence01:sectionMetric(self, selfMalformed, 'coherence01', d.self.coherence01, 0),
         agency01:sectionMetric(self, selfMalformed, 'agency01', d.self.agency01, 0),
         realityAlignment01:sectionMetric(self, selfMalformed, 'realityAlignment01', d.self.realityAlignment01, 0),
