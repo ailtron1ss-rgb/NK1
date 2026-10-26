@@ -1528,7 +1528,7 @@ export class MemoryOS2{
   const observedAt=row.observedAt;
   const confidence01=row.confidence01;
   const protectedMemory=row.protectedMemory;
-  const optionalText=(value:unknown,max:number)=>typeof value==='string'&&value.trim()===value&&value.length>0&&value.length<=max&&!/[\\u0000-\\u001f\\u007f]/.test(value)?value:undefined;
+    const optionalText=(value:unknown,max:number)=>typeof value==='string'&&value.trim()===value&&value.length>0&&value.length<=max&&!value.split('').some(character=>{const code=character.charCodeAt(0);return code<=31||code===127;})?value:undefined;
   if(!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,191}$/.test(evidenceId)||!/^[a-f0-9]{64}$/i.test(digest)||
     (stance!=='supports'&&stance!=='contradicts'&&stance!=='contextualizes')||
     !optionalText(sourceKind,96)||!optionalText(sourceRef,512)||!optionalText(independenceKey,96)||
