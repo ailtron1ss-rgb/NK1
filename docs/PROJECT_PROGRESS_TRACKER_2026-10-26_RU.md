@@ -1,6 +1,6 @@
 # NK1 — общая панель инженерного прогресса (2026-10-26)
 
-**Источник:** `ailtron1ss-rgb/NK1`, активная линия WorkPass330–331 и её точный снимок на `f23c9aa4f5030987c2741808e930e7e100da077b`.  
+**Источник:** `ailtron1ss-rgb/NK1`, линия WorkPass332–334. Проценты и CI привязаны к code/test head `b6f4335b9bdb4bf150d86fc9db1a830fe3041626`; последующие commits в этом PR обновляют только отчётность и документы.  
 **Машиночитаемый источник процентов:** [PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json).  
 **Проверка таблицы:** `npm run test:progress-ledger`; **сводный отчёт:** `npm run progress:report`.
 
@@ -15,6 +15,17 @@
 
 Сырые оценки и препятствия для каждого направления хранятся в JSON. Проценты — экспертный baseline для планирования; обновлять их можно лишь вместе с конкретными новыми source/CI/benchmark свидетельствами. Нельзя повышать реальную эффективность обучения только потому, что написан новый тест.
 
+## Сводка текущего прогресса
+
+| Измерение | Взвешенная оценка |
+|---|---:|
+| Реализация и интеграция механизмов | **66,6%** |
+| Покрытие автоматическими проверками | **72,4%** |
+| Независимые полевые доказательства | **17,4%** |
+| Готовность к релизу | **34,9%** |
+
+Это взвешенные инженерные оценки по 12 направлениям. Они не измеряют интеллект, сознание или автономность; процент автоматической проверки означает широту контрактов/регрессий, а не долю тестов, прошедших на текущем commit. Небольшой рост оценок implementation/validation связан с добавлением общего deadline в learning evaluator и успешной проверкой его интеграционных контрактов. Внешние данные об эффективности обучения и release readiness не увеличены.
+
 ## Что включено в панель
 
 Взвешенно отслеживаются когнитивный цикл; модель мира и маршрутизация; память и непрерывность; внутренняя мотивация; планирование/действия/проверка последствий; continual learning/replay; создание и продвижение навыков; self/user model, ToM и этические ограничения; Live2D/avatar; голос и аудио; installer/build/CI; внешняя оценка, лицензии и главный релизный архив.
@@ -22,9 +33,10 @@
 ## Текущее доказательное состояние
 
 - WorkPass331 добавил **подписанную per-family политику** для P23 promotion: явно заданные обязательные минимумы семейства входят в identity proposal; отсутствие evidence или gain ниже минимума блокирует gate. Это не означает, что любой skill обязан быть универсальным: целевые семейства задаются для каждого навыка.
-- Этот проход добавляет family labels и отдельные значения для SkillLearnBench-compatible validation/holdout отчётов. Высокий общий балл не должен скрывать провал tool-use или transfer. Метки должны приходить из канонического manifest/evaluator; адаптер проверяет их присутствие/согласованность, но сам по себе не удостоверяет происхождение подписи. Для production продвижения остаётся отдельный подписанный P23 evidence gate.
+- WorkPass332–333 добавили family labels и отдельные значения для SkillLearnBench-compatible validation/holdout отчётов; manifest family теперь проходит через fingerprint, run bindings и проверку перед записью в VerifiedOutcomeLedger. Высокий общий балл не должен скрывать провал tool-use или transfer. Для production продвижения остаётся отдельный подписанный P23 evidence gate.
+- **WorkPass334 — ограничение полного evaluation budget:** независимая оценка кандидата теперь использует единый монотонный deadline для всех задач validation + holdout, дополнительно к локальным timeout-ам sandbox/verifier/safety scanner. По истечении общего budget весь прогон завершается с отдельной ошибкой, активной операции отправляется AbortSignal, оставшиеся задачи не запускаются. Дефолт 5 минут; настройка `evaluationTimeoutMs` принимает 10–1800000 мс. Тест на отмену зависающего executor включён в `test:workpass227:bounded-independent-evaluation`.
 - Исторический WorkPass329 proxy сравнение показывало family gain: memory=1, tool-use=0, transfer=0. Это известная слабость evidence, не заявка на обобщённый успех.
-- Текущий CI snapshot отражён в JSON. Успех на старом commit не считается проверкой новых изменений; текущая ветка должна пройти P26 Learning Validation и Unified project integration suite на точном HEAD.
+- **CI на exact code/test head `b6f4335b9bdb4bf150d86fc9db1a830fe3041626`: все четыре suite завершились SUCCESS:** [P26 Learning Validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251761024), [WorkPass108 evidence/promotion](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251761163), [WorkPass110 continual learning](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251760828), [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251760885). WorkPass110 включает TypeScript runtime typecheck и регрессии bounded evaluator; unified suite включает locked install, progress ledger, app build/tests, cognitive contracts, approval gateway E2E и runtime/research bridge smoke. Эти проверки относятся к code/test head `b6f4335…`; последующие commits меняли только отчётные документы.
 - Ранее опубликованный основной ZIP остаётся WorkPass70 Hotfix1 от 19 октября 2026 года. Новый ZIP не пересобран и не опубликован; главная ветка не менялась.
 
 ## Незакрытые релизные ворота
