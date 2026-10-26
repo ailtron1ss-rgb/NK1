@@ -13,6 +13,7 @@
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:canonical-kernel-runtime-wiring": "node --experimental-strip-types tests/canonical-cognitive-kernel-runtime-wiring.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
+    "test:workpass368:restore-boundary": "node --experimental-strip-types tests/workpass368-action-ledger-restore-boundary.mjs",
     "test:workpass96:finalizer-boundary": "node --experimental-strip-types tests/workpass96-action-finalizer-boundary.mjs",
     "test:workpass97:planner-route": "node --experimental-strip-types tests/workpass97-autonomous-planner-gateway-route.mjs",
     "test:workpass98:project-reconciliation-route": "node --experimental-strip-types tests/workpass98-project-reconciliation-route.mjs",
