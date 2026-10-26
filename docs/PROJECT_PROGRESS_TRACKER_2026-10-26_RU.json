@@ -362,13 +362,13 @@
     "id": "WorkPass393",
     "date": "2026-10-26",
     "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
-    "codeCommit": "930245acc4e2b16d7e27b710050e6e60f6f0e772",
+    "codeCommit": "0af14583e35a5edb76d05ab99e1b916e828650ab",
     "summary": "Hexis review approval now re-canonicalizes pending evidence, recomputes the shared canonical digest, compares all provenance/stance/time/confidence fields with the authoritative MemoryOS2 receipt, preserves a restricted legacy digest form only for server-generated receipt timestamps, verifies review state survives a real server restart, and checks the server smoke against persisted canonical confidence.",
     "testsAdded": [
       "review evidence tampering regressions for source reference, label, note, observedAt, stance and confidence",
       "server-receipt digest normalization and recovery of pre-normalization pending review snapshots",
       "generic review smoke reconciles returned audit/confidence with persisted MemoryOS2 state",
-      "server restart smoke confirms the exact pending evidence review survives restore before approval"
+      "server restart smoke requires a canonical memory fixture, verifies the exact pending review/item is restored and confirms the hidden internal payload by successful canonical approval"
     ],
     "validationStatus": "PENDING exact-head typecheck, focused adapter/review tests, Hexis server smoke and Unified integration. Actions runs on this branch have failed before step details/logs were available; they do not prove either a code failure or a pass. No progress/readiness/recall scores increased; main and canonical Release ZIP unchanged.",
     "progressPercentagesChanged": false,
@@ -644,7 +644,7 @@
       "id": "WorkPass393",
       "date": "2026-10-26",
       "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
-      "codeCommit": "930245acc4e2b16d7e27b710050e6e60f6f0e772",
+      "codeCommit": "0af14583e35a5edb76d05ab99e1b916e828650ab",
       "summary": "Hexis review approval now re-canonicalizes pending evidence, recomputes the shared canonical digest, compares all provenance/stance/time/confidence fields with the authoritative MemoryOS2 receipt, preserves a restricted legacy digest form only for server-generated receipt timestamps, verifies review state survives a real server restart, and checks the server smoke against persisted canonical confidence.",
       "testsAdded": [
         "review evidence tampering regressions for source reference, label, note, observedAt, stance and confidence",
@@ -658,8 +658,8 @@
       "workflowRuns": []
     }
   ],
-  "latestUnverifiedCodeTestHead": "930245acc4e2b16d7e27b710050e6e60f6f0e772",
-  "branchHeadBeforeTrackerCommit": "930245acc4e2b16d7e27b710050e6e60f6f0e772",
+  "latestUnverifiedCodeTestHead": "0af14583e35a5edb76d05ab99e1b916e828650ab",
+  "branchHeadBeforeTrackerCommit": "0af14583e35a5edb76d05ab99e1b916e828650ab",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -701,7 +701,7 @@
   "latestEngineeringCheckpoint": {
     "workpass": "WorkPass393",
     "sourceBranch": "fix/hexis-review-digest-binding-live-2026-10-26",
-    "codeTestHead": "930245acc4e2b16d7e27b710050e6e60f6f0e772",
+    "codeTestHead": "0af14583e35a5edb76d05ab99e1b916e828650ab",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Hexis review approval now re-canonicalizes pending evidence, recomputes the shared canonical digest, compares all provenance/stance/time/confidence fields with the authoritative MemoryOS2 receipt, preserves a restricted legacy digest form only for server-generated receipt timestamps, verifies review state survives a real server restart, and checks the server smoke against persisted canonical confidence. Validation logs were unavailable; no test pass is claimed.",
     "progressPercentagesChanged": false,
