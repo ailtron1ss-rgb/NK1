@@ -1,5 +1,17 @@
 ## Latest checkpoint — WorkPass344 final release gate (pending CI)
 
+- **Branch:** `work/nk1-final-release-gate-2026-10-26-r3`; latest base includes WorkPass343 substrate-tick reconciliation.
+- **Release metadata:** `verify-final-release.mjs` now makes UI wiring, architecture and release metadata mandatory. Its summary separately reports tree failures; a failing final result cannot show zero failed checks.
+- **Strict vs CI mode:** operator `npm run release:verify` remains strict on generated Python bytecode. After research smoke, CI uses `npm run release:verify:ci`, which allows only transient `__pycache__/*.pyc` while listing them as warnings; it does not skip other gates.
+- **Six regression cases:** metadata pass/fail/missing, unknown CLI argument, default strict cache rejection, and CI cache-tolerant mode.
+- **CI findings:** the previous run caught an architecture import-string false positive; the following run correctly caught research-generated Python cache. Both fixes are in code/test checkpoint `71176fa2275149a726a3aadeec827866d88a0cc0`; current combined-head CI pending.
+- **Previously verified:** WorkPass340–342 passed on head `621864d0d7f2676245383adab86f1dcc6d0f741f`; that does not validate newer WorkPass343/344 changes.
+- **Scores:** unchanged. Release ZIP replacement, physical Android/Termux, browser/Live2D hardware E2E, long soak and license/provenance review remain open.
+
+---
+
+## Latest checkpoint — WorkPass344 final release gate (pending CI)
+
 - **Branch:** `work/nk1-final-release-gate-2026-10-26-r3`, freshly based on the latest source branch and preserving WorkPass343 substrate-tick reconciliation.
 - **Release verifier:** `tools/verify-final-release.mjs` makes UI wiring, runtime architecture and metadata validation mandatory/fail-closed.
 - **Regression:** `tools/verify-final-release.test.mjs` covers valid metadata, invalid metadata, missing validator and unknown CLI input; root audit and Unified integration CI invoke it and `npm run release:verify`.
