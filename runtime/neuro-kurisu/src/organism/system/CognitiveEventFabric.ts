@@ -383,9 +383,10 @@ export class CognitiveEventFabric {
     }
 
     const idValue=ownDataValue(input,'id');
-    const suppliedId=idValue===undefined?'':idValue;
-    if(idValue!==undefined&&!hasOnlyCanonicalEventId(idValue)) {
-      throw new Error('invalid-cognitive-event-id');
+    let suppliedId='';
+    if(idValue!==undefined) {
+      if(!hasOnlyCanonicalEventId(idValue))throw new Error('invalid-cognitive-event-id');
+      suppliedId=idValue;
     }
 
     const parentValue=ownDataValue(input,'parentIds');
