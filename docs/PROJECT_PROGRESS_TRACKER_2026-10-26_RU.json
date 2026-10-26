@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Historical ciSnapshot rows remain tied to sourceHeadAtSnapshot 621864d0d7f2676245383adab86f1dcc6d0f741f. WorkPass372 passed 13/13 workflows on exact combined head 724c692bb149be4bae76b3a70373344a7149a1fd, which included the WorkPass371 atomic coordinator and descriptor-safe cycle validation. The latest release candidate f38d3189777649da490f8b0dbb3a8d19c7444811 contains WorkPass372's code; the current WorkPass373 code/test commit a679045dc5523e7604f43f1cb2be84f4dd27c096 re-applies scalar restore validation on top of that base. WorkPass373 exact-head CI remains pending until the final tracker commit is checked. Scores remain unchanged. Physical target-device Android/Termux, browser/Live2D/voice E2E, independent holdout learning/retrieval, endurance soak, licensing/provenance and reproducible release archive remain open.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -26,6 +26,9 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
+        "WorkPass372 passed 13/13 on exact combined head 724c692bb149be4bae76b3a70373344a7149a1fd. WorkPass373 adds malformed scalar restore evidence guards and awaits fresh exact-head CI; independent field evidence, real device and soak remain open.",
+        "WorkPass372 passed 13/13 on exact head 724c692bb149be4bae76b3a70373344a7149a1fd. WorkPass373 adds malformed scalar restore evidence guards and awaits exact-head CI; independent field evidence, physical target-device and long-duration soak remain open.",
+        "WorkPass370 descriptor-safe input/restore fix passed on prior combined head df654311372a04875220e31b63d9f6a3d15c575a; current WorkPass372 rebase over atomic commit coordinator requires fresh exact-head CI before this combination is promoted",
         "WorkPass343 now includes a real runtime restart regression for a future sidecar tick; exact-head CI confirmation for code/test head 8b38a354e7a32ea8822e4cd44866c73f00ce0d1c is pending",
         "Long-duration process-kill/restart soak tests and real device/browser/voice/avatar integration remain open",
         "Independent external task benchmarks are required before raising field evidence or learning-effectiveness scores"
@@ -209,6 +212,9 @@
       "fieldEvidencePercent": 35,
       "releaseReadinessPercent": 48,
       "blockers": [
+        "WorkPass372 full integration passed on exact head 724c692bb149be4bae76b3a70373344a7149a1fd. WorkPass373 adds a scalar restore regression to the primary cognitive integration suite; final exact-head installation/build/integration evidence is pending.",
+        "WorkPass372 full Unified project integration passed on exact head 724c692bb149be4bae76b3a70373344a7149a1fd. WorkPass373 adds a new focused scalar restore regression; final exact-head ledger/integration run is pending.",
+        "WorkPass372 current combined tree has not yet received fresh exact-head install/build/typecheck/integration evidence; prior WorkPass370 integration PASS is bound to older head df654311372a04875220e31b63d9f6a3d15c575a",
         "Перепроверить установку на чистой машине после текущих изменений",
         "CI для текущего HEAD ещё выполняется; старые успешные runs не заменяют проверку нового HEAD"
       ],
@@ -359,38 +365,131 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass342",
+    "id": "WorkPass373",
     "date": "2026-10-26",
-    "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
-    "codeCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
-    "summary": "Bound the integration client deadline to each CPU research probe: quick control/approval requests retain 8 seconds; NeuroCore/NOMEGA have 60 seconds; DeepCode CPU smoke has 200 seconds, safely above its 180-second subprocess limit. Revalidated the complete suite with WorkPass340 substrate and WorkPass341 task-family promotion coverage present.",
+    "branch": "work/nk1-unified-cycle-input-integrity-2026-10-26-r1",
+    "codeCommit": "a679045dc5523e7604f43f1cb2be84f4dd27c096",
+    "baseCommit": "f38d3189777649da490f8b0dbb3a8d19c7444811",
+    "summary": "Scalar restore evidence is now typed and range-checked. Present counters must be non-negative safe integers; present metrics finite values in [0,1]; present lastTick an allowed safe integer. Malformed present values can still be sanitized for safe operation but cannot establish lastComplete=true. Missing optional legacy fields remain compatible. Added focused regression and wired it into recovery, primary cognitive integration suite and WorkPass287–288 workflow.",
     "testsAdded": [
-      "bounded, per-probe timeout config rejects invalid bounds",
-      "full runtime/research bridge smoke completes all post-approval probes within their appropriate finite deadlines",
-      "NeuroCore, NOMEGA and DeepCode approval-denial and explicit-owner-approval paths pass on the same smoke",
-      "UI and runtime typechecks pass after the full integration run"
+      "string, negative and NaN incomplete/broken counters cannot restore a completed cycle",
+      "out-of-range, nonnumeric and nonfinite metrics cannot restore completion",
+      "malformed lastTick/cycles/completeCycles cannot restore completion",
+      "valid persisted evidence still restores completion",
+      "absent optional legacy counters/metrics remain compatible"
     ],
-    "validationStatus": "PASS on exact combined code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; merged to active source branch as 39af7eb67c9ab05efd45d01cbd4b4d1d44751454. Unified project integration, WorkPass110, WorkPass108, P26 and progress-ledger integrity all passed.",
+    "validationStatus": "IMPLEMENTED; final exact-head GitHub Actions pending. WorkPass372's previous combined head 724c692bb149be4bae76b3a70373344a7149a1fd passed 13/13; this new WorkPass373 change is not yet counted as passed until its own exact HEAD completes CI.",
     "progressPercentagesChanged": false,
-    "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
-    "workflowRuns": [
-      40257525157,
-      40257525071,
-      40257525093,
-      40257525095,
-      40257525008,
-      40257525009,
-      40257525022,
-      40257525001,
-      40257525128,
-      40257525003,
-      40257525076,
-      40257525205,
-      40257525121
-    ],
-    "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
+    "priorVerifiedCombinedHead": "724c692bb149be4bae76b3a70373344a7149a1fd",
+    "remainingReleaseGates": [
+      "fresh exact-head focused cycle regressions, runtime typecheck, progress-ledger integrity and full integration suite",
+      "physical Android/Termux voice and Live2D/browser E2E",
+      "independent learning/retrieval holdout with paired seeds and no-learning/wrong-feedback controls",
+      "24–72h restart/soak and resource-growth evidence",
+      "licensing/provenance/SBOM review and reproducible release-archive rebuild"
+    ]
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass373",
+      "date": "2026-10-26",
+      "branch": "work/nk1-unified-cycle-input-integrity-2026-10-26-r1",
+      "codeCommit": "a679045dc5523e7604f43f1cb2be84f4dd27c096",
+      "baseCommit": "f38d3189777649da490f8b0dbb3a8d19c7444811",
+      "summary": "Scalar restore evidence is now typed and range-checked. Present counters must be non-negative safe integers; present metrics finite values in [0,1]; present lastTick an allowed safe integer. Malformed present values can still be sanitized for safe operation but cannot establish lastComplete=true. Missing optional legacy fields remain compatible. Added focused regression and wired it into recovery, primary cognitive integration suite and WorkPass287–288 workflow.",
+      "testsAdded": [
+        "string, negative and NaN incomplete/broken counters cannot restore a completed cycle",
+        "out-of-range, nonnumeric and nonfinite metrics cannot restore completion",
+        "malformed lastTick/cycles/completeCycles cannot restore completion",
+        "valid persisted evidence still restores completion",
+        "absent optional legacy counters/metrics remain compatible"
+      ],
+      "validationStatus": "IMPLEMENTED; final exact-head GitHub Actions pending. WorkPass372's previous combined head 724c692bb149be4bae76b3a70373344a7149a1fd passed 13/13; this new WorkPass373 change is not yet counted as passed until its own exact HEAD completes CI.",
+      "progressPercentagesChanged": false,
+      "priorVerifiedCombinedHead": "724c692bb149be4bae76b3a70373344a7149a1fd",
+      "remainingReleaseGates": [
+        "fresh exact-head focused cycle regressions, runtime typecheck, progress-ledger integrity and full integration suite",
+        "physical Android/Termux voice and Live2D/browser E2E",
+        "independent learning/retrieval holdout with paired seeds and no-learning/wrong-feedback controls",
+        "24–72h restart/soak and resource-growth evidence",
+        "licensing/provenance/SBOM review and reproducible release-archive rebuild"
+      ]
+    },
+    {
+      "id": "WorkPass372",
+      "date": "2026-10-26",
+      "branch": "work/nk1-unified-cycle-input-integrity-2026-10-26-r1",
+      "codeCommit": "a054503434c1ff939294ffd54bbcda71bb3e3535",
+      "testedHeadSha": "724c692bb149be4bae76b3a70373344a7149a1fd",
+      "validationStatus": "PASS on exact combined head 724c692bb149be4bae76b3a70373344a7149a1fd. All 13 associated workflows passed, including cognitive-cycle regression, runtime typecheck, P26 learning/replay evidence gates, and full Unified project integration suite.",
+      "workflowRuns": [
+        40291654303,
+        40291654482,
+        40291654311,
+        40291654390,
+        40291654362,
+        40291654326,
+        40291654320,
+        40291654366,
+        40291654302,
+        40291654354,
+        40291654301,
+        40291654319,
+        40291654314
+      ],
+      "progressPercentagesChanged": false,
+      "summary": "Rebased descriptor-safe cognitive-cycle input/restore over the atomic event/cycle commit coordinator; all 13 CI workflows passed on the exact combined head."
+    },
+    {
+      "id": "WorkPass371",
+      "date": "2026-10-26",
+      "branch": "work/nk1-final-release-gate-2026-10-26-r3",
+      "codeCommit": "084c80745446c38bf514c43000844c433110f0c4",
+      "testedHeadSha": "724c692bb149be4bae76b3a70373344a7149a1fd",
+      "validationStatus": "PASS as part of exact combined WorkPass372 head 724c692bb149be4bae76b3a70373344a7149a1fd (13/13 workflows).",
+      "workflowRuns": [
+        40291654303,
+        40291654482,
+        40291654311,
+        40291654390,
+        40291654362,
+        40291654326,
+        40291654320,
+        40291654366,
+        40291654302,
+        40291654354,
+        40291654301,
+        40291654319,
+        40291654314
+      ],
+      "progressPercentagesChanged": false,
+      "summary": "Added a synchronous cross-ledger transaction to commit CEF operational events and the UnifiedCognitiveCycle aggregate atomically, restoring both on failure."
+    },
+    {
+      "id": "WorkPass370",
+      "date": "2026-10-26",
+      "branch": "work/nk1-unified-cycle-input-integrity-2026-10-26-r1",
+      "codeCommit": "37293f3b228c88c17d05fd98555e64f2b0c1625a",
+      "testedHeadSha": "df654311372a04875220e31b63d9f6a3d15c575a",
+      "validationStatus": "PASS on previous exact combined head df654311372a04875220e31b63d9f6a3d15c575a; the later atomic-coordinator rebase was independently validated in WorkPass372.",
+      "workflowRuns": [
+        40290816498,
+        40290816486,
+        40290816678,
+        40290816611,
+        40290816572,
+        40290816391,
+        40290816592,
+        40290816380,
+        40290816456,
+        40290816402,
+        40290816476,
+        40290816484,
+        40290816561
+      ],
+      "progressPercentagesChanged": false,
+      "summary": "Descriptor-safe cognitive-cycle inputs and restoration, getter-free rejection, sparse stage-history checks and state-preserving error handling."
+    },
     {
       "id": "WorkPass342",
       "date": "2026-10-26",
@@ -425,44 +524,10 @@
       ],
       "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
       "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
-    },
-    {
-      "id": "WorkPass340",
-      "date": "2026-10-26",
-      "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
-      "codeCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
-      "summary": "Strict Unified Cognitive Substrate wired into the live OrganismRuntime with a durable sidecar, bounded optional work routing, and 30-cycle stop/re-init continuity smoke.",
-      "validationStatus": "PASS on exact combined code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f",
-      "progressPercentagesChanged": false,
-      "workflowRuns": [
-        40256159897
-      ],
-      "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
-      "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
-    },
-    {
-      "id": "WorkPass339",
-      "date": "2026-10-26",
-      "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5",
-      "codeCommit": "02372e4949c2094b5cd1a3c4420aeda86a2fdfa1",
-      "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending.",
-      "validationStatus": "PASS on WorkPass339 merge result and retained in combined head 621864d0d7f2676245383adab86f1dcc6d0f741f",
-      "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
-      "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454",
-      "progressPercentagesChanged": false
-    },
-    {
-      "id": "WorkPass344",
-      "date": "2026-10-26",
-      "branch": "work/nk1-final-release-gate-2026-10-26-r3",
-      "summary": "Fail-closed release metadata gate; accurate tree-failure summary; strict operator mode plus CI-only allowance for untracked .pyc under __pycache__; eight regressions including tracked-bytecode rejection.",
-      "codeCommit": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
-      "validationStatus": "Pending fresh exact-head CI for tracked-bytecode guard and eight-test regression suite.",
-      "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
-  "branchHeadBeforeTrackerCommit": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
+  "latestUnverifiedCodeTestHead": "a679045dc5523e7604f43f1cb2be84f4dd27c096",
+  "branchHeadBeforeTrackerCommit": "a679045dc5523e7604f43f1cb2be84f4dd27c096",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -499,6 +564,89 @@
       "note": "DeepCode CPU probe completed under bounded 200-second HTTP deadline; all research probes and final smoke JSON passed.",
       "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
       "mergeCommit": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
+    },
+    {
+      "id": "WorkPass371",
+      "name": "Cross-ledger atomic operational-cycle commit coordinator",
+      "status": "verified-as-part-of-WorkPass372-exact-head",
+      "exactCombinedHeadCiStatus": "success",
+      "codeCommit": "084c80745446c38bf514c43000844c433110f0c4",
+      "testedHeadSha": "724c692bb149be4bae76b3a70373344a7149a1fd",
+      "workflowRuns": [
+        40291654303,
+        40291654482,
+        40291654311,
+        40291654390,
+        40291654362,
+        40291654326,
+        40291654320,
+        40291654366,
+        40291654302,
+        40291654354,
+        40291654301,
+        40291654319,
+        40291654314
+      ],
+      "note": "Coordinator, OrganismRuntime wiring and CognitiveEventFabric atomicity regressions passed in the 13/13 WorkPass372 suite."
+    },
+    {
+      "id": "WorkPass370",
+      "name": "Descriptor-safe unified cognitive-cycle input and restore integrity",
+      "status": "verified-on-prior-and-rebased-combined-head",
+      "exactCombinedHeadCiStatus": "success",
+      "codeCommit": "37293f3b228c88c17d05fd98555e64f2b0c1625a",
+      "testedHeadSha": "724c692bb149be4bae76b3a70373344a7149a1fd",
+      "workflowRuns": [
+        40291654303,
+        40291654482,
+        40291654311,
+        40291654390,
+        40291654362,
+        40291654326,
+        40291654320,
+        40291654366,
+        40291654302,
+        40291654354,
+        40291654301,
+        40291654319,
+        40291654314
+      ],
+      "note": "Getter-free input/stage reads, atomic rejection semantics, and sparse-stage-history guards passed after WorkPass371 rebase."
+    },
+    {
+      "id": "WorkPass372",
+      "name": "Rebase cycle-integrity guards over WorkPass371 atomic coordinator",
+      "status": "present-and-verified-on-exact-combined-head",
+      "exactCombinedHeadCiStatus": "success",
+      "codeCommit": "a054503434c1ff939294ffd54bbcda71bb3e3535",
+      "testedHeadSha": "724c692bb149be4bae76b3a70373344a7149a1fd",
+      "workflowRuns": [
+        40291654303,
+        40291654482,
+        40291654311,
+        40291654390,
+        40291654362,
+        40291654326,
+        40291654320,
+        40291654366,
+        40291654302,
+        40291654354,
+        40291654301,
+        40291654319,
+        40291654314
+      ],
+      "note": "All 13 workflows including full Unified project integration passed. Scores unchanged."
+    },
+    {
+      "id": "WorkPass373",
+      "name": "Reject malformed scalar restore evidence in UnifiedCognitiveCycle",
+      "status": "implemented-unverified-on-current-branch",
+      "exactCombinedHeadCiStatus": "pending",
+      "codeCommit": "a679045dc5523e7604f43f1cb2be84f4dd27c096",
+      "baseCommit": "f38d3189777649da490f8b0dbb3a8d19c7444811",
+      "note": "New focused regression is wired into recovery and the primary cognitive integration suite. Verify final tracker commit before marking PASS."
     }
-  ]
+  ],
+  "latestVerifiedCodeTestHead": "a054503434c1ff939294ffd54bbcda71bb3e3535",
+  "latestTestedCombinedHead": "724c692bb149be4bae76b3a70373344a7149a1fd"
 }

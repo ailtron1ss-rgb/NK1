@@ -1,3 +1,19 @@
+# NK1 — общий трекер инженерного прогресса (2026-10-26) — WorkPass373 CI pending
+
+**Current branch:** `work/nk1-unified-cycle-input-integrity-2026-10-26-r1`
+**Current WorkPass373 code commit:** `a679045dc5523e7604f43f1cb2be84f4dd27c096`
+**Latest upstream base:** `f38d3189777649da490f8b0dbb3a8d19c7444811` (WorkPass371/372 source preserved).
+**Last exact-head PASS:** WorkPass372 on `724c692bb149be4bae76b3a70373344a7149a1fd`, 13/13 workflows, including the full Unified project integration suite.
+
+**WorkPass373 implementation:** restored scalar counters and metrics are checked for type/range before stored `lastComplete` can be trusted. New regression is wired into `test:rebuild-recovered`, `test:cognitive-integration-suite`, and WorkPass287–288 CI.
+
+**Validation boundary:** WorkPass373 is implemented; final exact-head CI is pending. Prior WorkPass372 PASS remains tied to `724c692bb149be4bae76b3a70373344a7149a1fd`. Historical `ciSnapshot` entries remain bound to `621864d0d7f2676245383adab86f1dcc6d0f741f`. Scores unchanged.
+
+**Still open:** physical target device, browser/Live2D/voice E2E, independent learning/retrieval holdouts, 24–72-hour soak, licensing/provenance and reproducible release archive.
+
+---
+---
+
 # NK1 — общая панель инженерного прогресса (2026-10-26)
 
 **Источник:** `ailtron1ss-rgb/NK1`, combined source branch `fix/mega-cognitive-progress-tracking-2026-10-26-r3`. Точный проверенный code/test head: `621864d0d7f2676245383adab86f1dcc6d0f741f`, merged into the source branch as `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. На HEAD 621864d0d7f2676245383adab86f1dcc6d0f741f успешно прошли Unified project integration suite [#40257525157](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525157), WorkPass110 [#40257525071](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525071), WorkPass108 [#40257525093](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525093), P26 Learning Validation [#40257525095](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525095), progress-ledger integrity [#40257525008](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525008), plus outcome-ledger, replay, cognitive-contract, verified-experience, reflection and postcondition suites.
