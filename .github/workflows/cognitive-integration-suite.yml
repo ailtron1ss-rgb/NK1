@@ -190,4 +190,4 @@ jobs:
       - name: Verify final release gates (without publishing an archive)
         run: |
           npm run test:final-release-verifier
-          npm run release:verify
+          npm run release:verify:ci
