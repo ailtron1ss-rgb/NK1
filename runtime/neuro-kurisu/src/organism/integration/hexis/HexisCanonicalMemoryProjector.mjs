@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { hasValidHmxApplicationReceipt } from './HexisHmxReceiptGuard.ts';
+import { CANONICAL_MEMORY_CAPACITY } from '../../memory/CanonicalMemoryCapacity.ts';
 
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -160,7 +161,7 @@ export class HexisCanonicalMemoryProjector {
     // MemoryOS2 keeps at most 1,600 canonical items and evicts the tail on insert.
     // An HMX batch must not trigger that unrelated eviction as a side effect, because
     // compensation can remove imported rows but cannot restore an evicted old memory.
-    const canonicalMemoryCapacity = 1600;
+    const canonicalMemoryCapacity = CANONICAL_MEMORY_CAPACITY;
     const plannedNewItems = normalized.filter(item => {
       const stableRefKey = item.ref.replace(/^exp_[a-f0-9]{16}:/, '');
       const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' +
