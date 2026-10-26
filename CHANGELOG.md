@@ -1,3 +1,12 @@
+## WorkPass376 — fix runtime workspace directory and add clean-start CI (2026-10-26)
+
+- **Critical startup bug:** both `tools/super-start.mjs` and `tools/super-dev.mjs` launched `src/server/server.mjs` with `cwd` set to the monorepo root. The entrypoint is actually `runtime/neuro-kurisu/src/server/server.mjs`; therefore both advertised launch commands could fail before the organism runtime boots.
+- **Launcher correction:** launch helpers now accept an explicit working directory. The runtime child runs from `runtime/neuro-kurisu`; the research bridge, UI and gateway keep the monorepo root. A new `tools/super-start.test.mjs`/`npm run test:super-start` guards this wiring contract.
+- **Clean-room CI:** introduced `.github/workflows/clean-install-build-start.yml` to install app/runtime packages from committed lockfiles, build the production UI, start the full stack, wait for the aggregate gateway to report all dependencies healthy, and call the runtime and research APIs through the gateway. Startup failure prints logs and fails the job.
+- **Verification boundary:** this workflow's first exact-head run determines whether the clean install, Vite build and complete stack boot work in practice; module/regression passes alone are not treated as a launch guarantee.
+
+---
+
 ## WorkPass375 — make startup failures observable and gateway readiness truthful (2026-10-26)
 
 - **Gateway readiness:** added `/health` and `/healthz` aggregate probes for the runtime, research bridge and UI. A booting runtime (`ready:false`) or unavailable upstream returns HTTP 503 instead of falsely declaring the whole application healthy. The host binding is configurable through `SUPER_GATEWAY_HOST`, remaining loopback-only by default.

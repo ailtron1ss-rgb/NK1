@@ -8,9 +8,9 @@ const stateDir = resolve(ROOT, '.super-state');
 mkdirSync(stateDir, { recursive: true });
 
 const children = [];
-function launch(label, command, args, env = {}) {
+function launch(label, command, args, env = {}, cwd = ROOT) {
   const child = spawn(command, args, {
-    cwd: ROOT,
+    cwd,
     env: { ...process.env, ...env },
     stdio: 'inherit',
   });
@@ -28,7 +28,7 @@ launch('neuro-kurisu', 'node', ['--experimental-strip-types', 'src/server/server
   HOST: '127.0.0.1',
   STATE_DIR: resolve(stateDir, 'organism'),
   NODE_ENV: 'development',
-});
+}, resolve(ROOT, 'runtime/neuro-kurisu'));
 launch('research-bridge', 'python3', ['research/research_bridge.py'], {
   RESEARCH_PORT: '8765',
 });

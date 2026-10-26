@@ -22,8 +22,8 @@ const shutdown = (reason, exitCode = 0) => {
   }
   setTimeout(() => process.exit(finalExitCode), 1200).unref();
 };
-const launch = (label, command, args, env = {}) => {
-  const child = spawn(command, args, { cwd: ROOT, env: { ...process.env, ...env }, stdio: 'inherit' });
+const launch = (label, command, args, env = {}, cwd = ROOT) => {
+  const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, stdio: 'inherit' });
   child.on('error', (error) => {
     console.error(`[super] ${label} spawn error: ${error.message}`);
     void shutdown(`spawn-error:${label}`, 1);
@@ -40,7 +40,7 @@ const launch = (label, command, args, env = {}) => {
 
 launch('neuro-kurisu', 'node', ['--experimental-strip-types', 'src/server/server.mjs'], {
   PORT: '3310', HOST: '127.0.0.1', STATE_DIR: resolve(stateDir, 'organism'), NODE_ENV: 'production'
-});
+}, resolve(ROOT, 'runtime/neuro-kurisu'));
 launch('research-bridge', 'python3', ['research/research_bridge.py'], { RESEARCH_PORT: '8765' });
 launch('ui-preview', 'npm', ['--prefix', 'app', 'run', 'preview']);
 launch('gateway', 'node', ['tools/super-gateway.mjs'], { SUPER_GATEWAY_PORT: '8080', SUPER_UI_PORT: '8081', SUPER_RUNTIME_PORT: '3310', SUPER_RESEARCH_PORT: '8765' });
