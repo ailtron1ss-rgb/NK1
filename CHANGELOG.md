@@ -1,14 +1,7 @@
-## NK1 P26 regression coverage — prove malformed control fallbacks match explicit defaults (2026-10-26)
+## NK1 P26 learner — keep training-control validation atomic (2026-10-26)
 
-- The `ParametricPolicyLearner` true-learning contract now has an explicit fallback-equivalence regression: training with non-finite rate/weight controls must produce the same parameters as the declared finite defaults (`learningRate01=0.03`, `sampleWeight01=0.1`). The feature-vector path is checked separately.
-- The production change keeps action/target validation strict while permitting the already-implemented bounded fallback logic to run before SGD updates. Any non-finite model state remains covered by existing finite-weight/bias assertions.
-
----
-
-## NK1 P26 learner — make bounded training-control fallbacks reachable (2026-10-26)
-
-- Removed the contradictory early rejection of non-finite `learningRate01` and `sampleWeight01` from `assertTrainingScalars()`. Both `train()` and `trainFeatures()` already replace malformed controls with conservative finite defaults and clamp effective rates/weights before any parameter update.
-- Action identity and target finiteness/range remain hard preconditions. The existing true-learning regression checks that NaN/Infinity controls do not poison weights/biases and that exactly one bounded update is recorded per valid training call.
+- Preserved the existing strict input-integrity contract: `learningRate01` and any supplied `sampleWeight01` must be finite; malformed controls are rejected before any model mutation. This matches `p26-learning-input-integrity.mjs` and prevents invalid caller data from silently becoming a learning update.
+- Removed the unreachable non-finite fallback branches inside `train()` and `trainFeatures()` while retaining finite-rate/weight clamping for valid inputs. Updated the true-learning regression to assert rejection and snapshot immutability for NaN/Infinity controls, without reducing the real held-out training workload.
 
 ---
 
