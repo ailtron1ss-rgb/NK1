@@ -48,6 +48,10 @@ export function HexisControlConsole() {
   const [placement, setPlacement] = useState("local");
   const [executionAction, setExecutionAction] = useState("tool.execute");
   const [risk, setRisk] = useState("0.4");
+  const [remotePeerStatus, setRemotePeerStatus] = useState<any | null>(null);
+  const [remoteQuestion, setRemoteQuestion] = useState("");
+  const [remoteConfirmation, setRemoteConfirmation] = useState(false);
+  const [remoteResult, setRemoteResult] = useState<any | null>(null);
 
   const run = async (label: string, operation: () => Promise<unknown>) => {
     setBusy(true);
@@ -95,6 +99,23 @@ export function HexisControlConsole() {
     const staged = await run("Stage HMX", () => neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy }));
     const nextId = (staged as any)?.stage?.stagingId;
     if (nextId) setStageId(String(nextId));
+  };
+
+  const checkRemotePeer = async () => {
+    const result = await run("Remote Hexis status", () => neuroApi.hexisRemotePeerStatus());
+    if (result && typeof result === "object") setRemotePeerStatus((result as any).peer ?? result);
+  };
+
+  const consultRemotePeer = async () => {
+    const result = await run("Consult QuixiAI/Hexis", () => neuroApi.hexisRemotePeerConsult({
+      question: remoteQuestion,
+      context: {},
+      confirmExternalConsult: true,
+    }));
+    if (result && typeof result === "object") {
+      setRemoteResult((result as any).result ?? result);
+      setRemoteConfirmation(false);
+    }
   };
 
   const approveFirstReview = async () => {
@@ -197,6 +218,38 @@ export function HexisControlConsole() {
             <Button variant="outline" disabled={busy || !stageId} onClick={() => void run("Reject HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"))}>Reject</Button>
           </div>
           <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX import.</label>
+        </Panel>
+
+        <Panel title="QuixiAI/Hexis remote peer" icon={<Radio className="size-4" />}>
+          <p className="mb-2 text-[11px] leading-relaxed text-muted">
+            Optional external cognitive peer. Status checks are user-triggered. A consultation sends only the question entered here, not NK1 memory or chat history. The remote Hexis agent may have its own tools enabled, so treat every answer as advisory.
+          </p>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <Button variant="outline" disabled={busy} onClick={() => void checkRemotePeer()}>Check remote status</Button>
+            <span className="text-[10px] text-subtle">
+              {remotePeerStatus?.reachable === true ? "reachable" : remotePeerStatus?.reason ? String(remotePeerStatus.reason) : "not checked"}
+            </span>
+          </div>
+          <pre className="mb-3 max-h-24 overflow-auto rounded-md border border-border bg-bg p-2 text-[10px] leading-relaxed text-muted">{remotePeerStatus ? fmt(remotePeerStatus) : "No remote status loaded. The remote connector is disabled until configured by the operator."}</pre>
+          <textarea
+            value={remoteQuestion}
+            onChange={e => setRemoteQuestion(e.target.value)}
+            maxLength={6000}
+            rows={3}
+            placeholder="Ask a focused question for the external Hexis peer…"
+            className="w-full rounded-md border border-border bg-bg px-3 py-2 text-xs leading-relaxed text-fg"
+          />
+          <label className="mt-2 flex items-start gap-2 text-[11px] leading-relaxed text-muted">
+            <input type="checkbox" checked={remoteConfirmation} onChange={e => setRemoteConfirmation(e.target.checked)} />
+            I confirm that this question will be sent to a separately configured Hexis service. Its own tool permissions apply.
+          </label>
+          <Button
+            className="mt-2"
+            disabled={busy || !remoteQuestion.trim() || !remoteConfirmation || remotePeerStatus?.reachable !== true || remotePeerStatus?.consultEnabled !== true}
+            onClick={() => void consultRemotePeer()}
+          >Consult remote Hexis</Button>
+          <p className="mt-2 text-[10px] leading-relaxed text-subtle">A response never counts as verified evidence and cannot change NK1 memory or activate a skill. Importable data must still pass the HMX stage and explicit NK1 decision.</p>
+          {remoteResult ? <pre className="mt-3 max-h-56 overflow-auto rounded-md border border-border bg-bg p-3 text-[10px] leading-relaxed text-muted">{fmt(remoteResult)}</pre> : null}
         </Panel>
 
         <Panel title="Transactional outbox" icon={<Send className="size-4" />}>
