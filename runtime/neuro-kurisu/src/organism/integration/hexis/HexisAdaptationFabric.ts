@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
+import { validateHmxV17Document } from './HexisHmxV17Adapter.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
@@ -113,6 +114,15 @@ export interface HexisHmxStage {
     createdAt: number;
     digest: string;
     stagedSections: Record<string, unknown>;
+    /** Explicitly states whether operator acceptance can mutate canonical NK1 memory. */
+    applicationMode: 'memory-merge' | 'preview-only';
+    importResult?: {
+        status: 'pending' | 'applied' | 'skipped';
+        created: number;
+        reused: number;
+        reason?: string;
+        completedAt?: number;
+    };
 }
 export interface HexisOutboxEntry {
     id: string;
@@ -340,16 +350,102 @@ export class HexisAdaptationFabric {
         document: unknown;
         intent: HexisHmxIntent;
         strategy: HexisHmxStrategy;
-    }): HexisHmxStage { const document = input.document && typeof input.document === 'object' ? input.document as Record<string, unknown> : {}; const sections = document.sections && typeof document.sections === 'object' && !Array.isArray(document.sections) ? document.sections as Record<string, unknown> : {}; const conflicts: HexisHmxStage['conflicts'] = []; if (document.hmx_version && !String(document.hmx_version).startsWith('1.'))
-        conflicts.push({ path: 'hmx_version', kind: 'unsupported-major', detail: `Hexis adapter accepts HMX 1.x, got ${String(document.hmx_version)}` }); if (!Object.keys(sections).length)
-        conflicts.push({ path: 'sections', kind: 'schema', detail: 'sections must be a non-empty object' }); const names = Object.keys(sections); const blocked = (input.intent === 'telepathy' || input.intent === 'analysis') ? names.filter((name) => protectedSections.has(name)) : []; if (blocked.length)
-        conflicts.push({ path: 'sections', kind: 'protected-by-intent', detail: `protected sections require explicit replacement protocol: ${blocked.join(', ')}` }); const sectionCounts: Record<string, number> = {}; const stagedSections: Record<string, unknown> = {}; for (const [name, records] of Object.entries(sections)) {
-        sectionCounts[name] = Array.isArray(records) ? records.length : 1;
-        stagedSections[name] = Array.isArray(records) ? structuredClone(records.slice(0, 64)) : structuredClone(records);
-    } const base = { exportId: String(document.export_id ?? randomUUID()), intent: input.intent, strategy: input.strategy, sourceSubjectId: document.source_subject_id ? String(document.source_subject_id) : undefined, sectionCounts, protectedSections: names.filter((name) => protectedSections.has(name)), conflicts, stagedSections }; const stage: HexisHmxStage = { ...base, stagingId: randomUUID(), status: 'staged', createdAt: nowMs(), digest: digest(base) }; this.state.hmxStages.push(stage); this.state.hmxStages = this.state.hmxStages.slice(-32); this.state.metrics.hmxStaged += 1; return structuredClone(stage); }
-    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length))
-        return stage ? structuredClone(stage) : null; stage.status = decision === 'accept' ? 'accepted' : 'rejected'; if (decision === 'accept')
-        this.state.metrics.hmxAccepted += 1; return structuredClone(stage); }
+    }): HexisHmxStage {
+        const document = input.document && typeof input.document === 'object' && !Array.isArray(input.document)
+            ? input.document as Record<string, unknown>
+            : {};
+        const sections = document.sections && typeof document.sections === 'object' && !Array.isArray(document.sections)
+            ? document.sections as Record<string, unknown>
+            : {};
+        const conflicts: HexisHmxStage['conflicts'] = validateHmxV17Document(input.document, input.intent)
+            .map((issue) => ({ path: issue.path, kind: issue.kind, detail: issue.detail }));
+        const names = Object.keys(sections);
+        const sectionCounts: Record<string, number> = {};
+        const stagedSections: Record<string, unknown> = {};
+        for (const [name, records] of Object.entries(sections)) {
+            sectionCounts[name] = Array.isArray(records)
+                ? records.length
+                : records && typeof records === 'object'
+                    ? Object.keys(records as Record<string, unknown>).length
+                    : 1;
+            stagedSections[name] = Array.isArray(records)
+                ? structuredClone(records.slice(0, 256))
+                : structuredClone(records);
+        }
+        const source = document.source && typeof document.source === 'object' && !Array.isArray(document.source)
+            ? document.source as Record<string, unknown>
+            : {};
+        const base = {
+            exportId: String(document.export_id ?? randomUUID()),
+            intent: input.intent,
+            strategy: input.strategy,
+            sourceSubjectId: String(source.hexis_lineage_id ?? source.instance_id ?? document.source_subject_id ?? '') || undefined,
+            sectionCounts,
+            protectedSections: names.filter((name) => protectedSections.has(name)),
+            conflicts,
+            stagedSections,
+            applicationMode: input.intent === 'telepathy' && input.strategy === 'additive'
+                ? 'memory-merge' as const
+                : 'preview-only' as const,
+        };
+        const stage: HexisHmxStage = {
+            ...base,
+            stagingId: randomUUID(),
+            status: 'staged',
+            createdAt: nowMs(),
+            digest: digest(base),
+            importResult: {
+                status: 'pending',
+                created: 0,
+                reused: 0,
+                reason: 'awaiting-explicit-decision',
+            },
+        };
+        this.state.hmxStages.push(stage);
+        this.state.hmxStages = this.state.hmxStages.slice(-32);
+        this.state.metrics.hmxStaged += 1;
+        return structuredClone(stage);
+    }
+    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null {
+        const stage = this.state.hmxStages.find((item) => item.stagingId === stagingId);
+        if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length)) {
+            return stage ? structuredClone(stage) : null;
+        }
+        stage.status = decision === 'accept' ? 'accepted' : 'rejected';
+        if (decision === 'reject') {
+            stage.importResult = {
+                status: 'skipped',
+                created: 0,
+                reused: 0,
+                reason: 'rejected-by-operator',
+                completedAt: nowMs(),
+            };
+        } else if (stage.applicationMode === 'preview-only') {
+            stage.importResult = {
+                status: 'skipped',
+                created: 0,
+                reused: 0,
+                reason: 'accepted-as-preview-only',
+                completedAt: nowMs(),
+            };
+        }
+        if (decision === 'accept') this.state.metrics.hmxAccepted += 1;
+        return structuredClone(stage);
+    }
+    recordHmxImportResult(stagingId: string, result: { created: number; reused: number }): HexisHmxStage | null {
+        const stage = this.state.hmxStages.find((item) => item.stagingId === stagingId);
+        if (!stage || stage.status !== 'accepted' || stage.applicationMode !== 'memory-merge' ||
+            !stage.importResult || stage.importResult.status !== 'pending') {
+            return stage ? structuredClone(stage) : null;
+        }
+        stage.importResult = {
+            status: 'applied',
+            created: Math.max(0, Math.floor(result.created)),
+            reused: Math.max(0, Math.floor(result.reused)),
+            completedAt: nowMs(),
+        };
+        return structuredClone(stage);
+    }
     getHmxStage(stagingId: string) { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); return stage ? structuredClone(stage) : null; }
     enqueueOutbox(input: {
         idempotencyKey: string;
