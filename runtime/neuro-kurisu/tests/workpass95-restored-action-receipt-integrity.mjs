@@ -24,6 +24,8 @@ assert.equal(baseline.records[0].status, 'completed');
 
 for (const [name, corrupt] of [
   ['execution-identity-mismatch', row => ({ ...row, response: { ...row.response, executionId: 'exec-forged-identity' } })],
+  ['tool-identity-mismatch', row => ({ ...row, response: { ...row.response, tool: 'organism.forged-tool' } })],
+  ['audit-execution-identity-mismatch', row => ({ ...row, response: { ...row.response, audit: { ...row.response.audit, executionId: 'exec-forged-audit' } } })],
   ['verification-contradiction', row => ({ ...row, response: { ...row.response, verified: true } })],
   ['audit-outcome-mismatch', row => ({ ...row, response: { ...row.response, audit: { ...row.response.audit, outcomeClass: 'executed-verified', accepted: true, verified: true } } })],
   ['oversized-receipt', row => ({ ...row, response: { ...row.response, result: { payload: 'x'.repeat(50 * 1024) } } })],
@@ -46,4 +48,4 @@ assert.equal(validReplay.ok, true);
 assert.equal(validReplay.idempotentReplay, true);
 assert.equal(executions, 1, 'a valid receipt still replays without repeating the executor');
 
-console.log('NK1_RESTORED_ACTION_RECEIPT_INTEGRITY=PASS corruptCases=4 validReplay=true duplicateExecution=false');
+console.log('NK1_RESTORED_ACTION_RECEIPT_INTEGRITY=PASS corruptCases=6 validReplay=true duplicateExecution=false');
