@@ -308,7 +308,7 @@ assert.throws(() => kernel.beginDecisionCycle({
  const retentionCompletion = retentionKernel.completeCycle({
    anchors:firstNoTimestampDecision.anchors,
    fallbackTick:22,
-   at:2200,
+   at:firstNoTimestampDecision.anchors.at+1,
    outcome:stage('outcome.verifier',{success01:0.8,verified:true}),
    learning:stage('learning.update',{updated:true}),
    selfUpdate:stage('self-model.update',{continuity01:0.8}),
