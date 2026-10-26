@@ -73,6 +73,41 @@ assert.throws(
   () => projector.apply({ status: 'pending', intent: 'port', strategy: 'additive' }),
   /hmx-stage-must-be-accepted-before-apply/,
 );
-assert.equal(writes, 0);
+
+const acceptedCandidate = {
+  status: 'accepted',
+  exportId: 'exp_0123456789abcdef',
+  sourceLineageId: 'trusted-lineage-1',
+  stagingId: 'stage-accepted-1',
+  digest: 'a'.repeat(64),
+  intent: 'port',
+  strategy: 'additive',
+  conflicts: [],
+  stagedSections: { memories: [] },
+};
+assert.throws(
+  () => projector.apply({ ...acceptedCandidate, stagingId: '' }),
+  /hmx-stage-identity-required/,
+  'canonical apply must require a stable stage identity and digest',
+);
+assert.throws(
+  () => projector.apply({ ...acceptedCandidate, conflicts: [{ path: 'sections.memories', kind: 'schema' }] }),
+  /hmx-stage-has-conflicts/,
+  'direct projector callers must not bypass the staging conflict gate',
+);
+assert.throws(
+  () => projector.apply({
+    ...acceptedCandidate,
+    stagedSections: {
+      memories: [
+        { ref: acceptedCandidate.exportId + ':duplicate', type: 'semantic', content: 'Same content.' },
+        { ref: acceptedCandidate.exportId + ':duplicate', type: 'procedural', content: 'Same content.' },
+      ],
+    },
+  }),
+  /hmx-apply-duplicate-ref-conflict/,
+  'canonical apply must reject duplicate refs even if a caller bypasses stageHmx',
+);
+assert.equal(writes, 0, 'invalid accepted-stage payloads must fail before reading or writing canonical storage');
 
 console.log('HEXIS_PROJECTOR_IDEMPOTENT_REPLAY=PASS', JSON.stringify({ writes, receiptDigest: receipt.digest }));
