@@ -1,3 +1,13 @@
+## WorkPass336 — harden signed outcome artifact trust boundary (2026-10-26)
+
+- [CODE] `VerifiedOutcomeArtifact.ts` now accepts only exact plain-data v1 artifact/payload records and snapshots descriptor values before validation, preventing payload or envelope getters from running during evidence ingestion.
+- [CRYPTO] Signed outcome Ed25519 signatures now require canonical standard Base64 for exactly 64 bytes, matching the activation/rollback approval boundary.
+- [REGRESSION] Expanded the signed-outcome lifecycle test for junk-prefixed, truncated, and malformed-padding signatures; accessor-bearing payload/envelope objects; and extra unbound fields in the v1 payload.
+- [VALIDATION] CI is pending for the exact branch checkpoint. No PASS is claimed until Actions complete against that head.
+- [SCOPE] Security-boundary hardening only; scores remain unchanged and no empirical learning uplift or full release readiness is claimed.
+
+---
+
 ## WorkPass335 — verified skill revision gate hardening — 2026-10-26
 
 - **Input integrity:** malformed holdout observations with non-string task, family, method, verifier or evidence fields are safely rejected as rows; invalid top-level arrays/options return explicit errors rather than crashing on string methods.
@@ -12,13 +22,25 @@ Validation PASS on exact tested HEAD `2aa76acb545ac1a485962f4016c6586766424a0a`:
 
 ---
 
-## WorkPass335 — canonical Ed25519 approval signature encoding — 2026-10-26
+## WorkPass335 — full preflight for outcome-ledger writes (2026-10-26)
 
-- Require promotion and rollback approval signatures to use canonical standard Base64 representing exactly 64 Ed25519 bytes. Round-trip validation rejects whitespace, trailing junk, truncation and other alternate encodings before cryptographic verification.
-- Apply the same guard to both skill activation and rollback paths without weakening the existing default-deny approval and evidence checks.
-- Add regression cases proving canonical signatures remain valid while malformed promotion and rollback encodings are rejected.
+- **Defect:** `recordIndependentEvaluationOutcomes` previously checked some execution-binding fields only for truthiness. A malformed but truthy non-string `runId` could get as far as `VerifiedOutcomeLedger.record`, where its evidence reference was rejected. If malformed data arrived in a later row, an earlier row could already have been committed.
+- **Runtime fix:** validate every binding at the commit boundary before constructing/persisting any outcomes. Require strict `bindingVerified === true`, non-empty task/trial IDs, safe string execution/planned run IDs, non-negative safe-integer seed and safety-violation count, and a valid split. This uses runtime checks rather than relying on TypeScript types for untrusted inputs.
+- **Regression:** `workpass203-independent-candidate-evaluator.mjs` mutates the second binding's run ID to numeric `42` and recalculates the plain envelope fingerprint. The commit must fail with `independent-evaluation-ledger-unbound-run` while the ledger remains empty; the existing valid commit test then verifies both rows are accepted.
+- **Validation:** exact-head P26 Learning Validation, WorkPass108, WorkPass110 and Unified project integration suite are required after this pass; links and the exact checked HEAD will be recorded in the project tracker only after all applicable runs complete.
+- **Evidence boundary:** this closes a runtime-schema/preflight defect; a plain SHA-256 digest is still not a signature, and the patch does not claim improved learning performance or external generalization.
+- **Checkpoint:** `docs/WORKPASS335_LEDGER_PREFLIGHT_ATOMICITY_RU.md`.
 
-Validation PASS on exact tested HEAD `2aa76acb545ac1a485962f4016c6586766424a0a`: the versioned skill candidate lifecycle regression passed inside [WorkPass110](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825176), with runtime typecheck also successful. This is integrity hardening, not evidence of better task performance or release readiness.
+---
+
+## WorkPass339 — каноническая кодировка подписей Ed25519 — 2026-10-26
+
+- **Runtime fix:** promotion и rollback approval verifier проверяют detached Ed25519 signature как канонический Base64 для ровно 64 байт: фиксированная длина, строгий алфавит, корректный padding и round-trip без изменения строки.
+- **Обе границы защищены:** проверка выполняется до криптографической верификации в createAuthenticatedSkillPromotionApprovalVerifier и createAuthenticatedSkillRollbackApprovalVerifier. Неканоническая кодировка отклоняется закрытым образом; отсутствие trusted keys также остаётся fail-closed.
+- **Regression:** в p23-versioned-skill-candidate-store.mjs проверяются valid canonical promotion/rollback, junk suffix, leading whitespace и truncated promotion signature.
+- **Изоляция интеграции:** security diff перенесён выборочно поверх актуальной WorkPass334 линии, без перезаписи новых соседних learning-gate файлов.
+
+**Validation status:** PASS on the current WorkPass339 PR merge commit `4a41db0` (base `3e22a06` + head `0a0f987`). Unified project integration suite #119 passed, including runtime `TYPECHECK=PASS` and `P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS`; WorkPass110 continual-learning metrics #4641 and project progress-ledger integrity #20 also passed. No progress-score uplift is claimed from this security fix.
 
 ---
 
@@ -2539,12 +2561,3 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
-
-
-## WorkPass336 — harden signed outcome artifact trust boundary (2026-10-26)
-
-- [CODE] `VerifiedOutcomeArtifact.ts` now accepts only exact plain-data v1 artifact/payload records and snapshots descriptor values before validation, preventing payload or envelope getters from running during evidence ingestion.
-- [CRYPTO] Signed outcome Ed25519 signatures now require canonical standard Base64 for exactly 64 bytes, matching the activation/rollback approval boundary.
-- [REGRESSION] Expanded the signed-outcome lifecycle test for junk-prefixed, truncated, and malformed-padding signatures; accessor-bearing payload/envelope objects; and extra unbound fields in the v1 payload.
-- [VALIDATION] CI is pending for the exact branch checkpoint. No PASS is claimed until Actions complete against that head.
-- [SCOPE] Security-boundary hardening only; scores remain unchanged and no empirical learning uplift or full release readiness is claimed.

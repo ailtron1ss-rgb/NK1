@@ -1,0 +1,51 @@
+# WorkPass339 — строгая кодировка Ed25519 approval signatures
+
+**Дата:** 26 октября 2026 г.  
+**Ветка:** `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5`  
+**Кодовый checkpoint с регрессиями:** `02372e4949c2094b5cd1a3c4420aeda86a2fdfa1`  
+**Статус:** CI PASS for PR merge commit `4a41db0` (`3e22a06` base + `0a0f987` head).
+
+## Что изменено
+
+Функция `decodeCanonicalEd25519Signature` принимает только строку стандартного Base64, которая кодирует ровно 64 байта и после round-trip декодирования и обратного кодирования совпадает с исходной строкой. Это исключает пробелы, посторонние символы, лишние суффиксы, обрезанные подписи и неоднозначные текстовые представления.
+
+Один и тот же контракт применяется в обоих критических путях:
+- `createAuthenticatedSkillPromotionApprovalVerifier` — проверка подписи перед активацией кандидата навыка;
+- `createAuthenticatedSkillRollbackApprovalVerifier` — проверка подписи перед откатом активной версии.
+
+Некорректная кодировка приводит к отказу до криптографической проверки. Отсутствие доверенного ключа остаётся отказом по умолчанию. Этот patch не добавляет автоматическую активацию, не ослабляет проверку evidence и не заменяет независимую оценку кандидата.
+
+## Регрессионные сценарии
+
+В `runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs` добавлены проверки:
+- валидная каноническая promotion-подпись принимается;
+- promotion-подпись с суффиксом `!!!`, ведущим пробелом или удалённым padding отвергается;
+- валидная rollback-подпись принимается;
+- rollback-подпись с суффиксом `!!!` отвергается.
+
+## Связи между ветками
+
+`main` — release-control ветка и не является корректной точкой сравнения исходного runtime. Полное исходное дерево хранится в `workpass70-source`; расширенный стек находится на `fix/mega-cognitive-progress-tracking-2026-10-26-r3` (WorkPass334). Отдельная ветка `fix/strict-ed25519-signature-encoding-2026-10-26` содержит этот security fix, но имеет иную историю и отстаёт по ряду направлений. Поэтому в текущую линию перенесён узкий кодовый diff и тесты.
+
+Отдельная архитектурная зона риска: `fix/unified-substrate-runtime-wiring-rebased-2026-10-25` содержит отличающиеся изменения в `OrganismRuntime`, `UnifiedCognitiveSubstrate` и `CognitiveRoutingPolicy`. Их интеграция требует сравнения producer/consumer контрактов и проверки combined HEAD; автоматический wholesale merge без CI небезопасен.
+
+Базовая ветка также продолжает двигаться: во время этого прохода в ней обновлялись progress-ledger скрипты и тесты. Текущая ветка WorkPass339 была создана заново от актуальной базовой линии и затем получила узкий security patch, чтобы не затирать эти изменения.
+
+## Что ещё требуется подтвердить
+
+1. `npm run test:p23:versioned-skill-candidate-store` на этой ветке.
+2. Runtime TypeScript typecheck и интеграционные проверки когнитивного цикла.
+3. CI на exact HEAD; старые проходы не доказывают корректность этого коммита.
+4. Независимый holdout для learning/transfer и реальная проверка внешних postconditions.
+5. Воспроизводимая пересборка и проверка основного release ZIP.
+
+**Оценки прогресса не увеличены:** до выполнения проверок этот patch считается исправлением security contract, а не доказательством повышения обучаемости или готовности к production.
+
+
+## Confirmed CI result
+
+- Unified project integration suite run **#119 / 40253553153** passed on merge commit `4a41db0`; runtime typecheck printed `TYPECHECK=PASS mode=tsc compiler=runtime-lock`.
+- WorkPass110 continual-learning metrics run **#4641 / 40253553155** passed; the log explicitly reports `P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS` with the new signature regression cases included.
+- Project progress-ledger integrity run **#20 / 40253553224** passed. The tracked scored baseline remains unchanged because its historical PASS rows have their own tested SHA.
+
+These checks establish regression/typecheck success for this narrow security change on the tested merge result; they do not establish production readiness of the entire organism or measurable learning uplift.

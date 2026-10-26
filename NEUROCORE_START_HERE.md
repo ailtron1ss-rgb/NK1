@@ -1,13 +1,11 @@
-## Latest checkpoint — WorkPass335: signed approvals + verified skill gate hardening (2026-10-26)
+## Latest integration checkpoint — WorkPass336 signed outcome boundary (2026-10-26)
 
-- **Integration branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`, based on WorkPass334's active cognitive-progress line. `main` and the release ZIP are unchanged.
-- **Code/test checkpoint:** `8cd1a4b6495036c8200b5f2581e8c123584d1ea9`. The pass combines canonical Base64/64-byte Ed25519 checks for promotion and rollback with strict input/threshold validation in both `SkillRevisionGate.ts` and the production proposal producer `VerifiedSkillPromotion.ts`, cross-family holdout accounting, and regressions for malformed evidence, thresholds and signatures.
-- **Threshold policy:** malformed rows fail closed without crashing; invalid paired-task minima and non-finite/out-of-range gain/regression thresholds raise explicit configuration errors. The producer no longer clamps invalid options before creating a proposal. Invalid complete-seed minima and null options are also rejected. Valid boundaries remain covered.
-- **Evidence boundary:** active skills still require authenticated independent outcome evidence, trusted shadow-run evidence and explicit signed approval. Candidate generation or local gate success alone does not authorize activation.
-- **Validation PASS on exact tested HEAD `2aa76acb545ac1a485962f4016c6586766424a0a`:** [WorkPass110 — P23 regressions + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825176), [progress-ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825161), and [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825150). The main test suites passed; local clone/test execution remains unavailable because the runtime cannot resolve github.com.
-- **Progress tracking:** overall learning scores and completion estimates are unchanged. No measured task/transfer uplift or production-readiness claim is made.
-- **Still open:** production clean install/start smoke, broad cognitive integration, external held-out transfer/retrieval evaluation, device/voice/Live2D E2E, soak testing, licensing review, and reproducible refresh/verification of the primary release ZIP.
-
+- **Integration branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`, with current base `d43846db3451caae5062cb4b5c92533765b60f21` incorporated as a merge parent at `d43846db3451caae5062cb4b5c92533765b60f21` HEAD `d43846db3451caae5062cb4b5c92533765b60f21`. `main` and the release ZIP remain unchanged.
+- **Code/test commits:** signed outcome trust-boundary runtime fix `4c817208c27d623474e08b6db1dbf2e81cc82991`; regression additions `05fad9f67960af1d1cb9f7ed535aba3e49b2973f`. The current combined tree preserves base WorkPass335 ledger preflight and WorkPass339 approval-signature hardening as well as this branch's strict revision gate and proposal producer.
+- **Runtime change:** `VerifiedOutcomeArtifact.ts` requires exact plain-data artifact/payload records, snapshots property descriptors without invoking getters, rejects extra fields from signed schema v1, and verifies only canonical Base64 encoding for 64-byte Ed25519 signatures.
+- **Regressions:** junk-prefixed, truncated and malformed-padding signatures; payload and envelope getters; unknown payload keys.
+- **Validation:** the new combined checkpoint awaits exact-HEAD Actions. Earlier WorkPass335 and WorkPass339 successes are historical evidence only, not a replacement for current WorkPass336 checks.
+- **Progress evidence:** scores remain unchanged. No measured learning/transfer uplift or production readiness is claimed; external holdout, device/voice/Live2D, soak, licensing and reproducible release-archive gates remain open.
 
 ---
 
@@ -543,3 +541,4 @@ When the user says “работай над проектом”, “продол
 - **Regression:** `test:p23:verified-skill-lifecycle-bootstrap` is registered in the continual-learning workflow.
 - **Verification:** exact-head Actions runs fail before steps start; the jobs have no step output and the logs endpoint returns `BlobNotFound`. This is consistent with the known runner/infrastructure problem, but does **not** prove the code or tests pass. Local typecheck/test execution is unavailable in this pass.
 - **Next P0:** connect the real learning/shadow supervisor to `registerTrustedSkillShadowRun` before receipt ingestion; provision trusted verifier keys; integrate authenticated approval; then get an actionable successful CI/typecheck run and audit every store creation/activation path.
+

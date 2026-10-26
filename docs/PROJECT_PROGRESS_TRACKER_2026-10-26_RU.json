@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scored progress remains anchored to source checkpoint b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass335 passed P23 regressions/runtime typecheck, progress-ledger integrity and unified integration on the documented exact heads; WorkPass336 is an unscored signed-outcome trust-boundary patch awaiting CI on its exact branch checkpoint. Prior scores remain unchanged; no empirical learning uplift is claimed.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and historical CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass339 itself passed the current PR merge result (4a41db0): runtime typecheck, unified integration suite, P23_VERSIONED_SKILL_CANDIDATE_STORE and progress-ledger integrity. No score uplift is inferred from a security hardening patch. WorkPass336 combines the signed outcome artifact trust-boundary patch with the current base; exact combined-head CI is pending. Scores remain unchanged and no empirical learning uplift is inferred from security hardening.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -285,17 +285,32 @@
     "date": "2026-10-26",
     "branch": "work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1",
     "codeCommit": "4c817208c27d623474e08b6db1dbf2e81cc82991",
-    "regressionCommit": "05fad9f67960af1d1cb9f7ed535aba3e49b2973f",
-    "summary": "Strictly validate signed outcome artifact/payload envelopes as exact plain data records, snapshot descriptor values without invoking accessors, and require canonical Ed25519 Base64 signatures.",
+    "summary": "Merged the signed-outcome evidence hardening onto the latest cognitive-progress base while preserving WorkPass339 approval-signature and WorkPass335 ledger-preflight changes. Exact plain-data schema snapshots prevent getters; signed outcome signatures require canonical Ed25519 Base64.",
     "testsAdded": [
-      "signed outcome signatures with leading junk are rejected before crypto verification",
-      "signed outcome signatures with truncated padding are rejected",
-      "signed outcome signatures with malformed padding are rejected",
-      "payload accessors are rejected without executing getter bodies",
-      "artifact-envelope accessors are rejected without executing getter bodies",
-      "unknown extra fields are rejected from the schemaVersion 1 signed payload"
+      "junk-prefixed, truncated and malformed-padding signed-outcome signatures rejected",
+      "payload accessors rejected without executing getter bodies",
+      "artifact-envelope accessors rejected without executing getter bodies",
+      "unknown fields rejected from the schemaVersion 1 signed payload",
+      "valid signed outcome fixture continues to ingest after rejected malformed artifacts"
     ],
-    "validationStatus": "PENDING exact current checkpoint CI. WorkPass335 source/test validation remains successful on its previously recorded exact heads; no WorkPass336 PASS is claimed yet.",
-    "progressPercentagesChanged": false
-  }
+    "validationStatus": "PENDING exact combined HEAD CI. WorkPass335 and WorkPass339 historical PASS evidence is retained in CHANGELOG; it does not validate this combined WorkPass336 tree.",
+    "progressPercentagesChanged": false,
+    "testedMergeCommit": "4a41db0",
+    "testedBaseSha": "3e22a06c000337f10d15d8583eb8448882c1b063",
+    "testedHeadSha": "0a0f987f9035b99012b36b304029ff625dda1d7f",
+    "workflowRuns": [
+      40253553153,
+      40253553155,
+      40253553224
+    ]
+  },
+  "recentEngineeringPasses": [
+    {
+      "id": "WorkPass339",
+      "date": "2026-10-26",
+      "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5",
+      "codeCommit": "02372e4949c2094b5cd1a3c4420aeda86a2fdfa1",
+      "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending."
+    }
+  ]
 }
