@@ -1,3 +1,12 @@
+## WorkPass398 — неизвестные Hexis decisions отклоняются на HTTP-границе (2026-10-26)
+
+- **Серверный код:** `7df90658a7633fcaee746a69197f9522818cc452`; **server-smoke regression:** `86edc9df9a802ce8aa6965c8091454eb779429d5`.
+- Ранее неизвестное решение review неявно превращалось в `approve`, а неизвестное HMX-решение — в `reject`. Теперь обе API-границы требуют точного значения из allowlist и возвращают HTTP 400 до вызова mutation/flush.
+- Smoke проверяет invalid decision для review и HMX; после неверного HMX-решения тот же валидный stage успешно отправляется на явный `accept` в рамках теста.
+- **Валидация:** PENDING exact-head typecheck, `test:hexis-adaptation`, `test:hexis-server-smoke`, Unified integration. Actions пока падают до предоставления шагов/логов, поэтому PASS не заявляется. Оценки прогресса не менялись; `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass397 — безопасный HMX snapshot на границе импорта (2026-10-26)
 
 - **Кодовые коммиты:** `aead364e098b462b5f99f48e65b76585f927975f` (ограниченный plain-JSON snapshot) и `83343d9ba5765050c734218a64d8bbe6e9883f2f` (staging использует тот же snapshot); **регрессии:** `0f9c34c54ad2b858a142c5e14d0de28fb763f5b5` и `28920aa46a888ddff4a0297ae8a93526e879da85`.
