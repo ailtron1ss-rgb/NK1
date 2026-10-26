@@ -9,6 +9,8 @@
 - The UI never treats the typed ID as proof of status: the server still checks the stage lifecycle seal/status and conflicts, while acceptance and canonical apply remain separately confirmed. This allows recovery without weakening server-side invariants.
 
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
+- [SAFE TREE BUDGET] Count every visited value (including primitive leaves), cap individual strings at 1,000,000 characters, cap aggregate string/key characters at 80,000,000, cap own keys per object at 4096 and each key at 4096 characters. Caller-supplied traversal budget arguments are ignored.
+- [CI STATUS] Latest fully visible run set on head `fa2d0fbd13c437a2ba224d3fabf758b8310dce6f` failed across 14 workflows; HMX/Core/P26/metrics jobs had empty step lists and log retrieval returned `BlobNotFound`. These results do not reveal the failing code step. Later head additions remain unverified.
 - [SECURITY] Bound safe JSON-tree validation by depth, node count, per-object own-key count, key length, per-string length and aggregate string/key characters; public callers cannot override traversal budgets.
 - [REGRESSION] Exercise over-depth trees, caller-supplied fake budgets, oversized strings and oversized own-key collections.
 - [FAIL-CLOSED] Reject present non-array `memories`/`relationships` sections before canonical storage reads; unknown future scalar sections remain explicitly deferred instead of disappearing.
