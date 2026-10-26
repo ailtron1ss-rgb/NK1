@@ -101,6 +101,50 @@ assert.equal(restored.recordEvidence(memory.id, {
 }).added, false, 'restored memory must not count the same source twice');
 assert.equal(restored.indexDiagnostics().pass, true, 'evidence integration must preserve memory indexes');
 
+// A long-lived canonical memory must still reject evidence replay after the 32-key exact ring rolls over.
+const longTrailOS = new MemoryOS2({ signalFusionProfile: 'balanced' });
+const lineageEpoch = Date.now() + 1_000;
+const longLineageInput = (index, overrides = {}) => ({
+  content: 'One canonical fact with many independent lineage identifiers for replay-guard rollover testing.',
+  kind: 'semantic',
+  source: `hexis-rollover-publisher-${index}`,
+  provenanceClass: 'external',
+  sourceAuthority01: overrides.sourceAuthority01 ?? .9,
+  independenceKey: `hexis-rollover-${index}`,
+  observedAt: lineageEpoch + index,
+  evidenceFreshnessAt: lineageEpoch + index,
+  tags: ['hexis', 'lineage-rollover'],
+  context: { regression: 'hexis-evidence-lineage-rollover' },
+  salience: .6,
+  emotionalWeight: .1,
+  identityRelevance: .2,
+  goalRelevance: .4,
+  socialRelevance: .1,
+  predictionError: .1,
+  confidence: overrides.confidence ?? .58,
+  epistemicStatus: 'belief',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+});
+const longTrailMemory = longTrailOS.encode(longLineageInput(0, { confidence: .45 }), { clone: false });
+for (let index = 1; index <= 140; index++) longTrailOS.encode(longLineageInput(index), { clone: false });
+const longTrailBeforeReplay = longTrailOS.snapshot().items.find(row => row.id === longTrailMemory.id);
+assert.equal(longTrailBeforeReplay.evidenceLineageKeys.length, 32, 'exact lineage ring remains bounded');
+assert.ok(longTrailBeforeReplay.evidenceLineageFilter.segments.length >= 2, 'lineage filter grows by fixed-size segments rather than dropping old identities');
+assert.equal(longTrailOS.hasEvidenceLineage(longTrailMemory.id, 'hexis-rollover-0'), true, 'old lineages remain recognized after exact-ring rollover');
+const longTrailConfidence = longTrailBeforeReplay.confidence;
+longTrailOS.encode(longLineageInput(0, { confidence: .99, sourceAuthority01: 1 }), { clone: false });
+assert.equal(longTrailOS.snapshot().items.find(row => row.id === longTrailMemory.id).confidence, longTrailConfidence, 'replaying the oldest source cannot change confidence after 140 newer sources');
+const longTrailRestored = new MemoryOS2({ signalFusionProfile: 'balanced' });
+longTrailRestored.restore(structuredClone(longTrailOS.snapshot()));
+assert.equal(longTrailRestored.hasEvidenceLineage(longTrailMemory.id, 'hexis-rollover-0'), true, 'Bloom replay guard survives snapshot/restore');
+const restoredLongTrailConfidence = longTrailRestored.snapshot().items.find(row => row.id === longTrailMemory.id).confidence;
+longTrailRestored.encode(longLineageInput(0, { confidence: .99, sourceAuthority01: 1 }), { clone: false });
+assert.equal(longTrailRestored.snapshot().items.find(row => row.id === longTrailMemory.id).confidence, restoredLongTrailConfidence, 'restored oldest-lineage replay cannot ratchet confidence');
+assert.equal(longTrailRestored.indexDiagnostics().pass, true, 'long-horizon provenance filter preserves canonical memory indexes');
 // Guard the production composition path as well as the isolated policy object.
 const coreSource = await readFile(new URL('../../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const revisionStart = coreSource.indexOf('hexisReviseBelief(input: {');
