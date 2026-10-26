@@ -1,3 +1,22 @@
+## WorkPass354 — separate source and validated CI evidence heads (2026-10-26)
+
+- **Working branch / PR:** `fix/workpass353-invalid-event-payload-2026-10-26`, [PR #182](https://github.com/ailtron1ss-rgb/NK1/pull/182).
+- **Root cause observed in CI:** [Unified project integration suite #40282049399](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282049399) stopped at `test:progress-ledger`. It flagged 13 prior CI rows pinned to `621864d0d7f2676245383adab86f1dcc6d0f741f` as mismatched only because the validator compared them to the newer source/test checkpoint. Runtime integration steps were skipped.
+- **Fix:** `ciSnapshot.evidenceHead` records the exact SHA shared by the listed historical CI rows. The validator compares each row to this evidence head, not to the newer `sourceHeadAtSnapshot`. Historical tested SHAs and outcomes remain untouched.
+- **Regression coverage:** the tests allow a newer source checkpoint plus an older explicitly pinned CI snapshot, while still rejecting malformed evidence heads, individual tested-SHA mismatches, and non-canonical run URLs.
+- **Current code/test head:** `b01d3f03eb35885473e95299e0f693094ab276a2`. The latest base `ff66d85870fef04168773218d65c72deac997ca5` was integrated before these changes, preserving the parallel WorkPass353 event-identity hardening. Fresh combined exact-head CI remains pending; scores unchanged.
+
+---
+
+## WorkPass353b — reject malformed cognitive event payload envelopes (2026-10-26)
+
+- `CognitiveEventFabric.append()` rejects explicitly supplied root payloads unless they are plain records (ordinary object or null-prototype record), before canonicalization, idempotency lookup or ledger mutation.
+- Regression coverage includes null, arrays, primitives, Date, class instances, invalid retries against a previously stored ID, unchanged ledger totals, null-prototype compatibility and the omitted-payload default.
+- The regression test is included in `test:cognitive-integration-suite` and matches the workflow path filter.
+- Exact-head runtime typecheck and integration CI have not yet passed on the combined changes. No readiness percentages were increased.
+
+---
+
 # NK1 — общая панель инженерного прогресса (2026-10-26)
 
 **Источник:** `ailtron1ss-rgb/NK1`, combined source branch `fix/mega-cognitive-progress-tracking-2026-10-26-r3`. Точный проверенный code/test head: `621864d0d7f2676245383adab86f1dcc6d0f741f`, merged into the source branch as `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. На HEAD 621864d0d7f2676245383adab86f1dcc6d0f741f успешно прошли Unified project integration suite [#40257525157](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525157), WorkPass110 [#40257525071](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525071), WorkPass108 [#40257525093](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525093), P26 Learning Validation [#40257525095](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525095), progress-ledger integrity [#40257525008](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525008), plus outcome-ledger, replay, cognitive-contract, verified-experience, reflection and postcondition suites.
