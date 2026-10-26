@@ -328,8 +328,8 @@ export class CognitiveEventFabric {
             ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase()||
             !action||!outcome||action.stage!=='tool-action'||outcome.stage!=='tool-outcome'||
             ownDataValue(outcome.payload,'executionId')!==executionId||
-            ownDataValue(action.payload,'tool')!==ownDataValue(event.payload,'tool')||
-            ownDataValue(outcome.payload,'tool')!==ownDataValue(event.payload,'tool')||
+            ownDataValue(action.payload,'tool')!==ownDataValue(event.payload,'toolId')||
+            ownDataValue(outcome.payload,'tool')!==ownDataValue(event.payload,'toolId')||
             ownDataValue(event.payload,'receiptActionEventId')!==action.id||
             ownDataValue(event.payload,'receiptOutcomeEventId')!==outcome.id||
             !outcome.parentIds.includes(action.id)||!event.parentIds.includes(outcome.id))return null;
@@ -423,7 +423,7 @@ export class CognitiveEventFabric {
           return !event||(event.external===true&&event.parentIds.includes(outcome.id)&&
             ownDataValue(event.payload,'receiptActionEventId')===action.id&&
             ownDataValue(event.payload,'receiptOutcomeEventId')===outcome.id&&
-            ownDataValue(event.payload,'tool')===ownDataValue(action.payload,'tool'));
+            ownDataValue(event.payload,'toolId')===ownDataValue(action.payload,'tool'));
         });
       const revisionsRaw=ownDataValue(value,'receiptRevisions');
       const revisionCandidates=ownArrayValues(revisionsRaw,32)
@@ -1002,6 +1002,7 @@ export class CognitiveEventFabric {
         archivedNode.payload.projectionHash!==projectionHash||
         archivedNode.payload.receiptActionEventId!==action.id||
         archivedNode.payload.receiptOutcomeEventId!==outcome.id||
+        archivedNode.payload.toolId!==toolId||
         !archivedNode.parentIds.includes(outcome.id)
       ))throw new Error('external-observation-projection-conflict');
       return {resolved:true,replayed:true,eventId:prior.eventId,archived:!byId.has(prior.eventId)};
@@ -1011,7 +1012,7 @@ export class CognitiveEventFabric {
     if(existing){
       if(existing.stage!=='external-evidence'||existing.external!==true||existing.payload.projectionHash!==projectionHash||
         existing.payload.executionId!==executionId||existing.payload.observationId!==observationId||
-        existing.payload.tool!==toolId||existing.payload.receiptActionEventId!==action.id||
+        existing.payload.toolId!==toolId||existing.payload.receiptActionEventId!==action.id||
         existing.payload.receiptOutcomeEventId!==outcome.id||!existing.parentIds.includes(outcome.id)) {
         throw new Error('external-observation-projection-conflict');
       }
