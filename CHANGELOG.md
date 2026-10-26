@@ -9,6 +9,8 @@
 - The UI never treats the typed ID as proof of status: the server still checks the stage lifecycle seal/status and conflicts, while acceptance and canonical apply remain separately confirmed. This allows recovery without weakening server-side invariants.
 
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
+- [SECURITY] Keep safe-tree recursion depth/node budgets inside the public validator; JavaScript callers cannot pass negative depth or forged counters to weaken bounds.
+- [REGRESSION] Add an over-depth nested JSON tree and assert extra arguments cannot bypass the exported validator limit.
 - [DEFERRED SEMANTICS] Keep non-empty scalar future sections visible in deferred accounting; strings, nonzero finite numbers and `true` contribute a single deferred item instead of disappearing from the HMX receipt.
 - [REGRESSION] Validate scalar future section handling through the real projector and exported receipt validator, plus reject control characters in warning payloads.
 - [ATOMICITY REGRESSION] Inject a temporal-ledger failure after canonical MemoryFabric commit and semantic-node projection; assert compensating rollback restores memory, graph and ledger baselines, then a retry produces exactly one valid object per store.
