@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The scored progress and CI evidence remain anchored to source checkpoint b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass335 is a separate, unscored security patch on work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3; its exact-HEAD P23 regression, typecheck and CI are pending. Documentation-only commits do not change scored code. Do not infer that earlier PASS rows validate the WorkPass335 patch.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scored progress remains anchored to source checkpoint b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass335 is an unscored security/learning-gate patch on work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1; its exact-HEAD P23 tests, runtime typecheck and CI are pending. Prior PASS rows do not validate this patch. No score change is justified until the new code/tests are checked.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -283,18 +283,20 @@
   "latestEngineeringPass": {
     "id": "WorkPass335",
     "date": "2026-10-26",
-    "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3",
-    "codeCommit": "ad812aa0db98ec1283aaed36d777ce36a8268b13",
-    "summary": "Strict canonical Base64 decoding for 64-byte Ed25519 promotion and rollback approval signatures.",
+    "branch": "work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1",
+    "codeCommit": "f3d462f60e2ad8ead9ed398cee71b59b87aa9547",
+    "summary": "Strict canonical Base64 decoding for Ed25519 promotion/rollback signatures plus fail-closed verified holdout-gate input/configuration validation and family-pair accounting.",
     "testsAdded": [
       "canonical promotion signature accepted",
-      "promotion signature with trailing junk rejected",
-      "promotion signature with leading whitespace rejected",
-      "truncated promotion signature rejected",
-      "canonical rollback signature accepted",
-      "rollback signature with trailing junk rejected"
+      "promotion signatures with trailing junk, leading whitespace, or truncated padding rejected",
+      "canonical rollback signature accepted and non-canonical rollback encoding rejected",
+      "malformed holdout rows rejected without crashing valid comparisons",
+      "invalid minPairedTasks, minAbsoluteGain, and maxFamilyRegression values rejected",
+      "cross-family baseline/candidate pair excluded and counted once",
+      "exact valid threshold boundaries accepted",
+      "NaN threshold configuration explicitly rejected"
     ],
-    "validationStatus": "pending exact-head P23 regression, runtime typecheck, and CI",
+    "validationStatus": "pending exact-head P23 regression suite, runtime typecheck, and GitHub Actions; no empirical learning uplift or production readiness claimed",
     "progressPercentagesChanged": false
   }
 }
