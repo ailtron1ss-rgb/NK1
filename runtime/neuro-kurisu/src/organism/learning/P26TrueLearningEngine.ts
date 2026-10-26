@@ -215,7 +215,7 @@ export class P26TrueLearningEngine{
     }
 
     let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0;
-    let onlineLoss=0,replayLoss=0,replayCursor=0,replayCandidatesExamined=0;
+    let onlineLoss=0,replayLoss=0,replayCursor=0;
     const targetFor=(row:P26InterleavedExperience)=>{
       if(targetMode==='reward') return clamp(row.reward);
       const next=Math.max(...this.learner.predict(row.nextState,extras).map(p=>p.value),.5);
@@ -250,11 +250,13 @@ export class P26TrueLearningEngine{
       onlineUpdates+=1;
       onlineLoss+=trained.loss01;
 
+      // maxReplayUpdates bounds successful replay optimizer steps. A rejected
+      // conflicting row must not consume the update budget, otherwise one bad
+      // historical sample can starve all later admissible experiences.
       if(!replayExperiences.length || (index+1)%replayEveryNCurrent!==0 ||
-         replayCandidatesExamined>=maxReplayUpdates) continue;
+         replayUpdates>=maxReplayUpdates) continue;
       const historical=replayExperiences[replayCursor%replayExperiences.length];
       replayCursor+=1;
-      replayCandidatesExamined+=1;
       if(conflictsWithCurrent(historical)) {
         blockedReplayRows+=1;
         continue;
