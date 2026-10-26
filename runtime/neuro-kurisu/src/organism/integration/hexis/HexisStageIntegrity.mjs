@@ -48,7 +48,7 @@ export const refreshHmxStageLifecycleDigest = stage => {
   return stage.lifecycleDigest;
 };
 
-function isSafeJsonTree(value, ancestors = new Set(), depth = 0, budget = { nodes: 0 }) {
+export function isSafeJsonTree(value, ancestors = new Set(), depth = 0, budget = { nodes: 0 }) {
   if (value === null || value === undefined || typeof value === 'string' || typeof value === 'boolean') return true;
   if (typeof value === 'number') return Number.isFinite(value);
   if (typeof value !== 'object' || depth > 64 || ++budget.nodes > 100000) return false;
