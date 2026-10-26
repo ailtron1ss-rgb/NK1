@@ -359,17 +359,18 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass390",
+    "id": "WorkPass393",
     "date": "2026-10-26",
-    "branch": "work/hexis-evidence-adapter-2026-10-26",
-    "codeCommit": "9d00c3001a97d5551145cf0bb2c51fcdfebe7424",
-    "summary": "Hardened the public Hexis evidence route against a null request body: the internal timestamp-origin guard now checks for a non-null object before inspecting own keys, so malformed envelopes can be rejected by normal schema validation instead of throwing a route-level TypeError.",
+    "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
+    "codeCommit": "1d0b208d2d74e27d51997d8f53a7b191873eb0f3",
+    "summary": "Hexis review approval now re-canonicalizes pending evidence, recomputes the shared canonical digest, compares all provenance/stance/time/confidence fields with the authoritative MemoryOS2 receipt, preserves a restricted legacy digest form only for server-generated receipt timestamps, verifies review state survives a real server restart, and checks the server smoke against persisted canonical confidence.",
     "testsAdded": [
-      "HTTP smoke requires a JSON null evidence envelope to return 400",
-      "HTTP smoke still rejects client-supplied observedAtOrigin=server-receipt",
-      "generic review dispatch calls the canonical evidence gate first and fails closed except on explicit not-a-valid-hexis-evidence-review"
+      "review evidence tampering regressions for source reference, label, note, observedAt, stance and confidence",
+      "server-receipt digest normalization and recovery of pre-normalization pending review snapshots",
+      "generic review smoke reconciles returned audit/confidence with persisted MemoryOS2 state",
+      "server restart smoke confirms the exact pending evidence review survives restore before approval"
     ],
-    "validationStatus": "PENDING exact-head typecheck, focused Hexis tests and Unified integration. Actions runs on the prior two code heads finished without steps/logs; they do not establish pass or fail of the code tests.",
+    "validationStatus": "PENDING exact-head typecheck, focused adapter/review tests, Hexis server smoke and Unified integration. Actions runs on this branch have failed before step details/logs were available; they do not prove either a code failure or a pass. No progress/readiness/recall scores increased; main and canonical Release ZIP unchanged.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
@@ -638,10 +639,27 @@
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
+    },
+    {
+      "id": "WorkPass393",
+      "date": "2026-10-26",
+      "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
+      "codeCommit": "1d0b208d2d74e27d51997d8f53a7b191873eb0f3",
+      "summary": "Hexis review approval now re-canonicalizes pending evidence, recomputes the shared canonical digest, compares all provenance/stance/time/confidence fields with the authoritative MemoryOS2 receipt, preserves a restricted legacy digest form only for server-generated receipt timestamps, verifies review state survives a real server restart, and checks the server smoke against persisted canonical confidence.",
+      "testsAdded": [
+        "review evidence tampering regressions for source reference, label, note, observedAt, stance and confidence",
+        "server-receipt digest normalization and recovery of pre-normalization pending review snapshots",
+        "generic review smoke reconciles returned audit/confidence with persisted MemoryOS2 state",
+        "server restart smoke confirms the exact pending evidence review survives restore before approval"
+      ],
+      "validationStatus": "PENDING exact-head typecheck, focused adapter/review tests, Hexis server smoke and Unified integration. Actions runs on this branch have failed before step details/logs were available; they do not prove either a code failure or a pass. No progress/readiness/recall scores increased; main and canonical Release ZIP unchanged.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
     }
   ],
-  "latestUnverifiedCodeTestHead": "9d00c3001a97d5551145cf0bb2c51fcdfebe7424",
-  "branchHeadBeforeTrackerCommit": "9d00c3001a97d5551145cf0bb2c51fcdfebe7424",
+  "latestUnverifiedCodeTestHead": "1d0b208d2d74e27d51997d8f53a7b191873eb0f3",
+  "branchHeadBeforeTrackerCommit": "1d0b208d2d74e27d51997d8f53a7b191873eb0f3",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -681,11 +699,11 @@
     }
   ],
   "latestEngineeringCheckpoint": {
-    "workpass": "WorkPass390",
-    "sourceBranch": "work/hexis-evidence-adapter-2026-10-26",
-    "codeTestHead": "9d00c3001a97d5551145cf0bb2c51fcdfebe7424",
+    "workpass": "WorkPass393",
+    "sourceBranch": "fix/hexis-review-digest-binding-live-2026-10-26",
+    "codeTestHead": "1d0b208d2d74e27d51997d8f53a7b191873eb0f3",
     "validationStatus": "pending-exact-head-ci",
-    "summary": "Hardened the public Hexis evidence route against a null request body: the internal timestamp-origin guard now checks for a non-null object before inspecting own keys, so malformed envelopes can be rejected by normal schema validation instead of throwing a route-level TypeError. Progress/readiness scores remain unchanged; main and canonical Release ZIP are untouched.",
+    "summary": "Hexis review approval now re-canonicalizes pending evidence, recomputes the shared canonical digest, compares all provenance/stance/time/confidence fields with the authoritative MemoryOS2 receipt, preserves a restricted legacy digest form only for server-generated receipt timestamps, verifies review state survives a real server restart, and checks the server smoke against persisted canonical confidence. Validation logs were unavailable; no test pass is claimed.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   },
