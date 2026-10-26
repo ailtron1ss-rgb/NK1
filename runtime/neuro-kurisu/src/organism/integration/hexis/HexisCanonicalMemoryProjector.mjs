@@ -289,6 +289,7 @@ export class HexisCanonicalMemoryProjector {
       .map(item => String(item.source) + '\0' + stableRecordContent(item.content)));
     const createdIds = [];
     const revisedStatuses = [];
+    const revisedSignals = [];
     const supersededIds = [];
     const warnings = [];
     const importedIds = [];
@@ -395,6 +396,13 @@ export class HexisCanonicalMemoryProjector {
                 clamp01(evidence.sourceAuthority01) > incomingAuthorityCap,
             );
             if (priorConfidence > incomingAuthorityCap || priorAuthority > incomingAuthorityCap || hasOverCapHmxEvidence) {
+              const signalCommandId = 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48);
+              let signalRevision = revisedSignals.find(entry => entry.id === duplicate.id);
+              if (!signalRevision) {
+                signalRevision = { id: duplicate.id, snapshot: structuredClone(duplicate), sourceCommandIds: [] };
+                revisedSignals.push(signalRevision);
+              }
+              if (!signalRevision.sourceCommandIds.includes(signalCommandId)) signalRevision.sourceCommandIds.push(signalCommandId);
               this.memoryFabric.updateSignals(
                 duplicate.id,
                 {
@@ -405,7 +413,7 @@ export class HexisCanonicalMemoryProjector {
                     : [],
                 },
                 'hexis-import-authority-cap',
-                { commandId: 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48) },
+                { commandId: signalCommandId },
               );
             }
           }
@@ -604,6 +612,36 @@ export class HexisCanonicalMemoryProjector {
         if (uncompensated.length) rollbackErrors.push('canonical-uncompensated:' + uncompensated.join(','));
       } catch (verifyError) {
         rollbackErrors.push('canonical-verify:' + String(verifyError?.message ?? verifyError).slice(0, 220));
+      }
+      // Authority-cap reconciliation can mutate an existing duplicate before a later
+      // row/projection fails. Restore the exact pre-transaction signals and invalidate
+      // only the signal mutation receipts that were compensated.
+      for (const revision of [...revisedSignals].reverse()) {
+        try {
+          const commandId = 'hexis-signals-rollback:' + hash(String(stage.stagingId) + ':' + revision.id + ':' + attempt).slice(0, 48);
+          const restored = this.memoryFabric.restoreSignalsForCompensation(
+            revision.id,
+            revision.snapshot,
+            'hexis-hmx-apply-rollback',
+            { commandId, sourceCommandIds: revision.sourceCommandIds },
+          );
+          if (restored !== true) {
+            rollbackErrors.push('signals-restore-failed:' + revision.id);
+            continue;
+          }
+          const current = (this.memoryFabric.canonicalSnapshot().items ?? []).find(item => item.id === revision.id);
+          const fields = [
+            'salience', 'emotionalWeight', 'identityRelevance', 'goalRelevance', 'socialRelevance',
+            'predictionError', 'confidence', 'sourceAuthority01', 'evidenceSources', 'evidenceLineageKeys',
+            'dormant', 'lastAccessAt', 'temperature01', 'revisionHistory',
+          ];
+          const signalProjection = item => Object.fromEntries(fields.map(field => [field, item?.[field]]));
+          if (!current || JSON.stringify(signalProjection(current)) !== JSON.stringify(signalProjection(revision.snapshot))) {
+            rollbackErrors.push('signals-restore-unconfirmed:' + revision.id);
+          }
+        } catch (signalRollbackError) {
+          rollbackErrors.push('signals-restore:' + String(signalRollbackError?.message ?? signalRollbackError).slice(0, 220));
+        }
       }
       // Status reconciliation may touch an existing canonical memory before a later
       // projection/ledger operation fails. Restore those prior statuses as well as
