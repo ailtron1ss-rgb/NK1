@@ -2,7 +2,7 @@
 
 - **Gap closed:** the operational-cycle atomicity test covered event-fabric append failures but did not directly prove rollback when the unified aggregate mutates successfully and a later step throws.
 - **Regression:** inject a failure immediately after the real `UnifiedCognitiveCycle.evaluate()` updates its counters, then assert both the event ledger and aggregate return exactly to their pre-transaction state.
-- **Integration:** extends the existing WorkPass347 test already included in the cognitive integration suite; no new test runner or dependency is introduced.
+- **Integration:** extends the existing WorkPass347 test and adds its explicit path to both pull-request and push filters for the unified cognitive integration workflow; no new test runner or dependency is introduced.
 - **Evidence boundary:** regression authored; exact-head CI must execute before marking it passed. No maturity or field-learning score increase.
 
 ---
