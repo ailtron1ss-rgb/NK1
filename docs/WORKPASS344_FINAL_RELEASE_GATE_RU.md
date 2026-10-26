@@ -1,27 +1,24 @@
-# WorkPass344 — fail-closed final release verification
+# WorkPass344 — final release gate and CI workspace hygiene
 
 **Date:** 26 October 2026  
 **Branch:** `work/nk1-final-release-gate-2026-10-26-r3`  
-**Code/test checkpoint:** `6cf87a07f28b208b809506925f4cbd6fb163636c`  
+**Code/test checkpoint:** `71176fa2275149a726a3aadeec827866d88a0cc0`  
 **Status:** implementation committed; exact-head CI pending.
 
-## Defect
+## Defects found by the new final gate
 
-The root `npm run release:verify` command previously checked filesystem hygiene, generated Python artifacts, known secret paths, UI/API wiring and runtime architecture, but did not execute `tools/verify-release-metadata.mjs`. A final-tree run could therefore report green while root/SUPER_VERSION data, app/runtime manifests and lockfiles, current-status documents or weighted score arithmetic were inconsistent.
+1. Root `npm run release:verify` did not invoke `tools/verify-release-metadata.mjs`. A green final-tree result could therefore coexist with inconsistent root/SUPER_VERSION, app/runtime package versions, lockfiles, status inventory or weighted score metadata.
+2. Once metadata validation was added, the first full integration run exposed a false positive in the architecture scanner: the substrate regression contained a string literal that was parsed as an import edge. The assertion is now assembled from tokens and still checks the exact runtime import.
+3. The next full integration run completed runtime/research smoke, then correctly rejected the Python `__pycache__/*.pyc` files created by that smoke. Those are transient workspace products, not tracked release-source members. We need the clean-release gate to stay strict while permitting the test runner to report its transient caches explicitly.
 
-## Code and tests
+## Implementation
 
-- `tools/verify-final-release.mjs` accepts `--root`, rejects unknown CLI arguments, emits structured per-check results, and runs UI wiring, architecture and release metadata as mandatory fail-closed gates.
-- The metadata validator receives the selected root via `--root <root>`; a missing validator or non-zero exit fails the final gate.
-- `tools/verify-final-release.test.mjs` exercises four cases: valid metadata, invalid metadata, missing validator and unknown CLI argument.
-- Root `test:final-release-verifier` is wired into `audit:workpass70`.
-- The unified project integration workflow runs the new regression and `npm run release:verify` after the full runtime/research smoke. Path filters include release verifier and metadata inputs.
-
-## CI finding and correction
-
-The first WorkPass344 run passed the four new regression cases but failed the final architecture check. The architecture audit's lightweight import scanner had mistaken a string literal in `unified-substrate-runtime-wiring.mjs` for a second relative import. The test now constructs its expected import string from separate tokens, so it still verifies the runtime wiring without exposing a fake import edge to the source scanner.
-
-The current candidate includes the source base's WorkPass343 substrate-tick reconciliation improvement as well as WorkPass344. The earlier WorkPass340–342 tests are still valid evidence for their original exact head `621864d0d7f2676245383adab86f1dcc6d0f741f`, but do not replace a new combined-head run.
+- `verify-final-release.mjs` accepts `--root`, rejects unknown arguments, runs UI wiring/architecture/release-metadata gates and fails closed if any gate is missing or non-zero.
+- It reports `directCheckFailures` and `treeFailures` separately; overall `summary.failed` can no longer show zero when `ok=false` because tree hygiene failed.
+- Default `npm run release:verify` remains **strict**: generated Python bytecode causes a failure.
+- New `npm run release:verify:ci` enables only `--allow-generated-python-cache`. Each ignored transient cache is surfaced in `warnings`. Metadata integrity, architecture and UI wiring remain mandatory.
+- The post-smoke step in the Unified project integration workflow uses `release:verify:ci`; the root `audit:workpass70` and operator launch guide continue to use strict `release:verify`.
+- Six regression cases cover metadata success/failure/missing verifier, unknown CLI flag, strict pycache rejection, and explicit cache-tolerant CI mode.
 
 ## Operator launch path
 
@@ -34,8 +31,14 @@ npm run release:verify
 npm run start
 ```
 
-Gateway/UI listens on `127.0.0.1:8080`, runtime on `127.0.0.1:3310`, and Research Bridge on `127.0.0.1:8765`. Research network operations remain under explicit approval and allowlist.
+The strict verification should run on the clean candidate source tree before launch/package. The CI-only cache-tolerant variant is intended for a runner after Python research probes have executed.
+
+## Previous and pending validation
+
+WorkPass340–342 passed the combined runtime/cognitive/approval/research suite on exact code/test head `621864d0d7f2676245383adab86f1dcc6d0f741f`. The source branch then added WorkPass343 substrate-tick reconciliation, which is preserved here.
+
+The first WorkPass344 full run passed the four initial tests and metadata validator but failed on the architecture false positive. The second run passed app/runtime typechecks, cognitive tests, approval E2E and supervisor startup, then failed strict release verification on generated Python cache. The false-positive and cache-handling fixes in this checkpoint are authored but must pass a new exact-head CI before WorkPass344 can be merged.
 
 ## Remaining release gates
 
-This change only closes a missing metadata check. It does not rebuild/replace the large published GitHub Release ZIP. Physical Android/Termux sensor/audio E2E, browser/Live2D hardware tests, extended soak and license/provenance review remain open.
+This does not rebuild or replace the large GitHub Release ZIP. Physical Android/Termux audio/sensor E2E, browser/Live2D hardware tests, long soak, and license/provenance review remain open.
