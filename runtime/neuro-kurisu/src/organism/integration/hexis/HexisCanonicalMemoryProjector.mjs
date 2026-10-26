@@ -157,7 +157,10 @@ function deferredSectionCounts(sections) {
   const result = Object.create(null);
   for (const [name, value] of Object.entries(sections ?? {})) {
     if (name === 'memories') continue;
-    const count = Array.isArray(value) ? value.length : isRecord(value) ? Object.keys(value).length : 0;
+    const count = Array.isArray(value) ? value.length : isRecord(value) ? Object.keys(value).length :
+      typeof value === 'string' ? (value.trim() ? 1 : 0) :
+      typeof value === 'number' ? (Number.isFinite(value) && value !== 0 ? 1 : 0) :
+      value === true ? 1 : 0;
     if (count > 0) result[name] = count;
   }
   return result;
