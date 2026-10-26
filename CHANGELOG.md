@@ -1,3 +1,10 @@
+## [NK1][Hexis] Fail closed on imported memory status (2026-10-26)
+
+- [FIX] Replaced the permissive HMX status default with an explicit mapping: `active`/`belief` map to `belief`; external `fact` is only a belief; `hypothesis` remains a hypothesis; archived, quarantined, deleted, rejected, superseded and inactive records are quarantined; missing or unrecognized statuses remain `unknown`.
+- [BOUNDARY] HMX staging rejects malformed/non-string/overlong/control-character status values. The canonical projector repeats validation before the first write and stores original status as bounded context/tag metadata for review.
+- [TEST] Extended the integrated Hexis adaptation regression to apply each status through the canonical MemoryFabric and verify the persisted epistemic status; malformed status payloads must remain unaccepted.
+- [VALIDATION] Regression code is authored; current-head runtime/typecheck/CI execution remains pending. No readiness uplift, deployment, or Release ZIP update is claimed.
+
 ## [NK1][Hexis] WorkPass413 — make TypeScript validation part of the Hexis gate (2026-10-26)
 
 - [CI] Added `npm run typecheck` before the Hexis adaptation + live-server smoke tests in `hexis-canonical-apply.yml`.
