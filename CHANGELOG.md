@@ -1,3 +1,10 @@
+## [NK1][Hexis] Goal activation and HMX console closure (2026-10-26)
+
+- Goal activation now requires a second explicit confirmation; the smoke test verifies a denied attempt leaves the proposal materialized.
+- The console wires the native NK1 goal API through review, paused materialization and activation, and supports bounded external HMX JSON staging.
+- External import is capped below the current default request-body limit; HMX acceptance and canonical apply remain separate confirmations.
+- UI build and end-to-end execution remain unverified because current Actions runs expose no steps or logs.
+
 ## [NK1][Hexis] Require explicit confirmation before goal materialization (2026-10-26)
 
 - The goal-materialization HTTP endpoint now requires `confirmed: true`; an unconfirmed request returns 403 before project or proposal mutation.
