@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inspectToolchainVersions } from './toolchain-contract.mjs';
+import { decideSupervisedChildExit } from './supervisor-exit-policy.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 function version(bin, args = ['--version']) {
@@ -50,9 +51,10 @@ const launch = (label, command, args, env = {}) => {
   const child = spawn(command, args, { cwd: ROOT, env: { ...process.env, ...env }, stdio: 'inherit' });
   child.on('error', (error) => console.error(`[super] ${label} spawn error: ${error.message}`));
   child.on('exit', (code, signal) => {
-    if (shuttingDown) return;
-    if (signal) console.log(`[super] ${label} exited via ${signal}`);
-    else if (code !== 0) { console.error(`[super] ${label} exited with ${code}`); void shutdown(`child:${label}`); }
+    const decision = decideSupervisedChildExit({ label, code, signal, shuttingDown });
+    if (decision.action === 'ignore') return;
+    console.error(decision.message);
+    void shutdown(decision.reason);
   });
   children.push(child);
   return child;
