@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass428 — fail-safe migration of legacy outbox state (2026-10-26)
+
+- [MIGRATION SAFETY] Restored legacy `publishing`, `pending` rows with prior attempts, and `failed` rows without a persisted `not-published` resolution are normalized to `uncertain`. Earlier versions did not distinguish an ambiguous timeout from a confirmed no-effect result, so auto-retrying them could duplicate an external side effect.
+- [COMPATIBILITY] Rows carrying an explicit stored `not-published` resolution remain retryable; brand-new pending items (zero attempts) remain claimable.
+- [REGRESSION] Added restore-migration fixtures covering each legacy status class.
+- [VALIDATION] Regression code is committed; runtime execution remains unverified because the GitHub Actions jobs do not expose step records.
+
 ## [NK1][Hexis] WorkPass427 — distinguish HMX envelope from native extensions (2026-10-26)
 
 - [DATA FIDELITY] The native export bridge now treats standard HMX root fields (`hmx_version`, `record_type`, `created_at`, `intent`, `strategy`, `source` and aliases) as consumed envelope metadata instead of misclassifying them as unknown-extension data.
