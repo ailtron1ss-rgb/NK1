@@ -8,9 +8,9 @@
 - [x] Filter malformed memory rows and remove all records whose IDs collide before index rebuild.
 - [x] Recompute content hashes; normalize confidence, salience and lifecycle fields; clamp unsupported epistemic labels to `unknown`; bound vectors/links/entities; discard non-finite vectors.
 - [x] Add focused MemoryOS2 restore boundary regressions and wire them into the WorkPass349 CI workflow.
-- [ ] Require the exact-head run to pass the restore regression, the existing P23/environment/storage/evaluator regressions and runtime typecheck.
+- [x] Focused workflow [#40290234073](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290234073) passed on code/test SHA `40991fca3c441ed874ce8c58791d29a9c92ebb21`: native provider 10/10, evaluator-config 16/16, `WORKPASS356_MEMORYOS_RESTORE_BOUNDARY=PASS`, and runtime `TYPECHECK=PASS`.
 - [ ] Run a real file-backed organism restart test that writes/reopens memory and proves event/identity/causal retrieval remains accessible after process restart; this is a separate release gate.
-- **Status:** code/test changes committed; focused CI pending. No memory-recall uplift is claimed from state-shape validation alone.
+- **Status:** code/test changes committed and focused CI passed on `40991fca3c441ed874ce8c58791d29a9c92ebb21`. No memory-recall uplift is claimed from state-shape validation alone.
 
 ---
 
