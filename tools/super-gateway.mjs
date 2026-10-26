@@ -13,7 +13,7 @@ const forward = (req, res, targetPort, targetHost = '127.0.0.1') => {
     port: targetPort,
     path: req.url,
     method: req.method,
-    headers: buildGatewayUpstreamHeaders(req.headers, targetHost, targetPort, 'http'),
+    headers: buildGatewayUpstreamHeaders(req.headers, targetHost, targetPort),
   }, (upstreamRes) => {
     res.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers);
     upstreamRes.pipe(res);

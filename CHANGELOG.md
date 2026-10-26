@@ -1,3 +1,10 @@
+## Gateway TLS-terminator protocol preservation — 2026-10-26
+
+- The gateway previously passed a hard-coded `http` value into upstream header construction, which overwrote `x-forwarded-proto: https` from the trusted local TLS terminator. That could make authentication redirects use HTTP even when the public service was HTTPS.
+- The gateway now lets the validated header builder preserve an incoming single-value `http`/`https` forwarded protocol, with HTTP as fallback; explicit overrides must also be one of those two values.
+- Added regression coverage for TLS-terminator HTTPS preservation and rejection of multi-value/unsupported protocol strings. Existing public Host rewriting and gateway routing remain unchanged.
+- Exact-head Node 24 gateway CI is pending.
+
 ## WorkPass243 host-owned authority test isolation — 2026-10-26
 
 - Fixed a test-fixture leak in `workpass243-host-owned-independent-evaluation-services.mjs`: after checking that a group/world-writable executor is rejected, the test now restores mode `0700` before the separate run-root identity-replacement case.

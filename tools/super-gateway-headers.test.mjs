@@ -20,6 +20,25 @@ test('gateway origin metadata follows an explicit trusted transport protocol', (
   assert.equal(headers['x-forwarded-proto'], 'https');
 });
 
+test('gateway preserves HTTPS set by the trusted local TLS terminator', () => {
+  const headers = buildGatewayUpstreamHeaders({
+    host: 'kurisu.example:8443',
+    'x-forwarded-proto': 'https',
+  }, '127.0.0.1', 8081);
+  assert.equal(headers.host, '127.0.0.1:8081');
+  assert.equal(headers['x-forwarded-host'], 'kurisu.example:8443');
+  assert.equal(headers['x-forwarded-proto'], 'https');
+});
+
+test('unsupported forwarded-proto values fail closed to plain HTTP when no trusted override is supplied', () => {
+  const headers = buildGatewayUpstreamHeaders({
+    host: '127.0.0.1:8080',
+    'x-forwarded-proto': 'https, http',
+  }, '127.0.0.1', 8081);
+  assert.equal(headers['x-forwarded-proto'], 'http');
+  assert.throws(() => buildGatewayUpstreamHeaders({}, '127.0.0.1', 8081, 'javascript'), /forwarded protocol must be http or https/);
+});
+
 test('missing public host does not forward a forged or empty host value', () => {
   const headers = buildGatewayUpstreamHeaders({ accept: '*/*', 'x-forwarded-host': 'attacker.example' }, '127.0.0.1', 8765);
   assert.equal(headers.host, '127.0.0.1:8765');
