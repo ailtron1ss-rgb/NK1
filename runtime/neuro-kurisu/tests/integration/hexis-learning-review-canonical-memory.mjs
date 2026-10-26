@@ -100,6 +100,9 @@ assert.ok(body.includes("memory.kind === 'identity' || memory.kind === 'autobiog
   'protected and quarantined memories must not be changed through this review path');
 assert.ok(body.includes('if (!removed)'), 'a rejected canonical deletion must keep the review pending');
 assert.ok(body.includes('alreadyAbsent: true'), 'forget retries must be safely idempotent after a previous deletion');
+assert.ok(body.includes('reviewEvidence.revisionGroupId'), 'review decisions must retain their reviewed revision anchor');
+assert.ok(body.includes("review-source-memory-superseded"), 'stale reviews must not mutate a newer revision');
+assert.ok(body.includes('expectedGroupRows.length'), 'an absent reviewed row must not be mistaken for a completed forget while its revision chain remains');
 
 console.log('HEXIS_LEARNING_REVIEW_CANONICAL_MEMORY=PASS', JSON.stringify({
   originalMemory: original.id,
