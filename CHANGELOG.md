@@ -1,3 +1,12 @@
+## WorkPass407 — exercise non-record JSON body types across every Hexis POST route (2026-10-26)
+
+- **Server-smoke regression:** `1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3`.
+- Extended the shared request-boundary matrix across all 17 Hexis POST endpoints. Each now receives JSON `null`, an array, a string, a number and a boolean.
+- Every non-record body must return HTTP 400 `hexis-invalid-request-body`; failures include the route label and exact JSON value. This checks the contract beyond the previous all-routes-`null` case.
+- **Validation:** PENDING exact-head `test:hexis-server-smoke`, runtime typecheck and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass406 — surface terminal HMX import outcomes in the operator UI (2026-10-26)
 
 - **UI code commit:** `a330d9bd1ca2602e3cfcc0fe75d513a8f67e7875`; **wiring-audit commit:** `ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122`.
