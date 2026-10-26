@@ -159,11 +159,22 @@ assert.equal(replayEventDelta, 0, 'replay should emit no new lifecycle events');
 
 assert.throws(() => restored.fabric.encode(makeInput('different payload with a reused mutation key'), { commandId: 'wp31:encode:seed' }), MemoryLifecycleCommandConflictError,
   'reusing an idempotency key for a different payload must fail explicitly');
+const rollbackReceiptForMigration = {
+  commandId: 'wp31:rollback-created:valid',
+  fingerprint: 'a'.repeat(64),
+  action: 'rollback-created',
+  at,
+  outcome: 'applied',
+  resultKind: 'boolean',
+  memoryId: 'hexis-memory:rollback-fixture',
+  booleanValue: true,
+};
 const malformedMigration = migratePersistedOrganism({
   schemaVersion: ORGANISM_STATE_SCHEMA,
   state: { version: ORGANISM_STATE_SCHEMA },
   facets: { advanced: { memoryFabric: { ...durable.fabric, mutationReceipts: [
     ...(durable.fabric.mutationReceipts ?? []),
+    rollbackReceiptForMigration,
     { commandId: 'bad', fingerprint: 'invalid', action: 'encode', at: -1, outcome: 'applied', resultKind: 'memory' },
   ] } } },
 });
@@ -171,6 +182,9 @@ assert.equal(malformedMigration.facets.advanced.memoryFabric.mutationReceipts?.s
   'invalid or negative-time replay receipts must be discarded during state migration');
 assert.equal(malformedMigration.facets.advanced.memoryFabric.retiredMutationReceiptBloomCorrupt,true,
   'dropping any malformed hot receipt must mark the replay journal uncertain instead of silently permitting a retry');
+assert.equal(malformedMigration.facets.advanced.memoryFabric.mutationReceipts.some(row =>
+  row.commandId === rollbackReceiptForMigration.commandId && row.action === 'rollback-created'), true,
+  'state migration must preserve valid rollback-created receipts instead of treating the new action as corruption');
 const corruptJournalRuntime=new MemorySubsystemRuntime();
 corruptJournalRuntime.fabric.restore(malformedMigration.facets.advanced.memoryFabric);
 assert.throws(

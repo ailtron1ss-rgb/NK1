@@ -1102,14 +1102,10 @@ export class MemoryOS2{
  }
  get(id:string){const m=this.state.items.find(x=>x.id===id); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
  markDormant(id:string,dormant=true,reason='memory-economy'){return this.updateSignals(id,{dormant},reason);}
- forgetById(id:string,reason='memory-knockout'){
-   const i=this.state.items.findIndex(x=>x.id===id);
-   if(i<0)return false;
-   const m=this.state.items[i]!;
-   if(m.epistemicStatus==='quarantined'||m.kind==='identity'||m.kind==='autobiographical')return false;
+ private removeCanonicalRecordAt(index:number,id:string,m:MemoryItem2,countAsForget:boolean){
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-estimateMemoryBytes(m));
    this.removeIndexedId(id);
-   this.state.items.splice(i,1);
+   this.state.items.splice(index,1);
    this.itemIndex.delete(id);
    this.rebuildDedupIndexesFor(m);
    this.lowerContentCache.delete(id);
@@ -1121,8 +1117,30 @@ export class MemoryOS2{
      if(x.supersedesId===id)x.supersedesId=null;
      if(x.supersededById===id)x.supersededById=null;
    }
-   this.state.forgetCount++;
+   if(countAsForget)this.state.forgetCount++;
    this.state.reconsolidations++;
+ }
+ /** Transaction-only compensation: remove an item created by a failed HMX import.
+  * Unlike user-requested forgetting, rollback must also undo imported quarantined
+  * or identity records. The export scope prevents this path from deleting native data.
+  */
+ rollbackCreatedHmxImport(id:string,expectedExportId:string,expectedStageId:string,expectedAttempt:number):boolean{
+   const i=this.state.items.findIndex(x=>x.id===id);
+   if(i<0)return false;
+   const m=this.state.items[i]!;
+   if(!String(m.source??'').startsWith('hexis:')||
+     m.context?.hexisExportId!==expectedExportId||
+     m.context?.hexisImportStageId!==expectedStageId||
+     m.context?.hexisImportAttempt!==String(expectedAttempt))return false;
+   this.removeCanonicalRecordAt(i,id,m,false);
+   return true;
+ }
+ forgetById(id:string,reason='memory-knockout'){
+   const i=this.state.items.findIndex(x=>x.id===id);
+   if(i<0)return false;
+   const m=this.state.items[i]!;
+   if(m.epistemicStatus==='quarantined'||m.kind==='identity'||m.kind==='autobiographical')return false;
+   this.removeCanonicalRecordAt(i,id,m,true);
    void reason;
    return true;
  }

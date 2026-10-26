@@ -982,15 +982,15 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
   const rawRetiredMutationReceiptCount=memoryFabricRaw.retiredMutationReceiptCount;
   const validRetiredMutationReceiptCount=rawRetiredMutationReceiptCount===undefined||(typeof rawRetiredMutationReceiptCount==='number'&&Number.isSafeInteger(rawRetiredMutationReceiptCount)&&rawRetiredMutationReceiptCount>=0);
   const retiredMutationReceiptCount=validRetiredMutationReceiptCount?(rawRetiredMutationReceiptCount??0):0;
-  const mutationReceiptActions = new Set(['encode','revise-status','revise-content','update-signals','update-context','forget']);
+  const mutationReceiptActions = new Set(['encode','revise-status','revise-content','update-signals','update-context','forget','rollback-created']);
   const mutationReceiptKinds = new Set(['memory','context','boolean','void','null']);
   const validMutationReceipt=(row:any):boolean=>Boolean(
-    row&&typeof row.commandId==='string'&&row.commandId.length>0&&row.commandId.length<=128&&row.commandId===row.commandId.trim()&&!/[\u0000-\u001f\u007f]/.test(row.commandId)&&
+    row&&typeof row.commandId==='string'&&row.commandId.length>0&&row.commandId.length<=128&&row.commandId===row.commandId.trim()&&!/[\u0000-\u001f\u007f-\u009f]/.test(row.commandId)&&
     typeof row.fingerprint==='string'&&/^[a-f0-9]{64}$/i.test(row.fingerprint)&&
     mutationReceiptActions.has(row.action)&&typeof row.at==='number'&&Number.isFinite(row.at)&&row.at>=0&&
     ['applied','noop'].includes(row.outcome)&&mutationReceiptKinds.has(row.resultKind)&&
-    ((row.resultKind!=='memory'&&row.resultKind!=='context')||(typeof row.memoryId==='string'&&row.memoryId.length>0&&row.memoryId.length<=256&&!/[\u0000-\u001f\u007f]/.test(row.memoryId)))&&
-    (row.memoryId===undefined||(typeof row.memoryId==='string'&&row.memoryId.length>0&&row.memoryId.length<=256&&!/[\u0000-\u001f\u007f]/.test(row.memoryId)))&&
+    ((row.resultKind!=='memory'&&row.resultKind!=='context')||(typeof row.memoryId==='string'&&row.memoryId.length>0&&row.memoryId.length<=256&&!/[\u0000-\u001f\u007f-\u009f]/.test(row.memoryId)))&&
+    (row.memoryId===undefined||(typeof row.memoryId==='string'&&row.memoryId.length>0&&row.memoryId.length<=256&&!/[\u0000-\u001f\u007f-\u009f]/.test(row.memoryId)))&&
     (row.booleanValue===undefined||typeof row.booleanValue==='boolean')&&
     (row.resultKind==='boolean'?typeof row.booleanValue==='boolean':row.booleanValue===undefined)
   );

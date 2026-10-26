@@ -469,6 +469,8 @@ export class HexisCanonicalMemoryProjector {
         const provenancePayload = row.provenance ?? row.source_attribution ?? null;
         const context = {
           hexisExportId: exportId,
+          hexisImportStageId: String(stage.stagingId),
+          hexisImportAttempt: String(attempt),
           hexisMemoryRef: ref,
           hexisGraphSourceKey: graphSourceKey,
           hexisSourceLineageId: lineageId.slice(0, 512),
@@ -625,13 +627,38 @@ export class HexisCanonicalMemoryProjector {
         rollbackErrors.push('canonical-reconcile:' + String(snapshotError?.message ?? snapshotError).slice(0, 220));
       }
       for (const id of [...rollbackIds].reverse()) {
-        try {
-          this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
-            commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
-          });
-        } catch (rollbackError) {
-          rollbackErrors.push(String(rollbackError?.message ?? rollbackError).slice(0, 240));
+        let removed = false;
+        if (typeof this.memoryFabric.rollbackHmxCreatedMemory === 'function') {
+          // Prefer the transaction-scoped compensator even for ordinary facts. This
+          // keeps rollback out of user-forget accounting and binds deletion to the exact
+          // export, stage and attempt. Never broaden a failed scoped compensation.
+          try {
+            removed = this.memoryFabric.rollbackHmxCreatedMemory(
+              id,
+              exportId,
+              String(stage.stagingId),
+              attempt,
+              'hexis-hmx-apply-rollback',
+              {
+                commandId: 'hexis-hmx-rollback-protected:' +
+                  hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
+              },
+            ) === true;
+          } catch (rollbackError) {
+            rollbackErrors.push('canonical-compensation:' + String(rollbackError?.message ?? rollbackError).slice(0, 220));
+          }
+        } else {
+          // Backward-compatible fallback for alternate test/adaptor implementations
+          // without the scoped API. The production MemoryFabric always exposes it.
+          try {
+            removed = this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
+              commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
+            }) === true;
+          } catch (rollbackError) {
+            rollbackErrors.push('canonical-remove:' + String(rollbackError?.message ?? rollbackError).slice(0, 220));
+          }
         }
+        if (!removed) rollbackErrors.push('canonical-remove-unconfirmed:' + id);
       }
       // A non-throwing compensator can still fail to remove a committed item.
       // Verify the postcondition rather than assuming that a return means rollback.
