@@ -1,3 +1,13 @@
+## WorkPass423 — привязать memory projection к проверенному export options (2026-10-26)
+
+- **Код нормализатора:** `49a5a2e90a2d98980572f44152afaf20921a08a7`; **регрессия:** `bfb55498ff8e258caa52aec95f365bac7fc0f94b`.
+- `normalizeHmxV17Memory` теперь проверяет options envelope через собственные data descriptors, принимает только известные поля и canonical `exportId`; необязательные source/date значения должны иметь ожидаемые типы. Accessor-backed options отклоняются без выполнения.
+- Memory row нормализуется только если `ref` начинается с конкретного переданного `exportId` и `:`. Запись из другого экспорта или object-valued export ID отклоняется, а не связывается с неправильным lineage.
+- Регрессии покрывают несовпадающий export ID, getter в `exportId` без исполнения и object-valued export ID. Сохранены тесты getter/prototype для rows и source attribution.
+- **Валидация:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass422 — bounded snapshot недоверенной memory-записи перед нормализацией (2026-10-26)
 
 - **Код нормализатора:** `58f57b806590477c0d6558b162d82a78675e8397`; **регрессия:** `b380123afe87987a10456065504982bdf4a02af1`.
