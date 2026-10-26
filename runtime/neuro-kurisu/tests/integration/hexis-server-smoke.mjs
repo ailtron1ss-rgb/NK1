@@ -59,8 +59,19 @@ try {
   }
   const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: exportRes.document, intent: 'port', strategy: 'additive' })).json();
   if (!stageRes.ok || stageRes.stage?.status !== 'staged') throw new Error('hexis-hmx-stage');
+  const stageLookupResponse = await fetch(`${base}/api/organism/integration/hexis/hmx/stage?stagingId=${encodeURIComponent(stageRes.stage.stagingId)}`);
+  const stageLookup = await stageLookupResponse.json();
+  if (!stageLookupResponse.ok || stageLookup.stage?.status !== 'staged' || stageLookup.stage?.stagingId !== stageRes.stage.stagingId) {
+    throw new Error('hexis-hmx-stage-lookup:' + JSON.stringify(stageLookup));
+  }
+  const missingStageLookup = await fetch(`${base}/api/organism/integration/hexis/hmx/stage?stagingId=missing-stage-id`);
+  if (missingStageLookup.status !== 404) throw new Error('hexis-hmx-stage-lookup-not-found:' + missingStageLookup.status);
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
   if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted') throw new Error('hexis-hmx-accept');
+  const acceptedStageLookup = await (await fetch(`${base}/api/organism/integration/hexis/hmx/stage?stagingId=${encodeURIComponent(stageRes.stage.stagingId)}`)).json();
+  if (!acceptedStageLookup.ok || acceptedStageLookup.stage?.status !== 'accepted') {
+    throw new Error('hexis-hmx-stage-lookup-accepted:' + JSON.stringify(acceptedStageLookup));
+  }
 
   const applyExportId = 'exp_0123456789abcdea';
   const applyRefA = applyExportId + ':memory:smoke-a';
