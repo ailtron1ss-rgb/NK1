@@ -91,6 +91,20 @@ const experience = (energy, novelty, action, reward, worldContextVersion=1) => (
 
 {
   const engine = new P26TrueLearningEngine();
+  const result = engine.trainInterleaved(
+    [experience(0.3, 0.9, 'rest', 0.1)],
+    [experience(0.3, 0.1, 'rest', 0.9)],
+    {
+      replayEveryNCurrent: 1, maxReplayUpdates: 1, targetMode: 'reward',
+      currentLearningRate01: 0.18, replayLearningRate01: 0.18,
+    },
+  );
+  assert.equal(result.effectiveReplayLearningRate01, 0.18,
+    'an equal-rate replay configuration must remain an explicit balanced-retention choice');
+}
+
+{
+  const engine = new P26TrueLearningEngine();
   const noReplay = engine.trainInterleaved(
     [experience(0.4, 0.2, 'respond', 0.7)],
     [experience(0.4, 0.2, 'respond', 0.7)],
