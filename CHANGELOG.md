@@ -1,3 +1,13 @@
+## WorkPass423 — bind HMX memory projections to validated export options (2026-10-26)
+
+- **Normalizer code commit:** `49a5a2e90a2d98980572f44152afaf20921a08a7`; **regression commit:** `bfb55498ff8e258caa52aec95f365bac7fc0f94b`.
+- `normalizeHmxV17Memory` now validates the small options envelope through own data descriptors, accepting only the documented keys and a canonical `exportId`; optional source/date values must have the expected types. Accessor-backed options are rejected without evaluation.
+- A row is only projected when its `ref` starts with the exact supplied `exportId` plus `:`. A row from another export or a non-string export id is refused instead of being normalized under the wrong source lineage.
+- Regressions cover mismatched export ID, a getter-backed `exportId` that must not execute, and an object-valued export ID. The prior malformed-row getter/prototype and source-attribution checks remain.
+- **Validation:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass422 — snapshot untrusted memory rows before normalization (2026-10-26)
 
 - **Normalizer code commit:** `58f57b806590477c0d6558b162d82a78675e8397`; **regression commit:** `b380123afe87987a10456065504982bdf4a02af1`.
