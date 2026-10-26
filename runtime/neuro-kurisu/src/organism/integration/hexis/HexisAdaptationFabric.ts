@@ -428,6 +428,7 @@ export class HexisAdaptationFabric {
                 stance: input.stance,
                 evidenceKey: key,
             });
+            if (projectionResult === 'unavailable') throw new Error('hexis-canonical-belief-projection-unavailable');
             if (projectionResult === 'duplicate') {
                 // The canonical memory may outlive/reset the Hexis ledger. Its lineage
                 // tombstone remains authoritative against cross-store replays.
