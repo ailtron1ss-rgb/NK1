@@ -2627,3 +2627,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [ROLLBACK] Restore the combined token before the legacy status-only compensation loop; this preserves the original revision history rather than recording an incomplete rollback sequence.
 - [REGRESSION] The temporal-ledger failure fixture now archives an existing memory while lowering its trust and inserting another row; assert exact restoration including epistemic status and revision history.
 - [VALIDATION] Source-level assertions only. Runtime/typecheck is still unverified because current GitHub Actions jobs terminate before runner assignment with `runner_id=0` and `steps=[]`.
+
+## [NK1][Hexis] WorkPass434 — retain rollback capability across partial mutation failures (2026-10-26)
+
+- [FIX] Register a duplicate-memory rollback token before the first status or trust mutation, then refresh its expected-current seal immediately before compensation. A synchronous adapter error after a partial commit can no longer escape because the token was not yet registered.
+- [REGRESSION] Inject an error after MemoryFabric commits an archival status change and assert the original status, signal metadata and revision history are restored with no pending tokens.
+- [VALIDATION] Source-level contract checks only; runtime/typecheck is still unverified pending execution by a GitHub Actions runner.

@@ -1073,6 +1073,52 @@ assert.equal(signalRollbackHexis.getHmxStage(failedSignalStage.stagingId)?.statu
 assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0,
   'failed-transaction compensation must consume all rollback capabilities');
 
+ // If a status update commits and then its adapter throws, the pre-mutation token
+ // must still restore the status and revision history exactly.
+const beforeStatusMutationFailure = signalSnapshot(
+  signalRollbackRuntime.fabric.canonicalSnapshot().items.find(item => item.id === seededSignalMemory.id),
+);
+const statusMutationFailureExportId = 'exp_0000000000009204';
+const statusMutationFailureStage = signalRollbackHexis.stageHmx({
+  document: makeHmxDocument(statusMutationFailureExportId, {
+    memories: [{
+      ref: statusMutationFailureExportId + ':memory-existing',
+      type: 'semantic',
+      content: signalRollbackContent,
+      status: 'archived',
+      trust_level: 0.45,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(signalRollbackHexis.decideHmx(statusMutationFailureStage.stagingId, 'accept')?.status, 'accepted');
+const originalSignalRollbackRevise = signalRollbackRuntime.fabric.revise.bind(signalRollbackRuntime.fabric);
+let injectStatusAfterMutation = true;
+signalRollbackRuntime.fabric.revise = (...args) => {
+  const result = originalSignalRollbackRevise(...args);
+  if (injectStatusAfterMutation && args[1] === 'quarantined') {
+    injectStatusAfterMutation = false;
+    throw new Error('injected-hmx-status-after-mutation');
+  }
+  return result;
+};
+assert.throws(
+  () => signalRollbackHexis.decideHmx(statusMutationFailureStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-hmx-status-after-mutation/,
+);
+signalRollbackRuntime.fabric.revise = originalSignalRollbackRevise;
+const restoredAfterStatusMutationFailure = signalRollbackRuntime.fabric.canonicalSnapshot().items.find(item => item.id === seededSignalMemory.id);
+assert(restoredAfterStatusMutationFailure);
+assert.deepEqual(
+  signalSnapshot(restoredAfterStatusMutationFailure),
+  beforeStatusMutationFailure,
+  'a partially committed status mutation must restore original status and revision history',
+);
+assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0);
+assert.equal(signalRollbackHexis.getHmxStage(statusMutationFailureStage.stagingId)?.status, 'accepted');
+
+
 
 assert.throws(
   () => signalRollbackRuntime.fabric.restoreSignalsForCompensation(

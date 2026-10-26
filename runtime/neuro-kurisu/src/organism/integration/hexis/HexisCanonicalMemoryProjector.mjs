@@ -406,6 +406,14 @@ export class HexisCanonicalMemoryProjector {
             if ((changesStatus || changesTrustSignals) && !compensationToken) {
               throw new Error('hmx-signal-compensation-target-missing:' + duplicate.id);
             }
+            // Register rollback before any status/signal mutation can partially fail.
+            if (compensationToken) {
+              revisedSignals.push({
+                id: duplicate.id,
+                previous: previousSignals,
+                compensationToken,
+              });
+            }
 
             if (changesStatus) {
               revisedStatuses.push({ id: duplicate.id, previousStatus: duplicate.epistemicStatus });
@@ -439,11 +447,6 @@ export class HexisCanonicalMemoryProjector {
               if (!this.memoryFabric.refreshSignalCompensation(compensationToken)) {
                 throw new Error('hmx-signal-compensation-refresh-failed:' + duplicate.id);
               }
-              revisedSignals.push({
-                id: duplicate.id,
-                previous: previousSignals,
-                compensationToken,
-              });
             }
           }
           deduplicatedCount++;
@@ -647,6 +650,9 @@ export class HexisCanonicalMemoryProjector {
       // deleting newly-created rows; never leave a failed import half-applied.
       for (const revision of [...revisedSignals].reverse()) {
         try {
+          if (!this.memoryFabric.refreshSignalCompensation(revision.compensationToken)) {
+            throw new Error('hmx-signal-compensation-refresh-failed:' + revision.id);
+          }
           this.memoryFabric.restoreSignalsForCompensation(
             revision.compensationToken,
             'hexis-hmx-apply-signal-rollback',
