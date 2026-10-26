@@ -56,9 +56,19 @@ function runCheck(id, commandArgs, cwd = root) {
 }
 
 let files = [];
+let trackedPaths = null;
 try {
   await access(root);
   files = await walk(root);
+  const tracked = spawnSync('git', ['ls-files', '-z'], {
+    cwd: root,
+    encoding: 'utf8',
+    timeout: 10000,
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  if (!tracked.error && tracked.status === 0) {
+    trackedPaths = new Set(tracked.stdout.split('\0').filter(Boolean));
+  }
 } catch (error) {
   console.error(`release-root-unreadable:${String(error?.message ?? error)}`);
   process.exit(2);
@@ -68,12 +78,15 @@ for (const file of files) {
   const insidePythonCache = /(^|[\\\\/])__pycache__([\\\\/]|$)/.test(relative);
   const isPythonBytecode = relative.endsWith('.pyc');
   if (insidePythonCache || isPythonBytecode) {
-    // The CI override accepts only actual bytecode beneath __pycache__. It
-    // must not hide source/data files placed there or a stray .pyc elsewhere.
-    if (allowGeneratedPythonCache && insidePythonCache && isPythonBytecode) {
+    const normalizedRelative = relative.split(path.sep).join('/');
+    const isTracked = trackedPaths?.has(normalizedRelative) ?? false;
+    // The CI override accepts only untracked bytecode under __pycache__.
+    // It must not hide tracked release members, source/data files in cache
+    // directories, or a stray .pyc elsewhere in the tree.
+    if (allowGeneratedPythonCache && insidePythonCache && isPythonBytecode && !isTracked) {
       warnings.push(`generated-python-cache-ignored:${relative}`);
     } else {
-      errors.push(`generated-python-artifact:${relative}`);
+      errors.push(`${isTracked ? 'tracked-python-artifact' : 'generated-python-artifact'}:${relative}`);
     }
   }
   if (relative.startsWith('backups' + path.sep)) continue;
