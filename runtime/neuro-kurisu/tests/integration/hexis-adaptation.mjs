@@ -621,5 +621,53 @@ assert.equal(
   'retry after post-commit compensation must create each canonical memory exactly once',
 );
 
+// If compensation itself reports failure without throwing, detect the surviving
+// canonical row and let the next attempt reconcile its missing graph/temporal projections.
+const orphanRuntime = new MemorySubsystemRuntime();
+let throwOnceAfterOrphanCommit = true;
+const orphanFabric = {
+  canonicalSnapshot: () => orphanRuntime.fabric.canonicalSnapshot(),
+  encode: (input, options) => {
+    const inserted = orphanRuntime.fabric.encode(input, options);
+    if (throwOnceAfterOrphanCommit && input.content === normalizedNk1Export.sections.memories[0].content) {
+      throwOnceAfterOrphanCommit = false;
+      throw new Error('injected-hmx-orphan-post-commit-failure');
+    }
+    return inserted;
+  },
+  // Deliberately simulate a compensation adapter that reports "not removed".
+  forgetById: () => false,
+};
+const orphanHexis = new HexisAdaptationFabric();
+const orphanProjector = new HexisCanonicalMemoryProjector(orphanFabric, orphanRuntime.semanticMemory, orphanHexis);
+orphanHexis.bindCanonicalMemoryApply(candidate => orphanProjector.apply(candidate));
+const orphanStage = orphanHexis.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
+orphanHexis.decideHmx(orphanStage.stagingId, 'accept');
+let orphanFailure;
+try {
+  orphanHexis.decideHmx(orphanStage.stagingId, 'apply');
+} catch (error) {
+  orphanFailure = error;
+}
+assert.match(String(orphanFailure?.message), /canonical-memory-remains:/,
+  'failed compensation must surface the exact surviving canonical memory');
+assert.equal(orphanHexis.getHmxStage(orphanStage.stagingId)?.status, 'accepted');
+assert.equal(orphanRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 1);
+assert.equal(orphanRuntime.semanticMemory.snapshot().nodes.length, 0,
+  'graph changes must still roll back when canonical compensation is incomplete');
+assert.equal(orphanHexis.snapshot().temporal.length, 0);
+
+// Retry must adopt the surviving canonical row, complete its temporal/graph projections,
+// and import the remaining row without duplicating the already-committed memory.
+const orphanRetry = orphanHexis.decideHmx(orphanStage.stagingId, 'apply');
+assert.equal(orphanRetry?.status, 'applied');
+assert.equal(orphanRetry?.application?.memoryIds.length, 2);
+assert.equal(orphanRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
+assert.equal(orphanRuntime.semanticMemory.snapshot().edges.length, 1);
+assert.equal(orphanHexis.snapshot().temporal.length, 2,
+  'retry must restore temporal indexing for a retained row created by the failed attempt');
+assert.equal(orphanRetry?.application?.deduplicatedCount, 1,
+  'the retry receipt must disclose the row recovered from the failed attempt');
+
 console.log('HEXIS_ADAPTATION_PASS');
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
