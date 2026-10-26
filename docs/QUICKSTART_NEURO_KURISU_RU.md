@@ -1,48 +1,44 @@
-# Neuro Kurisu — быстрый запуск единого когнитивного runtime
+# Neuro Kurisu — единый запуск приложения и когнитивного runtime
 
-Этот запуск поднимает **когнитивный runtime и встроенный UI** из каталога `runtime/neuro-kurisu` одним сервисом. Состояние организма хранится отдельно от контейнера в именованном Docker volume. Дополнительный фронтенд из каталога `app` продолжает проверяться отдельно; этот Compose не подменяет его API или окружение.
+Этот Compose запускает **полный React-интерфейс, канонический Neuro-Kurisu runtime и единый reverse proxy**. Браузер обращается к UI и когнитивному API через один origin; запросы `/api/organism`, `/api/research` и `/api/health` направляются в канонический runtime. Состояние организма и встроенная PGlite-БД приложения сохраняются в отдельных Docker volumes.
 
 ## Требования
 
-Установленные Docker Engine и Docker Compose v2. Node.js на хосте не нужен — runtime запускается в Node.js 24 внутри контейнера.
+Docker Engine и Docker Compose v2. Node.js на хосте не нужен — образы строятся и работают внутри Node.js 24.
 
 ## Запуск
 
-Из корня репозитория выполните:
+Из корня репозитория:
 
 ```sh
 cp .env.example .env
-docker compose up --build -d
+docker compose config --quiet
+docker compose up --build -d --wait --wait-timeout 240
 docker compose ps
-docker compose logs -f neuro-kurisu
+docker compose logs -f neuro-kurisu neuro-kurisu-app gateway
 ```
 
-Откройте **http://127.0.0.1:3000**. Проверка готовности runtime: `http://127.0.0.1:3000/health`; в JSON поле `ready` должно стать `true`.
+Открой **http://127.0.0.1:8080**. Проверка шлюза: `http://127.0.0.1:8080/healthz`. Проверка канонического runtime через тот же origin: `http://127.0.0.1:8080/api/health`; в ответе поле `ready` должно быть `true`.
+
+Порт по умолчанию доступен только на локальном компьютере. Не публикуй runtime-порт напрямую.
 
 ## Модель и голос
 
-Контейнер и интерфейс могут стартовать без внешнего API-ключа. Для генеративного диалога настройте один из поддерживаемых сервером providers в `.env` — например, `GEMINI_API_KEY`, `LLAMA_CPP_URL` или подходящий `KOBOLD_URL`. Доступность и качество модели зависят от выбранного провайдера. Ключи не нужно помещать в исходный код или образ контейнера.
+Интерфейс и когнитивный runtime запускаются без внешнего API-ключа. Для генеративного диалога настрой провайдера в `.env` — например `GEMINI_API_KEY`, `LLAMA_CPP_URL` или `KOBOLD_URL`. Для llama.cpp/Kobold на хосте используй адрес `http://host.docker.internal:<порт>`. Доступность речи, Live2D и камеры зависит от установленных моделей, ассетов и оборудования; они не становятся настроенными автоматически.
 
-Для llama.cpp/Kobold, запущенного на хостовой машине, используйте адрес `http://host.docker.internal:<порт>`. В Compose добавлена host-gateway привязка для Linux. Если вы не используете этот backend, настройте фактический endpoint своего провайдера либо оставьте переменную по умолчанию.
+## Память и перезапуск
 
-## Данные и остановка
-
-- `docker compose down` останавливает контейнер, но сохраняет состояние организма в volume `neuro-kurisu-state`.
-- `docker compose up -d` запускает тот же контейнер с сохранёнными данными.
-- **`docker compose down -v` удаляет volume и постоянное состояние**; используйте эту команду только при намеренном сбросе.
-- Локальный порт по умолчанию привязан к loopback `127.0.0.1`. Не публикуйте сервис в Интернет напрямую; для удалённого доступа нужны аутентификация, TLS, reverse proxy и подходящие сетевые ограничения.
+- Состояние организма хранится в volume `neuro-kurisu-state`.
+- Данные встроенной PGlite-БД приложения хранятся отдельно в `neuro-kurisu-app-db`.
+- `docker compose down` останавливает контейнеры и сохраняет данные.
+- **`docker compose down -v` удаляет все named volumes**, включая состояние организма, app-БД и конфигурационные данные Caddy; используй только для намеренного сброса.
 
 ## Запуск без Docker
 
-Требуется Node.js `>=22.12` и npm `>=10.8`:
+Для runtime отдельно: `npm ci --prefix runtime/neuro-kurisu`, затем `HOST=127.0.0.1 PORT=3310 npm start --prefix runtime/neuro-kurisu`.
 
-```sh
-npm ci --prefix runtime/neuro-kurisu
-HOST=127.0.0.1 PORT=3000 npm start --prefix runtime/neuro-kurisu
-```
+Для React-приложения: `npm ci --prefix app`, затем `npm run typecheck --prefix app` и `npm run build --prefix app`. Обычная сборка сохраняет preset Vercel; Docker использует standalone Node preset.
 
-Чтобы проверить типы и сборку веб-приложения из каталога `app`, установите и его зависимости: `npm ci --prefix app`; затем `npm run typecheck --prefix app` и `npm run build --prefix app`.
+## Проверка
 
-## Что проверяется в CI
-
-CI устанавливает зависимости по обеим lockfile, выполняет TypeScript-проверки и production-сборку интерфейса, затем запускает контракты когнитивного цикла, мотивации, обучения/replay, шлюза действий, сервера и восстановления. Прохождение этих проверок подтверждает проверенные пути, но не гарантирует, что необязательные внешние LLM, голосовые модели, камера или Live2D-ресурсы настроены на конкретном устройстве.
+CI устанавливает обе lockfile, выполняет app/runtime TypeScript, production-сборку React UI, когнитивные/обучающие/шлюзовые контракты, smoke сервера, безопасности и рестарта. Затем он строит все контейнеры и проверяет UI, health endpoint и фактическое соединение UI → runtime через same-origin API. Это не доказывает настройку внешних LLM, голосовых моделей, camera/Live2D ресурсов или независимую производительность обучения.

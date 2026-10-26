@@ -12,6 +12,8 @@ import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
 import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
 
+const organismApiTarget = process.env.NEURO_KURISU_API_TARGET ?? "http://127.0.0.1:3310";
+
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
 function hasGlobbedMigrations(root: string): boolean {
   try {
@@ -151,7 +153,7 @@ export default defineConfig(({ command, isPreview }) => ({
     port: 8080,
     strictPort: true,
     proxy: {
-      "/api/organism": { target: "http://127.0.0.1:3310", changeOrigin: true },
+      "/api/organism": { target: organismApiTarget, changeOrigin: true },
       "/api/research": { target: "http://127.0.0.1:8765", changeOrigin: true },
     },
   },
@@ -174,7 +176,7 @@ export default defineConfig(({ command, isPreview }) => ({
     ...(command === "build" || isPreview
       ? [
           nitro({
-            preset: "vercel",
+            preset: process.env.NITRO_PRESET ?? "vercel",
             // Auto-registers server/middleware/* (the PWA install page +
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.

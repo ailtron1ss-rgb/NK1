@@ -1,0 +1,17 @@
+:80 {
+  @health path /healthz
+  handle @health {
+    respond "ok" 200
+  }
+
+  # Keep a single browser origin: React calls /api/* while the canonical runtime
+  # owns chat, state, memory, approvals and the only action gateway.
+  @organism path /api/health /api/organism* /api/research*
+  handle @organism {
+    reverse_proxy neuro-kurisu:3310
+  }
+
+  handle {
+    reverse_proxy neuro-kurisu-app:8080
+  }
+}

@@ -135,22 +135,32 @@ jobs:
         run: |
           docker compose up --build -d --wait --wait-timeout 180
           node --input-type=module <<'NODE'
-          const response = await fetch('http://127.0.0.1:3000/health');
-          const health = await response.json();
-          if (!response.ok || health.ready !== true) {
-            throw new Error(`runtime-not-ready: ${JSON.stringify(health)}`);
+          const response = await fetch('http://127.0.0.1:8080/healthz');
+          const gatewayHealth = await response.text();
+          if (!response.ok || gatewayHealth.trim() !== 'ok') {
+            throw new Error('reverse-proxy-healthcheck-failed');
           }
-          const page = await fetch('http://127.0.0.1:3000/');
+          const page = await fetch('http://127.0.0.1:8080/');
           const html = await page.text();
-          if (!page.ok || !html.includes('Neuro‑Kurisu') || !html.includes('Unified Organism')) {
-            throw new Error('integrated-organism-ui-not-served');
+          if (!page.ok || !html.includes('Kurisu') || !html.includes('Neuro organism')) {
+            throw new Error('react-organism-ui-not-served');
           }
-          console.log('COMPOSE_RUNTIME_SMOKE=PASS', JSON.stringify({ ready: health.ready, status: page.status }));
+          const runtimeResponse = await fetch('http://127.0.0.1:8080/api/health');
+          const runtimeHealth = await runtimeResponse.json();
+          if (!runtimeResponse.ok || runtimeHealth.ready !== true) {
+            throw new Error('canonical-runtime-not-ready-through-same-origin-api: ' + JSON.stringify(runtimeHealth));
+          }
+          const architectureResponse = await fetch('http://127.0.0.1:8080/api/organism/cognitive-architecture');
+          const architecture = await architectureResponse.json();
+          if (!architectureResponse.ok || architecture.ok !== true || architecture.architecture?.validation?.ok !== true) {
+            throw new Error('react-ui-to-runtime-cognitive-architecture-contract-failed');
+          }
+          console.log('COMPOSE_UNIFIED_STACK_SMOKE=PASS', JSON.stringify({ gateway: page.status, runtime: runtimeHealth.ready, architecture: architecture.architecture.validation.ok }));
           NODE
 
       - name: Dump runtime container logs on failure
         if: ${{ failure() }}
-        run: docker compose logs --no-color neuro-kurisu
+        run: docker compose logs --no-color neuro-kurisu neuro-kurisu-app gateway
 
       - name: Remove test Compose container and volume
         if: ${{ always() }}
