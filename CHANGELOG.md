@@ -1,3 +1,10 @@
+# WorkPass349 — close the signed-dataset path identity race (2026-10-26)
+
+- [SECURITY] The native Hermes/P23 provider now requires the file discovered by `lstat(configured)`, the canonical target from `realpath/stat`, and the opened descriptor to share the same device/inode identity. A path substitution between inspection and resolution fails closed.
+- [SECURITY] The provider opens the original configured path with `O_NOFOLLOW` on POSIX instead of opening only the already-resolved target; descriptor checks bind both the originally inspected object and canonical target to the bytes read.
+- [TEST] Added device/inode comparison cases and a source-contract regression guarding the three-way identity binding and configured-path open. Existing signed-artifact, symlink, writable-file, mutation and payload-fingerprint tests remain in the same native-provider suite.
+- [VALIDATION] Source and regression commits are present on `workpass349-native-dataset-path-identity-2026-10-26`; exact-head native-provider suite, runtime typecheck, and broader CI are **pending**. This is a file-path integrity fix, not production approval or a learning-uplift claim.
+
 # WorkPass348 — bind signed outcomes to exact skill payloads (2026-10-24)
 
 - [EVIDENCE] Extended the existing signed outcome payload with an optional `payloadFingerprint` field. Legacy consumers remain compatible, while the native Hermes/P23 path requires one consistent SHA-256 payload fingerprint for both baseline and candidate methods and rejects equal fingerprints.
