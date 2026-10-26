@@ -8,9 +8,9 @@ import {
 } from '../src/organism/core/UnifiedCognitiveSubstrate.ts';
 
 const runtime = await readFile(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
-const substrateImport = runtime.match(/import\\s*\\{([^}]*)\\}\\s*from\\s*['"]\\.\\/UnifiedCognitiveSubstrate\\.ts['"]/);
+const substrateImport = runtime.match(/import\s*\{([^}]*)\}\s*from\s*['"]\.\/UnifiedCognitiveSubstrate\.ts['"]/);
 assert.ok(substrateImport, 'runtime must import the unified cognitive substrate from its canonical module');
-const substrateBindings = new Set(substrateImport[1].split(',').map(binding => binding.trim().replace(/^type\\s+/, '')));
+const substrateBindings = new Set(substrateImport[1].split(',').map(binding => binding.trim().replace(/^type\s+/, '')));
 for (const requiredBinding of ['UnifiedCognitiveSubstrate', 'UnifiedCognitiveSubstrateState', 'resolveUnifiedCognitiveWorkPolicy']) {
   assert.ok(substrateBindings.has(requiredBinding), 'substrate import must include ' + requiredBinding);
 }
