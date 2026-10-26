@@ -93,9 +93,14 @@ export class HexisCanonicalMemoryProjector {
   }
 
   apply(stage) {
+    // Idempotent replay must be checked before the accepted-stage guard: persisted
+    // stages transition out of `accepted` after application, but their receipt remains
+    // the authoritative answer for retries. This branch performs no writes.
+    if (isRecord(stage) && stage.status === 'applied' && isRecord(stage.application)) {
+      return structuredClone(stage.application);
+    }
     if (!isRecord(stage) || stage.status !== 'accepted') throw new Error('hmx-stage-must-be-accepted-before-apply');
     if (stage.intent !== 'port' || stage.strategy !== 'additive') throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
-    if (stage.application && stage.status === 'applied') return structuredClone(stage.application);
     const sections = isRecord(stage.stagedSections) ? stage.stagedSections : {};
     const records = Array.isArray(sections.memories) ? sections.memories : [];
     const exportId = asText(stage.exportId, 128);
