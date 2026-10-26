@@ -1,7 +1,13 @@
 /**
- * Renderer-neutral, bounded posture policy shared by the React and standalone
- * avatar producers. Values are normalized semantic controls, not raw model
- * parameter units; the Live2D adapter maps them to the selected model rig.
+ * @typedef {"explore" | "verify" | "reflect" | "respond" | "wait" | "rest" | "defer"} ActionKey
+ * @typedef {"calm" | "curiosity" | "joy" | "anxiety" | "frustration" | "sadness" | "anger" | "protective"} EmotionKey
+ * @typedef {"headAngleX" | "headAngleY" | "bodyAngleX" | "bodyAngleY" | "bodyAngleZ"} PoseKey
+ * @typedef {Record<PoseKey, number>} PoseVector
+ * @typedef {PoseVector & { breathIntensity: number }} EmbodimentPose
+ */
+
+/**
+ * @type {Readonly<Record<ActionKey, Readonly<PoseVector>>>}
  */
 const ACTION_POSES = Object.freeze({
   explore: Object.freeze({ headAngleX: 0.26, headAngleY: 0.07, bodyAngleX: 0.10, bodyAngleY: 0.10, bodyAngleZ: -0.025 }),
@@ -13,6 +19,9 @@ const ACTION_POSES = Object.freeze({
   defer: Object.freeze({ headAngleX: -0.07, headAngleY: 0.04, bodyAngleX: -0.03, bodyAngleY: -0.02, bodyAngleZ: 0.02 }),
 });
 
+/**
+ * @type {Readonly<Record<EmotionKey, Readonly<Partial<PoseVector>>>}
+ */
 const EMOTION_OFFSETS = Object.freeze({
   calm: Object.freeze({}),
   curiosity: Object.freeze({ headAngleX: 0.025, headAngleY: -0.025, bodyAngleY: 0.025 }),
@@ -24,20 +33,43 @@ const EMOTION_OFFSETS = Object.freeze({
   protective: Object.freeze({ headAngleX: 0.03, headAngleY: -0.015, bodyAngleY: 0.05, bodyAngleZ: 0.005 }),
 });
 
+/**
+ * @param {number} value
+ * @param {number} min
+ * @param {number} max
+ * @param {number} [fallback=0]
+ * @returns {number}
+ */
 const clamp = (value, min, max, fallback = 0) =>
   Math.max(min, Math.min(max, typeof value === "number" && Number.isFinite(value) ? value : fallback));
+
+/** @param {string} value @returns {value is ActionKey} */
+function isActionKey(value) {
+  return Object.prototype.hasOwnProperty.call(ACTION_POSES, value);
+}
+
+/** @param {string} value @returns {value is EmotionKey} */
+function isEmotionKey(value) {
+  return Object.prototype.hasOwnProperty.call(EMOTION_OFFSETS, value);
+}
 
 /**
  * Convert an organism action/emotion into small, intentional head/body poses.
  * Eye gaze remains a separate channel; this function controls head orientation,
  * torso orientation, and the amplitude of the model's breathing parameter.
+ *
+ * @param {string} action
+ * @param {string} emotion
+ * @param {number} arousal
+ * @returns {Readonly<EmbodimentPose>}
  */
 export function deriveEmbodimentPose(action, emotion, arousal) {
-  const actionKey = Object.prototype.hasOwnProperty.call(ACTION_POSES, action) ? action : "wait";
-  const emotionKey = Object.prototype.hasOwnProperty.call(EMOTION_OFFSETS, emotion) ? emotion : "calm";
+  const actionKey = isActionKey(action) ? action : "wait";
+  const emotionKey = isEmotionKey(emotion) ? emotion : "calm";
   const base = ACTION_POSES[actionKey];
   const offset = EMOTION_OFFSETS[emotionKey];
   const intensity = clamp(arousal, 0, 1, 0.2);
+  /** @param {PoseKey} key */
   const get = (key) => base[key] + (typeof offset[key] === "number" ? offset[key] : 0);
   const stressBoost = ["anxiety", "frustration", "anger"].includes(emotionKey) ? 0.10 : 0;
 
