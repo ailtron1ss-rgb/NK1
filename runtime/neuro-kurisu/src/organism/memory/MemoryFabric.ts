@@ -12,14 +12,15 @@ import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type Memor
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
 
-export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
+export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget'|'record-evidence';
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
-  | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number };
+  | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number }
+  | { action:'record-evidence'; id:string; input:Parameters<MemoryOS2['recordEvidence']>[1]; commandId?:string; tick?:number; emitEvent?:boolean };
 
 interface MemoryLifecycleReceipt {
   commandId:string;
@@ -27,9 +28,10 @@ interface MemoryLifecycleReceipt {
   action:MemoryLifecycleAction;
   at:number;
   outcome:'applied'|'noop';
-  resultKind:'memory'|'context'|'boolean'|'void'|'null';
+  resultKind:'memory'|'context'|'boolean'|'void'|'null'|'evidence';
   memoryId?:string;
   booleanValue?:boolean;
+  evidenceInput?:Parameters<MemoryOS2['recordEvidence']>[1];
 }
 
 export class MemoryLifecycleCommandConflictError extends Error {
@@ -254,6 +256,18 @@ export class MemoryFabric {
         if(context)eventPayload={action,memoryId:before.id,fields:changedEntries.map(([key])=>key),commandId:commandId||undefined};
         break;
       }
+      case 'record-evidence': {
+        const evidenceResult=this.memoryOS.recordEvidence(command.id,command.input);
+        result=evidenceResult; memoryId=command.id;
+        outcome=evidenceResult.ok&&evidenceResult.added?'applied':'noop';
+        if(evidenceResult.ok&&evidenceResult.added){
+          this.touchHot(command.id);
+          this.statsData.reconsolidations++;
+          eventPayload={action,memoryId:command.id,evidenceId:command.input.evidenceId,stance:command.input.stance,sourceKind:command.input.sourceKind,observedAt:command.input.observedAt,reason:'canonical-evidence-appended',commandId:commandId||undefined};
+        }
+        if(command.emitEvent===false)eventPayload=undefined;
+        break;
+      }
       case 'forget': {
         const forgotten=this.memoryOS.forgetById(command.id,command.reason??'memory-knockout');
         result=forgotten; booleanValue=forgotten;memoryId=command.id;outcome=forgotten?'applied':'noop';
@@ -268,8 +282,9 @@ export class MemoryFabric {
     }
     if(commandId){
       const receipt:MemoryLifecycleReceipt={commandId,fingerprint,action,at:Date.now(),outcome,
-        resultKind:action==='update-context'&&result&&typeof result==='object'?'context':result&&typeof result==='object'?'memory':typeof result==='boolean'?'boolean':result===null?'null':'void',
-        ...(memoryId?{memoryId}:{}),...(booleanValue!==undefined?{booleanValue}:{})};
+        resultKind:action==='record-evidence'?'evidence':action==='update-context'&&result&&typeof result==='object'?'context':result&&typeof result==='object'?'memory':typeof result==='boolean'?'boolean':result===null?'null':'void',
+        ...(memoryId?{memoryId}:{}),...(booleanValue!==undefined?{booleanValue}:{}),
+        ...(action==='record-evidence'?{evidenceInput:structuredClone(command.input)}:{})};
       this.mutationReceipts.set(commandId,receipt);
       while(this.mutationReceipts.size>this.maxMutationReceipts){
         const oldest=this.mutationReceipts.keys().next().value as string|undefined;
@@ -286,7 +301,8 @@ export class MemoryFabric {
     return item?structuredClone(item):null;
   }
 
-  private replayMutationReceipt(receipt:MemoryLifecycleReceipt):MemoryItem2|Record<string,string>|boolean|void|null {
+  private replayMutationReceipt(receipt:MemoryLifecycleReceipt):MemoryItem2|Record<string,string>|boolean|void|null|ReturnType<MemoryOS2['recordEvidence']> {
+    if(receipt.resultKind==='evidence')return receipt.memoryId&&receipt.evidenceInput?this.memoryOS.recordEvidence(receipt.memoryId,receipt.evidenceInput):{ok:false,added:false,reason:'evidence-replay-receipt-incomplete',memoryId:receipt.memoryId??'',independentSources:0};
     if(receipt.resultKind==='boolean')return Boolean(receipt.booleanValue);
     if(receipt.resultKind==='memory')return receipt.memoryId?this.findCanonical(receipt.memoryId):null;
     if(receipt.resultKind==='context'){const current=receipt.memoryId?this.findCanonical(receipt.memoryId):null;return structuredClone(current?.context??{});}
@@ -523,7 +539,7 @@ export class MemoryFabric {
       this.retiredMutationReceiptBloomCorrupt=true;
     }
     for(const row of (raw.mutationReceipts??[]).slice(-this.maxMutationReceipts)){
-      if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||!['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
+      if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','forget','record-evidence'].includes(row.action)||!['memory','context','boolean','void','null','evidence'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
       this.mutationReceipts.set(row.commandId.slice(0,128),{...row,commandId:row.commandId.trim().slice(0,128),fingerprint:row.fingerprint.slice(0,64).toLowerCase(),at:Math.floor(Number(row.at))});
     }
   }
