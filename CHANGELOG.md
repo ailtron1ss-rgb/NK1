@@ -2227,3 +2227,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **[SAFETY]** Corrupt filter data fails closed; at the configured segment cap, the memory rejects unverified new lineages rather than allowing a previously seen source to become a new confidence vote.
 - **[REGRESSION]** Added an H1 integration case with 140 distinct lineages, oldest-source replay, snapshot/restore, replay after restart, and index integrity.
 - **[VALIDATION]** The exact-head repository-wiring Actions run is being used for this new path; no pass is claimed until the Hexis-specific step has completed on the final code/test head.
+
+## NK1 H1 follow-up — bounded lineage footprint and rollback regression alignment (2026-10-26)
+
+- **[PERFORMANCE]** The durable evidence Bloom filter is now allocated lazily for memories approaching the 32-key exact-ring rollover, avoiding a multi-kilobyte filter on every low-provenance memory while preserving rollover protection.
+- **[TEST FIX]** Updated the versioned-skill lifecycle regression to call the current `rollback(candidateId, approval)` contract with an explicit expected active version. The fixture injects a test-only rollback verifier rather than weakening the production default-deny verifier; the already-present signed-authority regressions remain in the same suite.
+- **[CI]** At commit `cb2d3ca0e2924364469bf8a7ae58252c67870893`, the repository-wiring audit passed, including the Hexis evidence-lineage/HMX/live-API test step. The WorkPass110 run on that same commit still failed at the outdated rollback fixture; the corrected test is committed after that run and must be validated on the new head.
