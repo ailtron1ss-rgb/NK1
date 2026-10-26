@@ -1,3 +1,9 @@
+## WorkPass384 — Fail closed on evidence-shaped legacy Hexis reviews (2026-10-26)
+
+- The generic `reviews/decide` endpoint already routed canonical pipeline items through the canonical gate, but malformed/imported semantic-belief reviews resembling evidence could fall through to the legacy decision mutator if the pipeline marker was missing.
+- The route now rejects evidence-like items without the canonical pipeline and instructs callers to re-ingest them through the strict evidence adapter. Ordinary non-evidence retrospective reviews retain the existing path.
+- Validation is pending on the new exact head; no PASS inferred from earlier workflow runs.
+
 ## WorkPass383 — Make Hexis server smoke assert the canonical review contract (2026-10-26)
 
 - Fixed a brittle integration assertion that required every approved supporting-evidence review to change confidence. A belief already at the policy ceiling can be validly approved with no numerical delta.
