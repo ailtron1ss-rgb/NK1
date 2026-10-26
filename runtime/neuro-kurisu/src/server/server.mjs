@@ -937,17 +937,21 @@ async function route(req, res) {
                 return json(res, 400, { ok: false, error: 'invalid-review-decision' });
             const reviewId = String(input.reviewId || '');
             const itemId = String(input.itemId || '');
-            const queuedReview = runtime.core.hexisListLearningReviews().find(review => review.id === reviewId);
-            const queuedItem = queuedReview?.items?.find(item => item.id === itemId);
-            if (queuedItem?.evidence?.pipeline === 'nk1.hexis-evidence-review.v1') {
-                const guarded = await runtime.core.decideHexisEvidenceReview(
-                    reviewId, itemId, decision,
-                    input.correction === undefined ? undefined : String(input.correction),
-                );
-                if (guarded.status !== 'decided') return json(res, 409, { ok: false, result: guarded });
+            // Always ask the canonical evidence gate first. The list route may
+            // expose a projected review shape without its internal evidence payload,
+            // so dispatching based only on that projection can bypass the gate.
+            const guarded = await runtime.core.decideHexisEvidenceReview(
+                reviewId, itemId, decision,
+                input.correction === undefined ? undefined : String(input.correction),
+            );
+            if (guarded.status === 'decided') {
                 await runtime.core.flush();
                 return json(res, 200, { ok: true, result: guarded });
             }
+            // Fall back only when the canonical gate proves this is not a Hexis
+            // evidence review. Stale, missing-receipt and other gate failures fail closed.
+            if (guarded.reason !== 'not-a-valid-hexis-evidence-review')
+                return json(res, 409, { ok: false, result: guarded });
             const result = runtime.core.hexisDecideLearningReview(
                 reviewId, itemId, decision,
                 input.correction ? String(input.correction) : undefined,
