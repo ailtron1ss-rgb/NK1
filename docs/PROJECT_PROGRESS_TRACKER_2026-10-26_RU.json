@@ -359,18 +359,18 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass393",
+    "id": "WorkPass394",
     "date": "2026-10-26",
     "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
-    "codeCommit": "0af14583e35a5edb76d05ab99e1b916e828650ab",
-    "summary": "Hexis review approval now re-canonicalizes pending evidence, recomputes the shared canonical digest, compares all provenance/stance/time/confidence fields with the authoritative MemoryOS2 receipt, preserves a restricted legacy digest form only for server-generated receipt timestamps, verifies review state survives a real server restart, and checks the server smoke against persisted canonical confidence.",
+    "codeCommit": "c8ad7c0327edf63a03ce9152577d9397097fdf1a",
+    "summary": "Strengthened the Hexis server smoke to SIGKILL the server after an acknowledged evidence-review response, restart with the same STATE_DIR, require the exact pending review/item to be restored, and approve it through the canonical gate. The smoke now fails closed if the canonical memory fixture is absent.",
     "testsAdded": [
-      "review evidence tampering regressions for source reference, label, note, observedAt, stance and confidence",
-      "server-receipt digest normalization and recovery of pre-normalization pending review snapshots",
-      "generic review smoke reconciles returned audit/confidence with persisted MemoryOS2 state",
-      "server restart smoke requires a canonical memory fixture, verifies the exact pending review/item is restored and confirms the hidden internal payload by successful canonical approval"
+      "process crash uses SIGKILL rather than graceful SIGTERM after review staging response",
+      "pending review and item must be restored after restart on the same STATE_DIR",
+      "restored review must be approved through the canonical evidence gate",
+      "empty canonical memory fixture is a hard test failure rather than a skipped scenario"
     ],
-    "validationStatus": "PENDING exact-head typecheck, focused adapter/review tests, Hexis server smoke and Unified integration. Actions runs on this branch have failed before step details/logs were available; they do not prove either a code failure or a pass. No progress/readiness/recall scores increased; main and canonical Release ZIP unchanged.",
+    "validationStatus": "PENDING exact-head typecheck, focused Hexis review tests, server smoke and Unified project integration. GitHub Actions attempts on recent heads are marked failed but steps/logs are unavailable (BlobNotFound), so they do not establish a code failure or a pass.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
@@ -656,10 +656,27 @@
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
+    },
+    {
+      "id": "WorkPass394",
+      "date": "2026-10-26",
+      "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
+      "codeCommit": "c8ad7c0327edf63a03ce9152577d9397097fdf1a",
+      "summary": "Strengthened the Hexis server smoke to SIGKILL the server after an acknowledged evidence-review response, restart with the same STATE_DIR, require the exact pending review/item to be restored, and approve it through the canonical gate. The smoke now fails closed if the canonical memory fixture is absent.",
+      "testsAdded": [
+        "process crash uses SIGKILL rather than graceful SIGTERM after review staging response",
+        "pending review and item must be restored after restart on the same STATE_DIR",
+        "restored review must be approved through the canonical evidence gate",
+        "empty canonical memory fixture is a hard test failure rather than a skipped scenario"
+      ],
+      "validationStatus": "PENDING exact-head typecheck, focused Hexis review tests, server smoke and Unified project integration. GitHub Actions attempts on recent heads are marked failed but steps/logs are unavailable (BlobNotFound), so they do not establish a code failure or a pass.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
     }
   ],
-  "latestUnverifiedCodeTestHead": "0af14583e35a5edb76d05ab99e1b916e828650ab",
-  "branchHeadBeforeTrackerCommit": "0af14583e35a5edb76d05ab99e1b916e828650ab",
+  "latestUnverifiedCodeTestHead": "c8ad7c0327edf63a03ce9152577d9397097fdf1a",
+  "branchHeadBeforeTrackerCommit": "c8ad7c0327edf63a03ce9152577d9397097fdf1a",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -699,11 +716,11 @@
     }
   ],
   "latestEngineeringCheckpoint": {
-    "workpass": "WorkPass393",
+    "workpass": "WorkPass394",
     "sourceBranch": "fix/hexis-review-digest-binding-live-2026-10-26",
-    "codeTestHead": "0af14583e35a5edb76d05ab99e1b916e828650ab",
+    "codeTestHead": "c8ad7c0327edf63a03ce9152577d9397097fdf1a",
     "validationStatus": "pending-exact-head-ci",
-    "summary": "Hexis review approval now re-canonicalizes pending evidence, recomputes the shared canonical digest, compares all provenance/stance/time/confidence fields with the authoritative MemoryOS2 receipt, preserves a restricted legacy digest form only for server-generated receipt timestamps, verifies review state survives a real server restart, and checks the server smoke against persisted canonical confidence. Validation logs were unavailable; no test pass is claimed.",
+    "summary": "Strengthened the Hexis server smoke to SIGKILL the server after an acknowledged evidence-review response, restart with the same STATE_DIR, require the exact pending review/item to be restored, and approve it through the canonical gate. The smoke now fails closed if the canonical memory fixture is absent. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   },
