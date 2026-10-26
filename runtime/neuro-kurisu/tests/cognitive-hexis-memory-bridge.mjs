@@ -68,6 +68,44 @@ const missing = ingestHexisEvidenceIntoMemory(memoryOS, { ...evidence, memoryId:
 assert.equal(missing.status, "rejected");
 assert.equal(missing.reason, "memory-not-found");
 
+// The canonical public writer rejects hostile accessor envelopes without invoking getters.
+let evidenceGetterCalls = 0;
+const hostileRecord = {
+  evidenceId: "hexis:evidence:hostile",
+  digest: "a".repeat(64),
+  stance: "supports",
+  sourceKind: "document",
+  sourceRef: "hostile-source",
+  confidence01: 0.7,
+  observedAt: Date.parse("2026-10-26T09:31:00Z"),
+  independenceKey: "hostile-source-key",
+};
+Object.defineProperty(hostileRecord, "confidence01", {
+  enumerable: true,
+  get() { evidenceGetterCalls += 1; return 0.7; },
+});
+const beforeHostileIngress = structuredClone(memoryOS.snapshot());
+const hostileIngress = memoryOS.recordEvidence(memory.id, hostileRecord);
+assert.equal(hostileIngress.ok, false);
+if (!hostileIngress.ok) assert.equal(hostileIngress.reason, "invalid-evidence-envelope");
+assert.equal(evidenceGetterCalls, 0, "hostile evidence getter must never execute");
+assert.deepEqual(memoryOS.snapshot(), beforeHostileIngress, "malformed evidence envelope must not mutate canonical memory");
+
+// Control characters are rejected by the MemoryOS2 boundary as well, even when bypassing the bridge.
+const controlIngress = memoryOS.recordEvidence(memory.id, {
+  evidenceId: "hexis:evidence:control",
+  digest: "b".repeat(64),
+  stance: "supports",
+  sourceKind: "document\\u0001forged",
+  sourceRef: "control-source",
+  confidence01: 0.7,
+  observedAt: Date.parse("2026-10-26T09:32:00Z"),
+  independenceKey: "control-source-key",
+});
+assert.equal(controlIngress.ok, false);
+if (!controlIngress.ok) assert.equal(controlIngress.reason, "invalid-evidence-record");
+assert.deepEqual(memoryOS.snapshot(), beforeHostileIngress, "control-character rejection must be side-effect free");
+
 const restored = new MemoryOS2({ signalFusionProfile: "balanced" });
 restored.restore(memoryOS.snapshot());
 assert.equal(restored.get(memory.id).confidence, initialConfidence);
