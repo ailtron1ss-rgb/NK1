@@ -27,7 +27,7 @@ const stagePayload = stage => ({
 export const computeHmxStageDigest = stage =>
   createHash('sha256').update(stableLegacyJson(stagePayload(stage))).digest('hex');
 
-function isSafeJsonTree(value, ancestors = new Set(), depth = 0, budget = { nodes: 0 }) {
+export function isSafeJsonTree(value, ancestors = new Set(), depth = 0, budget = { nodes: 0 }) {
   if (value === null || value === undefined || typeof value === 'string' || typeof value === 'boolean') return true;
   if (typeof value === 'number') return Number.isFinite(value);
   if (typeof value !== 'object' || depth > 64 || ++budget.nodes > 100000) return false;
@@ -70,6 +70,9 @@ export const isValidHmxStageDigest = stage => {
     // But a persisted success receipt may never coexist with a non-applied status:
     // otherwise changing only status could re-enter the write path on replay.
     if (stage.status !== 'applied' && Object.hasOwn(stage, 'application') && stage.application !== undefined) return false;
+    // Lifecycle metadata is intentionally outside the content digest, but controls apply attempt identity.
+    if (Object.hasOwn(stage, 'applicationAttempts') &&
+        (!Number.isSafeInteger(stage.applicationAttempts) || stage.applicationAttempts < 0)) return false;
     if (!isRecord(stage.sectionCounts) || !Array.isArray(stage.protectedSections) ||
         !Array.isArray(stage.conflicts) || !isRecord(stage.stagedSections)) return false;
     return computeHmxStageDigest(stage) === stage.digest;
