@@ -96,8 +96,12 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
+  // Candidate identity includes the optional revision-provenance fingerprint,
+  // exactly matching VersionedSkillCandidateStore.stageCandidate(). Without the
+  // fifth slot, durable storage rejects every otherwise-valid first-stage candidate.
   const expectedId = createHash('sha256').update(JSON.stringify([
     value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+    value.revisionProvenance ? payloadFingerprint(value.revisionProvenance) : null,
   ])).digest('hex');
   if (value.candidateId !== expectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
@@ -123,9 +127,11 @@ function isSnapshot(value: unknown): value is VersionedSkillStoreSnapshot {
  * validated, not just the outer arrays, before they enter runtime state.
  */
 export class AtomicFileSkillStorePersistence implements SkillStorePersistence {
+  private readonly filePath: string;
   private readonly lockPath: string;
 
-  constructor(private readonly filePath: string) {
+  constructor(filePath: string) {
+    this.filePath = filePath;
     if (!filePath?.trim()) throw new Error('skill store file path must be non-empty');
     this.lockPath = filePath + '.lock';
   }

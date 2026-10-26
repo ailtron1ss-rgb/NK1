@@ -17,7 +17,7 @@ const makeRng = (seed) => {
   };
 };
 const makeExperience = (task) => {
-  const features = new Array(15).fill(0);
+  const features = new Array(18).fill(0);
   features[task.feature] = 1;
   return { taskId: task.id, features, action: 'respond', target01: task.target, learningRate01: 0.12 };
 };

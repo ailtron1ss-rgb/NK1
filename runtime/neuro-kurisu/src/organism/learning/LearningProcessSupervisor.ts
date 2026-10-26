@@ -189,8 +189,8 @@ export async function runLearningProcess(
     explicitEnv: explicitEnvKeys.map(key => [key, env[key] ?? null]),
   }));
 
-  let stdout = Buffer.alloc(0);
-  let stderr = Buffer.alloc(0);
+  let stdout: Buffer<ArrayBufferLike> = Buffer.alloc(0);
+  let stderr: Buffer<ArrayBufferLike> = Buffer.alloc(0);
   let stdoutBytes = 0;
   let stderrBytes = 0;
   let outputTruncated = false;
@@ -225,7 +225,7 @@ export async function runLearningProcess(
     }
     try { child.kill('SIGKILL'); } catch { /* the child may already have exited */ }
   };
-  const append = (current: Buffer, chunk: Buffer, isStdout: boolean): Buffer => {
+  const append = (current: Buffer<ArrayBufferLike>, chunk: Buffer<ArrayBufferLike>, isStdout: boolean): Buffer<ArrayBufferLike> => {
     if (isStdout) stdoutBytes += chunk.length;
     else stderrBytes += chunk.length;
     const combined = Buffer.concat([current, chunk]);

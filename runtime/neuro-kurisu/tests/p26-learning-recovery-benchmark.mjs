@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { ParametricPolicyLearner } from '../src/organism/learning/ParametricPolicyLearner.ts';
 
-const zeros = () => new Array(15).fill(0);
+const zeros = () => new Array(16).fill(0);
 const learner = new ParametricPolicyLearner();
 const action = 'respond';
 const train = (model, features, target01, n = 1) => {

@@ -32,6 +32,13 @@ assert.match(accepted.artifactFingerprint, /^[a-f0-9]{64}$/);
 assert.equal(ledger.snapshot().acceptedOutcomes, 1);
 assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(validPayload), keys).rejection, 'duplicate-attempt');
 
+const restoredLedger = VerifiedOutcomeLedger.restoreSnapshot(ledger.snapshot());
+const restoredReceipt = ingestSignedOutcomeArtifact(restoredLedger, manifest, artifactFor(validPayload), keys);
+assert.equal(restoredReceipt.accepted, true, 'an exact signed artifact must re-establish trust after restoring a ledger snapshot');
+assert.equal(restoredLedger.snapshot().acceptedOutcomes, 1, 're-ingestion after restore must not duplicate the persisted outcome row');
+assert.equal(ingestSignedOutcomeArtifact(restoredLedger, manifest, artifactFor(validPayload), keys).rejection, 'duplicate-attempt',
+  'the newly re-established process-local receipt must reject repeated ingestion');
+
 const changed = makePayload({ artifactId: 'artifact-002', passed: false });
 const forged = artifactFor(changed);
 forged.payload.passed = true;

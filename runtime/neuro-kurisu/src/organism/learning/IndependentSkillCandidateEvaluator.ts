@@ -371,7 +371,8 @@ export function createIndependentSkillCandidateEvaluator(
         plannedRunId: plannedRun?.runId ?? null,
         seed: task.seed,
         split: task.split,
-        executable: executable && bindingVerified,
+        // Separately report sandbox execution success and identity binding. A failed verifier must not rewrite a well-formed successful execution into 'not executable'.
+        executable: executable && execution !== undefined,
         observedStepIds: bindingVerified ? execution?.observedStepIds ?? [] : [],
         bindingVerified,
         verifierPassed: executable && bindingVerified && verifierPassed,
@@ -388,7 +389,8 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          // Executability is a property of the sandbox result; trust, binding, task success and promotion remain independent hard gates.
+          executable: executable && execution !== undefined,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {

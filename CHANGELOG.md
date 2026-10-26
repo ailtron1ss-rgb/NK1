@@ -1,3 +1,19 @@
+## NK1 WorkPass328 — Align installer and diagnostics with Node 24 (2026-10-25)
+
+- **FIXED:** Replaced the hard-coded Node.js 22 preflight in `tools/super-install.mjs` with the shared rule sourced from root `.nvmrc`; it now also requires npm `>=10.8.0`, matching the app/runtime engine declarations.
+- **FIXED:** `tools/super-doctor.mjs` uses the same Node/npm policy and resolves the repository root from its own location instead of assuming the current shell directory is the repository.
+- **WIRED:** Added the runtime-version helper and regressions for major/exact Node pins, npm minimums, installer failure paths and lockfile safety; registered them in `audit:quick` and WorkPass71 CI.
+- **VERIFICATION LIMIT:** Changes and test wiring are committed on `workpass328-node24-runtime-pin`; this entry does not claim the new tests, full typechecks, dependency installation or release gates passed. Prior hosted Actions attempts stopped before runner allocation, so exact-head execution evidence is still required.
+
+- **FIXED:** Corrected both unified dev and production launchers to start the canonical runtime at `runtime/neuro-kurisu/src/server/server.mjs` rather than a non-existent root-relative `src/server/server.mjs` path; they now resolve their repository root via `fileURLToPath`.
+- **HARDENED:** Both launchers preflight required entrypoints, pass `ORGANISM_RUNTIME_URL` to the research bridge, and stop sibling services if any required child exits or fails to spawn. Added regression coverage for the runtime entrypoint and gateway/Vite port contract.
+
+- **FIXED:** Corrected strict-JavaScript type errors in the safe avatar preference test (JSDoc parameter annotations, typed fake storage methods, and `Reflect.deleteProperty` instead of deleting a required global property).
+- **FIXED:** Signed outcome ingestion now rejects a second ingest of an already authenticated outcome as `duplicate-attempt`, while preserving safe re-verification of the exact signed artifact after ledger restore. Added regression coverage for live duplicates and restored-ledger verification.
+- **FIXED:** Updated causal-stream regression fixtures to carry observed `lastAction` and `lastActionSuccess` evidence required by the production grounding gate; the test still exercises restored trace deduplication rather than failing earlier due to an incomplete fixture.
+- **VALIDATION:** The first exact-head CI run exposed the three defects above. They are corrected on this branch; subsequent exact-head CI runs must confirm that app typecheck and both cognitive regressions pass. Full release gates and rebuilt release ZIP are not yet verified.
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

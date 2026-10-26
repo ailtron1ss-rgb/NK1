@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { ParametricPolicyLearner } from '../src/organism/learning/ParametricPolicyLearner.ts';
 
-const FEATURE_COUNT = 15;
+const FEATURE_COUNT = 18; // match the canonical policy feature schema
 const ACTION = 'respond';
 const rounds = 60;
 const makePattern = (index) => {

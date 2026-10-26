@@ -1,13 +1,31 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { matchesNodePin, versionAtLeast, MIN_NPM_VERSION } from './runtime-pin.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const nodeMajor = Number(process.versions.node.split('.')[0]);
-if (nodeMajor !== 22) {
-  console.error(`SUPER_INSTALL=FAIL reason=node-major-required expected=22 actual=${process.version}`);
+let nodePin;
+try {
+  nodePin = readFileSync(path.join(root, '.nvmrc'), 'utf8').trim();
+} catch (error) {
+  console.error(`SUPER_INSTALL=FAIL reason=node-pin-missing file=.nvmrc message=${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+}
+if (!matchesNodePin(nodePin, process.versions.node)) {
+  console.error(`SUPER_INSTALL=FAIL reason=node-version-mismatch expected=${nodePin || 'valid .nvmrc pin'} actual=${process.version}`);
+  process.exit(1);
+}
+let npmVersion;
+try {
+  npmVersion = execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim();
+} catch (error) {
+  console.error(`SUPER_INSTALL=FAIL reason=npm-version-unavailable message=${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+}
+if (!versionAtLeast(npmVersion, MIN_NPM_VERSION)) {
+  console.error(`SUPER_INSTALL=FAIL reason=npm-version-required expected=>=${MIN_NPM_VERSION} actual=${npmVersion || 'missing'}`);
   process.exit(1);
 }
 
