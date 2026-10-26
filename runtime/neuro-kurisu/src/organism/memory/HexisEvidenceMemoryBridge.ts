@@ -1,5 +1,5 @@
 import { sha256Stable } from "../core/StableSerialization.ts";
-import type { MemoryProvenanceClass, MemoryOS2 } from "../developmental/MemoryOS2.ts";
+import type { MemoryEvidenceRecord, MemoryProvenanceClass, MemoryOS2 } from "../developmental/MemoryOS2.ts";
 import type { MemoryFabric } from "./MemoryFabric.ts";
 import type { EventLog } from "./EventSourcing.ts";
 import {
@@ -72,6 +72,7 @@ type HexisEvidenceReviewPayload = {
   stance: CanonicalHexisEvidence["stance"];
   source: CanonicalHexisEvidence["source"];
   observedAt: string;
+  observedAtOrigin?: "server-receipt";
   evidenceConfidence01: number;
   note?: string;
   baselineConfidence01: number;
@@ -312,6 +313,7 @@ export function ingestHexisEvidenceForReview(
         stance: evidence.stance,
         source: evidence.source,
         observedAt: evidence.observedAt,
+        ...(evidence.observedAtOrigin === "server-receipt" ? { observedAtOrigin: "server-receipt" as const } : {}),
         evidenceConfidence01: evidence.confidence,
         ...(evidence.note ? { note: evidence.note } : {}),
         baselineConfidence01,
@@ -370,6 +372,7 @@ export function ingestHexisEvidenceForReview(
       stance: evidence.stance,
       source: evidence.source,
       observedAt: evidence.observedAt,
+      ...(evidence.observedAtOrigin === "server-receipt" ? { observedAtOrigin: "server-receipt" as const } : {}),
       evidenceConfidence01: evidence.confidence,
       ...(evidence.note ? { note: evidence.note } : {}),
       baselineConfidence01,
@@ -425,6 +428,51 @@ export function ingestHexisEvidenceForReview(
  * unit if any of those steps fails. Correct/forget decisions remain review
  * metadata only; they do not silently rewrite or erase canonical memory.
  */
+
+function matchesCanonicalReviewEvidence(
+  payload: Partial<HexisEvidenceReviewPayload>,
+  memoryId: string,
+  receipt: MemoryEvidenceRecord,
+): boolean {
+  // Pending reviews are persisted state and must be treated as untrusted at the
+  // approval boundary. Re-canonicalize every source field instead of trusting a
+  // digest string stored beside mutable metadata.
+  const adapted = adaptHexisEvidence({
+    memoryId: payload.memoryId,
+    evidenceId: payload.evidenceId,
+    stance: payload.stance,
+    source: payload.source,
+    observedAt: payload.observedAt,
+    ...(payload.observedAtOrigin === "server-receipt"
+      ? { observedAtOrigin: "server-receipt" as const }
+      : {}),
+    confidence: payload.evidenceConfidence01,
+    ...(payload.note === undefined ? {} : { note: payload.note }),
+  });
+  if (!adapted.accepted) return false;
+  const evidence = adapted.evidence;
+  if (evidence.protectedMemory || evidence.memoryId !== memoryId) return false;
+
+  // A server-generated receipt time is provenance, but it cannot become a new
+  // identity input on each retry. Mirror the canonical ingress digest policy.
+  const digestInput = evidence.observedAtOrigin === "server-receipt"
+    ? { ...evidence, observedAt: "<server-receipt-time>" }
+    : evidence;
+  const recalculatedDigest = sha256Stable(digestInput, "legacy").toLowerCase();
+
+  return recalculatedDigest === receipt.digest.toLowerCase()
+    && receipt.evidenceId === evidence.evidenceId
+    && receipt.stance === evidence.stance
+    && receipt.sourceKind === evidence.source.kind
+    && receipt.sourceRef === evidence.source.ref
+    && receipt.label === evidence.source.label
+    && receipt.author === evidence.source.author
+    && receipt.note === evidence.note
+    && receipt.confidence01 === evidence.confidence
+    && receipt.observedAt === Date.parse(evidence.observedAt)
+    && receipt.protectedMemory === false;
+}
+
 export function decideHexisEvidenceReview(
   memoryOS: MemoryOS2,
   fabric: HexisAdaptationFabric,
@@ -482,6 +530,10 @@ export function decideHexisEvidenceReview(
   if (!memory) return reject("canonical-memory-no-longer-exists");
   const evidenceRecord = memory.evidenceRecords?.find((record) => record.evidenceId === payload.evidenceId && record.digest.toLowerCase() === String(payload.digest).toLowerCase());
   if (!evidenceRecord) return reject("canonical-evidence-receipt-missing-or-retired");
+  if (String(payload.digest).toLowerCase() !== evidenceRecord.digest.toLowerCase() ||
+      !matchesCanonicalReviewEvidence(payload, memory.id, evidenceRecord)) {
+    return reject("canonical-review-evidence-binding-mismatch");
+  }
 
   const baseline = payload.baselineConfidence01;
   if (typeof baseline !== "number" || !Number.isFinite(baseline) || Math.abs(memory.confidence - baseline) > 1e-9) {
