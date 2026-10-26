@@ -1,3 +1,11 @@
+## NK1 WorkPass329 — fail closed on corrupted canonical-memory receipts (2026-10-26)
+
+- [FIX] `MemoryFabric.restore()` now requires canonical command IDs, strict numeric timestamps, bounded receipt shapes, and action/result-kind consistency. Conflicting duplicate receipt IDs mark the persisted journal uncertain.
+- [FIX] State migration no longer silently normalizes malformed or oversized hot receipt journals or malformed Bloom metadata into apparently healthy replay state. It preserves valid rows but sets the existing fail-closed corruption flag when receipt certainty is lost.
+- [SAFETY] When a receipt row is dropped or conflicting replay metadata is detected, new idempotency-keyed memory mutations require recovery instead of risking duplicate writes after restart.
+- [TEST] Extended WorkPass31 with migration and direct-restore corruption cases; Core CI now invokes the memory lifecycle replay regression explicitly alongside the new outcome-index guard.
+- [VALIDATION] Source and test fixtures have been statically inspected; GitHub Actions currently fails before runner steps execute, so full runtime validation is not yet confirmed.
+
 ## NK1 WorkPass328 — validate restored outcome projection indexes (2026-10-26)
 
 - [FIX] A restored OutcomeCognition projection index is accepted only when its executionId agrees with the embedded record and its fingerprint recomputes from immutable outcome fields. The derived external-verification flag is rebuilt from the record, not trusted independently.
@@ -2129,3 +2137,4 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
