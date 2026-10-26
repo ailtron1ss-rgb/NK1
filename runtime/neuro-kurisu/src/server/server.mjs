@@ -1019,10 +1019,17 @@ async function route(req, res) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
             if (typeof input.stagingId !== 'string' || !input.stagingId.trim() || input.stagingId.length > 256 ||
-                typeof input.decision !== 'string' || !['accept', 'reject', 'apply'].includes(input.decision)) {
+                typeof input.decision !== 'string' || !['accept', 'reject', 'apply'].includes(input.decision) ||
+                (input.confirmed !== undefined && typeof input.confirmed !== 'boolean')) {
                 return json(res, 400, { ok: false, error: 'invalid-hmx-decision' });
             }
             const decision = input.decision;
+            if (decision === 'accept' && input.confirmed !== true) {
+                return json(res, 403, { ok: false, error: 'hmx-accept-explicit-confirmation-required' });
+            }
+            if (decision === 'apply' && input.confirmed !== true) {
+                return json(res, 403, { ok: false, error: 'hmx-apply-explicit-confirmation-required' });
+            }
             try {
                 const result = runtime.core.hexisDecideHmx(input.stagingId, decision);
                 await runtime.core.flush();
