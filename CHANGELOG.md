@@ -1,3 +1,12 @@
+## WorkPass415 — validate HMX stage intent and strategy at the HTTP boundary (2026-10-26)
+
+- **Server code commit:** `9f9601df7a72d9d0f6c46e24030052c554087237`; **server-smoke regression:** `bd2f036238b7b3582c6e9a17ee49991a66e0df54`.
+- The HMX staging route now accepts only the documented intent allowlist (`port`, `duplicate`, `telepathy`, `analysis`) and strategy allowlist (`additive`, `authoritative`, `deliberative`, `analysis_only`). Missing fields retain the explicit preview-only defaults; provided invalid types/values return HTTP 400 before calling the staging fabric.
+- Regression sends a typo intent and an unsupported strategy, requires `hmx-invalid-intent` / `hmx-invalid-strategy`, then continues with a valid telepathy/additive stage to prove the normal route still works.
+- **Validation:** PENDING exact-head `test:hexis-server-smoke`, runtime typecheck, HMX adaptation and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass414 — block duplicate accept before the HMX receipt is persisted (2026-10-26)
 
 - **Adapter code commit:** `0fc2a3880ef1276106e78dbcd4ab15ce53feb1d2`; **regression commit:** `daa458f2abd935f136b249d1cb3ae6b9ccccf0c5`.
