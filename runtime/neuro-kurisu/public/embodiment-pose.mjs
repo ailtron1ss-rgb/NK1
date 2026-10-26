@@ -20,7 +20,7 @@ const ACTION_POSES = Object.freeze({
 });
 
 /**
- * @type {Readonly<Record<EmotionKey, Readonly<Partial<PoseVector>>>}
+ * @type {Readonly<Record<EmotionKey, Readonly<Partial<PoseVector>>>>}
  */
 const EMOTION_OFFSETS = Object.freeze({
   calm: Object.freeze({}),
