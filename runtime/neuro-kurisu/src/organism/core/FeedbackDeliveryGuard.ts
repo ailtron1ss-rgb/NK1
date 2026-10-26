@@ -19,7 +19,7 @@ export interface FeedbackDeliveryReceipt {
   tick: number;
   decisionId: string;
   action: ActionKind;
-  status: 'completed';
+  status: 'in-progress' | 'completed';
 }
 
 export interface FeedbackDeliveryToken {
@@ -59,7 +59,7 @@ export class FeedbackDeliveryGuard {
         || !Number.isSafeInteger(prior.tick)
         || (prior.tick as number) < 0
         || prior.version !== 1
-        || prior.status !== 'completed'
+        || (prior.status !== 'completed' && prior.status !== 'in-progress')
         || !isDecisionId(prior.decisionId)
         || !ACTIONS.includes(prior.action as ActionKind)) {
         throw new Error('feedback delivery receipt is malformed; refusing replay');
@@ -67,6 +67,9 @@ export class FeedbackDeliveryGuard {
       const priorTick = prior.tick as number;
       if (priorTick >= input.tick) {
         if (priorTick === input.tick) {
+          if (prior.status === 'in-progress') {
+            throw new Error(`feedback for organism tick ${input.tick} is already in progress; refusing replay`);
+          }
           throw new Error(`feedback for organism tick ${input.tick} has already been finalized`);
         }
         throw new Error('feedback delivery receipt is from a future tick; refusing clock regression');
