@@ -1,3 +1,16 @@
+## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity on the current integration line (2026-10-26)
+
+- [INTEGRATION] Port the WorkPass426 lifecycle attempt-counter binding and WorkPass427 receipt counter/state invariants onto the current consolidated Hexis + restore-integrity branch while preserving its independent lifecycleDigest contract.
+- [INTEGRITY] Export the safe JSON-tree validator through the runtime module and declaration; the standalone receipt validator now rejects accessor-backed/non-JSON receipts and invalid applied-stage identities before inspecting the receipt.
+- [INTEGRITY] Require non-empty canonical memory, created-memory and semantic-edge IDs; require created IDs to be a subset of unique memory IDs and all receipt counters to describe a possible projection.
+- [INTEGRITY] Validate the deferred-section summary as an exact projection of staged non-memory sections. When relationships are present, projected and deferred counts must account for the complete staged array and the deferred summary must bind the exact deferred relationship count.
+- [FIX] Use a null-prototype deferred-section map so an external HMX section name such as __proto__ is retained as ordinary data instead of hitting Object.prototype.
+- [REGRESSION] Cover re-hashed impossible receipts, mismatched application attempts, accessor-safe validator calls, valid deferred relationship receipts, invalid/phantom/zero deferred sections and an actual projector path for the special __proto__ key.
+- [CI] Extend the canonical HMX apply workflow branch filter to execute for stacked PRs against fix/outcome-projection-index-restore-2026-10-26.
+- [VALIDATION] Exact-head runtime typecheck, canonical HMX apply tests and WorkPass71 gate must finish before PASS is claimed. Local execution is not claimed.
+- [RELEASE] main and the published WorkPass70 Release ZIP remain unchanged.
+
+---
 ## [NK1][Hexis] Add UI wiring audits to canonical HMX gate (2026-10-26)
 
 - The Hexis CI workflow now runs the existing UI action-wiring and UI/API/runtime linkage audits in addition to frontend and runtime typechecks and the canonical HMX regression suite.
