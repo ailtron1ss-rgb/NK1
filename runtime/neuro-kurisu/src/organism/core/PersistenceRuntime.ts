@@ -10,8 +10,11 @@ import { PersistenceBudgetController } from '../persistence/PersistenceBudgetCon
 import { PersistenceDurabilityGovernor } from '../persistence/PersistenceDurabilityGovernor.ts';
 import { AdvancedProjectionScheduler, defaultProjectionScheduleState, type ProjectionGroup } from '../persistence/AdvancedProjectionScheduler.ts';
 import { PersistenceProjectionCoordinator, type PersistenceProjectionContext } from './PersistenceProjectionCoordinator.ts';
+import { FeedbackDeliveryGuard } from './FeedbackDeliveryGuard.ts';
 
 export class PersistenceRuntime {
+  /** Idempotency guard shares ownership with the durable feedback receipt sidecar. */
+  readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard();
   continuity = { version: 1 as const, frames: 0, lastAt: 0, lastTick: 0, meanJointError01: 0.5, lastJointError01: 0.5 };
   capabilityRefreshedAt = 0;
   persistenceDepth = 0;
