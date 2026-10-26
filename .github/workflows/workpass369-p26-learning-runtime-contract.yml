@@ -1,0 +1,56 @@
+name: WorkPass369 P26 learning runtime contract
+
+on:
+  push:
+    branches:
+      - workpass369-p26-learning-runtime-contract
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/P26TrueLearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
+      - "runtime/neuro-kurisu/tests/p26-*.mjs"
+      - "runtime/neuro-kurisu/tests/causal-replay-*.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-115-causal-replay.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/workpass369-p26-learning-runtime-contract.yml"
+  pull_request:
+    branches:
+      - workpass368-receipt-ref-lineage
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/P26TrueLearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
+      - "runtime/neuro-kurisu/tests/p26-*.mjs"
+      - "runtime/neuro-kurisu/tests/causal-replay-*.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-115-causal-replay.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/workpass369-p26-learning-runtime-contract.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "nk1-workpass369-learning-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}"
+  cancel-in-progress: true
+
+jobs:
+  p26-learning-runtime-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Verify Node/npm engine floor
+        run: node --test tools/runtime-requirements.test.mjs
+      - name: Install the repository-pinned TypeScript compiler
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Typecheck the full canonical runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Verify P26 learning provenance and interleaved replay
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:learning-replay
+      - name: Verify learning input and recovery contracts
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:learning-input-integrity && npm run test:p26:learning-recovery-benchmark && npm run test:p26:learning-continual-matrix
