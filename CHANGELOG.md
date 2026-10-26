@@ -2,7 +2,8 @@
 
 - Added a tick-scoped feedback delivery guard at the entry to both normal and spine-only feedback paths, before any downstream learning/state mutation.
 - The guard rejects concurrent duplicate delivery, persisted same-tick replays after restart, and malformed current-tick receipts; a failed in-flight delivery remains blocked in-process rather than being replayed against partially updated learners.
-- Completed receipts are stored in the existing persisted system snapshot and included in the normal feedback checkpoint. The current focused CI validation is pending.
+- Completed receipts are stored in the existing persisted system snapshot and preserved verbatim through `migratePersistedOrganism`; otherwise migration would have silently dropped the replay barrier on restart. Receipt validation now fails closed for malformed payloads and future-tick clock regression.
+- Focused validation run [#40254769646](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254769646) passed the previously committed entry guard wiring, B272 attribution, runtime graph continuity and routing checks. The added migration-preservation regression is awaiting its own exact-head run.
 
 ## Cognitive dependency frame integrity — 2026-10-25
 
