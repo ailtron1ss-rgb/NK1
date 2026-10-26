@@ -611,8 +611,36 @@ export function normalizeHmxV17Memory(
   raw: unknown,
   input: { exportId: string; sourceSubjectId?: string; exportedAt?: string },
 ): Nk1HmxMemoryProjection | null {
-  if (!input || typeof input !== 'object') return null;
   // This helper is exported and may be called outside the trusted staging path.
+  // Read its small options envelope from data descriptors, not ordinary property
+  // access, and bind every row reference to the export that is being normalized.
+  let options: { exportId: string; sourceSubjectId?: string; exportedAt?: string };
+  try {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+    const prototype = Object.getPrototypeOf(input);
+    const keys = Reflect.ownKeys(input);
+    if ((prototype !== Object.prototype && prototype !== null) ||
+        keys.some((key) => typeof key !== 'string' ||
+          !['exportId', 'sourceSubjectId', 'exportedAt'].includes(key))) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(input);
+    for (const key of keys as string[]) {
+      const descriptor = descriptors[key as string];
+      if (!descriptor || !descriptor.enumerable || !('value' in descriptor)) return null;
+    }
+    const exportId = descriptors.exportId?.value;
+    const sourceSubjectId = descriptors.sourceSubjectId?.value;
+    const exportedAt = descriptors.exportedAt?.value;
+    if (typeof exportId !== 'string' || !EXPORT_ID_PATTERN.test(exportId) ||
+        (sourceSubjectId !== undefined && typeof sourceSubjectId !== 'string') ||
+        (exportedAt !== undefined && typeof exportedAt !== 'string')) return null;
+    options = {
+      exportId,
+      ...(typeof sourceSubjectId === 'string' ? { sourceSubjectId: sourceSubjectId.slice(0, 180) } : {}),
+      ...(typeof exportedAt === 'string' ? { exportedAt } : {}),
+    };
+  } catch {
+    return null;
+  }
   // Snapshot the row independently so direct callers cannot execute getters,
   // pass custom prototypes, or mutate values between projection checks.
   const captured = snapshotHmxV17Document(raw);
@@ -620,7 +648,8 @@ export function normalizeHmxV17Memory(
   const row = record(captured.value);
   if (!row || typeof row.content !== 'string' || !row.content.trim() ||
       row.content.length > MAX_MEMORY_CHARS || typeof row.ref !== 'string' ||
-      row.ref.length > 512 || !REF_PATTERN.test(row.ref)) return null;
+      row.ref.length > 512 || !REF_PATTERN.test(row.ref) ||
+      !row.ref.startsWith(options.exportId + ':')) return null;
   if (row.metadata != null && !record(row.metadata)) return null;
   if (row.source_attribution != null && !record(row.source_attribution)) return null;
   const metadata = record(row.metadata) ?? {};
@@ -652,7 +681,7 @@ export function normalizeHmxV17Memory(
   const confidence = Math.min(0.55, clamp01(metadata.nk1_confidence ?? row.trust_level, 0.55));
   const salience = clamp01(metadata.nk1_salience ?? row.importance, 0.55);
   const createdAt = dateMs(row.created_at);
-  const observedAt = dateMs(row.updated_at) ?? createdAt ?? dateMs(input.exportedAt) ?? Date.now();
+  const observedAt = dateMs(row.updated_at) ?? createdAt ?? dateMs(options.exportedAt) ?? Date.now();
   const validFromAt = dateMs(row.valid_from) ?? createdAt ?? observedAt;
   const validUntilAt = row.valid_until == null ? null : dateMs(row.valid_until) ?? null;
   const tags = Array.isArray(metadata.tags) ? metadata.tags.map((x) => x.slice(0, 80)).slice(0, 24) : ['hexis', 'hmx'];
@@ -674,9 +703,7 @@ export function normalizeHmxV17Memory(
     tags,
     context,
     entities,
-    independenceKey: 'hexis:' + (typeof input.sourceSubjectId === 'string'
-      ? input.sourceSubjectId
-      : typeof input.exportId === 'string' ? input.exportId : 'unknown').slice(0, 180),
+    independenceKey: 'hexis:' + (options.sourceSubjectId ?? options.exportId).slice(0, 180),
     evidenceFreshnessAt: observedAt,
   };
 }
