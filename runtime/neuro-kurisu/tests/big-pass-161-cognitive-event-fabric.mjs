@@ -97,6 +97,18 @@ const accessorEvent=envelopeFabric.append({
 });
 assert.equal(nestedGetterCalls,0,'nested accessors are omitted without executing caller-controlled code');
 assert.deepEqual(accessorEvent.payload,{nested:{}});
+
+let arrayGetterCalls=0;
+const accessorArray=[];
+Object.defineProperty(accessorArray,'0',{enumerable:true,configurable:true,get(){arrayGetterCalls++;return 'must-not-run';}});
+accessorArray.length=1;
+const arrayAccessorEvent=envelopeFabric.append({
+  id:'cef:test:array-accessor-payload',tick:10,at:1001,stage:'tool-evidence',source:'array-accessor-test',
+  parentIds:[],external:false,confidence01:0.6,payload:{items:accessorArray},
+});
+assert.equal(arrayGetterCalls,0,'array-index accessors are omitted without executing caller-controlled code');
+assert.deepEqual(arrayAccessorEvent.payload,{items:[null]});
+
 const storedTotalBeforeCycle=envelopeFabric.snapshot().total;
 const cyclicPayload={}; cyclicPayload.self=cyclicPayload;
 assert.throws(()=>envelopeFabric.append({
