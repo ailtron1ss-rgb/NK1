@@ -29,6 +29,23 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
     'control characters in supplied event IDs must be rejected');
   assert.equal(fabric.snapshot().total,initialTotal);
 
+  let sourceCoercionCalls=0;
+  const unsafeSource={toString(){sourceCoercionCalls++;return 'not-accepted';}};
+  assert.throws(()=>fabric.append({...base,id:'cef:test:unsafe-source',source:unsafeSource}),/cognitive-event-source-must-be-string/);
+  assert.equal(sourceCoercionCalls,0,'malformed sources must be rejected without invoking coercion');
+  assert.equal(fabric.snapshot().total,initialTotal);
+
+  let parentCoercionCalls=0;
+  const unsafeParent={toString(){parentCoercionCalls++;return 'not-accepted';}};
+  assert.throws(()=>fabric.append({...base,id:'cef:test:unsafe-parent',parentIds:[unsafeParent]}),/cognitive-event-parent-ids-must-be-strings/);
+  assert.equal(parentCoercionCalls,0,'malformed causal parents must be rejected without invoking coercion');
+  assert.equal(fabric.snapshot().total,initialTotal);
+
+  for(const malformedPayload of [['not','a','record'],'not-an-object',42]){
+    assert.throws(()=>fabric.append({...base,id:`cef:test:top-level-payload-${typeof malformedPayload}`,payload:malformedPayload}),/cognitive-event-payload-must-be-object/);
+    assert.equal(fabric.snapshot().total,initialTotal,'malformed top-level payload must fail before ledger mutation');
+  }
+
   const invalidClocks=[
     {id:'cef:test:tick-nan',tick:Number.NaN,at:701,error:/invalid-cognitive-event-tick/},
     {id:'cef:test:tick-negative',tick:-1,at:701,error:/invalid-cognitive-event-tick/},
