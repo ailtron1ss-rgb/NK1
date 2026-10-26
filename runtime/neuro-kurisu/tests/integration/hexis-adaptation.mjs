@@ -1158,10 +1158,40 @@ assert.equal(cappedAfterSuccessfulApply?.sourceAuthority01, 0.45);
 assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0,
   'successful transaction must revoke rollback tokens rather than leak them');
 
+// The bounded journal must fail closed instead of silently evicting a live token.
+// An import that needs more active rollback snapshots will abort before mutating
+// its next duplicate, then still be able to compensate every earlier duplicate.
+const signalCompensationCapacityTokens = [];
+for (let index = 0; index < 512; index++) {
+  const token = signalRollbackRuntime.fabric.beginSignalCompensation(seededSignalMemory.id);
+  assert.equal(typeof token, 'string', 'capacity must admit every token within its configured bound');
+  signalCompensationCapacityTokens.push(token);
+}
+assert.equal(
+  signalRollbackRuntime.fabric.beginSignalCompensation(seededSignalMemory.id),
+  null,
+  'capacity exhaustion must stop new compensation issuance rather than evict an active rollback token',
+);
+assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 512);
+for (const token of signalCompensationCapacityTokens) {
+  assert.equal(signalRollbackRuntime.fabric.refreshSignalCompensation(token), true,
+    'all pre-existing rollback tokens must remain live when capacity is exhausted');
+}
+for (const token of signalCompensationCapacityTokens) {
+  assert.equal(signalRollbackRuntime.fabric.commitSignalCompensation(token), true);
+}
+assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0);
 
-
+// Pending rollback tokens are intentionally process-local and must not survive
+// restoring a persisted snapshot that contains no such capabilities.
+const transientSignalCompensationToken = signalRollbackRuntime.fabric.beginSignalCompensation(seededSignalMemory.id);
+assert.equal(typeof transientSignalCompensationToken, 'string');
 const postCompensationMemoryFabricSnapshot = signalRollbackRuntime.fabric.snapshot();
 signalRollbackRuntime.fabric.restore(postCompensationMemoryFabricSnapshot);
+assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0,
+  'snapshot restoration must revoke non-persisted rollback capabilities');
+assert.equal(signalRollbackRuntime.fabric.refreshSignalCompensation(transientSignalCompensationToken), false,
+  'a capability from before restore must be unusable after restore');
 assert.equal(signalRollbackRuntime.fabric.inspect().mutationReceiptJournal.corrupt, false,
   'the new compensating lifecycle receipt must survive snapshot/restore validation');
 
