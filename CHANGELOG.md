@@ -3,6 +3,7 @@
 - **Defect:** `CognitiveEventFabric.append()` silently truncated source strings, parent IDs and oversized parent lists. Restore also truncated event IDs/sources/parents and coerced fractional/unsafe ticks, nonnumeric timestamps/confidence and nonboolean flags into apparently valid records.
 - **Fix:** reject oversized identity fields before append; restore now skips malformed identity/clock/evidence rows without reserving IDs, allowing later valid copies to recover. Missing legacy optional fields retain safe defaults; explicitly malformed fields do not.
 - **Regression coverage:** same-ID replay with oversized source/parent suffixes, 13 parents rejected without ledger mutation, 12-parent boundary accepted, restore recovery from oversized ID/source/parent data and malformed tick/time/confidence/boolean values.
+- **CI correction:** first exact-head integration attempt caught an over-escaped control-character character class that rejected ordinary parent IDs (for example `parent:1`). Replaced it with the intended literal Unicode control ranges; the failed run is retained as evidence and does not count as a pass.
 - **Validation:** PR #180 / branch `work/nk1-event-envelope-bounds-2026-10-26-r2`; exact-head CI must pass after the final commit. Prior runs on earlier commits are not evidence for the final head.
 
 ---
