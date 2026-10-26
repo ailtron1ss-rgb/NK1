@@ -287,6 +287,7 @@ function validateCandidateReports(
     throw new Error(`candidate-${label}-reports-required`);
   }
   const keyed = new Map<string, SkillLearnBenchTrialReport>();
+  const familyByTask = new Map<string, string | null>();
   for (const report of reports) {
     const inRange = (value: unknown): value is number =>
       typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
@@ -310,10 +311,14 @@ function validateCandidateReports(
     }
     const taskId = report.taskId.trim();
     const trialId = report.trialId.trim();
-    const family = report.taskFamily === undefined ? undefined : report.taskFamily.trim();
+    const family = report.taskFamily === undefined ? null : report.taskFamily.trim();
+    if (familyByTask.has(taskId) && familyByTask.get(taskId) !== family) {
+      throw new Error('candidate-' + label + '-task-family-changed-within-task');
+    }
+    familyByTask.set(taskId, family);
     const key = JSON.stringify([taskId, trialId]);
     if (keyed.has(key)) throw new Error(`candidate-${label}-duplicate-trial`);
-    keyed.set(key, { ...report, taskId, trialId, ...(family === undefined ? {} : { taskFamily: family }) });
+    keyed.set(key, { ...report, taskId, trialId, ...(family === null ? {} : { taskFamily: family }) });
   }
   return keyed;
 }
