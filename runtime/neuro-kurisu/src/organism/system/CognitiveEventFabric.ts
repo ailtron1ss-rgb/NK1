@@ -172,6 +172,14 @@ const clonePlainJsonData=(value:unknown,state:{seen:Set<object>;nodes:number}={s
     state.seen.delete(value);
   }
 };
+export const cloneCognitiveEventPayload=(value:unknown):Record<string,unknown>=>{
+  if(!isRecord(value))throw new TypeError('cognitive-event-payload-must-be-a-record');
+  // Keep the established boundary: omit top-level accessor properties without
+  // evaluating them, while recursively rejecting accessors/cycles/non-JSON data.
+  const payload=clonePlainJsonData(cleanPayload(value)) as Record<string,unknown>;
+  if(!isRecord(payload))throw new TypeError('cognitive-event-payload-must-be-a-record');
+  return payload;
+};
 const snapshotOwnDataFields=(value:unknown,fields:readonly string[],context:string):Record<string,unknown>=>{
   if(!isRecord(value))throw new TypeError(context+'-must-be-a-record');
   const accessor=fields.find(key=>hasOwnAccessorField(value,key));
