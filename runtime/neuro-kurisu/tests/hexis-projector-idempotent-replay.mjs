@@ -210,6 +210,41 @@ relationshipStage.application = coherentDeferredRelationshipReceipt;
 refreshHmxStageLifecycleDigest(relationshipStage);
 assert.equal(isValidHmxApplyReceipt(relationshipStage, coherentDeferredRelationshipReceipt), true,
   'a coherent deferred relationship count is accepted even when no memories are imported');
+
+// Rehashed receipts must not claim the same semantic edge twice, even if all counters match.
+const twoRelationshipStage = {
+  ...relationshipStage,
+  stagingId: 'stage-two-relationships',
+  digest: '',
+  lifecycleDigest: '',
+  application: undefined,
+  stagedSections: {
+    relationships: [
+      { source_ref: 'missing-a', target_ref: 'missing-b', edge_type: 'supports' },
+      { source_ref: 'missing-c', target_ref: 'missing-d', edge_type: 'causes' },
+    ],
+  },
+};
+twoRelationshipStage.digest = computeHmxStageDigest(twoRelationshipStage);
+refreshHmxStageLifecycleDigest(twoRelationshipStage);
+const duplicateSemanticEdgesReceipt = makeReceipt({
+  stageId: twoRelationshipStage.stagingId,
+  stageDigest: twoRelationshipStage.digest,
+  status: 'noop',
+  complete: false,
+  candidateMemoryRecords: 0,
+  uniqueMemoryRecords: 0,
+  importedCount: 0,
+  deduplicatedCount: 0,
+  projectedRelationships: 2,
+  deferredRelationships: 0,
+  semanticEdgeIds: ['edge-same', 'edge-same'],
+  memoryIds: [],
+  createdMemoryIds: [],
+  deferredSections: {},
+});
+assert.equal(isValidHmxApplyReceipt(twoRelationshipStage, duplicateSemanticEdgesReceipt), false,
+  'duplicate edge IDs cannot be made valid merely by matching projected relationship counters');
 for (const item of [
   { overrides: { deferredSections: { relationships: 0 } }, label: 'zero deferred counters are not valid section evidence' },
   { overrides: { deferredSections: { goals: 1 } }, label: 'receipt cannot invent a deferred section absent from staged input' },
