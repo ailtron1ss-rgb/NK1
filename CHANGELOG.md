@@ -1,3 +1,15 @@
+# WorkPass372 — accessor-safe UnifiedCognitiveCycle ingress (2026-10-26)
+
+- [HARDENED] Snapshot persisted cycle-state fields via own data descriptors before reading; root getters and accessor-backed missing-stage array slots are rejected without executing.
+- [FIXED] Distinguish omitted legacy `version` from a present `version: undefined`; an explicitly present invalid schema version fails before replacing aggregate state.
+- [HARDENED] Snapshot evaluation root (`tick`, `stageIds`, `parentIntegrity01`) and each own stage-ID field before aggregation; accessors/inherited polluted values cannot supply cycle evidence.
+- [ATOMICITY] Build restored state locally and assign only after all descriptor/array checks complete, preserving the active state on malformed input.
+- [REGRESSION] Verify no getter execution, no mutation on failed restore/evaluate, valid snapshot round-trip and successful next-cycle evaluation.
+- [VALIDATION] Exact-head runtime typecheck, canonical-kernel and learning-metrics workflows are required; this entry records implementation, not a test PASS.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass371 — accessor-safe canonical kernel ingress (2026-10-26)
 
 - [HARDENED] Snapshot canonical decision/completion roots and anchor objects through own property descriptors before reading fields; accessor-backed root/anchor inputs fail without executing getters.
