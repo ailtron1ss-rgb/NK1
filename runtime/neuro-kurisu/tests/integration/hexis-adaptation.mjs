@@ -32,6 +32,26 @@ const stage = fabric.stageHmx({
 assert.equal(stage.status,'staged');
 assert.equal(fabric.decideHmx(stage.stagingId,'accept')?.status,'accepted');
 
+// Oversized HMX sections are rejected as a whole, not silently staged as a prefix.
+const oversizedExportId = 'exp_3333333333333333';
+const oversizedStage = fabric.stageHmx({
+  document: makeHmxDocument(oversizedExportId, {
+    memories: Array.from({ length: 257 }, (_, index) => ({
+      ref: oversizedExportId + ':mem-' + index,
+      type: 'semantic',
+      content: 'Bounded fixture memory ' + index,
+    })),
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(oversizedStage.conflicts.some(conflict => conflict.kind === 'size-limit'));
+assert.equal(oversizedStage.sectionCounts.memories, 257, 'diagnostics retain the source count');
+assert.equal(oversizedStage.stagedSections.memories, undefined,
+  'an oversized section must not leave a truncated prefix available to downstream consumers');
+assert.equal(fabric.decideHmx(oversizedStage.stagingId, 'accept')?.status, 'staged',
+  'a size-conflicted stage must remain ineligible for acceptance');
+
 const protectedStage = fabric.stageHmx({
   document: makeHmxDocument('exp_2222222222222222', {
     identity: [{ key: 'self', content: 'External identity must remain protected.' }],
