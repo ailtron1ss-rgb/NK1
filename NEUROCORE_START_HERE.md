@@ -1,11 +1,11 @@
 ## Latest checkpoint — WorkPass360 canonical MemoryOS2 assertion (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
-**CI:** [focused workflow #40291427381](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291427381) is running.
+**CI:** [focused workflow #40291427381 — success](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291427381) on head `638efa8ca5f3b95a4083b63018c5e2b199c75a81`.
 
 - WorkPass358's whole-runtime restart test was tightened: it now reads only `runtime.core.snapshot().facets.advanced.memoryOS.items`, the canonical MemoryOS2 owner. It no longer recursively accepts any arbitrary snapshot copy of the marker.
 - Both the writer process and restarted reader must find the same memory record in that canonical collection and compare the stable ID.
-- Pending: full strict restart test and runtime typecheck must pass on the new code/test head.
+- Validation: P23 10/10, evaluator-config 16/16, MemoryOS restore boundary PASS, file-backed process recall PASS, strict canonical MemoryOS2 full-runtime restart PASS, runtime typecheck PASS.
 - Next broad validation after this focused test: existing `test:smoke`, `test:restart`, `test:persistence:giant` or the narrower existing `test:pass20:persistence-restore`, plus public runtime memory retrieval; these are separate from the bounded writer/reader regression.
 
 ---
