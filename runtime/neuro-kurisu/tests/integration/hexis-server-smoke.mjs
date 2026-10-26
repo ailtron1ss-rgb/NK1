@@ -50,6 +50,9 @@ try {
     { ref: applyRefA, type: 'semantic', status: 'active', content: 'NK1_HEXIS_CANONICAL_APPLY_SMOKE_A', importance: .72, trust_level: .85, provenance: { source_id: 'smoke-source-a', confidence: .85 } },
     { ref: applyRefB, type: 'episodic', status: 'active', content: 'NK1_HEXIS_CANONICAL_APPLY_SMOKE_B', importance: .66, trust_level: .75, provenance: { source_id: 'smoke-source-b', confidence: .75 } },
   ];
+  applyDocument.sections.goals = [
+    { ref: applyExportId + ':goal:smoke-goal', title: 'Review imported goal', description: 'Must remain unmaterialized until explicit local approval.', metadata: { nk1NativeGoal: { id: 'smoke-goal', importance: .6, urgency: .4, confidence: .7 } } },
+  ];
   applyDocument.sections.relationships = [
     { ref: applyExportId + ':relationship:smoke-supports-a-b', source_ref: applyRefA, target_ref: applyRefB, edge_type: 'supports', properties: { weight: .8 } },
   ];
@@ -59,6 +62,22 @@ try {
   }
   const applyAcceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'accept' })).json();
   if (!applyAcceptRes.ok || applyAcceptRes.stage?.status !== 'accepted') throw new Error('hexis-hmx-apply-accept');
+
+  // Imported goals become pending proposals, never active canonical goals by themselves.
+  const prepareGoals = await (await post('/api/organism/integration/hexis/hmx/goals/prepare', { stagingId: applyStageRes.stage.stagingId })).json();
+  if (!prepareGoals.ok || prepareGoals.created !== 1 || prepareGoals.proposals?.[0]?.status !== 'pending') {
+    throw new Error('hexis-hmx-goal-proposal-prepare:' + JSON.stringify(prepareGoals));
+  }
+  const replayGoals = await (await post('/api/organism/integration/hexis/hmx/goals/prepare', { stagingId: applyStageRes.stage.stagingId })).json();
+  if (!replayGoals.ok || replayGoals.created !== 0 || replayGoals.duplicates !== 1) throw new Error('hexis-hmx-goal-proposal-idempotency');
+  const pendingGoals = await (await fetch(`${base}/api/organism/integration/hexis/hmx/goals/proposals?status=pending`)).json();
+  const pendingGoal = pendingGoals.proposals?.find(proposal => proposal.id === prepareGoals.proposals[0].id);
+  if (!pendingGoals.ok || !pendingGoal || pendingGoal.status !== 'pending') throw new Error('hexis-hmx-goal-proposal-list');
+  const goalDecision = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/decide', { proposalId: pendingGoal.id, decision: 'approve' })).json();
+  if (!goalDecision.ok || goalDecision.proposal?.status !== 'approved') throw new Error('hexis-hmx-goal-proposal-approve');
+  const invalidGoalStatus = await fetch(`${base}/api/organism/integration/hexis/hmx/goals/proposals?status=activate`);
+  if (invalidGoalStatus.status !== 400) throw new Error('hexis-hmx-goal-proposal-status-validation:' + invalidGoalStatus.status);
+
   const applyRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply' })).json();
   if (!applyRes.ok || applyRes.stage?.status !== 'applied' || applyRes.stage?.application?.importedCount !== 2 || applyRes.stage?.application?.projectedRelationships !== 1) {
     throw new Error('hexis-hmx-canonical-apply:' + JSON.stringify(applyRes));
