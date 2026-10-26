@@ -1,3 +1,13 @@
+## WorkPass359 — strict operational-cycle phase envelopes (2026-10-26)
+
+- **Code/test checkpoint:** `c2ea83c25d905c54acec63dbbaacce5ec37f245c`; latest target branch base at integration start: `f38d3189777649da490f8b0dbb3a8d19c7444811`.
+- **Defect:** `recordOperationalCycle()` previously treated any falsy phase value as if the phase were omitted, and normalized malformed explicit payload roots through `cleanPayload()`. This could disguise invalid phase evidence as an empty payload.
+- **Fix:** read known cycle-root and phase fields through own data descriptors; skip only absent phases; reject null/falsy present phases, non-record payload roots, noncanonical source IDs and confidence outside `[0,1]` in preflight, before the first event write.
+- **Regression:** `cognitive-operational-cycle-envelope.mjs` tests malformed late-phase payloads, falsy phase envelopes, root/phase accessors, invalid source/confidence, zero mutation on rejection, and ordinary record/omitted-payload compatibility. Wired into `test:cognitive-integration-suite`.
+- **Validation:** exact-head CI pending for the expanded WorkPass358/359 combination. Prior WorkPass358 PASS remains valid only for its own code/test snapshot; current additions require a fresh run. Scores unchanged.
+
+---
+
 ## WorkPass358 — latest-base integration of strict receipt ingress and proxy-safe parent restore (2026-10-26)
 
 - **Code/test checkpoint:** `813fdde7361ae1a690cbd690e4e7f4337fa38a4e`; source base `f38d3189777649da490f8b0dbb3a8d19c7444811`.
