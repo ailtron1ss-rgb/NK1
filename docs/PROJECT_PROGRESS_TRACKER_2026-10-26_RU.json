@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass336 connects strict unified-substrate state into the live runtime cycle and optional counterfactual-work governance, with a 30-cycle smoke/restart regression authored. Exact-head typecheck/tests/CI are pending; no new score is inferred from code presence.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass340 connects strict unified-substrate state into the live runtime cycle and optional counterfactual-work governance, with a 30-cycle smoke/restart regression authored. Exact-head typecheck/tests/CI are pending; no new score is inferred from code presence.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -281,7 +281,7 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass336",
+    "id": "WorkPass340",
     "date": "2026-10-26",
     "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r2",
     "codeCommit": "29393dad1e81da2949c62eb332f3f356a74c426f",
@@ -300,13 +300,13 @@
   },
   "recentEngineeringPasses": [
     {
-      "id": "WorkPass335",
+      "id": "WorkPass339",
       "date": "2026-10-26",
       "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3",
       "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; validation pending."
     },
     {
-      "id": "WorkPass336",
+      "id": "WorkPass340",
       "date": "2026-10-26",
       "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r2",
       "codeCommit": "ab44773f97b32744268e35ba02b165c4b19aee26",
