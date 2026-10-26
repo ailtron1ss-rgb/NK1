@@ -137,6 +137,7 @@ assert.equal(isValidHmxApplyReceipt(coherentAppliedStage, coherentAppliedReceipt
 assert.deepEqual(projector.apply(coherentAppliedStage), coherentAppliedReceipt,
   'a valid applied receipt replays without accessing canonical storage');
 const impossibleBase = {
+  stageId: coherentAppliedStage.stagingId,
   stageDigest: coherentAppliedStage.digest,
   status: 'applied',
   complete: true,
