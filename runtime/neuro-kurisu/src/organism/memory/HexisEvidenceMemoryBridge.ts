@@ -1,5 +1,5 @@
 import { sha256Stable } from "../core/StableSerialization.ts";
-import type { MemoryProvenanceClass, MemoryOS2 } from "../developmental/MemoryOS2.ts";
+import type { MemoryEvidenceRecord, MemoryProvenanceClass, MemoryOS2 } from "../developmental/MemoryOS2.ts";
 import type { MemoryFabric } from "./MemoryFabric.ts";
 import type { EventLog } from "./EventSourcing.ts";
 import {
@@ -72,6 +72,7 @@ type HexisEvidenceReviewPayload = {
   stance: CanonicalHexisEvidence["stance"];
   source: CanonicalHexisEvidence["source"];
   observedAt: string;
+  observedAtOrigin?: "server-receipt";
   evidenceConfidence01: number;
   note?: string;
   baselineConfidence01: number;
@@ -110,10 +111,7 @@ function resultFromCanonicalMemory(
   // receipt timestamp for provenance, but it is not part of request identity.
   // Normalize only that generated clock; every caller-supplied evidence field
   // (source, stance, confidence, note, etc.) remains covered by the digest.
-  const digestInput = evidence.observedAtOrigin === "server-receipt"
-    ? { ...evidence, observedAt: "<server-receipt-time>" }
-    : evidence;
-  const digest = sha256Stable(digestInput, "legacy");
+  const digest = canonicalHexisEvidenceDigest(evidence);
   // Detect both visible conflicts and replay after the detailed evidence ring
   // rotated. This check prevents a retry from creating a second pending review.
   const canonicalMemory = memoryOS.snapshot().items.find((item) => item.id === evidence.memoryId);
@@ -284,7 +282,7 @@ export function ingestHexisEvidenceForReview(
     if (ingress.status !== "accepted") return ingress;
 
     const evidence = ingress.evidence;
-    const digest = sha256Stable(evidence, "legacy");
+    const digest = canonicalHexisEvidenceDigest(evidence);
     const snapshot = memoryOS.snapshot();
     const memory = snapshot.items.find((item) => item.id === evidence.memoryId);
     if (!memory) {
@@ -312,6 +310,7 @@ export function ingestHexisEvidenceForReview(
         stance: evidence.stance,
         source: evidence.source,
         observedAt: evidence.observedAt,
+        ...(evidence.observedAtOrigin === "server-receipt" ? { observedAtOrigin: "server-receipt" as const } : {}),
         evidenceConfidence01: evidence.confidence,
         ...(evidence.note ? { note: evidence.note } : {}),
         baselineConfidence01,
@@ -370,6 +369,7 @@ export function ingestHexisEvidenceForReview(
       stance: evidence.stance,
       source: evidence.source,
       observedAt: evidence.observedAt,
+      ...(evidence.observedAtOrigin === "server-receipt" ? { observedAtOrigin: "server-receipt" as const } : {}),
       evidenceConfidence01: evidence.confidence,
       ...(evidence.note ? { note: evidence.note } : {}),
       baselineConfidence01,
@@ -425,6 +425,61 @@ export function ingestHexisEvidenceForReview(
  * unit if any of those steps fails. Correct/forget decisions remain review
  * metadata only; they do not silently rewrite or erase canonical memory.
  */
+
+function canonicalHexisEvidenceDigest(evidence: CanonicalHexisEvidence): string {
+  // Server-generated receipt time records arrival time, not source identity.
+  // Ingress and approval must share this exact digest policy.
+  const digestInput = evidence.observedAtOrigin === "server-receipt"
+    ? { ...evidence, observedAt: "<server-receipt-time>" }
+    : evidence;
+  return sha256Stable(digestInput, "legacy").toLowerCase();
+}
+
+function matchesCanonicalReviewEvidence(
+  payload: Partial<HexisEvidenceReviewPayload>,
+  memoryId: string,
+  receipt: MemoryEvidenceRecord,
+): boolean {
+  // A persisted review is untrusted at decision time. Re-canonicalize its
+  // source fields instead of trusting a digest stored beside mutable metadata.
+  const adapted = adaptHexisEvidence({
+    memoryId: payload.memoryId,
+    evidenceId: payload.evidenceId,
+    stance: payload.stance,
+    source: payload.source,
+    observedAt: payload.observedAt,
+    ...(payload.observedAtOrigin === "server-receipt"
+      ? { observedAtOrigin: "server-receipt" as const }
+      : {}),
+    confidence: payload.evidenceConfidence01,
+    ...(payload.note === undefined ? {} : { note: payload.note }),
+  });
+  if (!adapted.accepted) return false;
+  const evidence = adapted.evidence;
+  if (evidence.protectedMemory || evidence.memoryId !== memoryId) return false;
+
+  const canonicalDigest = canonicalHexisEvidenceDigest(evidence);
+  const suppliedDigest = String(payload.digest ?? "").toLowerCase();
+  const legacyReceiptDigest = sha256Stable(evidence, "legacy").toLowerCase();
+  // Existing pending reviews from older builds used the raw receipt clock in
+  // the digest. Accept that historical form only with the internal origin marker.
+  const suppliedDigestMatches = suppliedDigest === canonicalDigest ||
+    (evidence.observedAtOrigin === "server-receipt" && suppliedDigest === legacyReceiptDigest);
+
+  return canonicalDigest === receipt.digest.toLowerCase()
+    && suppliedDigestMatches
+    && receipt.evidenceId === evidence.evidenceId
+    && receipt.stance === evidence.stance
+    && receipt.sourceKind === evidence.source.kind
+    && receipt.sourceRef === evidence.source.ref
+    && receipt.label === evidence.source.label
+    && receipt.author === evidence.source.author
+    && receipt.note === evidence.note
+    && receipt.confidence01 === evidence.confidence
+    && receipt.observedAt === Date.parse(evidence.observedAt)
+    && receipt.protectedMemory === false;
+}
+
 export function decideHexisEvidenceReview(
   memoryOS: MemoryOS2,
   fabric: HexisAdaptationFabric,
@@ -482,6 +537,9 @@ export function decideHexisEvidenceReview(
   if (!memory) return reject("canonical-memory-no-longer-exists");
   const evidenceRecord = memory.evidenceRecords?.find((record) => record.evidenceId === payload.evidenceId && record.digest.toLowerCase() === String(payload.digest).toLowerCase());
   if (!evidenceRecord) return reject("canonical-evidence-receipt-missing-or-retired");
+  if (!matchesCanonicalReviewEvidence(payload, memory.id, evidenceRecord)) {
+    return reject("canonical-review-evidence-binding-mismatch");
+  }
 
   const baseline = payload.baselineConfidence01;
   if (typeof baseline !== "number" || !Number.isFinite(baseline) || Math.abs(memory.confidence - baseline) > 1e-9) {
