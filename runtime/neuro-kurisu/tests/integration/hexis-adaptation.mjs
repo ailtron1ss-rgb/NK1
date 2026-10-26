@@ -709,7 +709,7 @@ assert.throws(
     proposalId: 'hexgoal:' + 'a'.repeat(32),
     sourceLineageId: 'test-lineage',
     sourceRef: 'exp_8888888888888888:bad-title',
-    title: 'unsafe\\nproject title',
+    title: 'unsafe\nproject title',
     description: 'description',
     importance: 0.5,
     urgency: 0.4,
