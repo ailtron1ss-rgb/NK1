@@ -93,7 +93,15 @@ assert.equal(importedQuarantined.epistemicStatus, 'quarantined',
   'a successful retry may retain the quarantined record, but only once');
 assert.throws(
   () => runtime.fabric.rollbackHmxCreatedMemory(
+    importedQuarantined.id, stage.exportId, 'stage-not-the-origin', 2, 'missing-receipt-id',
+  ),
+  /memory-lifecycle-hmx-rollback-command-id-required/,
+  'compensation must have a journal key before inspecting or mutating canonical state',
+);
+assert.throws(
+  () => runtime.fabric.rollbackHmxCreatedMemory(
     importedQuarantined.id, stage.exportId, 'stage-not-the-origin', 2, 'scope-guard-regression',
+    { commandId: 'wp430:scope-guard-regression' },
   ),
   /memory-lifecycle-hmx-rollback-scope-mismatch/,
   'the scoped compensator must not remove a protected import created by a different stage attempt',
