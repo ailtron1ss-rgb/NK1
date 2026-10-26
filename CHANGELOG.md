@@ -1,21 +1,10 @@
-## WorkPass392 — Verify pending Hexis review survives a real process restart (2026-10-26)
+## WorkPass393 — Canonical Hexis review binding, compatibility and restart recovery (2026-10-26)
 
-- Extended `hexis-server-smoke.mjs` to stop the running server after an evidence review is staged, restart it using the same temporary `STATE_DIR`, and assert the exact pending review/item and canonical pipeline marker were restored before approval.
-- The test then continues to decide the same restored review, exercising persistence across process lifetime rather than only in-memory/unit state.
-- Validation status: pending exact-head focused smoke and Unified integration. No release readiness or memory/learning uplift claimed.
-
-## WorkPass391 — Preserve pending server-receipt review compatibility (2026-10-26)
-
-- Existing pending reviews created by an older build could contain the raw server-receipt timestamp in their payload digest while the canonical MemoryOS2 receipt used the new normalized digest.
-- Approval now accepts that historical digest only when the internal `observedAtOrigin: "server-receipt"` marker is present, the strict adapter reconstructs the canonical evidence, and every stored evidence field matches the canonical receipt. Arbitrary or tampered digests remain rejected.
-- Added a regression that mutates a pending server-receipt review to the historical digest form and proves the review remains approvable.
-
-## WorkPass390 — Bind Hexis review decisions to the complete canonical evidence receipt (2026-10-26)
-
-- Added one shared canonical evidence digest function and use it for ingress, review payload creation and approval-time validation. Server-generated timestamp normalization is consistent across each path.
-- Before approval, re-run the strict adapter and compare the digest plus evidence ID, stance, source kind/reference, label, author, note, confidence, timestamp and protected-memory flag with the canonical MemoryOS2 receipt.
-- Added six tampering regressions and a server smoke assertion that reconciles the review result with persisted confidence without requiring every valid approval to increase confidence.
-- Validation status: pending exact-head typecheck, focused review tests and Unified project integration. No learning/retrieval uplift or production-readiness claim.
+- Re-canonicalize pending review evidence before approval and recompute the digest with the same shared policy used at ingress. Compare evidence ID, stance, source kind/reference, label, author, note, confidence, timestamp and protected-memory flag with the authoritative MemoryOS2 receipt.
+- Preserve old pending reviews whose server-generated receipt clock was included in their legacy digest, but only when the internal `observedAtOrigin: "server-receipt"` marker is present and all canonical evidence fields still match. Arbitrary/tampered digests remain rejected.
+- Added six review-snapshot tampering regressions plus recovery of a pending server-receipt review with the pre-normalization digest. Updated the HTTP smoke to reconcile the canonical decision response with persisted confidence rather than requiring every valid approval to increase a confidence already at its ceiling.
+- Added a genuine process-restart smoke: stage evidence, stop the server, restart with the same `STATE_DIR`, assert the exact pending review/item and canonical pipeline marker were restored, then approve that restored review.
+- **Validation:** PENDING exact-head typecheck, focused Hexis tests, server smoke and Unified project integration. GitHub Actions runs on the current head repeatedly finish without steps or downloadable logs (`BlobNotFound`); therefore they establish neither PASS nor a code-test failure. No progress/readiness/recall scores increased. `main` and the canonical Release ZIP remain untouched.
 
 ## WorkPass390 — fail closed on null Hexis HTTP envelopes (2026-10-26)
 
