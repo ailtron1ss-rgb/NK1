@@ -1,4 +1,11 @@
 ## [NK1][Hexis] WorkPass385 — align HMX bounds, validate relationships, bind replay receipts (2026-10-26)
+## [NK1][Hexis] WorkPass386 — compensate post-commit import failures (2026-10-26)
+
+- [FIX] Register each deterministic canonical memory ID as a rollback candidate before invoking the writer. If the writer commits a row and then throws before returning the inserted item, the compensation path still knows which ID to remove.
+- [SAFETY] Detect deterministic memory-ID collisions with existing unrelated canonical records before attempting an import write.
+- [TEST] Added fault injection where MemoryFabric successfully commits a row and the adapter then throws. The regression requires full canonical/semantic/temporal compensation and a successful same-stage retry on attempt 2.
+- [VALIDATION] Code and regression are committed; hosted execution remains blocked because GitHub Actions jobs on the current stack have been failing before runner allocation. No passing test is claimed.
+
 
 - [FIX] Aligned HMX import staging with the export adapter's 8 MiB UTF-8 document budget; normalized exports that expand beyond the same budget now fail explicitly instead of producing an artifact that the importer cannot stage.
 - [FIX] HMX memory/relationship arrays with record-level schema errors are omitted atomically. Relationship endpoints must be valid refs in the same export namespace, and optional properties must be objects.
