@@ -3419,8 +3419,25 @@ export class OrganismCore {
     private async observeSpineOnly(observation: OrganismObservation = {}, resultMode: 'full' | 'operational' = 'operational'): Promise<OrganismCycleResult> {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
+        let suppressInterruptedOutcome = false;
         if (observation.reward !== undefined || observation.success !== undefined) {
-            await this.feedbackSpineOnly(observation);
+            const blockedReceipt = this.feedbackReceiptBlocksSpineOutcome();
+            if (blockedReceipt) {
+                suppressInterruptedOutcome = true;
+                this.memorySubsystem.events.append(makeEvent('decision', this.persisted.state.tick, {
+                    source: 'feedback-recovery',
+                    disposition: 'discarded-interrupted-terminal-outcome',
+                    decisionId: blockedReceipt.decisionId,
+                    action: blockedReceipt.action,
+                    receiptTick: blockedReceipt.tick,
+                    suppliedReward: observation.reward ?? null,
+                    suppliedSuccess: observation.success ?? null,
+                    reason: blockedReceipt.reason,
+                } as any));
+                this.markPersistenceDirty();
+            } else {
+                await this.feedbackSpineOnly(observation);
+            }
         }
         const state = this.persisted.state;
         const previous: OrganismState = { ...state, needs: { ...state.needs } };
@@ -3868,7 +3885,7 @@ export class OrganismCore {
         };
         decision.semanticEvidence = buildDecisionSemanticEvidence({ stateBefore: previous, candidates, selected, worldContextKey });
         this.persisted.traces = [decision, ...this.persisted.traces].slice(0, 64);
-        if (observation.reward !== undefined || observation.success !== undefined) {
+        if (!suppressInterruptedOutcome && (observation.reward !== undefined || observation.success !== undefined)) {
             decision.outcome = { success: clamp(observation.success ?? (observation.reward == null ? .5 : .5 + observation.reward * .5)), reward: observation.reward, surprise: observation.surprise, notes: 'spine-only-inline-feedback', at: Date.now() };
         }
         const workspace: WorkspaceFrame = { tick: state.tick, broadcastId: `spine:${state.tick}`, selected: selected ? [selected.action] : [], content: { mode: 'SPINE_ONLY', b299LearningUpdates: this.developmentalNeural.causalPersonalityDevelopmentB299.snapshot().learningUpdates, b269Cycles: b269Snapshot.cycles, b269Prediction01: b269Prediction01, b269FiringRate01: b269Frame.firingRate01, b269Plasticity01: b269Frame.plasticity01 }, recurrentCycles: 1 };
@@ -3902,6 +3919,41 @@ export class OrganismCore {
         await this.feedbackDeliveryReceiptStore?.save(receipt);
         (this.persisted.system as any).feedbackDeliveryReceipt = receipt;
         this.feedbackDeliveryGuard.complete(token);
+    }
+
+    private feedbackReceiptBlocksSpineOutcome(): { tick: number | null; decisionId: string; action: ActionKind; reason: string } | null {
+        const raw: unknown = (this.persisted.system as any).feedbackDeliveryReceipt;
+        if (raw === undefined || raw === null) return null;
+        if (typeof raw !== 'object' || Array.isArray(raw)) {
+            return { tick: null, decisionId: 'unknown-feedback-decision', action: 'wait', reason: 'malformed persisted feedback receipt' };
+        }
+        const receipt = raw as Record<string, unknown>;
+        const tick = Number.isSafeInteger(receipt.tick) && (receipt.tick as number) >= 0 ? receipt.tick as number : null;
+        const decisionId = typeof receipt.decisionId === 'string' ? receipt.decisionId : 'unknown-feedback-decision';
+        const actions: readonly ActionKind[] = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'];
+        const validDecisionId = typeof receipt.decisionId === 'string'
+            && receipt.decisionId.length > 0
+            && receipt.decisionId.length <= 256
+            && receipt.decisionId.trim() === receipt.decisionId
+            && !Array.from(receipt.decisionId).some((character) => {
+                const code = character.charCodeAt(0);
+                return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+            });
+        const valid = receipt.version === 1
+            && tick !== null
+            && validDecisionId
+            && actions.includes(receipt.action as ActionKind)
+            && (receipt.status === 'in-progress' || receipt.status === 'completed');
+        const action = actions.includes(receipt.action as ActionKind) ? receipt.action as ActionKind : 'wait';
+        // Unknown/corrupt receipts are fail-closed for learning, but never stall the cognitive tick.
+        if (!valid) return { tick, decisionId: validDecisionId ? decisionId : 'unknown-feedback-decision', action, reason: 'malformed persisted feedback receipt' };
+        if ((tick as number) < this.persisted.state.tick) return null;
+        const reason = receipt.status === 'in-progress'
+            ? 'in-progress receipt prevents same-tick replay'
+            : (tick === this.persisted.state.tick
+                ? 'completed receipt prevents same-tick replay'
+                : 'receipt is ahead of organism tick; awaiting state continuity');
+        return { tick, decisionId, action, reason };
     }
 
     private async feedbackSpineOnly(outcome: {
