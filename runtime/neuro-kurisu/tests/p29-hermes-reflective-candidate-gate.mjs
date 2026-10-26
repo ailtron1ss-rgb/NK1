@@ -5,11 +5,12 @@ import {
   evaluateSkillLearnBenchTrial,
 } from '../src/organism/learning/SkillLearnBenchAdapter.ts';
 
-function trial(taskId, trialId, quality, safetyViolationCount = 0) {
+function trial(taskId, trialId, quality, safetyViolationCount = 0, taskFamily = 'general') {
   const good = quality === 'good';
   return evaluateSkillLearnBenchTrial({
     taskId,
     trialId,
+    taskFamily,
     verifierPassed: good,
     skill: {
       requiredCapabilityIds: ['inspect', 'reason', 'verify'],
@@ -227,4 +228,73 @@ const normalizedAggregate = aggregateSkillLearnBenchReports([
 assert.equal(normalizedAggregate.taskCount, 1);
 assert.equal(normalizedAggregate.byTask[0].taskId, 'task-a');
 
-console.log('P29_HERMES_REFLECTIVE_CANDIDATE_GATE=PASS pairedValidation=true untouchedHoldout=true safetyIsHardGate=true emptyRubricsRejected=true');
+// Overall success can still look acceptable while a whole task family fails.
+// The candidate improves memory across 9 tasks and raises trajectory/skill scores
+// in tool-use and transfer, but those two families fail the independent verifier.
+// A family-aware promotion gate must deny it despite positive aggregate gain.
+function withVerifiedSuccess(report, passed) {
+  return { ...report, taskSuccess: { passed, passRate: passed ? 1 : 0 } };
+}
+const familyBaseline = {
+  validation: [
+    ...Array.from({ length: 9 }, (_, i) => trial('memory-v-' + i, 'v1', 'weak', 0, 'memory')),
+    trial('tool-v', 'v1', 'weak', 0, 'tool-use'),
+    trial('transfer-v', 'v1', 'weak', 0, 'transfer'),
+  ],
+  holdout: [
+    trial('memory-h', 'h1', 'weak', 0, 'memory'),
+    trial('tool-h', 'h1', 'weak', 0, 'tool-use'),
+    trial('transfer-h', 'h1', 'weak', 0, 'transfer'),
+  ],
+};
+const familyCandidate = {
+  validation: [
+    ...Array.from({ length: 9 }, (_, i) => trial('memory-v-' + i, 'v1', 'good', 0, 'memory')),
+    withVerifiedSuccess(trial('tool-v', 'v1', 'good', 0, 'tool-use'), false),
+    withVerifiedSuccess(trial('transfer-v', 'v1', 'good', 0, 'transfer'), false),
+  ],
+  holdout: familyBaseline.holdout.map((report) => ({ ...report })),
+};
+const familyGate = evaluateSkillLearnBenchCandidate(familyBaseline, familyCandidate, {
+  requiredTaskFamilies: ['memory', 'tool-use', 'transfer'],
+});
+assert.ok(familyGate.validationGain01 > 0.005, 'overall composite gain remains positive');
+assert.ok(familyGate.validationTaskSuccess01 >= 0.8,
+  'the overall success average clears the global floor in this adversarial fixture');
+assert.equal(familyGate.taskFamilyCoverage01, 1, 'every requested family has matched validation and holdout evidence');
+assert.equal(familyGate.eligible, false, 'a family-local failure must block promotion');
+assert.ok(familyGate.reasons.includes('task-family-validation-success-below-threshold:tool-use'));
+assert.ok(familyGate.reasons.includes('task-family-validation-success-below-threshold:transfer'));
+assert.equal(familyGate.familyResults.find((row) => row.family === 'memory')?.validationTaskSuccess01, 1);
+assert.equal(familyGate.familyResults.find((row) => row.family === 'tool-use')?.validationTaskSuccess01, 0);
+assert.equal(familyGate.familyResults.find((row) => row.family === 'transfer')?.validationTaskSuccess01, 0);
+
+// Missing family provenance must not be guessed from names or filled by aggregate averages.
+const withoutFamily = (reports) => reports.map(({ taskFamily, ...report }) => report);
+const missingFamilyGate = evaluateSkillLearnBenchCandidate(
+  {
+    validation: withoutFamily(baseline.validation),
+    holdout: withoutFamily(baseline.holdout),
+  },
+  {
+    validation: withoutFamily(improved.validation),
+    holdout: withoutFamily(improved.holdout),
+  },
+);
+assert.equal(missingFamilyGate.eligible, false);
+assert.ok(missingFamilyGate.reasons.includes('task-family-evidence-missing'));
+assert.ok(missingFamilyGate.taskFamilyCoverage01 < 1);
+
+// Family identity cannot drift between baseline and candidate for the same paired trial.
+assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, {
+  validation: [{ ...improved.validation[0], taskFamily: 'tool-use' }, improved.validation[1]],
+  holdout: improved.holdout,
+}), /candidate-validation-task-family-mismatch/);
+assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
+  requiredTaskFamilies: ['memory', 'memory'],
+}), /candidate-required-task-families-duplicate/);
+assert.equal(accepted.taskFamilyCoverage01, 1);
+assert.equal(accepted.familyResults[0].family, 'general');
+assert.equal(accepted.familyResults[0].validationTaskSuccess01, 1);
+
+console.log('P29_HERMES_REFLECTIVE_CANDIDATE_GATE=PASS pairedValidation=true untouchedHoldout=true familyCoverage=true perFamilyPromotionGate=true safetyIsHardGate=true emptyRubricsRejected=true');
