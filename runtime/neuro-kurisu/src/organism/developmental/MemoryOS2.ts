@@ -59,6 +59,11 @@ retrievalCount:number;
 semanticVector:number[];
 residencyTier?: MemoryResidencyTier;
 }
+export type MemorySignalRollbackSnapshot = Pick<MemoryItem2,
+  'confidence' | 'sourceAuthority01' | 'evidenceSources' | 'evidenceLineageKeys' |
+  'lastAccessAt' | 'temperature01' | 'revisionHistory'
+>;
+
 export type MemoryQueryIntent='episodic'|'procedural'|'identity'|'goal'|'causal'|'factual'|'general';
 /** Lightweight bilingual intent detection; type preference supplements, never replaces, evidence ranking. */
 export function detectMemoryQueryIntent(query:string):MemoryQueryIntent{
@@ -1004,6 +1009,49 @@ export class MemoryOS2{
    m.context=mergeMemoContext(m.context,patch);
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    return structuredClone(m.context??{});
+ }
+ restoreSignalsForCompensation(
+  id:string,
+  snapshot:MemorySignalRollbackSnapshot,
+  expectedCurrent:MemorySignalRollbackSnapshot,
+) {
+  const m=this.state.items.find(x=>x.id===id);
+  if(!m)throw new Error('memory-signal-compensation-target-missing');
+
+  // Compensation may restore prior authority only when the exact signal values
+  // produced by the failed transaction are still present. Never overwrite a later
+  // independent update with a stale rollback snapshot.
+  const currentCore={
+   confidence:m.confidence,
+   sourceAuthority01:m.sourceAuthority01,
+   evidenceSources:m.evidenceSources,
+   evidenceLineageKeys:m.evidenceLineageKeys,
+  };
+  const expectedCore={
+   confidence:expectedCurrent.confidence,
+   sourceAuthority01:expectedCurrent.sourceAuthority01,
+   evidenceSources:expectedCurrent.evidenceSources,
+   evidenceLineageKeys:expectedCurrent.evidenceLineageKeys,
+  };
+  if(JSON.stringify(currentCore)!==JSON.stringify(expectedCore)) {
+   throw new Error('memory-signal-compensation-conflict');
+  }
+
+  const before=estimateMemoryBytes(m);
+  m.confidence=snapshot.confidence;
+  if(snapshot.sourceAuthority01===undefined)delete m.sourceAuthority01;
+  else m.sourceAuthority01=snapshot.sourceAuthority01;
+  if(snapshot.evidenceSources===undefined)delete m.evidenceSources;
+  else m.evidenceSources=structuredClone(snapshot.evidenceSources);
+  if(snapshot.evidenceLineageKeys===undefined)delete m.evidenceLineageKeys;
+  else m.evidenceLineageKeys=[...snapshot.evidenceLineageKeys];
+  m.lastAccessAt=snapshot.lastAccessAt;
+  m.temperature01=snapshot.temperature01;
+  m.revisionHistory=structuredClone(snapshot.revisionHistory);
+  this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
+  // Count compensation as activity; the canonical lifecycle journal retains the rollback event.
+  this.state.reconsolidations++;
+  return structuredClone(m);
  }
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'|'evidenceSources'|'sourceAuthority01'>>, reason='reconsolidation') {
    const m=this.state.items.find(x=>x.id===id); if(!m) return null;

@@ -1,7 +1,7 @@
 import type { OrganismEvent } from './EventSourcing.ts';
 import { EventLog, makeEvent } from './EventSourcing.ts';
 import { createHash } from 'node:crypto';
-import { MemoryOS2, type MemoryItem2, type MemoryOSState2, type MemoryTemporalQueryOptions, type SemanticIndexMaintenanceResult } from '../developmental/MemoryOS2.ts';
+import { MemoryOS2, type MemoryItem2, type MemoryOSState2, type MemorySignalRollbackSnapshot, type MemoryTemporalQueryOptions, type SemanticIndexMaintenanceResult } from '../developmental/MemoryOS2.ts';
 import { MultiTimescaleMemory, type MemoryRecord } from './MultiTimescaleMemory.ts';
 import { MemorySubstrateCoordinator } from '../developmental/MemorySubstrateCoordinator.ts';
 import { UnifiedMemorySystem, type MemoryDevelopmentState } from '../developmental/UnifiedMemorySystem.ts';
@@ -12,12 +12,13 @@ import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type Memor
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
 
-export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
+export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'restore-signals'|'update-context'|'forget';
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean; forceDistinct?:boolean }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
+  | { action:'restore-signals'; id:string; snapshot:MemorySignalRollbackSnapshot; expectedCurrent:MemorySignalRollbackSnapshot; reason:string; commandId?:string; tick?:number }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
   | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number };
 
@@ -252,6 +253,18 @@ export class MemoryFabric {
         result=item; memoryId=item?.id;
         outcome=item?'applied':'noop';
         if(item)eventPayload={action,memoryId:item.id,fields:Object.keys(command.patch),reason:String(command.reason??'reconsolidation').slice(0,240),commandId:commandId||undefined};
+        break;
+      }
+      case 'restore-signals': {
+        const item=this.memoryOS.restoreSignalsForCompensation(command.id,command.snapshot,command.expectedCurrent);
+        result=item; memoryId=item.id; outcome='applied';
+        eventPayload={
+          action,
+          memoryId:item.id,
+          fields:['confidence','sourceAuthority01','evidenceSources','evidenceLineageKeys'],
+          reason:String(command.reason).slice(0,240),
+          commandId:commandId||undefined,
+        };
         break;
       }
       case 'update-context': {
@@ -542,7 +555,7 @@ export class MemoryFabric {
       if(!row||typeof row.commandId!=='string'||row.commandId.length===0||row.commandId.length>128||
         row.commandId!==row.commandId.trim()||/[\u0000-\u001f\u007f-\u009f]/.test(row.commandId)||
         typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||
-        !['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||
+        !['encode','revise-status','revise-content','update-signals','restore-signals','update-context','forget'].includes(row.action)||
         !['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||
         typeof row.at!=='number'||!Number.isFinite(row.at)||row.at<0||
         (row.memoryId!==undefined&&(typeof row.memoryId!=='string'||!row.memoryId||row.memoryId.length>256||/[\u0000-\u001f\u007f-\u009f]/.test(row.memoryId)))||
@@ -597,6 +610,23 @@ export class MemoryFabric {
 
   updateSignals(id:string, patch:Parameters<MemoryOS2['updateSignals']>[1], reason='reconsolidation', context:{tick?:number;commandId?:string}={}){
     return this.applyLifecycleCommand({action:'update-signals',id,patch,reason,...context}) as MemoryItem2|null;
+  }
+
+  /**
+   * Exact signal-state compensation for a failed multi-component transaction.
+   * This is not a normal confidence/authority update: it restores a prior canonical
+   * snapshot only if the expected post-mutation signal state still matches.
+   */
+  restoreSignalsForCompensation(
+    id:string,
+    snapshot:MemorySignalRollbackSnapshot,
+    expectedCurrent:MemorySignalRollbackSnapshot,
+    reason:string,
+    context:{tick?:number;commandId?:string}={},
+  ) {
+    return this.applyLifecycleCommand({
+      action:'restore-signals',id,snapshot,expectedCurrent,reason,...context,
+    }) as MemoryItem2;
   }
 
   updateContext(id:string, patch:Record<string,string|undefined>, context:{tick?:number;commandId?:string}={}){

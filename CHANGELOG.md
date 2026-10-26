@@ -2598,3 +2598,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [TEST] Added runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs covering zero storage calls, receipt cloning, nested-data isolation, and fail-closed handling of pending stages.
 - [VALIDATION] The regression test has been added but has not yet been executed in a runtime; CI/typecheck status remains unverified until GitHub Actions runs on the resulting branch head.
 
+
+## [NK1][Hexis] WorkPass430 — restore trust signals after compensated HMX failure (2026-10-26)
+
+- [FIX] Track the pre-apply signal snapshot for existing imported memories when the HMX authority cap lowers confidence, source authority, or external evidence authority.
+- [INTEGRATION] Add an explicit MemoryFabric compensation command backed by MemoryOS2; it restores the previous canonical signal snapshot only when the current signal fields still match the failed transaction's expected post-update state.
+- [ROLLBACK] On downstream failure, restore the prior confidence, authority, evidence trail/lineage, access temperature and item revision history alongside the existing status, graph, and temporal compensation.
+- [REGRESSION] Add fault injection after trust reconciliation and a subsequent row insert; assert that existing trust state is restored, the new row is removed, and the accepted HMX stage remains retryable. Also verify the compensation receipt survives MemoryFabric snapshot restore.
+- [VALIDATION] Source, integration test and CHANGELOG are committed below; exact-head runtime/typecheck/Actions execution is still required and is not claimed as PASS.

@@ -959,6 +959,119 @@ const afterSuccessfulRetry = failedApplyRuntime.fabric.canonicalSnapshot().items
 assert.equal(afterSuccessfulRetry?.id, beforeInjectedFailure?.id);
 assert.equal(afterSuccessfulRetry?.epistemicStatus, 'quarantined');
 
+// A failed HMX import must restore pre-existing memory confidence and provenance signals.
+const signalRollbackRuntime = new MemorySubsystemRuntime();
+const signalRollbackHexis = new HexisAdaptationFabric();
+let failTemporalProjection = false;
+const failingTemporalLedger = new Proxy(signalRollbackHexis, {
+  get(target, property) {
+    if (property === 'recordTemporalAssertion') {
+      return (...args) => {
+        if (failTemporalProjection) throw new Error('injected-hmx-temporal-ledger-failure');
+        return target.recordTemporalAssertion(...args);
+      };
+    }
+    const value = Reflect.get(target, property, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  },
+});
+const signalRollbackProjector = new HexisCanonicalMemoryProjector(
+  signalRollbackRuntime.fabric,
+  signalRollbackRuntime.semanticMemory,
+  failingTemporalLedger,
+);
+signalRollbackHexis.bindCanonicalMemoryApply(candidate => signalRollbackProjector.apply(candidate));
+const seedSignalExportId = 'exp_0000000000009201';
+const signalRollbackContent = 'Pre-existing imported memory must recover its exact trust snapshot.';
+const seedSignalStage = signalRollbackHexis.stageHmx({
+  document: makeHmxDocument(seedSignalExportId, {
+    memories: [{
+      ref: seedSignalExportId + ':memory-existing',
+      type: 'semantic',
+      content: signalRollbackContent,
+      status: 'active',
+      trust_level: 0.95,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(signalRollbackHexis.decideHmx(seedSignalStage.stagingId, 'accept')?.status, 'accepted');
+assert.equal(signalRollbackHexis.decideHmx(seedSignalStage.stagingId, 'apply')?.status, 'applied');
+const seededSignalMemory = signalRollbackRuntime.fabric.canonicalSnapshot().items.find(item =>
+  item.source.startsWith('hexis:') && item.content === signalRollbackContent,
+);
+assert(seededSignalMemory, 'the first accepted HMX import must create the canonical memory');
+assert.equal(seededSignalMemory.confidence, 0.65, 'external trust must start under the import authority cap');
+assert.equal(seededSignalMemory.sourceAuthority01, 0.65);
+assert(seededSignalMemory.evidenceSources?.some(source => source.sourceAuthority01 === 0.65));
+
+signalRollbackRuntime.fabric.updateSignals(
+  seededSignalMemory.id,
+  { confidence: 0.95 },
+  'seed-legacy-overconfidence-for-rollback-regression',
+  { commandId: 'test-hmx-signal-rollback-seed-confidence' },
+);
+const signalSnapshot = memory => ({
+  confidence: memory.confidence,
+  sourceAuthority01: memory.sourceAuthority01,
+  evidenceSources: memory.evidenceSources === undefined ? undefined : structuredClone(memory.evidenceSources),
+  evidenceLineageKeys: memory.evidenceLineageKeys === undefined ? undefined : [...memory.evidenceLineageKeys],
+  lastAccessAt: memory.lastAccessAt,
+  temperature01: memory.temperature01,
+  revisionHistory: structuredClone(memory.revisionHistory ?? []),
+});
+const beforeSignalRollback = signalSnapshot(
+  signalRollbackRuntime.fabric.canonicalSnapshot().items.find(item => item.id === seededSignalMemory.id),
+);
+assert.equal(beforeSignalRollback.confidence, 0.95, 'fixture models older over-confident persisted state');
+const failedSignalExportId = 'exp_0000000000009202';
+const failedSignalStage = signalRollbackHexis.stageHmx({
+  document: makeHmxDocument(failedSignalExportId, {
+    memories: [
+      {
+        ref: failedSignalExportId + ':memory-existing',
+        type: 'semantic',
+        content: signalRollbackContent,
+        status: 'active',
+        trust_level: 0.45,
+      },
+      {
+        ref: failedSignalExportId + ':memory-new',
+        type: 'semantic',
+        content: 'This second row forces temporal projection after trust reconciliation.',
+        status: 'active',
+        trust_level: 0.45,
+      },
+    ],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(signalRollbackHexis.decideHmx(failedSignalStage.stagingId, 'accept')?.status, 'accepted');
+failTemporalProjection = true;
+assert.throws(
+  () => signalRollbackHexis.decideHmx(failedSignalStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-hmx-temporal-ledger-failure/,
+);
+const restoredSignalMemory = signalRollbackRuntime.fabric.canonicalSnapshot().items.find(item =>
+  item.id === seededSignalMemory.id,
+);
+assert(restoredSignalMemory, 'the previously persisted memory must remain present after compensation');
+assert.deepEqual(signalSnapshot(restoredSignalMemory), beforeSignalRollback,
+  'failed downstream projection must restore confidence, authority, evidence trail, access state, and revision history');
+assert.equal(
+  signalRollbackRuntime.fabric.canonicalSnapshot().items.some(item => item.content === 'This second row forces temporal projection after trust reconciliation.'),
+  false,
+  'the newly inserted row in the failed batch must also be rolled back',
+);
+assert.equal(signalRollbackHexis.getHmxStage(failedSignalStage.stagingId)?.status, 'accepted',
+  'the compensated HMX stage remains retryable and is not marked applied');
+const postCompensationMemoryFabricSnapshot = signalRollbackRuntime.fabric.snapshot();
+signalRollbackRuntime.fabric.restore(postCompensationMemoryFabricSnapshot);
+assert.equal(signalRollbackRuntime.fabric.inspect().mutationReceiptJournal.corrupt, false,
+  'the new compensating lifecycle receipt must survive snapshot/restore validation');
+
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
   const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
