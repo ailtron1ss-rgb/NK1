@@ -53,5 +53,7 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p23:learning-process-supervisor
       - name: Test host-owned evaluator executable authority paths
         run: npm --prefix runtime/neuro-kurisu run test:workpass243:host-owned-independent-evaluation-services
+      - name: Test evaluator-config authority identity and state isolation
+        run: node --test runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs
       - name: Type-check the runtime
         run: npm --prefix runtime/neuro-kurisu run typecheck
