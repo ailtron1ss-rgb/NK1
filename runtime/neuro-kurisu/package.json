@@ -1772,7 +1772,8 @@
     "test:workpass292:evidence-lanes": "node --experimental-strip-types tests/workpass292-evidence-lanes.mjs",
     "test:workpass291:payload-budget": "node --experimental-strip-types tests/workpass291-reflective-payload-budget.mjs",
     "test:workpass293:p23-revision": "node --experimental-strip-types tests/workpass172-compound-revision-coordinator.mjs && node --experimental-strip-types tests/workpass292-evidence-lanes.mjs && node --experimental-strip-types tests/workpass293-autonomous-p23-revision.mjs && node --experimental-strip-types tests/p23-revision-plan-holdout-isolation.mjs && node --experimental-strip-types tests/p23-local-model-skill-revision-generator.mjs && node --experimental-strip-types tests/p23-verified-skill-revision-gate.mjs",
-    "test:workpass294:correlated-postcondition": "node --experimental-strip-types tests/workpass294-correlated-postcondition.mjs"
+    "test:workpass294:correlated-postcondition": "node --experimental-strip-types tests/workpass294-correlated-postcondition.mjs",
+    "test:p26:learning-input-integrity": "node --experimental-strip-types tests/p26-learning-input-integrity.mjs"
   },
   "devDependencies": {
     "@types/node": "22.20.4"
