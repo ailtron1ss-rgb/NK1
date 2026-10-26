@@ -128,19 +128,19 @@ export function resolveUnifiedCognitiveWorkPolicy(
   const resources=section(root,'resources'), world=section(root,'world');
   const prediction=section(root,'prediction');
   const m = {
-    readiness:own(coupling,'actionReadiness01'),
-    grounding:own(coupling,'predictionGrounding01'),
-    unknown:own(provenance,'unknown01'),
-    evidence:own(provenance,'evidenceCoverage01'),
-    battery:own(resources,'battery01'),
-    compute:own(resources,'computeCapacity01'),
-    efficiency:own(resources,'efficiency01'),
-    scarcity:own(resources,'scarcity01'),
-    ram:own(resources,'ramPressure01'),
-    thermal:own(resources,'thermal01'),
-    conflict:own(world,'conflict01'),
-    error:own(prediction,'error01'),
-    priority:own(prediction,'priority01'),
+    readiness:own(coupling,'actionReadiness01') as number,
+    grounding:own(coupling,'predictionGrounding01') as number,
+    unknown:own(provenance,'unknown01') as number,
+    evidence:own(provenance,'evidenceCoverage01') as number,
+    battery:own(resources,'battery01') as number,
+    compute:own(resources,'computeCapacity01') as number,
+    efficiency:own(resources,'efficiency01') as number,
+    scarcity:own(resources,'scarcity01') as number,
+    ram:own(resources,'ramPressure01') as number,
+    thermal:own(resources,'thermal01') as number,
+    conflict:own(world,'conflict01') as number,
+    error:own(prediction,'error01') as number,
+    priority:own(prediction,'priority01') as number,
   };
   if (Object.values(m).some(value =>
         typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) ||

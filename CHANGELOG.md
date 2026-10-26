@@ -1,3 +1,10 @@
+# WorkPass357 — close substrate policy type boundary (2026-10-26)
+
+- [FIXED] CI found TS18046 errors because validated properties remained typed as unknown after Object.values checks; make the policy's local post-read representation explicit numeric values while retaining runtime rejection of non-numeric/out-of-range data.
+- [VALIDATION] Previous WorkPass356 exact-head run correctly failed at runtime typecheck; downstream tests were skipped. Fresh exact-head Actions validation is required.
+
+---
+
 # WorkPass356 — wire the unified substrate into the live organism runtime (2026-10-26)
 
 - [INTEGRATED] Connect the cross-system substrate to the actual OrganismRuntime cycle using Core state, world snapshot, prediction debt, device telemetry and cognitive resource allocation.
