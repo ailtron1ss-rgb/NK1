@@ -1,3 +1,8 @@
+## [NK1][Hexis] WorkPass402 — fail closed when canonical belief projection is unavailable (2026-10-26)
+
+- [GUARD] A belief revision now throws before committing local Hexis belief/audit state if its bound canonical projector cannot resolve the memory. This prevents orphan belief records in both composition roots.
+- [TEST] Added regression for unavailable canonical targets, asserting no belief or audit is committed.
+
 ## [NK1][Hexis] WorkPass399 — tighten review replay typing and candidate idempotency checks (2026-10-26)
 
 - [FIX] Made canonical-memory lookup map tuple types explicit and only forwards correction text for a correction decision; approval/forget cannot accidentally attach an unrelated correction string.
