@@ -3,10 +3,10 @@
   "snapshotDate": "2026-10-26",
   "project": "Neuro Kurisu / NK1",
   "sourceOfTruth": "https://github.com/ailtron1ss-rgb/NK1",
-  "sourceBranchAtSnapshot": "fix/cognitive-interrupt-severity-normalization-2026-10-25",
-  "sourceHeadAtSnapshot": "f23c9aa4f5030987c2741808e930e7e100da077b",
+  "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
+  "sourceHeadAtSnapshot": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Percentages describe each lane against the repository's stated goals; they must be revised when new source/CI evidence arrives.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Percentages describe each lane against the repository's stated goals; automated-validation percentages describe coverage and do not imply a pass on the current HEAD. This snapshot is anchored to source head 1755f129afc9e3eb953bdd96461e0a684b42f1a3; subsequent documentation-only commits do not change the scored code.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -110,13 +110,14 @@
       "id": "continual-learning",
       "name": "Обучение, causal replay, перенос и устойчивость к забыванию",
       "weightPercent": 10,
-      "implementationPercent": 72,
-      "automatedValidationPercent": 84,
+      "implementationPercent": 74,
+      "automatedValidationPercent": 86,
       "fieldEvidencePercent": 18,
       "releaseReadinessPercent": 38,
       "blockers": [
-        "Replay uplift измерен на синтетическом proxy, не на реальных пользовательских задачах",
-        "Семейства tool-use и transfer в существующем proxy-сравнении показывали gain 0"
+        "Earlier proxy gain remains memory=1.0 while tool-use and transfer gain were 0; family-aware candidate gating is measurement integrity, not an empirical uplift",
+        "New manifest-family-to-run-binding/ledger checks require a fresh held-out experiment with independently verified outcomes",
+        "Need same-task/same-seed comparisons for replay strategies with forgetting, retention, transfer, latency and memory metrics"
       ],
       "evidence": [
         "runtime/neuro-kurisu/src/organism/learning/P26TrueLearningEngine.ts",
@@ -129,13 +130,14 @@
       "id": "skill-evolution",
       "name": "Hermes-style рефлексия, кандидаты навыков и защищённое продвижение",
       "weightPercent": 10,
-      "implementationPercent": 78,
-      "automatedValidationPercent": 88,
+      "implementationPercent": 81,
+      "automatedValidationPercent": 91,
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "Прирост ещё не доказан на независимом реальном held-out benchmark",
-        "Проверить семейную сегментацию отчётов на точном HEAD"
+        "Family-aware evaluation and signed family promotion policy are now wired, but do not yet prove improved generalization on external held-out tasks",
+        "Task-family labels must continue to be bound to the trusted manifest and verified execution evidence, not inferred from task IDs or candidate reports",
+        "Need independently measured tool-use/transfer improvement and regression resistance before raising learning-effectiveness scores"
       ],
       "evidence": [
         "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts",
@@ -240,29 +242,42 @@
     "currentBaseHead": "f23c9aa4f5030987c2741808e930e7e100da077b",
     "statuses": [
       {
-        "name": "WorkPass292 verified experience lanes",
-        "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700184",
-        "scopeNote": "Success on this exact base SHA; narrow workflow only."
-      },
-      {
-        "name": "WorkPass294 correlated external postconditions",
-        "status": "in_progress",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700164",
-        "scopeNote": "Not yet a pass or failure at snapshot time."
-      },
-      {
         "name": "P26 Learning Validation",
-        "status": "queued",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700299",
-        "scopeNote": "Must rerun on the new family-evaluation head."
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935755",
+        "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
+        "scopeNote": "Exact source head at this snapshot; TypeScript and P26 learning regression passed."
+      },
+      {
+        "name": "WorkPass108 paired evidence identity and verified promotion gate",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935759",
+        "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
+        "scopeNote": "Verified promotion/evidence identity suite passed on the same source head."
+      },
+      {
+        "name": "WorkPass110 continual learning metrics",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935746",
+        "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
+        "scopeNote": "Full WorkPass110 metrics and runtime typecheck passed, including WorkPass203 manifest-family ledger tamper regression."
       },
       {
         "name": "Unified project integration suite",
-        "status": "queued",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700338",
-        "scopeNote": "Must validate clean install/build on the new exact head."
+        "status": "in_progress",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935805",
+        "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
+        "scopeNote": "Progress ledger tests/reporter and integration contracts are running; no final conclusion is recorded yet."
       }
     ]
+  },
+  "learningScorecard": {
+    "p23SymbolicCorePercent": 61,
+    "evidenceGroundedLearningMaturityPercent": 36,
+    "lifelongLearningRoadmapPercent": 30,
+    "overallLearningEngineeringMaturity100": 57,
+    "measuredUpliftClaimed": false,
+    "source": "docs/P23_CONTINUAL_LEARNING_SCORECARD_2026-10-20.md — WorkPass333 score update",
+    "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   }
 }
