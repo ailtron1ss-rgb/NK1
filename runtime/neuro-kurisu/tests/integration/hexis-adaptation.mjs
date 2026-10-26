@@ -546,5 +546,49 @@ assert.equal(rollbackHexisFabric.snapshot().temporal.length, 2,
   'successful retry must materialize temporal assertions once');
 
 
+// Fault injection after canonical writes: belief-state failure must roll back both
+// memory/graph writes and the temporal + belief ledgers as one HMX apply transaction.
+const beliefRollbackRuntime = new MemorySubsystemRuntime();
+const beliefRollbackHexis = new HexisAdaptationFabric();
+const originalRegisterBelief = beliefRollbackHexis.registerOrUpdateBelief.bind(beliefRollbackHexis);
+let beliefRegistrationAttempts = 0;
+beliefRollbackHexis.registerOrUpdateBelief = input => {
+  beliefRegistrationAttempts += 1;
+  if (beliefRegistrationAttempts === 2) throw new Error('injected-hmx-belief-registration-failure');
+  return originalRegisterBelief(input);
+};
+const beliefRollbackProjector = new HexisCanonicalMemoryProjector(
+  beliefRollbackRuntime.fabric, beliefRollbackRuntime.semanticMemory, beliefRollbackHexis,
+);
+beliefRollbackHexis.bindCanonicalMemoryApply(candidate => beliefRollbackProjector.apply(candidate));
+const beliefRollbackStage = beliefRollbackHexis.stageHmx({
+  document: normalizedNk1Export, intent: 'port', strategy: 'additive',
+});
+assert.deepEqual(beliefRollbackStage.conflicts, []);
+assert.equal(beliefRollbackHexis.decideHmx(beliefRollbackStage.stagingId, 'accept')?.status, 'accepted');
+assert.throws(
+  () => beliefRollbackHexis.decideHmx(beliefRollbackStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed/,
+);
+assert.equal(beliefRollbackHexis.getHmxStage(beliefRollbackStage.stagingId)?.status, 'accepted',
+  'a failed belief registration must leave the HMX stage retryable');
+assert.equal(beliefRollbackRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 0,
+  'canonical memories created before the belief failure must be compensated');
+assert.equal(beliefRollbackRuntime.semanticMemory.snapshot().nodes.length, 0,
+  'semantic graph projection must roll back when the belief ledger fails');
+assert.equal(beliefRollbackHexis.snapshot().temporal.length, 0,
+  'temporal assertions must roll back when the belief ledger fails');
+assert.equal(beliefRollbackHexis.snapshot().beliefs.length, 0,
+  'a partially seeded belief set must roll back atomically');
+beliefRollbackHexis.registerOrUpdateBelief = originalRegisterBelief;
+const beliefRetry = beliefRollbackHexis.decideHmx(beliefRollbackStage.stagingId, 'apply');
+assert.equal(beliefRetry?.status, 'applied');
+assert.equal(beliefRetry?.application?.attempt, 2);
+assert.equal(beliefRollbackHexis.snapshot().beliefs.length, 2,
+  'retry must seed each belief exactly once after a compensated failure');
+assert.equal(beliefRollbackHexis.snapshot().temporal.length, 2,
+  'retry must materialize each temporal assertion exactly once');
+
+
 console.log('HEXIS_ADAPTATION_PASS');
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
