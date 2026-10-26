@@ -8,6 +8,10 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
 // WorkPass346: stable event IDs bind the complete causal envelope, not only stage/source/tick.
 {
   const fabric=new CognitiveEventFabric(128);
+  assert.equal(new CognitiveEventFabric(Number.NaN).snapshot().capacity,512,
+    'NaN capacity must fall back to the bounded default');
+  assert.equal(new CognitiveEventFabric(Number.POSITIVE_INFINITY).snapshot().capacity,512,
+    'infinite capacity must fall back to the bounded default');
   const base={
     id:'cef:test:event-identity-1',
     tick:7,
@@ -21,6 +25,26 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
   };
   const first=fabric.append(base);
   const initialTotal=fabric.snapshot().total;
+  assert.throws(()=>fabric.append({...base,id:'cef:test:control\ncharacter'}),/invalid-cognitive-event-id/,
+    'control characters in supplied event IDs must be rejected');
+  assert.equal(fabric.snapshot().total,initialTotal);
+
+  const invalidClocks=[
+    {id:'cef:test:tick-nan',tick:Number.NaN,at:701,error:/invalid-cognitive-event-tick/},
+    {id:'cef:test:tick-negative',tick:-1,at:701,error:/invalid-cognitive-event-tick/},
+    {id:'cef:test:tick-fractional',tick:7.5,at:701,error:/invalid-cognitive-event-tick/},
+    {id:'cef:test:tick-unsafe',tick:Number.MAX_SAFE_INTEGER+1,at:701,error:/invalid-cognitive-event-tick/},
+    {id:'cef:test:at-nan',tick:7,at:Number.NaN,error:/invalid-cognitive-event-timestamp/},
+    {id:'cef:test:at-infinite',tick:7,at:Number.POSITIVE_INFINITY,error:/invalid-cognitive-event-timestamp/},
+    {id:'cef:test:at-negative',tick:7,at:-1,error:/invalid-cognitive-event-timestamp/},
+  ];
+  for(const invalid of invalidClocks){
+    assert.throws(()=>fabric.append({...base,id:invalid.id,tick:invalid.tick,at:invalid.at}),invalid.error,
+      'invalid event clocks must fail before mutating the ledger');
+    assert.equal(fabric.snapshot().total,initialTotal);
+    assert.equal(fabric.getById(invalid.id),null);
+  }
+
   const keyOrderReplay=fabric.append({...base,payload:{outcome:{status:'executed'},ok:true}});
   assert.equal(keyOrderReplay.id,first.id,'key-order-equivalent JSON should replay idempotently');
   assert.equal(fabric.snapshot().total,initialTotal,'exact replay must not append another event');
@@ -76,6 +100,55 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
   assert.equal(getterExecuted,false,'accessor payloads must not execute getters');
   assert.deepEqual(safeAccessorEvent.payload,{});
   assert.equal(fabric.getById('cef:test:accessor')?.payload.secret,undefined);
+
+  let arrayGetterExecuted=false;
+  const accessorArray=[];
+  Object.defineProperty(accessorArray,'0',{enumerable:true,configurable:true,get(){arrayGetterExecuted=true;throw new Error('array getter must not run');}});
+  accessorArray.length=1;
+  const safeArrayEvent=fabric.append({...base,id:'cef:test:array-accessor',tick:12,at:1201,payload:{items:accessorArray}});
+  assert.equal(arrayGetterExecuted,false,'array index accessors must not execute while cloning');
+  assert.deepEqual(safeArrayEvent.payload,{items:[null]});
+
+  let overriddenDateCalls=0;
+  const inputDate=new Date('2026-01-02T03:04:05.000Z');
+  inputDate.getTime=()=>{overriddenDateCalls++;throw new Error('overridden Date method must not run');};
+  const dateEvent=fabric.append({...base,id:'cef:test:date-override',tick:13,at:1202,payload:{capturedAt:inputDate}});
+  assert.equal(overriddenDateCalls,0,'Date normalization must use the built-in date slot');
+  assert.equal(dateEvent.payload.capturedAt,'2026-01-02T03:04:05.000Z');
+
+  const tooDeep={value:true};
+  let deepCursor=tooDeep;
+  for(let index=0;index<40;index++) { deepCursor.next={}; deepCursor=deepCursor.next; }
+  const beforeDeepPayload=fabric.snapshot().total;
+  assert.throws(()=>fabric.append({...base,id:'cef:test:depth-limit',tick:14,payload:tooDeep}),/cognitive-event-payload-depth-limit/);
+  assert.equal(fabric.snapshot().total,beforeDeepPayload);
+
+  const oversizedArray=new Array(16385);
+  const beforeOversizedArray=fabric.snapshot().total;
+  assert.throws(()=>fabric.append({...base,id:'cef:test:array-limit',tick:15,payload:{items:oversizedArray}}),/cognitive-event-payload-array-limit/);
+  assert.equal(fabric.snapshot().total,beforeOversizedArray);
+
+  const oversizedObject={};
+  for(let index=0;index<8193;index++) oversizedObject[`k${index}`]=index;
+  const beforeOversizedObject=fabric.snapshot().total;
+  assert.throws(()=>fabric.append({...base,id:'cef:test:key-limit',tick:16,payload:oversizedObject}),/cognitive-event-payload-key-limit/);
+  assert.equal(fabric.snapshot().total,beforeOversizedObject);
+
+  // Malformed persisted evidence must not prevent recovery of healthy events.
+  const malformedPayload={}; malformedPayload.self=malformedPayload;
+  const healthyId=fabric.getById(base.id)?.id;
+  const restoreProbe=new CognitiveEventFabric(128);
+  assert.doesNotThrow(()=>restoreProbe.restore({
+    total:2,buffered:2,
+    recent:[
+      {id:'cef:test:malformed-restored',tick:20,at:2000,stage:'observation',source:'restore-probe',parentIds:[],external:false,confidence01:0.5,payload:malformedPayload},
+      {...base,payload:{safe:true}},
+    ],
+  }));
+  assert.equal(restoreProbe.getById('cef:test:malformed-restored'),null);
+  assert.equal(restoreProbe.getById(healthyId)?.payload.safe,undefined,
+    'the original healthy evidence payload remains unchanged');
+  assert.equal(restoreProbe.getById(base.id)?.payload.ok,true,'valid persisted events survive a malformed neighbor');
 
   // Receipt replay remains conflict-safe after persistence drops the bounded replay index.
   const receiptFabric=new CognitiveEventFabric(128);
