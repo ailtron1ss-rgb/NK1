@@ -363,8 +363,8 @@
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
     "codeCommit": "c39fd277fc2e5c79495a92df1d215171502539c0",
-    "testCommit": "f6ff13bb81276752e1500181ea83f9f75f57a657",
-    "codeTestHead": "f6ff13bb81276752e1500181ea83f9f75f57a657",
+    "testCommit": "19afcc0376e55b26511713776a09438bcc4a7e79",
+    "codeTestHead": "19afcc0376e55b26511713776a09438bcc4a7e79",
     "summary": "Make HMX validation and normalization robust against malformed JSON values that would otherwise be coerced through String/Number. Enforce typed memory metadata, safe intent/privacy comparisons, bounded refs, and null-return rather than throw for malformed memory projections.",
     "testsAdded": [
       "object-valued export_intent returns a schema issue without throwing",
@@ -373,7 +373,9 @@
       "object-valued memory type returns a schema issue without throwing",
       "object-valued source authority returns a schema issue without throwing",
       "oversized memory refs return a schema issue",
-      "normalizer returns null for malformed confidence metadata rather than coercion failure"
+      "normalizer returns null for malformed confidence metadata rather than coercion failure",
+      "malformed memory metadata produces visible conflicts and atomically omits the full memories section",
+      "a stage with malformed metadata cannot be accepted into canonical memory"
     ],
     "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
@@ -386,8 +388,8 @@
       "date": "2026-10-26",
       "branch": "hexis-remote-bridge-20261026",
       "codeCommit": "c39fd277fc2e5c79495a92df1d215171502539c0",
-      "testCommit": "f6ff13bb81276752e1500181ea83f9f75f57a657",
-      "codeTestHead": "f6ff13bb81276752e1500181ea83f9f75f57a657",
+      "testCommit": "19afcc0376e55b26511713776a09438bcc4a7e79",
+      "codeTestHead": "19afcc0376e55b26511713776a09438bcc4a7e79",
       "summary": "Make HMX validation and normalization robust against malformed JSON values that would otherwise be coerced through String/Number. Enforce typed memory metadata, safe intent/privacy comparisons, bounded refs, and null-return rather than throw for malformed memory projections.",
       "testsAdded": [
         "object-valued export_intent returns a schema issue without throwing",
@@ -396,7 +398,9 @@
         "object-valued memory type returns a schema issue without throwing",
         "object-valued source authority returns a schema issue without throwing",
         "oversized memory refs return a schema issue",
-        "normalizer returns null for malformed confidence metadata rather than coercion failure"
+        "normalizer returns null for malformed confidence metadata rather than coercion failure",
+        "malformed memory metadata produces visible conflicts and atomically omits the full memories section",
+        "a stage with malformed metadata cannot be accepted into canonical memory"
       ],
       "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
       "progressPercentagesChanged": false,
@@ -589,8 +593,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "f6ff13bb81276752e1500181ea83f9f75f57a657",
-  "branchHeadBeforeTrackerCommit": "f6ff13bb81276752e1500181ea83f9f75f57a657",
+  "latestUnverifiedCodeTestHead": "19afcc0376e55b26511713776a09438bcc4a7e79",
+  "branchHeadBeforeTrackerCommit": "19afcc0376e55b26511713776a09438bcc4a7e79",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -650,9 +654,9 @@
   "latestEngineeringCheckpoint": {
     "workpass": "WorkPass419",
     "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "f6ff13bb81276752e1500181ea83f9f75f57a657",
+    "codeTestHead": "19afcc0376e55b26511713776a09438bcc4a7e79",
     "validationStatus": "pending-exact-head-ci",
-    "summary": "Make HMX schema validation fail closed with structured issues rather than throwing on null-prototype object values; validate typed trust/metadata fields and reference bounds before any canonical memory import. Scores unchanged; main and canonical Release ZIP untouched.",
+    "summary": "Make HMX schema validation fail closed with structured issues rather than throwing on malformed JSON values; validate typed trust/metadata fields and reference bounds before canonical memory import, and prove malformed memory metadata cannot be accepted.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   },
