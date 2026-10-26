@@ -483,6 +483,40 @@ assert.equal(rollbackTemporalLedger.snapshot().assertions.length, 1,
 assert.equal(rollbackTemporalLedger.snapshot().beliefs.length, 1,
   'the retry must register exactly one belief projection');
 
+// Known HMX sections have strict array contracts and must fail before canonical storage is touched.
+let malformedKnownSectionStorageTouched = false;
+const noTouchMemoryFabric = {
+  canonicalSnapshot() { malformedKnownSectionStorageTouched = true; return { items: [] }; },
+  encode() { malformedKnownSectionStorageTouched = true; throw new Error('unexpected-encode'); },
+  revise() { malformedKnownSectionStorageTouched = true; throw new Error('unexpected-revise'); },
+  forgetById() { malformedKnownSectionStorageTouched = true; throw new Error('unexpected-forget'); },
+};
+const noTouchProjector = new HexisCanonicalMemoryProjector(noTouchMemoryFabric);
+for (const [field, value] of [
+  ['memories', 'this must not be silently interpreted as no memories'],
+  ['relationships', 'this must not be silently interpreted as no relationships'],
+]) {
+  const malformedSectionStage = {
+    ...stage,
+    status: 'accepted',
+    stagingId: 'stage-invalid-' + field + '-section',
+    digest: '',
+    lifecycleDigest: '',
+    applicationAttempts: 0,
+    application: undefined,
+    stagedSections: { [field]: value },
+  };
+  malformedSectionStage.digest = computeHmxStageDigest(malformedSectionStage);
+  refreshHmxStageLifecycleDigest(malformedSectionStage);
+  assert.throws(
+    () => noTouchProjector.apply(malformedSectionStage),
+    new RegExp('hmx-apply-known-section-must-be-array:' + field),
+    field + ' must obey its declared array contract',
+  );
+  assert.equal(malformedKnownSectionStorageTouched, false,
+    'malformed ' + field + ' sections must fail before canonical reads or writes');
+}
+
 // Non-array/object future HMX sections must not disappear from deferred-section accounting.
 const scalarDeferredStage = {
   ...stage,
