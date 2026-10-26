@@ -825,6 +825,7 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/peer/consult') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             try {
                 const result = await hexisRemotePeer.consult({
                     question: input.question,
@@ -846,12 +847,14 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/sync-memory') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisSyncMemoryProjection(Math.max(1, Math.min(256, Number(input.limit || 96))));
             await runtime.core.flush();
             return json(res, 200, { ok: true, ...result, hexis: runtime.core.hexisDiagnostics() });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/belief/revise') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             try {
                 const evidence = {
                     ref: input.evidence?.ref ? String(input.evidence.ref) : undefined,
@@ -896,6 +899,7 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/create') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisCreateLearningReview();
             await runtime.core.flush();
             return json(res, 200, { ok: true, review: result });
@@ -929,6 +933,7 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/retention/apply') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             try {
                 const result = await runtime.core.hexisApplyRetention(String(input.proposalId || ''), input.confirmed === true);
                 const status = result.ok ? 200 : (result.error === 'retention-explicit-confirmation-required' ? 403 : result.error === 'retention-proposal-not-found' ? 404 : 400);
@@ -983,6 +988,7 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/enqueue') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             try {
                 const result = runtime.core.hexisEnqueueOutbox({ idempotencyKey: String(input.idempotencyKey || ''), kind: String(input.kind || 'notify'), channel: String(input.channel || 'generic'), payload: input.payload });
                 await runtime.core.flush();
@@ -995,42 +1001,49 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/claim') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisClaimOutbox(String(input.id || ''));
             await runtime.core.flush();
             return json(res, 200, { ok: Boolean(result), result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/ack') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisAckOutbox(String(input.id || ''), input.published === true, input.error ? String(input.error) : undefined);
             await runtime.core.flush();
             return json(res, 200, { ok: Boolean(result), result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/reclaim') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisReclaimOutbox(Math.max(1000, Math.min(86400000, Number(input.maxAgeMs || 60000))));
             await runtime.core.flush();
             return json(res, 200, { ok: true, ...result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/policy') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisGrantConnectorPolicy({ connectorId: String(input.connectorId || ''), actionKind: String(input.actionKind || ''), contexts: Array.isArray(input.contexts) ? input.contexts.map(String) : ['chat'], allowAutonomous: Boolean(input.allowAutonomous), requiresApproval: input.requiresApproval !== false, allowedTargets: Array.isArray(input.allowedTargets) ? input.allowedTargets.map(String) : [], deniedTargets: Array.isArray(input.deniedTargets) ? input.deniedTargets.map(String) : [], maxPerWindow: input.maxPerWindow === undefined ? undefined : Number(input.maxPerWindow), windowMs: input.windowMs === undefined ? undefined : Number(input.windowMs), expiresAt: input.expiresAt === undefined ? undefined : Number(input.expiresAt) });
             await runtime.core.flush();
             return json(res, 200, { ok: true, policy: result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/policy/evaluate') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisEvaluateConnectorAction({ connectorId: String(input.connectorId || ''), actionKind: String(input.actionKind || ''), context: String(input.context || 'chat'), target: input.target === undefined ? undefined : String(input.target), confirmed: input.confirmed === true, autonomous: input.autonomous === true });
             await runtime.core.flush();
             return json(res, result.allowed ? 200 : 403, { ok: result.allowed, result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/policy/revoke') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const result = runtime.core.hexisRevokeConnectorPolicy(String(input.id || ''));
             await runtime.core.flush();
             return json(res, 200, { ok: result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/execution-plan') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             const requested = ['local', 'sandbox', 'remote', 'companion'].includes(String(input.requestedPlacement)) ? String(input.requestedPlacement) : undefined;
             const result = runtime.core.hexisPlanExecution({ actionKind: String(input.actionKind || 'tool.execute'), requestedPlacement: requested, risk01: Number(input.risk01 || 0), rationale: input.rationale ? String(input.rationale) : undefined, requiresApproval: input.requiresApproval === undefined ? undefined : Boolean(input.requiresApproval) });
             await runtime.core.flush();
