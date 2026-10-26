@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass417 — reconcile HMX rollback after post-write exceptions (2026-10-26)
+
+- [ATOMICITY] The canonical HMX projector now compares post-failure canonical memory with the pre-apply ID set and compensates newly inserted records belonging to the same export. This covers a writer/adapter that throws after MemoryFabric has committed but before the projector receives the new ID.
+- [REGRESSION] Added fault injection for that exact window; it asserts no imported memory/graph/temporal residue remains and that a second attempt succeeds exactly once.
+- [VALIDATION] Source and regression are committed; execution is not yet confirmed. The PR's Actions checks have previously failed before usable step logs were available.
+
 ## [NK1][Hexis] WorkPass417 — reject ambiguous native-reference aliases in HMX export (2026-10-26)
 
 - [INTEGRATION] Reference indexing no longer uses last-write-wins for colliding `id/ref/key/name/title` aliases; unresolved references cannot silently attach relationships, episode references or parent links to another record.
