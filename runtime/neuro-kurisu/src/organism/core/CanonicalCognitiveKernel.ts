@@ -9,7 +9,7 @@ import {
   type UnifiedCognitiveCycleResult,
   type UnifiedCycleStage,
 } from '../system/UnifiedCognitiveCycle.ts';
-import { sha256Stable } from './StableSerialization.ts';
+import { sha256Stable, stableJson } from './StableSerialization.ts';
 
 export interface CanonicalCognitiveStageInput {
   source: string;
@@ -159,7 +159,8 @@ export class CanonicalCognitiveKernel {
       parentIds:parentIds.map(String).slice(0,12),
       external:Boolean(input.external),
       confidence01:clamp01(input.confidence01),
-      payload:{...input.payload},
+      // Detach and validate JSON data before any event mutation. This rejects cyclic or non-serializable payloads during preflight.
+      payload:JSON.parse(stableJson(input.payload)) as Record<string,unknown>,
     };
   }
 
@@ -184,8 +185,11 @@ export class CanonicalCognitiveKernel {
     // Check every replay key before the first write. If a persisted/partial cycle
     // contains one conflicting later stage, do not append the earlier missing stages.
     for(const item of prepared) {
+      // Fingerprint every expected event, even when its ID is not present yet.
+      // Serialization failures therefore happen before the first ledger write.
+      const expectedFingerprint=eventFingerprint(item.eventInput);
       const existing=this.eventFabric.getById(this.stageEventId(item.eventInput.tick,item.stage));
-      if(existing && eventFingerprint(existing)!==eventFingerprint(item.eventInput)) {
+      if(existing && eventFingerprint(existing)!==expectedFingerprint) {
         throw new Error('canonical-cognitive-kernel-event-conflict');
       }
     }
