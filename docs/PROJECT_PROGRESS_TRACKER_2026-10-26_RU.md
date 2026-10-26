@@ -1,3 +1,12 @@
+## WorkPass376 — strict Hexis ingress schema and dedupe-index isolation (2026-10-26)
+
+- **Branch:** `work/hexis-evidence-adapter-2026-10-26`; stacked Hexis integration PR #217.
+- **Implementation:** `HexisEvidenceAdapter.ts` rejects unknown/symbol keys and accessor properties at both envelope levels; exceptions from caller-provided dedupe index access become a fail-closed `invalid-evidence-dedupe-index` result.
+- **Regression:** added unknown-key, symbol-key, nested source schema, and throwing dedupe-index cases to `cognitive-hexis-evidence-adapter.mjs`.
+- **Validation:** **PENDING** exact-head test/typecheck/unified suite. No benchmark or readiness score uplift claimed. No `main` or Release ZIP change.
+
+---
+
 ## WorkPass374 — Hexis provenance ingress vertical slice (2026-10-26)
 
 - **Branch:** `work/hexis-evidence-adapter-2026-10-26`.
