@@ -58,7 +58,7 @@ assert.equal(fingerprintRestored.snapshot().projectionIndex[0].fingerprint,origi
 const conflictingDuplicateSnapshot=structuredClone(originalIndexSnapshot);
 conflictingDuplicateSnapshot.projectionIndex.push({
   ...structuredClone(conflictingDuplicateSnapshot.projectionIndex[0]),
-  record:{...structuredClone(conflictingDuplicateSnapshot.projectionIndex[0].record),tool:'other.tool'},
+  record:{...structuredClone(conflictingDuplicateSnapshot.projectionIndex[0].record),externalObservations:[{observationId:'forged-observation',verified:true,confidence01:1}]},
 });
 const conflictRestored=new OutcomeCognitionFabric();
 conflictRestored.restore(conflictingDuplicateSnapshot);
