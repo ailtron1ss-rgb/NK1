@@ -17,9 +17,6 @@ permissions:
 jobs:
   pending-predictions:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: runtime/neuro-kurisu
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -27,4 +24,4 @@ jobs:
           node-version: '24.21.0'
           package-manager-cache: false
       - name: Verify pending epistemic predictions survive persistence and restore
-        run: node --experimental-strip-types tests/hexis-p65-pending-prediction-retention.mjs
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/hexis-p65-pending-prediction-retention.mjs
