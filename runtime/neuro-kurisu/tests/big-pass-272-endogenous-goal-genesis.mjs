@@ -117,6 +117,18 @@ const beforeUnsupported=tampered.snapshot();
 assert.throws(()=>tampered.restore({version:2}),/version/);
 assert.deepEqual(tampered.snapshot(),beforeUnsupported,'unsupported restore must not partially mutate state');
 
+const accessorState={...beforeUnsupported};
+Object.defineProperty(accessorState,'tick',{enumerable:true,get(){throw new Error('B272 restore getter must not execute');}});
+assert.throws(()=>tampered.restore(accessorState),/bounded plain data properties/,
+  'accessor-backed state must be rejected before goal-genesis fields are read');
+assert.deepEqual(tampered.snapshot(),beforeUnsupported,'rejected accessor state must not mutate goal genesis');
+
+const cyclicState={...beforeUnsupported};
+cyclicState.self=cyclicState;
+assert.throws(()=>tampered.restore(cyclicState),/bounded plain data properties/,
+  'cyclic snapshots must be rejected before state restoration');
+assert.deepEqual(tampered.snapshot(),beforeUnsupported,'rejected cyclic state must not mutate goal genesis');
+
 const invalidTickNet=new B272EndogenousGoalGenesis();
 assert.throws(()=>invalidTickNet.step({...comparisonInput,tick:Number.NaN}),/tick/);
 assert.throws(()=>invalidTickNet.step({...comparisonInput,needs:{...comparisonInput.needs,energy01:Number.NaN}}),/energy01/);
