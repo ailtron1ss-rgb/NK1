@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** workpass372-unified-cycle-ingress  
 **База:** WorkPass371 head `1fe10507407559b9edb14f3d96e2ce0f1a6b449c`  
-**Статус:** первый contract CI выявил изменение прежнего error text для null/array evaluation input; восстановлен исходный guard в 1db6758619cc71b2728ea84d5c76fb02c3d55822. Exact-head CI перепроверяется.
+**Статус:** contract CI выявил две ошибки совместимости текстов для null/array evaluation root и неправильного `stageIds`; оба публичных guard восстановлены, последний фикс — e22d7de4c9544ad0fb8b4f22954afa2cc91947fa. Текущему head нужен полный повтор exact-head CI.
 
 ## Найденные проблемы
 
