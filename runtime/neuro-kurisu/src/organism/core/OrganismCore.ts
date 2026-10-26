@@ -2788,41 +2788,142 @@ export class OrganismCore {
     hexisReviseBelief(input: {
         memoryId: string;
         stance: HexisEvidenceStance;
-        evidence: {
-            ref?: string;
-            label?: string;
-            contentHash?: string;
-            trust01?: number;
-            note?: string;
-        };
+        evidence: { ref?: string; label?: string; contentHash?: string; trust01?: number; note?: string; };
         context?: string;
     }) {
         const memory = this.memorySubsystem.memoryOS.get(String(input.memoryId));
-        if (!memory)
-            return { ok: false, error: 'memory-not-found', memoryId: String(input.memoryId) };
-        // Match Hexis source-key precedence so memory and belief replay guards share one identity.
-        const evidenceSourceKey = String(input.evidence.ref || input.evidence.label || input.evidence.contentHash || sha256Stable(input.evidence, 'legacy')).trim().slice(0, 96);
-        const canonicalDuplicate = this.memorySubsystem.memoryOS.hasEvidenceLineage(memory.id, evidenceSourceKey);
-        // Refresh the adapter projection from canonical memory before applying evidence.
-        this.hexisAdaptation.registerOrUpdateBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: Number(memory.sourceAuthority01 ?? 0.5), at: memory.lastAccessAt });
-        // Keep provenance even when policy refuses to change confidence: evidence seen and accepted belief are different facts.
-        const evidenceReceipt = canonicalDuplicate ? null : this.memorySubsystem.fabric.recordEvidence(memory.id, {
-            source: String(input.evidence.ref || input.evidence.label || input.evidence.contentHash || 'hexis-evidence'),
-            provenanceClass: 'external',
-            sourceAuthority01: Number(input.evidence.trust01 ?? 0.5),
-            independenceKey: evidenceSourceKey,
-        }, {
-            commandId: `hexis-evidence:${createHash('sha256').update(`${memory.id}|${evidenceSourceKey}`).digest('hex')}`,
-            tick: this.persisted.state.tick,
+        if (!memory) return { ok: false, error: 'memory-not-found', memoryId: String(input.memoryId) };
+
+        const sourceKeyFor = (evidence: { ref?: string; label?: string; contentHash?: string }) =>
+            String(evidence.ref || evidence.label || evidence.contentHash || sha256Stable(evidence, 'legacy'))
+                .trim().normalize('NFKC').slice(0, 96).toLocaleLowerCase();
+        const evidenceSourceKey = sourceKeyFor(input.evidence);
+        const evidenceCommandId = `hexis-evidence:${createHash('sha256').update(`${memory.id}|${evidenceSourceKey}`).digest('hex')}`;
+        const confidenceCommandId = `hexis-belief-confidence:${createHash('sha256').update(`${memory.id}|${evidenceSourceKey}`).digest('hex')}`;
+        const audits = this.hexisAdaptation.snapshot().beliefAudit
+            .filter((row) => row.memoryId === memory.id && sourceKeyFor(row.evidence) === evidenceSourceKey);
+        const priorAppliedAudit = [...audits].reverse().find((row) => row.applied);
+        const priorAudit = priorAppliedAudit ?? [...audits].reverse()[0];
+        if (priorAudit && priorAudit.stance !== input.stance)
+            return { ok: false, error: 'evidence-source-already-consumed', memoryId: memory.id, audit: priorAudit };
+
+        const duplicateReceipt = () => ({
+            ok: true as const, added: false as const, reason: 'duplicate-source' as const,
+            memoryId: memory.id,
+            independentSources: this.memorySubsystem.memoryOS.evidenceTrail(memory.id)?.independentSources ?? 0,
         });
-        const duplicateEvidence = canonicalDuplicate || evidenceReceipt?.ok !== true || evidenceReceipt?.added !== true;
-        const audit = this.hexisAdaptation.reviseBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: Number(memory.sourceAuthority01 ?? 0.5), evidence: input.evidence, stance: input.stance, context: input.context, protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical', canonicalDuplicate: duplicateEvidence, at: Date.now() });
-        if (audit.applied && evidenceReceipt?.added === true) {
-            this.memorySubsystem.fabric.updateSignals(memory.id, { confidence: audit.posteriorConfidence01 }, 'hexis-belief-revision', { tick: this.persisted.state.tick });
+        const persistEvidence = () => {
+            try {
+                return {
+                    ok: true as const,
+                    receipt: this.memorySubsystem.fabric.recordEvidence(memory.id, {
+                        source: String(input.evidence.ref || input.evidence.label || input.evidence.contentHash || 'hexis-evidence'),
+                        provenanceClass: 'external',
+                        sourceAuthority01: Number(input.evidence.trust01 ?? 0.5),
+                        independenceKey: evidenceSourceKey,
+                    }, { commandId: evidenceCommandId, tick: this.persisted.state.tick }),
+                };
+            } catch (error) {
+                return { ok: false as const, error: error instanceof Error ? error.message : 'unknown-evidence-command-error' };
+            }
+        };
+        const persistConfidence = (target: number) => this.memorySubsystem.fabric.updateSignals(
+            memory.id, { confidence: target }, 'hexis-belief-revision',
+            { commandId: confidenceCommandId, tick: this.persisted.state.tick },
+        );
+        const persistProjection = () => {
+            this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+        };
+
+        // Recovery path: an adapter audit can exist before its matching evidence/reciprocal confidence update.
+        // Finish the missing canonical effect from that audit rather than consume the same evidence a second time.
+        if (priorAudit) {
+            const known = this.memorySubsystem.memoryOS.hasEvidenceLineage(memory.id, evidenceSourceKey);
+            let evidence: ReturnType<typeof this.memorySubsystem.fabric.recordEvidence>;
+            if (known) {
+                evidence = duplicateReceipt();
+            } else {
+                const persisted = persistEvidence();
+                if (!persisted.ok) {
+                    persistProjection();
+                    return { ok: false, error: 'evidence-command-failed', detail: persisted.error, audit: priorAudit };
+                }
+                evidence = persisted.receipt;
+                if (!evidence.ok) {
+                    persistProjection();
+                    return { ok: false, error: 'evidence-persistence-rejected', audit: priorAudit, evidence };
+                }
+            }
+
+            let current = this.memorySubsystem.memoryOS.get(memory.id);
+            let confidenceReconciled = Math.abs(current.confidence - priorAudit.posteriorConfidence01) <= 1e-9;
+            if (priorAppliedAudit && !confidenceReconciled &&
+                Math.abs(current.confidence - priorAudit.priorConfidence01) <= 1e-9) {
+                const updated = persistConfidence(priorAudit.posteriorConfidence01);
+                if (!updated) {
+                    persistProjection();
+                    return { ok: false, error: 'belief-confidence-reconciliation-failed', audit: priorAudit, evidence };
+                }
+                current = this.memorySubsystem.memoryOS.get(memory.id);
+                confidenceReconciled = Math.abs(current.confidence - priorAudit.posteriorConfidence01) <= 1e-9;
+            }
+            this.hexisAdaptation.registerOrUpdateBelief({
+                memoryId: memory.id,
+                confidence01: current.confidence,
+                trust01: Number(current.sourceAuthority01 ?? 0.5),
+                at: current.lastAccessAt,
+            });
+            persistProjection();
+            return {
+                ok: true, audit: priorAudit, evidence, memory: current, recovered: true,
+                confidenceReconciled,
+                newerCanonicalConfidencePreserved: Boolean(priorAppliedAudit && !confidenceReconciled &&
+                    Math.abs(current.confidence - priorAudit.priorConfidence01) > 1e-9),
+            };
         }
-        this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
+
+        const canonicalDuplicate = this.memorySubsystem.memoryOS.hasEvidenceLineage(memory.id, evidenceSourceKey);
+        this.hexisAdaptation.registerOrUpdateBelief({
+            memoryId: memory.id, confidence01: memory.confidence,
+            trust01: Number(memory.sourceAuthority01 ?? 0.5), at: memory.lastAccessAt,
+        });
+        // Record the adapter's deterministic audit first; a later retry can finish any missing canonical write.
+        const audit = this.hexisAdaptation.reviseBelief({
+            memoryId: memory.id, confidence01: memory.confidence,
+            trust01: Number(memory.sourceAuthority01 ?? 0.5), evidence: input.evidence,
+            stance: input.stance, context: input.context,
+            protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical',
+            canonicalDuplicate, at: Date.now(),
+        });
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
-        return { ok: true, audit, evidence: evidenceReceipt, memory: this.memorySubsystem.memoryOS.get(memory.id) };
+
+        let evidence: ReturnType<typeof this.memorySubsystem.fabric.recordEvidence> | null = null;
+        if (!canonicalDuplicate) {
+            const persisted = persistEvidence();
+            if (!persisted.ok) {
+                persistProjection();
+                return { ok: false, error: 'evidence-command-failed', detail: persisted.error, audit };
+            }
+            evidence = persisted.receipt;
+            if (!evidence.ok) {
+                persistProjection();
+                return { ok: false, error: 'evidence-persistence-rejected', audit, evidence };
+            }
+        }
+        if (audit.applied) {
+            if (!evidence?.added) {
+                persistProjection();
+                return { ok: false, error: 'applied-belief-without-new-canonical-evidence', audit, evidence };
+            }
+            const updated = persistConfidence(audit.posteriorConfidence01);
+            if (!updated) {
+                persistProjection();
+                return { ok: false, error: 'belief-confidence-update-failed', audit, evidence };
+            }
+        }
+        persistProjection();
+        return { ok: true, audit, evidence, memory: this.memorySubsystem.memoryOS.get(memory.id) };
     }
     /** Temporal views delegate to MemoryOS2; Hexis temporal rows remain audit/export projections only. */
     hexisTemporalAt(memoryId: string, at: number) {
