@@ -1,3 +1,11 @@
+## NK1 WorkPass109 — selectable and persistent Live2D profile control (2026-10-26)
+
+- Added an in-UI selector for `Авто`, `Мобильный`, `Баланс`, and `Качество`; the selected profile is validated against the four-value TypeScript union before it changes UI state.
+- Persists the choice via NK1's safe avatar-preference storage and passes it to the iframe URL. Switching profile clears the stale Live2D-ready state and remounts the viewer so the selected FPS and renderer policy are actually applied.
+- Added regression checks for all four options, storage wiring, controlled select state, and dynamic viewer URL. Full browser/runtime/TypeScript workflow is the validation gate; status will be reported from the run rather than assumed.
+
+---
+
 ## NK1 WorkPass108 — truthful Live2D performance profiles (2026-10-26)
 
 - Replaced the previously cosmetic `quality` profile acceptance with an explicit profile policy catalog in both the app viewer and standalone runtime viewer. All model URLs remain pinned to the bundled allowlist; `mobile` uses the mobile model, while `balanced` and `quality` use the full model.

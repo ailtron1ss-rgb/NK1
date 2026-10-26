@@ -298,6 +298,22 @@ test("versioned EmbodimentIntent JSON schema is present and pins all synchronize
 });
 
 
+test("AvatarStage exposes a persisted, validated Live2D performance profile selector", async () => {
+  const source = await readFile(join(root, "src/components/AvatarStage.tsx"), "utf8");
+  assert.match(source, /type RuntimeProfile = "auto" \| "mobile" \| "balanced" \| "quality"/u);
+  assert.match(source, /readAvatarPreference\("kurisu-live2d-profile"\)/u);
+  assert.match(source, /writeAvatarPreference\("kurisu-live2d-profile", runtimeProfile\)/u);
+  assert.match(source, /aria-label="Профиль производительности Live2D"/u);
+  assert.match(source, /value=\{runtimeProfile\}/u);
+  assert.match(source, /setViewerAttempt\(\(attempt\) => attempt \+ 1\)/u,
+    "changing profile must remount the static viewer instead of leaving its old policy active");
+  assert.match(source, /src=\{\`\/live2d\/viewer\.html\?profile=\$\{runtimeProfile\}\`\}/u,
+    "the chosen safe profile must flow into the viewer URL");
+  for (const profile of ["auto", "mobile", "balanced", "quality"]) {
+    assert.ok(source.includes(`<option value="${profile}">`), `profile option ${profile} must be selectable`);
+  }
+});
+
 test("Live2D profile presets have enforceable frame budgets in both shipped viewers", async () => {
   const viewers = [
     { name: "app", path: join(root, "public/live2d/viewer.html") },
