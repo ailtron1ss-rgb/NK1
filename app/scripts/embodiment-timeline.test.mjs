@@ -182,9 +182,9 @@ test("avatar UI switches to the persistent NK1 Original design and exposes real 
   assert.ok(original.includes('data-testid="kurisu-original-stage"'));
   for (const persistedSetting of [
     "kurisu-original-outfit", "kurisu-original-eyes", "kurisu-original-hair",
-    "kurisu-original-accent", "kurisu-original-motion", "kurisu-original-scale",
+    "kurisu-original-accent", "kurisu-original-motion", "kurisu-original-pose", "kurisu-original-scale",
   ]) assert.ok(original.includes(persistedSetting), `missing persisted visual setting: ${persistedSetting}`);
-  for (const control of ["Лаборатория", "Город", "Ночной режим", "Аметист", "Морская волна", "Красное дерево", "Выразительное", "Масштаб персонажа"]) {
+  for (const control of ["Лаборатория", "Город", "Ночной режим", "Аметист", "Морская волна", "Красное дерево", "Выразительное", "Скрестить руки", "Думать", "Объяснять", "Масштаб персонажа"]) {
     assert.ok(original.includes(control), `missing original avatar appearance control: ${control}`);
   }
   assert.ok(original.includes("scale(\${scale})"), "scale slider must affect the actual SVG");
