@@ -562,6 +562,9 @@ export class MemoryFabric {
 
   restore(raw:MemoryFabricRestore|undefined){
     if(!raw)return;
+    // Rollback capabilities are process-local and intentionally absent from snapshots.
+    // Invalidate any outstanding tokens when restoring a snapshot.
+    this.signalCompensations.clear();
     Object.assign(this.statsData,{...this.statsData,...raw.stats});
     this.hotIds.length=0;this.hotIds.push(...(raw.hotIds??[]).slice(0,this.config.maxHotItems));
     this.policyOutcomeLedger.restore(raw.policyOutcomeLedger);
@@ -645,14 +648,13 @@ export class MemoryFabric {
   beginSignalCompensation(id:string):string|null {
     const before=this.findCanonical(id);
     if(!before)return null;
+    // Fail before creating another mutation when the rollback journal is full.
+    // Never evict an outstanding capability: the owning transaction may still
+    // need every token to restore pre-existing canonical memories on failure.
+    if(this.signalCompensations.size>=512)return null;
     const token=randomUUID();
     const snapshot=memorySignalRollbackSnapshot(before);
     this.signalCompensations.set(token,{memoryId:id,snapshot,expectedCurrent:snapshot});
-    while(this.signalCompensations.size>512){
-      const oldest=this.signalCompensations.keys().next().value as string|undefined;
-      if(oldest===undefined)break;
-      this.signalCompensations.delete(oldest);
-    }
     return token;
   }
 
