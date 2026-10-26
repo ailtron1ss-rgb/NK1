@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 import { sampleAndroidTelemetryDetailed, type TermuxCapabilities, type TermuxTtsOptions, detectTermuxCapabilities, synthesizeSpeechInput, type AndroidTelemetryDiagnostics } from './AndroidEmbodimentBridge.ts';
 import { buildVoicePlan, defaultVoiceRuntimeState, type VoiceRuntimeState, type VoicePlan } from './VoiceEmbodiment.ts';
@@ -162,7 +162,9 @@ export class EmbodimentRuntime {
     this.lastVoicePlan=plan;
     const dispatcher=this.speechGatewayDispatcher;
     if(!dispatcher){this.voice.speaking=false;this.voice.lastAt=Date.now();this.voice.lastError='action-gateway-speech-dispatcher-unavailable';return false;}
-    const speechEventId=String(context?.speechEventId??'').trim().slice(0,140)||`speech-${createHash('sha256').update(JSON.stringify({text:clean,action:context?.action??null,mode:context?.mode??null,lastUserActivityAt:this.body.lastUserActivityAt,lastExternalEventAt:this.body.lastExternalEventAt})).digest('hex').slice(0,48)}`;
+    // Explicit IDs are durable idempotency keys; an omitted ID means a new operation, not a content-addressed replay.
+    const requestedSpeechEventId=String(context?.speechEventId??'').trim();
+    const speechEventId=requestedSpeechEventId ? requestedSpeechEventId : `speech-${randomUUID()}`;
     const options:TermuxTtsOptions={ language:plan.language, pitch:plan.prosody.pitch, rate:plan.prosody.rate, volume:plan.prosody.volume, stream:plan.stream };
     const speechStartedAt=Date.now();
     this.activeSpeechEventId=speechEventId;
