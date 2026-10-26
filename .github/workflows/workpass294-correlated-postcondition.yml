@@ -6,6 +6,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/system/ActionGateway.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/tests/workpass294-correlated-postcondition.mjs'
+      - 'runtime/neuro-kurisu/tests/action-gateway-idempotency-workpass37.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass294-correlated-postcondition.yml'
   workflow_dispatch:
@@ -29,3 +30,6 @@ jobs:
       - name: Verify exact action and decision lineage
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass294:correlated-postcondition
+      - name: Verify ActionGateway idempotency and pre-side-effect ingress
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/action-gateway-idempotency-workpass37.mjs
