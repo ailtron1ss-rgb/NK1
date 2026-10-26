@@ -277,6 +277,8 @@ assert.match(runtime, /unifiedCognitiveSubstrate\.reconcileLastTick\(canonicalCo
 assert.match(runtime, /runtime\.unified-cognitive-substrate\.tick-reconciled/);
 assert.match(runtime, /cognitiveDependencyGraph\.reconcileLastTick\(canonicalCoreTickForDependency\)/);
 assert.match(runtime, /runtime\.cognitive-dependency\.tick-reconciled/);
+assert.match(runtime, /runtime\.cognitive-dependency\.restore-failed/);
+assert.match(runtime, /this\.cognitiveDependencyGraph\.restore\(\);/);
 assert.match(runtime, /memoryPressure01: 1 - resourceAllocation\.memory01/);
 const observeAt = runtime.indexOf('const cycle = await this.core.observe(cycleObservation);');
 const integrateAt = runtime.indexOf('this.unifiedCognitiveSubstrate.integrate(', observeAt);

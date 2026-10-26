@@ -59,5 +59,32 @@ try {
     throw new Error('runtime did not resume substrate integration after future-tick recovery');
   }
   await restarted.stop();
+
+  // Unsupported/corrupted derived schema must reset only the dependency graph,
+  // not abort organism initialization or the next autonomous cycle.
+  const unsupportedDependencySidecar = JSON.parse(await readFile(dependencySidecarPath, 'utf8'));
+  unsupportedDependencySidecar.version = 999;
+  await writeFile(dependencySidecarPath, JSON.stringify(unsupportedDependencySidecar), 'utf8');
+  const recoveredFromInvalidGraph = new OrganismRuntime({
+    stateFile:path.join(dir,'state.json'),
+    worldStateFile:path.join(dir,'world.json'),
+    enableLanguage:false,
+    stateStore:new MemoryStateStore(),
+    worldStateStore:new MemoryStateStore(),
+    journal:new BoundedOperationalJournal(),
+    performanceProfile:'mobile',
+    cycleResultMode:'summary',
+  });
+  await recoveredFromInvalidGraph.init();
+  const resetGraph = recoveredFromInvalidGraph.cognitiveDependencyGraph.diagnostics();
+  const recoveredCanonicalTick = recoveredFromInvalidGraph.core.operationalStatusSnapshot().tick;
+  if (resetGraph.lastTick !== recoveredCanonicalTick || resetGraph.wakeMask !== 0) {
+    throw new Error('unsupported derived graph schema did not reset to a safe canonical default');
+  }
+  const recoveryStep = await recoveredFromInvalidGraph.autonomousStep();
+  if (recoveredFromInvalidGraph.cognitiveDependencyGraph.diagnostics().lastTick !== recoveryStep.cycle.state.tick) {
+    throw new Error('organism did not complete a cognitive cycle after unsupported graph schema recovery');
+  }
+  await recoveredFromInvalidGraph.stop();
   console.log('CLEAN_ORGANISM_SMOKE=PASS');
 } finally { await rm(dir,{recursive:true,force:true}); }

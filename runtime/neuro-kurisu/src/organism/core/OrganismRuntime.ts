@@ -321,13 +321,22 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
-      this.cognitiveDependencyGraph.restore(await this.cognitiveDependencyStore.load() ?? undefined);
-      const canonicalCoreTickForDependency = this.core.operationalStatusSnapshot().tick;
-      const restoredDependencyTick = this.cognitiveDependencyGraph.diagnostics().lastTick;
-      if (this.cognitiveDependencyGraph.reconcileLastTick(canonicalCoreTickForDependency)) {
-        await this.journal.write('warn', 'runtime.cognitive-dependency.tick-reconciled', {
-          restoredDependencyTick,
-          canonicalCoreTick: canonicalCoreTickForDependency,
+      try {
+        this.cognitiveDependencyGraph.restore(await this.cognitiveDependencyStore.load() ?? undefined);
+        const canonicalCoreTickForDependency = this.core.operationalStatusSnapshot().tick;
+        const restoredDependencyTick = this.cognitiveDependencyGraph.diagnostics().lastTick;
+        if (this.cognitiveDependencyGraph.reconcileLastTick(canonicalCoreTickForDependency)) {
+          await this.journal.write('warn', 'runtime.cognitive-dependency.tick-reconciled', {
+            restoredDependencyTick,
+            canonicalCoreTick: canonicalCoreTickForDependency,
+          }).catch(() => {});
+        }
+      } catch (error) {
+        // Dependency routing is derived state. Invalid JSON/schema must not prevent
+        // the canonical Core and the rest of the organism from booting.
+        this.cognitiveDependencyGraph.restore();
+        await this.journal.write('warn', 'runtime.cognitive-dependency.restore-failed', {
+          message: String((error as any)?.message ?? error).slice(0, 200),
         }).catch(() => {});
       }
       try {
