@@ -59,6 +59,8 @@ compensationState.items = [{
 compensationMemoryOS.restore(compensationState);
 const preSignalMutation = compensationMemoryOS.snapshot().items.find(item => item.id === 'signal-rollback-fixture');
 assert.ok(preSignalMutation);
+const signalCompensationToken = compensationMemoryOS.captureSignalCompensation('signal-rollback-fixture');
+assert.ok(signalCompensationToken);
 compensationMemoryOS.updateSignals('signal-rollback-fixture', {
   confidence: 0.2,
   sourceAuthority01: 0.2,
@@ -76,7 +78,9 @@ const signalMutation = compensationMemoryOS.snapshot().items.find(item => item.i
 assert.equal(signalMutation.confidence, 0.2);
 assert.equal(signalMutation.sourceAuthority01, 0.2);
 assert.notDeepEqual(signalMutation.revisionHistory, preSignalMutation.revisionHistory);
-assert.equal(compensationMemoryOS.restoreSignalsForCompensation('signal-rollback-fixture', preSignalMutation), true);
+assert.equal(compensationMemoryOS.restoreSignalsForCompensation('signal-rollback-fixture', preSignalMutation), false,
+  'a caller-supplied snapshot must not authorize signal restoration');
+assert.equal(compensationMemoryOS.restoreSignalsForCompensation('signal-rollback-fixture', signalCompensationToken), true);
 assert.deepEqual(
   compensationMemoryOS.snapshot().items.find(item => item.id === 'signal-rollback-fixture'),
   preSignalMutation,
