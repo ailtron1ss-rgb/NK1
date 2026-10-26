@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass424 — reject stale apply receipts on lifecycle downgrade (2026-10-26)
+
+- [REPLAY SAFETY] The shared HMX stage validator now rejects unknown lifecycle states and rejects any non-applied stage that still carries an application receipt. A stale persisted `applied → accepted` status mutation can no longer re-enter the canonical write path while keeping the old receipt.
+- [REGRESSION] Added a no-write test for a downgraded completed stage and aligned the invalid lifecycle-state assertion with the shared validator.
+- [VALIDATION] Committed, not executed in a working runtime; Actions status is being tracked separately.
+
 ## [NK1][Hexis] WorkPass423 — revalidate HMX provenance before goal activation (2026-10-26)
 
 - [TRUST BOUNDARY] `OrganismSystemFabric.activateHexisGoalProposal` now validates the source HMX stage digest and, for an applied stage, its canonical apply receipt before activating the agency project or reading staged relationships.
