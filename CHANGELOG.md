@@ -1,3 +1,8 @@
+### WorkPass328 follow-up — stabilize float assertions and Promise-based trusted-run validation (2026-10-26)
+
+- Replaced one exact floating-point equality in the P26 transfer tracker fixture with a strict numerical tolerance. The derived delta `0.35 - 0.2` is valid but represented as `0.14999999999999997`; other transfer metrics already use tolerance-based comparisons.
+- Made `runTrustedShadowLearningProcess()` an async API so invalid candidate/shadow run descriptors reject its returned Promise consistently. Baseline/control runs remain rejected before registry mutation or child-process launch, satisfying the existing security regression without letting a synchronous throw escape an `assert.rejects` boundary.
+
 ### WorkPass328 follow-up — keep Promise rejection and external-outcome accounting consistent (2026-10-26)
 
 - `P23CompoundRepairRevisionCoordinator.reviseFromObservedRepairs()` now returns a rejected Promise for an invalid skill ID instead of throwing synchronously from a Promise-returning API. This matches the established `assert.rejects`/caller contract and prevents a synchronous exception from bypassing the coordinator boundary.
