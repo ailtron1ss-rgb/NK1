@@ -1,3 +1,12 @@
+## First-run UI readiness — build preview artifact before launching services (2026-10-26)
+
+- Root `npm start` previously started Vite Preview without checking for `app/dist/index.html`; a fresh checkout after `npm run install:all` could therefore start the gateway/runtime while the UI build artifact was absent.
+- Added a web-only `app` script `build:web` (Vite production build without implicitly running database migrations) and shared `tools/super-ui-build.mjs`. The start launcher now builds the UI only when the preview artifact is missing, with a bounded 10-minute deadline; a failed build or missing output aborts before child services launch.
+- Added five focused tests for build-on-first-start, skip-on-existing-artifact, build failure, missing output, and invalid timeout; included them in `audit:quick`.
+- Exact-head Actions validation is pending. This closes the app-artifact gap, but a complete clean-machine start still depends on a compatible Node 24 install and the environment required by optional research features.
+
+---
+
 ## Project tool route — restore canonical Core finalization (2026-10-26)
 
 - Fixed a runtime bypass found by the recovered planner/gateway regression: fresh project tool operations called `ActionGateway.executeTool` directly, and receipt recovery called `ActionGateway.reconcileToolExecution` directly. Both paths now route through `OrganismCore.executeTool` / `OrganismCore.reconcileToolExecution`, retaining canonical tool-alias mapping and the shared finalization boundary.
