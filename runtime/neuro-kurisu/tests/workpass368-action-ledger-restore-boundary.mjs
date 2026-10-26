@@ -32,7 +32,9 @@ assert.equal(executions,1,'a valid restored receipt must replay without executin
 
 // Every root/schema failure must leave both ledgers byte-for-byte equivalent to prior state.
 const protectedGateway=makeGateway();
-await protectedGateway.executeTool('test.restore.inspect',{},'protected-state',{idempotencyKey:'workpass368:keep-existing'});
+const protectedSetup=await protectedGateway.executeTool('test.restore.inspect',{},'protected-state',{idempotencyKey:'workpass368:keep-existing'});
+assert.equal(protectedSetup.ok,true);
+const executionsAfterProtectedSetup=executions;
 const protectedBefore=protectedGateway.snapshotExecutionLedger();
 let rootGetterCalls=0;
 const rootAccessor=structuredClone(baseline);
@@ -91,7 +93,7 @@ assert.equal(opaqueRestored.snapshotExecutionLedger().records[0].responseOmitted
 const opaqueReplay=await opaqueRestored.executeTool('test.restore.inspect',{},'opaque-replay',options);
 assert.equal(opaqueReplay.outcomeClass,'idempotency-recovery-required');
 assert.equal(opaqueReplay.result.error,'idempotency-recovery-required');
-assert.equal(executions,1,'opaque receipt recovery must never call the tool executor');
+assert.equal(executions,executionsAfterProtectedSetup,'opaque receipt recovery must never call the tool executor');
 
 // A persisted omission marker is authoritative even if stale response bytes also exist.
 const omittedSnapshot=structuredClone(baseline);
@@ -100,7 +102,7 @@ const omittedRestored=makeGateway();
 omittedRestored.restoreExecutionLedger(omittedSnapshot);
 const omittedReplay=await omittedRestored.executeTool('test.restore.inspect',{},'omitted-replay',options);
 assert.equal(omittedReplay.outcomeClass,'idempotency-recovery-required');
-assert.equal(executions,1,'a tombstoned receipt must not be promoted back into a replayable response');
+assert.equal(executions,executionsAfterProtectedSetup,'a tombstoned receipt must not be promoted back into a replayable response');
 
 const malformedMarkerSnapshot=structuredClone(baseline);
 malformedMarkerSnapshot.records[0].responseOmitted='false';
@@ -109,6 +111,6 @@ malformedMarkerRestored.restoreExecutionLedger(malformedMarkerSnapshot);
 const malformedMarkerReplay=await malformedMarkerRestored.executeTool('test.restore.inspect',{},'malformed-marker-replay',options);
 assert.equal(malformedMarkerReplay.outcomeClass,'idempotency-recovery-required',
   'a non-boolean omission marker must fail closed instead of making stale response bytes replayable');
-assert.equal(executions,1,'malformed omission metadata must not cause duplicate execution');
+assert.equal(executions,executionsAfterProtectedSetup,'malformed omission metadata must not cause duplicate execution');
 
 console.log('NK1_WORKPASS368_ACTION_LEDGER_RESTORE=PASS atomic=true accessors=not-invoked tombstone=true duplicate-execution=false');
