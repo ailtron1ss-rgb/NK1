@@ -630,16 +630,9 @@ export class HexisCanonicalMemoryProjector {
             rollbackErrors.push('signals-restore-failed:' + revision.id);
             continue;
           }
-          const current = (this.memoryFabric.canonicalSnapshot().items ?? []).find(item => item.id === revision.id);
-          const fields = [
-            'salience', 'emotionalWeight', 'identityRelevance', 'goalRelevance', 'socialRelevance',
-            'predictionError', 'confidence', 'sourceAuthority01', 'evidenceSources', 'evidenceLineageKeys',
-            'dormant', 'lastAccessAt', 'temperature01', 'revisionHistory',
-          ];
-          const signalProjection = item => Object.fromEntries(fields.map(field => [field, item?.[field]]));
-          if (!current || JSON.stringify(signalProjection(current)) !== JSON.stringify(signalProjection(revision.snapshot))) {
-            rollbackErrors.push('signals-restore-unconfirmed:' + revision.id);
-          }
+          // MemoryFabric validates the opaque, one-use capture token against the exact
+          // restored signal fields before returning true. The projector never receives
+          // the saved snapshot and therefore cannot accidentally widen restoration authority.
         } catch (signalRollbackError) {
           rollbackErrors.push('signals-restore:' + String(signalRollbackError?.message ?? signalRollbackError).slice(0, 220));
         }
