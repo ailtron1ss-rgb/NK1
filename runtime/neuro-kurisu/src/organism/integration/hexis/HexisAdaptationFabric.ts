@@ -471,8 +471,70 @@ export class HexisAdaptationFabric {
         validFrom: number;
         source?: string;
         value?: unknown;
-    }): HexisTemporalAssertion { const existing = this.state.temporal.find((x) => x.memoryId === input.memoryId && x.validUntil === null); const at = nowMs(); if (existing)
-        existing.validUntil = Math.max(existing.validFrom, Number(input.validFrom)); const created: HexisTemporalAssertion = { id: randomUUID(), memoryId: String(input.memoryId), valueHash: digest(input.value ?? input.summary), summary: String(input.summary).slice(0, 2000), confidence01: clamp(input.confidence01), validFrom: Number(input.validFrom), validUntil: null, supersedesId: existing?.id, source: String(input.source ?? 'canonical-memory'), at }; this.state.temporal.push(created); this.state.temporal = this.state.temporal.slice(-4096); return structuredClone(created); }
+    }): HexisTemporalAssertion {
+        const memoryId = String(input.memoryId ?? '').trim().normalize('NFKC');
+        const summary = String(input.summary ?? '').trim().slice(0, 2000);
+        const source = String(input.source ?? 'canonical-memory').trim().slice(0, 256);
+        const validFromRaw = input.validFrom;
+        if (!memoryId || memoryId.length > 240) throw new Error('temporal_memory_id_invalid');
+        if (!summary) throw new Error('temporal_summary_required');
+        if (typeof validFromRaw !== 'number' || !Number.isFinite(validFromRaw) || validFromRaw < 0) {
+            throw new Error('temporal_valid_from_invalid');
+        }
+        const validFrom = Math.floor(validFromRaw);
+        const valueHash = digest(input.value ?? summary);
+        const currentHistory = this.state.temporal
+            .filter((row) => row.memoryId === memoryId)
+            .map((row) => ({ ...row }));
+        const sameEffectiveTime = currentHistory.find((row) => row.validFrom === validFrom);
+        if (sameEffectiveTime) {
+            if (sameEffectiveTime.valueHash === valueHash && sameEffectiveTime.summary === summary) {
+                // Exact semantic replay: do not add a version or rewrite lineage.
+                return structuredClone(sameEffectiveTime);
+            }
+            throw new Error('temporal_assertion_timestamp_conflict');
+        }
+        const createdAt = nowMs();
+        const created: HexisTemporalAssertion = {
+            id: randomUUID(),
+            memoryId,
+            valueHash,
+            summary,
+            confidence01: clamp(input.confidence01),
+            validFrom,
+            validUntil: null,
+            source: source || 'canonical-memory',
+            at: createdAt,
+        };
+        // Rebuild the affected memory's valid-time chain by effective time rather
+        // than arrival order. This supports late events without overlapping intervals.
+        const history = [...currentHistory, created]
+            .sort((a, b) => a.validFrom - b.validFrom || a.at - b.at || a.id.localeCompare(b.id));
+        for (let index = 0; index < history.length; index += 1) {
+            const row = history[index]!;
+            const previous = history[index - 1];
+            const next = history[index + 1];
+            row.validUntil = next ? next.validFrom : null;
+            if (previous) row.supersedesId = previous.id;
+            else delete row.supersedesId;
+        }
+        const unrelated = this.state.temporal.filter((row) => row.memoryId !== memoryId);
+        const candidate = [...unrelated, ...history];
+        const openRows = candidate.filter((row) => row.validUntil === null);
+        if (openRows.length > 4096) throw new Error('temporal_open_history_capacity_exceeded');
+        const closedRows = candidate
+            .filter((row) => row.validUntil !== null)
+            .sort((a, b) => b.at - a.at);
+        const roomForClosed = Math.max(0, 4096 - openRows.length);
+        // Keep one current assertion per memory ID, then the most recently recorded
+        // closed history. Never evict a current value just to preserve old history.
+        this.state.temporal = [
+            ...closedRows.slice(0, roomForClosed),
+            ...openRows,
+        ];
+        this.state.metrics.temporalQueries = Math.max(0, this.state.metrics.temporalQueries);
+        return structuredClone(created);
+    }
     temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null { this.state.metrics.temporalQueries += 1; const rows = this.state.temporal.filter((x) => x.memoryId === memoryId && x.validFrom <= at && (x.validUntil === null || at < x.validUntil)).sort((a, b) => b.validFrom - a.validFrom); return rows[0] ? structuredClone(rows[0]) : null; }
     temporalDiff(memoryId: string, fromAt: number, toAt: number) { this.state.metrics.temporalQueries += 1; const from = this.temporalAt(memoryId, fromAt); const to = this.temporalAt(memoryId, toAt); return { memoryId, from, to, changed: (from?.valueHash ?? null) !== (to?.valueHash ?? null) }; }
     createLearningReview(input: {
