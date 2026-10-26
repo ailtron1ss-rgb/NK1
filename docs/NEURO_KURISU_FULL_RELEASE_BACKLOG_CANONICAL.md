@@ -8,8 +8,8 @@
 - [x] Require the immediate parent to be a directory that cannot be replaced by group/other users (except sticky-bit directories).
 - [x] Include canonical storage-root identities in the command fingerprint so results bind to the storage layout used.
 - [x] Add direct-supervisor regressions for writable roots, overlap and symlinked roots; check invalid setup creates no scratch.
-- [ ] Run focused WorkPass349 workflow and runtime typecheck on the exact new code/test head.
-- **Status:** code and regression committed; exact-head validation pending. These checks harden evidence storage but do not isolate untrusted code; a genuine deployment-owned OS/container sandbox remains required.
+- [x] Focused workflow [#40289252511](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289252511) passed on code/test SHA `959ced22f50267dd18d5c7f9403d2905e37dd716`: native P23 provider 10/10, process-supervisor regression completed successfully, evaluator-config boundary suite 16/16, and runtime `TYPECHECK=PASS`.
+- **Status:** code and regression are committed and the focused suite passed on code/test SHA `959ced22f50267dd18d5c7f9403d2905e37dd716`. These checks harden evidence storage but do not isolate untrusted code; a genuine deployment-owned OS/container sandbox remains required.
 
 ---
 
