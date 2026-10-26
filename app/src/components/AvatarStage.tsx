@@ -12,6 +12,7 @@ import {
   sampleVisemeClock,
   sampleVisemeTimeline,
   smoothEmbodimentAffect,
+  deriveEmbodimentPose,
   timelineOffsetForCharIndex,
   type VisemeClockAnchor,
   type EmbodimentIntentV1,
@@ -333,6 +334,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const audioTimeMs = activeSession
       ? speechAudioClockNow(activeSession, performance.now())
       : Math.max(0, Number(session?.lastAudioElapsedMs ?? 0));
+    const bodyPose = deriveEmbodimentPose(snap.lastOption, snap.emotion.label, affectState.expressionIntensity);
     const intent: EmbodimentIntentV1 = {
       type: "kurisu_embodiment_intent",
       protocolVersion: 1,
@@ -351,6 +353,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       gaze: { x: affectState.gazeX, y: affectState.gazeY, driven: true },
       body: {
         headTilt: affectState.headTilt,
+        ...bodyPose,
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
