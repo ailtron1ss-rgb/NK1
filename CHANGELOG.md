@@ -1,3 +1,12 @@
+# WorkPass356 — safe restoration of canonical long-term memory (2026-10-26)
+
+- [RESTORE GATE] `MemoryOS2.restore` now rejects non-plain top-level state and unsupported/future schema versions before touching the live memory graph. Versionless/older states remain eligible for the existing migration path.
+- [IDENTITY] Malformed memory rows are discarded before index reconstruction. Any ID collision causes all rows for that ID to be dropped, avoiding a split state where the item array keeps duplicates while the ID index silently overwrites one.
+- [INTEGRITY] Restore now recomputes content hashes instead of trusting persisted derived hashes; normalizes core score fields and epistemic status; bounds semantic vectors and links; rejects vectors containing non-finite values; and filters malformed entity/link data.
+- [TEST] Added `tests/workpass356-memoryos-restore-boundary.mjs` covering fail-before-mutation on future schema/array state, legacy versionless migration, duplicate-ID removal, malformed-row filtering, derived-hash repair and scalar/vector/link sanitation.
+- [VALIDATION] Exact-head focused CI is running on source/test SHA `8ed25644b3728ae033d7b9696d013804f21df315`. Do not mark this pass green until the new MemoryOS restore test and runtime typecheck finish successfully. Earlier green runs predate WorkPass356.
+- [LIMIT] This protects the canonical MemoryOS restore boundary; it does not yet prove end-to-end durable recall across a real process restart or independent retrieval uplift.
+
 # WorkPass355 — centralize learner environment filtering (2026-10-26)
 
 - [SECURITY] Exported one canonical `isForbiddenLearningEnvironmentKey` policy from `LearningProcessSupervisor.ts` and reused it from the host-owned evaluator adapter, removing duplicate deny-list logic.
