@@ -4,7 +4,7 @@ const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) 
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const asText = (value, max = 2048) => typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : '';
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
-const isValidAppliedReceipt = (stage, receipt) => {
+export const isValidHmxApplyReceipt = (stage, receipt) => {
   if (!isRecord(stage) || !isRecord(receipt)) return false;
   const keys = [
     'version', 'exportId', 'sourceLineageId', 'stageId', 'stageDigest', 'attempt',
@@ -131,7 +131,7 @@ export class HexisCanonicalMemoryProjector {
     // stages transition out of `accepted` after application, but their receipt remains
     // the authoritative answer for retries. This branch performs no writes.
     if (isRecord(stage) && stage.status === 'applied') {
-      if (!isValidAppliedReceipt(stage, stage.application)) {
+      if (!isValidHmxApplyReceipt(stage, stage.application)) {
         throw new Error('hmx-applied-receipt-invalid');
       }
       return structuredClone(stage.application);
