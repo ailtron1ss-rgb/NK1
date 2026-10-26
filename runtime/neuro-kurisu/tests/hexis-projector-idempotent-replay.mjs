@@ -383,7 +383,23 @@ console.log('WorkPass426 HMX application attempt integrity: PASS');
 console.log('WorkPass427 HMX apply receipt semantic integrity: PASS');
 console.log('WorkPass428 HMX deferred-section and receipt identity integrity: PASS');
 // WorkPass428: an exception after canonical write and graph projection must compensate all stores.
-const rollbackCanonicalItems = [];
+const priorRollbackMemory = {
+  id: 'hexis-memory:prior-baseline',
+  content: 'Old HMX content',
+  source: 'hexis:prior-source-key',
+  epistemicStatus: 'belief',
+  kind: 'semantic',
+  tags: ['hexis-import'],
+  context: {
+    hexisExportId: 'exp_aaaaaaaaaaaaaaaa',
+    hexisSourceLineageId: stage.sourceLineageId,
+    hexisMemoryRef: 'exp_aaaaaaaaaaaaaaaa:rollback-memory',
+    hexisOriginalType: 'semantic',
+    hexisGraphSourceKey: 'hexis:prior-graph-key',
+  },
+};
+const rollbackCanonicalItems = [structuredClone(priorRollbackMemory)];
+const rollbackMemoryBaseline = structuredClone(rollbackCanonicalItems);
 const rollbackMemoryFabric = {
   canonicalSnapshot() { return { items: structuredClone(rollbackCanonicalItems) }; },
   encode(input) {
@@ -402,7 +418,11 @@ const rollbackMemoryFabric = {
     return item ?? null;
   },
 };
-const rollbackGraphState = { nodes: [], edges: [] };
+const rollbackGraphState = {
+  nodes: [{ id: 'rollback-graph:prior', label: 'old hmx content', type: 'concept', sourceKey: 'hexis:prior-graph-key' }],
+  edges: [],
+};
+const rollbackGraphBaseline = structuredClone(rollbackGraphState);
 const rollbackSemanticGraph = {
   snapshot() { return structuredClone(rollbackGraphState); },
   restore(snapshot) {
@@ -424,7 +444,11 @@ const rollbackSemanticGraph = {
     return edge;
   },
 };
-const rollbackTemporalState = { assertions: [], beliefs: [] };
+const rollbackTemporalState = {
+  assertions: [],
+  beliefs: [{ memoryId: priorRollbackMemory.id, epistemicStatus: 'belief', source: 'preexisting-history' }],
+};
+const rollbackTemporalBaseline = structuredClone(rollbackTemporalState);
 let failFirstTemporalAssertion = true;
 const rollbackTemporalLedger = {
   snapshot() { return structuredClone(rollbackTemporalState); },
@@ -479,23 +503,33 @@ assert.throws(
   /hmx-canonical-apply-failed:injected-hmx-temporal-write-failure/,
   'a failure after canonical write and graph projection must propagate after compensation',
 );
-assert.deepEqual(rollbackMemoryFabric.canonicalSnapshot().items, [],
-  'canonical memory must return to baseline when a downstream temporal write fails');
-assert.deepEqual(rollbackSemanticGraph.snapshot(), { nodes: [], edges: [] },
-  'semantic graph nodes and edges must return to baseline when temporal projection fails');
-assert.deepEqual(rollbackTemporalLedger.snapshot(), { assertions: [], beliefs: [] },
-  'partially written temporal assertions must be rolled back');
+assert.deepEqual(rollbackMemoryFabric.canonicalSnapshot().items, rollbackMemoryBaseline,
+  'canonical memory and prior epistemic status must return to baseline after a downstream temporal failure');
+assert.deepEqual(rollbackSemanticGraph.snapshot(), rollbackGraphBaseline,
+  'semantic graph nodes and edges must return to their pre-existing baseline after temporal projection fails');
+assert.deepEqual(rollbackTemporalLedger.snapshot(), rollbackTemporalBaseline,
+  'partially written temporal assertions and withdrawn prior beliefs must be rolled back');
 const rollbackRetryReceipt = rollbackProjector.apply(rollbackStage);
 assert.equal(rollbackRetryReceipt.status, 'applied',
   'the same staged HMX import must be retryable after a successful compensation');
-assert.equal(rollbackMemoryFabric.canonicalSnapshot().items.length, 1,
-  'the retry must create exactly one canonical memory');
+const rollbackAfterRetry = rollbackMemoryFabric.canonicalSnapshot().items;
+assert.equal(rollbackAfterRetry.length, 2,
+  'the retry must keep the prior historical memory and create exactly one new canonical memory');
+const newRollbackMemory = rollbackAfterRetry.find(item => item.id !== priorRollbackMemory.id);
+const supersededRollbackMemory = rollbackAfterRetry.find(item => item.id === priorRollbackMemory.id);
+assert.ok(newRollbackMemory);
+assert.equal(newRollbackMemory.epistemicStatus, 'belief');
+assert.equal(supersededRollbackMemory.epistemicStatus, 'quarantined',
+  'successful retry must supersede the old belief without erasing historical memory');
 assert.equal(rollbackSemanticGraph.snapshot().nodes.length, 1,
-  'the retry must create exactly one semantic projection');
+  'the retry must leave exactly one active semantic projection after removing the prior version');
+assert.notEqual(rollbackSemanticGraph.snapshot().nodes[0].sourceKey, 'hexis:prior-graph-key');
 assert.equal(rollbackTemporalLedger.snapshot().assertions.length, 1,
-  'the retry must create exactly one temporal assertion');
+  'the retry must create exactly one new temporal assertion');
 assert.equal(rollbackTemporalLedger.snapshot().beliefs.length, 1,
-  'the retry must register exactly one belief projection');
+  'the retry must register exactly one new belief projection');
+assert.equal(rollbackTemporalLedger.snapshot().beliefs[0].memoryId, newRollbackMemory.id,
+  'the new belief is active and the superseded prior belief remains withdrawn');
 
 // Known HMX sections have strict array contracts and must fail before canonical storage is touched.
 let malformedKnownSectionStorageTouched = false;
