@@ -128,6 +128,16 @@ const arrayAccessorEvent=envelopeFabric.append({
 assert.equal(arrayGetterCalls,0,'array-index accessors are omitted without executing caller-controlled code');
 assert.deepEqual(arrayAccessorEvent.payload,{items:[null]});
 
+let overriddenDateMethodCalls=0;
+const inputDate=new Date('2026-01-02T03:04:05.000Z');
+inputDate.getTime=()=>{overriddenDateMethodCalls++;throw new Error('caller override must not execute');};
+const dateEvent=envelopeFabric.append({
+  id:'cef:test:date-payload',tick:10,at:1002,stage:'tool-evidence',source:'date-test',
+  parentIds:[],external:false,confidence01:0.6,payload:{capturedAt:inputDate},
+});
+assert.equal(overriddenDateMethodCalls,0,'Date subclasses/instances must not run overridden methods during event normalization');
+assert.equal(dateEvent.payload.capturedAt,'2026-01-02T03:04:05.000Z');
+
 const storedTotalBeforeCycle=envelopeFabric.snapshot().total;
 const cyclicPayload={}; cyclicPayload.self=cyclicPayload;
 assert.throws(()=>envelopeFabric.append({
