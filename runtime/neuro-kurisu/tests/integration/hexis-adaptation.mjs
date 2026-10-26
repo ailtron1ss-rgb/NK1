@@ -194,6 +194,19 @@ assert(
   malformedConfigExport.export_warnings.some(warning => warning.includes('config_invalid_section')),
   'the export must disclose malformed config preservation rather than silently dropping it',
 );
+const malformedRootSectionsExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'malformed-root-sections-preservation',
+  sections: 'legacy native sections payload',
+});
+assert.deepEqual(
+  malformedRootSectionsExport.sections.config.nk1NativeSections.sections_invalid_root,
+  'legacy native sections payload',
+  'a malformed root sections payload must be preserved instead of being silently erased',
+);
+assert(
+  malformedRootSectionsExport.export_warnings.some(warning => warning.includes('sections_invalid_root')),
+  'root section preservation must be visible to reviewers',
+);
 
 const normalizedNk1Export = normalizeNk1HmxExport(nativeNk1Export);
 assert.match(normalizedNk1Export.export_id, /^exp_[a-f0-9]{16}$/);
