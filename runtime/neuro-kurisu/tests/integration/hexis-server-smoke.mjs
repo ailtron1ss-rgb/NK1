@@ -115,6 +115,9 @@ try {
       duplicateMaterialized.goal?.id !== materializedGoal.goal.id || duplicateMaterialized.goal?.status !== 'candidate') {
     throw new Error('hexis-hmx-same-title-goal-deduplication:' + JSON.stringify(duplicateMaterialized));
   }
+  if (duplicateMaterialized.relationships?.projected !== 1 || duplicateMaterialized.relationships?.deferred !== 0) {
+    throw new Error('hexis-hmx-same-lineage-goal-relationship-replay:' + JSON.stringify(duplicateMaterialized.relationships));
+  }
   const invalidDecision = await fetch(`${base}/api/organism/integration/hexis/hmx/decide`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ stagingId: applyStageRes.stage.stagingId, decision: 'activate-everything' }),
