@@ -1,3 +1,13 @@
+## [NK1][Hexis] WorkPass426 — reject malformed HMX application attempt counters (2026-10-26)
+
+- [FIX] `isValidHmxStageDigest` now validates optional `applicationAttempts` as a non-negative safe integer even though lifecycle metadata is outside the reviewed content digest.
+- [INTEGRITY] An applied-stage receipt must agree exactly with the persisted attempt number; a valid receipt digest cannot mask stale or mismatched lifecycle metadata.
+- [REGRESSION] Cover string, fractional, negative, non-finite and unsafe attempt counters, asserting rejection before canonical storage access; also reject applied receipts bound to another attempt.
+- [VALIDATION] Source and regression committed; current exact-head Actions checks have repeatedly failed before runner-step allocation, so this pass remains unverified until usable CI runs complete.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][Hexis] Guard all Hexis POST request-body boundaries (2026-10-26)
 
 - Add a shared fail-closed record check immediately after JSON parsing on all 20 Hexis POST routes, before route-specific reads, dispatches, or writes.
