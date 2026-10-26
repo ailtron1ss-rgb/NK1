@@ -1,3 +1,15 @@
+## WorkPass343 — release verification requires metadata consistency — 2026-10-26
+
+- **Defect:** `npm run release:verify` checked filesystem hygiene, secret-file presence, UI/API wiring and architecture, but did not invoke the independent release metadata validator. A green final-tree check could therefore coexist with stale version, root/app/runtime manifest, lockfile or current-status metadata.
+- **Runtime/tooling fix:** `verify-final-release.mjs` now runs `verify-release-metadata.mjs --root <root>` as a mandatory check and emits structured per-check results. Missing or failing metadata validation is fail-closed; `--root` makes the verifier testable against isolated candidate trees.
+- **Regression:** four tests cover a valid metadata gate, invalid metadata, a missing validator, and rejection of unknown CLI arguments.
+- **Launch and CI wiring:** the regression is included in `audit:workpass70`; the Unified project integration suite runs both the focused test and `npm run release:verify`. Path filters now include the verifier/test and release metadata inputs.
+- **Operator docs:** README and RUNBOOK now put the canonical install/start commands and release-verification gate first, while explicitly distinguishing source-tree test success from physical-device and release-archive readiness.
+
+**Validation status:** pending exact-head CI for this new gate. The prior combined head `621864d0d7f2676245383adab86f1dcc6d0f741f` passed full integration, but it does not validate WorkPass343. No progress score is increased until the new gate passes.
+
+---
+
 ## WorkPass342 — bound CPU research probe deadlines (2026-10-26)
 
 - Made the smoke runner's HTTP request deadline configurable, validated as a finite safe integer no greater than 240 seconds.
