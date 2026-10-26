@@ -1,3 +1,12 @@
+## WorkPass410 — label HMX uncertain counts as unverified (2026-10-26)
+
+- **UI wording commit:** `306b075e22f610b60783d489015f8a8519d77212`; **wiring-audit commit:** `85c700822e22ce7d6c9140986296fd924417f511`.
+- The `UNCERTAIN` receipt message no longer labels count fields as verified creations/reuse. It explicitly says the counts were reported by the interrupted attempt and are not verified, and asks the operator to inspect canonical memory and the receipt before any remediation.
+- The wiring audit requires this uncertainty wording alongside the no-retry warning.
+- **Validation:** PENDING frontend build and UI wiring audit; no exact-head PASS/readiness uplift claimed. `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass409 — preserve mutation receipts when the dashboard refresh fails (2026-10-26)
 
 - **UI code commit:** `895b4c338a0a40e3441af5ee51a5c8a63bcc46f2`; **wiring-audit commit:** `cee8f2841d34bddda5b1780844c5908133bececa`.
