@@ -247,10 +247,7 @@ export class CognitiveEventFabric {
       const hasObservedHashField=Object.hasOwn(evidence.payload,'observedPostconditionHash');
       const legacyHashless=!hasExpectedHashField&&!hasObservedHashField;
       if(!projectionHashValid||hasExpectedHashField!==hasObservedHashField)continue;
-      if(legacyHashless) {
-        // Keep the compatibility path only for an intact old full-input fingerprint.
-        continue;
-      } else {
+      if(!legacyHashless) {
         const hashValueIsValid=(value:unknown):boolean=>value===null||
           (typeof value==='string'&&/^[a-f0-9]{64}$/i.test(value));
         if(!hashValueIsValid(expectedHash)||!hashValueIsValid(observedHash))continue;
