@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass414 — preserve malformed native identity sections (2026-10-26)
+
+- [DATA FIDELITY] The NK1→HMX exporter now preserves a non-object/non-array native `identity` section in `config.nk1NativeSections.identity_invalid_section` instead of silently dropping it. Valid identity objects and arrays keep their existing behavior.
+- [REGRESSION] Extended the Hexis adaptation integration suite to check the preserved payload, absence of accidental active identity records, and an explicit export warning.
+- [VALIDATION] The regression is committed but not claimed as executed: the current GitHub Actions checks on this PR fail without usable step logs, so runtime/typecheck status remains unverified.
+
 ## [NK1][Hexis] WorkPass413 — make TypeScript validation part of the Hexis gate (2026-10-26)
 
 - [CI] Added `npm run typecheck` before the Hexis adaptation + live-server smoke tests in `hexis-canonical-apply.yml`.
