@@ -899,7 +899,10 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/decide') {
             const input = await body(req);
-            const decision = ['approve', 'correct', 'forget'].includes(String(input.decision)) ? String(input.decision) : 'approve';
+            if (!['approve', 'correct', 'forget'].includes(input.decision)) {
+                return json(res, 400, { ok: false, error: 'hexis-review-invalid-decision' });
+            }
+            const decision = input.decision;
             const result = runtime.core.hexisDecideLearningReview(String(input.reviewId || ''), String(input.itemId || ''), decision, input.correction ? String(input.correction) : undefined);
             await runtime.core.flush();
             return json(res, 200, { ok: Boolean(result), result });
@@ -949,7 +952,10 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/decide') {
             const input = await body(req);
-            const decision = input.decision === 'accept' ? 'accept' : 'reject';
+            if (input.decision !== 'accept' && input.decision !== 'reject') {
+                return json(res, 400, { ok: false, error: 'hmx-invalid-decision' });
+            }
+            const decision = input.decision;
             const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
             await runtime.core.flush();
             if (!result) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
