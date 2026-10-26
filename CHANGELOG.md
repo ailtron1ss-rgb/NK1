@@ -1,3 +1,9 @@
+## [NK1][WorkPass432] Preserve C1 control rejection in restored memory receipts (2026-10-26)
+
+- Aligned persisted MemoryFabric receipt validation with live command ingress: restored commandId and memoryId reject the complete C0/C1 control ranges, including U+0080–U+009F, rather than only C0 plus DEL.
+- Added a regression for a persisted receipt whose target memoryId contains U+009F; the restored journal must become uncertain and fail closed for subsequent keyed mutations.
+- Source and regression wiring are committed on the existing integration branch. Runtime test execution/typecheck remain unverified until a hosted runner actually executes the job; no main or Release ZIP change.
+
 ## [NK1][WorkPass431] Restore MemoryFabric command-ID validation (2026-10-26)
 
 - Fixed the malformed Unicode control-character regular expression in `MemoryFabric.applyLifecycleCommand`; it now compiles and rejects C0/C1 control characters before any fingerprinting or mutation.
