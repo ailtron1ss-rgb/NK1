@@ -214,6 +214,35 @@ try {
   if (!claim.ok || claim.result?.status !== 'publishing') throw new Error('hexis-outbox-claim');
   const ack = await (await post('/api/organism/integration/hexis/outbox/ack', { id: out.result.id, published: true })).json();
   if (!ack.ok || ack.result?.status !== 'published') throw new Error('hexis-outbox-ack');
+
+  // Negative ACKs and expired publishers are ambiguous unless a provider lookup
+  // proves the side effect did not occur. The HTTP contract must preserve that.
+  const uncertainOut = await (await post('/api/organism/integration/hexis/outbox/enqueue', {
+    idempotencyKey:'server-smoke-hexis-uncertain',kind:'notify',channel:'telegram',payload:{text:'uncertain-delivery'},
+  })).json();
+  if (!uncertainOut.ok || !uncertainOut.result?.id) throw new Error('hexis-outbox-uncertain-enqueue');
+  const uncertainClaim = await (await post('/api/organism/integration/hexis/outbox/claim', { id: uncertainOut.result.id })).json();
+  if (!uncertainClaim.ok || uncertainClaim.result?.status !== 'publishing') throw new Error('hexis-outbox-uncertain-claim');
+  const negativeAck = await (await post('/api/organism/integration/hexis/outbox/ack', {
+    id:uncertainOut.result.id,published:false,error:'synthetic timeout after remote send',
+  })).json();
+  if (!negativeAck.ok || negativeAck.result?.status !== 'uncertain') throw new Error('hexis-outbox-negative-ack-must-be-uncertain');
+  const blockedClaim = await (await post('/api/organism/integration/hexis/outbox/claim', { id: uncertainOut.result.id })).json();
+  if (blockedClaim.ok || blockedClaim.result !== null) throw new Error('hexis-outbox-uncertain-must-not-retry');
+  const missingResolutionEvidence = await post('/api/organism/integration/hexis/outbox/reconcile', {
+    id:uncertainOut.result.id,resolution:'not-published',evidenceRef:'',
+  });
+  if (missingResolutionEvidence.status !== 400) throw new Error('hexis-outbox-reconcile-evidence-required');
+  const reconciledAbsent = await (await post('/api/organism/integration/hexis/outbox/reconcile', {
+    id:uncertainOut.result.id,resolution:'not-published',evidenceRef:'provider-lookup:message-absent-after-acceptance-window',
+  })).json();
+  if (!reconciledAbsent.ok || reconciledAbsent.result?.status !== 'pending') throw new Error('hexis-outbox-reconcile-not-published');
+  const retryClaim = await (await post('/api/organism/integration/hexis/outbox/claim', { id: uncertainOut.result.id })).json();
+  if (!retryClaim.ok || retryClaim.result?.status !== 'publishing' || retryClaim.result?.attempts !== 2) throw new Error('hexis-outbox-evidence-based-retry');
+  const finalAck = await (await post('/api/organism/integration/hexis/outbox/ack', {
+    id:uncertainOut.result.id,published:true,
+  })).json();
+  if (!finalAck.ok || finalAck.result?.status !== 'published') throw new Error('hexis-outbox-final-ack');
   console.log('HEXIS_SERVER_SMOKE=PASS');
 } finally {
   child.kill('SIGTERM');
