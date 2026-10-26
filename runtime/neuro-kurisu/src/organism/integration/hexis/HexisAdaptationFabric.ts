@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
 import { isValidHmxApplyReceipt } from './HexisCanonicalMemoryProjector.mjs';
+import { computeHmxStageDigest, isValidHmxStageDigest } from './HexisStageIntegrity.mjs';
 const hasHmxControlCharacters = (value: string): boolean => {
     for (let index = 0; index < value.length; index++) {
         const code = value.charCodeAt(index);
@@ -293,25 +294,6 @@ const isHmxRecord = (value: unknown): value is Record<string, unknown> =>
 const isHmxText = (value: unknown, max = 256): value is string =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max &&
     !/[\u0000-\u001f\u007f]/.test(value);
-const hmxStageDigestPayload = (stage: Record<string, unknown>) => ({
-    exportId: stage.exportId,
-    intent: stage.intent,
-    strategy: stage.strategy,
-    sourceSubjectId: stage.sourceSubjectId,
-    sourceLineageId: stage.sourceLineageId,
-    sectionCounts: stage.sectionCounts,
-    protectedSections: stage.protectedSections,
-    conflicts: stage.conflicts,
-    stagedSections: stage.stagedSections,
-});
-const isValidHmxStageDigest = (stage: unknown): stage is HexisHmxStage => {
-    if (!isHmxRecord(stage) || typeof stage.digest !== 'string' || !/^[a-f0-9]{64}$/.test(stage.digest)) return false;
-    try {
-        return digest(hmxStageDigestPayload(stage)) === stage.digest;
-    } catch {
-        return false;
-    }
-};
 export function defaultHexisAdaptationState(): HexisAdaptationState {
     return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], goalProposals: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, hmxApplied: 0, hmxGoalProposalsCreated: 0, hmxGoalProposalsApproved: 0, hmxGoalProposalsRejected: 0, hmxGoalProposalsActivated: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
@@ -786,7 +768,7 @@ export class HexisAdaptationFabric {
             stagingId: randomUUID(),
             status: 'staged',
             createdAt: nowMs(),
-            digest: digest(base),
+            digest: computeHmxStageDigest(base),
         };
         this.state.hmxStages.push(stage);
         this.state.hmxStages = this.state.hmxStages.slice(-32);

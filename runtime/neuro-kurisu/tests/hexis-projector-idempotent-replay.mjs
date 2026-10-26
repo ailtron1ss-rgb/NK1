@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { HexisCanonicalMemoryProjector } from '../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
+import { computeHmxStageDigest } from '../src/organism/integration/hexis/HexisStageIntegrity.mjs';
 
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
 const stage = {
@@ -8,10 +9,15 @@ const stage = {
   exportId: 'exp_0123456789abcdef',
   sourceLineageId: 'trusted-lineage-1',
   stagingId: 'stage-1',
-  digest: 'persisted-stage-digest',
+  digest: '',
   intent: 'port',
   strategy: 'additive',
+  sectionCounts: {},
+  protectedSections: [],
+  conflicts: [],
+  stagedSections: {},
 };
+stage.digest = computeHmxStageDigest(stage);
 const makeReceipt = (overrides = {}) => {
   const base = {
     version: 1,
@@ -55,6 +61,11 @@ assert.notEqual(replay.warnings, receipt.warnings, 'nested receipt data is clone
 replay.warnings.push('caller-mutation');
 assert.deepEqual(receipt.warnings, ['previously-applied']);
 assert.equal(writes, 0, 'idempotent replay must not touch canonical storage');
+
+const tamperedPayloadStage = structuredClone(stage);
+tamperedPayloadStage.stagedSections.memories = [{ ref: stage.exportId + ':tampered', type: 'semantic', content: 'changed payload' }];
+assert.throws(() => projector.apply(tamperedPayloadStage), /hmx-stage-digest-invalid/);
+assert.equal(writes, 0, 'tampered stage payload must be rejected before canonical storage is touched');
 
 // A receipt copied from another stage must not be accepted as the result of this stage.
 assert.throws(

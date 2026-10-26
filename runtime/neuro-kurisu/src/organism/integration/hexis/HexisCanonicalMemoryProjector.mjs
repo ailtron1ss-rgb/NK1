@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isValidHmxStageDigest } from './HexisStageIntegrity.mjs';
 
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -158,6 +159,7 @@ export class HexisCanonicalMemoryProjector {
   }
 
   apply(stage) {
+    if (!isValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
     // Idempotent replay must be checked before the accepted-stage guard: persisted
     // stages transition out of `accepted` after application, but their receipt remains
     // the authoritative answer for retries. This branch performs no writes.
