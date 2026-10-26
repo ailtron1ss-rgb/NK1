@@ -14,6 +14,13 @@ const fingerprint = (value: unknown): value is string => typeof value === 'strin
 const safeInteger = (value: unknown, min: number, max: number): value is number =>
   Number.isSafeInteger(value) && Number(value) >= min && Number(value) <= max;
 
+/** Ed25519 signatures are exactly 64 bytes; reject ambiguous/non-canonical Base64 representations. */
+function decodeCanonicalEd25519Signature(value: unknown): Buffer | null {
+  if (typeof value !== 'string' || value.length !== 88 || !/^[A-Za-z0-9+/]{86}==$/.test(value)) return null;
+  const decoded = Buffer.from(value, 'base64');
+  return decoded.length === 64 && decoded.toString('base64') === value ? decoded : null;
+}
+
 function canonical(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
@@ -115,7 +122,9 @@ export function createAuthenticatedSkillPromotionApprovalVerifier(
   return (approval: SkillPromotionApproval, candidate: Readonly<VersionedSkillCandidate>, requestedMinShadowRuns: number, purpose: SkillPromotionApprovalVerificationPurpose = 'promotion'): boolean => {
     try {
       if (trustedKeys.size === 0 || !approval?.artifact || !isRecord(approval.artifact) ||
-          !isRecord(approval.artifact.payload) || typeof approval.artifact.signature !== 'string') return false;
+          !isRecord(approval.artifact.payload)) return false;
+      const signature = decodeCanonicalEd25519Signature(approval.artifact.signature);
+      if (!signature) return false;
       const payload = approval.artifact.payload as SkillPromotionApprovalPayload;
       if (payload.schemaVersion !== 1 || !nonEmpty(payload.approvalId) || !nonEmpty(payload.approverId) ||
           !Number.isFinite(payload.approvedAt) || payload.approvedAt <= 0 ||
@@ -142,8 +151,7 @@ export function createAuthenticatedSkillPromotionApprovalVerifier(
       // re-verified across restart without expiring just because 15 minutes passed.
       if (purpose === 'promotion' && timestamp - payload.approvedAt > maxAgeMs) return false;
       const key = createPublicKey(keyPem);
-      return verifySignature(null, Buffer.from(canonicalSkillPromotionApprovalPayload(payload), 'utf8'), key,
-        Buffer.from(approval.artifact.signature, 'base64'));
+      return verifySignature(null, Buffer.from(canonicalSkillPromotionApprovalPayload(payload), 'utf8'), key, signature);
     } catch {
       return false;
     }
@@ -211,7 +219,9 @@ export function createAuthenticatedSkillRollbackApprovalVerifier(
   ): boolean => {
     try {
       if (trustedKeys.size === 0 || !approval?.artifact || !isRecord(approval.artifact) ||
-          !isRecord(approval.artifact.payload) || typeof approval.artifact.signature !== 'string') return false;
+          !isRecord(approval.artifact.payload)) return false;
+      const signature = decodeCanonicalEd25519Signature(approval.artifact.signature);
+      if (!signature) return false;
       const payload = approval.artifact.payload as SkillRollbackApprovalPayload;
       if (payload.schemaVersion !== 1 || !nonEmpty(payload.approvalId) || !nonEmpty(payload.approverId) ||
           !Number.isFinite(payload.approvedAt) || payload.approvedAt <= 0 ||
@@ -243,7 +253,7 @@ export function createAuthenticatedSkillRollbackApprovalVerifier(
       if (!Number.isFinite(timestamp) || payload.approvedAt > timestamp + allowedClockSkewMs) return false;
       if (purpose === 'rollback' && timestamp - payload.approvedAt > maxAgeMs) return false;
       return verifySignature(null, Buffer.from(canonicalSkillRollbackApprovalPayload(payload), 'utf8'),
-        createPublicKey(keyPem), Buffer.from(approval.artifact.signature, 'base64'));
+        createPublicKey(keyPem), signature);
     } catch {
       return false;
     }
