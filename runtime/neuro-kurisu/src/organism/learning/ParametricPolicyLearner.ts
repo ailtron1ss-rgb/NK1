@@ -82,6 +82,19 @@ export class ParametricPolicyLearner{
     const d=defaultParametricPolicy();
     const savedNames=Array.isArray(raw?.featureNames)?raw!.featureNames:[];
     this.state={...d,...(raw??{}),featureNames:[...featureNames],weights:{...d.weights,...(raw?.weights??{})},bias:{...d.bias,...(raw?.bias??{})}};
+    // Restored diagnostics are persisted model data too. Never let NaN, Infinity,
+    // negative counters, or truthy strings re-enter the live learning controller.
+    const finiteUnit = (value: unknown, fallback: number): number =>
+      typeof value === 'number' && Number.isFinite(value) ? clamp(value) : fallback;
+    const safeCounter = (value: unknown): number =>
+      typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? Math.min(value, Number.MAX_SAFE_INTEGER) : 0;
+    this.state.updates = safeCounter(raw?.updates);
+    this.state.tdAbsMean01 = finiteUnit(raw?.tdAbsMean01, d.tdAbsMean01);
+    this.state.trainRewardMean01 = finiteUnit(raw?.trainRewardMean01, d.trainRewardMean01);
+    this.state.explorationRate01 = finiteUnit(raw?.explorationRate01, d.explorationRate01);
+    this.state.lastLoss01 = finiteUnit(raw?.lastLoss01, d.lastLoss01);
+    this.state.lastTrainedAt = typeof raw?.lastTrainedAt === 'number' && Number.isFinite(raw.lastTrainedAt) && raw.lastTrainedAt >= 0 ? raw.lastTrainedAt : 0;
+    this.state.frozen = raw?.frozen === true;
     for(const a of ACTIONS){
       const savedWeights=Array.isArray(raw?.weights?.[a])?raw!.weights![a]:[];
       this.state.weights[a]=featureNames.map((name,index)=>{
