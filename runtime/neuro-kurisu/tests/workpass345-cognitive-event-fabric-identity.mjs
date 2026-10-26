@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabric.ts';
+import { UnifiedCognitiveCycle } from '../src/organism/system/UnifiedCognitiveCycle.ts';
+import { commitOperationalCognitiveCycleAtomically } from '../src/organism/core/CognitiveCycleCommitCoordinator.ts';
 
 const makeEvent = (overrides = {}) => ({
   id: 'cef:test:identity:1',
@@ -563,4 +565,68 @@ assert.equal(payloadGetterCalls,0);
 assert.equal(atomicRecovered.getById('cef:test:restore:row-accessor')?.payload.recovered,true);
 assert.equal(atomicRecovered.getById('cef:test:restore:payload-accessor')?.payload.recovered,true);
 
+// Cross-ledger commit: a post-write failure in the aggregate cycle must roll back both stores.
+const coordinatedFabric=new CognitiveEventFabric(128);
+const coordinatedCycle=new UnifiedCognitiveCycle();
+const coordinatedBeforeFabric=coordinatedFabric.snapshot();
+const coordinatedBeforeCycle=coordinatedCycle.snapshot();
+const coordinatedInput={
+  tick:61,at:6100,
+  observation:{source:'coordinator.observation',external:true,confidence01:.9,payload:{input:'sensor'}},
+  prediction:{source:'coordinator.prediction',confidence01:.8,payload:{forecast:'likely'}},
+  appraisal:{source:'coordinator.appraisal',confidence01:.8,payload:{novelty:.4}},
+  attention:{source:'coordinator.attention',confidence01:.8,payload:{selected:true}},
+  memory:{source:'coordinator.memory',confidence01:.8,payload:{retrieved:['episode-1']}},
+  goal:{source:'coordinator.goal',confidence01:.8,payload:{goal:'verify-atomic-commit'}},
+  plan:{source:'coordinator.plan',confidence01:.8,payload:{steps:1}},
+  action:{source:'coordinator.action',confidence01:.8,payload:{action:'verify'}},
+  outcome:{source:'coordinator.outcome',external:true,confidence01:.9,payload:{verified:true}},
+  learning:{source:'coordinator.learning',confidence01:.8,payload:{update:'candidate'}},
+  selfUpdate:{source:'coordinator.self-update',confidence01:.8,payload:{continuity:true}},
+};
+const originalCycleEvaluate=coordinatedCycle.evaluate.bind(coordinatedCycle);
+coordinatedCycle.evaluate=(cycleInput)=>{
+  originalCycleEvaluate(cycleInput);
+  throw new Error('injected-cross-ledger-cycle-evaluation-failure');
+};
+assert.throws(
+  ()=>commitOperationalCognitiveCycleAtomically({eventFabric:coordinatedFabric,unifiedCycle:coordinatedCycle,cycleInput:coordinatedInput}),
+  /injected-cross-ledger-cycle-evaluation-failure/,
+);
+assert.deepEqual(coordinatedFabric.snapshot(),coordinatedBeforeFabric,
+  'evaluation failure must roll back the staged causal events and event counter');
+assert.deepEqual(coordinatedCycle.snapshot(),coordinatedBeforeCycle,
+  'evaluation failure after aggregate mutation must restore monotonic cycle counters');
+coordinatedCycle.evaluate=originalCycleEvaluate;
+
+const rejectedCycleInput={...coordinatedInput,tick:62,selfUpdate:{source:'coordinator.self-update',confidence01:1.1,payload:{mustNotWrite:true}}};
+assert.throws(
+  ()=>commitOperationalCognitiveCycleAtomically({eventFabric:coordinatedFabric,unifiedCycle:coordinatedCycle,cycleInput:rejectedCycleInput}),
+  /invalid-cognitive-event-confidence/,
+);
+assert.deepEqual(coordinatedFabric.snapshot(),coordinatedBeforeFabric,
+  'invalid late-stage confidence must leave no partial operational cycle');
+assert.deepEqual(coordinatedCycle.snapshot(),coordinatedBeforeCycle);
+
+const committedCycle=commitOperationalCognitiveCycleAtomically({
+  eventFabric:coordinatedFabric,unifiedCycle:coordinatedCycle,cycleInput:coordinatedInput,
+});
+assert.equal(committedCycle.cycleVerification.complete,true);
+assert.equal(coordinatedFabric.snapshot().total,11,'one successful transaction records exactly eleven stages');
+assert.equal(coordinatedCycle.snapshot().cycles,1,'aggregate cycle advances exactly once after commit');
+
+const beforeAsyncBoundary=coordinatedFabric.snapshot();
+let asyncThenGetterCalls=0;
+const maliciousThenable={};
+Object.defineProperty(maliciousThenable,'then',{enumerable:true,get(){asyncThenGetterCalls+=1;return ()=>undefined;}});
+assert.throws(
+  ()=>coordinatedFabric.withAtomicLedgerTransaction(()=>{
+    coordinatedFabric.append({id:'cef:transaction:thenable-rollback',tick:63,stage:'observation',source:'test',payload:{unsafe:false}});
+    return maliciousThenable;
+  }),
+  /cognitive-event-ledger-transaction-then-accessor/,
+);
+assert.equal(asyncThenGetterCalls,0,'transaction must inspect then descriptors without running getters');
+assert.deepEqual(coordinatedFabric.snapshot(),beforeAsyncBoundary,
+  'rejecting a thenable must roll back ledger writes in the transaction');
 console.log('WorkPass345 CognitiveEventFabric identity: PASS');
