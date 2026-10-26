@@ -1,3 +1,16 @@
+## WorkPass375 — Hexis evidence routed into canonical MemoryOS2 (2026-10-26)
+
+- **Source branch:** `work/hexis-evidence-adapter-2026-10-26`.
+- **Code/test head before documentation:** `61fdb0ad6b098f91bd3b0884bf3b209f4ee514dc`.
+- **Implementation:** `MemoryOS2` now owns the canonical evidence record trail and exposes duplicate-aware evidence ingress. The Hexis bridge maps the validated envelope into this store without creating a second memory/database.
+- **Stored lineage:** evidence ID, SHA-256 digest, stance, source kind/reference, optional label/author/note, evidence confidence and observed time. The memory's own belief confidence remains unchanged on ingress.
+- **Replay integrity:** exact replay is a no-op; a reused visible evidence ID with changed digest is a conflict. After the 64-record detail trail rotates, a Bloom lineage filter blocks retired IDs from voting again. Source independence is represented separately from evidence identity.
+- **Safety/authority:** protected-memory ingress is blocked and must use the existing review path. This pass only records evidence; it does not automatically revise beliefs, approve reviews, promote skills or bypass independent evaluation.
+- **Regression:** `tests/cognitive-hexis-memory-bridge.mjs` checks accepted evidence, supports/contradicts/contextualizes metadata, preserved confidence, exact retry, conflicting digest, protected-memory refusal, missing memory, snapshot/restore and 90-entry rollover replay.
+- **Validation:** **PENDING** exact-head typecheck, bridge test, unified integration and final release gate. Do not infer PASS from a successful commit. Progress percentages remain unchanged.
+- **Next dependency:** connect this canonical evidence trail to the existing Hexis belief appraisal/review route after confirming its current active API and approval boundary. `main` and the canonical Release ZIP are unchanged.
+
+---
 ## WorkPass376 — strict Hexis ingress schema and dedupe-index isolation (2026-10-26)
 
 - **Branch:** `work/hexis-evidence-adapter-2026-10-26`; stacked Hexis integration PR #217.
