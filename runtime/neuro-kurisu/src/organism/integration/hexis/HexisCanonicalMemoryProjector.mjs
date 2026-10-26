@@ -175,6 +175,10 @@ export class HexisCanonicalMemoryProjector {
       .filter(item => String(item.source ?? '').startsWith('hexis:'))
       .map(item => String(item.source) + '\0' + stableRecordContent(item.content)));
     const createdIds = [];
+    // Track deterministic IDs before invoking the canonical writer. A writer may
+    // commit a row and then throw (for example during receipt/event work), so waiting
+    // for encode() to return an ID is not enough to compensate a partial write.
+    const rollbackCandidateIds = [];
     const warnings = [];
     const importedIds = [];
     const semanticEdgeIds = [];
@@ -265,6 +269,14 @@ export class HexisCanonicalMemoryProjector {
             evidenceFreshnessAt: dateMs(row.updated_at ?? row.updatedAt) ?? observedAt,
           }],
         };
+        const plannedMemoryId = memoryInput.id;
+        const conflictingExisting = existingItems.find(candidate => candidate.id === plannedMemoryId);
+        if (conflictingExisting &&
+            !(conflictingExisting.source === source &&
+              stableRecordContent(conflictingExisting.content) === stableRecordContent(memoryText))) {
+          throw new Error('hmx-apply-canonical-id-conflict:' + plannedMemoryId);
+        }
+        if (!beforeIds.has(plannedMemoryId)) rollbackCandidateIds.push(plannedMemoryId);
         const inserted = this.memoryFabric.encode(memoryInput, { commandId, syncCompatibility: false, forceDistinct: true });
         if (!inserted?.id) throw new Error('hmx-apply-canonical-write-returned-no-id:' + ref);
         importedIds.push(inserted.id);
@@ -323,7 +335,9 @@ export class HexisCanonicalMemoryProjector {
       }
     } catch (error) {
       const rollbackErrors = [];
-      for (const id of [...createdIds].reverse()) {
+      // Include writes whose call threw before returning, plus the ordinary completed
+      // writes. IDs known to predate this import are never included in compensation.
+      for (const id of [...new Set([...rollbackCandidateIds, ...createdIds])].reverse()) {
         try {
           this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
             commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
