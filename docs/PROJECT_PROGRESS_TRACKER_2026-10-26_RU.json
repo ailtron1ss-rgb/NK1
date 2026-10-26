@@ -359,30 +359,46 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass419",
+    "id": "WorkPass420",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "c39fd277fc2e5c79495a92df1d215171502539c0",
-    "testCommit": "19afcc0376e55b26511713776a09438bcc4a7e79",
-    "codeTestHead": "19afcc0376e55b26511713776a09438bcc4a7e79",
-    "summary": "Make HMX validation and normalization robust against malformed JSON values that would otherwise be coerced through String/Number. Enforce typed memory metadata, safe intent/privacy comparisons, bounded refs, and null-return rather than throw for malformed memory projections.",
+    "codeCommit": "86ec7974749de51ef1a78375e0da45d4772c34c7",
+    "followupCodeCommit": "619535a9cf23e3463ca4a8b1809a07811e512f00",
+    "testCommit": "b801a6eb2b67a6270f4f2a4dc745a3bf32433100",
+    "codeTestHead": "b801a6eb2b67a6270f4f2a4dc745a3bf32433100",
+    "summary": "Introduce a combined snapshot-and-validation boundary so the HMX staging path can validate the exact bounded detached tree it then stages, avoiding a second full copy/serialization. Public arbitrary-input validation remains snapshot-protected; restore validation continues to use the public safe API.",
     "testsAdded": [
-      "object-valued export_intent returns a schema issue without throwing",
-      "object-valued privacy redaction policy and consent scope return schema issues",
-      "object-valued nk1_kind/confidence and non-string tags return schema issues",
-      "object-valued memory type returns a schema issue without throwing",
-      "object-valued source authority returns a schema issue without throwing",
-      "oversized memory refs return a schema issue",
-      "normalizer returns null for malformed confidence metadata rather than coercion failure",
-      "malformed memory metadata produces visible conflicts and atomically omits the full memories section",
-      "a stage with malformed metadata cannot be accepted into canonical memory"
+      "combined snapshot-and-validation returns a detached value for a valid HMX document",
+      "valid HMX document produces no schema issues through the combined boundary",
+      "accessor-backed HMX envelope is rejected without executing the getter",
+      "existing stage-isolation and malformed-metadata fail-closed regressions remain"
     ],
-    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass420",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "86ec7974749de51ef1a78375e0da45d4772c34c7",
+      "followupCodeCommit": "619535a9cf23e3463ca4a8b1809a07811e512f00",
+      "testCommit": "b801a6eb2b67a6270f4f2a4dc745a3bf32433100",
+      "codeTestHead": "b801a6eb2b67a6270f4f2a4dc745a3bf32433100",
+      "summary": "Introduce a combined snapshot-and-validation boundary so the HMX staging path can validate the exact bounded detached tree it then stages, avoiding a second full copy/serialization. Public arbitrary-input validation remains snapshot-protected; restore validation continues to use the public safe API.",
+      "testsAdded": [
+        "combined snapshot-and-validation returns a detached value for a valid HMX document",
+        "valid HMX document produces no schema issues through the combined boundary",
+        "accessor-backed HMX envelope is rejected without executing the getter",
+        "existing stage-isolation and malformed-metadata fail-closed regressions remain"
+      ],
+      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass419",
       "date": "2026-10-26",
@@ -403,24 +419,6 @@
         "a stage with malformed metadata cannot be accepted into canonical memory"
       ],
       "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
-    {
-      "id": "WorkPass418",
-      "date": "2026-10-26",
-      "branch": "hexis-remote-bridge-20261026",
-      "codeCommit": "8325edfe46cc263b79a146dee94268e14c07c6d0",
-      "testCommit": "849453058df8ca197e623432b66d6d17bad0e945",
-      "codeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
-      "summary": "Reduce redundant HMX section deep copies after the bounded request/document snapshot. Reuse detached snapshot sections internally and retain a structured clone at the stage-return boundary.",
-      "testsAdded": [
-        "mutating caller's source document after stage creation cannot alter stored staged memory content",
-        "mutating returned stage clone cannot alter stored staged memory content",
-        "safe snapshot isolation is preserved with reduced intermediate copies"
-      ],
-      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
@@ -593,8 +591,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "19afcc0376e55b26511713776a09438bcc4a7e79",
-  "branchHeadBeforeTrackerCommit": "19afcc0376e55b26511713776a09438bcc4a7e79",
+  "latestUnverifiedCodeTestHead": "b801a6eb2b67a6270f4f2a4dc745a3bf32433100",
+  "branchHeadBeforeTrackerCommit": "b801a6eb2b67a6270f4f2a4dc745a3bf32433100",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -634,38 +632,44 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass418",
+    "id": "WorkPass419",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "8325edfe46cc263b79a146dee94268e14c07c6d0",
-    "testCommit": "849453058df8ca197e623432b66d6d17bad0e945",
-    "codeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
-    "summary": "Reduce redundant HMX section deep copies after the bounded request/document snapshot. Reuse detached snapshot sections internally and retain a structured clone at the stage-return boundary.",
+    "codeCommit": "c39fd277fc2e5c79495a92df1d215171502539c0",
+    "testCommit": "19afcc0376e55b26511713776a09438bcc4a7e79",
+    "codeTestHead": "19afcc0376e55b26511713776a09438bcc4a7e79",
+    "summary": "Make HMX validation and normalization robust against malformed JSON values that would otherwise be coerced through String/Number. Enforce typed memory metadata, safe intent/privacy comparisons, bounded refs, and null-return rather than throw for malformed memory projections.",
     "testsAdded": [
-      "mutating caller's source document after stage creation cannot alter stored staged memory content",
-      "mutating returned stage clone cannot alter stored staged memory content",
-      "safe snapshot isolation is preserved with reduced intermediate copies"
+      "object-valued export_intent returns a schema issue without throwing",
+      "object-valued privacy redaction policy and consent scope return schema issues",
+      "object-valued nk1_kind/confidence and non-string tags return schema issues",
+      "object-valued memory type returns a schema issue without throwing",
+      "object-valued source authority returns a schema issue without throwing",
+      "oversized memory refs return a schema issue",
+      "normalizer returns null for malformed confidence metadata rather than coercion failure",
+      "malformed memory metadata produces visible conflicts and atomically omits the full memories section",
+      "a stage with malformed metadata cannot be accepted into canonical memory"
     ],
-    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass420",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "b801a6eb2b67a6270f4f2a4dc745a3bf32433100",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Validate the already detached bounded HMX staging snapshot in the same pass that captures it, avoiding a redundant second full copy while preserving the public validation API's safe snapshot boundary. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass419",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "19afcc0376e55b26511713776a09438bcc4a7e79",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Make HMX schema validation fail closed with structured issues rather than throwing on malformed JSON values; validate typed trust/metadata fields and reference bounds before canonical memory import, and prove malformed memory metadata cannot be accepted.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass418",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Reduce redundant HMX deep copies only after input has been captured into a detached bounded plain-JSON snapshot, while preserving both source-input isolation and returned-stage isolation. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
