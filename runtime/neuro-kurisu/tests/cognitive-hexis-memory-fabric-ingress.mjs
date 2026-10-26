@@ -139,7 +139,15 @@ const failed = rollbackSystem.ingestHexisEvidenceForReview(rollbackInput);
 rollbackFabric.createLearningReview = realCreateReview;
 assert.equal(failed.status, "rejected");
 assert.equal(failed.reason, "hexis-review-ingress-failed");
-assert.deepEqual(owner.memoryOS.snapshot(), memoryBefore, "failed review must rollback canonical memory");
+const evidenceState = (snapshot) => snapshot.items.map((item) => ({
+  id: item.id,
+  content: item.content,
+  confidence: item.confidence,
+  evidenceIds: (item.evidenceRecords ?? []).map((row) => row.evidenceId),
+}));
+assert.deepEqual(evidenceState(owner.memoryOS.snapshot()), evidenceState(memoryBefore), "failed review must rollback canonical memory semantics");
+assert.equal(owner.memoryOS.hasEvidenceId(rollbackMemory.id, rollbackInput.evidenceId), false, "rollback must clear replay identity");
+assert.equal(Boolean(owner.memoryOS.evidenceTrail(rollbackMemory.id)?.sources.some((source) => source.source.includes(rollbackInput.source.ref))), false, "rollback must remove rejected provenance");
 assert.deepEqual(owner.fabric.snapshot(), memoryFabricBefore, "failed review must remove the MemoryFabric receipt");
 assert.deepEqual(owner.events.list(), eventsBefore, "failed review must remove the lifecycle event");
 assert.deepEqual(rollbackFabric.snapshot(), reviewBefore, "failed review must rollback the review queue");
