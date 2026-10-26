@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and historical CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass339 passed its specific validation gates on its PR merge result. WorkPass340 is a separate runtime integration on work/nk1-unified-substrate-runtime-integration-2026-10-26-r4; the earlier divergent branch caught two TypeScript issues now fixed in this fresh branch, but current exact-head tests/CI are pending, so scores do not increase.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all four named workflows passed on that exact head. Newer WorkPass335 code/test head ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745 adds fail-closed validation before ledger writes but exact-head CI evidence has not yet been returned; therefore this snapshot intentionally does not raise scores for WorkPass335. The branch head immediately before this tracker update was d43846db3451caae5062cb4b5c92533765b60f21.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -135,9 +135,10 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "Family-aware evaluation and whole-run time-budget enforcement are implemented, but do not prove improved generalization on external held-out tasks",
-        "Task-family labels must continue to be bound to the trusted manifest and verified execution evidence, not inferred from task IDs or candidate reports",
-        "Need independently measured tool-use/transfer improvement and regression resistance before raising learning-effectiveness scores"
+        "WorkPass335 adds runtime preflight for all persisted run bindings, but its newer code/test head has not yet received exact-head CI confirmation",
+        "Family-aware evaluation and bounded deadlines improve evidence integrity, not measured generalization on external held-out tasks",
+        "Task-family labels must stay bound to the trusted manifest and verified execution evidence",
+        "Need independently measured tool-use/transfer uplift and regression resistance before raising learning-effectiveness scores"
       ],
       "evidence": [
         "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts",
@@ -281,24 +282,28 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass340",
+    "id": "WorkPass339",
     "date": "2026-10-26",
-    "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
-    "codeCommit": "9dfa27fe823ed14cd54ca34758821772e4756795",
-    "summary": "Wire hardened UnifiedCognitiveSubstrate into the real OrganismRuntime cycle, add durable guarded sidecar, intersect optional simulation budget with dependency/resource routing, and test live-cycle/restart continuity.",
+    "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5",
+    "codeCommit": "02372e4949c2094b5cd1a3c4420aeda86a2fdfa1",
+    "summary": "Strict canonical Base64 decoding for 64-byte Ed25519 skill promotion and rollback approval signatures.",
     "testsAdded": [
-      "strict persisted-state validation and schema-version rejection",
-      "invalid/replayed tick and malformed persisted data fail closed",
-      "invalid evidence/resource policy limits optional speculative work",
-      "runtime source-contract for cycle integration and persistence ordering",
-      "30-cycle smoke confirms substrate advances during live runtime",
-      "stop/re-init confirms sidecar restores substrate cycle continuity"
+      "canonical promotion signature accepted",
+      "promotion signature with trailing junk rejected",
+      "promotion signature with leading whitespace rejected",
+      "truncated promotion signature rejected",
+      "canonical rollback signature accepted",
+      "rollback signature with trailing junk rejected"
     ],
-    "validationStatus": "Pending exact-head typecheck, substrate wiring regression, organism smoke/restart, and Actions CI.",
+    "validationStatus": "PASS on PR merge commit 4a41db0: Unified project integration suite #119 and runtime typecheck passed; WorkPass110 continual-learning metrics #4641 includes P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS; progress-ledger integrity #20 passed.",
     "progressPercentagesChanged": false,
-    "previousAttemptFindings": [
-      "Old branch first CI attempt exposed direct PredictionDebtState cast error; fixed in current branch through explicit unknown bridge.",
-      "Old branch first CI attempt exposed nonexistent cycleObservation.vision access; current branch uses relationCount=0 pending typed P41 relations."
+    "testedMergeCommit": "4a41db0",
+    "testedBaseSha": "3e22a06c000337f10d15d8583eb8448882c1b063",
+    "testedHeadSha": "0a0f987f9035b99012b36b304029ff625dda1d7f",
+    "workflowRuns": [
+      40253553153,
+      40253553155,
+      40253553224
     ]
   },
   "recentEngineeringPasses": [
@@ -307,17 +312,9 @@
       "date": "2026-10-26",
       "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5",
       "codeCommit": "02372e4949c2094b5cd1a3c4420aeda86a2fdfa1",
-      "testedMergeCommit": "4a41db0",
-      "validationStatus": "PASS: runtime typecheck, unified integration suite, P23 versioned candidate store, WorkPass110 and progress-ledger integrity."
-    },
-    {
-      "id": "WorkPass340",
-      "date": "2026-10-26",
-      "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
-      "codeCommit": "9dfa27fe823ed14cd54ca34758821772e4756795",
-      "summary": "Live unified-substrate persistence and cross-system work-budget governance; 30-cycle smoke and restart-continuity regression authored.",
-      "validationStatus": "Pending exact-head typecheck, substrate wiring regression, organism smoke/restart, and Actions CI.",
-      "progressPercentagesChanged": false
+      "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending."
     }
-  ]
+  ],
+  "latestUnverifiedCodeTestHead": "ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745",
+  "branchHeadBeforeTrackerCommit": "d43846db3451caae5062cb4b5c92533765b60f21"
 }
