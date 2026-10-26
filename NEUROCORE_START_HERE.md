@@ -1,3 +1,17 @@
+## Latest checkpoint — WorkPass357 file-backed memory continuity (2026-10-26)
+
+**Branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code/test head:** `aba212a52e6f058ff834fa0e036e37c1b10e7497`  
+**CI:** [WorkPass349 focused workflow #40290445048 — success](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290445048)
+
+- A writer process persisted a canonical MemoryOS snapshot to a real `FileStateStore` file.
+- A separate fresh Node process reopened that file, restored `MemoryOS2`, rebuilt its indexes, retrieved the same causal memory ID with its outcome link, and passed the read-only memory doctor.
+- WorkPass356's invalid-schema, duplicate-ID, forged-hash, invalid status/vector/link regressions pass in the same workflow. Runtime typecheck passed.
+- **Scope limit:** this proves file-backed MemoryOS continuity in a controlled two-process fixture, not every state owner in the whole organism. Next pass: run the complete organism/runtime through a file-backed shutdown/restart and verify public retrieval for causal/autobiographical/goal/user-model memories.
+- Still open: deployment-owned sandbox, independent matched retrieval uplift, full clean-machine startup, production UI/database, browser/Live2D E2E, Android/Termux voice path, long soak and license review.
+
+---
+
 ## Latest checkpoint — WorkPass356 MemoryOS restore safety (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
