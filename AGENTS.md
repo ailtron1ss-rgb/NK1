@@ -1,12 +1,14 @@
 # NeuroCore — repository working rules
 
-> **Current continuation point (2026-10-26):** start with `NEUROCORE_START_HERE.md`; current code/security pass is `workpass349-native-dataset-path-identity-2026-10-26`, based on source-stack commit `71e9286f9fe11c6afec851359a96f9e9b0011259`.
+> **Current continuation point (2026-10-26):** read `NEUROCORE_START_HERE.md` first. The cumulative source branch is `workpass349-native-dataset-path-identity-2026-10-26`; the current work covers WorkPass349 and WorkPass350. Keep `main` stable as the release/metadata branch and do not merge the source stack into it without a separately verified release sync.
 >
-> **WorkPass349 change:** native Hermes/P23 signed-dataset loading now binds the inspected `lstat` object, canonical target and opened descriptor to the same device/inode, opens the original configured path with `O_NOFOLLOW` on POSIX, and preserves pre-/post-read mutation checks. Focused regression coverage and CHANGELOG/backlog/checkpoint updates are committed.
+> **WorkPass349:** native Hermes/P23 signed-dataset reads bind the initial `lstat`, canonical target, and opened descriptor to the same device/inode; open the inspected path with `O_NOFOLLOW` on POSIX and retain pre-/post-read mutation checks.
 >
-> **Validation is pending on the exact head.** Do not infer success from earlier WorkPass347/348 CI: run `npm run test:workpass346:native-repair-provider`, runtime typecheck, and the WorkPass335 Hermes host-evaluator workflow, then record their exact-head results. No local execution or fresh CI success is asserted here.
+> **WorkPass350:** host-owned evaluator configuration rejects group/world-writable parent directories on POSIX and rejects provider/evaluator hard-link aliases by device/inode identity. Regressions cover both cases.
 >
-> Keep `main` stable as the release/metadata branch; do not merge the source stack into `main` without a separately verified release sync. Continue code-first, with the existing canonical runtime, memory owner and learning gates; avoid parallel sources of truth, placeholders, fake metrics, and unsupported claims of consciousness or learning uplift.
+> **Validation evidence:** on code SHA `5484b3567965870a4596336503a6b22985dbb17f`, WorkPass349 run #40284698566 passed 10/10 native-provider tests plus runtime typecheck; WorkPass335 run #40284703984 passed 15/15 evaluator wiring tests plus runtime typecheck. Broader aggregate tests and deployment/device gates remain distinct and must be tracked independently. Do not claim production readiness or learning uplift from these results alone.
+>
+> Continue code-first: integrate through the canonical runtime, preserve single sources of truth and capability boundaries, add regression tests for every safety correction, and never substitute placeholders or unsupported consciousness/autonomy claims for observable behavior.
 
 ## Project objective
 
