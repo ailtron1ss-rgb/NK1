@@ -1,3 +1,11 @@
+## [NK1][Hexis] WorkPass399 — bind accepted HMX stages to their payload digest (2026-10-26)
+
+- [SAFETY] Added a shared stage-digest reconstruction helper using the same legacy stable serializer as `stageHmx`. The stage digest covers the export/intent/strategy, source lineage, record counts, protected sections, conflicts, and the actual staged payload.
+- [FIX] Both `decideHmx('accept'/'apply')` and the canonical projector now reject an altered stage payload with `hmx-stage-digest-invalid`; an accepted snapshot can no longer swap memory contents while retaining the prior review digest.
+- [FIX] When restore must omit an over-budget un-applied stage payload, it adds a blocking conflict and recalculates the digest for the new, explicitly incomplete staged representation. Valid applied stages retain their receipt-bound original digest for replay.
+- [TEST] Added direct-projector checks for stale stage payloads and an integration regression for a tampered accepted snapshot; normal duplicate-reference validation is updated to use a valid stage digest.
+- [VALIDATION] Source and regressions are wired into `audit:hexis`/WorkPass71; no runtime PASS is claimed while Actions jobs terminate before runner allocation.
+
 ## [NK1][Hexis] WorkPass398 — bound retained HMX staging payloads (2026-10-26)
 
 - [SAFETY] Added a 16 MiB aggregate limit for staged HMX section payloads, in addition to the per-document size limit and 32-stage history cap. If the incoming stage would exceed the budget, its entire staged payload is omitted, original section counts remain visible, and a blocking conflict prevents acceptance.
