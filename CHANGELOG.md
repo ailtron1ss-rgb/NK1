@@ -1,3 +1,9 @@
+## [NK1][Hexis] Enforce HMX accept/apply confirmation on the server (2026-10-26)
+
+- Require `confirmed: true` on both `accept` and `apply` decisions in the HMX endpoint; reject a wrongly typed confirmation flag as HTTP 400 and unconfirmed transitions as HTTP 403.
+- Transmit the explicit confirmation through the typed frontend API and only send `true` from UI handlers after the corresponding checkbox gate.
+- Extend server smoke to attempt accept and apply without confirmation for a standard stage, a canonical-memory stage, and a goal import stage; the confirmed path must still work afterward.
+
 ## [NK1][Hexis] Strictly validate review and lifecycle identifiers (2026-10-26)
 
 - Validate review IDs/decisions/correction type, retention memory/proposal IDs and confirmation type, HMX stage inputs and decisions, goal stage/proposal IDs and decisions, outbox claim ID, and connector-policy revoke ID before dispatch.
