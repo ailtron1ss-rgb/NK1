@@ -1,3 +1,14 @@
+## NK1 × QuixiAI/Hexis — remote peer + HMX 1.7 memory bridge (2026-10-26)
+
+- Added an opt-in `HexisRemoteApiBridge` for the documented QuixiAI/Hexis health/model/chat endpoints, with explicit per-request confirmation, bounded allowlisted context, transport/auth/redirect guards, and advisory-only result semantics. Added status/consult routes and a user-controlled panel in the existing Hexis console.
+- Rebuilt `HexisHmxV17Adapter.ts` into one canonical implementation after detecting duplicated exported declarations in the earlier file. It takes a bounded plain-JSON snapshot without invoking accessors, checks HMX 1.7 envelope/source/intent/ref/date/hash constraints, blocks populated unmapped/protected sections and protected memory kinds, and exports canonical MemoryOS2 rows as a bounded memory-only HMX document.
+- Added local HMX JSON-file/paste import in the existing console. Only `telepathy + additive` may merge ordinary memories through the canonical MemoryFabric/MemoryOS2 path after explicit staging/approval. Imported trust/confidence is capped; external metadata cannot promote an import to verified fact. Stage receipts distinguish applied/partial/skipped and track counts.
+- The HMX accept route now returns HTTP 409 for conflicts instead of reporting a false success. Tests cover untrusted remote responses, HMX schema/provenance/hash validation, getters/proxies/cycles/array bounds, protected-section refusal, and a server E2E memory retrieval assertion.
+- Wired `audit:hexis` into the mandatory cognitive integration suite, including the focused adapter/server smoke and server-import/API/UI wiring audits.
+- **Validation status:** latest GitHub Actions jobs are failing within seconds without step records or downloadable logs; the current integration tests/typecheck are therefore not claimed as passed. Earlier successful generic CI predates the final HMX test wiring and is not sufficient evidence. Keep PR #224 draft until a full exact-head runner completes. No live external Hexis service was contacted; `main` and the canonical GitHub Release ZIP remain unchanged.
+
+---
+
 ## WorkPass397 — safe HMX snapshot and accessor-free validation (2026-10-26)
 
 - **Code commits:** `aead364e098b462b5f99f48e65b76585f927975f` (bounded HMX plain-JSON snapshot) and `83343d9ba5765050c734218a64d8bbe6e9883f2f` (stage from that same snapshot); **regressions:** `0f9c34c54ad2b858a142c5e14d0de28fb763f5b5` and `28920aa46a888ddff4a0297ae8a93526e879da85`.
