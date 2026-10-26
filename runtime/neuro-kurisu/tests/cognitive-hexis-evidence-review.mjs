@@ -92,6 +92,35 @@ const idConflict = ingestHexisEvidenceForReview(memoryOS, fabric, {
 });
 assert.equal(idConflict.status, "conflict");
 assert.equal(memoryOS.get(belief.id).confidence, postApproveConfidence);
+const explicitTimestampConflict = ingestHexisEvidenceForReview(memoryOS, fabric, {
+  ...incoming,
+  observedAt: "2026-10-26T10:01:00.000Z",
+});
+assert.equal(explicitTimestampConflict.status, "conflict", "caller-supplied timestamp is part of canonical evidence identity");
+
+// Legacy callers may omit observedAt, in which case the server receipt clock
+// changes on every request but must not make an identical replay conflict.
+const receiptMemory = createMemory(memoryOS, "Memory for server-generated evidence receipt timestamps.", 0.52);
+const receiptInput = evidence(
+  receiptMemory.id,
+  "hexis:review:receipt-time-01",
+  "supports",
+  "source:receipt-time-01",
+  { observedAtOrigin: "server-receipt", observedAt: "2026-10-26T10:00:00.000Z" },
+);
+const receiptPending = ingestHexisEvidenceForReview(memoryOS, fabric, receiptInput);
+assert.equal(receiptPending.status, "review-pending");
+const receiptReplay = ingestHexisEvidenceForReview(memoryOS, fabric, {
+  ...receiptInput,
+  observedAt: "2026-10-26T10:05:00.000Z",
+});
+assert.equal(receiptReplay.status, "duplicate", "generated receipt time must not destabilize idempotent replay");
+const receiptConflict = ingestHexisEvidenceForReview(memoryOS, fabric, {
+  ...receiptInput,
+  observedAt: "2026-10-26T10:05:00.000Z",
+  note: "An actual payload change must remain a conflict.",
+});
+assert.equal(receiptConflict.status, "conflict", "timestamp normalization must not weaken the rest of the evidence digest");
 
 // 2) Contradicting evidence remains a proposal until a reviewer explicitly approves it.
 const contradictionMemory = createMemory(memoryOS, "Belief challenged by a source requiring review.", 0.8);
