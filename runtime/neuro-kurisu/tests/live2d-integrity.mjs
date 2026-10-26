@@ -50,6 +50,9 @@ assert.ok(avatarHtml.includes("headTilt: Math.max(-0.15, Math.min(0.15, Number(b
 assert.ok(avatarHtml.includes("window.setInterval(() => { void refreshSpeech(); }, 150)"), 'speech cursor refresh must remain separate from the slow cognitive snapshot');
 const runtimeViewerSource=fs.readFileSync(path.join(root,'public/live2d/viewer.html'),'utf8');
 const avatarSource=fs.readFileSync(path.join(root,'public/avatar.html'),'utf8');
+for(const token of ['headAngleX','bodyAngleX','bodyAngleY','bodyAngleZ','ParamBodyAngleX','ParamBodyAngleY','ParamBodyAngleZ','ParamBreath','breathIntensity']) assert.ok(runtimeViewerSource.includes(token),`runtime viewer missing full-body channel ${token}`);
+const appViewerSource=fs.readFileSync(path.resolve(root,'../../app/public/live2d/viewer.html'),'utf8');
+for(const token of ['headAngleX','bodyAngleX','bodyAngleY','bodyAngleZ','ParamBodyAngleX','ParamBodyAngleY','ParamBodyAngleZ','ParamBreath','breathIntensity']) assert.ok(appViewerSource.includes(token),`app viewer missing full-body channel ${token}`);
 const avatarStateSource=fs.readFileSync(path.join(root,'public/avatar-state.mjs'),'utf8');
 const sharedVisemeCorePath=path.join(root,'public/speech-viseme-core.mjs');
 assert.ok(fs.existsSync(sharedVisemeCorePath),'the shared grapheme/viseme core must be shipped beside the runtime avatar');
