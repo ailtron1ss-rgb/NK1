@@ -1,7 +1,7 @@
 ## Latest checkpoint — WorkPass354 learning-process storage isolation (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
-**Status:** code/tests committed; exact-head validation pending.
+**Status:** code/tests committed; focused workflow [#40289252511](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289252511) passed on code/test SHA `959ced22f50267dd18d5c7f9403d2905e37dd716` (native provider 10/10, supervisor regression success, evaluator-config suite 16/16, runtime typecheck pass).
 
 - The generic `LearningProcessSupervisor` now independently protects its output and persistent-state roots rather than relying solely on host-owned evaluator prechecks.
 - Run/survive roots are created owner-only, and existing directories fail closed if public/group-accessible, symlinked at the final component, or not stable across filesystem identity checks. Equal/nested/aliased run and survive roots are rejected before a child runs.
