@@ -1,3 +1,10 @@
+## Causal replay wiring — assert features before sampler admission (2026-10-26)
+
+- Fixed a stale source-contract regression in `causal-replay-runtime-wiring.mjs`: it searched for `policyFeatures01` starting *after* the `selectCausalReplayBatch` call, although P23 correctly constructs candidate features before invoking the sampler.
+- Aligned the assertion with the validated r3 test: the feature vector must appear inside `replayPending` and before causal selection, and it must include energy, goal pressure, verified success/reward/surprise, and learning-quality signals. The runtime sampler and adaptive final selector remain required.
+
+---
+
 ## P26 context-aware replay benchmark — declare the intended replay budget (2026-10-26)
 
 - A follow-on CI run caught a stale benchmark call that expected context-aware replay to use the entire fresh batch but omitted `maxReplayRatio01: 1`. The production-safe default is 0.5, so the omitted option correctly capped replay at half the current batch and invalidated the test's old-task retention expectation.
