@@ -8,7 +8,7 @@ import { VersionedSkillCandidateStore, InMemorySkillStorePersistence } from '../
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
-import { createAuthenticatedSkillPromotionApprovalVerifier, canonicalSkillPromotionApprovalPayload, createSkillPromotionApprovalPayload } from '../src/organism/learning/AuthenticatedSkillPromotionApproval.ts';
+import { createAuthenticatedSkillPromotionApprovalVerifier, createAuthenticatedSkillRollbackApprovalVerifier, canonicalSkillPromotionApprovalPayload, createSkillPromotionApprovalPayload, canonicalSkillRollbackApprovalPayload, createSkillRollbackApprovalPayload } from '../src/organism/learning/AuthenticatedSkillPromotionApproval.ts';
 import { createContextBoundSkillShadowEvidenceVerifier, signSkillShadowArtifactForFixture, skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 
 function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticatedEvidenceRows=0) {
@@ -48,7 +48,7 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
     gate: { accepted }, canActivateAutomatically: false, authenticatedEvidenceRows, unauthenticatedEvidenceRows,
   };
 }
-const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true); // explicit test-only approval/evidence adapters
+const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true, () => true); // explicit test-only promotion, evidence, and rollback authority adapters
 const defaultDenyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
 const defaultDenyCandidate = defaultDenyStore.stageCandidate(proposal('f'), 'deny-shadow-test', { instruction: 'must not enter shadow' });
 assert.throws(() => defaultDenyStore.recordShadowObservation(defaultDenyCandidate.candidateId, {
@@ -93,7 +93,7 @@ const active2 = store.approveAndPromote(c2.candidateId, {
 });
 assert.equal(active2.version, 2);
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 2);
-const restored = store.rollback(c2.candidateId, 2, Date.now());
+const restored = store.rollback(c2.candidateId, { approvedBy: 'human-reviewer-1', approvedAt: Date.now(), expectedActiveVersion: 2 });
 assert.equal(restored.version, 1);
 assert.equal(restored.payload.instruction, 'version one');
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 1);
@@ -102,7 +102,7 @@ assert.equal(store.snapshot().candidates.find(item => item.candidateId === c1.ca
   'rollback restores the prior version lifecycle status as well as its payload');
 assert.equal(store.snapshot().candidates.find(item => item.candidateId === c2.candidateId).approval.approvedBy, 'human-reviewer-1',
   'promotion approval is retained as an audit record');
-assert.throws(() => store.rollback(c2.candidateId, 2), /currently promoted/);
+assert.throws(() => store.rollback(c2.candidateId, { approvedBy: 'human-reviewer-1', approvedAt: Date.now(), expectedActiveVersion: 2 }), /currently promoted/);
 
 // The production-safe default denies promotion even if a caller fabricates plausible audit fields.
 const denyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => false, () => true); // allow fixture shadow rows while testing default-deny approval
@@ -156,6 +156,74 @@ const validApproval = {
 };
 const signedActive = signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3);
 assert.equal(signedActive.version, 1);
+assert.throws(() => signedApprovalStore.rollback(approvalCandidate.candidateId, {
+  approvedBy: 'operator-key-1', approvedAt: Date.now(), expectedActiveVersion: 1,
+}), /rollback approval is not authenticated by the configured authority/,
+  'caller-supplied rollback identity and active-version fields cannot bypass the default-deny rollback authority');
+assert.equal(signedApprovalStore.snapshot().active.find(item => item.skillId === 'signed-approval-skill').version, 1,
+  'a rejected unauthenticated rollback must leave the currently active skill untouched');
+
+// A separate Ed25519 rollback authority must bind the signature to the exact active candidate and restore target.
+let rollbackClock = Date.now();
+approvalClock = rollbackClock;
+const authenticatedRollbackVerifier = createAuthenticatedSkillRollbackApprovalVerifier(
+  new Map([['operator-key-1', approvalPublicPem]]), { now: () => rollbackClock },
+);
+const rollbackPersistence = new InMemorySkillStorePersistence();
+const authenticatedRollbackStore = new VersionedSkillCandidateStore(
+  rollbackPersistence, authenticatedApprovalVerifier, () => true, authenticatedRollbackVerifier,
+);
+const rollbackCandidate = authenticatedRollbackStore.stageCandidate(
+  proposal('signed-rollback'), 'signed-rollback-skill', { instruction: 'rollback signature required' },
+);
+for (let i = 1; i <= 3; i++) authenticatedRollbackStore.recordShadowObservation(rollbackCandidate.candidateId, {
+  runId: 'signed-rollback-shadow-' + i, evidenceFingerprint: (i + 5).toString().repeat(64),
+  passed: true, observedAt: Date.now(),
+});
+rollbackClock = Date.now();
+approvalClock = rollbackClock;
+const rollbackPromotionCandidate = authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId);
+const rollbackPromotionPayload = createSkillPromotionApprovalPayload(
+  rollbackPromotionCandidate, 'operator-key-1', 'rollback-promotion-approval-1', rollbackClock, null, 3,
+);
+const rollbackPromotionApproval = {
+  approvedBy: 'operator-key-1', approvedAt: rollbackClock, expectedActiveVersion: null,
+  artifact: {
+    payload: rollbackPromotionPayload,
+    signature: sign(null, Buffer.from(canonicalSkillPromotionApprovalPayload(rollbackPromotionPayload), 'utf8'), approvalPrivatePem).toString('base64'),
+  },
+};
+assert.equal(authenticatedRollbackStore.approveAndPromote(rollbackCandidate.candidateId, rollbackPromotionApproval, 3).version, 1);
+const rollbackActiveCandidate = authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId);
+assert.equal(rollbackActiveCandidate.status, 'active');
+assert.throws(() => authenticatedRollbackStore.rollback(rollbackCandidate.candidateId, {
+  approvedBy: 'operator-key-1', approvedAt: rollbackClock, expectedActiveVersion: 1,
+}), /rollback approval is not authenticated by the configured authority/,
+  'unsigned rollback is not accepted even with a configured trusted key');
+const rollbackPayload = createSkillRollbackApprovalPayload(
+  authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId),
+  'operator-key-1', 'rollback-approval-request-1', rollbackClock,
+);
+const rollbackArtifact = {
+  payload: rollbackPayload,
+  signature: sign(null, Buffer.from(canonicalSkillRollbackApprovalPayload(rollbackPayload), 'utf8'), approvalPrivatePem).toString('base64'),
+};
+const signedRollbackApproval = {
+  approvedBy: 'operator-key-1', approvedAt: rollbackClock, expectedActiveVersion: 1, artifact: rollbackArtifact,
+};
+assert.equal(authenticatedRollbackStore.rollback(rollbackCandidate.candidateId, signedRollbackApproval), null,
+  'a valid context-bound Ed25519 rollback can restore the null previous-active state');
+assert.equal(authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId).status, 'rolled-back');
+assert.equal(authenticatedRollbackStore.snapshot().active.length, 0);
+assert.equal(authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId).rollbackApproval.artifact.payload.previousActiveFingerprint,
+  rollbackPayload.previousActiveFingerprint, 'rollback approval persists the exact previous-active fingerprint');
+const restoredAuthenticatedRollbackStore = new VersionedSkillCandidateStore(
+  rollbackPersistence, authenticatedApprovalVerifier, () => true, authenticatedRollbackVerifier,
+);
+assert.equal(restoredAuthenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId).status, 'rolled-back',
+  'signed rollback evidence is revalidated across store reconstruction');
+assert.equal(restoredAuthenticatedRollbackStore.snapshot().active.length, 0,
+  'restart cannot resurrect a skill that was authoritatively rolled back');
 assert.equal(signedApprovalStore.snapshot().candidates[0].approval.artifact.payload.candidateId, approvalCandidate.candidateId);
 assert.throws(() => signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3),
   /must complete shadow staging/,
@@ -167,14 +235,14 @@ assert.throws(() => new VersionedSkillCandidateStore(signedApprovalPersistence, 
   /persisted active skill approval failed signature\/context verification/,
   'restoration with an unconfigured approval authority fails closed instead of trusting persisted JSON');
 const tamperedActiveSnapshot = JSON.parse(JSON.stringify(signedApprovalPersistence.read()));
-tamperedActiveSnapshot.candidates[0].baseVersion = 41; // Not part of candidateId; restore must still bind CAS metadata to the signed approval.
+tamperedActiveSnapshot.candidates[0].promotedAt = 41; // Not part of candidateId; restore must still bind activation metadata to the signed approval.
 const tamperedPersistence = {
   read: () => JSON.parse(JSON.stringify(tamperedActiveSnapshot)),
   compareAndSwap: () => false,
 };
 assert.throws(() => new VersionedSkillCandidateStore(tamperedPersistence, authenticatedApprovalVerifier, () => true),
   /promotion CAS\/activation metadata is not bound to the signed approval/,
-  'a structurally valid state file cannot rewrite the active skill base-version CAS metadata');
+  'a structurally valid state file cannot rewrite the active skill activation timestamp');
 
 const persistence = new InMemorySkillStorePersistence();
 const first = new VersionedSkillCandidateStore(persistence);
@@ -192,6 +260,22 @@ try {
   const afterRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
   assert.equal(afterRestart.snapshot().candidates[0].candidateId, durableCandidate.candidateId,
     'atomic file adapter restores candidate state across store reconstruction');
+  const durableProvenanceCandidate = durableStore.stageCandidate(
+    proposal('i'), 'file-backed-provenance-skill', { instruction: 'persisted with revision provenance' },
+    {
+      schemaVersion: 1,
+      evaluationFingerprint: 'a'.repeat(64),
+      sourceCandidateId: null,
+      planFingerprint: 'b'.repeat(64),
+      datasetFingerprint: 'c'.repeat(64),
+      sourceEvidenceFingerprint: 'd'.repeat(64),
+      dimensions: ['task-success', 'executability'],
+      createdAt: Date.now(),
+    },
+  );
+  const afterProvenanceRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
+  assert.equal(afterProvenanceRestart.snapshot().candidates.some(item => item.candidateId === durableProvenanceCandidate.candidateId), true,
+    'atomic file validator uses the same candidate-ID tuple when revision provenance is present');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
 } finally {

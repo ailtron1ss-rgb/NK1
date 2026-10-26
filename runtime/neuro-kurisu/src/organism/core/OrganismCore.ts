@@ -1,5 +1,6 @@
 import { actionCost } from './ActionCostPolicy.ts';
 import { sha256Stable } from './StableSerialization.ts';
+import { canonicalizeMemoryContent } from '../developmental/MemoInspiredMemoryPrimitives.ts';
 import { memoRuntimeContext } from '../developmental/MemoRuntimeContext.ts';
 import { randomUUID, createHash } from 'node:crypto';
 import { WillIntegrationBridge, defaultWillIntegrationState, type WillIntegrationState } from '../integration/will/WillIntegrationBridge.ts';
@@ -2788,25 +2789,179 @@ export class OrganismCore {
     hexisReviseBelief(input: {
         memoryId: string;
         stance: HexisEvidenceStance;
-        evidence: {
-            ref?: string;
-            label?: string;
-            contentHash?: string;
-            trust01?: number;
-            note?: string;
-        };
+        evidence: { ref?: string; label?: string; contentHash?: string; trust01?: number; note?: string; };
         context?: string;
     }) {
         const memory = this.memorySubsystem.memoryOS.get(String(input.memoryId));
-        if (!memory)
-            return { ok: false, error: 'memory-not-found', memoryId: String(input.memoryId) };
-        const audit = this.hexisAdaptation.reviseBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: Number(memory.sourceAuthority01 ?? 0.5), evidence: input.evidence, stance: input.stance, context: input.context, protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical', at: Date.now() });
-        if (audit.applied) {
-            this.memorySubsystem.fabric.updateSignals(memory.id, { confidence: audit.posteriorConfidence01 }, 'hexis-belief-revision', { tick: this.persisted.state.tick });
+        if (!memory) return { ok: false, error: 'memory-not-found', memoryId: String(input.memoryId) };
+
+        const sourceKeyFor = (evidence: { ref?: string; label?: string; contentHash?: string }) =>
+            String(evidence.ref || evidence.label || evidence.contentHash || sha256Stable(evidence, 'legacy'))
+                .trim().normalize('NFKC').toLowerCase().slice(0, 96);
+        const legacyEvidenceSourceKey = String(input.evidence.ref || input.evidence.label || input.evidence.contentHash || sha256Stable(input.evidence, 'legacy'))
+            .trim().normalize('NFKC').slice(0, 96);
+        const evidenceSourceKey = sourceKeyFor(input.evidence);
+        // Existing canonical evidence keys were case-sensitive; accept the exact legacy spelling during migration.
+        const hasCanonicalEvidence = () =>
+            this.memorySubsystem.memoryOS.hasEvidenceLineage(memory.id, evidenceSourceKey) ||
+            this.memorySubsystem.memoryOS.hasEvidenceLineage(memory.id, legacyEvidenceSourceKey);
+        const evidenceCommandId = `hexis-evidence:${createHash('sha256').update(`${memory.id}|${evidenceSourceKey}`).digest('hex')}`;
+        const confidenceCommandId = `hexis-belief-confidence:${createHash('sha256').update(`${memory.id}|${evidenceSourceKey}`).digest('hex')}`;
+        const audits = this.hexisAdaptation.snapshot().beliefAudit
+            .filter((row) => row.memoryId === memory.id && sourceKeyFor(row.evidence) === evidenceSourceKey);
+        const priorAppliedAudit = [...audits].reverse().find((row) => row.applied);
+        const priorAudit = priorAppliedAudit ?? [...audits].reverse()[0];
+        if (priorAudit && priorAudit.stance !== input.stance)
+            return { ok: false, error: 'evidence-source-already-consumed', memoryId: memory.id, audit: priorAudit };
+
+        const duplicateReceipt = () => ({
+            ok: true as const, added: false as const, reason: 'duplicate-source' as const,
+            memoryId: memory.id,
+            independentSources: this.memorySubsystem.memoryOS.evidenceTrail(memory.id)?.independentSources ?? 0,
+        });
+        const persistEvidence = () => {
+            try {
+                return {
+                    ok: true as const,
+                    receipt: this.memorySubsystem.fabric.recordEvidence(memory.id, {
+                        source: String(input.evidence.ref || input.evidence.label || input.evidence.contentHash || 'hexis-evidence'),
+                        provenanceClass: 'external',
+                        sourceAuthority01: Number(input.evidence.trust01 ?? 0.5),
+                        independenceKey: evidenceSourceKey,
+                    }, { commandId: evidenceCommandId, tick: this.persisted.state.tick }),
+                };
+            } catch (error) {
+                return { ok: false as const, error: error instanceof Error ? error.message : 'unknown-evidence-command-error' };
+            }
+        };
+        const persistConfidence = (target: number) => this.memorySubsystem.fabric.updateSignals(
+            memory.id, { confidence: target }, 'hexis-belief-revision',
+            { commandId: confidenceCommandId, tick: this.persisted.state.tick },
+        );
+        const persistProjection = () => {
+            this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+        };
+
+        // Recovery path: an adapter audit can exist before its matching evidence/reciprocal confidence update.
+        // Finish the missing canonical effect from that audit rather than consume the same evidence a second time.
+        if (priorAudit) {
+            const known = hasCanonicalEvidence();
+            let evidence: ReturnType<typeof this.memorySubsystem.fabric.recordEvidence>;
+            if (known) {
+                evidence = duplicateReceipt();
+            } else {
+                const persisted = persistEvidence();
+                if (!persisted.ok) {
+                    persistProjection();
+                    return { ok: false, error: 'evidence-command-failed', detail: persisted.error, audit: priorAudit };
+                }
+                evidence = persisted.receipt;
+                if (!evidence.ok) {
+                    persistProjection();
+                    return { ok: false, error: 'evidence-persistence-rejected', audit: priorAudit, evidence };
+                }
+            }
+
+            let current = this.memorySubsystem.memoryOS.get(memory.id);
+            if (!current) {
+                persistProjection();
+                return { ok: false, error: 'memory-not-found-during-belief-recovery', memoryId: memory.id, audit: priorAudit };
+            }
+            let confidenceReconciled = Math.abs(current.confidence - priorAudit.posteriorConfidence01) <= 1e-9;
+            if (priorAppliedAudit && !confidenceReconciled &&
+                Math.abs(current.confidence - priorAudit.priorConfidence01) <= 1e-9) {
+                const updated = persistConfidence(priorAudit.posteriorConfidence01);
+                if (!updated) {
+                    persistProjection();
+                    return { ok: false, error: 'belief-confidence-reconciliation-failed', audit: priorAudit, evidence };
+                }
+                const refreshed = this.memorySubsystem.memoryOS.get(memory.id);
+                if (!refreshed) {
+                    persistProjection();
+                    return { ok: false, error: 'memory-not-found-after-belief-recovery', memoryId: memory.id, audit: priorAudit };
+                }
+                current = refreshed;
+                confidenceReconciled = Math.abs(current.confidence - priorAudit.posteriorConfidence01) <= 1e-9;
+            }
+            this.hexisAdaptation.registerOrUpdateBelief({
+                memoryId: memory.id,
+                confidence01: current.confidence,
+                trust01: Number(current.sourceAuthority01 ?? 0.5),
+                at: current.lastAccessAt,
+            });
+            if (known && priorAppliedAudit && confidenceReconciled) {
+                // Fully committed duplicate: preserve the established API contract and return a fresh non-applied audit.
+                const duplicateAudit = this.hexisAdaptation.reviseBelief({
+                    memoryId: memory.id,
+                    confidence01: current.confidence,
+                    trust01: Number(current.sourceAuthority01 ?? 0.5),
+                    evidence: input.evidence,
+                    stance: input.stance,
+                    context: input.context,
+                    protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical',
+                    canonicalDuplicate: true,
+                    at: Date.now(),
+                });
+                this.hexisAdaptation.registerOrUpdateBelief({
+                    memoryId: memory.id,
+                    confidence01: current.confidence,
+                    trust01: Number(current.sourceAuthority01 ?? 0.5),
+                    at: current.lastAccessAt,
+                });
+                persistProjection();
+                return { ok: true, audit: duplicateAudit, evidence, memory: current, duplicate: true, recovered: false };
+            }
+            persistProjection();
+            return {
+                ok: true, audit: priorAudit, evidence, memory: current, recovered: true,
+                confidenceReconciled,
+                newerCanonicalConfidencePreserved: Boolean(priorAppliedAudit && !confidenceReconciled &&
+                    Math.abs(current.confidence - priorAudit.priorConfidence01) > 1e-9),
+            };
         }
-        this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
+
+        const canonicalDuplicate = hasCanonicalEvidence();
+        this.hexisAdaptation.registerOrUpdateBelief({
+            memoryId: memory.id, confidence01: memory.confidence,
+            trust01: Number(memory.sourceAuthority01 ?? 0.5), at: memory.lastAccessAt,
+        });
+        // Record the adapter's deterministic audit first; a later retry can finish any missing canonical write.
+        const audit = this.hexisAdaptation.reviseBelief({
+            memoryId: memory.id, confidence01: memory.confidence,
+            trust01: Number(memory.sourceAuthority01 ?? 0.5), evidence: input.evidence,
+            stance: input.stance, context: input.context,
+            protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical',
+            canonicalDuplicate, at: Date.now(),
+        });
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
-        return { ok: true, audit, memory: this.memorySubsystem.memoryOS.get(memory.id) };
+
+        let evidence: ReturnType<typeof this.memorySubsystem.fabric.recordEvidence> | null = null;
+        if (!canonicalDuplicate) {
+            const persisted = persistEvidence();
+            if (!persisted.ok) {
+                persistProjection();
+                return { ok: false, error: 'evidence-command-failed', detail: persisted.error, audit };
+            }
+            evidence = persisted.receipt;
+            if (!evidence.ok) {
+                persistProjection();
+                return { ok: false, error: 'evidence-persistence-rejected', audit, evidence };
+            }
+        }
+        if (audit.applied) {
+            if (!evidence?.added) {
+                persistProjection();
+                return { ok: false, error: 'applied-belief-without-new-canonical-evidence', audit, evidence };
+            }
+            const updated = persistConfidence(audit.posteriorConfidence01);
+            if (!updated) {
+                persistProjection();
+                return { ok: false, error: 'belief-confidence-update-failed', audit, evidence };
+            }
+        }
+        persistProjection();
+        return { ok: true, audit, evidence, memory: this.memorySubsystem.memoryOS.get(memory.id) };
     }
     /** Temporal views delegate to MemoryOS2; Hexis temporal rows remain audit/export projections only. */
     hexisTemporalAt(memoryId: string, at: number) {
@@ -2847,7 +3002,7 @@ export class OrganismCore {
             ? all.filter((m) => requestedIds.has(m.id))
             : current.filter((m) => ['semantic', 'procedural', 'social', 'working'].includes(m.kind))
                 .sort((a, b) => Number(b.lastAccessAt ?? b.observedAt ?? b.createdAt) - Number(a.lastAccessAt ?? a.observedAt ?? a.createdAt) || a.id.localeCompare(b.id)).slice(0, 12);
-        const review = this.hexisAdaptation.createLearningReview({ periodStart: Number(input.periodStart ?? now - 7 * 86400000), periodEnd: Number(input.periodEnd ?? now), summary: String(input.summary ?? 'Review of recent learned memories and behavioral updates'), items: wanted.slice(0, 20).map((m) => ({ kind: m.kind === 'procedural' ? 'new_procedure' : m.kind === 'social' ? 'revised_strategy' : 'semantic_belief', title: `${m.kind} memory`, content: m.content, sourceMemoryId: m.id, evidence: { confidence: m.confidence, source: m.source, sourceAuthority01: m.sourceAuthority01 ?? 0.5, epistemicStatus: m.epistemicStatus } })) });
+        const review = this.hexisAdaptation.createLearningReview({ periodStart: Number(input.periodStart ?? now - 7 * 86400000), periodEnd: Number(input.periodEnd ?? now), summary: String(input.summary ?? 'Review of recent learned memories and behavioral updates'), items: wanted.slice(0, 20).map((m) => ({ kind: m.kind === 'procedural' ? 'new_procedure' : m.kind === 'social' ? 'revised_strategy' : 'semantic_belief', title: `${m.kind} memory`, content: m.content, sourceMemoryId: m.id, evidence: { confidence: m.confidence, source: m.source, sourceAuthority01: m.sourceAuthority01 ?? 0.5, epistemicStatus: m.epistemicStatus, revisionGroupId: m.revisionGroupId ?? m.id, revisionSequence: m.revisionSequence ?? 1, contentHash: m.contentHash ?? sha256Stable(m.content, 'legacy') } })) });
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return review;
     }
@@ -2855,21 +3010,193 @@ export class OrganismCore {
         const before = this.hexisAdaptation.snapshot();
         const review = before.learningReviews.find((x) => x.id === reviewId);
         const item = review?.items.find((x) => x.id === itemId);
-        const result = this.hexisAdaptation.decideLearningReview(reviewId, itemId, decision, correction);
-        if (!result)
+        if (!item || !['approve', 'correct', 'forget'].includes(decision) || (decision === 'correct' && !String(correction ?? '').trim())) {
             return { ok: false, error: 'review-item-not-found-or-invalid' };
-        if (result.status === 'corrected' && result.sourceMemoryId && correction) {
-            this.memorySubsystem.fabric.reviseContent(result.sourceMemoryId, correction, { reason: 'hexis-learning-review-correction', source: 'hexis-learning-review' }, { tick: this.persisted.state.tick });
         }
-        if (result.status === 'forgotten' && result.sourceMemoryId) {
-            const memory = this.memorySubsystem.memoryOS.get(result.sourceMemoryId);
-            if (memory) {
-                this.forgetMemoryById(memory.id, 'hexis-learning-review-forget');
+        let memoryMutation: Record<string, unknown> = { kind: 'none' };
+        const sourceMemoryId = item.sourceMemoryId ? String(item.sourceMemoryId) : '';
+        // Preflight the stable review identity before any canonical-memory mutation. A changed retry must not revise content first.
+        const reviewCapturedAt = Date.now();
+        const reviewSourceId = `hexis-review:${reviewId}:${itemId}`;
+        const reviewedMemoryId = String(sourceMemoryId || '').slice(0, 192);
+        const reviewEventPayload = {
+            schemaVersion: 1,
+            reviewId: String(reviewId),
+            itemId: String(itemId),
+            decision,
+            sourceMemoryId: reviewedMemoryId || null,
+            correctionHash: decision === 'correct'
+                ? createHash('sha256').update(String(correction ?? '').trim()).digest('hex')
+                : null,
+        };
+        const reviewFingerprint = createHash('sha256').update(JSON.stringify(reviewEventPayload)).digest('hex');
+        const reviewEventContent = `Hexis learning-review request ${decision}; review=${reviewId}; item=${itemId}; memory=${reviewedMemoryId || 'none'}. This is process provenance, not external truth.`;
+        const p65 = this.memorySubsystem.p65EpistemicLedger;
+        const sourceMonitor = this.cognitiveRuntime.sourceMonitor;
+        const priorReviewClaim = p65.snapshot().claimsData.find((claim) => claim.provenance?.sourceId === reviewSourceId);
+        const priorReviewTrace = sourceMonitor.snapshot().traces.find((trace) => trace.id === reviewSourceId);
+        const provenanceMatches = (provenance: { sourceId: string; contentFingerprint?: string } | undefined) =>
+            provenance?.sourceId === reviewSourceId && provenance.contentFingerprint === reviewFingerprint;
+        if (priorReviewClaim && (!provenanceMatches(priorReviewClaim.provenance) || priorReviewClaim.content !== reviewEventContent)) {
+            return { ok: false, error: 'review-evidence-conflict', reviewId, itemId, sourceId: reviewSourceId };
+        }
+        if (priorReviewTrace && (!provenanceMatches(priorReviewTrace.provenance) || priorReviewTrace.kind !== 'hexis-learning-review')) {
+            return { ok: false, error: 'review-source-trace-conflict', reviewId, itemId, sourceId: reviewSourceId };
+        }
+        const provenance = {
+            sourceId: reviewSourceId,
+            sourceKind: 'hexis-learning-review',
+            capturedAt: priorReviewClaim?.provenance?.capturedAt ?? priorReviewTrace?.provenance?.capturedAt ?? reviewCapturedAt,
+            evidenceClass: 'unverified' as const,
+            contentFingerprint: reviewFingerprint,
+            citation: reviewedMemoryId ? `memory:${reviewedMemoryId}` : `review:${reviewId}`,
+        };
+        if (item.status !== 'pending') {
+            const expectedStatus = decision === 'approve' ? 'approved' : decision === 'correct' ? 'corrected' : 'forgotten';
+            const sameCorrection = decision !== 'correct' ||
+                canonicalizeMemoryContent(String(item.correction ?? '')) === canonicalizeMemoryContent(String(correction ?? ''));
+            if (item.status !== expectedStatus || !sameCorrection)
+                return { ok: false, error: 'review-decision-already-finalized', reviewId, itemId, status: item.status };
+            if (!priorReviewClaim || !priorReviewTrace)
+                return { ok: false, error: 'review-finalization-provenance-incomplete', reviewId, itemId };
+            if (decision === 'correct') {
+                const memoryState = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+                const revisionGroupId = String((item.evidence as Record<string, unknown>)?.revisionGroupId ?? sourceMemoryId);
+                const correctedMemory = memoryState.items.find((row) =>
+                    (row.revisionGroupId ?? row.id) === revisionGroupId &&
+                    row.validUntilAt == null &&
+                    row.source === `hexis-learning-review:${reviewId}:${itemId}` &&
+                    row.content === canonicalizeMemoryContent(String(correction ?? ''))
+                );
+                const evidenceKey = `hexis-review:${sha256Stable({ reviewId, itemId }, 'legacy')}`;
+                if (!correctedMemory || !this.memorySubsystem.memoryOS.hasEvidenceLineage(correctedMemory.id, evidenceKey))
+                    return { ok: false, error: 'review-finalization-memory-incomplete', reviewId, itemId };
+                memoryMutation = { kind: 'correct', memoryId: correctedMemory.id, alreadyCommitted: true, replayed: true };
+            } else if (decision === 'forget') {
+                const memoryState = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+                const revisionGroupId = String((item.evidence as Record<string, unknown>)?.revisionGroupId ?? sourceMemoryId);
+                const activeMemory = memoryState.items.find((row) =>
+                    (row.revisionGroupId ?? row.id) === revisionGroupId && row.validUntilAt == null);
+                if (activeMemory)
+                    return { ok: false, error: 'review-finalization-memory-conflict', reviewId, itemId, memoryId: activeMemory.id };
+                memoryMutation = { kind: 'forget', sourceMemoryId, alreadyAbsent: true, replayed: true };
+            } else {
+                memoryMutation = { kind: 'approve', sourceMemoryId, alreadyCommitted: true, replayed: true };
+            }
+            return { ok: true, result: item, reviewId, memoryMutation, replayed: true };
+        }
+        if (decision === 'correct' || decision === 'forget') {
+            if (!sourceMemoryId)
+                return { ok: false, error: 'review-source-memory-required' };
+            const memoryState = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+            const requestedMemory = memoryState.items.find((row) => row.id === sourceMemoryId);
+            const reviewEvidence = item.evidence && typeof item.evidence === 'object' ? item.evidence as Record<string, unknown> : {};
+            const expectedRevisionGroupId = String(reviewEvidence.revisionGroupId ?? '');
+            const expectedGroupRows = expectedRevisionGroupId
+                ? memoryState.items.filter((row) => (row.revisionGroupId ?? row.id) === expectedRevisionGroupId)
+                : [];
+            const memory = requestedMemory
+                ? memoryState.items.filter((row) => (row.revisionGroupId ?? row.id) === (requestedMemory.revisionGroupId ?? requestedMemory.id) && row.validUntilAt == null)
+                    .sort((a, b) => Number(b.revisionSequence ?? 1) - Number(a.revisionSequence ?? 1) || Number(b.observedAt ?? b.createdAt) - Number(a.observedAt ?? a.createdAt))[0] ?? requestedMemory
+                : null;
+            const recoveredCorrection = Boolean(
+                decision === 'correct' && requestedMemory && memory && requestedMemory.id !== memory.id &&
+                memory.supersedesId === requestedMemory.id &&
+                (memory.revisionGroupId ?? memory.id) === (expectedRevisionGroupId || requestedMemory.revisionGroupId || requestedMemory.id) &&
+                memory.source === `hexis-learning-review:${reviewId}:${itemId}` &&
+                memory.content === canonicalizeMemoryContent(String(correction ?? ''))
+            );
+            if (requestedMemory && memory && requestedMemory.id !== memory.id && !recoveredCorrection) {
+                return { ok: false, error: 'review-source-memory-superseded', memoryId: sourceMemoryId, currentMemoryId: memory.id };
+            }
+            if (!requestedMemory && expectedGroupRows.length) {
+                const current = expectedGroupRows.filter((row) => row.validUntilAt == null)
+                    .sort((a, b) => Number(b.revisionSequence ?? 1) - Number(a.revisionSequence ?? 1))[0];
+                // Historical rows can remain after the current tip was successfully forgotten.
+                // Reject only when a live tip still exists; otherwise a retry is idempotent.
+                if (current)
+                    return { ok: false, error: 'review-source-memory-superseded', memoryId: sourceMemoryId, currentMemoryId: current.id };
+            }
+            if (memory && (memory.kind === 'identity' || memory.kind === 'autobiographical' || memory.epistemicStatus === 'quarantined')) {
+                return { ok: false, error: 'protected-memory-requires-explicit-review', memoryId: memory.id };
+            }
+            if (decision === 'correct') {
+                if (!memory)
+                    return { ok: false, error: 'memory-not-found', memoryId: sourceMemoryId };
+                const revised = recoveredCorrection
+                    ? memory
+                    : this.memorySubsystem.fabric.reviseContent(sourceMemoryId, String(correction).trim(), {
+                        reason: 'hexis-learning-review-correction',
+                        source: `hexis-learning-review:${reviewId}:${itemId}`,
+                        confidence: memory.confidence,
+                    }, {
+                        tick: this.persisted.state.tick,
+                        commandId: `hexis-review-correction:${createHash('sha256').update(`${reviewId}|${itemId}|${sourceMemoryId}|${String(correction).trim()}`).digest('hex')}`,
+                    });
+                if (!revised)
+                    return { ok: false, error: 'memory-correction-rejected', memoryId: sourceMemoryId };
+                // The review is provenance, not independent external corroboration: keep authority conservative.
+                const evidenceKey = `hexis-review:${sha256Stable({ reviewId, itemId }, 'legacy')}`;
+                const evidence = this.memorySubsystem.fabric.recordEvidence(revised.id, {
+                    source: `hexis-learning-review:${reviewId}`,
+                    provenanceClass: 'unknown',
+                    sourceAuthority01: 0.5,
+                    independenceKey: evidenceKey,
+                }, {
+                    commandId: `hexis-review-evidence:${createHash('sha256').update(`${reviewId}|${itemId}|${revised.id}`).digest('hex')}`,
+                    tick: this.persisted.state.tick,
+                });
+                if (!evidence.ok)
+                    return { ok: false, error: 'review-evidence-record-failed', memoryId: revised.id };
+                memoryMutation = { kind: 'correct', sourceMemoryId, memoryId: revised.id, unchanged: !recoveredCorrection && revised.id === memory.id && revised.content === memory.content, recovered: recoveredCorrection, evidence };
+            } else if (memory) {
+                const removed = this.forgetMemoryById(memory.id, 'hexis-learning-review-forget');
+                if (!removed)
+                    return { ok: false, error: 'memory-forget-rejected', memoryId: memory.id };
+                memoryMutation = { kind: 'forget', sourceMemoryId, removed: true };
+            } else {
+                // Idempotent recovery applies only when no row in the reviewed revision chain remains.
+                memoryMutation = { kind: 'forget', sourceMemoryId, removed: false, alreadyAbsent: true };
             }
         }
+        // Persist the event only after canonical memory effects succeed, but before the review item is finalized.
+        // Stable IDs plus provenance preflight make retries recoverable without trusting the reviewed content.
+        if (!priorReviewClaim) {
+            const claimId = p65.record({
+                tick: Math.max(0, Math.floor(Number(this.persisted.state.tick) || 0)),
+                at: provenance.capturedAt,
+                kind: 'observation',
+                content: reviewEventContent,
+                confidence01: 0.5,
+                source: 'hexis-review',
+                provenance,
+            });
+            if (!claimId)
+                return { ok: false, error: 'review-epistemic-ledger-rejected', reviewId, itemId };
+        }
+        if (!priorReviewTrace) {
+            sourceMonitor.record({
+                id: reviewSourceId,
+                source: 'system',
+                kind: 'hexis-learning-review',
+                confidence: 0.5,
+                epistemicStatus: 'observation',
+                at: provenance.capturedAt,
+                provenance,
+            });
+            const acceptedTrace = sourceMonitor.snapshot().traces.find((trace) => trace.id === reviewSourceId);
+            if (!acceptedTrace || acceptedTrace.provenance?.contentFingerprint !== reviewFingerprint)
+                return { ok: false, error: 'review-source-trace-rejected', reviewId, itemId };
+        }
+        this.persisted.facets.advanced.p65EpistemicLedger = p65.snapshot();
+        this.persisted.facets.cognition.sources = sourceMonitor.snapshot();
+        // Every condition checked by decideLearningReview is preflighted before touching canonical memory.
+        const result = this.hexisAdaptation.decideLearningReview(reviewId, itemId, decision, correction);
+        if (!result)
+            return { ok: false, error: 'review-commit-rejected', reviewId, itemId, memoryMutation };
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
-        return { ok: true, result, reviewId };
+        return { ok: true, result, reviewId, memoryMutation };
     }
     hexisListLearningReviews(status = 'pending') { const rows = this.hexisAdaptation.snapshot().learningReviews; return status === 'all' ? rows : rows.filter((x) => x.status === status); }
     hexisProposeRetention(memoryId: string, action: 'compress' | 'archive' | 'forget', reason = 'operator-review') {
@@ -2928,7 +3255,7 @@ export class OrganismCore {
             let created = 0, reused = 0;
             const beforeItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
             const beforeKeys = new Set(beforeItems.map((m) => `${m.kind}|${m.content}`));
-            for (const row of memories.slice(0, 96)) {
+            for (const [rowIndex, row] of memories.slice(0, 96).entries()) {
                 const record = row && typeof row === 'object' ? row as Record<string, unknown> : {};
                 const content = String(record.content ?? record.summary ?? '').trim().slice(0, 12000);
                 if (!content)
@@ -2960,12 +3287,26 @@ export class OrganismCore {
                     provenanceClass: 'external' as const,
                     sourceAuthority01: 0.55,
                     independenceKey: `hexis:${stage.sourceSubjectId ?? stage.exportId}`,
-                    evidenceFreshnessAt: Date.now(),
+                    observedAt: Number.isFinite(Number(record.observedAt)) && Number(record.observedAt) >= 0
+                        ? Math.floor(Number(record.observedAt))
+                        : stage.createdAt,
+                    evidenceFreshnessAt: Number.isFinite(Number(record.evidenceFreshnessAt)) && Number(record.evidenceFreshnessAt) >= 0
+                        ? Math.floor(Number(record.evidenceFreshnessAt))
+                        : stage.createdAt,
                     dormant: false,
                     retrievalCount: 0,
                     semanticVector: [],
                 };
-                this.memorySubsystem.fabric.encode(importedMemory, { tick: this.persisted.state.tick });
+                const importCommandId = `hexis-hmx-import:${sha256Stable({
+                    stagingId: stage.stagingId,
+                    rowIndex,
+                    kind: safeKind,
+                    content,
+                }, 'legacy')}`;
+                this.memorySubsystem.fabric.encode(importedMemory, {
+                    tick: this.persisted.state.tick,
+                    commandId: importCommandId,
+                });
                 if (wasPresent)
                     reused += 1;
                 else {

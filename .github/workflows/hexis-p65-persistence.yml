@@ -1,0 +1,27 @@
+name: Hexis P65 persistence regression
+on:
+  pull_request:
+    branches: [rebuild, audit/b276-execution-attribution-2026-10-26]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
+      - 'runtime/neuro-kurisu/tests/hexis-p65-pending-prediction-retention.mjs'
+      - '.github/workflows/hexis-p65-persistence.yml'
+  push:
+    branches: [rebuild, hexis-h1-memory-evidence-lineage-2026-10-26, audit/b276-execution-attribution-2026-10-26]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
+      - 'runtime/neuro-kurisu/tests/hexis-p65-pending-prediction-retention.mjs'
+      - '.github/workflows/hexis-p65-persistence.yml'
+permissions:
+  contents: read
+jobs:
+  pending-predictions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.21.0'
+          package-manager-cache: false
+      - name: Verify pending epistemic predictions survive persistence and restore
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/hexis-p65-pending-prediction-retention.mjs

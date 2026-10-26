@@ -17,6 +17,35 @@ assert.equal(fabric.temporalAt('mem-1',1500)?.valueHash, t1.valueHash);
 assert.equal(fabric.temporalAt('mem-1',2500)?.summary, 'beta');
 assert.equal(fabric.temporalDiff('mem-1',1500,2500).changed, true);
 
+const late = fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'late arrival',confidence01:.65,validFrom:1500,source:'test-late',value:'late'});
+assert.equal(fabric.temporalAt('mem-1',1250)?.summary, 'alpha', 'earlier assertion interval must end at the next effective timestamp');
+assert.equal(fabric.temporalAt('mem-1',1750)?.id, late.id, 'late-arriving assertion must be inserted into valid-time order');
+assert.equal(fabric.temporalAt('mem-1',2500)?.summary, 'beta', 'late assertion must not overwrite the later version');
+const temporalHistory = fabric.snapshot().temporal.filter(x => x.memoryId === 'mem-1').sort((a,b) => a.validFrom-b.validFrom);
+assert.deepEqual(temporalHistory.map(x => [x.validFrom,x.validUntil]), [[1000,1500],[1500,2000],[2000,null]]);
+assert.equal(temporalHistory[1].supersedesId, temporalHistory[0].id);
+assert.equal(temporalHistory[2].supersedesId, temporalHistory[1].id);
+
+const beforeTemporalReplay = fabric.snapshot().temporal.filter(x => x.memoryId === 'mem-1').length;
+const replayedLate = fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'late arrival',confidence01:.65,validFrom:1500,source:'different-retry-source',value:'late'});
+assert.equal(replayedLate.id, late.id, 'same semantic event at the same effective time must be idempotent');
+assert.equal(fabric.snapshot().temporal.filter(x => x.memoryId === 'mem-1').length, beforeTemporalReplay);
+
+const beforeTemporalConflict = fabric.snapshot();
+assert.throws(
+ () => fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'conflicting event',confidence01:.8,validFrom:1500,source:'test',value:'conflict'}),
+ /temporal_assertion_timestamp_conflict/,
+);
+assert.deepEqual(fabric.snapshot(), beforeTemporalConflict, 'a conflicting event must not partially mutate temporal history');
+assert.throws(
+ () => fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'invalid time',confidence01:.5,validFrom:Number.NaN}),
+ /temporal_valid_from_invalid/,
+);
+const restoredTemporal = new HexisAdaptationFabric();
+restoredTemporal.restore(fabric.snapshot());
+assert.equal(restoredTemporal.temporalAt('mem-1',1750)?.id, late.id, 'valid-time chain must survive restore');
+
+
 const review = fabric.createLearningReview({periodStart:0,periodEnd:1,summary:'test review',items:[{kind:'semantic_belief',title:'x',content:'y',sourceMemoryId:'mem-1',evidence:{}}]});
 const decided = fabric.decideLearningReview(review.id,review.items[0].id,'approve');
 assert.equal(decided?.status,'approved');
@@ -24,6 +53,18 @@ assert.equal(decided?.status,'approved');
 const stage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e1',sections:{memories:[{id:'m'}],goals:[{id:'g'}]}},intent:'port',strategy:'additive'});
 assert.equal(stage.status,'staged');
 assert.equal(fabric.decideHmx(stage.stagingId,'accept')?.status,'accepted');
+
+// Approval fails closed if staged HMX bytes no longer match their recorded digest.
+const modifiedStage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e3',sections:{memories:[{content:'original memory'}]}},intent:'port',strategy:'additive'});
+const modifiedSnapshot = fabric.snapshot();
+const stagedRow = modifiedSnapshot.hmxStages.find(x => x.stagingId === modifiedStage.stagingId);
+assert.ok(stagedRow, 'staged HMX entry must be persisted');
+stagedRow.stagedSections.memories[0].content = 'content changed after validation';
+const integrityGuard = new HexisAdaptationFabric();
+integrityGuard.restore(modifiedSnapshot);
+const integrityDecision = integrityGuard.decideHmx(modifiedStage.stagingId, 'accept');
+assert.equal(integrityDecision?.status, 'rejected', 'modified staged content must not be accepted');
+assert.ok(integrityDecision?.conflicts.some(x => x.kind === 'digest-mismatch'), 'rejection must expose the digest mismatch reason');
 
 const protectedStage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e2',sections:{identity:[{id:'self'}]}},intent:'telepathy',strategy:'analysis_only'});
 assert.equal(fabric.decideHmx(protectedStage.stagingId,'accept')?.status,'staged');
@@ -54,6 +95,80 @@ assert.equal(restoredOutbox.enqueueOutbox({idempotencyKey:'k1',kind:'notify',cha
 const restoredConflict=restoredOutbox.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'after restore this must not alias'}});
 assert.equal(restoredConflict.error,'idempotency-key-conflict');
 assert.equal(restoredOutbox.snapshot().metrics.outboxIdempotencyConflicts,2,'outbox conflict telemetry survives snapshot/restore');
+
+// Pending deliveries are obligations and must not disappear when terminal history rotates.
+const pendingQueue = new HexisAdaptationFabric();
+let oldestPending;
+for (let i = 0; i < 520; i += 1) {
+ const entry = pendingQueue.enqueueOutbox({idempotencyKey:`pending-${i}`,kind:'notify',channel:'test',payload:{i}});
+ assert.ok(entry.id, 'pending outbox entry should be accepted');
+ if (i === 0) oldestPending = entry;
+}
+assert.equal(pendingQueue.snapshot().outbox.length, 520, 'active outbox rows must survive beyond the terminal history window');
+assert.equal(pendingQueue.snapshot().outbox.find(x => x.id === oldestPending.id)?.status, 'pending');
+assert.equal(pendingQueue.enqueueOutbox({idempotencyKey:'pending-0',kind:'notify',channel:'test',payload:{i:0}}).id, oldestPending.id);
+
+// A terminal row may rotate out, but its exact idempotency receipt must remain durable.
+const longHorizon = new HexisAdaptationFabric();
+const retired = longHorizon.enqueueOutbox({idempotencyKey:'retired-key',kind:'notify',channel:'test',payload:{message:'already sent'}});
+assert.ok(retired.id);
+longHorizon.claimOutbox(retired.id);
+longHorizon.ackOutbox(retired.id, true);
+for (let i = 0; i < 520; i += 1) {
+ const entry = longHorizon.enqueueOutbox({idempotencyKey:`terminal-${i}`,kind:'notify',channel:'test',payload:{i}});
+ assert.ok(entry.id);
+ longHorizon.claimOutbox(entry.id);
+ longHorizon.ackOutbox(entry.id, true);
+}
+assert.equal(longHorizon.snapshot().outbox.length, 512, 'terminal outbox rows remain bounded');
+assert.equal(longHorizon.snapshot().outbox.some(x => x.id === retired.id), false, 'old terminal payload must rotate out');
+const retiredReplay = longHorizon.enqueueOutbox({idempotencyKey:'retired-key',kind:'notify',channel:'test',payload:{message:'already sent'}});
+assert.equal(retiredReplay.ok, false, 'same key must not create a new side effect after its row was retired');
+assert.equal(retiredReplay.error, 'idempotency-key-history-expired');
+assert.equal(retiredReplay.existingId, retired.id);
+const retiredConflict = longHorizon.enqueueOutbox({idempotencyKey:'retired-key',kind:'notify',channel:'test',payload:{message:'different action'}});
+assert.equal(retiredConflict.error, 'idempotency-key-conflict');
+const longHorizonRestored = new HexisAdaptationFabric();
+longHorizonRestored.restore(longHorizon.snapshot());
+const restoredRetiredReplay = longHorizonRestored.enqueueOutbox({idempotencyKey:'retired-key',kind:'notify',channel:'test',payload:{message:'already sent'}});
+assert.equal(restoredRetiredReplay.error, 'idempotency-key-history-expired', 'retired key guard must survive snapshot/restore');
+assert.equal(longHorizonRestored.snapshot().metrics.outboxRetiredKeyReplays, 2);
+
+const corruptOutboxSnapshot = longHorizon.snapshot();
+corruptOutboxSnapshot.outbox.push(null);
+const corruptOutboxRestore = new HexisAdaptationFabric();
+corruptOutboxRestore.restore(corruptOutboxSnapshot);
+assert.equal(corruptOutboxRestore.snapshot().outboxIdempotencyLedgerSaturated, true,
+  'invalid persisted outbox rows must saturate the trust ledger instead of silently forgetting possible side effects');
+const newAfterCorruption = corruptOutboxRestore.enqueueOutbox({
+  idempotencyKey:'new-action-after-corrupt-restore',kind:'notify',channel:'test',payload:{message:'must fail closed'},
+});
+assert.equal(newAfterCorruption.error, 'idempotency-ledger-saturated',
+  'ambiguous outbox restoration must reject previously unseen actions');
+
+const reclaimFlood = new HexisAdaptationFabric();
+for (let i = 0; i < 520; i += 1) {
+  const entry = reclaimFlood.enqueueOutbox({idempotencyKey:`reclaim-${i}`,kind:'notify',channel:'test',payload:{i}});
+  assert.ok(entry.id);
+}
+const stalePublishingSnapshot = reclaimFlood.snapshot();
+for (const row of stalePublishingSnapshot.outbox) {
+  row.status = 'publishing';
+  row.attempts = 3;
+  row.updatedAt = 0;
+}
+const reclaimAfterRestart = new HexisAdaptationFabric();
+reclaimAfterRestart.restore(stalePublishingSnapshot);
+assert.equal(reclaimAfterRestart.reclaimOutbox(1000), 520, 'all stale publishers must be reclaimed');
+assert.equal(reclaimAfterRestart.snapshot().outbox.length, 512, 'bulk reclamation must apply the same terminal-history cap');
+assert.ok(reclaimAfterRestart.snapshot().outbox.every(row => row.status === 'failed'));
+const reclaimedOldKey = reclaimAfterRestart.enqueueOutbox({idempotencyKey:'reclaim-0',kind:'notify',channel:'test',payload:{i:0}});
+assert.equal(reclaimedOldKey.error, 'idempotency-key-history-expired', 'retired reclaimed key must not trigger another delivery');
+
+
+
+
+assert.equal(longHorizonRestored.enqueueOutbox({idempotencyKey:'x'.repeat(257),kind:'notify',channel:'test',payload:{}}).error, 'idempotency-key-too-long');
 
 const policy = fabric.grantConnectorPolicy({connectorId:'telegram',actionKind:'send',contexts:['chat'],requiresApproval:true,allowedTargets:['123'],maxPerWindow:1,windowMs:60_000});
 assert.equal(fabric.evaluateConnectorAction({connectorId:'telegram',actionKind:'send',context:'chat',target:'123'}).allowed,false);

@@ -127,6 +127,12 @@ export interface HexisOutboxEntry {
     publishedAt?: number;
     lastError?: string;
 }
+export interface HexisOutboxIdempotencyReceipt {
+    idempotencyKey: string;
+    requestDigest: string;
+    entryId: string;
+    createdAt: number;
+}
 export interface HexisConnectorPolicy {
     id: string;
     connectorId: string;
@@ -169,6 +175,10 @@ export interface HexisAdaptationState {
     fidelityReceipts: HexisFidelityReceipt[];
     hmxStages: HexisHmxStage[];
     outbox: HexisOutboxEntry[];
+    /** Durable exact-key journal survives terminal outbox row rotation. */
+    outboxIdempotencyLedger: HexisOutboxIdempotencyReceipt[];
+    /** Fail-closed marker when restored idempotency history is corrupt or capacity-limited. */
+    outboxIdempotencyLedgerSaturated: boolean;
     connectorPolicies: HexisConnectorPolicy[];
     executions: HexisExecutionPlan[];
     metrics: {
@@ -183,6 +193,9 @@ export interface HexisAdaptationState {
         outboxQueued: number;
         outboxPublished: number;
         outboxIdempotencyConflicts: number;
+        outboxRetiredKeyReplays: number;
+        outboxQueueCapacityRejections: number;
+        outboxLedgerSaturationRejections: number;
         policyAllows: number;
         policyDenials: number;
         executionPlans: number;
@@ -190,11 +203,230 @@ export interface HexisAdaptationState {
 }
 const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
 const digest = (value: unknown) => sha256Stable(value, 'legacy');
-const sourceKey = (source: HexisEvidenceSource) => String(source.ref || source.label || source.contentHash || digest(source));
+const normalizeEvidenceKey = (value: unknown) => String(value ?? '').trim().normalize('NFKC').toLowerCase().slice(0, 96);
+const sourceKey = (source: HexisEvidenceSource) => normalizeEvidenceKey(source.ref || source.label || source.contentHash || digest(source));
 const nowMs = () => Date.now();
+const MAX_OUTBOX_TERMINAL_ROWS = 512;
+const MAX_OUTBOX_ACTIVE_ROWS = 1024;
+const MAX_OUTBOX_IDEMPOTENCY_RECEIPTS = 65_536;
+function retainHexisOutboxRows(rows: HexisOutboxEntry[]): HexisOutboxEntry[] {
+    const terminal = rows.filter((row) => row.status !== 'pending' && row.status !== 'publishing');
+    const keepTerminal = new Set(terminal.slice(-MAX_OUTBOX_TERMINAL_ROWS).map((row) => row.id));
+    // Active deliveries are obligations, not cache entries: rotate only old terminal rows.
+    return rows.filter((row) => row.status === 'pending' || row.status === 'publishing' || keepTerminal.has(row.id));
+}
+function normalizeHexisOutboxRows(raw: unknown): { rows: HexisOutboxEntry[]; corrupt: boolean } {
+    let corrupt = false;
+    if (raw !== undefined && raw !== null && !Array.isArray(raw)) return { rows: [], corrupt: true };
+    if (!Array.isArray(raw)) return { rows: [], corrupt: false };
+    const validStatuses = new Set<HexisOutboxStatus>(['pending', 'publishing', 'published', 'failed']);
+    const parsed: HexisOutboxEntry[] = [];
+    const priority: Record<HexisOutboxStatus, number> = { pending: 1, publishing: 2, failed: 3, published: 4 };
+    for (const candidate of raw) {
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+            corrupt = true;
+            continue;
+        }
+        const row = candidate as Record<string, unknown>;
+        if (typeof row.id !== 'string' || !row.id.trim() || row.id.length > 256 ||
+            typeof row.idempotencyKey !== 'string' || !row.idempotencyKey.trim() || row.idempotencyKey.length > 256 ||
+            typeof row.kind !== 'string' || !row.kind.trim() || row.kind.length > 128 ||
+            typeof row.channel !== 'string' || !row.channel.trim() || row.channel.length > 128 ||
+            typeof row.status !== 'string' || !validStatuses.has(row.status as HexisOutboxStatus) ||
+            !Number.isSafeInteger(row.attempts) || Number(row.attempts) < 0 || Number(row.attempts) > 1_000_000 ||
+            typeof row.createdAt !== 'number' || !Number.isFinite(row.createdAt) || row.createdAt < 0 ||
+            typeof row.updatedAt !== 'number' || !Number.isFinite(row.updatedAt) || row.updatedAt < 0 ||
+            (row.publishedAt !== undefined && (typeof row.publishedAt !== 'number' || !Number.isFinite(row.publishedAt) || row.publishedAt < 0)) ||
+            (row.lastError !== undefined && typeof row.lastError !== 'string')) {
+            corrupt = true;
+            continue;
+        }
+        parsed.push({
+            id: row.id,
+            idempotencyKey: row.idempotencyKey,
+            kind: row.kind,
+            channel: row.channel,
+            payload: row.payload,
+            status: row.status as HexisOutboxStatus,
+            attempts: Number(row.attempts),
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+            ...(typeof row.publishedAt === 'number' ? { publishedAt: row.publishedAt } : {}),
+            ...(typeof row.lastError === 'string' ? { lastError: row.lastError.slice(0, 500) } : {}),
+        });
+    }
+    // An ID reused for different records is ambiguous; drop all rows carrying it.
+    const idCounts = new Map<string, number>();
+    for (const row of parsed) idCounts.set(row.id, (idCounts.get(row.id) ?? 0) + 1);
+    const duplicateIds = new Set([...idCounts].filter(([, count]) => count > 1).map(([id]) => id));
+    if (duplicateIds.size) corrupt = true;
+    const unambiguousIds = parsed.filter(row => !duplicateIds.has(row.id));
+    const byKey = new Map<string, HexisOutboxEntry[]>();
+    for (const row of unambiguousIds) {
+        const rows = byKey.get(row.idempotencyKey) ?? [];
+        rows.push(row);
+        byKey.set(row.idempotencyKey, rows);
+    }
+    const normalized: HexisOutboxEntry[] = [];
+    for (const [key, rows] of byKey) {
+        if (rows.length > 1) corrupt = true;
+        // If duplicate rows exist for one key, prefer the state most protective
+        // against a duplicate external effect (published > failed > publishing > pending).
+        const winner = rows.sort((a, b) =>
+            priority[b.status] - priority[a.status] || b.updatedAt - a.updatedAt || a.id.localeCompare(b.id),
+        )[0];
+        if (winner) normalized.push(winner);
+    }
+    return { rows: retainHexisOutboxRows(normalized), corrupt };
+}
+
+function normalizeHexisOutboxLedger(
+    raw: unknown,
+    outbox: HexisOutboxEntry[],
+): { receipts: HexisOutboxIdempotencyReceipt[]; saturated: boolean } {
+    const receipts: HexisOutboxIdempotencyReceipt[] = [];
+    const byKey = new Map<string, HexisOutboxIdempotencyReceipt>();
+    let saturated = false;
+    if (raw !== undefined && raw !== null && !Array.isArray(raw)) saturated = true;
+    const rows = Array.isArray(raw)
+        ? raw.slice(-MAX_OUTBOX_IDEMPOTENCY_RECEIPTS)
+        : [];
+    if (Array.isArray(raw) && raw.length > MAX_OUTBOX_IDEMPOTENCY_RECEIPTS) saturated = true;
+    for (const candidate of rows) {
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+            saturated = true;
+            continue;
+        }
+        const row = candidate as Record<string, unknown>;
+        if (typeof row.idempotencyKey !== 'string' || !row.idempotencyKey.trim() ||
+            row.idempotencyKey.length > 256 || typeof row.requestDigest !== 'string' ||
+            !row.requestDigest || row.requestDigest.length > 128 ||
+            typeof row.entryId !== 'string' || !row.entryId || row.entryId.length > 256 ||
+            typeof row.createdAt !== 'number' || !Number.isFinite(row.createdAt) || row.createdAt < 0) {
+            saturated = true;
+            continue;
+        }
+        const receipt: HexisOutboxIdempotencyReceipt = {
+            idempotencyKey: row.idempotencyKey,
+            requestDigest: row.requestDigest,
+            entryId: row.entryId,
+            createdAt: row.createdAt,
+        };
+        const prior = byKey.get(receipt.idempotencyKey);
+        if (prior) {
+            if (prior.requestDigest !== receipt.requestDigest || prior.entryId !== receipt.entryId) saturated = true;
+            continue;
+        }
+        byKey.set(receipt.idempotencyKey, receipt);
+        receipts.push(receipt);
+    }
+    // Legacy snapshots had no journal; seed exact receipts from rows that still exist.
+    for (const row of outbox) {
+        const key = String(row?.idempotencyKey ?? '').trim();
+        if (!key || key.length > 256 || byKey.has(key)) continue;
+        if (receipts.length >= MAX_OUTBOX_IDEMPOTENCY_RECEIPTS) {
+            saturated = true;
+            break;
+        }
+        const receipt: HexisOutboxIdempotencyReceipt = {
+            idempotencyKey: key,
+            requestDigest: digest({ kind: row.kind, channel: row.channel, payload: row.payload }),
+            entryId: String(row.id),
+            createdAt: Number.isFinite(row.createdAt) ? Math.max(0, row.createdAt) : 0,
+        };
+        byKey.set(key, receipt);
+        receipts.push(receipt);
+    }
+    return { receipts, saturated };
+}
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
+function normalizeHexisStringKeys(value: unknown, limit = 256): string[] {
+    if (!Array.isArray(value)) return [];
+    const normalized: string[] = [];
+    const seen = new Set<string>();
+    for (const item of value) {
+        if (typeof item !== 'string') continue;
+        const key = item.trim().normalize('NFKC');
+        if (!key || key.length > 512 || seen.has(key)) continue;
+        seen.add(key);
+        normalized.push(key);
+    }
+    return normalized.slice(-limit);
+}
+
+/**
+ * Hexis beliefs are a derived projection of canonical MemoryOS2 facts.
+ * Malformed projection rows are dropped on restore so a damaged sidecar cannot
+ * prevent the cognitive runtime from starting or promote invalid confidence.
+ */
+function normalizeHexisEvidenceKeys(value: unknown, limit = 256): string[] {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.filter((item): item is string => typeof item === 'string')
+        .map(normalizeEvidenceKey).filter(Boolean))].slice(-limit);
+}
+
+function normalizeHexisBeliefProjection(value: unknown): HexisBeliefState | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const row = value as Record<string, unknown>;
+    const memoryId = typeof row.memoryId === 'string' ? row.memoryId.trim().normalize('NFKC') : '';
+    const confidence01 = row.confidence01;
+    if (!memoryId || memoryId.length > 240 ||
+        typeof confidence01 !== 'number' || !Number.isFinite(confidence01) ||
+        confidence01 < 0 || confidence01 > 1) return null;
+
+    const rawTrust = row.trust01;
+    const trust01 = rawTrust === undefined
+        ? 0.5
+        : typeof rawTrust === 'number' && Number.isFinite(rawTrust) && rawTrust >= 0 && rawTrust <= 1
+            ? rawTrust
+            : null;
+    if (trust01 === null) return null;
+
+    const updatedAt = row.updatedAt;
+    return {
+        memoryId,
+        confidence01,
+        trust01,
+        sourceKeys: normalizeHexisEvidenceKeys(row.sourceKeys),
+        contradictingSourceKeys: normalizeHexisEvidenceKeys(row.contradictingSourceKeys),
+        updatedAt: typeof updatedAt === 'number' && Number.isFinite(updatedAt) && updatedAt >= 0
+            ? Math.floor(updatedAt)
+            : 0,
+    };
+}
+
+/**
+ * A snapshot is expected to contain exactly one projection per canonical memory ID.
+ * If duplicate IDs survive into a restored sidecar, discard that ambiguous projection;
+ * MemoryOS2 remains authoritative and can rebuild the projection on the next revision.
+ */
+function normalizeHexisBeliefProjections(value: unknown): HexisBeliefState[] {
+    if (!Array.isArray(value)) return [];
+    const candidates = value.slice(-1024)
+        .map(normalizeHexisBeliefProjection)
+        .filter((row): row is HexisBeliefState => row !== null);
+    const counts = new Map<string, number>();
+    for (const row of candidates) counts.set(row.memoryId, (counts.get(row.memoryId) ?? 0) + 1);
+    return candidates.filter((row) => counts.get(row.memoryId) === 1);
+}
+function normalizeHexisMetrics(
+    value: unknown,
+    defaults: HexisAdaptationState['metrics'],
+): HexisAdaptationState['metrics'] {
+    const raw = value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+    const result: Record<string, number> = {};
+    for (const [key, fallback] of Object.entries(defaults)) {
+        const candidate = raw[key];
+        result[key] = typeof candidate === 'number' && Number.isSafeInteger(candidate) && candidate >= 0
+            ? candidate
+            : fallback;
+    }
+    return result as HexisAdaptationState['metrics'];
+}
 export function defaultHexisAdaptationState(): HexisAdaptationState {
-    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
+    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], outboxIdempotencyLedger: [], outboxIdempotencyLedgerSaturated: false, connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, outboxRetiredKeyReplays: 0, outboxQueueCapacityRejections: 0, outboxLedgerSaturationRejections: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
@@ -208,10 +440,14 @@ export class HexisAdaptationFabric {
                 windowCount: Math.max(0, Math.floor(Number(policy?.windowCount ?? 0))),
               }))
             : [];
+        const outboxRestore = normalizeHexisOutboxRows(value.outbox);
+        const normalizedOutbox = outboxRestore.rows;
+        const normalizedLedger = normalizeHexisOutboxLedger(value.outboxIdempotencyLedger, normalizedOutbox);
+        const ledgerSaturated = normalizedLedger.saturated || outboxRestore.corrupt || value.outboxIdempotencyLedgerSaturated === true;
         this.state = {
             ...defaults, ...value,
             source: { ...defaults.source, ...(value.source ?? {}) },
-            beliefs: Array.isArray(value.beliefs) ? value.beliefs.slice(-1024) : [],
+            beliefs: normalizeHexisBeliefProjections(value.beliefs),
             beliefAudit: Array.isArray(value.beliefAudit) ? value.beliefAudit.slice(-2048) : [],
             temporal: Array.isArray(value.temporal) ? value.temporal.slice(-4096) : [],
             learningReviews: Array.isArray(value.learningReviews) ? value.learningReviews.slice(-96) : [],
@@ -223,10 +459,12 @@ export class HexisAdaptationFabric {
                     stagedSections: stage?.stagedSections && typeof stage.stagedSections === 'object' ? stage.stagedSections : {},
                   }))
                 : [],
-            outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
+            outbox: normalizedOutbox,
+            outboxIdempotencyLedger: normalizedLedger.receipts,
+            outboxIdempotencyLedgerSaturated: ledgerSaturated,
             connectorPolicies: normalizedPolicies,
             executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
-            metrics: { ...defaults.metrics, ...(value.metrics ?? {}) },
+            metrics: normalizeHexisMetrics(value.metrics, defaults.metrics),
         };
     }
     snapshot(): HexisAdaptationState { return structuredClone(this.state); }
@@ -257,8 +495,11 @@ export class HexisAdaptationFabric {
         confidence01: number;
         trust01?: number;
         at?: number;
-    }): HexisBeliefState { const id = String(input.memoryId); const existing = this.state.beliefs.find((x) => x.memoryId === id); if (existing)
-        return structuredClone(existing); const created: HexisBeliefState = { memoryId: id, confidence01: clamp(input.confidence01), trust01: clamp(input.trust01 ?? 0.5), sourceKeys: [], contradictingSourceKeys: [], updatedAt: Number.isFinite(input.at) ? Number(input.at) : nowMs() }; this.state.beliefs.push(created); this.state.beliefs = this.state.beliefs.slice(-1024); return structuredClone(created); }
+    }): HexisBeliefState { const id = String(input.memoryId); const existing = this.state.beliefs.find((x) => x.memoryId === id); if (existing) {
+        // Canonical NK1 memory owns confidence; the Hexis row is a projection, not a second belief owner.
+        existing.confidence01 = clamp(input.confidence01);
+        return structuredClone(existing);
+    } const created: HexisBeliefState = { memoryId: id, confidence01: clamp(input.confidence01), trust01: clamp(input.trust01 ?? 0.5), sourceKeys: [], contradictingSourceKeys: [], updatedAt: Number.isFinite(input.at) ? Number(input.at) : nowMs() }; this.state.beliefs.push(created); this.state.beliefs = this.state.beliefs.slice(-1024); return structuredClone(created); }
     reviseBelief(input: {
         memoryId: string;
         confidence01: number;
@@ -268,12 +509,14 @@ export class HexisAdaptationFabric {
         context?: string;
         at?: number;
         protectedBelief?: boolean;
+        /** True when canonical MemoryOS2 already records this evidence lineage. */
+        canonicalDuplicate?: boolean;
     }): HexisBeliefRevisionAudit { const at = Number.isFinite(input.at) ? Number(input.at) : nowMs(); let stored = this.state.beliefs.find((x) => x.memoryId === String(input.memoryId)); if (!stored) {
         this.registerOrUpdateBelief({ memoryId: input.memoryId, confidence01: input.confidence01, trust01: input.trust01, at });
         stored = this.state.beliefs.find((x) => x.memoryId === String(input.memoryId));
     } if (!stored)
-        throw new Error('belief_registration_failed'); const belief = stored; const key = sourceKey(input.evidence); const independent = !belief.sourceKeys.includes(key) && !belief.contradictingSourceKeys.includes(key); const evidenceTrust = clamp(input.evidence.trust01 ?? 0.5); const priorConfidence01 = clamp(belief.confidence01); const priorTrust01 = clamp(belief.trust01); let posteriorConfidence01 = priorConfidence01; let applied = false; let reason = 'applied'; if (!independent) {
-        reason = 'duplicate_source';
+        throw new Error('belief_registration_failed'); const belief = stored; const key = sourceKey(input.evidence); const independent = input.canonicalDuplicate !== true && !belief.sourceKeys.includes(key) && !belief.contradictingSourceKeys.includes(key); const evidenceTrust = clamp(input.evidence.trust01 ?? 0.5); const priorConfidence01 = clamp(belief.confidence01); const priorTrust01 = clamp(belief.trust01); let posteriorConfidence01 = priorConfidence01; let applied = false; let reason = 'applied'; if (!independent) {
+        reason = input.canonicalDuplicate ? 'duplicate_source_canonical' : 'duplicate_source';
         this.state.metrics.duplicateEvidence += 1;
     }
     else if (input.protectedBelief && input.stance === 'contradicts')
@@ -285,13 +528,15 @@ export class HexisAdaptationFabric {
     else {
         posteriorConfidence01 = Math.max(0.05, priorConfidence01 * (1 - 0.35 * evidenceTrust));
         applied = true;
-    } if (independent) {
+    } if (applied) {
         if (input.stance === 'supports')
             belief.sourceKeys = [...new Set([...belief.sourceKeys, key])].slice(-256);
         else
             belief.contradictingSourceKeys = [...new Set([...belief.contradictingSourceKeys, key])].slice(-256);
-    } if (applied)
-        belief.confidence01 = posteriorConfidence01; belief.trust01 = clamp(Math.max(priorTrust01, evidenceTrust * 0.5)); belief.updatedAt = at; const base = { id: randomUUID(), memoryId: input.memoryId, stance: input.stance, evidence: structuredClone(input.evidence), priorConfidence01, posteriorConfidence01, priorTrust01, posteriorTrust01: belief.trust01, independent, applied, reason, policy: 'residual_v1' as const, context: input.context, at }; const audit: HexisBeliefRevisionAudit = { ...base, digest: digest(base) }; this.state.beliefAudit.push(audit); this.state.beliefAudit = this.state.beliefAudit.slice(-2048); this.state.metrics.beliefRevisions += 1; return structuredClone(audit); }
+        belief.confidence01 = posteriorConfidence01;
+        belief.trust01 = clamp(Math.max(priorTrust01, evidenceTrust * 0.5));
+        belief.updatedAt = at;
+    } const base = { id: randomUUID(), memoryId: input.memoryId, stance: input.stance, evidence: structuredClone(input.evidence), priorConfidence01, posteriorConfidence01, priorTrust01, posteriorTrust01: belief.trust01, independent, applied, reason, policy: 'residual_v1' as const, context: input.context, at }; const audit: HexisBeliefRevisionAudit = { ...base, digest: digest(base) }; this.state.beliefAudit.push(audit); this.state.beliefAudit = this.state.beliefAudit.slice(-2048); this.state.metrics.beliefRevisions += 1; return structuredClone(audit); }
     recordTemporalAssertion(input: {
         memoryId: string;
         summary: string;
@@ -299,8 +544,69 @@ export class HexisAdaptationFabric {
         validFrom: number;
         source?: string;
         value?: unknown;
-    }): HexisTemporalAssertion { const existing = this.state.temporal.find((x) => x.memoryId === input.memoryId && x.validUntil === null); const at = nowMs(); if (existing)
-        existing.validUntil = Math.max(existing.validFrom, Number(input.validFrom)); const created: HexisTemporalAssertion = { id: randomUUID(), memoryId: String(input.memoryId), valueHash: digest(input.value ?? input.summary), summary: String(input.summary).slice(0, 2000), confidence01: clamp(input.confidence01), validFrom: Number(input.validFrom), validUntil: null, supersedesId: existing?.id, source: String(input.source ?? 'canonical-memory'), at }; this.state.temporal.push(created); this.state.temporal = this.state.temporal.slice(-4096); return structuredClone(created); }
+    }): HexisTemporalAssertion {
+        const memoryId = String(input.memoryId ?? '').trim().normalize('NFKC');
+        const summary = String(input.summary ?? '').trim().slice(0, 2000);
+        const source = String(input.source ?? 'canonical-memory').trim().slice(0, 256);
+        const validFromRaw = input.validFrom;
+        if (!memoryId || memoryId.length > 240) throw new Error('temporal_memory_id_invalid');
+        if (!summary) throw new Error('temporal_summary_required');
+        if (typeof validFromRaw !== 'number' || !Number.isFinite(validFromRaw) || validFromRaw < 0) {
+            throw new Error('temporal_valid_from_invalid');
+        }
+        const validFrom = Math.floor(validFromRaw);
+        const valueHash = digest(input.value ?? summary);
+        const currentHistory = this.state.temporal
+            .filter((row) => row.memoryId === memoryId)
+            .map((row) => ({ ...row }));
+        const sameEffectiveTime = currentHistory.find((row) => row.validFrom === validFrom);
+        if (sameEffectiveTime) {
+            if (sameEffectiveTime.valueHash === valueHash && sameEffectiveTime.summary === summary) {
+                // Exact semantic replay: do not add a version or rewrite lineage.
+                return structuredClone(sameEffectiveTime);
+            }
+            throw new Error('temporal_assertion_timestamp_conflict');
+        }
+        const createdAt = nowMs();
+        const created: HexisTemporalAssertion = {
+            id: randomUUID(),
+            memoryId,
+            valueHash,
+            summary,
+            confidence01: clamp(input.confidence01),
+            validFrom,
+            validUntil: null,
+            source: source || 'canonical-memory',
+            at: createdAt,
+        };
+        // Rebuild the affected memory's valid-time chain by effective time rather
+        // than arrival order. This supports late events without overlapping intervals.
+        const history = [...currentHistory, created]
+            .sort((a, b) => a.validFrom - b.validFrom || a.at - b.at || a.id.localeCompare(b.id));
+        for (let index = 0; index < history.length; index += 1) {
+            const row = history[index]!;
+            const previous = history[index - 1];
+            const next = history[index + 1];
+            row.validUntil = next ? next.validFrom : null;
+            if (previous) row.supersedesId = previous.id;
+            else delete row.supersedesId;
+        }
+        const unrelated = this.state.temporal.filter((row) => row.memoryId !== memoryId);
+        const candidate = [...unrelated, ...history];
+        const openRows = candidate.filter((row) => row.validUntil === null);
+        if (openRows.length > 4096) throw new Error('temporal_open_history_capacity_exceeded');
+        const closedRows = candidate
+            .filter((row) => row.validUntil !== null)
+            .sort((a, b) => b.at - a.at);
+        const roomForClosed = Math.max(0, 4096 - openRows.length);
+        // Keep one current assertion per memory ID, then the most recently recorded
+        // closed history. Never evict a current value just to preserve old history.
+        this.state.temporal = [
+            ...closedRows.slice(0, roomForClosed),
+            ...openRows,
+        ];
+        return structuredClone(created);
+    }
     temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null { this.state.metrics.temporalQueries += 1; const rows = this.state.temporal.filter((x) => x.memoryId === memoryId && x.validFrom <= at && (x.validUntil === null || at < x.validUntil)).sort((a, b) => b.validFrom - a.validFrom); return rows[0] ? structuredClone(rows[0]) : null; }
     temporalDiff(memoryId: string, fromAt: number, toAt: number) { this.state.metrics.temporalQueries += 1; const from = this.temporalAt(memoryId, fromAt); const to = this.temporalAt(memoryId, toAt); return { memoryId, from, to, changed: (from?.valueHash ?? null) !== (to?.valueHash ?? null) }; }
     createLearningReview(input: {
@@ -347,22 +653,52 @@ export class HexisAdaptationFabric {
         sectionCounts[name] = Array.isArray(records) ? records.length : 1;
         stagedSections[name] = Array.isArray(records) ? structuredClone(records.slice(0, 64)) : structuredClone(records);
     } const base = { exportId: String(document.export_id ?? randomUUID()), intent: input.intent, strategy: input.strategy, sourceSubjectId: document.source_subject_id ? String(document.source_subject_id) : undefined, sectionCounts, protectedSections: names.filter((name) => protectedSections.has(name)), conflicts, stagedSections }; const stage: HexisHmxStage = { ...base, stagingId: randomUUID(), status: 'staged', createdAt: nowMs(), digest: digest(base) }; this.state.hmxStages.push(stage); this.state.hmxStages = this.state.hmxStages.slice(-32); this.state.metrics.hmxStaged += 1; return structuredClone(stage); }
-    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length))
-        return stage ? structuredClone(stage) : null; stage.status = decision === 'accept' ? 'accepted' : 'rejected'; if (decision === 'accept')
-        this.state.metrics.hmxAccepted += 1; return structuredClone(stage); }
+    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null {
+        const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId);
+        if (!stage || stage.status !== 'staged')
+            return stage ? structuredClone(stage) : null;
+        // The staged payload is an approval boundary. Re-hash its exact source fields before accepting it.
+        const base = {
+            exportId: stage.exportId,
+            intent: stage.intent,
+            strategy: stage.strategy,
+            sourceSubjectId: stage.sourceSubjectId,
+            sectionCounts: stage.sectionCounts,
+            protectedSections: stage.protectedSections,
+            conflicts: stage.conflicts,
+            stagedSections: stage.stagedSections,
+        };
+        if (digest(base) !== stage.digest) {
+            stage.status = 'rejected';
+            stage.conflicts = [...stage.conflicts, {
+                path: 'digest',
+                kind: 'digest-mismatch',
+                detail: 'Staged HMX payload changed after validation; accepting it is forbidden.',
+            }].slice(-64);
+            return structuredClone(stage);
+        }
+        if (decision === 'accept' && stage.conflicts.length)
+            return structuredClone(stage);
+        stage.status = decision === 'accept' ? 'accepted' : 'rejected';
+        if (decision === 'accept')
+            this.state.metrics.hmxAccepted += 1;
+        return structuredClone(stage);
+    }
     getHmxStage(stagingId: string) { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); return stage ? structuredClone(stage) : null; }
     enqueueOutbox(input: {
         idempotencyKey: string;
         kind: string;
         channel: string;
         payload: unknown;
-    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict'; idempotencyKey: string; existingId?: string } {
+    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-too-long' | 'idempotency-key-conflict' | 'idempotency-key-history-expired' | 'idempotency-ledger-saturated' | 'outbox-capacity-exceeded'; idempotencyKey: string; existingId?: string } {
         const idempotencyKey = String(input.idempotencyKey ?? '').trim();
         if (!idempotencyKey) return { ok: false, error: 'idempotency-key-required', idempotencyKey };
+        if (idempotencyKey.length > 256) return { ok: false, error: 'idempotency-key-too-long', idempotencyKey: idempotencyKey.slice(0, 256) };
         const kind = String(input.kind), channel = String(input.channel);
+        if (!kind || kind.length > 128 || !channel || channel.length > 128)
+            return { ok: false, error: 'idempotency-key-required', idempotencyKey };
         const requestDigest = digest({ kind, channel, payload: input.payload });
-        // Include failed rows too: a timeout/failure may have happened after the remote
-        // side effect, so silently creating a new row with the same key can duplicate it.
+        // Check visible rows first so a recent exact replay returns its original receipt.
         const existing = this.state.outbox.find((x) => x.idempotencyKey === idempotencyKey);
         if (existing) {
             const existingDigest = digest({ kind: existing.kind, channel: existing.channel, payload: existing.payload });
@@ -370,7 +706,33 @@ export class HexisAdaptationFabric {
             this.state.metrics.outboxIdempotencyConflicts += 1;
             return { ok: false, error: 'idempotency-key-conflict', idempotencyKey, existingId: existing.id };
         }
-        const at = nowMs(); const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload: structuredClone(input.payload), status: 'pending', attempts: 0, createdAt: at, updatedAt: at }; this.state.outbox.push(entry); this.state.outbox = this.state.outbox.slice(-512); this.state.metrics.outboxQueued += 1; return structuredClone(entry);
+        const priorReceipt = this.state.outboxIdempotencyLedger.find((x) => x.idempotencyKey === idempotencyKey);
+        if (priorReceipt) {
+            if (priorReceipt.requestDigest !== requestDigest) {
+                this.state.metrics.outboxIdempotencyConflicts += 1;
+                return { ok: false, error: 'idempotency-key-conflict', idempotencyKey, existingId: priorReceipt.entryId };
+            }
+            // The original terminal row was rotated out. Do not re-enqueue a side effect we cannot safely replay.
+            this.state.metrics.outboxRetiredKeyReplays += 1;
+            return { ok: false, error: 'idempotency-key-history-expired', idempotencyKey, existingId: priorReceipt.entryId };
+        }
+        if (this.state.outboxIdempotencyLedgerSaturated || this.state.outboxIdempotencyLedger.length >= MAX_OUTBOX_IDEMPOTENCY_RECEIPTS) {
+            this.state.outboxIdempotencyLedgerSaturated = true;
+            this.state.metrics.outboxLedgerSaturationRejections += 1;
+            return { ok: false, error: 'idempotency-ledger-saturated', idempotencyKey };
+        }
+        const active = this.state.outbox.filter((x) => x.status === 'pending' || x.status === 'publishing').length;
+        if (active >= MAX_OUTBOX_ACTIVE_ROWS) {
+            this.state.metrics.outboxQueueCapacityRejections += 1;
+            return { ok: false, error: 'outbox-capacity-exceeded', idempotencyKey };
+        }
+        const at = nowMs();
+        const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload: structuredClone(input.payload), status: 'pending', attempts: 0, createdAt: at, updatedAt: at };
+        this.state.outbox.push(entry);
+        this.state.outbox = retainHexisOutboxRows(this.state.outbox);
+        this.state.outboxIdempotencyLedger.push({ idempotencyKey, requestDigest, entryId: entry.id, createdAt: at });
+        this.state.metrics.outboxQueued += 1;
+        return structuredClone(entry);
     }
     claimOutbox(id: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id && x.status === 'pending'); if (!entry)
         return null; entry.status = 'publishing'; entry.attempts += 1; entry.updatedAt = nowMs(); return structuredClone(entry); }
@@ -379,13 +741,21 @@ export class HexisAdaptationFabric {
         entry.publishedAt = entry.updatedAt;
         this.state.metrics.outboxPublished += 1;
     } if (error)
-        entry.lastError = String(error).slice(0, 500); return structuredClone(entry); }
-    reclaimOutbox(maxAgeMs = 60000): number { const cutoff = nowMs() - Math.max(1000, maxAgeMs); let count = 0; for (const entry of this.state.outbox)
-        if (entry.status === 'publishing' && entry.updatedAt < cutoff) {
+        entry.lastError = String(error).slice(0, 500); this.state.outbox = retainHexisOutboxRows(this.state.outbox); return structuredClone(entry); }
+    reclaimOutbox(maxAgeMs = 60000): number {
+        const cutoff = nowMs() - Math.max(1000, maxAgeMs);
+        let count = 0;
+        for (const entry of this.state.outbox) {
+            if (entry.status !== 'publishing' || entry.updatedAt >= cutoff) continue;
             entry.status = entry.attempts >= 3 ? 'failed' : 'pending';
             entry.updatedAt = nowMs();
             count += 1;
-        } return count; }
+        }
+        // Reclaimed rows may become terminal in bulk; apply the same history bound
+        // used by ackOutbox without evicting any outstanding delivery obligation.
+        this.state.outbox = retainHexisOutboxRows(this.state.outbox);
+        return count;
+    }
     grantConnectorPolicy(input: {
         connectorId: string;
         actionKind: string;

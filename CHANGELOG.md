@@ -1,3 +1,85 @@
+## [NK1][Hexis-H10] Make HMX acceptance replay-safe — 2026-10-26
+
+- HMX memory imports now use a deterministic MemoryFabric command ID bound to the persisted staging ID, record index, normalized kind, and content. Repeating `accept` does not re-emit a create/reconsolidation event or replay write statistics for rows already committed.
+- Import timestamps fall back to the immutable stage creation time rather than `Date.now()`, so the same row retains the same mutation fingerprint across retries and process restores.
+- This also gives recovery semantics for interrupted acceptance: already-receipted rows replay without side effects and not-yet-imported rows can complete from the still-accepted stage.
+- Added a dynamic Core-coordinator regression that accepts the same staged HMX document twice and asserts one new memory, one set of command receipts, and no new events on the second pass.
+- **Validation status:** regression is wired into `test:hexis-learning-review-canonical-memory`; the current GitHub Actions runner issue still prevents runtime PASS evidence.
+
+## [NK1][Hexis-H9] Make finalized learning-review requests idempotent — 2026-10-26
+
+- The public Core review coordinator now treats a repeated matching decision as a replay, not an invalid pending-item request. It requires the decision and correction to match the finalized item and requires matching P65/SourceMonitor provenance before returning success.
+- A repeated correction additionally verifies the canonical current revision, exact review-item source, canonicalized correction text, and review evidence lineage. A repeated forget succeeds only if the reviewed revision group has no active memory tip. Conflicting decisions and incomplete canonical side effects fail closed.
+- Expanded the Hexis learning-review regression to call the real `OrganismCore.prototype` coordinator with real MemoryOS2, MemoryFabric, HexisAdaptationFabric, P65 and SourceMonitor instances. It checks first correction, provenance writes, exact replay, and conflicting correction rejection.
+- **Validation status:** dynamic regression is registered under `test:hexis-learning-review-canonical-memory`; execution remains pending because the current GitHub Actions jobs fail before runner assignment.
+
+## [NK1][Hexis-H8] Surface domain-level rejection in the operator console — 2026-10-26
+
+- The Hexis console now inspects both direct API `ok: false` responses and Core's nested `result.ok: false` domain result before displaying an operation as successful.
+- Failed corrections, stale-review rejections, or lifecycle mutation conflicts now show their real error text instead of a misleading `OK` status when an endpoint returns HTTP 200.
+- Added an integration regression to the existing Hexis learning-review gate that asserts the error decoder and success-message ordering remain wired in the UI.
+- **Validation status:** registered source-level regression; UI build/test execution is still blocked by the current GitHub Actions runner initialization failures.
+
+## [NK1][Hexis-H7] Recover interrupted learning-review corrections — 2026-10-26
+
+- Learning-review correction now uses a stable MemoryFabric command ID. If the content revision was committed but the process stopped before recording review provenance or closing the review item, the next attempt recognizes the exact generated revision by reviewed revision group, parent ID, source `hexis-learning-review`, and exact correction text.
+- Only that exact self-generated successor may be resumed; any other newer revision still returns `review-source-memory-superseded`. Recovery records the same review-evidence lineage and then finalizes the pending review, without creating another content revision.
+- The mutation result distinguishes a recovered prior correction from a true no-op correction. The regression asserts the source, parent, revision-group, text, and stable-command guards at the Core boundary.
+- **Validation status:** source-level guards and test registration verified; end-to-end execution remains unverified because GitHub Actions is still failing before runner assignment across unrelated workflows on this PR head.
+
+## [NK1][Hexis-H6] Recover interrupted belief revisions and normalize evidence identity — 2026-10-26
+
+- Normalized evidence identity consistently across MemoryOS2, Hexis, and Core: NFKC normalization, bounded key length, trimmed text, and case-insensitive comparison. Restored Hexis belief projections now normalize legacy source-key arrays before duplicate detection.
+- Changed the belief-revision sequence to retain the deterministic Hexis audit before the canonical evidence write, then update confidence through a replay-safe MemoryFabric command. If the source receipt or confidence update is interrupted, a retry recovers the existing audit and completes missing canonical effects without adding a second source vote.
+- Recovery only reconciles confidence when canonical confidence still equals the original audit's prior value; a newer independently changed canonical value is preserved rather than overwritten by stale posterior state.
+- Added regression coverage for normalized source replay, recovery-contract wiring, command receipt restoration, event redaction, and same-command/different-payload rejection.
+- **Validation status:** these H6 tests are registered in the Hexis regression path. Current GitHub Actions runs on this PR and unrelated NK1 branches continue to fail before runner assignment (runner_id=0, no executable steps/logs), so runtime validation remains pending.
+
+## [NK1][Hexis-H5] Journal evidence writes through MemoryFabric — 2026-10-26
+
+- Added `record-evidence` to MemoryFabric's lifecycle command contract. Evidence writes now use the existing canonical mutation boundary, action fingerprint, durable command receipt, and `memory-lifecycle` event stream instead of bypassing the journal from Hexis Core.
+- Lifecycle events store source class, clamped authority, and a one-way digest of the independent-source key; they do not copy evidence content or the raw independence key into the event payload.
+- Hexis belief revision and learning-review correction now call `MemoryFabric.recordEvidence` with deterministic command IDs. A retry after snapshot/restore returns the existing receipt, cannot add another independent vote, and cannot synthesize a second lifecycle event.
+- Extended `test:hexis-memory-evidence-lineage` to cover mutation receipts, exactly-once event emission, replay, and restore; updated the learning-review regression to guard against future direct writes around MemoryFabric.
+- **Validation status:** source-level wiring and test-script registration confirmed. GitHub Actions attempts on these heads are failing before job steps start (`runner_id=0`, empty step arrays, no logs), and the same immediate failures affect unrelated NK1 branches; focused tests are therefore still unverified, not marked green.
+
+## [NK1][Hexis-H4] Link review events to epistemic and source-provenance ledgers — 2026-10-26
+
+- Every finalized learning-review decision is linked to P65 and SourceMonitor as one deterministic, bounded system-event trace. Its evidence class remains `unverified`: this captures that a review operation occurred, not that its content became external truth.
+- The paired event uses a stable source ID and content fingerprint. If partial restore leaves a conflicting record under the same ID, Core refuses to finalize the review rather than overwrite the provenance trail.
+- Added persistence/lineage coverage for both ledgers and statically asserted that the Core review path writes those records before closing the Hexis review.
+- **Validation status:** execution on the current head is pending due to the repository-wide Actions runner initialization failures described above.
+
+## [NK1][Hexis-H3] Commit learning-review decisions with canonical memory effects — 2026-10-26
+
+- Reordered Core learning review so correction/forget operations are preflighted and applied through the canonical memory owner before the Hexis review item is finalized. Failed or rejected memory mutations leave the review pending instead of creating a false completed decision.
+- Rejects edits/deletions of identity, autobiographical, and quarantined memories through the general learning-review path; those require their own explicit protected-memory workflow.
+- Records a conservative, idempotent provenance receipt for a review-driven correction, preserves temporal revision lineage, and returns an explicit memory-mutation outcome. Forget retries safely close when the target is already absent; they do not target a different row.
+- Added `test:hexis-learning-review-canonical-memory` and wired it into the repository wiring audit alongside evidence lineage, HMX integrity, Operation Omega provenance/review tests, P65 persistence, and live server smoke.
+- **Validation status:** workflow reruns for the exact latest head are required; code is not marked production-ready on the basis of the prior green runs.
+
+## [NK1][Hexis-H1 follow-up] Normalize evidence-lineage replay identities — 2026-10-26
+
+- Extended the canonical MemoryOS2/Hexis evidence-lineage regression with a replay attempt using full-width Unicode characters and surrounding whitespace that normalize to an already-recorded lineage key.
+- The regression asserts the duplicate is rejected, confidence does not ratchet, and memory indexes remain valid after snapshot/restore.
+- This is targeted replay-guard regression coverage; it does not claim improved retrieval quality or autonomous-learning uplift. Exact-head Hexis workflow validation is pending.
+
+## [NK1][Hexis-H2] Authenticate staged HMX imports and execute Hexis CI gates — 2026-10-26
+
+- Recompute the HMX staging digest immediately before accepting an import. If protected sections, conflict records, section counts, or staged payload content changed since validation, the stage is irreversibly rejected with an auditable `digest-mismatch` conflict.
+- Added a regression that mutates a staged snapshot after its digest is recorded, restores the snapshot, and verifies that acceptance fails closed.
+- Wired the Hexis evidence-lineage test, adaptation regression, and live API smoke test into `repository-wiring-audit.yml`; added the audit branch to workflow filters so this PR's checks are eligible to run.
+- **Validation status:** focused workflows on the previous PR head reported successes, but those runs did not execute the new Hexis-specific test step. The current head must be checked after the workflow change; WorkPass110 remains a separate known failure in signed rollback approval.
+
+## [NK1][Hexis-H1] Canonical evidence lineage and belief projection — 2026-10-26
+
+- Connected Hexis evidence revisions to MemoryOS2's existing independent-source lineage. Each source is recorded once in the canonical memory record; replay already present in canonical lineage becomes a non-applied audit event before confidence or trust can change.
+- Made Hexis belief state a projection of canonical NK1 memory before each revision. Rejected duplicates and protected belief conflicts no longer mutate trust, timestamps, or the set of evidence that actually contributed to the belief.
+- Kept source provenance distinct from acceptance: evidence may be retained for audit when a protected identity/autobiographical belief is not revised. Confidence changes only when evidence is independent and the revision policy applies it.
+- Added `test:hexis-memory-evidence-lineage` and wired it into `audit:hexis`; regression covers duplicate replay, snapshot/restore lineage, confidence/trust/timestamp immutability on rejected duplicates, and the live Core wiring contract.
+- **Validation status:** source and tests are authored, but Node tests have not yet run in this connector session. CI must run on the exact commit before claiming green validation.
+- **Scope:** adapter-level evidence integration only. No second memory store, database schema, or new dependency introduced.
+
 ## B274 executed-action attribution — 2026-10-26
 
 - B274 now receives the canonical selected action with every real-trial outcome. It updates a skill candidate only when the executed action matches the candidate plan's first action; otherwise the reward is rejected before trial/evaluation counters or candidate quality and promotion state change.
@@ -2183,3 +2265,89 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+
+## NK1 Hexis H1 — fail-safe restoration of belief projections (2026-10-26)
+
+- **[FIX]** Normalize restored Hexis belief projections before the adapter uses them: reject missing/oversized memory IDs and invalid confidence/trust values; bound, trim, type-check and deduplicate evidence-key arrays; normalize malformed timestamps.
+- **[FIX]** Restore diagnostic counters only from finite non-negative safe integers so a malformed persisted sidecar cannot turn counters into `NaN` or string concatenation.
+- **[REGRESSION]** Extended `test:hexis-memory-evidence-lineage` with corrupt snapshot fixtures and a post-restore belief revision, covering both fail-safe filtering and continued adapter operation. The existing package script already wires this integration test.
+- **[VALIDATION]** Code and regression committed; exact-head Actions/typecheck result is not yet confirmed. This hardens restart reliability but does not claim retrieval uplift, better learning outcomes, or production readiness.
+
+### Hexis H1 restore follow-up — reject ambiguous belief identities (2026-10-26)
+
+- Normalize memory IDs with NFKC and discard duplicate projection IDs on restore rather than choosing an arbitrary/conflicting confidence value.
+- Extended the malformed-snapshot regression with conflicting duplicate IDs to prove that ambiguous sidecar rows are dropped while the valid projection and subsequent revision survive.
+- Validation still depends on the exact current PR-head workflow; do not infer a passing test from earlier code/test runs.
+
+### Hexis H1 validation wiring — correct branch and path filters (2026-10-26)
+
+- **[FIX]** The repository-wiring workflow had the target `audit/b276-execution-attribution-2026-10-26` duplicated under `push`, but missing under `pull_request`. The H1 PR targets that base, so its Hexis gate was not guaranteed to run on pull-request updates.
+- **[FIX]** Added the active H1 branch to the push trigger, removed the duplicate push branch, added the actual PR base branch to pull-request filters, and added explicit Hexis adapter, MemoryOS2, and integration-test paths to both filter sets.
+- **[VALIDATION]** Workflow YAML and path selection have been updated in code; a successful run that executes `test:hexis-memory-evidence-lineage` on the new head is still required before this gate is marked passed.
+
+## NK1 Hexis H1 — long-horizon evidence replay protection (2026-10-26)
+
+- **[FIX]** Added a persisted scalable Bloom filter for canonical evidence-lineage membership. The exact replay ring remains bounded at 32 keys and the visible evidence trail remains bounded at eight sources; the filter adds fixed-size segments rather than silently forgetting earlier lineages.
+- **[FIX]** Wired the durable filter into `MemoryOS2.encode`/`mergeIncomingEvidence`, `recordEvidence`, `hasEvidenceLineage`, restore normalization, and provenance-aware memory byte accounting. Older snapshots seed the filter from their retained exact keys and visible sources.
+- **[SAFETY]** Corrupt filter data fails closed; at the configured segment cap, the memory rejects unverified new lineages rather than allowing a previously seen source to become a new confidence vote.
+- **[REGRESSION]** Added an H1 integration case with 140 distinct lineages, oldest-source replay, snapshot/restore, replay after restart, and index integrity.
+- **[VALIDATION]** The exact-head repository-wiring Actions run is being used for this new path; no pass is claimed until the Hexis-specific step has completed on the final code/test head.
+
+## NK1 H1 follow-up — bounded lineage footprint and rollback regression alignment (2026-10-26)
+
+- **[PERFORMANCE]** The durable evidence Bloom filter is now allocated lazily for memories approaching the 32-key exact-ring rollover, avoiding a multi-kilobyte filter on every low-provenance memory while preserving rollover protection.
+- **[TEST FIX]** Updated the versioned-skill lifecycle regression to call the current `rollback(candidateId, approval)` contract with an explicit expected active version. The fixture injects a test-only rollback verifier rather than weakening the production default-deny verifier; the already-present signed-authority regressions remain in the same suite.
+- **[CI]** At commit `cb2d3ca0e2924364469bf8a7ae58252c67870893`, the repository-wiring audit passed, including the Hexis evidence-lineage/HMX/live-API test step. The WorkPass110 run on that same commit still failed at the outdated rollback fixture; the corrected test is committed after that run and must be validated on the new head.
+
+### WorkPass110 rollback authorization regression — default-deny remains enforced (2026-10-26)
+
+- Added a regression around a successfully promoted, signature-verified skill: caller-supplied rollback identity/timestamp/active-version fields must not authorize rollback when the configured rollback verifier is absent.
+- Asserted the failed rollback leaves the active skill/version untouched. This tests the existing production security boundary without adding a test-only bypass to the production implementation.
+- The prior WorkPass110 retry was cancelled while another PR update superseded it; rerun status must be read from the latest exact-head workflow, not inherited from the old failing run.
+
+## Hexis H1 follow-up — P65 pending-prediction lifecycle (2026-10-26)
+
+- **[FIX]** P65 now preserves unresolved predictions during normal recording as well as persistence projection and restoration. The previous in-memory 256-row ring could evict pending predictions before a snapshot was made.
+- **[BOUNDEDNESS]** Retains at most 1,024 unresolved predictions and the newest 128 non-pending claims. Once the pending limit is reached, a new prediction is rejected (record returns an empty ID) instead of silently deleting an earlier unresolved obligation.
+- **[RESTORE]** Sanitizes claim rows, deduplicates IDs, preserves newest-first order, validates supported kinds/statuses, and normalizes recent replay IDs without reversing a newest-first array.
+- **[REGRESSION]** Extends the focused test to over 1,000 pending predictions, non-prediction history churn, cap rejection, restore sanitization, and repeated persistence. Wired into npm run audit:hexis.
+- **[VALIDATION]** GitHub Actions P65 regression passed on head `9eb588aa8bc255f3dbbdc1b955bfa2a778e556a9` (run `40301977562`). This validates bounded retention and restore behavior; it does not assert measured retrieval uplift or full-system readiness.
+
+
+## Hexis H1 follow-up — durable outbox idempotency (2026-10-26)
+
+- **[FIX]** Added an exact idempotency receipt ledger independent of the 512-row terminal outbox cache. Once an old terminal payload rotates out, its key and request digest remain available to prevent a second logical delivery.
+- **[FIX]** Replayed retired keys are rejected with an explicit history-expired result; reuse of the same key for a different action remains a conflict. A saturated or corrupt restored ledger fails closed instead of silently accepting unseen keys.
+- **[FIX]** Outbox rotation now preserves pending and publishing entries as active delivery obligations, while only terminal rows are subject to the 512-row history window. New active deliveries are capped at 1,024.
+- **[BOUNDS]** Idempotency keys are limited to 256 characters; action kind and channel identifiers are bounded before request hashing.
+- **[REGRESSION]** Hexis adapter integration test now covers 520 pending deliveries, terminal rotation past 512, exact replay and changed-payload conflict after retirement, restart restoration, and overlong-key rejection.
+- **[VALIDATION]** Repository-wiring audit passed on head `9eb588aa8bc255f3dbbdc1b955bfa2a778e556a9` (run `40301977349`), including the Hexis adaptation integration test after outbox rotation, restore, and saturation cases.
+
+
+## WorkPass110 follow-up — candidate identity fixture alignment (2026-10-26)
+
+- **[TEST FIX]** Updated the signed-shadow E2E fixture to compute candidate identity with the canonical five-field tuple, including explicit null revision provenance when no revision is supplied.
+- **[WHY]** Candidate IDs now bind optional revision provenance; a fixture using the earlier four-field tuple failed before the shadow-registration behavior could be exercised.
+- **[VALIDATION]** WorkPass110 passed on head `9eb588aa8bc255f3dbbdc1b955bfa2a778e556a9` (run `40301977431`), including signed-shadow, independent evaluator, host-owned subprocess and path-identity regressions.
+
+
+## Hexis H1 follow-up — valid-time history and restore hardening (2026-10-26)
+
+- **[FIX]** Temporal assertions are now ordered by effective time, not delivery time. Late arrivals rebuild the affected memory's valid-time intervals and predecessor lineage, rather than truncating the prior current assertion at the arrival timestamp.
+- **[IDEMPOTENCY]** An exact semantic replay at the same memory/effective time returns the original assertion. Conflicting values for that exact effective time are rejected before any state mutation.
+- **[VALIDATION]** Rejects empty/overlong memory IDs, empty summaries, negative/non-finite valid-time values, and treats the temporal history cap as a bound on stored current values plus recent closed history. Late-arrival, replay, conflict, no-partial-mutation, interval and restore tests were added to the Hexis adaptation integration suite.
+- **[RESTORE]** Restored outbox rows are schema-checked and deduplicated deterministically. Corrupt or ambiguous outbox state saturates the idempotency gate so new unseen actions are rejected rather than risking duplicate external effects.
+- **[RECLAIM]** Bulk outbox reclamation now reapplies retention after stale publishing rows are recovered, keeping terminal history bounded while preserving active delivery obligations. A mass-reclaim regression covers 520 stale rows, the 512-row cap and retired-key rejection.
+- **[VALIDATION]** The repository-wiring audit passed on head `9eb588aa8bc255f3dbbdc1b955bfa2a778e556a9` (run `40301977349`). Later edits to this changelog are documentation-only; the Release ZIP remains untouched.
+
+## Hexis H1 + Operation Omega consolidation (2026-10-26)
+
+- **[INTEGRATION]** Created merge commit `5202d0a8e71723f00ac74fd2343c59682ebb991a` with the prior H1 state as first parent and Operation Omega `acbada2ff00092927070fce83d59871110dcd8a0` as second parent. The source archive/review line and evidence-lineage line now share one integration branch without replacing H1-owned runtime/package changes with sibling-branch snapshots.
+- **[SOURCE]** Consolidated the pinned 73-file upstream archive, its manifest/license/readme, review inbox, Ed25519 reviewer decision validation, independent review signing request and associated regression suites. Runtime code does not start the upstream Python/PostgreSQL service; the archive remains reference/provenance material.
+- **[MEMORY]** Merged Operation Omega source provenance into P65 while preserving H1's bounded pending-prediction lifecycle. Provenance-aware claim IDs include source identity/fingerprint/evidence class when supplied; legacy claims retain their prior deterministic ID shape when no provenance is provided. Added bounded sourceLineage() traversal and provenance restore normalization.
+- **[SOURCE MONITOR]** Integrated bounded trace provenance and parent lineage with malformed provenance rejected during record/restore; descriptive provenance is not treated as authentication.
+- **[WORKFLOW]** Wired the three Operation Omega tests into audit:hexis, added their file paths to repository-wiring contracts, and made the dedicated workflow resolve test paths from repository root so the static wiring checker understands them.
+- **[REPLAY SAFETY]** Corrected the stale signed-outcome test contract: same-process replay now asserts explicit `duplicate-attempt` rejection with no duplicate ledger row; exact artifact re-ingestion after restore remains the separate process-local reauthentication case.
+- **[VALIDATION]** The integrated code head `677f83a1ea056525995af1dea1f77bcf91ce8c0d` passed [P65 persistence](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40303671251), [repository wiring + Hexis adaptation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40303671470), [Operation Omega review/provenance/source-monitor](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40303671373), [WorkPass105 signed outcome ingestion](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40303671193), [WorkPass108 verified promotion](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40303671182), [WorkPass110 independent learning gates](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40303671237), and [P26 learning validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40303671180).
+- **[NOT CLAIMED]** This validates the listed gates on the named code SHA, not all repository files or production readiness. Retrieval uplift remains unproven (`recallDelta=0` in the prior baseline); production/browser/mobile soak, key custody, license review and canonical Release ZIP refresh remain open.

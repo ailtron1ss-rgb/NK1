@@ -35,6 +35,13 @@
       "kind": "sanitized extracted source",
       "sha256": null,
       "activeRuntimeOwner": false
+    },
+    {
+      "source": "Hexis current selected source (pinned 2026-10-24)",
+      "path": "legacy/input-archives/hexis-selected-2026-10-24",
+      "kind": "pinned selected upstream source snapshot",
+      "sha256": null,
+      "activeRuntimeOwner": false
     }
   ]
 }
