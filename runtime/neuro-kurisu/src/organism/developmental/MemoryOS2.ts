@@ -77,6 +77,30 @@ export interface MemoryEvidenceRecord {
  observedAt: number;
  protectedMemory: boolean;
 }
+function memoryEvidenceDataSnapshot(value: unknown): Record<string, unknown> | null {
+ try {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return null;
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = [
+   'evidenceId','digest','stance','sourceKind','sourceRef','label','author','note',
+   'confidence01','observedAt','protectedMemory','provenanceClass','sourceAuthority01','independenceKey',
+  ];
+  const row: Record<string, unknown> = Object.create(null);
+  for (const key of keys) {
+   const descriptor = descriptors[key];
+   if (!descriptor) continue;
+   if (!('value' in descriptor)) return null;
+   row[key] = descriptor.value;
+  }
+  return row;
+ } catch {
+  // Untrusted proxies and accessor-backed evidence fail closed without invoking getters.
+  return null;
+ }
+}
+
 function normalizeMemoryEvidenceRecords(raw: unknown): MemoryEvidenceRecord[] {
  if (!Array.isArray(raw)) return [];
  const byId = new Map<string, MemoryEvidenceRecord>();
@@ -1493,28 +1517,38 @@ export class MemoryOS2{
   const memoryId=String(id??'');
   const item=this.itemIndex.get(memoryId);
   if(!item)return {ok:false as const,added:false as const,reason:'memory-not-found' as const,memoryId,independentSources:0};
-  const evidenceId=typeof input?.evidenceId==='string'?input.evidenceId:'';
-  const digest=typeof input?.digest==='string'?input.digest:'';
-  const sourceKind=typeof input?.sourceKind==='string'?input.sourceKind:'';
-  const sourceRef=typeof input?.sourceRef==='string'?input.sourceRef:'';
-  const independenceKey=typeof input?.independenceKey==='string'?input.independenceKey:'';
-  const stance=input?.stance;
-  const observedAt=input?.observedAt;
-  const confidence01=input?.confidence01;
-  const optionalText=(value:unknown,max:number)=>typeof value==='string'&&value.trim()===value&&value.length>0&&value.length<=max&&!/[\u0000-\u001f\u007f]/.test(value)?value:undefined;
+  const row=memoryEvidenceDataSnapshot(input);
+  if(!row)return {ok:false as const,added:false as const,reason:'invalid-evidence-envelope' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  const evidenceId=typeof row.evidenceId==='string'?row.evidenceId:'';
+  const digest=typeof row.digest==='string'?row.digest:'';
+  const sourceKind=typeof row.sourceKind==='string'?row.sourceKind:'';
+  const sourceRef=typeof row.sourceRef==='string'?row.sourceRef:'';
+  const independenceKey=typeof row.independenceKey==='string'?row.independenceKey:'';
+  const stance=row.stance;
+  const observedAt=row.observedAt;
+  const confidence01=row.confidence01;
+  const protectedMemory=row.protectedMemory;
+  const optionalText=(value:unknown,max:number)=>typeof value==='string'&&value.trim()===value&&value.length>0&&value.length<=max&&!/[\\u0000-\\u001f\\u007f]/.test(value)?value:undefined;
   if(!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,191}$/.test(evidenceId)||!/^[a-f0-9]{64}$/i.test(digest)||
     (stance!=='supports'&&stance!=='contradicts'&&stance!=='contextualizes')||
     !optionalText(sourceKind,96)||!optionalText(sourceRef,512)||!optionalText(independenceKey,96)||
     typeof confidence01!=='number'||!Number.isFinite(confidence01)||confidence01<0||confidence01>1||
     typeof observedAt!=='number'||!Number.isFinite(observedAt)||observedAt<0||
-    (input.protectedMemory!==undefined&&typeof input.protectedMemory!=='boolean')||input.protectedMemory===true){
-   return {ok:false as const,added:false as const,reason:input?.protectedMemory===true?'protected-memory-review-required' as const:'invalid-evidence-record' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+    (protectedMemory!==undefined&&typeof protectedMemory!=='boolean')||protectedMemory===true){
+   return {ok:false as const,added:false as const,reason:protectedMemory===true?'protected-memory-review-required' as const:'invalid-evidence-record' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
   }
-  for(const [value,max] of [[input.label,256],[input.author,256],[input.note,2048]] as Array<[unknown,number]>){
+  for(const [value,max] of [[row.label,256],[row.author,256],[row.note,2048]] as Array<[unknown,number]>){
    if(value!==undefined&&!optionalText(value,max))return {ok:false as const,added:false as const,reason:'invalid-evidence-metadata' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
   }
+  const allowedClasses: MemoryProvenanceClass[]=['device','external','user','agent','derived','simulation','unknown'];
+  if(row.provenanceClass!==undefined&&(typeof row.provenanceClass!=='string'||!allowedClasses.includes(row.provenanceClass as MemoryProvenanceClass))){
+   return {ok:false as const,added:false as const,reason:'invalid-evidence-provenance-class' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  }
+  if(row.sourceAuthority01!==undefined&&(typeof row.sourceAuthority01!=='number'||!Number.isFinite(row.sourceAuthority01)||row.sourceAuthority01<0||row.sourceAuthority01>1)){
+   return {ok:false as const,added:false as const,reason:'invalid-evidence-source-authority' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  }
   const records=Array.isArray(item.evidenceRecords)?item.evidenceRecords:[];
-  const previous=records.find(row=>row.evidenceId===evidenceId);
+  const previous=records.find(record=>record.evidenceId===evidenceId);
   if(previous){
    if(previous.digest!==digest)return {ok:false as const,added:false as const,reason:'evidence-id-conflict' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
    return {ok:true as const,added:false as const,reason:'duplicate-evidence' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
@@ -1522,9 +1556,9 @@ export class MemoryOS2{
   const evidenceKey=this.evidenceIdKey(evidenceId);
   if(this.hasEvidenceKey(item,evidenceKey))return {ok:true as const,added:false as const,reason:'duplicate-retired-evidence' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
   const now=Date.now();
-  const source=String(input.sourceKind)+':'+String(sourceRef);
-  const provenanceClass=this.provenanceClassFor(source,input.provenanceClass);
-  const sourceAuthority01=typeof input.sourceAuthority01==='number'&&Number.isFinite(input.sourceAuthority01)&&input.sourceAuthority01>=0&&input.sourceAuthority01<=1?input.sourceAuthority01:this.sourceAuthorityDefault(provenanceClass);
+  const source=String(sourceKind)+':'+String(sourceRef);
+  const provenanceClass=(row.provenanceClass as MemoryProvenanceClass|undefined)??this.provenanceClassFor(source);
+  const sourceAuthority01=(row.sourceAuthority01 as number|undefined)??this.sourceAuthorityDefault(provenanceClass);
   const freshnessRecord:MemoryEvidenceSource={
    source:source.slice(0,240),provenanceClass,sourceAuthority01,
    independenceKey:independenceKey.trim().normalize('NFKC').slice(0,96),
@@ -1533,9 +1567,9 @@ export class MemoryOS2{
   const previousSources=this.normalizeEvidenceSources(item);
   const before=estimateMemoryBytes(item);
   item.evidenceSources=this.normalizeEvidenceSources({...item,evidenceSources:[...previousSources,freshnessRecord]});
-  item.evidenceRecords=[...records,{evidenceId,digest: digest.toLowerCase(),stance,sourceKind,sourceRef,
-   ...(input.label!==undefined?{label:input.label}:{}),...(input.author!==undefined?{author:input.author}:{}),
-   ...(input.note!==undefined?{note:input.note}:{}),confidence01,observedAt,protectedMemory:false}].slice(-64);
+  item.evidenceRecords=[...records,{evidenceId,digest:digest.toLowerCase(),stance:stance as MemoryEvidenceStance,sourceKind,sourceRef,
+   ...(row.label!==undefined?{label:row.label as string}:{}),...(row.author!==undefined?{author:row.author as string}:{}),
+   ...(row.note!==undefined?{note:row.note as string}:{}),confidence01,observedAt,protectedMemory:false}].slice(-64);
   this.rememberEvidenceKey(item,evidenceKey);
   this.rememberEvidenceKey(item,this.evidenceKey(freshnessRecord));
   item.lastAccessAt=Math.max(Number(item.lastAccessAt??0),observedAt);
