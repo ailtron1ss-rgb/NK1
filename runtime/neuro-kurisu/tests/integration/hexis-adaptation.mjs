@@ -367,6 +367,65 @@ assert.equal(untrustedStageApplyCalls, 0,
 assert.equal(restoredStageDigestFabric.getHmxStage(stageDigestStage.stagingId)?.status, 'accepted',
   'digest failure must leave the stage unpromoted');
 
+// A payload digest alone cannot protect lifecycle decisions. Rewriting a rejected
+// persisted stage to accepted used to pass the content digest because status was
+// intentionally excluded. The independent lifecycle seal must block both canonical
+// apply and goal-proposal preparation before any side effects.
+const rejectedLifecycleFabric = new HexisAdaptationFabric();
+const rejectedLifecycleExportId = 'exp_8484848484848484';
+const rejectedLifecycleStage = rejectedLifecycleFabric.stageHmx({
+  document: makeHmxDocument(rejectedLifecycleExportId, {
+    memories: [{ ref: rejectedLifecycleExportId + ':memory-1', type: 'semantic', content: 'Rejected state cannot be revived.' }],
+    goals: [{ ref: rejectedLifecycleExportId + ':goal-1', title: 'Rejected goal must remain rejected.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(rejectedLifecycleFabric.decideHmx(rejectedLifecycleStage.stagingId, 'reject')?.status, 'rejected');
+const rewrittenRejectedState = rejectedLifecycleFabric.snapshot();
+const rewrittenRejectedStage = rewrittenRejectedState.hmxStages.find(candidate => candidate.stagingId === rejectedLifecycleStage.stagingId);
+assert(rewrittenRejectedStage);
+rewrittenRejectedStage.status = 'accepted';
+const restoredRejectedLifecycleFabric = new HexisAdaptationFabric();
+restoredRejectedLifecycleFabric.restore(rewrittenRejectedState);
+let rejectedLifecycleApplyCalls = 0;
+restoredRejectedLifecycleFabric.bindCanonicalMemoryApply(() => {
+  rejectedLifecycleApplyCalls += 1;
+  return {};
+});
+assert.throws(
+  () => restoredRejectedLifecycleFabric.decideHmx(rejectedLifecycleStage.stagingId, 'apply'),
+  /hmx-stage-digest-invalid/,
+);
+assert.throws(
+  () => restoredRejectedLifecycleFabric.prepareGoalProposals(rejectedLifecycleStage.stagingId),
+  /hmx-stage-digest-invalid/,
+);
+assert.equal(rejectedLifecycleApplyCalls, 0, 'status-only rewrite must not reach canonical writer');
+assert.equal(restoredRejectedLifecycleFabric.snapshot().goalProposals.length, 0,
+  'status-only rewrite must not create goal proposals');
+
+// Compatibility migration is limited to never-reviewed legacy stages. They can be
+// accepted through the normal decision path, which installs a lifecycle seal before
+// the state becomes eligible for apply.
+const legacyLifecycleFabric = new HexisAdaptationFabric();
+const legacyLifecycleStage = legacyLifecycleFabric.stageHmx({
+  document: makeHmxDocument('exp_8585858585858585', {
+    memories: [{ ref: 'exp_8585858585858585:memory-1', type: 'semantic', content: 'Legacy staged fixture.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+const legacyLifecycleState = legacyLifecycleFabric.snapshot();
+const storedLegacyStage = legacyLifecycleState.hmxStages.find(candidate => candidate.stagingId === legacyLifecycleStage.stagingId);
+assert(storedLegacyStage);
+delete storedLegacyStage.lifecycleDigest;
+delete storedLegacyStage.applicationAttempts;
+const restoredLegacyLifecycleFabric = new HexisAdaptationFabric();
+restoredLegacyLifecycleFabric.restore(legacyLifecycleState);
+assert.equal(restoredLegacyLifecycleFabric.decideHmx(legacyLifecycleStage.stagingId, 'accept')?.status, 'accepted');
+assert.match(restoredLegacyLifecycleFabric.getHmxStage(legacyLifecycleStage.stagingId)?.lifecycleDigest ?? '', /^[a-f0-9]{64}$/);
+
 
 // Goal proposal preparation also consumes restored staged content, so it must
 // enforce the same digest before creating any new agency proposal.
