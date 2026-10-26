@@ -9546,9 +9546,9 @@ export class OrganismCore {
                 this.persisted.system.endogenousGoalGenesisB272 = b272Learner.snapshot();
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;
-                const b273Learning = trace.selected.action === b273Current.action
+                const b273Learning = b273Current.plan.includes(trace.selected.action)
                     ? b273Learner.learnFromOutcome({
-                        tick: state.tick, action: b273Current.action, plan: b273Current.plan,
+                        tick: state.tick, action: trace.selected.action, plan: b273Current.plan,
                         reward01: gatedReward01, predictionError01: state.predictionError,
                         independentGain01: b272IndependentGain,
                         personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
@@ -9851,10 +9851,10 @@ export class OrganismCore {
                 this.persisted.system.endogenousGoalGenesisB272 = b338Learner.snapshot();
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;
-                if (trace.selected.action === b338Lifecycle.action) {
+                if (b338Lifecycle.plan.includes(trace.selected.action)) {
                     b273Learner.learnFromOutcome({
                         tick: state.tick,
-                        action: b338Lifecycle.action,
+                        action: trace.selected.action,
                         plan: b338Lifecycle.plan,
                         reward01: gatedReward01,
                         predictionError01: state.predictionError,
