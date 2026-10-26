@@ -1,3 +1,12 @@
+## WorkPass332 — enforce per-skill task-family floors in candidate staging (2026-10-26)
+
+- **Integration gap:** WorkPass331 added authenticated family-aware promotion criteria, but the real `stage-verified-skill-candidate.mjs` caller still used only aggregate settings. The production staging route could therefore bypass the per-family guard by omitting its optional argument.
+- **Code:** every signed candidate bundle must now carry `promotionPolicy.minimumFamilyGainByFamily`. Each configured family must exist in the holdout manifest and specify a positive finite gain floor no greater than 1; missing, unknown, or non-positive policy fails before candidate staging.
+- **Runtime wiring:** the staging script forwards the validated per-skill family map into `proposeVerifiedSkillPromotion` and returns the policy plus measured family gains for inspection.
+- **Regression:** the end-to-end signed-bundle fixture now has real positive gains for its intended memory family; it rejects a missing policy, a family with no holdout tasks, a zero floor, and an otherwise-positive aggregate whose memory-family gain is zero. Rejection leaves the durable candidate set unchanged.
+- **Validation:** this commit's exact-head tests and typecheck are pending CI. WorkPass331's related validation workflows passed on the previous head; those results do not substitute for the new end-to-end regression.
+- **Safety:** staging remains separate from activation; authenticated approval, signed shadow evidence, rollback protections, and `canActivateAutomatically: false` remain in force.
+
 ## WorkPass331 — bind task-family floors to verified skill proposals (2026-10-26)
 
 - **Gap:** authenticated proposal generation blocked significant regressions by family, but an aggregate positive result could still pass if an important family had zero gain. The family results were reported, yet callers could not require improvement on the task families a particular skill is meant to serve.

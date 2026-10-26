@@ -27,28 +27,36 @@ try {
     version: 'v1',
   }));
   const ledger = new VerifiedOutcomeLedger(manifest);
-  const artifacts = [];
-  for (let seed = 1; seed <= 5; seed++) {
-    for (let i = 0; i < manifest.length; i++) {
-      for (const [method, passed] of [['baseline', i < 6], ['candidate', i < 8]]) {
-        const task = manifest[i];
-        artifacts.push(signOutcomePayloadForFixture({
-          schemaVersion: 1,
-          artifactId: `stage-${task.taskId}-${method}-${seed}`,
-          runId: `stage-run-${method}-${seed}`,
-          manifestFingerprint: ledger.manifestFingerprint(),
-          taskId: task.taskId,
-          taskVersion: task.version,
-          method,
-          seed,
-          attempt: 1,
-          passed,
-          verifierId,
-          observedAt: Date.now(),
-        }, privatePem));
+  const createArtifacts = (baselinePasses, candidatePasses) => {
+    const artifacts = [];
+    for (let seed = 1; seed <= 5; seed++) {
+      for (let i = 0; i < manifest.length; i++) {
+        for (const [method, passed] of [
+          ['baseline', baselinePasses(i)],
+          ['candidate', candidatePasses(i)],
+        ]) {
+          const task = manifest[i];
+          artifacts.push(signOutcomePayloadForFixture({
+            schemaVersion: 1,
+            artifactId: `stage-${task.taskId}-${method}-${seed}`,
+            runId: `stage-run-${method}-${seed}`,
+            manifestFingerprint: ledger.manifestFingerprint(),
+            taskId: task.taskId,
+            taskVersion: task.version,
+            method,
+            seed,
+            attempt: 1,
+            passed,
+            verifierId,
+            observedAt: Date.now(),
+          }, privatePem));
+        }
       }
     }
-  }
+    return artifacts;
+  };
+  // The intended memory family improves by 0.60; tool-use improves by 0.40.
+  const artifacts = createArtifacts(i => i < 2, i => i < 7);
   const skill = {
     id: 'stage-memory-repair',
     contextKey: 'recall:partial',
@@ -68,14 +76,44 @@ try {
   const bundlePath = path.join(root, 'signed-outcome-bundle.json');
   const stateFile = path.join(root, 'organism.json');
   const validBundle = {
-    schemaVersion: 1, manifest, baselineMethod: 'baseline', candidateMethod: 'candidate', skill, artifacts,
+    schemaVersion: 1, manifest, baselineMethod: 'baseline', candidateMethod: 'candidate', skill,
+    promotionPolicy: { minimumFamilyGainByFamily: { memory: 0.2 } }, artifacts,
   };
+  const missingPolicyBundle = { ...validBundle };
+  delete missingPolicyBundle.promotionPolicy;
+  await writeFile(bundlePath, JSON.stringify(missingPolicyBundle));
+  await assert.rejects(
+    () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
+    /promotionPolicy\.minimumFamilyGainByFamily/,
+  );
+  const unmeasuredFamilyBundle = {
+    ...validBundle,
+    promotionPolicy: { minimumFamilyGainByFamily: { transfer: 0.01 } },
+  };
+  await writeFile(bundlePath, JSON.stringify(unmeasuredFamilyBundle));
+  await assert.rejects(
+    () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
+    /not represented in holdout manifest: transfer/,
+  );
+  const nonPositiveFloorBundle = {
+    ...validBundle,
+    promotionPolicy: { minimumFamilyGainByFamily: { memory: 0 } },
+  };
+  await writeFile(bundlePath, JSON.stringify(nonPositiveFloorBundle));
+  await assert.rejects(
+    () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
+    /thresholds must be finite numbers in \(0, 1\]/,
+  );
+
   await writeFile(bundlePath, JSON.stringify(validBundle));
   const staged = await stageVerifiedSkillCandidateBundle({ bundlePath, stateFile });
   assert.equal(staged.status, 'staged');
   assert.equal(staged.skillId, skill.id);
   assert.equal(staged.canActivateAutomatically, false);
   assert.equal(staged.authenticatedEvidenceRows, 100);
+  assert.deepEqual(staged.evaluationPolicy.minimumFamilyGainByFamily, { memory: 0.2 });
+  assert.ok(staged.familyEvaluation.find(item => item.family === 'memory').absoluteGain >= 0.2,
+    'the actual staging path must expose and enforce gain in the skill-scoped family');
   assert.match(staged.candidateId, /^[a-f0-9]{64}$/);
 
   // Candidate persistence is a separate locked store; a fresh Core reads the durable stage.
@@ -107,7 +145,23 @@ try {
   const afterInvalidSkill = new OrganismCore(new FileStateStore(stateFile)).verifiedSkillCandidateSnapshot();
   assert.equal(afterInvalidSkill.candidates.length, 1, 'out-of-range skill scores cannot mutate candidate storage');
   assert.deepEqual(afterInvalidSkill.active, []);
-  console.log('P23_STAGE_VERIFIED_SKILL_CANDIDATE=PASS signed outcomes gate canonical skill bounds tamper rejection durable stage no activation');
+
+  // An aggregate gain of 0.20 is still rejected when the required memory family has zero gain.
+  const zeroMemoryGainBundle = {
+    ...validBundle,
+    promotionPolicy: { minimumFamilyGainByFamily: { memory: 0.01 } },
+    artifacts: createArtifacts(i => i < 6, i => i < 8),
+  };
+  await writeFile(bundlePath, JSON.stringify(zeroMemoryGainBundle));
+  await assert.rejects(
+    () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
+    /required-family-gain-below-threshold:memory/,
+  );
+  const afterFamilyGate = new OrganismCore(new FileStateStore(stateFile)).verifiedSkillCandidateSnapshot();
+  assert.equal(afterFamilyGate.candidates.length, 1, 'family-gate rejection must not stage another candidate');
+  assert.deepEqual(afterFamilyGate.active, [], 'family-gate rejection must never activate a skill');
+
+  console.log('P23_STAGE_VERIFIED_SKILL_CANDIDATE=PASS explicit family floors required, signed gains scoped, misleading aggregate rejected, durable stage no activation');
 } finally {
   if (previousKeys === undefined) delete process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON;
   else process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = previousKeys;

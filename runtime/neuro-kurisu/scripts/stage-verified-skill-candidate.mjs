@@ -12,6 +12,38 @@ const MAX_BUNDLE_BYTES = 10 * 1024 * 1024;
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const nonEmpty = value => typeof value === 'string' && value.trim().length > 0;
 
+function validatePromotionPolicy(policy, manifest) {
+  const policyError = 'candidate bundle requires a non-empty promotionPolicy.minimumFamilyGainByFamily map';
+  if (!isRecord(policy) || Object.keys(policy).some(key => key !== 'minimumFamilyGainByFamily')) {
+    throw new Error(policyError);
+  }
+  const floors = policy.minimumFamilyGainByFamily;
+  if (!isRecord(floors)) throw new Error(policyError);
+  const entries = Object.entries(floors).sort(([a], [b]) => a.localeCompare(b));
+  if (entries.length === 0) throw new Error(policyError);
+  const holdoutFamilies = new Set(manifest
+    .filter(task => isRecord(task) && task.split === 'holdout' && nonEmpty(task.family))
+    .map(task => task.family));
+  const normalized = [];
+  for (const [family, gain] of entries) {
+    const hasControlCharacter = Array.from(family).some(character => {
+      const code = character.codePointAt(0) ?? 0;
+      return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+    });
+    if (!family || family !== family.trim() || family.length > 128 || hasControlCharacter) {
+      throw new Error('promotion policy contains an invalid task-family name');
+    }
+    if (!holdoutFamilies.has(family)) {
+      throw new Error(`promotion policy family is not represented in holdout manifest: ${family}`);
+    }
+    if (typeof gain !== 'number' || !Number.isFinite(gain) || gain <= 0 || gain > 1) {
+      throw new Error('promotion family gain thresholds must be finite numbers in (0, 1]');
+    }
+    normalized.push([family, gain]);
+  }
+  return Object.fromEntries(normalized);
+}
+
 function readTrustedVerifierKeys(raw) {
   if (!nonEmpty(raw)) throw new Error('NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON is required to stage a verified candidate');
   let parsed;
@@ -35,7 +67,7 @@ function validateBundle(bundle) {
   if (!isRecord(bundle) || bundle.schemaVersion !== 1) {
     throw new Error('candidate bundle must be a schemaVersion 1 JSON object');
   }
-  const allowed = new Set(['schemaVersion', 'manifest', 'baselineMethod', 'candidateMethod', 'skill', 'artifacts']);
+  const allowed = new Set(['schemaVersion', 'manifest', 'baselineMethod', 'candidateMethod', 'skill', 'artifacts', 'promotionPolicy']);
   if (Object.keys(bundle).some(key => !allowed.has(key))) throw new Error('candidate bundle contains unknown top-level fields');
   if (!Array.isArray(bundle.manifest) || bundle.manifest.length < 2 || !Array.isArray(bundle.artifacts) || bundle.artifacts.length < 1) {
     throw new Error('candidate bundle requires a manifest and signed outcome artifacts');
@@ -77,6 +109,7 @@ export async function stageVerifiedSkillCandidateBundle({ bundlePath, stateFile 
   try { bundle = JSON.parse(await readFile(absoluteBundlePath, 'utf8')); }
   catch (error) { throw new Error(`candidate bundle JSON could not be read: ${String(error?.message || error)}`); }
   const skill = validateBundle(bundle);
+  const minimumFamilyGainByFamily = validatePromotionPolicy(bundle.promotionPolicy, bundle.manifest);
   const trustedKeys = readTrustedVerifierKeys(process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON);
   const ledger = new VerifiedOutcomeLedger(bundle.manifest);
   for (let i = 0; i < bundle.artifacts.length; i++) {
@@ -89,6 +122,7 @@ export async function stageVerifiedSkillCandidateBundle({ bundlePath, stateFile 
     minPairedTasks: 8,
     minAbsoluteGain: 0.1,
     minCompleteSeeds: 3,
+    minimumFamilyGainByFamily,
   });
   if (!proposal.gate.accepted || proposal.authenticatedEvidenceRows < 1 || proposal.unauthenticatedEvidenceRows !== 0) {
     throw new Error(`verified promotion proposal did not pass the evidence gate: ${proposal.gate.reason || 'rejected'}`);
@@ -115,6 +149,12 @@ export async function stageVerifiedSkillCandidateBundle({ bundlePath, stateFile 
     authenticatedEvidenceRows: proposal.authenticatedEvidenceRows,
     pairedTaskSeedN: proposal.pairedTaskSeedN,
     completePairedSeeds: proposal.completePairedSeeds,
+    evaluationPolicy: proposal.evaluationPolicy,
+    familyEvaluation: proposal.familyEvaluation.map(item => ({
+      family: item.family,
+      pairedN: item.pairedN,
+      absoluteGain: item.absoluteGain,
+    })),
     canActivateAutomatically: false,
     note: 'candidate staged only; shadow observation and authenticated human/authority approval are separate steps',
   };
