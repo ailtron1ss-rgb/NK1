@@ -131,4 +131,30 @@ assert.equal(assessExternalPostcondition({
   observedPostcondition: 'relay-main=on',
 }), 'unknown', 'the public assessor must fail closed on C1 controls too');
 
+const overlongPostcondition = await service.verify({
+  toolId: 'device.set-state',
+  input,
+  result: { accepted: true },
+}, async () => ({
+  verified: true,
+  basis: 'external-postcondition',
+  externalObservation: true,
+  observationId: 'readback-overlong-postcondition',
+  expectedPostcondition: 'x'.repeat(1024) + 'expected-tail',
+  observedPostcondition: 'x'.repeat(1024) + 'observed-tail',
+  confidence01: 0.99,
+}));
+assert.notEqual(overlongPostcondition.verified, true,
+  'different postconditions beyond the size limit must not collide after truncation');
+assert.notEqual(overlongPostcondition.basis, 'external-postcondition',
+  'overlong postconditions must not retain an authoritative external-evidence basis');
+assert.equal(assessExternalPostcondition({
+  verified: true,
+  basis: 'external-postcondition',
+  externalObservation: true,
+  observationId: 'readback-overlong-assessment',
+  expectedPostcondition: 'x'.repeat(1024) + 'expected-tail',
+  observedPostcondition: 'x'.repeat(1024) + 'observed-tail',
+}), 'unknown', 'the public assessor must fail closed on overlong postcondition text');
+
 console.log('WORKPASS94_VERIFICATION_INPUT_BINDING=PASS exact-structural-match partial-input-rejected nested-change-rejected copied-token-rejected malformed-input-rejected');
