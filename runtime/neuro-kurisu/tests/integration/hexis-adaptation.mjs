@@ -193,6 +193,32 @@ assert.equal(normalizeHmxV17Memory(malformedProjectionRow, {
   sourceSubjectId: validHmx.source.hexis_lineage_id,
 }), null);
 
+const malformedAuthorityHmx = {
+  ...validHmx,
+  sections: {
+    memories: [{
+      ...validHmx.sections.memories[0],
+      source_attribution: { source_authority_01: Object.create(null) },
+    }],
+  },
+};
+assert.doesNotThrow(() => validateHmxV17Document(malformedAuthorityHmx, 'telepathy'));
+assert(validateHmxV17Document(malformedAuthorityHmx, 'telepathy').some(issue =>
+  issue.path.endsWith('.source_attribution.source_authority_01') && issue.kind === 'schema'));
+
+const overlongRefHmx = {
+  ...validHmx,
+  sections: {
+    memories: [{
+      ...validHmx.sections.memories[0],
+      ref: validHmx.export_id + ':' + 'x'.repeat(520),
+    }],
+  },
+};
+assert(validateHmxV17Document(overlongRefHmx, 'telepathy').some(issue =>
+  issue.path.endsWith('.ref') && issue.kind === 'schema'));
+
+
 
 // The adaptation fabric enforces the enum contract independently of the HTTP
 // route, so internal callers cannot create malformed or preview-only surprise stages.
