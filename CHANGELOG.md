@@ -1,3 +1,9 @@
+## [NK1][Hexis] Reject unknown retention actions at ingress (2026-10-26)
+
+- Remove the HTTP fallback that converted unknown retention actions into `compress`; only `compress`, `archive`, or `forget` are accepted.
+- Add a server smoke regression requiring an invalid action to return HTTP 400 before memory lookup or proposal creation.
+- Validation status: code and regression are committed; exact-head workflow execution remains unverified because hosted jobs have no step logs.
+
 ## [NK1][Hexis] Guard all Hexis POST request-body boundaries (2026-10-26)
 
 - Add a shared fail-closed record check immediately after JSON parsing on all 20 Hexis POST routes, before route-specific reads, dispatches, or writes.
