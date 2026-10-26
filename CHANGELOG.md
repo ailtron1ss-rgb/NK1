@@ -1,5 +1,6 @@
 # WorkPass369 — atomic operational cognitive-cycle writes (2026-10-26)
 
+- [CI-DRIVEN FIX] First canonical-kernel run passed runtime typecheck but stopped on an incorrect test regex: the implementation correctly reports `operational-cycle-phase-input-field-accessor:confidence01`. Updated the assertion to the exact error contract; a fresh exact-head workflow is required.
 - [FIXED] Make `recordOperationalCycle()` a transaction: any later-phase append failure restores the prior event array, total counter and receipt replay index.
 - [HARDENED] Snapshot root cycle and phase inputs through own data descriptors; getters cannot execute while constructing a causal trace.
 - [PREFLIGHT] Validate tick/timestamp, phase source/flags/confidence and clone all phase payloads before the first event is written.
