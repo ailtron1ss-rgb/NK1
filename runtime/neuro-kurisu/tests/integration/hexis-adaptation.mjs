@@ -702,6 +702,12 @@ assert.equal(failingBeliefProjection.snapshot().metrics.beliefRevisions, 0,
   'failed canonical projection must not advance revision metrics');
 
 
+
+// End-to-end Hexis goal path: approval creates a paused NK1 agency project, and
+// only the separate activation call may make it active. Goal links are resolved
+// to the imported memory's persisted graph-source key, with honest receipts.
+const goalPipelineSystems = new OrganismSystemFabric();
+
 // Direct guardrail test: the agency bridge must reject control characters even
 // when its materialization method is called outside the upstream HMX parser.
 assert.throws(
@@ -717,12 +723,6 @@ assert.throws(
   }),
   /hexis-project-title-invalid/,
 );
-
-
-// End-to-end Hexis goal path: approval creates a paused NK1 agency project, and
-// only the separate activation call may make it active. Goal links are resolved
-// to the imported memory's persisted graph-source key, with honest receipts.
-const goalPipelineSystems = new OrganismSystemFabric();
 const goalExportId = 'exp_8888888888888888';
 const goalMemoryRef = goalExportId + ':memory-anchor';
 const goalRef = goalExportId + ':goal-bridge';
