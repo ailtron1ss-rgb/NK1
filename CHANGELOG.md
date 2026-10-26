@@ -1,3 +1,13 @@
+## WorkPass411 — do not assume rollback for every uncertain HMX receipt (2026-10-26)
+
+- **UI wording commit:** `1f45d8ec3cc7eb16efa8e75da262197c4ff73cb9`; **wiring-audit commit:** `545b8e01a234e9e959b1d6e8ab33462ad5e27617`.
+- Corrected an inaccurate operator warning: `uncertain` can mean either incomplete rollback or a process interruption before the receipt was saved. The UI now describes the result as unconfirmed instead of asserting that rollback failed.
+- The message labels all counters as unverified bookkeeping, explicitly says they do not prove which rows were applied, and asks the operator to inspect canonical memory and the stored receipt before remediation.
+- The interface wiring audit now requires the cause-neutral wording and the explicit no-retry instruction.
+- **Validation:** PENDING frontend build and UI wiring audit; no exact-head PASS/readiness uplift claimed. `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass410 — label HMX uncertain counts as unverified (2026-10-26)
 
 - **UI wording commit:** `306b075e22f610b60783d489015f8a8519d77212`; **wiring-audit commit:** `85c700822e22ce7d6c9140986296fd924417f511`.
