@@ -261,3 +261,21 @@ test('release metadata passes with a current WorkPass and an older published bas
   assert.equal(body.checks.find(check => check.id === 'release-manifest-not-behind-changelog-workpass')?.pass, true);
   assert.equal(body.checks.find(check => check.id === 'release-date-not-before-current-changelog-entry')?.pass, true);
 });
+
+
+test('release metadata validator accepts compact WorkPass headings in current changelog and task list', async t => {
+  const root = await fixture();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await upgradeFixtureToWorkpass349(root);
+  const fs = await import('node:fs/promises');
+  await fs.writeFile(
+    path.join(root, 'CHANGELOG.md'),
+    '## WorkPass349 — compact current heading — 2026-10-26\n',
+  );
+  await fs.writeFile(path.join(root, 'Список дел.md'), '# WorkPass349 current tasks\n');
+  const r = run(root);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const body = JSON.parse(r.stdout);
+  assert.equal(body.checks.find(check => check.id === 'changelog-has-current-workpass')?.pass, true);
+  assert.equal(body.checks.find(check => check.id === 'tasklist-has-current-workpass')?.pass, true);
+});
