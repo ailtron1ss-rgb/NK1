@@ -2105,6 +2105,18 @@ async function route(req, res) {
         if (req.method === 'GET' && url.pathname === '/api/organism/true-learning') {
             return json(res, 200, { ok: true, phase: 'P26-neural-perception-true-learning', p26: runtime.core.p26Snapshot(), p23: runtime.core.p23LearningSnapshot() });
         }
+        if (req.method === 'POST' && url.pathname === '/api/organism/true-learning/holdout-evidence') {
+            const input = await body(req);
+            try {
+                const result = runtime.core.p26VerifiedHoldoutRecord(input);
+                if (!result.accepted) return json(res, 422, { ok: false, ...result });
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, ...result, p26: runtime.core.p26Snapshot() });
+            }
+            catch (error) {
+                return json(res, 400, { ok: false, error: String(error?.message || error) });
+            }
+        }
         if (req.method === 'POST' && url.pathname === '/api/organism/true-learning/replay') {
             const input = await body(req);
             try {
