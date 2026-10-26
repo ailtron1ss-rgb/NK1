@@ -1,3 +1,11 @@
+## WorkPass381 — make Hexis rollback assertions schema-safe (2026-10-26)
+
+- **Code/test commit:** `d6fbf28a61024f6739bcf4dfe1be58627cdf0da6`; branch `work/hexis-evidence-adapter-2026-10-26`.
+- The previous run reached the rollback regression and showed that pre-evidence snapshots may omit the optional `evidenceRecords` and evidence-trail fields entirely. Normalized those optional-field checks to booleans rather than confusing an absent property (`undefined`) with a retained receipt.
+- Assertions still verify that the failed receipt, replay identity and source trail are absent, confidence and review state are unchanged, and the exact same evidence ID can be retried successfully after the injected review-store failure is removed.
+- **Validation:** exact-head typecheck, focused regressions and unified integration must pass on the updated code/test head; prior unified run failed on this assertion, so it is not counted as validation of this fix. No readiness/recall uplift claimed; `main` and Release ZIP unchanged.
+
+---
 ## WorkPass380 — repair Hexis rollback regression and verify retry semantics (2026-10-26)
 
 - **Code/test commit:** `90f8b111d3e1d5b6b6e7b82f187eaf9ddb365e28` on `work/hexis-evidence-adapter-2026-10-26`.
