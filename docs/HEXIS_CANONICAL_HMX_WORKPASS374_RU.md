@@ -10,7 +10,7 @@ Port the existing Hexis adapter into the newer WorkPass373 cognitive-runtime lin
 - HexisCanonicalMemoryProjector applies only an accepted port + additive stage. It validates the full memory section before the first canonical write, uses MemoryFabric as the canonical write path, namespaces imported semantic nodes by source provenance and projects relationships only when both endpoints are in the imported set.
 - The persisted application receipt supports defensive, no-write replay; failed application uses snapshots/rollback for canonical memory, semantic graph and optional temporal state.
 - OrganismSystemFabric binds the projector to the existing memory subsystem and Hexis adapter. The HTTP decision endpoint accepts only accept, reject or apply and returns explicit 400/404/409 failure statuses.
-- Imported HMX goals now have an explicit proposal-only path: prepareGoalProposals creates pending review items; the API can list and approve/reject them, while canonical goal materialization/activation remains a separate explicit operation.
+- Imported HMX goals now have an explicit proposal-only path: prepareGoalProposals creates pending review items; the API can list and approve/reject them, while canonical goal materialization/activation remains a separate explicit operation. An additional explicitly confirmed materialization route maps approved proposals to canonical goal candidates, projects relationships to imported memory nodes, records a typed event/receipt, and replays idempotently; it does not set the goal active.
 - The HMX exporter and projector are exposed through .mjs modules plus declaration files. The runtime Node floor remains Node 24.
 - The target branch already contained the newer causal-outcome restore guard; it was preserved rather than overwritten with the older branch's copy.
 
@@ -21,7 +21,7 @@ The branch registers npm run test:hexis-canonical-apply to cover:
 2. canonical-memory projection, source provenance, relationships and re-import behaviour;
 3. HTTP server accept/apply/replay and invalid-decision rejection;
 4. idempotent receipt replay with zero reads/writes on the replay path;
-5. HMX goals become idempotent pending proposals, with list/approve/reject endpoints and invalid-status validation.
+5. HMX goals become idempotent pending proposals, with list/approve/reject endpoints, explicit confirmation for canonical materialization, candidate-state assertion, semantic-edge projection and materialization replay.
 
 A branch-specific GitHub Actions workflow runs the runtime typecheck and focused tests. The latest exact-head Actions jobs are reported as failed, but the connector returns no step summaries and the log endpoint responds BlobNotFound; this is an observability blocker, not evidence that the tests passed or a diagnosis of a code failure. Local execution was not available through the GitHub connector. Keep the PR draft until reproducible validation is obtained.
 
