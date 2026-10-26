@@ -112,6 +112,15 @@ const hasOwnAccessorField=(value:unknown,key:string):boolean=>{
     return true;
   }
 };
+const hasOwnField=(value:unknown,key:string):boolean=>{
+  if(value===null||(typeof value!=='object'&&typeof value!=='function'))return false;
+  try {
+    return Object.getOwnPropertyDescriptor(value,key)!==undefined;
+  } catch {
+    // Proxies that refuse inspection are treated as containing an invalid field.
+    return true;
+  }
+};
 const hasOnlyCanonicalEventId=(value:unknown):value is string=>
   typeof value==='string'&&value.length>0&&value.length<=180&&value===value.trim()&&
   !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
@@ -183,9 +192,24 @@ export class CognitiveEventFabric {
     if(accessorRootField) {
       throw new TypeError('cognitive-event-fabric-snapshot-field-accessor:'+accessorRootField);
     }
+    const hasVersion=hasOwnField(root,'version');
     const schemaVersion=ownDataValue(root,'version');
-    if(schemaVersion!==undefined&&schemaVersion!==1) {
+    if(hasVersion&&schemaVersion!==1) {
       throw new RangeError('unsupported-cognitive-event-fabric-snapshot-version');
+    }
+
+    // Missing fields are allowed for legacy snapshots; present fields must retain
+    // their declared schema type. Do not turn a corrupt root into an empty ledger.
+    for(const key of ['recent','receiptEvents','receiptProjectionIndex'] as const) {
+      if(hasOwnField(root,key)&&!Array.isArray(ownDataValue(root,key))) {
+        throw new TypeError('cognitive-event-fabric-snapshot-field-must-be-an-array:'+key);
+      }
+    }
+    if(hasOwnField(root,'total')) {
+      const declaredTotal=ownDataValue(root,'total');
+      if(typeof declaredTotal!=='number'||!Number.isSafeInteger(declaredTotal)||declaredTotal<0) {
+        throw new TypeError('cognitive-event-fabric-snapshot-total-must-be-a-safe-integer');
+      }
     }
 
     // Decode into local collections first. A malformed schema or hostile accessor
