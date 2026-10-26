@@ -1,3 +1,12 @@
+## WorkPass369 — route B273 feedback through the canonical generated decision (2026-10-26)
+
+- **CI-discovered integration mismatch:** the live B272/Core regression exposed `B273 outcome action must be present in generated plan`. `B273.current()` can present a synthesized plan that does not satisfy the lifecycle's strict `lastActionPlan` contract. Credit must follow the canonical generated-decision snapshot, not a UI/presentation projection.
+- **Runtime correction:** Core now reads `B273State.snapshot()`, validates the decision tick and bounded plan shape, and passes the exact saved `lastActionPlan` into `learnFromOutcome`. If a valid current-tick decision selected a different action outside that plan, it records an unselected action. If the saved decision is absent/stale/malformed, it skips B273 learning rather than throwing or fabricating reward credit. Validation inside B273 remains strict.
+- **Regression:** the feedback wiring test now asserts that the live Core path uses the canonical snapshot, tick check and saved plan rather than `current()` for outcome authority. Exact-head Unified cognitive substrate CI is rerun after this fix.
+- **Boundary:** this is an attribution/robustness fix; it does not claim general-intelligence uplift or production readiness.
+
+---
+
 ## WorkPass368 — connect B273/B274 outcomes to the action actually executed (2026-10-26)
 
 - **Cross-branch defect:** the audit branch had added attribution records for B273, but the unified cognitive line still trained the current goal lifecycle unconditionally and allowed B274 trials to update candidate quality without knowing the selected environment action. A hypothetical/generated plan could therefore receive credit for an action the planner/arbitrator did not execute.

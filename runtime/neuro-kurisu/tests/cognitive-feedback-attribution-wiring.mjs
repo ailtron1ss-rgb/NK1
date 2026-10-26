@@ -79,6 +79,20 @@ assert.ok(mainFeedback.lastIndexOf('this.feedbackDeliveryGuard.complete(feedback
 assert.ok(mainFeedback.lastIndexOf('this.feedbackDeliveryGuard.complete(feedbackDeliveryToken)') < mainFeedback.lastIndexOf('await this.checkpoint(false)'),
   'completion receipt must be included in the final checkpoint');
 
+const b273RouteStart = mainFeedback.indexOf('const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;');
+assert.ok(b273RouteStart >= 0, 'B273 feedback must resolve its canonical learner');
+const b273Route = mainFeedback.slice(b273RouteStart, b273RouteStart + 2600);
+assert.ok(b273Route.includes('const b273Decision = b273Learner.snapshot();'),
+  'B273 attribution must read the canonical generated decision, not a presentation snapshot');
+assert.ok(b273Route.includes('b273Decision.tick === state.tick'),
+  'B273 must skip reward attribution if its generated decision belongs to another tick');
+assert.ok(b273Route.includes('const b273Plan = b273Decision.lastActionPlan;'),
+  'B273 must validate outcomes against the exact recorded plan');
+assert.ok(b273Route.includes('b273Learner.recordUnselectedAction('),
+  'an action outside the canonical generated plan must be recorded without reward credit');
+assert.ok(!b273Route.includes('b273Current.plan.includes(trace.selected.action)'),
+  'a synthesized current() presentation plan must not be used as outcome authority');
+
 const guard = new FeedbackDeliveryGuard();
 const input = { tick: 17, decisionId: 'decision-17', action: 'reflect', previousReceipt: null };
 const reservation = guard.begin(input);

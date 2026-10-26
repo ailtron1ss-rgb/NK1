@@ -9448,20 +9448,35 @@ export class OrganismCore {
                         tick: state.tick, generatedAction: b272GoalState.action, selectedAction: trace.selected.action,
                     });
                 this.persisted.system.endogenousGoalGenesisB272 = b272Learner.snapshot();
-                const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;
-                const b273Learning = b273Current.plan.includes(trace.selected.action)
-                    ? b273Learner.learnFromOutcome({
-                        tick: state.tick, action: trace.selected.action, plan: b273Current.plan,
-                        reward01: gatedReward01, predictionError01: state.predictionError,
-                        independentGain01: b272IndependentGain,
-                        personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
-                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                    })
-                    : b273Learner.recordUnselectedAction({
-                        tick: state.tick, generatedAction: b273Current.action,
-                        selectedAction: trace.selected.action, plan: b273Current.plan,
-                    });
+                // Attribute feedback only against the canonical generated decision in the
+                // lifecycle state. current() may synthesize a presentation snapshot whose
+                // plan does not satisfy the strict learning contract after the arbiter chose
+                // another candidate; never relax the learner's source-of-truth validation.
+                const b273Decision = b273Learner.snapshot();
+                const b273Plan = b273Decision.lastActionPlan;
+                const b273PlanValid = b273Decision.tick === state.tick
+                    && Array.isArray(b273Plan)
+                    && b273Plan.length >= 1
+                    && b273Plan.length <= 6
+                    && b273Plan[0] === b273Decision.lastAction;
+                const b273Learning = !b273PlanValid
+                    ? {
+                        accepted: false, revised: false, completed: false, abandoned: false,
+                        skillCreated: false, goalId: b273Decision.activeGoalId, gain01: 0,
+                    }
+                    : b273Plan.includes(trace.selected.action)
+                        ? b273Learner.learnFromOutcome({
+                            tick: b273Decision.tick, action: trace.selected.action, plan: [...b273Plan],
+                            reward01: gatedReward01, predictionError01: state.predictionError,
+                            independentGain01: b272IndependentGain,
+                            personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                            externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        })
+                        : b273Learner.recordUnselectedAction({
+                            tick: b273Decision.tick, generatedAction: b273Decision.lastAction,
+                            selectedAction: trace.selected.action, plan: [...b273Plan],
+                        });
                 this.persisted.system.autonomousGoalLifecycleB273 = b273Learner.snapshot();
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
                 const b274CandidateId = b274Diag.activeCandidateId;
