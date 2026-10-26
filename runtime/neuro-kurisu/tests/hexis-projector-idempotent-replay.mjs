@@ -1,5 +1,45 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { HexisCanonicalMemoryProjector } from '../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
+
+const hash = value => createHash('sha256').update(String(value)).digest('hex');
+const stage = {
+  status: 'applied',
+  exportId: 'exp_0123456789abcdef',
+  sourceLineageId: 'trusted-lineage-1',
+  stagingId: 'stage-1',
+  digest: 'persisted-stage-digest',
+  intent: 'port',
+  strategy: 'additive',
+};
+const makeReceipt = (overrides = {}) => {
+  const base = {
+    version: 1,
+    exportId: stage.exportId,
+    sourceLineageId: stage.sourceLineageId,
+    stageId: stage.stagingId,
+    stageDigest: stage.digest,
+    attempt: 1,
+    appliedAt: 1700000000000,
+    status: 'noop',
+    complete: false,
+    candidateMemoryRecords: 0,
+    uniqueMemoryRecords: 0,
+    importedCount: 0,
+    deduplicatedCount: 0,
+    projectedRelationships: 0,
+    deferredRelationships: 0,
+    semanticEdgeIds: [],
+    memoryIds: [],
+    createdMemoryIds: [],
+    deferredSections: {},
+    warnings: ['previously-applied'],
+    ...overrides,
+  };
+  return { ...base, digest: hash(JSON.stringify(base)) };
+};
+const receipt = makeReceipt();
+stage.application = receipt;
 
 let writes = 0;
 const memoryFabric = {
@@ -8,23 +48,6 @@ const memoryFabric = {
   forgetById() { writes++; throw new Error('unexpected-rollback-on-replay'); },
 };
 const projector = new HexisCanonicalMemoryProjector(memoryFabric);
-const receipt = {
-  version: 1,
-  exportId: 'exp_0123456789abcdef',
-  status: 'noop',
-  complete: false,
-  memoryIds: [],
-  warnings: ['previously-applied'],
-  digest: 'persisted-receipt-digest',
-};
-const stage = {
-  status: 'applied',
-  intent: 'port',
-  strategy: 'additive',
-  application: receipt,
-  // Deliberately omit staged sections and identifiers: a retry must use the receipt
-  // and must not re-run validation or mutate canonical memory.
-};
 const replay = projector.apply(stage);
 assert.deepEqual(replay, receipt);
 assert.notEqual(replay, receipt, 'replay returns a defensive copy');
@@ -33,6 +56,19 @@ replay.warnings.push('caller-mutation');
 assert.deepEqual(receipt.warnings, ['previously-applied']);
 assert.equal(writes, 0, 'idempotent replay must not touch canonical storage');
 
+// A receipt copied from another stage must not be accepted as the result of this stage.
+assert.throws(
+  () => projector.apply({ ...stage, application: makeReceipt({ stageId: 'some-other-stage' }) }),
+  /hmx-applied-receipt-invalid/,
+);
+// A modified receipt that no longer matches its integrity digest must fail closed.
+const tamperedStage = structuredClone(stage);
+tamperedStage.application.importedCount = 1;
+assert.throws(() => projector.apply(tamperedStage), /hmx-applied-receipt-invalid/);
+assert.throws(
+  () => projector.apply({ status: 'applied', application: { status: 'applied' } }),
+  /hmx-applied-receipt-invalid/,
+);
 assert.throws(
   () => projector.apply({ status: 'pending', intent: 'port', strategy: 'additive' }),
   /hmx-stage-must-be-accepted-before-apply/,
