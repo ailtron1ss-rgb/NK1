@@ -180,6 +180,8 @@ export interface HexisOutboxEntry {
     resolution?: 'published' | 'not-published';
     resolutionEvidenceRef?: string;
     resolvedAt?: number;
+    /** Bounded audit trail retained even when a confirmed absence permits another attempt. */
+    resolutionHistory?: Array<{ resolution: 'published' | 'not-published'; evidenceRef: string; resolvedAt: number }>;
     lastError?: string;
 }
 export interface HexisConnectorPolicy {
@@ -369,6 +371,7 @@ export class HexisAdaptationFabric {
     diagnostics() {
         const pendingReviews = this.state.learningReviews.filter((r) => r.status === 'pending').length;
         const pendingOutbox = this.state.outbox.filter((x) => x.status === 'pending' || x.status === 'publishing').length;
+        const uncertainOutbox = this.state.outbox.filter((x) => x.status === 'uncertain').length;
         const activePolicies = this.state.connectorPolicies.filter((x) => x.status === 'active').length;
         return {
             source: this.state.source,
@@ -386,6 +389,7 @@ export class HexisAdaptationFabric {
                 approvedGoalProposals: this.state.goalProposals.filter((proposal) => proposal.status === 'approved').length,
                 materializedGoalProposals: this.state.goalProposals.filter((proposal) => proposal.status === 'materialized').length,
                 pendingOutbox,
+                uncertainOutbox,
                 connectorPolicies: activePolicies,
                 executions: this.state.executions.length,
             },
@@ -1056,6 +1060,7 @@ export class HexisAdaptationFabric {
         entry.resolution = resolution;
         entry.resolutionEvidenceRef = reference;
         entry.resolvedAt = at;
+        entry.resolutionHistory = [...(entry.resolutionHistory ?? []), { resolution, evidenceRef: reference, resolvedAt: at }].slice(-32);
         entry.updatedAt = at;
         delete entry.reconciliationRequiredAt;
         if (resolution === 'published') {
