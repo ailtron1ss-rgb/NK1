@@ -3,10 +3,10 @@
   "snapshotDate": "2026-10-26",
   "project": "Neuro Kurisu / NK1",
   "sourceOfTruth": "https://github.com/ailtron1ss-rgb/NK1",
-  "sourceBranchAtSnapshot": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3",
-  "sourceHeadAtSnapshot": "ad812aa0db98ec1283aaed36d777ce36a8268b13",
+  "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
+  "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. This snapshot is anchored to code checkpoint ad812aa0db98ec1283aaed36d777ce36a8268b13 on work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3. WorkPass335 adds strict canonical Ed25519 approval signature decoding and regressions for promotion/rollback; exact-HEAD tests and CI remain pending. Percentages remain unchanged because implementation presence and regression authoring are not equivalent to validation passes or external efficacy. Documentation commits after the code checkpoint do not change scored code.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The scored progress and CI evidence remain anchored to source checkpoint b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass335 is a separate, unscored security patch on work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3; its exact-HEAD P23 regression, typecheck and CI are pending. Documentation-only commits do not change scored code. Do not infer that earlier PASS rows validate the WorkPass335 patch.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
