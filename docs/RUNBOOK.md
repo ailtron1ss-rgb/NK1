@@ -21,12 +21,19 @@ Services:
 
 ## Production-style local start
 
+From a clean checkout, pin Node.js 24 via `.nvmrc` and use Python 3.12 for research probes:
+
 ```bash
-npm --prefix app run build
+npm run install:all
+npm run install:research:cpu
+npm run doctor
+npm run release:verify
 npm run start
 ```
 
-Gateway: `127.0.0.1:8080`.
+The canonical installer installs the app and runtime lockfiles separately. The research installer adds CPU-only research dependencies when the bridge/DeepCode probes are required.
+
+Gateway: `127.0.0.1:8080`; runtime: `127.0.0.1:3310`; research bridge: `127.0.0.1:8765`. Launch through the root supervisor to avoid duplicate child processes.
 
 ## Quick audit
 
@@ -42,7 +49,7 @@ Use the runtime release matrix under `runtime/neuro-kurisu/package.json` and the
 
 ## Release operations (v20 final)
 
-Use `npm run doctor` before starting. `npm run backup` creates a timestamped state backup; `npm run restore` restores the latest backup. `npm run migrate` applies the app migration set when `DATABASE_URL` is configured and runs the runtime persistence migration check. `npm run sbom` and `npm run freeze` refresh release evidence. `npm run release:verify` checks final-tree constraints. `node tools/super-health-guard.mjs` checks the live runtime against the operator thresholds in `contracts/OPERATIONAL_ALERT_THRESHOLDS.json`.
+Use `npm run doctor` before starting. `npm run backup` creates a timestamped state backup; `npm run restore` restores the latest backup. `npm run migrate` applies the app migration set when `DATABASE_URL` is configured and runs the runtime persistence migration check. `npm run sbom` and `npm run freeze` refresh release evidence. `npm run release:verify` now runs the UI-wiring and architecture audits **and** the canonical release metadata validator (root/SUPER_VERSION alignment, runtime/app manifest + lockfile alignment, required status files and progress-score arithmetic). `npm run test:final-release-verifier` tests that metadata drift or a missing verifier cannot return a false green. `node tools/super-health-guard.mjs` checks the live runtime against the operator thresholds in `contracts/OPERATIONAL_ALERT_THRESHOLDS.json`.
 
 
 ## UI regression gates (WorkPass 14)
