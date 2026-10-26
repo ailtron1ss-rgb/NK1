@@ -1,13 +1,13 @@
 ## Latest checkpoint — WorkPass359 live action/goal attribution fix (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
-**CI:** [focused run #40291145587](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291145587)  
-**Status:** the canonical Core fix and CI path wiring are committed; full runtime check is running.
+**CI:** [focused run #40291145587 — success](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291145587)  
+**Validated workflow head:** `1ed262e350c41b4031680cb61fea70ae77a5b126` (Core fix commit `25c2363688be0cb76ca203d693df538c0cdc5456`).
 
 - The live Core previously sent `trace.selected.action` straight to B272 outcome learning even when that action differed from `B272EndogenousGoalGenesis.currentGoal().action`. B272 correctly rejected the mismatch, but its uncaught error could terminate `OrganismRuntime.step`.
 - The Core now treats this as an attribution boundary: only credit B272/B273 when the corresponding goal decision matches the action actually selected. It does not rewrite the reported outcome, weaken B272 validation, or claim the generated action was executed.
 - The WorkPass358 integration exercises a real runtime step, flush/stop, then a fresh runtime process restores the same canonical memory ID and checks continuity.
-- Validation: WorkPass331 canonical kernel workflow passed on Core fix commit `25c2363688be0cb76ca203d693df538c0cdc5456`; full WorkPass349 workflow #40291145587 must finish the runtime restart test and typecheck before WorkPass359 is considered green.
+- Validation: WorkPass331 kernel workflow passed on Core fix commit `25c2363688be0cb76ca203d693df538c0cdc5456`. Focused workflow #40291145587 passed P23 10/10, evaluator-config 16/16, `WORKPASS356_MEMORYOS_RESTORE_BOUNDARY=PASS`, `WORKPASS357_FILE_BACKED_MEMORY_RESTART=PASS`, `WORKPASS358_FULL_ORGANISM_RESTART=PASS separate-process runtime + canonical memory`, and runtime `TYPECHECK=PASS`.
 - Next: wider organism smoke, exact Core persistent-continuity restart, receipt/causal attribution, then continue into unverified production/UI/device gates.
 
 ---
