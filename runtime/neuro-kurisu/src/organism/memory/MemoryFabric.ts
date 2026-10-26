@@ -176,7 +176,18 @@ export class MemoryFabric {
    */
   applyLifecycleCommand(command:MemoryLifecycleCommand):MemoryItem2|Record<string,string>|boolean|void|null {
     const action=command.action;
-    const commandId=String(command.commandId??'').trim().slice(0,128);
+    // Command IDs are idempotency keys, not display text. Normalizing or truncating
+    // them can alias two distinct mutations to one cached receipt; reject malformed
+    // caller input before fingerprinting, reading state, or performing any write.
+    const rawCommandId:unknown=(command as {commandId?:unknown}).commandId;
+    let commandId='';
+    if(rawCommandId!==undefined){
+      if(typeof rawCommandId!=='string'||rawCommandId.length===0||rawCommandId.length>128||
+        rawCommandId!==rawCommandId.trim()||/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(rawCommandId)){
+        throw new TypeError('memory-lifecycle-command-id-invalid');
+      }
+      commandId=rawCommandId;
+    }
     const semanticPayload:any={...command};
     delete semanticPayload.commandId; delete semanticPayload.tick;
     delete semanticPayload.emitEvent; delete semanticPayload.syncCompatibility;
