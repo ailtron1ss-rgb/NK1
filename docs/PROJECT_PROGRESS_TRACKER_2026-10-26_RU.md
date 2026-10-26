@@ -1,6 +1,9 @@
 # NK1 — общая панель инженерного прогресса (2026-10-26)
 
-**Источник:** `ailtron1ss-rgb/NK1`, линия WorkPass332–336 плюс WorkPass339, уже присутствующий в combined diff. Последний подтверждённый CI snapshot — code/test head `b6f4335b9bdb4bf150d86fc9db1a830fe3041626`. Новый combined code/test head `bb7a76c55d83ff36358ded56e966b880b38cc7d9` добавляет ledger preflight/evaluator-origin checks и включает strict Ed25519 approval encoding; combined-head CI пока не подтверждён, поэтому проценты не повышены.  
+**Источник:** `ailtron1ss-rgb/NK1`, combined source branch `work/nk1-unified-substrate-runtime-integration-2026-10-26-r4`. Последний проверенный код/тестовый head: `b81ec539a1e2d442141e13929b376d2b549c9e64`. На этом exact head успешно прошли Unified project integration suite [#40255622845](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622845), WorkPass110 [#40255622606](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622606), WorkPass108 [#40255622678](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622678) и P26 Learning Validation [#40255622511](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622511). Валидация покрыла clean locked install app/runtime, Node 24 + Python 3.12 CPU research setup, UI build/typecheck, runtime typecheck, cognitive substrate + restore smoke, approval E2E и исследовательские probes с явным owner approval.
+
+**Оценки не повышены:** эти изменения подтверждают связность/регрессии и защищают promotion gate; сами по себе они не являются новым внешним доказательством улучшения обучения или переноса навыков. По-прежнему открыты реальные Android/Termux audio, физические датчики, browser/Live2D hardware E2E, длительный soak, license review и пересборка/замена большого GitHub Release ZIP.
+
 **Машиночитаемый источник процентов:** [PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json).  
 **Проверка таблицы:** `npm run test:progress-ledger`; **сводный отчёт:** `npm run progress:report`.
 
