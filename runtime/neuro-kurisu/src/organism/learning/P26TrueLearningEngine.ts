@@ -94,6 +94,118 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
+  /**
+   * Bounded online/replay interleaving with same-context contradiction screening.
+   * Replay labels that contradict recent feedback for near-identical states are
+   * quarantined for this cycle rather than allowed to overwrite fresh learning.
+   */
+  trainInterleaved(
+    currentRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    options:{
+      replayEveryNCurrent:number;
+      maxReplayUpdates:number;
+      targetMode:'reward'|'td';
+      currentLearningRate01:number;
+      replayLearningRate01?:number;
+      conflictCandidateCap?:number;
+    },
+  ):{
+    onlineUpdates:number;replayUpdates:number;blockedReplayRows:number;eligibleReplayRows:number;
+    conflictComparisons:number;conflictCandidateCap:number;
+  }{
+    if(!Array.isArray(currentRows)||!Array.isArray(replayRows))throw new Error('interleaved-rows-must-be-arrays');
+    if(!options||!Number.isSafeInteger(options.replayEveryNCurrent)||options.replayEveryNCurrent<1)throw new Error('replay-interval-invalid');
+    if(!Number.isSafeInteger(options.maxReplayUpdates)||options.maxReplayUpdates<0)throw new Error('replay-update-limit-invalid');
+    if(options.targetMode!=='reward'&&options.targetMode!=='td')throw new Error('interleaved-target-mode-invalid');
+    const validRate=(rate:unknown)=>typeof rate==='number'&&Number.isFinite(rate)&&rate>=0&&rate<=1;
+    if(!validRate(options.currentLearningRate01))throw new Error('current-learning-rate-invalid');
+    const replayRate=options.replayLearningRate01??.035;
+    if(!validRate(replayRate))throw new Error('replay-learning-rate-invalid');
+    const conflictCandidateCap=Math.max(8,Math.min(128,Math.floor(options.conflictCandidateCap??64)));
+    const validRows=(rows:typeof currentRows)=>{
+      for(const row of rows){
+        if(!row||typeof row!=='object'||!ACTIONS.includes(row.action)||
+          typeof row.reward!=='number'||!Number.isFinite(row.reward)||row.reward<0||row.reward>1||
+          (row.surprise!==undefined&&(typeof row.surprise!=='number'||!Number.isFinite(row.surprise)||row.surprise<0||row.surprise>1))){
+          throw new Error('interleaved-row-invalid');
+        }
+      }
+    };
+    // Validate the whole input before the first update so malformed later rows
+    // cannot leave a partially-mutated policy snapshot behind.
+    validRows(currentRows);
+    validRows(replayRows);
+    const stateFeatures=new Map<OrganismState,number[]>();
+    const features=(state:OrganismState)=>{
+      let value=stateFeatures.get(state);
+      if(!value){value=this.learner.features(state);stateFeatures.set(state,value);}
+      return value;
+    };
+    const closeState=(a:OrganismState,b:OrganismState)=>{
+      const x=features(a),y=features(b),n=Math.min(x.length,y.length);
+      if(!n||x.length!==y.length)return false;
+      let square=0;
+      for(let i=0;i<n;i++)square+=(x[i]!-y[i]!)**2;
+      return Math.sqrt(square/n)<=.065;
+    };
+    const targetFor=(row:typeof currentRows[number])=>{
+      if(options.targetMode==='reward')return row.reward;
+      const next=Math.max(.5,...this.learner.predict(row.nextState).map(prediction=>prediction.value));
+      return clamp(row.reward+.78*next);
+    };
+    let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,lossTotal=0;
+    let replayCursor=0;
+    for(let index=0;index<currentRows.length;index++){
+      const row=currentRows[index]!;
+      const current=this.learner.train({
+        state:row.state,action:row.action,target01:targetFor(row),
+        learningRate01:options.currentLearningRate01,
+      });
+      onlineUpdates++;
+      lossTotal+=current.loss01;
+      this.state.metrics.outcomeSamples++;
+      this.state.metrics.onlineUpdates++;
+      this.state.metrics.learningDelta01=clamp(
+        this.state.metrics.learningDelta01*.97+(current.predictionAfter-current.predictionBefore)*.03+
+        Math.abs(current.tdError01)*.02,
+      );
+      this.state.metrics.recentLoss01=clamp(current.loss01);
+      this.state.metrics.lastUpdatedAt=Date.now();
+
+      if(!replayRows.length||replayUpdates>=options.maxReplayUpdates||(index+1)%options.replayEveryNCurrent!==0)continue;
+      const replay=replayRows[replayCursor++%replayRows.length]!;
+      let conflict=false;
+      const start=Math.max(0,index-conflictCandidateCap+1);
+      for(let candidateIndex=start;candidateIndex<=index;candidateIndex++){
+        const fresh=currentRows[candidateIndex]!;
+        conflictComparisons++;
+        if(fresh.action===replay.action&&Math.abs(fresh.reward-replay.reward)>=.35&&closeState(fresh.state,replay.state)){
+          conflict=true;
+          break;
+        }
+      }
+      if(conflict){
+        blockedReplayRows++;
+        continue;
+      }
+      eligibleReplayRows++;
+      const replayResult=this.learner.train({
+        state:replay.state,action:replay.action,target01:targetFor(replay),
+        learningRate01:replayRate,
+      });
+      replayUpdates++;
+      lossTotal+=replayResult.loss01;
+    }
+    this.state.metrics.replayUpdates+=replayUpdates;
+    if(onlineUpdates+replayUpdates){
+      this.state.metrics.recentLoss01=clamp(lossTotal/(onlineUpdates+replayUpdates));
+      this.state.metrics.lastUpdatedAt=Date.now();
+    }
+    this.sync();
+    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap};
+  }
+
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
     if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};
