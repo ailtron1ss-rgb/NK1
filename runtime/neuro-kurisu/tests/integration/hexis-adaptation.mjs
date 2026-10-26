@@ -228,9 +228,6 @@ assert.doesNotThrow(() => normalizeHmxV17Memory(malformedProjectionRow, {
 assert.equal(normalizeHmxV17Memory(malformedProjectionRow, {
   exportId: validHmx.export_id,
   sourceSubjectId: validHmx.source.hexis_lineage_id,
-}), null);assert.equal(normalizeHmxV17Memory(malformedProjectionRow, {
-  exportId: validHmx.export_id,
-  sourceSubjectId: validHmx.source.hexis_lineage_id,
 }), null);
 
 let normalizerRootGetterCalls = 0;
@@ -271,6 +268,27 @@ assert.equal(normalizeHmxV17Memory(customPrototypeNormalizerRow, {
   sourceSubjectId: validHmx.source.hexis_lineage_id,
 }), null,
   'normalizeHmxV17Memory must reject custom-prototype rows');
+
+assert.equal(normalizeHmxV17Memory(validHmx.sections.memories[0], {
+  exportId: 'exp_ffffffffffffffff',
+  sourceSubjectId: validHmx.source.hexis_lineage_id,
+}), null, 'a memory reference must be scoped to the supplied HMX export ID');
+
+let normalizerOptionsGetterCalls = 0;
+const accessorNormalizerOptions = { sourceSubjectId: validHmx.source.hexis_lineage_id };
+Object.defineProperty(accessorNormalizerOptions, 'exportId', {
+  enumerable: true,
+  get() { normalizerOptionsGetterCalls += 1; return validHmx.export_id; },
+});
+assert.equal(normalizeHmxV17Memory(validHmx.sections.memories[0], accessorNormalizerOptions), null);
+assert.equal(normalizerOptionsGetterCalls, 0,
+  'normalizeHmxV17Memory must reject accessor-backed options without executing their getters');
+
+assert.equal(normalizeHmxV17Memory(validHmx.sections.memories[0], {
+  exportId: Object.create(null),
+  sourceSubjectId: validHmx.source.hexis_lineage_id,
+}), null, 'non-string export IDs must not be coerced to bind a memory reference');
+
 
 
 const malformedAuthorityHmx = {
