@@ -1,3 +1,9 @@
+## NK1 Hexis HMX atomic section staging (2026-10-26)
+
+- [FIX] Oversized or malformed HMX array sections are omitted atomically instead of retaining a truncated/filtered prefix alongside the original source count.
+- [TEST] Added a 257-record regression: the source count remains visible, no partial `memories` payload is staged, and the conflicted stage cannot be accepted.
+- [BOUNDARY] This hardens staging diagnostics; it does not claim the HMX import is production-ready or that CI passed. Release ZIP unchanged.
+
 - [BLOCKER FIX] Correct the over-escaped control-character regex in `OutcomeVerificationService`; it prevented the organism core from loading in Node 24 before the Hexis path could execute.
 ## NK1 Hexis canonical HMX apply (2026-10-26)
 
