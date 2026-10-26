@@ -880,9 +880,21 @@ async function route(req, res) {
                 const canonicalMemory = runtime.core.memoryInspectorSnapshot(1600)
                     .find(memory => memory.id === memoryId);
                 const existingEvidence = canonicalMemory?.evidenceRecords?.find(record => record.evidenceId === evidenceId);
-                const storedObservedAt = Number(existingEvidence?.observedAt);
-                observedAt = Number.isFinite(storedObservedAt) && storedObservedAt > 0
-                    ? new Date(storedObservedAt).toISOString()
+                // The diagnostic memory projection may omit private receipt metadata;
+                // the durable review item also retains the canonical observedAt.
+                const existingReviewEvidence = runtime.core.hexisListLearningReviews()
+                    .flatMap(review => Array.isArray(review.items) ? review.items : [])
+                    .map(item => item.evidence)
+                    .find(item => item?.pipeline === 'nk1.hexis-evidence-review.v1' &&
+                        item.memoryId === memoryId && item.evidenceId === evidenceId);
+                const rawStoredTime = existingEvidence?.observedAt ?? existingReviewEvidence?.observedAt;
+                const storedObservedAt = typeof rawStoredTime === 'number'
+                    ? rawStoredTime
+                    : Date.parse(String(rawStoredTime ?? ''));
+                const storedDate = new Date(storedObservedAt);
+                observedAt = Number.isFinite(storedObservedAt) && storedObservedAt >= 0 &&
+                    Number.isFinite(storedDate.getTime())
+                    ? storedDate.toISOString()
                     : new Date().toISOString();
             }
             const envelope = {
