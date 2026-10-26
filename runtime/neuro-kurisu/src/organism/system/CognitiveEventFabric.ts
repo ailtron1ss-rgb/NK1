@@ -202,18 +202,22 @@ export class CognitiveEventFabric {
       if(!isRecord(value))continue;
       const id=typeof value.id==='string'?value.id.trim():'';
       const stage=typeof value.stage==='string'?value.stage as CognitiveStage:undefined;
-      // Restore strictly typed ticks; do not coerce null/strings into valid causal time.
+      // Restore strictly typed identity and clocks; do not coerce malformed values into valid events.
       const tick=value.tick;
       if(!id||id.length>180||/[\\u0000-\\u001f\\u007f]/.test(id)||
-        !COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isFinite(tick)||tick<0||seen.has(id))continue;
-      if(typeof value.source==='string'&&value.source.length>120)continue;
+        !COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0||seen.has(id))continue;
+      const rawAt=value.at;
+      if(rawAt!==undefined&&(typeof rawAt!=='number'||!Number.isFinite(rawAt)||rawAt<0))continue;
+      if(value.source!==undefined&&(typeof value.source!=='string'||value.source.length>120||/[\\u0000-\\u001f\\u007f]/.test(value.source)))continue;
+      if(value.external!==undefined&&typeof value.external!=='boolean')continue;
+      if(value.confidence01!==undefined&&(typeof value.confidence01!=='number'||!Number.isFinite(value.confidence01)))continue;
       const rawParentIds=value.parentIds;
       if(rawParentIds!==undefined&&!Array.isArray(rawParentIds))continue;
       const parentInput=Array.isArray(rawParentIds)?rawParentIds:[];
       if(parentInput.length>12||parentInput.some(parent=>
         typeof parent!=='string'||!parent.trim()||parent.length>180||/[\\u0000-\\u001f\\u007f]/.test(parent)
       ))continue;
-      const at=Number(value.at);
+      const at=rawAt===undefined?0:rawAt;
       const parentIds=parentInput as string[];
       let payload:Record<string,unknown>;
       try { payload=cleanPayload(value.payload); }
@@ -221,10 +225,11 @@ export class CognitiveEventFabric {
       // Malformed rows do not reserve an ID: a later valid duplicate can still recover.
       seen.add(id);
       restored.push({
-        id, stage:stage as CognitiveStage, tick:Math.floor(tick),
-        at:Number.isFinite(at)&&at>=0?at:0,
+        id, stage:stage as CognitiveStage, tick,
+        at,
         source:typeof value.source==='string'?value.source:'restored-unknown',
-        parentIds, external:Boolean(value.external), confidence01:clamp01(Number(value.confidence01??.5)),
+        parentIds, external:typeof value.external==='boolean'?value.external:false,
+        confidence01:clamp01(typeof value.confidence01==='number'?value.confidence01:.5),
         payload,
       });
       if(restored.length>=this.capacity)break;
