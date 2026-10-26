@@ -359,17 +359,18 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass413",
+    "id": "WorkPass414",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "443d5d83635645e967c7da245f2a75a8af284e03",
-    "testCommit": "a4fba62670b3e6a5215b9083853a530b41c5fc79",
-    "codeTestHead": "a4fba62670b3e6a5215b9083853a530b41c5fc79",
-    "summary": "Prevent a later reject request from returning an accepted+pending HMX memory-merge stage that the core could reapply based on stage state. Convert late reject into terminal uncertain and block replay.",
+    "codeCommit": "0fc2a3880ef1276106e78dbcd4ab15ce53feb1d2",
+    "testCommit": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
+    "codeTestHead": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
+    "summary": "Close the remaining HMX replay window: a second accept or late reject against an already accepted memory-merge stage with pending receipt now converts it to terminal uncertain before core can run its state-based apply gate.",
     "testsAdded": [
-      "late reject after acceptance returns accepted stage with terminal uncertain receipt",
-      "late reject reason is explicitly recorded",
-      "subsequent accept cannot replay the terminal uncertain stage"
+      "duplicate accept after initial stage acceptance turns pending receipt into uncertain",
+      "duplicate accept records repeat-accept-after-accept-before-import-receipt",
+      "further accepts remain terminal and cannot replay",
+      "existing late-reject path remains protected with distinct reason"
     ],
     "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
@@ -377,6 +378,25 @@
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass414",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "0fc2a3880ef1276106e78dbcd4ab15ce53feb1d2",
+      "testCommit": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
+      "codeTestHead": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
+      "summary": "Close the remaining HMX replay window: a second accept or late reject against an already accepted memory-merge stage with pending receipt now converts it to terminal uncertain before core can run its state-based apply gate.",
+      "testsAdded": [
+        "duplicate accept after initial stage acceptance turns pending receipt into uncertain",
+        "duplicate accept records repeat-accept-after-accept-before-import-receipt",
+        "further accepts remain terminal and cannot replay",
+        "existing late-reject path remains protected with distinct reason"
+      ],
+      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass413",
       "date": "2026-10-26",
@@ -391,24 +411,6 @@
         "subsequent accept cannot replay the terminal uncertain stage"
       ],
       "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
-    {
-      "id": "WorkPass412",
-      "date": "2026-10-26",
-      "branch": "hexis-remote-bridge-20261026",
-      "codeCommit": null,
-      "testCommit": "dccd678206df42ac6ed7c1f057e741619c0d453e",
-      "codeTestHead": "dccd678206df42ac6ed7c1f057e741619c0d453e",
-      "summary": "Strengthen interrupted HMX acceptance recovery tests by serializing complete adaptation snapshots through JSON.stringify/JSON.parse before restore, matching the runtime persistence boundary for normal and tampered accepted+pending stages.",
-      "testsAdded": [
-        "accepted pending stage survives JSON serialization before restore as terminal uncertain",
-        "tampered accepted stage survives JSON serialization and retains integrity conflict",
-        "repeat acceptance after serialized restore cannot restart the import"
-      ],
-      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence and no readiness/progress uplift claimed.",
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
@@ -581,8 +583,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "a4fba62670b3e6a5215b9083853a530b41c5fc79",
-  "branchHeadBeforeTrackerCommit": "a4fba62670b3e6a5215b9083853a530b41c5fc79",
+  "latestUnverifiedCodeTestHead": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
+  "branchHeadBeforeTrackerCommit": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -622,38 +624,38 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass412",
+    "id": "WorkPass413",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": null,
-    "testCommit": "dccd678206df42ac6ed7c1f057e741619c0d453e",
-    "codeTestHead": "dccd678206df42ac6ed7c1f057e741619c0d453e",
-    "summary": "Strengthen interrupted HMX acceptance recovery tests by serializing complete adaptation snapshots through JSON.stringify/JSON.parse before restore, matching the runtime persistence boundary for normal and tampered accepted+pending stages.",
+    "codeCommit": "443d5d83635645e967c7da245f2a75a8af284e03",
+    "testCommit": "a4fba62670b3e6a5215b9083853a530b41c5fc79",
+    "codeTestHead": "a4fba62670b3e6a5215b9083853a530b41c5fc79",
+    "summary": "Prevent a later reject request from returning an accepted+pending HMX memory-merge stage that the core could reapply based on stage state. Convert late reject into terminal uncertain and block replay.",
     "testsAdded": [
-      "accepted pending stage survives JSON serialization before restore as terminal uncertain",
-      "tampered accepted stage survives JSON serialization and retains integrity conflict",
-      "repeat acceptance after serialized restore cannot restart the import"
+      "late reject after acceptance returns accepted stage with terminal uncertain receipt",
+      "late reject reason is explicitly recorded",
+      "subsequent accept cannot replay the terminal uncertain stage"
     ],
-    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence and no readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass414",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Block both duplicate accept and late reject from returning accepted+pending HMX memory-merge stages to core's state-based import gate. The first accept remains unaffected; all subsequent decisions with an unresolved receipt are terminal uncertain. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass413",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "a4fba62670b3e6a5215b9083853a530b41c5fc79",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Block core's state-based HMX import gate from reapplying a previously accepted pending stage after a later reject request. The late reject closes the receipt as uncertain without claiming it can undo unknown canonical side effects. Scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass412",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "dccd678206df42ac6ed7c1f057e741619c0d453e",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Exercise interrupted accepted+pending HMX import recovery across the actual JSON persistence serialization boundary for both ordinary and tampered snapshots. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
