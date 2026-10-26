@@ -1,3 +1,11 @@
+## [NK1][WorkPass430] Roll back protected HMX records after failed apply (2026-10-26)
+
+- Added a narrowly scoped MemoryOS2 compensation path for records created by a specific Hexis export. Unlike ordinary user forgetting, it can undo transaction-created quarantined/identity records without weakening the normal protection against forgetting those records.
+- Routed compensation through MemoryFabric as an idempotent, journaled `rollback-created` lifecycle action; receipt restore recognizes the new action.
+- HexisCanonicalMemoryProjector now falls back to the scoped compensator when ordinary forgetting refuses or throws, then verifies the canonical postcondition instead of trusting the method return.
+- Added `tests/hexis-protected-memory-rollback.mjs` and wired it into `test:hexis-canonical-apply` and the Hexis CI path filters. The regression injects a temporal-ledger failure after a quarantined import, requires all canonical/temporal state to return to baseline, restores the receipt journal, and retries using a newly sealed attempt number.
+- Verification status: source, regression, package script and workflow filters are committed. A successful execution is still pending; recent GitHub Actions jobs reported failures with missing step/log metadata, so no runtime test pass is claimed.
+
 ## [NK1][WorkPass429] Reject malformed canonical-memory command IDs (2026-10-26)
 
 - `MemoryFabric.applyLifecycleCommand` now treats command IDs as exact idempotency keys: non-string, blank, padded, control-bearing and overlong IDs are rejected before fingerprinting or mutation, rather than coerced, trimmed or truncated.
