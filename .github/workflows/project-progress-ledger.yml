@@ -1,0 +1,42 @@
+name: Project progress ledger integrity
+
+on:
+  pull_request:
+    paths:
+      - "tools/project-progress-ledger.mjs"
+      - "tools/project-progress-ledger.test.mjs"
+      - "docs/PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json"
+      - ".github/workflows/project-progress-ledger.yml"
+  push:
+    branches:
+      - "fix/mega-cognitive-progress-tracking-2026-10-26-r3"
+    paths:
+      - "tools/project-progress-ledger.mjs"
+      - "tools/project-progress-ledger.test.mjs"
+      - "docs/PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json"
+      - ".github/workflows/project-progress-ledger.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-progress-ledger-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate progress evidence on exact checkout
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact event revision
+        uses: actions/checkout@v5
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Validate tracker and regression tests
+        run: npm run test:progress-ledger
+      - name: Emit weighted engineering snapshot
+        run: npm run progress:report
