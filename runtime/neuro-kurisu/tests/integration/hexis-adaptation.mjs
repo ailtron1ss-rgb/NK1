@@ -117,7 +117,11 @@ const exportSnapshot = buildNk1HmxV17Document({
     dormant: false,
     retrievalCount: 2,
     tags: ['memory'],
-    context: { channel: 'test', nested: { private: true } },
+    context: {
+      channel: 'test' + String.fromCharCode(1) + 'context',
+      ['bad' + String.fromCharCode(1) + 'key']: 'normalized-control-key',
+      nested: { private: true },
+    },
     entities: ['NK1'],
   }, {
     id: 'private-identity-memory',
@@ -135,6 +139,8 @@ assert.equal(exportSnapshot.sections.memories[0].type, 'semantic');
 assert.equal(exportSnapshot.sections.memories[0].trust_level, 0.75);
 assert.equal(exportSnapshot.sections.memories.length, 1, 'protected self/identity memories are excluded from memory-only export');
 assert.equal(exportSnapshot.sections.memories[0].metadata.context.nested, undefined);
+assert.equal(exportSnapshot.sections.memories[0].metadata.context.channel, 'test context');
+assert.equal(exportSnapshot.sections.memories[0].metadata.context.badkey, 'normalized-control-key');
 
 const protectedStage = fabric.stageHmx({
   document: {
