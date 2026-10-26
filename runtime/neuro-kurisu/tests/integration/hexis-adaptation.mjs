@@ -215,6 +215,33 @@ for (const accessorCase of accessorCases) {
     `${accessorCase.name}: unsafe input must remain ineligible for acceptance`);
 }
 
+// Untrusted section names must not mutate the prototypes of stage diagnostics.
+const protoKeyHmx = structuredClone(validHmx);
+Object.defineProperty(protoKeyHmx.sections, '__proto__', {
+  enumerable: true,
+  configurable: true,
+  writable: true,
+  value: [{ shouldNeverApply: true }],
+});
+const protoKeyStage = fabric.stageHmx({
+  document: protoKeyHmx,
+  intent: 'telepathy',
+  strategy: 'additive',
+});
+assert(protoKeyStage.conflicts.some(issue =>
+  issue.kind === 'unsupported-section' && issue.path === 'sections.__proto__'));
+assert.equal(Object.getPrototypeOf(protoKeyStage.sectionCounts), null,
+  'section counts must have no inherited keys');
+assert.equal(Object.hasOwn(protoKeyStage.sectionCounts, '__proto__'), true,
+  'the original untrusted section count remains diagnostic data');
+assert.equal(protoKeyStage.sectionCounts['__proto__'], 1);
+assert.equal(Object.getPrototypeOf(protoKeyStage.stagedSections), null,
+  'staged section map must have no inherited setters');
+assert.equal(Object.hasOwn(protoKeyStage.stagedSections, '__proto__'), false,
+  'conflicted prototype-like section must not be staged');
+assert.equal(fabric.decideHmx(protoKeyStage.stagingId, 'accept')?.status, 'staged',
+  'prototype-like section remains blocked from acceptance');
+
 // Reject other non-JSON shapes before they can reach schema mapping or memory apply.
 const unsafeShapeCases = [
   {
