@@ -1,3 +1,11 @@
+## [NK1][Hexis] WorkPass387 — unify receipt validation and connect canonical memories to belief state (2026-10-26)
+
+- [INTEGRATION] Reuse the projector's single HMX application-receipt validator from `HexisAdaptationFabric`; removed the duplicate TypeScript validator so replay and projection cannot drift into separate integrity rules.
+- [INTEGRATION] After canonical memory projection, seed Hexis belief state for each imported canonical memory using its existing confidence/trust and timestamp. Imported content is not treated as independent corroborating evidence and does not create a belief-revision audit or confidence boost.
+- [ATOMICITY] Belief registration remains inside the canonical-apply transaction and shares the existing adaptation-state snapshot/restore rollback path.
+- [TEST] Added checks for memory↔belief ID continuity, baseline confidence preservation, no fabricated corroboration, and no duplicate belief state on same-stage replay/re-export. Removed a duplicate replay regression block.
+- [VALIDATION] Changes committed on the existing draft PR branch. Runtime/type tests and release ZIP rebuild are not yet verified.
+
 ## [NK1][Hexis] WorkPass386 — enforce receipt integrity across restored-stage replay (2026-10-26)
 
 - [FIX] Exported one shared HMX apply-receipt validator from the canonical projector and reused it in the adaptation layer, avoiding separate receipt-integrity rules.
