@@ -1780,7 +1780,8 @@
     "test:cognitive-routing-policy": "node --experimental-strip-types tests/cognitive-routing-policy.mjs",
     "test:cognitive-routing-policy-runtime-wiring": "node tests/cognitive-routing-policy-runtime-wiring.mjs",
     "test:cognitive-feedback-attribution-wiring": "node --experimental-strip-types tests/cognitive-feedback-attribution-wiring.mjs",
-    "test:hexis-memory-evidence-lineage": "node --experimental-strip-types tests/integration/hexis-memory-evidence-lineage.mjs",
+    "test:cognitive-hexis-evidence-adapter": "node --experimental-strip-types tests/cognitive-hexis-evidence-adapter.mjs",
+    "test:hexis-memory-evidence-lineage": "npm run test:cognitive-hexis-evidence-adapter && node --experimental-strip-types tests/integration/hexis-memory-evidence-lineage.mjs",
     "test:hexis-p65-persistence": "node --experimental-strip-types tests/hexis-p65-pending-prediction-retention.mjs"
   }
 }
