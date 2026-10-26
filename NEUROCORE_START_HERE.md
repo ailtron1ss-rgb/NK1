@@ -1,3 +1,16 @@
+## Latest checkpoint — WorkPass353 evaluator state-path canonicalization (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Status:** source fix + regression committed; exact-head CI pending.
+
+- The host-owned evaluator config loader canonicalizes the mutable runtime state directory before checking whether evaluator code is stored inside that boundary. A symlink alias to the same directory is no longer accepted as evidence that a module is external.
+- Added a regression that places the evaluator module within the true state directory while passing an alias symlink as `stateDirectory`; the loader must reject it before dynamic import.
+- Expanded `.github/workflows/workpass349-native-dataset-path-identity.yml` to run the evaluator-config boundary suite in addition to signed-dataset validation, process-supervisor cleanup, host executable path checks, and runtime typecheck.
+- This extends WorkPass349–352 file identity / authority-path work. Older green workflow results remain valid only for their recorded SHAs; WorkPass353 needs a new exact-head green run.
+- Release gates still open: actual deployment-owned sandbox executor/verifier/scanner, paired multi-seed held-out learning uplift, persistence/restart recall, organism smoke under a clean environment, production UI/database build, real browser/Live2D and Android/Termux audio E2E, long soak and license review. `main` remains untouched; PR #192 remains a draft on the source stack.
+
+---
+
 ## Latest checkpoint — WorkPass352 host executable parent integrity (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
