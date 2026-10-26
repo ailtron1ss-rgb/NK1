@@ -164,6 +164,8 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
         runBindings: readonly {
           taskId: string;
           trialId: string;
+          /** Canonical manifest family carried by the evaluator; consistency only, not standalone signature authority. */
+          taskFamily?: string | null;
           runId: string | null;
           plannedRunId: string | null;
           seed: number;
@@ -256,6 +258,9 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
     }
     const report = reportByKey.get(key);
     if (!report || report.split !== binding.split) reasons.push('independent-evaluation-report-binding-mismatch');
+    else if ((report.report.taskFamily ?? null) !== (binding.taskFamily ?? null)) {
+      reasons.push('independent-evaluation-task-family-binding-mismatch');
+    }
   }
   if (reportByKey.size !== bindingByKey.size || reportByKey.size === 0) reasons.push('independent-evaluation-coverage-incomplete');
 
