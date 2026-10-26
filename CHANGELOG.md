@@ -1,3 +1,13 @@
+## WorkPass360 — make prediction-debt pressure part of the shared cognitive work policy (2026-10-26)
+
+- **Cross-layer defect:** `OrganismRuntime` previously mapped non-finite/out-of-range prediction priority to `0`, which means no urgency. The substrate's optional-work policy also trusted the already-derived coupling score and did not validate the underlying prediction error/priority or debt counters.
+- **Runtime correction:** prediction-debt counts are now validated as a group; malformed counters or invalid priority normalize to maximum priority rather than zero. The policy validates the prediction frame and all debt counters before using it.
+- **Work-budget coupling:** high prediction error/priority now caps optional counterfactual work, critical priority disables it, and matched counterfactual credit requires a low enough prediction-error/debt signal. The actual environment action remains owned by the canonical core/gateway.
+- **Regressions:** added high/critical prediction-debt cases, malformed count rejection, missing-subsystem rejection and a source contract proving runtime does not convert invalid debt to zero.
+- **Validation:** exact-head substrate wiring and runtime typecheck are required; prior passing snapshots are not substituted for the new head.
+
+---
+
 ## WorkPass359 — fail closed on missing live telemetry (2026-10-26)
 
 - **Follow-on defect:** WorkPass356's conservative fallback applied to invalid values, but a missing live field still selected the historical default (for example, battery `0.82`). A runtime sensor omission could therefore masquerade as a healthy reading.

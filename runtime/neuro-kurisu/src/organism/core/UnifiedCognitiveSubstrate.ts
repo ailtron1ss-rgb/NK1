@@ -76,7 +76,7 @@ export function resolveUnifiedCognitiveWorkPolicy(
     return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'upstream-budget-zero' };
   }
   if (!isRecord(state) || !isRecord(state.coupling) || !isRecord(state.provenance) ||
-      !isRecord(state.resources) || !isRecord(state.world)) {
+      !isRecord(state.resources) || !isRecord(state.world) || !isRecord(state.prediction)) {
     return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'invalid-substrate-state' };
   }
   const requiredMetrics = [
@@ -91,8 +91,12 @@ export function resolveUnifiedCognitiveWorkPolicy(
     state.resources.ramPressure01,
     state.resources.thermal01,
     state.world.conflict01,
+    state.prediction.error01,
+    state.prediction.priority01,
   ];
-  if (requiredMetrics.some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1)) {
+  if (requiredMetrics.some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) ||
+      ![state.prediction.openCount, state.prediction.agingCount, state.prediction.expiredCount]
+        .every(value => Number.isSafeInteger(value) && value >= 0)) {
     return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'invalid-substrate-state' };
   }
 
@@ -103,15 +107,20 @@ export function resolveUnifiedCognitiveWorkPolicy(
   const ramPressure01 = state.resources.ramPressure01;
   const thermal01 = state.resources.thermal01;
   const conflict01 = state.world.conflict01;
+  const predictionError01 = state.prediction.error01;
+  const predictionPriority01 = state.prediction.priority01;
   const { battery01, computeCapacity01, efficiency01 } = state.resources;
   if (actionReadiness01 < 0.25 || conflict01 > 0.9 || scarcity01 > 0.94 || thermal01 > 0.98 ||
-      battery01 < 0.05 || computeCapacity01 < 0.1 || efficiency01 < 0.1) {
+      battery01 < 0.05 || computeCapacity01 < 0.1 || efficiency01 < 0.1 ||
+      predictionError01 > 0.98 || predictionPriority01 > 0.98) {
     return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'substrate-critical-pressure' };
   }
 
   const constrained =
     actionReadiness01 < 0.55 ||
     predictionGrounding01 < 0.45 ||
+    predictionError01 > 0.75 ||
+    predictionPriority01 > 0.8 ||
     unknown01 > 0.75 ||
     battery01 < 0.25 ||
     computeCapacity01 < 0.35 ||
@@ -124,6 +133,8 @@ export function resolveUnifiedCognitiveWorkPolicy(
     maxCounterfactualBranches > 0 &&
     actionReadiness01 >= 0.45 &&
     predictionGrounding01 >= 0.5 &&
+    predictionError01 <= 0.65 &&
+    predictionPriority01 <= 0.7 &&
     evidenceCoverage01 >= 0.3 &&
     unknown01 <= 0.7 &&
     battery01 >= 0.2 &&

@@ -232,6 +232,9 @@ assert.ok(!runtime.includes('predictionDebtSnapshot() as Record<string, unknown>
 assert.ok(runtime.includes('openCount: debtCount(predictionDebt.openCount)'));
 assert.ok(runtime.includes('agingCount: debtCount(predictionDebt.agingCount)'));
 assert.ok(runtime.includes('expiredCount: debtCount(predictionDebt.expiredCount)'));
+assert.ok(runtime.includes('predictionDebtCountsValid'));
+assert.ok(runtime.includes('predictionDebt.meanPriority01 <= 1'));
+assert.ok(runtime.includes(':\n        1;'), 'malformed prediction debt must normalize to high priority');
 assert.ok(runtime.includes('relationCount: this.core.p41PerceptionSnapshot().relations.length'));
 assert.ok(!runtime.includes('cycleObservation.vision?.relations'));
 const observeAt = runtime.indexOf('const cycle = await this.core.observe(cycleObservation);');
@@ -309,3 +312,23 @@ assert.equal(missingBatteryFrame.resources.battery01, 0, 'missing live battery d
 const missingBatteryPolicy = resolveUnifiedCognitiveWorkPolicy(missingBatteryFrame, 4);
 assert.equal(missingBatteryPolicy.maxCounterfactualBranches, 0, 'missing live battery telemetry disables optional cognition');
 assert.equal(missingBatteryPolicy.allowMatchedCounterfactual, false);
+
+// The shared work policy must validate prediction-debt inputs themselves,
+// not trust a plausible derived coupling score when the debt record is corrupt.
+const urgentDebt = structuredClone(groundedFrame);
+urgentDebt.prediction.priority01 = 0.86;
+const urgentDebtPolicy = resolveUnifiedCognitiveWorkPolicy(urgentDebt, 4);
+assert.equal(urgentDebtPolicy.maxCounterfactualBranches, 1, 'high prediction debt caps optional branches');
+assert.equal(urgentDebtPolicy.allowMatchedCounterfactual, false, 'high prediction debt cannot authorize matched counterfactual credit');
+const criticalDebt = structuredClone(groundedFrame);
+criticalDebt.prediction.priority01 = 0.99;
+const criticalDebtPolicy = resolveUnifiedCognitiveWorkPolicy(criticalDebt, 4);
+assert.equal(criticalDebtPolicy.maxCounterfactualBranches, 0, 'critical prediction debt disables optional branches');
+assert.match(criticalDebtPolicy.reason, /critical-pressure/);
+const malformedDebt = structuredClone(groundedFrame);
+malformedDebt.prediction.openCount = -1;
+assert.equal(resolveUnifiedCognitiveWorkPolicy(malformedDebt, 4).reason, 'invalid-substrate-state');
+const missingDebtSection = structuredClone(groundedFrame);
+delete missingDebtSection.prediction;
+assert.equal(resolveUnifiedCognitiveWorkPolicy(missingDebtSection, 4).reason, 'invalid-substrate-state');
+

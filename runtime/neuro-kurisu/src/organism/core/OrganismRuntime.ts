@@ -639,8 +639,17 @@ export class OrganismRuntime {
     const predictionDebt = this.core.predictionDebtSnapshot();
     const debtCount = (value: unknown): number =>
       typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
-    const predictionPriority = Number.isFinite(predictionDebt.meanPriority01)
-      ? clamp01(predictionDebt.meanPriority01) : 0;
+    const predictionDebtCountsValid = [
+      predictionDebt.openCount, predictionDebt.agingCount, predictionDebt.expiredCount,
+    ].every(value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
+    const predictionPriority =
+      predictionDebtCountsValid &&
+      typeof predictionDebt.meanPriority01 === 'number' &&
+      Number.isFinite(predictionDebt.meanPriority01) &&
+      predictionDebt.meanPriority01 >= 0 &&
+      predictionDebt.meanPriority01 <= 1
+        ? predictionDebt.meanPriority01
+        : 1;
     const directObservation = body.telemetry.source === 'android-termux' && body.telemetry.staleMs === 0;
     const substrateState = this.unifiedCognitiveSubstrate.integrate({
       tick: Math.max(cycle.state.tick, previousSubstrateState.lastTick + 1),
