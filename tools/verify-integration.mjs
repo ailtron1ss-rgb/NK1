@@ -64,17 +64,17 @@ try {
   record('research:neurocore-probe-after-approval', nc.res.ok && Boolean(nc.data?.ok) && nc.data?.status === 'pass',
     nc.data?.status === 'pass'
       ? `delta=${nc.data?.delta ?? '—'}`
-      : `error=${String(nc.data?.error ?? nc.data?.detail ?? nc.data?.trace ?? 'unknown').replace(/\\s+/g, ' ').slice(0, 180)}`);
+      : `error=${String(nc.data?.error ?? nc.data?.detail ?? nc.data?.trace ?? 'unknown').replace(/\s+/g, ' ').slice(0, 180)}`);
   const nm = await runApprovedProbe('nomega-registry');
   record('research:nomega-registry-after-approval', nm.res.ok && Boolean(nm.data?.ok) && nm.data?.status === 'pass',
     nm.data?.status === 'pass'
       ? `modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'}`
-      : `error=${String(nm.data?.error ?? nm.data?.detail ?? nm.data?.trace ?? 'unknown').replace(/\\s+/g, ' ').slice(0, 180)}`);
+      : `error=${String(nm.data?.error ?? nm.data?.detail ?? nm.data?.trace ?? 'unknown').replace(/\s+/g, ' ').slice(0, 180)}`);
   const dc = await runApprovedProbe('deepcode');
   record('research:deepcode-probe-after-approval', dc.res.ok && Boolean(dc.data?.ok) && dc.data?.status === 'pass',
     dc.data?.status === 'pass'
       ? `smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'}`
-      : `error=${String(dc.data?.error ?? dc.data?.detail ?? dc.data?.trace ?? 'unknown').replace(/\\s+/g, ' ').slice(0, 180)}`);
+      : `error=${String(dc.data?.error ?? dc.data?.detail ?? dc.data?.trace ?? 'unknown').replace(/\s+/g, ' ').slice(0, 180)}`);
 } catch (error) {
   record('runtime/bridge:http', false, String(error));
 } finally {
