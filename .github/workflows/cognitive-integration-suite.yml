@@ -28,6 +28,11 @@ on:
       - "tools/super-install.mjs"
       - "tools/super-doctor.mjs"
       - "tools/verify-integration.mjs"
+      - "tools/project-progress-ledger.mjs"
+      - "tools/project-progress-ledger.test.mjs"
+      - "docs/PROJECT_PROGRESS_TRACKER_2026-10-26_RU.*"
+      - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
+      - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - ".github/workflows/cognitive-integration-suite.yml"
   push:
     branches:
@@ -61,6 +66,11 @@ on:
       - "tools/super-install.mjs"
       - "tools/super-doctor.mjs"
       - "tools/verify-integration.mjs"
+      - "tools/project-progress-ledger.mjs"
+      - "tools/project-progress-ledger.test.mjs"
+      - "docs/PROJECT_PROGRESS_TRACKER_2026-10-26_RU.*"
+      - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
+      - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - ".github/workflows/cognitive-integration-suite.yml"
 
 permissions:
@@ -94,6 +104,10 @@ jobs:
         run: npm run test:super-install
       - name: Run environment doctor before installation
         run: npm run doctor
+      - name: Validate and report weighted project progress
+        run: |
+          npm run test:progress-ledger
+          npm run progress:report
       - name: Install both locked workspaces through the project installer
         run: npm run install:all
       - name: Test integration process supervisor
