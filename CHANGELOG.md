@@ -1,3 +1,10 @@
+## WorkPass379 — keep Docker verification steps inside the CI job (2026-10-26)
+
+- GitHub rejected the new clean-install workflow before creating a job because the first appended Docker step lost its six-space `steps` indentation. Corrected the YAML structure; application code and container configuration were unchanged.
+- The container build/start run remains pending and must execute on the corrected workflow HEAD before Docker deployment is considered verified.
+
+---
+
 ## WorkPass378 — package the complete local stack with persistent Docker Compose state (2026-10-26)
 
 - **One-command deployment:** added a multi-stage `Dockerfile`, `compose.yaml` and `.dockerignore`. The runtime image uses Node 24 and Python 3.11, carries the built production UI and locked app/runtime dependencies, runs as the non-root `node` user, and exposes only the gateway on the container network.

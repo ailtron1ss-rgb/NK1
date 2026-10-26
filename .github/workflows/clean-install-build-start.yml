@@ -141,7 +141,8 @@ jobs:
           ' "$HEALTH" "$RUNTIME" "$RESEARCH" "$UI"
 
           cat "$LOG"
-- name: Validate Compose configuration
+
+      - name: Validate Compose configuration
         run: docker compose config --quiet
 
       - name: Build the production container image
