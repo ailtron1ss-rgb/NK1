@@ -1,3 +1,31 @@
+# Neuro Kurisu / NK1 — launch guide and current status
+
+**Source of truth:** [ailtron1ss-rgb/NK1](https://github.com/ailtron1ss-rgb/NK1). Work on the active source branch and validate the exact code/test SHA before considering a build runnable.
+
+## Start locally
+
+Requirements: Node.js 24 as pinned by `.nvmrc`; Python 3.12 is used by the research bridge. From a clean checkout:
+
+```bash
+npm run install:all
+npm run install:research:cpu
+npm run doctor
+npm run release:verify
+npm run start
+```
+
+Open the local gateway at `http://127.0.0.1:8080`. The runtime listens on `127.0.0.1:3310`; the research bridge uses `127.0.0.1:8765`. Keep the application running under the root supervisor; do not launch duplicate runtime/bridge processes by hand. Research adapters remain protected by explicit owner approval and network allowlists.
+
+For focused launch-verifier regression tests use `npm run test:final-release-verifier`; for the combined runtime/cognitive/approval/research smoke use `npm run test:integration` and the runtime script `npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite`.
+
+## Current verified source checkpoint — 2026-10-26
+
+WorkPass340–342 were merged to the active source branch in merge commit `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. Combined code/test head `621864d0d7f2676245383adab86f1dcc6d0f741f` passed the unified integration suite, strict cognitive-substrate restore/wiring, 30-cycle stop/re-init smoke, app/runtime typechecks, supervisor startup, owner-approved Research Bridge E2E and the P23/learning validation gates. Engineering scores were not increased: these tests establish integration and safety, not better external learning/transfer.
+
+**Important release distinction:** passing source-tree CI does not mean the published large release ZIP has been rebuilt, nor does it replace physical Android/Termux sensor/audio checks, browser/Live2D hardware testing, extended soak or license/provenance review. The release metadata currently identifies the older WorkPass70 archive; do not label the entire project production-ready until the archive and hardware gates are closed.
+
+---
+
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
