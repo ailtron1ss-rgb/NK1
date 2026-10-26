@@ -8,7 +8,7 @@
 ## [NK1][Hexis] WorkPass425 — retire stale projections on source-content correction (2026-10-26)
 
 - [CONSISTENCY] A changed HMX record with the same source lineage and stable reference now quarantines prior canonical versions without deleting history, and removes their stale semantic-graph and belief-mirror projections before accepting the correction.
-- [REGRESSION] Added a correction/re-export/reversion test: the previous version remains in canonical storage as quarantined history; active graph/belief projections move off the superseded version; identical re-export is idempotent; reverting to a quarantined old value cannot reactivate it or leave the intervening version active.
+- [REGRESSION] Added correction/re-export/reversion coverage plus injected failure after prior-version demotion: canonical history is retained, stale graph/belief projections are withdrawn, identical export stays idempotent, reversion cannot resurrect quarantined content, and a failed correction restores status/graph/belief state before a fresh-attempt retry.
 - [VALIDATION] Source and regression are committed but not executed in a usable runtime. Exact-head Actions status is being checked separately; no test PASS is claimed.
 
 ## [NK1][Hexis] WorkPass424 — reject stale apply receipts on lifecycle downgrade (2026-10-26)
