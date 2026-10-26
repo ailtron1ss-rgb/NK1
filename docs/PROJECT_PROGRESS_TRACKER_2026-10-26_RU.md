@@ -1,3 +1,13 @@
+## WorkPass403 — строгая проверка завершения HMX import receipt (2026-10-26)
+
+- **Код:** `ed92b4abf74395cc3d6946eadd0482eca2f839d2`; **регрессия:** `8969a6401719d9105162e50d00a35c79f4e98b51`.
+- `recordHmxImportResult` не нормализует некорректные значения через clamp/floor. Принимаются только известные статусы, неотрицательные safe-integer counts, bounded reason и точный учёт исходных memory records: `created + reused + skipped === sectionCounts.memories`.
+- `applied` не может содержать skipped rows, `skipped` не может иметь created/reused, а `partial` должен действительно отражать частичное применение. Некорректный receipt оставляет статус `pending`.
+- Тесты покрывают NaN, неучтённые записи и несовместимый partial-status; затем валидный receipt завершается, а повтор не переписывает counts.
+- **Валидация:** PENDING exact-head typecheck, HMX adaptation, server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass402 — повторная проверка integrity pending HMX stage (2026-10-26)
 
 - **Код:** `307b1317100bd9d4e3d62094f552a074fb1f663c` и `66927b5571704895f78f7c02897cd42e12fce8ea`; **регрессии:** `6f40c41ec9ff705561c1389fb8760956d41cfee1` и `388156d09c62dc736b5dcbe44a43fce303dedc0a`.
