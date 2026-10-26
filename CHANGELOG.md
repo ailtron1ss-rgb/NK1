@@ -1,3 +1,10 @@
+## WorkPass108 — align Hermes diagnostic fixture with family-aware evaluation (2026-10-26)
+
+- Fixed the Hermes reflective-diagnostics fixture to attach the canonical `general` task-family label to its synthetic validation and holdout reports. The current SkillLearnBench gate correctly fails closed when task-family metadata is absent; the fixture was stale after that contract was added.
+- No promotion threshold or production gate was weakened. The fixture continues to assert improvement, holdout coverage and a hard rejection when a candidate has safety violations.
+
+---
+
 ## WorkPass332 — per-family SkillLearnBench gate and weighted progress ledger (2026-10-26)
 
 - **Learning-evaluation code:** added optional task-family labels to SkillLearnBench trial input/report; aggregate output now preserves family metadata and rejects a single task changing family between trials.
