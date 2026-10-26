@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "title": "NK1 implementation readiness scorecard — WorkPass353 checkpoint",
+  "date": "2026-10-26",
+  "workpass": "WorkPass353",
+  "sourceHeadAtSnapshot": "18afd253dcd7413c02136537ea1acc10b7764768",
+  "testedCodeSha": null,
+  "validationStatus": "pending exact-head CI after metadata freshness changes",
+  "scoreType": "provisional evidence-weighted engineering estimate; not a measured cognition/learning benchmark",
+  "overallPercent": 38.25,
+  "workstreams": [
+    {
+      "id": "release-integrity",
+      "name": "Release lineage, metadata and provenance",
+      "weight": 20,
+      "completionPercent": 45
+    },
+    {
+      "id": "cognitive-runtime",
+      "name": "Cognitive runtime and event consistency",
+      "weight": 20,
+      "completionPercent": 55
+    },
+    {
+      "id": "memory-continuity",
+      "name": "Memory and experience continuity",
+      "weight": 15,
+      "completionPercent": 45
+    },
+    {
+      "id": "learning",
+      "name": "Independent learning evaluation and rollback",
+      "weight": 15,
+      "completionPercent": 30
+    },
+    {
+      "id": "autonomy-safety",
+      "name": "Autonomy, user/self model and policy enforcement",
+      "weight": 10,
+      "completionPercent": 35
+    },
+    {
+      "id": "embodiment",
+      "name": "Real voice/avatar/device validation",
+      "weight": 10,
+      "completionPercent": 15
+    },
+    {
+      "id": "install-release",
+      "name": "Clean installation and release artifact",
+      "weight": 10,
+      "completionPercent": 20
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 12,
+    "counts": {
+      "DONE": 2,
+      "PARTIAL": 4,
+      "TODO": 6
+    }
+  },
+  "limitations": [
+    "The estimate reflects implementation/release evidence only and is not a behavioral or intelligence score.",
+    "Exact-head CI after this checkpoint is pending.",
+    "No measured independent learning uplift or real-device voice/avatar pass is claimed.",
+    "The latest previously verified archive remains the WorkPass70 Hotfix; this candidate has not yet been packaged as a new release."
+  ]
+}
