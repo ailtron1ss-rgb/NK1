@@ -1,5 +1,6 @@
 import {
   CognitiveEventFabric,
+  cloneCognitiveEventPayload,
   type CognitiveEventNode,
   type CognitiveStage,
   type OperationalCycleLineageCheck,
@@ -9,7 +10,7 @@ import {
   type UnifiedCognitiveCycleResult,
   type UnifiedCycleStage,
 } from '../system/UnifiedCognitiveCycle.ts';
-import { sha256Stable, stableJson } from './StableSerialization.ts';
+import { sha256Stable } from './StableSerialization.ts';
 
 export interface CanonicalCognitiveStageInput {
   source: string;
@@ -93,28 +94,54 @@ const eventFingerprint = (event: CanonicalEventFingerprintInput | CognitiveEvent
     payload: event.payload,
   });
 
-function assertStageInput(label: string, value: unknown): asserts value is CanonicalCognitiveStageInput {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new TypeError(`canonical-cognitive-kernel-${label}-stage-required`);
+const isRecord=(value:unknown):value is Record<string,unknown> =>
+  value!==null&&typeof value==='object'&&!Array.isArray(value);
+
+function snapshotOwnDataFields(value:unknown,fields:readonly string[],context:string):Record<string,unknown>{
+  if(!isRecord(value))throw new TypeError(context+'-must-be-a-record');
+  const result:Record<string,unknown>=Object.create(null) as Record<string,unknown>;
+  for(const key of fields){
+    let descriptor:PropertyDescriptor|undefined;
+    try {
+      descriptor=Object.getOwnPropertyDescriptor(value,key);
+    } catch {
+      throw new TypeError(context+'-field-accessor:'+key);
+    }
+    if(!descriptor)continue;
+    if(!Object.prototype.hasOwnProperty.call(descriptor,'value')) {
+      throw new TypeError(context+'-field-accessor:'+key);
+    }
+    Object.defineProperty(result,key,{
+      value:descriptor.value,enumerable:true,writable:true,configurable:true,
+    });
   }
-  const stage = value as Record<string, unknown>;
-  if (typeof stage.source !== 'string' || !stage.source.trim()) {
+  return result;
+}
+
+function snapshotStageInput(label:string,value:unknown):CanonicalCognitiveStageInput{
+  const stage=snapshotOwnDataFields(value,['source','external','confidence01','payload'],
+    'canonical-cognitive-kernel-'+label+'-stage');
+  const source=stage.source;
+  if(typeof source!=='string'||!source.trim()) {
     throw new TypeError(`canonical-cognitive-kernel-${label}-source-required`);
   }
-  if (
-    typeof stage.confidence01 !== 'number' ||
-    !Number.isFinite(stage.confidence01) ||
-    stage.confidence01 < 0 ||
-    stage.confidence01 > 1
-  ) {
-    throw new RangeError(`canonical-cognitive-kernel-${label}-confidence-must-be-in-0-1`);
-  }
-  if (stage.external !== undefined && typeof stage.external !== 'boolean') {
+  if(stage.external!==undefined&&typeof stage.external!=='boolean') {
     throw new TypeError(`canonical-cognitive-kernel-${label}-external-must-be-boolean`);
   }
-  if (!stage.payload || typeof stage.payload !== 'object' || Array.isArray(stage.payload)) {
+  const confidence01=stage.confidence01;
+  if(typeof confidence01!=='number'||!Number.isFinite(confidence01)||confidence01<0||confidence01>1) {
+    throw new RangeError(`canonical-cognitive-kernel-${label}-confidence-must-be-in-0-1`);
+  }
+  const payload=stage.payload;
+  if(!isRecord(payload)) {
     throw new TypeError(`canonical-cognitive-kernel-${label}-payload-must-be-a-record`);
   }
+  return {
+    source:source.slice(0,120),
+    external:stage.external===undefined?false:stage.external,
+    confidence01,
+    payload:cloneCognitiveEventPayload(payload),
+  };
 }
 
 /**
@@ -155,12 +182,13 @@ export class CanonicalCognitiveKernel {
       tick,
       at,
       stage,
-      source:String(input.source||'unknown').slice(0,120),
-      parentIds:parentIds.map(String).slice(0,12),
-      external:Boolean(input.external),
-      confidence01:clamp01(input.confidence01),
-      // Detach and validate JSON data before any event mutation. This rejects cyclic or non-serializable payloads during preflight.
-      payload:JSON.parse(stableJson(input.payload)) as Record<string,unknown>,
+      source:input.source,
+      parentIds:parentIds.slice(0,12),
+      external:input.external??false,
+      confidence01:input.confidence01,
+      // The stage was descriptor-snapshotted during preflight; clone through the
+      // same bounded JSON contract that CEF append/restore use.
+      payload:cloneCognitiveEventPayload(input.payload),
     };
   }
 
@@ -207,23 +235,29 @@ export class CanonicalCognitiveKernel {
     plan: CanonicalCognitiveStageInput;
     action: CanonicalCognitiveStageInput;
   }): CanonicalDecisionCycleEvents {
-    if (!input || typeof input !== 'object' || Array.isArray(input)) {
-      throw new TypeError('canonical-cognitive-kernel-input-required');
-    }
-    if (!Number.isSafeInteger(input.tick) || input.tick < 0) {
+    const root=snapshotOwnDataFields(input,[
+      'tick','at','observation','prediction','appraisal','attention','memory','goal','plan','action',
+    ],'canonical-cognitive-kernel-input');
+    const tick=root.tick;
+    if(typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0) {
       throw new RangeError('canonical-cognitive-kernel-tick-must-be-a-non-negative-safe-integer');
     }
-    const stageInputs = [
-      ['observation', input.observation],
-      ['prediction', input.prediction],
-      ['appraisal', input.appraisal],
-      ['attention', input.attention],
-      ['memory', input.memory],
-      ['goal', input.goal],
-      ['plan', input.plan],
-      ['action', input.action],
-    ] as const;
-    for (const [label, value] of stageInputs) assertStageInput(label, value);
+    const atValue=root.at;
+    if(atValue!==undefined&&(typeof atValue!=='number'||!Number.isFinite(atValue)||atValue<0)) {
+      throw new RangeError('canonical-cognitive-kernel-at-must-be-a-non-negative-finite-number');
+    }
+    input={
+      tick,
+      at:atValue as number|undefined,
+      observation:snapshotStageInput('observation',root.observation),
+      prediction:snapshotStageInput('prediction',root.prediction),
+      appraisal:snapshotStageInput('appraisal',root.appraisal),
+      attention:snapshotStageInput('attention',root.attention),
+      memory:snapshotStageInput('memory',root.memory),
+      goal:snapshotStageInput('goal',root.goal),
+      plan:snapshotStageInput('plan',root.plan),
+      action:snapshotStageInput('action',root.action),
+    };
     const priorCycle=this.unifiedCycle.snapshot();
     // If this logical tick already has an observation record, omitted 'at' means
     // replay the original decision time, not invent a new timestamp on every retry.
@@ -319,33 +353,53 @@ export class CanonicalCognitiveKernel {
     learning: CanonicalCognitiveStageInput;
     selfUpdate: CanonicalCognitiveStageInput;
   }): CanonicalCycleCompletion {
-    if (!input || typeof input !== 'object' || Array.isArray(input)) {
-      throw new TypeError('canonical-cognitive-kernel-completion-input-required');
-    }
-    if (!Number.isSafeInteger(input.fallbackTick) || input.fallbackTick < 0) {
+    const root=snapshotOwnDataFields(input,[
+      'anchors','fallbackTick','at','outcome','learning','selfUpdate',
+    ],'canonical-cognitive-kernel-completion-input');
+    const fallbackTick=root.fallbackTick;
+    if(typeof fallbackTick!=='number'||!Number.isSafeInteger(fallbackTick)||fallbackTick<0) {
       throw new RangeError('canonical-cognitive-kernel-fallback-tick-must-be-a-non-negative-safe-integer');
     }
-    if (!input.anchors || typeof input.anchors !== 'object' || Array.isArray(input.anchors)) {
-      throw new TypeError('canonical-cognitive-kernel-anchors-required');
-    }
-    const anchorTick=input.anchors.tick;
-    if(anchorTick!==undefined&&(!Number.isSafeInteger(anchorTick)||anchorTick<0)) {
+    const anchorsData=snapshotOwnDataFields(root.anchors,[
+      'tick','at','observation','prediction','appraisal','attention','memory','goal','plan','action',
+    ],'canonical-cognitive-kernel-anchors');
+    const anchorTick=anchorsData.tick;
+    if(anchorTick!==undefined&&(typeof anchorTick!=='number'||!Number.isSafeInteger(anchorTick)||anchorTick<0)) {
       throw new RangeError('canonical-cognitive-kernel-anchor-tick-must-be-a-non-negative-safe-integer');
     }
-    if(input.anchors.at!==undefined&&(
-      typeof input.anchors.at!=='number'||!Number.isFinite(input.anchors.at)||input.anchors.at<0
-    )) {
+    const anchorAt=anchorsData.at;
+    if(anchorAt!==undefined&&(typeof anchorAt!=='number'||!Number.isFinite(anchorAt)||anchorAt<0)) {
       throw new RangeError('canonical-cognitive-kernel-anchor-at-must-be-a-non-negative-finite-number');
     }
     for(const key of ['observation','prediction','appraisal','attention','memory','goal','plan','action'] as const) {
-      const value=input.anchors[key];
+      const value=anchorsData[key];
       if(value!==undefined&&(typeof value!=='string'||!value.trim())) {
         throw new TypeError(`canonical-cognitive-kernel-anchor-${key}-must-be-a-non-empty-string`);
       }
     }
-    assertStageInput('outcome',input.outcome);
-    assertStageInput('learning',input.learning);
-    assertStageInput('self-update',input.selfUpdate);
+    const completionAt=root.at;
+    if(completionAt!==undefined&&(typeof completionAt!=='number'||!Number.isFinite(completionAt)||completionAt<0)) {
+      throw new RangeError('canonical-cognitive-kernel-at-must-be-a-non-negative-finite-number');
+    }
+    input={
+      anchors:{
+        tick:anchorTick as number|undefined,
+        at:anchorAt as number|undefined,
+        observation:anchorsData.observation as string|undefined,
+        prediction:anchorsData.prediction as string|undefined,
+        appraisal:anchorsData.appraisal as string|undefined,
+        attention:anchorsData.attention as string|undefined,
+        memory:anchorsData.memory as string|undefined,
+        goal:anchorsData.goal as string|undefined,
+        plan:anchorsData.plan as string|undefined,
+        action:anchorsData.action as string|undefined,
+      },
+      fallbackTick,
+      at:completionAt as number|undefined,
+      outcome:snapshotStageInput('outcome',root.outcome),
+      learning:snapshotStageInput('learning',root.learning),
+      selfUpdate:snapshotStageInput('self-update',root.selfUpdate),
+    };
 
     // Feedback events retain the original logical action tick while 'at' records
     // the event-arrival time. Stable IDs make replays inspectable across later ticks.
