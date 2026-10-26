@@ -5,7 +5,7 @@
  */
 export function decideSupervisedChildExit({ label, code, signal, shuttingDown }) {
   if (shuttingDown === true) {
-    return { action: 'ignore', reason: 'supervisor-shutdown', message: '' };
+    return { action: 'ignore', exitCode: 0, reason: 'supervisor-shutdown', message: '' };
   }
 
   const service = typeof label === 'string' && label.trim()
@@ -16,6 +16,7 @@ export function decideSupervisedChildExit({ label, code, signal, shuttingDown })
     const normalizedSignal = signal.trim().replace(/[^A-Z0-9_-]/gi, '').slice(0, 32) || 'unknown-signal';
     return {
       action: 'shutdown',
+      exitCode: 1,
       reason: `child:${service}:${normalizedSignal}`,
       message: `[super] ${service} exited unexpectedly via ${normalizedSignal}`,
     };
@@ -24,6 +25,7 @@ export function decideSupervisedChildExit({ label, code, signal, shuttingDown })
   if (code === 0) {
     return {
       action: 'shutdown',
+      exitCode: 1,
       reason: `child:${service}:unexpected-zero-exit`,
       message: `[super] ${service} exited unexpectedly with code 0`,
     };
@@ -32,6 +34,7 @@ export function decideSupervisedChildExit({ label, code, signal, shuttingDown })
   const exitCode = Number.isSafeInteger(code) ? String(code) : 'unknown';
   return {
     action: 'shutdown',
+    exitCode: 1,
     reason: `child:${service}:exit-${exitCode}`,
     message: `[super] ${service} exited unexpectedly with code ${exitCode}`,
   };
@@ -39,7 +42,7 @@ export function decideSupervisedChildExit({ label, code, signal, shuttingDown })
 
 export function decideSupervisedChildSpawnError({ label, errorMessage, shuttingDown }) {
   if (shuttingDown === true) {
-    return { action: 'ignore', reason: 'supervisor-shutdown', message: '' };
+    return { action: 'ignore', exitCode: 0, reason: 'supervisor-shutdown', message: '' };
   }
 
   const service = typeof label === 'string' && label.trim()
@@ -50,6 +53,7 @@ export function decideSupervisedChildSpawnError({ label, errorMessage, shuttingD
     : '';
   return {
     action: 'shutdown',
+    exitCode: 1,
     reason: `child:${service}:spawn-error`,
     message: `[super] ${service} spawn error${detail ? `: ${detail}` : ''}`,
   };
