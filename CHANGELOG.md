@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass400 — reject inconsistent applied-stage transitions (2026-10-26)
+
+- [SAFETY] The shared stage integrity guard now rejects non-applied stages that still carry an application receipt. A persisted `applied → accepted` downgrade can no longer re-enter canonical apply while preserving an old receipt.
+- [TEST] Added direct-projector and restored-state regressions for downgraded stages with application receipts; both must fail closed before canonical writes.
+- [VALIDATION] The regressions are wired through the existing Hexis replay and integration suites. Exact-head execution is still blocked because GitHub Actions jobs are failing before runner allocation.
+
 ## [NK1][Hexis] WorkPass399 — bind accepted HMX stages to their payload digest (2026-10-26)
 
 - [SAFETY] Added a shared stage-digest reconstruction helper using the same legacy stable serializer as `stageHmx`. The stage digest covers the export/intent/strategy, source lineage, record counts, protected sections, conflicts, and the actual staged payload.
