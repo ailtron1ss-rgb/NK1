@@ -12,6 +12,31 @@ import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type Memor
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
 
+function snapshotEvidenceInputForReceipt(
+  raw: unknown,
+): Parameters<MemoryOS2['recordEvidence']>[1] | undefined {
+  try {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+    const prototype = Object.getPrototypeOf(raw);
+    if (prototype !== Object.prototype && prototype !== null) return undefined;
+    const descriptors = Object.getOwnPropertyDescriptors(raw);
+    const allowed = new Set([
+      'evidenceId','digest','stance','sourceKind','sourceRef','label','author','note',
+      'confidence01','observedAt','protectedMemory','provenanceClass','sourceAuthority01','independenceKey',
+    ]);
+    const clean: Record<string, unknown> = Object.create(null);
+    for (const key of Reflect.ownKeys(descriptors)) {
+      if (typeof key !== 'string' || !allowed.has(key)) return undefined;
+      const descriptor = descriptors[key];
+      if (!descriptor || !('value' in descriptor)) return undefined;
+      clean[key] = descriptor.value;
+    }
+    return structuredClone(clean) as Parameters<MemoryOS2['recordEvidence']>[1];
+  } catch {
+    return undefined;
+  }
+}
+
 export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget'|'record-evidence';
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean }
@@ -284,7 +309,7 @@ export class MemoryFabric {
       const receipt:MemoryLifecycleReceipt={commandId,fingerprint,action,at:Date.now(),outcome,
         resultKind:action==='record-evidence'?'evidence':action==='update-context'&&result&&typeof result==='object'?'context':result&&typeof result==='object'?'memory':typeof result==='boolean'?'boolean':result===null?'null':'void',
         ...(memoryId?{memoryId}:{}),...(booleanValue!==undefined?{booleanValue}:{}),
-        ...(action==='record-evidence'?{evidenceInput:structuredClone(command.input)}:{})};
+        ...(action==='record-evidence'&&snapshotEvidenceInputForReceipt(command.input)?{evidenceInput:snapshotEvidenceInputForReceipt(command.input)}:{})};
       this.mutationReceipts.set(commandId,receipt);
       while(this.mutationReceipts.size>this.maxMutationReceipts){
         const oldest=this.mutationReceipts.keys().next().value as string|undefined;
@@ -513,7 +538,10 @@ export class MemoryFabric {
   snapshot():MemoryFabricSnapshot {
     return {
       version:2,stats:{...this.statsData},hotIds:[...this.hotIds],residency:this.memoryOS.residencyDiagnostics(),
-      policyOutcomeLedger:this.policyOutcomeLedger.snapshot(),mutationReceipts:[...this.mutationReceipts.values()].slice(-this.maxMutationReceipts).map(row=>({...row})),
+      policyOutcomeLedger:this.policyOutcomeLedger.snapshot(),mutationReceipts:[...this.mutationReceipts.values()].slice(-this.maxMutationReceipts).map(row=>({
+        ...row,
+        ...(row.evidenceInput?{evidenceInput:snapshotEvidenceInputForReceipt(row.evidenceInput)}:{}),
+      })),
       ...(this.retiredMutationReceiptCount?{retiredMutationReceiptBloom:encodeBase64Bytes(this.retiredMutationReceiptBloom),retiredMutationReceiptCount:this.retiredMutationReceiptCount}:{}),
       ...(this.retiredMutationReceiptBloomCorrupt?{retiredMutationReceiptBloomCorrupt:true}:{}),
     };
@@ -540,7 +568,15 @@ export class MemoryFabric {
     }
     for(const row of (raw.mutationReceipts??[]).slice(-this.maxMutationReceipts)){
       if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','forget','record-evidence'].includes(row.action)||!['memory','context','boolean','void','null','evidence'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
-      this.mutationReceipts.set(row.commandId.slice(0,128),{...row,commandId:row.commandId.trim().slice(0,128),fingerprint:row.fingerprint.slice(0,64).toLowerCase(),at:Math.floor(Number(row.at))});
+      const evidenceInput=row.action==='record-evidence'?snapshotEvidenceInputForReceipt(row.evidenceInput):undefined;
+      if(row.action==='record-evidence'&&!evidenceInput)continue;
+      this.mutationReceipts.set(row.commandId.slice(0,128),{
+        ...row,
+        ...(row.action==='record-evidence'?{evidenceInput}:{}),
+        commandId:row.commandId.trim().slice(0,128),
+        fingerprint:row.fingerprint.slice(0,64).toLowerCase(),
+        at:Math.floor(Number(row.at)),
+      });
     }
   }
 
