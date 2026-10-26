@@ -1,3 +1,10 @@
+## NK1 [evidence] — reset quarantine with rejected restore state (2026-10-26)
+
+- Fixed an inconsistent restore failure path: when an unsafe persisted snapshot is rejected, the ledger now clears old records, totals, and in-memory event-ID quarantines together.
+- Added a regression for conflict quarantine followed by hostile-restore rejection and valid reuse after the reset.
+
+---
+
 ## NK1 [evidence] — keep implicit timestamp retries idempotent (2026-10-26)
 
 - Refined the replay contract: an explicit `at` value is immutable event payload, while a missing `at` is ledger-generated ingestion metadata and is not used to reject a retry.

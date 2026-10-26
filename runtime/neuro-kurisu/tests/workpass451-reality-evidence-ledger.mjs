@@ -167,10 +167,31 @@ Object.defineProperty(hostileState, 'recent', {
   enumerable: true, get() { restoreGetterCalls++; return [first]; },
 });
 const clean = new RealityEvidenceLedger();
+const resetEventId = 'restore-quarantine-before-invalid-state';
+clean.record({
+  tick: 30, at: 3000, eventId: resetEventId,
+  realityClass: 'device-observation', claim: 'Original event before rejected restore.',
+  confidence01: 0.7, independenceKey: 'device:restore-reset',
+});
+assert.throws(() => clean.record({
+  tick: 30, at: 3000, eventId: resetEventId,
+  realityClass: 'device-observation', claim: 'Conflicting payload before rejected restore.',
+  confidence01: 0.7, independenceKey: 'device:restore-reset',
+}), /reality-evidence-event-identity-conflict/);
+assert.deepEqual(clean.snapshot().quarantinedEventIds, [resetEventId]);
 clean.restore(hostileState);
 assert.equal(restoreGetterCalls, 0);
 assert.equal(clean.snapshot().recent.length, 0);
 assert.equal(clean.snapshot().total, 0);
+assert.deepEqual(clean.snapshot().quarantinedEventIds, [],
+  'a rejected restore resets the complete ledger state, including stale quarantine IDs');
+const afterRejectedRestore = clean.record({
+  tick: 31, at: 3100, eventId: resetEventId,
+  realityClass: 'device-observation', claim: 'New event after rejected restore.',
+  confidence01: 0.7, independenceKey: 'device:restore-reset',
+});
+assert.equal(afterRejectedRestore.eventId, resetEventId,
+  'an ID absent from the reset state is not blocked by stale quarantine memory');
 
 // Parent lineage IDs must be canonical, non-empty and unique before any evidence is recorded.
 for (const parentIds of [['  '], ['parent\u0000id'], ['parent', 'parent']]) {

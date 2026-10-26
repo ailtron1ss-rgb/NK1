@@ -70,7 +70,7 @@ export class RealityEvidenceLedger {
   restore(raw?:Partial<RealityEvidenceLedgerState>|null):void{
     let detached:unknown;
     try{detached=snapshotPlainData(raw??{},{allowNonFiniteNumbers:true,maxDepth:16,maxNodes:20_000,maxStringUnits:2*1024*1024});}
-    catch{this.records=[];this.total=0;return;}
+    catch{this.records=[];this.total=0;this.quarantinedEventIds.clear();return;}
     const value=isRecord(detached)?detached:{};
     const quarantine=new Set<string>();
     if(Array.isArray(value.quarantinedEventIds)){
