@@ -2,6 +2,14 @@
 
 **Источник проекта:** [ailtron1ss-rgb/NK1](https://github.com/ailtron1ss-rgb/NK1). Продолжай работу с актуальной source-ветки; `main` и опубликованный большой ZIP не являются заменой текущего полного source tree.
 
+## Текущий статус — 26 октября 2026 года
+
+- Текущая implementation candidate line: `work/nk1-final-release-gate-2026-10-26-r3`; последняя известная точка до серии metadata-freshness изменений — `18afd253dcd7413c02136537ea1acc10b7764768`.
+- Реализация WorkPass353 и проверки metadata freshness ведутся отдельно; exact-head CI после последних правок ещё требуется.
+- `SUPER_VERSION.json`, `package.json` и верхний раздел `Список дел.md` описывают implementation checkpoint, не опубликованный релиз.
+- Последний ранее подтверждённый ZIP — WorkPass70 Hotfix от 19 октября 2026 года. Новый архив нельзя считать опубликованным, пока он не собран из exact tested SHA, не прошёл clean-install/restart smoke и не проверен по SHA-256.
+- Незакрытые release gates: WorkPass354 restore atomicity/anchor provenance, WorkPass369 operational-cycle/P26 learning integration, independent learning holdout, browser/Live2D/Android voice E2E, длительный soak и license/provenance review.
+
 ## Запуск из чистого checkout
 
 Требуется Node.js 24 (пин в `.nvmrc`); Python 3.12 используется исследовательским мостом.
@@ -17,11 +25,11 @@ npm run start
 
 Локальные endpoints: gateway/UI `http://127.0.0.1:8080`, runtime `127.0.0.1:3310`, Research Bridge `127.0.0.1:8765`. Запускай через root supervisor, не создавай отдельные копии runtime/bridge-процессов. Внешние исследовательские действия требуют явного owner approval и allowlist.
 
-## Последний подтверждённый когнитивный checkpoint
+## Исторический когнитивный checkpoint (не текущая release candidate)
 
 WorkPass340–342 были объединены в source-ветку коммитом `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. На code/test head `621864d0d7f2676245383adab86f1dcc6d0f741f` прошли runtime/app typecheck, Unified Cognitive Substrate wiring/restore, 30-цикловый stop/re-init smoke, supervisor launch, P23/learning gates и owner-approved Research Bridge probes.
 
-Source-база после этого добавила WorkPass343 для сверки будущего persisted substrate tick с canonical Core tick. WorkPass344 добавляет fail-closed metadata check в release verifier. **Оба свежих изменения ожидают combined-head CI; предыдущий PASS не переносится на новый HEAD автоматически.**
+Этот checkpoint относится к более раннему source stack. Более поздние изменения WorkPass353 и последующие PR находятся в текущем changelog; их статус определяется по exact-head CI, а не по результатам этой исторической точки.
 
 **Важно:** source CI не означает, что большой опубликованный GitHub Release ZIP пересобран. ZIP остаётся старым; physical Android/Termux sensor/audio E2E, browser/Live2D hardware E2E, длительный soak и license/provenance review остаются открыты.
 
