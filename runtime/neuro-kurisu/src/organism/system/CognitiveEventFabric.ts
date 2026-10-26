@@ -240,7 +240,7 @@ export class CognitiveEventFabric {
 
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
     const suppliedId=typeof input.id==='string'?input.id.trim():'';
-    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\\u0000-\\u001f\\u007f]/.test(suppliedId))) {
+    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) {
       throw new Error('invalid-cognitive-event-id');
     }
     if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick<0) {

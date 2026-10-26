@@ -1,3 +1,11 @@
+## WorkPass349 — correct control-character validation in event IDs (2026-10-26)
+
+- **CI finding:** the first exact-head runtime integration run failed in the new event identity regression because the control-character regex was over-escaped and rejected ordinary IDs containing characters such as `f`.
+- **Fix:** restore the intended literal Unicode control ranges `[\\u0000-\\u001f\\u007f]` in source regex syntax, so normal stable IDs are accepted while control characters are rejected.
+- **Validation:** the failed exact-head run is retained as evidence; a new exact-head CI run is required for this correction.
+
+---
+
 ## WorkPass348 — deterministic postcondition identity and legacy receipt replay (2026-10-26)
 
 - **FIXED:** postcondition fingerprinting no longer uses locale-sensitive lowercasing; case-sensitive differences remain distinct across hosts.
