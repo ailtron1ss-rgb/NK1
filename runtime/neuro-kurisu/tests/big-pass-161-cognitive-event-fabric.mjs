@@ -31,6 +31,9 @@ assert.ok(resumed.buffered>=Math.min(mid.buffered,128));
 assert.equal(resumed.danglingParentLinks,0);
 
 const envelopeFabric=new CognitiveEventFabric(128);
+assert.equal(new CognitiveEventFabric(Number.NaN).snapshot().capacity,512,'NaN capacity config must fall back to the bounded default');
+assert.equal(new CognitiveEventFabric(Number.POSITIVE_INFINITY).snapshot().capacity,512,'infinite capacity config must fall back to the bounded default');
+
 const canonicalEnvelope={
   id:'cef:test:stable-envelope',
   tick:7,
@@ -44,6 +47,22 @@ const canonicalEnvelope={
 };
 const acceptedEnvelope=envelopeFabric.append(canonicalEnvelope);
 const envelopeTotal=envelopeFabric.snapshot().total;
+const invalidClocks=[
+  {id:'cef:test:tick-nan',tick:Number.NaN,at:701,error:/cognitive-event-tick/},
+  {id:'cef:test:tick-negative',tick:-1,at:701,error:/cognitive-event-tick/},
+  {id:'cef:test:tick-fractional',tick:7.5,at:701,error:/cognitive-event-tick/},
+  {id:'cef:test:tick-unsafe',tick:Number.MAX_SAFE_INTEGER+1,at:701,error:/cognitive-event-tick/},
+  {id:'cef:test:at-nan',tick:7,at:Number.NaN,error:/cognitive-event-timestamp/},
+  {id:'cef:test:at-infinite',tick:7,at:Number.POSITIVE_INFINITY,error:/cognitive-event-timestamp/},
+  {id:'cef:test:at-negative',tick:7,at:-1,error:/cognitive-event-timestamp/},
+];
+for(const invalid of invalidClocks){
+  assert.throws(()=>envelopeFabric.append({
+    ...canonicalEnvelope,id:invalid.id,tick:invalid.tick,at:invalid.at,
+  }),invalid.error,'invalid event clocks must fail before ledger mutation');
+  assert.equal(envelopeFabric.snapshot().total,envelopeTotal);
+  assert.equal(envelopeFabric.recent(128).some(event=>event.id===invalid.id),false);
+}
 const reorderedPayloadReplay=envelopeFabric.append({
   ...canonicalEnvelope,
   payload:{nested:{status:'executed',detail:'verified'},success:true},
