@@ -2862,7 +2862,7 @@ export class OrganismCore {
             ? all.filter((m) => requestedIds.has(m.id))
             : current.filter((m) => ['semantic', 'procedural', 'social', 'working'].includes(m.kind))
                 .sort((a, b) => Number(b.lastAccessAt ?? b.observedAt ?? b.createdAt) - Number(a.lastAccessAt ?? a.observedAt ?? a.createdAt) || a.id.localeCompare(b.id)).slice(0, 12);
-        const review = this.hexisAdaptation.createLearningReview({ periodStart: Number(input.periodStart ?? now - 7 * 86400000), periodEnd: Number(input.periodEnd ?? now), summary: String(input.summary ?? 'Review of recent learned memories and behavioral updates'), items: wanted.slice(0, 20).map((m) => ({ kind: m.kind === 'procedural' ? 'new_procedure' : m.kind === 'social' ? 'revised_strategy' : 'semantic_belief', title: `${m.kind} memory`, content: m.content, sourceMemoryId: m.id, evidence: { confidence: m.confidence, source: m.source, sourceAuthority01: m.sourceAuthority01 ?? 0.5, epistemicStatus: m.epistemicStatus } })) });
+        const review = this.hexisAdaptation.createLearningReview({ periodStart: Number(input.periodStart ?? now - 7 * 86400000), periodEnd: Number(input.periodEnd ?? now), summary: String(input.summary ?? 'Review of recent learned memories and behavioral updates'), items: wanted.slice(0, 20).map((m) => ({ kind: m.kind === 'procedural' ? 'new_procedure' : m.kind === 'social' ? 'revised_strategy' : 'semantic_belief', title: `${m.kind} memory`, content: m.content, sourceMemoryId: m.id, evidence: { confidence: m.confidence, source: m.source, sourceAuthority01: m.sourceAuthority01 ?? 0.5, epistemicStatus: m.epistemicStatus, revisionGroupId: m.revisionGroupId ?? m.id, revisionSequence: m.revisionSequence ?? 1, contentHash: m.contentHash ?? sha256Stable(m.content, 'legacy') } })) });
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return review;
     }
@@ -2878,9 +2878,27 @@ export class OrganismCore {
         if (decision === 'correct' || decision === 'forget') {
             if (!sourceMemoryId)
                 return { ok: false, error: 'review-source-memory-required' };
-            const memory = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items.find((row) => row.id === sourceMemoryId);
+            const memoryState = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+            const requestedMemory = memoryState.items.find((row) => row.id === sourceMemoryId);
+            const reviewEvidence = item.evidence && typeof item.evidence === 'object' ? item.evidence as Record<string, unknown> : {};
+            const expectedRevisionGroupId = String(reviewEvidence.revisionGroupId ?? '');
+            const expectedGroupRows = expectedRevisionGroupId
+                ? memoryState.items.filter((row) => (row.revisionGroupId ?? row.id) === expectedRevisionGroupId)
+                : [];
+            const memory = requestedMemory
+                ? memoryState.items.filter((row) => (row.revisionGroupId ?? row.id) === (requestedMemory.revisionGroupId ?? requestedMemory.id) && row.validUntilAt == null)
+                    .sort((a, b) => Number(b.revisionSequence ?? 1) - Number(a.revisionSequence ?? 1) || Number(b.observedAt ?? b.createdAt) - Number(a.observedAt ?? a.createdAt))[0] ?? requestedMemory
+                : null;
+            if (requestedMemory && memory && requestedMemory.id !== memory.id) {
+                return { ok: false, error: 'review-source-memory-superseded', memoryId: sourceMemoryId, currentMemoryId: memory.id };
+            }
+            if (!requestedMemory && expectedGroupRows.length) {
+                const current = expectedGroupRows.filter((row) => row.validUntilAt == null)
+                    .sort((a, b) => Number(b.revisionSequence ?? 1) - Number(a.revisionSequence ?? 1))[0];
+                return { ok: false, error: 'review-source-memory-superseded', memoryId: sourceMemoryId, currentMemoryId: current?.id };
+            }
             if (memory && (memory.kind === 'identity' || memory.kind === 'autobiographical' || memory.epistemicStatus === 'quarantined')) {
-                return { ok: false, error: 'protected-memory-requires-explicit-review', memoryId: sourceMemoryId };
+                return { ok: false, error: 'protected-memory-requires-explicit-review', memoryId: memory.id };
             }
             if (decision === 'correct') {
                 if (!memory)
@@ -2911,7 +2929,7 @@ export class OrganismCore {
                     return { ok: false, error: 'memory-forget-rejected', memoryId: memory.id };
                 memoryMutation = { kind: 'forget', sourceMemoryId, removed: true };
             } else {
-                // Idempotent recovery: if the canonical row is already absent, close the pending forget review without deleting anything else.
+                // Idempotent recovery applies only when no row in the reviewed revision chain remains.
                 memoryMutation = { kind: 'forget', sourceMemoryId, removed: false, alreadyAbsent: true };
             }
         }
