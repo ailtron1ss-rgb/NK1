@@ -3,6 +3,7 @@ import { sha256Stable } from '../../core/StableSerialization.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
+export type HexisHmxDecision = 'accept' | 'reject' | 'apply';
 export type HexisHmxStrategy = 'additive' | 'authoritative' | 'deliberative' | 'analysis_only';
 export type HexisOutboxStatus = 'pending' | 'publishing' | 'published' | 'failed';
 export type HexisExecutionPlacement = 'local' | 'sandbox' | 'remote' | 'companion';
@@ -96,12 +97,36 @@ export interface HexisRetentionProposal {
     status: 'proposed' | 'accepted' | 'rejected';
     createdAt: number;
 }
+export interface HexisHmxApplyReceipt {
+    version: 1;
+    exportId: string;
+    sourceLineageId: string;
+    stageId: string;
+    stageDigest: string;
+    attempt: number;
+    appliedAt: number;
+    status: 'applied' | 'partial' | 'noop';
+    complete: boolean;
+    candidateMemoryRecords: number;
+    uniqueMemoryRecords: number;
+    importedCount: number;
+    deduplicatedCount: number;
+    projectedRelationships: number;
+    deferredRelationships: number;
+    semanticEdgeIds: string[];
+    memoryIds: string[];
+    createdMemoryIds: string[];
+    deferredSections: Record<string, number>;
+    warnings: string[];
+    digest: string;
+}
 export interface HexisHmxStage {
     stagingId: string;
     exportId: string;
     intent: HexisHmxIntent;
     strategy: HexisHmxStrategy;
     sourceSubjectId?: string;
+    sourceLineageId?: string;
     sectionCounts: Record<string, number>;
     protectedSections: string[];
     conflicts: Array<{
@@ -109,10 +134,12 @@ export interface HexisHmxStage {
         kind: string;
         detail: string;
     }>;
-    status: 'staged' | 'accepted' | 'rejected';
+    status: 'staged' | 'accepted' | 'rejected' | 'applied';
     createdAt: number;
     digest: string;
     stagedSections: Record<string, unknown>;
+    applicationAttempts?: number;
+    application?: HexisHmxApplyReceipt;
 }
 export interface HexisOutboxEntry {
     id: string;
@@ -180,6 +207,7 @@ export interface HexisAdaptationState {
         retentionProposals: number;
         hmxStaged: number;
         hmxAccepted: number;
+        hmxApplied: number;
         outboxQueued: number;
         outboxPublished: number;
         outboxIdempotencyConflicts: number;
@@ -194,10 +222,11 @@ const sourceKey = (source: HexisEvidenceSource) => String(source.ref || source.l
 const nowMs = () => Date.now();
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
 export function defaultHexisAdaptationState(): HexisAdaptationState {
-    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
+    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, hmxApplied: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
+    private canonicalMemoryApply?: (stage: HexisHmxStage) => HexisHmxApplyReceipt;
     restore(raw?: Partial<HexisAdaptationState> | null): void {
         const defaults = defaultHexisAdaptationState();
         const value = raw ?? {};
@@ -230,6 +259,10 @@ export class HexisAdaptationFabric {
         };
     }
     snapshot(): HexisAdaptationState { return structuredClone(this.state); }
+    bindCanonicalMemoryApply(handler: (stage: HexisHmxStage) => HexisHmxApplyReceipt): void {
+        if (typeof handler !== 'function') throw new TypeError('canonical-memory-apply-handler-required');
+        this.canonicalMemoryApply = handler;
+    }
     diagnostics() {
         const pendingReviews = this.state.learningReviews.filter((r) => r.status === 'pending').length;
         const pendingOutbox = this.state.outbox.filter((x) => x.status === 'pending' || x.status === 'publishing').length;
@@ -336,20 +369,471 @@ export class HexisAdaptationFabric {
         regret01: number;
         at?: number;
     }): HexisFidelityReceipt { const base = { operation: input.operation, sourceCount: Math.max(0, Math.floor(input.sourceCount)), retainedCount: Math.max(0, Math.floor(input.retainedCount)), sourceBytes: Math.max(0, Math.floor(input.sourceBytes)), retainedBytes: Math.max(0, Math.floor(input.retainedBytes)), fidelity01: clamp(input.fidelity01), regret01: clamp(input.regret01), at: Number.isFinite(input.at) ? Number(input.at) : nowMs() }; const receipt: HexisFidelityReceipt = { ...base, id: randomUUID(), digest: digest(base) }; this.state.fidelityReceipts.push(receipt); this.state.fidelityReceipts = this.state.fidelityReceipts.slice(-512); return structuredClone(receipt); }
-    stageHmx(input: {
-        document: unknown;
-        intent: HexisHmxIntent;
-        strategy: HexisHmxStrategy;
-    }): HexisHmxStage { const document = input.document && typeof input.document === 'object' ? input.document as Record<string, unknown> : {}; const sections = document.sections && typeof document.sections === 'object' && !Array.isArray(document.sections) ? document.sections as Record<string, unknown> : {}; const conflicts: HexisHmxStage['conflicts'] = []; if (document.hmx_version && !String(document.hmx_version).startsWith('1.'))
-        conflicts.push({ path: 'hmx_version', kind: 'unsupported-major', detail: `Hexis adapter accepts HMX 1.x, got ${String(document.hmx_version)}` }); if (!Object.keys(sections).length)
-        conflicts.push({ path: 'sections', kind: 'schema', detail: 'sections must be a non-empty object' }); const names = Object.keys(sections); const blocked = (input.intent === 'telepathy' || input.intent === 'analysis') ? names.filter((name) => protectedSections.has(name)) : []; if (blocked.length)
-        conflicts.push({ path: 'sections', kind: 'protected-by-intent', detail: `protected sections require explicit replacement protocol: ${blocked.join(', ')}` }); const sectionCounts: Record<string, number> = {}; const stagedSections: Record<string, unknown> = {}; for (const [name, records] of Object.entries(sections)) {
-        sectionCounts[name] = Array.isArray(records) ? records.length : 1;
-        stagedSections[name] = Array.isArray(records) ? structuredClone(records.slice(0, 64)) : structuredClone(records);
-    } const base = { exportId: String(document.export_id ?? randomUUID()), intent: input.intent, strategy: input.strategy, sourceSubjectId: document.source_subject_id ? String(document.source_subject_id) : undefined, sectionCounts, protectedSections: names.filter((name) => protectedSections.has(name)), conflicts, stagedSections }; const stage: HexisHmxStage = { ...base, stagingId: randomUUID(), status: 'staged', createdAt: nowMs(), digest: digest(base) }; this.state.hmxStages.push(stage); this.state.hmxStages = this.state.hmxStages.slice(-32); this.state.metrics.hmxStaged += 1; return structuredClone(stage); }
-    decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length))
-        return stage ? structuredClone(stage) : null; stage.status = decision === 'accept' ? 'accepted' : 'rejected'; if (decision === 'accept')
-        this.state.metrics.hmxAccepted += 1; return structuredClone(stage); }
+    stageHmx(input: { document: unknown; intent: HexisHmxIntent; strategy: HexisHmxStrategy }): HexisHmxStage {
+        const conflicts: HexisHmxStage['conflicts'] = [];
+        let document: Record<string, unknown> = {};
+        try {
+            const encoded = JSON.stringify(input?.document);
+            if (typeof encoded !== 'string') throw new Error('document is not JSON-serializable');
+            if (Buffer.byteLength(encoded, 'utf8') > 8 * 1024 * 1024) {
+                conflicts.push({ path: '    getHmxStage(stagingId: string) { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); return stage ? structuredClone(stage) : null; }
+    enqueueOutbox(input: {
+        idempotencyKey: string;
+        kind: string;
+        channel: string;
+        payload: unknown;
+    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict'; idempotencyKey: string; existingId?: string } {
+        const idempotencyKey = String(input.idempotencyKey ?? '').trim();
+        if (!idempotencyKey) return { ok: false, error: 'idempotency-key-required', idempotencyKey };
+        const kind = String(input.kind), channel = String(input.channel);
+        const requestDigest = digest({ kind, channel, payload: input.payload });
+        // Include failed rows too: a timeout/failure may have happened after the remote
+        // side effect, so silently creating a new row with the same key can duplicate it.
+        const existing = this.state.outbox.find((x) => x.idempotencyKey === idempotencyKey);
+        if (existing) {
+            const existingDigest = digest({ kind: existing.kind, channel: existing.channel, payload: existing.payload });
+            if (existingDigest === requestDigest) return structuredClone(existing);
+            this.state.metrics.outboxIdempotencyConflicts += 1;
+            return { ok: false, error: 'idempotency-key-conflict', idempotencyKey, existingId: existing.id };
+        }
+        const at = nowMs(); const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload: structuredClone(input.payload), status: 'pending', attempts: 0, createdAt: at, updatedAt: at }; this.state.outbox.push(entry); this.state.outbox = this.state.outbox.slice(-512); this.state.metrics.outboxQueued += 1; return structuredClone(entry);
+    }
+    claimOutbox(id: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id && x.status === 'pending'); if (!entry)
+        return null; entry.status = 'publishing'; entry.attempts += 1; entry.updatedAt = nowMs(); return structuredClone(entry); }
+    ackOutbox(id: string, published: boolean, error?: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id); if (!entry)
+        return null; entry.status = published ? 'published' : (entry.attempts >= 3 ? 'failed' : 'pending'); entry.updatedAt = nowMs(); if (published) {
+        entry.publishedAt = entry.updatedAt;
+        this.state.metrics.outboxPublished += 1;
+    } if (error)
+        entry.lastError = String(error).slice(0, 500); return structuredClone(entry); }
+    reclaimOutbox(maxAgeMs = 60000): number { const cutoff = nowMs() - Math.max(1000, maxAgeMs); let count = 0; for (const entry of this.state.outbox)
+        if (entry.status === 'publishing' && entry.updatedAt < cutoff) {
+            entry.status = entry.attempts >= 3 ? 'failed' : 'pending';
+            entry.updatedAt = nowMs();
+            count += 1;
+        } return count; }
+    grantConnectorPolicy(input: {
+        connectorId: string;
+        actionKind: string;
+        contexts?: string[];
+        allowAutonomous?: boolean;
+        requiresApproval?: boolean;
+        allowedTargets?: string[];
+        deniedTargets?: string[];
+        maxPerWindow?: number;
+        windowMs?: number;
+        expiresAt?: number;
+    }): HexisConnectorPolicy {
+        const at = nowMs();
+        const policy: HexisConnectorPolicy = {
+            id: randomUUID(),
+            connectorId: String(input.connectorId).toLowerCase(),
+            actionKind: String(input.actionKind).toLowerCase(),
+            contexts: [...new Set((input.contexts ?? ['chat']).map(String))],
+            allowAutonomous: Boolean(input.allowAutonomous),
+            requiresApproval: input.requiresApproval !== false,
+            allowedTargets: [...new Set((input.allowedTargets ?? []).map(String))],
+            deniedTargets: [...new Set((input.deniedTargets ?? []).map(String))],
+            maxPerWindow: input.maxPerWindow === undefined ? undefined : Math.max(1, Math.floor(input.maxPerWindow)),
+            windowMs: Math.max(1000, Math.floor(input.windowMs ?? 86400000)),
+            expiresAt: input.expiresAt,
+            windowStartedAt: at,
+            windowCount: 0,
+            status: 'active',
+            grantedAt: at,
+        };
+        this.state.connectorPolicies.push(policy);
+        this.state.connectorPolicies = this.state.connectorPolicies.slice(-256);
+        return structuredClone(policy);
+    }
+    revokeConnectorPolicy(id: string): boolean { const policy = this.state.connectorPolicies.find((x) => x.id === id); if (!policy)
+        return false; policy.status = 'revoked'; return true; }
+    evaluateConnectorAction(input: {
+        connectorId: string;
+        actionKind: string;
+        context: string;
+        target?: string;
+        confirmed?: boolean;
+        autonomous?: boolean;
+    }): {
+        allowed: boolean;
+        reason: string;
+        policyId?: string;
+    } { const now = nowMs(); const policy = this.state.connectorPolicies.find((p) => p.status === 'active' && p.connectorId === String(input.connectorId).toLowerCase() && p.actionKind === String(input.actionKind).toLowerCase() && p.contexts.includes(input.context) && (p.expiresAt === undefined || p.expiresAt > now)); if (!policy) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'no-active-policy' };
+    } const target = String(input.target ?? ''); if (policy.deniedTargets.includes(target)) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'target-denied', policyId: policy.id };
+    } if (policy.allowedTargets.length && !policy.allowedTargets.includes(target)) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'target-not-allowlisted', policyId: policy.id };
+    } if (input.autonomous && !policy.allowAutonomous) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'autonomous-not-allowed', policyId: policy.id };
+    } if (policy.requiresApproval && input.confirmed !== true) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'per-action-approval-required', policyId: policy.id };
+    } if (policy.maxPerWindow !== undefined) {
+        if (now - policy.windowStartedAt >= policy.windowMs) {
+            policy.windowStartedAt = now;
+            policy.windowCount = 0;
+        }
+        if (policy.windowCount >= policy.maxPerWindow) {
+            this.state.metrics.policyDenials += 1;
+            return { allowed: false, reason: 'policy-rate-limit', policyId: policy.id };
+        }
+    } if (policy.maxPerWindow !== undefined)
+        policy.windowCount += 1; this.state.metrics.policyAllows += 1; return { allowed: true, reason: 'allowed', policyId: policy.id }; }
+    planExecution(input: {
+        actionKind: string;
+        requestedPlacement?: HexisExecutionPlacement;
+        risk01?: number;
+        rationale?: string;
+        requiresApproval?: boolean;
+    }): HexisExecutionPlan { const risk01 = clamp(input.risk01 ?? 0); const requested = input.requestedPlacement ?? 'local'; const resolved = risk01 >= 0.8 ? 'sandbox' : requested; const plan: HexisExecutionPlan = { id: randomUUID(), actionKind: String(input.actionKind), requestedPlacement: requested, resolvedPlacement: resolved, risk01, requiresApproval: input.requiresApproval ?? risk01 >= 0.6, rationale: String(input.rationale ?? 'explicit execution placement from Hexis adaptation'), at: nowMs() }; this.state.executions.push(plan); this.state.executions = this.state.executions.slice(-512); this.state.metrics.executionPlans += 1; return structuredClone(plan); }
+}
+, kind: 'size-limit', detail: 'HMX document exceeds the 8 MiB staging limit' });
+            } else {
+                const parsed: unknown = JSON.parse(encoded);
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                    conflicts.push({ path: '    getHmxStage(stagingId: string) { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); return stage ? structuredClone(stage) : null; }
+    enqueueOutbox(input: {
+        idempotencyKey: string;
+        kind: string;
+        channel: string;
+        payload: unknown;
+    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict'; idempotencyKey: string; existingId?: string } {
+        const idempotencyKey = String(input.idempotencyKey ?? '').trim();
+        if (!idempotencyKey) return { ok: false, error: 'idempotency-key-required', idempotencyKey };
+        const kind = String(input.kind), channel = String(input.channel);
+        const requestDigest = digest({ kind, channel, payload: input.payload });
+        // Include failed rows too: a timeout/failure may have happened after the remote
+        // side effect, so silently creating a new row with the same key can duplicate it.
+        const existing = this.state.outbox.find((x) => x.idempotencyKey === idempotencyKey);
+        if (existing) {
+            const existingDigest = digest({ kind: existing.kind, channel: existing.channel, payload: existing.payload });
+            if (existingDigest === requestDigest) return structuredClone(existing);
+            this.state.metrics.outboxIdempotencyConflicts += 1;
+            return { ok: false, error: 'idempotency-key-conflict', idempotencyKey, existingId: existing.id };
+        }
+        const at = nowMs(); const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload: structuredClone(input.payload), status: 'pending', attempts: 0, createdAt: at, updatedAt: at }; this.state.outbox.push(entry); this.state.outbox = this.state.outbox.slice(-512); this.state.metrics.outboxQueued += 1; return structuredClone(entry);
+    }
+    claimOutbox(id: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id && x.status === 'pending'); if (!entry)
+        return null; entry.status = 'publishing'; entry.attempts += 1; entry.updatedAt = nowMs(); return structuredClone(entry); }
+    ackOutbox(id: string, published: boolean, error?: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id); if (!entry)
+        return null; entry.status = published ? 'published' : (entry.attempts >= 3 ? 'failed' : 'pending'); entry.updatedAt = nowMs(); if (published) {
+        entry.publishedAt = entry.updatedAt;
+        this.state.metrics.outboxPublished += 1;
+    } if (error)
+        entry.lastError = String(error).slice(0, 500); return structuredClone(entry); }
+    reclaimOutbox(maxAgeMs = 60000): number { const cutoff = nowMs() - Math.max(1000, maxAgeMs); let count = 0; for (const entry of this.state.outbox)
+        if (entry.status === 'publishing' && entry.updatedAt < cutoff) {
+            entry.status = entry.attempts >= 3 ? 'failed' : 'pending';
+            entry.updatedAt = nowMs();
+            count += 1;
+        } return count; }
+    grantConnectorPolicy(input: {
+        connectorId: string;
+        actionKind: string;
+        contexts?: string[];
+        allowAutonomous?: boolean;
+        requiresApproval?: boolean;
+        allowedTargets?: string[];
+        deniedTargets?: string[];
+        maxPerWindow?: number;
+        windowMs?: number;
+        expiresAt?: number;
+    }): HexisConnectorPolicy {
+        const at = nowMs();
+        const policy: HexisConnectorPolicy = {
+            id: randomUUID(),
+            connectorId: String(input.connectorId).toLowerCase(),
+            actionKind: String(input.actionKind).toLowerCase(),
+            contexts: [...new Set((input.contexts ?? ['chat']).map(String))],
+            allowAutonomous: Boolean(input.allowAutonomous),
+            requiresApproval: input.requiresApproval !== false,
+            allowedTargets: [...new Set((input.allowedTargets ?? []).map(String))],
+            deniedTargets: [...new Set((input.deniedTargets ?? []).map(String))],
+            maxPerWindow: input.maxPerWindow === undefined ? undefined : Math.max(1, Math.floor(input.maxPerWindow)),
+            windowMs: Math.max(1000, Math.floor(input.windowMs ?? 86400000)),
+            expiresAt: input.expiresAt,
+            windowStartedAt: at,
+            windowCount: 0,
+            status: 'active',
+            grantedAt: at,
+        };
+        this.state.connectorPolicies.push(policy);
+        this.state.connectorPolicies = this.state.connectorPolicies.slice(-256);
+        return structuredClone(policy);
+    }
+    revokeConnectorPolicy(id: string): boolean { const policy = this.state.connectorPolicies.find((x) => x.id === id); if (!policy)
+        return false; policy.status = 'revoked'; return true; }
+    evaluateConnectorAction(input: {
+        connectorId: string;
+        actionKind: string;
+        context: string;
+        target?: string;
+        confirmed?: boolean;
+        autonomous?: boolean;
+    }): {
+        allowed: boolean;
+        reason: string;
+        policyId?: string;
+    } { const now = nowMs(); const policy = this.state.connectorPolicies.find((p) => p.status === 'active' && p.connectorId === String(input.connectorId).toLowerCase() && p.actionKind === String(input.actionKind).toLowerCase() && p.contexts.includes(input.context) && (p.expiresAt === undefined || p.expiresAt > now)); if (!policy) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'no-active-policy' };
+    } const target = String(input.target ?? ''); if (policy.deniedTargets.includes(target)) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'target-denied', policyId: policy.id };
+    } if (policy.allowedTargets.length && !policy.allowedTargets.includes(target)) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'target-not-allowlisted', policyId: policy.id };
+    } if (input.autonomous && !policy.allowAutonomous) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'autonomous-not-allowed', policyId: policy.id };
+    } if (policy.requiresApproval && input.confirmed !== true) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'per-action-approval-required', policyId: policy.id };
+    } if (policy.maxPerWindow !== undefined) {
+        if (now - policy.windowStartedAt >= policy.windowMs) {
+            policy.windowStartedAt = now;
+            policy.windowCount = 0;
+        }
+        if (policy.windowCount >= policy.maxPerWindow) {
+            this.state.metrics.policyDenials += 1;
+            return { allowed: false, reason: 'policy-rate-limit', policyId: policy.id };
+        }
+    } if (policy.maxPerWindow !== undefined)
+        policy.windowCount += 1; this.state.metrics.policyAllows += 1; return { allowed: true, reason: 'allowed', policyId: policy.id }; }
+    planExecution(input: {
+        actionKind: string;
+        requestedPlacement?: HexisExecutionPlacement;
+        risk01?: number;
+        rationale?: string;
+        requiresApproval?: boolean;
+    }): HexisExecutionPlan { const risk01 = clamp(input.risk01 ?? 0); const requested = input.requestedPlacement ?? 'local'; const resolved = risk01 >= 0.8 ? 'sandbox' : requested; const plan: HexisExecutionPlan = { id: randomUUID(), actionKind: String(input.actionKind), requestedPlacement: requested, resolvedPlacement: resolved, risk01, requiresApproval: input.requiresApproval ?? risk01 >= 0.6, rationale: String(input.rationale ?? 'explicit execution placement from Hexis adaptation'), at: nowMs() }; this.state.executions.push(plan); this.state.executions = this.state.executions.slice(-512); this.state.metrics.executionPlans += 1; return structuredClone(plan); }
+}
+, kind: 'schema', detail: 'HMX document must be a JSON object' });
+                } else {
+                    document = parsed as Record<string, unknown>;
+                }
+            }
+        } catch {
+            conflicts.push({ path: '    getHmxStage(stagingId: string) { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); return stage ? structuredClone(stage) : null; }
+    enqueueOutbox(input: {
+        idempotencyKey: string;
+        kind: string;
+        channel: string;
+        payload: unknown;
+    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict'; idempotencyKey: string; existingId?: string } {
+        const idempotencyKey = String(input.idempotencyKey ?? '').trim();
+        if (!idempotencyKey) return { ok: false, error: 'idempotency-key-required', idempotencyKey };
+        const kind = String(input.kind), channel = String(input.channel);
+        const requestDigest = digest({ kind, channel, payload: input.payload });
+        // Include failed rows too: a timeout/failure may have happened after the remote
+        // side effect, so silently creating a new row with the same key can duplicate it.
+        const existing = this.state.outbox.find((x) => x.idempotencyKey === idempotencyKey);
+        if (existing) {
+            const existingDigest = digest({ kind: existing.kind, channel: existing.channel, payload: existing.payload });
+            if (existingDigest === requestDigest) return structuredClone(existing);
+            this.state.metrics.outboxIdempotencyConflicts += 1;
+            return { ok: false, error: 'idempotency-key-conflict', idempotencyKey, existingId: existing.id };
+        }
+        const at = nowMs(); const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload: structuredClone(input.payload), status: 'pending', attempts: 0, createdAt: at, updatedAt: at }; this.state.outbox.push(entry); this.state.outbox = this.state.outbox.slice(-512); this.state.metrics.outboxQueued += 1; return structuredClone(entry);
+    }
+    claimOutbox(id: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id && x.status === 'pending'); if (!entry)
+        return null; entry.status = 'publishing'; entry.attempts += 1; entry.updatedAt = nowMs(); return structuredClone(entry); }
+    ackOutbox(id: string, published: boolean, error?: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id); if (!entry)
+        return null; entry.status = published ? 'published' : (entry.attempts >= 3 ? 'failed' : 'pending'); entry.updatedAt = nowMs(); if (published) {
+        entry.publishedAt = entry.updatedAt;
+        this.state.metrics.outboxPublished += 1;
+    } if (error)
+        entry.lastError = String(error).slice(0, 500); return structuredClone(entry); }
+    reclaimOutbox(maxAgeMs = 60000): number { const cutoff = nowMs() - Math.max(1000, maxAgeMs); let count = 0; for (const entry of this.state.outbox)
+        if (entry.status === 'publishing' && entry.updatedAt < cutoff) {
+            entry.status = entry.attempts >= 3 ? 'failed' : 'pending';
+            entry.updatedAt = nowMs();
+            count += 1;
+        } return count; }
+    grantConnectorPolicy(input: {
+        connectorId: string;
+        actionKind: string;
+        contexts?: string[];
+        allowAutonomous?: boolean;
+        requiresApproval?: boolean;
+        allowedTargets?: string[];
+        deniedTargets?: string[];
+        maxPerWindow?: number;
+        windowMs?: number;
+        expiresAt?: number;
+    }): HexisConnectorPolicy {
+        const at = nowMs();
+        const policy: HexisConnectorPolicy = {
+            id: randomUUID(),
+            connectorId: String(input.connectorId).toLowerCase(),
+            actionKind: String(input.actionKind).toLowerCase(),
+            contexts: [...new Set((input.contexts ?? ['chat']).map(String))],
+            allowAutonomous: Boolean(input.allowAutonomous),
+            requiresApproval: input.requiresApproval !== false,
+            allowedTargets: [...new Set((input.allowedTargets ?? []).map(String))],
+            deniedTargets: [...new Set((input.deniedTargets ?? []).map(String))],
+            maxPerWindow: input.maxPerWindow === undefined ? undefined : Math.max(1, Math.floor(input.maxPerWindow)),
+            windowMs: Math.max(1000, Math.floor(input.windowMs ?? 86400000)),
+            expiresAt: input.expiresAt,
+            windowStartedAt: at,
+            windowCount: 0,
+            status: 'active',
+            grantedAt: at,
+        };
+        this.state.connectorPolicies.push(policy);
+        this.state.connectorPolicies = this.state.connectorPolicies.slice(-256);
+        return structuredClone(policy);
+    }
+    revokeConnectorPolicy(id: string): boolean { const policy = this.state.connectorPolicies.find((x) => x.id === id); if (!policy)
+        return false; policy.status = 'revoked'; return true; }
+    evaluateConnectorAction(input: {
+        connectorId: string;
+        actionKind: string;
+        context: string;
+        target?: string;
+        confirmed?: boolean;
+        autonomous?: boolean;
+    }): {
+        allowed: boolean;
+        reason: string;
+        policyId?: string;
+    } { const now = nowMs(); const policy = this.state.connectorPolicies.find((p) => p.status === 'active' && p.connectorId === String(input.connectorId).toLowerCase() && p.actionKind === String(input.actionKind).toLowerCase() && p.contexts.includes(input.context) && (p.expiresAt === undefined || p.expiresAt > now)); if (!policy) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'no-active-policy' };
+    } const target = String(input.target ?? ''); if (policy.deniedTargets.includes(target)) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'target-denied', policyId: policy.id };
+    } if (policy.allowedTargets.length && !policy.allowedTargets.includes(target)) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'target-not-allowlisted', policyId: policy.id };
+    } if (input.autonomous && !policy.allowAutonomous) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'autonomous-not-allowed', policyId: policy.id };
+    } if (policy.requiresApproval && input.confirmed !== true) {
+        this.state.metrics.policyDenials += 1;
+        return { allowed: false, reason: 'per-action-approval-required', policyId: policy.id };
+    } if (policy.maxPerWindow !== undefined) {
+        if (now - policy.windowStartedAt >= policy.windowMs) {
+            policy.windowStartedAt = now;
+            policy.windowCount = 0;
+        }
+        if (policy.windowCount >= policy.maxPerWindow) {
+            this.state.metrics.policyDenials += 1;
+            return { allowed: false, reason: 'policy-rate-limit', policyId: policy.id };
+        }
+    } if (policy.maxPerWindow !== undefined)
+        policy.windowCount += 1; this.state.metrics.policyAllows += 1; return { allowed: true, reason: 'allowed', policyId: policy.id }; }
+    planExecution(input: {
+        actionKind: string;
+        requestedPlacement?: HexisExecutionPlacement;
+        risk01?: number;
+        rationale?: string;
+        requiresApproval?: boolean;
+    }): HexisExecutionPlan { const risk01 = clamp(input.risk01 ?? 0); const requested = input.requestedPlacement ?? 'local'; const resolved = risk01 >= 0.8 ? 'sandbox' : requested; const plan: HexisExecutionPlan = { id: randomUUID(), actionKind: String(input.actionKind), requestedPlacement: requested, resolvedPlacement: resolved, risk01, requiresApproval: input.requiresApproval ?? risk01 >= 0.6, rationale: String(input.rationale ?? 'explicit execution placement from Hexis adaptation'), at: nowMs() }; this.state.executions.push(plan); this.state.executions = this.state.executions.slice(-512); this.state.metrics.executionPlans += 1; return structuredClone(plan); }
+}
+, kind: 'schema', detail: 'HMX document must be valid JSON data' });
+        }
+        if (document.hmx_version && !String(document.hmx_version).startsWith('1.')) {
+            conflicts.push({ path: 'hmx_version', kind: 'unsupported-major', detail: 'Only HMX 1.x documents are supported' });
+        }
+        const rawSections = document.sections;
+        const sections: Record<string, unknown> = rawSections && typeof rawSections === 'object' && !Array.isArray(rawSections)
+            ? rawSections as Record<string, unknown> : {};
+        if (!Object.keys(sections).length) conflicts.push({ path: 'sections', kind: 'schema', detail: 'sections must be a non-empty object' });
+        const names = Object.keys(sections);
+        const blocked = (input.intent === 'telepathy' || input.intent === 'analysis')
+            ? names.filter(name => protectedSections.has(name)) : [];
+        if (blocked.length) conflicts.push({ path: 'sections', kind: 'protected-by-intent', detail: 'protected sections require explicit replacement protocol: ' + blocked.join(', ') });
+        const sectionCounts: Record<string, number> = {};
+        const stagedSections: Record<string, unknown> = {};
+        for (const [name, value] of Object.entries(sections)) {
+            sectionCounts[name] = Array.isArray(value) ? value.length : 1;
+            stagedSections[name] = Array.isArray(value) ? structuredClone(value.slice(0, 64)) : structuredClone(value);
+        }
+        const source = document.source && typeof document.source === 'object' && !Array.isArray(document.source)
+            ? document.source as Record<string, unknown> : {};
+        const lineageValue = source.hexis_lineage_id ?? document.source_lineage_id ?? document.sourceLineageId
+            ?? document.source_subject_id ?? document.sourceSubjectId;
+        const sourceLineageId = typeof lineageValue === 'string' && lineageValue.trim()
+            ? lineageValue.trim().slice(0, 512) : undefined;
+        const base = {
+            exportId: String(document.export_id ?? randomUUID()),
+            intent: input.intent,
+            strategy: input.strategy,
+            sourceSubjectId: document.source_subject_id ? String(document.source_subject_id) : undefined,
+            ...(sourceLineageId ? { sourceLineageId } : {}),
+            sectionCounts,
+            protectedSections: names.filter(name => protectedSections.has(name)),
+            conflicts,
+            stagedSections,
+        };
+        const stage: HexisHmxStage = {
+            ...base, stagingId: randomUUID(), status: 'staged', createdAt: nowMs(), digest: digest(base),
+        };
+        this.state.hmxStages.push(stage);
+        this.state.hmxStages = this.state.hmxStages.slice(-32);
+        this.state.metrics.hmxStaged += 1;
+        return structuredClone(stage);
+    }
+
+    private hmxStageDigestBase(stage: HexisHmxStage) {
+        return {
+            exportId: stage.exportId,
+            intent: stage.intent,
+            strategy: stage.strategy,
+            sourceSubjectId: stage.sourceSubjectId,
+            ...(stage.sourceLineageId ? { sourceLineageId: stage.sourceLineageId } : {}),
+            sectionCounts: stage.sectionCounts,
+            protectedSections: stage.protectedSections,
+            conflicts: stage.conflicts,
+            stagedSections: stage.stagedSections,
+        };
+    }
+
+    decideHmx(stagingId: string, decision: HexisHmxDecision): HexisHmxStage | null {
+        const stage = this.state.hmxStages.find(candidate => candidate.stagingId === stagingId);
+        if (!stage) return null;
+        if (decision === 'apply') {
+            if (stage.status === 'applied' && stage.application) return structuredClone(stage);
+            if (stage.status !== 'accepted' || stage.conflicts.length) return structuredClone(stage);
+            if (stage.intent !== 'port' || stage.strategy !== 'additive') {
+                throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
+            }
+            if (!this.canonicalMemoryApply) throw new Error('canonical-memory-apply-not-bound');
+            if (digest(this.hmxStageDigestBase(stage)) !== stage.digest) {
+                stage.status = 'rejected';
+                stage.conflicts = [...stage.conflicts, {
+                    path: 'digest', kind: 'digest-mismatch', detail: 'Staged HMX payload changed after validation; apply is forbidden.',
+                }].slice(-64);
+                return structuredClone(stage);
+            }
+            stage.applicationAttempts = Math.max(0, Math.floor(Number(stage.applicationAttempts ?? 0))) + 1;
+            const receipt = this.canonicalMemoryApply(structuredClone(stage));
+            stage.application = structuredClone(receipt);
+            stage.status = 'applied';
+            this.state.metrics.hmxApplied += 1;
+            return structuredClone(stage);
+        }
+        if (decision !== 'accept' && decision !== 'reject') return structuredClone(stage);
+        if (stage.status !== 'staged') return structuredClone(stage);
+        if (digest(this.hmxStageDigestBase(stage)) !== stage.digest) {
+            stage.status = 'rejected';
+            stage.conflicts = [...stage.conflicts, {
+                path: 'digest', kind: 'digest-mismatch', detail: 'Staged HMX payload changed after validation; accepting it is forbidden.',
+            }].slice(-64);
+            return structuredClone(stage);
+        }
+        if (decision === 'accept' && stage.conflicts.length) return structuredClone(stage);
+        stage.status = decision === 'accept' ? 'accepted' : 'rejected';
+        if (decision === 'accept') this.state.metrics.hmxAccepted += 1;
+        return structuredClone(stage);
+    }
     getHmxStage(stagingId: string) { const stage = this.state.hmxStages.find((x) => x.stagingId === stagingId); return stage ? structuredClone(stage) : null; }
     enqueueOutbox(input: {
         idempotencyKey: string;
