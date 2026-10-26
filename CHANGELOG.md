@@ -1,3 +1,10 @@
+## P26 context-aware replay benchmark — declare the intended replay budget (2026-10-26)
+
+- A follow-on CI run caught a stale benchmark call that expected context-aware replay to use the entire fresh batch but omitted `maxReplayRatio01: 1`. The production-safe default is 0.5, so the omitted option correctly capped replay at half the current batch and invalidated the test's old-task retention expectation.
+- Ported the exact benchmark contract from the active r3 branch that passed P26 validation: the context-aware diagnostic explicitly opts into ratio 1.0 and asserts `maxReplayAttempts <= fresh.length`; other replay modes retain the default half-batch cap. The test thresholds are unchanged.
+
+---
+
 ## NK1 full branch/file census — 2026-10-26
 
 - Added `docs/NK1_FULL_BRANCH_FILE_AUDIT_2026-10-26.md` with the source-stack baseline, branch-tree SHA deltas, CI linkage findings, active integration risks and a safe merge plan.
