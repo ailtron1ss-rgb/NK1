@@ -1,3 +1,16 @@
+## WorkPass359 — action/goal mismatch no longer crashes the live organism (2026-10-26)
+
+- [x] Reproduce the failure through the real `OrganismRuntime.step`: B272 raises when the selected action differs from its generated action.
+- [x] Preserve strict B272 validation and gate outcome learning on exact action identity instead of substituting a synthetic action.
+- [x] Apply the same attribution rule to B273's current action before recording goal-lifecycle learning.
+- [x] Extend the world-transition outcome path with the same guard, leaving actual-outcome learning for the wider organism intact.
+- [x] Add Core.ts to the focused workflow path filters so this regression cannot silently skip CI.
+- [ ] Finish exact-head workflow [#40291145587](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291145587): full runtime restart and memory recall regression, then runtime typecheck must pass.
+- [ ] Run wider organism smoke, persistent continuity restart, action receipt/causal-lineage, and clean startup checks on the new Core head.
+- **Status:** source fix and workflow wiring committed; full CI is in progress. B272 gate was not weakened; mismatch is treated as ineligible causal credit, not as proof that its proposed action occurred.
+
+---
+
 ## WorkPass357 — file-backed memory survives a process boundary (2026-10-26)
 
 - [x] Add a standalone writer process that normalizes and persists a causal memory snapshot through the real `FileStateStore`.
