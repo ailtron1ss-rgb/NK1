@@ -1,3 +1,16 @@
+## WorkPass353 — canonical mutable-state path identity for evaluator config (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`
+
+- [x] Canonicalize `stateDirectory` through existing filesystem ancestors before deciding whether trusted evaluator config resides inside mutable state.
+- [x] Preserve behavior when a state path does not yet exist by resolving the nearest existing ancestor and appending the missing suffix.
+- [x] Add a POSIX regression where the passed state path is a symlink alias to the actual directory containing the evaluator module; the loader must reject it.
+- [x] Add the evaluator-config wiring regression to the focused WorkPass349 CI workflow.
+- [ ] Obtain a green exact-head workflow run including native signed-dataset checks, supervisor cleanup, host-owned executable integrity, evaluator-config identity/state-boundary regression, and runtime typecheck.
+- **Status:** source and regression commits exist; current exact-head validation pending. This closes a configuration-path boundary bypass; it does not substitute for deployment sandboxing or production release gates.
+
+---
+
 ## WorkPass352 — host authority executable parent integrity (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
