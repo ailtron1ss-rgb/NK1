@@ -63,9 +63,9 @@ const projection = normalizeHmxV17Memory(validHmx.sections.memories[0], {
   sourceSubjectId: validHmx.source.hexis_lineage_id,
 });
 assert.equal(projection?.kind, 'semantic');
-assert.equal(projection?.confidence, 0.77);
+assert.equal(projection?.confidence, 0.55, 'external memory confidence is capped before independent verification');
 assert.equal(projection?.salience, 0.71);
-assert.equal(projection?.sourceAuthority01, 0.82);
+assert.equal(projection?.sourceAuthority01, 0.55, 'self-reported external trust cannot boost source authority');
 assert.equal(projection?.epistemicStatus, 'belief');
 assert.equal(projection?.independenceKey, 'hexis:hexis-test-lineage');
 assert.deepEqual(projection?.context, { topic: 'hexis' }, 'non-scalar imported context is discarded');
@@ -136,6 +136,24 @@ const protectedStage = fabric.stageHmx({
 assert(protectedStage.conflicts.length > 0);
 assert.equal(protectedStage.applicationMode, 'preview-only');
 assert.equal(fabric.decideHmx(protectedStage.stagingId, 'accept')?.status, 'staged');
+
+
+const assertedFact = normalizeHmxV17Memory({
+  ...validHmx.sections.memories[0],
+  trust_level: 1,
+  metadata: { nk1_kind: 'semantic', nk1_confidence: 1, nk1_epistemic_status: 'fact' },
+}, { exportId: validHmx.export_id, sourceSubjectId: validHmx.source.hexis_lineage_id });
+assert.equal(assertedFact?.epistemicStatus, 'belief', 'untrusted HMX metadata cannot promote an imported record to fact');
+assert.equal(assertedFact?.confidence, 0.55);
+assert.equal(assertedFact?.sourceAuthority01, 0.55);
+
+const mismatchedReference = structuredClone(validHmx);
+mismatchedReference.sections.memories[0].ref = 'exp_fedcba9876543210:memory:foreign';
+assert(validateHmxV17Document(mismatchedReference, 'telepathy').some(issue => issue.path.endsWith('.ref')));
+
+const invalidTimestamp = structuredClone(validHmx);
+invalidTimestamp.sections.memories[0].valid_until = 'not-a-date';
+assert(validateHmxV17Document(invalidTimestamp, 'telepathy').some(issue => issue.path.endsWith('.valid_until')));
 
 const out = fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'x',meta:{b:2,a:1}}});
 assert.equal(fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{meta:{a:1,b:2},text:'x'}}).id,out.id);
