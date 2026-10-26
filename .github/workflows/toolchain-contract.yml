@@ -18,6 +18,8 @@ on:
       - "tools/super-start.mjs"
       - "tools/toolchain-contract.mjs"
       - "tools/toolchain-contract.test.mjs"
+      - "tools/typecheck-runtime-contract.test.mjs"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
       - "tools/supervisor-exit-policy.mjs"
       - "tools/supervisor-exit-policy.test.mjs"
       - "tools/supervised-service-specs.mjs"
@@ -36,6 +38,8 @@ on:
       - "tools/super-start.mjs"
       - "tools/toolchain-contract.mjs"
       - "tools/toolchain-contract.test.mjs"
+      - "tools/typecheck-runtime-contract.test.mjs"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
       - "tools/supervisor-exit-policy.mjs"
       - "tools/supervisor-exit-policy.test.mjs"
       - "tools/supervised-service-specs.mjs"
@@ -64,6 +68,8 @@ jobs:
           package-manager-cache: false
       - name: Validate toolchain contract logic
         run: npm run test:toolchain-contract
+      - name: Validate fail-closed runtime TypeScript compiler contract
+        run: npm run test:runtime-typecheck-contract
       - name: Validate supervised service exit policy
         run: npm run test:supervisor-exit-policy
       - name: Validate supervised service launch specifications
@@ -75,5 +81,6 @@ jobs:
           node --check tools/super-start.mjs
           node --check tools/supervisor-exit-policy.mjs
           node --check tools/supervised-service-specs.mjs
+          node --check runtime/neuro-kurisu/scripts/typecheck-runtime.mjs
       - name: Run environment doctor
         run: npm run doctor
