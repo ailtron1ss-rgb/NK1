@@ -399,6 +399,13 @@ async function route(req, res) {
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null });
         }
+        // Health remains readable during bootstrap, but protected API handlers often
+        // depend on initialized core/body snapshots. Return an explicit retryable 503
+        // instead of turning early requests into opaque 500s from "not initialized".
+        if (url.pathname.startsWith('/api/') && !runtimeReady) {
+            res.setHeader('retry-after', '1');
+            return json(res, 503, { ok: false, error: 'organism-runtime-not-ready', retryable: true });
+        }
         if (req.method === 'POST' && url.pathname === '/api/organism/learning/compound-repair-revision') {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
