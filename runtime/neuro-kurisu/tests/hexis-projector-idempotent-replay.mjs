@@ -77,11 +77,11 @@ const tamperedStage = structuredClone(stage);
 tamperedStage.application.importedCount = 1;
 assert.throws(() => projector.apply(tamperedStage), /hmx-applied-receipt-invalid/);
 assert.throws(
-  () => projector.apply({ status: 'applied', application: { status: 'applied' } }),
+  () => projector.apply({ ...stage, application: { status: 'applied' } }),
   /hmx-applied-receipt-invalid/,
 );
 assert.throws(
-  () => projector.apply({ status: 'pending', intent: 'port', strategy: 'additive' }),
+  () => projector.apply({ ...stage, status: 'pending' }),
   /hmx-stage-must-be-accepted-before-apply/,
 );
 assert.equal(writes, 0);
