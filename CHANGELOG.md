@@ -1,5 +1,6 @@
 # WorkPass366 — strict provider revision and external evidence ingress (2026-10-26)
 
+- [REGRESSION] Extend snapshot isolation coverage to nested `receiptRevisions` and `externalObservations` refs: tampering their exported fingerprints must not affect either live idempotency guard.
 - [CI-DRIVEN FIX] WorkPass331 identified that `snapshot()` returned live receipt-index entry references inside a new array. Public snapshot mutation could therefore poison the in-memory replay guard; snapshot now detaches base entries and nested observation/revision references, with a regression proving receipt replay remains valid after exported-index tampering.
 - [HARDENED] Replace String/Boolean coercion, clamping and identity truncation in authoritative receipt revisions and external observations with own-data snapshotting and strict typed validation.
 - [FIXED] Reject non-safe ticks/revision numbers, invalid timestamps, malformed 64-hex digests, non-boolean verification/outcome flags, unsupported status values and out-of-range confidence before ledger mutation.
