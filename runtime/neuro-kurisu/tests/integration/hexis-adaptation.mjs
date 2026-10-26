@@ -154,6 +154,10 @@ assert(validateHmxV17Document(mismatchedReference, 'telepathy').some(issue => is
 const invalidTimestamp = structuredClone(validHmx);
 invalidTimestamp.sections.memories[0].valid_until = 'not-a-date';
 assert(validateHmxV17Document(invalidTimestamp, 'telepathy').some(issue => issue.path.endsWith('.valid_until')));
+const invalidContentHash = structuredClone(validHmx);
+invalidContentHash.sections.memories[0].content_hash_v1 = '0'.repeat(64);
+assert(validateHmxV17Document(invalidContentHash, 'telepathy').some(issue => issue.kind === 'integrity'));
+
 
 const out = fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'x',meta:{b:2,a:1}}});
 assert.equal(fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{meta:{a:1,b:2},text:'x'}}).id,out.id);
