@@ -1,3 +1,16 @@
+## WorkPass357 — file-backed memory survives a process boundary (2026-10-26)
+
+- [x] Add a standalone writer process that normalizes and persists a causal memory snapshot through the real `FileStateStore`.
+- [x] Add a second fresh Node process that reopens the persisted file and restores canonical `MemoryOS2`.
+- [x] Verify retrieval returns the same memory ID and retains the causal outcome link after restore.
+- [x] Run the read-only memory integrity doctor after restore.
+- [x] Validate focused workflow [#40290445048](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290445048) on head `aba212a52e6f058ff834fa0e036e37c1b10e7497`: native provider 10/10, evaluator-config 16/16, WorkPass356 restore boundary PASS, WorkPass357 separate-process recall PASS, runtime typecheck PASS.
+- [ ] Extend this proof to a complete `OrganismCore`/runtime process restart and verify autobiographical, causal, goal and user-model retrieval through the public runtime interface.
+- [ ] Run paired independent RU/EN memory-to-action retrieval tests against the same-corpus baseline; this smoke test is not an uplift benchmark.
+- **Status:** bounded file-backed process separation is validated; full-organism durable continuity and release gates remain open.
+
+---
+
 ## WorkPass356 — canonical memory restore integrity (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
@@ -10,7 +23,7 @@
 - [x] Add focused MemoryOS2 restore boundary regressions and wire them into the WorkPass349 CI workflow.
 - [x] Focused workflow [#40290234073](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290234073) passed on code/test SHA `40991fca3c441ed874ce8c58791d29a9c92ebb21`: native provider 10/10, evaluator-config 16/16, `WORKPASS356_MEMORYOS_RESTORE_BOUNDARY=PASS`, and runtime `TYPECHECK=PASS`.
 - [ ] Run a real file-backed organism restart test that writes/reopens memory and proves event/identity/causal retrieval remains accessible after process restart; this is a separate release gate.
-- **Status:** code/test changes committed and focused CI passed on `40991fca3c441ed874ce8c58791d29a9c92ebb21`. No memory-recall uplift is claimed from state-shape validation alone.
+- **Status:** restore boundary and a separate-process file-backed memory recall test passed on head `aba212a52e6f058ff834fa0e036e37c1b10e7497`; full-organism process restart and independent retrieval uplift remain open.
 
 ---
 
