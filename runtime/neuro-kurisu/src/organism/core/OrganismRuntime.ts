@@ -639,7 +639,7 @@ export class OrganismRuntime {
     // substrate observes canonical state; Core remains the sole action arbiter.
     const previousSubstrateState = this.unifiedCognitiveSubstrate.snapshot();
     const substrateWorld = cycleObservation.worldContext ?? this.environment.observationContext();
-    const predictionDebt = this.core.predictionDebtSnapshot() as Record<string, unknown>;
+    const predictionDebt = this.core.predictionDebtSnapshot() as unknown as Record<string, unknown>;
     const debtCount = (key: string): number => {
       const value = predictionDebt[key];
       return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
@@ -662,7 +662,9 @@ export class OrganismRuntime {
         uncertainty01: substrateWorld.uncertainty,
         entityCount: substrateWorld.objects.length,
         eventCount: substrateWorld.events.length,
-        relationCount: cycleObservation.vision?.relations?.length ?? 0,
+        // Vision observations enter through the separate P41 perception path; the canonical cycle observation has no vision field.
+        // Keep this zero until the cross-cycle vision snapshot exposes typed relation evidence instead of fabricating counts.
+        relationCount: 0,
         conflict01: substrateWorld.objects.length > 0
           ? substrateWorld.objects.filter(object => 'evidenceKind' in object && object.evidenceKind === 'conflict').length / substrateWorld.objects.length
           : 0,
