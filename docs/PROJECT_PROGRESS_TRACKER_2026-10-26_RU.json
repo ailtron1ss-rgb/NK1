@@ -359,18 +359,18 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass423",
+    "id": "WorkPass424",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "49a5a2e90a2d98980572f44152afaf20921a08a7",
-    "testCommit": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
-    "codeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
-    "summary": "Validate the exported memory-normalizer options envelope using own data descriptors, require a canonical exportId, bind memory refs to that export, and reject accessor/custom-prototype option objects without coercion.",
+    "codeCommit": "27dc3f6e37377346ba317f8d9349af98ac5091bc",
+    "testCommit": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+    "codeTestHead": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+    "summary": "Bound normalizer option strings before parsing: sourceSubjectId must be a non-empty string of at most 180 characters; supplied exportedAt must be an ISO date-time no longer than 64 characters.",
     "testsAdded": [
-      "a memory ref from another export ID returns null",
-      "a getter-backed exportId is rejected without execution",
-      "object-valued exportId is rejected without coercion",
-      "prior raw-row root/nested getter and custom-prototype guards remain"
+      "overlong sourceSubjectId returns null",
+      "exportedAt exceeding 64 characters returns null before date parsing",
+      "malformed exportedAt returns null",
+      "valid normalized memory refs remain bound to the exact export ID"
     ],
     "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
@@ -378,6 +378,25 @@
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass424",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "27dc3f6e37377346ba317f8d9349af98ac5091bc",
+      "testCommit": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+      "codeTestHead": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+      "summary": "Bound normalizer option strings before parsing: sourceSubjectId must be a non-empty string of at most 180 characters; supplied exportedAt must be an ISO date-time no longer than 64 characters.",
+      "testsAdded": [
+        "overlong sourceSubjectId returns null",
+        "exportedAt exceeding 64 characters returns null before date parsing",
+        "malformed exportedAt returns null",
+        "valid normalized memory refs remain bound to the exact export ID"
+      ],
+      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass423",
       "date": "2026-10-26",
@@ -391,25 +410,6 @@
         "a getter-backed exportId is rejected without execution",
         "object-valued exportId is rejected without coercion",
         "prior raw-row root/nested getter and custom-prototype guards remain"
-      ],
-      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
-    {
-      "id": "WorkPass422",
-      "date": "2026-10-26",
-      "branch": "hexis-remote-bridge-20261026",
-      "codeCommit": "58f57b806590477c0d6558b162d82a78675e8397",
-      "testCommit": "b380123afe87987a10456065504982bdf4a02af1",
-      "codeTestHead": "b380123afe87987a10456065504982bdf4a02af1",
-      "summary": "Harden the exported memory normalizer itself: snapshot each untrusted raw memory row through the bounded plain-JSON capture function before property reads, so direct/internal callers cannot trigger accessors or pass custom-prototype rows.",
-      "testsAdded": [
-        "normalizer root getter is not executed",
-        "normalizer nested metadata getter is not executed",
-        "normalizer rejects a custom-prototype memory row",
-        "unsafe normalization returns null without projecting a memory"
       ],
       "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
       "progressPercentagesChanged": false,
@@ -584,8 +584,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
-  "branchHeadBeforeTrackerCommit": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+  "latestUnverifiedCodeTestHead": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+  "branchHeadBeforeTrackerCommit": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -625,18 +625,18 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass422",
+    "id": "WorkPass423",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "58f57b806590477c0d6558b162d82a78675e8397",
-    "testCommit": "b380123afe87987a10456065504982bdf4a02af1",
-    "codeTestHead": "b380123afe87987a10456065504982bdf4a02af1",
-    "summary": "Harden the exported memory normalizer itself: snapshot each untrusted raw memory row through the bounded plain-JSON capture function before property reads, so direct/internal callers cannot trigger accessors or pass custom-prototype rows.",
+    "codeCommit": "49a5a2e90a2d98980572f44152afaf20921a08a7",
+    "testCommit": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+    "codeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+    "summary": "Validate the exported memory-normalizer options envelope using own data descriptors, require a canonical exportId, bind memory refs to that export, and reject accessor/custom-prototype option objects without coercion.",
     "testsAdded": [
-      "normalizer root getter is not executed",
-      "normalizer nested metadata getter is not executed",
-      "normalizer rejects a custom-prototype memory row",
-      "unsafe normalization returns null without projecting a memory"
+      "a memory ref from another export ID returns null",
+      "a getter-backed exportId is rejected without execution",
+      "object-valued exportId is rejected without coercion",
+      "prior raw-row root/nested getter and custom-prototype guards remain"
     ],
     "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
@@ -644,20 +644,20 @@
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass424",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Bound sourceSubjectId and exportedAt normalizer options before any parsing or lineage calculations, preventing direct callers from bypassing the bounded HMX document input with oversized option values. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass423",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Bind the memory-row projection to a valid canonical HMX export ID using a safe options envelope; refuse rows whose refs do not belong to that export, and reject accessor-backed options before reading values. Scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass422",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "b380123afe87987a10456065504982bdf4a02af1",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Add a bounded snapshot boundary inside normalizeHmxV17Memory so callers outside the existing staging pathway cannot trigger getters, supply custom prototypes, or mutate raw values during trust checks. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
