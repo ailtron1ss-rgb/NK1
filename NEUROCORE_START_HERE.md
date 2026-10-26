@@ -1,3 +1,14 @@
+## Latest checkpoint — WorkPass373 scalar restore evidence guard (fresh exact-head CI pending)
+
+- **Branch:** work/nk1-unified-cycle-input-integrity-2026-10-26-r1
+- **Latest upstream base:** `f38d3189777649da490f8b0dbb3a8d19c7444811`; this base already includes WorkPass371's cross-ledger atomic cycle commit and WorkPass372 descriptor-safe input/restore guard.
+- **WorkPass373 code/test:** implementation and focused regression are re-applied on this base; the final combined commit needs exact-head CI.
+- **Integration:** WorkPass370 and WorkPass373 regressions are wired to `test:rebuild-recovered`, `test:cognitive-integration-suite`, and explicit WorkPass287–288 CI steps.
+- **Prior validated checkpoint:** WorkPass372 on `724c692bb149be4bae76b3a70373344a7149a1fd`, 13/13 workflows success.
+- **Status:** WorkPass373 is implemented; latest exact-head validation is pending. Scores remain unchanged.
+- **Open:** Android/Termux voice and Live2D/browser on real device, independent learning/retrieval holdout, 24–72h soak, licensing/provenance and reproducible release archive.
+
+---
 ## Latest checkpoint — WorkPass344 final release gate (pending fresh CI)
 
 - **Branch:** `work/nk1-final-release-gate-2026-10-26-r3`; WorkPass343 substrate tick reconciliation remains preserved.

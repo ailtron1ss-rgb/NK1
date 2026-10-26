@@ -33,6 +33,8 @@ const ALL_STAGES=new Set<UnifiedCycleStage>(['observation','prediction','apprais
 const clamp01=(x:number)=>Math.max(0,Math.min(1,x));
 const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
 const safeMetric=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):0;
+const isCounterEvidence=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+const isMetricEvidence=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
 const validStageId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim().length>0&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 
 type OwnDataValue={present:boolean;value:unknown};
@@ -89,8 +91,15 @@ export class UnifiedCognitiveCycle {
     const incompleteCycles=cycles-completeCycles;
     const rawIncomplete=read('incompleteCycles');
     const rawBroken=read('brokenLineages');
-    const inconsistentCounters=rawIncomplete!==undefined&&safeCounter(rawIncomplete)!==incompleteCycles;
-    const inconsistentBrokenLineages=rawBroken!==undefined&&safeCounter(rawBroken)>incompleteCycles;
+    const persistedLastTick=read('lastTick');
+    const malformedCounterEvidence=(['cycles','completeCycles','incompleteCycles','brokenLineages'] as const)
+      .some(key=>fields[key].present&&!isCounterEvidence(read(key)));
+    const malformedMetricEvidence=(['meanStageCoverage01','meanCausalContinuity01'] as const)
+      .some(key=>fields[key].present&&!isMetricEvidence(read(key)));
+    const malformedLastTickEvidence=fields.lastTick.present&&!(typeof persistedLastTick==='number'&&Number.isSafeInteger(persistedLastTick)&&persistedLastTick>=-1);
+    const malformedScalarState=malformedCounterEvidence||malformedMetricEvidence||malformedLastTickEvidence;
+    const inconsistentCounters=fields.incompleteCycles.present&&(!isCounterEvidence(rawIncomplete)||safeCounter(rawIncomplete)!==incompleteCycles);
+    const inconsistentBrokenLineages=fields.brokenLineages.present&&(!isCounterEvidence(rawBroken)||safeCounter(rawBroken)>incompleteCycles);
 
     const missingInput=read('lastMissingStages');
     let malformedMissing=false;
@@ -150,7 +159,7 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(read('meanStageCoverage01') as number),
       meanCausalContinuity01:safeMetric(read('meanCausalContinuity01') as number),
       lastTick,
-      lastComplete:!malformedMissing&&!inconsistentCounters&&!inconsistentBrokenLineages&&cycles>0&&completeCycles>0&&lastTick>=0&&lastCompleteValue===true&&missing.length===0,
+      lastComplete:!malformedMissing&&!malformedScalarState&&!inconsistentCounters&&!inconsistentBrokenLineages&&cycles>0&&completeCycles>0&&lastTick>=0&&lastCompleteValue===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }
