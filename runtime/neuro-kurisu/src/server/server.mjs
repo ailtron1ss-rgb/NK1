@@ -1022,7 +1022,10 @@ async function route(req, res) {
             try {
                 const result = runtime.core.hexisEnqueueOutbox({ idempotencyKey: String(input.idempotencyKey || ''), kind: String(input.kind || 'notify'), channel: String(input.channel || 'generic'), payload: input.payload });
                 await runtime.core.flush();
-                if (result && result.ok === false && result.error) return json(res, result.error === 'idempotency-key-conflict' ? 409 : 400, result);
+                if (result && result.ok === false && result.error) {
+                    const status = result.error === 'idempotency-key-conflict' ? 409 : result.error === 'outbox-capacity-reached' ? 503 : 400;
+                    return json(res, status, result);
+                }
                 return json(res, 200, { ok: true, result });
             }
             catch (error) {
@@ -1040,6 +1043,21 @@ async function route(req, res) {
             const result = runtime.core.hexisAckOutbox(String(input.id || ''), input.published === true, input.error ? String(input.error) : undefined);
             await runtime.core.flush();
             return json(res, 200, { ok: Boolean(result), result });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/reconcile') {
+            const input = await body(req);
+            const resolution = input.resolution === 'published' || input.resolution === 'not-published' ? input.resolution : '';
+            if (!resolution) return json(res, 400, { ok: false, error: 'invalid-outbox-resolution' });
+            try {
+                const result = runtime.core.hexisResolveOutbox(String(input.id || ''), resolution, String(input.evidenceRef || ''));
+                if (!result) return json(res, 404, { ok: false, error: 'outbox-entry-not-found' });
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                const message = String(error?.message ?? error);
+                return json(res, /evidence-required/.test(message) || /invalid/.test(message) ? 400 : 409, { ok: false, error: message });
+            }
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/reclaim') {
             const input = await body(req);
