@@ -1285,6 +1285,37 @@ export class MemoryOS2{
   const warnings=totalWarnings;
   return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1},indexes:index};
  }
+ hasEvidenceLineage(id:string, independenceKey:string){
+  const item=this.itemIndex.get(String(id));
+  const lineage=String(independenceKey??'').trim().normalize('NFKC').slice(0,96).toLocaleLowerCase();
+  if(!item||!lineage)return false;
+  const key=`lineage:${lineage}`;
+  return (Array.isArray(item.evidenceLineageKeys)&&item.evidenceLineageKeys.includes(key))||this.normalizeEvidenceSources(item).some(row=>this.evidenceKey(row)===key);
+ }
+ recordEvidence(id:string,input:{source:string;provenanceClass?:MemoryProvenanceClass;sourceAuthority01?:number;independenceKey:string;observedAt?:number;evidenceFreshnessAt?:number}){
+  const item=this.itemIndex.get(String(id));
+  if(!item)return {ok:false as const,added:false as const,reason:'memory-not-found' as const,memoryId:String(id),independentSources:0};
+  const independenceKey=String(input.independenceKey??'').trim().normalize('NFKC').slice(0,96);
+  if(!independenceKey)return {ok:false as const,added:false as const,reason:'independence-key-required' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  const previous=this.normalizeEvidenceSources(item);
+  if(this.hasEvidenceLineage(item.id,independenceKey))return {ok:true as const,added:false as const,reason:'duplicate-source' as const,memoryId:item.id,independentSources:previous.length};
+  const now=Date.now();
+  const source=String(input.source??'unknown').trim().slice(0,240)||'unknown';
+  const provenanceClass=this.provenanceClassFor(source,input.provenanceClass);
+  const observedAt=Number.isFinite(Number(input.observedAt))?Number(input.observedAt):now;
+  const evidenceFreshnessAt=Number.isFinite(Number(input.evidenceFreshnessAt))?Number(input.evidenceFreshnessAt):observedAt;
+  const incoming:MemoryEvidenceSource={source,provenanceClass,sourceAuthority01:clamp(Number(input.sourceAuthority01??this.sourceAuthorityDefault(provenanceClass))),independenceKey,observedAt,evidenceFreshnessAt};
+  const before=estimateMemoryBytes(item);
+  const combined=this.normalizeEvidenceSources({...item,evidenceSources:[...previous,incoming]});
+  item.evidenceSources=combined;
+  const key=this.evidenceKey(incoming);
+  item.evidenceLineageKeys=[...new Set([...(item.evidenceLineageKeys??[]),...previous.map(row=>this.evidenceKey(row)),key])].slice(-32);
+  item.lastAccessAt=Math.max(Number(item.lastAccessAt??0),observedAt);
+  item.temperature01=memoryTemperature(item,now);
+  this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(item));
+  this.state.reconsolidations++;
+  return {ok:true as const,added:true as const,reason:'added' as const,memoryId:item.id,independentSources:combined.length};
+ }
  evidenceTrail(id:string){
   const item=this.itemIndex.get(String(id));if(!item)return null;
   const evidence=this.normalizeEvidenceSources(item);
