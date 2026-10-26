@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
+import { isValidHmxApplyReceipt } from './HexisCanonicalMemoryProjector.mjs';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
@@ -1225,7 +1226,15 @@ export class HexisAdaptationFabric {
         const stage = this.state.hmxStages.find((candidate) => candidate.stagingId === stagingId);
         if (!stage) return null;
         if (decision === 'apply') {
-            if (stage.status === 'applied' && stage.application) return structuredClone(stage);
+            if (stage.status === 'applied') {
+                // Restore/replay is a trust boundary too: never expose a persisted
+                // application receipt unless the shared projector contract still binds
+                // it to this exact stage, export, lineage and stage digest.
+                if (!isValidHmxApplyReceipt(stage, stage.application)) {
+                    throw new Error('hmx-applied-receipt-invalid');
+                }
+                return structuredClone(stage);
+            }
             if (stage.status !== 'accepted' || stage.conflicts.length) return structuredClone(stage);
             if (stage.intent !== 'port' || stage.strategy !== 'additive') {
                 throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
