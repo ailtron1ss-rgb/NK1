@@ -13,6 +13,7 @@ import { HexisCanonicalMemoryProjector } from '../integration/hexis/HexisCanonic
 import { LettaGovernanceAdaptationFabric } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import { buildCognitiveArchitectureSnapshot } from './CognitiveArchitectureMap.ts';
+import { sha256Stable } from './StableSerialization.ts';
 
 export type OrganismSystemName = 'self'|'governance'|'memory'|'world'|'embodiment'|'agency'|'research';
 
@@ -82,15 +83,30 @@ export class OrganismSystemFabric {
     this.hexisAdaptation.bindCanonicalMemoryApply(stage => canonicalMemoryProjector.apply(stage));
     this.hexisAdaptation.bindCanonicalBeliefProjection(projection => {
       const canonical = this.memory.fabric.canonicalSnapshot(false).items.find(item => item.id === projection.memoryId);
-      if (!canonical) return false;
+      if (!canonical) return 'unavailable';
+      const evidenceDigest = sha256Stable(projection.evidenceKey, 'legacy');
+      const independenceKey = 'hexis-belief:' + evidenceDigest;
+      const canonicalLineageKey = 'lineage:' + independenceKey.toLowerCase();
+      const priorSources = Array.isArray(canonical.evidenceSources) ? canonical.evidenceSources : [];
+      const alreadyKnown = canonical.evidenceLineageKeys?.includes(canonicalLineageKey) ||
+        priorSources.some(source => String(source.independenceKey ?? '').trim().normalize('NFKC').toLowerCase() === independenceKey.toLowerCase());
+      if (alreadyKnown) return 'duplicate';
+      const evidenceSource = {
+        source: 'hexis-evidence:' + evidenceDigest,
+        provenanceClass: 'external' as const,
+        sourceAuthority01: projection.evidenceTrust01,
+        independenceKey,
+        observedAt: projection.at,
+        evidenceFreshnessAt: projection.at,
+      };
       const updated = this.memory.fabric.updateSignals(
         projection.memoryId,
-        { confidence: projection.posteriorConfidence01 },
-        'hexis-belief-revision:' + projection.stance + ':' + projection.evidenceKey.slice(0, 24),
+        { confidence: projection.posteriorConfidence01, evidenceSources: [evidenceSource] },
+        'hexis-belief-revision:' + projection.stance + ':' + evidenceDigest.slice(0, 16),
         { commandId: 'hexis-belief-revision:' + projection.auditId },
       );
       if (!updated) throw new Error('hexis-canonical-belief-projection-failed');
-      return true;
+      return 'projected';
     });
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
     this.conscioAdaptation=input.conscioAdaptation ?? new ConscioAdaptationFabric();
