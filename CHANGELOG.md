@@ -1,3 +1,15 @@
+## WorkPass375 — HMX operator UI and confirmation boundary (2026-10-26)
+
+- Added frontend API bindings for HMX canonical apply and goal proposal preparation/list/review/materialization.
+- Extended HexisControlConsole with external HMX JSON import, explicit acceptance, a separate second confirmation for persistent canonical writes, proposal status filtering, approve/reject, and confirmed candidate materialization.
+- Reset confirmation state whenever the staged document/ID changes; oversized uploads are rejected before JSON parsing.
+- Fixed the UI action runner so a failed follow-up panel refresh cannot hide a successful persistent operation or present it as failed; proposal queues are refreshed after materialization.
+- Same-lineage duplicate goal proposals now reuse the canonical goal graph node and reconcile the existing semantic edge instead of forking graph identity.
+- Focused CI now captures runtime/app install outputs, runtime/app typechecks and Hexis test output as an artifact before enforcing the gate.
+- Latest checks remain unverified: Hexis run #40337917617 and unified suite #40337917630 ended with runner_id=0 and steps=[], with no artifacts. This is a GitHub runner-startup blocker, not a code-test result. main and the published Release ZIP are unchanged.
+
+---
+
 ## WorkPass374 — Hexis canonical memory / HMX bridge (2026-10-26)
 
 - Routed NK1-native HMX export through an HMX 1.7 normalizer and added a bounded canonical projector for approved additive imports.
