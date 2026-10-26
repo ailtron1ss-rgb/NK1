@@ -1,3 +1,21 @@
+## WorkPass354 — separate source snapshot from validated CI evidence (2026-10-26)
+
+- **Defect:** the progress ledger compared every stored CI row's `testedHead` directly to `sourceHeadAtSnapshot`. That made the intended historical passing evidence invalid as soon as the current code/test checkpoint moved forward, causing the progress-ledger job and unified integration suite to fail before runtime tests could run.
+- **Fix:** add explicit `ciSnapshot.evidenceHead` for the exact commit represented by the listed CI rows. Validate every row against that evidence head, while retaining `sourceHeadAtSnapshot` for the newer current code/test checkpoint. Historical test SHAs and results remain untouched.
+- **Regression coverage:** prove a newer source checkpoint can coexist with an older explicitly pinned validation snapshot; malformed evidence heads, per-row SHA mismatch and non-canonical run URLs remain rejected.
+- **Evidence discipline:** last recorded successful CI evidence remains pinned to `621864d0d7f2676245383adab86f1dcc6d0f741f`. Current combined code/test checkpoint `b01d3f03eb35885473e95299e0f693094ab276a2` still requires fresh CI; scores unchanged.
+
+---
+
+## WorkPass353b — reject malformed cognitive event payload envelopes (2026-10-26)
+
+- **Defect:** `CognitiveEventFabric.append()` used `cleanPayload()`, which intentionally sanitizes non-record root values to an empty object. This could silently accept malformed root payloads and make a malformed retry appear equivalent to a legitimate empty-payload event.
+- **Fix:** reject an explicitly supplied root payload unless it is a plain record (ordinary object or null-prototype record), before canonicalization, idempotency lookup, or ledger mutation. Arrays, dates, class instances and primitives fail closed; omitted payload remains backward-compatible.
+- **Regression coverage:** malformed root values, zero-mutation rejection, invalid retry against a stable ID, preservation of a valid stored payload, null-prototype record compatibility and omitted-payload compatibility. The regression is wired into `test:cognitive-integration-suite` and the workflow's `tests/cognitive-*.mjs` path filter.
+- **Validation:** exact-head runtime typecheck and integration CI remain pending. No PASS is claimed before those checks complete on the resulting SHA.
+
+---
+
 ## WorkPass353 — reject oversized and non-canonical causal identity fields (2026-10-26)
 
 - **Defect:** `CognitiveEventFabric.append()` silently truncated source strings, parent IDs and oversized parent lists. Snapshot restore also previously truncated IDs/sources/parents and coerced malformed ticks/timestamps/confidence/flags into valid-looking records.
