@@ -1,3 +1,8 @@
+## [NK1][Hexis] WorkPass399 — tighten review replay typing and candidate idempotency checks (2026-10-26)
+
+- [FIX] Made canonical-memory lookup map tuple types explicit and only forwards correction text for a correction decision; approval/forget cannot accidentally attach an unrelated correction string.
+- [TEST] Added repeat-decision assertions for corrected revisions and newly materialized procedure candidates, checking stable canonical IDs and no duplicate item creation.
+
 ## [NK1][Hexis] WorkPass398 — connect learning review decisions to canonical memory lifecycle (2026-10-26)
 
 - [INTEGRATION] Added `OrganismSystemFabric.decideHexisLearningReview()` as the explicit adapter between Hexis review decisions and NK1 MemoryOS2/MemoryFabric.
