@@ -73,6 +73,16 @@ assert.throws(() => evaluateSkillRevision(rows, 7, 'candidate'),
   /two distinct method names are required/);
 assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', null),
   /skill revision gate options must be an object/);
+assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', { minPairedTasks: 1 }),
+  /minPairedTasks must be an integer from 2 to 10000/);
+assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', { minPairedTasks: 2.5 }),
+  /minPairedTasks must be an integer from 2 to 10000/);
+assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', { minAbsoluteGain: Number.NaN }),
+  /minAbsoluteGain must be a finite number from 0 to 1/);
+assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', { minAbsoluteGain: -0.01 }),
+  /minAbsoluteGain must be a finite number from 0 to 1/);
+assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', { maxFamilyRegression: 1.01 }),
+  /maxFamilyRegression must be a finite number from 0 to 1/);
 
 // Validation/train observations are deliberately excluded.
 result = evaluateSkillRevision(rows.map(x=>({...x,split:'train'})),'baseline','candidate');
