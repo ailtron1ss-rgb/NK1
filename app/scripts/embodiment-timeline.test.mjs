@@ -208,7 +208,8 @@ test("React and standalone runtime share affect smoothing while keeping speech a
   assert.match(wrapper, /embodiment-affect-core\.mjs/);
   assert.match(runtimeViewer, /import \{ smoothEmbodimentAffect \} from '\.\/embodiment-affect-core\.mjs'/);
   assert.match(runtimeViewer, /smoothEmbodimentAffect\(affectSmoothingState, target, now\)/);
-  assert.match(affectCore, /if \(now <= previous\.sampleAtMs\) return \{ \.\.\.previous \}/);
+  assert.match(affectCore, /now <= previous\.sampleAtMs/,
+    "late affect snapshots must not rewind the shared affect clock");
   assert.match(runtimeViewer, /sampleAvatarSpeechTimeline\(speechCursor\.timeline, speechElapsedAt\(now\)\)/,
     "mouth visemes must remain sampled from the speech clock, not the affect smoother");
   assert.match(runtimeViewer, /now < affectTransitionUntil/,
