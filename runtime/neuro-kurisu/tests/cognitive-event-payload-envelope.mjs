@@ -34,12 +34,21 @@ const omitted = fabric.append({ id: 'event:omitted-payload', tick: 3, stage: 'ob
 assert.deepEqual(omitted.payload, {});
 
 // Aggregate UTF-16 text is bounded even when every individual string is modest.
-const beforeOversized = fabric.snapshot();
-assert.throws(() => fabric.append({
+// Exactly the configured limit is accepted: four key units plus 131,068 value units.
+const boundary = fabric.append({
   tick: 4,
   stage: 'observation',
   source: 'payload-budget-test',
-  payload: { text: 'x'.repeat(131073) },
+  payload: { text: 'x'.repeat(131068) },
+});
+assert.equal((boundary.payload.text as string).length, 131068);
+const beforeOversized = fabric.snapshot();
+
+assert.throws(() => fabric.append({
+  tick: 5,
+  stage: 'observation',
+  source: 'payload-budget-test',
+  payload: { text: 'x'.repeat(131069) },
 }), /cognitive-event-payload-text-limit/);
 assert.deepEqual(fabric.snapshot(), beforeOversized, 'single oversized text must not mutate the ledger');
 
@@ -47,12 +56,23 @@ const manyStrings = Object.fromEntries(
   Array.from({ length: 140 }, (_, index) => [`field-${index}`, 'y'.repeat(1000)]),
 );
 assert.throws(() => fabric.append({
-  tick: 5,
+  tick: 6,
   stage: 'observation',
   source: 'payload-budget-test',
   payload: manyStrings,
 }), /cognitive-event-payload-text-limit/);
-assert.deepEqual(fabric.snapshot(), beforeOversized, 'aggregate text overflow must not mutate the ledger');
+assert.deepEqual(fabric.snapshot(), beforeOversized, 'aggregate value overflow must not mutate the ledger');
+
+const manyLongKeys = Object.fromEntries(
+  Array.from({ length: 270 }, (_, index) => [`k`.repeat(500) + String(index), 0]),
+);
+assert.throws(() => fabric.append({
+  tick: 7,
+  stage: 'observation',
+  source: 'payload-budget-test',
+  payload: manyLongKeys,
+}), /cognitive-event-payload-text-limit/);
+assert.deepEqual(fabric.snapshot(), beforeOversized, 'aggregate key overflow must not mutate the ledger');
 
 const restoreFabric = new CognitiveEventFabric(16);
 restoreFabric.restore({ recent: [{
