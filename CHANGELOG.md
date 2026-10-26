@@ -1,3 +1,15 @@
+## [NK1][WorkPass375] Route Hexis evidence through canonical MemoryOS2 ingress — 2026-10-26
+
+- **Integration:** wire the previously pure `HexisEvidenceAdapter` into `MemoryOS2.recordEvidence()`, the existing sole writable memory owner. Hexis validation now runs at the real provenance write boundary before lineage mutation.
+- **Integrity:** snapshot own data descriptors and fail closed for accessors/proxies, malformed provenance, numeric/string coercion, non-finite or non-integer timestamps, invalid source authority, control characters and overlong evidence identities.
+- **Idempotency:** reject rather than truncate independent lineage IDs; compute a stable evidence identity from canonical memory + lineage. Existing H1 lineage replay stays a true no-op before mutation.
+- **Learning boundary:** evidence ingestion itself does not change confidence. Existing H1 Core/Hexis policy remains the only confidence-revision authority and still requires a newly persisted canonical evidence receipt.
+- **Regression/CI:** add `test:cognitive-hexis-evidence-adapter`, chain it into `test:hexis-memory-evidence-lineage`, and include the adapter/test paths and WorkPass375 branch in repository-wiring CI. Checkpoint: `docs/WORKPASS375_HEXIS_CANONICAL_EVIDENCE_INGRESS_RU.md`.
+- **Validation:** exact-head hosted typecheck, adapter+MemoryOS2 integration, H1 lineage/restore and repository wiring checks are pending. No memory-retrieval uplift or production-readiness claim is made.
+- **Release:** `main` and the published Release ZIP are unchanged.
+
+---
+
 ## [NK1][Hexis-H1 follow-up] Normalize evidence-lineage replay identities — 2026-10-26
 
 - Extended the canonical MemoryOS2/Hexis evidence-lineage regression with a replay attempt using full-width Unicode characters and surrounding whitespace that normalize to an already-recorded lineage key.
