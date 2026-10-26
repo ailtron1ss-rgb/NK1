@@ -1,3 +1,12 @@
+## [NK1][Hexis] WorkPass390 — persist belief evidence lineage atomically with canonical confidence (2026-10-26)
+
+- [INTEGRATION] Extended the canonical memory signal update to merge independent evidence through existing MemoryOS2 lineage normalization, preserving its bounded eight-source trail and 32-key replay tombstone.
+- [INTEGRATION] Hexis belief revisions now project the posterior and a hashed, privacy-safe source identity in one `MemoryFabric.updateSignals` command; the evidence key is never copied raw into canonical context.
+- [REPLAY SAFETY] The composition root checks canonical lineage before applying a belief revision. If the Hexis ledger was reset/restored independently, an already-known canonical source is treated as duplicate rather than increasing confidence twice.
+- [ATOMICITY] Canonical projection occurs before the local Hexis belief/audit/metric state is committed; injected write failure leaves no partial Hexis revision.
+- [TEST] Added assertions for canonical evidence trails, support/duplicate/contradiction behavior, cross-ledger replay after state reset, and projection-failure atomicity.
+- [VALIDATION] Source and regression updates are committed to the draft PR branch; GitHub's current failed jobs still expose zero executed steps/log output, so their failure cannot yet be attributed to these code changes.
+
 ## [NK1][Hexis] WorkPass389 — project evidence-based belief revisions into canonical recall confidence (2026-10-26)
 
 - [INTEGRATION] Added a typed Hexis→NK1 belief-projection contract and bound it at `OrganismSystemFabric`, using the existing `MemoryFabric.updateSignals` write path rather than creating a parallel memory store.
