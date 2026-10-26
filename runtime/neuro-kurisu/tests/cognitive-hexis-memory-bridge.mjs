@@ -24,6 +24,7 @@ const memory = memoryOS.encode({
   contradictionLinks: [],
 }, { clone: false });
 const initialConfidence = memory.confidence;
+const initialEstimatedBytes = memoryOS.budgetDiagnostics().estimatedBytes;
 
 const evidence = {
   memoryId: memory.id,
@@ -47,6 +48,10 @@ assert.equal(persisted.evidenceRecords.length, 1);
 assert.equal(persisted.evidenceRecords[0].stance, "contradicts");
 assert.equal(persisted.evidenceRecords[0].sourceRef, "sha256:independent-paper-1");
 assert.equal(persisted.evidenceRecords[0].confidence01, 0.81);
+assert.ok(
+  memoryOS.budgetDiagnostics().estimatedBytes > initialEstimatedBytes,
+  "the canonical memory byte budget must account for the new persisted evidence record and replay lineage",
+);
 
 const beforeDuplicate = structuredClone(memoryOS.snapshot());
 const duplicate = ingestHexisEvidenceIntoMemory(memoryOS, evidence);
