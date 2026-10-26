@@ -3,7 +3,8 @@
 - Routed NK1-native HMX export through an HMX 1.7 normalizer and added a bounded canonical projector for approved additive imports.
 - Connected projector to the existing MemoryFabric, semantic graph and Hexis review/receipt path; source namespace prevents imported graph nodes from being merged blindly with local nodes.
 - Restricted the server decision endpoint to accept / reject / apply and added tests for canonical apply/replay and invalid decisions.
-- Exact-head CI is pending. No learning-uplift or production-readiness score change; main and published Release ZIP are untouched.
+- Added a proposal-only HMX-goal API (prepare, list, approve/reject) so imported goals stay pending until review and never become active automatically.
+- Exact-head Actions reports failure but exposes no job steps or logs (log retrieval returns BlobNotFound); validation remains blocked/unverified. No learning-uplift or production-readiness score change; main and published Release ZIP are untouched.
 
 ---
 
