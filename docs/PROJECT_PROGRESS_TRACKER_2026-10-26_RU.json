@@ -366,11 +366,15 @@
       "aead364e098b462b5f99f48e65b76585f927975f",
       "83343d9ba5765050c734218a64d8bbe6e9883f2f"
     ],
-    "codeTestHead": "0f9c34c54ad2b858a142c5e14d0de28fb763f5b5",
+    "codeTestHead": "28920aa46a888ddff4a0297ae8a93526e879da85",
     "summary": "Create a bounded own-data-descriptor snapshot of HMX input before schema validation and stage the captured snapshot, rejecting accessors, sparse/extended arrays, unsupported prototypes, cycles, non-finite numbers and resource-bound violations.",
     "testsAdded": [
       "root export_id getter is not invoked by HMX validation or staging",
       "nested sections.memories getter is not invoked by HMX validation or staging",
+      "sparse memories array is rejected as unsafe input",
+      "cyclic metadata is rejected as unsafe input",
+      "non-finite source value is rejected as unsafe input",
+      "custom-prototype source object is rejected as unsafe input",
       "unsafe HMX stage has an explicit unsafe-input conflict and no memory payload",
       "unsafe HMX stage remains ineligible for acceptance"
     ],
@@ -548,8 +552,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "0f9c34c54ad2b858a142c5e14d0de28fb763f5b5",
-  "branchHeadBeforeTrackerCommit": "0f9c34c54ad2b858a142c5e14d0de28fb763f5b5",
+  "latestUnverifiedCodeTestHead": "28920aa46a888ddff4a0297ae8a93526e879da85",
+  "branchHeadBeforeTrackerCommit": "28920aa46a888ddff4a0297ae8a93526e879da85",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -622,9 +626,9 @@
   "latestEngineeringCheckpoint": {
     "workpass": "WorkPass397",
     "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "0f9c34c54ad2b858a142c5e14d0de28fb763f5b5",
+    "codeTestHead": "28920aa46a888ddff4a0297ae8a93526e879da85",
     "validationStatus": "pending-exact-head-ci",
-    "summary": "Create a bounded own-data-descriptor snapshot of HMX input before schema validation and stage the captured snapshot, rejecting accessors, sparse/extended arrays, unsupported prototypes, cycles, non-finite numbers and resource-bound violations. WorkPass396 adds atomic array staging. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
+    "summary": "Create a bounded own-data-descriptor snapshot of HMX input before schema validation and stage the captured snapshot, rejecting accessors, sparse/extended arrays, unsupported prototypes, cycles, non-finite numbers and resource-bound violations. Coverage also rejects sparse arrays, cycles, non-finite numbers and custom prototypes. WorkPass396 adds atomic array staging. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   },
