@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   OutcomeVerificationService,
+  assessExternalPostcondition,
   isTrustedExternalPostconditionVerification,
 } from '../src/organism/system/OutcomeVerificationService.ts';
 
@@ -95,5 +96,39 @@ const validCorrelationContext = await service.verify({
 });
 assert.equal(validCorrelationContext.verified, false,
   'valid correlation identifiers do not by themselves authorize verification');
+
+for (const [label, observationId] of [
+  ['embedded-C0', 'observation-\u0001-id'],
+  ['embedded-C1', 'observation-\u009f-id'],
+  ['leading-TAB', '\tobservation-id'],
+  ['trailing-LF', 'observation-id\n'],
+  ['overlong', 'o'.repeat(181)],
+]) {
+  const invalidEvidence = await service.verify({
+    toolId: 'device.set-state',
+    input,
+    result: { accepted: true },
+  }, async () => ({
+    verified: true,
+    basis: 'external-postcondition',
+    externalObservation: true,
+    observationId,
+    expectedPostcondition: 'relay-main=on',
+    observedPostcondition: 'relay-main=on',
+    confidence01: 0.99,
+  }));
+  assert.notEqual(invalidEvidence.verified, true,
+    label + ': malformed observation IDs must not produce trusted verification');
+  assert.notEqual(invalidEvidence.basis, 'external-postcondition',
+    label + ': malformed observation IDs must not preserve the external-evidence basis');
+}
+assert.equal(assessExternalPostcondition({
+  verified: true,
+  basis: 'external-postcondition',
+  externalObservation: true,
+  observationId: 'observation-\u009f-id',
+  expectedPostcondition: 'relay-main=on',
+  observedPostcondition: 'relay-main=on',
+}), 'unknown', 'the public assessor must fail closed on C1 controls too');
 
 console.log('WORKPASS94_VERIFICATION_INPUT_BINDING=PASS exact-structural-match partial-input-rejected nested-change-rejected copied-token-rejected malformed-input-rejected');
