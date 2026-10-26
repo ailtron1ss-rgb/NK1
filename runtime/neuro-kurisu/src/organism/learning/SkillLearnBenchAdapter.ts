@@ -9,6 +9,8 @@
 export interface SkillLearnBenchTrialInput {
   taskId: string;
   trialId: string;
+  /** Canonical family label copied from the trusted task manifest, never guessed from scores. */
+  taskFamily?: string;
   /** Result from an independent task verifier, never inferred from the skill. */
   verifierPassed: boolean;
   skill: {
@@ -30,6 +32,8 @@ export interface SkillLearnBenchTrialInput {
 export interface SkillLearnBenchTrialReport {
   taskId: string;
   trialId: string;
+  /** Manifest-owned stratum used to prevent aggregate scores hiding family regressions. */
+  taskFamily?: string;
   taskSuccess: { passed: boolean; passRate: number };
   skillQuality: {
     functionalCoverage: number;
@@ -83,6 +87,7 @@ export function evaluateSkillLearnBenchTrial(
   if (!input || !isNonEmptyString(input.taskId) || !isNonEmptyString(input.trialId)) {
     throw new Error('invalid-trial-identity');
   }
+  if (input.taskFamily !== undefined && !isNonEmptyString(input.taskFamily)) throw new Error('invalid-task-family');
   if (typeof input.verifierPassed !== 'boolean') throw new Error('invalid-verifier-result');
   if (!input.skill || typeof input.skill.executable !== 'boolean') throw new Error('invalid-skill-executability');
   if (!input.trajectory || typeof input.trajectory !== 'object') throw new Error('invalid-trajectory');
@@ -127,6 +132,7 @@ export function evaluateSkillLearnBenchTrial(
   return {
     taskId: input.taskId.trim(),
     trialId: input.trialId.trim(),
+    ...(input.taskFamily === undefined ? {} : { taskFamily: input.taskFamily.trim() }),
     taskSuccess: { passed: input.verifierPassed, passRate: input.verifierPassed ? 1 : 0 },
     skillQuality: {
       functionalCoverage,
@@ -156,20 +162,23 @@ export function aggregateSkillLearnBenchReports(
   taskSuccessRate: number;
   meanSkillQuality: number;
   meanTrajectoryQuality: number;
-  byTask: Array<{ taskId: string; trialCount: number; taskSuccessRate: number; meanSkillQuality: number; meanTrajectoryQuality: number }>;
+  byTask: Array<{ taskId: string; taskFamily?: string; trialCount: number; taskSuccessRate: number; meanSkillQuality: number; meanTrajectoryQuality: number }>;
 } {
   if (!Array.isArray(reports) || reports.length === 0) throw new Error('reports-required');
   const groups = new Map<string, SkillLearnBenchTrialReport[]>();
+  const familyByTask = new Map<string, string | null>();
   const seenTrials = new Set<string>();
   for (const report of reports) {
     const inRange = (value: unknown): value is number =>
       typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
     if (!report || !isNonEmptyString(report.taskId) || !isNonEmptyString(report.trialId) ||
+        (report.taskFamily !== undefined && !isNonEmptyString(report.taskFamily)) ||
         typeof report.taskSuccess?.passed !== 'boolean' ||
         !inRange(report.taskSuccess?.passRate) ||
         report.taskSuccess.passRate !== (report.taskSuccess.passed ? 1 : 0) ||
         !inRange(report.skillQuality?.aggregate) ||
-        !inRange(report.trajectoryQuality?.aggregate)) {
+        !inRange(report.trajectoryQuality?.aggregate) ||
+        (report.taskFamily !== undefined && !isNonEmptyString(report.taskFamily))) {
       throw new Error('invalid-report');
     }
     const taskId = report.taskId.trim();
@@ -177,13 +186,17 @@ export function aggregateSkillLearnBenchReports(
     const trialKey = JSON.stringify([taskId, trialId]);
     if (seenTrials.has(trialKey)) throw new Error('duplicate-report-trial');
     seenTrials.add(trialKey);
+    const family = report.taskFamily === undefined ? null : report.taskFamily.trim();
+    if (familyByTask.has(taskId) && familyByTask.get(taskId) !== family) throw new Error('task-family-changed-within-task');
+    familyByTask.set(taskId, family);
     const group = groups.get(taskId) ?? [];
-    group.push(report);
+    group.push({ ...report, taskId, trialId, ...(family === null ? {} : { taskFamily: family }) });
     groups.set(taskId, group);
   }
   const mean = (values: number[]) => Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(6));
   const byTask = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([taskId, rows]) => ({
     taskId,
+    ...(rows[0]?.taskFamily ? { taskFamily: rows[0].taskFamily } : {}),
     trialCount: rows.length,
     taskSuccessRate: mean(rows.map((r) => r.taskSuccess.passRate)),
     meanSkillQuality: mean(rows.map((r) => r.skillQuality.aggregate)),
@@ -217,6 +230,12 @@ export interface SkillLearnBenchCandidateGateOptions {
   minimumHoldoutTasks?: number;
   /** Minimum macro-average independently verified validation task success for eligibility. */
   minimumValidationTaskSuccess01?: number;
+  /** Required manifest families; omitted means all observed families in validation and holdout. */
+  requiredTaskFamilies?: string[];
+  /** Minimum validation task success in every family. Defaults to minimumValidationTaskSuccess01. */
+  minimumFamilyValidationTaskSuccess01?: number;
+  /** Maximum tolerated held-out regression in any single family. Defaults to maximumHoldoutRegression01. */
+  maximumFamilyHoldoutRegression01?: number;
 }
 
 export interface SkillLearnBenchCandidateGateReport {
@@ -231,6 +250,21 @@ export interface SkillLearnBenchCandidateGateReport {
   pairedValidationTrials: number;
   pairedHoldoutTrials: number;
   holdoutTaskCount: number;
+  /** Completeness of family evidence across both baseline/candidate validation and holdout sets. */
+  taskFamilyCoverage01: number;
+  /** Per-family metrics remain visible even when a macro-average looks positive. Null means no evidence. */
+  familyResults: Array<{
+    family: string;
+    validationTaskCount: number;
+    validationTaskSuccess01: number | null;
+    baselineValidation01: number | null;
+    candidateValidation01: number | null;
+    validationGain01: number | null;
+    holdoutTaskCount: number;
+    baselineHoldout01: number | null;
+    candidateHoldout01: number | null;
+    holdoutDelta01: number | null;
+  }>;
   feedback: string[];
 }
 
@@ -268,9 +302,12 @@ function validateCandidateReports(
         report.trajectoryQuality.aggregate !== Number(((report.trajectoryQuality.keyPointRecall + report.trajectoryQuality.executionOrder + report.trajectoryQuality.completeness) / 3).toFixed(6))) {
       throw new Error(`candidate-${label}-report-invalid`);
     }
-    const key = JSON.stringify([report.taskId.trim(), report.trialId.trim()]);
+    const taskId = report.taskId.trim();
+    const trialId = report.trialId.trim();
+    const taskFamily = report.taskFamily === undefined ? undefined : report.taskFamily.trim();
+    const key = JSON.stringify([taskId, trialId]);
     if (keyed.has(key)) throw new Error(`candidate-${label}-duplicate-trial`);
-    keyed.set(key, report);
+    keyed.set(key, { ...report, taskId, trialId, ...(taskFamily === undefined ? {} : { taskFamily }) });
   }
   return keyed;
 }
@@ -286,6 +323,11 @@ function pairedCandidateMean(
   }
   const baselineReports = keys.map((key) => baseline.get(key)!);
   const candidateReports = keys.map((key) => candidate.get(key)!);
+  for (let index = 0; index < keys.length; index += 1) {
+    if (baselineReports[index]!.taskFamily !== candidateReports[index]!.taskFamily) {
+      throw new Error(`candidate-${label}-task-family-mismatch`);
+    }
+  }
   const macroTaskMean = (reports: SkillLearnBenchTrialReport[]): number => {
     const byTask = new Map<string, number[]>();
     for (const report of reports) {
