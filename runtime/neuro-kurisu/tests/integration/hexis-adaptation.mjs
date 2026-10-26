@@ -701,6 +701,19 @@ assert.equal(failingBeliefProjection.snapshot().beliefAudit.length, 0,
 assert.equal(failingBeliefProjection.snapshot().metrics.beliefRevisions, 0,
   'failed canonical projection must not advance revision metrics');
 
+const unavailableBeliefProjection = new HexisAdaptationFabric();
+unavailableBeliefProjection.bindCanonicalBeliefProjection(() => 'unavailable');
+assert.throws(() => unavailableBeliefProjection.reviseBelief({
+  memoryId:'missing-canonical-target',
+  confidence01:0.5,
+  evidence:{ref:'unavailable-projection-source',trust01:0.9},
+  stance:'supports',
+}), /hexis-canonical-belief-projection-unavailable/);
+assert.equal(unavailableBeliefProjection.snapshot().beliefs.length,0,
+  'an unavailable canonical target must not commit an orphan Hexis belief');
+assert.equal(unavailableBeliefProjection.snapshot().beliefAudit.length,0,
+  'an unavailable canonical target must not leave a misleading audit');
+
 
 
 // End-to-end Hexis goal path: approval creates a paused NK1 agency project, and
