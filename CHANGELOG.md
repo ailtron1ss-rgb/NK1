@@ -1,3 +1,10 @@
+# WorkPass361 — broad runtime smoke and persistence continuity validation (2026-10-26)
+
+- [CI] Added a dedicated Node 24 workflow that runs runtime typecheck, standard organism smoke, legacy restart-persistence, canonical persistence/restore continuity, persistent-continuity organism integration, and verified autonomous-life restart regression on the same checkout.
+- [PURPOSE] These checks cross the newly repaired Core action/goal attribution path with established startup, persistence and continuity coverage rather than relying only on the new targeted test.
+- [VALIDATION] Workflow [#40291631075](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291631075) is running on head `ee360dba4503011157fc2780f0f5b0fd7accb33c`; its final job status must be recorded before this pass is marked complete.
+- [LIMIT] CI tests do not replace a clean-machine Docker launch with configured production evaluator authorities, real browser/Live2D E2E, Android/Termux audio, long soak, independent held-out uplift or license review.
+
 # WorkPass360 — bind whole-organism restart evidence to canonical MemoryOS2 (2026-10-26)
 
 - [TEST HARDENING] The WorkPass358 restart test no longer searches recursively across arbitrary snapshot values. It reads only `OrganismCore.snapshot().facets.advanced.memoryOS.items`, the canonical persisted MemoryOS2 owner, and requires the same marker-bearing item/ID before and after process restart.
