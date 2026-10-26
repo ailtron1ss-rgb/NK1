@@ -1,3 +1,10 @@
+## Runtime TypeScript checks must use a pinned compiler — 2026-10-26
+
+- Removed the global `tsc` and Node syntax-only fallbacks from `scripts/typecheck-runtime.mjs`. Missing canonical dependencies now produce `TYPECHECK=BLOCKED` and exit code 2 instead of a false semantic-check PASS.
+- Prefer the TypeScript compiler installed from `app/package-lock.json`, with the runtime-local lockfile compiler as an explicit secondary source. Compiler diagnostics preserve their non-zero exit code.
+- Added a temporary-workspace regression for no-compiler blocking, canonical compiler priority, runtime-local fallback, and propagation of a failing compiler.
+- Wired the contract test into `audit:quick` and the Node 24 toolchain workflow. Exact-head CI is running; do not infer success until its job completes.
+
 ## Skill revision provenance optional-digest contract — 2026-10-26
 
 - Fixed a production guard mismatch in `VersionedSkillCandidateStore.stageCandidate()`: `evaluationFingerprint` is optional in `SkillRevisionProvenance`, so absence no longer rejects a valid lineage-only revision candidate.
