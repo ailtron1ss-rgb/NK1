@@ -515,6 +515,7 @@ Object.defineProperty(rootWithAccessor,'recent',{enumerable:true,configurable:tr
 const invalidRootCases=[
   ['unknown-version',{version:2,recent:[],total:0}],
   ['present-undefined-version',{version:undefined,recent:[],total:0}],
+  ['missing-recent',{version:1,total:0}],
   ['non-array-recent',{version:1,recent:{},total:0}],
   ['present-undefined-recent',{version:1,recent:undefined,total:0}],
   ['non-array-receipt-events',{version:1,recent:[],receiptEvents:null,total:0}],
