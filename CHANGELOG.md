@@ -1,3 +1,10 @@
+## NK1 [evidence] — snapshot P65 persistence state before restore reads
+
+- P65 restore now snapshots bounded plain data before touching state fields, rejects getters/cycles/exotic object graphs without invoking caller code, and resets to a clean default ledger on an invalid persisted graph.
+- Added regressions for getter non-invocation and cyclic-state rejection, matching the existing RealityEvidenceLedger restore boundary.
+
+---
+
 ## NK1 [evidence] — fail closed on conflicting restored claim IDs (2026-10-26)
 
 - Prevented orphan event-index entries from surviving when their referenced stable claim ID has conflicting restored payloads.

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 /**
  * P65 — Epistemic Ledger.
  *
@@ -42,8 +43,18 @@ export class P65EpistemicLedger{
   this.state.quarantinedEventIds=[...this.quarantinedEventIds];
  }
  restore(raw?:Partial<P65State>|null){
-  const d=defaultP65(),r=raw??{};
+  const d=defaultP65();
   this.quarantinedEventIds.clear();
+  let detached:unknown;
+  try{
+   detached=snapshotPlainData(raw??{},{maxDepth:16,maxNodes:20_000,maxStringUnits:2*1024*1024});
+  }catch{
+   this.state=d;
+   return;
+  }
+  const r:Partial<P65State>=detached!==null&&typeof detached==='object'&&!Array.isArray(detached)
+   ?detached as Partial<P65State>
+   :{};
   if(Array.isArray(r.quarantinedEventIds))for(const eventId of r.quarantinedEventIds.slice(-512)){
    if(validEventId(eventId))this.quarantinedEventIds.add(eventId);
   }

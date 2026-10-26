@@ -311,6 +311,28 @@ test('P65 restores event-ID aliases and deduplicates claim IDs deterministically
     'claim-ID conflicts without upstream event IDs must not quarantine unrelated event IDs');
 });
 
+test('P65 restore rejects accessors and cyclic persisted graphs without invoking getters', () => {
+  let getterCalls = 0;
+  const hostile = {};
+  Object.defineProperty(hostile, 'claimsData', {
+    enumerable: true,
+    get() { getterCalls++; return []; },
+  });
+  const accessorRestore = new P65EpistemicLedger();
+  accessorRestore.restore(hostile);
+  assert.equal(getterCalls, 0, 'restore must not invoke caller-owned getters');
+  assert.equal(accessorRestore.snapshot().claimsData.length, 0);
+  assert.equal(accessorRestore.snapshot().claims, 0);
+
+  const cyclic = {};
+  cyclic.self = cyclic;
+  const cycleRestore = new P65EpistemicLedger();
+  cycleRestore.restore(cyclic);
+  assert.equal(cycleRestore.snapshot().claimsData.length, 0,
+    'cyclic persisted state must fail closed to the default ledger');
+  assert.equal(cycleRestore.snapshot().claims, 0);
+});
+
 test('P65 fails closed when an event identity is reused with conflicting evidence', () => {
   const eventId = realityEvidenceEventId('exec-p65-quarantine-518', 'tool-outcome', 'canonical');
   const input = {
