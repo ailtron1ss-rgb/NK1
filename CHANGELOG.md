@@ -1,3 +1,8 @@
+## [NK1][Hexis] WorkPass393 — retain goal rationale in agency materialization (2026-10-26)
+
+- [INTEGRATION] Preserve the reviewed HMX goal description as the NK1 self-project rationale instead of dropping explanatory content during materialization.
+- [TEST] Assert that the source rationale survives the Hexis proposal → agency project boundary.
+
 ## [NK1][Hexis] WorkPass392 — connect reviewed Hexis goals to NK1 agency without implicit activation (2026-10-26)
 
 - [INTEGRATION] Added an explicit approved-goal materialization bridge from `HexisAdaptationFabric` into `AgencySubsystemRuntime.selfProjects`, preserving proposal ID, source lineage and HMX source ref.
