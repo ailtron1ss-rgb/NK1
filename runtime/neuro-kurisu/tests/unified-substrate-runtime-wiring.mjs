@@ -66,6 +66,32 @@ assert.equal(restoredState.lastReason.length, 256);
 assert.ok(Object.values(restoredState.self).every(value => typeof value === 'string' || (Number.isFinite(value) && value >= 0 && value <= 1)));
 assert.throws(() => restored.restore({ version: 2 }), /unsupported unified-cognitive-substrate state version/);
 
+// WorkPass343: the sidecar is derived state and may be newer than the durable
+// canonical Core tick after an interrupted write sequence. A valid-but-future
+// lastTick (including MAX_SAFE_INTEGER) must not permanently brick integration.
+const futureTickSubstrate = new UnifiedCognitiveSubstrate();
+futureTickSubstrate.restore({ version: 1, cycles: 7, lastTick: Number.MAX_SAFE_INTEGER });
+assert.equal(futureTickSubstrate.snapshot().lastTick, Number.MAX_SAFE_INTEGER);
+assert.equal(futureTickSubstrate.reconcileLastTick(7), true);
+assert.equal(futureTickSubstrate.snapshot().lastTick, 7);
+assert.equal(futureTickSubstrate.snapshot().cycles, 7, 'reconciliation preserves non-clock derived metrics');
+assert.equal(futureTickSubstrate.reconcileLastTick(7), false, 'already aligned sidecar clocks are left unchanged');
+const aligned = futureTickSubstrate.snapshot();
+assert.throws(() => futureTickSubstrate.reconcileLastTick(Number.NaN), /canonical tick/);
+assert.deepEqual(futureTickSubstrate.snapshot(), aligned, 'invalid canonical ticks must not mutate the projection');
+const nextAfterReconcile = futureTickSubstrate.integrate({
+  tick: 8,
+  self: aligned.self,
+  world: aligned.world,
+  prediction: aligned.prediction,
+  resources: aligned.resources,
+  memoryPressure01: aligned.coupling.memoryPressure01,
+  evidenceCoverage01: aligned.provenance.evidenceCoverage01,
+  realObservationCoverage01: aligned.provenance.realObservationCoverage01,
+  unknown01: aligned.provenance.unknown01,
+});
+assert.equal(nextAfterReconcile.lastTick, 8, 'reconciled sidecar must accept the next canonical cycle');
+
 // Own-property reads prevent inherited state values from being treated as
 // persisted facts.
 const inheritedOnly = Object.create({ agency01: 0.99 });
@@ -220,6 +246,8 @@ assert.match(runtime, /baseRoutingPolicy\.allowMatchedCounterfactual && substrat
 assert.match(runtime, /FileStateStore<UnifiedCognitiveSubstrateState>\(\x60\$\{config\.stateFile\}\.cognitive-substrate\.json\x60\)/);
 assert.match(runtime, /unifiedCognitiveSubstrate\.restore\(await this\.unifiedCognitiveSubstrateStore\.load\(\) \?\? undefined\)/);
 assert.match(runtime, /runtime\.unified-cognitive-substrate\.restore-failed/);
+assert.match(runtime, /unifiedCognitiveSubstrate\.reconcileLastTick\(canonicalCoreTick\)/);
+assert.match(runtime, /runtime\.unified-cognitive-substrate\.tick-reconciled/);
 assert.match(runtime, /memoryPressure01: 1 - resourceAllocation\.memory01/);
 const observeAt = runtime.indexOf('const cycle = await this.core.observe(cycleObservation);');
 const integrateAt = runtime.indexOf('this.unifiedCognitiveSubstrate.integrate(', observeAt);
