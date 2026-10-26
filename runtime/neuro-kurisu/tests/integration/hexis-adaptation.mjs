@@ -394,15 +394,18 @@ assert.equal(noOpApplied?.application?.status, 'noop');
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.length, beforeNoopApply,
   'an empty memory section must not claim or cause a canonical memory mutation');
 
-// Fault injection: if a batch write fails halfway, newly created memories are compensated
-// through MemoryFabric's canonical forget command and the accepted stage remains retryable.
+// Fault injection: the second canonical write commits, then its wrapper throws before returning
+// the memory ID. Rollback must discover this unreturned row from the pre-apply snapshot delta.
 const rollbackMemoryRuntime = new MemorySubsystemRuntime();
 let failingWrites = 0;
 const rollbackFabric = {
   canonicalSnapshot: () => rollbackMemoryRuntime.fabric.canonicalSnapshot(),
   encode: (input, options) => {
     failingWrites += 1;
-    if (failingWrites === 2) throw new Error('injected-hmx-write-failure');
+    if (failingWrites === 2) {
+      rollbackMemoryRuntime.fabric.encode(input, options);
+      throw new Error('injected-hmx-write-failure-after-commit');
+    }
     return rollbackMemoryRuntime.fabric.encode(input, options);
   },
   forgetById: (...args) => rollbackMemoryRuntime.fabric.forgetById(...args),
