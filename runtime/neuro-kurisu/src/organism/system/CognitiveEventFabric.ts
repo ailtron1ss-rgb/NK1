@@ -478,6 +478,13 @@ export class CognitiveEventFabric {
     return { tick: cycleTick, complete, integrity01: complete ? 1 : integrity01, missingStages, invalidStages, missingEdges };
   }
 
+  getById(id:string):CognitiveEventNode|null {
+    const normalized=typeof id==='string'?id.trim():'';
+    if(!normalized)return null;
+    const event=this.events.find(row=>row.id===normalized);
+    return event?{...event,parentIds:[...event.parentIds],payload:{...event.payload}}:null;
+  }
+
   recent(limit=64):CognitiveEventNode[]{return structuredClone(this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
 
   snapshot():CognitiveEventFabricSnapshot{
