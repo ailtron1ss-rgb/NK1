@@ -2895,7 +2895,10 @@ export class OrganismCore {
             if (!requestedMemory && expectedGroupRows.length) {
                 const current = expectedGroupRows.filter((row) => row.validUntilAt == null)
                     .sort((a, b) => Number(b.revisionSequence ?? 1) - Number(a.revisionSequence ?? 1))[0];
-                return { ok: false, error: 'review-source-memory-superseded', memoryId: sourceMemoryId, currentMemoryId: current?.id };
+                // Historical rows can remain after the current tip was successfully forgotten.
+                // Reject only when a live tip still exists; otherwise a retry is idempotent.
+                if (current)
+                    return { ok: false, error: 'review-source-memory-superseded', memoryId: sourceMemoryId, currentMemoryId: current.id };
             }
             if (memory && (memory.kind === 'identity' || memory.kind === 'autobiographical' || memory.epistemicStatus === 'quarantined')) {
                 return { ok: false, error: 'protected-memory-requires-explicit-review', memoryId: memory.id };
