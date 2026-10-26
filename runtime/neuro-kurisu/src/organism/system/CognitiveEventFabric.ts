@@ -359,29 +359,89 @@ export class CognitiveEventFabric {
   }
 
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
-    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
-    const suppliedId=typeof input.id==='string'?input.id.trim():'';
-    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
+    if(!isRecord(input))throw new TypeError('cognitive-event-input-must-be-a-record');
+    const inputFields=['id','tick','at','stage','source','parentIds','external','confidence01','payload'];
+    const accessorInputField=inputFields.find(key=>hasOwnAccessorField(input,key));
+    if(accessorInputField)throw new TypeError('cognitive-event-input-field-accessor:'+accessorInputField);
 
-    const normalizedTick=Math.max(0,Math.floor(input.tick));
-    const normalizedSource=String(input.source||'unknown').slice(0,120);
-    const parentIds=[...(input.parentIds??[])].map(String).slice(0,12);
-    const external=Boolean(input.external);
-    const confidence01=clamp01(input.confidence01??0.5);
-    const payload=structuredClone(cleanPayload(input.payload));
-    // Validate serializability before mutating the event ledger; cyclic or non-JSON payloads fail closed.
+    const tickValue=ownDataValue(input,'tick');
+    if(typeof tickValue!=='number'||!Number.isSafeInteger(tickValue)||tickValue<0) {
+      throw new RangeError('invalid-cognitive-event-tick');
+    }
+    const stageValue=ownDataValue(input,'stage');
+    if(typeof stageValue!=='string'||!COGNITIVE_STAGES.has(stageValue as CognitiveStage)) {
+      throw new TypeError('invalid-cognitive-event-stage');
+    }
+    const sourceValue=ownDataValue(input,'source');
+    if(typeof sourceValue!=='string')throw new TypeError('invalid-cognitive-event-source');
+
+    const explicitAt=ownDataValue(input,'at');
+    const hasExplicitAt=explicitAt!==undefined;
+    const at=hasExplicitAt?explicitAt:Date.now();
+    if(typeof at!=='number'||!Number.isFinite(at)||at<0) {
+      throw new RangeError('invalid-cognitive-event-timestamp');
+    }
+
+    const idValue=ownDataValue(input,'id');
+    let suppliedId='';
+    if(idValue!==undefined) {
+      if(!hasOnlyCanonicalEventId(idValue))throw new Error('invalid-cognitive-event-id');
+      suppliedId=idValue;
+    }
+
+    const parentValue=ownDataValue(input,'parentIds');
+    let parentIds:string[]=[];
+    if(parentValue!==undefined) {
+      if(!Array.isArray(parentValue))throw new TypeError('invalid-cognitive-event-parent-ids');
+      let copiedParents:unknown;
+      try {
+        copiedParents=clonePlainJsonData(parentValue);
+      } catch {
+        throw new TypeError('invalid-cognitive-event-parent-ids');
+      }
+      if(!Array.isArray(copiedParents)||copiedParents.length>12||
+        copiedParents.some(parent=>!hasOnlyCanonicalEventId(parent))||
+        new Set(copiedParents).size!==copiedParents.length) {
+        throw new TypeError('invalid-cognitive-event-parent-ids');
+      }
+      parentIds=copiedParents as string[];
+    }
+
+    const externalValue=ownDataValue(input,'external');
+    if(externalValue!==undefined&&typeof externalValue!=='boolean') {
+      throw new TypeError('invalid-cognitive-event-external-flag');
+    }
+    const external=externalValue===undefined?false:externalValue;
+    const confidenceValue=ownDataValue(input,'confidence01');
+    if(confidenceValue!==undefined&&(
+      typeof confidenceValue!=='number'||!Number.isFinite(confidenceValue)||confidenceValue<0||confidenceValue>1
+    ))throw new RangeError('invalid-cognitive-event-confidence');
+    const confidence01=confidenceValue===undefined?0.5:confidenceValue;
+
+    const payloadValue=ownDataValue(input,'payload');
+    const payloadRaw=payloadValue===undefined?{}:payloadValue;
+    if(!isRecord(payloadRaw))throw new TypeError('cognitive-event-payload-must-be-a-record');
+    // Preserve the established contract: omit top-level payload accessors without invoking them,
+    // then strictly clone nested data. Nested accessors remain invalid and fail closed.
+    const payload=clonePlainJsonData(cleanPayload(payloadRaw)) as Record<string,unknown>;
+    if(!isRecord(payload))throw new TypeError('cognitive-event-payload-must-be-a-record');
+    // Payload snapshots use the same bounded plain-JSON contract as restore, so
+    // accepted evidence cannot later disappear because restore rejects its shape.
     sha256Stable(payload);
+
+    const normalizedSource=String(sourceValue||'unknown').slice(0,120);
+    const normalizedTick=tickValue;
+    const stage=stageValue as CognitiveStage;
 
     if(suppliedId){
       const prior=this.events.find(event=>event.id===suppliedId);
       if(prior){
-        // Missing/invalid arrival time means "replay the original event time";
-        // an explicit finite timestamp, however, is part of the event envelope.
-        const comparisonAt=Number.isFinite(input.at)?Number(input.at):prior.at;
+        // A replay without an explicit timestamp reuses the first event's timestamp.
+        const comparisonAt=hasExplicitAt?at:prior.at;
         const expectedFingerprint=sha256Stable({
           tick:normalizedTick,
           at:comparisonAt,
-          stage:input.stage,
+          stage,
           source:normalizedSource,
           parentIds,
           external,
@@ -398,16 +458,16 @@ export class CognitiveEventFabric {
           confidence01:prior.confidence01,
           payload:prior.payload,
         });
-        if(expectedFingerprint!==priorFingerprint) throw new Error('cognitive-event-id-conflict');
+        if(expectedFingerprint!==priorFingerprint)throw new Error('cognitive-event-id-conflict');
         return structuredClone(prior);
       }
     }
 
     const event:CognitiveEventNode={
       id:suppliedId||`cef:${at}:${normalizedTick}:${Math.random().toString(16).slice(2)}`,
-      tick:normalizedTick, at,
-      stage:input.stage, source:normalizedSource,
-      parentIds, external, confidence01, payload,
+      tick:normalizedTick,at,
+      stage,source:normalizedSource,
+      parentIds,external,confidence01,payload,
     };
     this.events.unshift(event);
     if(this.events.length>this.capacity)this.events=this.events.slice(0,this.capacity);

@@ -1,3 +1,17 @@
+# WorkPass364 — non-coercive CognitiveEventFabric append boundary (2026-10-26)
+
+- [CI-DRIVEN CORRECTION] Follow-up log review showed the compatibility adjustment first matched the same clone line in `restore()` instead of `append()`. The current patch restores strict nested-payload decoding there and applies top-level accessor omission to `append()` specifically; this exact source SHA requires fresh validation.
+- [CI-DRIVEN FIX] Fresh WorkPass331 typecheck passed after the explicit event-ID narrowing fix; the following canonical-kernel run exposed a legacy contract: top-level payload accessor fields are omitted (not fatal) without invoking getters. Append now preserves that established behavior while still rejecting nested accessor payloads. Exact-head revalidation is required.
+- [CI-DRIVEN FIX] The first WorkPass331 run on PR #186 stopped at the full runtime typecheck with TS2322 because a ternary over an unknown ID value did not narrow to string. Replaced it with explicit type-guarded assignment; this correction requires a fresh exact-head run.
+- [FIXED] Reject non-safe, fractional, negative and non-numeric causal ticks instead of silently rounding/clamping them.
+- [FIXED] Validate stage, timestamp, external flag, confidence, parent IDs and source types before writes; reject malformed values without mutating the journal.
+- [HARDENED] Use the same bounded plain-JSON clone for appended payloads and persisted restore; nested getters/cycles/unsupported values fail before ledger mutation.
+- [REGRESSION] Add direct append ingress cases and assert every rejection preserves the existing snapshot; valid appended events must survive restore.
+- [VALIDATION] Exact-head CI is required; this entry records implementation, not a test PASS.
+- [RELEASE] main and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass363 — reject malformed event-fabric root schema atomically (2026-10-26)
 
 - [FIXED] Distinguish a genuinely omitted legacy schema version from a present but invalid value such as `version: undefined`.
