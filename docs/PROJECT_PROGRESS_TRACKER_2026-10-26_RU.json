@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; thirteen named workflows passed on that exact head. The newer WorkPass343 code/test head 8b38a354e7a32ea8822e4cd44866c73f00ce0d1c adds canonical Core/derived-sidecar tick reconciliation, a MAX_SAFE_INTEGER restore regression, a real runtime restart smoke with a corrupted future sidecar, and explicit workflow path filters. Exact-head CI evidence has not yet been returned; scores remain unchanged until validation. WorkPass335/336 and WorkPass339 are included in the validated code/test snapshot 621864d0d7f2676245383adab86f1dcc6d0f741f. Branch head before this tracker update: ba629fde5976dfea07d1658d6c3e6078353dbd9f.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated combined cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; all historical CI rows still refer exactly to that SHA. Current source base added WorkPass343 substrate-tick reconciliation; WorkPass344 adds mandatory metadata checking to final release verification. The first WorkPass344 run discovered an architecture-audit false positive from a source assertion string, corrected in 6cf87a07f28b208b809506925f4cbd6fb163636c. The latest combined exact-head CI is pending; scores are unchanged and historic PASS rows do not validate this new code. Release ZIP replacement, physical Android/Termux, browser/Live2D hardware E2E, extended soak and licensing remain open.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -450,10 +450,19 @@
       "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
       "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454",
       "progressPercentagesChanged": false
+    },
+    {
+      "id": "WorkPass344",
+      "date": "2026-10-26",
+      "branch": "work/nk1-final-release-gate-2026-10-26-r3",
+      "summary": "Final release verifier requires release metadata validation; four fail-closed regressions, audit wiring and unified CI gate added.",
+      "codeCommit": "6cf87a07f28b208b809506925f4cbd6fb163636c",
+      "validationStatus": "Pending exact-head CI after architecture-audit false-positive correction.",
+      "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "8b38a354e7a32ea8822e4cd44866c73f00ce0d1c",
-  "branchHeadBeforeTrackerCommit": "ba629fde5976dfea07d1658d6c3e6078353dbd9f",
+  "latestUnverifiedCodeTestHead": "6cf87a07f28b208b809506925f4cbd6fb163636c",
+  "branchHeadBeforeTrackerCommit": "6cf87a07f28b208b809506925f4cbd6fb163636c",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
