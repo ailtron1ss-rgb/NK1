@@ -249,7 +249,7 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
   );
   script = script.replace(
     "applyEmbodiment(intent);\n  });\n  boot();",
-    "applyEmbodiment(intent);\n    window.__w70AppliedCount=(window.__w70AppliedCount||0)+1;\n    window.__w70LastApplied={stateVersion:intent.stateVersion,speechEventId:intent.speechEventId,audioClockId:intent.audioClockId,speechPhase:intent.speechPhase,audioTimeMs:intent.audioTimeMs,speaking:intent.speaking,mouthOpen:lipTarget,mouthForm:lipFormTarget};\n  });\n  boot();"
+    "applyEmbodiment(intent);\n    window.__w70AppliedCount=(window.__w70AppliedCount||0)+1;\n    window.__w70LastApplied={stateVersion:intent.stateVersion,speechEventId:intent.speechEventId,audioClockId:intent.audioClockId,speechPhase:intent.speechPhase,audioTimeMs:intent.audioTimeMs,speaking:intent.speaking,mouthOpen:lipTarget,mouthForm:lipFormTarget,headAngleX:intent.headAngleX,bodyAngleX:intent.bodyAngleX,bodyAngleY:intent.bodyAngleY,breathIntensity:intent.breathIntensity};\n  });\n  boot();"
   );
   const listeners = new Map();
   const parent = { postMessage() {} };
@@ -282,12 +282,18 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
     clockSource: "speech-synthesis-boundary-anchored-monotonic", priority: 70, cancellationToken: "cancel:speech-real-handler",
     expression: "thinking", expressionIntensity: .5, mouth: { open: .72, form: .2, viseme: "open" },
     gaze: { x: .1, y: -.1, driven: true },
-    body: { headTilt: .02, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 1 }, voiceEmphasis: .3,
+    body: { headTilt: .02, headAngleX: .14, headAngleY: -.06, bodyAngleX: .18, bodyAngleY: .07, bodyAngleZ: -.03, breathIntensity: .75, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 1 }, voiceEmphasis: .3,
     ...overrides,
   });
   dispatch(message());
   assert.equal(fakeWindow.__w70AppliedCount, 1);
   assert.equal(fakeWindow.__w70LastApplied.mouthOpen, .72);
+  assert.equal(fakeWindow.__w70LastApplied.headAngleX, .14);
+  assert.equal(fakeWindow.__w70LastApplied.bodyAngleX, .18);
+  assert.equal(fakeWindow.__w70LastApplied.bodyAngleY, .07);
+  assert.equal(fakeWindow.__w70LastApplied.breathIntensity, .75);
+  dispatch(message({ stateVersion: 2, body: { ...message().body, bodyAngleY: 1.01 } }));
+  assert.equal(fakeWindow.__w70AppliedCount, 1, "out-of-range full-body channels must be rejected before stateVersion advances");
   dispatch(message({ mouth: { open: .1, form: 0, viseme: "closed" } }));
   assert.equal(fakeWindow.__w70AppliedCount, 1, "duplicate stateVersion must be rejected");
   dispatch(message({ stateVersion: 2, audioTimeMs: 140 }));
