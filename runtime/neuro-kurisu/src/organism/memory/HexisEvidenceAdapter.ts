@@ -80,7 +80,7 @@ function dataSnapshot(value: unknown, allowed: readonly string[]): Record<string
 function cleanText(value: unknown, max = MAX_TEXT): string | undefined {
   if (typeof value !== "string") return undefined;
   const normalized = value.trim();
-  if (!normalized || normalized.length > max || /[\u0000-\u001f\u007f]/.test(normalized)) return undefined;
+  if (!normalized || normalized.length > max || /[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
   return normalized;
 }
 
