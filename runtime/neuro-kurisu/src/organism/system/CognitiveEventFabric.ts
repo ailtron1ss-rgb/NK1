@@ -82,6 +82,30 @@ const cleanPayload=(x:unknown):Record<string,unknown>=>{
   }
   return detached;
 };
+const ownDataValue=(value:unknown,key:string):unknown=>{
+  if(value===null||(typeof value!=='object'&&typeof value!=='function'))return undefined;
+  try {
+    const descriptor=Object.getOwnPropertyDescriptor(value,key);
+    return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')
+      ? descriptor.value : undefined;
+  } catch {
+    return undefined;
+  }
+};
+const ownArrayValues=(value:unknown,maxItems:number):unknown[]=>{
+  if(!Array.isArray(value))return [];
+  const length=Math.min(value.length,Math.max(0,Math.floor(maxItems)));
+  const values:unknown[]=[];
+  for(let i=0;i<length;i++) {
+    const descriptor=ownDataValue(value,String(i));
+    // Sparse slots and accessors are not data rows and must not be invoked.
+    if(descriptor!==undefined)values.push(descriptor);
+  }
+  return values;
+};
+const hasOnlyCanonicalEventId=(value:unknown):value is string=>
+  typeof value==='string'&&value.length>0&&value.length<=180&&value===value.trim()&&
+  !/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
 export class CognitiveEventFabric {
