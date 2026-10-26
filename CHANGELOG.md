@@ -1,3 +1,7 @@
+## [NK1][Hexis] WorkPass408 — correct the server smoke URL template literal (2026-10-26)
+
+- [TEST FIX] Removed literal escape backslashes retained by the source-generation string around the new goal-list URL. The smoke fixture now contains a normal JavaScript template literal for its dynamic server URL.
+
 ## [NK1][Hexis] WorkPass407 — exercise goal proposal→approval→activation through the live HTTP server (2026-10-26)
 
 - [SMOKE] Added a second HMX fixture with one imported memory, one goal and one `supports` relationship; stages, accepts and applies it through the running server.
