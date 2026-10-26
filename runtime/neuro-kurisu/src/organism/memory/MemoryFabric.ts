@@ -707,7 +707,35 @@ export class MemoryFabric {
       }
       return {item,compensationToken};
     } catch(error) {
-      this.commitSignalCompensation(compensationToken);
+      // updateSignals can throw after canonical mutation (for example, after an
+      // adapter returns or a lifecycle side effect fails). Do not discard the
+      // only rollback capability until the pre-state has been restored.
+      try {
+        const compensation=this.signalCompensations.get(compensationToken);
+        const current=this.findCanonical(id);
+        if(!compensation||!current)throw new Error('memory-signal-update-compensation-unavailable');
+        const currentSnapshot=memorySignalRollbackSnapshot(current);
+        if(JSON.stringify(currentSnapshot)!==JSON.stringify(compensation.snapshot)) {
+          compensation.expectedCurrent=currentSnapshot;
+          this.restoreSignalsForCompensation(
+            compensationToken,
+            'memory-signal-update-compensation',
+            {
+              commandId:'memory-signal-update-rollback:'+createHash('sha256')
+                .update(String(id)+'\\0'+String(context.commandId??'')+'\\0'+String(reason))
+                .digest('hex').slice(0,48),
+            },
+          );
+        } else {
+          this.commitSignalCompensation(compensationToken);
+        }
+      } catch(rollbackError) {
+        this.commitSignalCompensation(compensationToken);
+        throw new Error(
+          'memory-signal-update-failed:'+String(error?.message??error).slice(0,240)+
+          ';rollback-failure='+String(rollbackError?.message??rollbackError).slice(0,240),
+        );
+      }
       throw error;
     }
   }
