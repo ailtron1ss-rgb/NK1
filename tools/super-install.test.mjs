@@ -101,7 +101,7 @@ test('installer fails closed when package and lockfile engine contracts disagree
   const result = run(f);
   assert.equal(result.status, 1, `${result.stdout}\\n${result.stderr}`);
   assert.match(result.stderr, /workspace=runtime reason=lockfile-root-mismatch/);
-  assert.match(result.stderr, /nodeEngine=>=25\.0\.0\/>=24\.0\.0/);
+  assert.ok(result.stderr.includes('nodeEngine=>=25.0.0/>=24.0.0'));
   assert.equal(await readFile(f.log, 'utf8').catch(() => ''), '');
 });
 
