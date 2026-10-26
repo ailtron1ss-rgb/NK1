@@ -22,6 +22,19 @@ const section = (record:Record<string, unknown>, key:string):Record<string, unkn
 };
 const metric = (value:unknown, fallback:number):number =>
   typeof value === 'number' && Number.isFinite(value) ? clamp(value) : fallback;
+const trustedMetric = (value:unknown, missingFallback:number, invalidFallback:number):number => {
+  if (value === undefined) return missingFallback;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
+    ? value
+    : invalidFallback;
+};
+const sectionMetric = (
+  record:Record<string, unknown>,
+  malformedSection:boolean,
+  key:string,
+  missingFallback:number,
+  invalidFallback:number,
+):number => trustedMetric(malformedSection ? null : own(record, key), missingFallback, invalidFallback);
 const counter = (value:unknown, fallback=0):number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : fallback;
 const cleanText = (value:unknown, fallback:string, maxLength:number):string => {
@@ -130,6 +143,18 @@ export class UnifiedCognitiveSubstrate {
       throw new RangeError('unsupported unified-cognitive-substrate state version');
     }
     const d = defaultUnifiedCognitiveSubstrate();
+    const selfRaw = own(source, 'self');
+    const worldRaw = own(source, 'world');
+    const predictionRaw = own(source, 'prediction');
+    const resourcesRaw = own(source, 'resources');
+    const couplingRaw = own(source, 'coupling');
+    const provenanceRaw = own(source, 'provenance');
+    const selfMalformed = selfRaw !== undefined && !isRecord(selfRaw);
+    const worldMalformed = worldRaw !== undefined && !isRecord(worldRaw);
+    const predictionMalformed = predictionRaw !== undefined && !isRecord(predictionRaw);
+    const resourcesMalformed = resourcesRaw !== undefined && !isRecord(resourcesRaw);
+    const couplingMalformed = couplingRaw !== undefined && !isRecord(couplingRaw);
+    const provenanceMalformed = provenanceRaw !== undefined && !isRecord(provenanceRaw);
     const self = section(source, 'self');
     const world = section(source, 'world');
     const prediction = section(source, 'prediction');
@@ -143,46 +168,46 @@ export class UnifiedCognitiveSubstrate {
       lastTick: counter(own(source, 'lastTick'), d.lastTick),
       self: {
         continuity01: metric(own(self, 'continuity01'), d.self.continuity01),
-        coherence01: metric(own(self, 'coherence01'), d.self.coherence01),
-        agency01: metric(own(self, 'agency01'), d.self.agency01),
-        realityAlignment01: metric(own(self, 'realityAlignment01'), d.self.realityAlignment01),
+        coherence01: sectionMetric(self, selfMalformed, 'coherence01', d.self.coherence01, 0),
+        agency01: sectionMetric(self, selfMalformed, 'agency01', d.self.agency01, 0),
+        realityAlignment01: sectionMetric(self, selfMalformed, 'realityAlignment01', d.self.realityAlignment01, 0),
         mode: cleanText(own(self, 'mode'), d.self.mode, 64),
         lastAction: cleanText(own(self, 'lastAction'), d.self.lastAction, 64),
       },
       world: {
-        confidence01: metric(own(world, 'confidence01'), d.world.confidence01),
-        uncertainty01: metric(own(world, 'uncertainty01'), d.world.uncertainty01),
+        confidence01: sectionMetric(world, worldMalformed, 'confidence01', d.world.confidence01, 0),
+        uncertainty01: sectionMetric(world, worldMalformed, 'uncertainty01', d.world.uncertainty01, 1),
         entityCount: counter(own(world, 'entityCount'), d.world.entityCount),
         eventCount: counter(own(world, 'eventCount'), d.world.eventCount),
         relationCount: counter(own(world, 'relationCount'), d.world.relationCount),
-        conflict01: metric(own(world, 'conflict01'), d.world.conflict01),
-        newEntityRate01: metric(own(world, 'newEntityRate01'), d.world.newEntityRate01),
+        conflict01: sectionMetric(world, worldMalformed, 'conflict01', d.world.conflict01, 1),
+        newEntityRate01: sectionMetric(world, worldMalformed, 'newEntityRate01', d.world.newEntityRate01, 1),
       },
       prediction: {
-        error01: metric(own(prediction, 'error01'), d.prediction.error01),
+        error01: sectionMetric(prediction, predictionMalformed, 'error01', d.prediction.error01, 1),
         openCount: counter(own(prediction, 'openCount'), d.prediction.openCount),
         agingCount: counter(own(prediction, 'agingCount'), d.prediction.agingCount),
         expiredCount: counter(own(prediction, 'expiredCount'), d.prediction.expiredCount),
-        priority01: metric(own(prediction, 'priority01'), d.prediction.priority01),
+        priority01: sectionMetric(prediction, predictionMalformed, 'priority01', d.prediction.priority01, 1),
       },
       resources: {
-        battery01: metric(own(resources, 'battery01'), d.resources.battery01),
-        thermal01: metric(own(resources, 'thermal01'), d.resources.thermal01),
-        ramPressure01: metric(own(resources, 'ramPressure01'), d.resources.ramPressure01),
-        computeCapacity01: metric(own(resources, 'computeCapacity01'), d.resources.computeCapacity01),
-        scarcity01: metric(own(resources, 'scarcity01'), d.resources.scarcity01),
-        efficiency01: metric(own(resources, 'efficiency01'), d.resources.efficiency01),
+        battery01: sectionMetric(resources, resourcesMalformed, 'battery01', d.resources.battery01, 0),
+        thermal01: sectionMetric(resources, resourcesMalformed, 'thermal01', d.resources.thermal01, 1),
+        ramPressure01: sectionMetric(resources, resourcesMalformed, 'ramPressure01', d.resources.ramPressure01, 1),
+        computeCapacity01: sectionMetric(resources, resourcesMalformed, 'computeCapacity01', d.resources.computeCapacity01, 0),
+        scarcity01: sectionMetric(resources, resourcesMalformed, 'scarcity01', d.resources.scarcity01, 1),
+        efficiency01: sectionMetric(resources, resourcesMalformed, 'efficiency01', d.resources.efficiency01, 0),
       },
       coupling: {
-        selfWorld01: metric(own(coupling, 'selfWorld01'), d.coupling.selfWorld01),
-        predictionGrounding01: metric(own(coupling, 'predictionGrounding01'), d.coupling.predictionGrounding01),
-        memoryPressure01: metric(own(coupling, 'memoryPressure01'), d.coupling.memoryPressure01),
-        actionReadiness01: metric(own(coupling, 'actionReadiness01'), d.coupling.actionReadiness01),
+        selfWorld01: sectionMetric(coupling, couplingMalformed, 'selfWorld01', d.coupling.selfWorld01, 0),
+        predictionGrounding01: sectionMetric(coupling, couplingMalformed, 'predictionGrounding01', d.coupling.predictionGrounding01, 0),
+        memoryPressure01: sectionMetric(coupling, couplingMalformed, 'memoryPressure01', d.coupling.memoryPressure01, 1),
+        actionReadiness01: sectionMetric(coupling, couplingMalformed, 'actionReadiness01', d.coupling.actionReadiness01, 0),
       },
       provenance: {
-        evidenceCoverage01: metric(own(provenance, 'evidenceCoverage01'), d.provenance.evidenceCoverage01),
-        realObservationCoverage01: metric(own(provenance, 'realObservationCoverage01'), d.provenance.realObservationCoverage01),
-        unknown01: metric(own(provenance, 'unknown01'), d.provenance.unknown01),
+        evidenceCoverage01: sectionMetric(provenance, provenanceMalformed, 'evidenceCoverage01', d.provenance.evidenceCoverage01, 0),
+        realObservationCoverage01: sectionMetric(provenance, provenanceMalformed, 'realObservationCoverage01', d.provenance.realObservationCoverage01, 0),
+        unknown01: sectionMetric(provenance, provenanceMalformed, 'unknown01', d.provenance.unknown01, 1),
       },
       lastReason: cleanText(own(source, 'lastReason'), d.lastReason, 256),
     };
@@ -216,40 +241,40 @@ export class UnifiedCognitiveSubstrate {
     const rawResources = input.resources as unknown as Record<string, unknown>;
     const self = {
       continuity01: metric(own(rawSelf, 'continuity01'), d.self.continuity01),
-      coherence01: metric(own(rawSelf, 'coherence01'), d.self.coherence01),
-      agency01: metric(own(rawSelf, 'agency01'), d.self.agency01),
-      realityAlignment01: metric(own(rawSelf, 'realityAlignment01'), d.self.realityAlignment01),
+      coherence01: trustedMetric(own(rawSelf, 'coherence01'), d.self.coherence01, 0),
+      agency01: trustedMetric(own(rawSelf, 'agency01'), d.self.agency01, 0),
+      realityAlignment01: trustedMetric(own(rawSelf, 'realityAlignment01'), d.self.realityAlignment01, 0),
       mode: cleanText(own(rawSelf, 'mode'), d.self.mode, 64),
       lastAction: cleanText(own(rawSelf, 'lastAction'), d.self.lastAction, 64),
     };
     const world = {
-      confidence01: metric(own(rawWorld, 'confidence01'), d.world.confidence01),
-      uncertainty01: metric(own(rawWorld, 'uncertainty01'), d.world.uncertainty01),
+      confidence01: trustedMetric(own(rawWorld, 'confidence01'), d.world.confidence01, 0),
+      uncertainty01: trustedMetric(own(rawWorld, 'uncertainty01'), d.world.uncertainty01, 1),
       entityCount: counter(own(rawWorld, 'entityCount')),
       eventCount: counter(own(rawWorld, 'eventCount')),
       relationCount: counter(own(rawWorld, 'relationCount')),
-      conflict01: metric(own(rawWorld, 'conflict01'), d.world.conflict01),
-      newEntityRate01: metric(own(rawWorld, 'newEntityRate01'), d.world.newEntityRate01),
+      conflict01: trustedMetric(own(rawWorld, 'conflict01'), d.world.conflict01, 1),
+      newEntityRate01: trustedMetric(own(rawWorld, 'newEntityRate01'), d.world.newEntityRate01, 1),
     };
     const prediction = {
-      error01: metric(own(rawPrediction, 'error01'), d.prediction.error01),
+      error01: trustedMetric(own(rawPrediction, 'error01'), d.prediction.error01, 1),
       openCount: counter(own(rawPrediction, 'openCount')),
       agingCount: counter(own(rawPrediction, 'agingCount')),
       expiredCount: counter(own(rawPrediction, 'expiredCount')),
-      priority01: metric(own(rawPrediction, 'priority01'), d.prediction.priority01),
+      priority01: trustedMetric(own(rawPrediction, 'priority01'), d.prediction.priority01, 1),
     };
     const resources = {
-      battery01: metric(own(rawResources, 'battery01'), d.resources.battery01),
-      thermal01: metric(own(rawResources, 'thermal01'), d.resources.thermal01),
-      ramPressure01: metric(own(rawResources, 'ramPressure01'), d.resources.ramPressure01),
-      computeCapacity01: metric(own(rawResources, 'computeCapacity01'), d.resources.computeCapacity01),
-      scarcity01: metric(own(rawResources, 'scarcity01'), d.resources.scarcity01),
-      efficiency01: metric(own(rawResources, 'efficiency01'), d.resources.efficiency01),
+      battery01: trustedMetric(own(rawResources, 'battery01'), d.resources.battery01, 0),
+      thermal01: trustedMetric(own(rawResources, 'thermal01'), d.resources.thermal01, 1),
+      ramPressure01: trustedMetric(own(rawResources, 'ramPressure01'), d.resources.ramPressure01, 1),
+      computeCapacity01: trustedMetric(own(rawResources, 'computeCapacity01'), d.resources.computeCapacity01, 0),
+      scarcity01: trustedMetric(own(rawResources, 'scarcity01'), d.resources.scarcity01, 1),
+      efficiency01: trustedMetric(own(rawResources, 'efficiency01'), d.resources.efficiency01, 0),
     };
-    const memoryPressure01 = metric(input.memoryPressure01, d.coupling.memoryPressure01);
-    const evidenceCoverage01 = metric(input.evidenceCoverage01, d.provenance.evidenceCoverage01);
-    const realObservationCoverage01 = metric(input.realObservationCoverage01, d.provenance.realObservationCoverage01);
-    const unknown01 = metric(input.unknown01, d.provenance.unknown01);
+    const memoryPressure01 = trustedMetric(input.memoryPressure01, d.coupling.memoryPressure01, 1);
+    const evidenceCoverage01 = trustedMetric(input.evidenceCoverage01, d.provenance.evidenceCoverage01, 0);
+    const realObservationCoverage01 = trustedMetric(input.realObservationCoverage01, d.provenance.realObservationCoverage01, 0);
+    const unknown01 = trustedMetric(input.unknown01, d.provenance.unknown01, 1);
 
     // All math below consumes normalized values only. A NaN in a restored or
     // live field therefore cannot poison every derived coupling metric.

@@ -1,3 +1,13 @@
+## WorkPass356 — fail-closed telemetry normalization for cognitive work budgeting (2026-10-26)
+
+- **Defect:** normalized sensor fields were clamped into [0,1]. A negative RAM-pressure/scarcity/conflict reading could turn into an apparently healthy zero and leave optional counterfactual work enabled; non-finite/wrong-typed resource signals could quietly inherit optimistic defaults.
+- **Runtime fix:** added strict trusted-metric normalization at the cognitive substrate boundary. Invalid resource, world-conflict, uncertainty, prediction-error and evidence-provenance inputs now use conservative fallbacks (e.g. RAM pressure/thermal/scarcity/conflict/unknown -> 1; compute/battery/evidence coverage -> 0). Missing fields retain documented defaults for partial legacy snapshots; explicitly malformed sections fail closed.
+- **Integration invariant:** invalid resource/world evidence now drives the shared work policy to zero optional branches; the canonical action arbitration remains in OrganismCore and is not replaced by the substrate.
+- **Regression coverage:** updated restore/live-input expectations and added a hostile sensor fixture that supplies negative thermal/RAM/scarcity/conflict values and verifies the optional-work policy refuses all speculative branches.
+- **Evidence boundary:** regression code is committed separately and must pass the substrate wiring workflow and runtime typecheck on the exact new HEAD. This closes a telemetry-normalization issue; it does not claim a gain in general intelligence or production readiness.
+
+---
+
 ## WorkPass355 — стабилизированы B272 contract tests и authority fixture (2026-10-26)
 
 - Исправлен source-contract между world-transition и endogenous-goal learner: assertion теперь ищет новую tick+action guard, а не устаревший action-only marker.

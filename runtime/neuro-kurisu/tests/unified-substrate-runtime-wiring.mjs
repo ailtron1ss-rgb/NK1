@@ -44,22 +44,26 @@ const restoredState = restored.snapshot();
 assert.equal(restoredState.cycles, 0);
 assert.equal(restoredState.lastTick, 0);
 assert.equal(restoredState.self.continuity01, 0.7);
-assert.equal(restoredState.self.coherence01, 1);
-assert.equal(restoredState.self.agency01, 0.5);
+assert.equal(restoredState.self.coherence01, 0, 'out-of-range coherence is not treated as positive evidence');
+assert.equal(restoredState.self.agency01, 0, 'malformed explicit agency is fail-closed');
 assert.equal(restoredState.self.realityAlignment01, 0);
 assert.equal(restoredState.self.mode, 'explore spoof');
 assert.equal(restoredState.self.lastAction, 'wait');
-assert.equal(restoredState.world.confidence01, 0.35);
+assert.equal(restoredState.world.confidence01, 0, 'invalid world confidence is not upgraded to the default prior');
 assert.equal(restoredState.world.uncertainty01, 1);
 assert.equal(restoredState.world.entityCount, 0);
 assert.equal(restoredState.world.eventCount, 0);
 assert.equal(restoredState.world.relationCount, 3);
-assert.equal(restoredState.world.conflict01, 0);
+assert.equal(restoredState.world.conflict01, 1, 'invalid conflict telemetry is treated as critical');
 assert.equal(restoredState.world.newEntityRate01, 1);
-assert.equal(restoredState.resources.battery01, 0.82);
-assert.equal(restoredState.coupling.selfWorld01, 0.35);
+assert.equal(restoredState.resources.battery01, 0, 'malformed resource section is treated as exhausted');
+assert.equal(restoredState.resources.thermal01, 1);
+assert.equal(restoredState.resources.ramPressure01, 1);
+assert.equal(restoredState.resources.scarcity01, 1);
+assert.equal(resolveUnifiedCognitiveWorkPolicy(restoredState, 3).maxCounterfactualBranches, 0, 'malformed restored resources must disable optional simulation');
+assert.equal(restoredState.coupling.selfWorld01, 0, 'invalid coupling confidence must not receive a positive prior');
 assert.equal(restoredState.coupling.actionReadiness01, 0.5);
-assert.equal(restoredState.provenance.evidenceCoverage01, 1);
+assert.equal(restoredState.provenance.evidenceCoverage01, 0, 'out-of-range provenance must not claim full evidence');
 assert.equal(restoredState.provenance.realObservationCoverage01, 0.8);
 assert.equal(restoredState.provenance.unknown01, 1);
 assert.equal(restoredState.lastReason.length, 256);
@@ -118,28 +122,28 @@ const updated = substrate.integrate({
 });
 assert.equal(updated.cycles, 1);
 assert.equal(updated.lastTick, 1);
-assert.equal(updated.self.agency01, 0.5);
+assert.equal(updated.self.agency01, 0, 'invalid agency must not increase action readiness');
 assert.equal(updated.self.mode, 'reflect now');
 assert.equal(updated.self.lastAction, 'verify receipt');
-assert.equal(updated.world.confidence01, 0.35);
+assert.equal(updated.world.confidence01, 0, 'non-finite confidence uses a conservative fallback');
 assert.equal(updated.world.uncertainty01, 1);
 assert.equal(updated.world.entityCount, 0);
 assert.equal(updated.world.eventCount, 0);
 assert.equal(updated.world.relationCount, 2);
-assert.equal(updated.world.conflict01, 0);
+assert.equal(updated.world.conflict01, 1, 'out-of-range conflict disables speculative work');
 assert.equal(updated.world.newEntityRate01, 1);
-assert.equal(updated.prediction.error01, 0);
+assert.equal(updated.prediction.error01, 1, 'invalid prediction error is treated as maximal uncertainty');
 assert.equal(updated.prediction.openCount, 0);
 assert.equal(updated.prediction.agingCount, 4);
 assert.equal(updated.prediction.expiredCount, 0);
-assert.equal(updated.prediction.priority01, 0);
-assert.equal(updated.resources.battery01, 0.82);
-assert.equal(updated.resources.ramPressure01, 0);
-assert.equal(updated.resources.computeCapacity01, 0.82);
-assert.equal(updated.coupling.memoryPressure01, 0);
-assert.equal(updated.provenance.evidenceCoverage01, 1);
+assert.equal(updated.prediction.priority01, 1, 'invalid prediction priority does not disappear');
+assert.equal(updated.resources.battery01, 0, 'non-finite battery telemetry uses the exhausted fallback');
+assert.equal(updated.resources.ramPressure01, 1, 'negative RAM pressure is invalid, not proof of spare capacity');
+assert.equal(updated.resources.computeCapacity01, 0, 'wrong-typed compute telemetry disables optimistic capacity assumptions');
+assert.equal(updated.coupling.memoryPressure01, 1, 'invalid memory pressure is handled conservatively');
+assert.equal(updated.provenance.evidenceCoverage01, 0, 'out-of-range evidence coverage cannot create trust');
 assert.equal(updated.provenance.realObservationCoverage01, 0.8);
-assert.equal(updated.provenance.unknown01, 0);
+assert.equal(updated.provenance.unknown01, 1, 'negative unknown ratio is invalid and must not increase trust');
 assert.equal(updated.lastReason.length, 256);
 assert.ok([
   ...Object.values(updated.self).filter(value => typeof value === 'number'),
@@ -238,3 +242,28 @@ assert.ok(routingAt > integrateAt, 'substrate integration must be visible before
 assert.match(runtime, /this\.unifiedCognitiveSubstrateStore\.save\(substrateState\)/);
 assert.match(runtime, /unified-cognitive-substrate\.final-flush-failed/);
 console.log('Unified cognitive substrate restore/input/runtime-wiring regression passed');
+
+
+// Invalid sensor telemetry must not be clamped into healthy-looking values.
+// Such faults lower the optional-work budget and must never authorize matched
+// counterfactual credit.
+const sensorFault = new UnifiedCognitiveSubstrate();
+const faultFrame = sensorFault.integrate({
+  tick: 1,
+  self: { continuity01: 0.8, coherence01: 0.9, agency01: 0.9, realityAlignment01: 0.9, mode: 'plan', lastAction: 'explore' },
+  world: { confidence01: 0.9, uncertainty01: 0.1, entityCount: 6, eventCount: 8, relationCount: 4, conflict01: -0.1, newEntityRate01: 0.2 },
+  prediction: { error01: 0.1, openCount: 1, agingCount: 0, expiredCount: 0, priority01: 0.1 },
+  resources: { battery01: 0.9, thermal01: -0.2, ramPressure01: -0.3, computeCapacity01: 0.9, scarcity01: -0.4, efficiency01: 0.9 },
+  memoryPressure01: 0.1,
+  evidenceCoverage01: 0.9,
+  realObservationCoverage01: 0.9,
+  unknown01: 0.1,
+});
+assert.equal(faultFrame.resources.thermal01, 1);
+assert.equal(faultFrame.resources.ramPressure01, 1);
+assert.equal(faultFrame.resources.scarcity01, 1);
+assert.equal(faultFrame.world.conflict01, 1);
+const faultPolicy = resolveUnifiedCognitiveWorkPolicy(faultFrame, 4);
+assert.equal(faultPolicy.maxCounterfactualBranches, 0, 'invalid resource/conflict telemetry must fail closed');
+assert.equal(faultPolicy.allowMatchedCounterfactual, false);
+assert.match(faultPolicy.reason, /critical-pressure/);
