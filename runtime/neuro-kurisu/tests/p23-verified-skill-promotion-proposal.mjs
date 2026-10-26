@@ -108,6 +108,24 @@ assert.throws(
   }),
   /minimum-family-gain-policy-threshold-invalid:memory/,
 );
+
+const invalidPromotionConfigurations = [
+  [{ minPairedTasks: Number.NaN }, /min-paired-tasks-must-be-an-integer-from-2-to-10000/],
+  [{ minPairedTasks: 1 }, /min-paired-tasks-must-be-an-integer-from-2-to-10000/],
+  [{ minAbsoluteGain: Number.NaN }, /min-absolute-gain-must-be-finite-and-in-range-0-to-1/],
+  [{ minAbsoluteGain: 1.01 }, /min-absolute-gain-must-be-finite-and-in-range-0-to-1/],
+  [{ maxFamilyRegression: -0.01 }, /max-family-regression-must-be-finite-and-in-range-0-to-1/],
+  [{ minCompleteSeeds: 2 }, /min-complete-seeds-must-be-an-integer-from-3-to-1000/],
+  [{ minCompleteSeeds: Number.NaN }, /min-complete-seeds-must-be-an-integer-from-3-to-1000/],
+  [null, /verified-skill-promotion-options-must-be-an-object/],
+];
+for (const [invalidOptions, expectedError] of invalidPromotionConfigurations) {
+  assert.throws(
+    () => proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', invalidOptions),
+    expectedError,
+    'promotion policy must reject invalid configuration rather than silently clamp it',
+  );
+}
 assert.equal(proposal.authenticatedEvidenceRows,100);
 assert.equal(proposal.unauthenticatedEvidenceRows,0);
 assert.match(proposal.proposalId,/^[a-f0-9]{64}$/);
