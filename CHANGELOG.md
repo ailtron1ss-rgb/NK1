@@ -1,3 +1,10 @@
+## WorkPass354c — keep strict snapshot restoration type-safe (2026-10-26)
+
+- **CI finding:** WorkPass354 snapshot restore failed the runtime TypeScript check before integration tests ran: raw receipt-reference fields were typed `unknown`, and decoded reference arrays lost their domain-specific types.
+- **Fix:** use validated canonical receipt IDs for event lookups and decode receipt-extension arrays into explicit `ExternalObservationProjectionRef[]` / `ToolReceiptRevisionProjectionRef[]` return types. Runtime validation remains strict; no `any` cast or validation bypass was added.
+- **Validation:** this addresses the reported TypeScript diagnostics on PR #194. Fresh exact-head typecheck and cognitive integration runs are still required; the prior failed CI is not counted as a pass.
+
+---
 ## WorkPass354 — atomic CognitiveEventFabric snapshot restore (2026-10-26)
 
 - **Defect:** restore converted malformed root arrays/counters to empty defaults, accessed root/event properties directly, and replaced the live event journal before rebuilding receipt projections. Invalid or accessor-backed snapshots could erase or partially replace causal state.
