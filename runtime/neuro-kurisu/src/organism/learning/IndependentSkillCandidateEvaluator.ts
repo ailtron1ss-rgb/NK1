@@ -388,7 +388,10 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          // Executability is a distinct quality dimension from verified task success.
+          // A verifier outage must fail closed for success without rewriting an observed
+          // successful execution as non-executable; promotion still requires trusted binding.
+          executable,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {
