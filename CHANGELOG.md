@@ -2650,3 +2650,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [LIFECYCLE] Invalidate process-local compensation capabilities when restoring a persisted MemoryFabric snapshot, because those capabilities are deliberately not part of the persisted state.
 - [REGRESSION] Cover capacity exhaustion, preservation of every previously issued token, token cleanup, and invalidation across snapshot restoration.
 - [VALIDATION] Added regression coverage and source changes; runtime execution and typecheck remain unverified until Actions runs actual steps.
+
+
+## [NK1][Hexis] WorkPass438 — compensate partial failures in the MemoryFabric signal helper (2026-10-26)
+
+- [FIX] The `updateSignalsWithCompensation` convenience path retains its one-time token until it confirms no mutation occurred or restores the exact pre-state after an exception. Rollback failures are reported explicitly rather than silently discarding the capability.
+- [REGRESSION] Inject an exception after the underlying canonical update returns and assert signal metadata, status, access state and revision history are restored with no pending tokens.
+- [VALIDATION] Source-level assertions only; runtime/typecheck remains unverified until a GitHub Actions runner executes actual steps.
