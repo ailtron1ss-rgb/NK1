@@ -1,5 +1,6 @@
 # WorkPass364 — non-coercive CognitiveEventFabric append boundary (2026-10-26)
 
+- [CI-DRIVEN FIX] Fresh WorkPass331 typecheck passed after the explicit event-ID narrowing fix; the following canonical-kernel run exposed a legacy contract: top-level payload accessor fields are omitted (not fatal) without invoking getters. Append now preserves that established behavior while still rejecting nested accessor payloads. Exact-head revalidation is required.
 - [CI-DRIVEN FIX] The first WorkPass331 run on PR #186 stopped at the full runtime typecheck with TS2322 because a ternary over an unknown ID value did not narrow to string. Replaced it with explicit type-guarded assignment; this correction requires a fresh exact-head run.
 - [FIXED] Reject non-safe, fractional, negative and non-numeric causal ticks instead of silently rounding/clamping them.
 - [FIXED] Validate stage, timestamp, external flag, confidence, parent IDs and source types before writes; reject malformed values without mutating the journal.
