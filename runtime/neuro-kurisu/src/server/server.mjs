@@ -993,7 +993,8 @@ async function route(req, res) {
                 await runtime.core.flush().catch(() => {});
                 const message = String(error?.message ?? error);
                 const status = message === 'hmx-goal-proposal-not-found' ? 404
-                    : message.includes('must-be-approved') ? 409 : 400;
+                    : message.includes('must-be-approved') || message.includes('canonical-capacity-reached') ||
+                        message.includes('materialized-record-missing') ? 409 : 400;
                 return json(res, status, { ok: false, error: message });
             }
         }
