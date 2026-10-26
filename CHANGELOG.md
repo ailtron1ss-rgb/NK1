@@ -1,3 +1,10 @@
+## NK1 P26 persistence — guard ADWIN snapshot restoration (2026-10-26)
+
+- Routed `AdaptiveWindowDriftDetector.restore()` through the shared bounded plain-data validator before accessing snapshot fields. Accessors, custom prototypes, cycles/aliases, sparse arrays, and over-budget inputs now fail with `adwin-snapshot-invalid` before live state is touched.
+- Added accessor and cycle regressions, including assertions that the prior detector snapshot is preserved on rejection. The statistical detector algorithm and its drift thresholds are unchanged.
+
+---
+
 ## NK1 B272 validation follow-up — keep malformed-state fixture JSON-tree shaped (2026-10-26)
 
 - Changed the invalid-goal-ID fixture to copy its vector instead of aliasing the snapshot's `currentGoal` array. That case is intended to exercise control-character ID quarantine, not the separate rejection rule for non-JSON object graphs.
