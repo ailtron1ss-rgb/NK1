@@ -41,6 +41,14 @@ assert.equal(ignoredManifestGetterCalls, 0, 'unknown manifest properties must no
 assert.throws(() => new VerifiedOutcomeLedger(new Array(1)), /dense array of data entries/,
   'sparse manifest arrays must be rejected without reading missing elements');
 
+let subclassFindCalls = 0;
+class ManifestWithOverriddenFind extends Array {
+  find(...args) { subclassFindCalls++; return super.find(...args); }
+}
+assert.throws(() => new VerifiedOutcomeLedger(new ManifestWithOverriddenFind(...manifest)),
+  /dense array of data entries/, 'array subclasses with overridden behavior must not cross the manifest boundary');
+assert.equal(subclassFindCalls, 0, 'ledger construction must not invoke caller-controlled array methods');
+
 assert.equal(ledger.record(outcome()).accepted, true);
 
 let outcomeGetterCalls = 0;
