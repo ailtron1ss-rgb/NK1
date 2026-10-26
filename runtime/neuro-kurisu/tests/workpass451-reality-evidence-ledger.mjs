@@ -44,6 +44,15 @@ const eventReplay = ledger.record({
 });
 assert.deepEqual(eventReplay, eventBound);
 assert.equal(ledger.snapshot().total, eventTotal);
+// Omitting at delegates capture time to the ledger; this must not turn a safe retry
+// with the same upstream event ID and content into a timestamp identity conflict.
+const implicitTimestampReplay = ledger.record({
+  tick: 16, eventId: 'execution:device:42',
+  realityClass: 'device-observation', claim: 'Battery fell after the command.',
+  confidence01: 0.82, independenceKey: 'device:android-battery',
+});
+assert.deepEqual(implicitTimestampReplay, eventBound);
+assert.equal(ledger.snapshot().total, eventTotal);
 assert.throws(() => ledger.record({
   tick: 16, at: 1600, eventId: 'execution:device:42',
   realityClass: 'device-observation', claim: 'Actually, a different effect occurred.',

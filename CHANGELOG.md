@@ -1,6 +1,13 @@
+## NK1 [evidence] — keep implicit timestamp retries idempotent (2026-10-26)
+
+- Refined the replay contract: an explicit `at` value is immutable event payload, while a missing `at` is ledger-generated ingestion metadata and is not used to reject a retry.
+- Added a regression proving a repeated upstream `eventId` without `at` reuses the original record without increasing the ledger total.
+
+---
+
 ## NK1 [evidence] — preserve event time in live identity checks (2026-10-26)
 
-- Fixed a mismatch between live writes and restore validation: an existing upstream `eventId` now conflicts when the observation timestamp changes, rather than being accepted as an exact replay.
+- Fixed a mismatch between live writes and restore validation: an existing upstream `eventId` conflicts when an explicitly supplied observation timestamp changes, rather than being accepted as an exact replay. When `at` is omitted, the ledger's local ingestion timestamp does not break idempotent retries.
 - Added a regression that proves timestamp mutation fails closed, quarantines the event ID, and blocks later reuse of that ID.
 - **Validation boundary:** source, regression and changelog are committed together; hosted exact-head execution remains unverified until Actions can run test steps.
 

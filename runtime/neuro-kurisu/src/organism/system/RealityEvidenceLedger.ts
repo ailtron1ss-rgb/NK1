@@ -161,7 +161,9 @@ export class RealityEvidenceLedger {
       :stableEvidenceId(identity);
     const prior=this.records.find(row=>row.id===id||(eventId!==undefined&&row.eventId===eventId));
     if(prior){
-      const samePayload=prior.tick===input.tick&&prior.at===at&&prior.realityClass===input.realityClass&&
+      // An explicit observation timestamp is immutable payload. When omitted, `at` is a local
+      // ingestion timestamp, so it must not make a retry of the same upstream event conflict.
+      const samePayload=prior.tick===input.tick&&(input.at===undefined||prior.at===at)&&prior.realityClass===input.realityClass&&
         prior.claim===claim&&prior.confidence01===confidence01&&prior.independenceKey===independenceKey&&
         JSON.stringify(prior.parentIds)===JSON.stringify(parentIds)&&prior.eventId===eventId;
       if(!samePayload){
