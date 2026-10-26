@@ -140,17 +140,25 @@ const MAX_COGNITIVE_PAYLOAD_DEPTH=32;
 const MAX_COGNITIVE_PAYLOAD_NODES=16384;
 const MAX_COGNITIVE_PAYLOAD_ARRAY_LENGTH=16384;
 const MAX_COGNITIVE_PAYLOAD_KEYS=8192;
+// Bound aggregate UTF-16 text, not only node/key counts: many individually valid
+// strings can otherwise make one event/snapshot disproportionately expensive.
+const MAX_COGNITIVE_PAYLOAD_TEXT_UNITS=131072;
 
 function clonePayloadValue(
   value:unknown,
   ancestors:Set<object>,
   depth:number,
-  budget:{nodes:number},
+  budget:{nodes:number;textUnits:number},
 ):unknown|typeof OMIT_PAYLOAD_VALUE {
   budget.nodes+=1;
   if(budget.nodes>MAX_COGNITIVE_PAYLOAD_NODES) throw new RangeError('cognitive-event-payload-node-limit');
   if(depth>MAX_COGNITIVE_PAYLOAD_DEPTH) throw new RangeError('cognitive-event-payload-depth-limit');
-  if(value===null||typeof value==='boolean'||typeof value==='string') return value;
+  if(value===null||typeof value==='boolean') return value;
+  if(typeof value==='string') {
+    budget.textUnits+=value.length;
+    if(budget.textUnits>MAX_COGNITIVE_PAYLOAD_TEXT_UNITS) throw new RangeError('cognitive-event-payload-text-limit');
+    return value;
+  }
   if(typeof value==='number') return Number.isFinite(value)?value:null;
   if(value===undefined||typeof value==='function'||typeof value==='symbol') return OMIT_PAYLOAD_VALUE;
   if(typeof value==='bigint') throw new TypeError('cognitive-event-payload-bigint-not-json-serializable');
@@ -184,6 +192,8 @@ function clonePayloadValue(
     if(keys.length>MAX_COGNITIVE_PAYLOAD_KEYS) throw new RangeError('cognitive-event-payload-key-limit');
     const output:Record<string,unknown>={};
     for(const key of keys.sort()) {
+      budget.textUnits+=key.length;
+      if(budget.textUnits>MAX_COGNITIVE_PAYLOAD_TEXT_UNITS) throw new RangeError('cognitive-event-payload-text-limit');
       if(key.length>512) throw new RangeError('cognitive-event-payload-key-length-limit');
       const descriptor=descriptors[key]!;
       if(!descriptor.enumerable||!('value' in descriptor)) continue;
@@ -200,7 +210,7 @@ function clonePayloadValue(
 
 const cleanPayload=(value:unknown):Record<string,unknown>=>{
   if(!isRecord(value)) return {};
-  const cloned=clonePayloadValue(value,new Set<object>(),0,{nodes:0});
+  const cloned=clonePayloadValue(value,new Set<object>(),0,{nodes:0,textUnits:0});
   return cloned!==OMIT_PAYLOAD_VALUE&&isRecord(cloned)?cloned:{};
 };
 
