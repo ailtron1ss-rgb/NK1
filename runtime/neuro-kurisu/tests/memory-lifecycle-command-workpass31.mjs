@@ -151,6 +151,16 @@ assert.throws(
   MemoryLifecycleCommandRecoveryRequiredError,
   'direct restore must not trim a malformed receipt key into a valid replay key',
 );
+const malformedControlReceiptRuntime=new MemorySubsystemRuntime();
+malformedControlReceiptRuntime.fabric.restore({mutationReceipts:[{
+  ...durable.fabric.mutationReceipts[0],
+  commandId:'wp31:bad\u0000receipt',
+}]});
+assert.throws(
+  () => malformedControlReceiptRuntime.fabric.encode(seedInput,{commandId:'wp31:clean-key'}),
+  MemoryLifecycleCommandRecoveryRequiredError,
+  'control characters in persisted command IDs must invalidate receipt certainty',
+);
 
 // The journal itself remains bounded even under a long-lived organism session.
 for (let index = 0; index < 520; index++) {

@@ -976,7 +976,8 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
   const p58Raw = (raw.facets as any)?.advanced?.p58CognitiveKernel ?? (raw as any).p58CognitiveKernel ?? {};
   advancedBase.p58CognitiveKernel = { ...defaultP58(), ...p58Raw, modeCounts:{...defaultP58().modeCounts,...(p58Raw.modeCounts??{})}, frames:Array.isArray(p58Raw.frames)?p58Raw.frames.slice(-96):[] };
   const memoryFabricRaw = (raw.facets as any)?.advanced?.memoryFabric ?? {};
-  const retiredMutationReceiptBloomRaw = typeof memoryFabricRaw.retiredMutationReceiptBloom === 'string' ? memoryFabricRaw.retiredMutationReceiptBloom : undefined;
+  const rawRetiredMutationReceiptBloom=memoryFabricRaw.retiredMutationReceiptBloom;
+  const retiredMutationReceiptBloomRaw = typeof rawRetiredMutationReceiptBloom === 'string' ? rawRetiredMutationReceiptBloom : undefined;
   const retiredMutationReceiptBloomValid = Boolean(retiredMutationReceiptBloomRaw && retiredMutationReceiptBloomRaw.length === 174764 && retiredMutationReceiptBloomRaw.endsWith('=') && !retiredMutationReceiptBloomRaw.endsWith('==') && /^[A-Za-z0-9+/]+=$/.test(retiredMutationReceiptBloomRaw));
   const rawRetiredMutationReceiptCount=memoryFabricRaw.retiredMutationReceiptCount;
   const validRetiredMutationReceiptCount=rawRetiredMutationReceiptCount===undefined||(typeof rawRetiredMutationReceiptCount==='number'&&Number.isSafeInteger(rawRetiredMutationReceiptCount)&&rawRetiredMutationReceiptCount>=0);
@@ -984,12 +985,12 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
   const mutationReceiptActions = new Set(['encode','revise-status','revise-content','update-signals','update-context','forget']);
   const mutationReceiptKinds = new Set(['memory','context','boolean','void','null']);
   const validMutationReceipt=(row:any):boolean=>Boolean(
-    row&&typeof row.commandId==='string'&&row.commandId.length>0&&row.commandId.length<=128&&row.commandId===row.commandId.trim()&&!/[\\u0000-\\u001f\\u007f]/.test(row.commandId)&&
+    row&&typeof row.commandId==='string'&&row.commandId.length>0&&row.commandId.length<=128&&row.commandId===row.commandId.trim()&&!/[\u0000-\u001f\u007f]/.test(row.commandId)&&
     typeof row.fingerprint==='string'&&/^[a-f0-9]{64}$/i.test(row.fingerprint)&&
     mutationReceiptActions.has(row.action)&&typeof row.at==='number'&&Number.isFinite(row.at)&&row.at>=0&&
     ['applied','noop'].includes(row.outcome)&&mutationReceiptKinds.has(row.resultKind)&&
-    ((row.resultKind!=='memory'&&row.resultKind!=='context')||(typeof row.memoryId==='string'&&row.memoryId.length>0&&row.memoryId.length<=256&&!/[\\u0000-\\u001f\\u007f]/.test(row.memoryId)))&&
-    (row.memoryId===undefined||(typeof row.memoryId==='string'&&row.memoryId.length>0&&row.memoryId.length<=256&&!/[\\u0000-\\u001f\\u007f]/.test(row.memoryId)))&&
+    ((row.resultKind!=='memory'&&row.resultKind!=='context')||(typeof row.memoryId==='string'&&row.memoryId.length>0&&row.memoryId.length<=256&&!/[\u0000-\u001f\u007f]/.test(row.memoryId)))&&
+    (row.memoryId===undefined||(typeof row.memoryId==='string'&&row.memoryId.length>0&&row.memoryId.length<=256&&!/[\u0000-\u001f\u007f]/.test(row.memoryId)))&&
     (row.booleanValue===undefined||typeof row.booleanValue==='boolean')&&
     (row.resultKind==='boolean'?typeof row.booleanValue==='boolean':row.booleanValue===undefined)
   );
@@ -1007,6 +1008,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
   }));
   const mutationReceiptJournalCorrupt=rawMutationReceipts!==undefined&&(!Array.isArray(rawMutationReceipts)||rawMutationReceipts.length>512||mutationReceiptRows.some((row:any)=>!validMutationReceipt(row)));
   const retiredMutationReceiptBloomCorrupt = memoryFabricRaw.retiredMutationReceiptBloomCorrupt === true ||
+    (rawRetiredMutationReceiptBloom!==undefined&&(typeof rawRetiredMutationReceiptBloom!=='string'||!retiredMutationReceiptBloomValid)) ||
     (Boolean(retiredMutationReceiptBloomRaw) && !retiredMutationReceiptBloomValid) ||
     (retiredMutationReceiptCount > 0 && !retiredMutationReceiptBloomValid) ||
     !validRetiredMutationReceiptCount || mutationReceiptJournalCorrupt;
