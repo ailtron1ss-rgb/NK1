@@ -55,6 +55,46 @@ const validHmx = {
   },
 };
 assert.deepEqual(validateHmxV17Document(validHmx, 'telepathy'), []);
+
+// Stage HMX arrays atomically: over-capacity or malformed source data must
+// not leave a misleading valid-looking prefix in stagedSections.
+const oversizedExportId = 'exp_3333333333333333';
+const oversizedHmx = {
+  ...validHmx,
+  export_id: oversizedExportId,
+  sections: {
+    memories: Array.from({ length: 257 }, (_, index) => ({
+      ref: oversizedExportId + ':memory:' + index,
+      type: 'semantic',
+      content: 'Bounded fixture memory ' + index,
+    })),
+  },
+};
+const oversizedStage = fabric.stageHmx({
+  document: oversizedHmx,
+  intent: 'telepathy',
+  strategy: 'additive',
+});
+assert(oversizedStage.conflicts.some(issue => issue.kind === 'staging-capacity'));
+assert.equal(oversizedStage.sectionCounts.memories, 257, 'diagnostics preserve the full source count');
+assert.equal(oversizedStage.stagedSections.memories, undefined, 'oversized sections are omitted rather than truncated');
+assert.equal(fabric.decideHmx(oversizedStage.stagingId, 'accept')?.status, 'staged',
+  'a conflicted oversized section must not be accepted');
+
+const malformedHmx = structuredClone(validHmx);
+malformedHmx.export_id = 'exp_4444444444444444';
+malformedHmx.sections.memories.push(null);
+const malformedStage = fabric.stageHmx({
+  document: malformedHmx,
+  intent: 'telepathy',
+  strategy: 'additive',
+});
+assert(malformedStage.conflicts.some(issue => issue.kind === 'schema'));
+assert.equal(malformedStage.sectionCounts.memories, 2);
+assert.equal(malformedStage.stagedSections.memories, undefined, 'one malformed row omits the entire source section');
+assert.equal(fabric.decideHmx(malformedStage.stagingId, 'accept')?.status, 'staged',
+  'a malformed section cannot enter canonical memory');
+
 assert.equal(validateHmxV17Document(validHmx, 'port').some(issue => issue.kind === 'intent-mismatch'), true);
 assert.equal(validateHmxV17Document({ ...validHmx, export_id: 'random-uuid' }, 'telepathy').some(issue => issue.path === 'export_id'), true);
 
