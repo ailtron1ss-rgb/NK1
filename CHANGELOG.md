@@ -8,7 +8,7 @@
 - **Regression coverage:** adds malformed-row and cross-family cases, invalid and exact-boundary threshold cases, and updates the proposal test to expect explicit failure for `NaN` configuration.
 - **Activation boundary:** candidate generation remains advisory; independent evaluation, trusted shadow evidence and explicit signed approval remain required before a skill can become active.
 
-Validation: exact-head P23 tests, runtime typecheck and the linked CI suites remain pending. Progress estimates are unchanged; no learning-performance uplift or production-readiness claim is made.
+Validation PASS on exact tested HEAD `2aa76acb545ac1a485962f4016c6586766424a0a`: [WorkPass110 continual learning metrics (P23 tests + runtime typecheck)](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825176), [Project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825161), and [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825150). These checks validate the code/test change; they do not establish external learning uplift or production readiness. Progress estimates remain unchanged.
 
 ---
 
@@ -18,7 +18,7 @@ Validation: exact-head P23 tests, runtime typecheck and the linked CI suites rem
 - Apply the same guard to both skill activation and rollback paths without weakening the existing default-deny approval and evidence checks.
 - Add regression cases proving canonical signatures remain valid while malformed promotion and rollback encodings are rejected.
 
-Validation: exact-head versioned skill-store regression and runtime typecheck are pending. This is an integrity hardening change, not evidence of better task performance or release readiness.
+Validation PASS on exact tested HEAD `2aa76acb545ac1a485962f4016c6586766424a0a`: the versioned skill candidate lifecycle regression passed inside [WorkPass110](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825176), with runtime typecheck also successful. This is integrity hardening, not evidence of better task performance or release readiness.
 
 ---
 

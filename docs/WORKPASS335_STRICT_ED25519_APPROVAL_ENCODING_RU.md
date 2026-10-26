@@ -2,8 +2,8 @@
 
 **Дата:** 26 октября 2026 г.  
 **Ветка:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`  
-**Code/test checkpoint:** `f3d462f60e2ad8ead9ed398cee71b59b87aa9547`  
-**Статус:** implementation committed; exact-head validation pending.
+**Code/test checkpoint:** `8cd1a4b6495036c8200b5f2581e8c123584d1ea9`; **validated HEAD:** `2aa76acb545ac1a485962f4016c6586766424a0a`  
+**Статус:** P23 regression suite, runtime typecheck и полный integration suite прошли на exact HEAD `2aa76acb545ac1a485962f4016c6586766424a0a`.
 
 ## Что изменено
 
@@ -36,7 +36,7 @@
 
 Результат остаётся proposal-only: даже прошедший gate не активирует навык и не заменяет аутентификацию outcome/shadow evidence, независимую оценку или подписанное одобрение.
 
-**Validation:** exact-head GitHub Actions, P23 regression suite и runtime TypeScript typecheck на этой объединённой ветке ещё ожидаются. Scorecard percentages и claims о learning uplift не изменены.
+**Validation PASS (exact tested HEAD `2aa76acb545ac1a485962f4016c6586766424a0a`):** [WorkPass110 — P23 regression suite + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825176); [Project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825161); [Unified project integration suite — clean locked installs, app build/tests, cognitive integration contracts, approval gateway E2E, runtime/research smoke](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825150). Scorecard percentages remain unchanged; these results do not measure external learning uplift.
 
 ## Связи между ветками
 
@@ -48,9 +48,9 @@
 
 ## Что ещё требуется подтвердить
 
-1. `npm run test:p23:versioned-skill-candidate-store`, `npm run test:p23:verified-skill-revision-gate` и `npm run test:p23:verified-skill-promotion-proposal` на этой ветке.
-2. Runtime TypeScript typecheck и интеграционные проверки когнитивного цикла.
-3. CI на exact HEAD; старые проходы не доказывают корректность этого коммита.
+1. **Подтверждено:** versioned skill store, verified skill revision gate, promotion proposal и остальные P23 learning regressions прошли в [WorkPass110](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825176).
+2. **Подтверждено:** runtime TypeScript typecheck прошёл внутри WorkPass110; app build/typecheck/tests и cognitive integration contracts прошли в [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825150).
+3. **Подтверждено:** все три workflow завершились PASS на exact HEAD `2aa76acb545ac1a485962f4016c6586766424a0a`.
 4. Независимый holdout для learning/transfer и реальная проверка внешних postconditions.
 5. Воспроизводимая пересборка и проверка основного release ZIP.
 
