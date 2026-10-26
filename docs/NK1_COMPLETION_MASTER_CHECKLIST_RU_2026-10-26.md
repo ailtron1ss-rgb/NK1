@@ -364,6 +364,8 @@
 - [ ] E28. Проверить реальную runtime memory API совместимость и миграцию существующих пользователей до подключения нового store; запрещено незаметно вводить второй writable memory owner.
 - [ ] E29. Обновить architecture graph и runtime integration suite так, чтобы он падал, если Hexis API существует, но не подключён к активному runtime path.
 - [ ] E30. Критерий: Hexis evidence-to-review подтверждён в живом runtime после restart/process-kill, и его state ownership однозначен.
+- [ ] E31. При принятии review заново канонизировать payload через `adaptHexisEvidence`, пересчитать digest и сверить stance/source/timestamp/confidence/note с canonical receipt; при любом расхождении отказать без изменения memory или review state.
+- [ ] E32. Добавить tampering-регрессии, где review snapshot меняет source ref/label/note/time/stance при сохранении старого digest; проверять отказ, неизменность canonical confidence и возможность безопасного повтора после восстановления доверенного snapshot.
 
 ## Definition of Done — жёсткие финальные ворота
 1. Один канонический source SHA и чистая install.
