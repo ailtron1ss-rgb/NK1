@@ -1,3 +1,16 @@
+## WorkPass333 — bind learning families to the canonical manifest (2026-10-26)
+
+- **Runtime path:** the independent candidate evaluator now derives `taskFamily` only from the validated canonical `TaskManifestEntry.family`; the family is included in the immutable evaluation-plan fingerprint and copied to each SkillLearnBench report and run binding.
+- **Evidence commit boundary:** `recordIndependentEvaluationOutcomes` now refuses to commit reports unless both report and run binding match the canonical manifest family for the scheduled task. This prevents an unlabelled or caller-relabelled report from being written to the verified outcome ledger.
+- **Matched evaluation:** baseline and candidate envelopes must agree on family per exact task/trial key; the binding family must also match its report.
+- **Hermes signed evidence binding:** the evidence join rejects a family mismatch between the independent-evaluation report and the execution binding. This checks internal consistency; the report family alone is not treated as a cryptographic signature. The canonical manifest fingerprint and existing signed P23 outcome/promotion gate remain authoritative.
+- **Regression:** the matched-evaluator test now verifies missing manifest family evidence blocks eligibility and that mutating a report or run binding to another family is rejected. The immutable-plan test now includes explicit `taskFamily: null` when no manifest authority was supplied.
+- **CI root cause closed locally by code:** WorkPass110 previously failed because the new family field changed the canonical plan fingerprint while the snapshot test still computed the old fields. The test expectation now includes the family field; a new exact-head run is required to confirm closure.
+- **Evidence boundary:** WorkPass108 and P26 passed on intermediate head `c3179f878a80dff9b01907e549d6f37488d0f5ee`; WorkPass110 failed there on the stale expected fingerprint. These do not substitute for validation of the newer head after family binding and test repair.
+- **Release boundary:** main and the published ZIP are unchanged; no field-learning gain or production-ready claim is made.
+
+---
+
 ## WorkPass108 — align Hermes diagnostic fixture with family-aware evaluation (2026-10-26)
 
 - Fixed the Hermes reflective-diagnostics fixture to attach the canonical `general` task-family label to its synthetic validation and holdout reports. The current SkillLearnBench gate correctly fails closed when task-family metadata is absent; the fixture was stale after that contract was added.
