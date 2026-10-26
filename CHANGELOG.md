@@ -5,7 +5,7 @@
 - Restricted the server decision endpoint to accept / reject / apply and added tests for canonical apply/replay and invalid decisions.
 - Added a proposal-only HMX-goal API (prepare, list, approve/reject) so imported goals stay pending until review and never become active automatically.
 - Added explicit-confirmation materialization for approved goals through NK1's canonical addGoal gate; goal-to-imported-memory relationships are projected with source-scoped graph keys, an idempotent receipt and a typed event. Imported goals remain candidates, not auto-activated.
-- Exact-head Actions reports failure but exposes no job steps or logs (log retrieval returns BlobNotFound); validation remains blocked/unverified. No learning-uplift or production-readiness score change; main and published Release ZIP are untouched.
+- Exact-head Actions job #40336104593 exits before any step (runner_id=0, runner_name empty, steps=[], no artifacts); unified suite #40336104584 shows the same runner/startup failure. The workflow now captures npm ci/typecheck/test logs and exit codes as an artifact when a runner is available, but validation remains unverified. No learning-uplift or production-readiness score change; main and published Release ZIP are untouched.
 
 ---
 
