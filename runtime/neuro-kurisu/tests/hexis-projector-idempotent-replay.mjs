@@ -115,6 +115,10 @@ assert.equal(isSafeJsonTree('x'.repeat(1_000_001)), false,
 const wideTree = Object.fromEntries(Array.from({ length: 4097 }, (_, index) => ['field-' + index, index]));
 assert.equal(isSafeJsonTree(wideTree), false,
   'a single object cannot bypass the tree budget with an excessive number of own keys');
+const primitiveHeavyTree = Object.fromEntries(Array.from({ length: 100 }, (_, index) =>
+  ['list-' + index, Array.from({ length: 1000 }, () => true)]));
+assert.equal(isSafeJsonTree(primitiveHeavyTree), false,
+  'primitive leaf values must count toward the aggregate node budget');
 
 // WorkPass428: the exported receipt validator is a trust boundary, not only a digest check.
 const coherentAppliedStage = {
