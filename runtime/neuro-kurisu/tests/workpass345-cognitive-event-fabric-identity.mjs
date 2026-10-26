@@ -119,6 +119,14 @@ assert.throws(
   /invalid-cognitive-event-source/,
 );
 assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:empty-source',source:''})),
+  /invalid-cognitive-event-source/,
+);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:padded-source',source:' padded-source '})),
+  /invalid-cognitive-event-source/,
+);
+assert.throws(
   ()=>fabric.append(makeEvent({id:'cef:test:identity:padded-parent',parentIds:[' parent:1']})),
   /invalid-cognitive-event-parent-id/,
 );
@@ -202,6 +210,10 @@ const canonicalRows=[
   {...makeEvent({id:canonicalParentId,parentIds:['parent:1']}),payload:{recovered:true}},
   {...makeEvent({id:canonicalSourceId,source:'bad\nsource'}),payload:{recovered:false}},
   {...makeEvent({id:canonicalSourceId,source:'source-valid'}),payload:{recovered:true}},
+  {...makeEvent({id:'cef:test:restore:empty-source',source:''}),payload:{recovered:false}},
+  {...makeEvent({id:'cef:test:restore:empty-source',source:'source-valid'}),payload:{recovered:true}},
+  {...makeEvent({id:'cef:test:restore:padded-source',source:' padded-source '}),payload:{recovered:false}},
+  {...makeEvent({id:'cef:test:restore:padded-source',source:'source-valid'}),payload:{recovered:true}},
 ];
 nonCanonicalRestore.restore({
   version:1,capacity:128,total:canonicalRows.length,buffered:canonicalRows.length,
@@ -211,6 +223,8 @@ nonCanonicalRestore.restore({
 assert.equal(nonCanonicalRestore.getById(canonicalId)?.payload.recovered,true);
 assert.equal(nonCanonicalRestore.getById(canonicalParentId)?.payload.recovered,true);
 assert.equal(nonCanonicalRestore.getById(canonicalSourceId)?.payload.recovered,true);
+assert.equal(nonCanonicalRestore.getById('cef:test:restore:empty-source')?.payload.recovered,true);
+assert.equal(nonCanonicalRestore.getById('cef:test:restore:padded-source')?.payload.recovered,true);
 
 // Restore must skip malformed clock/evidence types instead of flooring/coercing them.
 // Invalid rows must not reserve their IDs, so a following valid copy can be recovered.
