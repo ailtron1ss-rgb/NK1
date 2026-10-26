@@ -28,6 +28,10 @@ const ACCENTS: ReadonlyArray<{ id: AccentTone; label: string; color: string }> =
   { id: "rose", label: "Розовый", color: "#ff7db8" },
   { id: "lime", label: "Лайм", color: "#c4f77c" },
 ];
+const MOTIONS: ReadonlyArray<{ id: MotionStyle; label: string }> = [
+  { id: "soft", label: "Плавное" },
+  { id: "expressive", label: "Выразительное" },
+];
 
 function stored<T extends string>(key: string, choices: ReadonlyArray<{ id: T }>, fallback: T): T {
   const value = readAvatarPreference(key);
@@ -85,7 +89,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
   const [eyeTone, setEyeTone] = useState<EyeTone>(() => stored("kurisu-original-eyes", EYES, "ice"));
   const [hairTone, setHairTone] = useState<HairTone>(() => stored("kurisu-original-hair", HAIR, "copper"));
   const [accentTone, setAccentTone] = useState<AccentTone>(() => stored("kurisu-original-accent", ACCENTS, "cyan"));
-  const [motion, setMotion] = useState<MotionStyle>(() => stored("kurisu-original-motion", [{ id: "soft" }, { id: "expressive" }], "soft"));
+  const [motion, setMotion] = useState<MotionStyle>(() => stored("kurisu-original-motion", MOTIONS, "soft"));
   const [scale, setScale] = useState(() => {
     const saved = Number(readAvatarPreference("kurisu-original-scale"));
     return Number.isFinite(saved) && saved >= 0.85 && saved <= 1.15 ? saved : 1;
@@ -133,7 +137,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
         @media (prefers-reduced-motion: reduce) { .nk-float,.nk-hair,.nk-breath,.nk-scanner { animation: none !important; } }
       `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_36%,rgba(38,113,133,.35),transparent_47%),linear-gradient(180deg,#0a1b25,#050b12)]" />
-      <svg viewBox="0 0 420 560" role="img" aria-label={`NK1 Original — Курису, ${moodLabel[emotion]}, ${OUTFITS.find((item) => item.id === outfit)?.label}`} className="relative z-10 h-[320px] w-full md:h-[420px]" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox="0 0 420 560" role="img" aria-label={`NK1 Original — Курису, ${moodLabel[emotion]}, ${OUTFITS.find((item) => item.id === outfit)?.label}`} className="relative z-10 h-[320px] w-full md:h-[420px]" preserveAspectRatio="xMidYMid meet" style={{ transform: `scale(${scale})`, transformOrigin: "50% 55%", transition: "transform 180ms ease" }}>
         <defs>
           <linearGradient id="nk-hair" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={hair.main}/><stop offset="54%" stopColor="#c86645"/><stop offset="100%" stopColor={hair.shade}/></linearGradient>
           <linearGradient id="nk-coat" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={coatShadow}/><stop offset="48%" stopColor={coat}/><stop offset="100%" stopColor={coatShadow}/></linearGradient>
