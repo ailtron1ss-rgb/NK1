@@ -124,7 +124,7 @@ export class P26TrueLearningEngine{
     }
     for(const row of restoredEvidence){usedKeys.add(holdoutIdKey(row.evidenceId));usedKeys.add(holdoutIdentityKey(row));}
 
-    const sourceMetrics=raw?.metrics??{};
+    const sourceMetrics:Partial<P26LearningMetrics>=raw?.metrics??{};
     const metrics={...d.metrics,...sourceMetrics};
     const count=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
     const unit=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?clamp(value):0;
