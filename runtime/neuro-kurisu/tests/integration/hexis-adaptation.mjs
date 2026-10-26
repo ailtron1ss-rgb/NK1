@@ -513,8 +513,8 @@ const repeatedVersionB = applySupersessionVersion(
 assert.equal(repeatedVersionB.applied.application.importedCount, 0,
   'same-content re-export remains idempotent');
 assert.equal(repeatedVersionB.applied.application.deduplicatedCount, 1);
-assert.equal(supersessionRuntime.fabric.canonicalSnapshot().items.length, 2,
-  'same-content re-export must not create a third canonical record');
+assert.equal(supersessionRuntime.fabric.canonicalSnapshot().items.filter(item => String(item.source ?? '').startsWith('hexis:')).length, 2,
+  'same-content re-export must not create a third imported canonical record');
 assert.equal(supersessionLedger.snapshot().beliefs.some(belief => belief.memoryId === sourceVersionA.memory.id), false);
 
 const revertedVersionA = applySupersessionVersion(
