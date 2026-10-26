@@ -25,8 +25,8 @@
   "luminaIntegration": "selected tool/browser/search/security/voice adapters; canonical-adapter mode",
   "hexisIntegration": "10/10 major mechanisms implemented; canonical-adapter mode",
   "readinessNote": "WorkPass355 implementation checkpoint. Exact-head CI after freshness contract changes remains pending. WorkPass369 operational-cycle atomicity and P26 learning/holdout integration, clean-room install, real browser/Live2D/Android voice-avatar E2E, independent learning uplift, long-duration soak, and license/provenance review remain open.",
-  "migratedFrom": "v35.0-NK1-CAUSAL-EVENT-PAYLOAD-BUDGET-WORKPASS355",
-  "migratedAt": "2026-10-26T08:11:41.884Z",
+  "migratedFrom": "v35.0-UNIFIED-EMBODIMENT-INTENT-AUDIO-CLOCK-WORKPASS70",
+  "migratedAt": "2026-10-26T08:12:47.650Z",
   "lettaIntegration": "source-boundary/provenance/telemetry/review-gate adapter; canonical-adapter mode",
   "actionApprovalGate": "ActionGateway remains the single durable gate; app request layer suspends protected API calls, shows a sanitized approval card and resumes the captured exact JSON operation once only in the current tab.",
   "approvalRecovery": "After page refresh, server-persisted pending tickets without an in-tab continuation are shown as unclaimed. Only a pending ticket may be explicitly declined. The original request body is never persisted, and no side effect is replayed from an orphaned ticket."
