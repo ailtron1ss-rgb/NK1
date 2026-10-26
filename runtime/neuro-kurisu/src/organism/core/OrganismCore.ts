@@ -2806,13 +2806,16 @@ export class OrganismCore {
         // Refresh the adapter projection from canonical memory before applying evidence.
         this.hexisAdaptation.registerOrUpdateBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: Number(memory.sourceAuthority01 ?? 0.5), at: memory.lastAccessAt });
         // Keep provenance even when policy refuses to change confidence: evidence seen and accepted belief are different facts.
-        const evidenceReceipt = canonicalDuplicate ? null : this.memorySubsystem.memoryOS.recordEvidence(memory.id, {
+        const evidenceReceipt = canonicalDuplicate ? null : this.memorySubsystem.fabric.recordEvidence(memory.id, {
             source: String(input.evidence.ref || input.evidence.label || input.evidence.contentHash || 'hexis-evidence'),
             provenanceClass: 'external',
             sourceAuthority01: Number(input.evidence.trust01 ?? 0.5),
             independenceKey: evidenceSourceKey,
             observedAt: Date.now(),
             evidenceFreshnessAt: Date.now(),
+        }, {
+            commandId: `hexis-evidence:${createHash('sha256').update(`${memory.id}|${evidenceSourceKey}`).digest('hex')}`,
+            tick: this.persisted.state.tick,
         });
         const duplicateEvidence = canonicalDuplicate || evidenceReceipt?.ok !== true || evidenceReceipt?.added !== true;
         const audit = this.hexisAdaptation.reviseBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: Number(memory.sourceAuthority01 ?? 0.5), evidence: input.evidence, stance: input.stance, context: input.context, protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical', canonicalDuplicate: duplicateEvidence, at: Date.now() });
@@ -2915,13 +2918,16 @@ export class OrganismCore {
                     return { ok: false, error: 'memory-correction-rejected', memoryId: sourceMemoryId };
                 // The review is provenance, not independent external corroboration: keep authority conservative.
                 const evidenceKey = `hexis-review:${sha256Stable({ reviewId, itemId }, 'legacy')}`;
-                const evidence = this.memorySubsystem.memoryOS.recordEvidence(revised.id, {
+                const evidence = this.memorySubsystem.fabric.recordEvidence(revised.id, {
                     source: `hexis-learning-review:${reviewId}`,
                     provenanceClass: 'unknown',
                     sourceAuthority01: 0.5,
                     independenceKey: evidenceKey,
                     observedAt: Date.now(),
                     evidenceFreshnessAt: Date.now(),
+                }, {
+                    commandId: `hexis-review-evidence:${createHash('sha256').update(`${reviewId}|${itemId}|${revised.id}`).digest('hex')}`,
+                    tick: this.persisted.state.tick,
                 });
                 if (!evidence.ok)
                     return { ok: false, error: 'review-evidence-record-failed', memoryId: revised.id };
