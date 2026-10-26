@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { URL } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
@@ -824,31 +824,87 @@ async function route(req, res) {
             await runtime.core.flush();
             return json(res, 200, { ok: true, ...result, hexis: runtime.core.hexisDiagnostics() });
         }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/evidence/review') {
+            const input = await body(req);
+            const evidence = input?.evidence && typeof input.evidence === 'object' ? input.evidence : input;
+            // This marker is server-internal and may not be supplied through the public canonical route.
+            if (evidence !== null && typeof evidence === 'object' && Object.prototype.hasOwnProperty.call(evidence, 'observedAtOrigin'))
+                return json(res, 400, { ok: false, error: 'invalid-evidence-timestamp-origin' });
+            const result = await runtime.core.ingestHexisEvidenceForReview(evidence);
+            const status = result.status === 'review-pending' ? 202
+                : result.status === 'duplicate' ? 200
+                : result.status === 'blocked' ? 403
+                : result.status === 'conflict' ? 409
+                : 400;
+            return json(res, status, { ok: status < 400, result });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/evidence/decide') {
+            const input = await body(req);
+            const decision = String(input?.decision ?? '');
+            if (!['approve', 'correct', 'forget'].includes(decision))
+                return json(res, 400, { ok: false, error: 'invalid-review-decision' });
+            const result = await runtime.core.decideHexisEvidenceReview(
+                String(input.reviewId || ''),
+                String(input.itemId || ''),
+                decision,
+                input.correction === undefined ? undefined : String(input.correction),
+            );
+            if (result.status !== 'decided') return json(res, 409, { ok: false, result });
+            await runtime.core.flush();
+            return json(res, 200, { ok: true, result });
+        }
+        // Compatibility shim: the old endpoint used to apply a Hexis projection
+        // directly. It now converts the legacy input into a canonical evidence
+        // envelope and can only enqueue a review; confidence is never revised here.
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/belief/revise') {
             const input = await body(req);
-            try {
-                const evidence = {
-                    ref: input.evidence?.ref ? String(input.evidence.ref) : undefined,
-                    label: input.evidence?.label ? String(input.evidence.label) : undefined,
-                    contentHash: input.evidence?.contentHash ? String(input.evidence.contentHash) : undefined,
-                    trust01: input.evidence?.trust01 === undefined ? undefined : Number(input.evidence.trust01),
-                    note: input.evidence?.note ? String(input.evidence.note) : undefined,
-                };
-                const result = runtime.core.hexisReviseBelief({
-                    memoryId: String(input.memoryId || ''),
-                    confidence01: Number(input.confidence01),
-                    trust01: input.trust01 === undefined ? undefined : Number(input.trust01),
-                    stance: input.stance === 'contradicts' ? 'contradicts' : 'supports',
-                    evidence,
-                    context: input.context ? String(input.context) : undefined,
-                    protectedBelief: Boolean(input.protectedBelief),
-                });
-                await runtime.core.flush();
-                return json(res, 200, { ok: true, result });
-            }
-            catch (error) {
-                return json(res, 400, { ok: false, error: String(error?.message ?? error) });
-            }
+            const memoryId = String(input?.memoryId || '').trim();
+            const sourceRef = String(input?.evidence?.ref || '').trim();
+            const stance = input?.stance === undefined ? 'supports' : String(input.stance);
+            if (!memoryId || !sourceRef)
+                return json(res, 400, { ok: false, error: 'memoryId-and-evidence-ref-required' });
+            if (!['supports', 'contradicts', 'contextualizes'].includes(stance))
+                return json(res, 400, { ok: false, error: 'invalid-evidence-stance' });
+            const confidence = Number(input?.evidence?.trust01 ?? input?.trust01 ?? 0.5);
+            const identity = {
+                memoryId,
+                sourceRef,
+                contentHash: input?.evidence?.contentHash === undefined ? '' : String(input.evidence.contentHash),
+                stance,
+            };
+            const evidenceId = String(input?.evidenceId || input?.evidence?.evidenceId || (
+                'hexis-legacy:' + createHash('sha256').update(JSON.stringify(identity)).digest('hex')
+            ));
+            const suppliedObservedAt = input?.observedAt !== undefined
+                ? input.observedAt
+                : input?.evidence?.observedAt;
+            const observedAtFromReceipt = suppliedObservedAt === undefined;
+            const observedAt = observedAtFromReceipt
+                ? new Date().toISOString()
+                : String(suppliedObservedAt);
+            const envelope = {
+                memoryId,
+                evidenceId,
+                stance,
+                source: {
+                    kind: String(input?.evidence?.kind || 'external'),
+                    ref: sourceRef,
+                    ...(input?.evidence?.label ? { label: String(input.evidence.label) } : {}),
+                    ...(input?.evidence?.author ? { author: String(input.evidence.author) } : {}),
+                },
+                observedAt,
+                ...(observedAtFromReceipt ? { observedAtOrigin: 'server-receipt' } : {}),
+                confidence,
+                ...(input?.evidence?.note ? { note: String(input.evidence.note) } : {}),
+                ...(input?.protectedBelief === true ? { protectedMemory: true } : {}),
+            };
+            const result = await runtime.core.ingestHexisEvidenceForReview(envelope);
+            const status = result.status === 'review-pending' ? 202
+                : result.status === 'duplicate' ? 200
+                : result.status === 'blocked' ? 403
+                : result.status === 'conflict' ? 409
+                : 400;
+            return json(res, status, { ok: status < 400, result });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/temporal') {
             const memoryId = String(url.searchParams.get('memoryId') || '');
@@ -876,10 +932,32 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/decide') {
             const input = await body(req);
-            const decision = ['approve', 'correct', 'forget'].includes(String(input.decision)) ? String(input.decision) : 'approve';
-            const result = runtime.core.hexisDecideLearningReview(String(input.reviewId || ''), String(input.itemId || ''), decision, input.correction ? String(input.correction) : undefined);
+            const decision = String(input?.decision ?? '');
+            if (!['approve', 'correct', 'forget'].includes(decision))
+                return json(res, 400, { ok: false, error: 'invalid-review-decision' });
+            const reviewId = String(input.reviewId || '');
+            const itemId = String(input.itemId || '');
+            // Always ask the canonical evidence gate first. The list route may
+            // expose a projected review shape without its internal evidence payload,
+            // so dispatching based only on that projection can bypass the gate.
+            const guarded = await runtime.core.decideHexisEvidenceReview(
+                reviewId, itemId, decision,
+                input.correction === undefined ? undefined : String(input.correction),
+            );
+            if (guarded.status === 'decided') {
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, result: guarded });
+            }
+            // Fall back only when the canonical gate proves this is not a Hexis
+            // evidence review. Stale, missing-receipt and other gate failures fail closed.
+            if (guarded.reason !== 'not-a-valid-hexis-evidence-review')
+                return json(res, 409, { ok: false, result: guarded });
+            const result = runtime.core.hexisDecideLearningReview(
+                reviewId, itemId, decision,
+                input.correction ? String(input.correction) : undefined,
+            );
             await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), result });
+            return json(res, result ? 200 : 409, { ok: Boolean(result), result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/retention/propose') {
             const input = await body(req);

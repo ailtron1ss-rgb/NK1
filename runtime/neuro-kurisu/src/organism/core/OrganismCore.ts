@@ -2305,6 +2305,62 @@ export class OrganismCore {
         this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
         this.persisted.facets.memory.autobiographicalMemories = this.memorySubsystem.memorySubstrate.projectCompatibilityRecords(this.memorySubsystem.memoryOS.snapshot({ clone: false }), 48);
     } return removed; }
+    /**
+     * Make a reviewed Hexis evidence transition durable through the owned
+     * MemoryFabric/EventLog and the existing organism checkpoint pipeline.
+     * If persistence fails, restore all participating in-memory owners and
+     * make a best-effort checkpoint of the pre-transition state.
+     */
+    private async persistHexisReviewMutation<T>(
+        mutate: () => T,
+        shouldPersist: (result: T) => boolean,
+    ): Promise<T> {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        const memoryOwner = this.organismSystems.memory;
+        const memoryBefore = memoryOwner.memoryOS.snapshot();
+        const memoryFabricBefore = memoryOwner.fabric.snapshot();
+        const eventsBefore = memoryOwner.events.list();
+        const hexisBefore = this.hexisAdaptation.snapshot();
+        const persistedBefore = structuredClone(this.persisted);
+        const result = mutate();
+        if (!shouldPersist(result)) return result;
+        try {
+            this.markPersistenceDirty();
+            await this.checkpoint(true);
+            return result;
+        } catch {
+            memoryOwner.memoryOS.restore(memoryBefore);
+            memoryOwner.fabric.restore(memoryFabricBefore);
+            memoryOwner.events.restore(eventsBefore);
+            this.hexisAdaptation.restore(hexisBefore);
+            this.persisted = persistedBefore;
+            this.markPersistenceDirty();
+            try { await this.checkpoint(true); } catch { /* preserve the original storage failure */ }
+            throw new Error('hexis-review-checkpoint-failed-and-rolled-back');
+        }
+    }
+
+    /** Append evidence and stage its review without mutating belief confidence. */
+    async ingestHexisEvidenceForReview(input: unknown) {
+        return this.persistHexisReviewMutation(
+            () => this.organismSystems.ingestHexisEvidenceForReview(input),
+            (result) => result.status === 'review-pending',
+        );
+    }
+
+    /** Only an explicit review decision may commit a Hexis confidence proposal. */
+    async decideHexisEvidenceReview(
+        reviewId: string,
+        reviewItemId: string,
+        decision: HexisReviewDecision,
+        correction?: string,
+    ) {
+        return this.persistHexisReviewMutation(
+            () => this.organismSystems.decideHexisEvidenceReview(reviewId, reviewItemId, decision, correction),
+            (result) => result.status === 'decided',
+        );
+    }
+
     memorySnapshot() { return this.snapshot().facets.memory; }
     evolutionSnapshot() { return this.snapshot().facets.evolution; }
     cognitiveBudgetSnapshot() { return this.snapshot().facets.cognition.budget; }

@@ -1,3 +1,109 @@
+## WorkPass390 — безопасная обработка null-envelope в Hexis HTTP API (2026-10-26)
+
+- **Коммиты кода/теста:** `f7dab0d78bd33ede255c04ff5a37c2f635dd4f6e`, `9d00c3001a97d5551145cf0bb2c51fcdfebe7424`.
+- Guard внутреннего `observedAtOrigin` сначала проверяет, что тело — ненулевой объект. Невалидное тело доходит до schema validation вместо того, чтобы вызвать route-level `TypeError`.
+- Smoke требует HTTP 400 для JSON `null` и для попытки передать внутренний timestamp marker.
+- **Валидация:** точный head ожидает проверки. Предыдущие Actions по исправлению generic review завершались без шагов/логов, поэтому WorkPass389/390 пока не подтверждены. Прогресс не увеличен; `main` и Release ZIP не менялись.
+
+---
+
+## WorkPass389 — канонический gate для общего review endpoint (2026-10-26)
+
+- **Коммит исправления:** `7c22337ae263f68c568ac398c9af1d68a6af2bf0`; диагностический тест — `62871903fad4f9d19c9235fb061e1f37f010a7cc`.
+- Общий `/reviews/decide` больше не выбирает путь по наличию служебного `pipeline` в публичной review-проекции. Сначала вызывается `decideHexisEvidenceReview`; legacy fallback разрешён только при точном ответе `not-a-valid-hexis-evidence-review`. Прочие отказы закрываются HTTP 409.
+- Smoke-тест печатает результат canonical gate в сообщении об ошибке, чтобы не скрывать причину отказа.
+- Предыдущий Unified run на `ac6d07607977b2280b6d924e0c13dd7c6b332e90` падал на generic-review проверке. Запуски для `62871903fad4f9d19c9235fb061e1f37f010a7cc` и `7c22337ae263f68c568ac398c9af1d68a6af2bf0` завершились до появления шагов и журналов; проверка точного head пока не подтверждена.
+- Метрики готовности/recall не повышались. `main` и Release ZIP не изменялись.
+
+---
+
+## WorkPass387 — стойкая идемпотентность Hexis receipt-time (2026-10-26)
+
+- Код/тесты: `cf79d537ce44e9bed1bfe3a07001d17f3097d06b`, `67fd5cc3e28c351c5264bf88d6427828eeda8cc6`, `7f7d5f0aae1b2b3e782202d281c0fb25ceed9943`, `b55c45ce65e6a6375ad8b90a55059340b852b900`, `c9e53030623fba87037460c2a3202c9a89ab324f`, `843964cdf0f5b2dc9d770b9fa60c5d294b0f2bad`.
+- Сгенерированное сервером время помечено внутренним origin; digest нормализует только эту метку. Остальные поля evidence остаются digest-bound. Публичный endpoint отклоняет маркер.
+- Тесты проверяют duplicate на повторе, conflict при реальном изменении payload и отклонение поддельного маркера. Предыдущая попытка поиска времени через read-only проекцию не прошла smoke; эта замена не зависит от неё.
+- Exact-head validation ожидается. `main` и Release ZIP не изменялись.
+
+---
+
+## WorkPass386 — идемпотентность повторного legacy-запроса Hexis (2026-10-26)
+
+- Коммит кода: `287f312aa982863f10f60cfd6a42db69dd8d97d1`.
+- Smoke выявил дефект: при пропущенном `observedAt` сервер создавал новую временную метку на каждый повтор, хотя evidence ID оставался тем же; identical payload получал конфликт.
+- При повторе маршрут теперь берёт время из канонически сохранённого evidence; первое принятие сохраняет серверное время, заданный клиентом timestamp не переписывается.
+- Валидация точного head ожидается. `main` и Release ZIP не менялись.
+
+---
+
+## WorkPass385 — детерминированная очистка Hexis smoke-теста (2026-10-26)
+
+- Коммит исправления: `a9f741deb4cece36459f121f9064cf6cf99069d0`.
+- Unified integration прошёл typecheck и Hexis adapter/bridge/review/MemoryFabric ingress; следующий отказ — `ENOTEMPTY` при удалении временного каталога до завершения дочернего сервера.
+- Smoke-тест теперь ждёт завершения процесса перед очисткой и использует ограниченный аварийный выход; проверки маршрутов не ослаблены.
+- Проверка нового точного head ожидается. Готовность и recall-uplift не повышены. `main` и Release ZIP не менялись.
+
+---
+
+## WorkPass383 — keep Hexis lifecycle events on logical organism ticks (2026-10-26)
+
+- **Code/test head:** `7c62bebea1564b067f31343914c40004dc87d28e` on `work/hexis-evidence-adapter-2026-10-26`; bridge implementation commit `26837c72cece9145bbcce864949e2922b4d42f21`.
+- **Defect:** the approval path used `Date.parse(observedAt)` (epoch milliseconds) as `MemoryFabric`'s logical event tick. That mixed wall-clock time with the organism-cycle counter and could make later events appear chronologically out of scale.
+- **Fix:** external Hexis ingress and approval now reuse the latest non-negative logical tick from the canonical event log; missing or timestamp-like values fail closed to zero. Event wall-clock time remains the separate event `at` field.
+- **Regression:** the production integration test runs through `OrganismSystemFabric`, seeds logical tick 27, and checks evidence and approved-confidence events both retain tick 27 and never record epoch milliseconds.
+- **Validation:** fresh exact-head typecheck, focused tests, unified integration and release gates are **pending**. No retrieval/readiness score increase claimed. `main` and the canonical Release ZIP are unchanged.
+
+---
+## WorkPass381 — make Hexis rollback assertions schema-safe (2026-10-26)
+
+- **Code/test commit:** `d6fbf28a61024f6739bcf4dfe1be58627cdf0da6`; branch `work/hexis-evidence-adapter-2026-10-26`.
+- The previous run reached the rollback regression and showed that pre-evidence snapshots may omit the optional `evidenceRecords` and evidence-trail fields entirely. Normalized those optional-field checks to booleans rather than confusing an absent property (`undefined`) with a retained receipt.
+- Assertions still verify that the failed receipt, replay identity and source trail are absent, confidence and review state are unchanged, and the exact same evidence ID can be retried successfully after the injected review-store failure is removed.
+- **Validation:** exact-head typecheck, focused regressions and unified integration must pass on the updated code/test head; prior unified run failed on this assertion, so it is not counted as validation of this fix. No readiness/recall uplift claimed; `main` and Release ZIP unchanged.
+
+---
+## WorkPass380 — исправление регрессии отката Hexis и повторной попытки (2026-10-26)
+
+- **Коммит кода/теста:** `90f8b111d3e1d5b6b6e7b82f187eaf9ddb365e28`, ветка `work/hexis-evidence-adapter-2026-10-26`.
+- Убраны ошибочные ссылки теста на неопределённые `target` и `rollbackEvidence`; проверки обращаются к канонической записи MemoryOS2 и подтверждают, что отклонённый receipt, replay ID и источник не остались в журнале.
+- Добавлен тест восстановления работоспособности: после искусственного сбоя очереди review повтор того же evidence ID должен пройти до `review-pending`, а не блокироваться ложным дублем.
+- **Валидация:** точный head после этого коммита ещё ожидает typecheck и Unified project integration. Предыдущий запуск относился к более раннему SHA; PASS не заявляется. Метрики прогресса не повышаются, улучшение recall и готовность к production не доказаны.
+- `main` и канонический Release ZIP не изменялись.
+
+---
+
+## WorkPass375 — Hexis evidence routed into canonical MemoryOS2 (2026-10-26)
+
+- **Source branch:** `work/hexis-evidence-adapter-2026-10-26`.
+- **Code/test head before documentation:** `61fdb0ad6b098f91bd3b0884bf3b209f4ee514dc`.
+- **Implementation:** `MemoryOS2` now owns the canonical evidence record trail and exposes duplicate-aware evidence ingress. The Hexis bridge maps the validated envelope into this store without creating a second memory/database.
+- **Stored lineage:** evidence ID, SHA-256 digest, stance, source kind/reference, optional label/author/note, evidence confidence and observed time. The memory's own belief confidence remains unchanged on ingress.
+- **Replay integrity:** exact replay is a no-op; a reused visible evidence ID with changed digest is a conflict. After the 64-record detail trail rotates, a Bloom lineage filter blocks retired IDs from voting again. Source independence is represented separately from evidence identity.
+- **Safety/authority:** protected-memory ingress is blocked and must use the existing review path. This pass only records evidence; it does not automatically revise beliefs, approve reviews, promote skills or bypass independent evaluation.
+- **Regression:** `tests/cognitive-hexis-memory-bridge.mjs` checks accepted evidence, supports/contradicts/contextualizes metadata, preserved confidence, exact retry, conflicting digest, protected-memory refusal, missing memory, snapshot/restore and 90-entry rollover replay.
+- **Validation:** **PENDING** exact-head typecheck, bridge test, unified integration and final release gate. Do not infer PASS from a successful commit. Progress percentages remain unchanged.
+- **Next dependency:** connect this canonical evidence trail to the existing Hexis belief appraisal/review route after confirming its current active API and approval boundary. `main` and the canonical Release ZIP are unchanged.
+
+---
+## WorkPass376 — strict Hexis ingress schema and dedupe-index isolation (2026-10-26)
+
+- **Branch:** `work/hexis-evidence-adapter-2026-10-26`; stacked Hexis integration PR #217.
+- **Implementation:** `HexisEvidenceAdapter.ts` rejects unknown/symbol keys and accessor properties at both envelope levels; exceptions from caller-provided dedupe index access become a fail-closed `invalid-evidence-dedupe-index` result.
+- **Regression:** added unknown-key, symbol-key, nested source schema, and throwing dedupe-index cases to `cognitive-hexis-evidence-adapter.mjs`.
+- **Validation:** **PENDING** exact-head test/typecheck/unified suite. No benchmark or readiness score uplift claimed. No `main` or Release ZIP change.
+
+---
+
+## WorkPass374 — Hexis provenance ingress vertical slice (2026-10-26)
+
+- **Branch:** `work/hexis-evidence-adapter-2026-10-26`.
+- **Code/test:** `runtime/neuro-kurisu/src/organism/memory/HexisEvidenceAdapter.ts` and `runtime/neuro-kurisu/tests/cognitive-hexis-evidence-adapter.mjs`.
+- **Integration:** registered `test:cognitive-hexis-evidence-adapter` in `runtime/neuro-kurisu/package.json` and in `test:cognitive-integration-suite`. Test filename uses the existing `cognitive-*.mjs` convention so the focused workflow path filter can detect it.
+- **Contract:** canonical evidence provenance + source identity + stance + timestamp + confidence; idempotent duplicate detection; protected-memory marker preserved; accessor/proxy-safe fail-closed validation. No persistence adapter or confidence-revision policy is silently substituted.
+- **Validation:** **PENDING** exact-head CI. Required: runtime typecheck, focused adapter regression, unified cognitive integration suite and release verification. No score increase and no claim of memory-retrieval uplift.
+- **Scope guard:** source ideas are adapted; no Hexis service, database, credentials, or runtime dependency is added. `main` and the latest Release ZIP remain unchanged.
+
+---
+
 ## WorkPass373 — aggregate payload text budget (2026-10-26)
 
 - **Implementation commit:** `390093223cdb38114827a27beb62d60fb897ac67`.

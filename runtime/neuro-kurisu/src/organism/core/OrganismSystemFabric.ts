@@ -8,7 +8,11 @@ import { EvidenceResearchSubsystemRuntime } from './EvidenceResearchSubsystemRun
 import { organismSystemContract, organismSystemContracts, type OrganismSystemContract, type ResolvedOrganismSystemContract, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
 import { WillIntegrationBridge } from '../integration/will/WillIntegrationBridge.ts';
 import { LuminaAdaptationFabric } from '../integration/lumina/LuminaAdaptationFabric.ts';
-import { HexisAdaptationFabric } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { HexisAdaptationFabric, type HexisReviewDecision } from '../integration/hexis/HexisAdaptationFabric.ts';
+import {
+  ingestHexisEvidenceForReview as ingestCanonicalHexisEvidenceForReview,
+  decideHexisEvidenceReview as decideCanonicalHexisEvidenceReview,
+} from '../memory/HexisEvidenceMemoryBridge.ts';
 import { LettaGovernanceAdaptationFabric } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import { buildCognitiveArchitectureSnapshot } from './CognitiveArchitectureMap.ts';
@@ -88,6 +92,36 @@ export class OrganismSystemFabric {
   names(): OrganismSystemName[] { return ['self','governance','memory','world','embodiment','agency','research']; }
 
   get(name: OrganismSystemName) { return this[name]; }
+
+  /**
+   * Production evidence ingress: shares the owned MemoryOS2, MemoryFabric,
+   * EventLog and Hexis review queue. No second memory store is created.
+   */
+  ingestHexisEvidenceForReview(input: unknown) {
+    return ingestCanonicalHexisEvidenceForReview(
+      this.memory.memoryOS,
+      this.hexisAdaptation,
+      input,
+      this.memory,
+    );
+  }
+
+  decideHexisEvidenceReview(
+    reviewId: string,
+    reviewItemId: string,
+    decision: HexisReviewDecision,
+    correction?: string,
+  ) {
+    return decideCanonicalHexisEvidenceReview(
+      this.memory.memoryOS,
+      this.hexisAdaptation,
+      reviewId,
+      reviewItemId,
+      decision,
+      correction,
+      this.memory,
+    );
+  }
 
   snapshot(): OrganismSystemFabricSnapshot {
     return {

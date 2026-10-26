@@ -7,6 +7,19 @@ assert.equal(fabric.snapshot().version, 1);
 const first = fabric.reviseBelief({ memoryId:'mem-1', confidence01:.5, trust01:.6, stance:'supports', evidence:{ref:'source-a',trust01:.9}, context:'test' });
 assert.equal(first.applied, true);
 assert(first.posteriorConfidence01 > .5);
+
+const stateBeforePreview = structuredClone(fabric.snapshot());
+const preview = fabric.previewBeliefRevision({
+  memoryId:'mem-1',
+  confidence01:first.posteriorConfidence01,
+  trust01:first.posteriorTrust01,
+  stance:'contradicts',
+  evidence:{ref:'source-preview',trust01:.8},
+  context:'preview must remain side-effect free',
+});
+assert.equal(preview.applied, true);
+assert(preview.posteriorConfidence01 < preview.priorConfidence01);
+assert.deepEqual(fabric.snapshot(), stateBeforePreview, 'belief revision preview must not write belief, audit, metrics, or review state');
 const duplicate = fabric.reviseBelief({ memoryId:'mem-1', confidence01:first.posteriorConfidence01, trust01:.6, stance:'supports', evidence:{ref:'source-a',trust01:.9}, context:'test' });
 assert.equal(duplicate.applied, false);
 assert.equal(duplicate.reason, 'duplicate_source');

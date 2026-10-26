@@ -12,14 +12,40 @@ import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type Memor
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
 
-export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
+function snapshotEvidenceInputForReceipt(
+  raw: unknown,
+): Parameters<MemoryOS2['recordEvidence']>[1] | undefined {
+  try {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+    const prototype = Object.getPrototypeOf(raw);
+    if (prototype !== Object.prototype && prototype !== null) return undefined;
+    const descriptors = Object.getOwnPropertyDescriptors(raw);
+    const allowed = new Set([
+      'evidenceId','digest','stance','sourceKind','sourceRef','label','author','note',
+      'confidence01','observedAt','protectedMemory','provenanceClass','sourceAuthority01','independenceKey',
+    ]);
+    const clean: Record<string, unknown> = Object.create(null);
+    for (const key of Reflect.ownKeys(descriptors)) {
+      if (typeof key !== 'string' || !allowed.has(key)) return undefined;
+      const descriptor = descriptors[key];
+      if (!descriptor || !('value' in descriptor)) return undefined;
+      clean[key] = descriptor.value;
+    }
+    return structuredClone(clean) as Parameters<MemoryOS2['recordEvidence']>[1];
+  } catch {
+    return undefined;
+  }
+}
+
+export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget'|'record-evidence';
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
-  | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number };
+  | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number }
+  | { action:'record-evidence'; id:string; input:Parameters<MemoryOS2['recordEvidence']>[1]; commandId?:string; tick?:number; emitEvent?:boolean };
 
 interface MemoryLifecycleReceipt {
   commandId:string;
@@ -27,9 +53,10 @@ interface MemoryLifecycleReceipt {
   action:MemoryLifecycleAction;
   at:number;
   outcome:'applied'|'noop';
-  resultKind:'memory'|'context'|'boolean'|'void'|'null';
+  resultKind:'memory'|'context'|'boolean'|'void'|'null'|'evidence';
   memoryId?:string;
   booleanValue?:boolean;
+  evidenceInput?:Parameters<MemoryOS2['recordEvidence']>[1];
 }
 
 export class MemoryLifecycleCommandConflictError extends Error {
@@ -174,7 +201,7 @@ export class MemoryFabric {
    * makes the side effect and lifecycle event idempotent across snapshot/restore.
    * MemoryOS2 remains the only writable store; projections are updated explicitly.
    */
-  applyLifecycleCommand(command:MemoryLifecycleCommand):MemoryItem2|Record<string,string>|boolean|void|null {
+  applyLifecycleCommand(command:MemoryLifecycleCommand):MemoryItem2|Record<string,string>|boolean|void|null|ReturnType<MemoryOS2['recordEvidence']> {
     const action=command.action;
     const commandId=String(command.commandId??'').trim().slice(0,128);
     const semanticPayload:any={...command};
@@ -194,7 +221,7 @@ export class MemoryFabric {
         throw new MemoryLifecycleCommandRecoveryRequiredError(commandId);
     }
 
-    let result:MemoryItem2|Record<string,string>|boolean|void|null=null;
+    let result:MemoryItem2|Record<string,string>|boolean|void|null|ReturnType<MemoryOS2['recordEvidence']>=null;
     let outcome:'applied'|'noop'='noop';
     let memoryId:string|undefined;
     let booleanValue:boolean|undefined;
@@ -254,6 +281,18 @@ export class MemoryFabric {
         if(context)eventPayload={action,memoryId:before.id,fields:changedEntries.map(([key])=>key),commandId:commandId||undefined};
         break;
       }
+      case 'record-evidence': {
+        const evidenceResult=this.memoryOS.recordEvidence(command.id,command.input);
+        result=evidenceResult; memoryId=command.id;
+        outcome=evidenceResult.ok&&evidenceResult.added?'applied':'noop';
+        if(evidenceResult.ok&&evidenceResult.added){
+          this.touchHot(command.id);
+          this.statsData.reconsolidations++;
+          eventPayload={action,memoryId:command.id,evidenceId:command.input.evidenceId,stance:command.input.stance,sourceKind:command.input.sourceKind,observedAt:command.input.observedAt,reason:'canonical-evidence-appended',commandId:commandId||undefined};
+        }
+        if(command.emitEvent===false)eventPayload=undefined;
+        break;
+      }
       case 'forget': {
         const forgotten=this.memoryOS.forgetById(command.id,command.reason??'memory-knockout');
         result=forgotten; booleanValue=forgotten;memoryId=command.id;outcome=forgotten?'applied':'noop';
@@ -268,8 +307,9 @@ export class MemoryFabric {
     }
     if(commandId){
       const receipt:MemoryLifecycleReceipt={commandId,fingerprint,action,at:Date.now(),outcome,
-        resultKind:action==='update-context'&&result&&typeof result==='object'?'context':result&&typeof result==='object'?'memory':typeof result==='boolean'?'boolean':result===null?'null':'void',
-        ...(memoryId?{memoryId}:{}),...(booleanValue!==undefined?{booleanValue}:{})};
+        resultKind:action==='record-evidence'?'evidence':action==='update-context'&&result&&typeof result==='object'?'context':result&&typeof result==='object'?'memory':typeof result==='boolean'?'boolean':result===null?'null':'void',
+        ...(memoryId?{memoryId}:{}),...(booleanValue!==undefined?{booleanValue}:{}),
+        ...(action==='record-evidence'&&snapshotEvidenceInputForReceipt(command.input)?{evidenceInput:snapshotEvidenceInputForReceipt(command.input)}:{})};
       this.mutationReceipts.set(commandId,receipt);
       while(this.mutationReceipts.size>this.maxMutationReceipts){
         const oldest=this.mutationReceipts.keys().next().value as string|undefined;
@@ -286,7 +326,8 @@ export class MemoryFabric {
     return item?structuredClone(item):null;
   }
 
-  private replayMutationReceipt(receipt:MemoryLifecycleReceipt):MemoryItem2|Record<string,string>|boolean|void|null {
+  private replayMutationReceipt(receipt:MemoryLifecycleReceipt):MemoryItem2|Record<string,string>|boolean|void|null|ReturnType<MemoryOS2['recordEvidence']> {
+    if(receipt.resultKind==='evidence')return receipt.memoryId&&receipt.evidenceInput?this.memoryOS.recordEvidence(receipt.memoryId,receipt.evidenceInput):{ok:false,added:false,reason:'invalid-evidence-envelope',memoryId:receipt.memoryId??'',independentSources:0};
     if(receipt.resultKind==='boolean')return Boolean(receipt.booleanValue);
     if(receipt.resultKind==='memory')return receipt.memoryId?this.findCanonical(receipt.memoryId):null;
     if(receipt.resultKind==='context'){const current=receipt.memoryId?this.findCanonical(receipt.memoryId):null;return structuredClone(current?.context??{});}
@@ -497,7 +538,10 @@ export class MemoryFabric {
   snapshot():MemoryFabricSnapshot {
     return {
       version:2,stats:{...this.statsData},hotIds:[...this.hotIds],residency:this.memoryOS.residencyDiagnostics(),
-      policyOutcomeLedger:this.policyOutcomeLedger.snapshot(),mutationReceipts:[...this.mutationReceipts.values()].slice(-this.maxMutationReceipts).map(row=>({...row})),
+      policyOutcomeLedger:this.policyOutcomeLedger.snapshot(),mutationReceipts:[...this.mutationReceipts.values()].slice(-this.maxMutationReceipts).map(row=>({
+        ...row,
+        ...(row.evidenceInput?{evidenceInput:snapshotEvidenceInputForReceipt(row.evidenceInput)}:{}),
+      })),
       ...(this.retiredMutationReceiptCount?{retiredMutationReceiptBloom:encodeBase64Bytes(this.retiredMutationReceiptBloom),retiredMutationReceiptCount:this.retiredMutationReceiptCount}:{}),
       ...(this.retiredMutationReceiptBloomCorrupt?{retiredMutationReceiptBloomCorrupt:true}:{}),
     };
@@ -523,8 +567,16 @@ export class MemoryFabric {
       this.retiredMutationReceiptBloomCorrupt=true;
     }
     for(const row of (raw.mutationReceipts??[]).slice(-this.maxMutationReceipts)){
-      if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||!['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
-      this.mutationReceipts.set(row.commandId.slice(0,128),{...row,commandId:row.commandId.trim().slice(0,128),fingerprint:row.fingerprint.slice(0,64).toLowerCase(),at:Math.floor(Number(row.at))});
+      if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','forget','record-evidence'].includes(row.action)||!['memory','context','boolean','void','null','evidence'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
+      const evidenceInput=row.action==='record-evidence'?snapshotEvidenceInputForReceipt(row.evidenceInput):undefined;
+      if(row.action==='record-evidence'&&!evidenceInput)continue;
+      this.mutationReceipts.set(row.commandId.slice(0,128),{
+        ...row,
+        ...(row.action==='record-evidence'?{evidenceInput}:{}),
+        commandId:row.commandId.trim().slice(0,128),
+        fingerprint:row.fingerprint.slice(0,64).toLowerCase(),
+        at:Math.floor(Number(row.at)),
+      });
     }
   }
 

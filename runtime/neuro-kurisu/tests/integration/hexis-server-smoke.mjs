@@ -27,10 +27,73 @@ try {
   const memoryIndex = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=8`)).json();
   if (!memoryIndex.ok || !Array.isArray(memoryIndex.memoryIndex)) throw new Error('hexis-memory-index');
   if (memoryIndex.memoryIndex[0]?.id) {
-    const belief = await (await post('/api/organism/integration/hexis/belief/revise', { memoryId: memoryIndex.memoryIndex[0].id, stance: 'supports', context: 'server-smoke', evidence: { ref: 'server-smoke-evidence', trust01: .8 } })).json();
-    if (!belief.ok || !belief.result?.audit) throw new Error('hexis-belief-revise');
-    const duplicate = await (await post('/api/organism/integration/hexis/belief/revise', { memoryId: memoryIndex.memoryIndex[0].id, stance: 'supports', context: 'server-smoke', evidence: { ref: 'server-smoke-evidence', trust01: .8 } })).json();
-    if (!duplicate.ok || duplicate.result?.audit?.applied !== false) throw new Error('hexis-belief-dedupe');
+    const legacyEvidence = {
+      memoryId: memoryIndex.memoryIndex[0].id,
+      stance: 'supports',
+      context: 'server-smoke',
+      evidence: { ref: 'server-smoke-evidence', trust01: .8 },
+    };
+    const beliefResponse = await post('/api/organism/integration/hexis/belief/revise', legacyEvidence);
+    const belief = await beliefResponse.json();
+    if (beliefResponse.status !== 202 || !belief.ok || belief.result?.status !== 'review-pending')
+      throw new Error('hexis-legacy-revise-must-stage-review');
+    const duplicateResponse = await post('/api/organism/integration/hexis/belief/revise', legacyEvidence);
+    const duplicate = await duplicateResponse.json();
+    if (duplicateResponse.status !== 200 || !duplicate.ok || duplicate.result?.status !== 'duplicate')
+      throw new Error('hexis-legacy-evidence-dedupe');
+    if (duplicate.result?.reviewId) throw new Error('hexis-duplicate-must-not-create-review');
+
+    // The existing generic review endpoint must dispatch evidence proposals
+    // through the canonical compare-before-write gate, not direct Hexis mutation.
+    const reviewed = await (await post('/api/organism/integration/hexis/reviews/decide', {
+      reviewId: belief.result.reviewId,
+      itemId: belief.result.reviewItemId,
+      decision: 'approve',
+    })).json();
+    if (!reviewed.ok || reviewed.result?.status !== 'decided' || reviewed.result?.confidenceChanged !== true)
+      throw new Error('hexis-generic-review-must-use-canonical-gate:' + JSON.stringify(reviewed));
+
+    // Malformed/null bodies must reach schema validation rather than throwing in the route guard.
+    const emptyEnvelopeResponse = await post('/api/organism/integration/hexis/evidence/review', null);
+    if (emptyEnvelopeResponse.status !== 400)
+      throw new Error('hexis-null-evidence-envelope-must-fail-closed:' + emptyEnvelopeResponse.status);
+
+    // Exercise the canonical envelope endpoint too, including the separate decide route.
+    const canonicalEnvelope = {
+      memoryId: memoryIndex.memoryIndex[0].id,
+      evidenceId: 'hexis:server-smoke:canonical-evidence',
+      stance: 'contextualizes',
+      source: { kind: 'document', ref: 'server-smoke-canonical-source', label: 'Smoke source' },
+      observedAt: new Date().toISOString(),
+      confidence: .73,
+      note: 'server smoke canonical envelope',
+    };
+    const forgedReceiptOrigin = await post('/api/organism/integration/hexis/evidence/review', {
+      ...canonicalEnvelope,
+      evidenceId: 'hexis:server-smoke:forged-receipt-origin',
+      observedAtOrigin: 'server-receipt',
+    });
+    if (forgedReceiptOrigin.status !== 400)
+      throw new Error('hexis-public-ingress-must-not-accept-internal-timestamp-marker');
+
+    const stagedResponse = await post('/api/organism/integration/hexis/evidence/review', canonicalEnvelope);
+    const staged = await stagedResponse.json();
+    if (stagedResponse.status !== 202 || !staged.ok || staged.result?.status !== 'review-pending')
+      throw new Error('hexis-canonical-evidence-review');
+    const invalidDecisionResponse = await post('/api/organism/integration/hexis/evidence/decide', {
+      reviewId: staged.result.reviewId,
+      itemId: staged.result.reviewItemId,
+      decision: 'auto-approve',
+    });
+    if (invalidDecisionResponse.status !== 400) throw new Error('hexis-evidence-invalid-decision-must-fail-closed');
+    const decidedResponse = await post('/api/organism/integration/hexis/evidence/decide', {
+      reviewId: staged.result.reviewId,
+      itemId: staged.result.reviewItemId,
+      decision: 'approve',
+    });
+    const decided = await decidedResponse.json();
+    if (decidedResponse.status !== 200 || !decided.ok || decided.result?.status !== 'decided' || decided.result?.confidenceChanged !== false)
+      throw new Error('hexis-canonical-evidence-decision');
   }
   const exportRes = await (await fetch(`${base}/api/organism/integration/hexis/hmx/export`)).json();
   if (!exportRes.ok || exportRes.document?.hmx_version !== '1.7' || !Array.isArray(exportRes.document?.sections?.memories)) throw new Error('hexis-hmx-export');
@@ -69,7 +132,19 @@ try {
   if (!ack.ok || ack.result?.status !== 'published') throw new Error('hexis-outbox-ack');
   console.log('HEXIS_SERVER_SMOKE=PASS');
 } finally {
-  child.kill('SIGTERM');
-  await new Promise(r => setTimeout(r, 300));
-  await rm(stateDir, { recursive: true, force: true });
+  // Stop the server before deleting its state directory. A fixed sleep races
+  // asynchronous flushes and can leave files being created after rm() starts.
+  await new Promise(resolve => {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      resolve();
+      return;
+    }
+    const timeout = setTimeout(() => child.kill('SIGKILL'), 3000);
+    child.once('exit', () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+    child.kill('SIGTERM');
+  });
+  await rm(stateDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
 }
