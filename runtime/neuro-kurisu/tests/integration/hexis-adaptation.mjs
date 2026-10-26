@@ -405,6 +405,37 @@ assert.equal(applyFabric.decideHmx(applyStage.stagingId, 'apply')?.application?.
 assert.equal(applyFabric.snapshot().temporal.length, importedTemporal.length,
   'replaying an HMX apply must not duplicate temporal assertions');
 
+// Restored stages are untrusted inputs at the integration boundary. Replay must
+// reject a forged or missing application receipt rather than returning a false success.
+const tamperedReplayState = applyFabric.snapshot();
+const tamperedReplayStage = tamperedReplayState.hmxStages.find(candidate => candidate.stagingId === applyStage.stagingId);
+assert(tamperedReplayStage?.application);
+tamperedReplayStage.application.importedCount += 1;
+const tamperedReplayFabric = new HexisAdaptationFabric();
+tamperedReplayFabric.restore(tamperedReplayState);
+let tamperedReplayHandlerCalls = 0;
+tamperedReplayFabric.bindCanonicalMemoryApply(() => {
+  tamperedReplayHandlerCalls += 1;
+  throw new Error('corrupt-replay-must-not-reach-projector');
+});
+assert.throws(
+  () => tamperedReplayFabric.decideHmx(applyStage.stagingId, 'apply'),
+  /hmx-applied-receipt-invalid/,
+);
+assert.equal(tamperedReplayHandlerCalls, 0, 'invalid restored receipts must be rejected before any apply handler can run');
+
+const missingReceiptState = applyFabric.snapshot();
+const missingReceiptStage = missingReceiptState.hmxStages.find(candidate => candidate.stagingId === applyStage.stagingId);
+assert(missingReceiptStage);
+missingReceiptStage.application = undefined;
+const missingReceiptFabric = new HexisAdaptationFabric();
+missingReceiptFabric.restore(missingReceiptState);
+assert.throws(
+  () => missingReceiptFabric.decideHmx(applyStage.stagingId, 'apply'),
+  /hmx-applied-receipt-invalid/,
+  'an applied stage without its receipt must not be returned as a successful replay',
+);
+
 // The normal decideHmx replay path must also validate persisted receipts (not only the projector).
 const corruptedAppliedSnapshot = applyFabric.snapshot();
 const persistedAppliedStage = corruptedAppliedSnapshot.hmxStages.find(stage => stage.stagingId === applyStage.stagingId);
