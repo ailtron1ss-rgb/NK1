@@ -72,7 +72,16 @@ export interface CognitiveEventFabricSnapshot {
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
-const cleanPayload=(x:unknown):Record<string,unknown>=>isRecord(x)?{...x}:{};
+const cleanPayload=(x:unknown):Record<string,unknown>=>{
+  if(!isRecord(x)) return {};
+  const detached:Record<string,unknown>={};
+  // Do not invoke top-level getters while projecting a causal event payload.
+  for(const key of Object.keys(x)){
+    const descriptor=Object.getOwnPropertyDescriptor(x,key);
+    if(descriptor && Object.hasOwn(descriptor,'value')) detached[key]=descriptor.value;
+  }
+  return detached;
+};
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
 export class CognitiveEventFabric {
@@ -152,7 +161,9 @@ export class CognitiveEventFabric {
     const parentIds=[...(input.parentIds??[])].map(String).slice(0,12);
     const external=Boolean(input.external);
     const confidence01=clamp01(input.confidence01??0.5);
-    const payload=cleanPayload(input.payload);
+    const payload=structuredClone(cleanPayload(input.payload));
+    // Validate serializability before mutating the event ledger; cyclic or non-JSON payloads fail closed.
+    sha256Stable(payload);
 
     if(suppliedId){
       const prior=this.events.find(event=>event.id===suppliedId);
