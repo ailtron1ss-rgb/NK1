@@ -1,10 +1,20 @@
+## WorkPass354b — future-proof evidence-head regression (2026-10-26)
+
+- The regression test now sets `sourceHeadAtSnapshot` to a different valid SHA and asserts that old CI evidence remains valid when all rows match `ciSnapshot.evidenceHead`. This avoids tying the test to a particular fixture state.
+- Previous exact-head checks passed on `754c06f353182e2537b5a534ebe0256d3cd65e96`: Unified integration suite [#40283563274](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40283563274), progress ledger integrity [#40283563215](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40283563215), and WorkPass110 [#40283563219](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40283563219).
+- Current code/test checkpoint `6d8a6145ced81ab87366f9f44ea8d16076e899af`; fresh CI pending because of the test robustness adjustment. Scores remain unchanged.
+
+---
+
 ## WorkPass354 — separate source and validated CI evidence heads (2026-10-26)
 
-- **Working PR:** [#182 — reject malformed cognitive event payload envelopes](https://github.com/ailtron1ss-rgb/NK1/pull/182).
-- **Root cause:** [Unified project integration suite #40282049399](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282049399) stopped at `test:progress-ledger`. Thirteen earlier successful CI rows all point to `621864d0d7f2676245383adab86f1dcc6d0f741f`, but validation incorrectly compared them to a newer source/test checkpoint. The integration runtime steps were skipped as a result.
-- **Fix:** `ciSnapshot.evidenceHead` now records the exact commit represented by the historical CI rows. Every row is checked against this evidence SHA, while `sourceHeadAtSnapshot` identifies the current code/test checkpoint. This does not rewrite old SHAs or promote historical PASS results to the new code.
-- **Regression coverage:** source and validated evidence may differ; malformed evidence heads, an individual row's SHA mismatch and invalid run URLs are still rejected.
-- **Combined code/test checkpoint:** `c0521842ae59c9fce651d7a669c3d121e567f2de`. The current base already contains the payload-envelope guard and regression wired into the cognitive integration suite. Fresh CI for the complete code/test snapshot is pending; no readiness percentages were raised.
+- **Working PR:** [#182 — separate source and validated CI evidence heads](https://github.com/ailtron1ss-rgb/NK1/pull/182).
+- **Root cause:** [Unified project integration suite #40282049399](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282049399) stopped at `test:progress-ledger`. Thirteen earlier successful CI rows all point to `621864d0d7f2676245383adab86f1dcc6d0f741f`, but validation incorrectly compared them to a newer source/test checkpoint. Runtime integration steps were skipped as a result.
+- **Fix:** `ciSnapshot.evidenceHead` records the exact commit represented by the historical CI rows. Each row is checked against this evidence SHA while `sourceHeadAtSnapshot` identifies the current code/test checkpoint. Historical SHAs and outcomes are preserved and not promoted to current-head evidence.
+- **Validation on prior code/test head `754c06f353182e2537b5a534ebe0256d3cd65e96`:** progress-ledger integrity, WorkPass110 continual-learning metrics, and the complete Unified project integration suite all passed. The unified run completed app/runtime installation, cognitive contracts, governed approval E2E, public gateway smoke, unified runtime/research bridge smoke and final release gates without publishing an archive.
+- **Current checkpoint:** `6d8a6145ced81ab87366f9f44ea8d16076e899af` adds the test-only future-proofing described above; exact-head CI is pending. Scores unchanged.
+
+---
 
 ---
 
