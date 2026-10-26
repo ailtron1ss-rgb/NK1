@@ -3255,7 +3255,7 @@ export class OrganismCore {
             let created = 0, reused = 0;
             const beforeItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
             const beforeKeys = new Set(beforeItems.map((m) => `${m.kind}|${m.content}`));
-            for (const row of memories.slice(0, 96)) {
+            for (const [rowIndex, row] of memories.slice(0, 96).entries()) {
                 const record = row && typeof row === 'object' ? row as Record<string, unknown> : {};
                 const content = String(record.content ?? record.summary ?? '').trim().slice(0, 12000);
                 if (!content)
@@ -3287,12 +3287,26 @@ export class OrganismCore {
                     provenanceClass: 'external' as const,
                     sourceAuthority01: 0.55,
                     independenceKey: `hexis:${stage.sourceSubjectId ?? stage.exportId}`,
-                    evidenceFreshnessAt: Date.now(),
+                    observedAt: Number.isFinite(Number(record.observedAt)) && Number(record.observedAt) >= 0
+                        ? Math.floor(Number(record.observedAt))
+                        : stage.createdAt,
+                    evidenceFreshnessAt: Number.isFinite(Number(record.evidenceFreshnessAt)) && Number(record.evidenceFreshnessAt) >= 0
+                        ? Math.floor(Number(record.evidenceFreshnessAt))
+                        : stage.createdAt,
                     dormant: false,
                     retrievalCount: 0,
                     semanticVector: [],
                 };
-                this.memorySubsystem.fabric.encode(importedMemory, { tick: this.persisted.state.tick });
+                const importCommandId = `hexis-hmx-import:${sha256Stable({
+                    stagingId: stage.stagingId,
+                    rowIndex,
+                    kind: safeKind,
+                    content,
+                }, 'legacy')}`;
+                this.memorySubsystem.fabric.encode(importedMemory, {
+                    tick: this.persisted.state.tick,
+                    commandId: importCommandId,
+                });
                 if (wasPresent)
                     reused += 1;
                 else {
