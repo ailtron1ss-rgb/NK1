@@ -1,3 +1,11 @@
+## WorkPass352 — endogenous-goal learning привязан к точному tick/action (2026-10-26)
+
+- Исправлена граница credit assignment в world-transition ветке B272: reward передаётся в генератор эндогенной цели только если snapshot создан на текущем `state.tick` и сгенерированное действие совпадает с фактически выбранным действием.
+- Оставлена существующая ветка `recordUnselectedAction` для несоответствующей пары, поэтому исполнитель policy и остальные outcome consumers по-прежнему учатся на фактическом исходе, но B272 не получает чужой credit.
+- Это переносит точечный фикс из соседней learning-линии без замены 1,3-МБ `OrganismCore.ts` целиком на несовместимую версию.
+
+---
+
 ## WorkPass351 — устранены повторные helper methods после P26 cherry-pick (2026-10-26)
 
 - Исправлена граница переноса `trainInterleaved`: из donor-блока удалены дублирующие реализации `replayCausalRecords` и `recordVerifiedHoldout`; оригинальные версии, уже присутствовавшие в NK1, сохранены.
