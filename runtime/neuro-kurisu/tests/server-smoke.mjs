@@ -1,4 +1,6 @@
 import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
+import { generateKeyPairSync, sign as signSignature } from 'node:crypto';
+import { canonicalP26HoldoutPayload } from '../src/organism/learning/P26TrustedHoldoutEvidenceAuthority.ts';
 import { pollUntilReady, timeoutWithinDeadline } from '../scripts/server-smoke-poll.mjs';
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -7,8 +9,12 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir=await mkdtemp(path.join(tmpdir(),'nk-server-')); const port=32000 + Math.floor(Math.random()*3000);
-const env={...process.env,HOST:'127.0.0.1',PORT:String(port),STATE_DIR:dir};
-delete env.NEURO_P26_HOLDOUT_VERIFIERS_JSON;
+const holdoutKeys=generateKeyPairSync('ed25519');
+const holdoutPublicKeyPem=holdoutKeys.publicKey.export({type:'spki',format:'pem'}).toString();
+const p26HoldoutVerifierConfig=JSON.stringify({
+  'server-smoke-oracle':{publicKeyPem:holdoutPublicKeyPem,protocolIds:['server-smoke-frozen-v1']},
+});
+const env={...process.env,HOST:'127.0.0.1',PORT:String(port),STATE_DIR:dir,NEURO_P26_HOLDOUT_VERIFIERS_JSON:p26HoldoutVerifierConfig};
 const rawFetch=globalThis.fetch;
 const totalTimeoutCandidate = Number(process.env.NK_SERVER_SMOKE_TOTAL_TIMEOUT_MS);
 const totalTimeoutMs = Number.isFinite(totalTimeoutCandidate)
@@ -86,13 +92,26 @@ try {
   if(!h.actionLedger || h.actionLedger.durablePersisterConfigured!==true || !h.actionLedger.archive?.loaded || !Number.isInteger(h.actionLedger.hotRecords) || !Number.isInteger(h.actionLedger.archive.entries) || !Number.isFinite(h.actionLedger.archive.bytes)) throw new Error('server action-ledger durability diagnostics contract mismatch');
   const brainResponse=await fetch(`http://127.0.0.1:${port}/api/organism/cognitive-architecture`); const brain=await brainResponse.json();
   if(!brainResponse.ok || brain.ok!==true || brain.readOnly!==true || brain.architecture?.validation?.ok!==true || brain.architecture?.subsystems?.length!==14 || brain.architecture?.flows?.length!==25 || !Array.isArray(brain.architecture?.runtimeSnapshot?.systems) || !Number.isFinite(brain.architecture?.runtimeSnapshot?.tick)) throw new Error('cognitive architecture endpoint/runtime health contract mismatch');
-  const unauthenticatedEvidence=await fetch(`http://127.0.0.1:${port}/api/organism/true-learning/holdout-evidence`,{
-    method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({evidenceId:'smoke-self-asserted',taskId:'task-a',protocolId:'frozen-v1',verifierId:'fake',sampleSetHash:'sha256:fake',baseline01:.1,learned01:.9,verified:true,independent:true,signature:'definitely-not-a-signature'}),
+  const holdoutBase={evidenceId:'server-smoke-evidence-001',taskId:'server-smoke-task',protocolId:'server-smoke-frozen-v1',verifierId:'server-smoke-oracle',sampleSetHash:'sha256:server-smoke-independent-set',baseline01:.4,learned01:.82,verified:true,independent:true,signature:''};
+  const holdoutSignature=signSignature(null,Buffer.from(canonicalP26HoldoutPayload(holdoutBase),'utf8'),holdoutKeys.privateKey).toString('base64');
+  const holdoutEvidence={...holdoutBase,signature:holdoutSignature};
+  const holdoutPost=(payload)=>fetch(`http://127.0.0.1:${port}/api/organism/true-learning/holdout-evidence`,{
+    method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload),
   });
-  const rejectedEvidence=await unauthenticatedEvidence.json();
-  if(unauthenticatedEvidence.status!==422||rejectedEvidence.reason!=='trusted-holdout-verifier-not-configured')
-    throw new Error(`P26 must not accept caller-asserted holdout flags without a configured trusted verifier: HTTP ${unauthenticatedEvidence.status} ${JSON.stringify(rejectedEvidence)}`);
+  const tamperedHoldout=await holdoutPost({...holdoutEvidence,learned01:.99});
+  const tamperedBody=await tamperedHoldout.json();
+  if(tamperedHoldout.status!==422||tamperedBody.reason!=='holdout-evidence-not-authenticated')
+    throw new Error(`P26 signature must bind exact evaluation scores: HTTP ${tamperedHoldout.status} ${JSON.stringify(tamperedBody)}`);
+  const acceptedHoldout=await holdoutPost(holdoutEvidence);
+  const acceptedHoldoutBody=await acceptedHoldout.json();
+  if(acceptedHoldout.status!==200||acceptedHoldoutBody.accepted!==true||
+     acceptedHoldoutBody.p26?.metrics?.independentHoldoutSamples!==1||
+     acceptedHoldoutBody.p26?.metrics?.generalizationEvidence01!==.05)
+    throw new Error(`P26 signed holdout must be independently verified and persisted: HTTP ${acceptedHoldout.status} ${JSON.stringify(acceptedHoldoutBody)}`);
+  const duplicateHoldout=await holdoutPost(holdoutEvidence);
+  const duplicateHoldoutBody=await duplicateHoldout.json();
+  if(duplicateHoldout.status!==422||duplicateHoldoutBody.reason!=='duplicate-holdout-evidence')
+    throw new Error(`P26 must deduplicate replayed signed holdout evidence: HTTP ${duplicateHoldout.status} ${JSON.stringify(duplicateHoldoutBody)}`);
   // Exercise the real language-completion path: telemetry is best-effort and must
   // not turn a generated answer into an HTTP 500.
   const chatResponse=await fetch(`http://127.0.0.1:${port}/api/organism/chat`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'Reply briefly with a greeting for the server smoke test.'})});
