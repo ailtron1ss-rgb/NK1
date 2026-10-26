@@ -9,6 +9,8 @@
 - The UI never treats the typed ID as proof of status: the server still checks the stage lifecycle seal/status and conflicts, while acceptance and canonical apply remain separately confirmed. This allows recovery without weakening server-side invariants.
 
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
+- [BOUNDS] Receipt memory/semantic IDs are capped at 512 characters, stage lineage/staging IDs must be trimmed canonical strings, and warning strings are capped at 2048 characters with control characters rejected.
+- [INTEGRITY] Reject duplicate semantic-edge IDs even when projected relationship counters are otherwise consistent with the staged relationship array.
 - [INTEGRITY] Reject duplicate semantic-edge IDs even when receipt counters and staged relationship counts otherwise reconcile; canonical projector receipts already emit unique edge IDs.
 
 - [CI WIRING] Add path-filtered push execution of the canonical HMX apply workflow on the integration branch and include the branch in WorkPass71 validation, so checks execute before the consolidation PR is merged.
