@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass416 — wire canonical replay regression into CI (2026-10-26)
+
+- [INTEGRATION] Added `tests/hexis-projector-idempotent-replay.mjs` to `test:hexis-canonical-apply`; the workflow now executes the idempotent replay/receipt-tamper contract instead of leaving that test unreferenced.
+- [CI ROUTING] Added the standalone test path to the workflow filters so future changes to that test trigger the Hexis gate.
+- [VALIDATION] Wiring is committed, but its runtime result remains unverified because the current Actions run exposes failed checks without usable step logs.
+
 ## [NK1][Hexis] WorkPass415 — preserve malformed native config (2026-10-26)
 
 - [DATA FIDELITY] A scalar or array in the native `config` field is no longer silently replaced by an empty object; the original value is kept under `sections.config.nk1NativeSections.config_invalid_section`.
