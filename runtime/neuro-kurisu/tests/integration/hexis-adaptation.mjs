@@ -183,6 +183,17 @@ assert(
   malformedIdentityExport.export_warnings.some(warning => warning.includes('identity_invalid_section')),
   'the export must disclose that the identity section was malformed and preserved as native-only data',
 );
+const malformedConfigExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'malformed-config-preservation',
+  sections: { config: ['legacy config item must be preserved'] },
+});
+assert.deepEqual(malformedConfigExport.sections.config.nk1NativeSections.config_invalid_section,
+  ['legacy config item must be preserved'],
+  'non-object native config must survive normalization in the lossless extension bucket');
+assert(
+  malformedConfigExport.export_warnings.some(warning => warning.includes('config_invalid_section')),
+  'the export must disclose malformed config preservation rather than silently dropping it',
+);
 
 const normalizedNk1Export = normalizeNk1HmxExport(nativeNk1Export);
 assert.match(normalizedNk1Export.export_id, /^exp_[a-f0-9]{16}$/);
