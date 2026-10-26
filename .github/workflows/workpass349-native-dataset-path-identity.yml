@@ -1,0 +1,41 @@
+name: WorkPass349 signed dataset path identity
+
+on:
+  push:
+    branches: [workpass349-native-dataset-path-identity-2026-10-26]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
+      - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
+      - ".github/workflows/workpass349-native-dataset-path-identity.yml"
+  pull_request:
+    branches: [workpass334-inner-imperative-homeostasis-2026-10-24]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
+      - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
+      - ".github/workflows/workpass349-native-dataset-path-identity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-workpass349-dataset-identity-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  native-dataset-path-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install pinned runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Test signed dataset path identity and P23 provider
+        run: npm --prefix runtime/neuro-kurisu run test:workpass346:native-repair-provider
+      - name: Type-check the runtime
+        run: npm --prefix runtime/neuro-kurisu run typecheck
