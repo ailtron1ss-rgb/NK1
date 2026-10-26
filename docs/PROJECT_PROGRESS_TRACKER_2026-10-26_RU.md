@@ -53,25 +53,18 @@
 - **Актуальный подтверждённый CI snapshot:** на combined code/test head `621864d0d7f2676245383adab86f1dcc6d0f741f` успешно завершились 13 проверок, включая полный запуск runtime, `TYPECHECK=PASS`, `CLEAN_ORGANISM_SMOKE=PASS`, strict substrate wiring/restore, 30-cycle stop/re-init, UI build/typecheck, owner-approval E2E, все три Research Bridge probes, P23 candidate staging/promotion, WorkPass110/108, P26 и progress-ledger integrity. Полные links и testedHead сохранены в JSON ledger; все CI entries привязаны к одному SHA.
 - Ранее опубликованный основной ZIP остаётся WorkPass70 Hotfix1 от 19 октября 2026 года. Новый ZIP не пересобран и не опубликован; главная ветка не менялась.
 
-## WorkPass344 — второй future-tick restart regression
+## WorkPass344 — второй future-tick restart regression: PASS
 
-- Исправлено восстановление `CognitiveDependencyGraph.lastTick`: при sidecar, ушедшем дальше канонического тика Core, re-anchor меняет только производный clock и сохраняет routing counters, wake mask и активный interrupt.
-- В unit-контракт добавлены MAX_SAFE_INTEGER, сохранность состояния, отказ для невалидного canonical tick и успешный следующий graph frame. Runtime restart smoke теперь повреждает оба sidecar, затем проверяет один новый автономный цикл.
-- Code/test commit: `5b86768a67c3893e6c76c044bffe822aa41e14ae`. Exact-head CI для него пока не возвращён, поэтому все прежние успешные runs остаются привязаны к `621864d0d7f2676245383adab86f1dcc6d0f741f`, а проценты не повышаются.
-
-## WorkPass345 — fail-open восстановление когнитивного графа
-
-- Исправлено поведение старта при несовместимой схеме или ошибке загрузки `cognitive-dependencies.json`: runtime сбрасывает только производный граф, журналирует `runtime.cognitive-dependency.restore-failed` и продолжает инициализацию.
-- Регрессия тестирует некорректную версию sidecar и следующий автономный цикл; часы графа остаются согласованы с каноническим Core.
-- WorkPass345 code/test head: `216d79086bfac2dd5f25e2c995fe6b5a44b61476`; Unified integration run [#40279847281](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279847281) выполняется. Оценки не меняются до подтверждения точного прогона.
-- WorkPass344 future-tick fix подтверждён успешным run [#40279636593](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279636593) на точном checkout `a5aafc5274f44974aadf52e155213e12200cc4da`.
+- `CognitiveDependencyGraph.lastTick` восстанавливается относительно канонического Core tick; сохраняются wake mask, routing counters, per-domain transition history и активные interrupts.
+- Unit-контракт покрывает `Number.MAX_SAFE_INTEGER`, сохранность состояния, невалидный canonical tick и следующий допустимый graph frame. Runtime restart smoke повреждает оба derived sidecar и проверяет следующий автономный цикл.
+- PASS на точном combined checkout `a5aafc5274f44974aadf52e155213e12200cc4da`: Unified project integration suite [run #40279636593](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279636593).
 
 ## WorkPass345 — fail-open восстановление когнитивного графа: PASS
 
-- Проверка завершилась успешно на точном code/test HEAD `216d79086bfac2dd5f25e2c995fe6b5a44b61476`: Unified project integration suite [run #40279847281](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279847281).
-- Подтверждена регрессия: неподдерживаемая схема `cognitive-dependencies.json` сбрасывает только производный граф, не блокирует запуск; следующий автономный цикл продолжает движение по каноническим часам Core.
-- WorkPass343–344 также подтверждены полным прогоном на `a5aafc5274f44974aadf52e155213e12200cc4da` ([run #40279636593](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279636593)).
-- Общие инженерные оценки и оценка обучения 57/100 не изменены: эти исправления повышают устойчивость восстановления, но не доказывают полевой рост успешности задач, переноса навыков или удержания памяти.
+- При несовместимой схеме или ошибке чтения `cognitive-dependencies.json` runtime сбрасывает только производный граф, журналирует `runtime.cognitive-dependency.restore-failed` и продолжает запуск.
+- Restart-регрессия проверяет неподдерживаемый `version` и завершение следующего автономного цикла по каноническому Core tick.
+- PASS на точном code/test HEAD `216d79086bfac2dd5f25e2c995fe6b5a44b61476`: Unified project integration suite [run #40279847281](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279847281).
+- Weighted engineering scores не меняются: успешный restart/restore подтверждает устойчивость runtime, но не является независимым доказательством learning uplift.
 
 ## WorkPass346 — восстановление после повреждённой библиотеки навыков: PASS
 
