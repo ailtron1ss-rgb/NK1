@@ -75,6 +75,16 @@ assert.equal(toolUseFloorMet.gate.accepted, true, 'the tool-use family exceeds i
 assert.notEqual(toolUseFloorMet.proposalId, proposal.proposalId,
   'changing promotion thresholds must change the authenticated proposal identity');
 assert.notEqual(toolUseFloorMet.proposalId, memoryFloorBlocked.proposalId);
+const stricterPolicyStillMet = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+  minPairedTasks: 8,
+  minAbsoluteGain: .1,
+  minCompleteSeeds: 3,
+  minimumFamilyGainByFamily: { 'tool-use': .35 },
+});
+assert.equal(stricterPolicyStillMet.gate.accepted, true);
+assert.notEqual(stricterPolicyStillMet.proposalId, toolUseFloorMet.proposalId,
+  'different thresholds must produce different proposal IDs even when both candidates pass');
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(stricterPolicyStillMet), true);
 
 const missingFamilyEvidence = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
   minPairedTasks: 8,
