@@ -1,3 +1,13 @@
+## Root launcher and runtime toolchain closure — 2026-10-26
+
+- Fixed the root `start`/`dev` launchers: both previously spawned `src/server/server.mjs` relative to the repository root, where it does not exist. They now use a shared absolute-path resolver for `runtime/neuro-kurisu/src/server/server.mjs`; the new regression verifies the entrypoint exists and both launchers reference the shared resolver.
+- Hardened child supervision: an unexpected exit or spawn error from the runtime, research bridge, UI or gateway now triggers fail-fast shutdown with a nonzero process status. Previously, `super-start` could report success even after an essential child exited.
+- Replaced hard-coded Node 22/npm 10 assumptions in `super-install` and `super-doctor` with the shared numeric `.nvmrc` pin parser and package `engines` minimum checks. This aligns install/doctor with the repository's Node 24 pin and avoids string-based version comparisons.
+- Added regression coverage for numeric pin precision and malformed values, installer pin handling, and both root launcher paths. `audit:quick` now executes those checks along with the existing installer tests.
+- Runtime entrypoint and package-script wiring are source-level confirmed; the newly triggered exact-head CI result is pending. No production launch or release has been claimed.
+
+---
+
 ## Causal replay wiring — assert features before sampler admission (2026-10-26)
 
 - Fixed a stale source-contract regression in `causal-replay-runtime-wiring.mjs`: it searched for `policyFeatures01` starting *after* the `selectCausalReplayBatch` call, although P23 correctly constructs candidate features before invoking the sampler.
