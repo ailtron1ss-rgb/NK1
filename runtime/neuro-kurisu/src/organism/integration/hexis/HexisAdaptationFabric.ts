@@ -184,6 +184,23 @@ export interface HexisOutboxEntry {
     resolutionHistory?: Array<{ resolution: 'published' | 'not-published'; evidenceRef: string; resolvedAt: number }>;
     lastError?: string;
 }
+export interface HexisOutboxTombstone {
+    id: string;
+    idempotencyKey: string;
+    requestDigest: string;
+    kind: string;
+    channel: string;
+    status: 'published' | 'failed';
+    attempts: number;
+    createdAt: number;
+    updatedAt: number;
+    archivedAt: number;
+    publishedAt?: number;
+    resolution?: 'published' | 'not-published';
+    resolutionEvidenceRef?: string;
+    resolutionHistory?: Array<{ resolution: 'published' | 'not-published'; evidenceRef: string; resolvedAt: number }>;
+    archived: true;
+}
 export interface HexisConnectorPolicy {
     id: string;
     connectorId: string;
@@ -255,6 +272,8 @@ export interface HexisAdaptationState {
     hmxStages: HexisHmxStage[];
     goalProposals: HexisGoalProposal[];
     outbox: HexisOutboxEntry[];
+    /** Bounded immutable idempotency index for compacted terminal deliveries. */
+    outboxTombstones: HexisOutboxTombstone[];
     connectorPolicies: HexisConnectorPolicy[];
     executions: HexisExecutionPlan[];
     metrics: {
@@ -321,7 +340,7 @@ const isHmxText = (value: unknown, max = 256): value is string =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max &&
     !/[\u0000-\u001f\u007f]/.test(value);
 export function defaultHexisAdaptationState(): HexisAdaptationState {
-    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], goalProposals: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, hmxApplied: 0, hmxGoalProposalsCreated: 0, hmxGoalProposalsApproved: 0, hmxGoalProposalsRejected: 0, hmxGoalProposalsActivated: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
+    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], goalProposals: [], outbox: [], outboxTombstones: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, hmxApplied: 0, hmxGoalProposalsCreated: 0, hmxGoalProposalsApproved: 0, hmxGoalProposalsRejected: 0, hmxGoalProposalsActivated: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
@@ -371,6 +390,15 @@ export class HexisAdaptationFabric {
                 }
                 return normalized;
             }) : [],
+            outboxTombstones: Array.isArray((value as any).outboxTombstones)
+                ? (value as any).outboxTombstones.slice(-4096).filter((row: any) =>
+                    row && typeof row.id === 'string' &&
+                    typeof row.idempotencyKey === 'string' &&
+                    typeof row.requestDigest === 'string' &&
+                    /^[a-f0-9]{64}$/.test(row.requestDigest) &&
+                    (row.status === 'published' || row.status === 'failed'),
+                  ).map((row: any) => ({ ...row, archived: true as const }))
+                : [],
             connectorPolicies: normalizedPolicies,
             executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
             metrics: { ...defaults.metrics, ...(value.metrics ?? {}) },
@@ -389,6 +417,7 @@ export class HexisAdaptationFabric {
         const pendingReviews = this.state.learningReviews.filter((r) => r.status === 'pending').length;
         const pendingOutbox = this.state.outbox.filter((x) => x.status === 'pending' || x.status === 'publishing').length;
         const uncertainOutbox = this.state.outbox.filter((x) => x.status === 'uncertain').length;
+        const archivedOutbox = this.state.outboxTombstones.length;
         const activePolicies = this.state.connectorPolicies.filter((x) => x.status === 'active').length;
         return {
             source: this.state.source,
@@ -407,6 +436,7 @@ export class HexisAdaptationFabric {
                 materializedGoalProposals: this.state.goalProposals.filter((proposal) => proposal.status === 'materialized').length,
                 pendingOutbox,
                 uncertainOutbox,
+                archivedOutbox,
                 connectorPolicies: activePolicies,
                 executions: this.state.executions.length,
             },
@@ -984,7 +1014,7 @@ export class HexisAdaptationFabric {
         kind: string;
         channel: string;
         payload: unknown;
-    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict' | 'outbox-capacity-reached' | 'invalid-outbox-payload'; idempotencyKey: string; existingId?: string } {
+    }): HexisOutboxEntry | HexisOutboxTombstone | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict' | 'outbox-capacity-reached' | 'invalid-outbox-payload'; idempotencyKey: string; existingId?: string } {
         const idempotencyKey = String(input.idempotencyKey ?? '').trim();
         if (!idempotencyKey || idempotencyKey.length > 180 || /[\u0000-\u001f\u007f]/.test(idempotencyKey)) {
             return { ok: false, error: 'idempotency-key-required', idempotencyKey };
@@ -997,12 +1027,16 @@ export class HexisAdaptationFabric {
         let payload: unknown;
         try {
             payload = structuredClone(input.payload);
+            const serializedPayload = JSON.stringify(payload);
+            if (typeof serializedPayload !== 'string' || new TextEncoder().encode(serializedPayload).length > 64 * 1024) {
+                return { ok: false, error: 'invalid-outbox-payload', idempotencyKey };
+            }
             requestDigest = digest({ kind, channel, payload });
         } catch {
             return { ok: false, error: 'invalid-outbox-payload', idempotencyKey };
         }
-        // Include every prior status in deduplication; an uncertain side effect is
-        // not a new logical action and must never be silently re-created.
+        // Active rows preserve their full replay payload; archived terminal receipts
+        // preserve the digest and ID so retrying an old key cannot mint a new effect.
         const existing = this.state.outbox.find((x) => x.idempotencyKey === idempotencyKey);
         if (existing) {
             let existingDigest: string;
@@ -1012,10 +1046,48 @@ export class HexisAdaptationFabric {
             this.state.metrics.outboxIdempotencyConflicts += 1;
             return { ok: false, error: 'idempotency-key-conflict', idempotencyKey, existingId: existing.id };
         }
-        // Never evict an older idempotency tombstone to make room: after eviction,
-        // a retry could create a second remote effect under the same logical key.
-        if (this.state.outbox.length >= 512) {
-            return { ok: false, error: 'outbox-capacity-reached', idempotencyKey };
+        const tombstone = this.state.outboxTombstones.find((row) => row.idempotencyKey === idempotencyKey);
+        if (tombstone) {
+            if (tombstone.requestDigest === requestDigest) return structuredClone(tombstone);
+            this.state.metrics.outboxIdempotencyConflicts += 1;
+            return { ok: false, error: 'idempotency-key-conflict', idempotencyKey, existingId: tombstone.id };
+        }
+        // Free space only by archiving a provably terminal outcome. Publishing,
+        // pending and uncertain rows stay live; ambiguous effects are never compacted.
+        while (this.state.outbox.length >= 512) {
+            if (this.state.outboxTombstones.length >= 4096) {
+                return { ok: false, error: 'outbox-capacity-reached', idempotencyKey };
+            }
+            const candidate = this.state.outbox
+                .filter((row) => row.status === 'published' || (row.status === 'failed' && row.resolution === 'not-published'))
+                .sort((a, b) => a.updatedAt - b.updatedAt || a.createdAt - b.createdAt)[0];
+            if (!candidate) return { ok: false, error: 'outbox-capacity-reached', idempotencyKey };
+            let archivedDigest: string;
+            try {
+                archivedDigest = digest({ kind: candidate.kind, channel: candidate.channel, payload: candidate.payload });
+            } catch {
+                return { ok: false, error: 'outbox-capacity-reached', idempotencyKey };
+            }
+            const archivedAt = nowMs();
+            const tombstone: HexisOutboxTombstone = {
+                id: candidate.id,
+                idempotencyKey: candidate.idempotencyKey,
+                requestDigest: archivedDigest,
+                kind: candidate.kind,
+                channel: candidate.channel,
+                status: candidate.status === 'failed' ? 'failed' : 'published',
+                attempts: candidate.attempts,
+                createdAt: candidate.createdAt,
+                updatedAt: candidate.updatedAt,
+                archivedAt,
+                ...(candidate.publishedAt !== undefined ? { publishedAt: candidate.publishedAt } : {}),
+                ...(candidate.resolution ? { resolution: candidate.resolution } : {}),
+                ...(candidate.resolutionEvidenceRef ? { resolutionEvidenceRef: candidate.resolutionEvidenceRef } : {}),
+                ...(candidate.resolutionHistory?.length ? { resolutionHistory: structuredClone(candidate.resolutionHistory) } : {}),
+                archived: true,
+            };
+            this.state.outboxTombstones.push(tombstone);
+            this.state.outbox = this.state.outbox.filter((row) => row.id !== candidate.id);
         }
         const at = nowMs();
         const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload, status: 'pending', attempts: 0, createdAt: at, updatedAt: at };
