@@ -1,10 +1,16 @@
+# WorkPass364 — keep typecheck dependencies installed in clean build CI (2026-10-26)
+
+- [DIAGNOSTIC] WorkPass362 run [#40292700286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292700286) failed with `TS2688: Cannot find type definition file for 'pg'`. Root cause: job-level `NODE_ENV=production` made `npm ci` omit devDependencies, including the already-locked `@types/pg`.
+- [FIX] Removed production `NODE_ENV` from the whole workflow job so app/runtime typecheck and tests install the complete locked toolchain. `NODE_ENV=production` is now set only for the production build step; no fake Postgres credentials are added.
+- [VALIDATION] New clean-build run [#40292876890](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292876890) is queued on head `9020481492b447e719c30bdb678b42a4e3ab3d99`; it includes both WorkPass363's valid-JSDoc fix for the executable `.mjs` tests and WorkPass364's install-environment correction. The production build gate remains open until this exact-head run finishes all steps.
+
 # WorkPass363 — fix clean app typecheck failures (2026-10-26)
 
 - [DIAGNOSTIC] The first full-stack clean-checkout run [#40292398129](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292398129) exposed app-layer errors not covered by runtime-only CI: implicit types and deletion of a required `globalThis.window` member in `safeLocalStorage.test.mjs`, plus TypeScript module resolution failing to expose the already-locked `@types/pg` package to `app/tsconfig.json`.
 - [FIX] Typed the fake window and localStorage test callbacks, replaced illegal `delete globalThis.window` operations with `Reflect.deleteProperty`, and constrained the in-memory fixture to `Map<string, string>`.
 - [FIX] Added `pg` to the explicit TypeScript `types` list; `@types/pg` was already a locked dev dependency, so no dependency/version or lockfile drift was introduced.
 - [DIAGNOSTIC] [#40292593216](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292593216) caught a second mistake: TypeScript type annotations were temporarily placed in an executable `.mjs` test. Replaced them with JSDoc types and a context-typed fake storage object; `.mjs` remains valid JavaScript.
-- [VALIDATION] Latest full workflow [#40292700286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292700286) is running on head `0cf2361cf9aff9226608737b2869a6eb3a98a839`; app dependency/script contracts passed and combined app/runtime typecheck is in progress. Do not mark app build complete until production build, UI/API linkage, schema and asset audits finish.
+- [VALIDATION] Run [#40292700286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292700286) reached typecheck but failed because job-level production mode omitted the locked `@types/pg`; WorkPass364 moved `NODE_ENV=production` to the build step. Corrected run #40292876890 now includes both the JSDoc-only `.mjs` fix and complete dev toolchain, and is queued.
  
 # WorkPass362 — clean production UI build + migration/schema contracts (2026-10-26)
 
