@@ -9,6 +9,7 @@
 - The UI never treats the typed ID as proof of status: the server still checks the stage lifecycle seal/status and conflicts, while acceptance and canonical apply remain separately confirmed. This allows recovery without weakening server-side invariants.
 
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
+- [ROLLBACK COVERAGE] Expand failure-injection tests to include an existing belief whose content is superseded before a downstream temporal write fails; verify the prior memory status, semantic node and temporal belief are restored, then successful retry quarantines only the old historical version and projects one new active version.
 - [CI DIAGNOSTIC UPDATE] Consolidation head `badc4401ca546d2d92c59f3d381b08da07a803d1` again showed 14 workflow failures; inspected HMX/Core/P26/metrics jobs all expose no step list and `logs_url=null`, with `BlobNotFound` from log requests. Updated the CI-startup diagnosis document; the exact root cause remains unconfirmed.
 - [CI DIAGNOSTIC] At head `4486e7c700b6ba5fe50661123872093626e50f51`, five visible jobs (HMX, Core regression, validation, metrics, verified-outcomes) concluded `failure` with absent step lists and `logs_url=null`. Root cause remains unknown; do not attribute this to a specific code/test failure without runner metadata.
 - [PERSISTENCE REGRESSION] Validate the special `__proto__` deferred-section key after real JSON stringify/parse, not just in-memory receipt validation.
