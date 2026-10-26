@@ -96,7 +96,9 @@ corrupt.currentGoal=[Number.NaN,1];
 corrupt.actionPrototypeWeights=Array.from({length:500},()=>new Array(500).fill(Number.POSITIVE_INFINITY));
 corrupt.goalHistory=[{tick:Number.NaN,id:'forged',vector:[Number.NaN],action:'execute-shell',reward01:2,predictionError01:-1,accepted:true}];
 corrupt.outcomeHistory=[{tick:999999,goalId:'bad-id',action:'execute-shell',reward01:2,predictionError01:Number.NaN}];
-corrupt.goalOutcomeMemory={'__proto__':{vector:[1],meanReward01:2,meanPredictionError01:Number.NaN,updates:Number.POSITIVE_INFINITY,lastTick:999999}};
+corrupt.goalOutcomeMemory={};
+Object.defineProperty(corrupt.goalOutcomeMemory,'__proto__',{enumerable:true,configurable:true,writable:true,
+  value:{vector:[1],meanReward01:2,meanPredictionError01:Number.NaN,updates:Number.POSITIVE_INFINITY,lastTick:999999}});
 tampered.restore(corrupt);
 const sanitized=tampered.snapshot();
 assert.equal(sanitized.version,1);
