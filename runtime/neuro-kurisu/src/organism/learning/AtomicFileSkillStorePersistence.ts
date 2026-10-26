@@ -5,7 +5,7 @@ import {
 } from 'node:fs';
 import { dirname } from 'node:path';
 import type {
-  ActiveSkillVersion, SkillPromotionApproval, SkillRollbackApproval, SkillShadowObservation, SkillStorePersistence,
+  ActiveSkillVersion, SkillPromotionApproval, SkillRevisionProvenance, SkillRollbackApproval, SkillShadowObservation, SkillStorePersistence,
   VersionedSkillCandidate, VersionedSkillStoreSnapshot,
 } from './VersionedSkillCandidateStore.ts';
 
@@ -86,6 +86,21 @@ function isRollbackApproval(value: unknown): value is SkillRollbackApproval {
     payload.expectedActiveVersion === value.expectedActiveVersion;
 }
 
+function isRevisionProvenance(value: unknown): value is SkillRevisionProvenance {
+  const allowedDimensions = ['safety', 'task-success', 'trajectory', 'capability-coverage', 'executability', 'holdout-generalization'];
+  if (!isRecord(value) || value.schemaVersion !== 1 ||
+      !isFingerprint(value.evaluationFingerprint) ||
+      !(value.sourceCandidateId === null || isFingerprint(value.sourceCandidateId)) ||
+      !isFingerprint(value.planFingerprint) ||
+      !isFingerprint(value.datasetFingerprint) ||
+      (value.sourceEvidenceFingerprint !== undefined && !isFingerprint(value.sourceEvidenceFingerprint)) ||
+      !Array.isArray(value.dimensions) || value.dimensions.length === 0 ||
+      value.dimensions.some(d => typeof d !== 'string' || !allowedDimensions.includes(d)) ||
+      new Set(value.dimensions).size !== value.dimensions.length ||
+      !isTime(value.createdAt)) return false;
+  return true;
+}
+
 function isCandidate(value: unknown): value is VersionedSkillCandidate {
   if (!isRecord(value) || !isFingerprint(value.candidateId) || !isText(value.skillId) ||
       !isVersion(value.version) || !isFingerprint(value.payloadFingerprint) ||
@@ -96,10 +111,20 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
+  if (value.revisionProvenance !== undefined && !isRevisionProvenance(value.revisionProvenance)) return false;
+  const provenanceFingerprint = value.revisionProvenance === undefined
+    ? null : payloadFingerprint(value.revisionProvenance);
+  if (value.revisionProvenance !== undefined && provenanceFingerprint === null) return false;
   const expectedId = createHash('sha256').update(JSON.stringify([
-    value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+    value.skillId, value.version, value.proposalId, value.payloadFingerprint, provenanceFingerprint,
   ])).digest('hex');
-  if (value.candidateId !== expectedId) return false;
+  // Candidates from older snapshots used the four-field identity only when provenance was absent.
+  const legacyExpectedId = value.revisionProvenance === undefined
+    ? createHash('sha256').update(JSON.stringify([
+        value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+      ])).digest('hex')
+    : null;
+  if (value.candidateId !== expectedId && value.candidateId !== legacyExpectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
   if (value.rollbackApproval !== undefined && !isRollbackApproval(value.rollbackApproval)) return false;
   if (value.promotedAt !== undefined && !isTime(value.promotedAt)) return false;
