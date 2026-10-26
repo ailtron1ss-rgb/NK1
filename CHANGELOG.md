@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass394 — centralize HMX application receipt integrity (2026-10-26)
+
+- [WIRING] Moved applied-receipt structural, stage/export/lineage binding, and SHA-256 integrity checks into one shared `HexisHmxReceiptGuard.ts` used by both `HexisAdaptationFabric` and `HexisCanonicalMemoryProjector`.
+- [FIX] Both replay paths now apply the same fail-closed rules, including safe handling of non-serializable/tampered receipt data; removing duplicate validators prevents implementation drift.
+- [TEST] The existing projector receipt regression now executes with Node's TypeScript strip mode enabled so it exercises the shared guard through the real import path.
+- [VALIDATION] The change is wired into `audit:hexis` and WorkPass71, but exact-head runtime/typecheck results remain unavailable while GitHub Actions jobs fail before runner allocation.
+
 ## [NK1][Hexis] WorkPass393 — refuse ambiguous native reference wiring (2026-10-26)
 
 - [FIX] The NK1 → HMX reference index now records collisions instead of overwriting earlier entries when a native ID/name/ref maps to multiple records across memories, skills, or goals.
