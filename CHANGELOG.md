@@ -1,3 +1,10 @@
+## [NK1][Hexis] Roll back status demotions after failed canonical apply (2026-10-26)
+
+- [INTEGRITY] Captures the prior status of existing canonical memories before HMX status reconciliation and restores it if any later graph/temporal/belief projection fails.
+- [IDEMPOTENCY] Status-mutation command IDs include the persisted apply-attempt number, so a compensated retry receives a fresh key rather than replaying the original demotion receipt.
+- [TEST] Added fault injection that fails the belief-mirror cleanup after demotion, checks canonical status/graph/mirror restoration, then retries the same stage and expects the archive to apply successfully.
+- [VALIDATION] Current Actions runs fail before runner allocation (runner_id=0, no steps/logs); all new regressions remain pending actual execution.
+
 ## [NK1][Hexis] WorkPass422 — verify staged payload integrity after restore (2026-10-26)
 
 - [TRUST BOUNDARY] The duplicate trailing HMX implementation block was removed from `HexisAdaptationFabric.ts`; it began in the middle of a method after the class had already closed. This restores one syntactically coherent implementation of the adapter.
