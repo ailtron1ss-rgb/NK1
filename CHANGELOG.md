@@ -1,3 +1,12 @@
+## [NK1][integration] Give CPU research probes an explicit execution deadline (2026-10-26)
+
+- Kept the 8-second default for fast health/status/approval API calls, but made the integration smoke's post-approval probe deadline configurable per research task.
+- NeuroCore/NOMEGA probes now have a 60-second bound; the CPU-only DeepCode probe has a 200-second bound consistent with its 180-second Python subprocess timeout and cold-start overhead. All bounds remain finite and invalid timeout values fail closed.
+- This fixes a CI flake where the valid DeepCode CPU smoke crossed the integration client's generic 8-second fetch timeout after all approval checks passed.
+- Exact-head CI is being rerun; do not count this timeout fix as validated until the unified smoke succeeds.
+
+---
+
 ## WorkPass341 — per-family distinct holdout coverage for verified skill promotion (2026-10-26)
 
 - Added an explicit trusted `minimumFamilyTasksByFamily` floor alongside per-family gain thresholds for verified skill-promotion proposals.
