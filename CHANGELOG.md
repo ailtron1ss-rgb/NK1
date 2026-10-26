@@ -1,3 +1,7 @@
+### WorkPass328 follow-up — make signed artifact replay contract consistent (2026-10-26)
+
+- Updated the P23 signed-outcome regression that still expected `duplicate-attempt` on exact signed-artifact replay. The ingestion implementation deliberately allows the identical cryptographically valid artifact to re-establish its in-memory authenticated-evidence receipt after restart, while preserving a single ledger outcome and rejecting conflicting outcomes. The test now verifies that intended idempotent behavior.
+
 ### WorkPass328 build-hardening follow-up (2026-10-25)
 
 - Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation; retained the version that validates same-tick required stages, optional appraisal/attention/memory/goal/plan edges, and required causal parents.
