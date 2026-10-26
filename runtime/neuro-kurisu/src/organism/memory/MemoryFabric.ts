@@ -214,6 +214,14 @@ export class MemoryFabric {
         throw new MemoryLifecycleCommandRecoveryRequiredError(commandId);
     }
 
+    // Register an in-flight mutation against its opaque compensation token before
+    // crossing into MemoryOS2. If a downstream operation throws after partial mutation,
+    // the transaction still knows exactly which command may need compensation.
+    if(signalCompensation&&!signalCompensation.sourceCommandIds.includes(commandId)){
+      signalCompensation.sourceCommandIds.push(commandId);
+      this.protectedSignalReceiptIds.add(commandId);
+    }
+
     let result:MemoryItem2|Record<string,string>|boolean|void|null=null;
     let outcome:'applied'|'noop'='noop';
     let memoryId:string|undefined;
@@ -291,11 +299,6 @@ export class MemoryFabric {
         resultKind:action==='update-context'&&result&&typeof result==='object'?'context':result&&typeof result==='object'?'memory':typeof result==='boolean'?'boolean':result===null?'null':'void',
         ...(memoryId?{memoryId}:{}),...(booleanValue!==undefined?{booleanValue}:{})};
       this.mutationReceipts.set(commandId,receipt);
-      if(signalCompensation&&outcome==='applied'&&memoryId===signalCompensation.memoryId&&
-        !signalCompensation.sourceCommandIds.includes(commandId)){
-        signalCompensation.sourceCommandIds.push(commandId);
-        this.protectedSignalReceiptIds.add(commandId);
-      }
       while(this.mutationReceipts.size>this.maxMutationReceipts){
         // Keep active transaction receipts until compensation or commit. A large
         // HMX import can create hundreds of rows; evict unrelated old receipts first.
@@ -651,14 +654,20 @@ export class MemoryFabric {
     for(const sourceCommandId of compensation.sourceCommandIds){
       if(!/^hexis-authority:[a-f0-9]{48}$/.test(sourceCommandId))throw new Error('memory-signals-compensation-source-command-invalid');
       const prior=this.mutationReceipts.get(sourceCommandId);
-      if(!prior||prior.action!=='update-signals'||prior.memoryId!==compensation.memoryId)
+      // A command may have thrown after partially mutating MemoryOS2 but before its
+      // receipt was committed. The opaque token records that in-flight command; absent
+      // receipts are allowed, while any present receipt must match the captured target.
+      if(prior&&(prior.action!=='update-signals'||prior.memoryId!==compensation.memoryId))
         throw new Error('memory-signals-compensation-source-command-mismatch');
     }
     const restored=this.memoryOS.restoreSignalsForCompensation(id,compensation.snapshotToken);
     if(!restored)return false;
     // Consume both token and source receipts. No caller-supplied snapshot can authorize
     // a trust increase, and a second rollback cannot replay this compensation.
-    for(const sourceCommandId of compensation.sourceCommandIds){this.protectedSignalReceiptIds.delete(sourceCommandId);this.mutationReceipts.delete(sourceCommandId);}
+    for(const sourceCommandId of compensation.sourceCommandIds){
+      this.protectedSignalReceiptIds.delete(sourceCommandId);
+      if(this.mutationReceipts.has(sourceCommandId))this.mutationReceipts.delete(sourceCommandId);
+    }
     this.signalCompensations.delete(token);
     const tick=Number.isSafeInteger(context.tick)&&Number(context.tick)>=0?Number(context.tick):0;
     this.events.append(makeEvent('memory-lifecycle',tick,{
