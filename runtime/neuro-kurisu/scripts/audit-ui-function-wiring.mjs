@@ -26,6 +26,7 @@ const hmxOutcomeIsExplicit =
   hexisUi.includes('const acceptHmxStage = async () =>') &&
   hexisUi.includes('receipt.status === "uncertain"') &&
   hexisUi.includes('Do not retry this stage') &&
+  hexisUi.includes('Counts reported by the interrupted attempt (not verified)') &&
   hexisUi.includes('receipt.status === "pending"') &&
   hexisUi.includes('onClick={() => void acceptHmxStage()}');
 const operationResultSurvivesRefreshFailure =
