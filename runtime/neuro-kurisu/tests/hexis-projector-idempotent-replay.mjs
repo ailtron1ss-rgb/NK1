@@ -160,6 +160,7 @@ for (const item of [
   { overrides: { memoryIds: ['   '], createdMemoryIds: ['   '] }, label: 'whitespace-only memory identities are invalid' },
   { overrides: { memoryIds: ['x'.repeat(513)] }, label: 'receipt memory IDs have a bounded size' },
   { overrides: { warnings: ['x'.repeat(2049)] }, label: 'receipt warning text has a bounded size' },
+  { overrides: { warnings: ['unsafe' + String.fromCharCode(7) + 'warning'] }, label: 'receipt warning control characters are invalid' },
   { overrides: { createdMemoryIds: ['another-memory'] }, label: 'created IDs must be a subset of memory IDs' },
   { overrides: { deduplicatedCount: 1 }, label: 'imported and deduplicated counts must account for unique rows' },
   { overrides: { semanticEdgeIds: [''] }, label: 'empty semantic edge identities are invalid' },
@@ -474,5 +475,36 @@ assert.equal(rollbackTemporalLedger.snapshot().assertions.length, 1,
   'the retry must create exactly one temporal assertion');
 assert.equal(rollbackTemporalLedger.snapshot().beliefs.length, 1,
   'the retry must register exactly one belief projection');
+
+// Non-array/object future HMX sections must not disappear from deferred-section accounting.
+const scalarDeferredStage = {
+  ...stage,
+  status: 'accepted',
+  stagingId: 'stage-scalar-deferred-section',
+  digest: '',
+  lifecycleDigest: '',
+  applicationAttempts: 0,
+  application: undefined,
+  stagedSections: { goals: 'future-goal-payload' },
+};
+scalarDeferredStage.digest = computeHmxStageDigest(scalarDeferredStage);
+refreshHmxStageLifecycleDigest(scalarDeferredStage);
+const scalarDeferredProjector = new HexisCanonicalMemoryProjector(noWriteMemoryFabric);
+const scalarDeferredReceipt = scalarDeferredProjector.apply(scalarDeferredStage);
+assert.equal(scalarDeferredReceipt.status, 'noop');
+assert.equal(scalarDeferredReceipt.deferredSections.goals, 1,
+  'a non-empty scalar future section must remain visible as deferred work');
+const scalarDeferredAppliedStage = {
+  ...scalarDeferredStage,
+  status: 'applied',
+  applicationAttempts: scalarDeferredReceipt.attempt,
+  application: scalarDeferredReceipt,
+  lifecycleDigest: '',
+};
+refreshHmxStageLifecycleDigest(scalarDeferredAppliedStage);
+assert.equal(isValidHmxApplyReceipt(scalarDeferredAppliedStage, scalarDeferredReceipt), true,
+  'receipt validation must agree with scalar-section deferral semantics');
+
+console.log('WorkPass428 HMX scalar deferred-section integrity: PASS');
 
 console.log('HEXIS_PROJECTOR_IDEMPOTENT_REPLAY=PASS', JSON.stringify({ writes, receiptDigest: receipt.digest }));
