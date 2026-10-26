@@ -5,7 +5,6 @@
   "workpass": 355,
   "branch": "work/nk1-release-metadata-freshness-workpass355-r1",
   "baseCodeSha": "1e6a9f6581fc97401e6fdcc1458e4dd262ad0af9",
-  "latestBranchCodeSha": "pending-after-metadata-commit",
   "exactHeadValidation": "PENDING",
   "counts": {
     "DONE": 3,
@@ -94,5 +93,6 @@
       "evidence": "Official Releases and clean-extraction smoke",
       "blocker": "Finish install, provenance/license review, manifest/SHA256, re-install and publish without overwriting WorkPass70."
     }
-  ]
+  ],
+  "testedCodeSha": null
 }
