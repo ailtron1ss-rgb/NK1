@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { HexisCanonicalMemoryProjector, isValidHmxApplyReceipt } from '../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
-import { computeHmxStageDigest, refreshHmxStageLifecycleDigest } from '../src/organism/integration/hexis/HexisStageIntegrity.mjs';
+import { computeHmxStageDigest, refreshHmxStageLifecycleDigest, isSafeJsonTree } from '../src/organism/integration/hexis/HexisStageIntegrity.mjs';
 
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
 const stage = {
@@ -103,6 +103,13 @@ assert.throws(
   /hmx-stage-digest-invalid/,
 );
 assert.equal(writes, 0);
+
+// The public safe-tree validator owns its recursion budget; callers cannot weaken depth/node limits.
+let overDepthTree = { leaf: true };
+for (let depth = 0; depth < 65; depth++) overDepthTree = { next: overDepthTree };
+assert.equal(isSafeJsonTree(overDepthTree), false, 'trees beyond the public depth limit must fail');
+assert.equal(isSafeJsonTree(overDepthTree, new Set(), -1000, { nodes: -1000 }), false,
+  'extra JavaScript arguments cannot weaken the validator depth or node budget');
 
 // WorkPass428: the exported receipt validator is a trust boundary, not only a digest check.
 const coherentAppliedStage = {
