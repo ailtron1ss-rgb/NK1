@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { chmod, link, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -201,6 +201,31 @@ test('rejects an evaluator config stored inside mutable organism state', async (
         root,
         providerModulePath: providerPath,
         stateDirectory,
+        production: true,
+        createHostOwnedFactory: async () => () => ({}),
+      }),
+      /compound-repair-independent-evaluator-module-must-be-outside-state-directory/,
+    );
+  });
+});
+
+test('rejects evaluator config inside mutable state reached through a symlink alias', async () => {
+  if (process.platform === 'win32') return;
+  await temporary(async root => {
+    const realStateDirectory = path.join(root, 'real-state');
+    const stateAlias = path.join(root, 'state-alias');
+    const providerPath = path.join(root, 'provider.mjs');
+    const evaluatorPath = path.join(realStateDirectory, 'evaluator.mjs');
+    await mkdir(realStateDirectory, { mode: 0o700 });
+    await symlink(realStateDirectory, stateAlias, 'dir');
+    await writeFile(providerPath, 'export default async () => () => ({})\\n');
+    await writeFile(evaluatorPath, hostModule());
+    await assert.rejects(
+      createIndependentEvaluationConfigFactory({
+        moduleSetting: evaluatorPath,
+        root,
+        providerModulePath: providerPath,
+        stateDirectory: stateAlias,
         production: true,
         createHostOwnedFactory: async () => () => ({}),
       }),
