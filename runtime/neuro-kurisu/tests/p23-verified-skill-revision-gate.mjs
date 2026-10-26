@@ -94,6 +94,6 @@ const strictBoundary = evaluateSkillRevision(rows, 'baseline', 'candidate', {
 assert.equal(strictBoundary.accepted, true,
   'finite threshold boundary values remain supported when evidence meets the configured gate');
 assert.equal(strictBoundary.pairedN, 10);
-assert.equal(strictBoundary.absoluteGain, 0.2);
+assert.ok(Math.abs(strictBoundary.absoluteGain - 0.2) < 1e-12, 'boundary gain comparison is stable to floating-point representation');
 
 console.log('P23_VERIFIED_SKILL_REVISION_GATE=PASS');
