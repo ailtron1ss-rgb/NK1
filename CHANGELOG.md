@@ -1,3 +1,13 @@
+## WorkPass341 — per-family distinct holdout coverage for verified skill promotion (2026-10-26)
+
+- Added an explicit trusted `minimumFamilyTasksByFamily` floor alongside per-family gain thresholds for verified skill-promotion proposals.
+- The promotion proposal now counts distinct attempt-1 tasks with paired baseline/candidate outcomes inside each family; repeating the same small task set across more seeds cannot satisfy family breadth. Both coverage and the exact threshold policy are bound into the proposal identity.
+- The production staging script requires operator-owned `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`, checks that every configured family exists in the holdout manifest, validates task floors (2–10,000), and only stages candidates after both the family-gain and task-coverage gates pass.
+- Candidate activation remains disabled; this change tightens evaluation evidence and does not auto-promote a skill.
+- Exact-head typecheck, staging/proposal regressions and full integration CI pending.
+
+---
+
 ## WorkPass336 — evaluator-origin attestation before ledger commit (2026-10-26)
 
 - **Gap:** the evaluator fingerprint is a public SHA-256 integrity digest, not proof of origin. A caller that copied the result could alter a syntactically valid execution ID and recompute the digest while retaining plausible manifest/plan labels.
