@@ -1,5 +1,5 @@
 import { sha256Stable } from "../core/StableSerialization.ts";
-import type { MemoryProvenanceClass, MemoryOS2 } from "../developmental/MemoryOS2.ts";
+import type { MemoryEvidenceRecord, MemoryProvenanceClass, MemoryOS2 } from "../developmental/MemoryOS2.ts";
 import type { MemoryFabric } from "./MemoryFabric.ts";
 import type { EventLog } from "./EventSourcing.ts";
 import {
@@ -405,6 +405,42 @@ export function ingestHexisEvidenceForReview(
  * unit if any of those steps fails. Correct/forget decisions remain review
  * metadata only; they do not silently rewrite or erase canonical memory.
  */
+
+function matchesCanonicalReviewEvidence(
+  payload: Partial<HexisEvidenceReviewPayload>,
+  memoryId: string,
+  receipt: MemoryEvidenceRecord,
+): boolean {
+  // A persisted review is untrusted input at the decision boundary. Re-run the
+  // canonical adapter over the review's evidence fields and recompute the digest;
+  // carrying a matching digest string alone does not bind the other fields.
+  const adapted = adaptHexisEvidence({
+    memoryId: payload.memoryId,
+    evidenceId: payload.evidenceId,
+    stance: payload.stance,
+    source: payload.source,
+    observedAt: payload.observedAt,
+    confidence: payload.evidenceConfidence01,
+    ...(payload.note === undefined ? {} : { note: payload.note }),
+  });
+  if (!adapted.accepted) return false;
+  const evidence = adapted.evidence;
+  if (evidence.protectedMemory || evidence.memoryId !== memoryId) return false;
+
+  const recalculatedDigest = sha256Stable(evidence, "legacy").toLowerCase();
+  return recalculatedDigest === receipt.digest.toLowerCase()
+    && receipt.evidenceId === evidence.evidenceId
+    && receipt.stance === evidence.stance
+    && receipt.sourceKind === evidence.source.kind
+    && receipt.sourceRef === evidence.source.ref
+    && receipt.label === evidence.source.label
+    && receipt.author === evidence.source.author
+    && receipt.note === evidence.note
+    && receipt.confidence01 === evidence.confidence
+    && receipt.observedAt === Date.parse(evidence.observedAt)
+    && receipt.protectedMemory === false;
+}
+
 export function decideHexisEvidenceReview(
   memoryOS: MemoryOS2,
   fabric: HexisAdaptationFabric,
@@ -462,6 +498,10 @@ export function decideHexisEvidenceReview(
   if (!memory) return reject("canonical-memory-no-longer-exists");
   const evidenceRecord = memory.evidenceRecords?.find((record) => record.evidenceId === payload.evidenceId && record.digest.toLowerCase() === String(payload.digest).toLowerCase());
   if (!evidenceRecord) return reject("canonical-evidence-receipt-missing-or-retired");
+  if (String(payload.digest).toLowerCase() !== evidenceRecord.digest.toLowerCase() ||
+      !matchesCanonicalReviewEvidence(payload, memory.id, evidenceRecord)) {
+    return reject("canonical-review-evidence-binding-mismatch");
+  }
 
   const baseline = payload.baselineConfidence01;
   if (typeof baseline !== "number" || !Number.isFinite(baseline) || Math.abs(memory.confidence - baseline) > 1e-9) {
