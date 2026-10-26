@@ -18,6 +18,7 @@ on:
       - "tools/super-start.mjs"
       - "tools/toolchain-contract.mjs"
       - "tools/toolchain-contract.test.mjs"
+      - "tools/clean-startup-workflow-contract.test.mjs"
       - "tools/typecheck-runtime-contract.test.mjs"
       - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
       - "tools/supervisor-exit-policy.mjs"
@@ -44,6 +45,7 @@ on:
       - "tools/super-start.mjs"
       - "tools/toolchain-contract.mjs"
       - "tools/toolchain-contract.test.mjs"
+      - "tools/clean-startup-workflow-contract.test.mjs"
       - "tools/typecheck-runtime-contract.test.mjs"
       - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
       - "tools/supervisor-exit-policy.mjs"
@@ -80,6 +82,8 @@ jobs:
           package-manager-cache: false
       - name: Validate toolchain contract logic
         run: npm run test:toolchain-contract
+      - name: Validate clean-startup workflow trigger coverage
+        run: npm run test:clean-startup-workflow-contract
       - name: Validate shared supervisor toolchain preflight
         run: npm run test:supervisor-preflight
       - name: Validate fail-closed runtime TypeScript compiler contract
