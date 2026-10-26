@@ -78,6 +78,65 @@ assert.throws(
 );
 assert.equal(writes, 0, 'lifecycle tampering must be rejected before canonical storage is touched');
 
+// applicationAttempts is lifecycle metadata, not part of the reviewed HMX content digest;
+// malformed values must fail before the projector reads or writes canonical state.
+for (const invalidAttempts of ['bad', '2', 1.5, -1, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+  const malformedAttemptStage = structuredClone(stage);
+  malformedAttemptStage.status = 'accepted';
+  delete malformedAttemptStage.application;
+  malformedAttemptStage.applicationAttempts = invalidAttempts;
+  assert.throws(
+    () => projector.apply(malformedAttemptStage),
+    /hmx-stage-digest-invalid/,
+    `invalid applicationAttempts ${String(invalidAttempts)} must be rejected before apply`,
+  );
+}
+assert.equal(writes, 0, 'invalid applicationAttempts must be rejected before canonical storage is touched');
+
+// A valid content digest cannot authorize a receipt whose attempt mismatches lifecycle state.
+const attemptMismatchStage = structuredClone(stage);
+attemptMismatchStage.applicationAttempts = 2;
+attemptMismatchStage.application = makeReceipt({ attempt: 1 });
+assert.throws(() => projector.apply(attemptMismatchStage), /hmx-applied-receipt-invalid/);
+assert.equal(writes, 0, 'attempt mismatch must not re-enter canonical storage');
+
+// WorkPass427: a recomputed checksum must not make an impossible apply receipt valid.
+const semanticallyInvalidReceipts = [
+  { overrides: { candidateMemoryRecords: 1 }, label: 'candidate count must match the staged memory array' },
+  { overrides: { complete: true }, label: 'noop receipt cannot claim complete application' },
+  { overrides: { status: 'applied' }, label: 'zero-memory receipt must remain noop' },
+  { overrides: { memoryIds: ['memory-1'] }, label: 'memory IDs must match unique record count' },
+  { overrides: { createdMemoryIds: ['memory-1'] }, label: 'created IDs must match imported count' },
+  { overrides: { deduplicatedCount: 1 }, label: 'imported plus deduplicated must account for every unique row' },
+  { overrides: { semanticEdgeIds: ['edge-1'] }, label: 'receipt cannot name more distinct edges than projected relationships' },
+];
+for (const item of semanticallyInvalidReceipts) {
+  const impossibleStage = { ...stage, application: makeReceipt(item.overrides) };
+  assert.throws(() => projector.apply(impossibleStage), /hmx-applied-receipt-invalid/, item.label);
+}
+assert.equal(writes, 0, 'semantically impossible receipts must fail before canonical storage is touched');
+
+// Prove the strengthened contract still accepts a coherent non-noop receipt.
+const coherentAppliedStage = structuredClone(stage);
+coherentAppliedStage.stagedSections.memories = [
+  { ref: coherentAppliedStage.exportId + ':mem-1', type: 'semantic', content: 'valid staged memory' },
+];
+coherentAppliedStage.digest = computeHmxStageDigest(coherentAppliedStage);
+coherentAppliedStage.application = makeReceipt({
+  stageDigest: coherentAppliedStage.digest,
+  status: 'applied',
+  complete: true,
+  candidateMemoryRecords: 1,
+  uniqueMemoryRecords: 1,
+  importedCount: 1,
+  deduplicatedCount: 0,
+  memoryIds: ['memory-1'],
+  createdMemoryIds: ['memory-1'],
+});
+assert.deepEqual(projector.apply(coherentAppliedStage), coherentAppliedStage.application,
+  'a semantically coherent applied receipt remains replay-compatible');
+assert.equal(writes, 0, 'valid receipt replay must remain a no-write operation');
+
 // A receipt copied from another stage must not be accepted as the result of this stage.
 assert.throws(
   () => projector.apply({ ...stage, application: makeReceipt({ stageId: 'some-other-stage' }) }),
