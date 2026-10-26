@@ -46,6 +46,15 @@ const symbolEnvelope = { ...valid, [Symbol("untrusted")]: "ignored?" };
 assert.equal(adaptHexisEvidence(symbolEnvelope).accepted, false);
 assert.equal(adaptHexisEvidence({ ...valid, source: { ...valid.source, extra: "smuggled" } }).accepted, false);
 
+for (const patch of [
+  { note: "hidden-C1\\u0085-control" },
+  { source: { kind: "document", ref: "sha256:ab\\u0085cd" } },
+  { source: { kind: "document", ref: "sha256:abcd", label: "label\\u009f" } },
+  { source: { kind: "document", ref: "sha256:abcd", author: "author\\u0080" } },
+]) {
+  assert.equal(adaptHexisEvidence({ ...valid, ...patch }).accepted, false, "C1 control characters must be rejected");
+}
+
 let getterCalls = 0;
 const hostile = { ...valid };
 Object.defineProperty(hostile, "confidence", {
