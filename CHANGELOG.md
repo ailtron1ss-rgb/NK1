@@ -9,6 +9,7 @@
 - The UI never treats the typed ID as proof of status: the server still checks the stage lifecycle seal/status and conflicts, while acceptance and canonical apply remain separately confirmed. This allows recovery without weakening server-side invariants.
 
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
+- [CI DIAGNOSTIC] At head `4486e7c700b6ba5fe50661123872093626e50f51`, five visible jobs (HMX, Core regression, validation, metrics, verified-outcomes) concluded `failure` with absent step lists and `logs_url=null`. Root cause remains unknown; do not attribute this to a specific code/test failure without runner metadata.
 - [PERSISTENCE REGRESSION] Validate the special `__proto__` deferred-section key after real JSON stringify/parse, not just in-memory receipt validation.
 - [WARNING SANITIZATION] Reject every C0/C1 control character in warning strings, including tab/newline/carriage return, and retain the 2048-character cap.
 - [SAFE TREE BUDGET] Count every visited value (including primitive leaves), cap individual strings at 1,000,000 characters, cap aggregate string/key characters at 80,000,000, cap own keys per object at 4096 and each key at 4096 characters. Caller-supplied traversal budget arguments are ignored.
