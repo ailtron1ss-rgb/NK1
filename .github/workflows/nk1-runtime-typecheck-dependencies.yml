@@ -225,7 +225,7 @@ jobs:
                       if pathlib.PurePosixPath(target).is_absolute() or ".." in pathlib.PurePosixPath(target).parts:
                           errors.append("escaping symlink in candidate: " + rel)
                   if not info.is_dir() and info.file_size <= 8 * 1024 * 1024 and pathlib.PurePosixPath(rel).suffix.lower() in {
-                      ".env", ".json", ".js", ".mjs", ".ts", ".tsx", ".md", ".txt", ".yml", ".yaml", ".toml", ".sh", ".conf", ".xml"
+                      ".env", ".json", ".js", ".mjs", ".ts", ".tsx", ".md", ".txt", ".yml", ".yaml", ".toml", ".sh", ".conf", ".xml", ".pem", ".key", ".pub", ".example", ".sample", ".properties"
                   }:
                       data = z.read(name)
                       begin, end = b"-----BEGIN ", b"-----"
