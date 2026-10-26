@@ -84,10 +84,19 @@ function cloneJsonValue(value: unknown, ancestors = new Set<object>(), arrayItem
   ancestors.add(value);
   try {
     if (Array.isArray(value)) {
-      return value.map(item => {
-        const normalized = cloneJsonValue(item, ancestors, true);
-        return normalized === OMIT_JSON_VALUE ? null : normalized;
-      });
+      // Read array slots through own data descriptors too: map()/iteration would
+      // execute accessor-backed indices supplied by an untrusted caller.
+      const detached = new Array(value.length);
+      for (let index = 0; index < value.length; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) {
+          detached[index] = null;
+          continue;
+        }
+        const normalized = cloneJsonValue(descriptor.value, ancestors, true);
+        detached[index] = normalized === OMIT_JSON_VALUE ? null : normalized;
+      }
+      return detached;
     }
     if (!isRecord(value)) throw new TypeError('Unsupported cognitive event payload value');
     const detached: Record<string, unknown> = {};
