@@ -359,18 +359,18 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass422",
+    "id": "WorkPass423",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "58f57b806590477c0d6558b162d82a78675e8397",
-    "testCommit": "b380123afe87987a10456065504982bdf4a02af1",
-    "codeTestHead": "b380123afe87987a10456065504982bdf4a02af1",
-    "summary": "Harden the exported memory normalizer itself: snapshot each untrusted raw memory row through the bounded plain-JSON capture function before property reads, so direct/internal callers cannot trigger accessors or pass custom-prototype rows.",
+    "codeCommit": "49a5a2e90a2d98980572f44152afaf20921a08a7",
+    "testCommit": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+    "codeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+    "summary": "Validate the exported memory-normalizer options envelope using own data descriptors, require a canonical exportId, bind memory refs to that export, and reject accessor/custom-prototype option objects without coercion.",
     "testsAdded": [
-      "normalizer root getter is not executed",
-      "normalizer nested metadata getter is not executed",
-      "normalizer rejects a custom-prototype memory row",
-      "unsafe normalization returns null without projecting a memory"
+      "a memory ref from another export ID returns null",
+      "a getter-backed exportId is rejected without execution",
+      "object-valued exportId is rejected without coercion",
+      "prior raw-row root/nested getter and custom-prototype guards remain"
     ],
     "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
@@ -378,6 +378,25 @@
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass423",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "49a5a2e90a2d98980572f44152afaf20921a08a7",
+      "testCommit": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+      "codeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+      "summary": "Validate the exported memory-normalizer options envelope using own data descriptors, require a canonical exportId, bind memory refs to that export, and reject accessor/custom-prototype option objects without coercion.",
+      "testsAdded": [
+        "a memory ref from another export ID returns null",
+        "a getter-backed exportId is rejected without execution",
+        "object-valued exportId is rejected without coercion",
+        "prior raw-row root/nested getter and custom-prototype guards remain"
+      ],
+      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass422",
       "date": "2026-10-26",
@@ -391,24 +410,6 @@
         "normalizer nested metadata getter is not executed",
         "normalizer rejects a custom-prototype memory row",
         "unsafe normalization returns null without projecting a memory"
-      ],
-      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
-    {
-      "id": "WorkPass421",
-      "date": "2026-10-26",
-      "branch": "hexis-remote-bridge-20261026",
-      "codeCommit": "77c57d9283f2805711a1c5e3db11c38af8b826f2",
-      "testCommit": "d7be9e5da89bb8523e42d422533112e9a0304461",
-      "codeTestHead": "d7be9e5da89bb8523e42d422533112e9a0304461",
-      "summary": "Fail closed when HMX source_attribution is present but not an object. The validator emits a schema conflict and memory normalizer returns null instead of silently dropping malformed provenance and importing the memory as source-less.",
-      "testsAdded": [
-        "string-valued source_attribution produces a schema issue without throwing",
-        "normalizeHmxV17Memory returns null for malformed source attribution",
-        "malformed attribution cannot silently become a source-less imported memory"
       ],
       "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
       "progressPercentagesChanged": false,
@@ -583,8 +584,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "b380123afe87987a10456065504982bdf4a02af1",
-  "branchHeadBeforeTrackerCommit": "b380123afe87987a10456065504982bdf4a02af1",
+  "latestUnverifiedCodeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+  "branchHeadBeforeTrackerCommit": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -624,17 +625,18 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass421",
+    "id": "WorkPass422",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "77c57d9283f2805711a1c5e3db11c38af8b826f2",
-    "testCommit": "d7be9e5da89bb8523e42d422533112e9a0304461",
-    "codeTestHead": "d7be9e5da89bb8523e42d422533112e9a0304461",
-    "summary": "Fail closed when HMX source_attribution is present but not an object. The validator emits a schema conflict and memory normalizer returns null instead of silently dropping malformed provenance and importing the memory as source-less.",
+    "codeCommit": "58f57b806590477c0d6558b162d82a78675e8397",
+    "testCommit": "b380123afe87987a10456065504982bdf4a02af1",
+    "codeTestHead": "b380123afe87987a10456065504982bdf4a02af1",
+    "summary": "Harden the exported memory normalizer itself: snapshot each untrusted raw memory row through the bounded plain-JSON capture function before property reads, so direct/internal callers cannot trigger accessors or pass custom-prototype rows.",
     "testsAdded": [
-      "string-valued source_attribution produces a schema issue without throwing",
-      "normalizeHmxV17Memory returns null for malformed source attribution",
-      "malformed attribution cannot silently become a source-less imported memory"
+      "normalizer root getter is not executed",
+      "normalizer nested metadata getter is not executed",
+      "normalizer rejects a custom-prototype memory row",
+      "unsafe normalization returns null without projecting a memory"
     ],
     "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
@@ -642,20 +644,20 @@
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass423",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "bfb55498ff8e258caa52aec95f365bac7fc0f94b",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Bind the memory-row projection to a valid canonical HMX export ID using a safe options envelope; refuse rows whose refs do not belong to that export, and reject accessor-backed options before reading values. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass422",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "b380123afe87987a10456065504982bdf4a02af1",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Add a bounded snapshot boundary inside normalizeHmxV17Memory so callers outside the existing staging pathway cannot trigger getters, supply custom prototypes, or mutate raw values during trust checks. Scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass421",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "d7be9e5da89bb8523e42d422533112e9a0304461",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Require supplied HMX source_attribution metadata to be an object; malformed values produce a schema conflict and never enter canonical memory as if the source attribution were simply absent. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
