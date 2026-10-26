@@ -22,6 +22,55 @@ try {
   if (!ready) throw new Error(`server-not-ready:${output.slice(-800)}`);
   const overview = await (await fetch(`${base}/api/organism/integration/hexis`)).json();
   if (!overview.ok || overview.hexis?.source?.name !== 'Hexis-main') throw new Error('hexis-overview');
+  // Permission booleans must never be inferred through JavaScript truthiness.
+  const coercedAutonomyGrant = await post('/api/organism/integration/hexis/policy', {
+    connectorId: 'nk1-coercion-regression',
+    actionKind: 'send',
+    contexts: ['chat'],
+    allowAutonomous: 'false',
+    requiresApproval: false,
+    allowedTargets: ['target-1'],
+    maxPerWindow: 1,
+    windowMs: 60000,
+  });
+  if (coercedAutonomyGrant.status !== 400) {
+    throw new Error('hexis-policy-must-reject-string-boolean:' + coercedAutonomyGrant.status);
+  }
+  const coercedAutonomyEval = await post('/api/organism/integration/hexis/policy/evaluate', {
+    connectorId: 'nk1-coercion-regression',
+    actionKind: 'send',
+    context: 'chat',
+    target: 'target-1',
+    confirmed: true,
+    autonomous: true,
+  });
+  const coercedAutonomyEvalBody = await coercedAutonomyEval.json();
+  if (coercedAutonomyEval.status !== 403 || coercedAutonomyEvalBody.result?.reason !== 'no-active-policy') {
+    throw new Error('hexis-invalid-policy-must-not-be-created:' + JSON.stringify(coercedAutonomyEvalBody));
+  }
+  const strictFalseGrant = await post('/api/organism/integration/hexis/policy', {
+    connectorId: 'nk1-strict-boolean-regression',
+    actionKind: 'send',
+    contexts: ['chat'],
+    allowAutonomous: false,
+    requiresApproval: false,
+    allowedTargets: ['target-2'],
+    maxPerWindow: 2,
+    windowMs: 60000,
+  });
+  if (strictFalseGrant.status !== 200) throw new Error('hexis-policy-valid-boolean:' + strictFalseGrant.status);
+  const strictFalseEval = await post('/api/organism/integration/hexis/policy/evaluate', {
+    connectorId: 'nk1-strict-boolean-regression',
+    actionKind: 'send',
+    context: 'chat',
+    target: 'target-2',
+    confirmed: true,
+    autonomous: true,
+  });
+  const strictFalseEvalBody = await strictFalseEval.json();
+  if (strictFalseEval.status !== 403 || strictFalseEvalBody.result?.reason !== 'autonomous-not-allowed') {
+    throw new Error('hexis-explicit-false-must-deny-autonomy:' + JSON.stringify(strictFalseEvalBody));
+  }
   const sync = await (await post('/api/organism/integration/hexis/sync-memory', { limit: 16 })).json();
   if (!sync.ok || typeof sync.scanned !== 'number') throw new Error('hexis-sync');
   const memoryIndex = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=8`)).json();
