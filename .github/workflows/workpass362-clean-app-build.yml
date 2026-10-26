@@ -13,6 +13,11 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - "package.json"
+      - "tools/super-launch.test.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-paths.mjs"
+      - "package-lock.json"
       - "tools/super-doctor.mjs"
       - "tools/app-dependency-contract.test.mjs"
       - ".github/workflows/workpass362-clean-app-build.yml"
@@ -28,6 +33,11 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - "package.json"
+      - "tools/super-launch.test.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-paths.mjs"
+      - "package-lock.json"
       - "tools/super-doctor.mjs"
       - "tools/app-dependency-contract.test.mjs"
       - ".github/workflows/workpass362-clean-app-build.yml"
@@ -68,6 +78,10 @@ jobs:
           package-manager-cache: false
       - name: Verify clean-checkout prerequisites before installing dependencies
         run: npm run doctor
+      - name: Install the locked root orchestrator
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify root launcher paths and state directory contract
+        run: npm run test:super-launch
       - name: Install locked app dependencies
         run: npm ci --prefix app --no-audit --no-fund
       - name: Install locked runtime dependencies
