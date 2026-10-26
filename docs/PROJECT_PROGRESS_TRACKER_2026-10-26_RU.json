@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores and the historical 13-row CI snapshot remain anchored to code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Later exact-head Unified integration suites passed on a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593), validating WorkPass343–344, and on 216d79086bfac2dd5f25e2c995fe6b5a44b61476 (run #40279847281), validating WorkPass345's invalid-sidecar startup recovery. These changes improve restart safety but provide no independent task-success/transfer/retention uplift, so weighted engineering estimates and the 57/100 learning engineering score remain unchanged.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores and the historical 13-row CI snapshot remain anchored to code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. WorkPass343–344 passed exact-head Unified integration on a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593), and WorkPass345 passed on 216d79086bfac2dd5f25e2c995fe6b5a44b61476 (run #40279847281). WorkPass346 adds fail-open recovery for malformed procedural-skill sidecars; code/test head 330dc7632839822225cfff0620fe9cdd390acdc4 is in Unified integration run #40280652324. Scores stay unchanged until this latest regression is validated; no empirical task-success/transfer/retention uplift is claimed.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -26,7 +26,7 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "Long-duration process-kill/restart soak and real device/browser/voice/avatar integration remain open; independent external task benchmarks are required before raising field-evidence and learning-effectiveness scores.",
+        "WorkPass346 malformed procedural-skill sidecar recovery is pending exact-head CI for 330dc7632839822225cfff0620fe9cdd390acdc4 (run #40280652324). WorkPass343–345 have passed exact-head Unified integration; long-duration restart soak, real device/browser/voice/avatar integration and independent external task benchmarks remain open.",
         "Long-duration process-kill/restart soak tests and real device/browser/voice/avatar integration remain open",
         "Independent external task benchmarks are required before raising field evidence or learning-effectiveness scores"
       ],
@@ -359,24 +359,44 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass345",
+    "id": "WorkPass346",
     "date": "2026-10-26",
     "branch": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
-    "codeCommit": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
-    "summary": "Make invalid/unreadable cognitive-dependency graph sidecar fail-open during OrganismRuntime.init; reset only derived routing state, log restore failure, and continue startup.",
+    "codeCommit": "330dc7632839822225cfff0620fe9cdd390acdc4",
+    "summary": "Protect ProceduralSkillLibrary restore from malformed/corrupt persisted skill state so derived skill-cache damage does not abort OrganismRuntime startup; reset only the skill cache and log a warning.",
     "testsAdded": [
-      "runtime source contract verifies the dedicated restore-failed fallback path and warning event",
-      "restart smoke corrupts the dependency sidecar schema and verifies init succeeds",
-      "post-recovery autonomous cycle advances dependency graph on the canonical Core tick"
+      "source contract verifies procedural-skill restore is wrapped in try/catch and warning event is present",
+      "runtime restart smoke writes a self-contained skills:[null] corruption fixture",
+      "startup proceeds with an empty recovered skill library and a subsequent autonomous cycle completes"
     ],
-    "validationStatus": "PASS on exact code/test head 216d79086bfac2dd5f25e2c995fe6b5a44b61476; Unified project integration suite run #40279847281 completed successfully. The full suite includes WorkPass344 dual-sidecar MAX_SAFE_INTEGER recovery and the WorkPass345 unsupported-schema restart regression.",
+    "validationStatus": "PENDING: Unified project integration suite run #40280652324 is in progress on exact code/test head 330dc7632839822225cfff0620fe9cdd390acdc4; no pass claimed.",
     "progressPercentagesChanged": false,
-    "testedHeadSha": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
-    "workflowRuns": [
-      40279847281
+    "testedHeadSha": null,
+    "workflowRuns": [],
+    "activeWorkflowRuns": [
+      40280652324
     ]
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass346",
+      "date": "2026-10-26",
+      "branch": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
+      "codeCommit": "330dc7632839822225cfff0620fe9cdd390acdc4",
+      "summary": "Protect ProceduralSkillLibrary restore from malformed/corrupt persisted skill state so derived skill-cache damage does not abort OrganismRuntime startup; reset only the skill cache and log a warning.",
+      "testsAdded": [
+        "source contract verifies procedural-skill restore is wrapped in try/catch and warning event is present",
+        "runtime restart smoke writes a self-contained skills:[null] corruption fixture",
+        "startup proceeds with an empty recovered skill library and a subsequent autonomous cycle completes"
+      ],
+      "validationStatus": "PENDING: Unified project integration suite run #40280652324 is in progress on exact code/test head 330dc7632839822225cfff0620fe9cdd390acdc4; no pass claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": [],
+      "activeWorkflowRuns": [
+        40280652324
+      ]
+    },
     {
       "id": "WorkPass345",
       "date": "2026-10-26",
@@ -492,8 +512,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": null,
-  "branchHeadBeforeTrackerCommit": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
+  "latestUnverifiedCodeTestHead": "330dc7632839822225cfff0620fe9cdd390acdc4",
+  "branchHeadBeforeTrackerCommit": "330dc7632839822225cfff0620fe9cdd390acdc4",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
