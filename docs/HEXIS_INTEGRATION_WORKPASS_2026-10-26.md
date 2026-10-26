@@ -25,3 +25,4 @@ The GitHub Actions wrappers report failed runs but expose no job steps and retur
 - A mistyped confirmation such as `confirmed: "true"` is rejected with HTTP 400; local checkout/test execution is blocked because this container cannot resolve `github.com`, and Actions job logs currently return `BlobNotFound`.
 - GET memory/goal lists now enforce bounded integer limits and allowlisted goal status filters; temporal GET routes require real, safe-integer timestamp arguments instead of treating missing query values as zero.
 - The operator console now shows the sealed apply receipt (status, imported/deduplicated counts, projected/deferred relationships, completeness and warnings) and per-section stage counts.
+- After a console reload, manually re-entering a stage ID enables server-validated accept/reject/apply actions; local cached stage status is not trusted, and apply still requires the explicit confirmation checkbox.
