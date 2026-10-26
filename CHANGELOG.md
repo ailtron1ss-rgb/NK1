@@ -1,3 +1,11 @@
+## WorkPass380 — supervise development runtime children and propagate startup failures (2026-10-26)
+
+- **Defect:** `tools/super-dev.mjs` logged nonzero exits but left sibling runtime/research/UI processes alive; a `spawn` error had no listener and could emit an unhandled ChildProcess error. This made local developer startup failures noisy and nondeterministic instead of a clear failed launch.
+- **Fix:** dev mode now uses one idempotent shutdown coordinator, catches spawn errors, treats any unexpected critical-service exit (including exit code zero) as fatal, sends SIGTERM to all siblings and exits nonzero after a bounded grace period. Normal SIGINT/SIGTERM shutdown remains a graceful zero exit.
+- **Regression:** launcher contract tests now guard both spawn-error and unexpected-exit handling. Production clean install, UI build, local stack startup and container smoke passed in WorkPass379; the new dev-supervisor check and exact-head CI will validate this additional launcher path.
+
+---
+
 ## WorkPass379 — keep Docker verification steps inside the CI job (2026-10-26)
 
 - GitHub rejected the new clean-install workflow before creating a job because the first appended Docker step lost its six-space `steps` indentation. Corrected the YAML structure; application code and container configuration were unchanged.

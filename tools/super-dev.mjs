@@ -8,15 +8,38 @@ const stateDir = resolve(ROOT, process.env.SUPER_STATE_DIR || '.super-state');
 mkdirSync(stateDir, { recursive: true });
 
 const children = [];
+let shuttingDown = false;
+let finalExitCode = 0;
+
+const shutdown = (reason, exitCode = 0) => {
+  if (shuttingDown) {
+    if (exitCode !== 0) finalExitCode = exitCode;
+    return;
+  }
+  shuttingDown = true;
+  finalExitCode = exitCode;
+  console.log(`[super] shutting down (${reason}); exitCode=${finalExitCode}`);
+  for (const child of children) {
+    try { child.kill('SIGTERM'); } catch { /* child already exited */ }
+  }
+  setTimeout(() => process.exit(finalExitCode), 1200).unref();
+};
+
 function launch(label, command, args, env = {}, cwd = ROOT) {
   const child = spawn(command, args, {
     cwd,
     env: { ...process.env, ...env },
     stdio: 'inherit',
   });
+  child.on('error', (error) => {
+    console.error(`[super] ${label} spawn error: ${error.message}`);
+    void shutdown(`spawn-error:${label}`, 1);
+  });
   child.on('exit', (code, signal) => {
-    if (signal) console.log(`[super] ${label} exited via ${signal}`);
-    else if (code !== 0) console.error(`[super] ${label} exited with ${code}`);
+    if (shuttingDown) return;
+    const detail = signal ? `via ${signal}` : `with exit code ${code}`;
+    console.error(`[super] critical dev service ${label} exited unexpectedly ${detail}`);
+    void shutdown(`child-exit:${label}`, 1);
   });
   children.push(child);
   return child;
@@ -34,10 +57,5 @@ launch('research-bridge', 'python3', ['research/research_bridge.py'], {
 });
 launch('ui', 'npm', ['--prefix', 'app', 'run', 'dev']);
 
-const shutdown = (signal) => {
-  console.log(`[super] shutting down (${signal})`);
-  for (const child of children) child.kill('SIGTERM');
-  setTimeout(() => process.exit(0), 800).unref();
-};
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));

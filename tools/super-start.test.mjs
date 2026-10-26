@@ -13,6 +13,15 @@ test('launchers support a mounted persistent state directory', () => {
   assert.ok(dev.includes("resolve(ROOT, process.env.SUPER_STATE_DIR || '.super-state')"));
 });
 
+test('developer launcher fails fast and stops sibling services on spawn errors or unexpected exits', () => {
+  assert.ok(dev.includes("child.on('error', (error) =>"));
+  assert.ok(dev.includes("child.on('exit', (code, signal) =>"));
+  assert.ok(dev.includes('if (shuttingDown) return;'));
+  assert.ok(dev.includes('shutdown(`child-exit:${label}`, 1)'));
+  assert.ok(dev.includes('shutdown(`spawn-error:${label}`, 1)'));
+  assert.ok(dev.includes('setTimeout(() => process.exit(finalExitCode), 1200)'));
+});
+
 test('production launcher imports filesystem operations from node:fs', () => {
   assert.match(start, /import \{ mkdirSync \} from 'node:fs';/);
   assert.match(start, /import \{ resolve \} from 'node:path';/);
