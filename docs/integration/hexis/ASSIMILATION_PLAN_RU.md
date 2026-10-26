@@ -177,4 +177,41 @@ Gate для promotion: нет критического нарушения без
 - Bevel Hexis — versioning, permissions, review of skill changes: https://github.com/Bevel-Software/Hexis
 - Hexis framework for Claude Code — learning from corrections and enforcement: https://github.com/hexis-framework/hexis
 
-Документ описывает целевую схему и план проверки. Он не утверждает, что код Hexis уже встроен в NK1, что качество памяти улучшилось, либо что закрыты production release gates.
+## 14. Фактический статус реализации (2026-10-26)
+
+В ветке `hexis-h1-memory-evidence-lineage-2026-10-26` уже есть реальные адаптации Hexis, однако это не означает завершения всей интеграции или готовности Release.
+
+### Выполнено в коде
+
+- Canonical evidence lineage связывает Hexis belief revisions с MemoryOS2: повторное доказательство не должно менять confidence, trust, revision time или source votes.
+- P65EpistemicLedger сохраняет незавершённые предсказания в пределах явного лимита 1 024, ограничивает недавнюю историю 128 элементами, санитизирует restore и учитывает отклонённые попытки добавить предсказание в заполненную очередь.
+- Hexis outbox получил durable idempotency ledger, защиту replay после ротации terminal rows, лимит активной очереди 1 024, детерминированное восстановление строк и fail-closed поведение при повреждённом состоянии.
+- Temporal assertions перестраивают интервалы по effective time; поздняя доставка больше не должна закрывать актуальную версию только по времени поступления. Семантический replay идемпотентен, конфликт в один valid-time отклоняется без частичной мутации.
+- Review pipeline отделяет создание кандидата, аутентифицированное решение reviewer и отдельное разрешение на promotion.
+- Независимый evaluator отделяет исполняемость от проверенного успеха: недоступность verifier не превращает выполненный код в «неисполняемый», но всё равно блокирует зачёт успеха и promotion.
+- Исправлены тестовые фикстуры WorkPass110, которые не соответствовали канонической идентичности кандидата и не восстанавливали безопасный режим прав перед следующим filesystem-boundary тестом.
+
+### Проверка
+
+На code head `9eb588aa8bc255f3dbbdc1b955bfa2a778e556a9` подтверждены:
+- [P65 persistence regression — PASS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40301977562);
+- [repository wiring + Hexis adaptation — PASS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40301977349);
+- [WorkPass110 continual learning metrics — PASS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40301977431);
+- [WorkPass108 verified promotion gate — PASS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40301977432).
+
+После этих результатов в ветку добавлены документы матрицы соответствия, валидационных gates и source provenance; актуальный статус необходимо читать в GitHub Actions для последнего SHA, а не переносить старый PASS на новый код автоматически.
+
+### Не закрыто
+
+- Доказанный прирост retrieval/recall: ранее зафиксирован `recallDelta=0`; эти исправления улучшают целостность, а не доказывают прирост качества.
+- Финальный P26 learning gate, полный production build/migrations и независимый holdout на нескольких seed.
+- Реальный browser/Live2D E2E, Android/Termux аудио-синхронизация и долгий soak на целевом устройстве.
+- Production identity/key custody для reviewer и отдельный license review.
+- Слияние интеграционной ветки и обновление canonical Release ZIP. Release asset в этом проходе не менялся.
+
+Для подробной трассировки используй:
+- [MAPPING_MATRIX.md](MAPPING_MATRIX.md) — реальные владельцы, связи и границы модулей;
+- [VALIDATION_GATES.md](VALIDATION_GATES.md) — точные run IDs и незакрытые критерии;
+- [SOURCE_PROVENANCE.md](SOURCE_PROVENANCE.md) — upstream commit, archive, лицензия и правила повторного импорта.
+
+Этот раздел фиксирует фактические изменения и проверяемые результаты, но не объявляет NK1 production-ready и не заявляет сознание, автономность или улучшение памяти без измерений.
