@@ -1,23 +1,28 @@
-## WorkPass335 — verified skill revision gate hardening — 2026-10-26
+## WorkPass339 — каноническая кодировка подписей Ed25519 — 2026-10-26
 
-- **Input integrity:** malformed holdout observations with non-string task, family, method, verifier or evidence fields are safely rejected as rows; invalid top-level arrays/options return explicit errors rather than crashing on string methods.
-- **Threshold integrity:** `minPairedTasks` must be an integer from 2 to 10,000; gain and family-regression thresholds must be finite numbers in `[0, 1]`. Invalid values are rejected instead of silently clamped or defaulted.
-- **Evidence accounting:** baseline/candidate observations with mismatched task families are excluded from the paired denominator and increment `rejectedRows` exactly once per invalid pair.
-- **Regression coverage:** adds malformed-row and cross-family cases, invalid and exact-boundary threshold cases, and updates the proposal test to expect explicit failure for `NaN` configuration. The strict Ed25519 signature checks and regression remain in this same learning-security line.
-- **Activation boundary:** candidate generation remains advisory; independent evaluation, trusted shadow evidence and explicit signed approval are still required before a skill can become active.
+- **Runtime fix:** promotion и rollback approval verifier проверяют detached Ed25519 signature как канонический Base64 для ровно 64 байт: фиксированная длина, строгий алфавит, корректный padding и round-trip без изменения строки.
+- **Обе границы защищены:** проверка выполняется до криптографической верификации в createAuthenticatedSkillPromotionApprovalVerifier и createAuthenticatedSkillRollbackApprovalVerifier. Неканоническая кодировка отклоняется закрытым образом; отсутствующие trusted keys также остаются fail-closed.
+- **Regression:** в p23-versioned-skill-candidate-store.mjs проверены valid canonical promotion/rollback, а также junk suffix, leading whitespace и truncated promotion signature.
+- **Изоляция интеграции:** security diff перенесён выборочно в текущую WorkPass334 линию, не перезаписывая новые версии runtime/learning из расходящейся sibling-ветки.
 
-**Validation status:** the new focused gate and store regressions plus runtime typecheck must pass on the exact updated head. No progress score was increased and no claim of improved task performance or production readiness is made.
+**Validation status:** implementation/test committed in work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3; exact-head P23 regression, runtime typecheck and CI remain pending. Existing lane scores and older PASS rows are retained only for their original tested baseline and do not validate this patch. No progress-score uplift is claimed.
 
 ---
 
-## WorkPass335 — каноническая кодировка подписей Ed25519 — 2026-10-26
+## WorkPass338 — отключён автокэш npm в standalone ledger CI (2026-10-26)
 
-- **Runtime fix:** promotion и rollback approval verifier теперь проверяют detached Ed25519 signature как канонический Base64, представляющий ровно 64 байта: фиксированная длина, строгий алфавит, ожидаемый padding и round-trip декодирование/кодирование без изменения строки.
-- **Защищённые границы:** проверка включена в оба пути — первичное продвижение skill и авторизованный откат. Неканоническое значение отвергается до вызова криптографического verifier; default-deny, независимая оценка, подпись evidence и ручное одобрение остаются обязательными.
-- **Regression:** расширен `p23-versioned-skill-candidate-store.mjs`: canonical promotion/rollback signature остаётся допустимой; мусорный суффикс, ведущий пробел и обрезанное значение для promotion отклоняются, мусорный суффикс для rollback отклоняется.
-- **Branch integration:** изменение выборочно перенесено в текущую линию WorkPass334; свежие файлы runtime и learning из расходящихся соседних веток не заменялись wholesale.
+- Первый запуск WorkPass336 остановился на `actions/setup-node@v6` до тестов: автокэш искал lockfile в корне, где его нет (lockfiles находятся в отдельных workspaces).
+- В лёгком workflow отключён `package-manager-cache`: проверки используют встроенный Node.js и не требуют установки зависимостей.
+- Run `40252253918` зафиксирован как инфраструктурный FAIL до исполнения тестов; его нельзя трактовать как провал самого валидатора. Новый HEAD должен получить отдельный запуск.
 
-**Validation status:** код и regression committed в `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3`. Точный P23 test, TypeScript runtime typecheck и связанные CI jobs ещё не подтверждены на этом HEAD. Этот fix усиливает целостность формата подписи, но сам по себе не подтверждает независимость evaluator, полевое улучшение обучения или production readiness.
+---
+
+## WorkPass336 — отдельная exact-head CI для прогресс-реестра (2026-10-26)
+
+- Добавлен небольшой GitHub Actions workflow на Node.js 24, который запускает регрессии и отчёт реестра на точном checkout события.
+- Workflow запускается на PR с изменением реестра/валидатора/тестов, при push в текущую рабочую ветку `fix/mega-cognitive-progress-tracking-2026-10-26-r3`, а также вручную.
+- Это закрывает пробел, когда успешный CI на прежнем HEAD мог ошибочно восприниматься как проверка последующего изменения; состояние всё равно считается PASS только после фактического завершения Actions для нового SHA.
+- Содержимое `main` и релизный ZIP не меняются.
 
 ---
 
