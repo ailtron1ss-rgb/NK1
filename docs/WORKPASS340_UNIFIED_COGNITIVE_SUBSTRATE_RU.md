@@ -52,3 +52,6 @@ The earlier PR #150 was found to be diverged from the current source line (26 co
 The first attempt on the older branch found two TypeScript contract issues. Both are fixed in this fresh branch: prediction-debt aggregation uses an explicit `unknown` bridge before indexing, and relation count remains `0` until P41 provides typed relation evidence, rather than reading a nonexistent `cycleObservation.vision` property. The 30-cycle smoke now additionally asserts that substrate state advances and is restored from its sidecar after stop/re-init. This is authored coverage only; fresh-branch CI must still complete before calling it PASS.
 
 **No progress-score uplift:** tracked lane scores and historical CI rows remain anchored to their prior tested code SHA. WorkPass340 itself is marked pending until exact-head typecheck and the wired regression/smoke suite pass.
+
+
+**Fresh-base code/test checkpoint:** `70063d80d20133afde4e09c7e971e55a6e71f736`. Exact-head CI remains pending.
