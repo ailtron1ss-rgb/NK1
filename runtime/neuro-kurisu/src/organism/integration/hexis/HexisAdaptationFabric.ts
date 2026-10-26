@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
 import { isValidHmxApplyReceipt } from './HexisCanonicalMemoryProjector.mjs';
-import { computeHmxStageDigest, isValidHmxStageDigest } from './HexisStageIntegrity.mjs';
+import { computeHmxStageDigest, isValidHmxStageDigest, refreshHmxStageLifecycleDigest } from './HexisStageIntegrity.mjs';
 const hasHmxControlCharacters = (value: string): boolean => {
     for (let index = 0; index < value.length; index++) {
         const code = value.charCodeAt(index);
@@ -160,8 +160,10 @@ export interface HexisHmxStage {
     status: 'staged' | 'accepted' | 'rejected' | 'applied';
     createdAt: number;
     digest: string;
+    /** Independent seal for lifecycle/status and apply-attempt replay protection. */
+    lifecycleDigest: string;
     stagedSections: Record<string, unknown>;
-    applicationAttempts?: number;
+    applicationAttempts: number;
     application?: HexisHmxApplyReceipt;
 }
 export interface HexisOutboxEntry {
@@ -844,7 +846,10 @@ export class HexisAdaptationFabric {
             status: 'staged',
             createdAt: nowMs(),
             digest: computeHmxStageDigest(base),
+            lifecycleDigest: '',
+            applicationAttempts: 0,
         };
+        refreshHmxStageLifecycleDigest(stage);
         this.state.hmxStages.push(stage);
         this.state.hmxStages = this.state.hmxStages.slice(-32);
         this.state.metrics.hmxStaged += 1;
@@ -973,19 +978,23 @@ export class HexisAdaptationFabric {
             }
             if (!this.canonicalMemoryApply) throw new Error('canonical-memory-apply-not-bound');
             stage.applicationAttempts = Math.max(0, Math.floor(Number(stage.applicationAttempts ?? 0))) + 1;
-            // The attempt counter is persisted on the stage; a compensated retry uses fresh command IDs.
+            // Seal the attempt before passing the stage to the canonical projector.
+            // If the handler fails, a retry remains valid but gets a distinct attempt ID.
+            refreshHmxStageLifecycleDigest(stage);
             const receipt = this.canonicalMemoryApply(structuredClone(stage));
             // Validate the same stage/export/lineage/digest contract on first apply
             // that is required when the persisted receipt is replayed after restore.
             if (!isValidHmxApplyReceipt(stage, receipt)) throw new Error('hmx-apply-receipt-invalid');
             stage.application = structuredClone(receipt);
             stage.status = 'applied';
+            refreshHmxStageLifecycleDigest(stage);
             this.state.metrics.hmxApplied += 1;
             return structuredClone(stage);
         }
         if (decision !== 'accept' && decision !== 'reject') return structuredClone(stage);
         if (stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length)) return structuredClone(stage);
         stage.status = decision === 'accept' ? 'accepted' : 'rejected';
+        refreshHmxStageLifecycleDigest(stage);
         if (decision === 'accept') this.state.metrics.hmxAccepted += 1;
         return structuredClone(stage);
     }
