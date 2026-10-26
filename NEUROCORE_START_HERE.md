@@ -1,3 +1,14 @@
+## Latest checkpoint — WorkPass339 (2026-10-26)
+
+- **Branch:** `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5`, based on the current WorkPass334 source branch. No direct changes to `main` or release ZIP.
+- **Code + regression checkpoint:** `02372e4949c2094b5cd1a3c4420aeda86a2fdfa1`. Promotion and rollback approval verifiers require a canonical standard Base64 Ed25519 encoding for exactly 64 bytes before cryptographic verification.
+- **Regression authored:** canonical approval remains accepted; promotion signatures with trailing junk, leading whitespace or truncated padding are denied; rollback signature with trailing junk is denied.
+- **Docs:** `CHANGELOG.md`, `docs/WORKPASS339_STRICT_ED25519_APPROVAL_ENCODING_RU.md`, and progress tracker updated without increasing scored progress.
+- **Validation:** PR merge result `4a41db0` passed the Unified project integration suite (#119), runtime TypeScript (`TYPECHECK=PASS`), P23 versioned skill candidate store (included in WorkPass110 metrics #4641), and progress-ledger integrity (#20). The exact result is recorded in the report/tracker; local clone/test execution remains unavailable due DNS resolution for `github.com`.
+- **Release gates:** independent holdout learning/transfer, external postcondition E2E, browser/Live2D/voice, Android/Termux soak, license review and reproducible release ZIP rebuild remain outstanding.
+
+---
+
 ## Latest checkpoint — WorkPass331 (2026-10-26)
 
 - **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; continue in draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), targeting `work/node24-project-pin-rebased-20261025`. No merge to `main`; no release ZIP update.

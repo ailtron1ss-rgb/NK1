@@ -1,3 +1,14 @@
+## WorkPass339 — каноническая кодировка подписей Ed25519 — 2026-10-26
+
+- **Runtime fix:** promotion и rollback approval verifier проверяют detached Ed25519 signature как канонический Base64 для ровно 64 байт: фиксированная длина, строгий алфавит, корректный padding и round-trip без изменения строки.
+- **Обе границы защищены:** проверка выполняется до криптографической верификации в createAuthenticatedSkillPromotionApprovalVerifier и createAuthenticatedSkillRollbackApprovalVerifier. Неканоническая кодировка отклоняется закрытым образом; отсутствие trusted keys также остаётся fail-closed.
+- **Regression:** в p23-versioned-skill-candidate-store.mjs проверяются valid canonical promotion/rollback, junk suffix, leading whitespace и truncated promotion signature.
+- **Изоляция интеграции:** security diff перенесён выборочно поверх актуальной WorkPass334 линии, без перезаписи новых соседних learning-gate файлов.
+
+**Validation status:** PASS on the current WorkPass339 PR merge commit `4a41db0` (base `3e22a06` + head `0a0f987`). Unified project integration suite #119 passed, including runtime `TYPECHECK=PASS` and `P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS`; WorkPass110 continual-learning metrics #4641 and project progress-ledger integrity #20 also passed. No progress-score uplift is claimed from this security fix.
+
+---
+
 ## WorkPass338 — отключён автокэш npm в standalone ledger CI (2026-10-26)
 
 - Первый запуск WorkPass336 остановился на `actions/setup-node@v6` до тестов: автокэш искал lockfile в корне, где его нет (lockfiles находятся в отдельных workspaces).
