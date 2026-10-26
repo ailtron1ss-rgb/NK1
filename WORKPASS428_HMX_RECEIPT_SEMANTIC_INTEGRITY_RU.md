@@ -22,6 +22,7 @@
 ## Регрессии
 
 - Повтор одного `semanticEdgeId` в квитанции отклоняется даже при согласованных `projectedRelationships` и staged relationship count.
+- Ограничены длина receipt ID (512 символов) и warning-текстов (2048 символов); control characters и неканонические пробелы в stage identity отклоняются.
 
 - Rehashed but semantically impossible receipt variants.
 - Attempt counter mismatch и invalid lifecycle attempts (существующий WorkPass426 тест сохранён).
