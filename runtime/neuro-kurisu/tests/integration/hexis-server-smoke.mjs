@@ -99,19 +99,15 @@ try {
     });
     if (invalidDecisionResponse.status !== 400) throw new Error('hexis-evidence-invalid-decision-must-fail-closed');
 
-    // Prove the pending canonical review is durably restored after a real process
-    // restart using the same STATE_DIR before approval is attempted.
+    // Prove the pending review is durable after a hard process crash, not just
+    // after graceful shutdown/flush. The staging HTTP response was already sent.
     await new Promise(resolve => {
       if (child.exitCode !== null || child.signalCode !== null) {
         resolve();
         return;
       }
-      const timeout = setTimeout(() => child.kill('SIGKILL'), 3000);
-      child.once('exit', () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      child.kill('SIGTERM');
+      child.once('exit', () => resolve());
+      child.kill('SIGKILL');
     });
     child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.on('data', d => output += d);
