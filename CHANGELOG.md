@@ -4,7 +4,8 @@
 - The promotion proposal now counts distinct attempt-1 tasks with paired baseline/candidate outcomes inside each family; repeating the same small task set across more seeds cannot satisfy family breadth. Both coverage and the exact threshold policy are bound into the proposal identity.
 - The production staging script requires operator-owned `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`, checks that every configured family exists in the holdout manifest, validates task floors (2–10,000), and only stages candidates after both the family-gain and task-coverage gates pass.
 - Candidate activation remains disabled; this change tightens evaluation evidence and does not auto-promote a skill.
-- Exact-head typecheck, staging/proposal regressions and full integration CI pending.
+- **Validation PASS:** exact code/test head `b81ec539a1e2d442141e13929b376d2b549c9e64` passed [Unified project integration suite #40255622845](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622845), [WorkPass110 continual-learning metrics #40255622606](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622606), [WorkPass108 verified promotion gate #40255622678](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622678) and [P26 Learning Validation #40255622511](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622511). CI confirms task-family staging/proposal tests, runtime/app typechecks, 30-cycle substrate restore smoke, approval E2E and Research Bridge probes all passed.
+- Scores and external-learning estimates remain unchanged. Device/browser/voice E2E, long soak, licensing and release archive replacement are still open.
 
 ---
 
