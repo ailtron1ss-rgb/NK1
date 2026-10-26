@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 export type CanonicalHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
 
 export interface HmxValidationIssue {
@@ -200,4 +202,201 @@ export function createNk1HmxExportId(randomHex: string): string {
   const suffix = String(randomHex).toLowerCase().replace(/[^0-9a-f]/g, '').slice(0, 16);
   if (suffix.length !== 16) throw new Error('hmx-export-id-requires-16-hex-digits');
   return 'exp_' + suffix;
+}
+
+
+export interface Nk1HmxMemoryProjection {
+  ref: string;
+  content: string;
+  kind: string;
+  confidence: number;
+  salience: number;
+  sourceAuthority01: number;
+  epistemicStatus: 'fact' | 'belief' | 'hypothesis' | 'unknown' | 'quarantined';
+  createdAt?: number;
+  observedAt?: number;
+  validFromAt?: number;
+  validUntilAt?: number | null;
+  tags: string[];
+  context: Record<string, string>;
+  entities: string[];
+  independenceKey: string;
+  evidenceFreshnessAt: number;
+}
+
+function clamp01(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
+}
+
+function dateMs(value: unknown): number | undefined {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return undefined;
+  return Date.parse(value);
+}
+
+function safeIso(value: unknown, fallback: number): string {
+  const ms = typeof value === 'number' && Number.isFinite(value) ? value : dateMs(value);
+  return new Date(ms ?? fallback).toISOString();
+}
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+/** Builds a schema-compatible, memory-only HMX 1.7 exchange. Protected sections and vectors are intentionally omitted. */
+export function buildNk1HmxV17Document(input: {
+  subjectId: string;
+  memories: unknown[];
+  exportedAt?: number;
+}): Record<string, unknown> {
+  const exportedAt = Number.isFinite(input.exportedAt) ? Number(input.exportedAt) : Date.now();
+  const exportId = createNk1HmxExportId(sha256(String(input.subjectId) + ':' + String(exportedAt) + ':' + Math.random()).slice(0, 16));
+  const sourceSubject = String(input.subjectId || 'nk1-local').slice(0, 180);
+  const candidates = input.memories
+    .map(record)
+    .filter((row): row is Record<string, unknown> => Boolean(row))
+    .filter(row => typeof row.content === 'string' && Boolean(String(row.content).trim()) && !row.dormant && row.epistemicStatus !== 'quarantined')
+    .sort((a, b) => Number(b.observedAt ?? b.lastAccessAt ?? b.createdAt ?? 0) - Number(a.observedAt ?? a.lastAccessAt ?? a.createdAt ?? 0));
+  const selected = candidates.slice(0, MAX_STAGED_MEMORIES);
+  const memories = selected.map((row, index) => {
+    const id = String(row.id ?? 'row-' + index).slice(0, 240);
+    const kind = nonEmptyString(row.kind) ? row.kind : 'semantic';
+    const body = String(row.content).slice(0, 12000);
+    const meta: Record<string, unknown> = {
+      nk1_kind: kind,
+      nk1_confidence: clamp01(row.confidence, 0.55),
+      nk1_salience: clamp01(row.salience, 0.55),
+      nk1_epistemic_status: ['fact', 'belief', 'hypothesis', 'unknown', 'quarantined'].includes(String(row.epistemicStatus))
+        ? String(row.epistemicStatus) : 'belief',
+      entities: Array.isArray(row.entities) ? row.entities.map(String).slice(0, 16) : [],
+      tags: Array.isArray(row.tags) ? row.tags.map(String).slice(0, 32) : [],
+      context: record(row.context) ?? {},
+      semantic_links: Array.isArray(row.semanticLinks) ? row.semanticLinks.map(String).slice(0, 32) : [],
+      temporal_links: Array.isArray(row.temporalLinks) ? row.temporalLinks.map(String).slice(0, 32) : [],
+      causal_links: Array.isArray(row.causalLinks) ? row.causalLinks.map(String).slice(0, 32) : [],
+      provenance_class: String(row.provenanceClass ?? 'native'),
+    };
+    return {
+      ref: exportId + ':memory:' + encodeURIComponent(id),
+      type: kind,
+      status: String(row.epistemicStatus ?? 'belief'),
+      content: body,
+      content_hash_v1: sha256(body),
+      importance: clamp01(row.salience, 0.55),
+      trust_level: clamp01(row.sourceAuthority01 ?? row.confidence, 0.55),
+      decay_rate: 0,
+      created_at: safeIso(row.createdAt, exportedAt),
+      updated_at: safeIso(row.observedAt ?? row.lastAccessAt ?? row.createdAt, exportedAt),
+      valid_from: row.validFromAt == null ? safeIso(row.createdAt, exportedAt) : safeIso(row.validFromAt, exportedAt),
+      valid_until: row.validUntilAt == null ? null : safeIso(row.validUntilAt, exportedAt),
+      access_count: Math.max(0, Math.floor(Number(row.retrievalCount ?? 0) || 0)),
+      last_accessed: row.lastAccessAt == null ? null : safeIso(row.lastAccessAt, exportedAt),
+      source_attribution: {
+        source: String(row.source ?? 'nk1-memoryos2').slice(0, 240),
+        nk1_memory_id: id,
+        source_authority_01: clamp01(row.sourceAuthority01, 0.55),
+        epistemic_status: String(row.epistemicStatus ?? 'belief'),
+      },
+      metadata: meta,
+      provenance: {
+        acquisition_mode: String(row.source ?? '').startsWith('hexis-hmx-import') ? 'imported_and_accepted' : 'experienced',
+        origin_instance: sourceSubject,
+        origin_id: id,
+        import_chain: [],
+        modification_chain: [],
+      },
+    };
+  });
+  return {
+    hmx_version: '1.7',
+    export_id: exportId,
+    export_intent: 'telepathy',
+    exported_at: new Date(exportedAt).toISOString(),
+    source: {
+      instance_id: 'nk1:' + sourceSubject,
+      schema_version: 'NK1-MemoryOS2-v1',
+      embedding_model: 'NK1-metadata-only-vectors-not-exported',
+      embedding_dimension: 1,
+      hexis_lineage_id: sourceSubject,
+    },
+    capabilities: {
+      formats: ['json'],
+      sections: ['memories'],
+      hash_algorithms: ['sha256'],
+      relationship_edge_types: [],
+      optional_features: [],
+    },
+    privacy: {
+      redaction_policy: 'none',
+      contains_sensitive_content: true,
+      consent_scope: 'unspecified',
+    },
+    export_scope: {
+      types: ['memory'],
+      include_protected: [],
+      include_raw_units: false,
+      include_config: false,
+      include_in_flight_work: false,
+      include_audit_records: false,
+      filter: 'NK1 metadata-only memory exchange; embeddings, protected sections, raw units and active configuration are not exported.',
+    },
+    sections: { memories },
+    statistics: { total_memories: memories.length },
+    export_warnings: candidates.length > memories.length
+      ? ['Export is bounded to the newest ' + String(MAX_STAGED_MEMORIES) + ' eligible memories; ' + String(candidates.length - memories.length) + ' records were not included.']
+      : [],
+  };
+}
+
+/** Normalizes one validated HMX memory without trusting upstream metadata to set NK1 identity or confidence above bounds. */
+export function normalizeHmxV17Memory(
+  raw: unknown,
+  input: { exportId: string; sourceSubjectId?: string; exportedAt?: string },
+): Nk1HmxMemoryProjection | null {
+  const row = record(raw);
+  if (!row || typeof row.content !== 'string' || !row.content.trim() || typeof row.ref !== 'string') return null;
+  const metadata = record(row.metadata) ?? {};
+  const source = record(row.source_attribution) ?? {};
+  const validKinds = new Set(['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream']);
+  const rawKind = String(metadata.nk1_kind ?? row.type ?? 'semantic').trim().toLowerCase();
+  const kind = validKinds.has(rawKind) ? rawKind : 'semantic';
+  const validStatus = new Set(['fact', 'belief', 'hypothesis', 'unknown', 'quarantined']);
+  const rawStatus = String(metadata.nk1_epistemic_status ?? 'belief').trim().toLowerCase();
+  const epistemicStatus = (validStatus.has(rawStatus) ? rawStatus : 'belief') as Nk1HmxMemoryProjection['epistemicStatus'];
+  const trust = clamp01(row.trust_level ?? source.source_authority_01, 0.55);
+  const confidence = clamp01(metadata.nk1_confidence ?? row.trust_level, 0.55);
+  const salience = clamp01(metadata.nk1_salience ?? row.importance, 0.55);
+  const createdAt = dateMs(row.created_at);
+  const observedAt = dateMs(row.updated_at) ?? createdAt ?? dateMs(input.exportedAt) ?? Date.now();
+  const validFromAt = dateMs(row.valid_from) ?? createdAt ?? observedAt;
+  const validUntilAt = row.valid_until == null ? null : dateMs(row.valid_until) ?? null;
+  const tags = Array.isArray(metadata.tags) ? metadata.tags.map(String).map(x => x.slice(0, 80)).slice(0, 24) : ['hexis', 'hmx'];
+  const contextRecord = record(metadata.context);
+  const context: Record<string, string> = {};
+  if (contextRecord) {
+    for (const [key, value] of Object.entries(contextRecord).slice(0, 12)) {
+      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        context[String(key).slice(0, 80)] = String(value).slice(0, 300);
+      }
+    }
+  }
+  const entities = Array.isArray(metadata.entities) ? metadata.entities.map(String).map(x => x.slice(0, 120)).slice(0, 12) : [];
+  return {
+    ref: row.ref,
+    content: row.content.slice(0, 12000),
+    kind,
+    confidence,
+    salience,
+    sourceAuthority01: trust,
+    epistemicStatus,
+    ...(createdAt !== undefined ? { createdAt } : {}),
+    observedAt,
+    validFromAt,
+    validUntilAt,
+    tags,
+    context,
+    entities,
+    independenceKey: 'hexis:' + String(input.sourceSubjectId ?? input.exportId).slice(0, 180),
+    evidenceFreshnessAt: observedAt,
+  };
 }
