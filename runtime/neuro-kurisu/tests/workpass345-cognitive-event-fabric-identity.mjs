@@ -115,7 +115,7 @@ assert.throws(
   /invalid-cognitive-event-id/,
 );
 assert.throws(
-  ()=>fabric.append(makeEvent({id:'cef:test:identity:control-source',source:'bad\\nsource'})),
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:control-source',source:'bad\nsource'})),
   /invalid-cognitive-event-source/,
 );
 assert.throws(
@@ -200,7 +200,7 @@ const canonicalRows=[
   {...makeEvent({id:canonicalId}),payload:{recovered:true}},
   {...makeEvent({id:canonicalParentId,parentIds:[' parent:1']}),payload:{recovered:false}},
   {...makeEvent({id:canonicalParentId,parentIds:['parent:1']}),payload:{recovered:true}},
-  {...makeEvent({id:canonicalSourceId,source:'bad\\nsource'}),payload:{recovered:false}},
+  {...makeEvent({id:canonicalSourceId,source:'bad\nsource'}),payload:{recovered:false}},
   {...makeEvent({id:canonicalSourceId,source:'source-valid'}),payload:{recovered:true}},
 ];
 nonCanonicalRestore.restore({
