@@ -8,6 +8,7 @@ import { buildGradedTraitSalience } from '../language/GradedTraitSalience.ts';
 import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, type MemoryRetrievalBenchmarkOptions } from '../memory/MemoryRetrievalBenchmark.ts';
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
 import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { buildNk1HmxV17Document, normalizeHmxV17Memory } from '../integration/hexis/HexisHmxV17Adapter.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
@@ -2888,73 +2889,100 @@ export class OrganismCore {
         return { ok: true, proposal: updated ?? proposal, receipt };
     }
     hexisExportHmx() {
-        const pma = this.exportWillPma();
+        // Export from canonical MemoryOS2, not a lossy Will/PMA summary.
+        // The document is intentionally a memory-only HMX 1.7 telepathy export.
+        this.exportWillPma();
         const state = this.persisted;
-        const memorySummary = Array.isArray(pma.memorySummary) ? pma.memorySummary : [];
-        const knownEntities = Array.isArray(pma.knownEntities) ? pma.knownEntities : [];
-        const competence = Array.isArray(pma.competence) ? pma.competence : [];
-        const conversationAims = Array.isArray(pma.conversationAims) ? pma.conversationAims : [];
-        const goals = Array.isArray(pma.goals) ? pma.goals : [];
-        return { hmx_version: '1.7', record_type: 'document', export_id: randomUUID(), source_subject_id: String(state.system.subjectIdentity?.subjectId ?? ''), created_at: new Date().toISOString(), intent: 'port', strategy: 'additive', sections: { identity: [pma.identity], goals: goals.slice(0, 32), memories: memorySummary.slice(-96), relationships: knownEntities.slice(0, 32), skills: competence.slice(0, 48), in_flight_work: conversationAims.slice(0, 48), audit_records: this.hexisAdaptation.snapshot().beliefAudit.slice(-64) } };
+        const subjectId = String(state.system.subjectIdentity?.subjectId ?? 'nk1-local');
+        const memories = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
+        return buildNk1HmxV17Document({ subjectId, memories });
     }
     hexisStageHmx(document: unknown, intent: HexisHmxIntent, strategy: HexisHmxStrategy) { const stage = this.hexisAdaptation.stageHmx({ document, intent, strategy }); this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot(); return stage; }
     hexisDecideHmx(stagingId: string, decision: 'accept' | 'reject') {
         const stage = this.hexisAdaptation.decideHmx(stagingId, decision);
-        if (stage?.status === 'accepted' && stage.intent === 'port' && stage.strategy !== 'analysis_only') {
-            const memories = Array.isArray(stage.stagedSections?.memories) ? stage.stagedSections.memories : [];
-            let created = 0, reused = 0;
-            const beforeItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
-            const beforeKeys = new Set(beforeItems.map((m) => `${m.kind}|${m.content}`));
-            for (const row of memories.slice(0, 96)) {
-                const record = row && typeof row === 'object' ? row as Record<string, unknown> : {};
-                const content = String(record.content ?? record.summary ?? '').trim().slice(0, 12000);
-                if (!content)
+        if (!stage) return null;
+
+        // Only an explicit additive HMX telepathy decision may mutate canonical memory.
+        // Port/duplicate/analysis and non-additive strategies remain governed previews.
+        if (stage.status === 'accepted' && stage.applicationMode === 'memory-merge' &&
+            stage.importResult?.status === 'pending') {
+            const rows = Array.isArray(stage.stagedSections?.memories) ? stage.stagedSections.memories : [];
+            const existingItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
+            const existingKeys = new Set(existingItems.map((memory) => String(memory.kind) + '|' + String(memory.content)));
+            let created = 0;
+            let reused = 0;
+            let skipped = 0;
+            let failed = false;
+
+            for (const raw of rows.slice(0, 256)) {
+                const projected = normalizeHmxV17Memory(raw, {
+                    exportId: stage.exportId,
+                    sourceSubjectId: stage.sourceSubjectId,
+                });
+                if (!projected) {
+                    skipped += 1;
                     continue;
-                const requestedKind = String(record.kind);
-                const safeKind = (['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream'].includes(requestedKind) ? requestedKind : 'semantic') as any;
-                const key = `${safeKind}|${content}`;
-                const wasPresent = beforeKeys.has(key);
-                const importedMemory = {
-                    content,
-                    kind: safeKind,
-                    source: 'hexis-hmx-import',
-                    tags: Array.isArray(record.tags)
-                        ? record.tags.map(String).slice(0, 24)
-                        : ['hexis', 'hmx'],
-                    context: record.context && typeof record.context === 'object'
-                        ? Object.fromEntries(Object.entries(record.context).slice(0, 12).map(([k, v]) => [String(k), String(v)]))
-                        : undefined,
-                    salience: Number(record.salience ?? 0.55),
-                    emotionalWeight: Number(record.emotionalWeight ?? 0.1),
-                    identityRelevance: 0,
-                    goalRelevance: Number(record.goalRelevance ?? 0),
-                    socialRelevance: Number(record.socialRelevance ?? 0),
-                    predictionError: Number(record.predictionError ?? 0),
-                    confidence: Number(record.confidence ?? 0.55),
-                    epistemicStatus: 'belief' as const,
-                    entities: Array.isArray(record.entities) ? record.entities.map(String).slice(0, 12) : [],
-                    semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
-                    provenanceClass: 'external' as const,
-                    sourceAuthority01: 0.55,
-                    independenceKey: `hexis:${stage.sourceSubjectId ?? stage.exportId}`,
-                    evidenceFreshnessAt: Date.now(),
-                    dormant: false,
-                    retrievalCount: 0,
-                    semanticVector: [],
-                };
-                this.memorySubsystem.fabric.encode(importedMemory, { tick: this.persisted.state.tick });
-                if (wasPresent)
+                }
+                const key = projected.kind + '|' + projected.content;
+                if (existingKeys.has(key)) {
                     reused += 1;
-                else {
+                    continue;
+                }
+
+                const importedMemory = {
+                    content: projected.content,
+                    kind: projected.kind,
+                    source: 'hexis-hmx-import',
+                    tags: projected.tags,
+                    context: projected.context,
+                    salience: projected.salience,
+                    emotionalWeight: 0.1,
+                    identityRelevance: 0,
+                    goalRelevance: 0,
+                    socialRelevance: 0,
+                    predictionError: 0,
+                    confidence: projected.confidence,
+                    epistemicStatus: projected.epistemicStatus,
+                    entities: projected.entities,
+                    semanticLinks: [],
+                    temporalLinks: [],
+                    causalLinks: [],
+                    contradictionLinks: [],
+                    provenanceClass: 'external',
+                    sourceAuthority01: projected.sourceAuthority01,
+                    independenceKey: projected.independenceKey,
+                    evidenceFreshnessAt: projected.evidenceFreshnessAt,
+                    validFromAt: projected.validFromAt,
+                    validUntilAt: projected.validUntilAt,
+                    observedAt: projected.observedAt,
+                };
+
+                try {
+                    this.memorySubsystem.fabric.encode(importedMemory, { tick: this.persisted.state.tick });
+                    existingKeys.add(key);
                     created += 1;
-                    beforeKeys.add(key);
+                } catch {
+                    skipped += 1;
+                    failed = true;
+                    break;
                 }
             }
+
             this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
-            (stage as any).importResult = { created, reused };
+            const importStatus = failed
+                ? ((created > 0 || reused > 0) ? 'partial' : 'skipped')
+                : ((created > 0 || reused > 0) ? 'applied' : 'skipped');
+            this.hexisAdaptation.recordHmxImportResult(stage.stagingId, {
+                status: importStatus,
+                created,
+                reused,
+                skipped,
+                ...(failed ? { reason: 'memory-encode-failed' } : importStatus === 'skipped' ? { reason: 'no-importable-memory-records' } : {}),
+            });
         }
+
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
-        return stage;
+        return this.hexisAdaptation.getHmxStage(stagingId);
     }
     hexisEnqueueOutbox(input: {
         idempotencyKey: string;
