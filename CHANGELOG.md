@@ -1,3 +1,14 @@
+# WorkPass371 — accessor-safe canonical kernel ingress (2026-10-26)
+
+- [HARDENED] Snapshot canonical decision/completion roots and anchor objects through own property descriptors before reading fields; accessor-backed root/anchor inputs fail without executing getters.
+- [HARDENED] Snapshot every phase object and require typed `source`, boolean `external` and finite confidence in [0,1]; remove implicit String/Boolean coercion and confidence clamping from prepared event creation.
+- [INTEGRITY] Reuse CEF's bounded plain-JSON payload clone so canonical kernel rejects nested accessors/cycles/non-JSON payloads before the first event write, while preserving the documented compatibility rule that top-level payload accessors are omitted without evaluation.
+- [REGRESSION] Add no-mutation tests for decision/completion root and anchor getters, phase getters, string boolean coercion and nested payload accessors; verify a valid retry closes the cycle with no partial records.
+- [VALIDATION] Exact-head TypeScript and canonical/learning workflows are required; this entry records implementation, not a test PASS.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass370 — transactional writes for the canonical cognitive kernel (2026-10-26)
 
 - [FIXED] Run all eight `beginDecisionCycle()` appends inside one synchronous CEF ledger transaction; a late event conflict/append failure rolls back earlier decision stages.
