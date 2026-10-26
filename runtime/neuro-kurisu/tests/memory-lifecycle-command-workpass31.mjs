@@ -195,6 +195,16 @@ assert.throws(
   MemoryLifecycleCommandRecoveryRequiredError,
   'control characters in persisted command IDs must invalidate receipt certainty',
 );
+const c1ControlReceiptRuntime=new MemorySubsystemRuntime();
+c1ControlReceiptRuntime.fabric.restore({mutationReceipts:[{
+  ...durable.fabric.mutationReceipts[0],
+  commandId:'wp31:bad'+String.fromCharCode(0x009f)+'receipt',
+}]});
+assert.throws(
+  () => c1ControlReceiptRuntime.fabric.encode(seedInput,{commandId:'wp31:c1-restore-blocked'}),
+  MemoryLifecycleCommandRecoveryRequiredError,
+  'C1 controls in persisted command IDs must invalidate receipt certainty',
+);
 const validDuplicateReceipt=durable.fabric.mutationReceipts.find(row=>row.resultKind==='memory'&&row.memoryId);
 assert.ok(validDuplicateReceipt,'fixture requires a canonical memory receipt');
 const duplicateReceiptRuntime=new MemorySubsystemRuntime();
