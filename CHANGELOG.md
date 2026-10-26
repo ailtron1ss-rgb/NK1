@@ -1,3 +1,13 @@
+## WorkPass421 — reject malformed HMX source attribution instead of silently dropping it (2026-10-26)
+
+- **Adapter code commit:** `77c57d9283f2805711a1c5e3db11c38af8b826f2`; **regression commit:** `d7be9e5da89bb8523e42d422533112e9a0304461`.
+- The memory schema now requires `source_attribution` to be an object when supplied. The normalizer returns `null` for scalar/array source-attribution values rather than converting the row to an apparently source-less imported memory.
+- This complements the existing `source_authority_01` numeric range check: when attribution is present but malformed, the stage emits a schema conflict and the whole memories section remains ineligible for canonical merge.
+- Regression verifies no throw, a path-specific schema issue, and a null memory projection for a string-valued source_attribution.
+- **Validation:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass420 — validate HMX from the existing bounded snapshot (2026-10-26)
 
 - **Adapter refactor commit:** `86ec7974749de51ef1a78375e0da45d4772c34c7`; **fabric wiring:** `619535a9cf23e3463ca4a8b1809a07811e512f00`; **regression:** `b801a6eb2b67a6270f4f2a4dc745a3bf32433100`.
