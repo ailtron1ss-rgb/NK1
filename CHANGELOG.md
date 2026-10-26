@@ -9,6 +9,8 @@
 - The UI never treats the typed ID as proof of status: the server still checks the stage lifecycle seal/status and conflicts, while acceptance and canonical apply remain separately confirmed. This allows recovery without weakening server-side invariants.
 
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
+- [DEFERRED SEMANTICS] Keep non-empty scalar future sections visible in deferred accounting; strings, nonzero finite numbers and `true` contribute a single deferred item instead of disappearing from the HMX receipt.
+- [REGRESSION] Validate scalar future section handling through the real projector and exported receipt validator, plus reject control characters in warning payloads.
 - [ATOMICITY REGRESSION] Inject a temporal-ledger failure after canonical MemoryFabric commit and semantic-node projection; assert compensating rollback restores memory, graph and ledger baselines, then a retry produces exactly one valid object per store.
 - [IDENTITY] Require canonical trimmed stage lineage/staging IDs and bound receipt IDs/warnings; recomputed digests no longer legitimize padded identity fields.
 - [BOUNDS] Receipt memory/semantic IDs are capped at 512 characters, stage lineage/staging IDs must be trimmed canonical strings, and warning strings are capped at 2048 characters with control characters rejected.
