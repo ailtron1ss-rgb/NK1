@@ -57,13 +57,13 @@ const launch = (label, command, args, env = {}) => {
     });
     if (failure.action === 'ignore') return;
     console.error(failure.message);
-    void shutdown(failure.reason);
+    void shutdown(failure.reason, failure.exitCode);
   });
   child.on('exit', (code, signal) => {
     const decision = decideSupervisedChildExit({ label, code, signal, shuttingDown });
     if (decision.action === 'ignore') return;
     console.error(decision.message);
-    void shutdown(decision.reason);
+    void shutdown(decision.reason, decision.exitCode);
   });
   children.push(child);
   return child;
@@ -76,12 +76,12 @@ launch('research-bridge', 'python3', ['research/research_bridge.py'], { RESEARCH
 launch('ui-preview', 'npm', ['--prefix', 'app', 'run', 'preview']);
 launch('gateway', process.execPath, ['tools/super-gateway.mjs'], { SUPER_GATEWAY_PORT: '8080', SUPER_UI_PORT: '8081', SUPER_RUNTIME_PORT: '3310', SUPER_RESEARCH_PORT: '8765' });
 
-const shutdown = (signal) => {
+const shutdown = (signal, exitCode = 0) => {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[super] shutting down (${signal})`);
   for (const child of children) child.kill('SIGTERM');
-  setTimeout(() => process.exit(0), 800).unref();
+  setTimeout(() => process.exit(exitCode), 800).unref();
 };
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT', 130));
+process.on('SIGTERM', () => shutdown('SIGTERM', 143));
