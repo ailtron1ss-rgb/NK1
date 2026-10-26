@@ -84,8 +84,14 @@ if (rootPkg && superVersion) {
     `releaseDate=${statusDateCandidate || '(missing)'}; sourceBaselineDate=${sourceBaselineDate || '(missing/invalid)'}`);
   check('not-marked-release-ready', /implementation-workpass/i.test(superVersion.releaseStatus || '') && !/release.ready/i.test(superVersion.releaseStatus || ''),
     `releaseStatus=${superVersion.releaseStatus}`);
-  check('workpass-build-lineage', currentPass >= 1 && new RegExp(`WORKPASS${currentPass}`).test(superVersion.build || '') && new RegExp(`WORKPASS${currentPass}`).test(superVersion.releaseRoot || '') && new RegExp(`WORKPASS${currentPass - 1}`).test(superVersion.sourceBaseline || ''),
-    `currentPass=${currentPass}; build=${superVersion.build}; releaseRoot=${superVersion.releaseRoot}; sourceBaseline=${superVersion.sourceBaseline}`);
+  const sourceBaselinePassMatch = String(superVersion.sourceBaseline ?? '').match(/WORKPASS(\d+)/i);
+  const sourceBaselinePass = sourceBaselinePassMatch ? Number(sourceBaselinePassMatch[1]) : 0;
+  check('workpass-build-lineage',
+    currentPass >= 1 &&
+    new RegExp(`WORKPASS${currentPass}`, 'i').test(superVersion.build || '') &&
+    new RegExp(`WORKPASS${currentPass}`, 'i').test(superVersion.releaseRoot || '') &&
+    Number.isInteger(sourceBaselinePass) && sourceBaselinePass >= 1 && sourceBaselinePass < currentPass,
+    `currentPass=${currentPass}; build=${superVersion.build}; releaseRoot=${superVersion.releaseRoot}; sourceBaselinePass=${sourceBaselinePass || '(missing/invalid)'}; sourceBaseline=${superVersion.sourceBaseline}`);
   check('current-workpass-integration', new RegExp(`WorkPass\\s*${currentPass}`, 'i').test(superVersion.latestIntegration || '') && new RegExp(`WorkPass\\s*${currentPass}`, 'i').test(superVersion.readinessNote || ''),
     `latestIntegration and readinessNote identify WorkPass ${currentPass}`);
 }

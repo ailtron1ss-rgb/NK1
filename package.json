@@ -199,9 +199,11 @@
     "test:super-gateway-headers": "node --test tools/super-gateway-headers.test.mjs",
     "test:supervisor-start-smoke": "node tools/supervisor-start-smoke.mjs",
     "test:final-release-verifier": "node --test tools/verify-final-release.test.mjs",
-    "release:verify:ci": "node tools/verify-final-release.mjs --allow-generated-python-cache"
+    "release:verify:ci": "node tools/verify-final-release.mjs --allow-generated-python-cache",
+    "test:workpass349": "npm --prefix runtime/neuro-kurisu run test:workpass345:event-identity",
+    "audit:workpass349": "npm run test:final-release-verifier && npm run release:verify && npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:app-dependency-contract && npm run test:super-install && npm run test:workpass349 && npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run verify:release-source && npm run audit:release-metadata"
   },
-  "version": "35.0.0-super-workpass70",
+  "version": "35.0.0-super-workpass349",
   "packageManager": "npm@10.9.2",
   "engines": {
     "node": ">=24.0.0",

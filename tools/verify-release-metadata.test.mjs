@@ -50,6 +50,45 @@ async function fixture() {
 
 function run(root) { return spawnSync(process.execPath, [validator, '--root', root], { encoding: 'utf8' }); }
 
+async function upgradeFixtureToWorkpass349(root) {
+  const fs = await import('node:fs/promises');
+  const rootPackagePath = path.join(root, 'package.json');
+  const superVersionPath = path.join(root, 'SUPER_VERSION.json');
+  const rootPackage = JSON.parse(await fs.readFile(rootPackagePath, 'utf8'));
+  const manifest = JSON.parse(await fs.readFile(superVersionPath, 'utf8'));
+  rootPackage.version = '35.0.0-super-workpass349';
+  rootPackage.scripts['audit:workpass349'] = rootPackage.scripts['audit:workpass14'];
+  rootPackage.scripts['test:workpass349'] = 'node --test tools/workpass349.test.mjs';
+  rootPackage.scripts['test:memory-retrieval-experiment'] = 'node tools/memory-retrieval-experiment.mjs';
+  rootPackage.scripts['audit:workpass16:memory-experiment'] = 'npm run test:memory-retrieval-experiment';
+  await fs.writeFile(rootPackagePath, JSON.stringify(rootPackage, null, 2));
+
+  manifest.version = rootPackage.version;
+  manifest.date = '2026-10-26';
+  manifest.releaseRoot = 'Neuro_Kurisu_WORKPASS349_CANDIDATE_2026-10-26';
+  manifest.build = 'v35.0-NK1-RELEASE-METADATA-WORKPASS349';
+  manifest.sourceBaseline = 'Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip';
+  manifest.latestIntegration = 'WorkPass 349 release metadata lineage contract.';
+  manifest.readinessNote = 'WorkPass 349 remains an implementation workpass; release gates remain open.';
+  await fs.writeFile(superVersionPath, JSON.stringify(manifest, null, 2));
+
+  const oldDate = '2026-10-10';
+  await fs.rename(path.join(root, `docs/PROJECT_CURRENT_STATUS_${oldDate}_WORKPASS14.md`), path.join(root, 'docs/PROJECT_CURRENT_STATUS_2026-10-26_WORKPASS349.md'));
+  await fs.rename(path.join(root, `docs/PROJECT_CURRENT_STATUS_${oldDate}_WORKPASS14.json`), path.join(root, 'docs/PROJECT_CURRENT_STATUS_2026-10-26_WORKPASS349.json'));
+  await fs.rename(path.join(root, `docs/PROJECT_PROGRESS_SCORECARD_${oldDate}_WORKPASS14.json`), path.join(root, 'docs/PROJECT_PROGRESS_SCORECARD_2026-10-26_WORKPASS349.json'));
+  await fs.writeFile(path.join(root, 'docs/PROJECT_CURRENT_STATUS_2026-10-26_WORKPASS349.md'), '# WorkPass 349 status\\n');
+  const statusPath = path.join(root, 'docs/PROJECT_CURRENT_STATUS_2026-10-26_WORKPASS349.json');
+  const status = JSON.parse(await fs.readFile(statusPath, 'utf8'));
+  status.date = '2026-10-26'; status.workpass = 349;
+  await fs.writeFile(statusPath, JSON.stringify(status, null, 2));
+  const scorePath = path.join(root, 'docs/PROJECT_PROGRESS_SCORECARD_2026-10-26_WORKPASS349.json');
+  const score = JSON.parse(await fs.readFile(scorePath, 'utf8'));
+  score.date = '2026-10-26'; score.workpass = 'WorkPass349';
+  await fs.writeFile(scorePath, JSON.stringify(score, null, 2));
+  await fs.writeFile(path.join(root, 'CHANGELOG.md'), '# WorkPass 349\\n');
+  await fs.writeFile(path.join(root, 'Список дел.md'), '# WorkPass 349\\n');
+}
+
 test('release metadata validator accepts aligned manifests and lockfiles', async t => {
   const root = await fixture(); t.after(() => rm(root, { recursive: true, force: true }));
   const r = run(root);
@@ -151,4 +190,30 @@ test('release metadata validator rejects a source baseline dated after the relea
   const r = run(root);
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /source-baseline-date-not-after-release-date[\s\S]*?"pass": false/);
+});
+
+
+test('release metadata accepts the latest published archive as a non-consecutive older baseline', async t => {
+  const root = await fixture(); t.after(() => rm(root, { recursive: true, force: true }));
+  await upgradeFixtureToWorkpass349(root);
+  const r = run(root);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const body = JSON.parse(r.stdout);
+  assert.equal(body.ok, true);
+  const lineage = body.checks.find(check => check.id === 'workpass-build-lineage');
+  assert.equal(lineage?.pass, true, lineage?.detail);
+  assert.match(lineage?.detail || '', /sourceBaselinePass=70/);
+});
+
+test('release metadata rejects a source baseline from a newer workpass even if its date is older', async t => {
+  const root = await fixture(); t.after(() => rm(root, { recursive: true, force: true }));
+  await upgradeFixtureToWorkpass349(root);
+  const fs = await import('node:fs/promises');
+  const manifestPath = path.join(root, 'SUPER_VERSION.json');
+  const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  manifest.sourceBaseline = 'Neuro_Kurisu_WORKPASS350_2026-10-19.zip';
+  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+  const r = run(root);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /workpass-build-lineage[\s\S]*?"pass": false/);
 });
