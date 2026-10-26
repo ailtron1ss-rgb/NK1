@@ -592,7 +592,7 @@ export class ActionGateway {
         keyHash:keyHash.toLowerCase(),requestHash:requestHash.toLowerCase(),
         status,recordedAt,
       };
-      for(const fieldName of ['executionId','toolId','decisionId','autonomous','response'] as const) {
+      for(const fieldName of ['executionId','toolId','decisionId','autonomous','response','responseOmitted'] as const) {
         const field=actionLedgerOwnField(value,fieldName);
         if(field.accessor) throw new Error('action-ledger-record-accessor');
       }
@@ -605,8 +605,11 @@ export class ActionGateway {
       if(typeof decisionId==='string' && decisionId.length>0 && decisionId.length<=180 && !/[\u0000-\u001f\u007f]/.test(decisionId)) safe.decisionId=decisionId;
       if(typeof autonomous==='boolean') safe.autonomous=autonomous;
       if(status==='completed') {
+        const responseOmitted=actionLedgerOwnField(value,'responseOmitted').value===true;
         const responseField=actionLedgerOwnField(value,'response');
-        if(responseField.present && !responseField.accessor && actionLedgerIsPlainRecord(responseField.value)) {
+        if(responseOmitted) {
+          safe.responseOmitted=true;
+        } else if(responseField.present && !responseField.accessor && actionLedgerIsPlainRecord(responseField.value)) {
           try {
             const response=actionLedgerCloneJson(responseField.value);
             if(actionLedgerIsPlainRecord(response)) safe.response=response as unknown as ToolExecution;
