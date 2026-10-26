@@ -388,6 +388,8 @@ export class HexisAdaptationFabric {
             updatedAt: at,
         };
         const key = sourceKey(input.evidence);
+        // Clone all caller-owned evidence before any canonical write can occur.
+        const evidenceSnapshot = structuredClone(input.evidence);
         let independent = !priorBelief.sourceKeys.includes(key) && !priorBelief.contradictingSourceKeys.includes(key);
         const evidenceTrust01 = clamp(input.evidence.trust01 ?? 0.5);
         const priorConfidence01 = clamp(priorBelief.confidence01);
@@ -455,7 +457,7 @@ export class HexisAdaptationFabric {
             id: auditId,
             memoryId,
             stance: input.stance,
-            evidence: structuredClone(input.evidence),
+            evidence: evidenceSnapshot,
             priorConfidence01,
             posteriorConfidence01,
             priorTrust01,
