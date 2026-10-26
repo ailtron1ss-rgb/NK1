@@ -1,3 +1,11 @@
+# WorkPass355 — centralize learner environment filtering (2026-10-26)
+
+- [SECURITY] Exported one canonical `isForbiddenLearningEnvironmentKey` policy from `LearningProcessSupervisor.ts` and reused it from the host-owned evaluator adapter, removing duplicate deny-list logic.
+- [SECURITY] The generic supervisor now rejects both inherited and explicitly supplied sensitive environment keys and runtime injection variables before storage allocation. This closes the bypass where direct callers could pass API keys or alter a child runtime via `NODE_OPTIONS`/loader environment.
+- [INTEGRATION] Host-owned evaluator configuration applies the same policy to inherited and explicit child environment variables; error reporting remains specific to the owning authority.
+- [TEST] Added direct-supervisor negative regressions for inherited `OPENAI_API_KEY` and explicit `OPENAI_API_KEY`, including proof that rejected requests create no run-root state.
+- [VALIDATION] Code and regression are committed; WorkPass349 focused workflow and runtime typecheck are pending on the new exact head. WorkPass354 run #40289252511 predates these changes. No dependency added; do not pass credentials to candidate execution as a substitute for host-owned authority isolation.
+
 # WorkPass354 — enforce private, disjoint learning-process storage roots (2026-10-26)
 
 - [SECURITY] The generic `LearningProcessSupervisor` now creates run/survive roots with owner-only permissions, validates existing directories instead of silently trusting their permissions, rejects final-component symlinks, and binds each inspected directory to its canonical filesystem identity.
