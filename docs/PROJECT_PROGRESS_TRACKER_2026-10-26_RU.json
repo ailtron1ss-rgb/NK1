@@ -359,25 +359,20 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass402",
+    "id": "WorkPass403",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommits": [
-      "307b1317100bd9d4e3d62094f552a074fb1f663c",
-      "66927b5571704895f78f7c02897cd42e12fce8ea"
-    ],
-    "testCommits": [
-      "6f40c41ec9ff705561c1389fb8760956d41cfee1",
-      "388156d09c62dc736b5dcbe44a43fce303dedc0a"
-    ],
-    "codeTestHead": "388156d09c62dc736b5dcbe44a43fce303dedc0a",
-    "summary": "Validate pending HMX stage digest and schema during restore/decision. Quarantine stale/tampered pending stages so they cannot reach canonical apply; preserve valid conflicted stages for inspection.",
+    "codeCommit": "ed92b4abf74395cc3d6946eadd0482eca2f839d2",
+    "testCommit": "8969a6401719d9105162e50d00a35c79f4e98b51",
+    "codeTestHead": "8969a6401719d9105162e50d00a35c79f4e98b51",
+    "summary": "Validate HMX import-receipt status, integer counters, reason size and exact source-record accounting before moving a pending receipt to applied/partial/skipped.",
     "testsAdded": [
-      "mutated pending HMX section data causes restore-time quarantine and rejection",
-      "rejected persisted stage cannot subsequently be accepted",
-      "validly digested stage with source-validation conflicts remains staged for inspection and cannot be accepted"
+      "non-finite count leaves import receipt pending",
+      "completed count totals must account for every source memory",
+      "partial status requires consistent skipped/retained accounting",
+      "valid receipt still completes and replay cannot rewrite completed counts"
     ],
-    "validationStatus": "PENDING exact-head typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regressions are authored but no usable exact-head PASS evidence is available; no readiness/progress/recall uplift claimed.",
+    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regressions are authored but have no usable exact-head PASS evidence; no readiness/progress/recall uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
@@ -551,8 +546,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "388156d09c62dc736b5dcbe44a43fce303dedc0a",
-  "branchHeadBeforeTrackerCommit": "388156d09c62dc736b5dcbe44a43fce303dedc0a",
+  "latestUnverifiedCodeTestHead": "8969a6401719d9105162e50d00a35c79f4e98b51",
+  "branchHeadBeforeTrackerCommit": "8969a6401719d9105162e50d00a35c79f4e98b51",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -592,39 +587,44 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass401",
+    "id": "WorkPass402",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "47d88fcc1a8b5737cca6c542a51e3d0011f8281a",
-    "testCommit": "76830a380ab2cdbd825994062de793c2a1a0c2f0",
-    "codeTestHead": "76830a380ab2cdbd825994062de793c2a1a0c2f0",
-    "summary": "Use null-prototype HMX section-count/staging maps to prevent '__proto__' section names from changing object prototypes or disappearing from diagnostic accounting.",
-    "testsAdded": [
-      "prototype-like '__proto__' HMX section is blocked as unsupported",
-      "source count remains a visible own key in sectionCounts",
-      "conflicted __proto__ section is omitted from stagedSections",
-      "staging maps have null prototypes and remain unacceptably conflicted"
+    "codeCommits": [
+      "307b1317100bd9d4e3d62094f552a074fb1f663c",
+      "66927b5571704895f78f7c02897cd42e12fce8ea"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Code/tests are committed but no usable exact-head PASS is available; no readiness/progress uplift is claimed.",
+    "testCommits": [
+      "6f40c41ec9ff705561c1389fb8760956d41cfee1",
+      "388156d09c62dc736b5dcbe44a43fce303dedc0a"
+    ],
+    "codeTestHead": "388156d09c62dc736b5dcbe44a43fce303dedc0a",
+    "summary": "Validate pending HMX stage digest and schema during restore/decision. Quarantine stale/tampered pending stages so they cannot reach canonical apply; preserve valid conflicted stages for inspection.",
+    "testsAdded": [
+      "mutated pending HMX section data causes restore-time quarantine and rejection",
+      "rejected persisted stage cannot subsequently be accepted",
+      "validly digested stage with source-validation conflicts remains staged for inspection and cannot be accepted"
+    ],
+    "validationStatus": "PENDING exact-head typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regressions are authored but no usable exact-head PASS evidence is available; no readiness/progress/recall uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass403",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "8969a6401719d9105162e50d00a35c79f4e98b51",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Validate HMX import-receipt status, integer counters, reason size and exact source-record accounting before moving a pending receipt to applied/partial/skipped. WorkPass396–402 cover atomic staging, strict snapshot ingress, action/body allowlists, prototype-free maps and restore-time stage integrity. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass402",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "388156d09c62dc736b5dcbe44a43fce303dedc0a",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Validate pending HMX stage digest and schema during restore/decision. Quarantine stale/tampered pending stages so they cannot reach canonical apply; preserve valid conflicted stages for inspection. WorkPass396–401 strengthen atomic HMX staging, safe snapshots, HTTP boundaries and prototype-free staging maps. Scores remain unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass401",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "76830a380ab2cdbd825994062de793c2a1a0c2f0",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Use null-prototype HMX section-count/staging maps to prevent '__proto__' section names from changing object prototypes or disappearing from diagnostic accounting. WorkPass396–400 add atomic HMX staging, safe snapshots, explicit decision/action allowlists and strict JSON-body validation. Scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
