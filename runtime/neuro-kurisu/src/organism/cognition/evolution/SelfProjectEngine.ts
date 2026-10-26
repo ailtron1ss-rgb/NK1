@@ -9,6 +9,8 @@ const evidenceRank=(value:ProjectEvidenceClass)=>value==='replicated'?2:value===
 export interface SelfProject {
   id: string;
   title: string;
+  /** Source description/reason supplied when a reviewed imported project is materialized. */
+  reason?: string;
   origin: ProjectOrigin;
   status: ProjectStatus;
   commitment: number;
@@ -129,7 +131,7 @@ export class SelfProjectEngine {
     if(this.state.projects.length>=24) throw new Error('hexis-project-capacity-reached');
     const now=stamp();
     const project:SelfProject={
-      id,title,origin:'learned',status:'paused',
+      id,title,reason:description || 'Reviewed goal imported from Hexis; independent execution evidence required.',origin:'learned',status:'paused',
       commitment:clamp(.34+clamp(input.confidence)*.3),
       priority:clamp(input.importance),identityRelevance:.24,
       progress:0,setbacks:0,successes:0,evidenceCount:0,validatedEvidenceCount:0,
