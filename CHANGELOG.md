@@ -1,3 +1,10 @@
+## WorkPass397 — Keep legacy evidence IDs stable across metadata changes (2026-10-26)
+
+- **Code:** `05a349cdcbff7a8397e29f0ecf4cd8db15ddd8f5`; **regression contract:** `14f25b449177d7de15824c433ababe5b81233362`.
+- Tightened the legacy `hexisReviseBelief` adapter's idempotency key to depend only on canonical memory ID + fixed legacy source kind + source reference + content hash. Stance, label, note and confidence are digest-bound payload fields; changing them on replay now reuses the same evidence identity and therefore conflicts instead of minting another evidence ID.
+- Added a static regression contract requiring that immutable identity tuple and forbidding mutable review metadata inside the key.
+- **Validation:** PENDING exact-head runtime typecheck, focused Hexis review test, server smoke and Unified integration. No PASS, recall uplift or production-readiness claim.
+
 ## WorkPass396 — Remove the legacy direct Hexis confidence-mutation path (2026-10-26)
 
 - **Core code:** `bb38a516fe2b3671dad929a9c756c339428c0ded`; **regression contract:** `282462422fedb7202f3c35be95541a3cbaff6bd5`.
