@@ -79,19 +79,23 @@ assert.ok(mainFeedback.lastIndexOf('this.feedbackDeliveryGuard.complete(feedback
 assert.ok(mainFeedback.lastIndexOf('this.feedbackDeliveryGuard.complete(feedbackDeliveryToken)') < mainFeedback.lastIndexOf('await this.checkpoint(false)'),
   'completion receipt must be included in the final checkpoint');
 
-const b273RouteStart = mainFeedback.indexOf('const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;');
-assert.ok(b273RouteStart >= 0, 'B273 feedback must resolve its canonical learner');
-const b273Route = mainFeedback.slice(b273RouteStart, b273RouteStart + 2600);
-assert.ok(b273Route.includes('const b273Decision = b273Learner.snapshot();'),
+const b273HelperStart = core.indexOf('private recordB273OutcomeForExecutedAction(input: {');
+const b273HelperEnd = core.indexOf('async feedback(outcome:', b273HelperStart);
+assert.ok(b273HelperStart >= 0 && b273HelperEnd > b273HelperStart,
+  'B273 outcome routing must live in a shared helper before both feedback branches');
+const b273Route = core.slice(b273HelperStart, b273HelperEnd);
+assert.ok(b273Route.includes('const decision = learner.snapshot();'),
   'B273 attribution must read the canonical generated decision, not a presentation snapshot');
-assert.ok(b273Route.includes('b273Decision.tick === state.tick'),
+assert.ok(b273Route.includes('decision.tick === input.tick'),
   'B273 must skip reward attribution if its generated decision belongs to another tick');
-assert.ok(b273Route.includes('const b273Plan = b273Decision.lastActionPlan;'),
+assert.ok(b273Route.includes('const plan = decision.lastActionPlan;'),
   'B273 must validate outcomes against the exact recorded plan');
-assert.ok(b273Route.includes('b273Learner.recordUnselectedAction('),
+assert.ok(b273Route.includes('learner.recordUnselectedAction('),
   'an action outside the canonical generated plan must be recorded without reward credit');
-assert.ok(!b273Route.includes('b273Current.plan.includes(trace.selected.action)'),
-  'a synthesized current() presentation plan must not be used as outcome authority');
+assert.equal(mainFeedback.split('recordB273OutcomeForExecutedAction').length - 1, 2,
+  'both no-transition and world-transition paths must share the same B273 attribution guard');
+assert.ok(!mainFeedback.includes('autonomousGoalLifecycleB273.learnFromOutcome({'),
+  'world-transition feedback must not bypass the shared B273 attribution guard');
 
 const guard = new FeedbackDeliveryGuard();
 const input = { tick: 17, decisionId: 'decision-17', action: 'reflect', previousReceipt: null };
