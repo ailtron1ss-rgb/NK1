@@ -139,6 +139,19 @@ try {
   if (importedMemory.epistemicStatus !== 'belief' || Number(importedMemory.confidence) > 0.55 ||
       importedMemory.source !== 'hexis-hmx-import') throw new Error('hexis-hmx-external-trust-firewall');
 
+  // A typo must not silently turn into a different retention proposal such as
+  // compress; bind action choice to the API's explicit allowlist.
+  const invalidRetentionResponse = await post('/api/organism/integration/hexis/retention/propose', {
+    memoryId: importedMemory.id,
+    action: 'forgett',
+    reason: 'invalid-action-regression',
+  });
+  const invalidRetention = await invalidRetentionResponse.json();
+  if (invalidRetentionResponse.status !== 400 ||
+      invalidRetention.error !== 'hexis-retention-invalid-action') {
+    throw new Error('hexis-retention-invalid-action-must-fail-closed');
+  }
+
   // Accepting a protected/unmapped identity section must fail at the HTTP
   // boundary rather than return 200 with a misleading successful stage.
   const protectedExport = {
