@@ -1,8 +1,8 @@
-# WorkPass335 — строгая кодировка Ed25519 approval signatures
+# WorkPass335 — защита подписей и verified skill revision gate
 
 **Дата:** 26 октября 2026 г.  
-**Ветка:** `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3`  
-**Кодовый checkpoint с регрессиями:** `ad812aa0db98ec1283aaed36d777ce36a8268b13`  
+**Ветка:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`  
+**Code/test checkpoint:** `f3d462f60e2ad8ead9ed398cee71b59b87aa9547`  
 **Статус:** implementation committed; exact-head validation pending.
 
 ## Что изменено
@@ -23,6 +23,20 @@
 - валидная rollback-подпись принимается;
 - rollback-подпись с суффиксом `!!!` отвергается.
 
+## Закрытие holdout revision-gate контракта
+
+В том же проходе усилен `SkillRevisionGate.ts`, который вычисляет paired holdout-результат для сравнения baseline и candidate:
+
+- Некорректная запись, где task/family/method/verifier/evidence вместо строки содержит число, объект или null, отвергается как row; gate продолжает обрабатывать остальные валидные пары.
+- Не-массив observations, неверное имя метода или некорректный объект options дают явную ошибку конфигурации.
+- `minPairedTasks` требует целое значение от 2 до 10 000; `minAbsoluteGain` и `maxFamilyRegression` — конечные числа в диапазоне `[0, 1]`. Значения не подрезаются и не заменяются молча.
+- Пара baseline/candidate с несовпадающими task families исключается из знаменателя и учитывается как один rejected pair.
+- В `p23-verified-skill-revision-gate.mjs` добавлены проверки повреждённых rows, mismatched-family accounting, строгих порогов и допустимых граничных значений. В proposal regression `NaN` теперь должен приводить к явному отказу.
+
+Результат остаётся proposal-only: даже прошедший gate не активирует навык и не заменяет аутентификацию outcome/shadow evidence, независимую оценку или подписанное одобрение.
+
+**Validation:** exact-head GitHub Actions, P23 regression suite и runtime TypeScript typecheck на этой объединённой ветке ещё ожидаются. Scorecard percentages и claims о learning uplift не изменены.
+
 ## Связи между ветками
 
 `main` — release-control ветка и не является корректной точкой сравнения исходного runtime. Полное исходное дерево хранится в `workpass70-source`; расширенный стек находится на `fix/mega-cognitive-progress-tracking-2026-10-26-r3` (WorkPass334). Отдельная ветка `fix/strict-ed25519-signature-encoding-2026-10-26` содержит этот security fix, но имеет иную историю и отстаёт по ряду направлений. Поэтому в текущую линию перенесён узкий кодовый diff и тесты.
@@ -33,7 +47,7 @@
 
 ## Что ещё требуется подтвердить
 
-1. `npm run test:p23:versioned-skill-candidate-store` на этой ветке.
+1. `npm run test:p23:versioned-skill-candidate-store`, `npm run test:p23:verified-skill-revision-gate` и `npm run test:p23:verified-skill-promotion-proposal` на этой ветке.
 2. Runtime TypeScript typecheck и интеграционные проверки когнитивного цикла.
 3. CI на exact HEAD; старые проходы не доказывают корректность этого коммита.
 4. Независимый holdout для learning/transfer и реальная проверка внешних postconditions.
