@@ -191,6 +191,16 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
       malformedNativeSections[name + '_invalid_section'] = cloneJson(nativeValue);
     }
   }
+  // Preserve malformed native config outside the active config object. The HMX
+  // envelope requires config to be an object, but dropping a legacy scalar/array
+  // here would silently destroy source data during an otherwise successful export.
+  if (
+    nativeSections.config !== undefined &&
+    nativeSections.config !== null &&
+    !isRecord(nativeSections.config)
+  ) {
+    malformedNativeSections.config_invalid_section = cloneJson(nativeSections.config);
+  }
   const invalidEpisodes = Array.isArray(nativeSections.episodes)
     ? nativeSections.episodes.filter(row => isRecord(row) &&
         !textValue(row.summary, row.content, row.description) &&
