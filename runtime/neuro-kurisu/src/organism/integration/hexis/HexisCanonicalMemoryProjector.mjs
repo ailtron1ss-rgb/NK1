@@ -321,6 +321,28 @@ export class HexisCanonicalMemoryProjector {
           });
         }
       }
+      // Hexis keeps belief state separately from the canonical memory record. Seed
+      // that state from the imported memory's existing confidence without treating
+      // import as independent supporting evidence or increasing confidence.
+      if (this.temporalLedger &&
+          typeof this.temporalLedger.registerOrUpdateBelief === 'function' &&
+          importedIds.length) {
+        const canonicalItems = this.memoryFabric.canonicalSnapshot().items ?? [];
+        const canonicalById = new Map(
+          canonicalItems.filter(item => importedIds.includes(item.id)).map(item => [item.id, item]),
+        );
+        for (const id of [...new Set(importedIds)]) {
+          const memory = canonicalById.get(id);
+          if (!memory) throw new Error('hmx-belief-canonical-memory-missing:' + id);
+          this.temporalLedger.registerOrUpdateBelief({
+            memoryId: id,
+            confidence01: clamp01(memory.confidence),
+            trust01: clamp01(memory.sourceAuthority01 ?? memory.confidence),
+            at: dateMs(memory.observedAt) ?? appliedAt,
+          });
+        }
+      }
+
     } catch (error) {
       const rollbackErrors = [];
       for (const id of [...createdIds].reverse()) {
