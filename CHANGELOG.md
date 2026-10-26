@@ -1,3 +1,13 @@
+## WorkPass406 — surface terminal HMX import outcomes in the operator UI (2026-10-26)
+
+- **UI code commit:** `a330d9bd1ca2602e3cfcc0fe75d513a8f67e7875`; **wiring-audit commit:** `ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122`.
+- The HMX accept control now inspects the returned import receipt and displays explicit `APPLIED`, `PARTIAL`, `SKIPPED`, `PENDING` or `UNCERTAIN` feedback with counts/reason when available.
+- A pending or uncertain outcome is no longer left under the generic `Accept HMX: OK` message. Local accept controls are cleared after a terminal receipt; the UI warns not to retry the same stage when canonical memory outcome is unconfirmed.
+- The interface-wiring audit now checks that the explicit uncertain/pending branch is present and wired to the accept control.
+- **Validation:** PENDING frontend build, UI wiring audit, exact-head runtime typecheck, HMX adaptation/server smoke and Unified integration. No PASS/readiness uplift claimed. `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass405 — quarantine HMX imports with an incomplete rollback (2026-10-26)
 
 - **Code commit:** `7c50f4a34dfc1198b9ec1347b1938d38fd7e73cc`; **regression commit:** `637429b82ae8913760b89b9544cd21a00457c3bd`.
