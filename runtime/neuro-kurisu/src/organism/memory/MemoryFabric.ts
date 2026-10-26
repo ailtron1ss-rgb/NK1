@@ -12,14 +12,15 @@ import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type Memor
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
 
-export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
+export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget'|'rollback-created';
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean; forceDistinct?:boolean }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
-  | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number };
+  | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number }
+  | { action:'rollback-created'; id:string; exportId:string; reason?:string; commandId?:string; tick?:number };
 
 interface MemoryLifecycleReceipt {
   commandId:string;
@@ -263,6 +264,23 @@ export class MemoryFabric {
         result=context; memoryId=before.id;
         outcome=context?'applied':'noop';
         if(context)eventPayload={action,memoryId:before.id,fields:changedEntries.map(([key])=>key),commandId:commandId||undefined};
+        break;
+      }
+      case 'rollback-created': {
+        const before=this.findCanonical(command.id);
+        if(!before){
+          // Compensation is idempotent: an absent row is already rolled back.
+          result=true; booleanValue=true; memoryId=command.id; outcome='noop';
+          break;
+        }
+        if(!String(before.source??'').startsWith('hexis:')||before.context?.hexisExportId!==command.exportId){
+          throw new Error('memory-lifecycle-hmx-rollback-scope-mismatch');
+        }
+        const removed=this.memoryOS.rollbackCreatedHmxImport(command.id,command.exportId);
+        if(!removed&&this.findCanonical(command.id))throw new Error('memory-lifecycle-hmx-rollback-not-applied');
+        result=true; booleanValue=true; memoryId=command.id; outcome=removed?'applied':'noop';
+        this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));
+        eventPayload={action,memoryId:command.id,exportId:command.exportId,reason:String(command.reason??'hmx-apply-rollback').slice(0,240),commandId:commandId||undefined};
         break;
       }
       case 'forget': {
@@ -542,7 +560,7 @@ export class MemoryFabric {
       if(!row||typeof row.commandId!=='string'||row.commandId.length===0||row.commandId.length>128||
         row.commandId!==row.commandId.trim()||/[\u0000-\u001f\u007f-\u009f]/.test(row.commandId)||
         typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||
-        !['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||
+        !['encode','revise-status','revise-content','update-signals','update-context','forget','rollback-created'].includes(row.action)||
         !['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||
         typeof row.at!=='number'||!Number.isFinite(row.at)||row.at<0||
         (row.memoryId!==undefined&&(typeof row.memoryId!=='string'||!row.memoryId||row.memoryId.length>256||/[\u0000-\u001f\u007f-\u009f]/.test(row.memoryId)))||
@@ -609,6 +627,17 @@ export class MemoryFabric {
 
   forgetById(id:string,reason='memory-knockout',context:{tick?:number;commandId?:string}={}){
     return this.applyLifecycleCommand({action:'forget',id,reason,...context}) as boolean;
+  }
+
+  /** Scoped compensation for a newly-created HMX row when ordinary forgetting correctly
+   * refuses protected states (quarantined/identity). The export check prevents touching native memory.
+   */
+  rollbackHmxCreatedMemory(id:string,exportId:string,reason='hmx-apply-rollback',context:{tick?:number;commandId?:string}={}):boolean {
+    if(typeof id!=='string'||!id||id.length>256||/[\u0000-\u001f\u007f-\u009f]/u.test(id)||
+      typeof exportId!=='string'||!/^exp_[a-f0-9]{16}$/.test(exportId)){
+      throw new TypeError('memory-lifecycle-hmx-rollback-input-invalid');
+    }
+    return this.applyLifecycleCommand({action:'rollback-created',id,exportId,reason,...context}) as boolean;
   }
 
   canonicalSize(){return this.memoryOS.size();}
