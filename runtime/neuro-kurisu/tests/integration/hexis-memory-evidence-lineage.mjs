@@ -193,6 +193,10 @@ assert.ok(revisionBody.includes('if (priorAudit)'), 'partial belief revisions mu
 assert.ok(revisionBody.indexOf('const audit = this.hexisAdaptation.reviseBelief') < revisionBody.lastIndexOf('const persisted = persistEvidence()'),
   'new belief audits must precede evidence writes so an interrupted sequence can be recovered');
 assert.ok(revisionBody.includes('confidenceCommandId'), 'confidence reconciliation must be idempotent across retry/restore');
+assert.ok(revisionBody.includes('if (known && priorAppliedAudit && confidenceReconciled)'),
+  'a fully committed retry must not return the original successful audit as if it applied again');
+assert.ok(revisionBody.includes('canonicalDuplicate: true'),
+  'a fully committed retry must produce an explicit non-applied duplicate audit');
 
 // Hexis source identity uses the same Unicode/case/length normalization as canonical memory.
 const normalizedSource = new HexisAdaptationFabric();
