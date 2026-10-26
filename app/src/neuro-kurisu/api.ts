@@ -1,4 +1,4 @@
-import type { BackendUiSnapshot, ChatBackendResponse, HexisGoalActivationResponse, HexisGoalMaterializeResponse, HexisGoalProposalDecisionResponse, HexisGoalProposalListResponse, HexisGoalProposalPrepareResponse, HexisGoalProposalStatus } from "./types";
+import type { BackendUiSnapshot, ChatBackendResponse, HexisGoalActivationResponse, HexisGoalMaterializeResponse, HexisGoalProposalDecisionResponse, HexisGoalProposalListResponse, HexisGoalProposalPrepareResponse, HexisGoalProposalStatus, HexisHmxDecision, HexisHmxExportResponse, HexisHmxStageInput, HexisHmxStageResponse } from "./types";
 import { waitForActionApproval } from "./action-approval-broker.ts";
 
 const API_BASE = String(import.meta.env?.VITE_NEURO_KURISU_API_BASE ?? "").replace(/\/$/, "");
@@ -251,9 +251,9 @@ export const neuroApi = {
   hexisDecideReview: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/integration/hexis/reviews/decide", { method: "POST", body: JSON.stringify(payload) }),
   hexisRetentionPropose: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/integration/hexis/retention/propose", { method: "POST", body: JSON.stringify(payload) }),
   hexisRetentionApply: (proposalId: string, confirmed=false) => request<Record<string, unknown>>("/api/organism/integration/hexis/retention/apply", { method: "POST", body: JSON.stringify({ proposalId, confirmed }) }),
-  hexisHmxExport: () => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/export"),
-  hexisHmxStage: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/stage", { method: "POST", body: JSON.stringify(payload) }),
-  hexisHmxDecide: (stagingId: string, decision: "accept"|"reject"|"apply") => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/decide", { method: "POST", body: JSON.stringify({ stagingId, decision }) }),
+  hexisHmxExport: () => request<HexisHmxExportResponse>("/api/organism/integration/hexis/hmx/export"),
+  hexisHmxStage: (payload: HexisHmxStageInput) => request<HexisHmxStageResponse>("/api/organism/integration/hexis/hmx/stage", { method: "POST", body: JSON.stringify(payload) }),
+  hexisHmxDecide: (stagingId: string, decision: HexisHmxDecision) => request<HexisHmxStageResponse>("/api/organism/integration/hexis/hmx/decide", { method: "POST", body: JSON.stringify({ stagingId, decision }) }),
   hexisGoalPrepare: (stagingId: string) => request<HexisGoalProposalPrepareResponse>("/api/organism/integration/hexis/goals/prepare", { method: "POST", body: JSON.stringify({ stagingId }) }),
   hexisGoalProposals: (status?: HexisGoalProposalStatus, limit=64) => {
     const params = new URLSearchParams();
