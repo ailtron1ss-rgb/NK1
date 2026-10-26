@@ -1,3 +1,15 @@
+## WorkPass387 — durable idempotency for server-generated Hexis receipt time (2026-10-26)
+
+- Code/test commits: 
+  - `cf79d537ce44e9bed1bfe3a07001d17f3097d06b` — strict adapter accepts only the internal `server-receipt` timestamp-origin marker.
+  - `67fd5cc3e28c351c5264bf88d6427828eeda8cc6` — the canonical digest normalizes only server-generated receipt time; source, stance, confidence, note and other evidence fields remain digest-bound.
+  - `7f7d5f0aae1b2b3e782202d281c0fb25ceed9943` — legacy route marks generated time; public canonical ingress rejects the internal marker.
+  - `b55c45ce65e6a6375ad8b90a55059340b852b900`, `c9e53030623fba87037460c2a3202c9a89ab324f`, `843964cdf0f5b2dc9d770b9fa60c5d294b0f2bad` — adapter, review and HTTP-smoke regression coverage.
+- The first timestamp lookup implementation did not satisfy the HTTP smoke; this replacement is durable across review-buffer rotation and does not depend on the diagnostic memory projection.
+- **Validation:** fresh exact-head typecheck and Unified integration pending. `main` and canonical Release ZIP untouched.
+
+---
+
 ## WorkPass386 — preserve idempotency for legacy Hexis evidence retries (2026-10-26)
 
 - Code commit: `287f312aa982863f10f60cfd6a42db69dd8d97d1`.
