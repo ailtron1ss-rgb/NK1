@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass340 connects strict unified-substrate state into the live runtime cycle and optional counterfactual-work governance, with a 30-cycle smoke/restart regression authored. Exact-head typecheck/tests/CI are pending; no new score is inferred from code presence.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass340's first integration run exposed two TypeScript errors that have been corrected at e4348fd8999d4cba03a7f29a10b98c063f8b1e76; the corrected exact-head test/CI rerun remains pending, so no score increase is justified.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -284,7 +284,7 @@
     "id": "WorkPass340",
     "date": "2026-10-26",
     "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r2",
-    "codeCommit": "29393dad1e81da2949c62eb332f3f356a74c426f",
+    "codeCommit": "e4348fd8999d4cba03a7f29a10b98c063f8b1e76",
     "summary": "Wire hardened UnifiedCognitiveSubstrate into OrganismRuntime restore, cycle integration, bounded optional-work policy, periodic persistence and stop flush.",
     "testsAdded": [
       "strict persisted-state sanitization and schema-version rejection",
@@ -294,9 +294,25 @@
       "30-cycle smoke confirms live substrate cycle count advances",
       "runtime stop/re-init confirms persisted substrate continuity"
     ],
-    "validationStatus": "pending exact-head typecheck, unified-substrate wiring regression, 30-cycle runtime smoke/restart, and Actions CI",
+    "validationStatus": "first integration CI found two TypeScript contract errors; both were fixed in the current code checkpoint; exact-head typecheck, runtime regression and CI rerun pending",
     "progressPercentagesChanged": false,
-    "scoredBaselineHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626"
+    "scoredBaselineHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
+    "validationFindings": [
+      {
+        "head": "ee2c7b36ca5dda6242393a38ca0b0c2544aaf273",
+        "status": "failure",
+        "scope": "runtime typecheck",
+        "findings": [
+          "PredictionDebtState direct cast to Record<string, unknown>",
+          "cycleObservation.vision does not exist in type"
+        ]
+      },
+      {
+        "head": "e4348fd8999d4cba03a7f29a10b98c063f8b1e76",
+        "status": "pending",
+        "scope": "corrected runtime typecheck and integration regressions"
+      }
+    ]
   },
   "recentEngineeringPasses": [
     {
