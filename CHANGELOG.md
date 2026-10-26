@@ -1,5 +1,6 @@
 # WorkPass373 — detached ActionGateway side-effect ingress (2026-10-26)
 
+- [CI-DRIVEN FIX] Initial runtime typecheck caught a narrowing error in the bounded-array own-key guard and two missing `result()` note arguments; both corrected to match TypeScript's actual property-key union and the existing result signature. Fresh exact-head CI is required.
 - [TEST FIX] Before exact-head validation, corrected the detached-request regression to retain the awaited execution result variable; runtime behavior is unchanged and CI remains the source of truth.
 - [HARDENED] Snapshot `executeTool()` and `reconcileToolExecution()` inputs/options before idempotency hashing, in-flight deduplication, approval checks or async provider work.
 - [FIXED] Reject getter-backed root/nested input and option fields without executing getters; clone bounded plain JSON into detached tool payloads so caller mutation after invocation cannot change the side effect.
