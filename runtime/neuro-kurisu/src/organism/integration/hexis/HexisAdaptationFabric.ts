@@ -193,6 +193,71 @@ const digest = (value: unknown) => sha256Stable(value, 'legacy');
 const sourceKey = (source: HexisEvidenceSource) => String(source.ref || source.label || source.contentHash || digest(source));
 const nowMs = () => Date.now();
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
+function normalizeHexisStringKeys(value: unknown, limit = 256): string[] {
+    if (!Array.isArray(value)) return [];
+    const normalized: string[] = [];
+    const seen = new Set<string>();
+    for (const item of value) {
+        if (typeof item !== 'string') continue;
+        const key = item.trim().normalize('NFKC');
+        if (!key || key.length > 512 || seen.has(key)) continue;
+        seen.add(key);
+        normalized.push(key);
+    }
+    return normalized.slice(-limit);
+}
+
+/**
+ * Hexis beliefs are a derived projection of canonical MemoryOS2 facts.
+ * Malformed projection rows are dropped on restore so a damaged sidecar cannot
+ * prevent the cognitive runtime from starting or promote invalid confidence.
+ */
+function normalizeHexisBeliefProjection(value: unknown): HexisBeliefState | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const row = value as Record<string, unknown>;
+    const memoryId = typeof row.memoryId === 'string' ? row.memoryId.trim() : '';
+    const confidence01 = row.confidence01;
+    if (!memoryId || memoryId.length > 240 ||
+        typeof confidence01 !== 'number' || !Number.isFinite(confidence01) ||
+        confidence01 < 0 || confidence01 > 1) return null;
+
+    const rawTrust = row.trust01;
+    const trust01 = rawTrust === undefined
+        ? 0.5
+        : typeof rawTrust === 'number' && Number.isFinite(rawTrust) && rawTrust >= 0 && rawTrust <= 1
+            ? rawTrust
+            : null;
+    if (trust01 === null) return null;
+
+    const updatedAt = row.updatedAt;
+    return {
+        memoryId,
+        confidence01,
+        trust01,
+        sourceKeys: normalizeHexisStringKeys(row.sourceKeys),
+        contradictingSourceKeys: normalizeHexisStringKeys(row.contradictingSourceKeys),
+        updatedAt: typeof updatedAt === 'number' && Number.isFinite(updatedAt) && updatedAt >= 0
+            ? Math.floor(updatedAt)
+            : 0,
+    };
+}
+
+function normalizeHexisMetrics(
+    value: unknown,
+    defaults: HexisAdaptationState['metrics'],
+): HexisAdaptationState['metrics'] {
+    const raw = value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+    const result: Record<string, number> = {};
+    for (const [key, fallback] of Object.entries(defaults)) {
+        const candidate = raw[key];
+        result[key] = typeof candidate === 'number' && Number.isSafeInteger(candidate) && candidate >= 0
+            ? candidate
+            : fallback;
+    }
+    return result as HexisAdaptationState['metrics'];
+}
 export function defaultHexisAdaptationState(): HexisAdaptationState {
     return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
@@ -211,7 +276,9 @@ export class HexisAdaptationFabric {
         this.state = {
             ...defaults, ...value,
             source: { ...defaults.source, ...(value.source ?? {}) },
-            beliefs: Array.isArray(value.beliefs) ? value.beliefs.slice(-1024) : [],
+            beliefs: Array.isArray(value.beliefs)
+                ? value.beliefs.slice(-1024).map(normalizeHexisBeliefProjection).filter((row): row is HexisBeliefState => row !== null)
+                : [],
             beliefAudit: Array.isArray(value.beliefAudit) ? value.beliefAudit.slice(-2048) : [],
             temporal: Array.isArray(value.temporal) ? value.temporal.slice(-4096) : [],
             learningReviews: Array.isArray(value.learningReviews) ? value.learningReviews.slice(-96) : [],
@@ -226,7 +293,7 @@ export class HexisAdaptationFabric {
             outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
             connectorPolicies: normalizedPolicies,
             executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
-            metrics: { ...defaults.metrics, ...(value.metrics ?? {}) },
+            metrics: normalizeHexisMetrics(value.metrics, defaults.metrics),
         };
     }
     snapshot(): HexisAdaptationState { return structuredClone(this.state); }
