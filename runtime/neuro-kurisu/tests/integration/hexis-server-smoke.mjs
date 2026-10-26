@@ -7,7 +7,7 @@ const root = path.resolve(process.cwd());
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-'));
 const port = 35600 + Math.floor(Math.random() * 800);
 const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: stateDir };
-const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+let child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let output = '';
 child.stdout.on('data', d => output += d);
 child.stderr.on('data', d => output += d);
@@ -97,6 +97,41 @@ try {
       decision: 'auto-approve',
     });
     if (invalidDecisionResponse.status !== 400) throw new Error('hexis-evidence-invalid-decision-must-fail-closed');
+
+    // Prove the pending canonical review is durably restored after a real process
+    // restart using the same STATE_DIR before approval is attempted.
+    await new Promise(resolve => {
+      if (child.exitCode !== null || child.signalCode !== null) {
+        resolve();
+        return;
+      }
+      const timeout = setTimeout(() => child.kill('SIGKILL'), 3000);
+      child.once('exit', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      child.kill('SIGTERM');
+    });
+    child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    child.stdout.on('data', d => output += d);
+    child.stderr.on('data', d => output += d);
+    let restoredReady = false;
+    for (let i = 0; i < 180; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      try {
+        const response = await fetch(`${base}/api/health`);
+        const data = await response.json();
+        if (response.ok && data.ready === true) { restoredReady = true; break; }
+      } catch {}
+    }
+    if (!restoredReady) throw new Error(`hexis-review-restart-server-not-ready:${output.slice(-800)}`);
+    const reviewsAfterRestart = await (await fetch(`${base}/api/organism/integration/hexis/reviews`)).json();
+    const restoredReview = reviewsAfterRestart.reviews?.find(review => review.id === staged.result.reviewId);
+    const restoredItem = restoredReview?.items?.find(item => item.id === staged.result.reviewItemId);
+    if (!reviewsAfterRestart.ok || !restoredItem || restoredItem.status !== 'pending' ||
+        restoredItem.evidence?.pipeline !== 'nk1.hexis-evidence-review.v1')
+      throw new Error('hexis-pending-review-not-restored-after-restart:' + JSON.stringify({ reviewsAfterRestart, restoredItem }));
+
     const decidedResponse = await post('/api/organism/integration/hexis/evidence/decide', {
       reviewId: staged.result.reviewId,
       itemId: staged.result.reviewItemId,
