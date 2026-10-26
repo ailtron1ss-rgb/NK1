@@ -1,3 +1,10 @@
+## NK1 B272 validation follow-up — keep malformed-state fixture JSON-tree shaped (2026-10-26)
+
+- Changed the invalid-goal-ID fixture to copy its vector instead of aliasing the snapshot's `currentGoal` array. That case is intended to exercise control-character ID quarantine, not the separate rejection rule for non-JSON object graphs.
+- The shared validator remains strict about aliases/cycles; dedicated P23 regressions cover that contract. B272 still sanitizes the malformed ID and continues the rest of the restore path for ordinary data-tree snapshots.
+
+---
+
 ## NK1 endogenous-goal persistence — enforce shared bounded data boundary (2026-10-26)
 
 - Connected `B272EndogenousGoalGenesis.restore()` to the shared core data-tree validator. Goal state no longer reads accessor-backed, custom-prototype, cyclic, aliased, sparse, or over-budget snapshots before validation.
