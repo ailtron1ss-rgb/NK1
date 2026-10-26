@@ -280,7 +280,23 @@ const failedReview = ingestHexisEvidenceForReview(rollbackMemoryOS, rollbackFabr
 });
 assert.equal(failedReview.status, "rejected");
 if (failedReview.status === "rejected") assert.equal(failedReview.reason, "hexis-review-ingress-failed");
-assert.deepEqual(rollbackMemoryOS.snapshot(), rollbackMemoryBefore, "failed review creation must roll back canonical evidence");
+const rolledBackMemory = target(rollbackMemoryOS, rollbackMemory.id);
+assert.equal(
+  rolledBackMemory.evidenceRecords?.some((row) => row.evidenceId === rollbackEvidence.evidenceId),
+  false,
+  "failed review creation must remove the newly appended canonical evidence receipt",
+);
+assert.equal(
+  rollbackMemoryOS.hasEvidenceId(rollbackMemory.id, rollbackEvidence.evidenceId),
+  false,
+  "failed review creation must remove the evidence replay identity",
+);
+assert.equal(
+  rollbackMemoryOS.evidenceTrail(rollbackMemory.id)?.sources.some((source) => source.source.includes(rollbackEvidence.source.ref)),
+  false,
+  "failed review creation must not leave the rejected source in canonical provenance",
+);
+assert.equal(rolledBackMemory.confidence, rollbackMemory.confidence, "review preparation failure must not revise belief confidence");
 assert.deepEqual(rollbackFabric.snapshot(), rollbackFabricBefore, "failed review creation must roll back Hexis review state");
 
 // If the canonical memory changes after preview, approval is rejected as stale
