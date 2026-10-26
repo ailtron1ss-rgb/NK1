@@ -51,6 +51,15 @@ try {
       throw new Error('hexis-json-record-body-guard:' + route + ':' + response.status);
     }
   }
+  // Unknown retention actions must not silently become the destructive default.
+  const invalidRetentionAction = await post('/api/organism/integration/hexis/retention/propose', {
+    memoryId: 'missing-memory',
+    action: 'unrecognized-action',
+    reason: 'invalid-action-regression',
+  });
+  if (invalidRetentionAction.status !== 400) {
+    throw new Error('hexis-retention-must-reject-unknown-action:' + invalidRetentionAction.status);
+  }
   // Permission booleans must never be inferred through JavaScript truthiness.
   const coercedAutonomyGrant = await post('/api/organism/integration/hexis/policy', {
     connectorId: 'nk1-coercion-regression',
