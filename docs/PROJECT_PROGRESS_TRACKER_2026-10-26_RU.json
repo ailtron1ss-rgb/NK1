@@ -359,24 +359,44 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass406",
+    "id": "WorkPass407",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "a330d9bd1ca2602e3cfcc0fe75d513a8f67e7875",
-    "testCommit": "ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122",
-    "codeTestHead": "ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122",
-    "summary": "Make the HMX operator panel report terminal import receipt states explicitly. Uncertain and pending outcomes warn operators not to retry and clear local accept controls; audit-ui-function-wiring now enforces the UI handling contract.",
+    "codeCommit": null,
+    "testCommit": "1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3",
+    "codeTestHead": "1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3",
+    "summary": "Expand the Hexis server-smoke body validation matrix so all 17 POST routes are tested against null, array, string, number and boolean JSON bodies; every non-record value must receive the same HTTP 400 guard before route-specific mutation.",
     "testsAdded": [
-      "UI-wiring audit requires uncertain-result branch",
-      "UI-wiring audit requires pending-result warning",
-      "UI-wiring audit requires the HMX accept button to call the terminal-result handler"
+      "all 17 Hexis POST endpoints reject JSON null",
+      "all 17 Hexis POST endpoints reject arrays",
+      "all 17 Hexis POST endpoints reject strings, numbers and booleans",
+      "failures report the route and exact invalid JSON value"
     ],
-    "validationStatus": "PENDING frontend build, audit-ui-function-wiring, exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified integration. No usable exact-head PASS evidence and no readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head test:hexis-server-smoke, runtime typecheck and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass407",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": null,
+      "testCommit": "1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3",
+      "codeTestHead": "1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3",
+      "summary": "Expand the Hexis server-smoke body validation matrix so all 17 POST routes are tested against null, array, string, number and boolean JSON bodies; every non-record value must receive the same HTTP 400 guard before route-specific mutation.",
+      "testsAdded": [
+        "all 17 Hexis POST endpoints reject JSON null",
+        "all 17 Hexis POST endpoints reject arrays",
+        "all 17 Hexis POST endpoints reject strings, numbers and booleans",
+        "failures report the route and exact invalid JSON value"
+      ],
+      "validationStatus": "PENDING exact-head test:hexis-server-smoke, runtime typecheck and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass406",
       "date": "2026-10-26",
@@ -391,24 +411,6 @@
         "UI-wiring audit requires the HMX accept button to call the terminal-result handler"
       ],
       "validationStatus": "PENDING frontend build, audit-ui-function-wiring, exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified integration. No usable exact-head PASS evidence and no readiness/progress uplift claimed.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
-    {
-      "id": "WorkPass405",
-      "date": "2026-10-26",
-      "branch": "hexis-remote-bridge-20261026",
-      "codeCommit": "7c50f4a34dfc1198b9ec1347b1938d38fd7e73cc",
-      "testCommit": "637429b82ae8913760b89b9544cd21a00457c3bd",
-      "codeTestHead": "637429b82ae8913760b89b9544cd21a00457c3bd",
-      "summary": "Make HMX import receipts terminally uncertain when the canonical-memory rollback is incomplete. Derive exact remaining source-row accounting from confirmed created/reused counts so an accepted stage cannot remain pending and replay after an ambiguous mutation.",
-      "testsAdded": [
-        "incomplete rollback records a terminal uncertain receipt",
-        "uncertain receipt counters account for the complete source-memory count",
-        "a later applied receipt cannot overwrite a terminal uncertain result"
-      ],
-      "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regression is authored; no usable exact-head PASS evidence yet and no readiness/progress uplift claimed.",
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
@@ -581,8 +583,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122",
-  "branchHeadBeforeTrackerCommit": "ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122",
+  "latestUnverifiedCodeTestHead": "1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3",
+  "branchHeadBeforeTrackerCommit": "1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -622,38 +624,38 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass405",
+    "id": "WorkPass406",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "7c50f4a34dfc1198b9ec1347b1938d38fd7e73cc",
-    "testCommit": "637429b82ae8913760b89b9544cd21a00457c3bd",
-    "codeTestHead": "637429b82ae8913760b89b9544cd21a00457c3bd",
-    "summary": "Make HMX import receipts terminally uncertain when the canonical-memory rollback is incomplete. Derive exact remaining source-row accounting from confirmed created/reused counts so an accepted stage cannot remain pending and replay after an ambiguous mutation.",
+    "codeCommit": "a330d9bd1ca2602e3cfcc0fe75d513a8f67e7875",
+    "testCommit": "ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122",
+    "codeTestHead": "ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122",
+    "summary": "Make the HMX operator panel report terminal import receipt states explicitly. Uncertain and pending outcomes warn operators not to retry and clear local accept controls; audit-ui-function-wiring now enforces the UI handling contract.",
     "testsAdded": [
-      "incomplete rollback records a terminal uncertain receipt",
-      "uncertain receipt counters account for the complete source-memory count",
-      "a later applied receipt cannot overwrite a terminal uncertain result"
+      "UI-wiring audit requires uncertain-result branch",
+      "UI-wiring audit requires pending-result warning",
+      "UI-wiring audit requires the HMX accept button to call the terminal-result handler"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regression is authored; no usable exact-head PASS evidence yet and no readiness/progress uplift claimed.",
+    "validationStatus": "PENDING frontend build, audit-ui-function-wiring, exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified integration. No usable exact-head PASS evidence and no readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass407",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Test non-record JSON bodies consistently across every Hexis POST endpoint: null, arrays, strings, numbers and booleans must all fail with HTTP 400 before mutation. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass406",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Expose HMX import receipt states in the operator UI; an uncertain or pending outcome is no longer presented as a clean OK and the same stage is removed from local accept controls. Scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass405",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "637429b82ae8913760b89b9544cd21a00457c3bd",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Quarantine HMX imports with incomplete rollback under terminal status uncertain; preserve strict exact source count accounting and prevent retry/replay of a potentially partially mutated batch. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
