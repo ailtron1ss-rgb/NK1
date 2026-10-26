@@ -1,3 +1,41 @@
+## WorkPass397 — Keep legacy evidence IDs stable across metadata changes (2026-10-26)
+
+- **Code:** `05a349cdcbff7a8397e29f0ecf4cd8db15ddd8f5`; **regression contract:** `14f25b449177d7de15824c433ababe5b81233362`.
+- Tightened the legacy `hexisReviseBelief` adapter's idempotency key to depend only on canonical memory ID + fixed legacy source kind + source reference + content hash. Stance, label, note and confidence are digest-bound payload fields; changing them on replay now reuses the same evidence identity and therefore conflicts instead of minting another evidence ID.
+- Added a static regression contract requiring that immutable identity tuple and forbidding mutable review metadata inside the key.
+- **Validation:** PENDING exact-head runtime typecheck, focused Hexis review test, server smoke and Unified integration. No PASS, recall uplift or production-readiness claim.
+
+## WorkPass396 — Remove the legacy direct Hexis confidence-mutation path (2026-10-26)
+
+- **Core code:** `bb38a516fe2b3671dad929a9c756c339428c0ded`; **regression contract:** `282462422fedb7202f3c35be95541a3cbaff6bd5`.
+- Replaced `OrganismCore.hexisReviseBelief`'s direct `HexisAdaptationFabric.reviseBelief` + `MemoryFabric.updateSignals` sequence with a compatibility adapter that creates a stable, server-receipt-tagged evidence ID and calls the existing transactional `ingestHexisEvidenceForReview` path.
+- The legacy entry point now returns pending/blocked/rejected review status and requires an explicit decision before confidence can change. It fail-closes on malformed evidence envelopes, invalid stance, invalid legacy text, missing source reference and non-finite/out-of-range evidence confidence.
+- Added a static regression contract proving this method delegates to the canonical evidence-review ingress and must not call direct belief revision or direct confidence update APIs; the same contract checks the input-validation guards.
+- **Validation:** PENDING exact-head runtime typecheck, cognitive evidence-review test, server smoke and Unified project integration. No PASS, recall uplift or production-readiness claim.
+
+
+## WorkPass395 — bind every Hexis review decision to canonical evidence (2026-10-26)
+
+- **Code commit:** `c43d05d2e6be965e4c16bcc0d803d5ee48e30f85`; **regression commit:** `98421af0dfc17fe6c5855490554ae77116c74755` on `fix/hexis-review-digest-binding-live-2026-10-26`.
+- Closed a decision-boundary gap: `correct` and `forget` now verify the pending review against the canonical MemoryOS2 evidence receipt before changing review state, just like `approve`. A tampered persisted source, note, stance, timestamp or confidence can no longer become a terminal review decision merely because it does not directly write confidence.
+- Expanded review-binding coverage from six metadata tampering cases to all three terminal decisions (`approve`, `correct`, `forget`) — 18 decision-boundary regressions. Every rejected attempt must preserve canonical memory and leave the pending review unchanged.
+- **Validation:** PENDING exact-head runtime typecheck, focused Hexis evidence-review test, server smoke and Unified integration. Tests were added but have not been executed in this session; no PASS, retrieval uplift or production-readiness claim is made. Progress scores remain unchanged; `main` and the canonical Release ZIP are untouched.
+
+## WorkPass394 — Prove pending Hexis review recovery after SIGKILL (2026-10-26)
+
+- Strengthened the server smoke from graceful SIGTERM restart to an abrupt SIGKILL after the canonical evidence-review endpoint has already returned its pending-review response.
+- The test restarts the server with the same temporary `STATE_DIR`, requires that the exact review/item is still pending, and then exercises canonical approval. It no longer allows a graceful shutdown flush to satisfy the crash-recovery gate.
+- The smoke also fails explicitly if no canonical memory fixture is available; it cannot silently skip the review/restart scenario.
+- **Validation:** PENDING exact-head focused tests and Unified integration. GitHub Actions job logs for recent heads remain unavailable via the API; no PASS is claimed.
+
+## WorkPass393 — Canonical Hexis review binding, compatibility and restart recovery (2026-10-26)
+
+- Look up the authoritative evidence receipt by evidence ID, then re-canonicalize pending review evidence before approval and recompute the digest with the same shared policy used at ingress. This keeps valid legacy server-receipt review payloads from being rejected by a pre-filter on their old raw digest. Compare evidence ID, stance, source kind/reference, label, author, note, confidence, timestamp and protected-memory flag with the canonical MemoryOS2 receipt.
+- Preserve old pending reviews whose server-generated receipt clock was included in their legacy digest, but only when the internal `observedAtOrigin: "server-receipt"` marker is present and all canonical evidence fields still match. Arbitrary/tampered digests remain rejected.
+- Added six review-snapshot tampering regressions plus recovery of a pending server-receipt review with the pre-normalization digest. Updated the HTTP smoke to reconcile the canonical decision response with persisted confidence rather than requiring every valid approval to increase a confidence already at its ceiling.
+- Added a genuine process-restart smoke: stage evidence, stop the server, restart with the same `STATE_DIR`, and assert that the exact pending review/item was restored. Because the public review list is intentionally a projection, the internal payload is verified by successfully approving the restored review through the canonical decision endpoint. The smoke now fails explicitly if the memory fixture is empty instead of silently skipping this path.
+- **Validation:** PENDING exact-head typecheck, focused Hexis tests, server smoke and Unified project integration. GitHub Actions runs on the current head repeatedly finish without steps or downloadable logs (`BlobNotFound`); therefore they establish neither PASS nor a code-test failure. No progress/readiness/recall scores increased. `main` and the canonical Release ZIP remain untouched.
+
 ## WorkPass390 — fail closed on null Hexis HTTP envelopes (2026-10-26)
 
 - **Code/test commits:** `f7dab0d78bd33ede255c04ff5a37c2f635dd4f6e`, `9d00c3001a97d5551145cf0bb2c51fcdfebe7424`.

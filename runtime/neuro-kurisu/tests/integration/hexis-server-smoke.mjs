@@ -7,7 +7,7 @@ const root = path.resolve(process.cwd());
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-'));
 const port = 35600 + Math.floor(Math.random() * 800);
 const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: stateDir };
-const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+let child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let output = '';
 child.stdout.on('data', d => output += d);
 child.stderr.on('data', d => output += d);
@@ -26,7 +26,8 @@ try {
   if (!sync.ok || typeof sync.scanned !== 'number') throw new Error('hexis-sync');
   const memoryIndex = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=8`)).json();
   if (!memoryIndex.ok || !Array.isArray(memoryIndex.memoryIndex)) throw new Error('hexis-memory-index');
-  if (memoryIndex.memoryIndex[0]?.id) {
+  if (!memoryIndex.memoryIndex[0]?.id) throw new Error('hexis-smoke-requires-canonical-memory-for-evidence-review');
+  {
     const legacyEvidence = {
       memoryId: memoryIndex.memoryIndex[0].id,
       stance: 'supports',
@@ -45,13 +46,24 @@ try {
 
     // The existing generic review endpoint must dispatch evidence proposals
     // through the canonical compare-before-write gate, not direct Hexis mutation.
+    const confidenceBeforeDecision = memoryIndex.memoryIndex[0].confidence;
     const reviewed = await (await post('/api/organism/integration/hexis/reviews/decide', {
       reviewId: belief.result.reviewId,
       itemId: belief.result.reviewItemId,
       decision: 'approve',
     })).json();
-    if (!reviewed.ok || reviewed.result?.status !== 'decided' || reviewed.result?.confidenceChanged !== true)
+    // A valid approval can have no numeric delta at the policy ceiling. Require
+    // the canonical audit result and reconcile it with actual persisted memory.
+    if (!reviewed.ok || reviewed.result?.status !== 'decided' ||
+        typeof reviewed.result?.confidenceChanged !== 'boolean' ||
+        typeof reviewed.result?.auditId !== 'string' || !reviewed.result.auditId)
       throw new Error('hexis-generic-review-must-use-canonical-gate:' + JSON.stringify(reviewed));
+    const afterDecisionIndex = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=128`)).json();
+    const canonicalAfterDecision = afterDecisionIndex.memoryIndex?.find(memory => memory.id === belief.result.memoryId);
+    if (!canonicalAfterDecision ||
+        Math.abs(canonicalAfterDecision.confidence - reviewed.result.confidence01) > 1e-9 ||
+        reviewed.result.confidenceChanged !== (Math.abs(canonicalAfterDecision.confidence - confidenceBeforeDecision) > 1e-12))
+      throw new Error('hexis-generic-review-canonical-confidence-mismatch:' + JSON.stringify({ reviewed: reviewed.result, canonicalAfterDecision }));
 
     // Malformed/null bodies must reach schema validation rather than throwing in the route guard.
     const emptyEnvelopeResponse = await post('/api/organism/integration/hexis/evidence/review', null);
@@ -86,6 +98,39 @@ try {
       decision: 'auto-approve',
     });
     if (invalidDecisionResponse.status !== 400) throw new Error('hexis-evidence-invalid-decision-must-fail-closed');
+
+    // Prove the pending review is durable after a hard process crash, not just
+    // after graceful shutdown/flush. The staging HTTP response was already sent.
+    await new Promise(resolve => {
+      if (child.exitCode !== null || child.signalCode !== null) {
+        resolve();
+        return;
+      }
+      child.once('exit', () => resolve());
+      child.kill('SIGKILL');
+    });
+    child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    child.stdout.on('data', d => output += d);
+    child.stderr.on('data', d => output += d);
+    let restoredReady = false;
+    for (let i = 0; i < 180; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      try {
+        const response = await fetch(`${base}/api/health`);
+        const data = await response.json();
+        if (response.ok && data.ready === true) { restoredReady = true; break; }
+      } catch {}
+    }
+    if (!restoredReady) throw new Error(`hexis-review-restart-server-not-ready:${output.slice(-800)}`);
+    const reviewsAfterRestart = await (await fetch(`${base}/api/organism/integration/hexis/reviews`)).json();
+    const restoredReview = reviewsAfterRestart.reviews?.find(review => review.id === staged.result.reviewId);
+    const restoredItem = restoredReview?.items?.find(item => item.id === staged.result.reviewItemId);
+    // The public review list is a projection and intentionally omits the
+    // internal evidence payload. The exact pending IDs are checked here; the
+    // subsequent canonical approval proves the persisted payload was restored.
+    if (!reviewsAfterRestart.ok || !restoredItem || restoredItem.status !== 'pending')
+      throw new Error('hexis-pending-review-not-restored-after-restart:' + JSON.stringify({ reviewsAfterRestart, restoredItem }));
+
     const decidedResponse = await post('/api/organism/integration/hexis/evidence/decide', {
       reviewId: staged.result.reviewId,
       itemId: staged.result.reviewItemId,

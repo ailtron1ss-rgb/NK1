@@ -1,3 +1,53 @@
+## WorkPass397 — стабильная идентичность legacy evidence (2026-10-26)
+
+- **Код:** `05a349cdcbff7a8397e29f0ecf4cd8db15ddd8f5`; **регрессионный контракт:** `14f25b449177d7de15824c433ababe5b81233362`.
+- Idempotency key для legacy `hexisReviseBelief` теперь зависит только от canonical memory ID, фиксированного legacy source kind, source reference и content hash. Изменение stance/label/note/confidence при повторной отправке использует тот же evidence ID и должно давать конфликт payload/digest вместо создания новой записи.
+- Добавлен статический контракт, закрепляющий immutable identity tuple и запрещающий включать mutable metadata в idempotency key.
+- **Валидация:** PENDING exact-head typecheck, focused Hexis review test, server smoke и Unified integration. Текущие Actions не отдают шаги/журналы; PASS не заявляется. Оценки прогресса/readiness/recall не изменены; `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass396 — убрать legacy-обход Hexis review gate (2026-10-26)
+
+- **Код:** `bb38a516fe2b3671dad929a9c756c339428c0ded`; **регрессионный контракт:** `282462422fedb7202f3c35be95541a3cbaff6bd5` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`.
+- Найден оставшийся in-process путь: `OrganismCore.hexisReviseBelief` раньше напрямую вызывал `HexisAdaptationFabric.reviseBelief` и `MemoryFabric.updateSignals`, меняя confidence без pending review. Теперь он преобразует legacy envelope в стабильный server-receipt evidence ID и вызывает существующий transactional `ingestHexisEvidenceForReview`.
+- Legacy helper fail-closed проверяет наличие корректного evidence envelope, stance, текстовые поля, source reference и численную confidence в диапазоне [0,1]. После этого confidence может измениться только через явное решение canonical review.
+- В `cognitive-hexis-evidence-review.mjs` добавлен статический source-contract: helper обязан вызвать canonical ingress и не должен напрямую менять belief; проверки входных guards закреплены отдельными assertions.
+- **Валидация:** PENDING exact-head typecheck, focused Hexis review test, server smoke и Unified integration. Последние Actions возвращают failure без шагов/логов; причинность не установлена, PASS не заявляется. Прогресс/readiness/recall оценки не повышены; `main` и canonical Release ZIP не менялись.
+
+---
+
+
+## WorkPass395 — привязка всех Hexis review decisions к каноническому evidence (2026-10-26)
+
+- **Код:** `c43d05d2e6be965e4c16bcc0d803d5ee48e30f85`; **регрессии:** `98421af0dfc17fe6c5855490554ae77116c74755`; ветка `fix/hexis-review-digest-binding-live-2026-10-26`.
+- Исправлен пробел в границе решений: теперь `correct` и `forget`, как и `approve`, перед изменением review-state сверяют сохранённый payload с каноническим evidence receipt в MemoryOS2. Тамpered source/note/stance/timestamp/confidence не может превратиться в завершённое решение только потому, что путь не пишет confidence напрямую.
+- Тесты расширены до 18 комбинаций: 6 видов подмены метаданных × `approve`/`correct`/`forget`. При отказе должны сохраняться MemoryOS2 и pending review.
+- **Валидация:** PENDING exact-head runtime typecheck, focused Hexis evidence-review, server smoke и Unified integration. Тесты добавлены, но ещё не выполнялись в этой сессии; PASS, recall-uplift и production readiness не заявляются. Оценки прогресса не изменены; `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass394 — crash-recovery Hexis review после SIGKILL (2026-10-26)
+
+- **Код/тест:** `c8ad7c0327edf63a03ce9152577d9397097fdf1a` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`.
+- Smoke теперь принудительно завершает сервер через SIGKILL после подтверждённого ответа о создании canonical evidence-review, запускает его снова с тем же `STATE_DIR`, проверяет восстановление точного pending review/item и одобряет восстановленный review через canonical gate.
+- Пустой memory fixture больше не позволяет тихо пропустить сценарий — smoke завершится явной ошибкой.
+- **Валидация:** PENDING exact-head typecheck, focused Hexis тесты и Unified integration. GitHub Actions для последних heads возвращает failed без доступных шагов/логов (`BlobNotFound`), поэтому это не считается ни PASS, ни доказанным code failure.
+- Прогресс/readiness/recall оценки не изменены; `main` и canonical Release ZIP не менялись.
+
+---
+
+## WorkPass393 — каноническая привязка Hexis review и восстановление после рестарта (2026-10-26)
+
+- **Код/тесты до tracker-коммита:** `0af14583e35a5edb76d05ab99e1b916e828650ab` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`, поверх актуального на тот момент integration head `b25b6b572f4f0366fd3b23f795763e921bf84f7f`.
+- В каноническом bridge общий digest используется при ingress, создании review и проверке решения. Перед одобрением payload повторно проходит strict adapter и сверяется с точной записью MemoryOS2 по evidence ID, digest, stance, source kind/reference, label, author, note, confidence, timestamp и protected-memory flag.
+- Для старых pending reviews с `observedAtOrigin=server-receipt` сохранена ограниченная совместимость со старым raw digest. Она разрешена только при совпадении полной канонической записи и служебной метки; изменение любого evidence-поля по-прежнему отклоняется.
+- Регрессии: шесть tampering-сценариев; старый receipt-time digest; smoke сверяет результат с сохранённой confidence без предположения, что значение обязано расти у policy ceiling; отдельный процессный restart smoke требует наличие canonical-memory fixture, проверяет восстановление точного pending review из прежнего `STATE_DIR`, затем проверяет успешное одобрение восстановленного review через canonical gate.
+- **Валидация:** PENDING exact-head typecheck, focused Hexis tests, серверный smoke и Unified integration. GitHub Actions на последнем head завершились до получения шагов/журналов; такие запуски не считаются ни доказанным code failure, ни PASS.
+- Проценты готовности, recall и learning uplift не изменены. `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass390 — безопасная обработка null-envelope в Hexis HTTP API (2026-10-26)
 
 - **Коммиты кода/теста:** `f7dab0d78bd33ede255c04ff5a37c2f635dd4f6e`, `9d00c3001a97d5551145cf0bb2c51fcdfebe7424`.

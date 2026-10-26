@@ -359,17 +359,17 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass390",
+    "id": "WorkPass397",
     "date": "2026-10-26",
-    "branch": "work/hexis-evidence-adapter-2026-10-26",
-    "codeCommit": "9d00c3001a97d5551145cf0bb2c51fcdfebe7424",
-    "summary": "Hardened the public Hexis evidence route against a null request body: the internal timestamp-origin guard now checks for a non-null object before inspecting own keys, so malformed envelopes can be rejected by normal schema validation instead of throwing a route-level TypeError.",
+    "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
+    "codeCommit": "05a349cdcbff7a8397e29f0ecf4cd8db15ddd8f5",
+    "testCommit": "14f25b449177d7de15824c433ababe5b81233362",
+    "summary": "Bound the legacy hexisReviseBelief evidence ID to canonical memory ID plus fixed legacy source kind, source reference and content hash. Mutable stance/label/note/confidence stay in the evidence digest; changing any of them on replay now conflicts under the same evidence ID rather than minting a new ID.",
     "testsAdded": [
-      "HTTP smoke requires a JSON null evidence envelope to return 400",
-      "HTTP smoke still rejects client-supplied observedAtOrigin=server-receipt",
-      "generic review dispatch calls the canonical evidence gate first and fails closed except on explicit not-a-valid-hexis-evidence-review"
+      "static source contract checks the exact stable identity tuple",
+      "static source contract forbids stance, label, confidence or note from being part of the idempotency key"
     ],
-    "validationStatus": "PENDING exact-head typecheck, focused Hexis tests and Unified integration. Actions runs on the prior two code heads finished without steps/logs; they do not establish pass or fail of the code tests.",
+    "validationStatus": "PENDING exact-head typecheck, cognitive-hexis-evidence-review.mjs, Hexis server smoke and Unified integration. GitHub Actions attempts currently expose no step logs, so no pass/failure attribution is possible.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
@@ -638,10 +638,60 @@
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
+    },
+    {
+      "id": "WorkPass393",
+      "date": "2026-10-26",
+      "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
+      "codeCommit": "0af14583e35a5edb76d05ab99e1b916e828650ab",
+      "summary": "Hexis review approval now re-canonicalizes pending evidence, recomputes the shared canonical digest, compares all provenance/stance/time/confidence fields with the authoritative MemoryOS2 receipt, preserves a restricted legacy digest form only for server-generated receipt timestamps, verifies review state survives a real server restart, and checks the server smoke against persisted canonical confidence.",
+      "testsAdded": [
+        "review evidence tampering regressions for source reference, label, note, observedAt, stance and confidence",
+        "server-receipt digest normalization and recovery of pre-normalization pending review snapshots",
+        "generic review smoke reconciles returned audit/confidence with persisted MemoryOS2 state",
+        "server restart smoke confirms the exact pending evidence review survives restore before approval"
+      ],
+      "validationStatus": "PENDING exact-head typecheck, focused adapter/review tests, Hexis server smoke and Unified integration. Actions runs on this branch have failed before step details/logs were available; they do not prove either a code failure or a pass. No progress/readiness/recall scores increased; main and canonical Release ZIP unchanged.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
+    {
+      "id": "WorkPass396",
+      "date": "2026-10-26",
+      "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
+      "codeCommit": "f30d889e15192cf05eaf540614cc1479912314d6",
+      "testCommit": "621b774d8721dffaa42c010241644924a9a8b0bb",
+      "summary": "Removed the remaining legacy in-process Hexis confidence mutation path. OrganismCore.hexisReviseBelief now adapts the old evidence envelope into an idempotent server-receipt evidence event and stages it through the canonical transactional evidence-to-review path; no direct reviseBelief/updateSignals mutation remains in that compatibility method.",
+      "testsAdded": [
+        "static source contract checks hexisReviseBelief delegates to ingestHexisEvidenceForReview",
+        "static source contract rejects direct hexisAdaptation.reviseBelief and MemoryFabric.updateSignals from the legacy compatibility method",
+        "legacy input rejects missing evidence source references, invalid stance and invalid confidence before staging"
+      ],
+      "validationStatus": "PENDING exact-head runtime typecheck, cognitive-hexis-evidence-review.mjs, Hexis server smoke and Unified project integration. Recent GitHub Actions runs are marked failed but return no step details or downloadable logs, so no pass/failure attribution is possible.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
+    {
+      "id": "WorkPass397",
+      "date": "2026-10-26",
+      "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
+      "codeCommit": "05a349cdcbff7a8397e29f0ecf4cd8db15ddd8f5",
+      "testCommit": "14f25b449177d7de15824c433ababe5b81233362",
+      "summary": "Bound the legacy hexisReviseBelief evidence ID to canonical memory ID plus fixed legacy source kind, source reference and content hash. Mutable stance/label/note/confidence stay in the evidence digest; changing any of them on replay now conflicts under the same evidence ID rather than minting a new ID.",
+      "testsAdded": [
+        "static source contract checks the exact stable identity tuple",
+        "static source contract forbids stance, label, confidence or note from being part of the idempotency key"
+      ],
+      "validationStatus": "PENDING exact-head typecheck, cognitive-hexis-evidence-review.mjs, Hexis server smoke and Unified integration. GitHub Actions attempts currently expose no step logs, so no pass/failure attribution is possible.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
     }
   ],
-  "latestUnverifiedCodeTestHead": "9d00c3001a97d5551145cf0bb2c51fcdfebe7424",
-  "branchHeadBeforeTrackerCommit": "9d00c3001a97d5551145cf0bb2c51fcdfebe7424",
+  "latestUnverifiedCodeTestHead": "14f25b449177d7de15824c433ababe5b81233362",
+  "branchHeadBeforeTrackerCommit": "14f25b449177d7de15824c433ababe5b81233362",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -681,102 +731,21 @@
     }
   ],
   "latestEngineeringCheckpoint": {
-    "workpass": "WorkPass390",
-    "sourceBranch": "work/hexis-evidence-adapter-2026-10-26",
-    "codeTestHead": "9d00c3001a97d5551145cf0bb2c51fcdfebe7424",
+    "workpass": "WorkPass397",
+    "sourceBranch": "fix/hexis-review-digest-binding-live-2026-10-26",
+    "codeTestHead": "14f25b449177d7de15824c433ababe5b81233362",
     "validationStatus": "pending-exact-head-ci",
-    "summary": "Hardened the public Hexis evidence route against a null request body: the internal timestamp-origin guard now checks for a non-null object before inspecting own keys, so malformed envelopes can be rejected by normal schema validation instead of throwing a route-level TypeError. Progress/readiness scores remain unchanged; main and canonical Release ZIP are untouched.",
+    "summary": "Bound the legacy hexisReviseBelief evidence ID to canonical memory ID plus fixed legacy source kind, source reference and content hash. Mutable stance/label/note/confidence stay in the evidence digest; changing any of them on replay now conflicts under the same evidence ID rather than minting a new ID. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   },
   "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass356",
-    "sourceBranch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26",
-    "codeTestHead": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
-    "baseHead": "fce603ecc674887d20ebb2da187103ddce43171a",
-    "validationStatus": "exact-pr-head-ci-pass",
-    "summary": "Strict own-data-field ingress for CEF tool receipt traces, authoritative receipt revisions, and external observations; reject lossy IDs, type coercion, confidence outside [0,1], invalid counters and accessor-backed inputs. Exact PR-head CI passed all 13 focused workflows, including the full Unified project integration suite and final release gate.",
+    "workpass": "WorkPass394",
+    "sourceBranch": "fix/hexis-review-digest-binding-live-2026-10-26",
+    "codeTestHead": "c8ad7c0327edf63a03ce9152577d9397097fdf1a",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Strengthened the Hexis server smoke to SIGKILL the server after an acknowledged evidence-review response, restart with the same STATE_DIR, require the exact pending review/item to be restored, and approve it through the canonical gate. The smoke now fails closed if the canonical memory fixture is absent. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
-    "validationRuns": [
-      {
-        "name": "Unified project integration suite",
-        "runId": 40290594913,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594913",
-        "conclusion": "success"
-      },
-      {
-        "name": "Project progress ledger integrity",
-        "runId": 40290595259,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595259",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass110 continual learning metrics",
-        "runId": 40290594892,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594892",
-        "conclusion": "success"
-      },
-      {
-        "name": "P26 Learning Validation",
-        "runId": 40290594766,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594766",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass108 paired evidence identity and verified promotion gate",
-        "runId": 40290594950,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594950",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass105 verified outcome ledger",
-        "runId": 40290595167,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595167",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass99 replay strategy benchmark",
-        "runId": 40290595099,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595099",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass102 reservoir replay baseline",
-        "runId": 40290595142,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595142",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass292 verified experience lanes",
-        "runId": 40290594942,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594942",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass291 reflective payload budget",
-        "runId": 40290595047,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595047",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass293 autonomous P23 repair revision",
-        "runId": 40290594927,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594927",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass294 correlated external postconditions",
-        "runId": 40290594836,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594836",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass287-288 cognitive contracts",
-        "runId": 40290595162,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595162",
-        "conclusion": "success"
-      }
-    ],
-    "validatedPrHead": "d4ddbbe2495ca6523d4b2c4f04129bf487ab189b"
+    "validationRuns": []
   }
 }

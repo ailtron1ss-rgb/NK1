@@ -2818,7 +2818,15 @@ export class OrganismCore {
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return { recorded, scanned: items.length };
     }
-    hexisReviseBelief(input: {
+    /**
+     * Compatibility entry point for older in-process callers.
+     *
+     * Evidence no longer changes canonical belief confidence immediately. This
+     * helper normalizes the legacy evidence shape into the same canonical
+     * evidence→pending-review pipeline used by HTTP ingress; only an explicit
+     * decision through decideHexisEvidenceReview may revise confidence.
+     */
+    async hexisReviseBelief(input: {
         memoryId: string;
         stance: HexisEvidenceStance;
         evidence: {
@@ -2830,16 +2838,67 @@ export class OrganismCore {
         };
         context?: string;
     }) {
+        if (!input || typeof input !== 'object' || !input.evidence ||
+            typeof input.evidence !== 'object' || Array.isArray(input.evidence))
+            return { ok: false, error: 'canonical-evidence-envelope-required', memoryId: String(input?.memoryId ?? '') };
         const memory = this.memorySubsystem.memoryOS.get(String(input.memoryId));
         if (!memory)
             return { ok: false, error: 'memory-not-found', memoryId: String(input.memoryId) };
-        const audit = this.hexisAdaptation.reviseBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: Number(memory.sourceAuthority01 ?? 0.5), evidence: input.evidence, stance: input.stance, context: input.context, protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical', at: Date.now() });
-        if (audit.applied) {
-            this.memorySubsystem.fabric.updateSignals(memory.id, { confidence: audit.posteriorConfidence01 }, 'hexis-belief-revision', { tick: this.persisted.state.tick });
-        }
-        this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
-        this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
-        return { ok: true, audit, memory: this.memorySubsystem.memoryOS.get(memory.id) };
+        if (input.stance !== 'supports' && input.stance !== 'contradicts')
+            return { ok: false, error: 'invalid-evidence-stance', memoryId: memory.id };
+
+        const rawRef = input.evidence.ref;
+        const contentHash = input.evidence.contentHash;
+        const label = input.evidence.label;
+        const rawNote = input.evidence.note;
+        if ((rawRef !== undefined && typeof rawRef !== 'string') ||
+            (contentHash !== undefined && typeof contentHash !== 'string') ||
+            (label !== undefined && typeof label !== 'string') ||
+            (rawNote !== undefined && typeof rawNote !== 'string') ||
+            (input.context !== undefined && typeof input.context !== 'string'))
+            return { ok: false, error: 'invalid-legacy-evidence-text', memoryId: memory.id };
+        const sourceRef = typeof rawRef === 'string' && rawRef.trim() ? rawRef : contentHash;
+        if (typeof sourceRef !== 'string' || !sourceRef.trim())
+            return { ok: false, error: 'canonical-evidence-source-reference-required', memoryId: memory.id };
+
+        const evidenceConfidence = input.evidence.trust01 ?? 0.5;
+        if (typeof evidenceConfidence !== 'number' || !Number.isFinite(evidenceConfidence) ||
+            evidenceConfidence < 0 || evidenceConfidence > 1)
+            return { ok: false, error: 'invalid-evidence-confidence', memoryId: memory.id };
+
+        const note = rawNote ?? input.context;
+        // Evidence identity is source-bound. Mutable review metadata (stance,
+        // label, note, confidence) belongs in the digest and must conflict if
+        // changed on replay; it must not mint another independent evidence ID.
+        const identity = JSON.stringify([
+            memory.id,
+            'legacy-hexis-belief-revise',
+            sourceRef,
+            contentHash ?? null,
+        ]);
+        const evidenceId = 'hexis:legacy:' + createHash('sha256').update(identity).digest('hex');
+        const result = await this.ingestHexisEvidenceForReview({
+            memoryId: memory.id,
+            evidenceId,
+            stance: input.stance,
+            source: {
+                kind: 'legacy-hexis-belief-revise',
+                ref: sourceRef,
+                ...(label === undefined ? {} : { label }),
+            },
+            observedAt: new Date().toISOString(),
+            observedAtOrigin: 'server-receipt',
+            confidence: evidenceConfidence,
+            ...(note === undefined ? {} : { note }),
+            protectedMemory: memory.kind === 'identity' || memory.kind === 'autobiographical',
+        });
+        return {
+            ok: result.status === 'review-pending' || result.status === 'duplicate',
+            status: result.status,
+            review: result,
+            requiresExplicitReview: true,
+            memory: this.memorySubsystem.memoryOS.get(memory.id),
+        };
     }
     /** Temporal views delegate to MemoryOS2; Hexis temporal rows remain audit/export projections only. */
     hexisTemporalAt(memoryId: string, at: number) {
