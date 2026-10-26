@@ -33,7 +33,7 @@ const SIGNED_OUTCOME_ARTIFACT_KEYS = ['payload', 'signature'] as const;
 /**
  * Snapshot only an exact plain data record. Reading descriptors rather than
  * properties prevents untrusted getters from running during evidence verification.
- * All proxy traps are treated as malformed input.
+ * Introspection exceptions fail closed; structural checks are not proof of caller provenance.
  */
 function snapshotPlainDataRecord(value: unknown, expectedKeys: readonly string[]): Record<string, unknown> | null {
   try {
@@ -110,8 +110,13 @@ export function ingestSignedOutcomeArtifact(
   // In particular, task split/family/prompt identity must not come from an unbound
   // parallel manifest, even if taskId/version/verifier happen to match.
   let suppliedManifestFingerprint: string;
+  let canonicalManifest: TaskManifestEntry[];
   try {
-    suppliedManifestFingerprint = new VerifiedOutcomeLedger(manifest).manifestFingerprint();
+    const suppliedManifestLedger = new VerifiedOutcomeLedger(manifest);
+    suppliedManifestFingerprint = suppliedManifestLedger.manifestFingerprint();
+    // Do not dereference the caller-owned array a second time: its prototype or
+    // properties could be changed after the manifest fingerprint was checked.
+    canonicalManifest = suppliedManifestLedger.snapshot().manifest;
   } catch {
     return { accepted: false, artifactFingerprint: '', rejection: 'invalid-supplied-manifest' };
   }
@@ -149,7 +154,7 @@ export function ingestSignedOutcomeArtifact(
   if (!signatureBytes) {
     return { accepted: false, artifactFingerprint: fingerprint, rejection: 'invalid-signature-encoding' };
   }
-  const task = manifest.find(entry => entry.taskId === payload.taskId);
+  const task = canonicalManifest.find(entry => entry.taskId === payload.taskId);
   if (!task || task.version !== payload.taskVersion || task.verifierId !== payload.verifierId) {
     return { accepted: false, artifactFingerprint: fingerprint, rejection: 'manifest-task-or-verifier-mismatch' };
   }
