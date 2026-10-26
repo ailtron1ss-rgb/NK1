@@ -4,7 +4,7 @@
 - Extended `EmbodimentIntent v1` additively with optional `headAngleX/Y`, `bodyAngleX/Y/Z` and `breathIntensity`; old v1 payloads still have a fallback.
 - Wired both Live2D viewers to separate eye gaze from head rotation and apply `ParamBodyAngleX/Y/Z` plus animated `ParamBreath`. These IDs are present in the current Kurisu model's CDI3 parameter catalog.
 - Added pose-policy, bounds, protocol-schema and dual-viewer integrity assertions. Expanded the full production specification at [NEURO_KURISU_2P5D_BODY_PRODUCTION_SPEC_RU.md](docs/NEURO_KURISU_2P5D_BODY_PRODUCTION_SPEC_RU.md).
-- Validation status: source and regression changes are committed, but exact branch-head execution has not yet been confirmed in this entry; no new CI pass or device-level result is claimed.
+- Validation on code head `ace708a42d08047c5742979a2cd8e7d6b973812c`: the `Live2D runtime validation` workflow passed, including assets sync, both Live2D browser suites, expression cache, runtime `test:live2d`, app `test:embodiment-timeline`, and strict app TypeScript check. The separate `WorkPass110 continual learning metrics` workflow failed at its causal-experience/restore-regression step outside these avatar paths ([run details](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40281959561/job/121437016261)); overall repository checks therefore are not fully green. Android/Termux, measured-audio lip-sync validation, and actual layered PSD/GLB asset validation remain pending.
 - Scope boundary: this pass improves the existing Live2D full-body rig. A newly authored layered PSD/Cubism project and true 3D `.blend/.glb` model remain production gates, as do visual calibration, licence/provenance review, physical audio and Android/Termux testing.
 
 ---
