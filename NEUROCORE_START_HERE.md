@@ -1,3 +1,17 @@
+## Latest checkpoint — WorkPass331 (2026-10-26)
+
+- **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; continue in draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), targeting `work/node24-project-pin-rebased-20261025`. No merge to `main`; no release ZIP update.
+- **Code commit:** `e1763c8062e118a4144891d9e00b825d7c112177` adds configurable per-family promotion floors and places normalized evaluation policy in the proposal identity. Test commits: `345684a70c94af7829da72936ea4fa6228867746`, `5ba5088d4e97bf45211eb367c88325290bed27c1`, `fb9ca01c8c8c7b7c20e06a5d6a4726cd80df69fd`.
+- **Defect fixed:** a positive aggregate holdout gain could permit a proposal when an intended task family had zero gain. `minimumFamilyGainByFamily` now imposes explicit per-family floor(s); each configured family must have at least `minCompleteSeeds` complete paired seeds and meet the floor. Unmeasured family or insufficient family seeds fails closed.
+- **Approval identity:** the exact policy is retained on the proposal and included in the digest identity. Changing thresholds changes `proposalId` even if the result remains accepted; the proposal continues to have `canActivateAutomatically: false`.
+- **Tests added to existing proposal regression:** overall gain hiding zero memory-family improvement is denied when memory is required; tool-use floor is accepted when its measured gain beats the threshold; missing transfer evidence is rejected; invalid threshold maps fail; passing but different thresholds still yield different proposal IDs.
+- **CI wiring:** confirmed `.github/workflows/workpass110-continual-learning-metrics.yml` already includes `VerifiedSkillPromotion.ts` and `p23-verified-skill-promotion-proposal.mjs` in path filters and runs `npm run test:p23:verified-skill-promotion-proposal`.
+- **Validation:** test/typecheck have not been run on this new HEAD. Do not infer PASS from earlier WorkPass110 results, which predate these commits. Exact-head Actions lookup returned no runs/status rows through the available connector; that is not a test result.
+- **Next code-first step:** check the exact-head WorkPass110 run once Actions exposes it; fix concrete TypeScript or regression errors. Then ensure the skill's intended family policy is passed by the actual proposal-producing path, and build real independently held-out tool-use/transfer datasets with paired seeds; do not promote on the synthetic fixtures alone.
+- **Release gates remain:** external held-out learning/transfer efficacy, UI/Live2D/TTS, Android/Termux audio, long soak, license review and reproducible release archive.
+
+---
+
 ## Latest checkpoint — WorkPass330 (2026-10-26)
 
 - **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; continuation PR recorded in this handover as [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135). No merge to `main` and no release ZIP update.
