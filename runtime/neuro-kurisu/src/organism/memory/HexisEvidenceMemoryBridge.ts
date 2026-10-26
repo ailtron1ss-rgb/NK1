@@ -516,22 +516,9 @@ export function decideHexisEvidenceReview(
     return reject("invalid-review-evidence-metadata");
   }
 
-  if (decision !== "approve") {
-    const decided = fabric.decideLearningReview(reviewId, reviewItemId, decision, correction);
-    if (!decided) return reject("review-decision-rejected");
-    const memory = memoryOS.snapshot().items.find((candidate) => candidate.id === payload.memoryId);
-    return {
-      status: "decided",
-      reviewId,
-      reviewItemId,
-      memoryId: payload.memoryId,
-      decision,
-      confidence01: memory?.confidence ?? Number(payload.baselineConfidence01 ?? 0),
-      confidenceChanged: false,
-      reason: decision === "correct" ? "correction-saved-in-review-only" : "review-dismissed-without-memory-deletion",
-    };
-  }
-
+  // All decisions, including review-only correct/forget, must refer to the
+  // exact canonical evidence receipt. Otherwise a tampered persisted review
+  // could leave a false audit decision even though it cannot write confidence.
   const memorySnapshot = memoryOS.snapshot();
   const memory = memorySnapshot.items.find((candidate) => candidate.id === payload.memoryId);
   if (!memory) return reject("canonical-memory-no-longer-exists");
@@ -539,6 +526,21 @@ export function decideHexisEvidenceReview(
   if (!evidenceRecord) return reject("canonical-evidence-receipt-missing-or-retired");
   if (!matchesCanonicalReviewEvidence(payload, memory.id, evidenceRecord)) {
     return reject("canonical-review-evidence-binding-mismatch");
+  }
+
+  if (decision !== "approve") {
+    const decided = fabric.decideLearningReview(reviewId, reviewItemId, decision, correction);
+    if (!decided) return reject("review-decision-rejected");
+    return {
+      status: "decided",
+      reviewId,
+      reviewItemId,
+      memoryId: payload.memoryId,
+      decision,
+      confidence01: memory.confidence,
+      confidenceChanged: false,
+      reason: decision === "correct" ? "correction-saved-in-review-only" : "review-dismissed-without-memory-deletion",
+    };
   }
 
   const baseline = payload.baselineConfidence01;
