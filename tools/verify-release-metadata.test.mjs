@@ -113,7 +113,7 @@ test('release metadata validator fails closed when SUPER_VERSION.date is missing
   await fs.writeFile(p, JSON.stringify(manifest, null, 2));
   const r = run(root);
   assert.equal(r.status, 1, r.stdout + r.stderr);
-  assert.match(r.stdout, /release-date-is-valid-iso-calendar-date[\\s\\S]*?"pass": false/);
+  assert.match(r.stdout, /release-date-is-valid-iso-calendar-date[\s\S]*?"pass": false/);
 });
 
 test('release metadata validator rejects impossible calendar dates', async t => {
@@ -125,5 +125,5 @@ test('release metadata validator rejects impossible calendar dates', async t => 
   await fs.writeFile(p, JSON.stringify(manifest, null, 2));
   const r = run(root);
   assert.equal(r.status, 1, r.stdout + r.stderr);
-  assert.match(r.stdout, /release-date-is-valid-iso-calendar-date[\\s\\S]*?"pass": false/);
+  assert.match(r.stdout, /release-date-is-valid-iso-calendar-date[\s\S]*?"pass": false/);
 });
