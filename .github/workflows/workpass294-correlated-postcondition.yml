@@ -16,6 +16,7 @@ on:
       - 'runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs'
       - 'app/package.json'
       - 'app/package-lock.json'
+      - 'app/src/legacy/avatar/safeLocalStorage.test.mjs'
       - 'package.json'
       - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/src/organism/system/ActionGateway.ts'
