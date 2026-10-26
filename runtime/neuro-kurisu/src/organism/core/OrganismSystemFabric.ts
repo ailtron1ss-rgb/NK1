@@ -8,7 +8,7 @@ import { EvidenceResearchSubsystemRuntime } from './EvidenceResearchSubsystemRun
 import { organismSystemContract, organismSystemContracts, type OrganismSystemContract, type ResolvedOrganismSystemContract, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
 import { WillIntegrationBridge } from '../integration/will/WillIntegrationBridge.ts';
 import { LuminaAdaptationFabric } from '../integration/lumina/LuminaAdaptationFabric.ts';
-import { HexisAdaptationFabric } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { HexisAdaptationFabric, type HexisGoalProposal } from '../integration/hexis/HexisAdaptationFabric.ts';
 import { HexisCanonicalMemoryProjector } from '../integration/hexis/HexisCanonicalMemoryProjector.mjs';
 import { LettaGovernanceAdaptationFabric } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric } from '../integration/conscio/ConscioAdaptationFabric.ts';
@@ -23,6 +23,12 @@ export interface OrganismSystemFabricSnapshot {
   capturedAt: number;
 }
 
+
+const hmxGraphRelation=(value:unknown):'supports'|'contradicts'|'causes'|'associated'|'about'|'located' => {
+  const relation=String(value??'').toLowerCase();
+  if(relation==='supports'||relation==='contradicts'||relation==='causes'||relation==='about'||relation==='located'||relation==='associated') return relation;
+  return 'associated';
+};
 
 function runtimeHealth(runtime: { systemName:string; snapshot(): unknown }): OrganismSystemHealthSnapshot {
   const started=Date.now();
@@ -114,6 +120,135 @@ export class OrganismSystemFabric {
       const runtime = this[contract.name!];
       return { ...contract, systemName: runtime.systemName, dependencies:[...runtime.dependencies], capabilityNames:[...contract.capabilityNames], capabilities:[...contract.capabilityNames], snapshot:()=>runtime.snapshot(), health:()=>runtimeHealth(runtime) };
     });
+  }
+
+  /**
+   * Materialize only an explicitly approved Hexis goal into NK1's agency project
+   * registry. The canonical project remains paused, never 'proposed', until the
+   * caller invokes activateHexisGoalProposal() as a separate decision.
+   */
+  materializeApprovedHexisGoalProposal(proposalId:string):{
+    proposal:HexisGoalProposal;
+    project:import('../cognition/evolution/SelfProjectEngine.ts').SelfProject;
+  } {
+    const proposal=this.hexisAdaptation.getGoalProposal(proposalId);
+    if(!proposal) throw new Error('hexis-goal-proposal-not-found');
+    const existingProject=this.agency.selfProjects.snapshot().projects.find(project=>project.hexisProposalId===proposal.id);
+    if(proposal.status==='materialized'){
+      if(!existingProject || existingProject.id!==proposal.canonicalGoalId) throw new Error('hexis-materialized-goal-project-missing');
+      return {proposal,project:existingProject};
+    }
+    if(proposal.status!=='approved') throw new Error('hmx-goal-must-be-approved-before-materialization');
+
+    const projectState=this.agency.selfProjects.snapshot();
+    const hexisState=this.hexisAdaptation.snapshot();
+    try {
+      const project=this.agency.selfProjects.materializeApprovedHexisGoal({
+        proposalId:proposal.id,
+        sourceLineageId:proposal.sourceLineageId,
+        sourceRef:proposal.sourceRef,
+        title:proposal.title,
+        description:proposal.description,
+        importance:proposal.importance,
+        urgency:proposal.urgency,
+        confidence:proposal.confidence,
+        approvedAt:proposal.decidedAt ?? proposal.createdAt,
+      });
+      const materialized=this.hexisAdaptation.markGoalProposalMaterialized(proposal.id,project.id);
+      if(!materialized || materialized.status!=='materialized') throw new Error('hexis-goal-materialization-receipt-failed');
+      return {proposal:materialized,project};
+    } catch(error) {
+      this.agency.selfProjects.restore(projectState);
+      this.hexisAdaptation.restore(hexisState);
+      throw error;
+    }
+  }
+
+  /**
+   * Explicit activation gate. Resolve already-imported memory endpoints by their
+   * source refs, project only resolvable goal edges, and record deferred edges
+   * rather than pretending unresolved Hexis relationships were integrated.
+   */
+  activateHexisGoalProposal(proposalId:string):{
+    proposal:HexisGoalProposal;
+    project:import('../cognition/evolution/SelfProjectEngine.ts').SelfProject;
+    receipt:NonNullable<HexisGoalProposal['goalRelationshipReceipt']>;
+  } {
+    const proposal=this.hexisAdaptation.getGoalProposal(proposalId);
+    if(!proposal) throw new Error('hexis-goal-proposal-not-found');
+    if(proposal.status!=='materialized' || !proposal.canonicalGoalId) throw new Error('hmx-goal-must-be-materialized-before-activation');
+    const project=this.agency.selfProjects.snapshot().projects.find(item=>item.id===proposal.canonicalGoalId && item.hexisProposalId===proposal.id);
+    if(!project) throw new Error('hexis-materialized-goal-project-missing');
+    if(proposal.goalRelationshipReceipt){
+      if(project.status==='active') return {proposal,project,receipt:proposal.goalRelationshipReceipt};
+      throw new Error('hexis-goal-activation-state-inconsistent');
+    }
+
+    const projectState=this.agency.selfProjects.snapshot();
+    const hexisState=this.hexisAdaptation.snapshot();
+    const graphState=this.memory.semanticMemory.snapshot();
+    try {
+      const activeProject=this.agency.selfProjects.activateApprovedHexisGoal(proposal.canonicalGoalId,proposal.id);
+      if(!activeProject) throw new Error('hexis-goal-project-activation-failed');
+
+      const stage=this.hexisAdaptation.getHmxStage(proposal.stageId);
+      const stageIsApplied=Boolean(stage?.status==='applied');
+      const relationshipRows=stage && Array.isArray(stage.stagedSections?.relationships)
+        ? stage.stagedSections.relationships.filter((row:any)=>String(row?.source_ref??'')===proposal.sourceRef||String(row?.target_ref??'')===proposal.sourceRef)
+        : [];
+      const graphSourceKey='hexis:'+sha256Stable(proposal.sourceLineageId,'legacy').slice(0,12)+':goal:'+sha256Stable(proposal.sourceRef,'legacy').slice(0,24);
+      const goalNode=this.memory.semanticMemory.upsertNode(proposal.title,'goal',proposal.importance,graphSourceKey);
+      const semanticEdgeIds:string[]=[];
+      let deferred=0;
+      const canonicalItems=this.memory.fabric.canonicalSnapshot(false).items;
+      const graphNodes=this.memory.semanticMemory.snapshot().nodes;
+
+      for(const row of relationshipRows){
+        if(!stageIsApplied){deferred++;continue;}
+        const sourceRef=String(row?.source_ref??'');
+        const targetRef=String(row?.target_ref??'');
+        const otherRef=sourceRef===proposal.sourceRef?targetRef:sourceRef;
+        if(!otherRef || otherRef===proposal.sourceRef){deferred++;continue;}
+        const canonicalMemory=canonicalItems.find(item=>
+          item.context?.hexisMemoryRef===otherRef &&
+          item.context?.hexisSourceLineageId===proposal.sourceLineageId
+        );
+        const endpointKey=String(canonicalMemory?.context?.hexisGraphSourceKey??'');
+        const endpointNode=endpointKey?graphNodes.find(node=>String(node.sourceKey??'')===endpointKey):undefined;
+        if(!endpointNode){deferred++;continue;}
+        const relation=hmxGraphRelation(row?.edge_type);
+        const weightValue=row?.properties?.weight ?? row?.properties?.confidence ?? .55;
+        const weight=Number.isFinite(Number(weightValue))?Math.max(0,Math.min(1,Number(weightValue))):.55;
+        const edge=sourceRef===proposal.sourceRef
+          ? this.memory.semanticMemory.connect(goalNode.id,endpointNode.id,relation,weight)
+          : this.memory.semanticMemory.connect(endpointNode.id,goalNode.id,relation,weight);
+        semanticEdgeIds.push(edge.id);
+      }
+      const receipt={
+        sourceStageFound:stageIsApplied,
+        candidateRelationships:relationshipRows.length,
+        projected:semanticEdgeIds.length,
+        deferred,
+        semanticEdgeIds:[...new Set(semanticEdgeIds)],
+        at:Date.now(),
+      };
+      const activated=this.hexisAdaptation.markGoalProposalActivated(proposal.id,proposal.canonicalGoalId,receipt);
+      if(!activated) throw new Error('hexis-goal-activation-receipt-failed');
+      this.agency.deliberation.record({
+        requestedAction:null,
+        chosenAction:'activate-approved-hexis-goal',
+        externalPressure:.65,
+        intrinsicPressure:.35,
+        reason:'explicit approval followed by explicit Hexis goal activation: '+proposal.id,
+        autonomous:false,
+      });
+      return {proposal:activated,project:activeProject,receipt:activated.goalRelationshipReceipt!};
+    } catch(error) {
+      this.memory.semanticMemory.restore(graphState);
+      this.agency.selfProjects.restore(projectState);
+      this.hexisAdaptation.restore(hexisState);
+      throw error;
+    }
   }
 
   names(): OrganismSystemName[] { return ['self','governance','memory','world','embodiment','agency','research']; }
