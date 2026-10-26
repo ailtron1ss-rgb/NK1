@@ -840,6 +840,10 @@ async function route(req, res) {
                     protectedBelief: Boolean(input.protectedBelief),
                 });
                 await runtime.core.flush();
+                if (result?.ok === false) {
+                    const status = /not-found|missing/.test(String(result.error ?? '')) ? 404 : 409;
+                    return json(res, status, { ok: false, result });
+                }
                 return json(res, 200, { ok: true, result });
             }
             catch (error) {
