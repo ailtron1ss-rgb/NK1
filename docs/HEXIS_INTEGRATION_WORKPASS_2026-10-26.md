@@ -17,3 +17,5 @@
 The changes are committed on `fix/outcome-projection-index-restore-2026-10-26` and included in draft PR #236 against `workpass70-source`.
 
 The GitHub Actions wrappers report failed runs but expose no job steps and return `BlobNotFound` when logs are requested. This is not sufficient evidence of test failure in code, nor a passing test result. Unit/runtime tests, frontend typecheck/build and clean-machine operation remain unverified. Do not treat the branch or the Release ZIP as production-ready until those checks can run to completion.
+
+- The UI now stages external HMX JSON with an 8 MiB file precheck and a conservative 240,000-byte serialized request cap to remain below the server's default 256,000-byte request-body limit. Accept, canonical apply, goal materialization and goal activation each retain separate confirmation gates.
