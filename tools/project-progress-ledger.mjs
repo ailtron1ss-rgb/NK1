@@ -86,6 +86,12 @@ export function validateProjectProgressLedger(value) {
         !SHA1.test(value.ciSnapshot.currentBaseHead)) {
       issues.push('ci-snapshot-base-head-must-be-40-hex');
     }
+    // Current source may be newer than the last validated CI snapshot. Preserve historical
+    // evidence provenance instead of making every old successful run fail the current ledger.
+    if (typeof value.ciSnapshot.evidenceHead !== 'string' ||
+        !SHA1.test(value.ciSnapshot.evidenceHead)) {
+      issues.push('ci-snapshot-evidence-head-must-be-40-hex');
+    }
     if (value.ciSnapshot.observedAt !== undefined && !isIsoCalendarDate(value.ciSnapshot.observedAt)) {
       issues.push('ci-snapshot-observed-at-must-be-iso-date');
     }
@@ -107,9 +113,9 @@ export function validateProjectProgressLedger(value) {
       }
       if (typeof check.testedHead !== 'string' || !SHA1.test(check.testedHead)) {
         issues.push('ci-check-' + index + '-tested-head-must-be-40-hex');
-      } else if (typeof value.sourceHeadAtSnapshot === 'string' &&
-          SHA1.test(value.sourceHeadAtSnapshot) &&
-          check.testedHead.toLowerCase() !== value.sourceHeadAtSnapshot.toLowerCase()) {
+      } else if (typeof value.ciSnapshot.evidenceHead === 'string' &&
+          SHA1.test(value.ciSnapshot.evidenceHead) &&
+          check.testedHead.toLowerCase() !== value.ciSnapshot.evidenceHead.toLowerCase()) {
         issues.push('ci-check-' + index + '-tested-head-mismatch');
       }
       if (typeof check.scopeNote !== 'string' || !check.scopeNote.trim()) {
