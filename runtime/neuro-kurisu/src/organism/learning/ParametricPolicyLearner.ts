@@ -50,8 +50,9 @@ function assertTrainingScalars(input:{action:ActionKind;target01:number;learning
   if(!ACTIONS.includes(input.action)) throw new Error('invalid-action');
   if(typeof input.target01!=='number'||!Number.isFinite(input.target01)) throw new Error('target-must-be-finite');
   if(input.target01<0||input.target01>1) throw new RangeError('target-must-be-within-unit-range');
-  if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01)) throw new Error('rate-must-be-finite');
-  if(input.sampleWeight01!==undefined&&(typeof input.sampleWeight01!=='number'||!Number.isFinite(input.sampleWeight01))) throw new Error('sample-weight-must-be-finite');
+  // Training controls have bounded fail-safe fallbacks in train()/trainFeatures().
+  // Do not reject NaN/Infinity here before those normalization paths can run;
+  // action identity and the supervised target remain strict hard constraints.
 }
 function assertTrainingExtras(extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}):void{
   if(extras===undefined)return;
