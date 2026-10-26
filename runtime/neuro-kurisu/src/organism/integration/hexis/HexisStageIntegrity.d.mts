@@ -20,3 +20,4 @@ export interface HmxStageLifecycleInput {
 export declare function computeHmxStageLifecycleDigest(stage: HmxStageLifecycleInput): string;
 export declare function refreshHmxStageLifecycleDigest(stage: HmxStageLifecycleInput): string;
 export declare function isValidHmxStageDigest(stage: unknown): boolean;
+export declare function isSafeJsonTree(value: unknown): boolean;
