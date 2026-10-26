@@ -858,6 +858,18 @@ assert.equal(expandedEvidenceRestored.appendToolReceiptRevision(revisionInput).r
 assert.equal(expandedEvidenceRestored.appendToolExternalObservation(externalObservationInput).replayed,true,
   'receipt revision and observation idempotency references must survive restart');
 
+const tamperedObservationLineageSnapshot=receiptFabric.snapshot();
+const tamperedObservationNode=tamperedObservationLineageSnapshot.recent.find(event=>event.id===externalObservationResult.eventId);
+assert.ok(tamperedObservationNode);
+tamperedObservationNode.parentIds=[];
+const tamperedObservationLineageRestored=new CognitiveEventFabric(128);
+tamperedObservationLineageRestored.restore(tamperedObservationLineageSnapshot);
+assert.equal(tamperedObservationLineageRestored.hasToolReceiptTrace(receiptInput.executionId),true,
+  'external observation damage must not invalidate the independent canonical receipt trio');
+assert.throws(()=>tamperedObservationLineageRestored.appendToolExternalObservation(externalObservationInput),
+  /external-observation-lineage-conflict/,
+  'an observation without its receipt-outcome parent must not be accepted as an idempotent replay');
+
 const invalidRevisionCases = [
   {patch:{tick:12.5},reason:'revision-tick-invalid'},
   {patch:{revisionNumber:0},reason:'revision-number-invalid'},
