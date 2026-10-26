@@ -1,3 +1,15 @@
+## [NK1][WorkPass375] Route Hexis evidence through canonical MemoryOS2 ingress — 2026-10-26
+
+- **Integration:** wire the previously pure `HexisEvidenceAdapter` into `MemoryOS2.recordEvidence()`, the existing sole writable memory owner. Hexis validation now runs at the real provenance write boundary before lineage mutation.
+- **Integrity:** snapshot own data descriptors and fail closed for accessors/proxies, malformed provenance, numeric/string coercion, non-finite or non-integer timestamps, invalid source authority, control characters and overlong evidence identities.
+- **Idempotency:** reject rather than truncate independent lineage IDs; compute a stable evidence identity from canonical memory + lineage. Existing H1 lineage replay stays a true no-op before mutation.
+- **Learning boundary:** evidence ingestion itself does not change confidence. Existing H1 Core/Hexis policy remains the only confidence-revision authority and still requires a newly persisted canonical evidence receipt.
+- **Regression/CI:** add `test:cognitive-hexis-evidence-adapter`, chain it into `test:hexis-memory-evidence-lineage`, and include the new adapter/test paths and WorkPass375 branch in repository-wiring CI. Checkpoint: `docs/WORKPASS375_HEXIS_CANONICAL_EVIDENCE_INGRESS_RU.md`.
+- **Validation:** exact-head hosted typecheck, adapter+MemoryOS2 integration, existing H1 lineage/restore and repository wiring checks are pending. No memory-retrieval uplift or production readiness claim is made.
+- **Release:** `main` and the published Release ZIP are unchanged.
+
+---
+
 ## [NK1][Hexis-H2] Authenticate staged HMX imports and execute Hexis CI gates — 2026-10-26
 
 - Recompute the HMX staging digest immediately before accepting an import. If protected sections, conflict records, section counts, or staged payload content changed since validation, the stage is irreversibly rejected with an auditable `digest-mismatch` conflict.
