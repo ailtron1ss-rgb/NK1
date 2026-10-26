@@ -243,6 +243,10 @@ export class HexisAdaptationFabric {
         };
     }
     snapshot(): HexisAdaptationState { return structuredClone(this.state); }
+    getLearningReview(reviewId: string): HexisLearningReview | null {
+        const review = this.state.learningReviews.find((item) => item.id === String(reviewId));
+        return review ? structuredClone(review) : null;
+    }
     diagnostics() {
         const pendingReviews = this.state.learningReviews.filter((r) => r.status === 'pending').length;
         const pendingOutbox = this.state.outbox.filter((x) => x.status === 'pending' || x.status === 'publishing').length;
