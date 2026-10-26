@@ -128,6 +128,11 @@ assert.throws(
   /hmx-stage-digest-invalid/,
   'a payload changed after staging must not be applied under the original digest',
 );
+assert.throws(
+  () => projector.apply({ ...acceptedCandidate, application: receipt }),
+  /hmx-stage-digest-invalid/,
+  'a receipt on a non-applied stage indicates a torn/downgraded transition and must not be replayed as a new apply',
+);
 assert.equal(writes, 0, 'invalid accepted-stage payloads must fail before reading or writing canonical storage');
 
 console.log('HEXIS_PROJECTOR_IDEMPOTENT_REPLAY=PASS', JSON.stringify({ writes, receiptDigest: receipt.digest }));
