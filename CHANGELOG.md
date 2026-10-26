@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass424 — share stage integrity with the canonical projector (2026-10-26)
+
+- [INTEGRITY] Move HMX staged-payload digest calculation/validation into one legacy-compatible module used by the adapter and the canonical projector. Direct projector calls now reject modified payloads before storage access.
+- [REGRESSION] Use a real payload digest in the projector replay fixture and cover modified payload, malformed receipt, and non-accepted stage behavior.
+- [BOUNDS] Validate the restored stage as bounded JSON data before hashing; invalid accessor/cyclic/non-plain payloads fail closed.
+- [VALIDATION] GitHub Actions run #40321327115 for the new commit failed before runner steps/logs were available. Code is committed but runtime tests are not claimed as passed.
+
 ## [NK1][Hexis] Sanitize authority on re-import of persisted HMX memories (2026-10-26)
 
 - [FIX] Re-import reconciles legacy canonical HMX rows written before the 0.65 external authority cap, monotonically reducing stored confidence/authority rather than only protecting newly inserted rows.
