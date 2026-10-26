@@ -1147,14 +1147,16 @@ export class CognitiveEventFabric {
       {key:'learning',stage:'learning',defaultSource:'learning',parents:['outcome','action']},
       {key:'selfUpdate',stage:'self-update',defaultSource:'self-update',parents:['learning','outcome']},
     ];
+    const cycleFields=['tick','at',...specs.map(spec=>spec.key)] as const;
+    const cycleInput=readOwnDataFields(input,cycleFields);
+    if(!cycleInput)throw new TypeError('invalid-cognitive-cycle-input');
     const readDataField=(record:Record<string,unknown>,key:string):unknown=>{
       const descriptor=Object.getOwnPropertyDescriptor(record,key);
       if(!descriptor)return undefined;
       if(!Object.hasOwn(descriptor,'value'))throw new TypeError('cognitive-cycle-accessor-not-allowed');
       return descriptor.value;
     };
-    if(!isRecord(input))throw new TypeError('invalid-cognitive-cycle-input');
-    const rawInput=input as unknown as Record<string,unknown>;
+    const rawInput=cycleInput;
     const rawTick=readDataField(rawInput,'tick');
     if(typeof rawTick!=='number'||!Number.isSafeInteger(rawTick)||rawTick<0)throw new RangeError('invalid-cognitive-event-tick');
     const rawAt=readDataField(rawInput,'at');
@@ -1165,21 +1167,26 @@ export class CognitiveEventFabric {
     const prepared:Partial<Record<PhaseKey,PreparedPhase>>={};
     for(const spec of specs){
       const rawPhase=readDataField(rawInput,spec.key);
-      if(!rawPhase)continue;
-      if(!isRecord(rawPhase))throw new TypeError(`invalid-cognitive-cycle-phase:${spec.key}`);
-      const phaseRecord=rawPhase as Record<string,unknown>;
-      const rawSource=readDataField(phaseRecord,'source');
-      const source=rawSource??spec.defaultSource;
-      if(typeof source!=='string')throw new TypeError('invalid-cognitive-event-source');
-      const confidence01=readDataField(phaseRecord,'confidence01');
-      if(confidence01!==undefined&&(typeof confidence01!=='number'||!Number.isFinite(confidence01)))throw new TypeError('invalid-cognitive-event-confidence');
+      if(rawPhase===undefined)continue;
+      const phaseValues=readOwnDataFields(rawPhase,['source','confidence01','external','payload']);
+      if(!phaseValues)throw new TypeError(`invalid-cognitive-cycle-phase:${spec.key}`);
+      const phaseRecord=phaseValues;
+      const rawSource=phaseRecord.source;
+      const source=rawSource===undefined?spec.defaultSource:rawSource;
+      if(typeof source!=='string'||!isCanonicalCognitiveIdentifier(source,120))throw new TypeError('invalid-cognitive-event-source');
+      const confidence01=phaseRecord.confidence01;
+      if(confidence01!==undefined&&(
+        typeof confidence01!=='number'||!Number.isFinite(confidence01)||confidence01<0||confidence01>1
+      ))throw new TypeError('invalid-cognitive-event-confidence');
       let external:boolean|undefined;
       if(spec.forwardsExternal){
-        const rawExternal=readDataField(phaseRecord,'external');
+        const rawExternal=phaseRecord.external;
         if(rawExternal!==undefined&&typeof rawExternal!=='boolean')throw new TypeError('invalid-cognitive-event-external-flag');
         external=rawExternal as boolean|undefined;
       }
-      const payload=cleanPayload(readDataField(phaseRecord,'payload'));
+      const rawPayload=phaseRecord.payload;
+      if(rawPayload!==undefined&&!isPlainRecord(rawPayload))throw new TypeError('invalid-cognitive-event-payload');
+      const payload=cleanPayload(rawPayload);
       prepared[spec.key]={source,confidence01:confidence01 as number|undefined,external,payload};
     }
 
