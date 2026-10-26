@@ -1,3 +1,12 @@
+## WorkPass416 — allowlist intent/strategy внутри HexisAdaptationFabric (2026-10-26)
+
+- **Код fabric:** `d82d5f9c77a303322b6a379e9b664111917f9bf0`; **direct-call регрессия:** `b1595b492f0424b754e50e600aadebd2d379f7ae`.
+- Те же allowlists добавлены в `HexisAdaptationFabric.stageHmx`, а не только в HTTP route. Прямые/internal callers получают `hmx-invalid-intent` или `hmx-invalid-strategy` до snapshot входного документа, создания стадии или изменения метрик.
+- Регрессия вызывает fabric напрямую с неизвестными intent/strategy и требует исключения с пустым stage ledger. Вместе с WorkPass415 HTTP-smoke контракт теперь проверяется на обоих входных слоях.
+- **Валидация:** PENDING exact-head HMX adaptation, server smoke, runtime typecheck и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass415 — проверка intent/strategy HMX на HTTP-границе (2026-10-26)
 
 - **Код сервера:** `9f9601df7a72d9d0f6c46e24030052c554087237`; **server-smoke:** `bd2f036238b7b3582c6e9a17ee49991a66e0df54`.
