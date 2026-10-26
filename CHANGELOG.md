@@ -1,3 +1,15 @@
+## [NK1][WorkPass378] Restore P26 interleaved learning and strict evidence accounting — 2026-10-26
+
+- **Failure reproduced:** WorkPass71 runtime validation passed app typecheck/build and runtime typecheck, then failed in `test:p26:sequential-learning-benchmark.mjs` because `P26TrueLearningEngine.trainInterleaved()` was missing from the active engine.
+- **Implementation:** restore the bounded interleaved runtime contract with full-batch preflight, bounded conflict screening, replay-before-current gradient ordering, weight/metric rollback after a mid-batch error, and separately counted online/replay updates.
+- **Evidence integrity:** preserve strict `recordVerifiedHoldout()` admission and restore-safe deduplication; diagnostic/synthetic training and within-batch metrics do not certify independent generalization.
+- **Regression:** add `tests/p26-interleaved-contract.mjs` for the live API, current/replay ordering, provenance/duplicate behavior, persistence, malformed batches/accessors, and atomic rollback.
+- **CI wiring:** chain the contract test into `test:learning-replay`; make P26 Learning Validation trigger on `P26TrueLearningEngine.ts` and run the full replay chain; WorkPass71 already runs the full rebuild suite on this source PR.
+- **Validation:** WorkPass369's sibling branch supplies the adapted implementation/contract; the newly combined branch must pass its own exact-head runs. No PASS is claimed before those runs finish. Benchmark thresholds are not weakened.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][WorkPass377] Route Hexis source-stack changes through full runtime validation — 2026-10-26
 
 - **Defect:** WorkPass71 contains app/runtime typechecks and broad rebuild regressions, but its push filter did not include the active WorkPass375 source branch and its pull-request base filter omitted the Hexis-H1 source-stack branch.
