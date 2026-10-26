@@ -1,3 +1,8 @@
+### WorkPass328 follow-up — finish Node 22/24 replay-buffer loading (2026-10-26)
+
+- Converted `ContinualReplayBuffer`'s constructor parameter-property `readonly capacity` into an explicit class field and assignment. This removes the next strip-only TypeScript syntax blocker in P26's continual replay regression; all three constructor inputs remain runtime-validated/injectable as before.
+- Updated the restored external-event case to use the same trustworthy accounting contract as initial ingestion: one retained event after replay, zero grounded runtime outcomes, and no mutation for a conflicting duplicate.
+
 ### WorkPass328 follow-up — remove remaining Node 24 strip-only constructor syntax (2026-10-26)
 
 - Replaced TypeScript parameter properties in `AtomicFileTrustedSkillShadowRunRegistry` and `P23TrustedShadowLearningScheduler` with explicit fields and assignments. These classes are part of signed skill-evidence and supervised-learning paths imported by the P23/P26 Actions tests; avoiding compile-only syntax keeps the runtime usable without a transpiler.
