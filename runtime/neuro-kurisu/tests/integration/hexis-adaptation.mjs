@@ -736,6 +736,8 @@ const materializedGoal = goalPipelineSystems.materializeApprovedHexisGoalProposa
 assert.equal(materializedGoal.proposal.status, 'materialized');
 assert.equal(materializedGoal.project.status, 'paused');
 assert.equal(materializedGoal.project.pauseReason, 'hexis-approved-awaiting-explicit-activation');
+assert(materializedGoal.project.reason?.includes('independent observations'),
+  'materialized agency project must retain the reviewed Hexis goal description');
 assert.equal(goalPipelineSystems.agency.selfProjects.activeProjects().some(project => project.hexisProposalId === goalProposal.id), false,
   'a materialized proposal must not be auto-selected by ensureActiveProject');
 const activatedGoal = goalPipelineSystems.activateHexisGoalProposal(goalProposal.id);
