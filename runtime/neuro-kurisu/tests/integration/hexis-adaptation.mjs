@@ -232,6 +232,8 @@ const largeNativeExport = normalizeNk1HmxExport({
   },
 });
 const largeExportBytes = Buffer.byteLength(JSON.stringify(largeNativeExport), 'utf8');
+assert.equal(largeNativeExport.statistics.estimated_uncompressed_bytes, largeExportBytes,
+  'HMX size statistics must describe the normalized HMX output rather than the source-native JSON');
 assert(largeExportBytes > 1_000_000 && largeExportBytes < 8 * 1024 * 1024,
   'fixture must exercise the formerly incompatible export/import size boundary');
 const largeRoundTripFabric = new HexisAdaptationFabric();
