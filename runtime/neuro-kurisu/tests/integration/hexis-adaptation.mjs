@@ -243,6 +243,23 @@ assert.doesNotThrow(() => validateHmxV17Document(malformedAuthorityHmx, 'telepat
 assert(validateHmxV17Document(malformedAuthorityHmx, 'telepathy').some(issue =>
   issue.path.endsWith('.source_attribution.source_authority_01') && issue.kind === 'schema'));
 
+const malformedSourceAttributionHmx = {
+  ...validHmx,
+  sections: {
+    memories: [{
+      ...validHmx.sections.memories[0],
+      source_attribution: 'unknown-source-object',
+    }],
+  },
+};
+assert.doesNotThrow(() => validateHmxV17Document(malformedSourceAttributionHmx, 'telepathy'));
+assert(validateHmxV17Document(malformedSourceAttributionHmx, 'telepathy').some(issue =>
+  issue.path.endsWith('.source_attribution') && issue.kind === 'schema'));
+assert.equal(normalizeHmxV17Memory(malformedSourceAttributionHmx.sections.memories[0], {
+  exportId: validHmx.export_id,
+  sourceSubjectId: validHmx.source.hexis_lineage_id,
+}), null, 'malformed source attribution must not be downgraded to a source-less memory');
+
 const overlongRefHmx = {
   ...validHmx,
   sections: {
