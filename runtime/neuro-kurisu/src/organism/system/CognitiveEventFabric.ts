@@ -575,9 +575,10 @@ export class CognitiveEventFabric {
     if(!hasCanonicalBoundedText(toolId,64))throw new TypeError('tool-receipt-tool-id-invalid');
 
     let decisionId:string|undefined;
-    if(data.decisionId!==undefined&&data.decisionId!=='') {
-      if(!hasOnlyCanonicalEventId(data.decisionId))throw new TypeError('tool-receipt-decision-id-invalid');
-      decisionId=data.decisionId;
+    const decisionIdValue=data.decisionId;
+    if(decisionIdValue!==undefined&&decisionIdValue!=='') {
+      if(!hasOnlyCanonicalEventId(decisionIdValue))throw new TypeError('tool-receipt-decision-id-invalid');
+      decisionId=decisionIdValue;
     }
     const ok=data.ok;
     const verified=data.verified;
@@ -598,9 +599,10 @@ export class CognitiveEventFabric {
     if(!hasCanonicalBoundedText(verificationBasis,48))throw new TypeError('tool-receipt-verification-basis-invalid');
 
     let observationId:string|null=null;
-    if(data.observationId!==undefined&&data.observationId!=='') {
-      if(!hasOnlyCanonicalEventId(data.observationId))throw new TypeError('tool-receipt-observation-id-invalid');
-      observationId=data.observationId;
+    const observationIdValue=data.observationId;
+    if(observationIdValue!==undefined&&observationIdValue!=='') {
+      if(!hasOnlyCanonicalEventId(observationIdValue))throw new TypeError('tool-receipt-observation-id-invalid');
+      observationId=observationIdValue;
     }
     const expectedRaw=data.expectedPostcondition===undefined?'':data.expectedPostcondition;
     const observedRaw=data.observedPostcondition===undefined?'':data.observedPostcondition;
