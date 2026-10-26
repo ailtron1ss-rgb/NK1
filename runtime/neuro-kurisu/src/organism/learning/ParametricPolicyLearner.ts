@@ -50,9 +50,8 @@ function assertTrainingScalars(input:{action:ActionKind;target01:number;learning
   if(!ACTIONS.includes(input.action)) throw new Error('invalid-action');
   if(typeof input.target01!=='number'||!Number.isFinite(input.target01)) throw new Error('target-must-be-finite');
   if(input.target01<0||input.target01>1) throw new RangeError('target-must-be-within-unit-range');
-  // Training controls have bounded fail-safe fallbacks in train()/trainFeatures().
-  // Do not reject NaN/Infinity here before those normalization paths can run;
-  // action identity and the supervised target remain strict hard constraints.
+  if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01)) throw new Error('rate-must-be-finite');
+  if(input.sampleWeight01!==undefined&&(typeof input.sampleWeight01!=='number'||!Number.isFinite(input.sampleWeight01))) throw new Error('sample-weight-must-be-finite');
 }
 function assertTrainingExtras(extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}):void{
   if(extras===undefined)return;
@@ -174,8 +173,8 @@ export class ParametricPolicyLearner{
     const before=this.value(input.state,input.action,input.extras).value;
     const target=clamp(input.target01);
     const error=target-before;
-    const requestedRate=Number.isFinite(input.learningRate01)?input.learningRate01:.03;
-    const requestedWeight=input.sampleWeight01===undefined?1:(Number.isFinite(input.sampleWeight01)?input.sampleWeight01:.1);
+    const requestedRate=input.learningRate01;
+    const requestedWeight=input.sampleWeight01===undefined?1:input.sampleWeight01;
     const lr=Math.max(.003,Math.min(.30,requestedRate))*Math.max(.1,Math.min(1,requestedWeight));
     const zDerivative=Math.max(.05, 2*before*(1-before));
     const norm=0.25+x.reduce((sum,v)=>sum+v*v,0);
@@ -201,8 +200,8 @@ export class ParametricPolicyLearner{
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
     const before=this.predictFromFeatures(x,input.action), target=clamp(input.target01), error=target-before;
-    const requestedRate=Number.isFinite(input.learningRate01)?input.learningRate01:.03;
-    const requestedWeight=input.sampleWeight01===undefined?1:(Number.isFinite(input.sampleWeight01)?input.sampleWeight01:.1);
+    const requestedRate=input.learningRate01;
+    const requestedWeight=input.sampleWeight01===undefined?1:input.sampleWeight01;
     const lr=Math.max(.002,Math.min(.25,requestedRate))*Math.max(.05,Math.min(1,requestedWeight));
     const derivative=Math.max(.05,2*before*(1-before)), norm=.25+x.reduce((sum,v)=>sum+v*v,0), step=lr*error*derivative/norm;
     for(let i=0;i<w.length;i++)w[i]=Math.max(-4,Math.min(4,w[i]+step*x[i]));
