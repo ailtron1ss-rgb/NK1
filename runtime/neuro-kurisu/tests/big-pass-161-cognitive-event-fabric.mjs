@@ -136,19 +136,18 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
 
   // Malformed persisted evidence must not prevent recovery of healthy events.
   const malformedPayload={}; malformedPayload.self=malformedPayload;
-  const healthyId=fabric.getById(base.id)?.id;
   const restoreProbe=new CognitiveEventFabric(128);
+  const healthyRestoredRow={id:'cef:test:malformed-restored',tick:21,at:2100,stage:'observation',
+    source:'restore-probe-good',parentIds:[],external:false,confidence01:0.8,payload:{safe:true}};
   assert.doesNotThrow(()=>restoreProbe.restore({
     total:2,buffered:2,
     recent:[
-      {id:'cef:test:malformed-restored',tick:20,at:2000,stage:'observation',source:'restore-probe',parentIds:[],external:false,confidence01:0.5,payload:malformedPayload},
-      {...base,payload:{safe:true}},
+      {...healthyRestoredRow,source:'restore-probe-corrupt',payload:malformedPayload},
+      healthyRestoredRow,
     ],
   }));
-  assert.equal(restoreProbe.getById('cef:test:malformed-restored'),null);
-  assert.equal(restoreProbe.getById(healthyId)?.payload.safe,undefined,
-    'the original healthy evidence payload remains unchanged');
-  assert.equal(restoreProbe.getById(base.id)?.payload.ok,true,'valid persisted events survive a malformed neighbor');
+  assert.equal(restoreProbe.getById('cef:test:malformed-restored')?.payload.safe,true,
+    'a malformed persisted row must not reserve its ID and shadow a later healthy row');
 
   // Receipt replay remains conflict-safe after persistence drops the bounded replay index.
   const receiptFabric=new CognitiveEventFabric(128);
