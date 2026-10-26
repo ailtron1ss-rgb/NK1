@@ -1,3 +1,11 @@
+## Project tool route — restore canonical Core finalization (2026-10-26)
+
+- Fixed a runtime bypass found by the recovered planner/gateway regression: fresh project tool operations called `ActionGateway.executeTool` directly, and receipt recovery called `ActionGateway.reconcileToolExecution` directly. Both paths now route through `OrganismCore.executeTool` / `OrganismCore.reconcileToolExecution`, retaining canonical tool-alias mapping and the shared finalization boundary.
+- This was a production-source regression, not only a stale test: the same path on the validated integration branch already used the Core wrappers. The regression still rejects direct gateway dispatch from the project executor.
+- Change committed as `94460f8740cddb0eaadf7a983f534ab3ad2ab4b0`; exact-head CI for this Core fix is pending.
+
+---
+
 ## Root launcher and runtime toolchain closure — 2026-10-26
 
 - Fixed the root `start`/`dev` launchers: both previously spawned `src/server/server.mjs` relative to the repository root, where it does not exist. They now use a shared absolute-path resolver for `runtime/neuro-kurisu/src/server/server.mjs`; the new regression verifies the entrypoint exists and both launchers reference the shared resolver.
