@@ -1,3 +1,13 @@
+## WorkPass356 — strict tool receipt ingress (2026-10-26)
+
+- **Defect:** the public CEF receipt/revision/observation methods read caller fields directly and could execute getters. Revision/external-observation ingress also coerced values to strings/booleans, truncated identifiers and clamped confidence, allowing malformed evidence to alias a valid identity.
+- **Fix:** `appendToolReceiptTrace()` reads own data fields before replay lookup, requires canonical execution/tool/decision/observation IDs and confidence in `[0, 1]`. `appendToolReceiptRevision()` rejects lossy IDs, invalid hashes/numbers/statuses, non-boolean outcomes, invalid confidence and malformed text instead of coercing/truncating. `appendToolExternalObservation()` uses the same accessor-safe ingress, validates IDs/booleans/confidence/timestamps and rejects wrong-typed evidence values instead of stringifying/truncating them.
+- **Regression:** `runtime/neuro-kurisu/tests/cognitive-tool-receipt-input-boundary.mjs` exercises accessors, padded/overlong identifiers, invalid boolean/confidence, fractional revision numbers, non-string hashes and evidence text objects with hostile `toString()`; it verifies rejected calls do not mutate the journal/replay index and exact valid revision replay remains idempotent.
+- **Integration:** the test is wired into `test:cognitive-integration-suite`.
+- **Validation:** latest-base code/test checkpoint `ae9a66a6f831b73d9c8457de4ea4454c376e3c1a`; exact-head CI pending. No readiness scores increased.
+
+---
+
 ## WorkPass371 — cross-ledger atomic operational-cycle commit (2026-10-26)
 
 - **Defect:** CEF wrote the operational event trace transactionally, but `OrganismRuntime` verified lineage and advanced `UnifiedCognitiveCycle` afterwards. A thrown verification/evaluation error could leave the event ledger populated while aggregate cycle counters remained unchanged; an evaluator that mutates and then throws could leave the aggregate partially advanced.

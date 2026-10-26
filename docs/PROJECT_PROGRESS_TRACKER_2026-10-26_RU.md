@@ -1,3 +1,14 @@
+## WorkPass356 — strict CEF tool receipt ingress (2026-10-26)
+
+- **Code/test checkpoint:** `ae9a66a6f831b73d9c8457de4ea4454c376e3c1a`; based directly on latest target head `084c80745446c38bf514c43000844c433110f0c4`.
+- **Defect:** receipt-trace/revision/external-observation APIs could execute caller getters and coerce or truncate IDs, booleans, counters, hashes and evidence text. Those transformations can cause malformed provider evidence to share an idempotency identity with accepted evidence.
+- **Fix:** descriptor-only ingress; canonical IDs; strict string hashes, booleans, safe integer counters/ticks, finite timestamps and confidence in `[0,1]`; no truncation or Boolean/String coercion. Rejections occur before replay lookup and leave the journal and receipt projection index unchanged.
+- **Regression:** `runtime/neuro-kurisu/tests/cognitive-tool-receipt-input-boundary.mjs` checks accessors/getters, hostile `toString()`, padded/overlong IDs, invalid boolean/confidence/revision counter, hashes/text type and unchanged ledger state. Exact valid revision replay remains idempotent. The test is wired into `test:cognitive-integration-suite`.
+- **Base preservation:** newer bounded payload-clone and transactional snapshot restore in `084c80745446c38bf514c43000844c433110f0c4` are retained; this branch changes receipt ingress and test wiring only.
+- **Validation:** exact-head CI pending. Historical `ciSnapshot` records and all readiness scores unchanged.
+
+---
+
 # NK1 — общая панель инженерного прогресса (2026-10-26)
 
 **Источник:** `ailtron1ss-rgb/NK1`, combined source branch `fix/mega-cognitive-progress-tracking-2026-10-26-r3`. Точный проверенный code/test head: `621864d0d7f2676245383adab86f1dcc6d0f741f`, merged into the source branch as `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. На HEAD 621864d0d7f2676245383adab86f1dcc6d0f741f успешно прошли Unified project integration suite [#40257525157](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525157), WorkPass110 [#40257525071](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525071), WorkPass108 [#40257525093](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525093), P26 Learning Validation [#40257525095](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525095), progress-ledger integrity [#40257525008](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525008), plus outcome-ledger, replay, cognitive-contract, verified-experience, reflection and postcondition suites.

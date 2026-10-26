@@ -85,6 +85,23 @@ const isPlainRecord=(value:unknown):value is Record<string,unknown>=>{
     return false;
   }
 };
+function readOwnDataFields(value:unknown,fields:readonly string[]):Record<string,unknown>|null {
+  if(!isPlainRecord(value))return null;
+  const result:Record<string,unknown>=Object.create(null) as Record<string,unknown>;
+  for(const field of fields){
+    let descriptor:PropertyDescriptor|undefined;
+    try { descriptor=Object.getOwnPropertyDescriptor(value,field); }
+    catch { return null; }
+    if(!descriptor)continue;
+    if(!Object.hasOwn(descriptor,'value'))return null;
+    result[field]=descriptor.value;
+  }
+  return result;
+}
+
+const isCanonicalCognitiveIdentifier=(value:unknown,maxLength:number):value is string=>
+  typeof value==='string'&&value.length>0&&value===value.trim()&&value.length<=maxLength&&!/[\x00-\x1f\x7f-\x9f]/.test(value);
+
 const OMIT_PAYLOAD_VALUE=Symbol('omit-cognitive-payload-value');
 const MAX_COGNITIVE_PAYLOAD_DEPTH=32;
 const MAX_COGNITIVE_PAYLOAD_NODES=16384;
@@ -793,16 +810,24 @@ export class CognitiveEventFabric {
     expectedPostcondition?:string; observedPostcondition?:string;
     observationIntegrated:boolean; at?:number;
   }): { replayed:boolean; executionId:string; actionEventId:string; outcomeEventId:string; evidenceEventId:string } {
+    const safeInput=readOwnDataFields(input,[
+      'tick','executionId','toolId','decisionId','ok','verified','outcomeClass','confidence01',
+      'verificationBasis','externalObservation','observationId','expectedPostcondition',
+      'observedPostcondition','observationIntegrated','at',
+    ]);
+    if(!safeInput)throw new TypeError('invalid-tool-receipt-input');
+    input=safeInput as unknown as typeof input;
+
     if(typeof input.executionId!=='string')throw new TypeError('invalid-tool-receipt-execution-id');
-    const executionId=input.executionId.trim();
+    const executionId=input.executionId;
     if(!executionId)throw new Error('tool-receipt-execution-id-required');
-    if(executionId.length>180)throw new RangeError('invalid-tool-receipt-execution-id');
-    if(typeof input.toolId!=='string'||!input.toolId.trim())throw new TypeError('invalid-tool-receipt-tool-id');
-    if(input.toolId.length>64)throw new RangeError('invalid-tool-receipt-tool-id');
+    if(!isCanonicalCognitiveIdentifier(executionId,180))throw new RangeError('invalid-tool-receipt-execution-id');
+    if(typeof input.toolId!=='string'||!input.toolId)throw new TypeError('invalid-tool-receipt-tool-id');
+    if(!isCanonicalCognitiveIdentifier(input.toolId,64))throw new RangeError('invalid-tool-receipt-tool-id');
     if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('invalid-cognitive-event-tick');
     if(input.at!==undefined&&(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0))throw new RangeError('invalid-cognitive-event-timestamp');
     if(typeof input.ok!=='boolean'||typeof input.verified!=='boolean'||typeof input.externalObservation!=='boolean'||typeof input.observationIntegrated!=='boolean')throw new TypeError('invalid-tool-receipt-boolean');
-    if(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01))throw new TypeError('invalid-cognitive-event-confidence');
+    if(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01)||input.confidence01<0||input.confidence01>1)throw new TypeError('invalid-cognitive-event-confidence');
     const optionalText=(value:unknown,key:string,maxLength:number):string|undefined=>{
       if(value===undefined||value===null)return undefined;
       if(typeof value!=='string')throw new TypeError(`invalid-tool-receipt-${key}`);
@@ -810,10 +835,12 @@ export class CognitiveEventFabric {
       return value;
     };
     const decisionValue=optionalText(input.decisionId,'decision-id',180);
-    const decisionId=decisionValue?.trim()||undefined;
+    if(decisionValue&&!isCanonicalCognitiveIdentifier(decisionValue,180))throw new TypeError('invalid-tool-receipt-decision-id');
+    const decisionId=decisionValue||undefined;
     const outcomeClass=optionalText(input.outcomeClass,'outcome-class',64)??'unknown';
     const verificationBasis=optionalText(input.verificationBasis,'verification-basis',48)??'none';
     const observationValue=optionalText(input.observationId,'observation-id',180)??'';
+    if(observationValue&&!isCanonicalCognitiveIdentifier(observationValue,180))throw new TypeError('invalid-tool-receipt-observation-id');
     const expectedPostcondition=optionalText(input.expectedPostcondition,'expected-postcondition',16384)??'';
     const observedPostcondition=optionalText(input.observedPostcondition,'observed-postcondition',16384)??'';
     const safeTool=input.toolId;
@@ -907,19 +934,57 @@ export class CognitiveEventFabric {
     revisionFingerprint:string;outcomeClass:string;ok:boolean;verified:boolean;verificationBasis:string;confidence01:number;
     observationId?:string;status:'verified'|'contradicted'|'unverified';reason?:string;at?:number;
   }):{resolved:boolean;replayed:boolean;reason?:string;eventId?:string;projectionHash?:string}{
-    const executionId=String(input.executionId??'').trim().slice(0,180);
-    const revisionId=String(input.revisionId??'').trim().slice(0,180);
-    const toolId=String(input.toolId??'').trim().slice(0,64);
+    const safeInput=readOwnDataFields(input,[
+      'tick','executionId','toolId','revisionId','revisionNumber','providerReceiptHash','revisionFingerprint',
+      'outcomeClass','ok','verified','verificationBasis','confidence01','observationId','status','reason','at',
+    ]);
+    if(!safeInput)return {resolved:false,replayed:false,reason:'revision-input-invalid'};
+    input=safeInput as unknown as typeof input;
+
+    if(typeof input.executionId!=='string')return {resolved:false,replayed:false,reason:'execution-id-invalid'};
+    const executionId=input.executionId;
     if(!executionId)return {resolved:false,replayed:false,reason:'execution-id-required'};
+    if(!isCanonicalCognitiveIdentifier(executionId,180))return {resolved:false,replayed:false,reason:'execution-id-invalid'};
+    if(typeof input.revisionId!=='string')return {resolved:false,replayed:false,reason:'revision-id-invalid'};
+    const revisionId=input.revisionId;
     if(!revisionId)return {resolved:false,replayed:false,reason:'revision-id-required'};
+    if(!isCanonicalCognitiveIdentifier(revisionId,180))return {resolved:false,replayed:false,reason:'revision-id-invalid'};
+    if(typeof input.toolId!=='string')return {resolved:false,replayed:false,reason:'tool-id-invalid'};
+    const toolId=input.toolId;
     if(!toolId)return {resolved:false,replayed:false,reason:'tool-id-required'};
-    if(!/^[a-f0-9]{64}$/i.test(String(input.providerReceiptHash??''))||!/^[a-f0-9]{64}$/i.test(String(input.revisionFingerprint??'')))return {resolved:false,replayed:false,reason:'revision-hash-invalid'};
+    if(!isCanonicalCognitiveIdentifier(toolId,64))return {resolved:false,replayed:false,reason:'tool-id-invalid'};
+    if(typeof input.providerReceiptHash!=='string'||!/^[a-f0-9]{64}$/i.test(input.providerReceiptHash)||
+      typeof input.revisionFingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(input.revisionFingerprint))return {resolved:false,replayed:false,reason:'revision-hash-invalid'};
+    if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick<0)return {resolved:false,replayed:false,reason:'tick-invalid'};
+    if(!Number.isSafeInteger(input.revisionNumber)||input.revisionNumber<1)return {resolved:false,replayed:false,reason:'revision-number-invalid'};
+    if(typeof input.ok!=='boolean'||typeof input.verified!=='boolean')return {resolved:false,replayed:false,reason:'revision-boolean-invalid'};
+    if(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01)||input.confidence01<0||input.confidence01>1)return {resolved:false,replayed:false,reason:'confidence-invalid'};
+    if(input.at!==undefined&&(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0))return {resolved:false,replayed:false,reason:'timestamp-invalid'};
+    if(input.status!=='verified'&&input.status!=='contradicted'&&input.status!=='unverified')return {resolved:false,replayed:false,reason:'revision-status-invalid'};
+    const rawOutcomeClass=input.outcomeClass??'unknown';
+    const rawVerificationBasis=input.verificationBasis??'none';
+    if(typeof rawOutcomeClass!=='string'||rawOutcomeClass.length>64)return {resolved:false,replayed:false,reason:'outcome-class-invalid'};
+    if(typeof rawVerificationBasis!=='string'||rawVerificationBasis.length>48)return {resolved:false,replayed:false,reason:'verification-basis-invalid'};
+    const rawObservationId=input.observationId??'';
+    if(typeof rawObservationId!=='string'||(rawObservationId!==''&&!isCanonicalCognitiveIdentifier(rawObservationId,180)))return {resolved:false,replayed:false,reason:'observation-id-invalid'};
+    const rawReason=input.reason??'';
+    if(typeof rawReason!=='string')return {resolved:false,replayed:false,reason:'revision-reason-invalid'};
+    const safeReason=rawReason.replace(/[\r\n\t]+/g,' ');
+    if(safeReason.length>160)return {resolved:false,replayed:false,reason:'revision-reason-invalid'};
     const entry=this.receiptProjectionIndex.get(executionId);
     if(!entry||!this.hasToolReceiptTrace(executionId))return {resolved:false,replayed:false,reason:'no-canonical-tool-receipt'};
     const receiptAction=this.events.find(event=>event.id===entry.actionEventId);
     const receiptOutcome=this.events.find(event=>event.id===entry.outcomeEventId);
     if(receiptAction?.payload.tool!==toolId||receiptOutcome?.payload.tool!==toolId)return {resolved:false,replayed:false,reason:'execution-tool-mismatch'};
-    const normalized={executionId,toolId,revisionId,revisionNumber:Math.max(1,Math.floor(input.revisionNumber)),providerReceiptHash:String(input.providerReceiptHash).toLowerCase(),revisionFingerprint:String(input.revisionFingerprint).toLowerCase(),outcomeClass:String(input.outcomeClass??'unknown').slice(0,64),ok:Boolean(input.ok),verified:Boolean(input.verified),verificationBasis:String(input.verificationBasis??'none').slice(0,48),confidence01:clamp01(input.confidence01),observationId:String(input.observationId??'').slice(0,180)||null,status:input.status,reason:String(input.reason??'').replace(/[\r\n\t]+/g,' ').slice(0,160)};
+    const normalized={
+      executionId,toolId,revisionId,
+      revisionNumber:input.revisionNumber,
+      providerReceiptHash:input.providerReceiptHash.toLowerCase(),
+      revisionFingerprint:input.revisionFingerprint.toLowerCase(),
+      outcomeClass:rawOutcomeClass,ok:input.ok,verified:input.verified,
+      verificationBasis:rawVerificationBasis,confidence01:input.confidence01,
+      observationId:rawObservationId||null,status:input.status,reason:safeReason,
+    };
     const projectionHash=sha256Stable(normalized);
     const refs=entry.receiptRevisions??[];
     const prior=refs.find(ref=>ref.revisionId===revisionId);
@@ -940,7 +1005,7 @@ export class CognitiveEventFabric {
       return {resolved:true,replayed:true,eventId,projectionHash};
     }
     const latestRevision=refs.at(-1);
-    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+    const at=input.at===undefined?Date.now():input.at;
     const parents=[entry.outcomeEventId,...(latestRevision?[latestRevision.eventId]:[])].slice(0,12);
     const event=this.append({id:eventId,tick:input.tick,stage:'tool-reconciliation',source:'authoritative-provider-receipt',parentIds:parents,external:false,confidence01:clamp01(input.confidence01),at,payload:{...normalized,projectionHash,baseOutcomeEventId:entry.outcomeEventId,previousRevisionEventId:latestRevision?.eventId??null}});
     const ref={revisionId,eventId:event.id,projectionHash,projectedAt:at};
@@ -954,21 +1019,58 @@ export class CognitiveEventFabric {
    * Raw postcondition text is not copied into CEF; only canonical hashes/presence flags are retained.
    */
   appendToolExternalObservation(input:{tick:number;executionId:string;toolId:string;observationId:string;verified:boolean;confidence01:number;sourceId?:string;sourceClass?:string;channel?:string;independenceKey?:string;expectedPostcondition?:string;observedPostcondition?:string;reason?:string;at?:number}):{resolved:boolean;reason?:string;replayed?:boolean;eventId?:string;archived?:boolean}{
-    const executionId=String(input.executionId??'').trim().slice(0,180);
-    const observationId=String(input.observationId??'').trim().slice(0,180);
-    const toolId=String(input.toolId??'').trim().slice(0,64);
+    const safeInput=readOwnDataFields(input,[
+      'tick','executionId','toolId','observationId','verified','confidence01','sourceId','sourceClass','channel',
+      'independenceKey','expectedPostcondition','observedPostcondition','reason','at',
+    ]);
+    if(!safeInput)return {resolved:false,reason:'observation-input-invalid'};
+    input=safeInput as unknown as typeof input;
+
+    if(typeof input.executionId!=='string')return {resolved:false,reason:'execution-id-invalid'};
+    const executionId=input.executionId;
     if(!executionId)return {resolved:false,reason:'execution-id-required'};
+    if(!isCanonicalCognitiveIdentifier(executionId,180))return {resolved:false,reason:'execution-id-invalid'};
+    if(typeof input.observationId!=='string')return {resolved:false,reason:'observation-id-invalid'};
+    const observationId=input.observationId;
     if(!observationId)return {resolved:false,reason:'observation-id-required'};
+    if(!isCanonicalCognitiveIdentifier(observationId,180))return {resolved:false,reason:'observation-id-invalid'};
+    if(typeof input.toolId!=='string')return {resolved:false,reason:'tool-id-invalid'};
+    const toolId=input.toolId;
     if(!toolId)return {resolved:false,reason:'tool-id-required'};
+    if(!isCanonicalCognitiveIdentifier(toolId,64))return {resolved:false,reason:'tool-id-invalid'};
+    if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick<0)return {resolved:false,reason:'tick-invalid'};
+    if(typeof input.verified!=='boolean')return {resolved:false,reason:'verified-invalid'};
+    if(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01)||input.confidence01<0||input.confidence01>1)return {resolved:false,reason:'confidence-invalid'};
+    if(input.at!==undefined&&(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0))return {resolved:false,reason:'timestamp-invalid'};
+    const textValue=(value:unknown,key:string,maxLength:number,fallback:string):string=>{
+      if(value===undefined||value===null)return fallback;
+      if(typeof value!=='string'||value.length>maxLength)throw new TypeError('invalid-external-observation-'+key);
+      return value;
+    };
+    let sourceId:string,sourceClass:string,channel:string,independenceKey:string,expectedPostcondition:string,observedPostcondition:string,reason:string;
+    try {
+      sourceId=textValue(input.sourceId,'source-id',80,'unknown');
+      sourceClass=textValue(input.sourceClass,'source-class',32,'unknown');
+      channel=textValue(input.channel,'channel',32,'unknown');
+      independenceKey=textValue(input.independenceKey,'independence-key',120,'');
+      expectedPostcondition=textValue(input.expectedPostcondition,'expected-postcondition',16384,'');
+      observedPostcondition=textValue(input.observedPostcondition,'observed-postcondition',16384,'');
+      reason=textValue(input.reason,'reason',160,'');
+    } catch(error) {
+      return {resolved:false,reason:error instanceof Error?error.message:'observation-text-invalid'};
+    }
+    if((sourceId&&!isCanonicalCognitiveIdentifier(sourceId,80))||
+      (independenceKey&&!isCanonicalCognitiveIdentifier(independenceKey,120)))return {resolved:false,reason:'observation-identity-invalid'};
     const entry=this.receiptProjectionIndex.get(executionId);
     const byId=new Map(this.events.map(event=>[event.id,event] as const));
     const action=entry?byId.get(entry.actionEventId):this.events.find(event=>event.stage==='tool-action'&&event.payload.executionId===executionId);
     const outcome=entry?byId.get(entry.outcomeEventId):this.events.find(event=>event.stage==='tool-outcome'&&event.payload.executionId===executionId);
     if(!action||!outcome||action.stage!=='tool-action'||outcome.stage!=='tool-outcome'||!outcome.parentIds.includes(action.id))return {resolved:false,reason:'no-canonical-tool-receipt'};
-    if(String(action.payload.tool??'')!==toolId||String(outcome.payload.tool??'')!==toolId)return {resolved:false,reason:'execution-tool-mismatch'};
-    const expected=String(input.expectedPostcondition??'').normalize('NFKC').trim();
-    const observed=String(input.observedPostcondition??'').normalize('NFKC').trim();
-    const safePayload={executionId,toolId,observationId,verified:Boolean(input.verified),confidence01:clamp01(input.confidence01),sourceId:String(input.sourceId??'unknown').slice(0,80),sourceClass:String(input.sourceClass??'unknown').slice(0,32),channel:String(input.channel??'unknown').slice(0,32),independenceKey:String(input.independenceKey??'').slice(0,120),expectedPostconditionHash:expected?sha256Stable(expected):null,observedPostconditionHash:observed?sha256Stable(observed):null,expectedPostconditionPresent:Boolean(expected),observedPostconditionPresent:Boolean(observed),reason:String(input.reason??'').slice(0,160)};
+    if(typeof action.payload.tool!=='string'||typeof outcome.payload.tool!=='string'||
+      action.payload.tool!==toolId||outcome.payload.tool!==toolId)return {resolved:false,reason:'execution-tool-mismatch'};
+    const expected=expectedPostcondition.normalize('NFKC').trim();
+    const observed=observedPostcondition.normalize('NFKC').trim();
+    const safePayload={executionId,toolId,observationId,verified:input.verified,confidence01:input.confidence01,sourceId,sourceClass,channel,independenceKey,expectedPostconditionHash:expected?sha256Stable(expected):null,observedPostconditionHash:observed?sha256Stable(observed):null,expectedPostconditionPresent:Boolean(expected),observedPostconditionPresent:Boolean(observed),reason};
     const projectionHash=sha256Stable(safePayload);
     const refs=entry?.externalObservations??[];
     const prior=refs.find(ref=>ref.observationId===observationId);
@@ -984,7 +1086,7 @@ export class CognitiveEventFabric {
       if(entry)this.receiptProjectionIndex.set(executionId,{...entry,externalObservations:[...refs,ref].slice(-32)});
       return {resolved:true,replayed:true,eventId};
     }
-    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+    const at=input.at===undefined?Date.now():input.at;
     const evidence=this.append({id:eventId,tick:input.tick,stage:'external-evidence',source:'external-observer-fabric',parentIds:[outcome.id],external:true,confidence01:clamp01(input.confidence01),at,payload:{...safePayload,projectionHash,receiptActionEventId:action.id,receiptOutcomeEventId:outcome.id,evidenceStatus:input.verified?'corroborated':expected&&observed&&expected!==observed?'contradicted':'unresolved'}});
     const ref={observationId,eventId:evidence.id,projectionHash,projectedAt:at};
     if(entry)this.receiptProjectionIndex.set(executionId,{...entry,externalObservations:[...refs,ref].slice(-32)});
