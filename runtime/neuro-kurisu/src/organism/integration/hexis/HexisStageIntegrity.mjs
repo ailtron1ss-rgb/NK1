@@ -49,6 +49,7 @@ export const refreshHmxStageLifecycleDigest = stage => {
 };
 
 function isSafeJsonTreeNode(value, ancestors, depth, budget) {
+  if (depth > 64 || ++budget.nodes > 100000) return false;
   if (value === null || value === undefined || typeof value === 'boolean') return true;
   if (typeof value === 'string') {
     if (value.length > 1_000_000) return false;
@@ -56,7 +57,7 @@ function isSafeJsonTreeNode(value, ancestors, depth, budget) {
     return budget.stringChars <= 80_000_000;
   }
   if (typeof value === 'number') return Number.isFinite(value);
-  if (typeof value !== 'object' || depth > 64 || ++budget.nodes > 100000) return false;
+  if (typeof value !== 'object') return false;
   if (ancestors.has(value)) return false;
   ancestors.add(value);
   try {
