@@ -214,11 +214,24 @@ export class CognitiveEventFabric {
       const rawParentIds=value.parentIds;
       if(rawParentIds!==undefined&&!Array.isArray(rawParentIds))continue;
       const parentInput=Array.isArray(rawParentIds)?rawParentIds:[];
-      if(parentInput.length>12||parentInput.some(parent=>
-        typeof parent!=='string'||!parent.trim()||parent!==parent.trim()||parent.length>180||/[\u0000-\u001f\u007f]/.test(parent)
-      ))continue;
+      if(parentInput.length>12)continue;
+      const parentIds:string[]=[];
+      let invalidParentLineage=false;
+      for(let index=0;index<parentInput.length;index+=1){
+        const descriptor=Object.getOwnPropertyDescriptor(parentInput,String(index));
+        if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value')) {
+          invalidParentLineage=true;
+          break;
+        }
+        const parent=descriptor.value;
+        if(typeof parent!=='string'||!parent.trim()||parent!==parent.trim()||parent.length>180||/[\u0000-\u001f\u007f]/.test(parent)) {
+          invalidParentLineage=true;
+          break;
+        }
+        parentIds.push(parent);
+      }
+      if(invalidParentLineage)continue;
       const at=rawAt===undefined?0:rawAt;
-      const parentIds=parentInput as string[];
       let payload:Record<string,unknown>;
       try { payload=cleanPayload(value.payload); }
       catch { continue; }
