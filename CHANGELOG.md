@@ -1,3 +1,8 @@
+## [NK1][Hexis] Strictly validate review and lifecycle identifiers (2026-10-26)
+
+- Validate review IDs/decisions/correction type, retention memory/proposal IDs and confirmation type, HMX stage inputs and decisions, goal stage/proposal IDs and decisions, outbox claim ID, and connector-policy revoke ID before dispatch.
+- Add nine server smoke cases using objects or coercible strings where the API expects a scalar, asserting HTTP 400 and preventing ambiguous or malformed operations from reaching the adapters.
+
 ## [NK1][Hexis] Add UI wiring audits to canonical HMX gate (2026-10-26)
 
 - The Hexis CI workflow now runs the existing UI action-wiring and UI/API/runtime linkage audits in addition to frontend and runtime typechecks and the canonical HMX regression suite.
