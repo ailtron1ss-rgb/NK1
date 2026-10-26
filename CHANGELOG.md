@@ -1,3 +1,12 @@
+## Release metadata lineage contract — 2026-10-26
+
+- **Static-review correction:** fixed the escaped digit matcher and the negative-test regex so the contract test parses the baseline WorkPass number and matches multi-line verifier output as intended.
+- **Defect:** `verify-release-metadata.mjs` required `sourceBaseline` to be exactly `currentPass - 1`. That rejects the actual latest published WorkPass70 ZIP as a valid baseline for a later implementation candidate even when its release date is older.
+- **Fix:** lineage validation now parses the baseline WorkPass and requires a valid older pass (`1 <= sourceBaselinePass < currentPass`), while keeping the candidate build/releaseRoot aligned to the current WorkPass and independently checking baseline/release dates.
+- **Regression:** verify that a WorkPass349 implementation candidate may use the real WorkPass70 Hotfix ZIP as its baseline, and that a WorkPass350 baseline cannot be accepted for a WorkPass349 candidate even when the baseline date is older.
+- **Validation:** new branch `work/nk1-baseline-lineage-contract-2026-10-26-r1` based on release candidate `887d48947cf32e297c765cdef3cfdeac377388ca`; exact-head release metadata tests and release gate remain pending.
+
+---
 ## CognitiveEventFabric payload-envelope hardening — 2026-10-26
 
 - **Defect:** the generic payload sanitizer maps non-record roots such as arrays, primitives and `Date` instances to `{}`. At `append()` this can disguise malformed evidence or a malformed retry as a legitimate empty-payload event.
