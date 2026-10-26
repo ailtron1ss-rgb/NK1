@@ -106,6 +106,12 @@ assert.ok(body.includes('alreadyAbsent: true'), 'forget retries must be safely i
 assert.ok(body.includes('reviewEvidence.revisionGroupId'), 'review decisions must retain their reviewed revision anchor');
 assert.ok(body.includes("review-source-memory-superseded"), 'stale reviews must not mutate a newer revision');
 assert.ok(body.includes('expectedGroupRows.length'), 'an absent reviewed row must not be mistaken for a completed forget while its revision chain remains');
+assert.ok(body.includes('const recoveredCorrection = Boolean('), 'a correction committed before review closure must be recognized on retry');
+assert.ok(body.includes("memory.supersedesId === requestedMemory.id"), 'the recovered correction must directly supersede the exact reviewed row');
+assert.ok(body.includes("memory.source === 'hexis-learning-review'"), 'only a revision attributable to this workflow is eligible for correction recovery');
+assert.ok(body.includes("memory.content === String(correction ?? '').trim()"), 'recovery must match the exact requested corrected text');
+assert.ok(body.includes('hexis-review-correction:'), 'correction mutations must use a stable lifecycle command ID');
+assert.ok(body.includes('!recoveredCorrection'), 'other stale review revisions remain rejected');
 
 assert.ok(body.includes('p65EpistemicLedger.record'), 'review events must enter the canonical P65 epistemic ledger');
 assert.ok(body.includes('sourceMonitor.record'), 'review events must enter the SourceMonitor lineage graph');
