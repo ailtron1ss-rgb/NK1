@@ -1,3 +1,14 @@
+## WorkPass393 — каноническая привязка Hexis review и восстановление после рестарта (2026-10-26)
+
+- **Код/тесты до tracker-коммита:** `1d0b208d2d74e27d51997d8f53a7b191873eb0f3` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`, поверх актуального на тот момент integration head `b25b6b572f4f0366fd3b23f795763e921bf84f7f`.
+- В каноническом bridge общий digest используется при ingress, создании review и проверке решения. Перед одобрением payload повторно проходит strict adapter и сверяется с точной записью MemoryOS2 по evidence ID, digest, stance, source kind/reference, label, author, note, confidence, timestamp и protected-memory flag.
+- Для старых pending reviews с `observedAtOrigin=server-receipt` сохранена ограниченная совместимость со старым raw digest. Она разрешена только при совпадении полной канонической записи и служебной метки; изменение любого evidence-поля по-прежнему отклоняется.
+- Регрессии: шесть tampering-сценариев; старый receipt-time digest; smoke сверяет результат с сохранённой confidence без предположения, что значение обязано расти у policy ceiling; отдельный процессный restart smoke проверяет восстановление точного pending review из прежнего `STATE_DIR` перед одобрением.
+- **Валидация:** PENDING exact-head typecheck, focused Hexis tests, серверный smoke и Unified integration. GitHub Actions на последнем head завершились до получения шагов/журналов; такие запуски не считаются ни доказанным code failure, ни PASS.
+- Проценты готовности, recall и learning uplift не изменены. `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass390 — безопасная обработка null-envelope в Hexis HTTP API (2026-10-26)
 
 - **Коммиты кода/теста:** `f7dab0d78bd33ede255c04ff5a37c2f635dd4f6e`, `9d00c3001a97d5551145cf0bb2c51fcdfebe7424`.
