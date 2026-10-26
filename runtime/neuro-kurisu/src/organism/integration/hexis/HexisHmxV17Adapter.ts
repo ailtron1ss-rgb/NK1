@@ -38,11 +38,11 @@ function nonEmptyString(value: unknown): value is string {
 }
 
 function isDateTime(value: unknown): boolean {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(value)) return false;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return false;
   return Number.isFinite(Date.parse(value));
 }
 
-function describeSection(section: string, value: unknown, issues: HmxValidationIssue[]): void {
+function describeSection(section: string, value: unknown, exportId: string, issues: HmxValidationIssue[]): void {
   const path = 'sections.' + section;
   if (!KNOWN_SECTIONS.has(section)) {
     issues.push({ path, kind: 'unsupported-section', detail: 'NK1 does not recognize this HMX section; refusing a lossy import.' });
@@ -67,14 +67,28 @@ function describeSection(section: string, value: unknown, issues: HmxValidationI
         return;
       }
       if (section === 'memories') {
-        if (!nonEmptyString(row.ref) || !REF_PATTERN.test(row.ref)) {
-          issues.push({ path: path + '[' + index + '].ref', kind: 'schema', detail: 'Memory records require an HMX export-scoped ref.' });
+        if (!nonEmptyString(row.ref) || !REF_PATTERN.test(row.ref) || !row.ref.startsWith(exportId + ':')) {
+          issues.push({ path: path + '[' + index + '].ref', kind: 'schema', detail: 'Memory refs must be unique export-scoped HMX references for this document.' });
         }
         if (!nonEmptyString(row.type)) {
           issues.push({ path: path + '[' + index + '].type', kind: 'schema', detail: 'Memory records require a type string.' });
         }
         if (typeof row.content !== 'string' || !row.content.trim()) {
           issues.push({ path: path + '[' + index + '].content', kind: 'schema', detail: 'Memory records require non-empty content to be imported.' });
+        }
+        for (const dateField of ['created_at', 'updated_at', 'valid_from', 'last_accessed']) {
+          if (row[dateField] != null && !isDateTime(row[dateField])) {
+            issues.push({ path: path + '[' + index + '].' + dateField, kind: 'schema', detail: 'Optional memory timestamps must be valid ISO date-times.' });
+          }
+        }
+        if (row.valid_until != null && !isDateTime(row.valid_until)) {
+          issues.push({ path: path + '[' + index + '].valid_until', kind: 'schema', detail: 'valid_until must be null or a valid ISO date-time.' });
+        }
+        if (row.content_hash_v1 != null && (typeof row.content_hash_v1 !== 'string' || !/^[0-9a-f]{64}$/.test(row.content_hash_v1))) {
+          issues.push({ path: path + '[' + index + '].content_hash_v1', kind: 'schema', detail: 'content_hash_v1 must be a lowercase SHA-256 hash when supplied.' });
+        }
+        if (row.access_count != null && (!Number.isSafeInteger(row.access_count) || Number(row.access_count) < 0)) {
+          issues.push({ path: path + '[' + index + '].access_count', kind: 'schema', detail: 'access_count must be a non-negative integer.' });
         }
       }
       if (!MEMORY_IMPORT_SECTIONS.has(section)) {
@@ -152,7 +166,7 @@ export function validateHmxV17Document(
     return issues;
   }
 
-  for (const [name, value] of Object.entries(sections)) describeSection(name, value, issues);
+  for (const [name, value] of Object.entries(sections)) describeSection(name, value, exportId, issues);
 
   const intent = String(documentIntent);
   const presentProtected = Object.keys(sections).filter(name => PROTECTED_SECTIONS.has(name) &&
