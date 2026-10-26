@@ -1,3 +1,16 @@
+## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity on the current integration line (2026-10-26)
+
+- [INTEGRATION] Port the WorkPass426 lifecycle attempt-counter binding and WorkPass427 receipt counter/state invariants onto the latest consolidated Hexis + restore-integrity branch while preserving its independent lifecycleDigest contract.
+- [INTEGRITY] Export the safe JSON-tree validator through the runtime module and declaration; the standalone receipt validator rejects accessor-backed/non-JSON receipts and invalid applied-stage identities before inspecting the receipt.
+- [INTEGRITY] Require non-empty canonical memory, created-memory and semantic-edge IDs; require created IDs to be a subset of unique memory IDs and all receipt counters to describe a possible projection.
+- [INTEGRITY] Require deferred-section metadata to match staged sections exactly. Relationship projection/defer counts must account for the complete staged array and match the deferred relationship summary.
+- [FIX] Use a null-prototype deferred-section map so an external HMX section name such as __proto__ remains ordinary own data.
+- [REGRESSION] Cover re-hashed impossible receipts, mismatched application attempts, getter-safety, coherent deferred relationship receipts, invalid/phantom/zero deferred summaries and projector receipt generation for the special __proto__ key.
+- [CI] The canonical HMX apply workflow now includes the current integration base in its pull-request branch filter.
+- [VALIDATION] Exact-head runtime typecheck, canonical HMX apply tests and WorkPass71 gate must finish before PASS is claimed. Local execution is not claimed.
+- [RELEASE] main and the published WorkPass70 Release ZIP remain unchanged.
+
+---
 ## [NK1][Hexis] Enforce HMX accept/apply confirmation on the server (2026-10-26)
 
 - Require `confirmed: true` on both `accept` and `apply` decisions in the HMX endpoint; reject a wrongly typed confirmation flag as HTTP 400 and unconfirmed transitions as HTTP 403.
