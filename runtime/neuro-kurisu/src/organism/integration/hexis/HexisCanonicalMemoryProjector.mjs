@@ -219,6 +219,7 @@ export class HexisCanonicalMemoryProjector {
         const context = {
           hexisExportId: exportId,
           hexisMemoryRef: ref,
+          hexisGraphSourceKey: graphSourceKey,
           hexisSourceLineageId: lineageId.slice(0, 512),
           hexisOriginalType: nativeType,
           hexisImportedAt: String(appliedAt),
