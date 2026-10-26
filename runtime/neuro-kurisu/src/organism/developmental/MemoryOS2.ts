@@ -679,7 +679,8 @@ export class MemoryOS2{
   return (knownSources??this.normalizeEvidenceSources(item)).some(row=>this.evidenceKey(row)===key);
  }
  private rememberEvidenceKey(item:MemoryItem2,key:string){
-  item.evidenceLineageFilter=normalizeEvidenceLineageFilter(item.evidenceLineageFilter,[]);
+  // The filter was validated during encode/restore; avoid re-parsing all its bitsets per append.
+  if(!item.evidenceLineageFilter)item.evidenceLineageFilter=emptyEvidenceLineageFilter();
   item.evidenceLineageFilter=addEvidenceLineageBloomKey(item.evidenceLineageFilter,key);
   item.evidenceLineageKeys=[...new Set([...(Array.isArray(item.evidenceLineageKeys)?item.evidenceLineageKeys:[]),key])].slice(-32);
  }
