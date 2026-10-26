@@ -188,3 +188,52 @@ Idle breathing; естественные моргания; глазные мик
 - [Live2D Cubism SDK — official release licensing for AI/chatbot and expandable applications](https://www.live2d.com/en/sdk/license/)
 - [Three.js — Animation System](https://threejs.org/manual/pages/animation-system.html)
 - [VRM documentation](https://vrm.dev/en/)
+
+
+## WorkPass107 — selectable NK1 Original presentation (2026-10-26)
+
+### Variants now surfaced in the application
+
+The existing AvatarStage selector now exposes three modes:
+
+1. **Live2D** — the shipped Cubism model and the shared `EmbodimentIntent v1` bridge. This remains the original default.
+2. **NK1 Original** — an independently authored, stylized SVG concept renderer at `app/src/components/KurisuOriginalStage.tsx`. It is a genuinely separate look and layout, with a dark scientific backdrop, asymmetric cyan-style hair marker, cyan cuff/garment accents, its own layered hair/face/coat shapes and responsive mood/action pose. It is **not** a Live2D `.moc3` model yet.
+3. **Legacy** — the existing sprite deck and its real asset catalog remain available as a fallback/alternate presentation.
+
+The selected presentation is stored using the same best-effort local preference system. The classic Live2D model is not overwritten, and leaving the new SVG preview does not change the cognitive state or speech timeline.
+
+### Live appearance controls in NK1 Original
+
+The in-app `Настроить образ` panel changes the actual current SVG render and persists each preference on the device:
+
+- Outfits: laboratory coat, casual/city outfit, night hoodie.
+- Eye tint: ice blue, amethyst, sea-teal.
+- Hair palette: copper, redwood/wine.
+- NK1 accent: cyan, rose, lime.
+- Motion profile: soft or expressive head/body response and secondary movement.
+- Character scale: 85–115%.
+
+Emotion, action and arousal still come from the organism snapshot. The new renderer does not invent a parallel emotional state; it uses those values for pose and expression. During speech, the mouth receives the parent's shared audio-timed viseme/open value. A reduced-motion media preference disables decorative animation. Each setting is optional local UI state, not a write to the organism's memory or personality.
+
+### Public research and asset provenance
+
+The official NK1 repository tree includes quality and mobile runtime model descriptors at `runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json` and `runtime/neuro-kurisu/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json`; it also includes the existing legacy sprite manifest at `app/public/sprites/manifest.json`. The existing Cubism parameter catalog covers head, eyes, body angle and breathing; the physics asset ties body-angle inputs to hair, arms, tie, collar, coat and shoe outputs. These are the starting point for the classic variant.
+
+The GitHub release metadata currently exposes an October 19, 2026 release asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` (136,354,713 bytes), plus the earlier WorkPass70 ZIP. The GitHub connector used for this inspection returns release metadata but does not download binary ZIP contents, so the bytes inside the release archive have **not** been inspected in this pass. Therefore this new variant is committed to the feature branch / draft PR, not claimed to be inside the published ZIP.
+
+Public research found a particularly relevant implementation reference at [Akatosh6DW/Amadeus](https://github.com/Akatosh6DW/Amadeus): its `assets/live2d/models.json` demonstrates how to select a classic lab model and a daily-outfit variant over shared face, expression and motion assets. Its `ASSETS_LICENSE.md` also says the model copyright remains with the original author and that the permission described is as a component of that Amadeus project; NK1 must not treat the model as freely reusable or copy the binaries without separate permission. See [asset rights statement](https://github.com/Akatosh6DW/Amadeus/blob/main/ASSETS_LICENSE.md).
+
+A second reference, [mohui666/Amadeus — live2d-authoring experiment](https://github.com/mohui666/Amadeus/tree/main/experiments/live2d-authoring), contains a five-layer PSD and Cubism project and documents eyes, mouth, and head-tilt controls. Its own README says it was derived from original game portraits; the software MIT license alone is not evidence that those character assets can be redistributed by NK1. We use the workflow as technical research, not copy its PSD or model binary. [FrancescoCaracciolo/Amadeus](https://github.com/FrancescoCaracciolo/Amadeus) is another reference for model-selection UX but explicitly describes an uncredited model with no motion/expression assets; it is not a safe source for a production asset.
+
+The image search surfaced character sheets and Amadeus-themed images, but search-result visibility is not a reuse license. No third-party character PNG/PSD/MOC3/model binary was copied into this new variant.
+
+### Next production gate for a true custom Live2D
+
+The current NK1 Original mode provides a working selection and editable appearance controls without waiting for an image generator. To convert this distinct design into an actual Live2D asset, the next art gate is a new original layered source—not the existing copyrighted model:
+1. create and approve a full model sheet for the NK1 Original silhouette and outfit family;
+2. prepare a layered PSD with hidden overlap areas painted in;
+3. rig face/eyes/brows/mouth, head yaw/pitch/roll, torso, arms/hands, coat panels and hair strands in Cubism;
+4. export a new `.moc3`, `.model3.json`, expressions, motions and physics under a separate model ID;
+5. add that model to a model registry and allow Live2D selection between **Classic** and **NK1 Original Cubism**, while preserving the current SVG concept option as a lightweight fallback.
+
+Do not label the current SVG preview as a full Live2D rig; its secondary motion is stylized procedural SVG animation rather than Cubism physics.
