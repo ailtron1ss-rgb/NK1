@@ -103,6 +103,15 @@ const ownArrayValues=(value:unknown,maxItems:number):unknown[]=>{
   }
   return values;
 };
+const hasOwnAccessorField=(value:unknown,key:string):boolean=>{
+  if(value===null||(typeof value!=='object'&&typeof value!=='function'))return false;
+  try {
+    const descriptor=Object.getOwnPropertyDescriptor(value,key);
+    return Boolean(descriptor&&!Object.prototype.hasOwnProperty.call(descriptor,'value'));
+  } catch {
+    return true;
+  }
+};
 const hasOnlyCanonicalEventId=(value:unknown):value is string=>
   typeof value==='string'&&value.length>0&&value.length<=180&&value===value.trim()&&
   !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
@@ -121,6 +130,11 @@ export class CognitiveEventFabric {
       throw new TypeError('cognitive-event-fabric-snapshot-must-be-a-record');
     }
     const root=isRecord(raw)?raw:{};
+    const rootFields=['version','recent','receiptEvents','receiptProjectionIndex','total'];
+    const accessorRootField=rootFields.find(key=>hasOwnAccessorField(root,key));
+    if(accessorRootField) {
+      throw new TypeError('cognitive-event-fabric-snapshot-field-accessor:'+accessorRootField);
+    }
     const schemaVersion=ownDataValue(root,'version');
     if(schemaVersion!==undefined&&schemaVersion!==1) {
       throw new RangeError('unsupported-cognitive-event-fabric-snapshot-version');
@@ -136,6 +150,7 @@ export class CognitiveEventFabric {
     for(const value of rows){
       try {
         if(!isRecord(value))continue;
+        if(['id','stage','tick','at','source','parentIds','external','confidence01','payload'].some(key=>hasOwnAccessorField(value,key)))continue;
         const idValue=ownDataValue(value,'id');
         const stageValue=ownDataValue(value,'stage');
         const tickValue=ownDataValue(value,'tick');
@@ -195,6 +210,7 @@ export class CognitiveEventFabric {
     const receiptRows=ownArrayValues(ownDataValue(root,'receiptProjectionIndex'),512);
     const sanitizeReceiptRef=(value:unknown,kind:'observation'|'revision',executionId:string):ExternalObservationProjectionRef|ToolReceiptRevisionProjectionRef|null=>{
       if(!isRecord(value))return null;
+      if(['observationId','revisionId','eventId','projectionHash','projectedAt'].some(key=>hasOwnAccessorField(value,key)))return null;
       const idKey=kind==='observation'?'observationId':'revisionId';
       const refId=ownDataValue(value,idKey);
       const eventId=ownDataValue(value,'eventId');
@@ -220,6 +236,7 @@ export class CognitiveEventFabric {
 
     for(const value of receiptRows){
       if(!isRecord(value))continue;
+      if(['executionId','actionEventId','outcomeEventId','evidenceEventId','projectedAt','projectionHash','externalObservations','receiptRevisions'].some(key=>hasOwnAccessorField(value,key)))continue;
       const executionId=ownDataValue(value,'executionId');
       const actionEventId=ownDataValue(value,'actionEventId');
       const outcomeEventId=ownDataValue(value,'outcomeEventId');
