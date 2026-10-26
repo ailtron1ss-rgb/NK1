@@ -1,3 +1,11 @@
+## [NK1][Hexis] WorkPass389 — project evidence-based belief revisions into canonical recall confidence (2026-10-26)
+
+- [INTEGRATION] Added a typed Hexis→NK1 belief-projection contract and bound it at `OrganismSystemFabric`, using the existing `MemoryFabric.updateSignals` write path rather than creating a parallel memory store.
+- [BEHAVIOR] Independent supporting evidence raises the shared canonical confidence; independent contradictory evidence lowers it. Replayed evidence is audited as duplicate but cannot mutate canonical confidence a second time. Protected contradictions also remain non-applying.
+- [ATOMICITY] `reviseBelief` now computes the candidate state/audit before projecting. If the canonical write fails, it does not commit the new Hexis belief, evidence keys, audit entry or revision metrics.
+- [TEST] Added a composition-root integration regression for support→duplicate replay→contradiction, comparing each posterior to the canonical memory item that retrieval actually uses.
+- [VALIDATION] Code, integration wiring and regressions committed to the non-main PR branch; tests remain subject to actionable GitHub Actions execution.
+
 ## [NK1][Hexis] WorkPass388 — verify memory, graph, temporal and belief rollback together (2026-10-26)
 
 - [ATOMICITY] Added fault injection that fails the second Hexis belief registration after canonical memory/semantic graph/temporal writes have begun.
