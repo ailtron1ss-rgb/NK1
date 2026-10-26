@@ -90,7 +90,7 @@ function dateMs(value: unknown): number | undefined {
 
 function safeContext(value: unknown): Record<string, string> {
   const input = record(value);
-  const output: Record<string, string> = Object.create(null) as Record<string, string>;
+  const output: Record<string, string> = {};
   if (!input) return output;
   for (const [key, item] of Object.entries(input).slice(0, 12)) {
     if (!(typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')) continue;
@@ -296,6 +296,7 @@ function describeSection(section: string, value: unknown, exportId: string, issu
 export function validateHmxV17Document(raw: unknown, requestedIntent?: CanonicalHmxIntent): HmxValidationIssue[] {
   const captured = snapshotHmxV17Document(raw);
   if (!captured.ok) return [captured.issue];
+  const issues: HmxValidationIssue[] = [];
 
   let serialized: string;
   try {
