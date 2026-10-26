@@ -69,7 +69,7 @@ try {
   successFileWritten = true;
 
   const first = runMigrator(true);
-  assert.match(first.stdout, new RegExp("applied " + successMigration.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.ok(first.stdout.includes("applied " + successMigration), "first run must log the applied migration");
   assert.equal(await tableExists(successTable), true, "first run must create the test table");
   assert.equal((await pool.query("SELECT count(*)::int AS count FROM public." + successTable)).rows[0].count, 1);
   assert.equal(await migrationRecorded(successMigration), 1, "successful migration must be recorded once");
