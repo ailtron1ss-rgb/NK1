@@ -103,7 +103,7 @@ const valid = fabric.recordOperationalCycle({
   observation: { payload: { accepted: true } },
   outcome: { payload: { ok: true } },
 });
-assert.ok(valid.ids?.observation, 'valid operational observation should be recorded');
-assert.ok(valid.ids?.outcome, 'valid operational outcome should be recorded');
+assert.ok(valid.observation, 'valid operational observation should be recorded');
+assert.ok(valid.outcome, 'valid operational outcome should be recorded');
 assert.ok(snapshot().total >= 2, 'valid cycle should append its stages');
 console.log('Cognitive operational cycle envelope: PASS');
