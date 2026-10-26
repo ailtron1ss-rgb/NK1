@@ -1,3 +1,10 @@
+## NK1 P26 learner — make bounded training-control fallbacks reachable (2026-10-26)
+
+- Removed the contradictory early rejection of non-finite `learningRate01` and `sampleWeight01` from `assertTrainingScalars()`. Both `train()` and `trainFeatures()` already replace malformed controls with conservative finite defaults and clamp effective rates/weights before any parameter update.
+- Action identity and target finiteness/range remain hard preconditions. The existing true-learning regression checks that NaN/Infinity controls do not poison weights/biases and that exactly one bounded update is recorded per valid training call.
+
+---
+
 ## NK1 P23 regression fix — preserve persisted row schema helpers (2026-10-26)
 
 - Restored the field-level persistence helpers used by P23 row parsers and checksum/metrics normalization after extracting the shared bounded object-graph validator. These helpers remain distinct from graph validation: one validates structural trust, the others validate persisted domain values and bounds.
