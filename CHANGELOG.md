@@ -2474,3 +2474,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [TEST] Added runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs covering zero storage calls, receipt cloning, nested-data isolation, and fail-closed handling of pending stages.
 - [VALIDATION] The regression test has been added but has not yet been executed in a runtime; CI/typecheck status remains unverified until GitHub Actions runs on the resulting branch head.
 
+
+
+## [NK1][Hexis] WorkPass426 — reject malformed HMX application attempt counters (2026-10-26)
+
+- [FIX] `isValidHmxStageDigest` now validates optional `applicationAttempts` as a non-negative safe integer even though lifecycle metadata is outside the reviewed content digest.
+- [INTEGRITY] An applied-stage receipt must agree exactly with the persisted attempt number; a valid receipt digest cannot mask stale or mismatched lifecycle metadata.
+- [REGRESSION] Cover string, fractional, negative, non-finite and unsafe attempt counters, asserting rejection before canonical storage access; also reject applied receipts bound to another attempt.
+- [VALIDATION] Source and regression committed; exact-head Actions are required before PASS can be claimed.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
