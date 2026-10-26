@@ -1195,6 +1195,40 @@ assert.equal(signalRollbackRuntime.fabric.refreshSignalCompensation(transientSig
 assert.equal(signalRollbackRuntime.fabric.inspect().mutationReceiptJournal.corrupt, false,
   'the new compensating lifecycle receipt must survive snapshot/restore validation');
 
+// The convenience API must also compensate if updateSignals mutates canonical
+// state and the caller-facing adapter then throws before returning the receipt.
+const beforeHelperFailure = signalSnapshot(
+  signalRollbackRuntime.fabric.canonicalSnapshot().items.find(item => item.id === seededSignalMemory.id),
+);
+const originalHelperFailureUpdateSignals = signalRollbackRuntime.fabric.updateSignals.bind(signalRollbackRuntime.fabric);
+let injectHelperFailureAfterMutation = true;
+signalRollbackRuntime.fabric.updateSignals = (...args) => {
+  const result = originalHelperFailureUpdateSignals(...args);
+  if (injectHelperFailureAfterMutation) {
+    injectHelperFailureAfterMutation = false;
+    throw new Error('injected-helper-failure-after-signal-mutation');
+  }
+  return result;
+};
+assert.throws(
+  () => signalRollbackRuntime.fabric.updateSignalsWithCompensation(
+    seededSignalMemory.id,
+    { confidence: 0.2 },
+    'rollback-helper-failure-regression',
+    { commandId: 'test-helper-failure-after-signal-mutation' },
+  ),
+  /injected-helper-failure-after-signal-mutation/,
+);
+signalRollbackRuntime.fabric.updateSignals = originalHelperFailureUpdateSignals;
+assert.deepEqual(
+  signalSnapshot(signalRollbackRuntime.fabric.canonicalSnapshot().items.find(item => item.id === seededSignalMemory.id)),
+  beforeHelperFailure,
+  'the convenience helper must restore the exact pre-state after a post-mutation exception',
+);
+assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0,
+  'the convenience helper must not leak a token after successful compensation');
+
+
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
   const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
