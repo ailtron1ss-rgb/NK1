@@ -1,3 +1,11 @@
+## WorkPass354b — future-proof the CI evidence-head regression (2026-10-26)
+
+- **Test improvement:** the regression now changes `sourceHeadAtSnapshot` to a different valid SHA and asserts that the ledger remains valid as long as its CI rows match `ciSnapshot.evidenceHead`. It no longer depends on the current fixture always having different source/evidence heads.
+- **Prior exact-head validation:** Unified project integration suite [#40283563274](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40283563274), progress ledger integrity [#40283563215](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40283563215), and WorkPass110 [#40283563219](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40283563219) passed on `754c06f353182e2537b5a534ebe0256d3cd65e96).
+- **Current checkpoint:** test-only fix `6d8a6145ced81ab87366f9f44ea8d16076e899af` is pending fresh exact-head CI; scores unchanged.
+
+---
+
 ## WorkPass354 — separate source snapshot from validated CI evidence (2026-10-26)
 
 - **Observed failure:** Unified integration run [#40282049399](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282049399) stopped at the progress-ledger validation step. Historical successful CI rows were pinned to `621864d0d7f2676245383adab86f1dcc6d0f741f`, but the validator required every row to match the newer source checkpoint; runtime tests were skipped.
