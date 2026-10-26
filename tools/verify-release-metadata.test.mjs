@@ -138,7 +138,7 @@ test('release metadata validator detects release-root date drift', async t => {
   await fs.writeFile(p, JSON.stringify(manifest, null, 2));
   const r = run(root);
   assert.equal(r.status, 1, r.stdout + r.stderr);
-  assert.match(r.stdout, /release-root-date-aligned[\s\\S]*?"pass": false/);
+  assert.match(r.stdout, /release-root-date-aligned[\s\S]*?"pass": false/);
 });
 
 test('release metadata validator rejects a source baseline dated after the release', async t => {
@@ -150,5 +150,5 @@ test('release metadata validator rejects a source baseline dated after the relea
   await fs.writeFile(p, JSON.stringify(manifest, null, 2));
   const r = run(root);
   assert.equal(r.status, 1, r.stdout + r.stderr);
-  assert.match(r.stdout, /source-baseline-date-not-after-release-date[\s\\S]*?"pass": false/);
+  assert.match(r.stdout, /source-baseline-date-not-after-release-date[\s\S]*?"pass": false/);
 });
