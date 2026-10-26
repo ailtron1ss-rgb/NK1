@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass425 — bind approved goals to reviewed content (2026-10-26)
+
+- [APPROVAL INTEGRITY] Goal approval now stores a digest over the reviewed proposal identity, source lineage/ref, title, description, importance, urgency and confidence. The adapter validates it on repeated approval, materialization and activation; system-level materialize/activate entrypoints revalidate before mutating canonical state.
+- [REGRESSION] Added two restored-state tampering cases: changing a title after approval must not create an agency project, and changing source reference after materialization must not activate the project, mutate graph state or mint an activation receipt.
+- [VALIDATION] Regression source is committed; execution/typecheck still await usable Actions runner diagnostics.
+
 ## [NK1][Hexis] WorkPass424 — reject stale apply receipts on lifecycle downgrade (2026-10-26)
 
 - [REPLAY SAFETY] The shared HMX stage validator now rejects unknown lifecycle states and rejects any non-applied stage that still carries an application receipt. A stale persisted `applied → accepted` status mutation can no longer re-enter the canonical write path while keeping the old receipt.
