@@ -1,5 +1,6 @@
 import { cosineSimilarity } from '../core/NumericPrimitives.ts';
 import type { ActionKind } from '../core/types.ts';
+import { isBoundedPlainDataTree } from '../core/BoundedPlainData.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const GOAL_DIMS = ['curiosity','truth','coherence','competence','connection','continuity','autonomy','energy'] as const;
@@ -108,6 +109,10 @@ export class B272EndogenousGoalGenesis {
   private state=defaultB272State();
   restore(raw?:Partial<B272State>|null){
     const d=defaultB272State();
+    if(raw!==undefined&&raw!==null&&!isRecord(raw))throw new TypeError('B272 persisted state must be a plain object');
+    // The weight-matrix sanitizer intentionally accepts oversized legacy matrices
+    // up to this budget and then bounds them to canonical dimensions.
+    if(raw!==undefined&&raw!==null&&!isBoundedPlainDataTree(raw,{maxNodes:300_000}))throw new TypeError('B272 persisted state must contain only bounded plain data properties');
     const r:Record<string,unknown>=isRecord(raw)?raw:{};
     if(r.version!==undefined&&r.version!==1)throw new RangeError('unsupported B272 state version');
 
