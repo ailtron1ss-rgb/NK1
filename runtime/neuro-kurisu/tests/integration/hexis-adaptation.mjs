@@ -656,6 +656,71 @@ assert.equal(
   'successful retry must contain exactly the previous history row and its replacement',
 );
 
+// Type metadata is canonical meaning, not decoration. A type-only reclassification
+// must version the memory, update the canonical kind and withdraw the old graph/belief
+// projection without changing the source text or multiplying rows on re-export.
+const typeReclassificationRuntime = new MemorySubsystemRuntime();
+const typeReclassificationLedger = new HexisAdaptationFabric();
+const typeReclassificationProjector = new HexisCanonicalMemoryProjector(
+  typeReclassificationRuntime.fabric,
+  typeReclassificationRuntime.semanticMemory,
+  typeReclassificationLedger,
+);
+typeReclassificationLedger.bindCanonicalMemoryApply(stage => typeReclassificationProjector.apply(stage));
+const typeReclassificationContent = 'The source keeps this phrase while changing its memory type.';
+const applyTypeReclassification = (exportId, type) => {
+  const stage = typeReclassificationLedger.stageHmx({
+    document: makeHmxDocument(exportId, {
+      memories: [{
+        ref: exportId + ':stable-typed-ref',
+        type,
+        content: typeReclassificationContent,
+        status: 'active',
+      }],
+    }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert.deepEqual(stage.conflicts, []);
+  assert.equal(typeReclassificationLedger.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
+  const applied = typeReclassificationLedger.decideHmx(stage.stagingId, 'apply');
+  assert.equal(applied?.status, 'applied');
+  const ids = applied.application.memoryIds;
+  const memory = typeReclassificationRuntime.fabric.canonicalSnapshot().items.find(item =>
+    ids.includes(item.id) && String(item.context?.hexisOriginalType ?? '').toLowerCase() === type,
+  );
+  return { applied, memory };
+};
+const semanticTypeVersion = applyTypeReclassification('exp_0000000000012361', 'semantic');
+assert(semanticTypeVersion.memory);
+assert.equal(semanticTypeVersion.memory.kind, 'semantic');
+assert.equal(semanticTypeVersion.memory.epistemicStatus, 'belief');
+const proceduralTypeVersion = applyTypeReclassification('exp_0000000000012362', 'procedural');
+assert(proceduralTypeVersion.memory);
+assert.notEqual(proceduralTypeVersion.memory.id, semanticTypeVersion.memory.id,
+  'a type-only correction must create a distinct canonical version');
+assert.equal(proceduralTypeVersion.memory.kind, 'procedural',
+  'the revised upstream type must reach the canonical MemoryOS kind');
+assert.equal(
+  typeReclassificationRuntime.fabric.canonicalSnapshot().items.find(item => item.id === semanticTypeVersion.memory.id)?.epistemicStatus,
+  'quarantined',
+  'the old canonical kind must remain as quarantined history',
+);
+assert.equal(typeReclassificationLedger.snapshot().beliefs.some(belief => belief.memoryId === semanticTypeVersion.memory.id), false);
+assert(typeReclassificationLedger.snapshot().beliefs.some(belief => belief.memoryId === proceduralTypeVersion.memory.id));
+assert.equal(typeReclassificationRuntime.semanticMemory.snapshot().nodes.some(
+  node => node.sourceKey === semanticTypeVersion.memory.context?.hexisGraphSourceKey,
+), false, 'the prior type projection must be removed from the active graph');
+assert(typeReclassificationRuntime.semanticMemory.snapshot().nodes.some(
+  node => node.sourceKey === proceduralTypeVersion.memory.context?.hexisGraphSourceKey,
+));
+const repeatedProceduralType = applyTypeReclassification('exp_0000000000012363', 'procedural');
+assert.equal(repeatedProceduralType.applied.application.importedCount, 0);
+assert.equal(repeatedProceduralType.applied.application.deduplicatedCount, 1);
+assert.equal(typeReclassificationRuntime.fabric.canonicalSnapshot().items.filter(
+  item => String(item.source ?? '').startsWith('hexis:'),
+).length, 2, 're-export of the new type must reuse the matching version instead of duplicating it');
+
 // Migration regression: a pre-existing persisted HMX row can carry values written by
 // the older permissive importer. A replay under the new policy must cap both the
 // canonical signal and its external evidence trail, not just new inserts.
