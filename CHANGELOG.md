@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass413 — make TypeScript validation part of the Hexis gate (2026-10-26)
+
+- [CI] Added `npm run typecheck` before the Hexis adaptation + live-server smoke tests in `hexis-canonical-apply.yml`.
+- [CI] Expanded path filters to cover the agency runtime, temporal/memory subsystem and self-project/deliberation contracts touched by the Hexis bridge.
+- [VALIDATION] CI configuration change committed; the current Actions connector still reports the job as failed with no executed step details, so no typecheck result is inferred.
+
 ## [NK1][Hexis] WorkPass412 — regression-test full activation rollback after deliberation failure (2026-10-26)
 
 - [TEST] Injects a failure after goal project activation and relationship projection, at the agency deliberation write. Verifies the project returns to paused, no success receipt remains, graph state is restored, and no phantom deliberation decision survives; the normal activation test then retries successfully.
