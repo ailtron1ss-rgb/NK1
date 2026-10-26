@@ -132,6 +132,41 @@ export function HexisControlConsole() {
     }
   };
 
+  const stageHmxFile = async (file: File) => {
+    if (file.size > 8 * 1024 * 1024) {
+      setMessage("Stage imported HMX: files above 8 MiB are rejected before parsing.");
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch {
+      setMessage("Stage imported HMX: the selected file is not valid JSON.");
+      return;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      setMessage("Stage imported HMX: the document root must be a JSON object.");
+      return;
+    }
+    const requestBody = JSON.stringify({ document: parsed, intent: hmxIntent, strategy: hmxStrategy });
+    // The default server body cap is 256,000 bytes; leave room for headers/envelope.
+    if (new TextEncoder().encode(requestBody).byteLength > 240_000) {
+      setMessage("Stage imported HMX: the request exceeds the conservative 240 KB limit for the current server body cap.");
+      return;
+    }
+    const result = await run("Stage imported HMX", () => neuroApi.hexisHmxStage({
+      document: parsed as Record<string, unknown>, intent: hmxIntent, strategy: hmxStrategy,
+    }));
+    const stage = (result as any)?.stage ?? null;
+    if (stage?.stagingId) {
+      setStageId(String(stage.stagingId));
+      setHmxStage(stage);
+      setHmxAccepted(false);
+      setHmxConfirmed(false);
+      setHmxApplyConfirmed(false);
+    }
+  };
+
   const acceptHmx = async () => {
     const result = await run("Accept staged HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"));
     const stage = (result as any)?.stage ?? null;
@@ -326,6 +361,14 @@ export function HexisControlConsole() {
           <div className="mt-2 flex flex-wrap gap-2">
             <Button disabled={busy} onClick={() => void exportHmx()}>Export HMX</Button>
             <Button variant="outline" disabled={busy} onClick={() => void stageCurrentHmx()}>Stage current HMX</Button>
+            <label className="flex h-10 cursor-pointer items-center rounded-md border border-border bg-bg px-3 text-xs text-fg">
+              Import HMX JSON
+              <input type="file" accept=".json,application/json" disabled={busy} className="ml-2 max-w-[145px] text-[10px]" onChange={event => {
+                const selectedFile = event.currentTarget.files?.[0];
+                if (selectedFile) void stageHmxFile(selectedFile);
+                event.currentTarget.value = "";
+              }} />
+            </label>
             <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxStage(null); setHmxAccepted(false); setHmxConfirmed(false); setHmxApplyConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
             <Button disabled={busy || !stageId.trim() || !hmxConfirmed || hmxStage?.status !== "staged" || (hmxStage?.conflicts?.length ?? 0) > 0} onClick={() => void acceptHmx()}>Accept staged</Button>
             <Button variant="outline" disabled={busy || !stageId.trim() || hmxStage?.status !== "staged"} onClick={() => void rejectHmx()}>Reject</Button>
