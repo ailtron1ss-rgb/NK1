@@ -811,7 +811,11 @@ async function route(req, res) {
             return json(res, 200, { ok: true, hexis: runtime.core.hexisDiagnostics(), memoryIndex: runtime.core.hexisMemoryIndex(64), reviews: runtime.core.hexisListLearningReviews(), outbox: runtime.core.hexisOutbox() });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/memories') {
-            const limit = Math.max(1, Math.min(128, Number(url.searchParams.get('limit') || 64)));
+            const rawLimit = url.searchParams.get('limit');
+            const limit = rawLimit === null ? 64 : Number(rawLimit);
+            if (!Number.isSafeInteger(limit) || limit < 1 || limit > 128) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-memory-limit' });
+            }
             return json(res, 200, { ok: true, memoryIndex: runtime.core.hexisMemoryIndex(limit) });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/sync-memory') {
@@ -894,18 +898,25 @@ async function route(req, res) {
             }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/temporal') {
-            const memoryId = String(url.searchParams.get('memoryId') || '');
-            const at = Number(url.searchParams.get('at'));
-            if (!memoryId || !Number.isFinite(at))
+            const memoryId = url.searchParams.get('memoryId');
+            const rawAt = url.searchParams.get('at');
+            const at = rawAt === null ? Number.NaN : Number(rawAt);
+            if (!memoryId?.trim() || memoryId.length > 256 || rawAt === null || rawAt.trim() === '' || !Number.isSafeInteger(at)) {
                 return json(res, 400, { ok: false, error: 'memoryId-and-at-required' });
+            }
             return json(res, 200, { ok: true, result: runtime.core.hexisTemporalAt(memoryId, at) });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/temporal/diff') {
-            const memoryId = String(url.searchParams.get('memoryId') || '');
-            const fromAt = Number(url.searchParams.get('from'));
-            const toAt = Number(url.searchParams.get('to'));
-            if (!memoryId || !Number.isFinite(fromAt) || !Number.isFinite(toAt))
+            const memoryId = url.searchParams.get('memoryId');
+            const rawFrom = url.searchParams.get('from');
+            const rawTo = url.searchParams.get('to');
+            const fromAt = rawFrom === null ? Number.NaN : Number(rawFrom);
+            const toAt = rawTo === null ? Number.NaN : Number(rawTo);
+            if (!memoryId?.trim() || memoryId.length > 256 ||
+                rawFrom === null || rawFrom.trim() === '' || !Number.isSafeInteger(fromAt) ||
+                rawTo === null || rawTo.trim() === '' || !Number.isSafeInteger(toAt)) {
                 return json(res, 400, { ok: false, error: 'memoryId-from-to-required' });
+            }
             return json(res, 200, { ok: true, result: runtime.core.hexisTemporalDiff(memoryId, fromAt, toAt) });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/reviews') {
@@ -1042,8 +1053,16 @@ async function route(req, res) {
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/goals') {
             try {
-                const status=url.searchParams.get('status') || undefined;
-                const limit=Math.max(1,Math.min(128,Number(url.searchParams.get('limit') || 64)));
+                const rawStatus = url.searchParams.get('status');
+                const status = rawStatus === null ? undefined : rawStatus;
+                const rawLimit = url.searchParams.get('limit');
+                const limit = rawLimit === null ? 64 : Number(rawLimit);
+                if (status !== undefined && !['pending', 'approved', 'rejected', 'materialized'].includes(status)) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-goal-status-filter' });
+                }
+                if (!Number.isSafeInteger(limit) || limit < 1 || limit > 128) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-goal-limit' });
+                }
                 return json(res,200,{ok:true,proposals:runtime.core.hexisListGoalProposals(status,limit)});
             } catch(error) {
                 return json(res,400,{ok:false,error:String(error?.message ?? error)});
