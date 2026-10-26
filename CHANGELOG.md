@@ -1,3 +1,7 @@
+### WorkPass328 follow-up — ground each replay fixture to its own pre-action tick (2026-10-26)
+
+- The replay-diversity fixture now sets `trace.stateBefore.tick` and `trace.tick` to the same per-sample value and advances the observed post-state tick/time independently. Previously the test changed only the trace tick while reusing `stateBefore.tick=1`; `recordOutcome()` correctly rejected those rows as unrelated/old pre-action traces.
+
 ### WorkPass328 follow-up — authenticate Hermes receipts before payload use (2026-10-26)
 
 - Reordered `bindReflectiveReportsToVerifiedShadowEvidence()` so signed shadow receipts are cryptographically verified before their payload identity, manifest, or binary outcome is used for matching. Previously a tampered `passed` field could enter the outcome-mismatch branch before signature validation, obscuring the required `signed-shadow-evidence-not-trusted` diagnosis. Duplicate run/artifact IDs now fail without replacing the first authenticated entry.

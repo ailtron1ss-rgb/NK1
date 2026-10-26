@@ -281,12 +281,14 @@ assert.equal(boundedDuplicateStream.summary().outcomes, outcomesBeforeEvictedRet
 const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
   replayDiversity.recordOutcome({
-    ...trace, id: `replay-a-${i}`, tick: 10 + i,
+    ...trace, id: `replay-a-${i}`, tick: 10 + i, createdAt: 1000 + i,
+    stateBefore: mkState({ tick: 10 + i, at: 1000 + i }),
     selected: { ...trace.selected, goalId: "task-A" },
   }, mkState({ tick: 11 + i, at: 1100 + i }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 }
 replayDiversity.recordOutcome({
-  ...trace, id: "replay-b-0", tick: 20,
+  ...trace, id: "replay-b-0", tick: 20, createdAt: 1190,
+  stateBefore: mkState({ tick: 20, at: 1190 }),
   selected: { ...trace.selected, goalId: "task-B" },
 }, mkState({ tick: 21, at: 1200 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
