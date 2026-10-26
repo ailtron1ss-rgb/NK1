@@ -15,9 +15,10 @@
 1. Added ISO calendar-date validation, including rejection of impossible dates.
 2. Added the explicit `release-date-is-valid-iso-calendar-date` check.
 3. Removed the historical fallback from status-report filename selection; invalid dates resolve to an invalid marker and the verifier fails closed.
-4. Updated the test fixture to declare its intended date.
-5. Added regressions for missing date and impossible date `2026-02-30`.
-6. Updated `CHANGELOG.md`.
+4. Added consistency checks: `releaseRoot` date must match `SUPER_VERSION.date`, and the source baseline must not be dated after the release.
+5. Updated the test fixture to declare its intended date.
+6. Added regressions for missing date, impossible date `2026-02-30`, release-root date drift and a future-dated source baseline.
+7. Updated `CHANGELOG.md`.
 
 ## Changed files
 
