@@ -9,6 +9,7 @@ import type {
   HexisGoalProposalListResponse,
   HexisGoalProposalPrepareResponse,
   HexisGoalProposalStatus,
+  HexisHmxExportResponse,
   HexisHmxStageResponse,
 } from "@/neuro-kurisu/types";
 
@@ -102,10 +103,10 @@ export function HexisControlConsole() {
   };
 
   const exportHmx = async () => {
-    const result = await run("Export HMX", () => neuroApi.hexisHmxExport());
-    const document = (result as any)?.document;
-    if (!document) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
+    const result = await run("Export HMX", () => neuroApi.hexisHmxExport()) as HexisHmxExportResponse | null;
+    const hmxDocument = result?.document;
+    if (!hmxDocument) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(hmxDocument, null, 2)], { type: "application/json" }));
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = "neuro-kurisu-hexis-hmx.json";
