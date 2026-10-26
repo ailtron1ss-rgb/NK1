@@ -1,4 +1,5 @@
 import { CLOSED_MOUTH, buildVisemeTimeline, sampleVisemeTimeline } from './speech-viseme-core.mjs';
+import { deriveEmbodimentPose } from './embodiment-pose.mjs';
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const clamp = (value, low, high, fallback = 0) =>
   Math.max(low, Math.min(high, typeof value === 'number' && Number.isFinite(value) ? value : fallback));
@@ -62,6 +63,7 @@ export function buildAvatarPresentation(snapshot) {
   const valence = clamp(emotion.valence, 0, 1, 0.5);
   const arousal = clamp(emotion.arousal, 0, 1, 0.2);
   const [baseGazeX, baseGazeY] = GAZE[action];
+  const pose = deriveEmbodimentPose(action, emotionLabel, arousal);
   const gazeX = clamp(baseGazeX + (valence - 0.5) * 0.16, -0.4, 0.4);
   const gesture = speaking || ['respond', 'explore', 'verify', 'reflect'].includes(action);
   const motionGroup = speaking || action === 'respond'
@@ -85,6 +87,7 @@ export function buildAvatarPresentation(snapshot) {
       gazeY: clamp(baseGazeY, -0.4, 0.4),
       gazeDriven: true,
       headTilt: HEAD_TILT[emotionLabel],
+      ...pose,
       expressionIntensity: arousal,
       speaking,
       gesture,
