@@ -45,7 +45,7 @@ export const isValidHmxApplyReceipt = (stage, receipt) => {
   for (const field of ['semanticEdgeIds', 'memoryIds', 'createdMemoryIds', 'warnings']) {
     if (!Array.isArray(receipt[field]) || !receipt[field].every(item => typeof item === 'string')) return false;
   }
-  if (receipt.warnings.some(message => message.length > 2048 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/u.test(message))) return false;
+  if (receipt.warnings.some(message => message.length > 2048 || /[\u0000-\u001f\u007f-\u009f]/u.test(message))) return false;
   for (const field of ['semanticEdgeIds', 'memoryIds', 'createdMemoryIds']) {
     if (receipt[field].some(id => !isCanonicalReceiptId(id))) return false;
   }
