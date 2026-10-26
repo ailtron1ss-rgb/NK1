@@ -22,6 +22,35 @@ try {
   if (!ready) throw new Error(`server-not-ready:${output.slice(-800)}`);
   const overview = await (await fetch(`${base}/api/organism/integration/hexis`)).json();
   if (!overview.ok || overview.hexis?.source?.name !== 'Hexis-main') throw new Error('hexis-overview');
+  // Every Hexis POST endpoint rejects JSON null before reading fields or mutating state.
+  const hexisPostRoutes = [
+    '/api/organism/integration/hexis/sync-memory',
+    '/api/organism/integration/hexis/belief/revise',
+    '/api/organism/integration/hexis/reviews/create',
+    '/api/organism/integration/hexis/reviews/decide',
+    '/api/organism/integration/hexis/retention/propose',
+    '/api/organism/integration/hexis/retention/apply',
+    '/api/organism/integration/hexis/hmx/stage',
+    '/api/organism/integration/hexis/hmx/decide',
+    '/api/organism/integration/hexis/goals/prepare',
+    '/api/organism/integration/hexis/goals/decide',
+    '/api/organism/integration/hexis/goals/materialize',
+    '/api/organism/integration/hexis/goals/activate',
+    '/api/organism/integration/hexis/outbox/enqueue',
+    '/api/organism/integration/hexis/outbox/claim',
+    '/api/organism/integration/hexis/outbox/ack',
+    '/api/organism/integration/hexis/outbox/reclaim',
+    '/api/organism/integration/hexis/policy',
+    '/api/organism/integration/hexis/policy/evaluate',
+    '/api/organism/integration/hexis/policy/revoke',
+    '/api/organism/integration/hexis/execution-plan',
+  ];
+  for (const route of hexisPostRoutes) {
+    const response = await post(route, null);
+    if (response.status !== 400) {
+      throw new Error('hexis-json-record-body-guard:' + route + ':' + response.status);
+    }
+  }
   // Permission booleans must never be inferred through JavaScript truthiness.
   const coercedAutonomyGrant = await post('/api/organism/integration/hexis/policy', {
     connectorId: 'nk1-coercion-regression',
