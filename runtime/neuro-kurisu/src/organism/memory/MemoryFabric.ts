@@ -574,7 +574,7 @@ export class MemoryFabric {
 
   /** Record source provenance through the lifecycle journal and its replay-safe command receipts. */
   recordEvidence(id:string,input:MemoryLifecycleEvidenceInput,context:{tick?:number;commandId?:string}={}):ReturnType<MemoryOS2['recordEvidence']>{
-    const key=String(input.independenceKey??'').trim();
+    const key=String(input.independenceKey??'').trim().normalize('NFKC').slice(0,96);
     const memoryId=String(id);
     // Validation/missing-target failures are read-only; delegate to canonical validator without creating a lifecycle event.
     if(!key||!this.findCanonical(memoryId))return this.memoryOS.recordEvidence(memoryId,input);
