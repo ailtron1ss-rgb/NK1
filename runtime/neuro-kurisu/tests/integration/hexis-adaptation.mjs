@@ -63,6 +63,7 @@ const projection = normalizeHmxV17Memory(validHmx.sections.memories[0], {
   sourceSubjectId: validHmx.source.hexis_lineage_id,
 });
 assert.equal(projection?.kind, 'semantic');
+assert.equal(projection?.ref, validHmx.sections.memories[0].ref, 'source HMX reference survives normalization for provenance mapping');
 assert.equal(projection?.confidence, 0.55, 'external memory confidence is capped before independent verification');
 assert.equal(projection?.salience, 0.71);
 assert.equal(projection?.sourceAuthority01, 0.55, 'self-reported external trust cannot boost source authority');
