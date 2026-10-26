@@ -1,3 +1,9 @@
+## NK1 B272 corruption fixture — represent `__proto__` as untrusted JSON data (2026-10-26)
+
+- Changed the goal-outcome-memory corruption fixture to define an own enumerable `__proto__` data property on an ordinary object instead of using object-literal prototype mutation. The test now models a JSON-parsed hostile key that the B272 sanitizer must quarantine, while the separate shared validator continues to reject genuinely exotic prototypes.
+
+---
+
 ## NK1 P26 persistence — guard ADWIN snapshot restoration (2026-10-26)
 
 - Routed `AdaptiveWindowDriftDetector.restore()` through the shared bounded plain-data validator before accessing snapshot fields. Accessors, custom prototypes, cycles/aliases, sparse arrays, and over-budget inputs now fail with `adwin-snapshot-invalid` before live state is touched.
