@@ -1,3 +1,21 @@
+## B274 executed-action attribution — 2026-10-26
+
+- B274 now receives the canonical selected action with every real-trial outcome. It updates a skill candidate only when the executed action matches the candidate plan's first action; otherwise the reward is rejected before trial/evaluation counters or candidate quality and promotion state change.
+- Unmatched outcomes are preserved in bounded diagnostics. The Core integration test now accepts either a genuine trial or an explicit mismatch record, rather than forcing false attribution.
+- Focused Repository wiring contract audit [#40256974246](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256974246) passed all steps, including B274 lifecycle/evaluator/migration/Core integration and the full cognitive graph/routing tests. PR [#159](https://github.com/ailtron1ss-rgb/NK1/pull/159) merged to this audit branch (merge commit `e03b33721696f5f7db06b35ba9359f79c02fbfe9`).
+- Separate broader workflow [WorkPass110 run #40256795814](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256795814) remains red in `VersionedSkillCandidateStore.rollback` because the existing test call lacks the required signed rollback approval identity/timestamp/active-version guard; this is not part of B274 attribution and remains unresolved.
+
+## B274 executed-action attribution — 2026-10-26
+
+- B274 now receives the canonical selected action with each real-trial result. A candidate is evaluated only when the executed action matches its first planned action; otherwise the reward is rejected before candidate quality, attempts, real-trial count or promotion state changes.
+- Unmatched outcomes are recorded in a bounded diagnostic history for review. Focused CI validation is pending.
+
+## B273 outcome attribution — 2026-10-26
+
+- Both Core feedback paths now pass B273 reward only when the canonical selected action belongs to the exact B273-generated plan. The B273 learning API validates tick, action membership and exact plan identity, including for direct wrapper calls.
+- Actions outside the generated plan are retained as bounded unselected-candidate evidence without goal progress, skill updates or rewarded outcome-history writes. A skill prototype is only created or reinforced when the plan's primary action was actually selected; a selected secondary plan alternative may contribute to goal progress but cannot be mislabeled as execution of the primary plan.
+- Focused run [#40256370655](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256370655) passed all steps: B273 lifecycle, persisted-state migration, Core integration, B272/B273 attribution, cognitive graph continuity and routing connection. PR [#158](https://github.com/ailtron1ss-rgb/NK1/pull/158) was squash-merged into this audit branch (merge commit `f3134a8ded0e1126a18fd57152ead8d1943c62f2`).
+
 ## Clean-startup trigger contract — 2026-10-26
 
 - Expanded both pull-request and work-branch push path filters so the full clean-install/build/live-stack smoke reruns when gateway routing/forwarded-origin logic, supervisor preflight/exit policy, the Node/npm toolchain contract, the runtime compiler wrapper, or their critical regressions change.
