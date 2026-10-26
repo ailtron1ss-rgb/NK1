@@ -1,13 +1,11 @@
-## WorkPass340 — Unified Cognitive Substrate connected to the live runtime — 2026-10-26
+## WorkPass336 — evaluator-origin attestation before ledger commit (2026-10-26)
 
-- **Runtime wiring:** added a durable `*.cognitive-substrate.json` sidecar, guarded restore, periodic save on meaningful change/every 16 ticks, and orderly-stop flush. The substrate now integrates the already-completed canonical Core cycle instead of remaining a standalone helper.
-- **Unified state frame:** couples self/continuity, world uncertainty/conflict, prediction debt, device resource telemetry, memory pressure, and evidence coverage/provenance. The substrate state is exposed only as a read-only diagnostic snapshot.
-- **Governed planning:** combines the existing resource/dependency routing policy with `resolveUnifiedCognitiveWorkPolicy`. The added layer can only reduce optional counterfactual branches/matched projections; `OrganismCore` stays the canonical action arbiter.
-- **State validation:** strict schema version, own-property reads, bounded finite metrics/safe counters/text. A bad derived sidecar is logged and reset instead of preventing the whole organism from booting.
-- **Regression:** added `tests/unified-substrate-runtime-wiring.mjs` and expanded `organism-smoke.mjs` to check 30 live cycles, finite coupling, and substrate continuity after stop/re-init. Wired into `test:cognitive-integration-suite` and `test:rebuild-recovered`.
-- **CI-driven correction:** an earlier integration attempt caught two real TypeScript errors (a direct `PredictionDebtState` cast and reading nonexistent `cycleObservation.vision`). Current code uses an explicit `unknown` bridge and leaves relation count at zero until typed P41 evidence is available; it no longer fabricates vision relations.
-
-**Validation status:** the earlier branch’s first integration attempt failed typecheck; that failure is recorded rather than hidden. This fresh-base branch has not yet completed exact-HEAD Actions CI, so its new typecheck/smoke regressions remain pending. Progress scores are unchanged.
+- **Gap:** the evaluator fingerprint is a public SHA-256 integrity digest, not proof of origin. A caller that copied the result could alter a syntactically valid execution ID and recompute the digest while retaining plausible manifest/plan labels.
+- **Runtime:** the evaluator now registers each exact returned result envelope in a module-private `WeakMap` with its original fingerprint. The ledger commit boundary requires this in-process capability after schema, manifest, plan and existing-row preflight checks but before the first mutation.
+- **Regression:** copy a genuine result, substitute `forged-execution-run`, recompute the digest, and attempt to write it. The commit rejects with `independent-evaluation-ledger-evaluator-attestation-missing`; no outcome row is written. The original evaluator result still follows the valid two-row path.
+- **Trust boundary:** the capability survives only in the same process and only on the registered result object. It is not a digital signature and does not authenticate serialized/cross-process reports; those must use a separate trusted signed-evidence verifier.
+- **Validation:** code and regression are committed. Current exact-head CI remains pending because the GitHub Actions connector has not returned runs for the newer WorkPass335/336 commits; the older passing snapshot b6f4335 does not cover this addition.
+- **Checkpoint:** `docs/WORKPASS336_EVALUATOR_ORIGIN_ATTESTATION_RU.md`.
 
 ---
 
