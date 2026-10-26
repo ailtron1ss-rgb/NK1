@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - workpass70-source
+      - fix/outcome-projection-index-restore-2026-10-26
     paths:
       - '.github/workflows/hexis-canonical-apply.yml'
       - 'runtime/neuro-kurisu/package.json'
