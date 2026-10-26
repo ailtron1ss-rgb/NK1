@@ -117,9 +117,10 @@ export interface HexisHmxStage {
     /** Explicitly states whether operator acceptance can mutate canonical NK1 memory. */
     applicationMode: 'memory-merge' | 'preview-only';
     importResult?: {
-        status: 'pending' | 'applied' | 'skipped';
+        status: 'pending' | 'applied' | 'partial' | 'skipped';
         created: number;
         reused: number;
+        skipped?: number;
         reason?: string;
         completedAt?: number;
     };
@@ -432,16 +433,24 @@ export class HexisAdaptationFabric {
         if (decision === 'accept') this.state.metrics.hmxAccepted += 1;
         return structuredClone(stage);
     }
-    recordHmxImportResult(stagingId: string, result: { created: number; reused: number }): HexisHmxStage | null {
+    recordHmxImportResult(stagingId: string, result: {
+        status: 'applied' | 'partial' | 'skipped';
+        created: number;
+        reused: number;
+        skipped?: number;
+        reason?: string;
+    }): HexisHmxStage | null {
         const stage = this.state.hmxStages.find((item) => item.stagingId === stagingId);
         if (!stage || stage.status !== 'accepted' || stage.applicationMode !== 'memory-merge' ||
             !stage.importResult || stage.importResult.status !== 'pending') {
             return stage ? structuredClone(stage) : null;
         }
         stage.importResult = {
-            status: 'applied',
+            status: result.status,
             created: Math.max(0, Math.floor(result.created)),
             reused: Math.max(0, Math.floor(result.reused)),
+            skipped: Math.max(0, Math.floor(result.skipped ?? 0)),
+            ...(result.reason ? { reason: result.reason.slice(0, 240) } : {}),
             completedAt: nowMs(),
         };
         return structuredClone(stage);
