@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Percentages describe each lane against the repository's stated goals; automated-validation percentages describe coverage and do not imply a pass on the current HEAD. Scores in this snapshot are anchored to code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626. All four named GitHub Actions suites passed on that exact head; subsequent progress/changelog documentation commits do not change the scored runtime/test code.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass336 connects strict unified-substrate state into the runtime cycle and optional counterfactual-work governance, but exact-head tests/CI remain pending, so no progress score is increased and no prior PASS row is treated as validation of this new branch.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -279,5 +279,45 @@
     "measuredUpliftClaimed": false,
     "source": "docs/P23_CONTINUAL_LEARNING_SCORECARD_2026-10-20.md — WorkPass333 score update",
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
-  }
+  },
+  "latestEngineeringPass": {
+    "id": "WorkPass336",
+    "date": "2026-10-26",
+    "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r2",
+    "codeCommit": "833fa38f6c4207588e840c7b01657f97323566f1",
+    "summary": "Wire hardened UnifiedCognitiveSubstrate into OrganismRuntime restore, cycle integration, bounded optional-work policy, periodic persistence and stop flush.",
+    "testsAdded": [
+      "strict persisted-state sanitization and schema-version rejection",
+      "invalid and replayed tick inputs do not mutate substrate state",
+      "invalid resource/evidence policy fails closed for speculative work",
+      "runtime source-contract asserts persistence and wiring order"
+    ],
+    "validationStatus": "pending exact-head typecheck, unified-substrate runtime regression, and Actions CI",
+    "progressPercentagesChanged": false,
+    "scoredBaselineHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626"
+  },
+  "recentEngineeringPasses": [
+    {
+      "id": "WorkPass335",
+      "date": "2026-10-26",
+      "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3",
+      "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; validation pending."
+    },
+    {
+      "id": "WorkPass336",
+      "date": "2026-10-26",
+      "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r2",
+      "codeCommit": "ab44773f97b32744268e35ba02b165c4b19aee26",
+      "summary": "Wire hardened UnifiedCognitiveSubstrate into OrganismRuntime restore, cycle integration, bounded optional-work policy, periodic persistence and stop flush.",
+      "testsAdded": [
+        "strict persisted-state sanitization and schema-version rejection",
+        "invalid and replayed tick inputs do not mutate substrate state",
+        "invalid resource/evidence policy fails closed for speculative work",
+        "runtime source-contract asserts persistence and wiring order"
+      ],
+      "validationStatus": "pending exact-head typecheck, unified-substrate runtime regression, and Actions CI",
+      "progressPercentagesChanged": false,
+      "scoredBaselineHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626"
+    }
+  ]
 }
