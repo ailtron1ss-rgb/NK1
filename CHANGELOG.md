@@ -1,3 +1,11 @@
+## WorkPass348 — atomic tool-receipt projection — 2026-10-26
+
+- **Defect:** `appendToolReceiptTrace()` appended action, outcome and evidence records sequentially without rollback. A failure on the second/third append could leave an incomplete receipt. Replay also floored invalid fractional ticks before its existing-receipt branch and coerced malformed booleans/IDs into normalized values.
+- **Fix:** introduce a shared ledger transaction boundary and use it for both operational cycles and three-event receipts; strictly validate receipt tick, timestamp, booleans, confidence and text fields before fingerprint/replay; reject oversized identity fields instead of truncating them into collisions.
+- **Regression coverage:** invalid inputs against an existing receipt must reject without mutation; an injected third-append failure must restore event buffer/total/projection index and allow a clean retry.
+- **Validation:** exact-head CI is required; no pass is claimed until all required checks complete on the final branch SHA.
+
+---
 ## WorkPass347 — atomic operational-cycle recording — 2026-10-26
 
 - **Defect:** `CognitiveEventFabric.recordOperationalCycle()` appended stages as it read/validated them. A malformed late `learning`/`selfUpdate` field or unexpected append failure could leave earlier observation/plan events in the ledger even though the logical cycle failed.
