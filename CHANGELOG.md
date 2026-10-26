@@ -1,6 +1,7 @@
 # WorkPass352 — block stale decision resurrection after event retention (2026-10-26)
 
 - [FIXED] `CanonicalCognitiveKernel.beginDecisionCycle()` now reads the monotonic `UnifiedCognitiveCycle.lastTick` before writing. A decision tick at or below the finalized watermark can only be returned as a read-only replay when all eight canonical stage records still exist and match; otherwise it fails with `canonical-cognitive-kernel-stale-decision` without recreating evicted events.
+- [CI-CORRECTED] The first exact-head run caught a double-escaped control-character regex in the dependent WorkPass351 event-ID guard, causing the first kernel event to be rejected. The same correction is applied here; rerun exact-head CI before considering this pass validated.
 - [FIXED] When `at` is omitted on a retry, the kernel reuses the saved observation timestamp for that logical tick, preserving stable fingerprints and idempotent retries.
 - [REGRESSION] Added a bounded-capacity test that creates/completes a decision, replays it with omitted `at`, evicts its stages using newer events, and proves a stale replay fails without increasing journal totals or resurrecting an evicted observation.
 - [CI] Existing WorkPass331 workflow already typechecks runtime and runs the canonical kernel test plus live wiring, smoke, autonomy, initiative-clock and restart checks. Exact-head CI remains required.
