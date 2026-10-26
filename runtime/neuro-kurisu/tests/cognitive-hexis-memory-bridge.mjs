@@ -96,7 +96,7 @@ const controlIngress = memoryOS.recordEvidence(memory.id, {
   evidenceId: "hexis:evidence:control",
   digest: "b".repeat(64),
   stance: "supports",
-  sourceKind: "document\\u0001forged",
+  sourceKind: "document" + String.fromCharCode(1) + "forged",
   sourceRef: "control-source",
   confidence01: 0.7,
   observedAt: Date.parse("2026-10-26T09:32:00Z"),
