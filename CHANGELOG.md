@@ -1,3 +1,11 @@
+## NK1 [evidence] — fail closed on conflicting restored claim IDs (2026-10-26)
+
+- Prevented orphan event-index entries from surviving when their referenced stable claim ID has conflicting restored payloads.
+- Replaced whole-object JSON tie-breaking with a bounded tuple of scalar support fields, avoiding traversal of unrelated/cyclic extension properties while compacting duplicate rows.
+- Added a regression proving conflicting metadata under one stable claim ID is dropped as a group without quarantining unrelated event IDs.
+
+---
+
 ## NK1 [evidence] — preserve P65 aliases and deduplicate restored claim IDs (2026-10-26)
 
 - P65 restore now allows multiple upstream event IDs to reference the same stable semantic claim when their fingerprints agree; it quarantines only mismatched content rather than treating every eventId mismatch as corruption.

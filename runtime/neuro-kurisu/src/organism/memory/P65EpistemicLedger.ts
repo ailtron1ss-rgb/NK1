@@ -100,6 +100,10 @@ export class P65EpistemicLedger{
    group.push(claim);claimsById.set(claim.id,group);
   }
   for(const entry of indexCandidates){
+   if(conflictedClaimIds.has(entry.claimId)){
+    conflictedEventIds.add(entry.eventId);
+    continue;
+   }
    for(const claim of claimsById.get(entry.claimId)??[]){
     // An event identity may legitimately alias the same semantic claim ID.
     // Only its content fingerprint needs to agree; the claim's primary eventId
@@ -123,9 +127,16 @@ export class P65EpistemicLedger{
   // recently supported state. A conflicting payload was excluded above.
   const uniqueClaims=new Map<string,P65Claim>();
   const rank=(claim:P65Claim)=>({
-   at:Number(claim.lastSupportedAt??claim.at??0),
-   support:Number(claim.supportCount??0),
-   stable:JSON.stringify(claim),
+   at:typeof claim.lastSupportedAt==='number'&&Number.isFinite(claim.lastSupportedAt)?claim.lastSupportedAt:(typeof claim.at==='number'&&Number.isFinite(claim.at)?claim.at:0),
+   support:typeof claim.supportCount==='number'&&Number.isFinite(claim.supportCount)?claim.supportCount:0,
+   stable:JSON.stringify([
+    typeof claim.eventId==='string'?claim.eventId:'',
+    typeof claim.status==='string'?claim.status:'',
+    typeof claim.resolved==='boolean'?claim.resolved:null,
+    typeof claim.at==='number'&&Number.isFinite(claim.at)?claim.at:null,
+    typeof claim.actual01==='number'&&Number.isFinite(claim.actual01)?claim.actual01:null,
+    typeof claim.error01==='number'&&Number.isFinite(claim.error01)?claim.error01:null,
+   ]),
   });
   for(const claim of acceptedClaims){
    const prior=uniqueClaims.get(claim.id);

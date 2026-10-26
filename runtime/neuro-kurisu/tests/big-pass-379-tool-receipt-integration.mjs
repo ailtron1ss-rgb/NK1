@@ -293,6 +293,22 @@ test('P65 restores event-ID aliases and deduplicates claim IDs deterministically
   deduplicated.restore(duplicateSnapshot);
   assert.equal(deduplicated.snapshot().claimsData.filter(claim => claim.id === first).length, 1,
     'exact duplicate claim IDs are collapsed during restore');
+
+  const unbound = new P65EpistemicLedger();
+  const unboundId = unbound.record({
+    tick: 20, at: 2000000000000, kind: 'inference', content: 'unbound stable claim collision',
+    confidence01: 0.48, source: 'organism',
+  });
+  const conflictingClaimSnapshot = unbound.snapshot();
+  conflictingClaimSnapshot.claimsData.push({
+    ...conflictingClaimSnapshot.claimsData[0], confidence01: 0.91,
+  });
+  const conflictingClaimRestore = new P65EpistemicLedger();
+  conflictingClaimRestore.restore(conflictingClaimSnapshot);
+  assert.equal(conflictingClaimRestore.snapshot().claimsData.some(claim => claim.id === unboundId), false,
+    'restoration must drop every version of a stable claim ID with conflicting semantic payloads');
+  assert.deepEqual(conflictingClaimRestore.snapshot().quarantinedEventIds, [],
+    'claim-ID conflicts without upstream event IDs must not quarantine unrelated event IDs');
 });
 
 test('P65 fails closed when an event identity is reused with conflicting evidence', () => {
