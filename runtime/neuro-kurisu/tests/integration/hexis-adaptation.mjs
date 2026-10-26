@@ -166,6 +166,20 @@ const malformedMetadataIssues = validateHmxV17Document(malformedMetadataHmx, 'te
 assert(malformedMetadataIssues.some(issue => issue.path.endsWith('.metadata.nk1_kind') && issue.kind === 'schema'));
 assert(malformedMetadataIssues.some(issue => issue.path.endsWith('.metadata.nk1_confidence') && issue.kind === 'schema'));
 assert(malformedMetadataIssues.some(issue => issue.path.endsWith('.metadata.tags') && issue.kind === 'schema'));
+
+const malformedTypeHmx = {
+  ...validHmx,
+  sections: {
+    memories: [{
+      ...validHmx.sections.memories[0],
+      type: Object.create(null),
+    }],
+  },
+};
+assert.doesNotThrow(() => validateHmxV17Document(malformedTypeHmx, 'telepathy'));
+assert(validateHmxV17Document(malformedTypeHmx, 'telepathy').some(issue =>
+  issue.path.endsWith('.type') && issue.kind === 'schema'));
+
 const malformedProjectionRow = {
   ...validHmx.sections.memories[0],
   metadata: { ...validHmx.sections.memories[0].metadata, nk1_confidence: Object.create(null) },
