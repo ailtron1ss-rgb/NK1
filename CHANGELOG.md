@@ -1,3 +1,8 @@
+### WorkPass328 follow-up — authenticate Hermes receipts before payload use (2026-10-26)
+
+- Reordered `bindReflectiveReportsToVerifiedShadowEvidence()` so signed shadow receipts are cryptographically verified before their payload identity, manifest, or binary outcome is used for matching. Previously a tampered `passed` field could enter the outcome-mismatch branch before signature validation, obscuring the required `signed-shadow-evidence-not-trusted` diagnosis. Duplicate run/artifact IDs now fail without replacing the first authenticated entry.
+- Adjusted the P26 adaptive-window fixture to compare the running mean with numerical tolerance rather than exact equality; the estimate differed from `0.2` only by normal IEEE-754 rounding.
+
 ### WorkPass328 follow-up — use truly later snapshots in replay-diversity regression (2026-10-26)
 
 - Updated the causal replay-diversity fixture to advance both tick and observation timestamp after the source trace. The runtime correctly requires evidence of a later observed state; increasing only the tick while leaving the timestamp equal to the trace's `createdAt` did not constitute a valid transition. Grounding checks are unchanged.
