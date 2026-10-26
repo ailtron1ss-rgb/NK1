@@ -203,7 +203,8 @@ export interface HexisAdaptationState {
 }
 const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
 const digest = (value: unknown) => sha256Stable(value, 'legacy');
-const sourceKey = (source: HexisEvidenceSource) => String(source.ref || source.label || source.contentHash || digest(source));
+const normalizeEvidenceKey = (value: unknown) => String(value ?? '').trim().normalize('NFKC').slice(0, 96).toLocaleLowerCase();
+const sourceKey = (source: HexisEvidenceSource) => normalizeEvidenceKey(source.ref || source.label || source.contentHash || digest(source));
 const nowMs = () => Date.now();
 const MAX_OUTBOX_TERMINAL_ROWS = 512;
 const MAX_OUTBOX_ACTIVE_ROWS = 1024;
@@ -358,6 +359,12 @@ function normalizeHexisStringKeys(value: unknown, limit = 256): string[] {
  * Malformed projection rows are dropped on restore so a damaged sidecar cannot
  * prevent the cognitive runtime from starting or promote invalid confidence.
  */
+function normalizeHexisEvidenceKeys(value: unknown, limit = 256): string[] {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.filter((item): item is string => typeof item === 'string')
+        .map(normalizeEvidenceKey).filter(Boolean))].slice(-limit);
+}
+
 function normalizeHexisBeliefProjection(value: unknown): HexisBeliefState | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const row = value as Record<string, unknown>;
@@ -380,8 +387,8 @@ function normalizeHexisBeliefProjection(value: unknown): HexisBeliefState | null
         memoryId,
         confidence01,
         trust01,
-        sourceKeys: normalizeHexisStringKeys(row.sourceKeys),
-        contradictingSourceKeys: normalizeHexisStringKeys(row.contradictingSourceKeys),
+        sourceKeys: normalizeHexisEvidenceKeys(row.sourceKeys),
+        contradictingSourceKeys: normalizeHexisEvidenceKeys(row.contradictingSourceKeys),
         updatedAt: typeof updatedAt === 'number' && Number.isFinite(updatedAt) && updatedAt >= 0
             ? Math.floor(updatedAt)
             : 0,
