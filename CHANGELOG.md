@@ -1,3 +1,11 @@
+## WorkPass402 — revalidate pending HMX stage integrity after restore (2026-10-26)
+
+- **Code commits:** `307b1317100bd9d4e3d62094f552a074fb1f663c` (digest + schema revalidation and restore quarantine) and `66927b5571704895f78f7c02897cd42e12fce8ea` (preserve expected validation-conflict staging); **regression commits:** `6f40c41ec9ff705561c1389fb8760956d41cfee1` and `388156d09c62dc736b5dcbe44a43fce303dedc0a`.
+- Reconstruct the pending stage's canonical digest input before a transition and validate the saved section snapshot again. On restore or accept, a stale/tampered pending-stage digest is quarantined as `rejected` with `persisted-stage-integrity-failure`; its import receipt becomes skipped and cannot be applied through the stage transition.
+- Existing, correctly digested stages with source-schema conflicts remain `staged` for inspection/rejection; the operator-accept gate still refuses them. This preserves the distinction between a valid rejected import and damaged persisted state.
+- Regressions mutate a pending record after snapshot and require restore to quarantine it; a separate conflict-stage regression verifies that expected validation issues stay inspectable and unaccepted.
+- **Validation:** PENDING exact-head typecheck, `test:hexis-adaptation`, server smoke and Unified project integration. No PASS or readiness uplift claimed; recent Actions still fail without usable job steps/logs. `main` and canonical Release ZIP remain untouched.
+
 ## WorkPass401 — prototype-free HMX staging maps (2026-10-26)
 
 - **Code commit:** `47d88fcc1a8b5737cca6c542a51e3d0011f8281a`; **regression:** `76830a380ab2cdbd825994062de793c2a1a0c2f0`.
