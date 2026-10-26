@@ -214,7 +214,7 @@ export class P26TrueLearningEngine{
     // Bound that case to 10% of the current step per replay stride. An equal or
     // higher configured replay rate is an explicit balanced-retention choice.
     const effectiveReplayLearningRate01 = replayLearningRate01 < currentLearningRate01
-      ? Math.min(replayLearningRate01, currentLearningRate01 * 0.1 * replayEveryNCurrent)
+      ? Math.min(replayLearningRate01, currentLearningRate01 * 0.12 * replayEveryNCurrent)
       : replayLearningRate01;
     // Context separation allows distinct outcomes to coexist, but alone is
     // not enough evidence to override the conservative cadence cap. A stronger
