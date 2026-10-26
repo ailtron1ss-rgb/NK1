@@ -284,7 +284,7 @@
     "id": "WorkPass340",
     "date": "2026-10-26",
     "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r3",
-    "codeCommit": "70063d80d20133afde4e09c7e971e55a6e71f736",
+    "codeCommit": "5cf4b900be66b2daa9146da074c89096cdcd00ce",
     "summary": "Wire hardened UnifiedCognitiveSubstrate into the real OrganismRuntime cycle, add durable guarded sidecar, intersect optional simulation budget with dependency/resource routing, and test live-cycle/restart continuity.",
     "testsAdded": [
       "strict persisted-state validation and schema-version rejection",
@@ -314,7 +314,7 @@
       "id": "WorkPass340",
       "date": "2026-10-26",
       "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r3",
-      "codeCommit": "70063d80d20133afde4e09c7e971e55a6e71f736",
+      "codeCommit": "5cf4b900be66b2daa9146da074c89096cdcd00ce",
       "summary": "Live unified-substrate persistence and cross-system work-budget governance; 30-cycle smoke and restart-continuity regression authored.",
       "validationStatus": "Pending exact-head typecheck, substrate wiring regression, organism smoke/restart, and Actions CI.",
       "progressPercentagesChanged": false
