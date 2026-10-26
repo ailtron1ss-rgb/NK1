@@ -357,9 +357,19 @@ export function HexisControlConsole() {
           </div>
           {hmxStage && (
             <div className="mt-2 rounded-md border border-border bg-bg p-2 text-[11px]">
-              <p className="text-fg">Stage status: {String(hmxStage.status)} · conflicts: {Array.isArray(hmxStage.conflicts) ? hmxStage.conflicts.length : 0}</p>
-              {Array.isArray(hmxStage.conflicts) && hmxStage.conflicts.length > 0 && (
-                <ul className="mt-1 list-disc pl-4 text-muted">{hmxStage.conflicts.slice(0, 8).map((conflict: any, index: number) => <li key={index}>{String(conflict.path)}: {String(conflict.detail)}</li>)}</ul>
+              <p className="text-fg">Stage status: {hmxStage.status} · conflicts: {hmxStage.conflicts.length}</p>
+              <p className="mt-1 text-muted">Section counts: {Object.entries(hmxStage.sectionCounts).map(([section, count]) => `${section}=${count}`).join(" · ") || "none"}</p>
+              {hmxStage.application && (
+                <div className="mt-2 rounded border border-border p-2">
+                  <p className="text-fg">Canonical apply receipt: {hmxStage.application.status} · imported {hmxStage.application.importedCount} · deduplicated {hmxStage.application.deduplicatedCount}</p>
+                  <p className="mt-1 text-muted">Projected edges: {hmxStage.application.projectedRelationships} · deferred: {hmxStage.application.deferredRelationships} · complete: {hmxStage.application.complete ? "yes" : "no"}</p>
+                  {hmxStage.application.warnings.length > 0 && (
+                    <ul className="mt-1 list-disc pl-4 text-muted">{hmxStage.application.warnings.slice(0, 8).map((warning, index) => <li key={index}>{warning}</li>)}</ul>
+                  )}
+                </div>
+              )}
+              {hmxStage.conflicts.length > 0 && (
+                <ul className="mt-1 list-disc pl-4 text-muted">{hmxStage.conflicts.slice(0, 8).map((conflict, index) => <li key={index}>{conflict.path}: {conflict.detail}</li>)}</ul>
               )}
             </div>
           )}
