@@ -1,10 +1,19 @@
+## WorkPass373 — reject malformed scalar restore evidence in the unified cognitive cycle — 2026-10-26
+
+- **Defect:** `restore()` normalized explicitly corrupted scalar values such as `incompleteCycles: '0'` or `brokenLineages: NaN` to zero. In otherwise complete stored state this could leave `lastComplete=true`; malformed aggregate metrics could likewise be sanitized without invalidating completion.
+- **Fix:** distinguish absent legacy fields from present-but-malformed evidence. Validate persisted counters as non-negative safe integers, metrics as finite values in `[0,1]`, and `lastTick` as an allowed safe integer. Invalid scalar evidence is sanitized for safe use but cannot promote `lastComplete`; inconsistent counter relationships remain incomplete.
+- **Regression:** add `workpass373-cognitive-cycle-scalar-restore-integrity.mjs`; register it in `test:rebuild-recovered`, `test:cognitive-integration-suite` and WorkPass287–288 path filters/CI. Tests cover string/negative/NaN counters, out-of-range metrics, invalid lastTick/cycles/completeCycles, valid state, and compatibility when optional legacy fields are absent.
+- **Validation:** implementation re-applied on latest upstream base `f38d3189777649da490f8b0dbb3a8d19c7444811`, which already includes WorkPass371/372. Fresh exact-head CI is pending; previous WorkPass372 passed 13/13 workflows on `724c692bb149be4bae76b3a70373344a7149a1fd`, but that result does not validate this new change.
+- **Scores/release:** subsystem percentages remain unchanged; physical device, independent holdout, soak, licensing/provenance and release-archive gates remain open.
+
+---
 ## WorkPass372 — strict unified cognitive-cycle input and restore integrity (2026-10-26)
 
 - **Defect:** `UnifiedCognitiveCycle.evaluate()` and `restore()` read external object fields/arrays directly. Accessor properties could execute during validation, proxy traps were not consistently converted to closed rejection, and sparse or malformed `lastMissingStages` could distort whether a restored cycle appeared complete.
 - **Fix:** snapshot consumed fields through own data descriptors, reject accessor-backed inputs without invoking getters, bound and validate stage-list slots, stage the restored aggregate locally and only replace active state after validation succeeds.
 - **Regression:** root/stage getter rejection with zero getter calls, proxy descriptor trap, getter-backed restored state/array slots, sparse/malformed stage history, state preservation on invalid input and normal complete-cycle compatibility.
 - **Integration:** the focused test is registered in `test:rebuild-recovered`, `test:cognitive-integration-suite`, and the WorkPass287–288 PR/push workflow.
-- **Validation:** current release-candidate branch `work/nk1-unified-cycle-integrity-release-2026-10-26-r1`; exact-head cognitive contracts, typecheck, unified integration and release gate are pending. No PASS is claimed until the new HEAD completes its workflows.
+- **Validation:** PASS on exact combined head `724c692bb149be4bae76b3a70373344a7149a1fd`; 13/13 workflows passed, including cognitive contracts, runtime typecheck, learning/replay evidence gates and the full unified project integration suite. This evidence applies to WorkPass372's tested tree; WorkPass373 requires a new exact-head run.
 - **Progress scoring:** no numeric maturity percentages are increased; this is an integrity fix, not evidence of real-world learning uplift.
 
 ---

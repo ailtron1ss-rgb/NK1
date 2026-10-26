@@ -7,6 +7,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass370-unified-cognitive-cycle-data-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/workpass373-cognitive-cycle-scalar-restore-integrity.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
@@ -22,6 +23,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass370-unified-cognitive-cycle-data-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/workpass373-cognitive-cycle-scalar-restore-integrity.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
@@ -55,6 +57,9 @@ jobs:
       - name: Check unified cognitive-cycle input and restore integrity
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass370-unified-cognitive-cycle-data-integrity.mjs
+      - name: Check unified cognitive-cycle scalar restore integrity
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass373-cognitive-cycle-scalar-restore-integrity.mjs
       - name: Check intrinsic motivation contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs
