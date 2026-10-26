@@ -1,3 +1,13 @@
+## WorkPass319 cognitive-cycle test scope correction — 2026-10-26
+
+- Updated the phase-order regression to locate the embodiment persistence call after the life-course update, rather than matching the earlier initialization-time embodiment snapshot.
+- The tested invariant remains unchanged: feedback, model/experience updates and the cycle's embodiment state must be committed before recording the causal cycle ledger.
+- This repairs a test locator that previously failed on a valid runtime ordering; it does not bypass the phase-order assertions.
+
+Validation: rerun WorkPass319 and the exact-head NeuroCore + repository contract workflows.
+
+---
+
 ## Memory doctor future-timestamp regression fixture — 2026-10-26
 
 - Corrected the P318 CLI fixture to place the damaged observation timestamp ten minutes in the future. The memory doctor intentionally flags timestamps more than five minutes ahead; the previous one-minute fixture did not cross that contract threshold.
