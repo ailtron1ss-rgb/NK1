@@ -2857,6 +2857,10 @@ export class OrganismCore {
             }
 
             let current = this.memorySubsystem.memoryOS.get(memory.id);
+            if (!current) {
+                persistProjection();
+                return { ok: false, error: 'memory-not-found-during-belief-recovery', memoryId: memory.id, audit: priorAudit };
+            }
             let confidenceReconciled = Math.abs(current.confidence - priorAudit.posteriorConfidence01) <= 1e-9;
             if (priorAppliedAudit && !confidenceReconciled &&
                 Math.abs(current.confidence - priorAudit.priorConfidence01) <= 1e-9) {
@@ -2865,7 +2869,12 @@ export class OrganismCore {
                     persistProjection();
                     return { ok: false, error: 'belief-confidence-reconciliation-failed', audit: priorAudit, evidence };
                 }
-                current = this.memorySubsystem.memoryOS.get(memory.id);
+                const refreshed = this.memorySubsystem.memoryOS.get(memory.id);
+                if (!refreshed) {
+                    persistProjection();
+                    return { ok: false, error: 'memory-not-found-after-belief-recovery', memoryId: memory.id, audit: priorAudit };
+                }
+                current = refreshed;
                 confidenceReconciled = Math.abs(current.confidence - priorAudit.posteriorConfidence01) <= 1e-9;
             }
             this.hexisAdaptation.registerOrUpdateBelief({
