@@ -183,7 +183,13 @@ export class P65EpistemicLedger{
   const claimsData=[...pending,...recent].filter(c=>{if(seen.has(c.id))return false;seen.add(c.id);return true;}).slice(0,160).map(c=>({...c,parentIds:c.parentIds.slice()}));
   return {...this.state,claimsData,recentIds:this.state.recentIds.slice(0,256)};
  }
- record(input:{tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;parentIds?:string[];predicted01?:number;eventId?:string}):string{
+ record(rawInput:{tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;parentIds?:string[];predicted01?:number;eventId?:string}):string{
+  let input:typeof rawInput;
+  try{
+   input=snapshotPlainData(rawInput,{allowNonFiniteNumbers:true,maxDepth:8,maxNodes:128,maxStringUnits:8192});
+  }catch{
+   throw new TypeError('p65-record-boundary-rejected');
+  }
   const content=String(input.content??'').slice(0,320);if(!content)return '';
   const source=String(input.source||'unknown');
   const confidence01=clamp(input.confidence01);

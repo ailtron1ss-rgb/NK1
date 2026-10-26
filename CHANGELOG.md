@@ -1,3 +1,10 @@
+## NK1 [evidence] — snapshot P65 records before processing caller input (2026-10-26)
+
+- `P65EpistemicLedger.record` now snapshots bounded plain input before reading fields, rejects getter-backed/cyclic/exotic input without invoking getters, and fails closed before changing claim/index state.
+- Added regressions for accessor and cyclic parent graphs; the existing confidence clamp behavior is retained.
+
+---
+
 ## NK1 [evidence] — snapshot P65 persistence state before restore reads
 
 - P65 restore now snapshots bounded plain data before touching state fields, rejects getters/cycles/exotic object graphs without invoking caller code, and resets to a clean default ledger on an invalid persisted graph.

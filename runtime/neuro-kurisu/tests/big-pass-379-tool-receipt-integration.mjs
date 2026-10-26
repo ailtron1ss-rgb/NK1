@@ -333,6 +333,31 @@ test('P65 restore rejects accessors and cyclic persisted graphs without invoking
   assert.equal(cycleRestore.snapshot().claims, 0);
 });
 
+test('P65 record rejects accessors and cyclic input without invoking caller getters', () => {
+  const ledger = new P65EpistemicLedger();
+  let getterCalls = 0;
+  const hostile = {
+    tick: 21, at: 2100000000000, kind: 'inference', content: 'must not be read',
+    confidence01: 0.4, source: 'organism',
+  };
+  Object.defineProperty(hostile, 'content', {
+    enumerable: true,
+    get() { getterCalls++; return 'forged claim'; },
+  });
+  assert.throws(() => ledger.record(hostile), /p65-record-boundary-rejected/);
+  assert.equal(getterCalls, 0, 'record boundary must reject getter-backed inputs without invoking the getter');
+  assert.equal(ledger.snapshot().claims, 0);
+
+  const cyclicInput = {
+    tick: 22, at: 2200000000000, kind: 'inference', content: 'cyclic input',
+    confidence01: 0.4, source: 'organism',
+  };
+  cyclicInput.parentIds = [cyclicInput];
+  assert.throws(() => ledger.record(cyclicInput), /p65-record-boundary-rejected/);
+  assert.equal(ledger.snapshot().claims, 0,
+    'a rejected cyclic input cannot mutate P65 claim state');
+});
+
 test('P65 fails closed when an event identity is reused with conflicting evidence', () => {
   const eventId = realityEvidenceEventId('exec-p65-quarantine-518', 'tool-outcome', 'canonical');
   const input = {
