@@ -2189,3 +2189,4 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Updated the versioned skill-store lifecycle fixture to call rollback with the current approval object and an expected active version, rather than the retired positional arguments.
 - Added negative cases for a missing active-version guard and for plausible approval metadata with no trusted rollback verifier. Rejected requests must preserve active skill state and must not persist rollback approval data.
 - Production rollback authorization remains default-deny and unchanged. WorkPass110 and focused skill-store CI should be rechecked on this branch head.
+- Corrected the signed-CAS tamper fixture to mutate only the unsigned `approval.expectedActiveVersion` wrapper while preserving the prior-version linkage, so the assertion reaches the intended signature/context binding guard instead of failing at an earlier rollback-target invariant.
