@@ -209,6 +209,20 @@ try {
   assert.equal(afterProvenanceRestart.snapshot().candidates.some(item =>
     item.candidateId === provenanceCandidate.candidateId && item.revisionProvenance?.planFingerprint === provenance.planFingerprint), true,
     'atomic file adapter persists and restores provenance-bearing candidate identities');
+  const provenanceWithoutEvaluationDigest = {
+    schemaVersion: 1, sourceCandidateId: provenanceCandidate.candidateId,
+    planFingerprint: 'e'.repeat(64), datasetFingerprint: 'f'.repeat(64),
+    dimensions: ['trajectory', 'executability'], createdAt: Date.now(),
+  };
+  const noEvaluationDigestCandidate = durableStore.stageCandidate(
+    proposal('i'), 'file-backed-provenance-without-evaluation', { instruction: 'lineage-only provenance' },
+    provenanceWithoutEvaluationDigest,
+  );
+  const afterOptionalDigestRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
+  assert.equal(afterOptionalDigestRestart.snapshot().candidates.some(item =>
+    item.candidateId === noEvaluationDigestCandidate.candidateId &&
+    item.revisionProvenance?.evaluationFingerprint === undefined), true,
+    'optional evaluationFingerprint remains optional across durable restart');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
 } finally {
