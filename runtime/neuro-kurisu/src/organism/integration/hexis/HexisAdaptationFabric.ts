@@ -969,11 +969,11 @@ export class HexisAdaptationFabric {
         payload: unknown;
     }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict' | 'outbox-capacity-reached' | 'invalid-outbox-payload'; idempotencyKey: string; existingId?: string } {
         const idempotencyKey = String(input.idempotencyKey ?? '').trim();
-        if (!idempotencyKey || idempotencyKey.length > 180 || /[\\u0000-\\u001f\\u007f]/.test(idempotencyKey)) {
+        if (!idempotencyKey || idempotencyKey.length > 180 || /[\u0000-\u001f\u007f]/.test(idempotencyKey)) {
             return { ok: false, error: 'idempotency-key-required', idempotencyKey };
         }
         const kind = String(input.kind ?? '').trim(), channel = String(input.channel ?? '').trim();
-        if (!kind || kind.length > 128 || !channel || channel.length > 128 || /[\\u0000-\\u001f\\u007f]/.test(kind + channel)) {
+        if (!kind || kind.length > 128 || !channel || channel.length > 128 || /[\u0000-\u001f\u007f]/.test(kind + channel)) {
             return { ok: false, error: 'invalid-outbox-payload', idempotencyKey };
         }
         let requestDigest: string;
@@ -1054,7 +1054,7 @@ export class HexisAdaptationFabric {
         if (!entry) return null;
         if (resolution !== 'published' && resolution !== 'not-published') throw new Error('invalid-outbox-resolution');
         const reference = String(evidenceRef ?? '').trim();
-        if (!reference || reference.length > 512 || /[\\u0000-\\u001f\\u007f]/.test(reference)) {
+        if (!reference || reference.length > 512 || /[\u0000-\u001f\u007f]/.test(reference)) {
             throw new Error('outbox-resolution-evidence-required');
         }
         if (entry.status !== 'uncertain') {
