@@ -1,3 +1,13 @@
+## WorkPass418 — avoid redundant deep copies after the bounded HMX snapshot (2026-10-26)
+
+- **Fabric code commit:** `8325edfe46cc263b79a146dee94268e14c07c6d0`; **isolation regression:** `849453058df8ca197e623432b66d6d17bad0e945`.
+- `stageHmx` now reuses its detached bounded plain-JSON snapshot for staged section references instead of cloning every array/object a second time. The method still returns a structured clone of the complete stage, so callers cannot mutate persisted stage state.
+- This reduces duplicate allocation on larger valid HMX imports while keeping the accessor/prototype/resource-bound checks and atomic section omission rules unchanged.
+- Regression mutates the original HMX document and the returned stage object independently and requires the persisted stage's content to remain unchanged in both cases.
+- **Validation:** PENDING exact-head HMX adaptation test, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass417 — snapshot the HMX stage request envelope without executing getters (2026-10-26)
 
 - **Fabric code commit:** `ff87945607101053a2ec4dad99eb41772d989a56`; **regression commit:** `cc2bf0633fbc61f1da5862c0df214f688cf9ac07`.
