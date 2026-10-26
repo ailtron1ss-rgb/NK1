@@ -1112,11 +1112,11 @@ async function route(req, res) {
             if (input.confirmed !== true) {
                 return json(res, 403, { ok: false, error: 'hexis-goal-materialization-confirmation-required' });
             }
-            if (input.proposalId !== undefined && typeof input.proposalId !== 'string') {
+            if (typeof input.proposalId !== 'string' || !input.proposalId.trim() || input.proposalId.length > 256) {
                 return json(res, 400, { ok: false, error: 'hexis-goal-proposal-id-invalid' });
             }
             try {
-                const result=runtime.core.hexisMaterializeGoalProposal(String(input.proposalId || ''));
+                const result=runtime.core.hexisMaterializeGoalProposal(input.proposalId);
                 await runtime.core.flush();
                 return json(res,200,{ok:true,...result});
             } catch(error) {
