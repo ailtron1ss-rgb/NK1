@@ -274,9 +274,9 @@ function safeContext(value: unknown): Record<string, string> {
   if (!input) return output;
   for (const [key, item] of Object.entries(input).slice(0, 12)) {
     if (!(typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')) continue;
-    const safeKey = key.normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f]/g, '').trim().slice(0, 80);
+    const safeKey = key.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80);
     if (!safeKey) continue;
-    output[safeKey] = String(item).normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f]/g, ' ').slice(0, 300);
+    output[safeKey] = String(item).normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 300);
   }
   return output;
 }
