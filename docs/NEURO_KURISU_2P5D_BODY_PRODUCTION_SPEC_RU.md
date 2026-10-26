@@ -237,3 +237,21 @@ The current NK1 Original mode provides a working selection and editable appearan
 5. add that model to a model registry and allow Live2D selection between **Classic** and **NK1 Original Cubism**, while preserving the current SVG concept option as a lightweight fallback.
 
 Do not label the current SVG preview as a full Live2D rig; its secondary motion is stylized procedural SVG animation rather than Cubism physics.
+
+
+### Manual pose presets now included in the SVG preview
+
+The NK1 Original control panel now includes a persisted **Pose** selector:
+
+- **Auto** — action/emotion/arousal drive the small head and torso offsets.
+- **Crossed arms** — alternate limb silhouette with a closed, skeptical stance.
+- **Thinking** — bent arm and hand near the chin.
+- **Explain** — one arm extended as a conversational explanatory gesture.
+
+These are real SVG shape alternatives, not labels or image swaps. They remain deliberately small and bounded; the currently available organism actions are not expanded or mutated to add avatar-only states. The pose choice is stored under `kurisu-original-pose`, separate from organism memory and personality. The selected pose is user presentation preference; semantic emotion continues to come from the organism snapshot.
+
+### Validation checkpoint — 2026-10-26
+
+The avatar CI on code head `02ce245777a16e210751605f6d6195041f12cd4d` passed the complete `browser-contracts` job: local asset synchronization/integrity, both Live2D browser smoke suites, expression cache, runtime integrity/state/speech tests, the app embodiment timeline suite (including original-mode and pose-control assertions), and strict TypeScript typecheck. See [Live2D runtime validation run 40284654218](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40284654218/job/121445461119).
+
+This does not make the complete repository green: the separate `WorkPass110 continual learning metrics` run still fails at the causal-experience/restore-regression step outside avatar files. Android/Termux checks, measured-audio lip synchronization, a freshly authored PSD/Cubism model, and the true 3D/GLB renderer remain open gates.
