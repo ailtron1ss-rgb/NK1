@@ -161,6 +161,24 @@ const validApproval = {
 const signedActive = signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3);
 assert.equal(signedActive.version, 1);
 assert.equal(signedApprovalStore.snapshot().candidates[0].approval.artifact.payload.candidateId, approvalCandidate.candidateId);
+
+// Rollback is a separate privileged transition: authenticated promotion authority and
+// plausible audit fields do not implicitly authorize rollback.
+assert.throws(() => signedApprovalStore.rollback(approvalCandidate.candidateId, {
+  approvedBy: 'operator-key-1', approvedAt: Date.now(), expectedActiveVersion: null,
+}), /signed rollback approval identity, timestamp and active-version guard are required/,
+'rollback without an expected active version fails before reading or mutating active state');
+assert.throws(() => signedApprovalStore.rollback(approvalCandidate.candidateId, {
+  approvedBy: 'operator-key-1', approvedAt: Date.now(), expectedActiveVersion: 1,
+}), /rollback approval is not authenticated by the configured authority/,
+'rollback remains default-deny even when caller-supplied audit fields look plausible');
+const afterDeniedRollback = signedApprovalStore.snapshot();
+assert.equal(afterDeniedRollback.active[0].version, 1,
+  'an unauthenticated rollback cannot replace the active skill');
+assert.equal(afterDeniedRollback.candidates[0].status, 'active',
+  'a rejected rollback leaves the candidate lifecycle unchanged');
+assert.equal(afterDeniedRollback.candidates[0].rollbackApproval, undefined,
+  'a rejected rollback does not persist caller-supplied approval data');
 assert.throws(() => signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3),
   /must complete shadow staging/,
   'the same signed approval cannot activate the same candidate twice');
