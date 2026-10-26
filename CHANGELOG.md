@@ -1,3 +1,16 @@
+## WorkPass391 — Preserve pending server-receipt review compatibility (2026-10-26)
+
+- Existing pending reviews created by an older build could contain the raw server-receipt timestamp in their payload digest while the canonical MemoryOS2 receipt used the new normalized digest.
+- Approval now accepts that historical digest only when the internal `observedAtOrigin: "server-receipt"` marker is present, the strict adapter reconstructs the canonical evidence, and every stored evidence field matches the canonical receipt. Arbitrary or tampered digests remain rejected.
+- Added a regression that mutates a pending server-receipt review to the historical digest form and proves the review remains approvable.
+
+## WorkPass390 — Bind Hexis review decisions to the complete canonical evidence receipt (2026-10-26)
+
+- Added one shared canonical evidence digest function and use it for ingress, review payload creation and approval-time validation. Server-generated timestamp normalization is consistent across each path.
+- Before approval, re-run the strict adapter and compare the digest plus evidence ID, stance, source kind/reference, label, author, note, confidence, timestamp and protected-memory flag with the canonical MemoryOS2 receipt.
+- Added six tampering regressions and a server smoke assertion that reconciles the review result with persisted confidence without requiring every valid approval to increase confidence.
+- Validation status: pending exact-head typecheck, focused review tests and Unified project integration. No learning/retrieval uplift or production-readiness claim.
+
 ## WorkPass390 — fail closed on null Hexis HTTP envelopes (2026-10-26)
 
 - **Code/test commits:** `f7dab0d78bd33ede255c04ff5a37c2f635dd4f6e`, `9d00c3001a97d5551145cf0bb2c51fcdfebe7424`.
