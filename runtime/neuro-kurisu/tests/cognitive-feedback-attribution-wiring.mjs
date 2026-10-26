@@ -130,6 +130,32 @@ assert.ok(helperBlock.includes('await this.feedbackDeliveryReceiptStore?.save(re
 assert.ok(core.includes('await this.feedbackDeliveryReceiptStore.load()'),
   'Core init must restore the durable feedback receipt sidecar');
 
+const spineObserveStart = core.indexOf('private async observeSpineOnly');
+const normalObserveStart = core.indexOf('async observe(observation:', spineObserveStart);
+assert.ok(spineObserveStart >= 0 && normalObserveStart > spineObserveStart,
+  'spine-only observation path must be explicit');
+const spineObserve = core.slice(spineObserveStart, normalObserveStart);
+const recoveryCheck = spineObserve.indexOf('this.feedbackReceiptBlocksSpineOutcome()');
+const spineAdvance = spineObserve.indexOf('state.tick += 1');
+assert.ok(recoveryCheck >= 0 && recoveryCheck < spineAdvance,
+  'recovery must intercept replay before inline feedback and still allow the cognitive tick to advance');
+assert.ok(spineObserve.includes("source: 'feedback-recovery'"),
+  'discarded interrupted outcomes must leave an auditable recovery event');
+assert.ok(spineObserve.includes('suppressInterruptedOutcome = true'),
+  'interrupted reward input must be explicitly suppressed');
+assert.ok(spineObserve.includes('if (!suppressInterruptedOutcome && (observation.reward !== undefined || observation.success !== undefined))'),
+  'a discarded reward must not be attached to the next selected action');
+
+const receiptRecoveryStart = core.indexOf('private feedbackReceiptBlocksSpineOutcome()');
+const receiptRecoveryEnd = core.indexOf('private async feedbackSpineOnly', receiptRecoveryStart);
+assert.ok(receiptRecoveryStart >= 0 && receiptRecoveryEnd > receiptRecoveryStart,
+  'spine recovery must use a bounded, separate receipt classifier');
+const receiptRecovery = core.slice(receiptRecoveryStart, receiptRecoveryEnd);
+assert.ok(receiptRecovery.includes("receipt.status === 'in-progress' || receipt.status === 'completed'"),
+  'recovery classifier must understand both in-progress and completed durable receipts');
+assert.ok(receiptRecovery.includes('if (!valid) return'),
+  'corrupt receipts must suppress learning without freezing the cognitive tick');
+
 const receiptDirectory = await mkdtemp(join(tmpdir(), 'nk1-feedback-delivery-'));
 try {
   const receiptStore = new FileStateStore(join(receiptDirectory, 'receipt.json'), {
