@@ -89,7 +89,7 @@ function isRollbackApproval(value: unknown): value is SkillRollbackApproval {
 function isRevisionProvenance(value: unknown): value is SkillRevisionProvenance {
   const allowedDimensions = ['safety', 'task-success', 'trajectory', 'capability-coverage', 'executability', 'holdout-generalization'];
   if (!isRecord(value) || value.schemaVersion !== 1 ||
-      !isFingerprint(value.evaluationFingerprint) ||
+      (value.evaluationFingerprint !== undefined && !isFingerprint(value.evaluationFingerprint)) ||
       !(value.sourceCandidateId === null || isFingerprint(value.sourceCandidateId)) ||
       !isFingerprint(value.planFingerprint) ||
       !isFingerprint(value.datasetFingerprint) ||
