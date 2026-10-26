@@ -573,6 +573,23 @@ export class HexisAdaptationFabric {
     decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null {
         const stage = this.state.hmxStages.find((item) => item.stagingId === stagingId);
         if (!stage) return null;
+        // Once accepted, a memory-merge operation may already have started even
+        // if its final import receipt is still pending. A later "reject" cannot
+        // undo unknown canonical side effects, and must not hand an accepted +
+        // pending stage back to the core's apply path.
+        if (stage.status === 'accepted' && decision === 'reject' &&
+            stage.applicationMode === 'memory-merge' &&
+            stage.importResult?.status === 'pending') {
+            stage.importResult = {
+                status: 'uncertain',
+                created: 0,
+                reused: 0,
+                skipped: Math.max(0, Number(stage.sectionCounts?.memories) || 0),
+                reason: 'reject-request-after-accept-before-import-receipt',
+                completedAt: nowMs(),
+            };
+            return structuredClone(stage);
+        }
         if (stage.status === 'staged') {
             const integrityIssue = pendingHmxStageIntegrityIssue(stage);
             if (integrityIssue) {
