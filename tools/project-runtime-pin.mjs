@@ -66,3 +66,22 @@ export function versionMeetsMinimum(actualVersion, minimumVersion) {
   }
   return true;
 }
+
+
+/** Supervisor compatibility API. Numeric version parsing remains canonical here. */
+export function matchesVersionPin(actual, pin) {
+  return matchesNodeVersionPin(actual, pin);
+}
+
+export function meetsMinimumVersion(actual, requirement) {
+  const match = String(requirement ?? '').trim().match(/^>=\\s*(v?(?:0|[1-9]\\d*)(?:\\.(?:0|[1-9]\\d*)){0,2})$/);
+  return Boolean(match && versionMeetsMinimum(actual, match[1]));
+}
+
+export function inspectToolchainVersions({ nodeVersion, npmVersion, nodePin, nodeRequirement, npmRequirement }) {
+  return {
+    nodePinMatches: matchesVersionPin(nodeVersion, nodePin),
+    nodeMeetsRequirement: meetsMinimumVersion(nodeVersion, nodeRequirement),
+    npmMeetsRequirement: meetsMinimumVersion(npmVersion, npmRequirement),
+  };
+}

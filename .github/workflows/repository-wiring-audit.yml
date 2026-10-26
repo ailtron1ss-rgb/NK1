@@ -25,6 +25,20 @@ on:
       - "tools/integration-supervisor.mjs"
       - "tools/integration-supervisor.test.mjs"
       - "tools/verify-integration.mjs"
+      - "tools/supervised-service-specs.mjs"
+      - "tools/supervised-service-specs.test.mjs"
+      - "tools/supervisor-exit-policy.mjs"
+      - "tools/supervisor-exit-policy.test.mjs"
+      - "tools/supervisor-preflight.mjs"
+      - "tools/supervisor-preflight.test.mjs"
+      - "tools/supervisor-start-smoke.mjs"
+      - "tools/super-gateway-headers.mjs"
+      - "tools/super-gateway-headers.test.mjs"
+      - "tools/toolchain-contract.test.mjs"
+      - "tools/toolchain-contract.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/super-gateway.mjs"
   pull_request:
     branches:
       - workpass70-source
@@ -44,6 +58,20 @@ on:
       - "tools/integration-supervisor.mjs"
       - "tools/integration-supervisor.test.mjs"
       - "tools/verify-integration.mjs"
+      - "tools/supervised-service-specs.mjs"
+      - "tools/supervised-service-specs.test.mjs"
+      - "tools/supervisor-exit-policy.mjs"
+      - "tools/supervisor-exit-policy.test.mjs"
+      - "tools/supervisor-preflight.mjs"
+      - "tools/supervisor-preflight.test.mjs"
+      - "tools/supervisor-start-smoke.mjs"
+      - "tools/super-gateway-headers.mjs"
+      - "tools/super-gateway-headers.test.mjs"
+      - "tools/toolchain-contract.test.mjs"
+      - "tools/toolchain-contract.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/super-gateway.mjs"
   workflow_dispatch:
 
 permissions:

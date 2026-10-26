@@ -23,8 +23,9 @@ async function createFixture(t) {
   await writeFile(path.join(tools, 'project-runtime-pin.mjs'), await readFile(path.join(repoRoot, 'tools/project-runtime-pin.mjs')));
   await writeFile(path.join(tools, 'super-install.mjs'), await readFile(installerSource));
   for (const [dir, name, version] of [[app, 'app-builder-workspace', '1.0.0'], [runtime, 'neuro-kurisu-organism-evolution', '1.0.0']]) {
-    await writeFile(path.join(dir, 'package.json'), JSON.stringify({ name, version }, null, 2));
-    await writeFile(path.join(dir, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { '': { name, version } } }, null, 2));
+    const engines = { node: '>=24.0.0', npm: '>=10.8.0' };
+    await writeFile(path.join(dir, 'package.json'), JSON.stringify({ name, version, engines }, null, 2));
+    await writeFile(path.join(dir, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { '': { name, version, engines } } }, null, 2));
   }
   const log = path.join(root, 'npm-invocations.txt');
   const fakeNpm = path.join(fakeBin, 'npm');
@@ -89,6 +90,20 @@ test('installer fails closed when package and lockfile roots disagree', async t 
   assert.equal(await readFile(f.log, 'utf8').catch(() => ''), '');
 });
 
+
+
+test('installer fails closed when package and lockfile engine contracts disagree', async t => {
+  const f = await createFixture(t);
+  const packagePath = path.join(f.runtime, 'package.json');
+  const manifest = JSON.parse(await readFile(packagePath, 'utf8'));
+  manifest.engines.node = '>=25.0.0';
+  await writeFile(packagePath, JSON.stringify(manifest));
+  const result = run(f);
+  assert.equal(result.status, 1, `${result.stdout}\\n${result.stderr}`);
+  assert.match(result.stderr, /workspace=runtime reason=lockfile-root-mismatch/);
+  assert.match(result.stderr, /nodeEngine=>=25\\.0\\.0\\/>=24\\.0\\.0/);
+  assert.equal(await readFile(f.log, 'utf8').catch(() => ''), '');
+});
 
 test('installer deadline kills the complete npm process group and exits fail-fast', { skip: process.platform === 'win32' }, async t => {
   const f = await createFixture(t);
