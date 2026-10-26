@@ -977,6 +977,7 @@ export class HexisAdaptationFabric {
                 throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
             }
             if (!this.canonicalMemoryApply) throw new Error('canonical-memory-apply-not-bound');
+            if (stage.applicationAttempts >= 10000) throw new Error('hmx-apply-attempt-limit');
             stage.applicationAttempts = Math.max(0, Math.floor(Number(stage.applicationAttempts ?? 0))) + 1;
             // Seal the attempt before passing the stage to the canonical projector.
             // If the handler fails, a retry remains valid but gets a distinct attempt ID.
