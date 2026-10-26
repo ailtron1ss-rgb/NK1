@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass423 — revalidate HMX provenance before goal activation (2026-10-26)
+
+- [TRUST BOUNDARY] `OrganismSystemFabric.activateHexisGoalProposal` now validates the source HMX stage digest and, for an applied stage, its canonical apply receipt before activating the agency project or reading staged relationships.
+- [REGRESSION] Added a post-approval tampering case that edits the persisted relationship weight while keeping the old digest. Activation must fail closed with the project still paused, no graph edge changes, and no success receipt.
+- [VALIDATION] Code and regression are committed. They have not been executed in a working test runtime; GitHub Actions currently exposes failed checks without runner step logs.
+
 ## [NK1][Hexis] WorkPass424 — share stage integrity with the canonical projector (2026-10-26)
 
 - [INTEGRITY] Move HMX staged-payload digest calculation/validation into one legacy-compatible module used by the adapter and the canonical projector. Direct projector calls now reject modified payloads before storage access.
