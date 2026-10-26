@@ -58,8 +58,8 @@ const beforeInvalidCommandIds = {
 const invalidCommandIds = [
   validBoundaryCommandId + 'x',
   ' ' + validBoundaryCommandId,
-  validBoundaryCommandId + '\\n',
-  'wp31:bad\\u009fkey',
+  validBoundaryCommandId + String.fromCharCode(10),
+  'wp31:bad' + String.fromCharCode(0x009f) + 'key',
   42,
   '',
 ];
