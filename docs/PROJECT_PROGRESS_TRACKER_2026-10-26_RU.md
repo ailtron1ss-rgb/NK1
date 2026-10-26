@@ -94,3 +94,10 @@
 - **Goal continuity:** a duplicate goal proposal from the same lineage reuses the canonical goal's graph node and reconciles its semantic edge, while unrelated lineages remain separated.
 - **Validation:** runner unavailable. Latest Hexis #40337917617 and unified suite #40337917630 fail before steps begin (runner_id=0, empty runner_name, steps=[], no artifacts). Workflow now captures runtime and app install/typecheck/test evidence if a runner is assigned. No validation is claimed.
 - **Release boundary:** main and published Release ZIP remain unchanged; no maturity score or recallDelta uplift was claimed.
+
+## WorkPass376 — HMX transport budget and partial-write rollback (2026-10-26; validation blocked)
+
+- **Transport:** HMX import/stage uses a dedicated request body bound up to 8 MiB; the general API request limit stays unchanged. 413 replies include the correct route-specific limit; a 300 KB smoke case was added.
+- **Atomicity:** rollback now discovers canonical rows created by a call that throws before returning the row ID, using the immutable pre-apply canonical snapshot as the baseline. Fault injection now commits the second row then throws, and asserts complete compensation and safe retry.
+- **Validation:** not executed on Actions because jobs fail before starting a runner (runner_id=0, no steps/artifacts). No passing test/typecheck claim.
+- **Release boundary:** main and published Release ZIP untouched; maturity metrics unchanged.
