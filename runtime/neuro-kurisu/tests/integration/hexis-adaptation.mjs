@@ -25,6 +25,18 @@ const stage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e1',sectio
 assert.equal(stage.status,'staged');
 assert.equal(fabric.decideHmx(stage.stagingId,'accept')?.status,'accepted');
 
+// Approval fails closed if staged HMX bytes no longer match their recorded digest.
+const modifiedStage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e3',sections:{memories:[{content:'original memory'}]}},intent:'port',strategy:'additive'});
+const modifiedSnapshot = fabric.snapshot();
+const stagedRow = modifiedSnapshot.hmxStages.find(x => x.stagingId === modifiedStage.stagingId);
+assert.ok(stagedRow, 'staged HMX entry must be persisted');
+stagedRow.stagedSections.memories[0].content = 'content changed after validation';
+const integrityGuard = new HexisAdaptationFabric();
+integrityGuard.restore(modifiedSnapshot);
+const integrityDecision = integrityGuard.decideHmx(modifiedStage.stagingId, 'accept');
+assert.equal(integrityDecision?.status, 'rejected', 'modified staged content must not be accepted');
+assert.ok(integrityDecision?.conflicts.some(x => x.kind === 'digest-mismatch'), 'rejection must expose the digest mismatch reason');
+
 const protectedStage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e2',sections:{identity:[{id:'self'}]}},intent:'telepathy',strategy:'analysis_only'});
 assert.equal(fabric.decideHmx(protectedStage.stagingId,'accept')?.status,'staged');
 
