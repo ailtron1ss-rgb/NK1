@@ -1,3 +1,13 @@
+## WorkPass357 — descriptor-only nested parent lineage restore (2026-10-26)
+
+- **Code/test checkpoint:** `810f60f2227db466dd1f96b1e3edf39741951f9d`; stacked on WorkPass356 branch head `1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee`.
+- **Defect:** snapshot restore used `parentIds.length` directly. A proxy `get` trap could execute and provide a falsified length, which silently discarded lineage.
+- **Fix:** bounded nested-array inspector validates prototype, length descriptor, dense indexed data descriptors and shape; parent validation only receives a regular array built from descriptors. Invalid rows are skipped before reserving IDs.
+- **Regression:** a proxy attempts to report length zero and throws on direct slot reads; restore must not trigger either getter and must preserve the descriptor-backed parent. Another proxy throws during descriptor enumeration; restore catches it, skips the malformed row and recovers from a later valid duplicate.
+- **Validation:** exact-head CI pending. Historical CI evidence and readiness scores remain unchanged.
+
+---
+
 ## WorkPass356 — strict CEF tool receipt ingress (2026-10-26)
 
 - **Code/test checkpoint:** `ae9a66a6f831b73d9c8457de4ea4454c376e3c1a`; based directly on latest target head `084c80745446c38bf514c43000844c433110f0c4`.
