@@ -980,6 +980,23 @@ async function route(req, res) {
                 return json(res, 409, { ok: false, error: String(error?.message ?? error) });
             }
         }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/goals/proposals/materialize') {
+            const input = await body(req);
+            if (input.confirmed !== true) {
+                return json(res, 403, { ok: false, error: 'hmx-goal-materialization-confirmation-required' });
+            }
+            try {
+                const result = runtime.core.hexisMaterializeGoalProposal(String(input.proposalId || ''));
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, ...result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                const message = String(error?.message ?? error);
+                const status = message === 'hmx-goal-proposal-not-found' ? 404
+                    : message.includes('must-be-approved') ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
         }
