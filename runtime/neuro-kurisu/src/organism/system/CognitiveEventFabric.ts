@@ -171,7 +171,11 @@ export class CognitiveEventFabric {
   private total=0;
   private readonly receiptProjectionIndex=new Map<string,ToolReceiptProjectionIndexEntry>();
 
-  constructor(capacity=512){this.capacity=Math.max(128,Math.min(4096,Math.floor(capacity)));}
+  constructor(capacity=512){
+    // A non-finite config must not disable eviction by making capacity NaN.
+    const requestedCapacity=Number.isFinite(capacity)?Math.floor(capacity):512;
+    this.capacity=Math.max(128,Math.min(4096,requestedCapacity));
+  }
 
   restore(raw?:Partial<CognitiveEventFabricSnapshot>|null):void{
     const recentRows=Array.isArray(raw?.recent)?raw!.recent:[];
@@ -237,19 +241,24 @@ export class CognitiveEventFabric {
 
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
     const suppliedId=typeof input.id==='string'?input.id.trim():'';
-    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\\u0000-\\u001f\\u007f]/.test(suppliedId))) {
+    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) {
       throw new Error('invalid-cognitive-event-id');
     }
 
-    const rawTick=Number(input.tick);
-    if(!Number.isFinite(rawTick)||rawTick<0||!Number.isSafeInteger(Math.floor(rawTick))) {
+    const rawTick=input.tick;
+    if(!Number.isSafeInteger(rawTick)||rawTick<0) {
       throw new RangeError('invalid-cognitive-event-tick');
     }
-    const normalizedTick=Math.floor(rawTick);
+    if(input.at!==undefined&&(!Number.isFinite(input.at)||input.at<0)) {
+      throw new RangeError('invalid-cognitive-event-timestamp');
+    }
+    const normalizedTick=rawTick;
     if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
 
-    const normalizedSource=String(input.source||'unknown').slice(0,120);
-    const normalizedParents=(Array.isArray(input.parentIds)?input.parentIds:[]).map(String).slice(0,12);
+    const normalizedSource=typeof input.source==='string'&&input.source.trim()?input.source.trim().slice(0,120):'unknown';
+    if(input.parentIds!==undefined&&!Array.isArray(input.parentIds)) throw new TypeError('cognitive-event-parent-ids-must-be-array');
+    if(Array.isArray(input.parentIds)&&input.parentIds.some(parent=>typeof parent!=='string')) throw new TypeError('cognitive-event-parent-ids-must-be-strings');
+    const normalizedParents=(input.parentIds??[]).map(parent=>parent.trim().slice(0,180)).filter(Boolean).slice(0,12);
     const normalizedExternal=Boolean(input.external);
     const normalizedConfidence=clamp01(input.confidence01??0.5);
     // Canonicalize and deeply detach untrusted payloads before looking up or mutating
@@ -258,7 +267,7 @@ export class CognitiveEventFabric {
     const prior=suppliedId?this.events.find(event=>event.id===suppliedId):undefined;
     // An omitted/non-finite timestamp on replay means "same logical event"; preserve
     // the persisted timestamp instead of manufacturing a conflict from arrival time.
-    const at=Number.isFinite(input.at)?Number(input.at):(prior?.at??Date.now());
+    const at=input.at!==undefined?input.at:(prior?.at??Date.now());
     const event:CognitiveEventNode={
       id:suppliedId||`cef:${at}:${normalizedTick}:${Math.random().toString(16).slice(2)}`,
       tick:normalizedTick,
