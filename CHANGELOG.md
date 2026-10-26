@@ -1,5 +1,12 @@
 ## B274 executed-action attribution — 2026-10-26
 
+- B274 now receives the canonical selected action with every real-trial outcome. It updates a skill candidate only when the executed action matches the candidate plan's first action; otherwise the reward is rejected before trial/evaluation counters or candidate quality and promotion state change.
+- Unmatched outcomes are preserved in bounded diagnostics. The Core integration test now accepts either a genuine trial or an explicit mismatch record, rather than forcing false attribution.
+- Focused Repository wiring contract audit [#40256974246](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256974246) passed all steps, including B274 lifecycle/evaluator/migration/Core integration and the full cognitive graph/routing tests. PR [#159](https://github.com/ailtron1ss-rgb/NK1/pull/159) merged to this audit branch (merge commit `e03b33721696f5f7db06b35ba9359f79c02fbfe9`).
+- Separate broader workflow [WorkPass110 run #40256795814](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256795814) remains red in `VersionedSkillCandidateStore.rollback` because the existing test call lacks the required signed rollback approval identity/timestamp/active-version guard; this is not part of B274 attribution and remains unresolved.
+
+## B274 executed-action attribution — 2026-10-26
+
 - B274 now receives the canonical selected action with each real-trial result. A candidate is evaluated only when the executed action matches its first planned action; otherwise the reward is rejected before candidate quality, attempts, real-trial count or promotion state changes.
 - Unmatched outcomes are recorded in a bounded diagnostic history for review. Focused CI validation is pending.
 
