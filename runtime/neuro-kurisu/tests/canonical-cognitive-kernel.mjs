@@ -487,6 +487,21 @@ assert.throws(() => ambiguousAnchorKernel.completeCycle({
 assert.equal(ambiguousAnchorFabric.snapshot().total, ambiguousBefore,
   'non-canonical anchor IDs must be rejected before any completion write');
 
+assert.throws(() => ambiguousAnchorKernel.completeCycle({
+  anchors: {
+    ...ambiguousAnchors.anchors,
+    observation: 'invalid\u0001anchor-id',
+  },
+  fallbackTick: 44,
+  at: 4403,
+  outcome: stage('outcome.verifier', { success01: 0.5 }),
+  learning: stage('learning.update'),
+  selfUpdate: stage('self-model.update'),
+}), /anchor-provenance-conflict/,
+'control-character anchor IDs must fail the canonical ID contract');
+assert.equal(ambiguousAnchorFabric.snapshot().total, ambiguousBefore,
+  'control-character anchor IDs must be rejected before any completion write');
+
 // Missing retained records remain allowed so late outcomes can be recorded as incomplete evidence.
 const missingAnchorFabric = new CognitiveEventFabric(256);
 const missingAnchorCycle = new UnifiedCognitiveCycle();
