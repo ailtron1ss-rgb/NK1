@@ -1,4 +1,12 @@
 ## [NK1][Hexis] WorkPass385 — align HMX bounds, validate relationships, bind replay receipts (2026-10-26)
+## [NK1][Hexis] WorkPass387 — preflight canonical memory capacity (2026-10-26)
+
+- [FIX] Detect HMX batches that would exceed MemoryOS2's 1,600-item canonical bound and reject them before the first write. This avoids an import causing the memory store to evict an unrelated older record that rollback cannot restore.
+- [FIX] Preflight the batch's deterministic IDs against existing unrelated canonical records before any write, while retaining an in-loop collision guard.
+- [TEST] Added a small capacity boundary regression using a read-only near-capacity store; it asserts rejection at 1,601 planned items, zero writer calls, zero rollback calls, and an accepted/retryable stage.
+- [WIRING] Added the capacity test to `audit:hexis` and the WorkPass71 primary regression workflow.
+- [VALIDATION] Changes are committed; exact-head test execution remains blocked by hosted runner allocation. No pass is claimed.
+
 ## [NK1][Hexis] WorkPass386 — compensate post-commit import failures (2026-10-26)
 
 - [FIX] Register each deterministic canonical memory ID as a rollback candidate before invoking the writer. If the writer commits a row and then throws before returning the inserted item, the compensation path still knows which ID to remove.
