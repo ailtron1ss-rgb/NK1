@@ -1,3 +1,15 @@
+## Latest checkpoint — WorkPass342 validated / WorkPass340–342 merged (2026-10-26)
+
+- **Merged PR:** #154 integrated WorkPass340–342 into `fix/mega-cognitive-progress-tracking-2026-10-26-r3`; merge commit `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. It does not change `main` or publish a release ZIP.
+- **Exact tested code/test head:** `621864d0d7f2676245383adab86f1dcc6d0f741f`. Unified project integration suite [#40257525157](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525157), WorkPass110 [#40257525071](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525071), WorkPass108 [#40257525093](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525093), P26 [#40257525095](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525095) and ledger integrity [#40257525008](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525008) all passed. Outcome-ledger, replay, cognitive-contract, verified-experience, autonomous P23 repair, reflection and correlated-postcondition suites also passed on the same head.
+- **Cognitive runtime:** strict substrate runs in the live cycle, uses durable sidecar restore/periodic save/final flush, only constrains optional work, and passes the 30-cycle stop/re-init smoke. Core retains action ownership.
+- **Learning gate:** per-family distinct paired holdout tasks must satisfy trusted coverage and gain policy; proposal/staging remain non-activating.
+- **Research smoke:** per-probe bounded HTTP deadlines fixed the DeepCode false timeout; NeuroCore/NOMEGA/DeepCode owner-approved probes all passed.
+- **Scores:** unchanged. CI validates integration/safety, not improved real-world transfer. Physical Android/Termux sensor/audio, browser/Live2D hardware, long soak, license review, and the current release ZIP replacement remain open.
+- **Progress evidence:** tracker JSON and markdown now point to exact tested head `621864d0d7f2676245383adab86f1dcc6d0f741f`, while explicitly keeping score values unchanged.
+
+---
+
 ## Latest checkpoint — WorkPass342 (2026-10-26)
 
 - **Scope:** fixed the integration smoke's false timeout for CPU-heavy research probes. `fetchJson` now has an explicit finite deadline; health/status/approval calls keep 8 seconds, NeuroCore/NOMEGA use 60 seconds, and DeepCode CPU smoke uses 200 seconds to cover its 180-second subprocess limit plus cold-start overhead.
