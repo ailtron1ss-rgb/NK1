@@ -33,21 +33,49 @@ const rowIdentity = (row, index, fallback) =>
 const memoryContent = row =>
   textValue(row.content, row.text, row.summary, row.description, row.instructions, row.instruction, row.identityAssertion, row.identity_assertion, row.originStatement, row.origin_statement);
 
-function indexNativeReferences(sections, exportId) {
+function indexNativeReferences(sections, exportId, warnings = []) {
   const index = new Map();
-  const add = (value, ref) => {
-    if (typeof value === 'string' && value.trim()) {
-      index.set(value.trim(), ref);
-      const suffix = value.includes(':') ? value.slice(value.lastIndexOf(':') + 1) : value;
-      if (suffix.trim()) index.set(suffix.trim(), ref);
+  const ownerByAlias = new Map();
+  const ambiguous = new Set();
+
+  // Never use last-write-wins for native aliases: the same short id/name can
+  // legitimately occur in different sections or records. Once ambiguous, an
+  // alias stays unresolved for this export, so edges cannot silently attach to
+  // the wrong canonical memory.
+  const addAlias = (value, ref, owner) => {
+    if (typeof value !== 'string' || !value.trim()) return;
+    const normalized = value.trim();
+    const suffix = normalized.includes(':')
+      ? normalized.slice(normalized.lastIndexOf(':') + 1).trim()
+      : normalized;
+
+    for (const alias of new Set([normalized, suffix])) {
+      if (!alias || ambiguous.has(alias)) continue;
+      if (!index.has(alias)) {
+        index.set(alias, ref);
+        ownerByAlias.set(alias, owner);
+        continue;
+      }
+      if (ownerByAlias.get(alias) !== owner) {
+        index.delete(alias);
+        ownerByAlias.delete(alias);
+        ambiguous.add(alias);
+      }
     }
   };
+
   for (const [sectionName, kind] of [['memories', 'memory'], ['skills', 'skill'], ['goals', 'goal']]) {
     for (const [i, row] of asArray(sections[sectionName]).entries()) {
       const id = rowIdentity(row, i, kind);
       const ref = canonicalRef(exportId, kind, id);
-      for (const key of ['id', 'ref', 'key', 'name', 'title']) add(row[key], ref);
+      const owner = sectionName + ':' + i;
+      for (const key of ['id', 'ref', 'key', 'name', 'title']) addAlias(row[key], ref, owner);
     }
+  }
+
+  if (ambiguous.size > 0) {
+    warnings.push('Detected ' + ambiguous.size +
+      ' ambiguous native reference alias(es); affected references were left unresolved in the HMX export.');
   }
   return index;
 }
@@ -171,7 +199,7 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
   const exportId = 'exp_' + createHash('sha256').update(serialized).digest('hex').slice(0, 16);
   const warnings = [];
   const sourceSubjectId = textValue(root.source_subject_id, root.sourceSubjectId, root.subject_id, root.subjectId);
-  const refIndex = indexNativeReferences(nativeSections, exportId);
+  const refIndex = indexNativeReferences(nativeSections, exportId, warnings);
   const rawMemories = asArray(nativeSections.memories);
   const rawSkills = asArray(nativeSections.skills);
   const rawGoals = asArray(nativeSections.goals);
