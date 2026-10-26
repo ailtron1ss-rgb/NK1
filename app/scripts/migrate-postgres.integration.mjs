@@ -22,6 +22,7 @@ const migrationsDirectory = join(scriptDirectory, "..", "migrations");
 const migratorPath = join(scriptDirectory, "migrate.mjs");
 const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
 
+/** @param {boolean} expectSuccess */
 function runMigrator(expectSuccess) {
   const result = spawnSync(process.execPath, [migratorPath], {
     encoding: "utf8",
@@ -47,11 +48,13 @@ function runMigrator(expectSuccess) {
   return result;
 }
 
+/** @param {string} table */
 async function tableExists(table) {
   const result = await pool.query("SELECT to_regclass($1) AS name", ["public." + table]);
   return result.rows[0]?.name !== null && result.rows[0]?.name !== undefined;
 }
 
+/** @param {string} name */
 async function migrationRecorded(name) {
   const result = await pool.query("SELECT count(*)::int AS count FROM _migrations WHERE name = $1", [name]);
   return result.rows[0]?.count ?? 0;
@@ -100,11 +103,14 @@ try {
   if (rollbackFileWritten) await rm(join(migrationsDirectory, rollbackMigration), { force: true });
   if (successFileWritten) await rm(join(migrationsDirectory, successMigration), { force: true });
   try {
-    await pool.query("DELETE FROM _migrations WHERE name = ANY($1::text[])", [[successMigration, rollbackMigration]]);
-  } catch {
-    // If the initial connection never created the ledger, cleanup is a no-op.
+    try {
+      await pool.query("DELETE FROM _migrations WHERE name = ANY($1::text[])", [[successMigration, rollbackMigration]]);
+    } catch {
+      // If the initial connection never created the ledger, cleanup is a no-op.
+    }
+    await pool.query("DROP TABLE IF EXISTS public." + rollbackTable);
+    await pool.query("DROP TABLE IF EXISTS public." + successTable);
+  } finally {
+    await pool.end();
   }
-  await pool.query("DROP TABLE IF EXISTS public." + rollbackTable);
-  await pool.query("DROP TABLE IF EXISTS public." + successTable);
-  await pool.end();
 }
