@@ -556,12 +556,14 @@ export class HexisAdaptationFabric {
         kind: string;
         channel: string;
         payload: unknown;
-    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict' | 'idempotency-key-history-expired' | 'idempotency-ledger-saturated' | 'outbox-capacity-exceeded'; idempotencyKey: string; existingId?: string } {
+    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-too-long' | 'idempotency-key-conflict' | 'idempotency-key-history-expired' | 'idempotency-ledger-saturated' | 'outbox-capacity-exceeded'; idempotencyKey: string; existingId?: string } {
         const idempotencyKey = String(input.idempotencyKey ?? '').trim();
         if (!idempotencyKey) return { ok: false, error: 'idempotency-key-required', idempotencyKey };
+        if (idempotencyKey.length > 256) return { ok: false, error: 'idempotency-key-too-long', idempotencyKey: idempotencyKey.slice(0, 256) };
         const kind = String(input.kind), channel = String(input.channel);
+        if (!kind || kind.length > 128 || !channel || channel.length > 128)
+            return { ok: false, error: 'idempotency-key-required', idempotencyKey };
         const requestDigest = digest({ kind, channel, payload: input.payload });
-        if (idempotencyKey.length > 256) return { ok: false, error: 'idempotency-key-required', idempotencyKey: idempotencyKey.slice(0, 256) };
         // Check visible rows first so a recent exact replay returns its original receipt.
         const existing = this.state.outbox.find((x) => x.idempotencyKey === idempotencyKey);
         if (existing) {
