@@ -19,6 +19,19 @@ assert.equal(training.replayUpdates,0);
 assert.ok(engine.metrics().trainingExposure01>0,'training exposure is separate from holdout evidence');
 assert.equal(engine.metrics().generalizationEvidence01,0,'policy updates are not generalization evidence');
 
+// The fresh task example must be the final gradient in an interleaved slot.
+const orderingEngine=new P26TrueLearningEngine();
+const updateTargets=[];
+const originalOrderingTrain=orderingEngine.learner.train.bind(orderingEngine.learner);
+orderingEngine.learner.train=(input)=>{updateTargets.push(input.target01);return originalOrderingTrain(input);};
+orderingEngine.trainInterleaved(
+  [makeRow({state:mkState(.82,.9,.2),reward:.8,nextState:mkState(.8,.9,.25)})],
+  [makeRow({state:mkState(.18,.1,.8),reward:.1,nextState:mkState(.2,.1,.75)})],
+  {targetMode:'reward',replayEveryNCurrent:1,maxReplayUpdates:1,currentLearningRate01:.1,replayLearningRate01:.01},
+);
+assert.deepEqual(updateTargets,[.1,.8],
+  'scheduled replay must run before the fresh current-task gradient');
+
 engine.recordHoldout(.4,.8);
 assert.equal(engine.metrics().holdoutDelta01,.4);
 assert.equal(engine.metrics().generalizationEvidence01,0,'diagnostic holdout must not certify generalization');
