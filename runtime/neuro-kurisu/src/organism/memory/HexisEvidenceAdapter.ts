@@ -43,6 +43,9 @@ export type EvidenceIngressResult =
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,191}$/;
 const TOKEN_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$/;
 const MAX_TEXT = 4096;
+const CONTROL_CHAR_RE = /[\u0000-\u001f\u007f-\u009f]/u;
+// Evidence timestamps use an explicit timezone and millisecond precision.
+const ISO_TIMESTAMP_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|([+-])(\d{2}):(\d{2}))$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object") return false;
@@ -73,8 +76,54 @@ function dataSnapshot(value: unknown, allowed: readonly string[]): Record<string
 function cleanText(value: unknown, max = MAX_TEXT): string | undefined {
   if (typeof value !== "string") return undefined;
   const normalized = value.trim();
-  if (!normalized || normalized.length > max || /[\u0000-\u001f\u007f]/.test(normalized)) return undefined;
+  if (!normalized || normalized.length > max || CONTROL_CHAR_RE.test(normalized)) return undefined;
   return normalized;
+}
+
+/**
+ * Avoid Date.parse's ambiguous shorthand and calendar rollover behavior.
+ * Evidence time is a fact, so local wall-clock strings without a timezone
+ * are not accepted.
+ */
+function canonicalTimestamp(value: unknown): string | undefined {
+  if (typeof value !== "string" || value !== value.trim() || value.length > 64 || CONTROL_CHAR_RE.test(value)) {
+    return undefined;
+  }
+  const match = ISO_TIMESTAMP_RE.exec(value);
+  if (!match) return undefined;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  if (hour > 23 || minute > 59 || second > 59) return undefined;
+
+  // Validate the calendar date independently; Date.parse can roll an invalid
+  // month/day combination forward instead of rejecting it.
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(year, month - 1, day);
+  calendar.setUTCHours(0, 0, 0, 0);
+  if (
+    calendar.getUTCFullYear() !== year ||
+    calendar.getUTCMonth() !== month - 1 ||
+    calendar.getUTCDate() !== day
+  ) return undefined;
+
+  if (match[8] !== "Z") {
+    const offsetHour = Number(match[10]);
+    const offsetMinute = Number(match[11]);
+    if (offsetHour > 23 || offsetMinute > 59) return undefined;
+  }
+
+  const epochMs = Date.parse(value);
+  if (!Number.isFinite(epochMs) || Math.abs(epochMs) > 8_640_000_000_000_000) return undefined;
+  try {
+    return new Date(epochMs).toISOString();
+  } catch {
+    return undefined;
+  }
 }
 
 function validId(value: unknown): value is string {
@@ -107,8 +156,8 @@ export function adaptHexisEvidence(
   if (row.protectedMemory !== undefined && typeof row.protectedMemory !== "boolean") {
     return { accepted: false, reason: "invalid-protected-memory-flag" };
   }
-  const observedAt = cleanText(row.observedAt, 64);
-  if (!observedAt || !Number.isFinite(Date.parse(observedAt))) {
+  const observedAt = canonicalTimestamp(row.observedAt);
+  if (!observedAt) {
     return { accepted: false, reason: "invalid-evidence-timestamp" };
   }
   const sourceRow = dataSnapshot(row.source, ["kind", "ref", "label", "author"]);
@@ -130,7 +179,7 @@ export function adaptHexisEvidence(
     evidenceId: row.evidenceId,
     stance: row.stance,
     source: Object.freeze({ kind, ref, ...(label ? { label } : {}), ...(author ? { author } : {}) }),
-    observedAt: new Date(observedAt).toISOString(),
+    observedAt,
     confidence: row.confidence,
     ...(note ? { note } : {}),
     protectedMemory: row.protectedMemory === true,
