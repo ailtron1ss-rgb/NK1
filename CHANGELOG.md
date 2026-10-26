@@ -1,3 +1,13 @@
+## [NK1][WorkPass377] Route Hexis source-stack changes through full runtime validation — 2026-10-26
+
+- **Defect:** WorkPass71 contains app/runtime typechecks and broad rebuild regressions, but its push filter did not include the active WorkPass375 source branch and its pull-request base filter omitted the Hexis-H1 source-stack branch.
+- **Fix:** run WorkPass71 on pushes to workpass375-hexis-canonical-ingress-latest and on PRs targeting hexis-h1-memory-evidence-lineage-2026-10-26 when matching source, test, package or workflow paths change.
+- **Evidence:** the WorkPass376 Repository Wiring Audit passed on exact head 6890b8cbdc17b403de2aa4eae834dffda9b9c886; that workflow runs the focused Hexis/MemoryOS2, H1 lineage, HMX and Operation Omega checks. The WorkPass71 workflow is now routed for full runtime typecheck/rebuild validation.
+- **Validation:** this wiring delta needs its own exact-head run; no result from the prior SHA is treated as validation of this change.
+- **Release:** main and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][WorkPass376] Reject ambiguous Hexis timestamps and C1 controls — 2026-10-26
 
 - **Defect:** Date.parse alone accepted ambiguous timestamp strings and may normalize invalid calendar dates; Hexis note/source validation rejected C0/DEL but allowed C1 controls.
