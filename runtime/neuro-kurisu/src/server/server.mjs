@@ -38,6 +38,10 @@ const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: proc
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
+const configuredHmxBodyBytes = Number(process.env.NEURO_HMX_MAX_BODY_BYTES || 8 * 1024 * 1024);
+const MAX_HMX_BODY_BYTES = Number.isFinite(configuredHmxBodyBytes)
+    ? Math.max(Math.min(MAX_BODY_BYTES, 8 * 1024 * 1024), Math.min(8 * 1024 * 1024, Math.floor(configuredHmxBodyBytes)))
+    : 8 * 1024 * 1024;
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
@@ -265,17 +269,23 @@ function embodimentAssetStatus() {
         provenance
     };
 }
-async function body(req) {
+async function body(req, maximumBytes = MAX_BODY_BYTES) {
+    const limit = Number.isFinite(Number(maximumBytes)) && Number(maximumBytes) >= 4096
+        ? Math.floor(Number(maximumBytes))
+        : MAX_BODY_BYTES;
+    const failTooLarge = () => {
+        throw Object.assign(new Error('request-too-large'), { maxBodyBytes: limit });
+    };
     const declared = Number(req.headers['content-length'] || 0);
-    if (Number.isFinite(declared) && declared > MAX_BODY_BYTES)
-        throw new Error('request-too-large');
+    if (Number.isFinite(declared) && declared > limit)
+        failTooLarge();
     const chunks = [];
     let bytes = 0;
     for await (const chunk of req) {
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         bytes += buffer.byteLength;
-        if (bytes > MAX_BODY_BYTES)
-            throw new Error('request-too-large');
+        if (bytes > limit)
+            failTooLarge();
         chunks.push(buffer);
     }
     const source = Buffer.concat(chunks).toString('utf8');
@@ -913,8 +923,16 @@ async function route(req, res) {
                 return json(res, 503, { ok: false, error: String(error?.message ?? error) });
             }
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/hmx/stage') {
+            const stagingId = String(url.searchParams.get('stagingId') || '').trim();
+            if (!stagingId) return json(res, 400, { ok: false, error: 'hmx-staging-id-required' });
+            const stages = runtime.core.hexisAdaptationSnapshot?.()?.hmxStages;
+            const stage = Array.isArray(stages) ? stages.find(item => item.stagingId === stagingId) : null;
+            if (!stage) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
+            return json(res, 200, { ok: true, stage });
+        }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/stage') {
-            const input = await body(req);
+            const input = await body(req, MAX_HMX_BODY_BYTES);
             try {
                 const result = runtime.core.hexisStageHmx(input.document, input.intent || 'analysis', input.strategy || 'analysis_only');
                 await runtime.core.flush();
@@ -926,10 +944,77 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/decide') {
             const input = await body(req);
-            const decision = input.decision === 'accept' ? 'accept' : 'reject';
-            const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
-            await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), stage: result });
+            const decision = String(input.decision ?? '');
+            if (!['accept', 'reject', 'apply'].includes(decision)) {
+                return json(res, 400, { ok: false, error: 'invalid-hmx-decision' });
+            }
+            try {
+                const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
+                await runtime.core.flush();
+                if (!result) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
+                return json(res, 200, { ok: true, stage: result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                return json(res, 409, { ok: false, error: String(error?.message ?? error) });
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/goals/prepare') {
+            const input = await body(req);
+            try {
+                const result = runtime.core.hexisPrepareGoalProposals(String(input.stagingId || ''));
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, ...result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                const message = String(error?.message ?? error);
+                const status = message === 'hmx-goal-stage-not-found' ? 404
+                    : message.includes('must-be-accepted') || message.includes('has-conflicts') ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/hmx/goals/proposals') {
+            const requestedStatus = url.searchParams.get('status') || undefined;
+            const allowedStatuses = ['pending', 'approved', 'rejected', 'materialized'];
+            if (requestedStatus && !allowedStatuses.includes(requestedStatus)) {
+                return json(res, 400, { ok: false, error: 'invalid-hmx-goal-proposal-status' });
+            }
+            const requestedLimit = Number(url.searchParams.get('limit') || 64);
+            const limit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(128, Math.floor(requestedLimit))) : 64;
+            return json(res, 200, { ok: true, proposals: runtime.core.hexisGoalProposals({ status: requestedStatus, limit }) });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/goals/proposals/decide') {
+            const input = await body(req);
+            const decision = String(input.decision ?? '');
+            if (!['approve', 'reject'].includes(decision)) {
+                return json(res, 400, { ok: false, error: 'invalid-hmx-goal-proposal-decision' });
+            }
+            try {
+                const proposal = runtime.core.hexisDecideGoalProposal(String(input.proposalId || ''), decision);
+                await runtime.core.flush();
+                if (!proposal) return json(res, 404, { ok: false, error: 'hmx-goal-proposal-not-found' });
+                return json(res, 200, { ok: true, proposal });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                return json(res, 409, { ok: false, error: String(error?.message ?? error) });
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/goals/proposals/materialize') {
+            const input = await body(req);
+            if (input.confirmed !== true) {
+                return json(res, 403, { ok: false, error: 'hmx-goal-materialization-confirmation-required' });
+            }
+            try {
+                const result = runtime.core.hexisMaterializeGoalProposal(String(input.proposalId || ''));
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, ...result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                const message = String(error?.message ?? error);
+                const status = message === 'hmx-goal-proposal-not-found' ? 404
+                    : message.includes('must-be-approved') || message.includes('canonical-capacity-reached') ||
+                        message.includes('materialized-record-missing') ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
@@ -2257,8 +2342,10 @@ async function route(req, res) {
     catch (error) {
         const message = String(error?.message || error);
         const code = String(error?.code || '');
-        if (message === 'request-too-large')
-            return json(res, 413, { ok: false, error: 'request-too-large', maxBodyBytes: MAX_BODY_BYTES });
+        if (message === 'request-too-large') {
+            const actualLimit = Number(error?.maxBodyBytes);
+            return json(res, 413, { ok: false, error: 'request-too-large', maxBodyBytes: Number.isFinite(actualLimit) && actualLimit >= 4096 ? actualLimit : MAX_BODY_BYTES });
+        }
         if (/JSON|Unexpected token|Expected property name|Unexpected end of JSON input/i.test(message))
             return json(res, 400, { ok: false, error: 'invalid-json-request' });
         if (code === 'transport-envelope-id-conflict' || code === 'transport-envelope-history-unknown')

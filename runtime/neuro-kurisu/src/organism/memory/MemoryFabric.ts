@@ -14,7 +14,7 @@ type EncodeInput = MemoryLifecycleEncodeInput;
 
 export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
 export type MemoryLifecycleCommand =
-  | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean }
+  | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean; forceDistinct?:boolean }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
@@ -205,7 +205,7 @@ export class MemoryFabric {
       case 'encode': {
         this.statsData.encodes++;
         const before=this.memoryOS.size();
-        const item=this.memoryOS.encode(command.input,{clone:false});
+        const item=this.memoryOS.encode(command.input,{clone:false,forceDistinct:command.forceDistinct===true});
         const created=this.memoryOS.size()>before;
         if(created)this.statsData.newItems++; else this.statsData.reconsolidations++;
         this.touchHot(item.id);
@@ -294,7 +294,7 @@ export class MemoryFabric {
     return undefined;
   }
 
-  encode(input:EncodeInput, context:{tick?:number;emitEvent?:boolean;syncCompatibility?:boolean;commandId?:string}={}) {
+  encode(input:EncodeInput, context:{tick?:number;emitEvent?:boolean;syncCompatibility?:boolean;commandId?:string;forceDistinct?:boolean}={}) {
     return this.applyLifecycleCommand({action:'encode',input,...context}) as MemoryItem2;
   }
 

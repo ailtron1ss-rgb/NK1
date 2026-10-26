@@ -1,3 +1,37 @@
+## WorkPass376 — bounded HMX transport and rollback reconciliation (2026-10-26)
+
+- Added a dedicated HMX stage request budget, separately configurable and hard-capped at 8 MiB; ordinary API routes retain their original 256 KB default limit. HTTP 413 responses now report the actual route-specific limit.
+- Added a server smoke fixture with a 300 KB valid HMX stage document to guard the route-specific transport boundary.
+- The canonical projector now keeps an immutable initial ID set and a separate per-batch seen-ID set. If a lower-level canonical write commits and throws before returning its ID, rollback reconciles the live memory IDs against the pre-apply snapshot and compensates the hidden row too.
+- Strengthened fault injection so the second memory encode commits a row and then throws before the projector receives its ID; the test asserts no imported memories, graph nodes, or temporal assertions survive and the accepted stage remains retryable.
+- Validation remains blocked by GitHub Actions runner startup: latest observed jobs ended with runner_id=0 and steps=[]; no test pass is claimed. main and the published Release ZIP remain unchanged.
+
+---
+
+## WorkPass375 — HMX operator UI and confirmation boundary (2026-10-26)
+
+- Added frontend API bindings for HMX canonical apply and goal proposal preparation/list/review/materialization.
+- Extended HexisControlConsole with external HMX JSON import, explicit acceptance, a separate second confirmation for persistent canonical writes, proposal status filtering, approve/reject, and confirmed candidate materialization.
+- Reset confirmation state whenever the staged document/ID changes; oversized uploads are rejected before JSON parsing.
+- Fixed the UI action runner so a failed follow-up panel refresh cannot hide a successful persistent operation or present it as failed; proposal queues are refreshed after materialization.
+- Same-lineage duplicate goal proposals now reuse the canonical goal graph node and reconcile the existing semantic edge instead of forking graph identity.
+- Focused CI now captures runtime/app install outputs, runtime/app typechecks and Hexis test output as an artifact before enforcing the gate.
+- Latest checks remain unverified: Hexis run #40337917617 and unified suite #40337917630 ended with runner_id=0 and steps=[], with no artifacts. This is a GitHub runner-startup blocker, not a code-test result. main and the published Release ZIP are unchanged.
+
+---
+
+## WorkPass374 — Hexis canonical memory / HMX bridge (2026-10-26)
+
+- Routed NK1-native HMX export through an HMX 1.7 normalizer and added a bounded canonical projector for approved additive imports.
+- Connected projector to the existing MemoryFabric, semantic graph and Hexis review/receipt path; source namespace prevents imported graph nodes from being merged blindly with local nodes.
+- Restricted the server decision endpoint to accept / reject / apply and added tests for canonical apply/replay and invalid decisions.
+- Added a proposal-only HMX-goal API (prepare, list, approve/reject) so imported goals stay pending until review and never become active automatically.
+- Added explicit-confirmation materialization for approved goals through NK1's canonical addGoal gate; goal-to-imported-memory relationships are projected with source-scoped graph keys, an idempotent receipt and a typed event. Imported goals remain candidates, not auto-activated.
+- Wired the operator console to external HMX JSON import, separately confirmed canonical apply, and the reviewed goal proposal lifecycle (list/status filter, prepare, approve/reject, explicitly confirmed candidate materialization). Added app dependency/typecheck steps to the focused workflow and evidence gate.
+- Exact-head Actions job #40336104593 exits before any step (runner_id=0, runner_name empty, steps=[], no artifacts); unified suite #40336104584 shows the same runner/startup failure. The workflow now captures npm ci/typecheck/test logs and exit codes as an artifact when a runner is available, but validation remains unverified. No learning-uplift or production-readiness score change; main and published Release ZIP are untouched.
+
+---
+
 ## WorkPass373 — cross-ledger rollback regression (2026-10-26)
 
 - **Gap closed:** the operational-cycle atomicity test covered event-fabric append failures but did not directly prove rollback when the unified aggregate mutates successfully and a later step throws.

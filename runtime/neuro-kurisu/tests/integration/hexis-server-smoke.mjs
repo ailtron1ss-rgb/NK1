@@ -7,7 +7,7 @@ const root = path.resolve(process.cwd());
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-'));
 const port = 35600 + Math.floor(Math.random() * 800);
 const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: stateDir };
-const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+const child = spawn(process.execPath, ['--experimental-transform-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let output = '';
 child.stdout.on('data', d => output += d);
 child.stderr.on('data', d => output += d);
@@ -34,10 +34,130 @@ try {
   }
   const exportRes = await (await fetch(`${base}/api/organism/integration/hexis/hmx/export`)).json();
   if (!exportRes.ok || exportRes.document?.hmx_version !== '1.7' || !Array.isArray(exportRes.document?.sections?.memories)) throw new Error('hexis-hmx-export');
+  // HMX has a bounded larger request budget than the general 256 KB API body limit.
+  const largeHmxExportId = 'exp_aaaaaaaaaaaaaaaa';
+  const largeHmxDocument = {
+    hmx_version: '1.7',
+    export_id: largeHmxExportId,
+    export_intent: 'analysis',
+    exported_at: new Date().toISOString(),
+    source: {
+      instance_id: 'nk1-large-body-smoke',
+      schema_version: '1.7',
+      embedding_model: 'test-text-only',
+      embedding_dimension: 1,
+      hexis_lineage_id: 'nk1-large-body-smoke-lineage',
+    },
+    sections: { config: { transportSizeProbe: 'x'.repeat(300_000) } },
+  };
+  const largeHmxResponse = await post('/api/organism/integration/hexis/hmx/stage', {
+    document: largeHmxDocument, intent: 'analysis', strategy: 'analysis_only',
+  });
+  const largeHmxStage = await largeHmxResponse.json();
+  if (!largeHmxResponse.ok || largeHmxStage.stage?.status !== 'staged' || largeHmxStage.stage?.conflicts?.length) {
+    throw new Error('hexis-hmx-bounded-large-body:' + JSON.stringify(largeHmxStage));
+  }
   const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: exportRes.document, intent: 'port', strategy: 'additive' })).json();
   if (!stageRes.ok || stageRes.stage?.status !== 'staged') throw new Error('hexis-hmx-stage');
+  const stageLookupResponse = await fetch(`${base}/api/organism/integration/hexis/hmx/stage?stagingId=${encodeURIComponent(stageRes.stage.stagingId)}`);
+  const stageLookup = await stageLookupResponse.json();
+  if (!stageLookupResponse.ok || stageLookup.stage?.status !== 'staged' || stageLookup.stage?.stagingId !== stageRes.stage.stagingId) {
+    throw new Error('hexis-hmx-stage-lookup:' + JSON.stringify(stageLookup));
+  }
+  const missingStageLookup = await fetch(`${base}/api/organism/integration/hexis/hmx/stage?stagingId=missing-stage-id`);
+  if (missingStageLookup.status !== 404) throw new Error('hexis-hmx-stage-lookup-not-found:' + missingStageLookup.status);
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
   if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted') throw new Error('hexis-hmx-accept');
+  const acceptedStageLookup = await (await fetch(`${base}/api/organism/integration/hexis/hmx/stage?stagingId=${encodeURIComponent(stageRes.stage.stagingId)}`)).json();
+  if (!acceptedStageLookup.ok || acceptedStageLookup.stage?.status !== 'accepted') {
+    throw new Error('hexis-hmx-stage-lookup-accepted:' + JSON.stringify(acceptedStageLookup));
+  }
+
+  const applyExportId = 'exp_0123456789abcdea';
+  const applyRefA = applyExportId + ':memory:smoke-a';
+  const applyRefB = applyExportId + ':memory:smoke-b';
+  const applyDocument = structuredClone(exportRes.document);
+  applyDocument.export_id = applyExportId;
+  applyDocument.source.hexis_lineage_id = 'nk1-server-smoke-lineage';
+  applyDocument.exported_at = new Date().toISOString();
+  applyDocument.sections.memories = [
+    { ref: applyRefA, type: 'semantic', status: 'active', content: 'NK1_HEXIS_CANONICAL_APPLY_SMOKE_A', importance: .72, trust_level: .85, provenance: { source_id: 'smoke-source-a', confidence: .85 } },
+    { ref: applyRefB, type: 'episodic', status: 'active', content: 'NK1_HEXIS_CANONICAL_APPLY_SMOKE_B', importance: .66, trust_level: .75, provenance: { source_id: 'smoke-source-b', confidence: .75 } },
+  ];
+  applyDocument.sections.goals = [
+    { ref: applyExportId + ':goal:smoke-goal', title: 'Review imported goal', description: 'Must remain unmaterialized until explicit local approval.', metadata: { nk1NativeGoal: { id: 'smoke-goal', importance: .6, urgency: .4, confidence: .7 } } },
+    { ref: applyExportId + ':goal:smoke-goal-duplicate', title: 'Review imported goal', description: 'Must remain unmaterialized until explicit local approval.', metadata: { nk1NativeGoal: { id: 'smoke-goal-duplicate', importance: .5, urgency: .3, confidence: .6 } } },
+  ];
+  const applyGoalRef = applyExportId + ':goal:smoke-goal';
+  applyDocument.sections.relationships = [
+    { ref: applyExportId + ':relationship:smoke-supports-a-b', source_ref: applyRefA, target_ref: applyRefB, edge_type: 'supports', properties: { weight: .8 } },
+    { ref: applyExportId + ':relationship:smoke-goal-a', source_ref: applyGoalRef, target_ref: applyRefA, edge_type: 'supports', properties: { weight: .7 } },
+  ];
+  const applyStageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: applyDocument, intent: 'port', strategy: 'additive' })).json();
+  if (!applyStageRes.ok || applyStageRes.stage?.status !== 'staged' || applyStageRes.stage?.conflicts?.length) {
+    throw new Error('hexis-hmx-apply-stage:' + JSON.stringify(applyStageRes.stage?.conflicts));
+  }
+  const applyAcceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'accept' })).json();
+  if (!applyAcceptRes.ok || applyAcceptRes.stage?.status !== 'accepted') throw new Error('hexis-hmx-apply-accept');
+
+  // Imported goals become pending proposals, never active canonical goals by themselves.
+  const prepareGoals = await (await post('/api/organism/integration/hexis/hmx/goals/prepare', { stagingId: applyStageRes.stage.stagingId })).json();
+  if (!prepareGoals.ok || prepareGoals.created !== 2 || prepareGoals.proposals?.some(proposal => proposal.status !== 'pending')) {
+    throw new Error('hexis-hmx-goal-proposal-prepare:' + JSON.stringify(prepareGoals));
+  }
+  const replayGoals = await (await post('/api/organism/integration/hexis/hmx/goals/prepare', { stagingId: applyStageRes.stage.stagingId })).json();
+  if (!replayGoals.ok || replayGoals.created !== 0 || replayGoals.duplicates !== 2) throw new Error('hexis-hmx-goal-proposal-idempotency');
+  const pendingGoals = await (await fetch(`${base}/api/organism/integration/hexis/hmx/goals/proposals?status=pending`)).json();
+  const pendingGoal = pendingGoals.proposals?.find(proposal => proposal.id === prepareGoals.proposals[0].id);
+  const duplicatePendingGoal = pendingGoals.proposals?.find(proposal => proposal.id === prepareGoals.proposals[1].id);
+  if (!pendingGoals.ok || !pendingGoal || pendingGoal.status !== 'pending' ||
+      !duplicatePendingGoal || duplicatePendingGoal.status !== 'pending') throw new Error('hexis-hmx-goal-proposal-list');
+  const prematureMaterialization = await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: true });
+  if (prematureMaterialization.status !== 409) throw new Error('hexis-hmx-goal-review-required:' + prematureMaterialization.status);
+  const goalDecision = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/decide', { proposalId: pendingGoal.id, decision: 'approve' })).json();
+  if (!goalDecision.ok || goalDecision.proposal?.status !== 'approved') throw new Error('hexis-hmx-goal-proposal-approve');
+  const duplicateGoalDecision = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/decide', { proposalId: duplicatePendingGoal.id, decision: 'approve' })).json();
+  if (!duplicateGoalDecision.ok || duplicateGoalDecision.proposal?.status !== 'approved') throw new Error('hexis-hmx-duplicate-goal-proposal-approve');
+  const invalidGoalStatus = await fetch(`${base}/api/organism/integration/hexis/hmx/goals/proposals?status=activate`);
+  if (invalidGoalStatus.status !== 400) throw new Error('hexis-hmx-goal-proposal-status-validation:' + invalidGoalStatus.status);
+
+  const applyRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply' })).json();
+  if (!applyRes.ok || applyRes.stage?.status !== 'applied' || applyRes.stage?.application?.importedCount !== 2 || applyRes.stage?.application?.projectedRelationships !== 1) {
+    throw new Error('hexis-hmx-canonical-apply:' + JSON.stringify(applyRes));
+  }
+  const applyReplay = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply' })).json();
+  if (!applyReplay.ok || applyReplay.stage?.application?.digest !== applyRes.stage.application.digest) throw new Error('hexis-hmx-apply-replay');
+
+  // Materialization requires explicit confirmation and follows review approval; it creates a candidate, not an active goal.
+  const materializeBlocked = await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: false });
+  if (materializeBlocked.status !== 403) throw new Error('hexis-hmx-goal-materialization-confirmation:' + materializeBlocked.status);
+  const materializedGoal = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: true })).json();
+  if (!materializedGoal.ok || materializedGoal.goal?.status !== 'candidate' || materializedGoal.proposal?.status !== 'materialized' ||
+      materializedGoal.goal?.source !== 'external' || materializedGoal.reusedExistingGoal !== false) {
+    throw new Error('hexis-hmx-goal-materialization:' + JSON.stringify(materializedGoal));
+  }
+  if (materializedGoal.relationships?.projected !== 1 || materializedGoal.relationships?.deferred !== 0) {
+    throw new Error('hexis-hmx-goal-relationship-projection:' + JSON.stringify(materializedGoal.relationships));
+  }
+  const materializedReplay = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: true })).json();
+  if (!materializedReplay.ok || materializedReplay.replayed !== true ||
+      materializedReplay.reusedExistingGoal !== false || materializedReplay.goal?.id !== materializedGoal.goal.id) {
+    throw new Error('hexis-hmx-goal-materialization-replay:' + JSON.stringify(materializedReplay));
+  }
+  const duplicateMaterialized = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: duplicatePendingGoal.id, confirmed: true })).json();
+  if (!duplicateMaterialized.ok || duplicateMaterialized.reusedExistingGoal !== true ||
+      duplicateMaterialized.goal?.id !== materializedGoal.goal.id || duplicateMaterialized.goal?.status !== 'candidate') {
+    throw new Error('hexis-hmx-same-title-goal-deduplication:' + JSON.stringify(duplicateMaterialized));
+  }
+  if (duplicateMaterialized.relationships?.projected !== 1 || duplicateMaterialized.relationships?.deferred !== 0) {
+    throw new Error('hexis-hmx-same-lineage-goal-relationship-replay:' + JSON.stringify(duplicateMaterialized.relationships));
+  }
+  const invalidDecision = await fetch(`${base}/api/organism/integration/hexis/hmx/decide`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ stagingId: applyStageRes.stage.stagingId, decision: 'activate-everything' }),
+  });
+  if (invalidDecision.status !== 400) throw new Error('hexis-hmx-decision-validation:' + invalidDecision.status);
+
   if (memoryIndex.memoryIndex[0]?.id) {
     const proposal = await (await post('/api/organism/integration/hexis/retention/propose', { memoryId: memoryIndex.memoryIndex[0].id, action: 'archive', reason: 'server-smoke' })).json();
     if (!proposal.ok || !proposal.proposal?.id) throw new Error('hexis-retention-propose');

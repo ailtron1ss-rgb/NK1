@@ -1788,7 +1788,8 @@
     "test:workpass348:receipt-atomicity": "node --experimental-strip-types tests/workpass348-tool-receipt-atomicity.mjs",
     "test:workpass349:snapshot-fingerprint": "node --experimental-strip-types tests/workpass349-receipt-snapshot-fingerprint.mjs",
     "test:cognitive-event-payload-envelope": "node --experimental-strip-types tests/cognitive-event-payload-envelope.mjs",
-    "test:workpass370:cognitive-cycle-data-integrity": "node --experimental-strip-types tests/workpass370-unified-cognitive-cycle-data-integrity.mjs"
+    "test:workpass370:cognitive-cycle-data-integrity": "node --experimental-strip-types tests/workpass370-unified-cognitive-cycle-data-integrity.mjs",
+    "test:hexis-canonical-apply": "node --experimental-strip-types tests/integration/hexis-adaptation.mjs && node --experimental-transform-types tests/integration/hexis-server-smoke.mjs && node --experimental-strip-types tests/hexis-projector-idempotent-replay.mjs"
   },
   "devDependencies": {
     "@types/node": "22.20.4",

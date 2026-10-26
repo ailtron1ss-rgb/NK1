@@ -77,3 +77,27 @@
 5. Длительный restart/soak test, полная лицензия/provenance проверка исходных источников и воспроизводимая пересборка главного release ZIP.
 
 Панель разделяет «код есть», «контракты проверяются», «есть независимые полевые результаты» и «готово к релизу», чтобы одна цифра не скрывала незакрытые области.
+
+## WorkPass374 — Hexis HMX canonical-memory integration (2026-10-26; validation pending)
+
+- **Implementation branch:** hexis-integration-workpass373-20261026, based on WorkPass373 cross-ledger-rollback source line.
+- **Integrated code:** normalized HMX 1.7 export; review-gated canonical memory projection through MemoryFabric; source-provenance semantic namespace; idempotent application receipt; rollback-aware apply path; explicit HTTP decision validation; focused tests and workflow. Frontend now supports external HMX JSON upload, explicit canonical apply, goal-proposal review and confirmed materialization; focused workflow also typechecks app frontend.
+- **Goal boundary:** accepted HMX goals can be converted to idempotent pending review proposals, listed and approved/rejected via the API; they are not silently materialized or activated. Explicitly confirmed materialization now creates/reuses a canonical candidate goal, reconciles goal↔memory graph edges where both endpoints exist, writes a typed event receipt and replays without creating a second goal.
+- **Validation state:** unverified for a concrete platform reason. Workflow now captures both runtime and app install/typecheck output, plus focused Hexis test logs, then uploads the evidence artifact before enforcing the gate. Exact-head Hexis workflow #40336104593 and unified integration #40336104584 ended before any step ran (runner_id=0, empty runner_name, steps=[]); no artifacts were produced. The Hexis workflow now captures npm ci/typecheck/test logs and exit codes for the next runner-backed execution. No pass is claimed until exact-head checks actually execute.
+- **Scoring:** preserve the prior weighted metrics. This pass is code integration only until exact-head checks and independent evaluation provide new evidence.
+- **Unchanged:** main and the published Release ZIP.
+
+## WorkPass375 — frontend HMX round-trip and goal graph continuity (2026-10-26; validation blocked)
+
+- **Frontend API contract:** added client calls for HMX apply and the goal proposal lifecycle.
+- **Operator UI:** external JSON import, stage acceptance and canonical write each have explicit UI boundaries; accept and apply require separate confirmations. Re-staging clears all stale confirmation state. Successful API results are retained even when the subsequent status refresh fails.
+- **Goal continuity:** a duplicate goal proposal from the same lineage reuses the canonical goal's graph node and reconciles its semantic edge, while unrelated lineages remain separated.
+- **Validation:** runner unavailable. Latest Hexis #40337917617 and unified suite #40337917630 fail before steps begin (runner_id=0, empty runner_name, steps=[], no artifacts). Workflow now captures runtime and app install/typecheck/test evidence if a runner is assigned. No validation is claimed.
+- **Release boundary:** main and published Release ZIP remain unchanged; no maturity score or recallDelta uplift was claimed.
+
+## WorkPass376 — HMX transport budget and partial-write rollback (2026-10-26; validation blocked)
+
+- **Transport:** HMX import/stage uses a dedicated request body bound up to 8 MiB; the general API request limit stays unchanged. 413 replies include the correct route-specific limit; a 300 KB smoke case was added.
+- **Atomicity:** rollback now discovers canonical rows created by a call that throws before returning the row ID, using the immutable pre-apply canonical snapshot as the baseline. Fault injection now commits the second row then throws, and asserts complete compensation and safe retry.
+- **Validation:** not executed on Actions because jobs fail before starting a runner (runner_id=0, no steps/artifacts). No passing test/typecheck claim.
+- **Release boundary:** main and published Release ZIP untouched; maturity metrics unchanged.

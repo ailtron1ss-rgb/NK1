@@ -131,3 +131,118 @@ export interface ChatBackendResponse {
   explanation?: string;
   voice?: { spoken?: boolean };
 }
+
+export type HexisHmxIntent = "port" | "duplicate" | "telepathy" | "analysis";
+export type HexisHmxStrategy = "additive" | "authoritative" | "deliberative" | "analysis_only";
+export type HexisHmxDecision = "accept" | "reject" | "apply";
+export type HexisHmxStageStatus = "staged" | "accepted" | "rejected" | "applied";
+export type HexisGoalProposalStatus = "pending" | "approved" | "rejected" | "materialized";
+export type HexisGoalReviewDecision = "approve" | "reject";
+
+export interface HexisHmxConflict {
+  path: string;
+  kind: string;
+  detail: string;
+}
+
+export interface HexisHmxApplicationReceipt {
+  version?: number;
+  exportId?: string;
+  sourceLineageId?: string;
+  stageId?: string;
+  status: "applied" | "partial" | "noop" | string;
+  importedCount?: number;
+  deduplicatedCount?: number;
+  memoryIds?: string[];
+  createdMemoryIds?: string[];
+  semanticEdgeIds?: string[];
+  projectedRelationships?: number;
+  deferredRelationships?: number;
+  deferredSections?: Record<string, number>;
+  warnings?: string[];
+  digest?: string;
+  at?: number;
+}
+
+export interface HexisHmxStage {
+  stagingId: string;
+  exportId: string;
+  intent: HexisHmxIntent;
+  strategy: HexisHmxStrategy;
+  status: HexisHmxStageStatus;
+  conflicts: HexisHmxConflict[];
+  sectionCounts?: Record<string, number>;
+  applicationAttempts?: number;
+  application?: HexisHmxApplicationReceipt;
+}
+
+export interface HexisHmxExportResponse {
+  ok: boolean;
+  document?: Record<string, unknown>;
+  error?: string;
+}
+
+export interface HexisHmxStageResponse {
+  ok: boolean;
+  stage?: HexisHmxStage | null;
+  error?: string;
+}
+
+export interface HexisGoalRelationshipReceipt {
+  sourceStageFound: boolean;
+  candidateRelationships: number;
+  projected: number;
+  deferred: number;
+  semanticEdgeIds: string[];
+  at: number;
+}
+
+export interface HexisGoalProposal {
+  id: string;
+  stageId: string;
+  exportId: string;
+  sourceLineageId: string;
+  sourceRef: string;
+  title: string;
+  description: string;
+  importance: number;
+  urgency: number;
+  confidence: number;
+  status: HexisGoalProposalStatus;
+  canonicalGoalId?: string;
+  goalRelationshipReceipt?: HexisGoalRelationshipReceipt;
+  createdAt: number;
+  decidedAt?: number;
+  decisionReason?: string;
+}
+
+export interface HexisGoalProposalPrepareResponse {
+  ok: boolean;
+  stageId?: string;
+  created?: number;
+  duplicates?: number;
+  proposals?: HexisGoalProposal[];
+  error?: string;
+}
+
+export interface HexisGoalProposalListResponse {
+  ok: boolean;
+  proposals?: HexisGoalProposal[];
+  error?: string;
+}
+
+export interface HexisGoalProposalDecisionResponse {
+  ok: boolean;
+  proposal?: HexisGoalProposal | null;
+  error?: string;
+}
+
+export interface HexisGoalMaterializeResponse {
+  ok: boolean;
+  goal?: BackendGoal;
+  proposal?: HexisGoalProposal;
+  replayed?: boolean;
+  reusedExistingGoal?: boolean;
+  relationships?: HexisGoalRelationshipReceipt | null;
+  error?: string;
+}

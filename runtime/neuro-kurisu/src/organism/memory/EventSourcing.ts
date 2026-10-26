@@ -36,7 +36,8 @@ export type OrganismEventType =
   | 'causal-development-update'
   | 'embodiment-sample'
   | 'developmental-synthesis'
-  | 'memory-world-causal-link';
+  | 'memory-world-causal-link'
+  | 'hexis-goal-materialized';
 
 export interface OrganismEvent {
   id: string;
