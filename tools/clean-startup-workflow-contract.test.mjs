@@ -24,7 +24,7 @@ function eventBlock(eventName) {
   const header = new RegExp(`^  ${eventName}:\\s*$`, 'm').exec(WORKFLOW);
   assert.ok(header, `clean-startup workflow must declare ${eventName}`);
   const rest = WORKFLOW.slice(header.index + header[0].length);
-  const nextEvent = /^  [A-Za-z_][\\w-]*:\\s*$/m.exec(rest);
+  const nextEvent = /^  [A-Za-z_][\w-]*:\s*$/m.exec(rest);
   return nextEvent ? rest.slice(0, nextEvent.index) : rest;
 }
 
