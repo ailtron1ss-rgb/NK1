@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getOutfit, type VisualProfileId, OUTFITS } from "./outfitCatalog";
-import { resolveSpritePath } from "./spriteEngine";
+import { listAllSprites, resolveSpritePath } from "./spriteEngine";
 import { readAvatarPreference, writeAvatarPreference } from "./safeLocalStorage";
 import type { EmotionLabel } from "@/organism/types";
 
@@ -14,6 +14,13 @@ const EXPRESSION: Record<EmotionLabel, string> = {
   anger: "angry",
   protective: "focused",
 };
+
+const AVAILABLE_SPRITES = listAllSprites();
+
+function readStoredSprite(): string | null {
+  const stored = readAvatarPreference("kurisu-legacy-sprite-id");
+  return AVAILABLE_SPRITES.some((sprite) => sprite.id === stored) ? stored : null;
+}
 
 function readStoredOutfit(): VisualProfileId {
   const stored = readAvatarPreference("kurisu-visual-profile");
@@ -32,6 +39,7 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
   const currentRef = useRef<HTMLImageElement | null>(null);
   const previousRef = useRef<HTMLImageElement | null>(null);
   const [outfit, setOutfit] = useState<VisualProfileId>(readStoredOutfit);
+  const [spriteId, setSpriteId] = useState<string | null>(readStoredSprite);
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const blend = useRef(1);
@@ -44,7 +52,7 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
 
   useEffect(() => {
     let cancelled = false;
-    const url = resolveSpritePath(EXPRESSION[emotion] ?? "neutral", { preferLab: outfit === "lab_coat" || outfit === "formal", profile: getOutfit(outfit) });
+    const url = resolveSpritePath(EXPRESSION[emotion] ?? "neutral", { preferLab: outfit === "lab_coat" || outfit === "formal", profile: getOutfit(outfit), spriteId });
     const img = new Image();
     img.onload = () => {
       // A slow prior request must not overwrite the newest emotion/outfit sprite.
@@ -63,9 +71,10 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
       img.onload = null;
       img.onerror = null;
     };
-  }, [emotion, outfit]);
+  }, [emotion, outfit, spriteId]);
 
   useEffect(() => { persistOutfit(outfit); }, [outfit]);
+  useEffect(() => { writeAvatarPreference("kurisu-legacy-sprite-id", spriteId ?? "auto"); }, [spriteId]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -118,12 +127,16 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
   return <div className="relative overflow-hidden rounded-xl border border-border bg-bg">
     <canvas ref={canvasRef} className="h-[320px] w-full md:h-[420px]" />
     <button type="button" onClick={() => setOpen((v) => !v)} className="absolute right-3 top-3 rounded-md border border-border bg-black/60 px-2.5 py-1 text-[10px] font-mono text-white/70 hover:text-white">
-      {open ? "hide outfit" : ready ? "legacy deck" : "loading"}
+      {open ? "hide options" : ready ? "legacy deck" : "loading"}
     </button>
-    {open ? <div className="absolute inset-x-3 bottom-3 rounded-lg border border-border bg-black/75 p-2 backdrop-blur">
+    {open ? <div className="absolute inset-x-3 bottom-3 z-30 max-h-[72%] overflow-y-auto rounded-lg border border-border bg-black/85 p-2 backdrop-blur">
       <div className="mb-2 text-[10px] uppercase tracking-wider text-white/50">visual legacy / profile catalog</div>
       <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
         {OUTFITS.map((item) => <button key={item.id} type="button" onClick={() => setOutfit(item.id)} className={`rounded-md border px-2 py-1.5 text-left text-[10px] ${outfit === item.id ? "border-accent bg-accent/15 text-white" : "border-white/10 text-white/65"}`}><div>{item.nameRu}</div><div className="truncate text-white/35">{item.description}</div></button>)}
+      </div>
+      <div className="mb-2 mt-3 flex flex-wrap items-center justify-between gap-2"><div className="text-[10px] uppercase tracking-wider text-white/50">Поза / локальный спрайт</div><button type="button" onClick={() => setSpriteId(null)} aria-pressed={spriteId === null} className={`rounded-md border px-2 py-1 text-[10px] ${spriteId === null ? "border-accent bg-accent/15 text-white" : "border-white/10 text-white/65"}`}>Авто по эмоции</button></div>
+      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+        {AVAILABLE_SPRITES.map((sprite) => <button key={sprite.id} type="button" onClick={() => setSpriteId(sprite.id)} aria-pressed={spriteId === sprite.id} title={sprite.label} className={`min-w-0 rounded-md border p-1 text-left ${spriteId === sprite.id ? "border-accent bg-accent/15" : "border-white/10 bg-white/[.025]"}`}><span className="flex h-14 items-center justify-center overflow-hidden rounded bg-black/30"><img src={sprite.path} alt="" loading="lazy" className="h-full w-full object-contain" /></span><span className="mt-1 block truncate text-[9px] text-white/70">{sprite.label}</span></button>)}
       </div>
     </div> : null}
   </div>;

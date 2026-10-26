@@ -6,6 +6,7 @@ import test from "node:test";
 import vm from "node:vm";
 import { buildAvatarSpeechTimeline as buildRuntimeSpeechTimeline } from "../../runtime/neuro-kurisu/public/avatar-state.mjs";
 import { deriveAvatarGaze } from "../src/components/avatar/avatarPresentation.ts";
+import { listAllSprites, resolveSpritePath } from "../src/legacy/avatar/spriteEngine.ts";
 import {
   buildVisemeTimeline,
   CLOSED_MOUTH,
@@ -145,6 +146,22 @@ test("a late SpeechSynthesis elapsedTime cannot rewind the published audio clock
   assert.equal(anchored.highWaterMs, 700);
   assert.equal(anchored.anchorElapsedMs, 700);
   assert.equal(sampleMonotonicAudioClock(anchored.highWaterMs, anchored.anchorElapsedMs, anchored.anchorPerformanceAtMs, 1450), 750);
+});
+
+test("manual legacy sprite selection is allowlisted and uses only bundled sprite paths", () => {
+  const sprites = listAllSprites();
+  assert.equal(sprites.length, 32);
+  assert.equal(new Set(sprites.map((sprite) => sprite.id)).size, sprites.length);
+  for (const sprite of sprites) {
+    assert.equal(resolveSpritePath("happy", { spriteId: sprite.id }), sprite.path);
+    assert.ok(sprite.label.length > 0);
+    assert.ok(sprite.path.startsWith("/sprites/"));
+  }
+  for (const invalid of ["../viewer.html", "../../private", "constructor", "toString", "not-a-sprite"]) {
+    const resolved = resolveSpritePath("neutral", { spriteId: invalid });
+    assert.ok(sprites.some((sprite) => sprite.path === resolved),
+      "untrusted saved values must fall back to a canonical bundled sprite");
+  }
 });
 
 test("one bounded action/valence gaze signal can drive Live2D and NK1 Original", async () => {
