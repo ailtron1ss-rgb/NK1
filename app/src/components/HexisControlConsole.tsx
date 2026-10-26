@@ -45,6 +45,7 @@ export function HexisControlConsole() {
   const [hmxIntent, setHmxIntent] = useState<"port" | "duplicate" | "telepathy" | "analysis">("port");
   const [hmxStrategy, setHmxStrategy] = useState<"additive" | "authoritative" | "deliberative" | "analysis_only">("additive");
   const [hmxConfirmed, setHmxConfirmed] = useState(false);
+  const [hmxApplyConfirmed, setHmxApplyConfirmed] = useState(false);
   const [hmxAccepted, setHmxAccepted] = useState(false);
   const [goalProposals, setGoalProposals] = useState<any[]>([]);
   const [goalProposalId, setGoalProposalId] = useState("");
@@ -116,6 +117,7 @@ export function HexisControlConsole() {
       setStageId(String(nextId));
       setHmxAccepted(false);
       setHmxConfirmed(false);
+      setHmxApplyConfirmed(false);
     }
   };
 
@@ -143,6 +145,7 @@ export function HexisControlConsole() {
       setStageId(String(stage.stagingId));
       setHmxAccepted(false);
       setHmxConfirmed(false);
+      setHmxApplyConfirmed(false);
     }
   };
 
@@ -154,12 +157,18 @@ export function HexisControlConsole() {
 
   const rejectHmx = async () => {
     const result = await run("Reject staged HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"));
-    if ((result as any)?.stage?.status === "rejected") setHmxAccepted(false);
+    if ((result as any)?.stage?.status === "rejected") {
+      setHmxAccepted(false);
+      setHmxApplyConfirmed(false);
+    }
   };
 
   const applyHmx = async () => {
     const result = await run("Apply canonical HMX", () => neuroApi.hexisHmxDecide(stageId, "apply"));
-    if ((result as any)?.stage?.status === "applied") setHmxAccepted(false);
+    if ((result as any)?.stage?.status === "applied") {
+      setHmxAccepted(false);
+      setHmxApplyConfirmed(false);
+    }
   };
 
   const loadGoalProposals = async (status: typeof goalProposalStatus = goalProposalStatus) => {
@@ -315,14 +324,15 @@ export function HexisControlConsole() {
                 event.currentTarget.value = "";
               }} />
             </label>
-            <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxAccepted(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
+            <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxAccepted(false); setHmxApplyConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void acceptHmx()}>Accept staged</Button>
             <Button variant="outline" disabled={busy || !stageId} onClick={() => void rejectHmx()}>Reject</Button>
-            <Button variant="outline" disabled={busy || !stageId || !hmxConfirmed || !hmxAccepted} onClick={() => void applyHmx()}>Apply to canonical memory</Button>
+            <Button variant="outline" disabled={busy || !stageId || !hmxApplyConfirmed || !hmxAccepted} onClick={() => void applyHmx()}>Apply to canonical memory</Button>
           </div>
-          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve staged import and canonical application.</label>
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX document for acceptance.</label>
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxApplyConfirmed} onChange={e => setHmxApplyConfirmed(e.target.checked)} /> I separately confirm canonical memory writes after acceptance.</label>
           <p className="mt-2 text-[11px] text-muted">External JSON is staged for review first. Canonical memory changes only after explicit acceptance and a separate apply action.</p>
         </Panel>
 
