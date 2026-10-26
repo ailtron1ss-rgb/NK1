@@ -120,7 +120,9 @@ const experience = (energy, novelty, action, reward, worldContextVersion=1) => (
   );
   assert.equal(result.replayUpdates, 1);
   assert.equal(result.contextSeparatedReplayRows, 1,
-    'only a context-separated row with enough distant neighbors should receive the balanced-retention rate');
+    'only a context-separated row with enough distant neighbors should receive the replay-rate uplift');
+  assert.ok(Math.abs(result.contextSeparatedReplayLearningRate01 - 0.036) < 1e-12,
+    'context-separated replay gets only a bounded uplift, not the full current-step rate');
   assert.equal(result.blockedReplayRows, 0);
 }
 
