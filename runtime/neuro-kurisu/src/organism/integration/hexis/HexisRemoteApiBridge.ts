@@ -273,7 +273,7 @@ export class HexisRemoteApiBridge {
     try {
       const health = await this.requestJson('/health');
       const checks = asRecord(health.body.checks);
-      const healthy = health.body.status === 'ok' && checks?.db !== false;
+      const healthy = health.body.status === 'ok' && checks?.db === true;
       return {
         ...base,
         reachable: healthy,
@@ -393,18 +393,18 @@ export class HexisRemoteApiBridge {
         redirect: 'error',
       });
       const text = await readBoundedText(response, MAX_RESPONSE_BYTES);
-      let body: unknown;
-      try {
-        body = JSON.parse(text);
-      } catch {
-        throw new HexisRemoteBridgeError('hexis-remote-invalid-json', 502);
-      }
       if (!response.ok) {
         throw new HexisRemoteBridgeError(
           response.status === 401 || response.status === 403
             ? 'hexis-remote-auth-failed' : 'hexis-remote-http-error',
           response.status >= 500 ? 503 : 502,
         );
+      }
+      let body: unknown;
+      try {
+        body = JSON.parse(text);
+      } catch {
+        throw new HexisRemoteBridgeError('hexis-remote-invalid-json', 502);
       }
       const record = asRecord(body);
       if (!record) throw new HexisRemoteBridgeError('hexis-remote-invalid-response', 502);
