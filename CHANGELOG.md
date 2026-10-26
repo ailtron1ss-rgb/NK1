@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass415 — preserve malformed native config (2026-10-26)
+
+- [DATA FIDELITY] A scalar or array in the native `config` field is no longer silently replaced by an empty object; the original value is kept under `sections.config.nk1NativeSections.config_invalid_section`.
+- [REGRESSION] The Hexis adaptation suite now checks that malformed config survives normalization and emits a warning for reviewers.
+- [VALIDATION] The test is committed but not claimed as executed; PR checks currently fail without usable runner-step logs.
+
 ## [NK1][Hexis] WorkPass414 — preserve malformed native identity sections (2026-10-26)
 
 - [DATA FIDELITY] The NK1→HMX exporter now preserves a non-object/non-array native `identity` section in `config.nk1NativeSections.identity_invalid_section` instead of silently dropping it. Valid identity objects and arrays keep their existing behavior.
