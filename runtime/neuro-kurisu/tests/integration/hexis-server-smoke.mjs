@@ -26,7 +26,8 @@ try {
   if (!sync.ok || typeof sync.scanned !== 'number') throw new Error('hexis-sync');
   const memoryIndex = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=8`)).json();
   if (!memoryIndex.ok || !Array.isArray(memoryIndex.memoryIndex)) throw new Error('hexis-memory-index');
-  if (memoryIndex.memoryIndex[0]?.id) {
+  if (!memoryIndex.memoryIndex[0]?.id) throw new Error('hexis-smoke-requires-canonical-memory-for-evidence-review');
+  {
     const legacyEvidence = {
       memoryId: memoryIndex.memoryIndex[0].id,
       stance: 'supports',
