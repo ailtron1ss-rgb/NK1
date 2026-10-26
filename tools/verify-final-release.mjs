@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
 let root = process.cwd();
+let allowGeneratedPythonCache = false;
 for (let i = 0; i < args.length; i += 1) {
   if (args[i] === '--root') {
     if (!args[i + 1]) {
@@ -14,6 +15,8 @@ for (let i = 0; i < args.length; i += 1) {
     root = path.resolve(args[++i]);
   } else if (args[i].startsWith('--root=')) {
     root = path.resolve(args[i].slice('--root='.length));
+  } else if (args[i] === '--allow-generated-python-cache') {
+    allowGeneratedPythonCache = true;
   } else {
     console.error(`Unknown argument: ${args[i]}`);
     process.exit(2);
@@ -63,7 +66,8 @@ try {
 for (const file of files) {
   const relative = path.relative(root, file);
   if (/(^|[\\\\/])__pycache__([\\\\/]|$)/.test(relative) || relative.endsWith('.pyc')) {
-    errors.push(`generated-python-artifact:${relative}`);
+    if (allowGeneratedPythonCache) warnings.push(`generated-python-cache-ignored:${relative}`);
+    else errors.push(`generated-python-artifact:${relative}`);
   }
   if (relative.startsWith('backups' + path.sep)) continue;
   try {
@@ -91,6 +95,7 @@ runCheck('release-metadata', ['tools/verify-release-metadata.mjs', '--root', roo
 const result = {
   title: 'Neuro-Kurisu SUPER final release verifier',
   root,
+  generatedPythonCachePolicy: allowGeneratedPythonCache ? 'allow-transient-caches' : 'strict',
   ok: errors.length === 0,
   summary: { checks: checks.length, passed: checks.filter(item => item.pass).length, failed: checks.filter(item => !item.pass).length },
   checks,
