@@ -53,6 +53,11 @@ try {
     if (!reviewed.ok || reviewed.result?.status !== 'decided' || reviewed.result?.confidenceChanged !== true)
       throw new Error('hexis-generic-review-must-use-canonical-gate:' + JSON.stringify(reviewed));
 
+    // Malformed/null bodies must reach schema validation rather than throwing in the route guard.
+    const emptyEnvelopeResponse = await post('/api/organism/integration/hexis/evidence/review', null);
+    if (emptyEnvelopeResponse.status !== 400)
+      throw new Error('hexis-null-evidence-envelope-must-fail-closed:' + emptyEnvelopeResponse.status);
+
     // Exercise the canonical envelope endpoint too, including the separate decide route.
     const canonicalEnvelope = {
       memoryId: memoryIndex.memoryIndex[0].id,
