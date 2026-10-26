@@ -1,3 +1,12 @@
+## WorkPass401 — защита staging-словарей от `__proto__` (2026-10-26)
+
+- **Код:** `47d88fcc1a8b5737cca6c542a51e3d0011f8281a`; **регрессия:** `76830a380ab2cdbd825994062de793c2a1a0c2f0`.
+- `sectionCounts` и `stagedSections` теперь создаются без prototype. Враждебное имя секции `__proto__` остаётся обычным диагностическим ключом и не меняет прототип словаря.
+- Тест проверяет отказ секции, сохранение исходного количества, отсутствие её в staged payload, prototype-free карты и запрет acceptance.
+- **Валидация:** PENDING exact-head typecheck, HMX adaptation, server smoke и Unified integration. PASS не заявляется; пригодный exact-head CI-вывод пока недоступен. Оценки не повышены; `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass400 — guard Hexis endpoints от не-объектного JSON (2026-10-26)
 
 - **Код сервера:** `416c8df040e778c431ac999242d0d339a0a5940f`; **smoke regression:** `6132b9112a398d37d1dc975fe08bff0b48a9d6f5`.
