@@ -1,13 +1,13 @@
 name: Hexis P65 persistence regression
 on:
   pull_request:
-    branches: [rebuild]
+    branches: [rebuild, audit/b276-execution-attribution-2026-10-26]
     paths:
       - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
       - 'runtime/neuro-kurisu/tests/hexis-p65-pending-prediction-retention.mjs'
       - '.github/workflows/hexis-p65-persistence.yml'
   push:
-    branches: [rebuild]
+    branches: [rebuild, hexis-h1-memory-evidence-lineage-2026-10-26, audit/b276-execution-attribution-2026-10-26]
     paths:
       - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
       - 'runtime/neuro-kurisu/tests/hexis-p65-pending-prediction-retention.mjs'
