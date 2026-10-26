@@ -1,3 +1,9 @@
+## P23 rollback fixture contract repair — 2026-10-26
+
+- Updated the versioned skill-store lifecycle regression to use the current object-shaped rollback approval contract instead of the retired positional signature.
+- The fixture now injects an explicit test-only rollback verifier; production's default rollback verifier remains deny-by-default. No production authorization gate was weakened.
+- This repairs the WorkPass110 step that had stopped with `signed rollback approval identity, timestamp and active-version guard are required`. The updated exact-head Actions result is pending.
+
 ## Supervised service failure closure — 2026-10-26
 
 - Extracted the child-exit decision into a small pure policy and added regression tests for graceful shutdown, exit code 0, non-zero exits, signals, unknown exit codes and sanitized labels.
