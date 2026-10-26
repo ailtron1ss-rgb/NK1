@@ -1,9 +1,10 @@
-## WorkPass357 — enforce aggregate cognitive payload text budget (2026-10-26)
+## WorkPass373 — enforce aggregate cognitive payload text budget (2026-10-26)
 
 - **Defect:** the active `CognitiveEventFabric` payload clone bounded depth, node count, array size and key count, but did not count aggregate string/key text. Many individually valid strings could exceed the intended payload memory budget.
 - **Fix:** count UTF-16 code units across string values and object keys; reject payloads above 131,072 units with `cognitive-event-payload-text-limit`. The same `cleanPayload` boundary is used by append and snapshot restoration.
-- **Regression:** extended `cognitive-event-payload-envelope.mjs` with a single oversized string, aggregate overflow across many modest strings, no ledger mutation on rejected append, and rejection of an oversized restored row.
-- **Validation:** focused test, runtime typecheck, `test:cognitive-integration-suite`, and release gate must run on the exact final SHA. No PASS is claimed until those runs finish.
+- **Regression:** extended `cognitive-event-payload-envelope.mjs` with exact-limit acceptance, one-unit overflow, aggregate overflow across many modest values, aggregate key-name overflow, no ledger mutation on rejected append, and rejection of an oversized restored row.
+- **Numbering note:** the first implementation commit used the provisional label WorkPass357, which collides with an existing independent WorkPass357 branch. Canonical project tracking for this follow-up is WorkPass373; history is retained without rewriting commits.
+- **Validation:** the earlier WorkPass357-labeled code/test head passed the unified integration workflow and associated learning/ledger workflows. The expanded boundary/key tests require fresh exact-head validation; no PASS is claimed for the expanded head until those runs finish.
 
 ---
 
