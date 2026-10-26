@@ -29,10 +29,12 @@ export interface HexisCanonicalBeliefProjection {
     priorConfidence01: number;
     posteriorConfidence01: number;
     trust01: number;
+    evidenceTrust01: number;
     at: number;
     stance: HexisEvidenceStance;
     evidenceKey: string;
 }
+export type HexisCanonicalBeliefProjectionResult = 'projected' | 'unavailable' | 'duplicate';
 export interface HexisBeliefRevisionAudit {
     id: string;
     memoryId: string;
@@ -288,7 +290,7 @@ export function defaultHexisAdaptationState(): HexisAdaptationState {
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
     private canonicalMemoryApply?: (stage: HexisHmxStage) => HexisHmxApplyReceipt;
-    private canonicalBeliefProjection?: (projection: HexisCanonicalBeliefProjection) => boolean | void;
+    private canonicalBeliefProjection?: (projection: HexisCanonicalBeliefProjection) => HexisCanonicalBeliefProjectionResult;
     restore(raw?: Partial<HexisAdaptationState> | null): void {
         const defaults = defaultHexisAdaptationState();
         const value = raw ?? {};
@@ -326,7 +328,7 @@ export class HexisAdaptationFabric {
         if (typeof handler !== 'function') throw new TypeError('canonical-memory-apply-handler-required');
         this.canonicalMemoryApply = handler;
     }
-    bindCanonicalBeliefProjection(handler: (projection: HexisCanonicalBeliefProjection) => boolean | void): void {
+    bindCanonicalBeliefProjection(handler: (projection: HexisCanonicalBeliefProjection) => HexisCanonicalBeliefProjectionResult): void {
         if (typeof handler !== 'function') throw new TypeError('canonical-belief-projection-handler-required');
         this.canonicalBeliefProjection = handler;
     }
@@ -386,8 +388,8 @@ export class HexisAdaptationFabric {
             updatedAt: at,
         };
         const key = sourceKey(input.evidence);
-        const independent = !priorBelief.sourceKeys.includes(key) && !priorBelief.contradictingSourceKeys.includes(key);
-        const evidenceTrust = clamp(input.evidence.trust01 ?? 0.5);
+        let independent = !priorBelief.sourceKeys.includes(key) && !priorBelief.contradictingSourceKeys.includes(key);
+        const evidenceTrust01 = clamp(input.evidence.trust01 ?? 0.5);
         const priorConfidence01 = clamp(priorBelief.confidence01);
         const priorTrust01 = clamp(priorBelief.trust01);
         let posteriorConfidence01 = priorConfidence01;
@@ -399,20 +401,48 @@ export class HexisAdaptationFabric {
         } else if (input.protectedBelief && input.stance === 'contradicts') {
             reason = 'protected';
         } else if (input.stance === 'supports') {
-            posteriorConfidence01 = Math.min(0.99, priorConfidence01 + (1 - priorConfidence01) * 0.35 * evidenceTrust);
+            posteriorConfidence01 = Math.min(0.99, priorConfidence01 + (1 - priorConfidence01) * 0.35 * evidenceTrust01);
             applied = true;
         } else {
-            posteriorConfidence01 = Math.max(0.05, priorConfidence01 * (1 - 0.35 * evidenceTrust));
+            posteriorConfidence01 = Math.max(0.05, priorConfidence01 * (1 - 0.35 * evidenceTrust01));
             applied = true;
+        }
+
+        const auditId = randomUUID();
+        let projectionResult: HexisCanonicalBeliefProjectionResult | undefined;
+        // Project before changing local beliefs/audits. A canonical failure therefore
+        // cannot leave a belief posterior committed without its corresponding memory update.
+        if (applied && this.canonicalBeliefProjection) {
+            projectionResult = this.canonicalBeliefProjection({
+                auditId,
+                memoryId,
+                priorConfidence01,
+                posteriorConfidence01,
+                trust01: clamp(Math.max(priorTrust01, evidenceTrust01 * 0.5)),
+                evidenceTrust01,
+                at,
+                stance: input.stance,
+                evidenceKey: key,
+            });
+            if (projectionResult === 'duplicate') {
+                // The canonical memory may outlive/reset the Hexis ledger. Its lineage
+                // tombstone remains authoritative against cross-store replays.
+                independent = false;
+                applied = false;
+                reason = 'duplicate_source';
+                posteriorConfidence01 = priorConfidence01;
+            }
         }
 
         const sourceKeys = [...priorBelief.sourceKeys];
         const contradictingSourceKeys = [...priorBelief.contradictingSourceKeys];
-        if (independent) {
+        // If the canonical memory detected a cross-ledger replay, remember the key in
+        // Hexis too so subsequent calls take the fast duplicate path.
+        if (independent || projectionResult === 'duplicate') {
             if (input.stance === 'supports') sourceKeys.push(key);
             else contradictingSourceKeys.push(key);
         }
-        const posteriorTrust01 = clamp(Math.max(priorTrust01, evidenceTrust * 0.5));
+        const posteriorTrust01 = clamp(Math.max(priorTrust01, evidenceTrust01 * 0.5));
         const nextBelief: HexisBeliefState = {
             ...priorBelief,
             confidence01: applied ? posteriorConfidence01 : priorConfidence01,
@@ -422,7 +452,7 @@ export class HexisAdaptationFabric {
             updatedAt: at,
         };
         const base = {
-            id: randomUUID(),
+            id: auditId,
             memoryId,
             stance: input.stance,
             evidence: structuredClone(input.evidence),
@@ -438,23 +468,6 @@ export class HexisAdaptationFabric {
             at,
         };
         const audit: HexisBeliefRevisionAudit = { ...base, digest: digest(base) };
-
-        // Project the accepted belief revision before committing local belief/audit
-        // state. If canonical memory rejects the write, this method leaves no half-
-        // applied Hexis revision behind. Duplicate/protected evidence never updates
-        // canonical confidence.
-        if (applied && this.canonicalBeliefProjection) {
-            this.canonicalBeliefProjection({
-                auditId: audit.id,
-                memoryId,
-                priorConfidence01,
-                posteriorConfidence01,
-                trust01: posteriorTrust01,
-                at,
-                stance: input.stance,
-                evidenceKey: key,
-            });
-        }
 
         if (!independent) this.state.metrics.duplicateEvidence += 1;
         if (existingIndex >= 0) this.state.beliefs[existingIndex] = nextBelief;
