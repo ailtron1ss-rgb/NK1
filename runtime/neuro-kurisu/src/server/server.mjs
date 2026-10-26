@@ -283,6 +283,9 @@ async function body(req) {
     const source = Buffer.concat(chunks).toString('utf8');
     return source ? JSON.parse(source) : {};
 }
+function isJsonRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
 function localFallback(request) {
     const action = /selected_action=([a-z-]+)/i.exec(request.system)?.[1] || 'reflect';
     const phrases = {
@@ -899,6 +902,7 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/decide') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             if (!['approve', 'correct', 'forget'].includes(input.decision)) {
                 return json(res, 400, { ok: false, error: 'hexis-review-invalid-decision' });
             }
@@ -909,6 +913,7 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/retention/propose') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             if (!['compress', 'archive', 'forget'].includes(input.action)) {
                 return json(res, 400, { ok: false, error: 'hexis-retention-invalid-action' });
             }
@@ -944,6 +949,7 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/stage') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             try {
                 const result = runtime.core.hexisStageHmx(input.document, input.intent || 'analysis', input.strategy || 'analysis_only');
                 await runtime.core.flush();
@@ -955,6 +961,7 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/decide') {
             const input = await body(req);
+            if (!isJsonRecord(input)) return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             if (input.decision !== 'accept' && input.decision !== 'reject') {
                 return json(res, 400, { ok: false, error: 'hmx-invalid-decision' });
             }
