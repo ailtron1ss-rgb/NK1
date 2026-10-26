@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass388 — verify memory, graph, temporal and belief rollback together (2026-10-26)
+
+- [ATOMICITY] Added fault injection that fails the second Hexis belief registration after canonical memory/semantic graph/temporal writes have begun.
+- [REGRESSION] Verifies compensation removes newly created canonical memories, restores the semantic graph and temporal/belief state, keeps the HMX stage retryable, and allows a clean second attempt with two beliefs and two temporal assertions.
+- [VALIDATION] Test and changelog changes are committed on PR #233's non-main branch; actual runtime execution still requires actionable GitHub Actions logs.
+
 ## [NK1][Hexis] WorkPass387 — unify receipt validation and connect canonical memories to belief state (2026-10-26)
 
 - [INTEGRATION] Reuse the projector's single HMX application-receipt validator from `HexisAdaptationFabric`; removed the duplicate TypeScript validator so replay and projection cannot drift into separate integrity rules.
