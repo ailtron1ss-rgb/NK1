@@ -1,3 +1,13 @@
+## WorkPass353 — bind replay identity to the complete causal event envelope — 2026-10-26
+
+- **Defect:** active `CognitiveEventFabric.append()` accepted a reused event ID after checking only tick, stage and source. Timestamp, causal parents, external status, confidence and nested payload could change without a conflict.
+- **Fix:** replay is now accepted only when the canonical fingerprint of the full normalized event envelope matches. A retry without an explicit timestamp reuses the retained event time.
+- **Payload safety:** event payloads are detached recursively before ledger mutation; cyclic data fails closed, own-property accessors are omitted without executing caller code, and returned/snapshotted events use deep clones.
+- **Validation added:** regression covers exact key-order-independent replay, changed envelope fields, timestamp-free replay, nested payload mutation, nested accessors and cyclic payloads.
+- **Status:** implementation and regression are committed on `workpass353-active-event-envelope-integrity-2026-10-26`; exact-head runtime typecheck and CI are pending. No merge or release is claimed.
+
+---
+
 ## WorkPass344 — финальный release gate: metadata, architecture и hygiene — 2026-10-26
 
 - **Gate:** `release:verify` теперь требует UI wiring, архитектуру и каноническую release metadata; любой отсутствующий или падающий gate блокирует PASS.
