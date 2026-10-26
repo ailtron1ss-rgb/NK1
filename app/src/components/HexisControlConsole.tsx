@@ -99,10 +99,18 @@ export function HexisControlConsole() {
     const exported = await neuroApi.hexisHmxExport();
     const staged = await run("Stage HMX", () => neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy }));
     const nextId = (staged as any)?.stage?.stagingId;
-    if (nextId) setStageId(String(nextId));
+    if (nextId) {
+      setStageId(String(nextId));
+      setHmxAccepted(false);
+      setHmxConfirmed(false);
+    }
   };
 
   const stageHmxFile = async (file: File) => {
+    if (file.size > 8 * 1024 * 1024) {
+      setMessage("Stage imported HMX: files larger than 8 MiB are rejected before upload.");
+      return;
+    }
     let document: unknown;
     try {
       document = JSON.parse(await file.text());
