@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** fix/outcome-projection-index-restore-2026-10-26  
 **База:** current consolidated PR #236 branch; updated through WorkPass428 commits  
-**Статус:** изменения опубликованы; exact-head CI ожидает результата.
+**Статус:** код и регрессии опубликованы; exact-head GitHub Actions завершились с `failure`, но job steps/log blobs недоступны (`BlobNotFound`), поэтому точная причина пока не подтверждена. Найденный дефект test-fixture исправлен в `4a159dfd32c8c24c67a5e4ba97c9c6df062848b1`; повторный HMX/Core/Metrics запуск на этом head ещё требует диагностируемого результата.
 
 ## Почему потребовался отдельный проход
 
