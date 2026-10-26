@@ -1,3 +1,12 @@
+## WorkPass412 — test interrupted HMX recovery through JSON persistence (2026-10-26)
+
+- **Regression commit:** `dccd678206df42ac6ed7c1f057e741619c0d453e`.
+- Strengthened WorkPass408 restore regressions to serialize the full Hexis adaptation snapshot through `JSON.stringify/JSON.parse` before restoring it. Both ordinary interrupted acceptance and tampered-payload recovery now cross the same JSON persistence boundary used by the runtime instead of relying only on an in-memory clone.
+- The assertions still require terminal `uncertain`, preserved operator acceptance, exact source-count accounting, non-replay on a repeated decision and integrity-conflict retention.
+- **Validation:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass411 — do not assume rollback for every uncertain HMX receipt (2026-10-26)
 
 - **UI wording commit:** `1f45d8ec3cc7eb16efa8e75da262197c4ff73cb9`; **wiring-audit commit:** `545b8e01a234e9e959b1d6e8ab33462ad5e27617`.
