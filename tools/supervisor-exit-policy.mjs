@@ -46,7 +46,7 @@ export function decideSupervisedChildSpawnError({ label, errorMessage, shuttingD
     ? label.trim().replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80)
     : 'unknown-service';
   const detail = typeof errorMessage === 'string'
-    ? errorMessage.replace(/[\\u0000-\\u001f\\u007f-\\u009f]/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 200)
+    ? errorMessage.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
     : '';
   return {
     action: 'shutdown',
