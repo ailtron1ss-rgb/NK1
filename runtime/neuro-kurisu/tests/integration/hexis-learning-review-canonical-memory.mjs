@@ -218,6 +218,21 @@ restoredSourceMonitor.restore(sourceMonitor.snapshot());
 assert.equal(restoredP65.sourceLineage(p65ClaimId)[0]?.provenance?.sourceId, sourceId);
 assert.equal(restoredSourceMonitor.lineage(sourceId)[0]?.provenance?.evidenceClass, 'unverified');
 
+// The live operator surface must display domain rejection as an error, even when HTTP status is 200.
+const uiSource = await readFile(new URL('../../../../app/src/components/HexisControlConsole.tsx', import.meta.url), 'utf8');
+const operationFailureStart = uiSource.indexOf('function operationFailure(value: unknown)');
+const operationFailureEnd = uiSource.indexOf('function Stat(', operationFailureStart);
+assert.ok(operationFailureStart >= 0 && operationFailureEnd > operationFailureStart, 'Hexis UI must keep a central domain-error decoder');
+const operationFailureBody = uiSource.slice(operationFailureStart, operationFailureEnd);
+assert.ok(operationFailureBody.includes('envelope.ok === false'), 'top-level domain failures must be surfaced');
+assert.ok(operationFailureBody.includes('nested?.ok === false'), 'Core failure envelopes nested under result must be surfaced');
+const runStart = uiSource.indexOf('const run = async (label: string');
+const runEnd = uiSource.indexOf('const refresh =', runStart);
+assert.ok(runStart >= 0 && runEnd > runStart, 'Hexis UI action runner must remain centralized');
+const runBody = uiSource.slice(runStart, runEnd);
+assert.ok(runBody.indexOf('operationFailure(result)') < runBody.indexOf(': OK'),
+  'the UI must reject a failed domain result before showing a success message');
+
 console.log('HEXIS_LEARNING_REVIEW_CANONICAL_MEMORY=PASS', JSON.stringify({
   originalMemory: original.id,
   correctedMemory: corrected.id,
