@@ -359,25 +359,42 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass417",
+    "id": "WorkPass418",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "ff87945607101053a2ec4dad99eb41772d989a56",
-    "testCommit": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
-    "codeTestHead": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
-    "summary": "Snapshot the HMX stage request envelope through own data descriptors and reject accessors/custom-prototype/extra-key envelopes before field reads. Keep the existing bounded HMX-document snapshot and runtime enum allowlists.",
+    "codeCommit": "8325edfe46cc263b79a146dee94268e14c07c6d0",
+    "testCommit": "849453058df8ca197e623432b66d6d17bad0e945",
+    "codeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
+    "summary": "Reduce redundant HMX section deep copies after the bounded request/document snapshot. Reuse detached snapshot sections internally and retain a structured clone at the stage-return boundary.",
     "testsAdded": [
-      "intent getter is rejected without execution",
-      "document getter is rejected without execution",
-      "unsafe HMX request envelopes create no stage or metrics mutation",
-      "invalid intent/strategy direct-call regressions remain in place"
+      "mutating caller's source document after stage creation cannot alter stored staged memory content",
+      "mutating returned stage clone cannot alter stored staged memory content",
+      "safe snapshot isolation is preserved with reduced intermediate copies"
     ],
-    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass418",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "8325edfe46cc263b79a146dee94268e14c07c6d0",
+      "testCommit": "849453058df8ca197e623432b66d6d17bad0e945",
+      "codeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
+      "summary": "Reduce redundant HMX section deep copies after the bounded request/document snapshot. Reuse detached snapshot sections internally and retain a structured clone at the stage-return boundary.",
+      "testsAdded": [
+        "mutating caller's source document after stage creation cannot alter stored staged memory content",
+        "mutating returned stage clone cannot alter stored staged memory content",
+        "safe snapshot isolation is preserved with reduced intermediate copies"
+      ],
+      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass417",
       "date": "2026-10-26",
@@ -393,24 +410,6 @@
         "invalid intent/strategy direct-call regressions remain in place"
       ],
       "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
-    {
-      "id": "WorkPass416",
-      "date": "2026-10-26",
-      "branch": "hexis-remote-bridge-20261026",
-      "codeCommit": "d82d5f9c77a303322b6a379e9b664111917f9bf0",
-      "testCommit": "b1595b492f0424b754e50e600aadebd2d379f7ae",
-      "codeTestHead": "b1595b492f0424b754e50e600aadebd2d379f7ae",
-      "summary": "Enforce allowed HMX intent and strategy values inside HexisAdaptationFabric.stageHmx in addition to the HTTP boundary. Direct/internal callers cannot create malformed stages or mutate staging state with unknown mode values.",
-      "testsAdded": [
-        "direct fabric call with unknown intent throws hmx-invalid-intent",
-        "direct fabric call with unknown strategy throws hmx-invalid-strategy",
-        "invalid mode inputs leave hmx stage ledger empty"
-      ],
-      "validationStatus": "PENDING exact-head test:hexis-adaptation, test:hexis-server-smoke, runtime typecheck and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
@@ -583,8 +582,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
-  "branchHeadBeforeTrackerCommit": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
+  "latestUnverifiedCodeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
+  "branchHeadBeforeTrackerCommit": "849453058df8ca197e623432b66d6d17bad0e945",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -624,38 +623,39 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass416",
+    "id": "WorkPass417",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "d82d5f9c77a303322b6a379e9b664111917f9bf0",
-    "testCommit": "b1595b492f0424b754e50e600aadebd2d379f7ae",
-    "codeTestHead": "b1595b492f0424b754e50e600aadebd2d379f7ae",
-    "summary": "Enforce allowed HMX intent and strategy values inside HexisAdaptationFabric.stageHmx in addition to the HTTP boundary. Direct/internal callers cannot create malformed stages or mutate staging state with unknown mode values.",
+    "codeCommit": "ff87945607101053a2ec4dad99eb41772d989a56",
+    "testCommit": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
+    "codeTestHead": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
+    "summary": "Snapshot the HMX stage request envelope through own data descriptors and reject accessors/custom-prototype/extra-key envelopes before field reads. Keep the existing bounded HMX-document snapshot and runtime enum allowlists.",
     "testsAdded": [
-      "direct fabric call with unknown intent throws hmx-invalid-intent",
-      "direct fabric call with unknown strategy throws hmx-invalid-strategy",
-      "invalid mode inputs leave hmx stage ledger empty"
+      "intent getter is rejected without execution",
+      "document getter is rejected without execution",
+      "unsafe HMX request envelopes create no stage or metrics mutation",
+      "invalid intent/strategy direct-call regressions remain in place"
     ],
-    "validationStatus": "PENDING exact-head test:hexis-adaptation, test:hexis-server-smoke, runtime typecheck and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass418",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Reduce redundant HMX deep copies only after input has been captured into a detached bounded plain-JSON snapshot, while preserving both source-input isolation and returned-stage isolation. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass417",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Capture HMX stage request metadata via data descriptors; refuse accessor-backed or non-plain envelopes before reading values, while preserving the separate bounded snapshot and existing diagnostics for malformed HMX document contents. Scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass416",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "b1595b492f0424b754e50e600aadebd2d379f7ae",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Add defense-in-depth enum validation inside the HMX adaptation fabric so direct callers cannot bypass the HTTP intent/strategy allowlist. Invalid mode values fail before HMX snapshotting or stage mutation. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
