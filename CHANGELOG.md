@@ -1,3 +1,13 @@
+## [NK1][WorkPass379] Preserve full P26 replay-policy failure evidence — 2026-10-26
+
+- **Observed:** the new interleaved engine contract and sequential benchmark passed, but the policy-sweep stopped at its first per-strategy `newAfter > 0.60` assertion and hid remaining seed/strategy metrics.
+- **Fix:** collect all paired seed/strategy outcomes and emit a diagnostic report before evaluating the same acceptance constraints. Keep the `newAfter > 0.60` gate and zero-unexpected-conflict gate unchanged; no threshold is weakened.
+- **Next decision:** use the exact failing strategy/seed report to repair replay scheduling/conflict attribution, then rerun the complete sweep and full replay chain.
+- **Validation:** this diagnostic-only test delta requires exact-head P26 and WorkPass71 runs. It is not a PASS or a claim of learning uplift.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][WorkPass378] Restore P26 interleaved learning and strict evidence accounting — 2026-10-26
 
 - **Failure reproduced:** WorkPass71 runtime validation passed app typecheck/build and runtime typecheck, then failed in `test:p26:sequential-learning-benchmark.mjs` because `P26TrueLearningEngine.trainInterleaved()` was missing from the active engine.
