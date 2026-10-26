@@ -458,7 +458,18 @@ function matchesCanonicalReviewEvidence(
   const evidence = adapted.evidence;
   if (evidence.protectedMemory || evidence.memoryId !== memoryId) return false;
 
-  return canonicalHexisEvidenceDigest(evidence) === receipt.digest.toLowerCase()
+  const canonicalDigest = canonicalHexisEvidenceDigest(evidence);
+  const suppliedDigest = String(payload.digest ?? "").toLowerCase();
+  const legacyReceiptDigest = sha256Stable(evidence, "legacy").toLowerCase();
+  // Reviews already persisted by older builds used the raw server receipt time
+  // in the envelope digest. Accept that historical digest only for the explicitly
+  // server-stamped case; the full canonical payload and authoritative receipt are
+  // still independently revalidated before any decision can mutate memory.
+  const suppliedDigestMatches = suppliedDigest === canonicalDigest ||
+    (evidence.observedAtOrigin === "server-receipt" && suppliedDigest === legacyReceiptDigest);
+
+  return canonicalDigest === receipt.digest.toLowerCase()
+    && suppliedDigestMatches
     && receipt.evidenceId === evidence.evidenceId
     && receipt.stance === evidence.stance
     && receipt.sourceKind === evidence.source.kind
@@ -528,8 +539,7 @@ export function decideHexisEvidenceReview(
   if (!memory) return reject("canonical-memory-no-longer-exists");
   const evidenceRecord = memory.evidenceRecords?.find((record) => record.evidenceId === payload.evidenceId && record.digest.toLowerCase() === String(payload.digest).toLowerCase());
   if (!evidenceRecord) return reject("canonical-evidence-receipt-missing-or-retired");
-  if (String(payload.digest).toLowerCase() !== evidenceRecord.digest.toLowerCase() ||
-      !matchesCanonicalReviewEvidence(payload, memory.id, evidenceRecord)) {
+  if (!matchesCanonicalReviewEvidence(payload, memory.id, evidenceRecord)) {
     return reject("canonical-review-evidence-binding-mismatch");
   }
 
