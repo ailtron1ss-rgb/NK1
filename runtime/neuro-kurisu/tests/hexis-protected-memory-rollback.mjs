@@ -91,6 +91,15 @@ const importedQuarantined = afterRetry.find(item =>
 assert.ok(importedQuarantined, 'the successful retry must leave its single canonical import');
 assert.equal(importedQuarantined.epistemicStatus, 'quarantined',
   'a successful retry may retain the quarantined record, but only once');
+assert.throws(
+  () => runtime.fabric.rollbackHmxCreatedMemory(
+    importedQuarantined.id, stage.exportId, 'stage-not-the-origin', 2, 'scope-guard-regression',
+  ),
+  /memory-lifecycle-hmx-rollback-scope-mismatch/,
+  'the scoped compensator must not remove a protected import created by a different stage attempt',
+);
+assert.equal(runtime.fabric.canonicalSnapshot().items.some(item => item.id === importedQuarantined.id), true,
+  'a mismatched compensation scope must leave the canonical imported record untouched');
 assert.equal(temporalState.assertions.length, 1,
   'retry must produce exactly one temporal assertion after the failed attempt was rolled back');
 
