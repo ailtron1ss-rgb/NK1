@@ -187,6 +187,27 @@ assert.equal(fabric.enqueueOutbox({idempotencyKey:'k-failed',kind:'notify',chann
 const legacySnapshot=fabric.snapshot(); delete legacySnapshot.metrics.outboxIdempotencyConflicts;
 const restoredLegacy=new HexisAdaptationFabric(); restoredLegacy.restore(legacySnapshot);
 assert.equal(restoredLegacy.snapshot().metrics.outboxIdempotencyConflicts,0,'legacy snapshots receive the new metric default');
+
+const legacyDeliveryState = defaultHexisAdaptationState();
+legacyDeliveryState.outbox = [
+  { id:'legacy-pending-retry',idempotencyKey:'legacy-pending-retry',kind:'notify',channel:'test',payload:{},status:'pending',attempts:1,createdAt:1,updatedAt:2,lastError:'legacy timeout' },
+  { id:'legacy-publishing',idempotencyKey:'legacy-publishing',kind:'notify',channel:'test',payload:{},status:'publishing',attempts:1,createdAt:1,updatedAt:2 },
+  { id:'legacy-failed-ambiguous',idempotencyKey:'legacy-failed-ambiguous',kind:'notify',channel:'test',payload:{},status:'failed',attempts:3,createdAt:1,updatedAt:2,lastError:'legacy repeated failure' },
+  { id:'legacy-confirmed-absent',idempotencyKey:'legacy-confirmed-absent',kind:'notify',channel:'test',payload:{},status:'pending',attempts:2,createdAt:1,updatedAt:2,resolution:'not-published',resolutionEvidenceRef:'provider:absent',resolvedAt:2 },
+];
+const migratedOutbox = new HexisAdaptationFabric();
+migratedOutbox.restore(legacyDeliveryState);
+const migratedRows = new Map(migratedOutbox.snapshot().outbox.map(row => [row.id,row]));
+assert.equal(migratedRows.get('legacy-pending-retry')?.status,'uncertain',
+  'a legacy pending row with prior attempts may already have escaped remotely and must not be replayed blindly');
+assert.equal(migratedRows.get('legacy-publishing')?.status,'uncertain',
+  'a process restart must quarantine a legacy in-flight claim');
+assert.equal(migratedRows.get('legacy-failed-ambiguous')?.status,'uncertain',
+  'legacy failed rows do not prove that no external side effect occurred');
+assert.equal(migratedRows.get('legacy-confirmed-absent')?.status,'pending',
+  'a stored explicit not-published resolution safely preserves retry eligibility');
+assert.equal(migratedOutbox.claimOutbox('legacy-pending-retry'),null);
+
 const restoredOutbox=new HexisAdaptationFabric(); restoredOutbox.restore(fabric.snapshot());
 assert.equal(restoredOutbox.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'x',meta:{b:2,a:1}}}).id,out.id,'outbox idempotency survives snapshot/restore');
 const restoredConflict=restoredOutbox.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'after restore this must not alias'}});
