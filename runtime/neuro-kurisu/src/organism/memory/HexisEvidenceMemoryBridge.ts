@@ -73,12 +73,12 @@ export function ingestHexisEvidenceIntoMemory(
     if (result.reason === "protected-memory-review-required") {
       return { status: "blocked", memoryId: evidence.memoryId, evidenceId: evidence.evidenceId, reason: result.reason };
     }
-    return { status: "rejected", memoryId: evidence.memoryId, evidenceId: evidence.evidenceId, reason: result.reason };
-  }
-  if (!result.added) {
     if (result.reason === "evidence-id-conflict") {
       return { status: "conflict", memoryId: evidence.memoryId, evidenceId: evidence.evidenceId, reason: result.reason };
     }
+    return { status: "rejected", memoryId: evidence.memoryId, evidenceId: evidence.evidenceId, reason: result.reason };
+  }
+  if (!result.added) {
     return {
       status: "duplicate",
       memoryId: evidence.memoryId,
