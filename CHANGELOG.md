@@ -1,3 +1,15 @@
+## NK1 WorkPass107 — selectable original avatar and appearance controls (2026-10-26)
+
+- Added `app/src/components/KurisuOriginalStage.tsx`: separate authored SVG concept body with layered hair/face/coat/legs, affect-driven pose and expression, procedural idle/hair/breath animation, reduced-motion support, and speech-clock-linked mouth opening.
+- Added a third mode to `AvatarStage`: existing Live2D, new `NK1 Original`, and the prior Legacy sprite deck. The classic Live2D path remains intact and the view preference persists across reloads.
+- Added persisted, functional appearance settings to NK1 Original: lab/casual/night outfit silhouettes, eye tint, hair palette, accent colour, motion intensity profile, and 85–115% scale.
+- Added a regression contract test for variant selection and the appearance controls.
+- Researched public alternatives. `Akatosh6DW/Amadeus` shows model-registry/outfit-selection architecture, but its own ASSETS_LICENSE keeps copyright with the model's original author and scope-limits the permission to that project. `mohui666/Amadeus` demonstrates PSD/Cubism authoring but uses source art from the original game; its code MIT license is not treated as asset permission. No third-party model binaries were copied.
+- Release caveat: GitHub release metadata shows the latest ZIP dated 2026-10-19; the GitHub connector did not expose binary archive contents, so this pass does not claim the new code is inside the released ZIP. Changes reside on this feature branch and draft PR #179.
+- Verification boundary: previous avatar-body head `6c6ff7c` passed `browser-contracts` (including Live2D browser/runtime suites, embodiment timeline and strict TypeScript). The newly added variant and its regression must pass CI at the new head before being called validated. The separate cognitive `WorkPass110 metrics` check was already failing outside avatar code and remains separate.
+
+---
+
 ## NK1 WorkPass106 — independent head/body pose channels for the 2.5D body (2026-10-26)
 
 - Added shared `runtime/neuro-kurisu/public/embodiment-pose.mjs`: bounded action/emotion/arousal → head orientation, torso orientation and breathing intensity. Both React and standalone runtime use the same semantic mapping.
