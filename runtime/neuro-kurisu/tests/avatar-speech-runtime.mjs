@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { EmbodimentRuntime } from '../src/organism/body/EmbodimentRuntime.ts';
 import { defaultBodyState } from '../src/organism/body/EmbodiedBody.ts';
+import { buildAvatarSpeechTimeline } from '../public/avatar-state.mjs';
 
 const runtime = new EmbodimentRuntime();
 runtime.body = { ...defaultBodyState(), ttsAvailable: true };
@@ -41,3 +42,15 @@ assert.equal(completed.state.speechStartedAt, active.state.speechStartedAt,
   'the most recent utterance cursor stays readable after the dispatcher returns');
 assert.equal(completed.state.utteranceCount, 1);
 console.log('AVATAR_SPEECH_RUNTIME=PASS id/text/start/rate/terminal-state');
+
+
+// Control-whitespace normalization must preserve UTF-16 offsets and source labels.
+// The shared timeline substitutes a neutral space pose, while the metadata keeps the
+// original grapheme so boundary offsets still refer to the original utterance.
+const offsetProbe = 'а🙂‍↔️б\n';
+const offsetTimeline = buildAvatarSpeechTimeline(offsetProbe, 0.96, 'ru-RU');
+assert.deepEqual(offsetTimeline.map(frame => frame.grapheme), ['а', '🙂‍↔️', 'б', '\n']);
+assert.equal(offsetTimeline.at(-1).charIndex, offsetProbe.length - 1);
+assert.equal(offsetTimeline.at(-1).endCharIndex, offsetProbe.length);
+assert.equal(offsetTimeline.at(-1).pose.viseme, 'neutral');
+console.log('AVATAR_SPEECH_UTF16=PASS original-label/normalized-pose/offset-contract');
