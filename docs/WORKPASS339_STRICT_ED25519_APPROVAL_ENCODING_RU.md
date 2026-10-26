@@ -3,7 +3,7 @@
 **Дата:** 26 октября 2026 г.  
 **Ветка:** `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5`  
 **Кодовый checkpoint с регрессиями:** `02372e4949c2094b5cd1a3c4420aeda86a2fdfa1`  
-**Статус:** implementation committed; exact-head validation pending.
+**Статус:** CI PASS for PR merge commit `4a41db0` (`3e22a06` base + `0a0f987` head).
 
 ## Что изменено
 
@@ -40,3 +40,12 @@
 5. Воспроизводимая пересборка и проверка основного release ZIP.
 
 **Оценки прогресса не увеличены:** до выполнения проверок этот patch считается исправлением security contract, а не доказательством повышения обучаемости или готовности к production.
+
+
+## Confirmed CI result
+
+- Unified project integration suite run **#119 / 40253553153** passed on merge commit `4a41db0`; runtime typecheck printed `TYPECHECK=PASS mode=tsc compiler=runtime-lock`.
+- WorkPass110 continual-learning metrics run **#4641 / 40253553155** passed; the log explicitly reports `P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS` with the new signature regression cases included.
+- Project progress-ledger integrity run **#20 / 40253553224** passed. The tracked scored baseline remains unchanged because its historical PASS rows have their own tested SHA.
+
+These checks establish regression/typecheck success for this narrow security change on the tested merge result; they do not establish production readiness of the entire organism or measurable learning uplift.
