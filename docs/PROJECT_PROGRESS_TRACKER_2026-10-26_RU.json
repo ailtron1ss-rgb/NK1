@@ -359,26 +359,19 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass397",
+    "id": "WorkPass398",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommits": [
-      "aead364e098b462b5f99f48e65b76585f927975f",
-      "83343d9ba5765050c734218a64d8bbe6e9883f2f"
-    ],
-    "codeTestHead": "28920aa46a888ddff4a0297ae8a93526e879da85",
-    "summary": "Create a bounded own-data-descriptor snapshot of HMX input before schema validation and stage the captured snapshot, rejecting accessors, sparse/extended arrays, unsupported prototypes, cycles, non-finite numbers and resource-bound violations.",
+    "codeCommit": "7df90658a7633fcaee746a69197f9522818cc452",
+    "testCommit": "86edc9df9a802ce8aa6965c8091454eb779429d5",
+    "codeTestHead": "86edc9df9a802ce8aa6965c8091454eb779429d5",
+    "summary": "Reject unknown Hexis learning-review and HMX decisions with HTTP 400 rather than silently substituting approve/reject. Verify invalid decisions do not touch HMX stage state.",
     "testsAdded": [
-      "root export_id getter is not invoked by HMX validation or staging",
-      "nested sections.memories getter is not invoked by HMX validation or staging",
-      "sparse memories array is rejected as unsafe input",
-      "cyclic metadata is rejected as unsafe input",
-      "non-finite source value is rejected as unsafe input",
-      "custom-prototype source object is rejected as unsafe input",
-      "unsafe HMX stage has an explicit unsafe-input conflict and no memory payload",
-      "unsafe HMX stage remains ineligible for acceptance"
+      "unknown learning-review decision is rejected before mutation",
+      "unknown HMX decision is rejected before mutation",
+      "same valid HMX stage remains usable for explicit accept after an invalid decision"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, Hexis server smoke and Unified project integration. Tests are committed but have not passed an exact-head run; recent Actions have ended before useful step/log data is available. No PASS or readiness uplift is claimed.",
+    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regressions are authored but current Actions return failure without exposed steps/logs; no PASS or readiness uplift is claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
@@ -552,8 +545,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "28920aa46a888ddff4a0297ae8a93526e879da85",
-  "branchHeadBeforeTrackerCommit": "28920aa46a888ddff4a0297ae8a93526e879da85",
+  "latestUnverifiedCodeTestHead": "86edc9df9a802ce8aa6965c8091454eb779429d5",
+  "branchHeadBeforeTrackerCommit": "86edc9df9a802ce8aa6965c8091454eb779429d5",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -593,37 +586,40 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass357",
+    "id": "WorkPass397",
     "date": "2026-10-26",
-    "branch": "fix/workpass357-parent-lineage-proxy-restore-2026-10-26-r2",
-    "codeCommit": "810f60f2227db466dd1f96b1e3edf39741951f9d",
-    "summary": "Removed direct parentIds.length reads at the snapshot restore boundary. Added bounded descriptor-only nested-array inspection, with regressions for forged proxy length, getter suppression, descriptor trap failure and later valid duplicate recovery.",
-    "testsAdded": [
-      "proxy length trap cannot erase restored parent IDs",
-      "direct slot getters are not executed",
-      "descriptor enumeration failure is caught and malformed row is skipped",
-      "later valid row with the same ID can recover"
+    "branch": "hexis-remote-bridge-20261026",
+    "codeCommits": [
+      "aead364e098b462b5f99f48e65b76585f927975f",
+      "83343d9ba5765050c734218a64d8bbe6e9883f2f"
     ],
-    "validationStatus": "PASS on exact PR head a1f0e250eac1e0f6990a0c25e62d7c33bb8b1bd1; Unified integration, progress ledger, WorkPass110, P26 and nine additional focused workflows passed.",
+    "codeTestHead": "28920aa46a888ddff4a0297ae8a93526e879da85",
+    "summary": "Create a bounded own-data-descriptor snapshot of HMX input before schema validation and stage the captured snapshot, rejecting accessors, sparse/extended arrays, unsupported prototypes, cycles, non-finite numbers and resource-bound violations.",
+    "testsAdded": [
+      "root export_id getter is not invoked by HMX validation or staging",
+      "nested sections.memories getter is not invoked by HMX validation or staging",
+      "sparse memories array is rejected as unsafe input",
+      "cyclic metadata is rejected as unsafe input",
+      "non-finite source value is rejected as unsafe input",
+      "custom-prototype source object is rejected as unsafe input",
+      "unsafe HMX stage has an explicit unsafe-input conflict and no memory payload",
+      "unsafe HMX stage remains ineligible for acceptance"
+    ],
+    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, Hexis server smoke and Unified project integration. Tests are committed but have not passed an exact-head run; recent Actions have ended before useful step/log data is available. No PASS or readiness uplift is claimed.",
     "progressPercentagesChanged": false,
-    "testedHeadSha": "a1f0e250eac1e0f6990a0c25e62d7c33bb8b1bd1",
-    "workflowRuns": [
-      40292091015,
-      40292091024,
-      40292091053,
-      40292091054,
-      40292091017,
-      40292092055,
-      40292091074,
-      40292091012,
-      40292091019,
-      40292090997,
-      40292090968,
-      40292090972,
-      40292091029
-    ]
+    "testedHeadSha": null,
+    "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass398",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "86edc9df9a802ce8aa6965c8091454eb779429d5",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Reject unknown Hexis learning-review and HMX decisions with HTTP 400 rather than silently substituting approve/reject. Verify invalid decisions do not touch HMX stage state. WorkPass396–397 secure HMX section staging and snapshots. Progress/readiness/recall scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass397",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "28920aa46a888ddff4a0297ae8a93526e879da85",
@@ -631,95 +627,5 @@
     "summary": "Create a bounded own-data-descriptor snapshot of HMX input before schema validation and stage the captured snapshot, rejecting accessors, sparse/extended arrays, unsupported prototypes, cycles, non-finite numbers and resource-bound violations. Coverage also rejects sparse arrays, cycles, non-finite numbers and custom prototypes. WorkPass396 adds atomic array staging. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass357",
-    "sourceBranch": "fix/workpass357-parent-lineage-proxy-restore-2026-10-26-r2",
-    "codeTestHead": "810f60f2227db466dd1f96b1e3edf39741951f9d",
-    "baseHead": "1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee",
-    "validationStatus": "exact-pr-head-ci-pass",
-    "summary": "CognitiveEventFabric.restore now inspects nested parentIds arrays through own data descriptors and a bounded dense-array validator; it never reads proxy-backed .length or slots directly, and malformed lineage rows do not reserve IDs.",
-    "progressPercentagesChanged": false,
-    "validationRuns": [
-      {
-        "name": "Unified project integration suite",
-        "runId": 40292091015,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091015",
-        "conclusion": "success"
-      },
-      {
-        "name": "Project progress ledger integrity",
-        "runId": 40292091024,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091024",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass110 continual learning metrics",
-        "runId": 40292091053,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091053",
-        "conclusion": "success"
-      },
-      {
-        "name": "P26 Learning Validation",
-        "runId": 40292091054,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091054",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass108 paired evidence identity and verified promotion gate",
-        "runId": 40292091017,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091017",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass105 verified outcome ledger",
-        "runId": 40292092055,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292092055",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass99 replay strategy benchmark",
-        "runId": 40292091074,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091074",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass102 reservoir replay baseline",
-        "runId": 40292091012,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091012",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass292 verified experience lanes",
-        "runId": 40292091019,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091019",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass291 reflective payload budget",
-        "runId": 40292090997,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292090997",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass293 autonomous P23 repair revision",
-        "runId": 40292090968,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292090968",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass294 correlated external postconditions",
-        "runId": 40292090972,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292090972",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass287-288 cognitive contracts",
-        "runId": 40292091029,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292091029",
-        "conclusion": "success"
-      }
-    ],
-    "validatedPrHead": "a1f0e250eac1e0f6990a0c25e62d7c33bb8b1bd1"
   }
 }
