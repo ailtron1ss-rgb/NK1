@@ -797,5 +797,114 @@ assert.throws(
 );
 
 
+// Explicit Hexis learning-review decisions now write through NK1's canonical MemoryFabric.
+const reviewSystems = new OrganismSystemFabric();
+const reviewedSource = reviewSystems.memory.fabric.encode({
+  content:'The original learning-review claim.',
+  tags:['learning-review-fixture'],
+  context:{},
+  kind:'semantic',
+  salience:0.6,
+  emotionalWeight:0.1,
+  identityRelevance:0.1,
+  goalRelevance:0.1,
+  socialRelevance:0.1,
+  predictionError:0,
+  confidence:0.63,
+  epistemicStatus:'belief',
+  source:'review-fixture',
+  entities:[],
+  semanticLinks:[],
+  temporalLinks:[],
+  causalLinks:[],
+  provenanceClass:'external',
+  sourceAuthority01:0.5,
+  independenceKey:'review-fixture-source',
+});
+const approvalReview = reviewSystems.hexisAdaptation.createLearningReview({
+  periodStart:1700000000000,periodEnd:1700000001000,summary:'Review existing canonical knowledge.',
+  items:[{kind:'semantic_belief',title:'Review a known claim',content:'The original learning-review claim.',sourceMemoryId:reviewedSource.id,evidence:{source:'reviewer-a',observationCount:1}}],
+});
+const approvedReviewItem = approvalReview.items[0];
+const originalReviewConfidence = reviewedSource.confidence;
+const approvalResult = reviewSystems.decideHexisLearningReview(approvalReview.id,approvedReviewItem.id,'approve');
+assert.equal(approvalResult.item.status,'approved');
+assert.equal(approvalResult.item.canonicalMemoryId,reviewedSource.id);
+assert.equal(approvalResult.memory?.confidence,originalReviewConfidence,
+  'review approval annotates existing memory without artificially raising confidence');
+assert.equal(approvalResult.memory?.context?.hexisLearningDecision,'approved');
+const approvalReplay = reviewSystems.decideHexisLearningReview(approvalReview.id,approvedReviewItem.id,'approve');
+assert.equal(approvalReplay.disposition,'replayed');
+assert.equal(approvalReplay.memory?.confidence,originalReviewConfidence);
+
+const correctionReview = reviewSystems.hexisAdaptation.createLearningReview({
+  periodStart:1700000000000,periodEnd:1700000002000,summary:'Correct a canonical belief.',
+  items:[{kind:'semantic_belief',title:'Correct a claim',content:'The original learning-review claim.',sourceMemoryId:reviewedSource.id,evidence:{source:'reviewer-b',reason:'new verified fact'}}],
+});
+const correctionItem = correctionReview.items[0];
+const correctionResult = reviewSystems.decideHexisLearningReview(correctionReview.id,correctionItem.id,'correct','The corrected learning-review claim.');
+assert.equal(correctionResult.item.status,'corrected');
+assert.notEqual(correctionResult.memory?.id,reviewedSource.id,
+  'corrections should create a new canonical revision rather than overwrite historical memory');
+assert.equal(correctionResult.memory?.content,'The corrected learning-review claim.');
+assert.equal(correctionResult.memory?.confidence,originalReviewConfidence,
+  'correction must preserve confidence unless separate evidence is evaluated');
+assert.equal(correctionResult.memory?.supersedesId,reviewedSource.id);
+assert.equal(correctionResult.memory?.context?.hexisLearningDecision,'corrected');
+
+const procedureReview = reviewSystems.hexisAdaptation.createLearningReview({
+  periodStart:1700000000000,periodEnd:1700000003000,summary:'Review a newly proposed procedure.',
+  items:[{kind:'new_procedure',title:'A candidate procedure',content:'Check prerequisites, execute once, verify the result.',evidence:{source:'reviewer-c',tested:false}}],
+});
+const procedureItem=procedureReview.items[0];
+const procedureResult=reviewSystems.decideHexisLearningReview(procedureReview.id,procedureItem.id,'approve');
+assert.equal(procedureResult.disposition,'materialized-candidate');
+assert.equal(procedureResult.memory?.kind,'procedural');
+assert.equal(procedureResult.memory?.epistemicStatus,'hypothesis');
+assert.equal(procedureResult.memory?.confidence,0.42,
+  'reviewed but untested procedures remain low-confidence hypotheses and are not auto-promoted to skills');
+assert.equal(procedureResult.item.canonicalMemoryId,procedureResult.memory?.id);
+
+const forgetReview = reviewSystems.hexisAdaptation.createLearningReview({
+  periodStart:1700000000000,periodEnd:1700000004000,summary:'Quarantine stale knowledge.',
+  items:[{kind:'semantic_belief',title:'Retire stale claim',content:'The claim to quarantine.',sourceMemoryId:reviewedSource.id,evidence:{reason:'obsolete'}}],
+});
+const forgetResult=reviewSystems.decideHexisLearningReview(forgetReview.id,forgetReview.items[0].id,'forget');
+assert.equal(forgetResult.disposition,'quarantined-existing');
+assert.equal(forgetResult.memory?.epistemicStatus,'quarantined',
+  'forget is a reversible quarantine and does not destructively delete canonical memory');
+const protectedForgetReview = reviewSystems.hexisAdaptation.createLearningReview({
+  periodStart:1700000000000,periodEnd:1700000005000,summary:'Attempt to delete core identity memory.',
+  items:[{kind:'semantic_belief',title:'Protected autobiographical memory',content:'Identity record.',sourceMemoryId:reviewSystems.memory.fabric.encode({
+    content:'Protected identity record.',tags:[],context:{},kind:'identity',salience:0.8,emotionalWeight:0.3,identityRelevance:0.9,goalRelevance:0.1,socialRelevance:0.1,predictionError:0,confidence:0.9,epistemicStatus:'fact',source:'identity-fixture',entities:[],semanticLinks:[],temporalLinks:[],causalLinks:[],
+  }).id,evidence:{reason:'must remain protected'}}],
+});
+assert.throws(
+  () => reviewSystems.decideHexisLearningReview(protectedForgetReview.id,protectedForgetReview.items[0].id,'forget'),
+  /hexis-learning-review-forget-protected-memory/,
+);
+
+// A failure after the canonical mutation but before Hexis marks the item decided rolls both stores back.
+const rollbackReviewSystems=new OrganismSystemFabric();
+const rollbackReviewMemory=rollbackReviewSystems.memory.fabric.encode({
+  content:'Rollback review fixture.',tags:[],context:{},kind:'semantic',salience:0.5,emotionalWeight:0.1,identityRelevance:0.1,goalRelevance:0.1,socialRelevance:0.1,predictionError:0,confidence:0.5,epistemicStatus:'belief',source:'review-rollback-fixture',entities:[],semanticLinks:[],temporalLinks:[],causalLinks:[],
+});
+const rollbackReview=rollbackReviewSystems.hexisAdaptation.createLearningReview({
+  periodStart:1700000000000,periodEnd:1700000006000,summary:'Force review-state commit failure.',
+  items:[{kind:'semantic_belief',title:'Rollback annotation',content:'Rollback review fixture.',sourceMemoryId:rollbackReviewMemory.id,evidence:{reason:'fault injection'}}],
+});
+const originalDecideLearningReview=rollbackReviewSystems.hexisAdaptation.decideLearningReview.bind(rollbackReviewSystems.hexisAdaptation);
+rollbackReviewSystems.hexisAdaptation.decideLearningReview=()=>{throw new Error('injected-hexis-review-decision-failure');};
+assert.throws(
+  () => rollbackReviewSystems.decideHexisLearningReview(rollbackReview.id,rollbackReview.items[0].id,'approve'),
+  /injected-hexis-review-decision-failure/,
+);
+assert.equal(rollbackReviewSystems.memory.fabric.canonicalSnapshot().items.find(memory=>memory.id===rollbackReviewMemory.id)?.context?.hexisLearningDecision,undefined,
+  'canonical memory annotation must roll back if the Hexis review cannot be committed');
+assert.equal(rollbackReviewSystems.hexisAdaptation.snapshot().learningReviews[0].items[0].status,'pending',
+  'review remains pending after an atomic rollback');
+rollbackReviewSystems.hexisAdaptation.decideLearningReview=originalDecideLearningReview;
+
+
 console.log('HEXIS_ADAPTATION_PASS');
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
