@@ -588,15 +588,10 @@ export class HexisCanonicalMemoryProjector {
       }
       for (const id of [...rollbackIds].reverse()) {
         let removed = false;
-        try {
-          removed = this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
-            commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
-          }) === true;
-        } catch {
-          // Try the scoped compensator below if ordinary forgetting throws after
-          // a partial commit, or refuses a protected imported state.
-        }
-        if (!removed && typeof this.memoryFabric.rollbackHmxCreatedMemory === 'function') {
+        if (typeof this.memoryFabric.rollbackHmxCreatedMemory === 'function') {
+          // Prefer the transaction-scoped compensator even for ordinary facts. This
+          // keeps rollback out of user-forget accounting and binds deletion to the exact
+          // export, stage and attempt. Never broaden a failed scoped compensation.
           try {
             removed = this.memoryFabric.rollbackHmxCreatedMemory(
               id,
@@ -611,6 +606,16 @@ export class HexisCanonicalMemoryProjector {
             ) === true;
           } catch (rollbackError) {
             rollbackErrors.push('canonical-compensation:' + String(rollbackError?.message ?? rollbackError).slice(0, 220));
+          }
+        } else {
+          // Backward-compatible fallback for alternate test/adaptor implementations
+          // without the scoped API. The production MemoryFabric always exposes it.
+          try {
+            removed = this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
+              commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
+            }) === true;
+          } catch (rollbackError) {
+            rollbackErrors.push('canonical-remove:' + String(rollbackError?.message ?? rollbackError).slice(0, 220));
           }
         }
         if (!removed) rollbackErrors.push('canonical-remove-unconfirmed:' + id);
