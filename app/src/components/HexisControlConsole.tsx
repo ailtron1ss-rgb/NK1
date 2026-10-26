@@ -385,9 +385,9 @@ export function HexisControlConsole() {
               }} />
             </label>
             <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxStage(null); setHmxAccepted(false); setHmxConfirmed(false); setHmxApplyConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
-            <Button disabled={busy || !stageId.trim() || !hmxConfirmed || hmxStage?.status !== "staged" || (hmxStage?.conflicts?.length ?? 0) > 0} onClick={() => void acceptHmx()}>Accept staged</Button>
-            <Button variant="outline" disabled={busy || !stageId.trim() || hmxStage?.status !== "staged"} onClick={() => void rejectHmx()}>Reject</Button>
-            <Button variant="outline" disabled={busy || !stageId.trim() || !hmxAccepted || hmxStage?.status !== "accepted" || !hmxApplyConfirmed} onClick={() => void applyHmx()}>Apply canonical memory</Button>
+            <Button disabled={busy || !stageId.trim() || !hmxConfirmed || (hmxStage !== null && hmxStage.status !== "staged") || (hmxStage?.conflicts.length ?? 0) > 0} onClick={() => void acceptHmx()}>Accept staged</Button>
+            <Button variant="outline" disabled={busy || !stageId.trim() || (hmxStage !== null && hmxStage.status !== "staged")} onClick={() => void rejectHmx()}>Reject</Button>
+            <Button variant="outline" disabled={busy || !stageId.trim() || !hmxApplyConfirmed || (hmxStage !== null && (hmxStage.status !== "accepted" || !hmxAccepted))} onClick={() => void applyHmx()}>Apply canonical memory</Button>
           </div>
           <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX document for acceptance.</label>
           <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxApplyConfirmed} onChange={e => setHmxApplyConfirmed(e.target.checked)} /> I separately confirm canonical memory writes after acceptance.</label>
