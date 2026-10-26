@@ -1,3 +1,10 @@
+## WorkPass344 — reconcile future cognitive-dependency graph ticks (2026-10-26)
+
+- **Defect:** the cognitive-dependency sidecar could restore a valid but future `lastTick`, including `Number.MAX_SAFE_INTEGER`. Runtime derived its next routing frame from `max(coreTick, previousGraphTick + 1)`, which could produce an unsafe frame tick and block routing after restart.
+- **Fix:** added `CognitiveDependencyGraph.reconcileLastTick(canonicalCoreTick)` and wired it into `OrganismRuntime.init()` immediately after graph restore. Only the derived clock is re-anchored; wake mask, counters, per-domain transition history and interrupt state remain intact. Reconciliation is logged as `runtime.cognitive-dependency.tick-reconciled`.
+- **Regression:** the wiring test covers MAX_SAFE_INTEGER, preserved routing state, invalid canonical tick, and next-frame acceptance. The runtime restart smoke corrupts both the substrate and dependency-graph sidecars, re-initializes the organism and verifies the next autonomous cycle resumes. Added the smoke script to both PR and push path filters.
+- **Validation:** code/test head `5b86768a67c3893e6c76c044bffe822aa41e14ae`; the GitHub Actions connector returned no exact-head workflow runs or statuses at checkpoint time. This is pending evidence, not a pass; engineering scores remain anchored to validated head `621864d0d7f2676245383adab86f1dcc6d0f741f`.
+
 ## WorkPass343 — reconcile future cognitive-substrate sidecar ticks (2026-10-26)
 
 - **Defect:** a restored sidecar could contain a valid but future `lastTick`, including `Number.MAX_SAFE_INTEGER`. Because runtime used `Math.max(coreTick, sidecarTick + 1)`, the derived projection's clock kept moving ahead of the canonical Core clock and eventually supplied an unsafe tick to `integrate()`, preventing future integration.
