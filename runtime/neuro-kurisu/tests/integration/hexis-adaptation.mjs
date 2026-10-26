@@ -247,7 +247,6 @@ function makeHmxDocument(exportId, sections) {
 // terminal/non-active source records remain quarantined; unknown future statuses remain
 // unknown; external "fact" labels are not NK1-verified facts.
 const statusRuntime = new MemorySubsystemRuntime();
-const statusProjector = new HexisCanonicalMemoryProjector(statusRuntime.fabric, statusRuntime.semanticMemory);
 const statusCases = [
   ['active', 'belief'],
   ['belief', 'belief'],
@@ -267,6 +266,7 @@ for (let index = 0; index < statusCases.length; index++) {
   const exportId = 'exp_' + String(index + 1).padStart(16, '0');
   const content = 'HMX status policy fixture ' + index + ' ' + String(sourceStatus ?? 'missing');
   const statusFabric = new HexisAdaptationFabric();
+  const statusProjector = new HexisCanonicalMemoryProjector(statusRuntime.fabric, statusRuntime.semanticMemory, statusFabric);
   statusFabric.bindCanonicalMemoryApply(stage => statusProjector.apply(stage));
   const row = {
     ref: exportId + ':status-memory',
@@ -287,11 +287,54 @@ for (let index = 0; index < statusCases.length; index++) {
   assert.equal(imported.epistemicStatus, expectedStatus, 'source status mapping: ' + String(sourceStatus));
   assert.equal(imported.context?.hexisOriginalStatus, sourceStatus ?? 'unknown',
     'original upstream status remains inspectable');
+  assert.equal(statusFabric.snapshot().beliefs.some(belief => belief.memoryId === imported.id),
+    expectedStatus === 'belief',
+    'Hexis belief mirror must include only active-belief memories');
 }
 
+// Re-exporting the same source may demote status, but must not resurrect it later.
+const transitionRuntime = new MemorySubsystemRuntime();
+const transitionLedger = new HexisAdaptationFabric();
+const transitionProjector = new HexisCanonicalMemoryProjector(
+  transitionRuntime.fabric, transitionRuntime.semanticMemory, transitionLedger,
+);
+transitionLedger.bindCanonicalMemoryApply(stage => transitionProjector.apply(stage));
+const transitionContent = 'Same source memory whose upstream lifecycle changes.';
+const applyTransition = (exportId, status) => {
+  const stage = transitionLedger.stageHmx({
+    document: makeHmxDocument(exportId, {
+      memories: [{ ref: exportId + ':same-memory', type: 'semantic', content: transitionContent, status }],
+    }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert.deepEqual(stage.conflicts, []);
+  assert.equal(transitionLedger.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
+  assert.equal(transitionLedger.decideHmx(stage.stagingId, 'apply')?.status, 'applied');
+};
+applyTransition('exp_0000000000009001', 'active');
+const beforeArchive = transitionRuntime.fabric.canonicalSnapshot().items.find(item => item.content === transitionContent);
+assert.equal(beforeArchive?.epistemicStatus, 'belief');
+assert(transitionLedger.snapshot().beliefs.some(belief => belief.memoryId === beforeArchive.id));
+assert(transitionRuntime.semanticMemory.snapshot().nodes.some(node => node.sourceKey === beforeArchive.context?.hexisGraphSourceKey));
+applyTransition('exp_0000000000009002', 'archived');
+const afterArchive = transitionRuntime.fabric.canonicalSnapshot().items.find(item => item.content === transitionContent);
+assert.equal(afterArchive?.id, beforeArchive?.id, 'status changes must not duplicate the canonical memory');
+assert.equal(afterArchive?.epistemicStatus, 'quarantined', 'archiving must demote the canonical memory');
+assert.equal(transitionLedger.snapshot().beliefs.some(belief => belief.memoryId === afterArchive.id), false,
+  'archived memory must leave the active Hexis belief mirror');
+assert.equal(transitionRuntime.semanticMemory.snapshot().nodes.some(node => node.sourceKey === afterArchive.context?.hexisGraphSourceKey), false,
+  'archived memory must leave the active semantic graph');
+applyTransition('exp_0000000000009003', 'active');
+const afterReimport = transitionRuntime.fabric.canonicalSnapshot().items.find(item => item.content === transitionContent);
+assert.equal(afterReimport?.id, beforeArchive?.id);
+assert.equal(afterReimport?.epistemicStatus, 'quarantined',
+  'a later active-looking export must not silently reactivate quarantined memory');
+assert.equal(transitionLedger.snapshot().beliefs.some(belief => belief.memoryId === afterReimport.id), false);
+
 // Malformed status types and control characters must be rejected during staging.
-for (const invalidStatus of [42, false, {}, 'active\\nadmin']) {
-  const exportId = 'exp_' + (100 + (invalidStatus === 42 ? 1 : invalidStatus === false ? 2 : invalidStatus === null ? 3 : invalidStatus === 'active\\nadmin' ? 4 : 5)).toString().padStart(16, '0');
+for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
+  const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
   const malformedStatusFabric = new HexisAdaptationFabric();
   const staged = malformedStatusFabric.stageHmx({
     document: makeHmxDocument(exportId, {
