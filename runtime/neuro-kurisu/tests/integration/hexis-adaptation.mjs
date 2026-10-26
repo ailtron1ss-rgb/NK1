@@ -143,6 +143,29 @@ assert.throws(() => invalidHmxModesFabric.stageHmx({
 assert.equal(invalidHmxModesFabric.snapshot().hmxStages.length, 0,
   'invalid mode values must be refused before creating a stage or incrementing stage state');
 
+let stageEnvelopeIntentGetterCalls = 0;
+const accessorIntentRequest = { document: validHmx, strategy: 'additive' };
+Object.defineProperty(accessorIntentRequest, 'intent', {
+  enumerable: true,
+  get() { stageEnvelopeIntentGetterCalls += 1; return 'telepathy'; },
+});
+assert.throws(() => invalidHmxModesFabric.stageHmx(accessorIntentRequest), /hmx-unsafe-stage-request/);
+assert.equal(stageEnvelopeIntentGetterCalls, 0,
+  'the stage envelope intent accessor must never run');
+
+let stageEnvelopeDocumentGetterCalls = 0;
+const accessorDocumentRequest = { intent: 'telepathy', strategy: 'additive' };
+Object.defineProperty(accessorDocumentRequest, 'document', {
+  enumerable: true,
+  get() { stageEnvelopeDocumentGetterCalls += 1; return validHmx; },
+});
+assert.throws(() => invalidHmxModesFabric.stageHmx(accessorDocumentRequest), /hmx-unsafe-stage-request/);
+assert.equal(stageEnvelopeDocumentGetterCalls, 0,
+  'the stage envelope document accessor must never run');
+assert.equal(invalidHmxModesFabric.snapshot().hmxStages.length, 0,
+  'unsafe request envelopes must be rejected before staging or metric mutation');
+
+
 
 // Stage HMX arrays atomically: over-capacity or malformed source data must
 // not leave a misleading valid-looking prefix in stagedSections.
