@@ -1,7 +1,7 @@
 ## Latest checkpoint — WorkPass330 (2026-10-26)
 
 - **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; continuation PR recorded in this handover as [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135). No merge to `main` and no release ZIP update.
-- **Code commits:** gate change `c180e9afbfb54c4ee5ec5566d74e54b990b78cf6`; regression `a7e0c0f9d16b52065c1c1d57f6a90a9d8f9b0aee`.
+- **Code commits:** task-success gate `c180e9afbfb54c4ee5ec5566d74e54b990b78cf6`; regression `a7e0c0f9d16b52065c1c1d57f6a90a9d8f9b0aee`; distinct-validation-task coverage `ac82342216ad7e36aa1795271b69b4741a935b76`; coverage regression `9dc92673637fa86a0216f980a9c796a354f3f1f8`; Node 24 CI contract `551cdf361a95d3e85a2f8409838d1679741cad6c`.
 - **Defect fixed:** `SkillLearnBenchAdapter` previously used `validationTaskSuccess < 0.8` to add feedback only. Stronger trajectory/skill sub-scores could still make a low-success candidate eligible. The gate now has configurable `minimumValidationTaskSuccess01` (default 0.80), validates its range and rejects below-threshold candidates with `validation-task-success-below-threshold`.
 - **Regression added:** constructs a candidate with 50% verified task success but positive composite gain; confirms default denial, explicit 0.50 override behavior and rejection of an out-of-range threshold.
 - **Validation breadth:** `minimumValidationTasks` defaults to 2; multiple trials of one task no longer pass as broad validation. The new regression checks denial for one-task validation and permits an explicit one-task configuration only when intended.
