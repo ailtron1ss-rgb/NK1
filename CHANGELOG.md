@@ -28,6 +28,12 @@
 - Added `tools/clean-startup-workflow-contract.test.mjs` to require those critical paths in both event filters and to preserve manual dispatch. Wired it into `audit:quick` and the Node 24 toolchain workflow.
 - Baseline validation immediately before this trigger-only change passed on `df05dc79a74f1ac65789d9169cf3b0d0bbad6ec5`: WorkPass110, P26 learning validation, host-owned independent evaluation, and clean install/build/typecheck/organism smoke/full supervised stack endpoint smoke all completed successfully. The new trigger-contract workflow run is still required for this follow-on commit.
 
+## Rollback authority regression — 2026-10-26
+
+- Added direct boundary tests proving a rollback without an integer active-version expectation fails early, while plausible approval fields without an injected rollback verifier remain default-denied.
+- The regression verifies rejected rollback leaves the active version, candidate lifecycle status, and persisted rollback approval untouched; production rollback guards were not weakened.
+- The `p23-versioned-skill-candidate-store.mjs` path is included in WorkPass110 and the focused skill-store provenance workflow. Exact-head reruns are required before calling this added coverage green.
+
 ## UI build diagnostic test contract — 2026-10-26
 
 - Replaced the path-escaped regex with explicit string assertions for the current build command and output marker, avoiding ambiguous slash escaping.
