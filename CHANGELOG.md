@@ -24,7 +24,7 @@
 
 - **Defect:** restore converted malformed root arrays/counters to empty defaults, accessed root/event properties directly, and replaced the live event journal before rebuilding receipt projections. Invalid or accessor-backed snapshots could erase or partially replace causal state.
 - **Fix:** validate schema version/capacity/total, reject root accessors and malformed bounded arrays, strictly clone persisted JSON payloads without executing accessors, reject noncanonical receipt IDs/timestamps rather than coercing/truncating, stage the event ledger and receipt projection map locally, and publish state only after decoding completes. Legacy snapshots may omit version/optional fields.
-- **Regression:** invalid versions, root arrays, counters, scalar/proxy roots and accessors are rejected without mutation; event-row and nested-payload getters do not run; malformed rows do not reserve IDs ahead of valid recovery rows; explicitly undefined optional fields are rejected rather than treated as omitted.
+- **Regression:** invalid versions, missing/malformed primary `recent` ledger, root arrays, counters, scalar/proxy roots and accessors are rejected without mutation; event-row and nested-payload getters do not run; malformed rows do not reserve IDs ahead of valid recovery rows; explicitly undefined optional fields are rejected rather than treated as omitted.
 - **Validation:** branch `work/nk1-cef-restore-atomicity-2026-10-26-r1`, based on release checkpoint `18afd253dcd7413c02136537ea1acc10b7764768`. Exact-head runtime typecheck and integration/release gate are required; no PASS is claimed before they finish.
 
 ---
