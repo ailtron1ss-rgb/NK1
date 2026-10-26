@@ -288,3 +288,106 @@ test('idempotency key cannot silently rebind an action to a different decision o
   assert.equal(differentAutonomy.outcomeClass, 'idempotency-conflict');
   assert.equal(calls, 1, 'same side effect key must not be rebound to another decision/agency context');
 });
+
+
+test('ActionGateway snapshots side-effect inputs before hashing or awaiting and rejects getters/coercion', async () => {
+  const gateway = makeGateway({ live: false });
+  let calls = 0;
+  let receivedInput;
+  gateway.registerTool({
+    id: 'test.gateway-ingress', capability: 'test.read', destructive: false,
+    execute: async (input) => {
+      calls += 1;
+      receivedInput = input;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return { ok: true, value: input.nested?.value ?? input.value };
+    },
+    verify: () => ({
+      verified: true, basis: 'tool-contract', confidence01: .9,
+      externalObservation: false, notes: 'detached input checked',
+    }),
+  });
+
+  const baselineCalls = calls;
+  let topLevelGetterExecuted = false;
+  const accessorInput = { value: 'blocked' };
+  Object.defineProperty(accessorInput, 'secret', {
+    enumerable: true,
+    get() { topLevelGetterExecuted = true; throw new Error('gateway input getter must not run'); },
+  });
+  const accessorInputResult = await gateway.executeTool(
+    'test.gateway-ingress', accessorInput, 'test', { idempotencyKey: 'gateway-accessor-input' },
+  );
+  assert.equal(topLevelGetterExecuted, false);
+  assert.equal(accessorInputResult.result.error, 'idempotency-input-not-serializable');
+  assert.equal(calls, baselineCalls, 'top-level input accessors must be rejected before executor dispatch');
+
+  let nestedGetterExecuted = false;
+  const nestedAccessor = {};
+  Object.defineProperty(nestedAccessor, 'secret', {
+    enumerable: true,
+    get() { nestedGetterExecuted = true; throw new Error('nested gateway getter must not run'); },
+  });
+  const nestedResult = await gateway.executeTool(
+    'test.gateway-ingress', { nested: nestedAccessor }, 'test', { idempotencyKey: 'gateway-accessor-nested' },
+  );
+  assert.equal(nestedGetterExecuted, false);
+  assert.equal(nestedResult.result.error, 'idempotency-input-not-serializable');
+  assert.equal(calls, baselineCalls, 'nested accessors must be rejected before executor dispatch');
+
+  let optionGetterExecuted = false;
+  const accessorOptions = {};
+  Object.defineProperty(accessorOptions, 'idempotencyKey', {
+    enumerable: true,
+    get() { optionGetterExecuted = true; throw new Error('gateway option getter must not run'); },
+  });
+  const accessorOptionsResult = await gateway.executeTool('test.gateway-ingress', { value: 'blocked' }, 'test', accessorOptions);
+  assert.equal(optionGetterExecuted, false);
+  assert.equal(accessorOptionsResult.result.error, 'action-gateway-input-invalid');
+  assert.equal(calls, baselineCalls, 'accessor-backed options must fail before tool dispatch');
+
+  const coercedBooleanResult = await gateway.executeTool(
+    'test.gateway-ingress', { value: 'blocked' }, 'test',
+    { idempotencyKey: 'gateway-string-autonomy', autonomous: 'false' },
+  );
+  assert.equal(coercedBooleanResult.result.error, 'invalid-action-gateway-options');
+  assert.equal(calls, baselineCalls, 'string false must never become autonomous true');
+
+  const callerOwnedInput = { nested: { value: 'original' } };
+  const callerOwnedOptions = { idempotencyKey: 'gateway-detached-request', autonomous: false };
+  const validRequest = gateway.executeTool(
+    'test.gateway-ingress', callerOwnedInput, 'test', callerOwnedOptions,
+  );
+  callerOwnedInput.nested.value = 'mutated-after-call';
+  callerOwnedInput.extra = 'late-field';
+  callerOwnedOptions.autonomous = true;
+  const validResult = await validRequest;
+  assert.equal(validResult.ok, true);
+  assert.equal(calls, baselineCalls + 1);
+  assert.deepEqual(receivedInput, { nested: { value: 'original' } },
+    'the executor must receive a detached input captured before the first await');
+});
+
+test('ActionGateway reconciliation rejects accessor-backed input before ledger or provider work', async () => {
+  const gateway = makeGateway({ live: false });
+  let calls = 0;
+  gateway.registerTool({
+    id: 'test.gateway-reconcile-ingress', capability: 'test.read', destructive: false,
+    execute: async () => { calls += 1; return { ok: true }; },
+    verify: () => ({ verified: true, basis: 'tool-contract', confidence01: .9, externalObservation: false, notes: 'ok' }),
+  });
+
+  let inputGetterExecuted = false;
+  const input = {};
+  Object.defineProperty(input, 'value', {
+    enumerable: true,
+    get() { inputGetterExecuted = true; throw new Error('reconcile input getter must not run'); },
+  });
+  const result = await gateway.reconcileToolExecution(
+    'test.gateway-reconcile-ingress', input, 'test',
+    { idempotencyKey: 'gateway-reconcile-accessor' },
+  );
+  assert.equal(inputGetterExecuted, false);
+  assert.equal(result.result.error, 'idempotency-input-not-serializable');
+  assert.equal(calls, 0, 'malformed reconciliation input must be rejected before any tool execution');
+});

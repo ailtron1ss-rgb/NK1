@@ -1,3 +1,18 @@
+# WorkPass373 — detached ActionGateway side-effect ingress (2026-10-26)
+
+- [CI WIRING] Added `tests/action-gateway-idempotency-workpass37.mjs` to the ActionGateway-related WorkPass294 pull-request path and job, so getter/coercion/detached-input regressions are executed rather than only type-checked.
+- [CI-DRIVEN FIX] Initial runtime typecheck caught a narrowing error in the bounded-array own-key guard and two missing `result()` note arguments; both corrected to match TypeScript's actual property-key union and the existing result signature. Fresh exact-head CI is required.
+- [TEST FIX] Before exact-head validation, corrected the detached-request regression to retain the awaited execution result variable; runtime behavior is unchanged and CI remains the source of truth.
+- [HARDENED] Snapshot `executeTool()` and `reconcileToolExecution()` inputs/options before idempotency hashing, in-flight deduplication, approval checks or async provider work.
+- [FIXED] Reject getter-backed root/nested input and option fields without executing getters; clone bounded plain JSON into detached tool payloads so caller mutation after invocation cannot change the side effect.
+- [FIXED] Stop coercing option booleans (`"false"` must not become `true`) and stop converting arbitrary expected-output values with `String()`; validate option schemas before dispatch.
+- [BOUNDS] Reject cyclic/non-plain/accessor payloads, sparse/extended arrays, unsupported values, non-finite numbers and oversized/deep structures before any executor/provider invocation.
+- [REGRESSION] Extend the existing WorkPass37 ActionGateway idempotency suite with top-level/nested getter attacks, accessor-backed idempotency options, string-boolean coercion, caller-mutation isolation and reconciliation ingress rejection.
+- [VALIDATION] Exact-head CI is required; this entry records implementation, not a test PASS.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass372 — accessor-safe UnifiedCognitiveCycle ingress (2026-10-26)
 
 - [CI-DRIVEN FIX] The next WorkPass287-288 contract assertion expects the existing `stageIds` error text for absent/non-record stage maps. Restored that explicit type guard before descriptor snapshotting; accessor protection remains applied to object-valued maps.
