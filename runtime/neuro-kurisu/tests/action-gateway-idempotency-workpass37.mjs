@@ -361,7 +361,7 @@ test('ActionGateway snapshots side-effect inputs before hashing or awaiting and 
   callerOwnedInput.nested.value = 'mutated-after-call';
   callerOwnedInput.extra = 'late-field';
   callerOwnedOptions.autonomous = true;
-  await validRequest;
+  const validResult = await validRequest;
   assert.equal(validResult.ok, true);
   assert.equal(calls, baselineCalls + 1);
   assert.deepEqual(receivedInput, { nested: { value: 'original' } },
