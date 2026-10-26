@@ -369,9 +369,26 @@ export class HexisAdaptationFabric {
                 : records && typeof records === 'object'
                     ? Object.keys(records as Record<string, unknown>).length
                     : 1;
-            stagedSections[name] = Array.isArray(records)
-                ? structuredClone(records.slice(0, 256))
-                : structuredClone(records);
+
+            if (Array.isArray(records)) {
+                // A conflicted section is never represented by a truncated or
+                // filtered prefix. Downstream consumers and diagnostics must
+                // not mistake partial staging for a complete source section.
+                const sectionPrefix = 'sections.' + name;
+                const sectionHasConflict = conflicts.some((conflict) =>
+                    conflict.path === sectionPrefix || conflict.path.startsWith(sectionPrefix + '[')
+                );
+                if (records.length > 256 || sectionHasConflict) {
+                    // Preserve the original source count but omit the entire
+                    // section. The retained conflict keeps the stage ineligible
+                    // for acceptance until the caller narrows/fixes the export.
+                    continue;
+                }
+                stagedSections[name] = structuredClone(records);
+                continue;
+            }
+
+            stagedSections[name] = structuredClone(records);
         }
         const source = document.source && typeof document.source === 'object' && !Array.isArray(document.source)
             ? document.source as Record<string, unknown>
