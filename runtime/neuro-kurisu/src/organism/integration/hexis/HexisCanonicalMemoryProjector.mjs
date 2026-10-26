@@ -20,6 +20,8 @@ export const isValidHmxApplyReceipt = (stage, receipt) => {
       receipt.stageId !== stage.stagingId ||
       typeof stage.digest !== 'string' || receipt.stageDigest !== stage.digest ||
       !Number.isSafeInteger(receipt.attempt) || receipt.attempt < 1 ||
+      (Object.hasOwn(stage, 'applicationAttempts') &&
+        (!Number.isSafeInteger(stage.applicationAttempts) || stage.applicationAttempts < 1 || receipt.attempt !== stage.applicationAttempts)) ||
       !Number.isFinite(receipt.appliedAt) || receipt.appliedAt < 0 ||
       !['applied', 'partial', 'noop'].includes(receipt.status) ||
       typeof receipt.complete !== 'boolean') return false;
