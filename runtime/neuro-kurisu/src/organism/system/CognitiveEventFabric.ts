@@ -390,13 +390,37 @@ export class CognitiveEventFabric {
         .map(ref=>sanitizeReceiptRef(ref,'observation',executionId))
         .filter((ref):ref is ExternalObservationProjectionRef=>ref!==null);
       const revisionsRaw=ownDataValue(value,'receiptRevisions');
-      const revisions=ownArrayValues(revisionsRaw,32)
+      const revisionCandidates=ownArrayValues(revisionsRaw,32)
         .map(ref=>sanitizeReceiptRef(ref,'revision',executionId))
         .filter((ref):ref is ToolReceiptRevisionProjectionRef=>ref!==null);
+      const seenRevisionIds=new Set<string>();
+      const seenRevisionEventIds=new Set<string>();
+      let previousRevisionNumber=0;
+      let revisionSequenceValid=true;
+      for(const revision of revisionCandidates){
+        if(seenRevisionIds.has(revision.revisionId)||seenRevisionEventIds.has(revision.eventId)||
+          !Number.isSafeInteger(revision.revisionNumber)||revision.revisionNumber!<=previousRevisionNumber) {
+          revisionSequenceValid=false;
+          break;
+        }
+        seenRevisionIds.add(revision.revisionId);
+        seenRevisionEventIds.add(revision.eventId);
+        previousRevisionNumber=revision.revisionNumber!;
+      }
+      const revisions=revisionSequenceValid?revisionCandidates:[];
+      const seenObservationIds=new Set<string>();
+      const seenObservationEventIds=new Set<string>();
+      const observationsUnique=observations.every(observation=>{
+        if(seenObservationIds.has(observation.observationId)||seenObservationEventIds.has(observation.eventId))return false;
+        seenObservationIds.add(observation.observationId);
+        seenObservationEventIds.add(observation.eventId);
+        return true;
+      });
+      const acceptedObservations=observationsUnique?observations:[];
       const accepted:ToolReceiptProjectionIndexEntry={
         executionId,actionEventId,outcomeEventId,evidenceEventId,projectedAt,
         ...(acceptedProjectionHash?{projectionHash:acceptedProjectionHash}:{}),
-        ...(observations.length?{externalObservations:observations}:{}),
+        ...(acceptedObservations.length?{externalObservations:acceptedObservations}:{}),
         ...(revisions.length?{receiptRevisions:revisions}:{}),
       };
       restoredIndex.set(executionId,accepted);
@@ -770,7 +794,7 @@ export class CognitiveEventFabric {
     }
     const reasonValue=data.reason===undefined?'':data.reason;
     if(typeof reasonValue!=='string'||reasonValue.length>512)return invalid('revision-reason-invalid');
-    const reason=reasonValue.replace(/[\\r\\n\\t]+/g,' ').trim();
+    const reason=reasonValue.replace(/[\r\n\t]+/g,' ').trim();
     if(!hasCanonicalBoundedText(reason,160,true))return invalid('revision-reason-invalid');
 
     const atValue=data.at;
@@ -810,7 +834,11 @@ export class CognitiveEventFabric {
     }
 
     const latestRevision=refs.at(-1);
-    if(latestRevision&&revisionNumber<=latestRevision.revisionNumber!)return invalid('revision-number-not-increasing');
+    const latestRevisionNode=latestRevision?this.events.find(event=>event.id===latestRevision.eventId):undefined;
+    const latestRevisionNumber=latestRevision?.revisionNumber??latestRevisionNode?.payload.revisionNumber;
+    if(typeof latestRevisionNumber==='number'&&Number.isSafeInteger(latestRevisionNumber)&&revisionNumber<=latestRevisionNumber) {
+      return invalid('revision-number-not-increasing');
+    }
     const parents=[entry.outcomeEventId,...(latestRevision?[latestRevision.eventId]:[])].slice(0,12);
     return this.withAtomicLedgerMutation(()=>{
       const event=this.append({
@@ -870,7 +898,7 @@ export class CognitiveEventFabric {
     const observed=observedRaw.normalize('NFKC').trim().toLowerCase();
     const reasonValue=data.reason===undefined?'':data.reason;
     if(typeof reasonValue!=='string'||reasonValue.length>512)return invalid('observation-reason-invalid');
-    const reason=reasonValue.replace(/[\\r\\n\\t]+/g,' ').trim();
+    const reason=reasonValue.replace(/[\r\n\t]+/g,' ').trim();
     if(!hasCanonicalBoundedText(reason,160,true))return invalid('observation-reason-invalid');
     const atValue=data.at;
     const at=atValue===undefined?Date.now():atValue;
