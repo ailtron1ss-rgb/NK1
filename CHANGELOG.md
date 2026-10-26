@@ -1,3 +1,13 @@
+## WorkPass409 — preserve mutation receipts when the dashboard refresh fails (2026-10-26)
+
+- **UI code commit:** `895b4c338a0a40e3441af5ee51a5c8a63bcc46f2`; **wiring-audit commit:** `cee8f2841d34bddda5b1780844c5908133bececa`.
+- The shared Hexis panel runner no longer treats a failed post-action state/memory refresh as if the original action itself failed. The action's result is returned to its caller while refresh failure is reported separately.
+- This prevents a valid HMX import receipt from being discarded before the specialized accept handler can show `APPLIED`, `PARTIAL`, `SKIPPED` or `UNCERTAIN`.
+- `audit-ui-function-wiring.mjs` now asserts the mutation result is preserved across a separate refresh-error branch.
+- **Validation:** PENDING frontend build and UI wiring audit; HMX adaptation/server smoke, runtime typecheck and Unified integration remain unverified on an exact usable CI head. No PASS/readiness uplift claimed. `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass408 — quarantine accepted HMX imports interrupted before receipt persistence (2026-10-26)
 
 - **Code commit:** `f12ad52ed62a852df476c88150a16abab8e56288`; **regression commit:** `7456ba64763ec253cb86ec33619a23c0e3210a15`.
