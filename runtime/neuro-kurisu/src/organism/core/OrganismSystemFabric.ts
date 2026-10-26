@@ -191,6 +191,7 @@ export class OrganismSystemFabric {
     const projectState=this.agency.selfProjects.snapshot();
     const hexisState=this.hexisAdaptation.snapshot();
     const graphState=this.memory.semanticMemory.snapshot();
+    const deliberationState=this.agency.deliberation.snapshot();
     try {
       const activeProject=this.agency.selfProjects.activateApprovedHexisGoal(proposal.canonicalGoalId,proposal.id);
       if(!activeProject) throw new Error('hexis-goal-project-activation-failed');
@@ -258,6 +259,7 @@ export class OrganismSystemFabric {
       return {proposal:activated,project:activeProject,receipt:activated.goalRelationshipReceipt!};
     } catch(error) {
       this.memory.semanticMemory.restore(graphState);
+      this.agency.deliberation.restore(deliberationState);
       this.agency.selfProjects.restore(projectState);
       this.hexisAdaptation.restore(hexisState);
       throw error;
