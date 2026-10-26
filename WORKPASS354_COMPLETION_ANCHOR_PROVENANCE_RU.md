@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** `workpass354-completion-anchor-provenance`  
 **База:** `workpass353-completion-replay-preflight`  
-**Статус:** код и регрессии добавлены; требуется exact-head CI.
+**Статус:** exact-head CI прошёл на кодовом/тестовом HEAD `e3c1ee6797dfd846353fc09e63c636193ddb340c`; после записи этого evidence запускается повторная проверка актуального HEAD.
 
 ## Проблема
 
@@ -28,12 +28,17 @@ Kernel принимал перечисленные в `anchors` ID исходн�
 
 ## Изменённые файлы
 
-- `runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts` — commit `959932c`.
-- `runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs` — commit `96aa5be`.
-- `CHANGELOG.md` — commit `acb76bb`.
+- `runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts` — commits `959932c`, `41d6d5d`, `56056db`.
+- `runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs` — commits `96aa5be`, `3689910`, `e3c1ee6`.
+- `CHANGELOG.md` — commits `acb76bb`, `e77f54a`.
+- Checkpoint — commit `967f37d`.
 
 ## Проверка и границы
 
-Существующий WorkPass331 workflow содержит изменённые runtime/test файлы, полный runtime typecheck, canonical kernel regression, live wiring, smoke, autonomy и restart tests. Этот проход не считается validated до наблюдения завершённого успешного workflow на его актуальном HEAD. Runtime-проверки локально не заявляются.
+**PASS на кодовом/тестовом HEAD `e3c1ee6797dfd846353fc09e63c636193ddb340c`:**
+- [WorkPass331 unified cognitive kernel #40279861063](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279861063) — все шаги завершились успешно: runtime typecheck, canonical causal loop, goal lifecycle, live runtime wiring, smoke, autonomous action, dialogue/restore continuity, background initiative и restart.
+- [WorkPass110 continual-learning metrics #40279861088](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279861088) — success.
+
+Это валидирует указанный snapshot автоматическими тестами. Runtime-проверки локально не заявляются; field/Android/Live2D/voice E2E и измеренный прирост обучения из этих тестов не следуют.
 
 `main` не изменён. PR WorkPass353 не слит; Release ZIP не пересобирался и не публиковался.
