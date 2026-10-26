@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** workpass367-receipt-reference-lineage  
 **База:** WorkPass366 head `3fdb5eba48664f9004d29c3858355862aea8f4ae`  
-**Статус:** код и регрессии опубликованы; exact-head CI ожидает проверки.
+**Статус:** initial CI нашёл mismatch схемы `tool` / `toolId` в новой проверке external evidence; исправлено в 6fee44aec4d2cbfef785105c567b685c38b481b5. Требуется fresh exact-head CI.
 
 ## Найденная проблема
 
