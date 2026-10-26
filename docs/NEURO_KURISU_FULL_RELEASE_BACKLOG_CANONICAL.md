@@ -2,9 +2,9 @@
 
 - [x] Add a focused Node 24 workflow for runtime typecheck, organism smoke, legacy restart-persistence, canonical persistence/restore continuity, persistent continuity organism integration, and verified autonomous-life restart.
 - [x] Keep these suites separate from the focused signed-dataset/MemoryOS regression so runtime failure locations remain actionable.
-- [ ] Require workflow [#40291631075](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291631075) to finish and record each step's exact conclusion on head ee360dba4503011157fc2780f0f5b0fd7accb33c.
+- [x] Workflow [#40291631075](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291631075) passed on head ee360dba4503011157fc2780f0f5b0fd7accb33c: runtime typecheck, organism smoke, restart persistence, canonical persistence/restore, persistent continuity integration, and verified autonomous-life restart all succeeded.
 - [ ] Any failure on an old persistence/continuity test must be triaged against the current Core/MemoryOS changes and fixed or clearly isolated before release claims.
-- **Status:** CI workflow committed and running. Production runtime readiness remains unproven until this run and other startup/UI/device/release gates close.
+- **Status:** CI workflow and all included tests passed on head ee360dba4503011157fc2780f0f5b0fd7accb33c. Production runtime readiness remains unproven until clean-machine deployment and remaining UI/device/independent-learning/release gates close.
 
 ---
 
