@@ -31,6 +31,8 @@ export interface VerifiedHoldoutEvidenceInput {
   learned01:number;
   verified:boolean;
   independent:boolean;
+  /** Canonical Ed25519 signature from the host-configured independent evaluator. */
+  signature:string;
 }
 
 export interface StoredVerifiedHoldoutEvidence extends VerifiedHoldoutEvidenceInput {
@@ -107,8 +109,10 @@ export class P26TrueLearningEngine{
         protocolId=safeEvidenceText(value.protocolId,180),verifierId=safeEvidenceText(value.verifierId,180),
         sampleSetHash=safeEvidenceText(value.sampleSetHash,300);
       if(!evidenceId||!taskId||!protocolId||!verifierId||!sampleSetHash)continue;
+      const signature=safeEvidenceText(value.signature,1024);
+      if(!signature)continue;
       const row:StoredVerifiedHoldoutEvidence={evidenceId,taskId,protocolId,verifierId,sampleSetHash,
-        baseline01:value.baseline01,learned01:value.learned01,verified:true,independent:true,recordedAt:value.recordedAt};
+        baseline01:value.baseline01,learned01:value.learned01,verified:true,independent:true,signature,recordedAt:value.recordedAt};
       // Persisted flags are claims. Revalidate each saved record against the
       // host-owned verifier before it can affect the generalization maturity score.
       if(!this.isTrustedHoldoutEvidence(row))continue;
@@ -353,8 +357,13 @@ export class P26TrueLearningEngine{
       this.refreshDerivedMetrics();
       return {accepted:false,reason:'trusted-holdout-verifier-not-configured',generalizationEvidence01:this.state.metrics.generalizationEvidence01,independentHoldoutSamples:this.state.metrics.independentHoldoutSamples};
     }
+    const signature=safeEvidenceText(input.signature,1024);
+    if(!signature){
+      this.refreshDerivedMetrics();
+      return {accepted:false,reason:'holdout-evidence-signature-required',generalizationEvidence01:this.state.metrics.generalizationEvidence01,independentHoldoutSamples:this.state.metrics.independentHoldoutSamples};
+    }
     const row:StoredVerifiedHoldoutEvidence={evidenceId,taskId,protocolId,verifierId,sampleSetHash,
-      baseline01:input.baseline01,learned01:input.learned01,verified:true,independent:true,recordedAt:Date.now()};
+      baseline01:input.baseline01,learned01:input.learned01,verified:true,independent:true,signature,recordedAt:Date.now()};
     if(!this.isTrustedHoldoutEvidence(row)){
       this.refreshDerivedMetrics();
       return {accepted:false,reason:'holdout-evidence-not-authenticated',generalizationEvidence01:this.state.metrics.generalizationEvidence01,independentHoldoutSamples:this.state.metrics.independentHoldoutSamples};
