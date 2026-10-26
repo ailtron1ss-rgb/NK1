@@ -52,6 +52,25 @@ const experience = (energy, novelty, action, reward, worldContextVersion=1) => (
 
 {
   const engine = new P26TrueLearningEngine();
+  const result = engine.trainInterleaved(
+    [
+      experience(0.3, 0.1, 'rest', 0.1),
+      experience(0.3, 0.9, 'rest', 0.1),
+    ],
+    [
+      experience(0.3, 0.1, 'rest', 0.9),
+      experience(0.3, 0.1, 'rest', 0.9),
+    ],
+    { replayEveryNCurrent: 1, maxReplayUpdates: 1, conflictCandidateCap: 8, targetMode: 'reward' },
+  );
+  assert.equal(result.blockedReplayRows, 1);
+  assert.equal(result.eligibleReplayRows, 1);
+  assert.equal(result.replayUpdates, 1,
+    'a rejected conflict must not consume the one-successful-update replay budget');
+}
+
+{
+  const engine = new P26TrueLearningEngine();
   const noReplay = engine.trainInterleaved(
     [experience(0.4, 0.2, 'respond', 0.7)],
     [experience(0.4, 0.2, 'respond', 0.7)],
