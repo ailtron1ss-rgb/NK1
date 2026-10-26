@@ -46,4 +46,44 @@ assert.equal(validReplay.ok, true);
 assert.equal(validReplay.idempotentReplay, true);
 assert.equal(executions, 1, 'a valid receipt still replays without repeating the executor');
 
-console.log('NK1_RESTORED_ACTION_RECEIPT_INTEGRITY=PASS corruptCases=4 validReplay=true duplicateExecution=false');
+// A legitimate oversized result is compacted at first commit. Its omission marker
+// must survive restore so replay never claims that the full response is available.
+const boundedPayloadKey = 'workpass95:receipt-integrity:bounded-payload:v1';
+const boundedPayloadOptions = {
+  idempotencyKey: boundedPayloadKey,
+  decisionId: 'decision:workpass95:receipt-integrity:bounded-payload',
+};
+let boundedPayloadExecutions = 0;
+const makeBoundedPayloadGateway = () => {
+  const gateway = new ActionGateway();
+  gateway.setExecutionLedgerPersister(async () => {});
+  gateway.registerTool({
+    id: 'organism.inspect', capability: 'core.read', destructive: false,
+    execute: async () => {
+      boundedPayloadExecutions += 1;
+      return { ok: true, payload: 'x'.repeat(50 * 1024) };
+    },
+  });
+  return gateway;
+};
+const boundedPayloadOriginal = makeBoundedPayloadGateway();
+const boundedPayloadFirst = await boundedPayloadOriginal.executeTool(
+  'organism.inspect', {}, 'bounded-payload-fixture', boundedPayloadOptions,
+);
+assert.equal(boundedPayloadFirst.ok, true);
+assert.equal(boundedPayloadFirst.idempotencyStatus, 'payload-omitted');
+assert.equal(boundedPayloadFirst.result.error, 'idempotency-replay-payload-omitted');
+const boundedPayloadSnapshot = boundedPayloadOriginal.snapshotExecutionLedger();
+assert.equal(boundedPayloadSnapshot.records[0].responseOmitted, true);
+const boundedPayloadRestored = makeBoundedPayloadGateway();
+boundedPayloadRestored.restoreExecutionLedger(boundedPayloadSnapshot);
+const boundedPayloadReplay = await boundedPayloadRestored.executeTool(
+  'organism.inspect', {}, 'bounded-payload-restored-replay', boundedPayloadOptions,
+);
+assert.equal(boundedPayloadReplay.ok, true);
+assert.equal(boundedPayloadReplay.idempotentReplay, true);
+assert.equal(boundedPayloadReplay.idempotencyStatus, 'payload-omitted');
+assert.equal(boundedPayloadReplay.result.error, 'idempotency-replay-payload-omitted');
+assert.equal(boundedPayloadExecutions, 1, 'restored compact receipt must not repeat the original executor');
+
+console.log('NK1_RESTORED_ACTION_RECEIPT_INTEGRITY=PASS corruptCases=4 validReplay=true boundedPayloadReplay=true duplicateExecution=false');

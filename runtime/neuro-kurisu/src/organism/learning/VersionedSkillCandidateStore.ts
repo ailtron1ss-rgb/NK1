@@ -194,13 +194,22 @@ function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): Acti
  * This store is deliberately separate from the live runtime skill resolver.
  */
 export class VersionedSkillCandidateStore {
+  private readonly persistence: SkillStorePersistence;
+  private readonly verifyApproval: SkillPromotionApprovalVerifier;
+  private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier;
+  private readonly verifyRollbackApproval: SkillRollbackApprovalVerifier;
+
   constructor(
-    private readonly persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
-    private readonly verifyApproval: SkillPromotionApprovalVerifier = () => false,
-    private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
-    private readonly verifyRollbackApproval: SkillRollbackApprovalVerifier = () => false,
+    persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
+    verifyApproval: SkillPromotionApprovalVerifier = () => false,
+    verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
+    verifyRollbackApproval: SkillRollbackApprovalVerifier = () => false,
   ) {
-    const initial = persistence.read();
+    this.persistence = persistence;
+    this.verifyApproval = verifyApproval;
+    this.verifyShadowEvidence = verifyShadowEvidence;
+    this.verifyRollbackApproval = verifyRollbackApproval;
+    const initial = this.persistence.read();
     if (initial.schemaVersion !== 1 || !Number.isSafeInteger(initial.revision) ||
         initial.revision < 0 || !Array.isArray(initial.active) || !Array.isArray(initial.candidates)) {
       throw new Error('invalid versioned skill store snapshot');
@@ -336,10 +345,11 @@ export class VersionedSkillCandidateStore {
       previousActive?.version ?? 0,
       ...current.candidates.filter(item => item.skillId === skillId).map(item => item.version),
     ) + 1;
-    const candidateId = createHash('sha256').update(JSON.stringify([
-      skillId, nextVersion, proposal.proposalId, payloadFingerprint,
-      revisionProvenance ? fingerprint(revisionProvenance) : null,
-    ])).digest('hex');
+    // Keep historical four-field IDs stable when no revision provenance exists.
+    // Bind a fifth field only for evidence-directed revisions that actually carry provenance.
+    const candidateIdentity: unknown[] = [skillId, nextVersion, proposal.proposalId, payloadFingerprint];
+    if (revisionProvenance) candidateIdentity.push(fingerprint(revisionProvenance));
+    const candidateId = createHash('sha256').update(JSON.stringify(candidateIdentity)).digest('hex');
     const candidate: VersionedSkillCandidate = {
       candidateId, skillId, version: nextVersion, payload: clone(payload), payloadFingerprint,
       proposalId: proposal.proposalId, proposalOutcomeFingerprint: proposal.outcomeFingerprint,

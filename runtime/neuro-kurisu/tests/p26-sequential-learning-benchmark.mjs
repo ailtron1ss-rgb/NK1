@@ -62,7 +62,9 @@ const makeContextAwareRun=()=>{
   let replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,conflictCandidateCap=64;
   for(let epoch=0;epoch<8;epoch++){
     const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
-    const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:1,maxReplayUpdates:2520,targetMode:'reward',currentLearningRate01:.18,replayLearningRate01:.18});
+    const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:1,maxReplayUpdates:2520,maxReplayRatio01:1,targetMode:'reward',currentLearningRate01:.18,replayLearningRate01:.18});
+    assert.ok(result.maxReplayAttempts<=fresh.length,'context-aware replay attempt budget must not exceed its explicit 1.0 ratio');
+    assert.ok(result.replayUpdates+result.blockedReplayRows<=result.maxReplayAttempts,'context-aware replay updates and blocked rows must fit the declared budget');
     replayUpdates+=result.replayUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;conflictComparisons+=result.conflictComparisons;conflictCandidateCap=result.conflictCandidateCap;
   }
   return {taskABefore,taskAFinal:evalContextTask(engine,0),taskBFinal:evalContextTask(engine,1),replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap};
@@ -80,6 +82,8 @@ const makeRun=(strategy)=>{
     for(let epoch=0;epoch<8;epoch++){
       const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
       const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:16,maxReplayUpdates:160,targetMode:'reward',currentLearningRate01:.18});
+      assert.ok(result.maxReplayAttempts<=Math.floor(fresh.length*.5),'default interleaved replay budget must remain at or below half of the fresh batch');
+      assert.ok(result.replayUpdates+result.blockedReplayRows<=result.maxReplayAttempts,'interleaved replay updates and blocked rows must fit the declared budget');
       replayUpdates+=result.replayUpdates;onlineUpdates+=result.onlineUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;conflictComparisons+=result.conflictComparisons;conflictCandidateCap=result.conflictCandidateCap;
     }
   }else{
@@ -95,6 +99,8 @@ const makeRun=(strategy)=>{
   const taskBFinal=evalTask(engine,1);
   return {strategy,taskABefore,taskAAfterInterference,taskAAfterReplay,taskBFinal,onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap,trainingExposure01:engine.metrics().trainingExposure01,generalizationEvidence01:engine.metrics().generalizationEvidence01};
 };
+assert.throws(() => new P26TrueLearningEngine().trainInterleaved([],[],{maxReplayRatio01:1.01}), /max-replay-ratio-out-of-range/,
+  'interleaved replay must reject non-finite or out-of-range replay ratios rather than silently expanding the budget');
 const onlineOnly=makeRun('online-only');
 const replay=makeRun('posthoc-replay');
 const interleaved=makeRun('interleaved');

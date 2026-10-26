@@ -1,0 +1,184 @@
+name: Repository wiring contract audit
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - audit/repository-wiring-contracts-2026-10-25
+    paths:
+      - ".github/workflows/repository-wiring-audit.yml"
+      - ".github/workflows/**"
+      - "package.json"
+      - "app/package.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts"
+      - "runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs"
+      - "runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs"
+      - "runtime/neuro-kurisu/scripts/audit-executable-syntax.mjs"
+      - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
+      - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
+      - "runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-feedback-attribution-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-routing-policy-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-routing-policy.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveRoutingPolicy.ts"
+      - "tools/verify-repository-wiring.mjs"
+      - "tools/verify-repository-wiring.test.mjs"
+      - "tools/verify-integration.mjs"
+      - "research/requirements-integration.txt"
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-graph-workpass320.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-interrupt-episode-workpass324.mjs"
+  pull_request:
+    branches:
+      - workpass70-source
+      - audit/repository-wiring-contracts-2026-10-25
+    paths:
+      - ".github/workflows/**"
+      - "package.json"
+      - "app/package.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts"
+      - "runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs"
+      - "runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs"
+      - "runtime/neuro-kurisu/scripts/audit-executable-syntax.mjs"
+      - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
+      - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
+      - "runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-feedback-attribution-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-routing-policy-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-routing-policy.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveRoutingPolicy.ts"
+      - "tools/verify-repository-wiring.mjs"
+      - "tools/verify-repository-wiring.test.mjs"
+      - "tools/verify-integration.mjs"
+      - "research/requirements-integration.txt"
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-graph-workpass320.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-dependency-interrupt-episode-workpass324.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v7
+
+      - name: Select project Node.js runtime
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Verify project runtime pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          printf 'expected=%s actual=%s\n' "$expected" "$actual"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) exit 1 ;; esac ;;
+          esac
+
+      - name: Test repository wiring audit fixtures
+        run: npm run test:repo-wiring
+
+      - name: Audit workflow and executable linkages
+        run: npm run audit:repo-wiring
+
+      - name: Test cognitive dependency graph restore and frame integrity
+        run: npm --prefix runtime/neuro-kurisu run test:p320:cognitive-dependency-restore
+
+      - name: Test cognitive interrupt episode linkage
+        run: npm --prefix runtime/neuro-kurisu run test:p324:interrupt-episodes
+
+      - name: Test B272 endogenous goal and outcome attribution
+        run: npm --prefix runtime/neuro-kurisu run test:workpass292:motivation-to-goal
+
+      - name: Verify B272 credit attribution in both feedback paths
+        run: npm --prefix runtime/neuro-kurisu run test:cognitive-feedback-attribution-wiring
+
+      - name: Test restored action receipt integrity (WorkPass95)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass95:receipt-integrity
+
+      - name: Test versioned skill lifecycle and durable provenance restore (P23)
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs
+
+      - name: Test independent candidate execution/verification metric separation (WorkPass203)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass203:independent-candidate-evaluator
+
+      - name: Test host-owned independent evaluation process and root integrity (WorkPass243)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass243:host-owned-independent-evaluation-services
+
+
+      - name: Test live runtime graph persistence and restart continuity
+        run: npm --prefix runtime/neuro-kurisu run test:cognitive-dependency-runtime-wiring
+
+      - name: Test interrupt-aware cognitive routing budget
+        run: npm --prefix runtime/neuro-kurisu run test:cognitive-routing-policy
+
+      - name: Verify routing policy remains connected to the live runtime
+        run: npm --prefix runtime/neuro-kurisu run test:cognitive-routing-policy-runtime-wiring
+
+      - name: Install locked app dependencies without install scripts
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+
+      - name: Run broad architecture, integrity, syntax, asset and wiring audit
+        run: npm run audit:quick
+
+      - name: Typecheck app and runtime
+        run: npm run typecheck
+
+      - name: Run app test suite
+        run: npm run test:ui
+
+      - name: Install isolated CPU-only research probe dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          research_venv="$RUNNER_TEMP/nk1-research-ci-venv"
+          python3 -m venv "$research_venv"
+          "$research_venv/bin/python" -m pip install --disable-pip-version-check --no-cache-dir --index-url https://download.pytorch.org/whl/cpu -r research/requirements-integration.txt
+          echo "RESEARCH_PYTHON=$research_venv/bin/python" >> "$GITHUB_ENV"
+
+      - name: Run cross-layer integration verifier
+        run: npm run test:integration
+
+      - name: Run runtime smoke test
+        run: npm run test:runtime:smoke
+
+      - name: Run recovered unified cognitive cycle regression set
+        run: npm --prefix runtime/neuro-kurisu run test:rebuild-recovered
+
+      - name: Run full-project audit
+        run: npm --prefix runtime/neuro-kurisu run audit:full
+
+      - name: Run aggregate runtime audit
+        run: npm --prefix runtime/neuro-kurisu run audit:all

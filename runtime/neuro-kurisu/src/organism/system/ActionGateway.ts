@@ -484,9 +484,17 @@ export class ActionGateway {
         ...(typeof row.executionId==='string'&&/^exec-[a-z0-9-]{8,80}$/i.test(row.executionId)?{executionId:row.executionId}:{}),
         ...(typeof row.toolId==='string'&&row.toolId.length<=64?{toolId:row.toolId}:{}),
         ...(typeof row.decisionId==='string'&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
-        ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{})};
+        ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{}),
+        ...(row.responseOmitted===true?{responseOmitted:true}:{})};
       if(row.status==='completed' && row.response && typeof row.response==='object') {
-        try { safe.response=structuredClone(row.response); } catch { safe.responseOmitted=true; }
+        // A snapshot is untrusted input. Preserve a completed receipt only when its
+        // duplicated identity/outcome fields agree and its serialized payload stays
+        // within the same bound used when receipts are first committed.
+        try {
+          const response=structuredClone(row.response);
+          if (isRestorableCompletedReceipt(safe, response)) safe.response=response;
+          else safe.responseOmitted=true;
+        } catch { safe.responseOmitted=true; }
       } else if(row.status==='completed') safe.responseOmitted=true;
       const prior=restored.get(safe.keyHash);
       if(prior && (prior.requestHash!==safe.requestHash || stableJson(prior)!==stableJson(safe))) throw new Error('action-ledger-snapshot-key-conflict');
@@ -655,7 +663,7 @@ export class ActionGateway {
       const verification=await this.verifier.verify({
          toolId:id,input,result,
          executionId:prior.executionId,
-         ...(typeof prior.decisionId==='string'?{decisionId:prior.decisionId}:{}),
+         ...typeof prior.decisionId==='string'?{decisionId:prior.decisionId}:{},
        },tool.verify);
       const classified=classifyVerifiedExecution(toolOk,verification);
       const auditReason=classified.contradicted?'external-postcondition-contradicted':reason;
@@ -965,7 +973,7 @@ export class ActionGateway {
       const verification=await this.verifier.verify({
          toolId:id,input,result,
          executionId,
-         ...(typeof context.decisionId==='string'?{decisionId:context.decisionId}:{}),
+         ...typeof context.decisionId==='string'?{decisionId:context.decisionId}:{},
        },tool.verify);
       const classified=classifyVerifiedExecution(toolOk,verification);
       const auditReason=classified.contradicted?'external-postcondition-contradicted':reason;
@@ -1030,4 +1038,56 @@ export class ActionGateway {
   }
   private push(rec:ActionAuditRecord){this.history=[rec,...this.history].slice(0,512)}
 }
+function isRestorableCompletedReceipt(entry:ActionExecutionLedgerEntry, value:unknown):value is ToolExecution {
+  if (!value || typeof value!=='object' || Array.isArray(value) ||
+      typeof entry.executionId!=='string' || !/^exec-[a-z0-9-]{8,80}$/i.test(entry.executionId) ||
+      typeof entry.toolId!=='string' || !/^[a-z0-9._-]{2,64}$/i.test(entry.toolId)) return false;
+  const response=value as Record<string,unknown>;
+  const isRecord=(item:unknown):item is Record<string,unknown> =>
+    Boolean(item) && typeof item==='object' && !Array.isArray(item);
+  if (typeof response.ok!=='boolean' || typeof response.verified!=='boolean' ||
+      response.executionId!==entry.executionId || response.tool!==entry.toolId ||
+      typeof response.capability!=='string' || !isRecord(response.result) ||
+      !isRecord(response.audit) || !isRecord(response.verification) ||
+      typeof response.outcomeClass!=='string') return false;
+
+  const validOutcomes:ReadonlySet<string>=new Set([
+    'unavailable','competence-insufficient','gate-check-failed','policy-refused','execution-failed',
+    'executed-unverified','executed-verified','executed-contradicted','idempotency-conflict',
+    'idempotency-recovery-required','idempotency-storage-failed','idempotency-ledger-full',
+    'failed-no-effect','executed-partial','reconciled-not-executed','idempotency-key-required',
+    'approval-required','approval-invalid','approval-storage-failed',
+  ]);
+  if (!validOutcomes.has(response.outcomeClass)) return false;
+
+  const audit=response.audit;
+  if (audit.executionId!==entry.executionId || audit.tool!==entry.toolId ||
+      audit.action!=='tool' || audit.accepted!==response.ok ||
+      audit.verified!==response.verified || audit.outcomeClass!==response.outcomeClass ||
+      typeof audit.at!=='number' || !Number.isFinite(audit.at) || typeof audit.reason!=='string' ||
+      (audit.mode!=='dry-run' && audit.mode!=='live')) return false;
+
+  const verification=response.verification;
+  if (typeof verification.verified!=='boolean' ||
+      !['none','tool-contract','external-postcondition'].includes(String(verification.basis)) ||
+      typeof verification.externalObservation!=='boolean' ||
+      typeof verification.confidence01!=='number' || !Number.isFinite(verification.confidence01) ||
+      verification.confidence01<0 || verification.confidence01>1 ||
+      typeof verification.notes!=='string') return false;
+  // A positive top-level verification cannot be restored if its underlying proof
+  // disagrees. Negative execution outcomes may legitimately carry a positive verifier
+  // assessment, so only enforce the positive-direction implication here.
+  if (response.verified===true &&
+      (response.ok!==true || verification.verified!==true || response.outcomeClass!=='executed-verified')) return false;
+  if (response.outcomeClass==='executed-verified' &&
+      (response.ok!==true || response.verified!==true)) return false;
+
+  try {
+    const encoder=new TextEncoder();
+    if (encoder.encode(stableJson(response.result)).length>48*1024) return false;
+    if (encoder.encode(stableJson(response)).length>48*1024) return false;
+  } catch { return false; }
+  return true;
+}
+
 function clamp01(n:unknown):number { const value=Number(n); return Number.isFinite(value)?Math.max(0,Math.min(1,value)):0; }

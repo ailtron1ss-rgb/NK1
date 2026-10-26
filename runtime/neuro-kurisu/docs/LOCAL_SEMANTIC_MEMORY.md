@@ -21,4 +21,11 @@ Endpoints are loopback-only by default, redirects are rejected, input size/batch
 
 ## Live cognitive retrieval (WorkPass34)
 
-The Memory Inspector remains opt-in per query. To also let semantic results influence the ordinary cognitive cycle, set `NK_EMBEDDINGS_RUNTIME_ENABLED=1` after configuring a working local embedding endpoint. The runtime first runs canonical BM25/fuzzy retrieval, then attempts semantic reranking with at most 12 document embeddings and a 24-item lexical pool. The default foreground budget is `NK_EMBEDDINGS_RUNTIME_BUDGET_MS=220` milliseconds (accepted range 50–1000 ms); if inference is slower, the current turn immediately keeps the lexical result while one bounded background indexing request may finish warming the derived index. A second concurrent semantic job is not started until the first settles. `NK_EMBEDDINGS_TIMEOUT_MS` bounds the total provider batch time. Semantic model failures never block the turn or replace canonical memory with a derived index.
+The Memory Inspector remains opt-in per query. To also let semantic results influence the ordinary cognitive cycle, set
+`NK_EMBEDDINGS_RUNTIME_ENABLED=1` after configuring a working local embedding endpoint. The runtime first runs canonical
+BM25/fuzzy retrieval, then attempts semantic reranking with at most 12 document embeddings and a 24-item lexical pool.
+The default foreground budget is `NK_EMBEDDINGS_RUNTIME_BUDGET_MS=220` milliseconds (accepted range 50–1000 ms); if
+inference is slower, the current turn immediately keeps the lexical result while one bounded background indexing request
+may finish warming the derived index. A second concurrent semantic job is not started until the first settles.
+`NK_EMBEDDINGS_TIMEOUT_MS` bounds the total provider batch time. Semantic model failures never block the turn or replace
+canonical memory with a derived index.

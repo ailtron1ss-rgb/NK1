@@ -73,4 +73,31 @@ copy.domainTransitions.world = 999;
 assert.deepEqual(graph.snapshot().interrupt.domains, ['world'], 'diagnostics must not leak mutable interrupt arrays');
 assert.notEqual(graph.snapshot().domainTransitions.world, 999, 'diagnostics must not leak mutable counters');
 
+const beforeReplay = graph.snapshot();
+assert.throws(() => graph.resolve({
+  tick: 2,
+  reason: 'replayed frame',
+  dirtyDomains: { self: false, world: false, memory: false, agency: false, embodiment: false, research: false, governance: false },
+  interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
+}), /cognitive dependency tick must strictly increase/);
+assert.deepEqual(graph.snapshot(), beforeReplay, 'replayed ticks must be rejected before mutating dependency state');
+
+const inheritedDirtyDomains = Object.assign(Object.create({ world: true }), {
+  self: false, memory: false, agency: false, embodiment: false, research: false, governance: false,
+});
+const explicitDomainsOnly = graph.resolve({
+  tick: 3,
+  reason: 'inherited domain flag',
+  dirtyDomains: inheritedDirtyDomains,
+  interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
+});
+assert.equal(explicitDomainsOnly.wakeMask, 0, 'inherited dirty-domain flags must not wake a cognitive domain');
+
+const beforeMalformedFrame = graph.snapshot();
+assert.throws(() => graph.resolve({
+  tick: 4, reason: 'malformed domains', dirtyDomains: null,
+  interrupt: { active: false, priority01: 0, type: 'none', domains: [] },
+}), /cognitive dependency dirtyDomains must be an object/);
+assert.deepEqual(graph.snapshot(), beforeMalformedFrame, 'malformed routing frames must not partially mutate dependency state');
+
 console.log('WorkPass320 cognitive dependency restore hardening: PASS');

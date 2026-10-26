@@ -43,7 +43,7 @@ export interface B272GoalCandidate {
 export interface B272State {
   version:1;
   tick:number;
-  /** Last tick whose outcome has already been credited; -1 means none. */
+  /** Last tick whose generated goal received a terminal decision (credited or explicitly unselected); -1 means none. */
   lastOutcomeTick:number;
   steps:number;
   learningUpdates:number;
@@ -66,6 +66,8 @@ export interface B272State {
   worldProjectionWeights:number[][];
   goalHistory:Array<{tick:number;id:string;vector:number[];action:ActionKind;reward01:number;predictionError01:number;accepted:boolean}>;
   outcomeHistory:Array<{tick:number;goalId:string;action:ActionKind;reward01:number;predictionError01:number}>;
+  /** Terminal decisions where the generated action lost canonical arbitration; these are not reward-bearing action outcomes. */
+  unselectedActionHistory:Array<{tick:number;goalId:string;generatedAction:ActionKind;selectedAction:ActionKind}>;
   goalOutcomeMemory:Record<string,{vector:number[];meanReward01:number;meanPredictionError01:number;updates:number;lastTick:number}>;
 }
 
@@ -75,7 +77,7 @@ export function defaultB272State():B272State{
   const selfProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.sin((i+2)*(j+1)*.19)*.06)));
   const worldProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.cos((i+3)*(j+2)*.17)*.06)));
   const g=defaultGoal(3);
-  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
+  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],unselectedActionHistory:[],goalOutcomeMemory:{}};
 }
 
 export interface B272StepInput {
@@ -145,13 +147,27 @@ export class B272EndogenousGoalGenesis {
       outcomeHistory.push({tick:item.tick,goalId:item.goalId,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01});
     }
     outcomeHistory.sort((a,b)=>a.tick-b.tick);
-    // A single cognitive tick can yield at most one credited outcome. If a
-    // persisted ledger contains ambiguous duplicate ticks, quarantine every row
-    // at those ticks while still remembering the latest observed tick to block replay.
-    const outcomeTickCounts=new Map<number,number>();
-    for(const item of outcomeHistory)outcomeTickCounts.set(item.tick,(outcomeTickCounts.get(item.tick)??0)+1);
-    const observedLastOutcomeTick=outcomeHistory.reduce((latest,item)=>Math.max(latest,item.tick),-1);
-    const uniqueOutcomeHistory=outcomeHistory.filter(item=>outcomeTickCounts.get(item.tick)===1);
+
+    const unselectedActionHistory:B272State['unselectedActionHistory']=[];
+    const rawUnselectedHistory=Array.isArray(r.unselectedActionHistory)?r.unselectedActionHistory.slice(-512):[];
+    for(const item of rawUnselectedHistory){
+      if(!isRecord(item))continue;
+      if(!Number.isSafeInteger(item.tick)||typeof item.tick!=='number'||item.tick<0||item.tick>tick)continue;
+      if(!isSafeId(item.goalId)||!/^g-[0-9a-f]{8}$/u.test(item.goalId))continue;
+      if(!isAction(item.generatedAction)||!isAction(item.selectedAction)||item.generatedAction===item.selectedAction)continue;
+      unselectedActionHistory.push({tick:item.tick,goalId:item.goalId,generatedAction:item.generatedAction,selectedAction:item.selectedAction});
+    }
+    unselectedActionHistory.sort((a,b)=>a.tick-b.tick);
+
+    // One generated goal gets one terminal decision per tick. If the persisted
+    // ledgers disagree or duplicate a tick, quarantine every row for that tick.
+    const terminalTickCounts=new Map<number,number>();
+    for(const item of outcomeHistory)terminalTickCounts.set(item.tick,(terminalTickCounts.get(item.tick)??0)+1);
+    for(const item of unselectedActionHistory)terminalTickCounts.set(item.tick,(terminalTickCounts.get(item.tick)??0)+1);
+    const observedLastOutcomeTick=[...outcomeHistory.map(item=>item.tick),...unselectedActionHistory.map(item=>item.tick)]
+      .reduce((latest,item)=>Math.max(latest,item),-1);
+    const uniqueOutcomeHistory=outcomeHistory.filter(item=>terminalTickCounts.get(item.tick)===1);
+    const uniqueUnselectedActionHistory=unselectedActionHistory.filter(item=>terminalTickCounts.get(item.tick)===1);
     const persistedLastOutcomeTick=safeCounter(r.lastOutcomeTick,-1);
     const lastOutcomeTick=Math.max(observedLastOutcomeTick,persistedLastOutcomeTick>=0&&persistedLastOutcomeTick<=tick?persistedLastOutcomeTick:-1);
 
@@ -185,6 +201,7 @@ export class B272EndogenousGoalGenesis {
       worldProjectionWeights:restoreMatrix(r.worldProjectionWeights,d.worldProjectionWeights),
       goalHistory:goalHistory.slice(-128),
       outcomeHistory:uniqueOutcomeHistory.slice(-256),
+      unselectedActionHistory:uniqueUnselectedActionHistory.slice(-256),
       goalOutcomeMemory:Object.fromEntries(Object.entries(goalOutcomeMemory).slice(-256)),
     };
   }
@@ -262,7 +279,10 @@ export class B272EndogenousGoalGenesis {
       const actionScores=this.state.actionPrototypeWeights.map(row=>clamp11(dot(row,v)/Math.max(1,norm(row)*norm(v))));
 const learned=this.learnedGoalValue(v,input.tick);
       const learnedClosure=(learned.reward01-.5)*.20 + (learned.evidence01*(.52-learned.predictionError01))*.10;
-      const predictedFutureValue=clamp01(.5+.32*dot(v,base)+.18*intrinsic+.16*(1-conflict)+.08*k+learnedClosure);
+      const goalAlignment01=clamp01((cosine(v,base)+1)*.5);
+      // Keep the drive term observable instead of letting an unnormalised dot-product
+      // saturate both baseline and driven values at 1.0 before drive can matter.
+      const predictedFutureValue=clamp01(.24+.18*goalAlignment01+.28*intrinsic+.12*(1-conflict)+.04*k+learnedClosure);
       const coherence=clamp01(.5+.25*cosine(v,base)+.25*(1-conflict));
       const novelty01=clamp01(.25+.45*(1-Math.abs(cosine(v,this.state.currentGoal)))+.30*(k/3));
       const internalNeed=clamp01(.5+.35*Math.abs(dot(v,base))+.15*conflict);
@@ -277,7 +297,7 @@ const learned=this.learnedGoalValue(v,input.tick);
     if(tick<0)throw new RangeError('B272 tick must be a non-negative safe integer');
     if((this.state.steps>0||this.state.tick>0)&&tick<=this.state.tick)throw new RangeError('B272 ticks must strictly increase');
     if(!isRecord(input.needs))throw new TypeError('B272 needs must be an object');
-    for(const key of ['energy01','uncertainty01','novelty01','goalPressure01','socialNeed01'])if(!isUnit(input.needs[key]))throw new RangeError(`B272 needs.${key} must be in [0,1]`);
+    for(const key of ['energy01','uncertainty01','novelty01','goalPressure01','socialNeed01'] as const)if(!isUnit(input.needs[key]))throw new RangeError(`B272 needs.${key} must be in [0,1]`);
     if(!isRecord(input.traits)||!Object.values(input.traits).every(isUnit))throw new RangeError('B272 traits must contain only finite values in [0,1]');
     for(const [name,vector] of [['selfLatent',input.selfLatent],['worldLatent',input.worldLatent]] as const){
       if(!Array.isArray(vector)||vector.length<1||vector.length>256||vector.some(v=>typeof v!=='number'||!Number.isFinite(v)||Math.abs(v)>1_000_000))throw new RangeError(`B272 ${name} must be a bounded finite vector`);
@@ -294,6 +314,33 @@ const learned=this.learnedGoalValue(v,input.tick);
     this.state.goalHistory=[...this.state.goalHistory,{tick:input.tick,id:c.id,vector:c.vector.slice(),action,reward01:input.lastReward01,predictionError01:input.predictionError01,accepted:false}].slice(-128);
     return {...c,action,goalId:c.id,goalVector:c.vector.slice(),selfConflict01:selfConflict,agency01:this.state.agency01,endogenous01};
   }
+  /**
+   * Finalize a generated candidate that was not selected by the canonical action
+   * arbiter. This is a decision outcome, not an executed-action reward: it updates
+   * the terminal-decision ledger but never changes learned action/goal prototypes.
+   */
+  recordUnselectedAction(input:{tick:number;generatedAction:ActionKind;selectedAction:ActionKind}){
+    if(!isRecord(input))throw new TypeError('B272 unselected-action record must be an object');
+    if(!Number.isSafeInteger(input.tick)||typeof input.tick!=='number'||input.tick!==this.state.tick)throw new RangeError('B272 unselected-action tick must match the current goal tick');
+    if(!isAction(input.generatedAction)||input.generatedAction!==this.state.currentAction)throw new RangeError('B272 unselected action must match the generated action');
+    if(!isAction(input.selectedAction)||input.selectedAction===input.generatedAction)throw new RangeError('B272 selected action must be distinct from the unselected proposal');
+    if(input.tick<=this.state.lastOutcomeTick)throw new Error('B272 decision for this tick has already been finalized');
+    const latest=this.state.goalHistory[this.state.goalHistory.length-1];
+    if(!latest||latest.tick!==input.tick||latest.id!==this.state.currentGoalId||latest.action!==input.generatedAction)throw new Error('B272 unselected action has no matching generated-goal evidence');
+    if(this.state.learningUpdates>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 terminal-decision counter reached its safe integer limit');
+    latest.accepted=false;
+    this.state.unselectedActionHistory=[...this.state.unselectedActionHistory,{
+      tick:input.tick,goalId:this.state.currentGoalId,generatedAction:input.generatedAction,selectedAction:input.selectedAction,
+    }].slice(-256);
+    this.state.lastOutcomeTick=input.tick;
+    // Decision counters partition every terminal candidate. No action reward,
+    // outcome memory, or prototype weight is changed when the proposed action
+    // was not the one whose consequence was observed.
+    this.state.rejectedGoals++;
+    this.state.learningUpdates++;
+    return {recorded:true,credited:false,reason:'canonical-arbiter-selected-different-action' as const,tick:input.tick,goalId:this.state.currentGoalId,generatedAction:input.generatedAction,selectedAction:input.selectedAction};
+  }
+
   learnFromOutcome(input:{tick:number;action:ActionKind;reward01:number;predictionError01:number;externalEvidence01:number;independentEvaluatorGain01?:number;acceptedExternalGoal?:boolean}){
     if(!isRecord(input))throw new TypeError('B272 outcome must be an object');
     if(!Number.isSafeInteger(input.tick)||typeof input.tick!=='number'||input.tick!==this.state.tick)throw new RangeError('B272 outcome tick must match the current goal tick');

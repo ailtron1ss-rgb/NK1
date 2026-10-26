@@ -42,6 +42,8 @@ jobs:
           node-version: "22.12.0"
           cache: npm
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install pinned TypeScript compiler and Node typings
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Install locked dependencies
         working-directory: runtime/neuro-kurisu
         run: npm ci

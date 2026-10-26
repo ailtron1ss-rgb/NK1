@@ -24,6 +24,15 @@ for(const group of nameGroups.values()){
   if(group.every(p=>path.basename(p).toLowerCase()==='index.ts')) continue;
   const researchNotesOnly=group.length>1 && group.every(p=>path.basename(p).toLowerCase()==='research_notes.md' && /^research\/\d{4}-\d{2}-\d{2}\//.test(p));
   if (researchNotesOnly) continue;
+  // Vendored licence/intake documents and matching source/test twins have distinct intended roles.
+  const basename=path.basename(group[0]).toLowerCase();
+  const vendoredLegalDocs = ['license','upstream_intake.md'].includes(basename) &&
+    group.every(p => p === 'LICENSE' || /^research\/vendor\/[^/]+\/(?:LICENSE|UPSTREAM_INTAKE\.md)$/i.test(p));
+  const sourceTestTwin = group.length===2 && (
+    (group.some(p => /^src\/learning\/[^/]+\.mjs$/.test(p)) && group.some(p => /^tests\/[^/]+\.mjs$/.test(p))) ||
+    (group.includes('scripts/server-smoke-poll.mjs') && group.includes('tests/server-smoke-poll.mjs'))
+  );
+  if (vendoredLegalDocs || sourceTestTwin) continue;
   problems.push(`duplicate-name:${group.join('|')}`);
 }
 for(const f of active){

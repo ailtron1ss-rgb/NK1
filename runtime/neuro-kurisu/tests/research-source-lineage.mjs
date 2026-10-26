@@ -4,7 +4,12 @@ import { EvidenceFirewallEngine } from '../src/organism/system/EvidenceFirewall.
 import { ProjectResearchSession } from '../src/organism/system/ProjectResearchSession.ts';
 
 const claim = 'The system is safe for deployment';
-const article = `The system is safe for deployment. The independent review examined the release configuration, dependency inventory, access policy, network boundaries, persistent state, failure recovery, audit logs, and user-facing workflow. Reviewers also inspected the rollback procedure, permission model, secret handling, and operational monitoring. The published report states that the release candidate passed its defined checks, while documenting specific limitations around long-running tests, model confidence, external provider availability, and recovery after a failed migration. Operators should preserve the original evidence, record the exact software version, and repeat the relevant steps when the deployed configuration changes. The report does not claim that the system is flawless or that every possible failure mode has been eliminated. It describes the tested environment and provides a bounded account of observed behaviour.`;
+const article = [
+  "The system is safe for deployment. The independent review examined the release configuration, dependency inventory, access policy, network boundaries, persistent state, failure recovery, audit logs, and user-facing workflow. Reviewers also inspected the rollback procedure, permission model, secret ",
+  "handling, and operational monitoring. The published report states that the release candidate passed its defined checks, while documenting specific limitations around long-running tests, model confidence, external provider availability, and recovery after a failed migration. Operators should preserve ",
+  "the original evidence, record the exact software version, and repeat the relevant steps when the deployed configuration changes. The report does not claim that the system is flawless or that every possible failure mode has been eliminated. It describes the tested environment and provides a bounded ",
+  "account of observed behaviour.",
+].join('');
 const syndicatedVariant = `Syndicated report — ${article} Additional publisher summary and contact details follow.`;
 const hash = ch => ch.repeat(64).slice(0, 64);
 const source = (host, contentHash, snippet, at = Date.now(), title = `Report from ${host}`) => ({

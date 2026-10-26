@@ -1,3 +1,269 @@
+## WorkPass319 cognitive-cycle test scope correction — 2026-10-26
+
+- Updated the phase-order regression to locate the embodiment persistence call after the life-course update, rather than matching the earlier initialization-time embodiment snapshot.
+- The tested invariant remains unchanged: feedback, model/experience updates and the cycle's embodiment state must be committed before recording the causal cycle ledger.
+- This repairs a test locator that previously failed on a valid runtime ordering; it does not bypass the phase-order assertions.
+
+Validation: rerun WorkPass319 and the exact-head NeuroCore + repository contract workflows.
+
+---
+
+## Memory doctor future-timestamp regression fixture — 2026-10-26
+
+- Corrected the P318 CLI fixture to place the damaged observation timestamp ten minutes in the future. The memory doctor intentionally flags timestamps more than five minutes ahead; the previous one-minute fixture did not cross that contract threshold.
+- The runtime check and its five-minute boundary remain unchanged. The fixture still asserts capped issue output, detection of hash mismatch/dangling revision/dangling links, read-only behavior and a future-evidence count.
+
+Validation: rerun P318 CLI, core regression validation and the full repository contract on the updated head.
+
+---
+
+## Compound skill execution finalizer and architecture smoke contract — 2026-10-26
+
+- Routed compound skill step dispatch through `OrganismCore.executeTool` instead of calling `ActionGateway` directly, preserving one canonical alias-normalization/finalization path.
+- Extended the wrapper with bounded finalization context keys and passed `Object.keys(runtimeInput)`; removed the separate compound-step finalizer call to avoid two competing finalization owners.
+- Kept the idempotency boundary: keyed receipts are finalized by `ActionGateway`; unkeyed/non-replay actions finalize through the core wrapper and checkpoint path.
+- Updated the server smoke test to validate that the cognitive architecture's subsystem/flow arrays agree with their own validation counts. This avoids a stale hard-coded flow count blocking the test when the canonical map adds valid edges, while still requiring 14+ subsystems, 22+ flows, successful validation and a finite runtime snapshot.
+
+Validation: fresh CI runs for `test:workpass97:planner-route`, `test:workpass69:server-smoke`, recovered runtime regressions, and typecheck are pending on the new head.
+
+---
+
+## Compose workflow filter repair — 2026-10-26
+
+- Removed the root `package-lock.json` path from both path-filter lists in `.github/workflows/nk1-compose-smoke.yml`: the repository does not contain that file, and the repository wiring audit correctly rejected the dangling workflow reference.
+- Kept the real root `package.json` and existing app/runtime manifest and lockfile filters intact.
+
+Validation: repository wiring audit is rerun on the resulting commit; no successful result is claimed until the exact-head workflow completes.
+
+---
+
+## Container build hardening follow-up (2026-10-26)
+
+- Ensured the image build does not set `NODE_ENV=production` before `npm run install:all`; otherwise npm may omit dev dependencies needed by Vite's first-start build.
+- Created `/opt/neuro-kurisu/.super-state` and assigned ownership to the non-root `node` user before the Compose volume is mounted, keeping persistence writable.
+- Added `.github/workflows/nk1-compose-smoke.yml` to its own path filters so edits to the Docker smoke workflow itself run validation.
+
+---
+
+## Container startup path — Docker Compose and explicit gateway binding (2026-10-26)
+
+- Added a Node.js 24 slim `Dockerfile`, `docker-compose.yml`, `.dockerignore`, and Russian container quick-start guide. The stack persists `.super-state`, exposes the UI gateway only on host loopback by default, and includes a health check.
+- The gateway remains loopback-only for normal `npm start`; Docker Compose must explicitly set `SUPER_GATEWAY_HOST=0.0.0.0` inside the container. A dedicated config resolver rejects unrecognized bind addresses, reducing accidental LAN exposure.
+- The container can optionally install CPU-only Torch research dependencies through `INSTALL_RESEARCH_TORCH=true`. By default the main runtime, UI, gateway and Python bridge run without the large optional ML dependency.
+- Added regression coverage for gateway bind defaults and container opt-in. Compose config/image build and healthcheck execution remain pending exact-head CI; this entry does not claim a production image has already built.
+
+---
+
+## First-run UI readiness — build preview artifact before launching services (2026-10-26)
+
+- Root `npm start` previously started Vite Preview without checking for `app/dist/index.html`; a fresh checkout after `npm run install:all` could therefore start the gateway/runtime while the UI build artifact was absent.
+- Added a web-only `app` script `build:web` (Vite production build without implicitly running database migrations) and shared `tools/super-ui-build.mjs`. The start launcher now builds the UI only when the preview artifact is missing, with a bounded 10-minute deadline; a failed build or missing output aborts before child services launch.
+- Added five focused tests for build-on-first-start, skip-on-existing-artifact, build failure, missing output, and invalid timeout; included them in `audit:quick`.
+- Exact-head Actions validation is pending. This closes the app-artifact gap, but a complete clean-machine start still depends on a compatible Node 24 install and the environment required by optional research features.
+
+---
+
+## Project tool route — restore canonical Core finalization (2026-10-26)
+
+- Fixed a runtime bypass found by the recovered planner/gateway regression: fresh project tool operations called `ActionGateway.executeTool` directly, and receipt recovery called `ActionGateway.reconcileToolExecution` directly. Both paths now route through `OrganismCore.executeTool` / `OrganismCore.reconcileToolExecution`, retaining canonical tool-alias mapping and the shared finalization boundary.
+- This was a production-source regression, not only a stale test: the same path on the validated integration branch already used the Core wrappers. The regression still rejects direct gateway dispatch from the project executor.
+- Change committed as `94460f8740cddb0eaadf7a983f534ab3ad2ab4b0`; exact-head CI for this Core fix is pending.
+
+---
+
+## Root launcher and runtime toolchain closure — 2026-10-26
+
+- Fixed the root `start`/`dev` launchers: both previously spawned `src/server/server.mjs` relative to the repository root, where it does not exist. They now use a shared absolute-path resolver for `runtime/neuro-kurisu/src/server/server.mjs`; the new regression verifies the entrypoint exists and both launchers reference the shared resolver.
+- Hardened child supervision: an unexpected exit or spawn error from the runtime, research bridge, UI or gateway now triggers fail-fast shutdown with a nonzero process status. Previously, `super-start` could report success even after an essential child exited.
+- Replaced hard-coded Node 22/npm 10 assumptions in `super-install` and `super-doctor` with the shared numeric `.nvmrc` pin parser and package `engines` minimum checks. This aligns install/doctor with the repository's Node 24 pin and avoids string-based version comparisons.
+- Added regression coverage for numeric pin precision and malformed values, installer pin handling, and both root launcher paths. `audit:quick` now executes those checks along with the existing installer tests.
+- Runtime entrypoint and package-script wiring are source-level confirmed; the newly triggered exact-head CI result is pending. No production launch or release has been claimed.
+
+---
+
+## Causal replay wiring — assert features before sampler admission (2026-10-26)
+
+- Fixed a stale source-contract regression in `causal-replay-runtime-wiring.mjs`: it searched for `policyFeatures01` starting *after* the `selectCausalReplayBatch` call, although P23 correctly constructs candidate features before invoking the sampler.
+- Aligned the assertion with the validated r3 test: the feature vector must appear inside `replayPending` and before causal selection, and it must include energy, goal pressure, verified success/reward/surprise, and learning-quality signals. The runtime sampler and adaptive final selector remain required.
+
+---
+
+## P26 context-aware replay benchmark — declare the intended replay budget (2026-10-26)
+
+- A follow-on CI run caught a stale benchmark call that expected context-aware replay to use the entire fresh batch but omitted `maxReplayRatio01: 1`. The production-safe default is 0.5, so the omitted option correctly capped replay at half the current batch and invalidated the test's old-task retention expectation.
+- Ported the exact benchmark contract from the active r3 branch that passed P26 validation: the context-aware diagnostic explicitly opts into ratio 1.0 and asserts `maxReplayAttempts <= fresh.length`; other replay modes retain the default half-batch cap. The test thresholds are unchanged.
+
+---
+
+## NK1 full branch/file census — 2026-10-26
+
+- Added `docs/NK1_FULL_BRANCH_FILE_AUDIT_2026-10-26.md` with the source-stack baseline, branch-tree SHA deltas, CI linkage findings, active integration risks and a safe merge plan.
+- Recorded the critical finding that `main` and PR #90's head do not contain the runtime source stack, and that 82 historical branch names in the observed snapshot alias one old commit rather than 82 distinct implementations.
+- The report distinguishes recursive tree/path/blob-SHA census from a line-by-line review of every file, and marks still-running validation as pending rather than green.
+
+---
+
+## P26 replay stability — cap rehearsal relative to fresh learning (2026-10-26)
+
+- The multi-seed policy sweep exposed a plasticity regression in the initial interleaved replay implementation: on the stride-1 schedule the replay-attempt budget could allow one historical sample for every current-task sample, despite the intended replay cadence.
+- Replaced that implementation with the bounded, CI-validated P26 interleaving contract. Replay attempts now obey both the configured maximum and `floor(currentBatch.length * maxReplayRatio01)` (default ratio 0.5), so a high-frequency replay stride cannot overwhelm the current-task updates.
+- Conflict screening uses the learner's actual normalized feature vector, with a bounded comparison cap and a target disagreement threshold; well-separated novelty contexts remain eligible for replay. Input batches are validated before mutation.
+- Evidence: the equivalent implementation on the active r3 integration branch passed the full P26 Learning Validation workflow, including the multi-seed replay policy sweep. The repaired receipt-integrity branch still requires its own exact-head Actions run before its PR can be considered validated.
+
+---
+
+## P26 replay policy sweep — identify failing policy precisely (2026-10-26)
+
+- Expanded the sequential replay sweep's failing assertion message to report strategy, random seed, new-task accuracy, and prior-task accuracy. The score floor and test semantics are unchanged; this makes CI identify which replay cadence violates the plasticity contract.
+
+---
+
+## P26 sequential learning — restore bounded interleaved replay (2026-10-26)
+
+- Implemented the `P26TrueLearningEngine.trainInterleaved` contract used by the sequential-learning benchmark. Current outcomes now train the policy while bounded replay attempts are interspersed at a configurable cadence.
+- Added bounded energy/novelty context buckets to compare prior examples against current feedback. Near-identical state/action cases with conflicting targets are held out from replay; distinct contexts stay eligible so the learner can retain older skills without blindly overwriting current-task learning.
+- The replay candidate comparison budget is capped at 8–128 checks per historical row. Both current and replay batches are validated before the first model update. Synthetic benchmark results are diagnostics only and are not treated as independent holdout evidence.
+
+---
+
+## Research-probe integration dependency isolation — 2026-10-26
+
+- Added a dedicated `research/requirements-integration.txt` containing the PyTorch dependency needed by the NeuroCore V143 and DeepCode v21 smoke probes.
+- The contract workflow installs it from the official CPU-only PyTorch index into a disposable virtual environment under `$RUNNER_TEMP`, then supplies that interpreter to `research_bridge.py` through `RESEARCH_PYTHON`. Research dependencies remain outside the canonical app/runtime package graph.
+- Updated `tools/verify-integration.mjs` to support the interpreter override and to print the actual error from failed approved probes instead of an unhelpful dash-only metric.
+- Added the dependency manifest and verifier to the contract workflow path filters.
+- The existing NLI-only requirements file remains scoped to the optional NLI service; the new file is narrowly scoped to cross-layer smoke coverage.
+
+Validation: the contract workflow must pass the approved NeuroCore, NOMEGA-registry and DeepCode probes using the isolated interpreter on the new exact head.
+
+---
+
+## Unified CI dependency boundary correction — 2026-10-25
+
+- Removed a newly-added CI step pointing to `research/requirements-ci.txt`, which is not present in the repository.
+- The existing `research/requirements-nli.txt` is documented as an optional isolated dependency set for the NLI server; the general repository contract should not install its PyTorch/Transformers stack as part of every UI/runtime audit.
+- The workflow keeps the cross-layer integration, runtime smoke, cognitive-cycle recovery and aggregate audits. NLI model-serving dependencies remain isolated and should be validated in their own dedicated job when that service is explicitly in scope.
+
+Validation: rerun the broad contract gate after removing the invalid requirements reference.
+
+---
+
+## Repository-pinned syntax audit portability — 2026-10-25
+
+- Removed the hard-coded TypeScript import from a global Node 22 installation. Under the Node 24 CI workflow that path does not exist, so `audit:quick` was unable to start its executable-syntax scan despite the locked app dependency being installed.
+- The syntax audit now loads TypeScript from the runtime package when present, otherwise from the app's lockfile-installed dependency. If neither is available, it raises an actionable setup error rather than depending on one host's NVM directory.
+- Added the syntax-audit script to the repository contract workflow path filters.
+
+Validation: the new exact-head contract run must complete `audit:syntax` and the remaining broad app/runtime checks.
+
+---
+
+## Host-owned evaluation fixture isolation — 2026-10-25
+
+- Fixed the WorkPass243 subprocess regression fixture: after its negative test sets the executor's shared inode to group-writable mode and verifies the runtime rejects it, the test now restores mode `0700` before testing scratch-root replacement.
+- The failure was an order-dependent fixture issue, not a reason to weaken executable permissions enforcement; the production guard remains unchanged.
+- Added the host-owned evaluator implementation and regression to the contract workflow's path filters, and the dedicated WorkPass243 test to the gate.
+
+Validation: rerun WorkPass243 and the broader contract/learning workflows on the final head; earlier WorkPass110 surfaced the fixture-state leak.
+
+---
+
+## Independent candidate executability vs verifier trust — 2026-10-25
+
+- Fixed a metric conflation in `IndependentSkillCandidateEvaluator`: a structurally valid executor result remains measurable as executable when the independent verifier is unavailable.
+- Kept verifier binding, successful task completion, and admissibility into the canonical verified-outcome ledger gated on the trusted verifier result. An unbound trace still cannot become a passed task or a promotion-grade outcome.
+- Added the WorkPass203 regression to the repository contract gate and wired both the evaluator source and test into its path filters.
+- The repository contract path filters also track the host-owned evaluation service and regression, plus both learning tests that previously surfaced source-hygiene failures.
+
+Validation: the WorkPass203 test must pass on the latest exact head; previous WorkPass110 run exposed the mismatch at its assertion.
+
+---
+
+## Quick-audit formatting blockers — 2026-10-25
+
+- Removed trailing whitespace from `runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs` and `runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs` after successive quick-audit runs identified each file.
+- These are whitespace-only edits; no executable statements or test logic changed.
+
+Validation: rerun `audit:quick` on the latest head to confirm all source-hygiene errors are cleared.
+
+---
+
+## CI wiring for durable skill lifecycle — 2026-10-25
+
+- Added the versioned-skill lifecycle regression to the repository contract gate so the source, durable adapter and lifecycle test are exercised together on a fresh checkout.
+- Added both `VersionedSkillCandidateStore.ts`, `AtomicFileSkillStorePersistence.ts` and `p23-versioned-skill-candidate-store.mjs` to the workflow path filters.
+- The broader gate now checks both legacy candidate persistence and provenance-bound identity restore directly, not only when the continual-learning workflow happens to run.
+
+Validation: awaiting the latest contract workflow, including its new focused P23 lifecycle step.
+
+---
+
+## Durable skill candidate identity consistency — 2026-10-25
+
+- Fixed the identity mismatch between `VersionedSkillCandidateStore` and `AtomicFileSkillStorePersistence`: candidates without revision provenance keep the established four-field ID; candidates with provenance bind its canonical fingerprint as a fifth field.
+- Updated the durable adapter to validate the provenance schema and reproduce the corresponding conditional identity, rather than assuming every persisted candidate uses the legacy four-field form.
+- Added a durable restart regression for a provenance-backed candidate, alongside the existing legacy candidate persistence check.
+- The validator now checks provenance version, evaluation/plan/dataset/source fingerprints, allowed unique dimensions and creation time before accepting a persisted candidate.
+
+Validation: the exact-head WorkPass110 and repository contract runs must finish successfully before this durable-store path is considered closed.
+
+---
+
+## Skill rollback lifecycle regression fixture alignment — 2026-10-25
+
+- Updated the versioned-skill candidate-store regression to use the current rollback approval object and an explicitly test-only rollback verifier rather than the obsolete positional API.
+- Kept the default-deny production rollback verifier unchanged and added a regression proving that plausible caller-supplied identity/timestamp/version fields cannot authorize rollback without an authenticated authority.
+- Corrected the persisted promotion compare-and-swap tampering fixture to mutate the signed approval's expected active version, preserving the historical rollback link so the test reaches the intended integrity guard.
+- This is a regression-fixture repair; it does not relax the runtime promotion or rollback trust boundary.
+
+Validation: the exact-head WorkPass110 continual-learning workflow must rerun before this lifecycle fix is called validated.
+
+---
+
+## Restored action receipt integrity hardening — 2026-10-25
+
+- Treat the persisted action ledger as untrusted input when restoring completed receipts.
+- Validate the receipt's execution/tool identity against its enclosing ledger row, plus consistency between the response, audit record, outcome class and verification claim.
+- Reject oversized or non-serializable restored receipt payloads; keep their ledger entry as a fail-closed recovery tombstone rather than replaying a potentially corrupted success or repeating a side effect.
+- Preserve bounded, internally consistent receipts and the existing idempotent replay behavior, including the `payload-omitted` marker for a legitimate compact receipt after restart.
+- Extend `workpass95-restored-action-receipt-integrity.mjs` to cover identity, verification contradiction, audit mismatch, oversized tampering and compact-payload replay without duplicate execution.
+
+Validation: awaiting the PR-triggered Node 24 workflow. These checks detect internal contradictions and payload abuse; they do not constitute a cryptographic signature over a user-writable snapshot.
+
+---
+
+## Cognitive dependency frame integrity — 2026-10-25
+
+- The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
+- Dirty domains are activated only by own properties whose values are exactly `true`; inherited properties and truthy coercion no longer create false wake signals.
+- Added regression cases for replayed ticks, malformed domain containers, and prototype-inherited activation. Confirmed by focused CI run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- Focused CI runs the WorkPass320 restore/frame regression and WorkPass324 interrupt-episode regression when the graph or either test changes; both passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- The focused workflow's push and pull-request path filters both cover the graph implementation and its two regression tests, so these changes remain linked to validation on either trigger.
+- Connected `CognitiveDependencyGraph` to the live `OrganismRuntime` cycle: it builds a routing frame from the normalized observation and current organism state, records an evidence-bus event, and atomically checkpoints its small state in a sidecar when routing/interrupt state changes, every 16 organism ticks, and at shutdown.
+- The graph's routing frame identity remains monotonic across a recovery where the organism snapshot is restored from an older valid backup. Core's canonical action arbitration remains unchanged; the first integration records/wires routing evidence rather than independently selecting actions.
+- Added an integration regression for final sidecar flush and restart continuity. It passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- Added `CognitiveRoutingPolicy` to adapt graph interrupts/governance pressure to the optional speculative-work budget. It only reduces the existing resource allocator's branch count; it does not replace canonical Core action arbitration.
+- Critical resource/thermal/memory interrupts deny counterfactual branches, ordinary active interrupts cap them at one and skip matched alternative projections, and governance pressure caps optional work. Zero upstream branch budget also disables matched alternate projections.
+- Added policy unit tests and wired them into focused CI for push/pull requests; the budget and interrupt-threshold tests passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- Added a runtime-wiring contract test that checks the policy is fed the live graph state and upstream resource cap, that critical routing can skip reservation, and that canonical `plan.steps[0]` remains the source of the selected world action. The integration test also requires a runtime evidence-bus record for the admitted budget.
+- The same bounded policy now adjusts only the recurring cognitive clock: non-resource interrupts may reduce its next delay by at most 25%, while critical resource interrupts do not accelerate work. Scheduler decisions carry a `cognitive-interrupt` reason for observability; other maintenance clocks and canonical action arbitration are unchanged.
+- Fixed a live feedback-boundary defect exposed by the runtime integration test: Core previously passed the canonically selected action into B272 even when B272 had generated a different candidate action. Core now credits B272's action learner only when its generated action actually won arbitration; otherwise it records a terminal unselected-candidate decision without attributing another action's reward.
+- B272 now persists a bounded, validated `unselectedActionHistory`; restore quarantines duplicate terminal-decision ticks across executed outcomes and unselected candidates. The Core snapshot is refreshed after feedback so B272's new terminal decision and any actual learning update survive restart.
+- Added regression checks that a non-selected candidate is finalized but receives no action-prototype, goal-outcome-memory, or executed-outcome-history reward credit. Focused CI now runs the B272 goal-attribution test before the live runtime/restart integration test.
+- A second B272 reward-attribution path in the B338 world-transition branch was fixed with the same selected-action equality gate and terminal-state persistence as the no-transition branch. Both branches passed the B272 outcome regression and the new dual-path wiring contract in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- Added `cognitive-feedback-attribution-wiring.mjs` to guard both the no-world-transition and B338 world-transition B272 credit paths; verifies canonical selected-action matching, terminal unselected-candidate recording, state persistence, and no reward leakage into action prototypes or goal outcome memory.
+
+## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
+
+- Fixed command-order handling in the wiring audit: each `cd`, Node/Python file reference, and nested `npm run` is now resolved against the directory active at that point in the shell sequence. Added a regression for `node … && cd runtime && node …`.
+
+- Added `tools/verify-repository-wiring.mjs` to check reachable npm-script chains, recursive script cycles, referenced Node/Python entry points, exact workflow path filters, local actions, working directories, setup-node file inputs, and `workflow_run` workflow names.
+- Added isolated regression fixtures for healthy and intentionally broken wiring, including missing files/scripts, absent workflow names and recursive npm-script cycles.
+- Added `audit:repo-wiring` and `test:repo-wiring` to the root package scripts and connected them to `audit:quick`; added a focused GitHub Actions workflow using the repository's `.nvmrc`.
+- Corrected the avatar-storage test harness's strict JavaScript typing and unsafe `delete globalThis.window` operations identified by the previous exact-head validation.
+- Focused exact-head CI passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019), including workflow/path audit and cognitive routing regressions. This does not claim the full application/runtime suite or production release is validated.
+- Follow-up CI found that multiline `cd runtime/neuro-kurisu` blocks were still being misread by the executable-path audit even though one-line chained commands passed. Reworked shell parsing to process `&&`, `||`, and `;` segments sequentially across lines and added a regression that exercises a real multiline workflow `run` block.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

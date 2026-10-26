@@ -101,4 +101,12 @@ A noisy hidden-rule holdout reduced semantic-memory error from `0.43803` to `0.0
 
 The canonical MemoryOS2 store now supports opt-in embedding reranking in the Memory Inspector. Start a local Ollama server and install an embedding model (default: `embeddinggemma`), then check **“Семантический поиск (локальная модель)”** in Runtime Atlas. The endpoint is loopback-only by default; no cloud service or API key is required.
 
-Configuration: `NK_EMBEDDINGS_ENABLED=0` disables the feature; `NK_EMBEDDINGS_PROVIDER=ollama` (default) uses `http://127.0.0.1:11434/api/embed`; `NK_EMBEDDINGS_MODEL=embeddinggemma` selects the model. For llama.cpp, use `NK_EMBEDDINGS_PROVIDER=openai-compatible`, `NK_EMBEDDINGS_BASE_URL=http://127.0.0.1:8080/v1`, and set `NK_EMBEDDINGS_MODEL` to the loaded embedding model alias. Non-loopback endpoints require explicit `NK_EMBEDDINGS_ALLOW_REMOTE=1` and HTTPS. Provider errors automatically fall back to the existing BM25/fuzzy/graph search. The embedding index is derived and bounded; it never becomes a second source of memory truth. For semantic retrieval inside the live cognitive cycle, explicitly set `NK_EMBEDDINGS_RUNTIME_ENABLED=1`; it defaults off. Its foreground budget is `NK_EMBEDDINGS_RUNTIME_BUDGET_MS=220` ms, and slow inference falls back immediately to lexical/fuzzy retrieval while at most one bounded index-warming job runs in the background.
+Configuration: `NK_EMBEDDINGS_ENABLED=0` disables the feature; `NK_EMBEDDINGS_PROVIDER=ollama` (default) uses
+`http://127.0.0.1:11434/api/embed`; `NK_EMBEDDINGS_MODEL=embeddinggemma` selects the model. For llama.cpp, use
+`NK_EMBEDDINGS_PROVIDER=openai-compatible`, `NK_EMBEDDINGS_BASE_URL=http://127.0.0.1:8080/v1`, and set
+`NK_EMBEDDINGS_MODEL` to the loaded embedding model alias. Non-loopback endpoints require explicit
+`NK_EMBEDDINGS_ALLOW_REMOTE=1` and HTTPS. Provider errors automatically fall back to the existing BM25/fuzzy/graph
+search. The embedding index is derived and bounded; it never becomes a second source of memory truth. For semantic
+retrieval inside the live cognitive cycle, explicitly set `NK_EMBEDDINGS_RUNTIME_ENABLED=1`; it defaults off. Its
+foreground budget is `NK_EMBEDDINGS_RUNTIME_BUDGET_MS=220` ms, and slow inference falls back immediately to
+lexical/fuzzy retrieval while at most one bounded index-warming job runs in the background.

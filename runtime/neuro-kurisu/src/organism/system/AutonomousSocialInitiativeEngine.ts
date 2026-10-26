@@ -70,7 +70,24 @@ const validEmotion = (value: unknown): SocialEmotionLabel | null => EMOTIONS.inc
 const validTone = (value: unknown): SocialToneHint | null => TONES.includes(value as SocialToneHint) ? value as SocialToneHint : null;
 const validFeedback = (value: unknown): SocialInitiative['feedbackSignal'] => value === 'positive' || value === 'engaged' || value === 'negative' ? value : undefined;
 const normalizeTopic = (value: unknown): string => String(value ?? '').normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 360);
-const TOPIC_STOPWORDS = new Set('a an the and or but of to in on for from with how what why when where which who can could should would that this these those about into through between becomes become becoming is are was were be been being we i my our your its their it as than then without after before worth possible idea question connection а без более бы быть в во вот все всего где да для до его ее если за здесь из или их к как когда кто ли либо мне на над не него нее нет ни но о об от по под при про раз с со так такой там те то того тогда тоже той только том у уже что чтобы это этот эти я мы они он она вы вас ваш моя моей свой своей оно которыми который которая которые которое между через после перед потому при этом однако также ещё еще или же ли потому пусть может могут будет были есть был была было они оно им их мне мой моя мои нам наш наша наши само сама сами собой свой свою свои своего этому этой эти этих такое такие такой какой какие какая какие некоторых некоторый многие много мало всё все именно если иначе например действительно'.split(' '));
+const TOPIC_STOPWORDS = new Set(`
+  a an the and or but of to in on for from with how
+  what why when where which who can could should would that this these those
+  about into through between becomes become becoming is are was were be been being
+  we i my our your its their it as than then without after before
+  worth possible idea question connection а без более бы быть в во вот все
+  всего где да для до его ее если за здесь из или их к
+  как когда кто ли либо мне на над не него нее нет ни но
+  о об от по под при про раз с со так такой там те
+  то того тогда тоже той только том у уже что чтобы это этот эти
+  я мы они он она вы вас ваш моя моей свой своей оно которыми
+  который которая которые которое между через после перед потому при этом однако также ещё
+  еще или же ли потому пусть может могут будет были есть был была было
+  они оно им их мне мой моя мои нам наш наша наши само сама
+  сами собой свой свою свои своего этому этой эти этих такое такие такой какой
+  какие какая какие некоторых некоторый многие много мало всё все именно если иначе например
+  действительно
+`.trim().split(/\s+/));
 const topicTokens = (value: string): Set<string> => new Set(normalizeTopic(value).toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').split(/\s+/).filter(token => token.length > 2 && !TOPIC_STOPWORDS.has(token)));
 const sensitiveEnglishTopicPattern = /\b(?:password|passphrase|secret|credential|api[_ -]?key|private key|access token|diagnos(?:is|ed)|medical record)\b|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{12,})\b/i;
 const sensitiveRussianTopicPattern = /парол(?:ь|я|ем|и|ей)|секрет(?:ы|ный|ная|ного|ной)?|уч[её]тн(?:ые данные|ая запись)|ключ доступа|токен доступа|диагноз|медицинск(?:ая карта|ие данные)/iu;

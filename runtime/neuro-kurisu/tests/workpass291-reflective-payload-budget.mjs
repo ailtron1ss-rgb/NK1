@@ -7,10 +7,11 @@ import {
 assert.equal(MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES, 256 * 1024);
 assert.equal(assertReflectiveSkillPayloadWithinBudget({ b: 2, a: 1 }), '{"a":1,"b":2}',
   'budget guard returns the same canonical representation used by the P23 fingerprint');
-assert.doesNotThrow(() => assertReflectiveSkillPayloadWithinBudget('x'.repeat(MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES)),
+const exactBudgetStringBytes = MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES - 2; // Canonical JSON string representation adds two quotes.
+assert.doesNotThrow(() => assertReflectiveSkillPayloadWithinBudget('x'.repeat(exactBudgetStringBytes)),
   'payload exactly at the byte budget remains eligible for downstream evaluation');
 assert.throws(
-  () => assertReflectiveSkillPayloadWithinBudget('x'.repeat(MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES + 1), 'generated'),
+  () => assertReflectiveSkillPayloadWithinBudget('x'.repeat(exactBudgetStringBytes + 1), 'generated'),
   /p23-reflective-skill-payload-too-large:generated:/,
   'oversized generated payload is rejected before independent evaluation');
 const cyclic = {};

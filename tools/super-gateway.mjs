@@ -1,7 +1,9 @@
 import http from 'node:http';
 import { request as httpRequest } from 'node:http';
+import { resolveGatewayBindHost } from './super-gateway-config.mjs';
 
 const PORT = Number(process.env.SUPER_GATEWAY_PORT || 8080);
+const HOST = resolveGatewayBindHost();
 const UI_PORT = Number(process.env.SUPER_UI_PORT || 8081);
 const RUNTIME_PORT = Number(process.env.SUPER_RUNTIME_PORT || 3310);
 const RESEARCH_PORT = Number(process.env.SUPER_RESEARCH_PORT || 8765);
@@ -29,6 +31,6 @@ http.createServer((req, res) => {
   if (path.startsWith('/api/organism')) return forward(req, res, RUNTIME_PORT);
   if (path.startsWith('/api/research')) return forward(req, res, RESEARCH_PORT);
   return forward(req, res, UI_PORT);
-}).listen(PORT, '127.0.0.1', () => {
-  console.log(`[super-gateway] http://127.0.0.1:${PORT}`);
+}).listen(PORT, HOST, () => {
+  console.log(`[super-gateway] http://${HOST}:${PORT}`);
 });

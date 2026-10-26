@@ -279,7 +279,19 @@ export class MemoryOS2{
  private readonly revisionGroupIndex=new Map<string,Set<string>>();
  private totalTokenLength=0;
  private lastCandidateCount=0;
- private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[]}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal']};
+ private lastHybridDiagnostics: {
+  bm25Enabled:boolean; bm25CandidateCount:number; bm25Max:number; rrfEnabled:boolean;
+  identifierBias:boolean; temporalMode:MemoryTemporalMode; asOfAt:number; queryIntentMode:MemoryQueryIntent;
+  maxQueryIntentBoost01:number; candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'; candidateSelectionLimit:number;
+  fuzzyEnabled:boolean; fuzzyCandidateCount:number; semanticVectorUsedForRanking:boolean;
+  semanticEmbeddingProvider:string; rrfSignals:string[];
+ } = {
+  bm25Enabled:true, bm25CandidateCount:0, bm25Max:0, rrfEnabled:true, identifierBias:false,
+  temporalMode:'current', asOfAt:0, queryIntentMode:'general', maxQueryIntentBoost01:0,
+  candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id', candidateSelectionLimit:192,
+  fuzzyEnabled:true, fuzzyCandidateCount:0, semanticVectorUsedForRanking:false,
+  semanticEmbeddingProvider:'none', rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],
+ };
  private linkSupportCache:Map<string,number>|null=null;
  private linkSupportCacheVersion=-1;
  private readonly residencyGovernor=new MemoryResidencyGovernor();
