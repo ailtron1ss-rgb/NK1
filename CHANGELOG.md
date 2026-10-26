@@ -1,3 +1,22 @@
+## [NK1][WorkPass384] Route project execution through canonical Core wrappers — 2026-10-26
+
+- **Failure:** WorkPass71 exposed a static contract mismatch in `workpass97-autonomous-planner-gateway-route.mjs`: the project executor called ActionGateway directly instead of the established Core wrappers.
+- **Fix:** fresh project operation now calls `this.executeTool(...)`; resumed operation calls `this.reconcileToolExecution(...)`. The Core wrapper preserves keyed execution's ActionGateway-owned finalization while canonicalizing tool IDs; reconciliation remains lookup-only and never re-executes a possible side effect.
+- **Validation:** Repository Wiring Audit passed on source head `17d89d3e464689b8d3466f8598cdb37b3ee79bbe`; WorkPass71 was cancelled before completion, so a fresh exact-head run is required.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
+## [NK1][WorkPass385] Validate Hexis evidence before duplicate-lineage no-op — 2026-10-26
+
+- **Defect:** `MemoryOS2.recordEvidence()` returned `ok:true / duplicate-source` before validating source, provenance class, confidence and timestamps. Invalid repeated input could be reported as accepted.
+- **Fix:** defer duplicate return until all field checks and `adaptHexisEvidence()` accept the canonical envelope. Valid duplicates remain true no-ops; malformed duplicates return a precise rejection without changing evidence trail, reconsolidations or confidence.
+- **Regression:** existing `paper:claim-1` lineage is retried with out-of-range/string confidence, invalid provenance, malformed observedAt/freshness, empty source and C0 control character source; every case must reject without memory mutation. Existing valid duplicate and restore-idempotency tests remain.
+- **Validation:** this exact-head delta requires Hexis evidence ingress, Repository Wiring Audit and WorkPass71 full runtime/rebuild workflows; no PASS is claimed before completion.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][WorkPass383] Reject inconsistent restored ActionGateway receipts — 2026-10-26
 
 - **Failure reproduced:** WorkPass71 reached `test:workpass95:receipt-integrity` after causal replay wiring passed; a restored completed ledger row whose `response.executionId` differed from the owning entry was replayed as `ok:true`.

@@ -1444,7 +1444,6 @@ export class MemoryOS2{
   // Never truncate independent identity: truncation would let two distinct sources alias.
   if(independenceKey.length>96||/[\u0000-\u001f\u007f-\u009f]/.test(independenceKey))return {ok:false as const,added:false as const,reason:'invalid-evidence-independence-key' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
   const previous=this.normalizeEvidenceSources(item);
-  if(this.hasEvidenceLineage(item.id,independenceKey))return {ok:true as const,added:false as const,reason:'duplicate-source' as const,memoryId:item.id,independentSources:previous.length};
 
   const sourceValue=row.source;
   if(typeof sourceValue!=='string')return {ok:false as const,added:false as const,reason:'invalid-evidence-source' as const,memoryId:item.id,independentSources:previous.length};
@@ -1485,6 +1484,11 @@ export class MemoryOS2{
   });
   if(!adapted.accepted) {
    return {ok:false as const,added:false as const,reason:adapted.reason,memoryId:item.id,independentSources:previous.length};
+  }
+  // Validate all fields and the canonical Hexis envelope before accepting a
+  // duplicate-lineage no-op. Invalid repeated evidence is still invalid input.
+  if(this.hasEvidenceLineage(item.id,independenceKey)) {
+   return {ok:true as const,added:false as const,reason:'duplicate-source' as const,memoryId:item.id,independentSources:previous.length};
   }
   const canonical=adapted.evidence;
   const incoming:MemoryEvidenceSource={

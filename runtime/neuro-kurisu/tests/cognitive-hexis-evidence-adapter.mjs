@@ -125,6 +125,27 @@ assert.deepEqual(memoryOS.evidenceTrail(memory.id), trailBeforeDuplicate, "dupli
 assert.equal(memoryOS.statsLight().reconsolidations, reconsolidationsBeforeDuplicate, "duplicate evidence must be a true no-op");
 assert.equal(memoryOS.get(memory.id)?.confidence, originalConfidence, "duplicate evidence must not ratchet confidence");
 
+// A known lineage must not bypass validation of a malformed repeated payload.
+const beforeInvalidDuplicates = memoryOS.evidenceTrail(memory.id);
+const beforeInvalidDuplicateReconsolidations = memoryOS.statsLight().reconsolidations;
+const invalidDuplicateInputs = [
+  { name: "duplicate-confidence-out-of-range", value: { ...sourceInput, sourceAuthority01: 1.01 }, reason: "invalid-evidence-confidence" },
+  { name: "duplicate-confidence-string", value: { ...sourceInput, sourceAuthority01: "0.9" }, reason: "invalid-evidence-confidence" },
+  { name: "duplicate-invalid-provenance", value: { ...sourceInput, provenanceClass: "untrusted-new-class" }, reason: "invalid-evidence-provenance-class" },
+  { name: "duplicate-invalid-observed-at", value: { ...sourceInput, observedAt: "1000" }, reason: "invalid-evidence-timestamp" },
+  { name: "duplicate-invalid-freshness", value: { ...sourceInput, evidenceFreshnessAt: Number.POSITIVE_INFINITY }, reason: "invalid-evidence-freshness" },
+  { name: "duplicate-empty-source", value: { ...sourceInput, source: "" }, reason: "invalid-evidence-source" },
+  { name: "duplicate-control-source", value: { ...sourceInput, source: "invalid\nsource" }, reason: "invalid-evidence-source-identity" },
+];
+for (const item of invalidDuplicateInputs) {
+  const result = memoryOS.recordEvidence(memory.id, item.value);
+  assert.equal(result.ok, false, item.name);
+  assert.equal(result.added, false, item.name);
+  assert.equal(result.reason, item.reason, item.name);
+}
+assert.deepEqual(memoryOS.evidenceTrail(memory.id), beforeInvalidDuplicates, "invalid duplicates must not mutate canonical evidence");
+assert.equal(memoryOS.statsLight().reconsolidations, beforeInvalidDuplicateReconsolidations, "invalid duplicates must not reconsolidate memory");
+
 const beforeInvalid = memoryOS.evidenceTrail(memory.id);
 const reconsolidationsBeforeInvalid = memoryOS.statsLight().reconsolidations;
 const invalidInputs = [
