@@ -16,6 +16,7 @@ import {
 import type { MouthPose, VisemeFrame, VisemeName } from "../../../../runtime/neuro-kurisu/public/speech-viseme-core.mjs";
 
 export { CLOSED_MOUTH, buildVisemeTimeline, poseForGrapheme, sampleVisemeTimeline, timelineOffsetForCharIndex };
+export { deriveEmbodimentPose } from "../../../../runtime/neuro-kurisu/public/embodiment-pose.mjs";
 export type { MouthPose, VisemeFrame, VisemeName };
 export type SpeechPhase = "idle" | "starting" | "speaking" | "ended" | "cancelled" | "unknown";
 
@@ -44,6 +45,14 @@ export interface EmbodimentIntentV1 {
   gaze: { x: number; y: number; driven: boolean };
   body: {
     headTilt: number;
+    /** Optional normalized head orientation; older v1 senders fall back to gaze. */
+    headAngleX?: number;
+    headAngleY?: number;
+    /** Optional normalized torso orientation and breathing intensity. */
+    bodyAngleX?: number;
+    bodyAngleY?: number;
+    bodyAngleZ?: number;
+    breathIntensity?: number;
     gesture: boolean;
     motionGroup: string;
     motionIndex: number;
@@ -192,6 +201,14 @@ export function isEmbodimentIntentV1(value: unknown): value is EmbodimentIntentV
   if (typeof intent.mouth.viseme !== "string" || !/^[a-z]{1,16}$/.test(intent.mouth.viseme)) return false;
   if (!intent.gaze || !Number.isFinite(intent.gaze.x) || intent.gaze.x < -1 || intent.gaze.x > 1 || !Number.isFinite(intent.gaze.y) || intent.gaze.y < -1 || intent.gaze.y > 1 || typeof intent.gaze.driven !== "boolean") return false;
   if (!intent.body || !Number.isFinite(intent.body.headTilt) || intent.body.headTilt < -0.15 || intent.body.headTilt > 0.15) return false;
+  const bodyChannelRanges = [
+    [intent.body.headAngleX, -1, 1], [intent.body.headAngleY, -1, 1],
+    [intent.body.bodyAngleX, -1, 1], [intent.body.bodyAngleY, -1, 1],
+    [intent.body.bodyAngleZ, -1, 1], [intent.body.breathIntensity, 0, 1],
+  ] as const;
+  for (const [value, min, max] of bodyChannelRanges) {
+    if (value !== undefined && (!Number.isFinite(value) || value < min || value > max)) return false;
+  }
   if (typeof intent.body.gesture !== "boolean" || typeof intent.body.motionGroup !== "string" || !/^[a-zA-Z0-9_-]{1,32}$/.test(intent.body.motionGroup)) return false;
   if (!Number.isInteger(intent.body.motionIndex) || intent.body.motionIndex < 0 || intent.body.motionIndex > 32 || !Number.isSafeInteger(intent.body.motionToken) || intent.body.motionToken < 0) return false;
   return Number.isFinite(intent.voiceEmphasis) && Number(intent.voiceEmphasis) >= 0 && Number(intent.voiceEmphasis) <= 1;
