@@ -22,6 +22,17 @@ try {
   if (!ready) throw new Error(`server-not-ready:${output.slice(-800)}`);
   const overview = await (await fetch(`${base}/api/organism/integration/hexis`)).json();
   if (!overview.ok || overview.hexis?.source?.name !== 'Hexis-main') throw new Error('hexis-overview');
+  // GET query coercion must not widen result sets or turn missing timestamps into epoch zero.
+  const invalidMemoryLimit = await fetch(`${base}/api/organism/integration/hexis/memories?limit=not-a-number`);
+  if (invalidMemoryLimit.status !== 400) throw new Error('hexis-memory-limit-must-be-numeric:' + invalidMemoryLimit.status);
+  const invalidGoalLimit = await fetch(`${base}/api/organism/integration/hexis/goals?limit=not-a-number`);
+  if (invalidGoalLimit.status !== 400) throw new Error('hexis-goal-limit-must-be-numeric:' + invalidGoalLimit.status);
+  const invalidGoalStatus = await fetch(`${base}/api/organism/integration/hexis/goals?status=unrecognized`);
+  if (invalidGoalStatus.status !== 400) throw new Error('hexis-goal-status-must-be-allowlisted:' + invalidGoalStatus.status);
+  const missingTemporalAt = await fetch(`${base}/api/organism/integration/hexis/temporal?memoryId=smoke-memory`);
+  if (missingTemporalAt.status !== 400) throw new Error('hexis-temporal-requires-time:' + missingTemporalAt.status);
+  const missingTemporalDiffTo = await fetch(`${base}/api/organism/integration/hexis/temporal/diff?memoryId=smoke-memory&from=0`);
+  if (missingTemporalDiffTo.status !== 400) throw new Error('hexis-temporal-diff-requires-both-times:' + missingTemporalDiffTo.status);
   // Every Hexis POST endpoint rejects JSON null before reading fields or mutating state.
   const hexisPostRoutes = [
     '/api/organism/integration/hexis/sync-memory',
