@@ -151,7 +151,7 @@ export function HexisControlConsole() {
     const reused = Number.isSafeInteger(receipt.reused) ? receipt.reused : 0;
     const skipped = Number.isSafeInteger(receipt.skipped) ? receipt.skipped : 0;
     if (receipt.status === "uncertain") {
-      setMessage(`Accept HMX: UNCERTAIN — rollback was incomplete; memory changes may have survived. Do not retry this stage. Counts reported by the interrupted attempt (not verified): created ${created}, reused ${reused}, remaining/unconfirmed ${skipped}. Inspect canonical memories and the import receipt.`);
+      setMessage(`Accept HMX: UNCERTAIN — the import outcome could not be confirmed; memory changes may have survived. Do not retry this stage. Unverified bookkeeping counts (not proof of applied rows): created ${created}, reused ${reused}, remaining/unconfirmed ${skipped}. Inspect canonical memories and the import receipt before remediation.`);
       return;
     }
     if (receipt.status === "pending") {
