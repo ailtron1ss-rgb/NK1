@@ -14,6 +14,11 @@ const KNOWN_SECTIONS = new Set([
   'audit_records', 'raw_units', 'config',
 ]);
 const MEMORY_IMPORT_SECTIONS = new Set(['memories']);
+const PROTECTED_MEMORY_KINDS = new Set([
+  'identity', 'autobiographical', 'self-model', 'self_model', 'personality',
+  'worldview', 'goal', 'drive', 'emotional_trigger', 'emotional-trigger',
+  'narrative', 'core-value', 'protected',
+]);
 const PROTECTED_SECTIONS = new Set([
   'identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals',
 ]);
@@ -75,6 +80,14 @@ function describeSection(section: string, value: unknown, exportId: string, issu
         }
         if (typeof row.content !== 'string' || !row.content.trim()) {
           issues.push({ path: path + '[' + index + '].content', kind: 'schema', detail: 'Memory records require non-empty content to be imported.' });
+        }
+        const metadata = record(row.metadata) ?? {};
+        const declaredKind = String(metadata.nk1_kind ?? row.type ?? '').trim().toLowerCase();
+        if (PROTECTED_MEMORY_KINDS.has(declaredKind) ||
+            row.protected === true || row.protectedBelief === true ||
+            metadata.protected === true || metadata.nk1_protected === true ||
+            metadata.protected_belief === true) {
+          issues.push({ path: path + '[' + index + ']', kind: 'protected-memory-record', detail: 'Protected identity/personality/worldview/drive records cannot be imported through the memory-only exchange.' });
         }
         for (const dateField of ['created_at', 'updated_at', 'valid_from', 'last_accessed']) {
           if (row[dateField] != null && !isDateTime(row[dateField])) {
@@ -289,7 +302,7 @@ export function buildNk1HmxV17Document(input: {
   const candidates = input.memories
     .map(record)
     .filter((row): row is Record<string, unknown> => Boolean(row))
-    .filter(row => typeof row.content === 'string' && Boolean(String(row.content).trim()) && !row.dormant && row.epistemicStatus !== 'quarantined')
+    .filter(row => typeof row.content === 'string' && Boolean(String(row.content).trim()) && !row.dormant && row.epistemicStatus !== 'quarantined' && row.protected !== true && row.protectedBelief !== true && !PROTECTED_MEMORY_KINDS.has(String(row.kind ?? '').trim().toLowerCase()) && !Boolean(record(row.metadata)?.protected) && record(row.metadata)?.nk1_protected !== true)
     .sort((a, b) => Number(b.observedAt ?? b.lastAccessAt ?? b.createdAt ?? 0) - Number(a.observedAt ?? a.lastAccessAt ?? a.createdAt ?? 0));
   const selected = candidates.slice(0, MAX_STAGED_MEMORIES);
   let truncatedCount = 0;
