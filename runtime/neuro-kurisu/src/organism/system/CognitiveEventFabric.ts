@@ -352,6 +352,34 @@ export class CognitiveEventFabric {
         values[field]=descriptor.value;
       }
       return values;
+    }; 
+
+    // Nested lineage arrays get descriptor-only handling. Never read proxy-backed length or slots directly.
+    const readNestedDataArray=(candidate:unknown,limit:number):unknown[]|null=>{
+      let array=false;
+      try { array=Array.isArray(candidate); } catch { return null; }
+      if(!array)return null;
+      let prototype:object|null;
+      let descriptors:Record<string,PropertyDescriptor>;
+      try {
+        prototype=Object.getPrototypeOf(candidate as object);
+        descriptors=Object.getOwnPropertyDescriptors(candidate as object) as Record<string,PropertyDescriptor>;
+      } catch { return null; }
+      if(prototype!==Array.prototype)return null;
+      const lengthDescriptor=descriptors.length;
+      if(!lengthDescriptor||!Object.hasOwn(lengthDescriptor,'value')||
+        typeof lengthDescriptor.value!=='number'||!Number.isSafeInteger(lengthDescriptor.value)||
+        lengthDescriptor.value<0||lengthDescriptor.value>limit)return null;
+      const length=lengthDescriptor.value;
+      const keys=Object.keys(descriptors).filter(key=>key!=='length');
+      if(keys.length!==length||keys.some(key=>!/^(0|[1-9]\d*)$/.test(key)||Number(key)>=length))return null;
+      const values:unknown[]=[];
+      for(let index=0;index<length;index+=1){
+        const descriptor=descriptors[String(index)];
+        if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value'))return null;
+        values.push(descriptor.value);
+      }
+      return values;
     };
     const cloneSnapshotPayload=(input:unknown,depth=0,state:{nodes:number;textUnits:number;ancestors:Set<object>}={nodes:0,textUnits:0,ancestors:new Set<object>()}):unknown=>{
       state.nodes+=1;
@@ -459,18 +487,11 @@ export class CognitiveEventFabric {
       ))continue;
       const parentsPresent=Object.hasOwn(value,'parentIds');
       const rawParentIds=value.parentIds;
-      if(parentsPresent&&!Array.isArray(rawParentIds))continue;
-      const parentInput=parentsPresent?rawParentIds as unknown[]:[];
-      if(parentInput.length>12)continue;
+      const parentInput=parentsPresent?readNestedDataArray(rawParentIds,12):[];
+      if(parentInput===null)continue;
       const parentIds:string[]=[];
       let invalidParentLineage=false;
-      for(let index=0;index<parentInput.length;index+=1){
-        const descriptor=Object.getOwnPropertyDescriptor(parentInput,String(index));
-        if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value')) {
-          invalidParentLineage=true;
-          break;
-        }
-        const parent=descriptor.value;
+      for(const parent of parentInput){
         if(typeof parent!=='string'||!parent.trim()||parent!==parent.trim()||parent.length>180||/[\u0000-\u001f\u007f-\u009f]/.test(parent)) {
           invalidParentLineage=true;
           break;
