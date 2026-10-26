@@ -283,6 +283,31 @@ function makeHmxDocument(exportId, sections) {
   });
 }
 
+// The first apply must validate its returned receipt before committing status.
+// A bad handler response must not be stored as a successful stage or inflate metrics.
+const invalidReceiptHexis = new HexisAdaptationFabric();
+invalidReceiptHexis.bindCanonicalMemoryApply(() => ({ version: 1, status: 'applied' }));
+const invalidReceiptStage = invalidReceiptHexis.stageHmx({
+  document: makeHmxDocument('exp_8181818181818181', {
+    memories: [{ ref: 'exp_8181818181818181:memory-1', type: 'semantic', content: 'Receipt validation fixture.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(invalidReceiptHexis.decideHmx(invalidReceiptStage.stagingId, 'accept')?.status, 'accepted');
+const invalidReceiptMetricBefore = invalidReceiptHexis.snapshot().metrics.hmxApplied;
+assert.throws(
+  () => invalidReceiptHexis.decideHmx(invalidReceiptStage.stagingId, 'apply'),
+  /hmx-apply-receipt-invalid/,
+);
+const invalidReceiptAfter = invalidReceiptHexis.getHmxStage(invalidReceiptStage.stagingId);
+assert.equal(invalidReceiptAfter?.status, 'accepted',
+  'invalid apply receipts must not promote the stage to applied');
+assert.equal(invalidReceiptAfter?.application, undefined,
+  'a malformed handler receipt must never be persisted as the canonical result');
+assert.equal(invalidReceiptHexis.snapshot().metrics.hmxApplied, invalidReceiptMetricBefore,
+  'rejected receipts must not increment the applied metric');
+
 // Analysis and authoritative strategies are reviewable, but the current projector
 // only implements additive port semantics and must reject writes from other strategies.
 for (const [exportId, intent, strategy] of [
