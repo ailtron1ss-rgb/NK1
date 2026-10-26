@@ -72,16 +72,95 @@ export interface CognitiveEventFabricSnapshot {
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
-const cleanPayload=(x:unknown):Record<string,unknown>=>{
-  if(!isRecord(x)) return {};
-  const detached:Record<string,unknown>={};
-  // Do not invoke top-level getters while projecting a causal event payload.
-  for(const key of Object.keys(x)){
-    const descriptor=Object.getOwnPropertyDescriptor(x,key);
-    if(descriptor && Object.hasOwn(descriptor,'value')) detached[key]=descriptor.value;
+const OMIT_PAYLOAD_VALUE=Symbol('omit-cognitive-payload-value');
+const MAX_COGNITIVE_PAYLOAD_DEPTH=32;
+const MAX_COGNITIVE_PAYLOAD_NODES=16384;
+const MAX_COGNITIVE_PAYLOAD_ARRAY_LENGTH=16384;
+const MAX_COGNITIVE_PAYLOAD_KEYS=8192;
+
+function clonePayloadValue(
+  value:unknown,
+  ancestors:Set<object>,
+  depth:number,
+  budget:{nodes:number},
+):unknown|typeof OMIT_PAYLOAD_VALUE {
+  budget.nodes+=1;
+  if(budget.nodes>MAX_COGNITIVE_PAYLOAD_NODES) throw new RangeError('cognitive-event-payload-node-limit');
+  if(depth>MAX_COGNITIVE_PAYLOAD_DEPTH) throw new RangeError('cognitive-event-payload-depth-limit');
+  if(value===null||typeof value==='boolean'||typeof value==='string') return value;
+  if(typeof value==='number') return Number.isFinite(value)?value:null;
+  if(value===undefined||typeof value==='function'||typeof value==='symbol') return OMIT_PAYLOAD_VALUE;
+  if(typeof value==='bigint') throw new TypeError('cognitive-event-payload-bigint-not-json-serializable');
+  if(typeof value!=='object') return OMIT_PAYLOAD_VALUE;
+
+  if(value instanceof Date) {
+    const timestamp=Date.prototype.getTime.call(value);
+    return Number.isFinite(timestamp)?new Date(timestamp).toISOString():null;
   }
-  return detached;
+  if(ancestors.has(value)) throw new TypeError('circular-cognitive-event-payload');
+  ancestors.add(value);
+  try {
+    if(Array.isArray(value)) {
+      if(value.length>MAX_COGNITIVE_PAYLOAD_ARRAY_LENGTH) throw new RangeError('cognitive-event-payload-array-limit');
+      const output:unknown[]=[];
+      for(let index=0;index<value.length;index+=1) {
+        const descriptor=Object.getOwnPropertyDescriptor(value,String(index));
+        if(!descriptor||!descriptor.enumerable||!('value' in descriptor)) { output.push(null); continue; }
+        const cloned=clonePayloadValue(descriptor.value,ancestors,depth+1,budget);
+        output.push(cloned===OMIT_PAYLOAD_VALUE?null:cloned);
+      }
+      return output;
+    }
+
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null) {
+      throw new TypeError('unsupported-cognitive-event-payload-object');
+    }
+    const descriptors=Object.getOwnPropertyDescriptors(value) as Record<string,PropertyDescriptor>;
+    const keys=Object.keys(descriptors);
+    if(keys.length>MAX_COGNITIVE_PAYLOAD_KEYS) throw new RangeError('cognitive-event-payload-key-limit');
+    const output:Record<string,unknown>={};
+    for(const key of keys.sort()) {
+      if(key.length>512) throw new RangeError('cognitive-event-payload-key-length-limit');
+      const descriptor=descriptors[key]!;
+      if(!descriptor.enumerable||!('value' in descriptor)) continue;
+      const cloned=clonePayloadValue(descriptor.value,ancestors,depth+1,budget);
+      if(cloned!==OMIT_PAYLOAD_VALUE) Object.defineProperty(output,key,{
+        configurable:true,enumerable:true,writable:true,value:cloned,
+      });
+    }
+    return output;
+  } finally {
+    ancestors.delete(value);
+  }
+}
+
+const cleanPayload=(value:unknown):Record<string,unknown>=>{
+  if(!isRecord(value)) return {};
+  const cloned=clonePayloadValue(value,new Set<object>(),0,{nodes:0});
+  return cloned!==OMIT_PAYLOAD_VALUE&&isRecord(cloned)?cloned:{};
 };
+
+function eventEnvelopeFingerprint(event:Pick<CognitiveEventNode,'tick'|'at'|'stage'|'source'|'parentIds'|'external'|'confidence01'|'payload'>):string {
+  return sha256Stable({
+    tick:event.tick,
+    at:event.at,
+    stage:event.stage,
+    source:event.source,
+    parentIds:[...event.parentIds],
+    external:event.external,
+    confidence01:clamp01(event.confidence01),
+    payload:cleanPayload(event.payload),
+  });
+}
+
+function cloneCognitiveEvent(event:CognitiveEventNode):CognitiveEventNode {
+  return {
+    ...event,
+    parentIds:[...event.parentIds],
+    payload:cleanPayload(event.payload),
+  };
+}
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
 export class CognitiveEventFabric {
@@ -90,7 +169,11 @@ export class CognitiveEventFabric {
   private total=0;
   private readonly receiptProjectionIndex=new Map<string,ToolReceiptProjectionIndexEntry>();
 
-  constructor(capacity=512){this.capacity=Math.max(128,Math.min(4096,Math.floor(capacity)));}
+  constructor(capacity=512){
+    this.capacity=Number.isFinite(capacity)
+      ?Math.max(128,Math.min(4096,Math.floor(capacity)))
+      :512;
+  }
 
   restore(raw?:Partial<CognitiveEventFabricSnapshot>|null):void{
     const recentRows=Array.isArray(raw?.recent)?raw!.recent:[];
@@ -109,12 +192,15 @@ export class CognitiveEventFabric {
       seen.add(id);
       const at=Number(value.at);
       const parentIds=Array.isArray(value.parentIds)?value.parentIds.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).map(parent=>parent.trim().slice(0,180)).slice(0,12):[];
+      let payload:Record<string,unknown>;
+      try { payload=cleanPayload(value.payload); }
+      catch { continue; }
       restored.push({
         id, stage:stage as CognitiveStage, tick:Math.floor(tick),
         at:Number.isFinite(at)&&at>=0?at:0,
         source:typeof value.source==='string'?value.source.slice(0,120):'restored-unknown',
         parentIds, external:Boolean(value.external), confidence01:clamp01(Number(value.confidence01??.5)),
-        payload:cleanPayload(value.payload),
+        payload,
       });
       if(restored.length>=this.capacity)break;
     }
@@ -152,63 +238,64 @@ export class CognitiveEventFabric {
   }
 
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
-    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
     const suppliedId=typeof input.id==='string'?input.id.trim():'';
-    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
-
-    const normalizedTick=Math.max(0,Math.floor(input.tick));
-    const normalizedSource=String(input.source||'unknown').slice(0,120);
-    const parentIds=[...(input.parentIds??[])].map(String).slice(0,12);
-    const external=Boolean(input.external);
-    const confidence01=clamp01(input.confidence01??0.5);
-    const payload=structuredClone(cleanPayload(input.payload));
-    // Validate serializability before mutating the event ledger; invalid payloads fail closed.
-    sha256Stable(payload);
-
-    if(suppliedId){
-      const prior=this.events.find(event=>event.id===suppliedId);
-      if(prior){
-        // If arrival time is omitted on retry, preserve the original event time.
-        // An explicitly supplied timestamp is part of the immutable event identity.
-        const comparisonAt=Number.isFinite(input.at)?Number(input.at):prior.at;
-        const expectedFingerprint=sha256Stable({
-          tick:normalizedTick,
-          at:comparisonAt,
-          stage:input.stage,
-          source:normalizedSource,
-          parentIds,
-          external,
-          confidence01,
-          payload,
-        });
-        const priorFingerprint=sha256Stable({
-          tick:prior.tick,
-          at:prior.at,
-          stage:prior.stage,
-          source:prior.source,
-          parentIds:prior.parentIds,
-          external:prior.external,
-          confidence01:prior.confidence01,
-          payload:prior.payload,
-        });
-        if(expectedFingerprint!==priorFingerprint) throw new Error('cognitive-event-id-conflict');
-        return structuredClone(prior);
-      }
+    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\\u0000-\\u001f\\u007f]/.test(suppliedId))) {
+      throw new Error('invalid-cognitive-event-id');
+    }
+    if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick<0) {
+      throw new RangeError('invalid-cognitive-event-tick');
+    }
+    if(input.at!==undefined&&(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0)) {
+      throw new RangeError('invalid-cognitive-event-timestamp');
+    }
+    if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
+    if(typeof input.source!=='string') throw new TypeError('invalid-cognitive-event-source');
+    if(input.parentIds!==undefined&&!Array.isArray(input.parentIds)) throw new TypeError('invalid-cognitive-event-parents');
+    if(input.parentIds?.some(parent=>typeof parent!=='string'||!parent.trim())) {
+      throw new TypeError('invalid-cognitive-event-parent-id');
+    }
+    if(input.external!==undefined&&typeof input.external!=='boolean') throw new TypeError('invalid-cognitive-event-external-flag');
+    if(input.confidence01!==undefined&&(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01))) {
+      throw new TypeError('invalid-cognitive-event-confidence');
     }
 
+    const normalizedTick=input.tick;
+    const normalizedSource=input.source.slice(0,120)||'unknown';
+    const parentIds=(input.parentIds??[]).map(parent=>parent.slice(0,180)).slice(0,12);
+    const external=input.external??false;
+    const confidence01=clamp01(input.confidence01??0.5);
+    // Deep clone and canonicalize before lookup/mutation: invalid evidence cannot
+    // partially mutate the event journal or escape into a later snapshot.
+    const payload=cleanPayload(input.payload);
+    const prior=suppliedId?this.events.find(event=>event.id===suppliedId):undefined;
+    const at=input.at!==undefined?input.at:(prior?.at??Date.now());
     const event:CognitiveEventNode={
       id:suppliedId||`cef:${at}:${normalizedTick}:${Math.random().toString(16).slice(2)}`,
-      tick:normalizedTick, at,
-      stage:input.stage, source:normalizedSource,
-      parentIds, external, confidence01, payload,
+      tick:normalizedTick,at,stage:input.stage,source:normalizedSource,parentIds,
+      external,confidence01,payload,
     };
+
+    if(prior) {
+      if(eventEnvelopeFingerprint(prior)!==eventEnvelopeFingerprint(event)) {
+        throw new Error('cognitive-event-id-conflict');
+      }
+      return cloneCognitiveEvent(prior);
+    }
+
     this.events.unshift(event);
     if(this.events.length>this.capacity)this.events=this.events.slice(0,this.capacity);
     this.total+=1;
     this.pruneReceiptProjectionIndex();
-    return structuredClone(event);
+    return cloneCognitiveEvent(event);
   }
 
+  /** Read-only lookup by stable event ID. Returned payloads are detached. */
+  getById(id:string):CognitiveEventNode|null {
+    const normalized=typeof id==='string'?id.trim():'';
+    if(!normalized)return null;
+    const event=this.events.find(row=>row.id===normalized);
+    return event?cloneCognitiveEvent(event):null;
+  }
   private pruneReceiptProjectionIndex():void {
     if(!this.receiptProjectionIndex.size) return;
     const ids=new Set(this.events.map(event=>event.id));
@@ -268,7 +355,10 @@ export class CognitiveEventFabric {
           Math.abs(clamp01(Number(outcome!.confidence01))-normalized.confidence01)<1e-9&&
           evidence!.payload.verificationBasis===normalized.verificationBasis&&evidence!.payload.externalObservation===normalized.externalObservation&&
           evidence!.payload.observationId===normalized.observationId&&evidence!.payload.observationIntegrated===normalized.observationIntegrated&&
-          evidence!.payload.expectedPostconditionPresent===normalized.expectedPostconditionPresent&&evidence!.payload.observedPostconditionPresent===normalized.observedPostconditionPresent;
+          evidence!.payload.expectedPostconditionPresent===normalized.expectedPostconditionPresent&&
+          evidence!.payload.observedPostconditionPresent===normalized.observedPostconditionPresent&&
+          evidence!.payload.expectedPostconditionHash===normalized.expectedPostconditionHash&&
+          evidence!.payload.observedPostconditionHash===normalized.observedPostconditionHash;
         if(!storedMatches||(prior?.projectionHash&&prior.projectionHash!==projectionHash))throw new Error('tool-receipt-execution-id-conflict');
         const replayEntry:ToolReceiptProjectionIndexEntry={executionId,actionEventId:action!.id,outcomeEventId:outcome!.id,evidenceEventId:evidence!.id,projectedAt:prior?.projectedAt??action!.at,projectionHash};
         this.receiptProjectionIndex.set(executionId,replayEntry);
@@ -290,7 +380,7 @@ export class CognitiveEventFabric {
     const evidence=this.append({
       tick:input.tick,stage:'tool-evidence',source:'outcome-verification',
       parentIds:[outcome.id],external:Boolean(input.externalObservation),confidence01:clamp01(input.confidence01),at,
-      payload:{executionId,tool:safeTool,verificationBasis:String(input.verificationBasis??'none').slice(0,48),externalObservation:Boolean(input.externalObservation),observationId:String(input.observationId??'').slice(0,180)||null,observationIntegrated:Boolean(input.observationIntegrated),expectedPostconditionPresent:Boolean(String(input.expectedPostcondition??'').trim()),observedPostconditionPresent:Boolean(String(input.observedPostcondition??'').trim())},
+      payload:{executionId,tool:safeTool,verificationBasis:String(input.verificationBasis??'none').slice(0,48),externalObservation:Boolean(input.externalObservation),observationId:String(input.observationId??'').slice(0,180)||null,observationIntegrated:Boolean(input.observationIntegrated),expectedPostconditionPresent:Boolean(String(input.expectedPostcondition??'').trim()),observedPostconditionPresent:Boolean(String(input.observedPostcondition??'').trim()),expectedPostconditionHash:normalized.expectedPostconditionHash,observedPostconditionHash:normalized.observedPostconditionHash},
     });
     const entry:ToolReceiptProjectionIndexEntry={executionId,actionEventId:action.id,outcomeEventId:outcome.id,evidenceEventId:evidence.id,projectedAt:at,projectionHash};
     this.receiptProjectionIndex.set(executionId,entry);
@@ -522,7 +612,7 @@ export class CognitiveEventFabric {
     return { tick: cycleTick, complete, integrity01: complete ? 1 : integrity01, missingStages, invalidStages, missingEdges };
   }
 
-  recent(limit=64):CognitiveEventNode[]{return structuredClone(this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
+  recent(limit=64):CognitiveEventNode[]{return this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))).map(cloneCognitiveEvent);}
 
   snapshot():CognitiveEventFabricSnapshot{
     const known=new Set(this.events.map(e=>e.id));
@@ -547,7 +637,11 @@ export class CognitiveEventFabric {
     // The public snapshot intentionally keeps only 96 ordinary events. Include the
     // sanitized receipt nodes that still have live replay guards so restart restore
     // can retain exact causal links even when a receipt falls outside that window.
-    const receiptEvents=this.events.filter(event=>receiptIds.has(event.id)&&!recentIds.has(event.id)).map(event=>({...event,parentIds:[...event.parentIds],payload:{...event.payload}}));
-    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
+    const receiptEvents=this.events.filter(event=>receiptIds.has(event.id)&&!recentIds.has(event.id)).map(cloneCognitiveEvent);
+    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()].map(entry=>({
+      ...entry,
+      ...(entry.externalObservations?{externalObservations:entry.externalObservations.map(ref=>({...ref}) )}:{}),
+      ...(entry.receiptRevisions?{receiptRevisions:entry.receiptRevisions.map(ref=>({...ref}) )}:{}),
+    }))};
   }
 }

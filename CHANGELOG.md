@@ -1,12 +1,25 @@
-## WorkPass346 — enforce full cognitive-event replay identity — 2026-10-26
+## WorkPass347 — preserve verified postcondition identity across restore (2026-10-26)
 
-- **Defect:** `CognitiveEventFabric.append()` accepted a repeated event ID as idempotent when only tick/stage/source matched, even if payload, timestamp, causal parents, external flag or confidence had changed. Returned and stored payloads were shallow copies, so nested caller mutation could change recorded evidence.
-- **Fix:** normalize and fingerprint the entire event envelope before mutating the ledger; reject ID conflicts before writes; use the original event timestamp when a retry omits `at`; deep-clone accepted payloads and returned nodes; skip top-level getters without executing them.
-- **Regression coverage:** added `tests/workpass345-cognitive-event-fabric-identity.mjs` for exact replay, key-order-equivalent JSON, conflicts across all identity fields, nested mutation isolation, getter non-execution and cyclic payload rejection.
-- **Integration:** wired the regression into `test:cognitive-integration-suite`, immediately after runtime typecheck.
-- **Validation:** exact-head CI is pending for this branch. Green checks from parent SHA `d795bd5513f0a99176c79f10d18c8cb4e69ced23` do not validate this change.
+- **FIXED:** the active causal event journal now persists hashes of the expected and observed postconditions in the sanitized receipt-evidence event, without storing raw postcondition text.
+- **FIXED:** when the bounded receipt projection index is missing after restore, replay validates the persisted hashes and rejects changed-but-nonempty postconditions before appending any new events.
+- **HARDENED:** payloads now use a bounded recursive JSON-safe clone; circular, unsupported, oversized or excessively deep data is rejected before event mutation, and nested accessors are never invoked.
+- **HARDENED:** invalid explicit timestamps, unsafe ticks and invalid event stages are rejected; non-finite capacity configuration uses the bounded default.
+- **REGRESSION:** extended the active event-fabric contract with invalid-clock, array getter, malformed-restore and indexless receipt replay tests.
+- **VALIDATION:** exact-head CI is required for this commit; no field-device or learning-uplift claim is made.
 
 ---
+
+## WorkPass346 — enforce full cognitive-event replay identity — 2026-10-26
+
+- **FIXED:** active `CognitiveEventFabric.append()` compares the full stable-ID envelope (tick, timestamp, stage, source, causal parents, external status, confidence and canonical payload) before mutation.
+- **FIXED:** accepted payloads and returned/snapshot events are deeply detached. Reusing an ID with changed evidence fails closed; exact retries without `at` preserve the original timestamp.
+- **HARDENED:** persisted malformed payload rows do not abort restoration of healthy rows; event and payload size/depth budgets prevent unbounded evidence ingestion.
+- **REGRESSION:** exact replay, field conflicts, key-order equivalence, nested mutation, getter avoidance, circular payloads, clock validation, restore recovery and receipt replay after index loss are covered.
+- **INTEGRATION:** the focused test is part of `test:cognitive-integration-suite` and has explicit workflow path filters.
+- **VALIDATION:** exact-head CI pending; previous SHA results are not treated as proof for this change.
+
+---
+
 ## WorkPass345 — fail-closed release-date contract — 2026-10-26
 
 - **Defect:** `verify-release-metadata.mjs` silently substituted the historical date `2026-10-10` when `SUPER_VERSION.date` was missing or malformed. That fallback could make an incomplete release manifest resolve an old status report instead of failing on the missing date.
