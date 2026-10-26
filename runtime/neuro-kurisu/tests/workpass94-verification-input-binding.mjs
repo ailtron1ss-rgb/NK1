@@ -160,6 +160,22 @@ assert.equal(assessExternalPostcondition({
   observedPostcondition: 'x'.repeat(1024) + 'observed-tail',
 }), 'unknown', 'the public assessor must reject overlong postcondition text');
 
+const caseNormalizedPostcondition = await service.verify({
+  toolId: 'device.set-state',
+  input,
+  result: { accepted: true },
+}, async () => ({
+  verified: true,
+  basis: 'external-postcondition',
+  externalObservation: true,
+  observationId: 'readback-case-normalization',
+  expectedPostcondition: 'RELAY-MAIN=ON',
+  observedPostcondition: 'relay-main=on',
+  confidence01: 0.99,
+}));
+assert.equal(caseNormalizedPostcondition.verified, true,
+  'case-insensitive postcondition comparison must remain stable');
+
 const maxLengthPostcondition = await service.verify({
   toolId: 'device.set-state',
   input,
