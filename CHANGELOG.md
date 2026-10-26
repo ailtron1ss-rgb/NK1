@@ -2,7 +2,7 @@
 
 - [TEST HARDENING] The WorkPass358 restart test no longer searches recursively across arbitrary snapshot values. It reads only `OrganismCore.snapshot().facets.advanced.memoryOS.items`, the canonical persisted MemoryOS2 owner, and requires the same marker-bearing item/ID before and after process restart.
 - [PURPOSE] Prevents unrelated journal, trace, compatibility projection, or diagnostic copies from satisfying the memory-continuity assertion by accident.
-- [VALIDATION] Focused workflow [#40291427381](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291427381) is running on the strict test head; do not mark WorkPass360 complete until the full-runtime restart assertion and typecheck both pass.
+- [VALIDATION] Focused workflow [#40291427381](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291427381) passed on head `638efa8ca5f3b95a4083b63018c5e2b199c75a81`: native provider 10/10, evaluator-config 16/16, MemoryOS restore boundary PASS, file-backed process recall PASS, strict canonical MemoryOS2 full-runtime restart PASS, runtime `TYPECHECK=PASS`.
 - [LIMIT] This test validates persistence through the runtime-owned state files in a controlled fixture. It does not yet prove production-scale memory migrations, multi-store crash consistency, or memory retrieval quality uplift.
 
 # WorkPass359 — preserve action/goal attribution under executive arbitration (2026-10-26)
