@@ -1,3 +1,7 @@
+### WorkPass328 follow-up — remove remaining Node 24 strip-only constructor syntax (2026-10-26)
+
+- Replaced TypeScript parameter properties in `AtomicFileTrustedSkillShadowRunRegistry` and `P23TrustedShadowLearningScheduler` with explicit fields and assignments. These classes are part of signed skill-evidence and supervised-learning paths imported by the P23/P26 Actions tests; avoiding compile-only syntax keeps the runtime usable without a transpiler.
+
 ### WorkPass328 follow-up — finish Node 24 storage compatibility and clarify quarantined event counters (2026-10-26)
 
 - Converted `AtomicFileSkillStorePersistence` away from a TypeScript constructor parameter property so Node 24 strip-only imports can execute the durable candidate/approval store in the P23 and P26 workflows.
