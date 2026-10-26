@@ -7,8 +7,8 @@
 - [x] Reject sensitive/loader-injection names in inherited environment keys at the generic supervisor boundary.
 - [x] Reject sensitive/loader-injection names in explicitly supplied environment entries before allocating run/survive roots.
 - [x] Add regressions for inherited and explicit `OPENAI_API_KEY` and verify rejected requests create no run root.
-- [ ] Run the focused WorkPass349 workflow on the exact new code/test SHA, including supervisor regression, evaluator path tests and runtime typecheck.
-- **Status:** code/tests committed; exact-head CI pending. Host credentials should remain host-owned; environment filtering does not replace a real executor sandbox.
+- [x] Focused workflow [#40289516633](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289516633) passed on code/test SHA `295e11f3e9795375f81bbad1b493e2bac842317a`: native provider 10/10, evaluator-config boundary suite 16/16, direct supervisor regression completed successfully, and runtime `TYPECHECK=PASS`.
+- **Status:** code/tests committed and focused CI validated on code/test SHA `295e11f3e9795375f81bbad1b493e2bac842317a`. Host credentials should remain host-owned; environment filtering does not replace a real executor sandbox.
 
 ---
 
