@@ -8,7 +8,7 @@ import { VersionedSkillCandidateStore, InMemorySkillStorePersistence } from '../
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
-import { createAuthenticatedSkillPromotionApprovalVerifier, canonicalSkillPromotionApprovalPayload, createSkillPromotionApprovalPayload } from '../src/organism/learning/AuthenticatedSkillPromotionApproval.ts';
+import { createAuthenticatedSkillPromotionApprovalVerifier, createAuthenticatedSkillRollbackApprovalVerifier, canonicalSkillPromotionApprovalPayload, createSkillPromotionApprovalPayload, canonicalSkillRollbackApprovalPayload, createSkillRollbackApprovalPayload } from '../src/organism/learning/AuthenticatedSkillPromotionApproval.ts';
 import { createContextBoundSkillShadowEvidenceVerifier, signSkillShadowArtifactForFixture, skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 
 function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticatedEvidenceRows=0) {
@@ -162,6 +162,67 @@ assert.throws(() => signedApprovalStore.rollback(approvalCandidate.candidateId, 
   'caller-supplied rollback identity and active-version fields cannot bypass the default-deny rollback authority');
 assert.equal(signedApprovalStore.snapshot().active.find(item => item.skillId === 'signed-approval-skill').version, 1,
   'a rejected unauthenticated rollback must leave the currently active skill untouched');
+
+// A separate Ed25519 rollback authority must bind the signature to the exact active candidate and restore target.
+let rollbackClock = Date.now();
+approvalClock = rollbackClock;
+const authenticatedRollbackVerifier = createAuthenticatedSkillRollbackApprovalVerifier(
+  new Map([['operator-key-1', approvalPublicPem]]), { now: () => rollbackClock },
+);
+const rollbackPersistence = new InMemorySkillStorePersistence();
+const authenticatedRollbackStore = new VersionedSkillCandidateStore(
+  rollbackPersistence, authenticatedApprovalVerifier, () => true, authenticatedRollbackVerifier,
+);
+const rollbackCandidate = authenticatedRollbackStore.stageCandidate(
+  proposal('signed-rollback'), 'signed-rollback-skill', { instruction: 'rollback signature required' },
+);
+for (let i = 1; i <= 3; i++) authenticatedRollbackStore.recordShadowObservation(rollbackCandidate.candidateId, {
+  runId: 'signed-rollback-shadow-' + i, evidenceFingerprint: (i + 5).toString().repeat(64),
+  passed: true, observedAt: Date.now(),
+});
+rollbackClock = Date.now();
+approvalClock = rollbackClock;
+const rollbackPromotionCandidate = authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId);
+const rollbackPromotionPayload = createSkillPromotionApprovalPayload(
+  rollbackPromotionCandidate, 'operator-key-1', 'rollback-promotion-approval-1', rollbackClock, null, 3,
+);
+const rollbackPromotionApproval = {
+  approvedBy: 'operator-key-1', approvedAt: rollbackClock, expectedActiveVersion: null,
+  artifact: {
+    payload: rollbackPromotionPayload,
+    signature: sign(null, Buffer.from(canonicalSkillPromotionApprovalPayload(rollbackPromotionPayload), 'utf8'), approvalPrivatePem).toString('base64'),
+  },
+};
+assert.equal(authenticatedRollbackStore.approveAndPromote(rollbackCandidate.candidateId, rollbackPromotionApproval, 3).version, 1);
+const rollbackActiveCandidate = authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId);
+assert.equal(rollbackActiveCandidate.status, 'active');
+assert.equal(authenticatedRollbackStore.rollback(rollbackCandidate.candidateId, {
+  approvedBy: 'operator-key-1', approvedAt: rollbackClock, expectedActiveVersion: 1,
+}), null, 'unsigned rollback is not accepted even with a configured trusted key');
+const rollbackPayload = createSkillRollbackApprovalPayload(
+  authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId),
+  'operator-key-1', 'rollback-approval-request-1', rollbackClock,
+);
+const rollbackArtifact = {
+  payload: rollbackPayload,
+  signature: sign(null, Buffer.from(canonicalSkillRollbackApprovalPayload(rollbackPayload), 'utf8'), approvalPrivatePem).toString('base64'),
+};
+const signedRollbackApproval = {
+  approvedBy: 'operator-key-1', approvedAt: rollbackClock, expectedActiveVersion: 1, artifact: rollbackArtifact,
+};
+assert.equal(authenticatedRollbackStore.rollback(rollbackCandidate.candidateId, signedRollbackApproval), null,
+  'a valid context-bound Ed25519 rollback can restore the null previous-active state');
+assert.equal(authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId).status, 'rolled-back');
+assert.equal(authenticatedRollbackStore.snapshot().active.length, 0);
+assert.equal(authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId).rollbackApproval.artifact.payload.previousActiveFingerprint,
+  rollbackPayload.previousActiveFingerprint, 'rollback approval persists the exact previous-active fingerprint');
+const restoredAuthenticatedRollbackStore = new VersionedSkillCandidateStore(
+  rollbackPersistence, authenticatedApprovalVerifier, () => true, authenticatedRollbackVerifier,
+);
+assert.equal(restoredAuthenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId).status, 'rolled-back',
+  'signed rollback evidence is revalidated across store reconstruction');
+assert.equal(restoredAuthenticatedRollbackStore.snapshot().active.length, 0,
+  'restart cannot resurrect a skill that was authoritatively rolled back');
 assert.equal(signedApprovalStore.snapshot().candidates[0].approval.artifact.payload.candidateId, approvalCandidate.candidateId);
 assert.throws(() => signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3),
   /must complete shadow staging/,
