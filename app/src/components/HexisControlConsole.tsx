@@ -10,6 +10,7 @@ import type {
   HexisGoalProposalPrepareResponse,
   HexisGoalProposalStatus,
   HexisHmxExportResponse,
+  HexisHmxStage,
   HexisHmxStageResponse,
 } from "@/neuro-kurisu/types";
 
@@ -57,6 +58,7 @@ export function HexisControlConsole() {
   const [hmxConfirmed, setHmxConfirmed] = useState(false);
   const [hmxApplyConfirmed, setHmxApplyConfirmed] = useState(false);
   const [hmxAccepted, setHmxAccepted] = useState(false);
+  const [hmxStage, setHmxStage] = useState<HexisHmxStage | null>(null);
   const [goalProposals, setGoalProposals] = useState<HexisGoalProposal[]>([]);
   const [goalProposalId, setGoalProposalId] = useState("");
   const [goalProposalStatus, setGoalProposalStatus] = useState<HexisGoalProposalStatus>("pending");
@@ -122,9 +124,10 @@ export function HexisControlConsole() {
       }
       return neuroApi.hexisHmxStage({ document: exported.document, intent: hmxIntent, strategy: hmxStrategy });
     });
-    const nextId = (staged as HexisHmxStageResponse | null)?.stage?.stagingId;
-    if (nextId) {
-      setStageId(String(nextId));
+    const nextStage = (staged as HexisHmxStageResponse | null)?.stage ?? null;
+    if (nextStage?.stagingId) {
+      setStageId(String(nextStage.stagingId));
+      setHmxStage(nextStage);
       setHmxAccepted(false);
       setHmxConfirmed(false);
       setHmxApplyConfirmed(false);
@@ -162,6 +165,7 @@ export function HexisControlConsole() {
     const stage = (result as HexisHmxStageResponse | null)?.stage;
     if (stage?.stagingId) {
       setStageId(String(stage.stagingId));
+      setHmxStage(stage);
       setHmxAccepted(false);
       setHmxConfirmed(false);
       setHmxApplyConfirmed(false);
@@ -170,7 +174,8 @@ export function HexisControlConsole() {
 
   const acceptHmx = async () => {
     const result = await run("Accept staged HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"));
-    const stage = (result as HexisHmxStageResponse | null)?.stage;
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
+    setHmxStage(stage);
     setHmxAccepted(stage?.status === "accepted");
     // A preselected apply checkbox must not carry across the acceptance boundary.
     setHmxApplyConfirmed(false);
@@ -178,7 +183,9 @@ export function HexisControlConsole() {
 
   const rejectHmx = async () => {
     const result = await run("Reject staged HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"));
-    if ((result as HexisHmxStageResponse | null)?.stage?.status === "rejected") {
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
+    setHmxStage(stage);
+    if (stage?.status === "rejected") {
       setHmxAccepted(false);
       setHmxApplyConfirmed(false);
     }
@@ -186,10 +193,22 @@ export function HexisControlConsole() {
 
   const applyHmx = async () => {
     const result = await run("Apply canonical HMX", () => neuroApi.hexisHmxDecide(stageId, "apply"));
-    if ((result as HexisHmxStageResponse | null)?.stage?.status === "applied") {
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
+    setHmxStage(stage);
+    if (stage?.status === "applied") {
       setHmxAccepted(false);
       setHmxApplyConfirmed(false);
     }
+  };
+
+  const loadHmxStage = async () => {
+    if (!stageId.trim()) return;
+    const result = await run("Load HMX stage", () => neuroApi.hexisHmxGetStage(stageId));
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
+    setHmxStage(stage);
+    setHmxAccepted(stage?.status === "accepted");
+    setHmxApplyConfirmed(false);
+    setHmxConfirmed(false);
   };
 
   const loadGoalProposals = async (status: HexisGoalProposalStatus = goalProposalStatus) => {
@@ -345,12 +364,21 @@ export function HexisControlConsole() {
                 event.currentTarget.value = "";
               }} />
             </label>
-            <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxAccepted(false); setHmxConfirmed(false); setHmxApplyConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
+            <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxStage(null); setHmxAccepted(false); setHmxConfirmed(false); setHmxApplyConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
+            <Button variant="outline" disabled={busy || !stageId.trim()} onClick={() => void loadHmxStage()}>Load stage</Button>
           </div>
+          {hmxStage && (
+            <div className="mt-2 rounded-md border border-border bg-bg p-2 text-[11px]">
+              <p className="text-fg">Stage status: {hmxStage.status} · conflicts: {hmxStage.conflicts.length}</p>
+              {hmxStage.conflicts.length > 0 && (
+                <ul className="mt-1 list-disc pl-4 text-muted">{hmxStage.conflicts.slice(0, 8).map((conflict, index) => <li key={index}>{conflict.path}: {conflict.detail}</li>)}</ul>
+              )}
+            </div>
+          )}
           <div className="mt-2 flex flex-wrap gap-2">
-            <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void acceptHmx()}>Accept staged</Button>
-            <Button variant="outline" disabled={busy || !stageId} onClick={() => void rejectHmx()}>Reject</Button>
-            <Button variant="outline" disabled={busy || !stageId || !hmxApplyConfirmed || !hmxAccepted} onClick={() => void applyHmx()}>Apply to canonical memory</Button>
+            <Button disabled={busy || !stageId || !hmxConfirmed || hmxStage?.status !== "staged" || (hmxStage?.conflicts.length ?? 0) > 0} onClick={() => void acceptHmx()}>Accept staged</Button>
+            <Button variant="outline" disabled={busy || !stageId || hmxStage?.status !== "staged"} onClick={() => void rejectHmx()}>Reject</Button>
+            <Button variant="outline" disabled={busy || !stageId || !hmxApplyConfirmed || hmxStage?.status !== "accepted" || !hmxAccepted} onClick={() => void applyHmx()}>Apply to canonical memory</Button>
           </div>
           <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX document for acceptance.</label>
           <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxApplyConfirmed} onChange={e => setHmxApplyConfirmed(e.target.checked)} /> I separately confirm canonical memory writes after acceptance.</label>
