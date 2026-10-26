@@ -184,7 +184,7 @@ const failedReview = ingestHexisEvidenceForReview(memoryOS, rollbackFabric, roll
 rollbackFabric.createLearningReview = failCreateReview;
 assert.equal(failedReview.status, "rejected");
 assert.equal(failedReview.reason, "hexis-review-ingress-failed");
-assert.equal(target(memoryOS, rollbackMemory.id).evidenceRecords?.some((row) => row.evidenceId === rollbackEvidence.evidenceId), false);
+assert.equal(Boolean(target(memoryOS, rollbackMemory.id).evidenceRecords?.some((row) => row.evidenceId === rollbackEvidence.evidenceId)), false);
 assert.equal(rollbackFabric.snapshot().learningReviews.length, 0);
 
 console.log("Hexis evidence → canonical MemoryOS2 → gated Hexis review: PASS", JSON.stringify({
