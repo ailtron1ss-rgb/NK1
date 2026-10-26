@@ -284,14 +284,15 @@
     "id": "WorkPass335",
     "date": "2026-10-26",
     "branch": "work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1",
-    "codeCommit": "f3d462f60e2ad8ead9ed398cee71b59b87aa9547",
-    "summary": "Strict canonical Base64 decoding for Ed25519 promotion/rollback signatures plus fail-closed verified holdout-gate input/configuration validation and family-pair accounting.",
+    "codeCommit": "8cd1a4b6495036c8200b5f2581e8c123584d1ea9",
+    "summary": "Strict canonical Base64 decoding for Ed25519 promotion/rollback signatures plus fail-closed holdout revision gate and proposal-producer configuration validation.",
     "testsAdded": [
       "canonical promotion signature accepted",
       "promotion signatures with trailing junk, leading whitespace, or truncated padding rejected",
       "canonical rollback signature accepted and non-canonical rollback encoding rejected",
       "malformed holdout rows rejected without crashing valid comparisons",
-      "invalid minPairedTasks, minAbsoluteGain, and maxFamilyRegression values rejected",
+      "invalid minPairedTasks, minAbsoluteGain, maxFamilyRegression, and minCompleteSeeds values rejected by the gate/producer",
+      "null producer options explicitly rejected",
       "cross-family baseline/candidate pair excluded and counted once",
       "exact valid threshold boundaries accepted",
       "NaN threshold configuration explicitly rejected"
