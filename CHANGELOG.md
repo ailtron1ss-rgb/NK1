@@ -1,3 +1,11 @@
+# WorkPass366 — repair root launch paths and make clean root install reproducible (2026-10-26)
+
+- [RUNTIME ENTRYPOINT] Both `tools/super-start.mjs` and `tools/super-dev.mjs` previously launched `src/server/server.mjs` while their child working directory was repository root. The actual server is under `runtime/neuro-kurisu/src/server/server.mjs`, so the root launcher could fail with `MODULE_NOT_FOUND`.
+- [FIX] Added `tools/super-paths.mjs` as the shared portable source for project root, state directory and absolute runtime server path. Both launchers now pass the canonical absolute server path and fail early with an actionable message when it is missing. Path resolution uses `fileURLToPath(new URL(...))`, not URL pathname string assumptions.
+- [CLEAN INSTALL] Added a root `package-lock.json` for the dependency-free orchestrator, a `test:super-launch` script and `tools/super-launch.test.mjs` to guard both launchers, the actual server entrypoint and lock/package metadata.
+- [CI] Extended the clean app-build workflow to run root `npm ci` and launcher-path regressions before installing/building app/runtime. The root doctor still runs before installation to preserve a genuine clean-checkout preflight.
+- [VALIDATION] The changed root files trigger WorkPass362 workflow; record the current exact-head result before marking this pass green. The new check is intended to catch the root-vs-runtime path mismatch and absent root lock in clean installs.
+
 # WorkPass365 — live PostgreSQL migration apply, idempotence and rollback (2026-10-26)
 
 - [TEST] Added `app/scripts/migrate-postgres.integration.mjs`, using the real app migrator and a PostgreSQL 17 service.
