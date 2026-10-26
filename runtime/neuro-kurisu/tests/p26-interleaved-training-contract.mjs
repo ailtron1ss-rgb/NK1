@@ -59,7 +59,7 @@ const experience = (energy, novelty, action, reward, worldContextVersion=1) => (
     ],
     [
       experience(0.3, 0.1, 'rest', 0.9),
-      experience(0.3, 0.1, 'rest', 0.9),
+      experience(0.3, 0.9, 'rest', 0.1),
     ],
     { replayEveryNCurrent: 1, maxReplayUpdates: 1, conflictCandidateCap: 8, targetMode: 'reward' },
   );
