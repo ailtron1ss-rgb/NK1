@@ -1,3 +1,13 @@
+## WorkPass419 — reject malformed HMX metadata before coercion (2026-10-26)
+
+- **Adapter code commits:** `718478b8fb815909c4b2c31098921b2a0cac23bf`, `3bc3bee2f68a0c3f99920e1cc1d898cc9797afa3`, `c39fd277fc2e5c79495a92df1d215171502539c0`; **regression commits:** `f6f3ee592273430e787dc2d60f865d0abca0128b`, `693567b8100b83ab0d8ff1ffad8c31fcf3bca8cb`, `f6ff13bb81276752e1500181ea83f9f75f57a657`.
+- Replaced coercive validation of `export_intent`, privacy policy values and memory `nk1_kind` with explicit type checks. HMX memory metadata now validates confidence/salience/trust numbers, `tags`/`entities` arrays and context shape before a record can enter the additive memory path.
+- `normalizeHmxV17Memory` now returns `null` for malformed typed fields instead of coercing null-prototype objects to strings/numbers; numeric clamping is also exception-safe. Memory references are bounded to 512 characters and source-authority values are validated when supplied.
+- Regressions cover null-prototype objects in export intent, privacy fields, metadata kind/confidence/tags, memory type and source authority; they require schema issues or a null projection rather than a thrown coercion error. An oversized memory ref is rejected as a schema conflict.
+- **Validation:** PENDING exact-head HMX adaptation, server smoke, runtime typecheck and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass418 — avoid redundant deep copies after the bounded HMX snapshot (2026-10-26)
 
 - **Fabric code commit:** `8325edfe46cc263b79a146dee94268e14c07c6d0`; **isolation regression:** `849453058df8ca197e623432b66d6d17bad0e945`.
