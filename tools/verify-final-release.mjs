@@ -92,12 +92,20 @@ runCheck('architecture', ['scripts/audit-architecture.mjs'], path.join(root, 'ru
 // previously independent gates that operators could accidentally run separately.
 runCheck('release-metadata', ['tools/verify-release-metadata.mjs', '--root', root], root);
 
+const directCheckFailures = checks.filter(item => !item.pass).length;
+const treeFailures = errors.filter(error => !checks.some(item => error.startsWith(`${item.id}:`))).length;
 const result = {
   title: 'Neuro-Kurisu SUPER final release verifier',
   root,
   generatedPythonCachePolicy: allowGeneratedPythonCache ? 'allow-transient-caches' : 'strict',
   ok: errors.length === 0,
-  summary: { checks: checks.length, passed: checks.filter(item => item.pass).length, failed: checks.filter(item => !item.pass).length },
+  summary: {
+    checks: checks.length,
+    passed: checks.filter(item => item.pass).length,
+    failed: directCheckFailures + treeFailures,
+    directCheckFailures,
+    treeFailures,
+  },
   checks,
   files: files.length,
   errors,
