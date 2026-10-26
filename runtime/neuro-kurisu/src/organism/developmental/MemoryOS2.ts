@@ -87,11 +87,16 @@ function memoryEvidenceDataSnapshot(value: unknown): Record<string, unknown> | n
    'evidenceId','digest','stance','sourceKind','sourceRef','label','author','note',
    'confidence01','observedAt','protectedMemory','provenanceClass','sourceAuthority01','independenceKey',
   ];
+  const allowedKeys = new Set(keys);
+  for (const key of Reflect.ownKeys(descriptors)) {
+   if (typeof key !== 'string' || !allowedKeys.has(key)) return null;
+   const descriptor = descriptors[key];
+   if (!descriptor || !('value' in descriptor)) return null;
+  }
   const row: Record<string, unknown> = Object.create(null);
   for (const key of keys) {
    const descriptor = descriptors[key];
    if (!descriptor) continue;
-   if (!('value' in descriptor)) return null;
    row[key] = descriptor.value;
   }
   return row;
@@ -106,8 +111,8 @@ function normalizeMemoryEvidenceRecords(raw: unknown): MemoryEvidenceRecord[] {
  const byId = new Map<string, MemoryEvidenceRecord>();
  const conflicted = new Set<string>();
  for (const candidate of raw.slice(-64)) {
-  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
-  const row = candidate as Record<string, unknown>;
+  const row = memoryEvidenceDataSnapshot(candidate);
+  if (!row) continue;
   const evidenceId = typeof row.evidenceId === 'string' ? row.evidenceId : '';
   const digest = typeof row.digest === 'string' ? row.digest : '';
   const stance = row.stance;
@@ -736,10 +741,10 @@ export class MemoryOS2{
     evidenceFreshnessAt:Number.isFinite(Number(m?.evidenceFreshnessAt))?Number(m.evidenceFreshnessAt):Number(m?.observedAt??m?.createdAt??Date.now()),
     evidenceSources:this.normalizeEvidenceSources(m),
     evidenceLineageKeys:[...new Set([...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row))])].slice(-32),
-    evidenceLineageFilter:(m?.evidenceLineageFilter!=null||(Array.isArray(m?.evidenceLineageKeys)&&m.evidenceLineageKeys.length>=32))
-     ? normalizeEvidenceLineageFilter(m?.evidenceLineageFilter,[...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row)),...(Array.isArray(m?.evidenceRecords)?m.evidenceRecords.filter((row:any)=>row&&typeof row.evidenceId==='string').map((row:any)=>this.evidenceIdKey(row.evidenceId)):[])])
-     : undefined,
-    evidenceRecords:normalizeMemoryEvidenceRecords(m?.evidenceRecords),
+    ...((m?.evidenceLineageFilter!=null||(Array.isArray(m?.evidenceLineageKeys)&&m.evidenceLineageKeys.length>=32))
+     ? {evidenceLineageFilter:normalizeEvidenceLineageFilter(m?.evidenceLineageFilter,[...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row)),...(Array.isArray(m?.evidenceRecords)?m.evidenceRecords.flatMap((raw:any)=>{const row=memoryEvidenceDataSnapshot(raw);return row&&typeof row.evidenceId==='string'?[this.evidenceIdKey(row.evidenceId)]:[]}):[])])}
+     : {}),
+    ...(Array.isArray(m?.evidenceRecords)?{evidenceRecords:normalizeMemoryEvidenceRecords(m.evidenceRecords)}:{}),
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
   }))};
