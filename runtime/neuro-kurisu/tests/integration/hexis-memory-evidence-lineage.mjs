@@ -186,8 +186,37 @@ assert.ok(revisionStart >= 0 && revisionEnd > revisionStart, 'Hexis belief revis
 const revisionBody = coreSource.slice(revisionStart, revisionEnd);
 assert.ok(revisionBody.includes('memoryOS.hasEvidenceLineage'), 'Core must consult canonical lineage before revision');
 assert.ok(revisionBody.includes('fabric.recordEvidence'), 'Core must write evidence through the MemoryFabric lifecycle journal');
-assert.ok(revisionBody.includes('canonicalDuplicate: duplicateEvidence'), 'Core must pass canonical duplicate status to the belief policy');
-assert.ok(revisionBody.includes('audit.applied && evidenceReceipt?.added === true'), 'confidence updates require both an applied revision and a new canonical evidence receipt');
+assert.ok(revisionBody.includes('canonicalDuplicate,'), 'Core must pass canonical duplicate status to the belief policy');
+assert.ok(revisionBody.includes('if (audit.applied)') && revisionBody.includes('if (!evidence?.added)'),
+  'confidence updates require an applied revision and a new canonical evidence receipt');
+assert.ok(revisionBody.includes('if (priorAudit)'), 'partial belief revisions must recover from an existing audit');
+assert.ok(revisionBody.indexOf('const audit = this.hexisAdaptation.reviseBelief') < revisionBody.lastIndexOf('const persisted = persistEvidence()'),
+  'new belief audits must precede evidence writes so an interrupted sequence can be recovered');
+assert.ok(revisionBody.includes('confidenceCommandId'), 'confidence reconciliation must be idempotent across retry/restore');
+
+// Hexis source identity uses the same Unicode/case/length normalization as canonical memory.
+const normalizedSource = new HexisAdaptationFabric();
+const normalizedFirst = normalizedSource.reviseBelief({
+  memoryId: 'normalized-source-memory',
+  confidence01: .5,
+  stance: 'supports',
+  evidence: { ref: ' ＳOURCE-A ' },
+  at: 100,
+});
+assert.equal(normalizedFirst.applied, true);
+const normalizedSnapshot = normalizedSource.snapshot();
+normalizedSnapshot.beliefs[0].sourceKeys = ['  ＳOURCE-A ']; // legacy snapshot spelling
+const restoredNormalizedSource = new HexisAdaptationFabric();
+restoredNormalizedSource.restore(normalizedSnapshot);
+const normalizedRetry = restoredNormalizedSource.reviseBelief({
+  memoryId: 'normalized-source-memory',
+  confidence01: normalizedFirst.posteriorConfidence01,
+  stance: 'supports',
+  evidence: { ref: 'source-a' },
+  at: 200,
+});
+assert.equal(normalizedRetry.applied, false, 'same NFKC/case-normalized source must not earn a second vote');
+assert.equal(normalizedRetry.reason, 'duplicate_source');
 
 // Corrupt sidecar state must not poison the canonical cognitive runtime on restart.
 const recoveredProjection = new HexisAdaptationFabric();
