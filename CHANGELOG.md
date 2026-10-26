@@ -1,3 +1,7 @@
+### WorkPass328 follow-up — use truly later snapshots in replay-diversity regression (2026-10-26)
+
+- Updated the causal replay-diversity fixture to advance both tick and observation timestamp after the source trace. The runtime correctly requires evidence of a later observed state; increasing only the tick while leaving the timestamp equal to the trace's `createdAt` did not constitute a valid transition. Grounding checks are unchanged.
+
 ### WorkPass328 follow-up — stabilize float assertions and Promise-based trusted-run validation (2026-10-26)
 
 - Replaced one exact floating-point equality in the P26 transfer tracker fixture with a strict numerical tolerance. The derived delta `0.35 - 0.2` is valid but represented as `0.14999999999999997`; other transfer metrics already use tolerance-based comparisons.
