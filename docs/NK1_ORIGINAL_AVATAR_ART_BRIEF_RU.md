@@ -120,6 +120,8 @@
 
 Ни один веб-референс не добавлен как runtime-ассет NK1: это внешние ссылки с неустановленными правами. Для production-рига нужен собственный PSD или конкретный asset с явной лицензией.
 
+Проверка на кодовом head `7e9eb76b1eba2f58ba11899dd9319949ecfa9cb6` прошла: allowlist всех 32 локальных спрайтов, отклонение недопустимых ID, общая политика gaze, прежние Live2D browser/runtime regressions и strict TypeScript — [CI job](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290005553/job/121462570324).
+
 
 ## Legacy: выбор любого локального спрайта
 
