@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** workpass366-trusted-evidence-ingress  
 **База:** WorkPass365 branch `workpass365-atomic-receipt-projection` на `158bf892cbb50f6fcc83a25bbc2aaa6981436e5c`  
-**Статус:** добавлена строгая граница provider/external evidence; первый WorkPass331 нашёл snapshot-alias дефект в receipt index. Исправление и регрессия опубликованы в ca1b05a867ebdac6991a32ed4212e1019de58f35. Exact-head CI повторяется.
+**Статус:** `snapshot()` теперь отсоединяет записи replay-index и вложенные refs; тесты проверяют, что внешняя мутация root и nested snapshot не портит live receipts. Новый exact-head CI ожидает запуска.
 
 ## Найденные проблемы
 
