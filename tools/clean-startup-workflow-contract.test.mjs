@@ -21,11 +21,17 @@ const REQUIRED_PATHS = [
 ];
 
 function eventBlock(source, eventName) {
-  const header = new RegExp(`^  ${eventName}:\\\\s*$`, 'm').exec(source);
-  assert.ok(header, `clean-startup workflow must declare ${eventName}`);
-  const rest = source.slice(header.index + header[0].length);
-  const nextEvent = /^  [A-Za-z_][\\w-]*:\\s*$/m.exec(rest);
-  return nextEvent ? rest.slice(0, nextEvent.index) : rest;
+  const lines = source.split('\n');
+  const headerIndex = lines.indexOf(`  ${eventName}:`);
+  assert.ok(headerIndex >= 0, `clean-startup workflow must declare ${eventName}`);
+  let nextEventIndex = -1;
+  for (let index = headerIndex + 1; index < lines.length; index += 1) {
+    if (/^  [A-Za-z][A-Za-z0-9_-]*:$/.test(lines[index])) {
+      nextEventIndex = index;
+      break;
+    }
+  }
+  return lines.slice(headerIndex + 1, nextEventIndex < 0 ? lines.length : nextEventIndex).join('\n');
 }
 
 function assertEventCoverage(source, eventName) {
@@ -56,5 +62,5 @@ test('the pull_request contract fails if a required path only remains in push', 
 });
 
 test('clean-startup smoke remains manually runnable', () => {
-  assert.match(WORKFLOW, /^  workflow_dispatch:\\s*$/m);
+  assert.ok(WORKFLOW.split('\n').includes('  workflow_dispatch:'));
 });
