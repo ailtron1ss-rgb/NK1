@@ -359,19 +359,18 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass398",
+    "id": "WorkPass399",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "7df90658a7633fcaee746a69197f9522818cc452",
-    "testCommit": "86edc9df9a802ce8aa6965c8091454eb779429d5",
-    "codeTestHead": "86edc9df9a802ce8aa6965c8091454eb779429d5",
-    "summary": "Reject unknown Hexis learning-review and HMX decisions with HTTP 400 rather than silently substituting approve/reject. Verify invalid decisions do not touch HMX stage state.",
+    "codeCommit": "06f21b03255da079f93ec59e87f35c27e423d2e7",
+    "testCommit": "f27003b53e336ffeca4df1f540691de865701e0f",
+    "codeTestHead": "f27003b53e336ffeca4df1f540691de865701e0f",
+    "summary": "Reject unknown Hexis retention proposal actions at the HTTP boundary instead of silently mapping a typo to compress.",
     "testsAdded": [
-      "unknown learning-review decision is rejected before mutation",
-      "unknown HMX decision is rejected before mutation",
-      "same valid HMX stage remains usable for explicit accept after an invalid decision"
+      "unknown retention action returns HTTP 400",
+      "invalid action is rejected against an existing imported-memory fixture before proposal creation"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regressions are authored but current Actions return failure without exposed steps/logs; no PASS or readiness uplift is claimed.",
+    "validationStatus": "PENDING exact-head runtime typecheck, focused Hexis adaptation, server smoke and Unified project integration. Regressions are authored but not confirmed on a usable exact-head run; no PASS or readiness uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
@@ -545,8 +544,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "86edc9df9a802ce8aa6965c8091454eb779429d5",
-  "branchHeadBeforeTrackerCommit": "86edc9df9a802ce8aa6965c8091454eb779429d5",
+  "latestUnverifiedCodeTestHead": "f27003b53e336ffeca4df1f540691de865701e0f",
+  "branchHeadBeforeTrackerCommit": "f27003b53e336ffeca4df1f540691de865701e0f",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -586,45 +585,38 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass397",
+    "id": "WorkPass398",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommits": [
-      "aead364e098b462b5f99f48e65b76585f927975f",
-      "83343d9ba5765050c734218a64d8bbe6e9883f2f"
-    ],
-    "codeTestHead": "28920aa46a888ddff4a0297ae8a93526e879da85",
-    "summary": "Create a bounded own-data-descriptor snapshot of HMX input before schema validation and stage the captured snapshot, rejecting accessors, sparse/extended arrays, unsupported prototypes, cycles, non-finite numbers and resource-bound violations.",
+    "codeCommit": "7df90658a7633fcaee746a69197f9522818cc452",
+    "testCommit": "86edc9df9a802ce8aa6965c8091454eb779429d5",
+    "codeTestHead": "86edc9df9a802ce8aa6965c8091454eb779429d5",
+    "summary": "Reject unknown Hexis learning-review and HMX decisions with HTTP 400 rather than silently substituting approve/reject. Verify invalid decisions do not touch HMX stage state.",
     "testsAdded": [
-      "root export_id getter is not invoked by HMX validation or staging",
-      "nested sections.memories getter is not invoked by HMX validation or staging",
-      "sparse memories array is rejected as unsafe input",
-      "cyclic metadata is rejected as unsafe input",
-      "non-finite source value is rejected as unsafe input",
-      "custom-prototype source object is rejected as unsafe input",
-      "unsafe HMX stage has an explicit unsafe-input conflict and no memory payload",
-      "unsafe HMX stage remains ineligible for acceptance"
+      "unknown learning-review decision is rejected before mutation",
+      "unknown HMX decision is rejected before mutation",
+      "same valid HMX stage remains usable for explicit accept after an invalid decision"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, Hexis server smoke and Unified project integration. Tests are committed but have not passed an exact-head run; recent Actions have ended before useful step/log data is available. No PASS or readiness uplift is claimed.",
+    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regressions are authored but current Actions return failure without exposed steps/logs; no PASS or readiness uplift is claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass399",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "f27003b53e336ffeca4df1f540691de865701e0f",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Reject unknown Hexis retention proposal actions at the HTTP boundary instead of silently mapping a typo to compress. WorkPass396–398 cover atomic HMX staging, accessor-free input snapshots and explicit decision allowlists. Readiness/recall/progress scores remain unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass398",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "86edc9df9a802ce8aa6965c8091454eb779429d5",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Reject unknown Hexis learning-review and HMX decisions with HTTP 400 rather than silently substituting approve/reject. Verify invalid decisions do not touch HMX stage state. WorkPass396–397 secure HMX section staging and snapshots. Progress/readiness/recall scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass397",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "28920aa46a888ddff4a0297ae8a93526e879da85",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Create a bounded own-data-descriptor snapshot of HMX input before schema validation and stage the captured snapshot, rejecting accessors, sparse/extended arrays, unsupported prototypes, cycles, non-finite numbers and resource-bound violations. Coverage also rejects sparse arrays, cycles, non-finite numbers and custom prototypes. WorkPass396 adds atomic array staging. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
