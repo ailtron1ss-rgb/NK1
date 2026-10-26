@@ -52,6 +52,14 @@
 
 [PR #129](https://github.com/ailtron1ss-rgb/NK1/pull/129) остаётся draft; main не изменён. GitHub Release ZIP ещё не синхронизирован с этим source branch: текущий attachment относится к WorkPass70 от 2026-10-19. Смотрите также [WorkPass320](WORKPASS320_RUNTIME_TYPECHECK_DEPENDENCY_CONTRACTS_2026-10-25.md).
 
+## Подтверждённый результат WorkPass321 — 2026-10-26
+
+[Actions run 40250314917](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250314917) завершился `success` на source HEAD `e5bdcaf2732bd38298c27160ff612b66f4d16253`. Проверены установки обеих lockfile, app/runtime TypeScript, production-сборка React UI, когнитивный цикл/мотивация, P26 integrity и continual-learning matrix, causal replay, шлюз и финализация действий, server security, restart persistence, Compose build/boot и same-origin UI → runtime API. Финальный smoke сообщил `gateway=200`, `runtime=true`, `architecture=true`.
+
+Стек использует три сервиса: React/Nitro app, приватный runtime и Caddy gateway. Runtime не опубликован на host-порт; браузерные API идут через один origin и внутренний `NEURO_API_TOKEN`. Локальный bind по умолчанию — `127.0.0.1:8080`. Перед удалённым доступом необходимо заменить демонстрационный токен и добавить подлинную внешнюю аутентификацию/TLS.
+
+P26 holdout evidence fail-closed, пока host-owned independent verifier не настроен. Встроенные численные benchmark результаты — синтетические регрессионные пробы, не production accuracy. Главный ZIP в GitHub Releases всё ещё WorkPass70 от 2026-10-19 и не синхронизирован с этим source HEAD. PR #129 остаётся draft; `main` не изменён. Подробности: [WorkPass321](WORKPASS321_UNIFIED_UI_RUNTIME_AND_P26_TRUST_2026-10-26.md).
+
 ## Текущий подтверждённый контекст на 2026-10-23
 
 В NK1 наблюдались массовые завершения до первого шага с `runner_id=0`, пустым `runner_name` и `steps=[]`. В минимальном диагностическом workflow сторонние actions отсутствовали. Это подтверждает отсутствие выполнения шагов, но **не устанавливает точную причину на стороне аккаунта**. Проверка настроек hosted runners/usage/billing остаётся диагностическим действием, а не доказанным диагнозом.

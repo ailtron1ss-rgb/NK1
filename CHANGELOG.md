@@ -1,3 +1,14 @@
+## WorkPass321 — unified React UI, canonical runtime and trusted evidence boundary (2026-10-26)
+
+- Unified the real React/TanStack application and canonical cognitive runtime behind one same-origin Caddy gateway. Added Node.js 24 multi-stage app build and included the root canonical Live2D asset manifest required by the hydrator.
+- Added an internal gateway-to-runtime token, kept the runtime port private in Compose, and made protected API handlers return retryable 503 during bootstrap. Added persistent PGlite data-dir support and separate app/organism volumes.
+- Hardened P26 state restoration and made independent holdout evidence fail closed without a trusted host verifier.
+- **Exact-head verification:** [Actions run 40250314917](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250314917) passed all workflow steps on `e5bdcaf2732bd38298c27160ff612b66f4d16253`, including app/runtime TS, production build, cognition/learning/action tests, server/security/restart smoke and a real three-service Compose boot with same-origin UI → runtime architecture validation.
+- **Release boundary:** `main` is unchanged, PR #129 is draft, and the October 19 WorkPass70 Release ZIP has not been synchronized with this source branch. External model/voice/avatar configuration and independently deployed holdout evaluation are still gates.
+- Details: [WorkPass321 report](docs/WORKPASS321_UNIFIED_UI_RUNTIME_AND_P26_TRUST_2026-10-26.md).
+
+---
+
 ## WorkPass320 — reproducible runtime typecheck and dependency contract (2026-10-25)
 
 - Runtime typecheck now prefers the canonical TypeScript compiler installed through `app/package-lock.json`; if it is absent, the check fails as blocked instead of silently using a global compiler or reporting syntax-only validation as a semantic typecheck.

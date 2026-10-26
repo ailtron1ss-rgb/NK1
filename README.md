@@ -6,15 +6,14 @@ The Compose stack builds the modern `app/` UI with Nitro's standalone Node prese
 
 ---
 
-## Current source-stack checkpoint — WorkPass320 (2026-10-25)
+## Current source-stack checkpoint — WorkPass321 (2026-10-26)
 
-- **Runnable runtime path:** Docker Compose starts the Node.js 24 cognitive runtime and bundled Russian UI; state is retained in a named volume, service runs as non-root, and the default host bind is 127.0.0.1.
-- **Dependency contract:** app and runtime installs are locked independently. Runtime semantic typecheck refuses global-compiler fallback. Both app/runtime typecheck and the app production build passed on the recorded code head.
-- **Cognitive/action integration:** the unified cycle, intrinsic motivation, P26 learning integrity/replay, causal replay, ActionGateway receipt/finalizer, planner wrapper and project reconciliation contracts passed.
-- **Boot and continuity checks:** organism smoke, HTTP/server security, restart persistence, Compose build/health and built-in UI smoke passed on [Actions run 40229027931](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40229027931), code head 974a8cf5dea2093cad936f76a3fc43c86783ae3e.
-- **P26 synthetic benchmark:** context-separated tasks were retained at 0.9375 and 0.93125 after mixed training (baseline 0.99375). This is a deterministic synthetic regression, not external proof of general learning gains.
-- **PR #129 remains draft:** [review the source branch](https://github.com/ailtron1ss-rgb/NK1/pull/129). Main remains unchanged. The GitHub Releases ZIP is still the October 19 WorkPass70 package and has not been rebuilt from this branch.
-- **Not yet established:** optional Gemini/local-model credentials, external voice/Live2D/camera resource configuration, browser/audio E2E, deployed isolated independent evaluator, target-device soak and licensing completeness.
+- **Unified launch:** the current Compose stack builds the modern React/TanStack UI, canonical cognitive runtime and Caddy same-origin gateway. Only the gateway port is published, bound to `127.0.0.1` by default; the internal token is shared between gateway and runtime.
+- **Persistent state:** organism state and the app's PGlite database have separate named volumes. Runtime/app healthchecks participate in Compose readiness.
+- **Exact-head CI:** [run 40250314917](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250314917) passed on `e5bdcaf2732bd38298c27160ff612b66f4d16253`: app/runtime TypeScript, production app build, cognitive/motivation/learning/action contracts, runtime/server/security/restart smoke, and full Compose build + UI → runtime API smoke (`gateway=200`, `runtime=true`, `architecture=true`).
+- **P26 safety boundary:** corrupt metric restore and newest trace dedupe are covered. Independent holdout evidence only advances after a trusted host-owned verifier authenticates it; the default runtime does not claim an independently measured learning uplift.
+- **PR #129 remains draft;** `main` stays untouched. The GitHub Release asset still points to the October 19 WorkPass70 ZIP and has not been rebuilt from this branch.
+- **Still open:** independently deployed evaluator, real external-task learning measurements, external LLM credentials, speech/Live2D/camera end-to-end and target-device soak.
 
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
