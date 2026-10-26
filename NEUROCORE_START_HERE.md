@@ -1,7 +1,7 @@
 ## Latest checkpoint — WorkPass353 evaluator state-path canonicalization (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
-**Status:** source fix + regression committed; exact-head CI pending.
+**Status:** source fix + regression committed; focused CI passed on code SHA `6cd2776acc9094d73031c29a9f069687b97e05b9` in [workflow run #40289015403](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289015403).
 
 - The host-owned evaluator config loader canonicalizes the mutable runtime state directory before checking whether evaluator code is stored inside that boundary. A symlink alias to the same directory is no longer accepted as evidence that a module is external.
 - Added a regression that places the evaluator module within the true state directory while passing an alias symlink as `stateDirectory`; the loader must reject it before dynamic import.
