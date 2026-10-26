@@ -104,8 +104,13 @@ export function HexisControlConsole() {
   };
 
   const stageCurrentHmx = async () => {
-    const exported = await neuroApi.hexisHmxExport();
-    const staged = await run("Stage HMX", () => neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy }));
+    const staged = await run("Stage HMX", async () => {
+      const exported = await neuroApi.hexisHmxExport();
+      if (!(exported as any)?.document || typeof (exported as any).document !== "object") {
+        throw new Error("HMX export returned no document.");
+      }
+      return neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy });
+    });
     const nextId = (staged as any)?.stage?.stagingId;
     if (nextId) {
       setStageId(String(nextId));
