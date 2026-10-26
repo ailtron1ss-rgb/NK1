@@ -20,3 +20,4 @@ The GitHub Actions wrappers report failed runs but expose no job steps and retur
 
 - The UI now stages external HMX JSON with an 8 MiB file precheck and a conservative 240,000-byte serialized request cap to remain below the server's default 256,000-byte request-body limit. Accept, canonical apply, goal materialization and goal activation each retain separate confirmation gates.
 - API ingress now also rejects coercible malformed sync limits, belief confidence/trust/protection fields, outbox identifiers/ack flags and connector policy evaluation fields before those reach the core.
+- The canonical HMX workflow now runs the app dependency install and TypeScript check, plus the existing UI-action-wiring and UI/API/runtime linkage audits.
