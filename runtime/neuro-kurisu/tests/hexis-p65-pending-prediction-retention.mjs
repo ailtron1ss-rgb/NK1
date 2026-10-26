@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { P65EpistemicLedger } from '../src/organism/memory/P65EpistemicLedger.ts';
 
 const ledger = new P65EpistemicLedger();
+let oldestPredictionId = '';
 for (let tick = 1; tick <= 1024; tick += 1) {
   const id = ledger.record({
     tick,
@@ -12,7 +13,18 @@ for (let tick = 1; tick <= 1024; tick += 1) {
     source: 'organism',
   });
   assert.ok(id, `prediction ${tick} should be accepted below the pending cap`);
+  if (tick === 1) oldestPredictionId = id;
 }
+// This entry has fallen out of the last-512 ID window, but is still a pending claim.
+assert.equal(ledger.record({
+  tick: 1,
+  at: 1000,
+  kind: 'prediction',
+  content: 'unresolved prediction 1',
+  confidence01: 0.7,
+  source: 'organism',
+}), oldestPredictionId, 'exact retry of an older pending prediction must remain idempotent when the queue is full');
+assert.equal(ledger.summary().rejectedPredictionAdds, 0, 'an exact retry is not a rejected new prediction');
 
 // A full pending set is not silently evicted to admit another prediction.
 assert.equal(ledger.record({
