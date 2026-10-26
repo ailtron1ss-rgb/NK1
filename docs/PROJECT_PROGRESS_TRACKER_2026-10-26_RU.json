@@ -1,0 +1,586 @@
+{
+  "schemaVersion": 1,
+  "snapshotDate": "2026-10-26",
+  "project": "Neuro Kurisu / NK1",
+  "sourceOfTruth": "https://github.com/ailtron1ss-rgb/NK1",
+  "sourceBranchAtSnapshot": "hexis-h1-memory-evidence-lineage-2026-10-26",
+  "sourceHeadAtSnapshot": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+  "methodology": {
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores and the historical 13-row CI snapshot remain anchored to code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. WorkPass343–344 passed exact-head Unified integration on a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593), WorkPass345 passed on 216d79086bfac2dd5f25e2c995fe6b5a44b61476 (run #40279847281), and WorkPass346 passed on exact code/test head 63137b842d8954436526106756fb39f3b2f8c150 (run #40280885928). The initial WP346 attempt on 330dc7632839822225cfff0620fe9cdd390acdc4 failed only at a static source-contract regex that did not allow explanatory comments inside catch; that matcher was corrected before the passing run. These recovery changes do not establish independent task-success, transfer or retention uplift, so weighted estimates and the 57/100 learning engineering score remain unchanged. New Hexis H1 evidence-lineage pass: source/test head 56d204e9941f549784ee29ec454d88ee1c5f83e7; repository wiring plus Hexis/HMX/live-API regression passed in run #40293320723; WorkPass110 and P26 were still pending/in progress at the time of the snapshot. The learning score and lane estimates were deliberately not raised because no independent task-success/retention/transfer uplift was measured.",
+    "dimensions": {
+      "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
+      "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
+      "fieldEvidencePercent": "Strength of independently verified results on realistic external tasks. Synthetic fixtures and internal unit tests do not count as field evidence.",
+      "releaseReadinessPercent": "Estimated completion of clean-machine install, runtime services, UI/voice, security, soak, licensing and reproducible archive requirements."
+    },
+    "weightsTotalPercent": 100,
+    "scoreScale": "0 = absent/unproven; 100 = evidenced against the lane's full stated release requirements."
+  },
+  "lanes": [
+    {
+      "id": "cognitive-core",
+      "name": "Единый когнитивный цикл и runtime",
+      "weightPercent": 15,
+      "implementationPercent": 72,
+      "automatedValidationPercent": 76,
+      "fieldEvidencePercent": 20,
+      "releaseReadinessPercent": 42,
+      "blockers": [
+        "Long-duration process-kill/restart soak, clean Android/Termux setup, real browser/Live2D/voice/avatar integration and independent external task benchmarks remain open."
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts",
+        "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700338"
+      ]
+    },
+    {
+      "id": "world-model-routing",
+      "name": "Модель мира, прогнозирование и когнитивная маршрутизация",
+      "weightPercent": 10,
+      "implementationPercent": 64,
+      "automatedValidationPercent": 67,
+      "fieldEvidencePercent": 15,
+      "releaseReadinessPercent": 32,
+      "blockers": [
+        "Нужны причинные multi-step тесты с held-out сценариями",
+        "Реальная среда и сенсоры покрыты частично"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/core/CognitiveRoutingPolicy.ts",
+        "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
+      ]
+    },
+    {
+      "id": "memory-continuity",
+      "name": "Память, консолидация, восстановление и временная непрерывность",
+      "weightPercent": 10,
+      "implementationPercent": 68,
+      "automatedValidationPercent": 75,
+      "fieldEvidencePercent": 20,
+      "releaseReadinessPercent": 38,
+      "blockers": [
+        "Проверить длительное восстановление после перезапуска на целевом устройстве",
+        "Нужна внешняя оценка точности и забывания на новых разговорах",
+        "H1 synthetic replay/restore regression passed on head 56d204e9941f549784ee29ec454d88ee1c5f83e7; independent external recall/retention uplift and long-soak restart evidence remain unproven."
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/memory",
+        "runtime/neuro-kurisu/src/organism/persistence",
+        "runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs",
+        "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts — bounded long-horizon evidence-lineage Bloom filter",
+        "runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts — fail-safe projection restore",
+        "runtime/neuro-kurisu/tests/integration/hexis-memory-evidence-lineage.mjs — exact-head replay/corruption regressions"
+      ]
+    },
+    {
+      "id": "motivation-goals",
+      "name": "Внутренняя мотивация, домашостаз и генерация целей",
+      "weightPercent": 8,
+      "implementationPercent": 68,
+      "automatedValidationPercent": 73,
+      "fieldEvidencePercent": 15,
+      "releaseReadinessPercent": 35,
+      "blockers": [
+        "Синтетические контракты не доказывают устойчивую полезную инициативу",
+        "Нужны длительные тесты конфликта целей и энергетических ограничений"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts",
+        "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700184"
+      ]
+    },
+    {
+      "id": "action-grounding",
+      "name": "Планирование, ActionGateway, идемпотентность и проверка последствий",
+      "weightPercent": 10,
+      "implementationPercent": 72,
+      "automatedValidationPercent": 85,
+      "fieldEvidencePercent": 20,
+      "releaseReadinessPercent": 42,
+      "blockers": [
+        "Нужен подтверждённый живой provider/device postcondition E2E",
+        "Проверить реальное поведение при таймаутах и падении внешнего сервиса"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts",
+        "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts",
+        "runtime/neuro-kurisu/tests/workpass294-correlated-postcondition.mjs"
+      ]
+    },
+    {
+      "id": "continual-learning",
+      "name": "Обучение, causal replay, перенос и устойчивость к забыванию",
+      "weightPercent": 10,
+      "implementationPercent": 74,
+      "automatedValidationPercent": 86,
+      "fieldEvidencePercent": 18,
+      "releaseReadinessPercent": 38,
+      "blockers": [
+        "Earlier proxy gain remains memory=1.0 while tool-use and transfer gain were 0; family-aware candidate gating is measurement integrity, not an empirical uplift",
+        "New manifest-family-to-run-binding/ledger checks require a fresh held-out experiment with independently verified outcomes",
+        "Need same-task/same-seed comparisons for replay strategies with forgetting, retention, transfer, latency and memory metrics",
+        "The stale versioned-skill rollback test call was updated to the current approval-object contract; WorkPass110 on exact head 56d204e9941f549784ee29ec454d88ee1c5f83e7 was still pending in this snapshot."
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/learning/P26TrueLearningEngine.ts",
+        "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts",
+        "docs/WORKPASS329_LEARNING_EVIDENCE_RU.md",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700299"
+      ]
+    },
+    {
+      "id": "skill-evolution",
+      "name": "Hermes-style рефлексия, кандидаты навыков и защищённое продвижение",
+      "weightPercent": 10,
+      "implementationPercent": 82,
+      "automatedValidationPercent": 92,
+      "fieldEvidencePercent": 20,
+      "releaseReadinessPercent": 42,
+      "blockers": [
+        "WorkPass335/336 add ledger preflight and in-process evaluator-origin capability, and WorkPass339 strictens Ed25519 approval encoding; the combined code/test head still needs exact-head CI confirmation",
+        "Family-aware evaluation and bounded deadlines improve evidence integrity, not measured generalization on external held-out tasks",
+        "Serialized or cross-process evaluation evidence still requires a trusted signed-receipt verifier",
+        "Need independently measured tool-use/transfer uplift and regression resistance before raising learning-effectiveness scores"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts",
+        "runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts",
+        "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs",
+        "runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs"
+      ]
+    },
+    {
+      "id": "self-user-ethical-models",
+      "name": "SelfModel/UserModel, ToM и EthicalGate",
+      "weightPercent": 5,
+      "implementationPercent": 42,
+      "automatedValidationPercent": 41,
+      "fieldEvidencePercent": 8,
+      "releaseReadinessPercent": 20,
+      "blockers": [
+        "Не доказана связность моделей пользователя/себя во всех режимах ответа",
+        "Нужны независимые стресс-тесты моральных и приватностных границ"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/cognition",
+        "runtime/neuro-kurisu/src/organism/verification"
+      ]
+    },
+    {
+      "id": "embodiment",
+      "name": "Live2D/avatar, выражение эмоций и синхронизация тела",
+      "weightPercent": 5,
+      "implementationPercent": 62,
+      "automatedValidationPercent": 54,
+      "fieldEvidencePercent": 8,
+      "releaseReadinessPercent": 18,
+      "blockers": [
+        "Нужна проверка на реальном браузере/мобильном устройстве",
+        "Проверить непрерывную синхронизацию внутреннего состояния, выражения и речи"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/public/live2d/viewer.html",
+        "runtime/neuro-kurisu/tests/live2d-integrity.mjs",
+        "app/scripts/embodiment-timeline.test.mjs"
+      ]
+    },
+    {
+      "id": "voice-audio",
+      "name": "Голос, TTS/STT и мобильное аудио",
+      "weightPercent": 4,
+      "implementationPercent": 42,
+      "automatedValidationPercent": 28,
+      "fieldEvidencePercent": 0,
+      "releaseReadinessPercent": 8,
+      "blockers": [
+        "Нет подтверждённого полного voice/audio E2E на целевом устройстве",
+        "TTS provider/model credentials и Android/Termux аудио требуют отдельной проверки"
+      ],
+      "evidence": [
+        "runtime/neuro-kurisu/src/organism/body",
+        "runtime/neuro-kurisu/docs/02_INTEGRATIONS"
+      ]
+    },
+    {
+      "id": "app-install-ci",
+      "name": "App, зависимости, единая установка и CI",
+      "weightPercent": 8,
+      "implementationPercent": 70,
+      "automatedValidationPercent": 86,
+      "fieldEvidencePercent": 35,
+      "releaseReadinessPercent": 48,
+      "blockers": [
+        "Перепроверить установку на чистой машине после текущих изменений",
+        "CI для текущего HEAD ещё выполняется; старые успешные runs не заменяют проверку нового HEAD",
+        "Exact-head H1 repository wiring audit passed, but WorkPass110 and P26 runtime typecheck had not completed at snapshot time."
+      ],
+      "evidence": [
+        "package.json",
+        "app/package-lock.json",
+        "runtime/neuro-kurisu/package-lock.json",
+        "tools/super-doctor.mjs",
+        "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40249700338"
+      ]
+    },
+    {
+      "id": "external-evidence-release",
+      "name": "Внешняя проверка задач, лицензии и релизный ZIP",
+      "weightPercent": 5,
+      "implementationPercent": 38,
+      "automatedValidationPercent": 38,
+      "fieldEvidencePercent": 5,
+      "releaseReadinessPercent": 10,
+      "blockers": [
+        "Нужны независимые tool-use/transfer/retrieval benchmark с парными seed-ами",
+        "Полный лицензионный/provenance review ещё не закрыт",
+        "Основной релизный архив не пересобран из нового HEAD; опубликованный ZIP остался WorkPass70 Hotfix1 от 19 октября"
+      ],
+      "evidence": [
+        "docs/WORKPASS329_LEARNING_EVIDENCE_RU.md",
+        "https://github.com/ailtron1ss-rgb/NK1/releases"
+      ]
+    }
+  ],
+  "ciSnapshot": {
+    "observedAt": "2026-10-26",
+    "currentBaseHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454",
+    "statuses": [
+      {
+        "name": "Unified project integration suite",
+        "id": 40257525157,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Node 24/Python 3.12 setup, locked app/runtime installation, UI and runtime typecheck, cognitive integration, substrate wiring/restore regression, 30-cycle stop/re-init smoke, governed approval E2E, supervisor startup, and all three Research Bridge probes passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525157",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "WorkPass110 continual learning metrics",
+        "id": 40257525071,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Continual-learning/P23/Hermes evidence-binding and candidate-evaluation regressions passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525071",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "WorkPass108 paired evidence and verified promotion gate",
+        "id": 40257525093,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Paired evidence identity, ledger durability and signed promotion authorization regressions passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525093",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "P26 Learning Validation",
+        "id": 40257525095,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. P26 learning input integrity and validation regressions passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525095",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "Project progress ledger integrity",
+        "id": 40257525008,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Tracker schema, score-weight and tested-head provenance validation passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525008",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "WorkPass105 verified outcome ledger",
+        "id": 40257525009,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Verified external outcome-ledger regressions passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525009",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "WorkPass99 replay strategy benchmark",
+        "id": 40257525022,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Replay strategy benchmark passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525022",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "WorkPass102 reservoir replay baseline",
+        "id": 40257525001,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Reservoir replay baseline passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525001",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "WorkPass292 verified experience lanes",
+        "id": 40257525128,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Verified-experience-lane regression passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525128",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "WorkPass287-288 cognitive contracts",
+        "id": 40257525003,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Cognitive-contract regression suite passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525003",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "WorkPass291 reflective payload budget",
+        "id": 40257525076,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Bounded reflective-payload regression passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525076",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "WorkPass293 autonomous P23 repair revision",
+        "id": 40257525205,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Autonomous P23 repair/revision regression passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525205",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      },
+      {
+        "name": "WorkPass294 correlated external postconditions",
+        "id": 40257525121,
+        "scopeNote": "PASS on exact combined PR code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Correlated external postcondition checks passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525121",
+        "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
+      }
+    ]
+  },
+  "learningScorecard": {
+    "p23SymbolicCorePercent": 61,
+    "evidenceGroundedLearningMaturityPercent": 36,
+    "lifelongLearningRoadmapPercent": 30,
+    "overallLearningEngineeringMaturity100": 57,
+    "measuredUpliftClaimed": false,
+    "source": "docs/P23_CONTINUAL_LEARNING_SCORECARD_2026-10-20.md — WorkPass333 score update",
+    "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
+  },
+  "latestEngineeringPass": {
+    "id": "Hexis-H1-Memory-Integrity-2026-10-26",
+    "date": "2026-10-26",
+    "branch": "hexis-h1-memory-evidence-lineage-2026-10-26",
+    "codeCommit": "cb2d3ca0e2924364469bf8a7ae58252c67870893",
+    "latestTestCommit": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+    "summary": "Hardened Hexis belief-sidecar restore; added a persisted scalable lineage Bloom filter to canonical MemoryOS2 with bounded exact keys, lazy allocation, corruption/over-cap fail-closed behavior, memory-footprint accounting, and 140-source replay coverage before and after snapshot/restore. Fixed repository-wiring workflow branch/path filters and aligned a stale versioned-skill rollback regression with the current approval-object contract.",
+    "testsAdded": [
+      "runtime/neuro-kurisu/tests/integration/hexis-memory-evidence-lineage.mjs — malformed/duplicate belief restore, 140 lineage rollover, replay after restore, lazy filter allocation, corrupt-filter fail-closed",
+      "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs — current rollback(candidateId, approval) signature; test-only rollback verifier explicitly injected"
+    ],
+    "validationStatus": "PARTIAL: Repository wiring audit and its Hexis evidence-lineage/HMX/live-API step PASS on exact code/test head 56d204e9941f549784ee29ec454d88ee1c5f83e7 (run #40293320723). WorkPass108, WorkPass105, WorkPass102, WorkPass99, WorkPass291, WorkPass292, WorkPass293 and WorkPass294 also PASS on the same exact head. P26 runtime typecheck and WorkPass110 continual-learning validation are pending/in progress at snapshot time; do not call the full PR green yet.",
+    "testedHeadSha": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+    "workflowRuns": [
+      40293320723,
+      40293321016,
+      40293320871,
+      40293320745,
+      40293321008,
+      40293320937,
+      40293320848,
+      40293320833,
+      40293320704,
+      40293320991,
+      40293320948
+    ],
+    "progressPercentagesChanged": false,
+    "rationale": "This pass improves provenance integrity, restart safety, and CI trigger reliability; it does not establish independent retrieval, retention, transfer, or tool-use uplift."
+  },
+  "recentEngineeringPasses": [
+    {
+      "id": "Hexis-H1-Memory-Integrity-2026-10-26",
+      "date": "2026-10-26",
+      "branch": "hexis-h1-memory-evidence-lineage-2026-10-26",
+      "codeCommit": "cb2d3ca0e2924364469bf8a7ae58252c67870893",
+      "latestTestCommit": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+      "summary": "Hardened Hexis belief-sidecar restore; added a persisted scalable lineage Bloom filter to canonical MemoryOS2 with bounded exact keys, lazy allocation, corruption/over-cap fail-closed behavior, memory-footprint accounting, and 140-source replay coverage before and after snapshot/restore. Fixed repository-wiring workflow branch/path filters and aligned a stale versioned-skill rollback regression with the current approval-object contract.",
+      "testsAdded": [
+        "runtime/neuro-kurisu/tests/integration/hexis-memory-evidence-lineage.mjs — malformed/duplicate belief restore, 140 lineage rollover, replay after restore, lazy filter allocation, corrupt-filter fail-closed",
+        "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs — current rollback(candidateId, approval) signature; test-only rollback verifier explicitly injected"
+      ],
+      "validationStatus": "PARTIAL: Repository wiring audit and its Hexis evidence-lineage/HMX/live-API step PASS on exact code/test head 56d204e9941f549784ee29ec454d88ee1c5f83e7 (run #40293320723). WorkPass108, WorkPass105, WorkPass102, WorkPass99, WorkPass291, WorkPass292, WorkPass293 and WorkPass294 also PASS on the same exact head. P26 runtime typecheck and WorkPass110 continual-learning validation are pending/in progress at snapshot time; do not call the full PR green yet.",
+      "testedHeadSha": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+      "workflowRuns": [
+        40293320723,
+        40293321016,
+        40293320871,
+        40293320745,
+        40293321008,
+        40293320937,
+        40293320848,
+        40293320833,
+        40293320704,
+        40293320991,
+        40293320948
+      ],
+      "progressPercentagesChanged": false,
+      "rationale": "This pass improves provenance integrity, restart safety, and CI trigger reliability; it does not establish independent retrieval, retention, transfer, or tool-use uplift."
+    },
+    {
+      "id": "WorkPass346",
+      "date": "2026-10-26",
+      "branch": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
+      "codeCommit": "63137b842d8954436526106756fb39f3b2f8c150",
+      "summary": "Protect ProceduralSkillLibrary restore from malformed/corrupt persisted skill state so derived skill-cache damage does not abort OrganismRuntime startup; reset only the skill cache and log a warning.",
+      "testsAdded": [
+        "source contract verifies procedural-skill restore is guarded by try/catch and warning event is present",
+        "runtime restart smoke writes a self-contained skills:[null] corruption fixture",
+        "startup proceeds with an empty recovered skill library and a subsequent autonomous cycle completes"
+      ],
+      "validationStatus": "PASS on exact code/test head 63137b842d8954436526106756fb39f3b2f8c150; Unified project integration suite run #40280885928 completed successfully. The earlier attempt on 330dc7632839822225cfff0620fe9cdd390acdc4 failed only at an overly strict source-contract regex; the corrected assertion passed in the full suite.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": "63137b842d8954436526106756fb39f3b2f8c150",
+      "workflowRuns": [
+        40280885928
+      ]
+    },
+    {
+      "id": "WorkPass345",
+      "date": "2026-10-26",
+      "branch": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
+      "codeCommit": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
+      "summary": "Make invalid/unreadable cognitive-dependency graph sidecar fail-open during OrganismRuntime.init; reset only derived routing state, log restore failure, and continue startup.",
+      "testsAdded": [
+        "runtime source contract verifies the dedicated restore-failed fallback path and warning event",
+        "restart smoke corrupts the dependency sidecar schema and verifies init succeeds",
+        "post-recovery autonomous cycle advances dependency graph on the canonical Core tick"
+      ],
+      "validationStatus": "PASS on exact code/test head 216d79086bfac2dd5f25e2c995fe6b5a44b61476; Unified project integration suite run #40279847281 completed successfully. The full suite includes WorkPass344 dual-sidecar MAX_SAFE_INTEGER recovery and the WorkPass345 unsupported-schema restart regression.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
+      "workflowRuns": [
+        40279847281
+      ]
+    }
+  ],
+  "latestUnverifiedCodeTestHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+  "branchHeadBeforeTrackerCommit": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+  "additionalChangesInCombinedHead": [
+    {
+      "id": "WorkPass339",
+      "name": "Strict canonical Base64 encoding for Ed25519 skill-promotion and rollback approval signatures",
+      "status": "present-and-verified-on-exact-combined-head",
+      "exactCombinedHeadCiStatus": "success",
+      "note": "Included in the combined exact-head integration and P23 checks.",
+      "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
+      "mergeCommit": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
+    },
+    {
+      "id": "WorkPass340",
+      "name": "Unified Cognitive Substrate integrated into OrganismRuntime",
+      "status": "present-and-verified-on-exact-combined-head",
+      "exactCombinedHeadCiStatus": "success",
+      "note": "Strict schema/restore, persistent sidecar, bounded optional-work routing and 30-cycle restart smoke passed.",
+      "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
+      "mergeCommit": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
+    },
+    {
+      "id": "WorkPass341",
+      "name": "Per-family distinct holdout task coverage for verified skill promotion",
+      "status": "present-and-verified-on-exact-combined-head",
+      "exactCombinedHeadCiStatus": "success",
+      "note": "Minimum task coverage is checked before interpreting gain; family policy and coverage are bound into proposal identity; no automatic activation.",
+      "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
+      "mergeCommit": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
+    },
+    {
+      "id": "WorkPass342",
+      "name": "Task-specific research smoke deadlines",
+      "status": "present-and-verified-on-exact-combined-head",
+      "exactCombinedHeadCiStatus": "success",
+      "note": "DeepCode CPU probe completed under bounded 200-second HTTP deadline; all research probes and final smoke JSON passed.",
+      "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
+      "mergeCommit": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
+    }
+  ],
+  "currentPassCiSnapshot": {
+    "observedAt": "2026-10-26T08:35:28Z",
+    "sourceBranch": "hexis-h1-memory-evidence-lineage-2026-10-26",
+    "sourceHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+    "statusSemantics": "Only runs whose head_sha equals sourceHead are listed here. Historical ciSnapshot above remains anchored to its own older tested head.",
+    "checks": [
+      {
+        "name": "Repository wiring contract audit + Hexis evidence lineage/HMX/live API",
+        "runId": 40293320723,
+        "status": "success",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320723"
+      },
+      {
+        "name": "WorkPass108 paired evidence and verified promotion gate",
+        "runId": 40293321016,
+        "status": "success",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293321016"
+      },
+      {
+        "name": "WorkPass105 verified outcome ledger",
+        "runId": 40293320871,
+        "status": "success",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320871"
+      },
+      {
+        "name": "WorkPass102 reservoir replay baseline",
+        "runId": 40293320745,
+        "status": "success",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320745"
+      },
+      {
+        "name": "WorkPass99 replay strategy benchmark",
+        "runId": 40293321008,
+        "status": "success",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293321008"
+      },
+      {
+        "name": "WorkPass291 reflective payload budget",
+        "runId": 40293320937,
+        "status": "success",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320937"
+      },
+      {
+        "name": "WorkPass292 verified experience lanes",
+        "runId": 40293320848,
+        "status": "success",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320848"
+      },
+      {
+        "name": "WorkPass293 autonomous P23 repair revision",
+        "runId": 40293320833,
+        "status": "success",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320833"
+      },
+      {
+        "name": "WorkPass294 correlated external postconditions",
+        "runId": 40293320704,
+        "status": "success",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320704"
+      },
+      {
+        "name": "P26 Learning Validation (runtime typecheck)",
+        "runId": 40293320991,
+        "status": "in_progress",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320991"
+      },
+      {
+        "name": "WorkPass110 continual learning metrics",
+        "runId": 40293320948,
+        "status": "pending",
+        "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320948"
+      }
+    ]
+  }
+}
