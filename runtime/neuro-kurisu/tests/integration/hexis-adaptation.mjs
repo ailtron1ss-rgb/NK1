@@ -128,9 +128,14 @@ assert.throws(
 const safeRetry = fabric.resolveOutbox(uncertainOut.id,'not-published','provider-lookup:message-absent-after-acceptance-window');
 assert.equal(safeRetry?.status,'pending',
   'retry is admitted only after explicit evidence that the remote side effect did not occur');
+assert.equal(safeRetry?.resolutionHistory?.length,1,
+  'the proof that made retry safe must remain in the bounded delivery audit history');
 assert.equal(fabric.resolveOutbox(uncertainOut.id,'not-published','provider-lookup:message-absent-after-acceptance-window')?.status,'pending',
   'the same resolution evidence replays idempotently');
-assert.equal(fabric.claimOutbox(uncertainOut.id)?.attempts,2);
+const safeRetryClaim = fabric.claimOutbox(uncertainOut.id);
+assert.equal(safeRetryClaim?.attempts,2);
+assert.equal(safeRetryClaim?.resolutionHistory?.length,1,
+  'starting a new attempt must not erase the prior reconciliation evidence');
 assert.equal(fabric.ackOutbox(uncertainOut.id,false,'second ambiguous outcome')?.status,'uncertain');
 assert.equal(fabric.claimOutbox(uncertainOut.id),null);
 
@@ -143,6 +148,8 @@ restoredStaleOut.restore(staleSnapshot);
 assert.equal(restoredStaleOut.reclaimOutbox(1000),1);
 assert.equal(restoredStaleOut.snapshot().outbox.find(x=>x.id===staleOut.id)?.status,'uncertain',
   'an expired publishing claim must not silently return to the retry queue');
+assert.equal(restoredStaleOut.diagnostics().counts.uncertainOutbox,1,
+  'unresolved outbound side effects must be visible in subsystem diagnostics');
 assert.equal(restoredStaleOut.claimOutbox(staleOut.id),null);
 assert.equal(restoredStaleOut.resolveOutbox(staleOut.id,'published','provider-receipt:telegram:123')?.status,'published',
   'an authoritative positive receipt closes the uncertain outbox item');
@@ -166,6 +173,29 @@ assert.equal(restoredOutbox.enqueueOutbox({idempotencyKey:'k1',kind:'notify',cha
 const restoredConflict=restoredOutbox.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'after restore this must not alias'}});
 assert.equal(restoredConflict.error,'idempotency-key-conflict');
 assert.equal(restoredOutbox.snapshot().metrics.outboxIdempotencyConflicts,2,'outbox conflict telemetry survives snapshot/restore');
+
+const boundedOutbox = new HexisAdaptationFabric();
+let firstBoundedRow;
+for(let i=0;i<512;i++){
+  const row=boundedOutbox.enqueueOutbox({
+    idempotencyKey:`bounded-outbox-${i}`,kind:'notify',channel:'test',payload:{index:i},
+  });
+  assert(row && !('ok' in row && row.ok === false));
+  if(i===0) firstBoundedRow=row;
+}
+assert.equal(boundedOutbox.snapshot().outbox.length,512);
+assert.equal(boundedOutbox.enqueueOutbox({
+  idempotencyKey:'bounded-outbox-0',kind:'notify',channel:'test',payload:{index:0},
+}).id,firstBoundedRow.id,
+  'capacity pressure must not evict an older idempotency key and permit duplicate delivery');
+const overflowOutbox=boundedOutbox.enqueueOutbox({
+  idempotencyKey:'bounded-outbox-overflow',kind:'notify',channel:'test',payload:{index:512},
+});
+assert.equal(overflowOutbox.ok,false);
+assert.equal(overflowOutbox.error,'outbox-capacity-reached');
+assert.equal(boundedOutbox.snapshot().outbox.length,512,
+  'the outbox must fail closed rather than evicting rows to make space');
+
 
 const policy = fabric.grantConnectorPolicy({connectorId:'telegram',actionKind:'send',contexts:['chat'],requiresApproval:true,allowedTargets:['123'],maxPerWindow:1,windowMs:60_000});
 assert.equal(fabric.evaluateConnectorAction({connectorId:'telegram',actionKind:'send',context:'chat',target:'123'}).allowed,false);
