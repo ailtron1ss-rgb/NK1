@@ -1,3 +1,12 @@
+## Combined-head validation boundary — WorkPass335/336 plus WorkPass339 (2026-10-26)
+
+- The combined code/test head `bb7a76c55d83ff36358ded56e966b880b38cc7d9` includes WorkPass335 ledger preflight, WorkPass336 evaluator-origin capability, and the strict Ed25519 approval-encoding patch WorkPass339 already present in this PR diff.
+- WorkPass339 has a separate narrow CI pass on merge commit `4a41db0` ([run 40253553153](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40253553153)); it checks canonical Base64 signature parsing/promotion and rollback regressions, not the combined current branch.
+- The current combined code/test head has no new GitHub Actions run or check status returned by the connector. Its implementation is recorded, but validation remains pending. The last trusted project-wide CI and scores remain anchored to `b6f4335b9bdb4bf150d86fc9db1a830fe3041626`.
+- Learning-effectiveness estimates stay unchanged: none of these identity/encoding fixes is empirical evidence of higher task success, transfer, retention or autonomous self-development.
+
+---
+
 ## WorkPass336 pre-validation note (2026-10-26)
 
 - **Learning-effectiveness scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
