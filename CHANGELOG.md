@@ -1,3 +1,24 @@
+## Bounded P26 interleaved replay and exact-head regression — 2026-10-26
+
+- Implemented the missing `P26TrueLearningEngine.trainInterleaved()` API used by the sequential continual-learning benchmark. Current-experience updates and historical rehearsal are separately counted; contradictory same-action feedback from a nearby state is screened with a bounded candidate budget, while sufficiently distinct novelty/world contexts can preserve separate task outcomes.
+- Input rows, reward ranges and option caps are validated; a zero replay budget still permits current learning without historical replay.
+- The replay budget counts successful optimizer updates, not rejected candidates; a conflicting row cannot consume the budget and starve a later eligible sample.
+- Added `p26-interleaved-training-contract.mjs` to cover conflict rejection, contextual admission, an explicit zero replay budget, bounded comparisons and malformed-input rejection. Wired it into P26 CI.
+- Updated the P26 workflow to use the repository `.nvmrc` instead of hard-coded Node 22.12.0.
+- This implementation is a synthetic benchmark contract, not evidence of general learning improvement on external tasks. Exact-head P26 CI remains required.
+
+## Core feedback-guard ownership — 2026-10-26
+
+- Moved construction of `FeedbackDeliveryGuard` from `OrganismCore` into `PersistenceRuntime`, where the replay barrier belongs with durable feedback-receipt continuity. Core retains a getter and existing call sites, so this is an ownership relocation, not a change to receipt semantics.
+- This brings Core's direct-constructor count back within the existing strict ownership ceiling rather than weakening the audit policy.
+- Exact-head WorkPass79 and NeuroCore validation are required to confirm the extraction and runtime behavior.
+
+## Durable skill-store provenance identity — 2026-10-26
+
+- Aligned atomic-file persistence validation with provenance-bound candidate IDs while preserving compatibility with legacy four-field IDs when no revision provenance is present.
+- Optional `evaluationFingerprint` remains optional and is validated only when supplied. A structurally invalid or mismatched candidate ID remains fail-closed.
+- Updated the durable lifecycle fixture to use the current rollback approval API and added default-deny rollback cases. Exact-head WorkPass110 remains the authority for the final durable-store verdict.
+
 ## B274 executed-action attribution — 2026-10-26
 
 - B274 now receives the canonical selected action with every real-trial outcome. It updates a skill candidate only when the executed action matches the candidate plan's first action; otherwise the reward is rejected before trial/evaluation counters or candidate quality and promotion state change.
@@ -21,142 +42,6 @@
 - The spine-only observation loop now detects a durable receipt at the current/ahead tick before retrying feedback, records a `feedback-recovery` decision event, discards the ambiguous reward, and continues advancing the cognitive tick.
 - Prevented a discarded outcome from being attached to the next selected action. Invalid receipts also suppress unsafe learning without freezing the spine-only cycle.
 - Verified by focused Repository wiring contract audit [#40255940523](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255940523): all workflow steps succeeded. PR [#157](https://github.com/ailtron1ss-rgb/NK1/pull/157) squash-merged into the audit branch (merge commit `a3e8119113be6493507b31a0ac49afeab59c150b`).
-
-## Clean-startup trigger contract — 2026-10-26
-
-- Expanded both pull-request and work-branch push path filters so the full clean-install/build/live-stack smoke reruns when gateway routing/forwarded-origin logic, supervisor preflight/exit policy, the Node/npm toolchain contract, the runtime compiler wrapper, or their critical regressions change.
-- Added `tools/clean-startup-workflow-contract.test.mjs` to require those critical paths in both event filters and to preserve manual dispatch. Wired it into `audit:quick` and the Node 24 toolchain workflow.
-- Baseline validation immediately before this trigger-only change passed on `df05dc79a74f1ac65789d9169cf3b0d0bbad6ec5`: WorkPass110, P26 learning validation, host-owned independent evaluation, and clean install/build/typecheck/organism smoke/full supervised stack endpoint smoke all completed successfully. The new trigger-contract workflow run is still required for this follow-on commit.
-
-## Rollback authority regression — 2026-10-26
-
-- Added direct boundary tests proving a rollback without an integer active-version expectation fails early, while plausible approval fields without an injected rollback verifier remain default-denied.
-- The regression verifies rejected rollback leaves the active version, candidate lifecycle status, and persisted rollback approval untouched; production rollback guards were not weakened.
-- The `p23-versioned-skill-candidate-store.mjs` path is included in WorkPass110 and the focused skill-store provenance workflow. Exact-head reruns are required before calling this added coverage green.
-
-## UI build diagnostic test contract — 2026-10-26
-
-- Replaced the path-escaped regex with explicit string assertions for the current build command and output marker, avoiding ambiguous slash escaping.
-- This is test-only alignment; the production preflight remains fail-closed on missing build output.
-
-## Vercel/Nitro UI build-manifest preflight — 2026-10-26
-
-- The clean build runs a server-rendered TanStack Start/Nitro app. It emits `app/.vercel/output/nitro.json` and Vercel output metadata; a standalone `index.html` is not a required build artifact for this SSR target.
-- The first smoke attempt correctly failed closed because the preflight required `app/dist/index.html`. Updated `PRODUCTION_UI_BUILD_ENTRYPOINT` to the actual generated Nitro manifest, matching the build log's `[nitro] You can preview this build using npx vite preview` message.
-- The earlier run confirmed both lockfile installs, production build, app/runtime typecheck, 30-tick organism smoke and eight service-spec tests passed. The complete four-service live-endpoint smoke must now rerun against the real manifest check.
-
-## Clean-install production startup smoke — 2026-10-26
-
-- Added an isolated four-service startup smoke runner: it starts the production supervisor with a temporary state directory and waits for UI HTML, runtime snapshot/version and research status through the public gateway.
-- Added `NK_SUPER_STATE_DIR` as an optional supervisor state-path override; the default remains repository-local `.super-state`. Both `start` and `dev` use the same resolver, and a regression verifies default, relative and absolute overrides.
-- Added a clean GitHub Actions lane that installs both locked workspaces, builds the UI, typechecks the app/runtime, runs the organism smoke test, then starts the full service group and probes all public endpoints. The smoke runner terminates child processes and removes its temporary state.
-- Exact-head clean install/build/live startup validation is pending.
-
-## Gateway TLS-terminator protocol preservation — 2026-10-26
-
-- The gateway previously passed a hard-coded `http` value into upstream header construction, which overwrote `x-forwarded-proto: https` from the trusted local TLS terminator. That could make authentication redirects use HTTP even when the public service was HTTPS.
-- The gateway now lets the validated header builder preserve an incoming single-value `http`/`https` forwarded protocol, with HTTP as fallback; explicit overrides must also be one of those two values.
-- Added regression coverage for TLS-terminator HTTPS preservation and rejection of multi-value/unsupported protocol strings. Existing public Host rewriting and gateway routing remain unchanged.
-- Exact-head Node 24 gateway CI is pending.
-
-## WorkPass243 host-owned authority test isolation — 2026-10-26
-
-- Fixed a test-fixture leak in `workpass243-host-owned-independent-evaluation-services.mjs`: after checking that a group/world-writable executor is rejected, the test now restores mode `0700` before the separate run-root identity-replacement case.
-- The production permission guard is unchanged. This ensures the next assertion tests the run-root identity invariant instead of being short-circuited by the earlier executable-permission invariant.
-- Exact-head WorkPass110 validation is pending.
-
-## P23 durable provenance tamper regression — 2026-10-26
-
-- Added a durable-store tamper case that edits the persisted `revisionProvenance.planFingerprint` without updating the candidate identity.
-- Recovery must reject the altered JSON at the persistence boundary; ordinary/provenance-bearing round-trips and optional `evaluationFingerprint` behavior remain covered.
-- WorkPass110 exact-head rerun will be checked after the branch update.
-
-## Gateway public-origin forwarding contract — 2026-10-26
-
-- The gateway rewrote `Host` to the internal upstream port but did not send the public `Host:port` or protocol as forwarded origin metadata. The Vite auth-popup middleware reads `x-forwarded-host`/`x-forwarded-proto`, so the missing headers could produce redirects scoped to the internal `:8081` port.
-- Added a pure, validated header builder. It rewrites `Host` for upstream routing while deriving `x-forwarded-host` only from the actual incoming Host header and explicitly setting the transport protocol.
-- Added regression tests for public-host preservation, upstream host rewrite, HTTP/HTTPS protocol binding, absent host handling and invalid target rejection.
-- Wired the regression and syntax checks into the Node 24 toolchain workflow and `audit:quick`. Exact-head CI validation is pending.
-
-## Development startup and shared supervisor preflight — 2026-10-26
-
-- Fixed the same relative-entrypoint defect in `npm run dev`: Neuro Kurisu now launches from `runtime/neuro-kurisu`, while the bridge and Vite dev server remain rooted at the repository.
-- Development and production now share the same Node/npm/`.nvmrc` preflight; development fails before state creation when the active toolchain does not match the repository contract.
-- Development service exits and spawn failures now stop sibling services and return a non-zero status instead of leaving a partial organism running.
-- Added regression coverage for development launch specs, actual entrypoint paths, shared preflight behavior and supervisor wiring.
-- Exact-head CI validation is pending.
-
-## Preflight required services before startup side effects — 2026-10-26
-
-- `super-start` now resolves the service launch manifest and validates the Python interpreter, runtime/research/gateway entrypoints, the installed Vite executable, and built UI output before creating `.super-state` or launching any child.
-- An absent UI build returns an explicit remediation message (`npm --prefix app run build`) instead of starting a partial stack and relying on asynchronous child-exit shutdown.
-- Added a testable prerequisite resolver and regression coverage for missing build output and the required pre-state-creation ordering.
-- Validation is pending the exact-head Node 24 toolchain workflow.
-
-## Runtime TypeScript checks must use a pinned compiler — 2026-10-26
-
-- Removed the global `tsc` and Node syntax-only fallbacks from `scripts/typecheck-runtime.mjs`. Missing canonical dependencies now produce `TYPECHECK=BLOCKED` and exit code 2 instead of a false semantic-check PASS.
-- Prefer the TypeScript compiler installed from `app/package-lock.json`, with the runtime-local lockfile compiler as an explicit secondary source. Compiler diagnostics preserve their non-zero exit code.
-- Added a temporary-workspace regression for no-compiler blocking, canonical compiler priority, runtime-local fallback, and propagation of a failing compiler.
-- Wired the contract test into `audit:quick` and the Node 24 toolchain workflow. Exact-head CI is running; do not infer success until its job completes.
-
-## Skill revision provenance optional-digest contract — 2026-10-26
-
-- Fixed a production guard mismatch in `VersionedSkillCandidateStore.stageCandidate()`: `evaluationFingerprint` is optional in `SkillRevisionProvenance`, so absence no longer rejects a valid lineage-only revision candidate.
-- A supplied digest must still be a lowercase 64-character SHA-256 hex value; malformed supplied values remain fail-closed.
-- Expanded `p23-versioned-skill-candidate-store.mjs` to cover both accepted omission across durable restart and rejection of a malformed explicit digest.
-- Triggered the existing lifecycle/metrics workflow through the updated source and regression. Validation must be read from the exact new head; the earlier run failed at this contract mismatch.
-
-## P23 independent evaluator quality-signal correction — 2026-10-26
-
-- Fixed a metrics contract bug in `IndependentSkillCandidateEvaluator`: a valid sandbox execution was marked non-executable whenever the independent verifier failed, despite a separate task-success gate.
-- Execution quality (`executable`) is now separate from evidence authenticity (`bindingVerified`). Verifier outages still fail task success, earn no trusted run ID/trajectory attribution, and cannot make a candidate pass.
-- Expanded the regression to require all three outcomes: valid execution remains measurable, binding remains false, and unverified run identity remains null.
-- Exact-head WorkPass110 validation is pending.
-
-## Supervised runtime working-directory fix — 2026-10-26
-
-- The top-level supervisor previously launched `src/server/server.mjs` with the repository root as its working directory, even though that path is relative to `runtime/neuro-kurisu`. This prevented the mandatory runtime child from resolving its entry point during `npm start`.
-- Extracted service launch specifications into `tools/supervised-service-specs.mjs`; the runtime now starts from its own workspace while the research bridge, UI preview and gateway remain rooted at the repository.
-- Added focused unit coverage for all four service working directories and required launch inputs; connected it to `audit:quick` and the Node 24 toolchain workflow.
-- Exact-head CI validation is pending.
-
-## P23 shadow-evidence end-to-end identity fixture — 2026-10-26
-
-- Updated the real child-process signed-shadow end-to-end fixture to compute the current five-element candidate identity (including explicit `null` when revision provenance is absent).
-- The signed evidence continues to bind to the candidate ID generated by the runtime; this changes test setup only, not signature verification or acceptance rules.
-- Exact-head WorkPass110 rerun is pending.
-
-## Supervised-runtime failure exit status — 2026-10-26
-
-- Unexpected exit and spawn-error decisions now carry a non-zero supervisor exit status; the supervisor no longer logs a child failure and then reports success with exit code 0.
-- Explicit host SIGINT and SIGTERM shutdowns preserve conventional exit statuses 130 and 143. Added regression assertions for fail/ignore exit-status decisions.
-- Exact-head CI validation is pending.
-
-## P23 durable skill-store identity and trust-boundary regression — 2026-10-26
-
-- Updated the versioned skill-store lifecycle regression to use the current object-shaped rollback approval contract; the fixture injects a test-only rollback verifier while production's default rollback verifier remains deny-by-default.
-- Corrected the persisted-state tampering case to change only the unsigned `approval.expectedActiveVersion` wrapper, preserving the signed artifact and valid prior-version linkage. This isolates the intended CAS-to-signed-approval guard.
-- Fixed a production persistence mismatch: `VersionedSkillCandidateStore` includes the revision-provenance fingerprint (or `null`) in each new candidate ID, but `AtomicFileSkillStorePersistence` validated only the old four-field formula and rejected valid durable writes. The file adapter now verifies provenance and the matching five-field identity while accepting legacy four-field IDs only when provenance is absent.
-- Added file-backed restart coverage for ordinary candidates and provenance-bearing candidates both with and without an optional evaluation digest. The persistence validator now matches the declared optional type while still validating any supplied digest. Exact-head WorkPass110 validation is pending.
-
-## Supervised service failure closure — 2026-10-26
-
-- Extracted the child-exit decision into a small pure policy and added regression tests for graceful shutdown, exit code 0, non-zero exits, signals, unknown exit codes and sanitized labels.
-- The supervisor now coordinates shutdown after any unexpected exit from a required long-lived process; it no longer leaves the gateway/UI running with the runtime or research bridge missing.
-- Spawn errors follow the same fail-closed policy, so missing executables or startup permission failures also stop siblings; diagnostic text is control-character sanitized and bounded.
-- Sanitized service labels and signal text before they enter shutdown reasons and logs.
-- Connected the regression to the root test/quick-audit scripts and the focused toolchain CI workflow.
-- Focused policy tests pass locally under Node 22.16; the exact-head Node 24 workflow is responsible for validating the committed source. Full end-to-end startup/restart validation remains pending.
-
-## Node 24 toolchain alignment — 2026-10-25
-
-- Aligned the root, app and runtime package engine declarations with the repository's `.nvmrc` Node 24 pin; synchronized app/runtime lockfile engine metadata.
-- Replaced the Node 22-only checks in `super-doctor` and `super-install` with one reusable version contract. Install now rejects stale/mismatched lockfile engine metadata before calling npm.
-- Added a preflight to `super-start` before it creates local state or launches services, and launches Node-owned child processes with the same `process.execPath` as the supervisor.
-- Added focused unit regressions for major/minor/patch pins, minimum engine versions, malformed versions and mismatched contracts; wired them into `audit:quick`.
-- Updated P26 learning validation to use Node 24, consistent with the repository pin.
-- Verification status for this change: source edits are committed; local project-wide install/typecheck/runtime tests and GitHub Actions are **not yet verified** in this working environment. No release ZIP was replaced by this source-branch change.
 
 ## Feedback delivery idempotence — 2026-10-26
 
@@ -2319,3 +2204,146 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+## P23 rollback test contract — 2026-10-26
+
+- Updated the versioned skill-store lifecycle fixture to call rollback with the current approval object and an expected active version, rather than the retired positional arguments.
+- Added negative cases for a missing active-version guard and for plausible approval metadata with no trusted rollback verifier. Rejected requests must preserve active skill state and must not persist rollback approval data.
+- Production rollback authorization remains default-deny and unchanged. WorkPass110 and focused skill-store CI should be rechecked on this branch head.
+- Corrected the signed-CAS tamper fixture to mutate only the unsigned `approval.expectedActiveVersion` wrapper while preserving the prior-version linkage, so the assertion reaches the intended signature/context binding guard instead of failing at an earlier rollback-target invariant.
+
+## Clean-startup trigger contract — 2026-10-26
+
+- Expanded both pull-request and work-branch push path filters so the full clean-install/build/live-stack smoke reruns when gateway routing/forwarded-origin logic, supervisor preflight/exit policy, the Node/npm toolchain contract, the runtime compiler wrapper, or their critical regressions change.
+- Added `tools/clean-startup-workflow-contract.test.mjs` to require those critical paths in both event filters and to preserve manual dispatch. Wired it into `audit:quick` and the Node 24 toolchain workflow.
+- Baseline validation immediately before this trigger-only change passed on `df05dc79a74f1ac65789d9169cf3b0d0bbad6ec5`: WorkPass110, P26 learning validation, host-owned independent evaluation, and clean install/build/typecheck/organism smoke/full supervised stack endpoint smoke all completed successfully. The new trigger-contract workflow run is still required for this follow-on commit.
+
+## Rollback authority regression — 2026-10-26
+
+- Added direct boundary tests proving a rollback without an integer active-version expectation fails early, while plausible approval fields without an injected rollback verifier remain default-denied.
+- The regression verifies rejected rollback leaves the active version, candidate lifecycle status, and persisted rollback approval untouched; production rollback guards were not weakened.
+- The `p23-versioned-skill-candidate-store.mjs` path is included in WorkPass110 and the focused skill-store provenance workflow. Exact-head reruns are required before calling this added coverage green.
+
+## UI build diagnostic test contract — 2026-10-26
+
+- Replaced the path-escaped regex with explicit string assertions for the current build command and output marker, avoiding ambiguous slash escaping.
+- This is test-only alignment; the production preflight remains fail-closed on missing build output.
+
+## Vercel/Nitro UI build-manifest preflight — 2026-10-26
+
+- The clean build runs a server-rendered TanStack Start/Nitro app. It emits `app/.vercel/output/nitro.json` and Vercel output metadata; a standalone `index.html` is not a required build artifact for this SSR target.
+- The first smoke attempt correctly failed closed because the preflight required `app/dist/index.html`. Updated `PRODUCTION_UI_BUILD_ENTRYPOINT` to the actual generated Nitro manifest, matching the build log's `[nitro] You can preview this build using npx vite preview` message.
+- The earlier run confirmed both lockfile installs, production build, app/runtime typecheck, 30-tick organism smoke and eight service-spec tests passed. The complete four-service live-endpoint smoke must now rerun against the real manifest check.
+
+## Clean-install production startup smoke — 2026-10-26
+
+- Added an isolated four-service startup smoke runner: it starts the production supervisor with a temporary state directory and waits for UI HTML, runtime snapshot/version and research status through the public gateway.
+- Added `NK_SUPER_STATE_DIR` as an optional supervisor state-path override; the default remains repository-local `.super-state`. Both `start` and `dev` use the same resolver, and a regression verifies default, relative and absolute overrides.
+- Added a clean GitHub Actions lane that installs both locked workspaces, builds the UI, typechecks the app/runtime, runs the organism smoke test, then starts the full service group and probes all public endpoints. The smoke runner terminates child processes and removes its temporary state.
+- Exact-head clean install/build/live startup validation is pending.
+
+## Gateway TLS-terminator protocol preservation — 2026-10-26
+
+- The gateway previously passed a hard-coded `http` value into upstream header construction, which overwrote `x-forwarded-proto: https` from the trusted local TLS terminator. That could make authentication redirects use HTTP even when the public service was HTTPS.
+- The gateway now lets the validated header builder preserve an incoming single-value `http`/`https` forwarded protocol, with HTTP as fallback; explicit overrides must also be one of those two values.
+- Added regression coverage for TLS-terminator HTTPS preservation and rejection of multi-value/unsupported protocol strings. Existing public Host rewriting and gateway routing remain unchanged.
+- Exact-head Node 24 gateway CI is pending.
+
+## WorkPass243 host-owned authority test isolation — 2026-10-26
+
+- Fixed a test-fixture leak in `workpass243-host-owned-independent-evaluation-services.mjs`: after checking that a group/world-writable executor is rejected, the test now restores mode `0700` before the separate run-root identity-replacement case.
+- The production permission guard is unchanged. This ensures the next assertion tests the run-root identity invariant instead of being short-circuited by the earlier executable-permission invariant.
+- Exact-head WorkPass110 validation is pending.
+
+## P23 durable provenance tamper regression — 2026-10-26
+
+- Added a durable-store tamper case that edits the persisted `revisionProvenance.planFingerprint` without updating the candidate identity.
+- Recovery must reject the altered JSON at the persistence boundary; ordinary/provenance-bearing round-trips and optional `evaluationFingerprint` behavior remain covered.
+- WorkPass110 exact-head rerun will be checked after the branch update.
+
+## Gateway public-origin forwarding contract — 2026-10-26
+
+- The gateway rewrote `Host` to the internal upstream port but did not send the public `Host:port` or protocol as forwarded origin metadata. The Vite auth-popup middleware reads `x-forwarded-host`/`x-forwarded-proto`, so the missing headers could produce redirects scoped to the internal `:8081` port.
+- Added a pure, validated header builder. It rewrites `Host` for upstream routing while deriving `x-forwarded-host` only from the actual incoming Host header and explicitly setting the transport protocol.
+- Added regression tests for public-host preservation, upstream host rewrite, HTTP/HTTPS protocol binding, absent host handling and invalid target rejection.
+- Wired the regression and syntax checks into the Node 24 toolchain workflow and `audit:quick`. Exact-head CI validation is pending.
+
+## Development startup and shared supervisor preflight — 2026-10-26
+
+- Fixed the same relative-entrypoint defect in `npm run dev`: Neuro Kurisu now launches from `runtime/neuro-kurisu`, while the bridge and Vite dev server remain rooted at the repository.
+- Development and production now share the same Node/npm/`.nvmrc` preflight; development fails before state creation when the active toolchain does not match the repository contract.
+- Development service exits and spawn failures now stop sibling services and return a non-zero status instead of leaving a partial organism running.
+- Added regression coverage for development launch specs, actual entrypoint paths, shared preflight behavior and supervisor wiring.
+- Exact-head CI validation is pending.
+
+## Preflight required services before startup side effects — 2026-10-26
+
+- `super-start` now resolves the service launch manifest and validates the Python interpreter, runtime/research/gateway entrypoints, the installed Vite executable, and built UI output before creating `.super-state` or launching any child.
+- An absent UI build returns an explicit remediation message (`npm --prefix app run build`) instead of starting a partial stack and relying on asynchronous child-exit shutdown.
+- Added a testable prerequisite resolver and regression coverage for missing build output and the required pre-state-creation ordering.
+- Validation is pending the exact-head Node 24 toolchain workflow.
+
+## Runtime TypeScript checks must use a pinned compiler — 2026-10-26
+
+- Removed the global `tsc` and Node syntax-only fallbacks from `scripts/typecheck-runtime.mjs`. Missing canonical dependencies now produce `TYPECHECK=BLOCKED` and exit code 2 instead of a false semantic-check PASS.
+- Prefer the TypeScript compiler installed from `app/package-lock.json`, with the runtime-local lockfile compiler as an explicit secondary source. Compiler diagnostics preserve their non-zero exit code.
+- Added a temporary-workspace regression for no-compiler blocking, canonical compiler priority, runtime-local fallback, and propagation of a failing compiler.
+- Wired the contract test into `audit:quick` and the Node 24 toolchain workflow. Exact-head CI is running; do not infer success until its job completes.
+
+## Skill revision provenance optional-digest contract — 2026-10-26
+
+- Fixed a production guard mismatch in `VersionedSkillCandidateStore.stageCandidate()`: `evaluationFingerprint` is optional in `SkillRevisionProvenance`, so absence no longer rejects a valid lineage-only revision candidate.
+- A supplied digest must still be a lowercase 64-character SHA-256 hex value; malformed supplied values remain fail-closed.
+- Expanded `p23-versioned-skill-candidate-store.mjs` to cover both accepted omission across durable restart and rejection of a malformed explicit digest.
+- Triggered the existing lifecycle/metrics workflow through the updated source and regression. Validation must be read from the exact new head; the earlier run failed at this contract mismatch.
+
+## P23 independent evaluator quality-signal correction — 2026-10-26
+
+- Fixed a metrics contract bug in `IndependentSkillCandidateEvaluator`: a valid sandbox execution was marked non-executable whenever the independent verifier failed, despite a separate task-success gate.
+- Execution quality (`executable`) is now separate from evidence authenticity (`bindingVerified`). Verifier outages still fail task success, earn no trusted run ID/trajectory attribution, and cannot make a candidate pass.
+- Expanded the regression to require all three outcomes: valid execution remains measurable, binding remains false, and unverified run identity remains null.
+- Exact-head WorkPass110 validation is pending.
+
+## Supervised runtime working-directory fix — 2026-10-26
+
+- The top-level supervisor previously launched `src/server/server.mjs` with the repository root as its working directory, even though that path is relative to `runtime/neuro-kurisu`. This prevented the mandatory runtime child from resolving its entry point during `npm start`.
+- Extracted service launch specifications into `tools/supervised-service-specs.mjs`; the runtime now starts from its own workspace while the research bridge, UI preview and gateway remain rooted at the repository.
+- Added focused unit coverage for all four service working directories and required launch inputs; connected it to `audit:quick` and the Node 24 toolchain workflow.
+- Exact-head CI validation is pending.
+
+## P23 shadow-evidence end-to-end identity fixture — 2026-10-26
+
+- Updated the real child-process signed-shadow end-to-end fixture to compute the current five-element candidate identity (including explicit `null` when revision provenance is absent).
+- The signed evidence continues to bind to the candidate ID generated by the runtime; this changes test setup only, not signature verification or acceptance rules.
+- Exact-head WorkPass110 rerun is pending.
+
+## Supervised-runtime failure exit status — 2026-10-26
+
+- Unexpected exit and spawn-error decisions now carry a non-zero supervisor exit status; the supervisor no longer logs a child failure and then reports success with exit code 0.
+- Explicit host SIGINT and SIGTERM shutdowns preserve conventional exit statuses 130 and 143. Added regression assertions for fail/ignore exit-status decisions.
+- Exact-head CI validation is pending.
+
+## P23 durable skill-store identity and trust-boundary regression — 2026-10-26
+
+- Updated the versioned skill-store lifecycle regression to use the current object-shaped rollback approval contract; the fixture injects a test-only rollback verifier while production's default rollback verifier remains deny-by-default.
+- Corrected the persisted-state tampering case to change only the unsigned `approval.expectedActiveVersion` wrapper, preserving the signed artifact and valid prior-version linkage. This isolates the intended CAS-to-signed-approval guard.
+- Fixed a production persistence mismatch: `VersionedSkillCandidateStore` includes the revision-provenance fingerprint (or `null`) in each new candidate ID, but `AtomicFileSkillStorePersistence` validated only the old four-field formula and rejected valid durable writes. The file adapter now verifies provenance and the matching five-field identity while accepting legacy four-field IDs only when provenance is absent.
+- Added file-backed restart coverage for ordinary candidates and provenance-bearing candidates both with and without an optional evaluation digest. The persistence validator now matches the declared optional type while still validating any supplied digest. Exact-head WorkPass110 validation is pending.
+
+## Supervised service failure closure — 2026-10-26
+
+- Extracted the child-exit decision into a small pure policy and added regression tests for graceful shutdown, exit code 0, non-zero exits, signals, unknown exit codes and sanitized labels.
+- The supervisor now coordinates shutdown after any unexpected exit from a required long-lived process; it no longer leaves the gateway/UI running with the runtime or research bridge missing.
+- Spawn errors follow the same fail-closed policy, so missing executables or startup permission failures also stop siblings; diagnostic text is control-character sanitized and bounded.
+- Sanitized service labels and signal text before they enter shutdown reasons and logs.
+- Connected the regression to the root test/quick-audit scripts and the focused toolchain CI workflow.
+- Focused policy tests pass locally under Node 22.16; the exact-head Node 24 workflow is responsible for validating the committed source. Full end-to-end startup/restart validation remains pending.
+
+## Node 24 toolchain alignment — 2026-10-25
+
+- Aligned the root, app and runtime package engine declarations with the repository's `.nvmrc` Node 24 pin; synchronized app/runtime lockfile engine metadata.
+- Replaced the Node 22-only checks in `super-doctor` and `super-install` with one reusable version contract. Install now rejects stale/mismatched lockfile engine metadata before calling npm.
+- Added a preflight to `super-start` before it creates local state or launches services, and launches Node-owned child processes with the same `process.execPath` as the supervisor.
+- Added focused unit regressions for major/minor/patch pins, minimum engine versions, malformed versions and mismatched contracts; wired them into `audit:quick`.
+- Updated P26 learning validation to use Node 24, consistent with the repository pin.
+- Verification status for this change: source edits are committed; local project-wide install/typecheck/runtime tests and GitHub Actions are **not yet verified** in this working environment. No release ZIP was replaced by this source-branch change.
