@@ -1,3 +1,10 @@
+## [NK1][Hexis-H9] Make finalized learning-review requests idempotent — 2026-10-26
+
+- The public Core review coordinator now treats a repeated matching decision as a replay, not an invalid pending-item request. It requires the decision and correction to match the finalized item and requires matching P65/SourceMonitor provenance before returning success.
+- A repeated correction additionally verifies the canonical current revision, exact review-item source, canonicalized correction text, and review evidence lineage. A repeated forget succeeds only if the reviewed revision group has no active memory tip. Conflicting decisions and incomplete canonical side effects fail closed.
+- Expanded the Hexis learning-review regression to call the real `OrganismCore.prototype` coordinator with real MemoryOS2, MemoryFabric, HexisAdaptationFabric, P65 and SourceMonitor instances. It checks first correction, provenance writes, exact replay, and conflicting correction rejection.
+- **Validation status:** dynamic regression is registered under `test:hexis-learning-review-canonical-memory`; execution remains pending because the current GitHub Actions jobs fail before runner assignment.
+
 ## [NK1][Hexis-H8] Surface domain-level rejection in the operator console — 2026-10-26
 
 - The Hexis console now inspects both direct API `ok: false` responses and Core's nested `result.ok: false` domain result before displaying an operation as successful.
