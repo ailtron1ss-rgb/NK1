@@ -2,7 +2,7 @@
 
 - [CI] Added a dedicated Node 24 workflow that runs runtime typecheck, standard organism smoke, legacy restart-persistence, canonical persistence/restore continuity, persistent-continuity organism integration, and verified autonomous-life restart regression on the same checkout.
 - [PURPOSE] These checks cross the newly repaired Core action/goal attribution path with established startup, persistence and continuity coverage rather than relying only on the new targeted test.
-- [VALIDATION] Workflow [#40291631075](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291631075) is running on head `ee360dba4503011157fc2780f0f5b0fd7accb33c`; its final job status must be recorded before this pass is marked complete.
+- [VALIDATION] Workflow [#40291631075](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291631075) passed on head `ee360dba4503011157fc2780f0f5b0fd7accb33c`: runtime `TYPECHECK=PASS`, `CLEAN_ORGANISM_SMOKE=PASS`, `CLEAN_RESTART_PERSISTENCE=PASS`, `PASS20_PERSISTENCE_RESTORE=PASS tick=2->3`, `PERSISTENT_CONTINUITY_ORGANISM_PASS`, and `BIG_PASS_155_RESTART=PASS cycles=1 decisions=1 digestRestored=true`.
 - [LIMIT] CI tests do not replace a clean-machine Docker launch with configured production evaluator authorities, real browser/Live2D E2E, Android/Termux audio, long soak, independent held-out uplift or license review.
 
 # WorkPass360 — bind whole-organism restart evidence to canonical MemoryOS2 (2026-10-26)
