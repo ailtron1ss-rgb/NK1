@@ -129,6 +129,7 @@ try {
     ['/api/organism/integration/hexis/hmx/decide', { stagingId: 'smoke-stage', decision: 'accept', confirmed: 'true' }, 'hexis-hmx-confirmation-type'],
     ['/api/organism/integration/hexis/goals/prepare', { stagingId: {} }, 'hexis-goal-staging-id'],
     ['/api/organism/integration/hexis/goals/decide', { proposalId: {}, decision: 'approve' }, 'hexis-goal-proposal-id'],
+    ['/api/organism/integration/hexis/goals/materialize', { confirmed: true }, 'hexis-goal-materialize-proposal-id'],
     ['/api/organism/integration/hexis/outbox/claim', { id: {} }, 'hexis-outbox-claim-id'],
     ['/api/organism/integration/hexis/policy/revoke', { id: {} }, 'hexis-policy-revoke-id'],
   ];
