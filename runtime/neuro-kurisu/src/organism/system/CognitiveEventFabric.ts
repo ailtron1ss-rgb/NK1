@@ -204,18 +204,18 @@ export class CognitiveEventFabric {
       const stage=typeof value.stage==='string'?value.stage as CognitiveStage:undefined;
       // Restore strictly typed identity and clocks; do not coerce malformed values into valid events.
       const tick=value.tick;
-      if(!id||id.length>180||/[\\u0000-\\u001f\\u007f]/.test(id)||
+      if(!id||id.length>180||/[\u0000-\u001f\u007f]/.test(id)||
         !COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0||seen.has(id))continue;
       const rawAt=value.at;
       if(rawAt!==undefined&&(typeof rawAt!=='number'||!Number.isFinite(rawAt)||rawAt<0))continue;
-      if(value.source!==undefined&&(typeof value.source!=='string'||value.source.length>120||/[\\u0000-\\u001f\\u007f]/.test(value.source)))continue;
+      if(value.source!==undefined&&(typeof value.source!=='string'||value.source.length>120||/[\u0000-\u001f\u007f]/.test(value.source)))continue;
       if(value.external!==undefined&&typeof value.external!=='boolean')continue;
       if(value.confidence01!==undefined&&(typeof value.confidence01!=='number'||!Number.isFinite(value.confidence01)))continue;
       const rawParentIds=value.parentIds;
       if(rawParentIds!==undefined&&!Array.isArray(rawParentIds))continue;
       const parentInput=Array.isArray(rawParentIds)?rawParentIds:[];
       if(parentInput.length>12||parentInput.some(parent=>
-        typeof parent!=='string'||!parent.trim()||parent.length>180||/[\\u0000-\\u001f\\u007f]/.test(parent)
+        typeof parent!=='string'||!parent.trim()||parent.length>180||/[\u0000-\u001f\u007f]/.test(parent)
       ))continue;
       const at=rawAt===undefined?0:rawAt;
       const parentIds=parentInput as string[];
@@ -330,7 +330,7 @@ export class CognitiveEventFabric {
     if(input.parentIds?.some(parent=>typeof parent!=='string'||!parent.trim())) {
       throw new TypeError('invalid-cognitive-event-parent-id');
     }
-    if(input.parentIds?.some(parent=>parent.length>180||/[\\u0000-\\u001f\\u007f]/.test(parent))) {
+    if(input.parentIds?.some(parent=>parent.length>180||/[\u0000-\u001f\u007f]/.test(parent))) {
       throw new RangeError('invalid-cognitive-event-parent-id');
     }
     if(input.external!==undefined&&typeof input.external!=='boolean') throw new TypeError('invalid-cognitive-event-external-flag');
