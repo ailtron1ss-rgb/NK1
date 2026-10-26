@@ -302,7 +302,7 @@ export function buildNk1HmxV17Document(input: {
   const candidates = input.memories
     .map(record)
     .filter((row): row is Record<string, unknown> => Boolean(row))
-    .filter(row => typeof row.content === 'string' && Boolean(String(row.content).trim()) && !row.dormant && row.epistemicStatus !== 'quarantined' && row.protected !== true && row.protectedBelief !== true && !PROTECTED_MEMORY_KINDS.has(String(row.kind ?? '').trim().toLowerCase()) && !Boolean(record(row.metadata)?.protected) && record(row.metadata)?.nk1_protected !== true)
+    .filter(row => typeof row.content === 'string' && Boolean(String(row.content).trim()) && !row.dormant && row.epistemicStatus !== 'quarantined' && row.protected !== true && row.protectedBelief !== true && !PROTECTED_MEMORY_KINDS.has(String(row.kind ?? '').trim().toLowerCase()) && record(row.metadata)?.protected !== true && record(row.metadata)?.nk1_protected !== true && record(row.metadata)?.protected_belief !== true)
     .sort((a, b) => Number(b.observedAt ?? b.lastAccessAt ?? b.createdAt ?? 0) - Number(a.observedAt ?? a.lastAccessAt ?? a.createdAt ?? 0));
   const selected = candidates.slice(0, MAX_STAGED_MEMORIES);
   let truncatedCount = 0;
