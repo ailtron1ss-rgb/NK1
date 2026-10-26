@@ -573,6 +573,13 @@ export class HexisCanonicalMemoryProjector {
         }
       }
 
+      // Only finalize signal compensation tokens after every canonical/semantic/temporal
+      // projection succeeded. If preflight fails, the catch still owns live rollback tokens.
+      if (revisedSignals.length &&
+          this.memoryFabric.commitSignalCompensations(revisedSignals.map(revision => revision.token)) !== true) {
+        throw new Error('hmx-signal-compensation-commit-failed');
+      }
+
     } catch (error) {
       const rollbackErrors = [];
       // The canonical MemoryFabric can commit an encode before a downstream
