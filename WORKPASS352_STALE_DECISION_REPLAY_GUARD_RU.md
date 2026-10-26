@@ -28,7 +28,7 @@
 
 Рабочий workflow `.github/workflows/workpass331-unified-cognitive-kernel.yml` уже запускает full runtime typecheck, canonical kernel regression, live runtime wiring, smoke, автономный выбор действий, background initiative и restart persistence при изменении файлов этого прохода.
 
-Exact-head runtime checks ещё не подтверждены. После создания Draft PR нужно проверить фактический результат workflow; наличие теста в файле не считается PASS.
+Первый exact-head запуск прошёл typecheck, но тестовый шаг остановился ещё на создании первого события из-за double-escaped control-character regex в зависимом WorkPass351 `CognitiveEventFabric.append()`. Исправление перенесено и в эту ветку коммитом [2fb62b6](https://github.com/ailtron1ss-rgb/NK1/commit/2fb62b6fbbb7d0a74f45ed4094c92eaf68e15f76). Требуется повторный exact-head workflow; до его успеха этот проход не считается validated.
 
 ```bash
 cd runtime/neuro-kurisu
