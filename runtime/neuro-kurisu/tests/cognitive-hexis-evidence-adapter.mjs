@@ -55,4 +55,9 @@ assert.equal(protectedEvidence.accepted, true);
 if (protectedEvidence.accepted) assert.equal(protectedEvidence.evidence.protectedMemory, true);
 
 assert.equal(adaptHexisEvidence({ ...valid, source: new Date() }).accepted, false);
+
+const hostileProxy = new Proxy({ ...valid }, {
+  ownKeys() { throw new Error("hostile ownKeys trap"); },
+});
+assert.equal(adaptHexisEvidence(hostileProxy).accepted, false);
 console.log("Hexis evidence adapter contract: PASS");
