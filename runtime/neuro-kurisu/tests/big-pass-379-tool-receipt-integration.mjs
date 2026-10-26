@@ -5,6 +5,8 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
 import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
 import { AutonomousResourceToolLifeController } from '../src/organism/system/AutonomousResourceToolLifeController.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { P65EpistemicLedger } from '../src/organism/memory/P65EpistemicLedger.ts';
+import { realityEvidenceEventId } from '../src/organism/system/RealityEvidenceLedger.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
 const verification = (overrides = {}) => ({
@@ -211,6 +213,20 @@ test('OrganismCore projects a keyed tool receipt into the persisted causal fabri
   assert.equal(firstTrace.length, 3);
   assert.ok(afterFirst.recent.find((row) => row.payload.executionId === first.executionId && row.stage === 'tool-action')?.parentIds.includes(plan.id), 'receipt action starts at the canonical plan node');
 
+  const outcomeNode = firstTrace.find((row) => row.stage === 'tool-outcome');
+  const projectedEventId = realityEvidenceEventId(first.executionId, 'tool-outcome', 'canonical');
+  const realityLedger = core.snapshot().system.realityEvidenceLedger;
+  const realityRecord = realityLedger.recent.find((row) => row.eventId === projectedEventId);
+  assert.ok(realityRecord, 'canonical execution outcome must project into RealityEvidenceLedger');
+  assert.equal(realityRecord.realityClass, 'derived', 'tool-contract verification is not independent external reality evidence');
+  assert.ok(realityRecord.parentIds.includes(outcomeNode.id), 'reality evidence must point back to the canonical causal outcome');
+  const p65BeforeReplay = core.p65Snapshot();
+  const p65Claim = p65BeforeReplay.claimsData.find((row) => row.eventId === projectedEventId);
+  assert.ok(p65Claim, 'P65 must carry the same event ID for a cross-ledger join');
+  assert.equal(p65Claim.kind, 'inference', 'a tool-contract receipt is an inference, not an independent external observation');
+  assert.ok(p65Claim.content.includes(first.executionId));
+  const realityTotalBeforeReplay = realityLedger.total;
+
   const replay = await core.executeTool('test.trace-once', {}, 'big-pass-379-replay', { idempotencyKey: 'big-pass-379-key', decisionId: plan.id });
   assert.equal(replay.idempotentReplay, true);
   assert.equal(executions, 1);
@@ -218,4 +234,24 @@ test('OrganismCore projects a keyed tool receipt into the persisted causal fabri
   const replayTrace = afterReplay.recent.filter((row) => row.payload.executionId === first.executionId && ['tool-action', 'tool-outcome', 'tool-evidence'].includes(row.stage));
   assert.equal(replayTrace.length, 3);
   assert.equal(afterReplay.total, afterFirst.total);
+  assert.equal(core.snapshot().system.realityEvidenceLedger.total, realityTotalBeforeReplay,
+    'gateway replay cannot add another RealityEvidenceLedger record');
+  assert.equal(core.p65Snapshot().claims, p65BeforeReplay.claims,
+    'gateway replay cannot add another epistemic claim');
+});
+
+test('P65 event identity survives restore, ignores processing time and rejects changed payloads', () => {
+  const ledger = new P65EpistemicLedger();
+  const eventId = realityEvidenceEventId('exec-p65-event-identity-517', 'tool-outcome', 'canonical');
+  const input = {
+    tick: 17, at: 1700000000000, kind: 'inference', content: `outcome:${eventId}:verified=false`,
+    confidence01: 0.42, source: 'organism', eventId,
+  };
+  const first = ledger.record(input);
+  assert.equal(ledger.record({ ...input, at: input.at + 5000 }), first);
+  assert.throws(() => ledger.record({ ...input, content: input.content + ':changed' }), /p65-event-identity-conflict/);
+  const restored = new P65EpistemicLedger();
+  restored.restore(ledger.snapshot());
+  assert.equal(restored.record({ ...input, at: input.at + 6000 }), first);
+  assert.throws(() => restored.record({ ...input, confidence01: 0.99 }), /p65-event-identity-conflict/);
 });

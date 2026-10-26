@@ -1091,7 +1091,7 @@
     "test:big-pass-379:performance": "node --experimental-strip-types tests/big-pass-379-embodied-recovery-performance.mjs",
     "test:big-pass-379:causal": "npm run typecheck && npm run test:big-pass-379:recovery && npm run test:big-pass-379:runtime && npm run test:big-pass-378:device-gate && npm run test:big-pass-377:goal-arbitration",
     "test:big-pass-379:release-gate": "npm run test:big-pass-379:causal && npm run test:big-pass-379:performance && npm run audit:core-ownership && npm run audit:architecture && npm run audit:hygiene && npm run audit:contract && npm run audit:syntax && npm run audit:forensics && npm run audit:full && npm run verify:release-source && npm run audit:integrity && npm run manifests && npm run manifest:archive && npm run audit:archive",
-    "test:big-pass-379:runtime": "node --experimental-strip-types tests/big-pass-379-runtime-closed-loop.mjs",
+    "test:big-pass-379:runtime": "node --experimental-strip-types tests/big-pass-379-tool-receipt-integration.mjs && node --experimental-strip-types tests/big-pass-379-runtime-closed-loop.mjs",
     "test:big-pass-380:temporal": "node --experimental-strip-types tests/big-pass-380-temporal-life-causal.mjs",
     "test:big-pass-380:causal": "npm run typecheck && npm run test:big-pass-380:temporal && npm run test:big-pass-380:runtime && npm run test:big-pass-379:recovery && npm run test:big-pass-378:device-gate && npm run test:big-pass-377:goal-arbitration",
     "test:big-pass-380:runtime": "node --experimental-strip-types tests/big-pass-380-runtime-temporal-life.mjs",

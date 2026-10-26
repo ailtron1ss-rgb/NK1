@@ -1,3 +1,13 @@
+## NK1 [evidence] — connect gateway outcome, reality ledger and P65 (2026-10-26)
+
+- The canonical `OrganismCore.finalizeToolOutcome` path now projects action outcomes to `RealityEvidenceLedger` and P65 using a shared stable event ID; the reality record is parented to the canonical CEF outcome (or authoritative receipt-revision) node.
+- Ordinary tool-contract receipts remain `derived` evidence and P65 inferences. Only integrated, verified source observations can be classified as device/external/user observations; simulation remains separated.
+- P65 persists a bounded event-identity index, deduplicates retries across processing timestamps, and rejects reuse of one event ID with changed semantic payload.
+- Extended the existing tool-receipt integration regression to assert cross-ledger identity, causal parentage, conservative evidence classification, and replay idempotency. Wired that test into the existing `test:big-pass-379:runtime` script.
+- **Validation boundary:** source and regression wiring are committed together; exact-head test/typecheck/Actions results remain unverified until the hosted runner executes the steps.
+
+---
+
 ## NK1 [evidence] — align live and restored event replay semantics (2026-10-26)
 
 - Corrected the timestamp rule to match the existing WorkPass510 contract: `at` is ingestion/processing metadata and does not change the identity of an otherwise identical upstream event.

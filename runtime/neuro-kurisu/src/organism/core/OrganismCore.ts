@@ -175,6 +175,7 @@ import { NeuralMorphogenesisEngine } from '../system/NeuralMorphogenesisEngine.t
 import { HybridNeuroCognitiveLoop } from '../system/HybridNeuroCognitiveLoop.ts';
 import { NeuroDigitalEvolutionEngine } from '../system/NeuroDigitalEvolutionEngine.ts';
 import { isTrustedDecisionLinkedExternalPostcondition } from '../system/OutcomeVerificationService.ts';
+import { realityEvidenceEventId } from '../system/RealityEvidenceLedger.ts';
 import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import { OutcomeCognitionFabric } from '../system/OutcomeCognitionFabric.ts';
 import type { ExternalObservation, ExternalObservationAssessment } from '../system/ExternalObserverFabric.ts';
@@ -11864,7 +11865,7 @@ export class OrganismCore {
                 observationId: result.verification.observationId, status: revision.revision.status, reason,
                 at: result.audit.at,
             });
-            if (!traceRevision.resolved) throw new Error(`authoritative-receipt-causal-projection-failed:${traceRevision.reason ?? 'unknown'}`);
+            if (!traceRevision.resolved || !traceRevision.eventId) throw new Error(`authoritative-receipt-causal-projection-failed:${traceRevision.reason ?? 'unknown'}`);
 
             const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false, decisionLinkedExternalPostcondition);
             if (!externalIntegration.integrated && result.verification.externalObservation && result.verification.verified) {
@@ -11888,6 +11889,12 @@ export class OrganismCore {
                 });
                 if (!projection.resolved) throw new Error(`external-tool-evidence-projection-failed:${projection.reason ?? 'unknown'}`);
             }
+            this.persistToolOutcomeEvidence({
+                toolId:id,result,tick:revision.revision.tick,at:result.audit.at,parentEventId:traceRevision.eventId,
+                externalObservation:externalIntegration.integrated?externalIntegration.observation:undefined,
+                externalAssessment:externalIntegration.integrated?externalIntegration.assessment:undefined,
+                revisionDiscriminator:revision.revision.revisionId,
+            });
             const outcomeSnapshot = this.cognitiveRuntime.outcomeCognition.snapshot();
             this.persisted.system.outcomeVerification = { version: 1, records: [...outcomeSnapshot.records], projectionIndex: [...outcomeSnapshot.projectionIndex], evidenceRevisions: [...outcomeSnapshot.evidenceRevisions] };
             this.persisted.system.causalAccountability = outcomeSnapshot.causal;
@@ -11896,6 +11903,11 @@ export class OrganismCore {
             return;
         }
         const projected = this.cognitiveRuntime.outcomeCognition.project({ tick: this.persisted.state.tick, tool: id, ok: result.ok, verification: result.verification, reason, inputKeys, predictedAction: this.persisted.state.predictedNextAction, predictionConfidence01: this.persisted.state.lastPredictionConfidence, executionId: result.executionId, outcomeClass: result.outcomeClass });
+        this.persistToolOutcomeEvidence({
+            toolId:id,result,tick:projected.verificationRecord.tick,at:result.audit.at,parentEventId:receiptTrace.outcomeEventId,
+            externalObservation:integratedExternal?externalIntegration.observation:undefined,
+            externalAssessment:integratedExternal?externalIntegration.assessment:undefined,
+        });
         { const outcomeSnapshot = this.cognitiveRuntime.outcomeCognition.snapshot(); this.persisted.system.outcomeVerification = { version: 1, records: [...outcomeSnapshot.records], projectionIndex: [...outcomeSnapshot.projectionIndex], evidenceRevisions: [...outcomeSnapshot.evidenceRevisions] }; }
         this.persisted.system.causalAccountability = projected.causal;
         const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false);
@@ -11909,7 +11921,7 @@ export class OrganismCore {
             if (v.observedWorldContextAfter)
                 this.worldSubsystem.observeGroundedContext(v.observedWorldContextAfter);
         }
-        this.cognitiveRuntime.cognitiveEventFabric.appendToolReceiptTrace({
+        const receiptTrace = this.cognitiveRuntime.cognitiveEventFabric.appendToolReceiptTrace({
             tick: this.persisted.state.tick,
             executionId: result.executionId,
             toolId: id,
@@ -11952,6 +11964,65 @@ export class OrganismCore {
         }
         this.persisted.system.cognitiveEventFabric = this.cognitiveRuntime.cognitiveEventFabric.snapshot();
         this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
+    }
+
+    private persistToolOutcomeEvidence(input:{
+        toolId:string;
+        result:import('../system/ActionGateway.ts').ToolExecution;
+        tick:number;
+        at:number;
+        parentEventId:string;
+        externalObservation?:ExternalObservation;
+        externalAssessment?:ExternalObservationAssessment;
+        revisionDiscriminator?:string;
+    }):void {
+        const {toolId,result,tick,at,parentEventId,externalObservation,externalAssessment,revisionDiscriminator}=input;
+        const verification=result.verification;
+        const integratedExternal=Boolean(
+            externalObservation&&externalAssessment?.verified===true&&
+            verification.basis==='external-postcondition'&&verification.verified===true&&verification.externalObservation===true
+        );
+        let realityClass:import('../system/RealityEvidenceLedger.ts').EvidenceRealityClass='derived';
+        let p65Source='organism';
+        if(integratedExternal&&externalObservation){
+            switch(externalObservation.sourceClass){
+                case 'os': realityClass='device-observation';p65Source='os';break;
+                case 'device': realityClass='device-observation';p65Source='device';break;
+                case 'user': realityClass='user-reported';p65Source='user';break;
+                case 'external-api': realityClass='external-observation';p65Source='external-api';break;
+                case 'world': realityClass='external-observation';p65Source='world';break;
+                case 'simulator': realityClass='simulator';p65Source='simulated-world-environment';break;
+                default: realityClass='derived';p65Source='organism';break;
+            }
+        }
+        const rawConfidence=Number(verification.confidence01);
+        const baseConfidence=Number.isFinite(rawConfidence)?Math.max(0,Math.min(1,rawConfidence)):.25;
+        const confidence01=integratedExternal&&externalObservation&&externalAssessment
+            ?Math.max(0,Math.min(baseConfidence,externalObservation.confidence01,externalAssessment.confidence01))
+            :Math.min(.49,baseConfidence);
+        const role=revisionDiscriminator?'tool-outcome-revision':'tool-outcome';
+        const discriminator=revisionDiscriminator?sha256Stable(revisionDiscriminator):'canonical';
+        const eventId=realityEvidenceEventId(result.executionId,role,discriminator);
+        const toolFingerprint=sha256Stable(toolId).slice(0,16);
+        const verified=Boolean(result.verified&&verification.verified);
+        const claim=`tool-outcome:${toolFingerprint}:${result.outcomeClass}:ok=${Boolean(result.ok)}:verified=${verified}:basis=${verification.basis}:execution=${result.executionId}`.slice(0,240);
+        const ledger=this.organismSystems.governance.realityEvidenceLedger;
+        ledger.record({
+            tick,at,eventId,realityClass,claim,confidence01,
+            independenceKey:integratedExternal&&externalObservation
+                ?externalObservation.independenceKey
+                :`tool-execution:${sha256Stable(result.executionId).slice(0,32)}`,
+            parentIds:[parentEventId],
+        });
+        this.persisted.system.realityEvidenceLedger=ledger.snapshot();
+        const kind:import('../memory/P65EpistemicLedger.ts').P65Kind=
+            integratedExternal&&realityClass!=='simulator'?'observation':realityClass==='simulator'?'counterfactual':'inference';
+        const content=`tool-outcome:${eventId}:class=${realityClass}:status=${result.outcomeClass}:ok=${Boolean(result.ok)}:verified=${verified}:basis=${verification.basis}`;
+        this.memorySubsystem.p65EpistemicLedger.record({
+            tick,at,kind,content,confidence01,source:p65Source,eventId,
+        });
+        this.persisted.facets.advanced.p65EpistemicLedger=this.memorySubsystem.p65EpistemicLedger.snapshot();
+        this.markPersistenceDirty();
     }
 
     private async integrateVerifiedToolObservation(
