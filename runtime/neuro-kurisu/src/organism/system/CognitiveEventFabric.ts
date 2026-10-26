@@ -302,7 +302,7 @@ export class CognitiveEventFabric {
     const restoredById=new Map(restored.map(event=>[event.id,event] as const));
     const restoredIndex=new Map<string,ToolReceiptProjectionIndexEntry>();
     const receiptRows=ownArrayValues(ownDataValue(root,'receiptProjectionIndex'),512);
-    const sanitizeReceiptRef=(value:unknown,kind:'observation'|'revision',executionId:string):ExternalObservationProjectionRef|ToolReceiptRevisionProjectionRef|null=>{
+    const sanitizeReceiptRef=(value:unknown,kind:'observation'|'revision',executionId:string,actionEventId:string,outcomeEventId:string):ExternalObservationProjectionRef|ToolReceiptRevisionProjectionRef|null=>{
       if(!isRecord(value))return null;
       if(['observationId','revisionId','eventId','projectionHash','projectedAt','revisionNumber'].some(key=>hasOwnAccessorField(value,key)))return null;
       const idKey=kind==='observation'?'observationId':'revisionId';
@@ -315,16 +315,21 @@ export class CognitiveEventFabric {
         typeof projectedAt!=='number'||!Number.isFinite(projectedAt)||projectedAt<0)return null;
       const event=restoredById.get(eventId);
       if(kind==='observation'){
-        if(event?.stage!=='external-evidence'||
+        if(event?.stage!=='external-evidence'||event.external!==true||
           ownDataValue(event.payload,'executionId')!==executionId||
           ownDataValue(event.payload,'observationId')!==refId||
-          ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase())return null;
+          ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase()||
+          ownDataValue(event.payload,'receiptActionEventId')!==actionEventId||
+          ownDataValue(event.payload,'receiptOutcomeEventId')!==outcomeEventId||
+          !event.parentIds.includes(outcomeEventId))return null;
         return {observationId:refId,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt};
       }
       if(event?.stage!=='tool-reconciliation'||
         ownDataValue(event.payload,'executionId')!==executionId||
         ownDataValue(event.payload,'revisionId')!==refId||
-        ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase())return null;
+        ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase()||
+        ownDataValue(event.payload,'baseOutcomeEventId')!==outcomeEventId||
+        !event.parentIds.includes(outcomeEventId))return null;
       const eventRevisionNumber=ownDataValue(event.payload,'revisionNumber');
       const storedRevisionNumber=ownDataValue(value,'revisionNumber');
       const hasStoredRevisionNumber=hasOwnField(value,'revisionNumber');
@@ -387,25 +392,30 @@ export class CognitiveEventFabric {
 
       const observationsRaw=ownDataValue(value,'externalObservations');
       const observations=ownArrayValues(observationsRaw,32)
-        .map(ref=>sanitizeReceiptRef(ref,'observation',executionId))
+        .map(ref=>sanitizeReceiptRef(ref,'observation',executionId,actionEventId,outcomeEventId))
         .filter((ref):ref is ExternalObservationProjectionRef=>ref!==null);
       const revisionsRaw=ownDataValue(value,'receiptRevisions');
       const revisionCandidates=ownArrayValues(revisionsRaw,32)
-        .map(ref=>sanitizeReceiptRef(ref,'revision',executionId))
+        .map(ref=>sanitizeReceiptRef(ref,'revision',executionId,actionEventId,outcomeEventId))
         .filter((ref):ref is ToolReceiptRevisionProjectionRef=>ref!==null);
       const seenRevisionIds=new Set<string>();
       const seenRevisionEventIds=new Set<string>();
       let previousRevisionNumber=0;
+      let previousRevisionEventId:string|null=null;
       let revisionSequenceValid=true;
       for(const revision of revisionCandidates){
+        const revisionNode=restoredById.get(revision.eventId);
         if(seenRevisionIds.has(revision.revisionId)||seenRevisionEventIds.has(revision.eventId)||
-          !Number.isSafeInteger(revision.revisionNumber)||revision.revisionNumber!<=previousRevisionNumber) {
+          !Number.isSafeInteger(revision.revisionNumber)||revision.revisionNumber!<=previousRevisionNumber||
+          !revisionNode||ownDataValue(revisionNode.payload,'previousRevisionEventId')!==previousRevisionEventId||
+          (previousRevisionEventId!==null&&!revisionNode.parentIds.includes(previousRevisionEventId))) {
           revisionSequenceValid=false;
           break;
         }
         seenRevisionIds.add(revision.revisionId);
         seenRevisionEventIds.add(revision.eventId);
         previousRevisionNumber=revision.revisionNumber!;
+        previousRevisionEventId=revision.eventId;
       }
       const revisions=revisionSequenceValid?revisionCandidates:[];
       const seenObservationIds=new Set<string>();
@@ -874,28 +884,46 @@ export class CognitiveEventFabric {
     if(receiptAction?.payload.tool!==toolId||receiptOutcome?.payload.tool!==toolId)return invalid('execution-tool-mismatch');
     const refs=entry.receiptRevisions??[];
     const prior=refs.find(ref=>ref.revisionId===revisionId);
+    const byId=new Map(this.events.map(event=>[event.id,event] as const));
+    const latestRevision=refs.at(-1);
+    const latestRevisionNode=latestRevision?byId.get(latestRevision.eventId):undefined;
+    const latestRevisionNumber=latestRevision?.revisionNumber??latestRevisionNode?.payload.revisionNumber;
     if(prior){
+      const priorIndex=refs.findIndex(ref=>ref.revisionId===revisionId);
+      const previous=priorIndex>0?refs[priorIndex-1]:undefined;
+      const priorNode=byId.get(prior.eventId);
       if(prior.projectionHash!==projectionHash)throw new Error('tool-receipt-revision-conflict');
+      if(!priorNode||priorNode.stage!=='tool-reconciliation'||
+        priorNode.payload.executionId!==executionId||priorNode.payload.revisionId!==revisionId||
+        priorNode.payload.revisionNumber!==prior.revisionNumber||
+        priorNode.payload.projectionHash!==prior.projectionHash||
+        priorNode.payload.baseOutcomeEventId!==entry.outcomeEventId||
+        priorNode.payload.previousRevisionEventId!==(previous?.eventId??null)||
+        !priorNode.parentIds.includes(entry.outcomeEventId)||
+        (previous!==undefined&&!priorNode.parentIds.includes(previous.eventId))) {
+        throw new Error('tool-receipt-revision-lineage-conflict');
+      }
       return {resolved:true,replayed:true,eventId:prior.eventId,projectionHash};
     }
     if(refs.length>=32)return invalid('tool-receipt-revision-ledger-full');
 
     const eventId='cef:tool-receipt-revision:'+sha256Stable({executionId,revisionId}).slice(0,48);
-    const byId=new Map(this.events.map(event=>[event.id,event] as const));
     const existing=byId.get(eventId);
     if(existing){
       if(existing.stage!=='tool-reconciliation'||existing.payload.executionId!==executionId||
-        existing.payload.revisionId!==revisionId||existing.payload.projectionHash!==projectionHash) {
-        throw new Error('tool-receipt-revision-conflict');
+        existing.payload.revisionId!==revisionId||existing.payload.projectionHash!==projectionHash||
+        existing.payload.revisionNumber!==revisionNumber||
+        existing.payload.baseOutcomeEventId!==entry.outcomeEventId||
+        existing.payload.previousRevisionEventId!==(latestRevision?.eventId??null)||
+        !existing.parentIds.includes(entry.outcomeEventId)||
+        (latestRevision!==undefined&&!existing.parentIds.includes(latestRevision.eventId))) {
+        throw new Error('tool-receipt-revision-lineage-conflict');
       }
       const ref:ToolReceiptRevisionProjectionRef={revisionId,eventId,projectionHash,projectedAt:existing.at,revisionNumber};
       this.receiptProjectionIndex.set(executionId,{...entry,receiptRevisions:[...refs,ref]});
       return {resolved:true,replayed:true,eventId,projectionHash};
     }
 
-    const latestRevision=refs.at(-1);
-    const latestRevisionNode=latestRevision?this.events.find(event=>event.id===latestRevision.eventId):undefined;
-    const latestRevisionNumber=latestRevision?.revisionNumber??latestRevisionNode?.payload.revisionNumber;
     if(typeof latestRevisionNumber==='number'&&Number.isSafeInteger(latestRevisionNumber)&&revisionNumber<=latestRevisionNumber) {
       return invalid('revision-number-not-increasing');
     }
@@ -983,15 +1011,28 @@ export class CognitiveEventFabric {
     const refs=entry?.externalObservations??[];
     const prior=refs.find(ref=>ref.observationId===observationId);
     if(prior){
+      const priorNode=byId.get(prior.eventId);
       if(prior.projectionHash!==projectionHash)throw new Error('external-observation-projection-conflict');
-      return {resolved:true,replayed:true,eventId:prior.eventId,archived:!byId.has(prior.eventId)};
+      if(!priorNode||priorNode.stage!=='external-evidence'||priorNode.external!==true||
+        priorNode.payload.executionId!==executionId||priorNode.payload.observationId!==observationId||
+        priorNode.payload.projectionHash!==prior.projectionHash||
+        priorNode.payload.receiptActionEventId!==action.id||
+        priorNode.payload.receiptOutcomeEventId!==outcome.id||
+        !priorNode.parentIds.includes(outcome.id)) {
+        throw new Error('external-observation-lineage-conflict');
+      }
+      return {resolved:true,replayed:true,eventId:prior.eventId,archived:false};
     }
     const eventId='cef:tool-external-observation:'+sha256Stable({executionId,observationId}).slice(0,48);
     const existing=byId.get(eventId);
     if(existing){
-      if(existing.stage!=='external-evidence'||existing.payload.projectionHash!==projectionHash||
-        existing.payload.executionId!==executionId||existing.payload.observationId!==observationId) {
-        throw new Error('external-observation-projection-conflict');
+      if(existing.stage!=='external-evidence'||existing.external!==true||
+        existing.payload.projectionHash!==projectionHash||
+        existing.payload.executionId!==executionId||existing.payload.observationId!==observationId||
+        existing.payload.receiptActionEventId!==action.id||
+        existing.payload.receiptOutcomeEventId!==outcome.id||
+        !existing.parentIds.includes(outcome.id)) {
+        throw new Error('external-observation-lineage-conflict');
       }
       const ref:ExternalObservationProjectionRef={observationId,eventId,projectionHash,projectedAt:existing.at};
       if(entry)this.receiptProjectionIndex.set(executionId,{...entry,externalObservations:[...refs,ref].slice(-32)});

@@ -792,6 +792,36 @@ assert.equal(restoredRevisionReplay.resolved,true);
 assert.equal(restoredRevisionReplay.replayed,true,'revision IDs/hashes must survive restore');
 assert.equal(restoredRevisionReplay.eventId,revisionResult.eventId);
 
+const secondRevisionInput={
+  ...revisionInput,revisionId:'receipt-test:revision-2',revisionNumber:2,
+  providerReceiptHash:'c'.repeat(64),revisionFingerprint:'d'.repeat(64),
+  revisionFingerprint:'d'.repeat(64),reason:'provider signed correction',at:1210,
+};
+const secondRevisionResult=receiptFabric.appendToolReceiptRevision(secondRevisionInput);
+assert.equal(secondRevisionResult.resolved,true);
+assert.equal(secondRevisionResult.replayed,false);
+const chainedRevisionSnapshot=receiptFabric.snapshot();
+const chainedRevisionRestored=new CognitiveEventFabric(128);
+chainedRevisionRestored.restore(chainedRevisionSnapshot);
+const chainedRevisionReplay=chainedRevisionRestored.appendToolReceiptRevision(secondRevisionInput);
+assert.equal(chainedRevisionReplay.resolved,true);
+assert.equal(chainedRevisionReplay.replayed,true,
+  'an intact monotonic revision chain must preserve idempotency after restore');
+
+// A tampered revision may remain present in the event buffer, but without the parent
+// link it must not be promoted to an idempotent trusted revision after restore.
+const tamperedRevisionLineageSnapshot=receiptFabric.snapshot();
+const tamperedRevisionNode=tamperedRevisionLineageSnapshot.recent.find(event=>event.id===revisionResult.eventId);
+assert.ok(tamperedRevisionNode);
+tamperedRevisionNode.parentIds=[];
+const tamperedRevisionLineageRestored=new CognitiveEventFabric(128);
+tamperedRevisionLineageRestored.restore(tamperedRevisionLineageSnapshot);
+assert.equal(tamperedRevisionLineageRestored.hasToolReceiptTrace(receiptInput.executionId),true,
+  'the canonical receipt trio remains intact even if an ancillary revision was tampered with');
+assert.throws(()=>tamperedRevisionLineageRestored.appendToolReceiptRevision(revisionInput),
+  /tool-receipt-revision-lineage-conflict/,
+  'a deterministic revision event with missing causal parents must not be reported as replayed');
+
 const externalObservationInput = {
   tick:13,executionId:receiptInput.executionId,toolId:receiptInput.toolId,
   observationId:'receipt-test:independent-observation-1',verified:true,confidence01:0.92,
@@ -827,6 +857,18 @@ expandedEvidenceRestored.restore(expandedEvidenceSnapshot);
 assert.equal(expandedEvidenceRestored.appendToolReceiptRevision(revisionInput).replayed,true);
 assert.equal(expandedEvidenceRestored.appendToolExternalObservation(externalObservationInput).replayed,true,
   'receipt revision and observation idempotency references must survive restart');
+
+const tamperedObservationLineageSnapshot=receiptFabric.snapshot();
+const tamperedObservationNode=tamperedObservationLineageSnapshot.recent.find(event=>event.id===externalObservationResult.eventId);
+assert.ok(tamperedObservationNode);
+tamperedObservationNode.parentIds=[];
+const tamperedObservationLineageRestored=new CognitiveEventFabric(128);
+tamperedObservationLineageRestored.restore(tamperedObservationLineageSnapshot);
+assert.equal(tamperedObservationLineageRestored.hasToolReceiptTrace(receiptInput.executionId),true,
+  'external observation damage must not invalidate the independent canonical receipt trio');
+assert.throws(()=>tamperedObservationLineageRestored.appendToolExternalObservation(externalObservationInput),
+  /external-observation-lineage-conflict/,
+  'an observation without its receipt-outcome parent must not be accepted as an idempotent replay');
 
 const invalidRevisionCases = [
   {patch:{tick:12.5},reason:'revision-tick-invalid'},
@@ -923,5 +965,29 @@ lineageGuardRestored.restore(lineageGuardFabric.snapshot());
 assert.equal(lineageGuardRestored.hasToolReceiptTrace(lineageGuardInput.executionId),true,
   'valid event-bound receipt lineage remains valid after restore');
 console.log('WorkPass367 trusted receipt lineage verification: PASS');
+
+// WorkPass368: an existing revision/observation cannot replay once its causal parent edge is severed.
+const tamperedRevisionLineageSnapshot368=receiptFabric.snapshot();
+const tamperedRevisionNode368=tamperedRevisionLineageSnapshot368.recent.find(event=>event.id===revisionResult.eventId);
+assert.ok(tamperedRevisionNode368);
+tamperedRevisionNode368.parentIds=[];
+const tamperedRevisionRestored368=new CognitiveEventFabric(128);
+tamperedRevisionRestored368.restore(tamperedRevisionLineageSnapshot368);
+assert.equal(tamperedRevisionRestored368.hasToolReceiptTrace(receiptInput.executionId),true);
+assert.throws(()=>tamperedRevisionRestored368.appendToolReceiptRevision(revisionInput),
+  /tool-receipt-revision-lineage-conflict/,
+  'a same-ID provider revision without its outcome parent cannot be trusted as replay');
+
+const tamperedObservationLineageSnapshot368=receiptFabric.snapshot();
+const tamperedObservationNode368=tamperedObservationLineageSnapshot368.recent.find(event=>event.id===externalObservationResult.eventId);
+assert.ok(tamperedObservationNode368);
+tamperedObservationNode368.parentIds=[];
+const tamperedObservationRestored368=new CognitiveEventFabric(128);
+tamperedObservationRestored368.restore(tamperedObservationLineageSnapshot368);
+assert.equal(tamperedObservationRestored368.hasToolReceiptTrace(receiptInput.executionId),true);
+assert.throws(()=>tamperedObservationRestored368.appendToolExternalObservation(externalObservationInput),
+  /external-observation-lineage-conflict/,
+  'a same-ID external observation without its outcome parent cannot be trusted as replay');
+console.log('WorkPass368 receipt reference causal lineage: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
