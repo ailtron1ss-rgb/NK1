@@ -511,28 +511,91 @@ export class CognitiveEventFabric {
     selfUpdate?:OperationalCyclePhaseInput;
     at?:number;
   }){
-    const ids:Partial<Record<'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'selfUpdate',string>>={};
-    const parents=(...eventIds:(string|undefined)[])=>eventIds.filter((id):id is string=>Boolean(id));
-    if(input.observation){const e=this.append({tick:input.tick,stage:'observation',source:input.observation.source??'runtime',external:input.observation.external,confidence01:input.observation.confidence01,payload:input.observation.payload,at:input.at});ids.observation=e.id;}
-    if(input.prediction){const e=this.append({tick:input.tick,stage:'prediction',source:input.prediction.source??'prediction',parentIds:parents(ids.observation),confidence01:input.prediction.confidence01,payload:input.prediction.payload,at:input.at});ids.prediction=e.id;}
-    if(input.appraisal){const e=this.append({tick:input.tick,stage:'appraisal',source:input.appraisal.source??'appraisal',parentIds:parents(ids.observation,ids.prediction),confidence01:input.appraisal.confidence01,payload:input.appraisal.payload,at:input.at});ids.appraisal=e.id;}
-    if(input.attention){const e=this.append({tick:input.tick,stage:'attention',source:input.attention.source??'attention',parentIds:parents(ids.appraisal,ids.prediction),confidence01:input.attention.confidence01,payload:input.attention.payload,at:input.at});ids.attention=e.id;}
-    if(input.memory){const e=this.append({tick:input.tick,stage:'memory',source:input.memory.source??'memory',parentIds:parents(ids.attention,ids.observation),confidence01:input.memory.confidence01,payload:input.memory.payload,at:input.at});ids.memory=e.id;}
-    if(input.goal){const e=this.append({tick:input.tick,stage:'goal',source:input.goal.source??'goal',parentIds:parents(ids.appraisal,ids.memory,ids.prediction),confidence01:input.goal.confidence01,payload:input.goal.payload,at:input.at});ids.goal=e.id;}
-    if(input.plan){const e=this.append({tick:input.tick,stage:'plan',source:input.plan.source??'plan',parentIds:parents(ids.goal,ids.prediction),confidence01:input.plan.confidence01,payload:input.plan.payload,at:input.at});ids.plan=e.id;}
-    if(input.action){const e=this.append({tick:input.tick,stage:'action',source:input.action.source??'action',parentIds:parents(ids.plan,ids.prediction,ids.observation),confidence01:input.action.confidence01,payload:input.action.payload,at:input.at});ids.action=e.id;}
-    if(input.outcome){const e=this.append({tick:input.tick,stage:'outcome',source:input.outcome.source??'outcome',parentIds:parents(ids.action,ids.prediction),external:input.outcome.external,confidence01:input.outcome.confidence01,payload:input.outcome.payload,at:input.at});ids.outcome=e.id;}
-    if(input.learning){const e=this.append({tick:input.tick,stage:'learning',source:input.learning.source??'learning',parentIds:parents(ids.outcome,ids.action),confidence01:input.learning.confidence01,payload:input.learning.payload,at:input.at});ids.learning=e.id;}
-    if(input.selfUpdate){const e=this.append({tick:input.tick,stage:'self-update',source:input.selfUpdate.source??'self-update',parentIds:parents(ids.learning,ids.outcome),confidence01:input.selfUpdate.confidence01,payload:input.selfUpdate.payload,at:input.at});ids.selfUpdate=e.id;}
-    return ids;
+    type PhaseKey='observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'selfUpdate';
+    type PreparedPhase={source:string;confidence01?:number;external?:boolean;payload:Record<string,unknown>};
+    type PhaseSpec={key:PhaseKey;stage:CognitiveStage;defaultSource:string;parents:PhaseKey[];forwardsExternal?:boolean};
+    const specs:PhaseSpec[]=[
+      {key:'observation',stage:'observation',defaultSource:'runtime',parents:[],forwardsExternal:true},
+      {key:'prediction',stage:'prediction',defaultSource:'prediction',parents:['observation']},
+      {key:'appraisal',stage:'appraisal',defaultSource:'appraisal',parents:['observation','prediction']},
+      {key:'attention',stage:'attention',defaultSource:'attention',parents:['appraisal','prediction']},
+      {key:'memory',stage:'memory',defaultSource:'memory',parents:['attention','observation']},
+      {key:'goal',stage:'goal',defaultSource:'goal',parents:['appraisal','memory','prediction']},
+      {key:'plan',stage:'plan',defaultSource:'plan',parents:['goal','prediction']},
+      {key:'action',stage:'action',defaultSource:'action',parents:['plan','prediction','observation']},
+      {key:'outcome',stage:'outcome',defaultSource:'outcome',parents:['action','prediction'],forwardsExternal:true},
+      {key:'learning',stage:'learning',defaultSource:'learning',parents:['outcome','action']},
+      {key:'selfUpdate',stage:'self-update',defaultSource:'self-update',parents:['learning','outcome']},
+    ];
+    const readDataField=(record:Record<string,unknown>,key:string):unknown=>{
+      const descriptor=Object.getOwnPropertyDescriptor(record,key);
+      if(!descriptor)return undefined;
+      if(!Object.hasOwn(descriptor,'value'))throw new TypeError('cognitive-cycle-accessor-not-allowed');
+      return descriptor.value;
+    };
+    if(!isRecord(input))throw new TypeError('invalid-cognitive-cycle-input');
+    const rawInput=input as unknown as Record<string,unknown>;
+    const rawTick=readDataField(rawInput,'tick');
+    if(typeof rawTick!=='number'||!Number.isSafeInteger(rawTick)||rawTick<0)throw new RangeError('invalid-cognitive-event-tick');
+    const rawAt=readDataField(rawInput,'at');
+    if(rawAt!==undefined&&(typeof rawAt!=='number'||!Number.isFinite(rawAt)||rawAt<0))throw new RangeError('invalid-cognitive-event-timestamp');
+
+    // Normalize every supplied phase before the first event is appended. A malformed
+    // late learning/self-update payload must never leave earlier observation/plan events behind.
+    const prepared:Partial<Record<PhaseKey,PreparedPhase>>={};
+    for(const spec of specs){
+      const rawPhase=readDataField(rawInput,spec.key);
+      if(!rawPhase)continue;
+      if(!isRecord(rawPhase))throw new TypeError(`invalid-cognitive-cycle-phase:${spec.key}`);
+      const phaseRecord=rawPhase as Record<string,unknown>;
+      const rawSource=readDataField(phaseRecord,'source');
+      const source=rawSource??spec.defaultSource;
+      if(typeof source!=='string')throw new TypeError('invalid-cognitive-event-source');
+      const confidence01=readDataField(phaseRecord,'confidence01');
+      if(confidence01!==undefined&&(typeof confidence01!=='number'||!Number.isFinite(confidence01)))throw new TypeError('invalid-cognitive-event-confidence');
+      let external:boolean|undefined;
+      if(spec.forwardsExternal){
+        const rawExternal=readDataField(phaseRecord,'external');
+        if(rawExternal!==undefined&&typeof rawExternal!=='boolean')throw new TypeError('invalid-cognitive-event-external-flag');
+        external=rawExternal as boolean|undefined;
+      }
+      const payload=cleanPayload(readDataField(phaseRecord,'payload'));
+      prepared[spec.key]={source,confidence01:confidence01 as number|undefined,external,payload};
+    }
+
+    const ids:Partial<Record<PhaseKey,string>>={};
+    // append() can still throw unexpectedly (for example, a future validation added to a
+    // stage). Keep a rollback boundary as a second line of defence after preflight.
+    const eventsBefore=this.events.slice();
+    const totalBefore=this.total;
+    const receiptIndexBefore=[...this.receiptProjectionIndex.entries()];
+    try{
+      for(const spec of specs){
+        const phase=prepared[spec.key];
+        if(!phase)continue;
+        const parentIds=spec.parents.map(key=>ids[key]).filter((id):id is string=>Boolean(id));
+        const event=this.append({
+          tick:rawTick,
+          stage:spec.stage,
+          source:phase.source,
+          parentIds,
+          ...(spec.forwardsExternal?{external:phase.external}:{}),
+          confidence01:phase.confidence01,
+          payload:phase.payload,
+          at:rawAt as number|undefined,
+        });
+        ids[spec.key]=event.id;
+      }
+      return ids;
+    }catch(error){
+      this.events=eventsBefore;
+      this.total=totalBefore;
+      this.receiptProjectionIndex.clear();
+      for(const [executionId,entry] of receiptIndexBefore)this.receiptProjectionIndex.set(executionId,entry);
+      throw error;
+    }
   }
 
-  /**
-   * Verify one cycle against its own causal edges rather than the whole rolling
-   * buffer. Global lineage can fall when old parents age out of the ring buffer;
-   * that must not invalidate a currently complete cycle. IDs, stage names, tick
-   * ownership and required causal links are all checked here.
-   */
   verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
     const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
     const optional = ['appraisal','attention','memory','goal','plan'] as const;
