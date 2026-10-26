@@ -1,3 +1,9 @@
+## B273 outcome attribution — 2026-10-26
+
+- Both Core feedback paths now pass B273 reward only when the canonical selected action belongs to the exact B273-generated plan. The B273 learning API validates tick, action membership and exact plan identity, including for direct wrapper calls.
+- Actions outside the generated plan are retained as bounded unselected-candidate evidence without goal progress, skill updates or rewarded outcome-history writes. A skill prototype is only created or reinforced when the plan's primary action was actually selected; a selected secondary plan alternative may contribute to goal progress but cannot be mislabeled as execution of the primary plan.
+- Focused run [#40256370655](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256370655) passed all steps: B273 lifecycle, persisted-state migration, Core integration, B272/B273 attribution, cognitive graph continuity and routing connection. PR [#158](https://github.com/ailtron1ss-rgb/NK1/pull/158) was squash-merged into this audit branch (merge commit `f3134a8ded0e1126a18fd57152ead8d1943c62f2`).
+
 ## Spine-only feedback crash recovery — 2026-10-26
 
 - The spine-only observation loop now detects a durable receipt at the current/ahead tick before retrying feedback, records a `feedback-recovery` decision event, discards the ambiguous reward, and continues advancing the cognitive tick.
