@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 
-export const PRODUCTION_UI_BUILD_ENTRYPOINT = 'app/.vercel/output/static/index.html';
+export const PRODUCTION_UI_BUILD_ENTRYPOINT = 'app/.vercel/output/nitro.json';
 
 /**
  * Canonical launch contracts for the services owned by the top-level supervisor.

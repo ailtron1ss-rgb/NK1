@@ -6,20 +6,14 @@
 
 ## UI build diagnostic test contract — 2026-10-26
 
-- Replaced the path-escaped regex for the Vercel output diagnostic with two explicit string assertions. This keeps the fixture checking both the build command and exact output location without ambiguous slash escaping.
-- The production supervisor remains fail-closed on missing output; no guard was weakened.
+- Replaced the path-escaped regex with explicit string assertions for the current build command and output marker, avoiding ambiguous slash escaping.
+- This is test-only alignment; the production preflight remains fail-closed on missing build output.
 
+## Vercel/Nitro UI build-manifest preflight — 2026-10-26
 
-
-- Updated the supervisor prerequisite regression to match the real Vercel/Nitro UI output path and the corresponding `npm run build` diagnostic.
-- The clean-install attempt confirmed installs, production build, app/runtime typechecks and the organism smoke all pass; the stack run is still blocked by this stale assertion before the next live-stack rerun.
-- No production checks were relaxed.
-
-## Vercel/Nitro UI output-path preflight fix — 2026-10-26
-
-- The new clean-install workflow proved that the production build succeeds but emits the client UI to `app/.vercel/output/static/` under the configured Vercel/Nitro preset, not `app/dist/`.
-- Updated the supervisor's required UI entrypoint to `app/.vercel/output/static/index.html` and centralized the relative path as `PRODUCTION_UI_BUILD_ENTRYPOINT`; service prerequisite tests and startup diagnostics now use the same source of truth.
-- The prior clean-install run is a useful partial result: both lockfile installs, production build, app/runtime typecheck, 30-tick organism smoke and all eight service-spec tests passed; the real multi-service startup correctly failed closed on the stale `app/dist/index.html` preflight. Rerun of the full gateway/runtime/research/UI smoke is pending.
+- The clean build runs a server-rendered TanStack Start/Nitro app. It emits `app/.vercel/output/nitro.json` and Vercel output metadata; a standalone `index.html` is not a required build artifact for this SSR target.
+- The first smoke attempt correctly failed closed because the preflight required `app/dist/index.html`. Updated `PRODUCTION_UI_BUILD_ENTRYPOINT` to the actual generated Nitro manifest, matching the build log's `[nitro] You can preview this build using npx vite preview` message.
+- The earlier run confirmed both lockfile installs, production build, app/runtime typecheck, 30-tick organism smoke and eight service-spec tests passed. The complete four-service live-endpoint smoke must now rerun against the real manifest check.
 
 ## Clean-install production startup smoke — 2026-10-26
 

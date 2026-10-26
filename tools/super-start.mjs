@@ -36,7 +36,7 @@ if (missingRequirements.length) {
   const details = missingRequirements.map(item => `${item.label}:${item.path}`).join('; ');
   console.error(`SUPER_START=FAIL reason=service-prerequisite-missing details=[${details}]`);
   if (missingRequirements.some(item => item.label === 'ui-preview' && item.path === resolve(ROOT, PRODUCTION_UI_BUILD_ENTRYPOINT))) {
-    console.error('Build the UI before production-style start: npm run build (expected app/.vercel/output/static/index.html)');
+    console.error('Build the UI before production-style start: npm run build (expected app/.vercel/output/nitro.json)');
   }
   process.exit(1);
 }
