@@ -1,3 +1,13 @@
+## WorkPass413 — поздний reject не должен повторно запускать HMX-импорт (2026-10-26)
+
+- **Код адаптера:** `443d5d83635645e967c7da245f2a75a8af284e03`; **регрессия:** `a4fba62670b3e6a5215b9083853a530b41c5fc79`.
+- Обнаружена ошибка порядка решений: core запускает импорт по комбинации `accepted + pending`. Если повторный запрос `reject` приходил уже после принятия, стадия оставалась в том же состоянии и могла снова попасть под импортный guard.
+- `HexisAdaptationFabric.decideHmx` теперь переводит такой поздний reject в терминальный `uncertain` с причиной `reject-request-after-accept-before-import-receipt`. Факт уже записанного операторского принятия сохраняется — отклонение не может безопасно отменить неизвестные побочные эффекты, — но core больше не получает apply-eligible стадию для replay.
+- Регрессия проверяет accept → поздний reject → terminal receipt → повторный accept без запуска нового импорта.
+- **Валидация:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass412 — проверить HMX recovery после реального JSON round-trip (2026-10-26)
 
 - **Регрессия:** `dccd678206df42ac6ed7c1f057e741619c0d453e`.
