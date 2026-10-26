@@ -1,9 +1,11 @@
 ## WorkPass396 — Remove the legacy direct Hexis confidence-mutation path (2026-10-26)
 
+- **Core code:** `bb38a516fe2b3671dad929a9c756c339428c0ded`; **regression contract:** `282462422fedb7202f3c35be95541a3cbaff6bd5`.
 - Replaced `OrganismCore.hexisReviseBelief`'s direct `HexisAdaptationFabric.reviseBelief` + `MemoryFabric.updateSignals` sequence with a compatibility adapter that creates a stable, server-receipt-tagged evidence ID and calls the existing transactional `ingestHexisEvidenceForReview` path.
-- The legacy entry point now reports a pending/blocked/rejected review result and requires an explicit decision before confidence can change. It rejects missing source references, invalid stance and non-finite/out-of-range evidence confidence.
-- Added a static regression contract to `cognitive-hexis-evidence-review.mjs` proving the legacy method must route through canonical evidence review and must not call either direct belief revision or direct confidence update APIs.
-- **Validation:** PENDING exact-head TypeScript/runtime typecheck, focused Hexis review test, server smoke and Unified integration. No PASS, recall uplift or production-readiness claim.
+- The legacy entry point now returns pending/blocked/rejected review status and requires an explicit decision before confidence can change. It fail-closes on malformed evidence envelopes, invalid stance, invalid legacy text, missing source reference and non-finite/out-of-range evidence confidence.
+- Added a static regression contract proving this method delegates to the canonical evidence-review ingress and must not call direct belief revision or direct confidence update APIs; the same contract checks the input-validation guards.
+- **Validation:** PENDING exact-head runtime typecheck, cognitive evidence-review test, server smoke and Unified project integration. No PASS, recall uplift or production-readiness claim.
+
 
 ## WorkPass395 — bind every Hexis review decision to canonical evidence (2026-10-26)
 
