@@ -134,6 +134,12 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
   assert.throws(()=>fabric.append({...base,id:'cef:test:key-limit',tick:16,payload:oversizedObject}),/cognitive-event-payload-key-limit/);
   assert.equal(fabric.snapshot().total,beforeOversizedObject);
 
+  const tooManyNodes={};
+  for(let branchIndex=0;branchIndex<3;branchIndex++) tooManyNodes[`branch-${branchIndex}`]=new Array(6000).fill(0);
+  const beforeNodeLimit=fabric.snapshot().total;
+  assert.throws(()=>fabric.append({...base,id:'cef:test:node-limit',tick:17,payload:tooManyNodes}),/cognitive-event-payload-node-limit/);
+  assert.equal(fabric.snapshot().total,beforeNodeLimit);
+
   // Malformed persisted evidence must not prevent recovery of healthy events.
   const malformedPayload={}; malformedPayload.self=malformedPayload;
   const restoreProbe=new CognitiveEventFabric(128);
