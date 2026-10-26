@@ -197,6 +197,13 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
   const root = JSON.parse(serialized);
   const hasMalformedRootSections = Object.hasOwn(root, 'sections') && !isRecord(root.sections);
   const nativeSections = isRecord(root.sections) ? root.sections : {};
+  const nativeRootFields = new Set([
+    'sections', 'source_subject_id', 'sourceSubjectId', 'subject_id', 'subjectId',
+    'export_id', 'exportId', 'source_lineage_id', 'sourceLineageId', 'exported_at', 'exportedAt',
+  ]);
+  const extraRootFields = Object.fromEntries(
+    Object.entries(root).filter(([key]) => !nativeRootFields.has(key)),
+  );
   const exportId = 'exp_' + createHash('sha256').update(serialized).digest('hex').slice(0, 16);
   const warnings = [];
   const sourceSubjectId = textValue(root.source_subject_id, root.sourceSubjectId, root.subject_id, root.subjectId);
@@ -308,7 +315,14 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
     sourceSubjectId: sourceSubjectId || null,
     adapterVersion: '1.0.0',
     vectorPayloadPresent: false,
+    ...(Object.keys(extraRootFields).length ? { extraRootFields: cloneJson(extraRootFields) } : {}),
   };
+  if (Object.keys(extraRootFields).length) {
+    warnings.push(
+      'Preserved unconsumed native root fields in sections.config.nk1NativeExport.extraRootFields: ' +
+      Object.keys(extraRootFields).join(', ') + '.',
+    );
+  }
 
   const configuredDimension = Number(process.env.NK1_HMX_EMBEDDING_DIMENSION);
   const embeddingDimension = Number.isSafeInteger(configuredDimension) && configuredDimension > 0 ? configuredDimension : 1;
