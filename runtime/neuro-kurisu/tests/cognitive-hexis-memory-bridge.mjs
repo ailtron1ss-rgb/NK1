@@ -111,6 +111,36 @@ assert.equal(controlIngress.ok, false);
 if (!controlIngress.ok) assert.equal(controlIngress.reason, "invalid-evidence-record");
 assert.deepEqual(memoryOS.snapshot(), beforeHostileIngress, "control-character rejection must be side-effect free");
 
+// C1 controls must also fail at the canonical MemoryOS2 boundary when callers bypass Hexis.
+const c1Patches = [
+  { sourceKind: "document" + String.fromCharCode(0x85) + "forged" },
+  { sourceRef: "source" + String.fromCharCode(0x9f) },
+  { label: "label" + String.fromCharCode(0x80) },
+  { author: "author" + String.fromCharCode(0x85) },
+  { note: "note" + String.fromCharCode(0x9f) },
+];
+for (let index = 0; index < c1Patches.length; index += 1) {
+  const beforeC1 = structuredClone(memoryOS.snapshot());
+  const rejected = memoryOS.recordEvidence(memory.id, {
+    evidenceId: `hexis:evidence:c1-${index}`,
+    digest: "c".repeat(64),
+    stance: "supports",
+    sourceKind: "document",
+    sourceRef: "c1-source",
+    confidence01: 0.7,
+    observedAt: Date.parse("2026-10-26T09:33:00Z"),
+    independenceKey: `c1-source-${index}`,
+    ...c1Patches[index],
+  });
+  assert.equal(rejected.ok, false, `C1 control field ${index} must be rejected by MemoryOS2`);
+  if (!rejected.ok) assert.ok(
+    rejected.reason === "invalid-evidence-record" || rejected.reason === "invalid-evidence-metadata",
+    `unexpected C1 rejection reason: ${rejected.reason}`,
+  );
+  assert.deepEqual(memoryOS.snapshot(), beforeC1, "C1 rejection must leave canonical memory unchanged");
+}
+
+
 const restored = new MemoryOS2({ signalFusionProfile: "balanced" });
 restored.restore(memoryOS.snapshot());
 assert.equal(restored.get(memory.id).confidence, initialConfidence);
