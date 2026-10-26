@@ -2233,3 +2233,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **[PERFORMANCE]** The durable evidence Bloom filter is now allocated lazily for memories approaching the 32-key exact-ring rollover, avoiding a multi-kilobyte filter on every low-provenance memory while preserving rollover protection.
 - **[TEST FIX]** Updated the versioned-skill lifecycle regression to call the current `rollback(candidateId, approval)` contract with an explicit expected active version. The fixture injects a test-only rollback verifier rather than weakening the production default-deny verifier; the already-present signed-authority regressions remain in the same suite.
 - **[CI]** At commit `cb2d3ca0e2924364469bf8a7ae58252c67870893`, the repository-wiring audit passed, including the Hexis evidence-lineage/HMX/live-API test step. The WorkPass110 run on that same commit still failed at the outdated rollback fixture; the corrected test is committed after that run and must be validated on the new head.
+
+### WorkPass110 rollback authorization regression — default-deny remains enforced (2026-10-26)
+
+- Added a regression around a successfully promoted, signature-verified skill: caller-supplied rollback identity/timestamp/active-version fields must not authorize rollback when the configured rollback verifier is absent.
+- Asserted the failed rollback leaves the active skill/version untouched. This tests the existing production security boundary without adding a test-only bypass to the production implementation.
+- The prior WorkPass110 retry was cancelled while another PR update superseded it; rerun status must be read from the latest exact-head workflow, not inherited from the old failing run.
