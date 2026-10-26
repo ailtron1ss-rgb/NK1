@@ -186,7 +186,7 @@
     "audit:ci-reliability": "node tools/verify-ci-reliability.mjs",
     "audit:repo-wiring": "node tools/verify-repository-wiring.mjs",
     "test:repo-wiring": "node --test tools/verify-repository-wiring.test.mjs",
-    "test:cognitive-integration-suite": "npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite"
+    "test:cognitive-integration-suite": "npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite && npm --prefix app run test:affective-embodiment"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",

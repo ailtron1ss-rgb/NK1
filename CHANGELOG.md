@@ -1,3 +1,11 @@
+## 2026-10-26 — persistent affective continuity and embodiment
+
+- Hardened `EmotionAppraisalEngine` restore with bounded plain-data snapshots, validation of historical episodes, persistent mood and freshness-aware affective action bias.
+- Routed mood, latest feeling-access episode and interoceptive regulation pressure through the server UI snapshot and canonical TypeScript normalization.
+- Connected affect to browser TTS rate/pitch and Live2D expression, gaze, head tilt and voice emphasis; stale mood/feeling input decays rather than indefinitely controlling presentation.
+- Added affect UI snapshot contract, bounded embodiment regression tests and expanded emotion/P66 hysteresis coverage. The current grapheme/viseme timeline implementation is preserved.
+- This is functional state/control modeling, not evidence of subjective consciousness; production UI/E2E and long-duration checks remain separate release gates.
+
 ## 2026-10-26 — CI compatibility follow-up
 
 - CI reliability gate требует approved Node.js 24-compatible GitHub Actions v7+; cognitive integration workflow выровнен с repository policy на `actions/checkout@v7` и `actions/setup-node@v7`.

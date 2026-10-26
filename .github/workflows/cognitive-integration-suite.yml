@@ -5,6 +5,19 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs"
+      - "runtime/neuro-kurisu/tests/affect-ui-snapshot-contract.mjs"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/embodimentTimeline.ts"
+      - "app/src/neuro-kurisu/normalize.ts"
+      - "app/src/neuro-kurisu/types.ts"
+      - "app/src/organism/types.ts"
+      - "app/scripts/affective-embodiment.test.mjs"
+      - "app/package.json"
+      - "app/package-lock.json"
       - "runtime/neuro-kurisu/tests/cognitive-*.mjs"
       - "runtime/neuro-kurisu/tests/memory-budget-restore-integrity.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -18,6 +31,19 @@ on:
       - "workpass70-source"
     paths:
       - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs"
+      - "runtime/neuro-kurisu/tests/affect-ui-snapshot-contract.mjs"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/embodimentTimeline.ts"
+      - "app/src/neuro-kurisu/normalize.ts"
+      - "app/src/neuro-kurisu/types.ts"
+      - "app/src/organism/types.ts"
+      - "app/scripts/affective-embodiment.test.mjs"
+      - "app/package.json"
+      - "app/package-lock.json"
       - "runtime/neuro-kurisu/tests/cognitive-*.mjs"
       - "runtime/neuro-kurisu/tests/memory-budget-restore-integrity.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -41,7 +67,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+          cache-dependency-path: |
+            app/package-lock.json
+            runtime/neuro-kurisu/package-lock.json
+      - name: Install locked application dependencies
+        run: npm ci --prefix app --ignore-scripts
+      - name: Verify affective UI wiring and application types
+        run: npm --prefix app run typecheck && npm --prefix app run test:affective-embodiment
       - name: Install locked runtime dependencies
         run: npm ci --prefix runtime/neuro-kurisu
       - name: Verify cognitive integration contracts
