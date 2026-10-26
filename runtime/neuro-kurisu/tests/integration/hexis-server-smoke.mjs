@@ -195,7 +195,9 @@ try {
   if (!exportRes.ok || exportRes.document?.hmx_version !== '1.7' || !Array.isArray(exportRes.document?.sections?.memories)) throw new Error('hexis-hmx-export');
   const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: exportRes.document, intent: 'port', strategy: 'additive' })).json();
   if (!stageRes.ok || stageRes.stage?.status !== 'staged') throw new Error('hexis-hmx-stage');
-  const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
+  const unconfirmedAcceptRes = await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' });
+  if (unconfirmedAcceptRes.status !== 403) throw new Error('hexis-hmx-accept-requires-explicit-confirmation:' + unconfirmedAcceptRes.status);
+  const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept', confirmed: true })).json();
   if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted') throw new Error('hexis-hmx-accept');
 
   const applyExportId = 'exp_0123456789abcdea';
@@ -216,13 +218,17 @@ try {
   if (!applyStageRes.ok || applyStageRes.stage?.status !== 'staged' || applyStageRes.stage?.conflicts?.length) {
     throw new Error('hexis-hmx-apply-stage:' + JSON.stringify(applyStageRes.stage?.conflicts));
   }
-  const applyAcceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'accept' })).json();
+  const unconfirmedApplyAccept = await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'accept', confirmed: false });
+  if (unconfirmedApplyAccept.status !== 403) throw new Error('hexis-hmx-apply-accept-confirmation:' + unconfirmedApplyAccept.status);
+  const applyAcceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'accept', confirmed: true })).json();
   if (!applyAcceptRes.ok || applyAcceptRes.stage?.status !== 'accepted') throw new Error('hexis-hmx-apply-accept');
-  const applyRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply' })).json();
+  const unconfirmedApply = await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply' });
+  if (unconfirmedApply.status !== 403) throw new Error('hexis-hmx-apply-requires-explicit-confirmation:' + unconfirmedApply.status);
+  const applyRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply', confirmed: true })).json();
   if (!applyRes.ok || applyRes.stage?.status !== 'applied' || applyRes.stage?.application?.importedCount !== 2 || applyRes.stage?.application?.projectedRelationships !== 1) {
     throw new Error('hexis-hmx-canonical-apply:' + JSON.stringify(applyRes));
   }
-  const applyReplay = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply' })).json();
+  const applyReplay = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply', confirmed: true })).json();
   if (!applyReplay.ok || applyReplay.stage?.application?.digest !== applyRes.stage.application.digest) throw new Error('hexis-hmx-apply-replay');
   const goalExportId='exp_0123456789abcded';
   const goalMemoryRef=goalExportId+':memory:goal-evidence';
@@ -244,9 +250,13 @@ try {
   if(!goalStageRes.ok||goalStageRes.stage?.status!=='staged'||goalStageRes.stage?.conflicts?.length) {
     throw new Error('hexis-goal-stage:'+JSON.stringify(goalStageRes.stage?.conflicts));
   }
-  const goalAcceptRes=await (await post('/api/organism/integration/hexis/hmx/decide',{stagingId:goalStageRes.stage.stagingId,decision:'accept'})).json();
+  const unconfirmedGoalAccept=await post('/api/organism/integration/hexis/hmx/decide',{stagingId:goalStageRes.stage.stagingId,decision:'accept'});
+  if(unconfirmedGoalAccept.status!==403) throw new Error('hexis-goal-accept-confirmation:'+unconfirmedGoalAccept.status);
+  const goalAcceptRes=await (await post('/api/organism/integration/hexis/hmx/decide',{stagingId:goalStageRes.stage.stagingId,decision:'accept',confirmed:true})).json();
   if(!goalAcceptRes.ok||goalAcceptRes.stage?.status!=='accepted') throw new Error('hexis-goal-accept');
-  const goalApplyRes=await (await post('/api/organism/integration/hexis/hmx/decide',{stagingId:goalStageRes.stage.stagingId,decision:'apply'})).json();
+  const unconfirmedGoalApply=await post('/api/organism/integration/hexis/hmx/decide',{stagingId:goalStageRes.stage.stagingId,decision:'apply',confirmed:false});
+  if(unconfirmedGoalApply.status!==403) throw new Error('hexis-goal-apply-confirmation:'+unconfirmedGoalApply.status);
+  const goalApplyRes=await (await post('/api/organism/integration/hexis/hmx/decide',{stagingId:goalStageRes.stage.stagingId,decision:'apply',confirmed:true})).json();
   if(!goalApplyRes.ok||goalApplyRes.stage?.status!=='applied') throw new Error('hexis-goal-apply:'+JSON.stringify(goalApplyRes));
 
   const preparedGoals=await (await post('/api/organism/integration/hexis/goals/prepare',{stagingId:goalStageRes.stage.stagingId})).json();
