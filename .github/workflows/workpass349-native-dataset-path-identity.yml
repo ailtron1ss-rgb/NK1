@@ -6,12 +6,16 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
       - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
+      - "runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs"
+      - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
       - ".github/workflows/workpass349-native-dataset-path-identity.yml"
   pull_request:
     branches: [workpass334-inner-imperative-homeostasis-2026-10-24]
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
       - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
+      - "runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs"
+      - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
       - ".github/workflows/workpass349-native-dataset-path-identity.yml"
   workflow_dispatch:
 
