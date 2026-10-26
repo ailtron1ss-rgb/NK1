@@ -10,6 +10,7 @@
 >
 > **WorkPass352:** host executor/verifier/scanner executable parent permissions and device/inode identity are validated at setup and each dispatch; regressions guard writable parents and replaced directories.
 > **WorkPass353:** evaluator host-config state boundaries are checked against a canonicalized state path; a symlink alias cannot make trusted evaluator code inside mutable organism state appear external. The symlink regression and expanded focused CI passed on code SHA `6cd2776acc9094d73031c29a9f069687b97e05b9` (run #40289015403). Commits after that SHA are documentation-only.
+> **WorkPass354:** the generic learning process supervisor independently validates private run/survive roots, rejects symlinked or overlapping roots, binds directory identities into the command fingerprint, and blocks replaceable parent directories. Direct-supervisor regressions are committed; exact-head CI is pending.
 >
 > **Validation:** dedicated WorkPass349 workflow #40285352614 passed native dataset tests 10/10, supervisor cleanup, host-owned executable path regressions and runtime `TYPECHECK=PASS` on SHA `b9e0e90710e1380cac0ee57e1a0deaf74e214cf1`. Older broad workflow results apply to their stated code SHAs. Full production readiness, independent learning uplift and real device E2E remain unproven.
 >
