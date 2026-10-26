@@ -1105,6 +1105,14 @@ export class CognitiveEventFabric {
     // sanitized receipt nodes that still have live replay guards so restart restore
     // can retain exact causal links even when a receipt falls outside that window.
     const receiptEvents=this.events.filter(event=>receiptIds.has(event.id)&&!recentIds.has(event.id)).map(event=>({...event,parentIds:[...event.parentIds],payload:{...event.payload}}));
-    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
+    // Snapshot output is an untrusted diagnostic/persistence boundary: never expose live replay-index objects.
+    const receiptProjectionIndex=[...this.receiptProjectionIndex.values()].map(entry=>({
+      executionId:entry.executionId,actionEventId:entry.actionEventId,outcomeEventId:entry.outcomeEventId,
+      evidenceEventId:entry.evidenceEventId,projectedAt:entry.projectedAt,
+      ...(entry.projectionHash?{projectionHash:entry.projectionHash}:{}),
+      ...(entry.externalObservations?{externalObservations:entry.externalObservations.map(ref=>({...ref}))}:{}),
+      ...(entry.receiptRevisions?{receiptRevisions:entry.receiptRevisions.map(ref=>({...ref}))}:{}),
+    }));
+    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex};
   }
 }
