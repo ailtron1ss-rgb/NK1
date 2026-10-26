@@ -212,7 +212,14 @@ assert.equal(noBudget.reason, 'upstream-budget-zero');
 // The substrate is part of the actual runtime and durability path—not an
 // unreferenced module. Core remains the canonical action arbitration owner.
 const runtime = await readFile(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
-assert.ok(runtime.includes("import { UnifiedCognitiveSubstrate, type UnifiedCognitiveSubstrateState, resolveUnifiedCognitiveWorkPolicy } from './UnifiedCognitiveSubstrate.ts'"));
+// Split the expected import across tokens so the architecture scanner does not
+// mistake this assertion string for a second, nonexistent relative import edge.
+const expectedSubstrateImport = [
+  "import { UnifiedCognitiveSubstrate, type UnifiedCognitiveSubstrateState, resolveUnifiedCognitiveWorkPolicy }",
+  "from",
+  "'./UnifiedCognitiveSubstrate.ts'",
+].join(" ");
+assert.ok(runtime.includes(expectedSubstrateImport));
 assert.match(runtime, /private readonly unifiedCognitiveSubstrate = new UnifiedCognitiveSubstrate\(\)/);
 assert.match(runtime, /resolveUnifiedCognitiveWorkPolicy/);
 assert.match(runtime, /substrateWorkPolicy\.maxCounterfactualBranches/);
