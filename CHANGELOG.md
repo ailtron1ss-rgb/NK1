@@ -1,3 +1,14 @@
+## P23 signed approval encoding hardening — 2026-10-26
+
+- Reject non-canonical Ed25519 signature encodings before cryptographic verification: the signature must be standard Base64 for exactly 64 bytes and round-trip to the identical canonical string.
+- Apply the same strict decoding to skill promotion and rollback approvals. This closes permissive Base64 parsing that could silently ignore whitespace or trailing non-alphabet characters and create multiple textual representations of one signed artifact.
+- Extend the versioned skill-store regression test: canonical signatures remain accepted; appended junk, leading whitespace, and truncated signatures are denied for promotion, and appended junk is denied for rollback.
+- The approval boundary remains default-deny; the patch does not bypass independent evaluation, shadow-evidence authentication, or explicit approval.
+
+Validation: source and regression updates are committed on a dedicated working branch. Local runtime tests were not run in this environment; CI results remain pending.
+
+---
+
 ## Restored action receipt integrity hardening — 2026-10-25
 
 - Treat the persisted action ledger as untrusted input when restoring completed receipts.
