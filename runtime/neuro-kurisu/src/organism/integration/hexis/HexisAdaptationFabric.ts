@@ -514,26 +514,32 @@ export class HexisAdaptationFabric {
                     continue;
                 }
                 const remainingTotal = Math.max(0, HMX_MAX_TOTAL_RECORDS - totalRecords);
-                const boundedCount = Math.min(value.length, HMX_MAX_SECTION_RECORDS, remainingTotal);
+                // Never stage a truncated prefix of a section. Conflicts block acceptance,
+                // but retaining partial payload beside the original count is ambiguous.
                 if (value.length > HMX_MAX_SECTION_RECORDS) {
                     conflicts.push({
                         path: `sections.${name}`,
                         kind: 'size-limit',
-                        detail: `section exceeds the ${HMX_MAX_SECTION_RECORDS}-record staging limit`,
+                        detail: `section exceeds the ${HMX_MAX_SECTION_RECORDS}-record staging limit; the entire section was omitted`,
                     });
+                    sectionCounts[name] = value.length;
+                    continue;
                 }
                 if (value.length > remainingTotal) {
                     conflicts.push({
                         path: `sections.${name}`,
                         kind: 'size-limit',
-                        detail: `section exceeds the remaining aggregate ${HMX_MAX_TOTAL_RECORDS}-record staging budget`,
+                        detail: `section exceeds the remaining aggregate ${HMX_MAX_TOTAL_RECORDS}-record staging budget; the entire section was omitted`,
                     });
+                    sectionCounts[name] = value.length;
+                    continue;
                 }
-                const bounded = value.slice(0, boundedCount);
-                if (bounded.some((record) => !isHmxRecord(record))) {
-                    conflicts.push({ path: `sections.${name}`, kind: 'schema', detail: 'each section entry must be a JSON object' });
+                if (value.some((record) => !isHmxRecord(record))) {
+                    conflicts.push({ path: `sections.${name}`, kind: 'schema', detail: 'each section entry must be a JSON object; the entire section was omitted' });
+                    sectionCounts[name] = value.length;
+                    continue;
                 }
-                const safeRows = bounded.filter(isHmxRecord);
+                const safeRows = value;
                 if (name === 'memories') {
                     safeRows.forEach((record, index) => {
                         const ref = record.ref;
