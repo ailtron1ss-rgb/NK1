@@ -18,6 +18,14 @@
 - The first run passed all four focused tests but revealed a false positive in architecture audit because the substrate wiring test held the import as a string literal. The assertion now assembles the string from tokens. The corrected combined head still needs CI.
 - Earlier WorkPass340–342 PASS statuses remain anchored to their historical exact SHA. Current source includes WorkPass343 substrate tick reconciliation; no progress scores have been increased.
 
+## WorkPass344 — fail-closed final release verification (pending current-head CI)
+
+- `npm run release:verify` now requires UI wiring, architecture and metadata checks. The summary counts tree hygiene failures separately so a failed gate cannot report `failed: 0`.
+- Six tests cover metadata pass/fail/missing-validator, unknown CLI args, strict Python cache rejection, and an explicit cache-tolerant CI mode.
+- The integration workflow runs `release:verify:ci` only after research smoke. The normal operator `release:verify` remains strict and does not silently ignore bytecode.
+- The first runs found and corrected two real pipeline issues: architecture scanner false-positive from an import assertion string and transient `__pycache__` from research smoke. Current code/test checkpoint `71176fa2275149a726a3aadeec827866d88a0cc0` needs new CI.
+- WorkPass343 substrate tick reconciliation is preserved from the freshest source base. Scores remain unchanged; prior CI evidence is still anchored to `621864d0d7f2676245383adab86f1dcc6d0f741f`.
+
 ## Как читать проценты
 
 Это начальная инженерная оценка по 12 направлениям, а не измерение «разума». Веса суммируются до 100%; скрипт считает четыре раздельных взвешенных показателя:
