@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "title": "NK1 current implementation status",
+  "date": "2026-10-26",
+  "workpass": 355,
+  "branch": "work/nk1-release-metadata-freshness-workpass355-r1",
+  "baseCodeSha": "1e6a9f6581fc97401e6fdcc1458e4dd262ad0af9",
+  "latestBranchCodeSha": "pending-after-metadata-commit",
+  "exactHeadValidation": "PENDING",
+  "counts": {
+    "DONE": 3,
+    "PARTIAL": 4,
+    "TODO": 5
+  },
+  "items": [
+    {
+      "id": "REL-001",
+      "status": "DONE",
+      "title": "Strict final-release verifier covers filesystem hygiene, UI wiring, architecture and metadata gate",
+      "evidence": "tools/verify-final-release.mjs; tools/verify-final-release.test.mjs"
+    },
+    {
+      "id": "CEF-353",
+      "status": "DONE",
+      "title": "Causal-event ingress and stable identity checks are integrated in candidate",
+      "evidence": "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts; merged event ingress/payload PRs"
+    },
+    {
+      "id": "CEF-355",
+      "status": "DONE",
+      "title": "Aggregate text/key budget enforced during CognitiveEventFabric append and snapshot restore",
+      "evidence": "CognitiveEventFabric.ts: MAX_COGNITIVE_PAYLOAD_TEXT_UNITS; payload budget regression in workpass345 identity test"
+    },
+    {
+      "id": "CEF-354",
+      "status": "PARTIAL",
+      "title": "Schema-strict atomic snapshot restore is in current candidate",
+      "evidence": "PR #194 merged into release-candidate",
+      "blocker": "Re-run typecheck and full cognitive integration on exact post-WorkPass355 HEAD."
+    },
+    {
+      "id": "REL-002",
+      "status": "PARTIAL",
+      "title": "Metadata freshness guard rejects stale WorkPass and stale release date",
+      "evidence": "tools/verify-release-metadata.mjs and metadata contract tests",
+      "blocker": "Exact-head test and release-gate results pending."
+    },
+    {
+      "id": "REL-003",
+      "status": "PARTIAL",
+      "title": "Root package and SUPER_VERSION synchronized to WorkPass355 implementation checkpoint",
+      "evidence": "package.json; SUPER_VERSION.json",
+      "blocker": "Verify all current status files and exact-head gate."
+    },
+    {
+      "id": "BRANCH-001",
+      "status": "PARTIAL",
+      "title": "Canonical integration map covers major release-critical branches and stacked PRs",
+      "evidence": "GitHub PR/branch review",
+      "blocker": "Complete current unique-commit/file inventory and preserve unmerged functional changes."
+    },
+    {
+      "id": "CYCLE-369",
+      "status": "TODO",
+      "title": "Atomic operational cognitive-cycle writes integrated into release candidate",
+      "evidence": "PR #202",
+      "blocker": "Resolve base/dependency order; integrate and run fault-injection regressions on final HEAD."
+    },
+    {
+      "id": "P26-369",
+      "status": "TODO",
+      "title": "P26 interleaved training and independent holdout provenance integrated",
+      "evidence": "PR #197",
+      "blocker": "Verify latest policy/seed sweep and prevent training exposure from certifying generalization."
+    },
+    {
+      "id": "MEM-001",
+      "status": "TODO",
+      "title": "Independent RU/EN memory-to-action benchmark and measured uplift",
+      "evidence": "Existing memory retrieval/P26 infrastructure",
+      "blocker": "Run fixed held-out tasks and report baseline, delta, sample size and uncertainty."
+    },
+    {
+      "id": "EMB-001",
+      "status": "TODO",
+      "title": "Real browser/Live2D/Android voice-avatar E2E and long-duration soak",
+      "evidence": "Target platform validation",
+      "blocker": "Run on actual device/provider; record latency and recovery."
+    },
+    {
+      "id": "REL-004",
+      "status": "TODO",
+      "title": "Clean-room install and new release ZIP built from exact passing SHA",
+      "evidence": "Official Releases and clean-extraction smoke",
+      "blocker": "Finish install, provenance/license review, manifest/SHA256, re-install and publish without overwriting WorkPass70."
+    }
+  ]
+}
