@@ -30,8 +30,10 @@ const accepted = ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(valid
 assert.equal(accepted.accepted, true);
 assert.match(accepted.artifactFingerprint, /^[a-f0-9]{64}$/);
 assert.equal(ledger.snapshot().acceptedOutcomes, 1);
-assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(validPayload), keys).accepted, true, 'the exact signed artifact retry is idempotent');
-assert.equal(ledger.snapshot().acceptedOutcomes, 1, 'an idempotent retry must not duplicate the accepted outcome');
+const exactRetry = ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(validPayload), keys);
+assert.equal(exactRetry.accepted, false, 'same-process replay must not be represented as a new accepted trust receipt');
+assert.equal(exactRetry.rejection, 'duplicate-attempt', 'same-process exact replay has an explicit duplicate outcome');
+assert.equal(ledger.snapshot().acceptedOutcomes, 1, 'a rejected exact retry must not duplicate the accepted outcome');
 
 const changed = makePayload({ artifactId: 'artifact-002', passed: false });
 const forged = artifactFor(changed);
