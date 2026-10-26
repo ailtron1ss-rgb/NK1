@@ -24,7 +24,7 @@ async function fixture() {
     'test:browser-smoke-verdict': 'node --test app/scripts/browser-smoke-verdict.test.mjs',
     'audit:workpass14': 'npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm --prefix runtime/neuro-kurisu run test:memory-retrieval-benchmark && npm --prefix runtime/neuro-kurisu run test:memory-retrieval-experiment && npm --prefix runtime/neuro-kurisu run typecheck && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm run audit:release-metadata',
   }};
-  const superV = { version: '20.0.0-super-final3', canonicalRuntime: 'Neuro-Kurisu 35.40.0', schema: 223,
+  const superV = { version: '20.0.0-super-final3', date: '2026-10-10', canonicalRuntime: 'Neuro-Kurisu 35.40.0', schema: 223,
     releaseStatus: 'implementation-workpass; release gates remain open',
     build: 'v20-WILL-LUMINA-HEXIS-LETTA-CONSCIO-WORKPASS14',
     releaseRoot: 'Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS14_2026-10-10',
@@ -101,4 +101,29 @@ test('release metadata validator follows active workpass status filenames', asyn
   const r = run(root);
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS14\.json/);
+});
+
+
+test('release metadata validator fails closed when SUPER_VERSION.date is missing', async t => {
+  const root = await fixture(); t.after(() => rm(root, { recursive: true, force: true }));
+  const fs = await import('node:fs/promises');
+  const p = path.join(root, 'SUPER_VERSION.json');
+  const manifest = JSON.parse(await fs.readFile(p, 'utf8'));
+  delete manifest.date;
+  await fs.writeFile(p, JSON.stringify(manifest, null, 2));
+  const r = run(root);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /release-date-is-valid-iso-calendar-date[\\s\\S]*?"pass": false/);
+});
+
+test('release metadata validator rejects impossible calendar dates', async t => {
+  const root = await fixture(); t.after(() => rm(root, { recursive: true, force: true }));
+  const fs = await import('node:fs/promises');
+  const p = path.join(root, 'SUPER_VERSION.json');
+  const manifest = JSON.parse(await fs.readFile(p, 'utf8'));
+  manifest.date = '2026-02-30';
+  await fs.writeFile(p, JSON.stringify(manifest, null, 2));
+  const r = run(root);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /release-date-is-valid-iso-calendar-date[\\s\\S]*?"pass": false/);
 });
