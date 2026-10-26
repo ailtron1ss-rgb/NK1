@@ -225,8 +225,8 @@ assert.deepEqual(projection?.context, { topic: 'hexis' }, 'non-scalar imported c
 const unsafeSections = structuredClone(validHmx);
 unsafeSections.sections.identity = [{ key: 'identity', content: 'must not auto-merge' }];
 const unsafeStage = fabric.stageHmx({ document: unsafeSections, intent: 'telepathy', strategy: 'additive' });
-assert(unsafeStage.conflicts.some(issue => issue.kind === 'unsupported-import-section'));
-assert(unsafeStage.conflicts.some(issue => issue.kind === 'protected-by-intent'));
+assert(unsafeStage.conflicts.some(issue => issue.kind === 'protected-section'));
+assert(unsafeStage.conflicts.some(issue => issue.path.startsWith('sections.identity')));
 assert.equal(fabric.decideHmx(unsafeStage.stagingId, 'accept')?.status, 'staged', 'protected/unsupported sections cannot be accepted');
 
 const stage = fabric.stageHmx({ document: validHmx, intent: 'telepathy', strategy: 'additive' });
