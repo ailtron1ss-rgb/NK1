@@ -1,3 +1,20 @@
+## WorkPass354b — future-proof the CI evidence-head regression (2026-10-26)
+
+- **Test improvement:** the regression sets `sourceHeadAtSnapshot` to a different valid SHA and asserts that the ledger remains valid when its CI rows match `ciSnapshot.evidenceHead`. It no longer depends on the current fixture always having distinct source and evidence heads.
+- **Prior exact-head validation:** Unified project integration suite [#40283563274](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40283563274), progress ledger integrity [#40283563215](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40283563215), and WorkPass110 [#40283563219](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40283563219) passed on `754c06f353182e2537b5a534ebe0256d3cd65e96`.
+- **Current checkpoint:** `3a044fae8385ee3942a2a787ec8a6e43c012f037` requires fresh exact-head CI after the test robustness change. Scores unchanged.
+
+---
+
+## WorkPass354 — separate source snapshot from validated CI evidence (2026-10-26)
+
+- **Observed failure:** Unified integration run [#40282049399](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282049399) stopped at the progress-ledger validation step because 13 historical successful CI rows pointed to `621864d0d7f2676245383adab86f1dcc6d0f741f`, while the validator compared them to the newer source checkpoint. Runtime tests were skipped.
+- **Fix:** add explicit `ciSnapshot.evidenceHead` for the exact commit represented by historical CI rows. Validate each row against that SHA, not `sourceHeadAtSnapshot`. Historical tested SHAs/results remain untouched and are not relabeled as current-head passes.
+- **Regression coverage:** newer source snapshot plus older pinned evidence, invalid evidence head, individual row tested-head mismatch and invalid run URL.
+- **Evidence discipline:** PR head `754c06f353182e2537b5a534ebe0256d3cd65e96` passed the full Unified integration suite and its release gate without publishing an archive. The current base now also contains the concurrent release-metadata lineage fix. The new test checkpoint `3a044fae8385ee3942a2a787ec8a6e43c012f037` is pending fresh exact-head CI; scores unchanged.
+
+---
+
 ## Release metadata lineage contract — 2026-10-26
 
 - **Static-review correction:** fixed the escaped digit matcher and the negative-test regex so the contract test parses the baseline WorkPass number and matches multi-line verifier output as intended.
