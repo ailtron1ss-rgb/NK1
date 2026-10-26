@@ -1,3 +1,14 @@
+# WorkPass354 — validate retained completion anchor provenance (2026-10-26)
+
+- [FIXED] Before writing completion events, `CanonicalCognitiveKernel.completeCycle()` now checks every supplied, still-retained decision anchor against the expected logical tick and stage. A stale/cross-tick or wrong-stage anchor is rejected with `canonical-cognitive-kernel-anchor-provenance-conflict` before mutation.
+- [HARDENED] Reusing the same supplied event ID across multiple canonical stages is rejected as ambiguous causal identity.
+- [COMPATIBILITY] Missing event records are still allowed for delayed feedback after retention eviction; those cases continue through the normal lineage verifier and cannot be reported as a complete cycle without required evidence.
+- [REGRESSION] Added a wrong-tick observation-anchor case requiring zero completion writes/counter changes, plus a control case proving missing anchors produce incomplete (not fabricated-complete) outcome evidence.
+- [CI] Existing WorkPass331 workflow includes the canonical kernel and regression test; exact-head CI remains the acceptance gate.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass353 — make completion retries idempotent and preflight cycle finalization (2026-10-26)
 
 - [FIXED] `CanonicalCognitiveKernel.completeCycle()` reuses the stored outcome event timestamp when a replay omits `at`. A valid retry no longer generates a fresh wall-clock time and falsely conflicts with the same stable event IDs; explicit timestamps remain part of the identity.
