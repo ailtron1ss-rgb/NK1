@@ -117,7 +117,7 @@ const boundedCorrelationId = (value: unknown, max: number): string | undefined =
   const normalized = value.normalize('NFKC');
   // Validate before trim: trim() would erase leading/trailing TAB, CR and LF,
   // allowing malformed external correlation IDs to alias valid identifiers.
-  if (/[\\u0000-\\u001f\\u007f-\\u009f]/.test(normalized)) return undefined;
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
   const trimmed = normalized.trim();
   if (!trimmed || trimmed.length > max) return undefined;
   return trimmed;
