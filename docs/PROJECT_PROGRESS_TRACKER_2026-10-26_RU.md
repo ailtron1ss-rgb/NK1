@@ -1,3 +1,13 @@
+## WorkPass354 — separate source and validated CI evidence heads (2026-10-26)
+
+- **Working PR:** [#182 — reject malformed cognitive event payload envelopes](https://github.com/ailtron1ss-rgb/NK1/pull/182).
+- **Root cause:** [Unified project integration suite #40282049399](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282049399) stopped at `test:progress-ledger`. Thirteen earlier successful CI rows all point to `621864d0d7f2676245383adab86f1dcc6d0f741f`, but validation incorrectly compared them to a newer source/test checkpoint. The integration runtime steps were skipped as a result.
+- **Fix:** `ciSnapshot.evidenceHead` now records the exact commit represented by the historical CI rows. Every row is checked against this evidence SHA, while `sourceHeadAtSnapshot` identifies the current code/test checkpoint. This does not rewrite old SHAs or promote historical PASS results to the new code.
+- **Regression coverage:** source and validated evidence may differ; malformed evidence heads, an individual row's SHA mismatch and invalid run URLs are still rejected.
+- **Combined code/test checkpoint:** `c0521842ae59c9fce651d7a669c3d121e567f2de`. The current base already contains the payload-envelope guard and regression wired into the cognitive integration suite. Fresh CI for the complete code/test snapshot is pending; no readiness percentages were raised.
+
+---
+
 # NK1 — общая панель инженерного прогресса (2026-10-26)
 
 **Источник:** `ailtron1ss-rgb/NK1`, combined source branch `fix/mega-cognitive-progress-tracking-2026-10-26-r3`. Точный проверенный code/test head: `621864d0d7f2676245383adab86f1dcc6d0f741f`, merged into the source branch as `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. На HEAD 621864d0d7f2676245383adab86f1dcc6d0f741f успешно прошли Unified project integration suite [#40257525157](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525157), WorkPass110 [#40257525071](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525071), WorkPass108 [#40257525093](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525093), P26 Learning Validation [#40257525095](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525095), progress-ledger integrity [#40257525008](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525008), plus outcome-ledger, replay, cognitive-contract, verified-experience, reflection and postcondition suites.
