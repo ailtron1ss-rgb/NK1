@@ -62,10 +62,18 @@ export function HexisControlConsole() {
       const result = await operation();
       setPanel(fmt(result));
       setMessage(`${label}: OK`);
-      const next = await neuroApi.hexis();
-      setState(next);
-      const memoryResult = await neuroApi.hexisMemories(64);
-      setMemories(Array.isArray((memoryResult as any)?.memoryIndex) ? (memoryResult as any).memoryIndex : []);
+
+      // The mutation result is authoritative for this interaction. A later
+      // dashboard/memory refresh can fail independently and must not erase a
+      // successful HMX receipt before its caller can render APPLIED/UNCERTAIN.
+      try {
+        const next = await neuroApi.hexis();
+        setState(next);
+        const memoryResult = await neuroApi.hexisMemories(64);
+        setMemories(Array.isArray((memoryResult as any)?.memoryIndex) ? (memoryResult as any).memoryIndex : []);
+      } catch (refreshError) {
+        setMessage(`${label}: action completed; refresh failed: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
+      }
       return result;
     } catch (error) {
       setMessage(`${label}: ${error instanceof Error ? error.message : String(error)}`);
