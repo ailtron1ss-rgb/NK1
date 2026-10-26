@@ -74,6 +74,7 @@ const normalizeHmxMemoryStatus = value => {
   return 'unknown';
 };
 const epistemicStatusRank = status => ({ belief: 0, hypothesis: 1, unknown: 2, quarantined: 3 }[status] ?? 2);
+const MAX_IMPORTED_EXTERNAL_CONFIDENCE = 0.65;
 const contextText = value => {
   if (typeof value === 'string') return value.slice(0, 1200);
   try { return JSON.stringify(value).slice(0, 1200); } catch { return ''; }
@@ -252,7 +253,8 @@ export class HexisCanonicalMemoryProjector {
         const validFromAt = dateMs(row.valid_from ?? row.validFrom) ?? observedAt;
         const validUntilAt = dateMs(row.valid_until ?? row.validUntil);
         const trustValue = row.trust_level ?? row.trustLevel ?? row.provenance?.confidence;
-        const confidence = clamp01(Number.isFinite(Number(trustValue)) ? Number(trustValue) : 0.45);
+        const sourceTrustClaim = Number.isFinite(Number(trustValue)) ? clamp01(Number(trustValue)) : 0.45;
+        const confidence = Math.min(sourceTrustClaim, MAX_IMPORTED_EXTERNAL_CONFIDENCE);
         const tags = [...new Set([
           'hexis-import',
           'hexis:' + nativeType.slice(0, 64),
@@ -268,6 +270,8 @@ export class HexisCanonicalMemoryProjector {
           hexisSourceLineageId: lineageId.slice(0, 512),
           hexisOriginalType: nativeType,
           hexisOriginalStatus: typeof row.status === 'string' && row.status.trim() ? row.status.trim().toLowerCase().slice(0, 64) : 'unknown',
+          hexisSourceTrustClaim: Number.isFinite(Number(trustValue)) ? String(clamp01(Number(trustValue))) : 'unspecified',
+          hexisAppliedAuthorityCap: String(MAX_IMPORTED_EXTERNAL_CONFIDENCE),
           hexisImportedAt: String(appliedAt),
           hexisSourceSchema: 'hmx-1.7',
           ...(provenancePayload ? { hexisProvenance: contextText(provenancePayload) } : {}),
