@@ -136,8 +136,11 @@ export class OrganismSystemFabric {
     proposal:HexisGoalProposal;
     project:import('../cognition/evolution/SelfProjectEngine.ts').SelfProject;
   } {
-    const proposal=this.hexisAdaptation.getGoalProposal(proposalId);
-    if(!proposal) throw new Error('hexis-goal-proposal-not-found');
+    const storedProposal=this.hexisAdaptation.getGoalProposal(proposalId);
+    if(!storedProposal) throw new Error('hexis-goal-proposal-not-found');
+    const proposal = storedProposal.status === 'approved' || storedProposal.status === 'materialized'
+      ? this.hexisAdaptation.validateGoalProposalApproval(proposalId)
+      : storedProposal;
     const existingProject=this.agency.selfProjects.snapshot().projects.find(project=>project.hexisProposalId===proposal.id);
     if(proposal.status==='materialized'){
       if(!existingProject || existingProject.id!==proposal.canonicalGoalId) throw new Error('hexis-materialized-goal-project-missing');
@@ -179,9 +182,10 @@ export class OrganismSystemFabric {
     project:import('../cognition/evolution/SelfProjectEngine.ts').SelfProject;
     receipt:NonNullable<HexisGoalProposal['goalRelationshipReceipt']>;
   } {
-    const proposal=this.hexisAdaptation.getGoalProposal(proposalId);
-    if(!proposal) throw new Error('hexis-goal-proposal-not-found');
-    if(proposal.status!=='materialized' || !proposal.canonicalGoalId) throw new Error('hmx-goal-must-be-materialized-before-activation');
+    const storedProposal=this.hexisAdaptation.getGoalProposal(proposalId);
+    if(!storedProposal) throw new Error('hexis-goal-proposal-not-found');
+    if(storedProposal.status!=='materialized' || !storedProposal.canonicalGoalId) throw new Error('hmx-goal-must-be-materialized-before-activation');
+    const proposal=this.hexisAdaptation.validateGoalProposalApproval(proposalId);
     const project=this.agency.selfProjects.snapshot().projects.find(item=>item.id===proposal.canonicalGoalId && item.hexisProposalId===proposal.id);
     if(!project) throw new Error('hexis-materialized-goal-project-missing');
     if(proposal.goalRelationshipReceipt){
