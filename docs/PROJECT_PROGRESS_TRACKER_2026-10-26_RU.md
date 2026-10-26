@@ -86,3 +86,11 @@
 - **Validation state:** unverified for a concrete platform reason. Workflow now captures both runtime and app install/typecheck output, plus focused Hexis test logs, then uploads the evidence artifact before enforcing the gate. Exact-head Hexis workflow #40336104593 and unified integration #40336104584 ended before any step ran (runner_id=0, empty runner_name, steps=[]); no artifacts were produced. The Hexis workflow now captures npm ci/typecheck/test logs and exit codes for the next runner-backed execution. No pass is claimed until exact-head checks actually execute.
 - **Scoring:** preserve the prior weighted metrics. This pass is code integration only until exact-head checks and independent evaluation provide new evidence.
 - **Unchanged:** main and the published Release ZIP.
+
+## WorkPass375 — frontend HMX round-trip and goal graph continuity (2026-10-26; validation blocked)
+
+- **Frontend API contract:** added client calls for HMX apply and the goal proposal lifecycle.
+- **Operator UI:** external JSON import, stage acceptance and canonical write each have explicit UI boundaries; accept and apply require separate confirmations. Re-staging clears all stale confirmation state. Successful API results are retained even when the subsequent status refresh fails.
+- **Goal continuity:** a duplicate goal proposal from the same lineage reuses the canonical goal's graph node and reconciles its semantic edge, while unrelated lineages remain separated.
+- **Validation:** runner unavailable. Latest Hexis #40337917617 and unified suite #40337917630 fail before steps begin (runner_id=0, empty runner_name, steps=[], no artifacts). Workflow now captures runtime and app install/typecheck/test evidence if a runner is assigned. No validation is claimed.
+- **Release boundary:** main and published Release ZIP remain unchanged; no maturity score or recallDelta uplift was claimed.
