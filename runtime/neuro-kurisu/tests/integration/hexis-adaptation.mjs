@@ -125,6 +125,37 @@ const restoredConflict=restoredOutbox.enqueueOutbox({idempotencyKey:'k1',kind:'n
 assert.equal(restoredConflict.error,'idempotency-key-conflict');
 assert.equal(restoredOutbox.snapshot().metrics.outboxIdempotencyConflicts,2,'outbox conflict telemetry survives snapshot/restore');
 
+// Persisted policy state is untrusted: NaN counters used to evade the rate-limit comparison.
+const corruptedPolicySource = new HexisAdaptationFabric();
+corruptedPolicySource.grantConnectorPolicy({
+  connectorId:'telegram', actionKind:'send', contexts:['chat'], requiresApproval:false,
+  allowedTargets:['123'], maxPerWindow:1, windowMs:60_000,
+});
+const corruptedPolicySnapshot = corruptedPolicySource.snapshot();
+corruptedPolicySnapshot.connectorPolicies[0].windowCount = Number.NaN;
+const restoredCorruptedPolicy = new HexisAdaptationFabric();
+restoredCorruptedPolicy.restore(corruptedPolicySnapshot);
+assert.equal(restoredCorruptedPolicy.snapshot().connectorPolicies.length, 0,
+  'corrupt policy counters must be discarded instead of restoring a bypass');
+assert.equal(restoredCorruptedPolicy.evaluateConnectorAction({
+  connectorId:'telegram', actionKind:'send', context:'chat', target:'123', confirmed:true,
+}).allowed, false, 'corrupt restored policy must fail closed');
+
+assert.throws(() => corruptedPolicySource.grantConnectorPolicy({
+  connectorId:'telegram', actionKind:'send', maxPerWindow:Number.NaN,
+}), /invalid-connector-policy-rate-limit/,
+  'invalid rate limits must be rejected at policy creation, not persisted');
+
+const validPolicySnapshot = corruptedPolicySource.snapshot();
+const validPolicyRestore = new HexisAdaptationFabric();
+validPolicyRestore.restore(validPolicySnapshot);
+assert.equal(validPolicyRestore.evaluateConnectorAction({
+  connectorId:'telegram', actionKind:'send', context:'chat', target:'123', confirmed:true,
+}).allowed, true, 'valid policy survives restore');
+assert.equal(validPolicyRestore.evaluateConnectorAction({
+  connectorId:'telegram', actionKind:'send', context:'chat', target:'123', confirmed:true,
+}).reason, 'policy-rate-limit', 'restored rate limit remains effective');
+
 const policy = fabric.grantConnectorPolicy({connectorId:'telegram',actionKind:'send',contexts:['chat'],requiresApproval:true,allowedTargets:['123'],maxPerWindow:1,windowMs:60_000});
 assert.equal(fabric.evaluateConnectorAction({connectorId:'telegram',actionKind:'send',context:'chat',target:'123'}).allowed,false);
 assert.equal(fabric.evaluateConnectorAction({connectorId:'telegram',actionKind:'send',context:'chat',target:'123',confirmed:true}).allowed,true);
