@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head CI PASS on PR head 0ad66d5519aedbadc317684504ed0e5a8e79412c: Unified project integration (#40289492932), progress-ledger integrity (#40289492966), WorkPass110 (#40289492891), P26 validation (#40289492875) and nine additional focused workflows all passed. Historical 13-row ciSnapshot remains pinned to 621864d0d7f2676245383adab86f1dcc6d0f741f; new validationRuns are recorded separately. No readiness scores were increased. WorkPass356 adds strict descriptor-only input ingress and non-coercive validation for CEF tool receipt trace, authoritative receipt revision and external observation APIs. Current code/test checkpoint c6845a5258a2c3bcdccce1089615cfabbfd4b750 on branch fix/workpass356-strict-tool-receipt-ingress-2026-10-26 is pending exact-head CI. The prior WorkPass355 exact-head validation record is preserved, as are all historical ciSnapshot SHAs and the existing progress scores. WorkPass356 exact PR-head CI PASS on d4ddbbe2495ca6523d4b2c4f04129bf487ab189b: Unified project integration (#40290594913), project progress-ledger integrity (#40290595259), WorkPass110 (#40290594892), P26 (#40290594766), and nine additional focused workflows all succeeded. The unified workflow passed cognitive integration contracts, governed approval E2E, public service startup, runtime/research bridge smoke and final release gates without publishing an archive. The legacy ciSnapshot remains pinned to its original tested SHA; these new exact-head results are listed separately. Readiness scores unchanged.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head CI PASS on PR head 0ad66d5519aedbadc317684504ed0e5a8e79412c: Unified project integration (#40289492932), progress-ledger integrity (#40289492966), WorkPass110 (#40289492891), P26 validation (#40289492875) and nine additional focused workflows all passed. Historical 13-row ciSnapshot remains pinned to 621864d0d7f2676245383adab86f1dcc6d0f741f; new validationRuns are recorded separately. No readiness scores were increased. WorkPass356 adds strict descriptor-only input ingress and non-coercive validation for CEF tool receipt trace, authoritative receipt revision and external observation APIs. Current code/test checkpoint c6845a5258a2c3bcdccce1089615cfabbfd4b750 on branch fix/workpass356-strict-tool-receipt-ingress-2026-10-26 is pending exact-head CI. The prior WorkPass355 exact-head validation record is preserved, as are all historical ciSnapshot SHAs and the existing progress scores. WorkPass356 exact PR-head CI PASS on d4ddbbe2495ca6523d4b2c4f04129bf487ab189b: Unified project integration (#40290594913), project progress-ledger integrity (#40290595259), WorkPass110 (#40290594892), P26 (#40290594766), and nine additional focused workflows all succeeded. The unified workflow passed cognitive integration contracts, governed approval E2E, public service startup, runtime/research bridge smoke and final release gates without publishing an archive. The legacy ciSnapshot remains pinned to its original tested SHA; these new exact-head results are listed separately. Readiness scores unchanged. WorkPass375 connects Hexis evidence to canonical MemoryOS2 using evidence digests, stance/provenance records and a bounded replay filter; exact-head validation is pending, scores remain unchanged, and no Release ZIP was changed.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -359,36 +359,22 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass356",
+    "id": "WorkPass375",
     "date": "2026-10-26",
-    "branch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26",
-    "codeCommit": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
-    "summary": "Hardened the three public CEF receipt ingress paths against getters/accessors, coercive type conversion, identifier truncation and malformed confidence/revision fields; added regression coverage and wired it into the cognitive integration suite.",
+    "branch": "work/hexis-evidence-adapter-2026-10-26",
+    "codeCommit": "61fdb0ad6b098f91bd3b0884bf3b209f4ee514dc",
+    "summary": "Connected validated Hexis evidence envelopes to canonical MemoryOS2 provenance with evidence-ID/digest conflict detection, bounded source lineage and a replay filter that protects IDs after detail-ring rotation. Stance and evidence confidence are stored as provenance; belief confidence, approval and skill promotion remain unchanged.",
     "testsAdded": [
-      "receipt trace rejects accessor-backed inputs without getter execution or journal mutation",
-      "receipt trace rejects padded/overlong IDs, non-boolean flags and confidence outside [0,1]",
-      "provider receipt revisions reject accessors, lossy identifiers, invalid hashes/counters/flags/confidence without mutation",
-      "external observations reject accessors, coercion, overlong/non-canonical identifiers and malformed evidence values",
-      "valid revision remains idempotent; rejected calls preserve event journal and replay index"
+      "Accepted evidence is persisted through the one canonical MemoryOS2 writer",
+      "supports/contradicts/contextualizes stance survives in evidence metadata without automatic confidence revision",
+      "exact evidence replay is a no-op and same ID with changed digest is rejected",
+      "protected-memory ingress and unknown memory IDs fail closed",
+      "evidence ID replay protection survives snapshot/restore and 90-item detail-ring rollover"
     ],
-    "validationStatus": "PASS on exact PR head d4ddbbe2495ca6523d4b2c4f04129bf487ab189b; Unified project integration #40290594913, progress-ledger integrity #40290595259, WorkPass110 #40290594892, P26 #40290594766, plus nine focused suites.",
+    "validationStatus": "PENDING exact-head runtime typecheck, focused Hexis memory bridge regression, Unified project integration, and final release gates.",
     "progressPercentagesChanged": false,
-    "testedHeadSha": "d4ddbbe2495ca6523d4b2c4f04129bf487ab189b",
-    "workflowRuns": [
-      40290594913,
-      40290595259,
-      40290594892,
-      40290594766,
-      40290594950,
-      40290595167,
-      40290595099,
-      40290595142,
-      40290594942,
-      40290595047,
-      40290594927,
-      40290594836,
-      40290595162
-    ]
+    "testedHeadSha": null,
+    "workflowRuns": []
   },
   "recentEngineeringPasses": [
     {
@@ -491,10 +477,28 @@
       "codeCommit": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
       "validationStatus": "Pending fresh exact-head CI for tracked-bytecode guard and eight-test regression suite.",
       "progressPercentagesChanged": false
+    },
+    {
+      "id": "WorkPass375",
+      "date": "2026-10-26",
+      "branch": "work/hexis-evidence-adapter-2026-10-26",
+      "codeCommit": "61fdb0ad6b098f91bd3b0884bf3b209f4ee514dc",
+      "summary": "Connected validated Hexis evidence envelopes to canonical MemoryOS2 provenance with evidence-ID/digest conflict detection, bounded source lineage and a replay filter that protects IDs after detail-ring rotation. Stance and evidence confidence are stored as provenance; belief confidence, approval and skill promotion remain unchanged.",
+      "testsAdded": [
+        "Accepted evidence is persisted through the one canonical MemoryOS2 writer",
+        "supports/contradicts/contextualizes stance survives in evidence metadata without automatic confidence revision",
+        "exact evidence replay is a no-op and same ID with changed digest is rejected",
+        "protected-memory ingress and unknown memory IDs fail closed",
+        "evidence ID replay protection survives snapshot/restore and 90-item detail-ring rollover"
+      ],
+      "validationStatus": "PENDING exact-head runtime typecheck, focused Hexis memory bridge regression, Unified project integration, and final release gates.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
     }
   ],
-  "latestUnverifiedCodeTestHead": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
-  "branchHeadBeforeTrackerCommit": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
+  "latestUnverifiedCodeTestHead": "61fdb0ad6b098f91bd3b0884bf3b209f4ee514dc",
+  "branchHeadBeforeTrackerCommit": "61fdb0ad6b098f91bd3b0884bf3b209f4ee514dc",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -534,6 +538,16 @@
     }
   ],
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass375",
+    "sourceBranch": "work/hexis-evidence-adapter-2026-10-26",
+    "codeTestHead": "61fdb0ad6b098f91bd3b0884bf3b209f4ee514dc",
+    "baseHead": "ab15146196d171186ceac18daef22030b5322727",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Hexis evidence ingress now writes into canonical MemoryOS2 with bounded provenance records, digest conflict detection, a persisted replay filter, protected-memory blocking and no automatic belief-confidence change. New focused regression is wired into the unified cognitive integration suite. Exact-head validation is pending; all progress scores unchanged.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass356",
     "sourceBranch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26",
     "codeTestHead": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
@@ -622,94 +636,5 @@
       }
     ],
     "validatedPrHead": "d4ddbbe2495ca6523d4b2c4f04129bf487ab189b"
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass355",
-    "sourceBranch": "fix/workpass355-safe-snapshot-restore-2026-10-26",
-    "codeTestHead": "38b17bf610c06de1a23ba5e54d21cb4a1b7ac905",
-    "baseHead": "18afd253dcd7413c02136537ea1acc10b7764768",
-    "validationStatus": "exact-pr-head-ci-pass",
-    "summary": "CognitiveEventFabric.restore reads own data descriptors, avoids getters/iterators on snapshots, bounds arrays and builds restored events plus receipt replay index off-ledger before committing atomically.",
-    "validatedPrHead": "0ad66d5519aedbadc317684504ed0e5a8e79412c",
-    "validationRuns": [
-      {
-        "name": "Unified project integration suite",
-        "runId": 40289492932,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492932",
-        "conclusion": "success"
-      },
-      {
-        "name": "Project progress ledger integrity",
-        "runId": 40289492966,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492966",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass110 continual learning metrics",
-        "runId": 40289492891,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492891",
-        "conclusion": "success"
-      },
-      {
-        "name": "P26 Learning Validation",
-        "runId": 40289492875,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492875",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass108 paired evidence identity and verified promotion gate",
-        "runId": 40289492903,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492903",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass105 verified outcome ledger",
-        "runId": 40289493009,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289493009",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass99 replay strategy benchmark",
-        "runId": 40289492983,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492983",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass102 reservoir replay baseline",
-        "runId": 40289492956,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492956",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass292 verified experience lanes",
-        "runId": 40289493033,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289493033",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass291 reflective payload budget",
-        "runId": 40289493006,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289493006",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass293 autonomous P23 repair revision",
-        "runId": 40289493061,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289493061",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass294 correlated external postconditions",
-        "runId": 40289492921,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492921",
-        "conclusion": "success"
-      },
-      {
-        "name": "WorkPass287-288 cognitive contracts",
-        "runId": 40289492945,
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492945",
-        "conclusion": "success"
-      }
-    ]
   }
 }
