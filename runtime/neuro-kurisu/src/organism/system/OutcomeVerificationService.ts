@@ -20,8 +20,10 @@ export type ExternalPostconditionAssessment = 'not-external' | 'match' | 'contra
 
 function canonicalPostcondition(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
-  const normalized = value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
-  return normalized && normalized.length <= 1024 && !/[\u0000-\u001f\u007f]/.test(normalized) ? normalized : undefined;
+  const normalized = value.normalize('NFKC');
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
+  const canonical = normalized.trim().replace(/\s+/g, ' ').toLowerCase();
+  return canonical && canonical.length <= 1024 ? canonical : undefined;
 }
 
 /**
@@ -31,8 +33,8 @@ function canonicalPostcondition(value: unknown): string | undefined {
  */
 export function assessExternalPostcondition(value: Partial<OutcomeVerification> | undefined): ExternalPostconditionAssessment {
   if (value?.basis !== 'external-postcondition' || value.externalObservation !== true) return 'not-external';
-  const observationId = typeof value.observationId === 'string' ? value.observationId.trim() : '';
-  if (!observationId || observationId.length > 180 || /[\u0000-\u001f\u007f]/.test(observationId)) return 'unknown';
+  const observationId = boundedCorrelationId(value.observationId, 180);
+  if (!observationId) return 'unknown';
   const expected = canonicalPostcondition(value.expectedPostcondition);
   const observed = canonicalPostcondition(value.observedPostcondition);
   if (!expected || !observed) return 'unknown';
@@ -114,9 +116,21 @@ const boundedText = (value: unknown, max: number): string | undefined => {
 /** Correlation IDs are rejected when malformed; truncation would let distinct tickets alias. */
 const boundedCorrelationId = (value: unknown, max: number): string | undefined => {
   if (typeof value !== 'string') return undefined;
-  const normalized = value.normalize('NFKC').trim();
-  if (!normalized || normalized.length > max || /[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
-  return normalized;
+  const normalized = value.normalize('NFKC');
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
+  const trimmed = normalized.trim();
+  if (!trimmed || trimmed.length > max) return undefined;
+  return trimmed;
+};
+
+/** Evidence text is validated, never truncated: truncation can make distinct postconditions collide. */
+const boundedEvidenceText = (value: unknown, max: number): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.normalize('NFKC');
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
+  const trimmed = normalized.trim();
+  if (!trimmed || trimmed.length > max) return undefined;
+  return trimmed;
 };
 
 function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
@@ -197,8 +211,7 @@ export class OutcomeVerificationService {
         return failed('external observation requires external-postcondition basis');
       }
       const external = basis === 'external-postcondition';
-      const observationIdRaw = boundedText(checked.observationId, 180);
-      const observationId = observationIdRaw && !/[\u0000-\u001f\u007f]/.test(observationIdRaw) ? observationIdRaw : undefined;
+      const observationId = boundedCorrelationId(checked.observationId, 180);
       let verified = checked.verified === true && basis !== 'none';
       let notes = boundedText(checked.notes, 320);
       if (verified && external && !observationId) {
@@ -208,8 +221,8 @@ export class OutcomeVerificationService {
       if (checked.verified === true && basis === 'none') {
         notes = 'verification basis is missing or unsupported';
       }
-      const expectedPostcondition = boundedText(checked.expectedPostcondition, 1024);
-      const observedPostcondition = boundedText(checked.observedPostcondition, 1024);
+      const expectedPostcondition = boundedEvidenceText(checked.expectedPostcondition, 1024);
+      const observedPostcondition = boundedEvidenceText(checked.observedPostcondition, 1024);
       const externalEvidenceShapeValid = external && Boolean(observationId) &&
         Boolean(expectedPostcondition) && Boolean(observedPostcondition) &&
         !/[\u0000-\u001f\u007f]/.test(expectedPostcondition ?? '') &&

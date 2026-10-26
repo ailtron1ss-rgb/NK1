@@ -2,7 +2,7 @@ name: WorkPass94 verification input binding
 
 on:
   push:
-    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring, fix/outcome-projection-index-restore-2026-10-26]
+    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring, fix/outcome-projection-index-restore-2026-10-26, fix/workpass94-evidence-boundary-current-r2-2026-10-26]
   pull_request:
     branches: [main, workpass203-independent-candidate-evaluator, fix/outcome-projection-index-restore-2026-10-26]
     paths:
