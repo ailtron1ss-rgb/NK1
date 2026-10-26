@@ -365,8 +365,10 @@ export class HexisAdaptationFabric {
                 .map((issue) => ({ path: issue.path, kind: issue.kind, detail: issue.detail }))
             : [{ path: captured.issue.path, kind: captured.issue.kind, detail: captured.issue.detail }];
         const names = Object.keys(sections);
-        const sectionCounts: Record<string, number> = {};
-        const stagedSections: Record<string, unknown> = {};
+        // Section names originate in untrusted HMX. Null-prototype dictionaries
+        // keep "__proto__" and similar names as ordinary keys, never setters.
+        const sectionCounts: Record<string, number> = Object.create(null);
+        const stagedSections: Record<string, unknown> = Object.create(null);
         for (const [name, records] of Object.entries(sections)) {
             sectionCounts[name] = Array.isArray(records)
                 ? records.length
