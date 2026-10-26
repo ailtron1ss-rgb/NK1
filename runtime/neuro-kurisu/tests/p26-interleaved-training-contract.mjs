@@ -76,6 +76,21 @@ const experience = (energy, novelty, action, reward, worldContextVersion=1) => (
 
 {
   const engine = new P26TrueLearningEngine();
+  const result = engine.trainInterleaved(
+    [experience(0.3, 0.2, 'rest', 0.4)],
+    [experience(0.3, 0.2, 'rest', 0.4)],
+    {
+      replayEveryNCurrent: 4, maxReplayUpdates: 1, targetMode: 'reward',
+      currentLearningRate01: 0.18, replayLearningRate01: 0.06,
+    },
+  );
+  assert.equal(result.replayUpdates, 0, 'a four-sample stride must not replay prematurely');
+  assert.equal(result.effectiveReplayLearningRate01, 0.06,
+    'a sparse replay interval must retain the configured rate if it is below the cadence cap');
+}
+
+{
+  const engine = new P26TrueLearningEngine();
   const noReplay = engine.trainInterleaved(
     [experience(0.4, 0.2, 'respond', 0.7)],
     [experience(0.4, 0.2, 'respond', 0.7)],
