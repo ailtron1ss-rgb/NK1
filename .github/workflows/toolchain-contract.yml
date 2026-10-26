@@ -18,6 +18,8 @@ on:
       - "tools/super-start.mjs"
       - "tools/toolchain-contract.mjs"
       - "tools/toolchain-contract.test.mjs"
+      - "tools/supervisor-exit-policy.mjs"
+      - "tools/supervisor-exit-policy.test.mjs"
       - ".github/workflows/toolchain-contract.yml"
   pull_request:
     paths:
@@ -32,6 +34,8 @@ on:
       - "tools/super-start.mjs"
       - "tools/toolchain-contract.mjs"
       - "tools/toolchain-contract.test.mjs"
+      - "tools/supervisor-exit-policy.mjs"
+      - "tools/supervisor-exit-policy.test.mjs"
       - ".github/workflows/toolchain-contract.yml"
   workflow_dispatch:
 
@@ -56,10 +60,13 @@ jobs:
           package-manager-cache: false
       - name: Validate toolchain contract logic
         run: npm run test:toolchain-contract
+      - name: Validate supervised service exit policy
+        run: npm run test:supervisor-exit-policy
       - name: Check startup and installation script syntax
         run: |
           node --check tools/super-doctor.mjs
           node --check tools/super-install.mjs
           node --check tools/super-start.mjs
+          node --check tools/supervisor-exit-policy.mjs
       - name: Run environment doctor
         run: npm run doctor
