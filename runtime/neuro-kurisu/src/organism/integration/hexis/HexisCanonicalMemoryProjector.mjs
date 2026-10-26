@@ -36,6 +36,29 @@ export const isValidHmxApplyReceipt = (stage, receipt) => {
   }
   if (!isRecord(receipt.deferredSections) ||
       Object.values(receipt.deferredSections).some(count => !Number.isSafeInteger(count) || count < 0)) return false;
+
+  // A well-formed digest only detects accidental corruption; it does not prove that
+  // a persisted receipt describes a possible apply result. Enforce the projector's
+  // counters and state-machine invariants even if someone recomputes the digest.
+  const memoryRows = Array.isArray(stage.stagedSections.memories) ? stage.stagedSections.memories : [];
+  if (receipt.candidateMemoryRecords !== memoryRows.length ||
+      receipt.uniqueMemoryRecords > receipt.candidateMemoryRecords ||
+      receipt.importedCount + receipt.deduplicatedCount !== receipt.uniqueMemoryRecords ||
+      receipt.memoryIds.length !== receipt.uniqueMemoryRecords ||
+      receipt.createdMemoryIds.length !== receipt.importedCount ||
+      new Set(receipt.memoryIds).size !== receipt.memoryIds.length ||
+      new Set(receipt.createdMemoryIds).size !== receipt.createdMemoryIds.length ||
+      receipt.createdMemoryIds.some(id => !receipt.memoryIds.includes(id)) ||
+      receipt.semanticEdgeIds.length > receipt.projectedRelationships) return false;
+
+  const expectedStatus = receipt.uniqueMemoryRecords === 0
+    ? 'noop'
+    : Object.keys(receipt.deferredSections).length > 0 ? 'partial' : 'applied';
+  if (receipt.status !== expectedStatus || receipt.complete !== (expectedStatus === 'applied')) return false;
+
+  if (Array.isArray(stage.stagedSections.relationships) &&
+      receipt.projectedRelationships + receipt.deferredRelationships !== stage.stagedSections.relationships.length) return false;
+
   const { digest: receiptDigest, ...base } = receipt;
   return typeof receiptDigest === 'string' &&
     /^[a-f0-9]{64}$/.test(receiptDigest) &&
