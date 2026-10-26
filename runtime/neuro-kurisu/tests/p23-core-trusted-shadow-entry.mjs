@@ -62,7 +62,7 @@ try {
   });
   assert.equal(restored.registeredAt, persisted.runs[0].registeredAt);
 
-  await assert.rejects(() => core.runTrustedSkillShadowLearningProcess({
+  await assert.rejects(async () => await core.runTrustedSkillShadowLearningProcess({
     runtimeVersion: 'nk1-test-runtime-141',
     run: { ...run, runId: 'baseline-must-not-register', arm: 'control', method: 'baseline' },
     planFingerprint: 'b'.repeat(64),
@@ -80,7 +80,7 @@ try {
   await writeFile(brokenRegistry, '{broken-json', 'utf8');
   const brokenCore = new OrganismCore(new FileStateStore(brokenState));
   const spawnMarker = path.join(root, 'must-not-spawn.txt');
-  await assert.rejects(() => brokenCore.runTrustedSkillShadowLearningProcess({
+  await assert.rejects(async () => await brokenCore.runTrustedSkillShadowLearningProcess({
     runtimeVersion: 'nk1-test-runtime-141',
     run: { ...run, runId: 'corrupt-registry-must-not-spawn' },
     planFingerprint: 'c'.repeat(64),
