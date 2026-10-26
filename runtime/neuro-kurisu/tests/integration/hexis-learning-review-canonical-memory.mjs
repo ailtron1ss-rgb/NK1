@@ -66,7 +66,7 @@ const item = reviewed.items[0];
 assert.ok(item);
 const reviewId = reviewed.id;
 const itemId = item.id;
-const correctionText = 'The corrected canonical fact.';
+const correctionText = 'The   corrected canonical fact.';
 const correctionOptions = {
   reason: 'hexis-learning-review-correction',
   source: 'hexis-learning-review',
@@ -79,6 +79,7 @@ const corrected = fabric.reviseContent(original.id, correctionText, correctionOp
 });
 assert.ok(corrected);
 assert.notEqual(corrected.id, original.id, 'a content correction must create a revision row');
+assert.equal(corrected.content, 'The corrected canonical fact.', 'MemoryOS canonical whitespace normalization is stable');
 assert.equal(memoryOS.get(original.id).supersededById, corrected.id, 'the old row must point to its corrected successor');
 assert.equal(memoryOS.temporalAt(original.id, Date.now())?.id, corrected.id, 'current temporal recall must select the corrected revision');
 const eventsAfterCorrection = events.list().length;
@@ -162,7 +163,7 @@ assert.ok(body.includes('expectedGroupRows.length'), 'an absent reviewed row mus
 assert.ok(body.includes('const recoveredCorrection = Boolean('), 'a correction committed before review closure must be recognized on retry');
 assert.ok(body.includes("memory.supersedesId === requestedMemory.id"), 'the recovered correction must directly supersede the exact reviewed row');
 assert.ok(body.includes("memory.source === 'hexis-learning-review'"), 'only a revision attributable to this workflow is eligible for correction recovery');
-assert.ok(body.includes("memory.content === String(correction ?? '').trim()"), 'recovery must match the exact requested corrected text');
+assert.ok(body.includes("memory.content === canonicalizeMemoryContent(String(correction ?? ''))"), 'recovery must match the canonicalized requested corrected text');
 assert.ok(body.includes('hexis-review-correction:'), 'correction mutations must use a stable lifecycle command ID');
 assert.ok(body.includes('!recoveredCorrection'), 'other stale review revisions remain rejected');
 
