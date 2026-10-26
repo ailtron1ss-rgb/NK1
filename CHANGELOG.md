@@ -1,3 +1,10 @@
+## NK1 [validation] — run typed-runtime integration test in transform mode (2026-10-26)
+
+- Corrected the new cross-ledger CI step to use Node.js 24's `--experimental-transform-types --experimental-strip-types` flags; the test imports the canonical OrganismCore graph, which includes TypeScript parameter properties unsupported by strip-only mode.
+- The prior failure happened during module loading before test assertions. Runtime typecheck for that same commit passed.
+
+---
+
 ## NK1 [evidence] — preserve causal parents in P65 outcome projections (2026-10-26)
 
 - P65 outcome claims now retain the canonical CEF outcome/revision as their parent, matching the RealityEvidenceLedger causal edge.

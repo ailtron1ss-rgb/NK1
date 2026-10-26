@@ -76,7 +76,7 @@ jobs:
         run: npm run test:p2842:runtime
       - name: Verify action outcome evidence reaches RealityEvidenceLedger and P65
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/big-pass-379-tool-receipt-integration.mjs
+        run: node --experimental-transform-types --experimental-strip-types tests/big-pass-379-tool-receipt-integration.mjs
       - name: Verify reality evidence replay and quarantine
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass451:reality-evidence-ledger && npm run test:workpass510:reality-evidence-quarantine && npm run test:workpass488:evidence-event-identity
