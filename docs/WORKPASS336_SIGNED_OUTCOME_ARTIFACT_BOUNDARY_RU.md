@@ -34,7 +34,7 @@
 
 Этот проход укрепляет целостность и форму внешних signed outcome artifacts. Успешные unit/CI тесты сами по себе не доказывают непредвзятость внешнего verifier, реальный рост способности обучаться, надёжность на независимом внешнем holdout или production readiness. Оценки прогресса не повышались; `main` и release ZIP не затрагивались.
 
-**Проверка:** текущее объединённое дерево ожидает exact-HEAD Actions. Старые PASS на прежних HEAD не засчитываются как проверка этой интеграции.
+**Проверка:** все пять обязательных workflow завершились `success` на точном code/test HEAD `338902ce5587c8d887acc20ae5c5181f79cd1f87` (ссылки выше). Более поздний commit `240b51522c400fdb8639b9509d199ef50ef1b4ea` и его следующий документальный follow-up меняют только документацию/tracker, не runtime или тестовые blobs; на docs HEAD отдельно прошли WorkPass110, WorkPass108, WorkPass105 и progress-ledger integrity, а повторный Unified integration run ещё выполняется. Исторические PASS до объединённого code/test HEAD не засчитывались как его проверка.
 
 
 ## Exact-head validation evidence
