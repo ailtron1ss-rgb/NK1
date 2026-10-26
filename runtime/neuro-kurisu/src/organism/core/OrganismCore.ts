@@ -3016,6 +3016,24 @@ export class OrganismCore {
             }
 
             this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
+            if (transaction.outcome === 'committed' && transaction.createdIds.length > 0) {
+                // Suppress per-row events during the provisional batch; emit one audit
+                // event only after the canonical MemoryOS2 + lifecycle-ledger batch commits.
+                try {
+                    this.memorySubsystem.events.append(makeEvent('memory-created', this.persisted.state.tick, {
+                        source: 'hexis-hmx-import',
+                        action: 'batch-import',
+                        exportId: stage.exportId,
+                        stagingId: stage.stagingId,
+                        created: transaction.created,
+                        reused: transaction.reused + reusedBeforeTransaction,
+                        memoryIds: transaction.createdIds.slice(0, 256),
+                    }));
+                } catch {
+                    // The canonical memory receipt remains authoritative if telemetry
+                    // cannot be appended; never roll back a committed memory batch here.
+                }
+            }
             const importStatus = failed
                 ? (rollbackSucceeded ? 'skipped' as const : 'partial' as const)
                 : (skipped > 0 && (created > 0 || reused > 0)
