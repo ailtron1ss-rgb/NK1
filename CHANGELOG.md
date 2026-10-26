@@ -4,6 +4,8 @@
 - Persists the choice via NK1's safe avatar-preference storage and passes it to the iframe URL. Switching profile clears the stale Live2D-ready state and remounts the viewer so the selected FPS and renderer policy are actually applied.
 - Added regression checks for all four options, storage wiring, controlled select state, and dynamic viewer URL. Full browser/runtime/TypeScript workflow is the validation gate; status will be reported from the run rather than assumed.
 
+- Updated the expression-cache workflow harness to supply the actual profile catalog to its isolated VM, and extended it to assert idle/active budgets for all three rendering profiles. This prevents the test harness from evaluating the new selector function without one of its required inputs.
+
 ---
 
 ## NK1 WorkPass108 — truthful Live2D performance profiles (2026-10-26)

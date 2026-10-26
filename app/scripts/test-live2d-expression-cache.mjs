@@ -4,11 +4,13 @@ import vm from "node:vm";
 
 const source = await readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8");
 const mapMatch = source.match(/const EXPR_MAP=(\{[\s\S]*?\});/);
+const profileMatch = source.match(/const PROFILE_POLICY=(Object\.freeze\([\s\S]*?\));/);
 const fnMatch = source.match(/function applyExpression\(expr\)\{([\s\S]*?)\n  \}/);
 const activeMatch = source.match(/function visualStateIsActive\(signal=bodySignal\)\{[^\n]*\}/);
 const budgetMatch = source.match(/function updateTickerBudget\(\)\{[^\n]*\}/);
 const visibilityMatch = source.match(/function syncViewerVisibility\(\)\{[^\n]*\}/);
 assert.ok(mapMatch, "Live2D expression map must exist");
+assert.ok(profileMatch, "Live2D profile policy must exist");
 assert.ok(fnMatch, "Live2D expression applier must exist");
 assert.ok(activeMatch, "Live2D active-state classifier must exist");
 assert.ok(budgetMatch, "Live2D ticker budget function must exist");
@@ -17,6 +19,8 @@ assert.ok(visibilityMatch, "Live2D visibility lifecycle function must exist");
 const calls = [];
 const context = {
   EXPR_MAP: vm.runInNewContext(`(${mapMatch[1]})`),
+  PROFILE_POLICY: vm.runInNewContext(profileMatch[1]),
+  assetProfile: "balanced",
   lastAppliedExpression: null,
   model: { expression: (name) => calls.push(name) },
 };
@@ -47,6 +51,18 @@ assert.equal(context.app.ticker.maxFPS, 30, "high-affect motion must use the act
 context.bodySignal = { gesture: true };
 context.updateTickerBudget();
 assert.equal(context.app.ticker.maxFPS, 30, "a gesture must use the active render budget");
+for (const [profile, activeFps, idleFps] of [
+  ["mobile", 24, 10], ["balanced", 30, 14], ["quality", 60, 24],
+]) {
+  context.assetProfile = profile;
+  context.bodySignal = { speaking: true };
+  context.updateTickerBudget();
+  assert.equal(context.app.ticker.maxFPS, activeFps, `${profile} active render budget`);
+  context.bodySignal = {};
+  context.updateTickerBudget();
+  assert.equal(context.app.ticker.maxFPS, idleFps, `${profile} idle render budget`);
+}
+context.assetProfile = "balanced";
 context.bodySignal = {};
 context.document.hidden = true;
 context.syncViewerVisibility();
@@ -56,4 +72,4 @@ context.syncViewerVisibility();
 assert.equal(context.app.startCalls, 1, "visible viewers must resume the Pixi render loop");
 assert.equal(context.app.ticker.maxFPS, 14, "resumed idle viewer must restore the idle budget");
 
-console.log("NK1_LIVE2D_RUNTIME_BUDGET=PASS idleFps=14 activeFps=30 hiddenPause=1 visibleResume=1");
+console.log("NK1_LIVE2D_RUNTIME_BUDGET=PASS mobile=10/24 balanced=14/30 quality=24/60 hiddenPause=1 visibleResume=1");
