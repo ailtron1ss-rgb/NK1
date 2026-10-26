@@ -12,6 +12,7 @@ Port the existing Hexis adapter into the newer WorkPass373 cognitive-runtime lin
 - OrganismSystemFabric binds the projector to the existing memory subsystem and Hexis adapter. The HTTP decision endpoint accepts only accept, reject or apply and returns explicit 400/404/409 failure statuses.
 - Imported HMX goals now have an explicit proposal-only path: prepareGoalProposals creates pending review items; the API can list and approve/reject them, while canonical goal materialization/activation remains a separate explicit operation. An additional explicitly confirmed materialization route maps approved proposals to canonical goal candidates, projects relationships to imported memory nodes, records a typed event/receipt, and replays idempotently; it does not set the goal active.
 - The HMX exporter and projector are exposed through .mjs modules plus declaration files. The runtime Node floor remains Node 24.
+- The operator UI now supports importing an external HMX JSON file (bounded client-side to 8 MiB), explicit accept followed by a separate apply action, and a proposal queue to list/filter/approve/reject goals and explicitly materialize them as candidate goals. This closes the HTTP-only gap in the normal Hexis console workflow.
 - The target branch already contained the newer causal-outcome restore guard; it was preserved rather than overwritten with the older branch's copy.
 
 ## Focused validation
@@ -23,7 +24,7 @@ The branch registers npm run test:hexis-canonical-apply to cover:
 4. idempotent receipt replay with zero reads/writes on the replay path;
 5. HMX goals become idempotent pending proposals, with list/approve/reject endpoints, explicit confirmation for canonical materialization, candidate-state assertion, semantic-edge projection and materialization replay.
 
-A branch-specific GitHub Actions workflow runs the runtime typecheck and focused tests, captures command outputs/exit codes, and uploads an evidence artifact before enforcing the gate. However, exact-head run #40336104593 completed in about two seconds with runner_id=0, an empty runner_name, and steps=[]; the artifact endpoint reported zero artifacts. The unified integration run #40336104584 has the same pre-step failure signature. Therefore npm ci, typecheck and tests did not execute in these jobs; no code pass/fail conclusion can be drawn. The job-log endpoint responds BlobNotFound and a local run is unavailable in this environment. Keep the PR draft until GitHub assigns a runner and the exact-head validation becomes observable.
+A branch-specific GitHub Actions workflow runs runtime and frontend dependency installs/typechecks, then focused Hexis tests; it captures command outputs/exit codes and uploads an evidence artifact before enforcing the gate. However, exact-head run #40336104593 completed in about two seconds with runner_id=0, an empty runner_name, and steps=[]; the artifact endpoint reported zero artifacts. The unified integration run #40336104584 has the same pre-step failure signature. Therefore npm ci, typecheck and tests did not execute in these jobs; no code pass/fail conclusion can be drawn. The job-log endpoint responds BlobNotFound and a local run is unavailable in this environment. Keep the PR draft until GitHub assigns a runner and the exact-head validation becomes observable.
 
 ## Current status
 
@@ -35,4 +36,4 @@ A branch-specific GitHub Actions workflow runs the runtime typecheck and focused
 
 ## Completion condition
 
-Run the focused Hexis workflow and the unified cognitive integration/typecheck on the exact final commit. Resolve any CI-discovered runtime/contract failures before promoting this adapter from the isolated integration branch to the full source branch; update Release ZIP only after validation and artifact hash verification.
+Run the focused Hexis workflow, frontend app typecheck and unified cognitive integration/typecheck on the exact final commit. Resolve any CI-discovered runtime/contract failures before promoting this adapter from the isolated integration branch to the full source branch; update Release ZIP only after validation and artifact hash verification.
