@@ -51,6 +51,28 @@ try {
       throw new Error('hexis-json-record-body-guard:' + route + ':' + response.status);
     }
   }
+  const invalidReclaimAge = await post('/api/organism/integration/hexis/outbox/reclaim', { maxAgeMs: 'not-a-number' });
+  if (invalidReclaimAge.status !== 400) {
+    throw new Error('hexis-outbox-reclaim-must-reject-string-age:' + invalidReclaimAge.status);
+  }
+  const invalidRiskType = await post('/api/organism/integration/hexis/execution-plan', {
+    actionKind: 'tool.execute', requestedPlacement: 'local', risk01: '0.9', requiresApproval: false,
+  });
+  if (invalidRiskType.status !== 400) {
+    throw new Error('hexis-execution-risk-must-be-numeric:' + invalidRiskType.status);
+  }
+  const invalidApprovalType = await post('/api/organism/integration/hexis/execution-plan', {
+    actionKind: 'tool.execute', requestedPlacement: 'local', risk01: 0.9, requiresApproval: 'false',
+  });
+  if (invalidApprovalType.status !== 400) {
+    throw new Error('hexis-execution-approval-must-be-boolean:' + invalidApprovalType.status);
+  }
+  const invalidPlacement = await post('/api/organism/integration/hexis/execution-plan', {
+    actionKind: 'tool.execute', requestedPlacement: 'admin', risk01: 0.9,
+  });
+  if (invalidPlacement.status !== 400) {
+    throw new Error('hexis-execution-placement-must-be-allowlisted:' + invalidPlacement.status);
+  }
   // Unknown retention actions must not silently become the destructive default.
   const invalidRetentionAction = await post('/api/organism/integration/hexis/retention/propose', {
     memoryId: 'missing-memory',
@@ -280,8 +302,12 @@ try {
     const applied = await (await post('/api/organism/integration/hexis/retention/apply', { proposalId: proposal.proposal.id, confirmed: true })).json();
     if (!applied.ok || applied.proposal?.status !== 'accepted') throw new Error('hexis-retention-apply');
   }
-  const execution = await (await post('/api/organism/integration/hexis/execution-plan', { actionKind: 'tool.execute', requestedPlacement: 'local', risk01: .9 })).json();
-  if (!execution.ok || execution.plan?.resolvedPlacement !== 'sandbox') throw new Error('hexis-execution');
+  const execution = await (await post('/api/organism/integration/hexis/execution-plan', {
+    actionKind: 'tool.execute', requestedPlacement: 'local', risk01: .9, requiresApproval: false,
+  })).json();
+  if (!execution.ok || execution.plan?.resolvedPlacement !== 'sandbox' || execution.plan?.requiresApproval !== true) {
+    throw new Error('hexis-high-risk-execution-must-require-approval:' + JSON.stringify(execution));
+  }
   const policy = await (await post('/api/organism/integration/hexis/policy', { connectorId: 'telegram', actionKind: 'send', contexts: ['chat'], requiresApproval: true, allowAutonomous: false, allowedTargets: ['smoke-user'] })).json();
   if (!policy.ok || !policy.policy?.id) throw new Error('hexis-policy-grant');
   const denied = await fetch(`${base}/api/organism/integration/hexis/policy/evaluate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ connectorId: 'telegram', actionKind: 'send', context: 'chat', target: 'smoke-user', confirmed: false }) });
