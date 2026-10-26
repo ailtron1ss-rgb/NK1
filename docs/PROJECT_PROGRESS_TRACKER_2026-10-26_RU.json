@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head CI PASS on PR head 0ad66d5519aedbadc317684504ed0e5a8e79412c: Unified project integration (#40289492932), progress-ledger integrity (#40289492966), WorkPass110 (#40289492891), P26 validation (#40289492875) and nine additional focused workflows all passed. Historical 13-row ciSnapshot remains pinned to 621864d0d7f2676245383adab86f1dcc6d0f741f; new validationRuns are recorded separately. No readiness scores were increased. WorkPass356 adds strict descriptor-only input ingress and non-coercive validation for CEF tool receipt trace, authoritative receipt revision and external observation APIs. Current code/test checkpoint c6845a5258a2c3bcdccce1089615cfabbfd4b750 on branch fix/workpass356-strict-tool-receipt-ingress-2026-10-26 is pending exact-head CI. The prior WorkPass355 exact-head validation record is preserved, as are all historical ciSnapshot SHAs and the existing progress scores.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head CI PASS on PR head 0ad66d5519aedbadc317684504ed0e5a8e79412c: Unified project integration (#40289492932), progress-ledger integrity (#40289492966), WorkPass110 (#40289492891), P26 validation (#40289492875) and nine additional focused workflows all passed. Historical 13-row ciSnapshot remains pinned to 621864d0d7f2676245383adab86f1dcc6d0f741f; new validationRuns are recorded separately. No readiness scores were increased. WorkPass356 adds strict descriptor-only input ingress and non-coercive validation for CEF tool receipt trace, authoritative receipt revision and external observation APIs. Current code/test checkpoint c6845a5258a2c3bcdccce1089615cfabbfd4b750 on branch fix/workpass356-strict-tool-receipt-ingress-2026-10-26 is pending exact-head CI. The prior WorkPass355 exact-head validation record is preserved, as are all historical ciSnapshot SHAs and the existing progress scores. WorkPass356 exact PR-head CI PASS on d4ddbbe2495ca6523d4b2c4f04129bf487ab189b: Unified project integration (#40290594913), project progress-ledger integrity (#40290595259), WorkPass110 (#40290594892), P26 (#40290594766), and nine additional focused workflows all succeeded. The unified workflow passed cognitive integration contracts, governed approval E2E, public service startup, runtime/research bridge smoke and final release gates without publishing an archive. The legacy ciSnapshot remains pinned to its original tested SHA; these new exact-head results are listed separately. Readiness scores unchanged.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -371,10 +371,24 @@
       "external observations reject accessors, coercion, overlong/non-canonical identifiers and malformed evidence values",
       "valid revision remains idempotent; rejected calls preserve event journal and replay index"
     ],
-    "validationStatus": "pending exact-head CI",
+    "validationStatus": "PASS on exact PR head d4ddbbe2495ca6523d4b2c4f04129bf487ab189b; Unified project integration #40290594913, progress-ledger integrity #40290595259, WorkPass110 #40290594892, P26 #40290594766, plus nine focused suites.",
     "progressPercentagesChanged": false,
-    "testedHeadSha": null,
-    "workflowRuns": []
+    "testedHeadSha": "d4ddbbe2495ca6523d4b2c4f04129bf487ab189b",
+    "workflowRuns": [
+      40290594913,
+      40290595259,
+      40290594892,
+      40290594766,
+      40290594950,
+      40290595167,
+      40290595099,
+      40290595142,
+      40290594942,
+      40290595047,
+      40290594927,
+      40290594836,
+      40290595162
+    ]
   },
   "recentEngineeringPasses": [
     {
@@ -390,10 +404,24 @@
         "external observations reject accessors, coercion, overlong/non-canonical identifiers and malformed evidence values",
         "valid revision remains idempotent; rejected calls preserve event journal and replay index"
       ],
-      "validationStatus": "pending exact-head CI",
+      "validationStatus": "PASS on exact PR head d4ddbbe2495ca6523d4b2c4f04129bf487ab189b; Unified project integration #40290594913, progress-ledger integrity #40290595259, WorkPass110 #40290594892, P26 #40290594766, plus nine focused suites.",
       "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
+      "testedHeadSha": "d4ddbbe2495ca6523d4b2c4f04129bf487ab189b",
+      "workflowRuns": [
+        40290594913,
+        40290595259,
+        40290594892,
+        40290594766,
+        40290594950,
+        40290595167,
+        40290595099,
+        40290595142,
+        40290594942,
+        40290595047,
+        40290594927,
+        40290594836,
+        40290595162
+      ]
     },
     {
       "id": "WorkPass342",
@@ -510,10 +538,90 @@
     "sourceBranch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26",
     "codeTestHead": "c6845a5258a2c3bcdccce1089615cfabbfd4b750",
     "baseHead": "fce603ecc674887d20ebb2da187103ddce43171a",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Strict own-data-field ingress for CEF tool receipt traces, authoritative receipt revisions, and external observations; reject lossy IDs, type coercion, confidence outside [0,1], invalid counters and accessor-backed inputs.",
+    "validationStatus": "exact-pr-head-ci-pass",
+    "summary": "Strict own-data-field ingress for CEF tool receipt traces, authoritative receipt revisions, and external observations; reject lossy IDs, type coercion, confidence outside [0,1], invalid counters and accessor-backed inputs. Exact PR-head CI passed all 13 focused workflows, including the full Unified project integration suite and final release gate.",
     "progressPercentagesChanged": false,
-    "validationRuns": []
+    "validationRuns": [
+      {
+        "name": "Unified project integration suite",
+        "runId": 40290594913,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594913",
+        "conclusion": "success"
+      },
+      {
+        "name": "Project progress ledger integrity",
+        "runId": 40290595259,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595259",
+        "conclusion": "success"
+      },
+      {
+        "name": "WorkPass110 continual learning metrics",
+        "runId": 40290594892,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594892",
+        "conclusion": "success"
+      },
+      {
+        "name": "P26 Learning Validation",
+        "runId": 40290594766,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594766",
+        "conclusion": "success"
+      },
+      {
+        "name": "WorkPass108 paired evidence identity and verified promotion gate",
+        "runId": 40290594950,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594950",
+        "conclusion": "success"
+      },
+      {
+        "name": "WorkPass105 verified outcome ledger",
+        "runId": 40290595167,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595167",
+        "conclusion": "success"
+      },
+      {
+        "name": "WorkPass99 replay strategy benchmark",
+        "runId": 40290595099,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595099",
+        "conclusion": "success"
+      },
+      {
+        "name": "WorkPass102 reservoir replay baseline",
+        "runId": 40290595142,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595142",
+        "conclusion": "success"
+      },
+      {
+        "name": "WorkPass292 verified experience lanes",
+        "runId": 40290594942,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594942",
+        "conclusion": "success"
+      },
+      {
+        "name": "WorkPass291 reflective payload budget",
+        "runId": 40290595047,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595047",
+        "conclusion": "success"
+      },
+      {
+        "name": "WorkPass293 autonomous P23 repair revision",
+        "runId": 40290594927,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594927",
+        "conclusion": "success"
+      },
+      {
+        "name": "WorkPass294 correlated external postconditions",
+        "runId": 40290594836,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594836",
+        "conclusion": "success"
+      },
+      {
+        "name": "WorkPass287-288 cognitive contracts",
+        "runId": 40290595162,
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595162",
+        "conclusion": "success"
+      }
+    ],
+    "validatedPrHead": "d4ddbbe2495ca6523d4b2c4f04129bf487ab189b"
   },
   "previousEngineeringCheckpoint": {
     "workpass": "WorkPass355",
