@@ -198,7 +198,9 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
   const hasMalformedRootSections = Object.hasOwn(root, 'sections') && !isRecord(root.sections);
   const nativeSections = isRecord(root.sections) ? root.sections : {};
   const nativeRootFields = new Set([
-    'sections', 'source_subject_id', 'sourceSubjectId', 'subject_id', 'subjectId',
+    'sections', 'hmx_version', 'hmxVersion', 'record_type', 'recordType', 'version',
+    'source', 'meta', 'metadata', 'intent', 'strategy', 'created_at', 'createdAt',
+    'source_subject_id', 'sourceSubjectId', 'subject_id', 'subjectId',
     'export_id', 'exportId', 'source_lineage_id', 'sourceLineageId', 'exported_at', 'exportedAt',
   ]);
   const extraRootFields = Object.fromEntries(
