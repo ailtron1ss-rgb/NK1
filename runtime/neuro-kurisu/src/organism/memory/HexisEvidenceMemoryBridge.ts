@@ -535,7 +535,7 @@ export function decideHexisEvidenceReview(
   const memorySnapshot = memoryOS.snapshot();
   const memory = memorySnapshot.items.find((candidate) => candidate.id === payload.memoryId);
   if (!memory) return reject("canonical-memory-no-longer-exists");
-  const evidenceRecord = memory.evidenceRecords?.find((record) => record.evidenceId === payload.evidenceId && record.digest.toLowerCase() === String(payload.digest).toLowerCase());
+  const evidenceRecord = memory.evidenceRecords?.find((record) => record.evidenceId === payload.evidenceId);
   if (!evidenceRecord) return reject("canonical-evidence-receipt-missing-or-retired");
   if (!matchesCanonicalReviewEvidence(payload, memory.id, evidenceRecord)) {
     return reject("canonical-review-evidence-binding-mismatch");
