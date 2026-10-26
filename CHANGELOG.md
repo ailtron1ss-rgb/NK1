@@ -1,3 +1,16 @@
+# WorkPass359 — strict, atomic cognitive event-fabric restore (2026-10-26)
+
+- [FIXED] Restore now checks a present snapshot schema version before mutation. An unsupported version or accessor-backed root field fails closed while preserving the previous in-memory ledger.
+- [HARDENED] Event rows are decoded from own data descriptors only. Non-canonical IDs, non-safe/fractional ticks, invalid timestamps, string booleans, out-of-range/non-numeric confidence and malformed parent lists are dropped instead of silently coerced.
+- [HARDENED] Nested payloads are cloned without evaluating getters. Accessors, unsupported prototypes, cycles, sparse/extended arrays, non-JSON values and excessive depth/node counts invalidate the individual row.
+- [ATOMICITY] Event rows, receipt index rows and references are staged in local collections; live events/index/total are assigned only after the full bounded restore projection is built.
+- [COMPATIBILITY] Old snapshots may still omit the optional version and older node fields; absent legacy fields receive conservative defaults. Invalid present values are not silently normalized into stronger evidence.
+- [REGRESSION] Added cases for malformed event identities/fields, cyclic and nested accessor payloads, event/root getters, unsupported schema versions and zero-mutation preservation.
+- [CI] Existing WorkPass331 workflow path filters include `CognitiveEventFabric.ts` and `canonical-cognitive-kernel.mjs`; exact-head runtime typecheck + kernel workflow is required before this pass is validated.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass358 — conservative persisted identity and bounded optional work (2026-10-26)
 
 - [FIXED] Stop clamping corrupt persisted self-continuity values into potentially optimistic high confidence; malformed or out-of-range continuity now falls back conservatively to zero (or the default only when absent).
