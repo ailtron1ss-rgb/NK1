@@ -1,6 +1,6 @@
 ## WorkPass349 — signed-evidence dataset path identity and race closure (2026-10-26)
 
-**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`, based on source-stack commit `71e9286f9fe11c6afec851359a96f9e9b0011259).
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`, based on source-stack commit `71e9286f9fe11c6afec851359a96f9e9b0011259`.
 
 - [x] Compare the original non-symlink `lstat` identity with the canonical `realpath/stat` target; reject a path that changes identity during resolution.
 - [x] Open the configured path itself with `O_NOFOLLOW` on POSIX, rather than opening only a resolved path that might no longer refer to the inspected directory entry.
