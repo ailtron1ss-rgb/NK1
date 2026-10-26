@@ -1,3 +1,13 @@
+## App/runtime typecheck fixture repair — 2026-10-26
+
+- Added explicit JSDoc types to the safe avatar-storage test fixture so the app's strict TypeScript check can validate the .mjs test without implicit-any errors.
+- Replaced direct deletion of the global `window` property with `Reflect.deleteProperty`, preserving the test semantics while satisfying the type contract.
+- Added the fixture path to both active regression-workflow filters.
+
+Validation: exact-head app/runtime typecheck and app tests must pass before release readiness can be claimed.
+
+---
+
 ## Cognitive reliability pass — 2026-10-26
 
 - Hardened restored ActionGateway receipts: compare the persisted response identity with its ledger row, require audit/outcome/verification consistency, reject malformed or oversized payloads, and retain invalid entries as fail-closed recovery tombstones.
