@@ -115,6 +115,8 @@ assert.equal(isSafeJsonTree('x'.repeat(1_000_001)), false,
 const wideTree = Object.fromEntries(Array.from({ length: 4097 }, (_, index) => ['field-' + index, index]));
 assert.equal(isSafeJsonTree(wideTree), false,
   'a single object cannot bypass the tree budget with an excessive number of own keys');
+assert.equal(isSafeJsonTree({ [ 'k'.repeat(4097) ]: true }), false,
+  'oversized JSON object keys must fail structural validation');
 const primitiveHeavyTree = Object.fromEntries(Array.from({ length: 100 }, (_, index) =>
   ['list-' + index, Array.from({ length: 1000 }, () => true)]));
 assert.equal(isSafeJsonTree(primitiveHeavyTree), false,
