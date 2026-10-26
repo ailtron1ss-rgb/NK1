@@ -4,6 +4,12 @@
 - Prevented a discarded outcome from being attached to the next selected action. Invalid receipts also suppress unsafe learning without freezing the spine-only cycle.
 - Verified by focused Repository wiring contract audit [#40255940523](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255940523): all workflow steps succeeded. PR [#157](https://github.com/ailtron1ss-rgb/NK1/pull/157) squash-merged into the audit branch (merge commit `a3e8119113be6493507b31a0ac49afeab59c150b`).
 
+## UI build diagnostic test contract — 2026-10-26
+
+- Updated the supervisor prerequisite regression to match the real Vercel/Nitro UI output path and the corresponding `npm run build` diagnostic.
+- The clean-install attempt confirmed installs, production build, app/runtime typechecks and the organism smoke all pass; the stack run is still blocked by this stale assertion before the next live-stack rerun.
+- No production checks were relaxed.
+
 ## Vercel/Nitro UI output-path preflight fix — 2026-10-26
 
 - The new clean-install workflow proved that the production build succeeds but emits the client UI to `app/.vercel/output/static/` under the configured Vercel/Nitro preset, not `app/dist/`.
