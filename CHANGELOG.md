@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass421 — preserve unconsumed native root metadata (2026-10-26)
+
+- [DATA FIDELITY] The export bridge now preserves top-level native fields it does not consume in `sections.config.nk1NativeExport.extraRootFields`. The adapter emits a warning listing the preserved keys, avoiding silent loss during NK1→HMX mapping.
+- [REGRESSION] Added a structured nested root-extension fixture and assertion that its value survives normalization unchanged.
+- [VALIDATION] Change committed; tests have not been executed in a working runtime because all Actions jobs continue to terminate without step records.
+
 ## [NK1][Hexis] WorkPass420 — validate apply receipts before stage promotion (2026-10-26)
 
 - [CONTRACT] `decideHmx(..., 'apply')` now validates the handler receipt against the same export, lineage, stage ID and digest contract used on restored replay before setting `status='applied'`.
