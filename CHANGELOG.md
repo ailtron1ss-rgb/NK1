@@ -1,3 +1,14 @@
+## WorkPass335 — full preflight for outcome-ledger writes (2026-10-26)
+
+- **Defect:** `recordIndependentEvaluationOutcomes` previously checked some execution-binding fields only for truthiness. A malformed but truthy non-string `runId` could get as far as `VerifiedOutcomeLedger.record`, where its evidence reference was rejected. If malformed data arrived in a later row, an earlier row could already have been committed.
+- **Runtime fix:** validate every binding at the commit boundary before constructing/persisting any outcomes. Require strict `bindingVerified === true`, non-empty task/trial IDs, safe string execution/planned run IDs, non-negative safe-integer seed and safety-violation count, and a valid split. This uses runtime checks rather than relying on TypeScript types for untrusted inputs.
+- **Regression:** `workpass203-independent-candidate-evaluator.mjs` mutates the second binding's run ID to numeric `42` and recalculates the plain envelope fingerprint. The commit must fail with `independent-evaluation-ledger-unbound-run` while the ledger remains empty; the existing valid commit test then verifies both rows are accepted.
+- **Validation:** exact-head P26 Learning Validation, WorkPass108, WorkPass110 and Unified project integration suite are required after this pass; links and the exact checked HEAD will be recorded in the project tracker only after all applicable runs complete.
+- **Evidence boundary:** this closes a runtime-schema/preflight defect; a plain SHA-256 digest is still not a signature, and the patch does not claim improved learning performance or external generalization.
+- **Checkpoint:** `docs/WORKPASS335_LEDGER_PREFLIGHT_ATOMICITY_RU.md`.
+
+---
+
 ## WorkPass339 — каноническая кодировка подписей Ed25519 — 2026-10-26
 
 - **Runtime fix:** promotion и rollback approval verifier проверяют detached Ed25519 signature как канонический Base64 для ровно 64 байт: фиксированная длина, строгий алфавит, корректный padding и round-trip без изменения строки.
