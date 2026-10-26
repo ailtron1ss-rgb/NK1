@@ -9,6 +9,8 @@ import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, t
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
 import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
 import { buildNk1HmxV17Document, normalizeHmxV17Memory } from '../integration/hexis/HexisHmxV17Adapter.ts';
+import { applyHmxMemoryBatchAtomically } from '../integration/hexis/HexisHmxImportTransaction.ts';
+import type { MemoryLifecycleEncodeInput } from '../memory/MemoryFabric.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
@@ -2910,7 +2912,11 @@ export class OrganismCore {
             const existingKeys = new Set(originalItems.map((memory) => String(memory.kind) + '|' + String(memory.content)));
             const knownIds = new Set(originalItems.map((memory) => String(memory.id)));
             const plannedKeys = new Set<string>();
-            const plans: Array<{ projected: NonNullable<ReturnType<typeof normalizeHmxV17Memory>>; key: string }> = [];
+            const plans: Array<{
+                projected: NonNullable<ReturnType<typeof normalizeHmxV17Memory>>;
+                key: string;
+                input: MemoryLifecycleEncodeInput;
+            }> = [];
             let reused = 0;
             let reusedBeforeTransaction = 0;
             let skipped = 0;
@@ -2920,7 +2926,6 @@ export class OrganismCore {
                 const projected = normalizeHmxV17Memory(raw, {
                     exportId: stage.exportId,
                     sourceSubjectId: stage.sourceSubjectId,
-                    exportedAt: undefined,
                 });
                 if (!projected) {
                     skipped += 1;
@@ -2937,88 +2942,77 @@ export class OrganismCore {
                     continue;
                 }
                 plannedKeys.add(key);
-                plans.push({ projected, key });
+
+                const importedMemory = {
+                    content: projected.content,
+                    kind: projected.kind,
+                    source: 'hexis-hmx-import',
+                    tags: projected.tags,
+                    context: {
+                        ...projected.context,
+                        hmx_source_ref: projected.ref,
+                        hmx_export_id: stage.exportId,
+                        hmx_source_lineage: String(stage.sourceSubjectId ?? 'unknown').slice(0, 180),
+                    },
+                    salience: projected.salience,
+                    emotionalWeight: 0.1,
+                    identityRelevance: 0,
+                    goalRelevance: 0,
+                    socialRelevance: 0,
+                    predictionError: 0,
+                    confidence: projected.confidence,
+                    epistemicStatus: projected.epistemicStatus,
+                    entities: projected.entities,
+                    semanticLinks: [],
+                    temporalLinks: [],
+                    causalLinks: [],
+                    contradictionLinks: [],
+                    provenanceClass: 'external' as const,
+                    sourceAuthority01: projected.sourceAuthority01,
+                    independenceKey: projected.independenceKey,
+                    evidenceFreshnessAt: projected.evidenceFreshnessAt,
+                    ...(projected.createdAt !== undefined ? { createdAt: projected.createdAt } : {}),
+                    validFromAt: projected.validFromAt,
+                    validUntilAt: projected.validUntilAt,
+                    observedAt: projected.observedAt,
+                } satisfies MemoryLifecycleEncodeInput;
+                plans.push({ projected, key, input: importedMemory });
             }
 
-            const memoryOSBefore = this.memorySubsystem.memoryOS.snapshot();
-            const fabricBefore = this.memorySubsystem.fabric.snapshot();
-            let created = 0;
-            let failed = false;
-            let rollbackSucceeded = true;
-
-            try {
-                for (const { projected, key } of plans) {
-                    const importedMemory = {
-                        content: projected.content,
-                        kind: projected.kind,
-                        source: 'hexis-hmx-import',
-                        tags: projected.tags,
-                        context: {
-                            ...projected.context,
-                            hmx_source_ref: projected.ref,
-                            hmx_export_id: stage.exportId,
-                            hmx_source_lineage: String(stage.sourceSubjectId ?? 'unknown').slice(0, 180),
-                        },
-                        salience: projected.salience,
-                        emotionalWeight: 0.1,
-                        identityRelevance: 0,
-                        goalRelevance: 0,
-                        socialRelevance: 0,
-                        predictionError: 0,
-                        confidence: projected.confidence,
-                        epistemicStatus: projected.epistemicStatus,
-                        entities: projected.entities,
-                        semanticLinks: [],
-                        temporalLinks: [],
-                        causalLinks: [],
-                        contradictionLinks: [],
-                        provenanceClass: 'external' as const,
-                        sourceAuthority01: projected.sourceAuthority01,
-                        independenceKey: projected.independenceKey,
-                        evidenceFreshnessAt: projected.evidenceFreshnessAt,
-                        ...(projected.createdAt !== undefined ? { createdAt: projected.createdAt } : {}),
-                        validFromAt: projected.validFromAt,
-                        validUntilAt: projected.validUntilAt,
-                        observedAt: projected.observedAt,
-                    };
-
-                    // Keep event emission and compatibility projection outside the
-                    // transaction; HMX provenance is carried on the canonical row.
-                    const encoded = this.memorySubsystem.fabric.encode(importedMemory, {
+            const transaction = applyHmxMemoryBatchAtomically(
+                {
+                    snapshotMemory: () => this.memorySubsystem.memoryOS.snapshot(),
+                    restoreMemory: (snapshot) => this.memorySubsystem.memoryOS.restore(snapshot),
+                    snapshotLifecycle: () => this.memorySubsystem.fabric.snapshot(),
+                    restoreLifecycle: (snapshot) => this.memorySubsystem.fabric.restore(snapshot),
+                    encode: (input, commandId) => this.memorySubsystem.fabric.encode(input, {
                         tick: this.persisted.state.tick,
                         emitEvent: false,
                         syncCompatibility: false,
-                        commandId: 'hmx-import:' + sha256Stable({ stagingId: stage.stagingId, sourceRef: projected.ref }),
-                    });
-                    if (knownIds.has(String(encoded.id))) {
-                        reused += 1;
-                    } else {
-                        created += 1;
-                        knownIds.add(String(encoded.id));
-                    }
-                    existingKeys.add(key);
-                }
-            } catch {
-                failed = true;
-                // No import row emits a lifecycle event while the batch is
-                // provisional. Restore both canonical items and lifecycle receipts.
-                try {
-                    this.memorySubsystem.memoryOS.restore(memoryOSBefore);
-                } catch {
-                    rollbackSucceeded = false;
-                }
-                try {
-                    this.memorySubsystem.fabric.restore(fabricBefore);
-                } catch {
-                    rollbackSucceeded = false;
-                }
-                if (rollbackSucceeded) {
-                    created = 0;
-                    reused = reusedBeforeTransaction;
-                    skipped += plans.length;
-                } else {
-                    skipped += 1;
-                }
+                        commandId,
+                    }),
+                },
+                plans.map(({ projected, input }) => ({
+                    input,
+                    commandId: 'hmx-import:' + sha256Stable({ stagingId: stage.stagingId, sourceRef: projected.ref }),
+                })),
+                knownIds,
+            );
+
+            let created = transaction.created;
+            let transactionReused = transaction.reused;
+            let failed = transaction.outcome !== 'committed';
+            let rollbackSucceeded = transaction.outcome !== 'rollback-incomplete';
+
+            if (transaction.outcome === 'rolled-back') {
+                // No newly added/reconsolidated row survived, so only duplicates
+                // that existed before this batch count as reused.
+                reused = reusedBeforeTransaction;
+                skipped += plans.length;
+            } else if (transaction.outcome === 'rollback-incomplete') {
+                skipped += 1;
+            } else {
+                reused += transactionReused;
             }
 
             this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
