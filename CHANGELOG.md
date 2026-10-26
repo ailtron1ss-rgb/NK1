@@ -1,5 +1,6 @@
 # WorkPass373 — detached ActionGateway side-effect ingress (2026-10-26)
 
+- [TEST FIX] Before exact-head validation, corrected the detached-request regression to retain the awaited execution result variable; runtime behavior is unchanged and CI remains the source of truth.
 - [HARDENED] Snapshot `executeTool()` and `reconcileToolExecution()` inputs/options before idempotency hashing, in-flight deduplication, approval checks or async provider work.
 - [FIXED] Reject getter-backed root/nested input and option fields without executing getters; clone bounded plain JSON into detached tool payloads so caller mutation after invocation cannot change the side effect.
 - [FIXED] Stop coercing option booleans (`"false"` must not become `true`) and stop converting arbitrary expected-output values with `String()`; validate option schemas before dispatch.
