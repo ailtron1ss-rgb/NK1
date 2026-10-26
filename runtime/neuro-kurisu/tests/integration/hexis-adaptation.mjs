@@ -127,6 +127,59 @@ const validHmx = {
 };
 assert.deepEqual(validateHmxV17Document(validHmx, 'telepathy'), []);
 
+// Malformed-but-JSON metadata must produce validation issues or a null projection,
+// never a TypeError during string/number coercion of a null-prototype snapshot.
+const malformedIntentHmx = { ...validHmx, export_intent: Object.create(null) };
+assert.doesNotThrow(() => validateHmxV17Document(malformedIntentHmx, 'telepathy'));
+assert(validateHmxV17Document(malformedIntentHmx, 'telepathy').some(issue =>
+  issue.path === 'export_intent' && issue.kind === 'schema'));
+
+const malformedPrivacyHmx = {
+  ...validHmx,
+  privacy: {
+    redaction_policy: Object.create(null),
+    contains_sensitive_content: false,
+    consent_scope: Object.create(null),
+  },
+};
+assert.doesNotThrow(() => validateHmxV17Document(malformedPrivacyHmx, 'telepathy'));
+const malformedPrivacyIssues = validateHmxV17Document(malformedPrivacyHmx, 'telepathy');
+assert(malformedPrivacyIssues.some(issue => issue.path === 'privacy.redaction_policy' && issue.kind === 'schema'));
+assert(malformedPrivacyIssues.some(issue => issue.path === 'privacy.consent_scope' && issue.kind === 'schema'));
+
+const malformedMetadataHmx = {
+  ...validHmx,
+  sections: {
+    memories: [{
+      ...validHmx.sections.memories[0],
+      metadata: {
+        ...validHmx.sections.memories[0].metadata,
+        nk1_kind: Object.create(null),
+        nk1_confidence: Object.create(null),
+        tags: [Object.create(null)],
+      },
+    }],
+  },
+};
+assert.doesNotThrow(() => validateHmxV17Document(malformedMetadataHmx, 'telepathy'));
+const malformedMetadataIssues = validateHmxV17Document(malformedMetadataHmx, 'telepathy');
+assert(malformedMetadataIssues.some(issue => issue.path.endsWith('.metadata.nk1_kind') && issue.kind === 'schema'));
+assert(malformedMetadataIssues.some(issue => issue.path.endsWith('.metadata.nk1_confidence') && issue.kind === 'schema'));
+assert(malformedMetadataIssues.some(issue => issue.path.endsWith('.metadata.tags') && issue.kind === 'schema'));
+const malformedProjectionRow = {
+  ...validHmx.sections.memories[0],
+  metadata: { ...validHmx.sections.memories[0].metadata, nk1_confidence: Object.create(null) },
+};
+assert.doesNotThrow(() => normalizeHmxV17Memory(malformedProjectionRow, {
+  exportId: validHmx.export_id,
+  sourceSubjectId: validHmx.source.hexis_lineage_id,
+}));
+assert.equal(normalizeHmxV17Memory(malformedProjectionRow, {
+  exportId: validHmx.export_id,
+  sourceSubjectId: validHmx.source.hexis_lineage_id,
+}), null);
+
+
 // The adaptation fabric enforces the enum contract independently of the HTTP
 // route, so internal callers cannot create malformed or preview-only surprise stages.
 const invalidHmxModesFabric = new HexisAdaptationFabric();
