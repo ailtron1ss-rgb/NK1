@@ -544,6 +544,32 @@ assert.throws(
   'persisted receipt corruption must fail closed before any replay shortcut',
 );
 
+// A stage snapshot whose staged payload changes after review must not be applied with
+// the old digest, even if the stage status still says accepted and has no conflicts.
+const tamperDigestOwner = new HexisAdaptationFabric();
+const tamperDigestStage = tamperDigestOwner.stageHmx({
+  document: makeHmxDocument('exp_8888888888888888', {
+    memories: [{ ref: 'exp_8888888888888888:memory-one', type: 'semantic', content: 'Original approved payload.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(tamperDigestOwner.decideHmx(tamperDigestStage.stagingId, 'accept')?.status, 'accepted');
+const tamperedStageSnapshot = tamperDigestOwner.snapshot();
+const tamperedPersistedStage = tamperedStageSnapshot.hmxStages.find(stage => stage.stagingId === tamperDigestStage.stagingId);
+assert(tamperedPersistedStage);
+tamperedPersistedStage.stagedSections.memories[0].content = 'Altered payload after review.';
+const restoredTamperedOwner = new HexisAdaptationFabric();
+restoredTamperedOwner.restore(tamperedStageSnapshot);
+restoredTamperedOwner.bindCanonicalMemoryApply(() => {
+  throw new Error('tampered HMX payload must never reach canonical memory');
+});
+assert.throws(
+  () => restoredTamperedOwner.decideHmx(tamperDigestStage.stagingId, 'apply'),
+  /hmx-stage-digest-invalid/,
+  'restored stage payload tampering must fail before canonical application',
+);
+
 // Re-exporting the same source lineage with a different export ID keeps stable memory identity.
 const laterNormalizedNk1Export = normalizeNk1HmxExport({
   ...nativeNk1Export,
