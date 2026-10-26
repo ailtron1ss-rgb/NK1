@@ -1,11 +1,12 @@
-## WorkPass357 — aggregate payload text budget (2026-10-26)
+## WorkPass373 — aggregate payload text budget (2026-10-26)
 
 - **Implementation commit:** `390093223cdb38114827a27beb62d60fb897ac67`.
-- **Regression test commit:** `b98a9f3b364b72c96dfc35cdc0ba29087974243b`.
-- **Documentation commit:** `95681efe30691f7d5752f02abbf4e753e8413cf1`.
+- **Regression test commits:** `b98a9f3b364b72c96dfc35cdc0ba29087974243b`, `b2f66402b116362e6a1022b54136dea6ae9c8073`, `2d2ed2eaa6f8335b7c90dd3917f805383e8deafb`.
+- **Documentation commits:** `95681efe30691f7d5752f02abbf4e753e8413cf1` plus subsequent tracker/changelog correction.
+- **Numbering note:** implementation commit subject used provisional WorkPass357; that number is already used by an independent branch. Canonical tracking for this follow-up is WorkPass373; commits were not rewritten.
 - **Change:** count UTF-16 code units across string values and object keys in `CognitiveEventFabric.cleanPayload`; reject payloads exceeding 131,072 units. The existing `test:cognitive-event-payload-envelope` integration gate now tests a single oversized string, aggregate overflow, unchanged ledger state after rejected appends, and restore-time rejection.
-- **Validation status:** **PENDING** on the new code/test head. Existing WorkPass356 PASS evidence predates WorkPass357 and must not be reused as validation of this change. Run runtime typecheck, the focused payload-envelope test, full cognitive integration suite and release gate on the exact latest SHA.
-- **Progress:** implementation and regression coverage committed; no learning score or readiness score increased. Not merged into `main`; no new release ZIP published.
+- **Validation status:** **PENDING** for the expanded boundary/key test head. The prior code/test head passed unified integration, WorkPass110, WorkPass108, P26 and progress-ledger integrity; these results do not validate the newly expanded tests. Run runtime typecheck, the focused payload-envelope test, full cognitive integration suite and release gate on the exact latest SHA.
+- **Progress:** implementation and expanded regression coverage committed; no learning score or readiness score increased. Not merged into `main`; no new release ZIP published.
 
 ---
 
