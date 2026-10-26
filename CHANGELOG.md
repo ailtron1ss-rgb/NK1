@@ -1,3 +1,9 @@
+## [NK1][Hexis-H1 follow-up] Normalize evidence-lineage replay identities — 2026-10-26
+
+- Extended the canonical MemoryOS2/Hexis evidence-lineage regression with a replay attempt using full-width Unicode characters and surrounding whitespace that normalize to an already-recorded lineage key.
+- The regression asserts the duplicate is rejected, confidence does not ratchet, and memory indexes remain valid after snapshot/restore.
+- This is targeted replay-guard regression coverage; it does not claim improved retrieval quality or autonomous-learning uplift. Exact-head Hexis workflow validation is pending.
+
 ## [NK1][Hexis-H2] Authenticate staged HMX imports and execute Hexis CI gates — 2026-10-26
 
 - Recompute the HMX staging digest immediately before accepting an import. If protected sections, conflict records, section counts, or staged payload content changed since validation, the stage is irreversibly rejected with an auditable `digest-mismatch` conflict.
