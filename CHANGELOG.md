@@ -1,3 +1,13 @@
+## WorkPass424 — bound HMX normalizer option strings before parsing (2026-10-26)
+
+- **Normalizer code commit:** `27dc3f6e37377346ba317f8d9349af98ac5091bc`; **regression commit:** `3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e`.
+- The safe options envelope now requires any supplied `sourceSubjectId` to be a non-empty string no longer than 180 characters, and `exportedAt` to be a bounded ISO date-time (maximum 64 characters) before the value reaches `Date.parse`.
+- This closes a direct-call resource/shape bypass around the HMX document's normal snapshot size bounds. Valid canonical export IDs and optional normalizer fields are otherwise unchanged.
+- Regression rejects an overlong source identifier, an overlong exportedAt string and a malformed date string.
+- **Validation:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass423 — bind HMX memory projections to validated export options (2026-10-26)
 
 - **Normalizer code commit:** `49a5a2e90a2d98980572f44152afaf20921a08a7`; **regression commit:** `bfb55498ff8e258caa52aec95f365bac7fc0f94b`.
