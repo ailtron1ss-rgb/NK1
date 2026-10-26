@@ -481,6 +481,52 @@ assert.equal(afterReimport?.epistemicStatus, 'quarantined',
   'a later active-looking export must not silently reactivate quarantined memory');
 assert.equal(transitionLedger.snapshot().beliefs.some(belief => belief.memoryId === afterReimport.id), false);
 
+// Inject a downstream failure after the canonical status was demoted. The projector
+// must restore that pre-existing memory, graph, and belief mirror, then retry with
+// a fresh mutation receipt key for the next apply attempt.
+const failedApplyRuntime = new MemorySubsystemRuntime();
+const failedApplyLedger = new HexisAdaptationFabric();
+const failedApplyProjector = new HexisCanonicalMemoryProjector(
+  failedApplyRuntime.fabric, failedApplyRuntime.semanticMemory, failedApplyLedger,
+);
+failedApplyLedger.bindCanonicalMemoryApply(stage => failedApplyProjector.apply(stage));
+const failedApplyContent = 'Existing canonical memory for rollback proof.';
+const initialFailedApplyStage = failedApplyLedger.stageHmx({
+  document: makeHmxDocument('exp_0000000000009101', {
+    memories: [{ ref: 'exp_0000000000009101:rollback-memory', type: 'semantic', content: failedApplyContent, status: 'active' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(failedApplyLedger.decideHmx(initialFailedApplyStage.stagingId, 'accept')?.status, 'accepted');
+assert.equal(failedApplyLedger.decideHmx(initialFailedApplyStage.stagingId, 'apply')?.status, 'applied');
+const beforeInjectedFailure = failedApplyRuntime.fabric.canonicalSnapshot().items.find(item => item.content === failedApplyContent);
+assert.equal(beforeInjectedFailure?.epistemicStatus, 'belief');
+const archivedFailedStage = failedApplyLedger.stageHmx({
+  document: makeHmxDocument('exp_0000000000009102', {
+    memories: [{ ref: 'exp_0000000000009102:rollback-memory', type: 'semantic', content: failedApplyContent, status: 'archived' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(failedApplyLedger.decideHmx(archivedFailedStage.stagingId, 'accept')?.status, 'accepted');
+failedApplyLedger.removeBeliefProjection = () => { throw new Error('injected-belief-mirror-failure'); };
+assert.throws(() => failedApplyLedger.decideHmx(archivedFailedStage.stagingId, 'apply'), /hmx-canonical-apply-failed:injected-belief-mirror-failure/);
+const afterInjectedFailure = failedApplyRuntime.fabric.canonicalSnapshot().items.find(item => item.content === failedApplyContent);
+assert.equal(afterInjectedFailure?.id, beforeInjectedFailure?.id);
+assert.equal(afterInjectedFailure?.epistemicStatus, 'belief',
+  'failed HMX apply must restore an existing memory status');
+assert(failedApplyRuntime.semanticMemory.snapshot().nodes.some(node => node.sourceKey === beforeInjectedFailure.context?.hexisGraphSourceKey),
+  'failed HMX apply must restore the previous graph projection');
+assert(failedApplyLedger.snapshot().beliefs.some(belief => belief.memoryId === beforeInjectedFailure.id),
+  'failed HMX apply must restore the previous active belief mirror');
+failedApplyLedger.removeBeliefProjection = HexisAdaptationFabric.prototype.removeBeliefProjection;
+assert.equal(failedApplyLedger.decideHmx(archivedFailedStage.stagingId, 'apply')?.status, 'applied',
+  'a compensated stage must retry with a fresh command identity');
+const afterSuccessfulRetry = failedApplyRuntime.fabric.canonicalSnapshot().items.find(item => item.content === failedApplyContent);
+assert.equal(afterSuccessfulRetry?.id, beforeInjectedFailure?.id);
+assert.equal(afterSuccessfulRetry?.epistemicStatus, 'quarantined');
+
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
   const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
