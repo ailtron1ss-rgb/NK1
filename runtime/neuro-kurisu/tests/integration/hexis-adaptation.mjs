@@ -570,6 +570,23 @@ assert.throws(
   'restored stage payload tampering must fail before canonical application',
 );
 
+// An applied stage cannot be downgraded to accepted while retaining its application
+// receipt: that contradictory persisted state must never cause another canonical apply.
+const downgradedAppliedSnapshot = applyFabric.snapshot();
+const downgradedAppliedStage = downgradedAppliedSnapshot.hmxStages.find(stage => stage.stagingId === applyStage.stagingId);
+assert(downgradedAppliedStage?.application);
+downgradedAppliedStage.status = 'accepted';
+const downgradedAppliedOwner = new HexisAdaptationFabric();
+downgradedAppliedOwner.restore(downgradedAppliedSnapshot);
+downgradedAppliedOwner.bindCanonicalMemoryApply(() => {
+  throw new Error('downgraded applied stage must never be applied a second time');
+});
+assert.throws(
+  () => downgradedAppliedOwner.decideHmx(applyStage.stagingId, 'apply'),
+  /hmx-stage-digest-invalid/,
+  'a non-applied stage carrying an applied receipt must fail closed',
+);
+
 // Re-exporting the same source lineage with a different export ID keeps stable memory identity.
 const laterNormalizedNk1Export = normalizeNk1HmxExport({
   ...nativeNk1Export,
