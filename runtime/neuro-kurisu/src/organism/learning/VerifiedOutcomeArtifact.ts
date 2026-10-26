@@ -24,6 +24,46 @@ export interface SignedOutcomeArtifact {
 
 function isNonEmptyString(value: unknown): value is string { return typeof value === 'string' && value.trim().length > 0; }
 
+const SIGNED_OUTCOME_PAYLOAD_KEYS = [
+  'schemaVersion', 'artifactId', 'runId', 'manifestFingerprint', 'taskId', 'taskVersion',
+  'method', 'seed', 'attempt', 'passed', 'verifierId', 'observedAt',
+] as const;
+const SIGNED_OUTCOME_ARTIFACT_KEYS = ['payload', 'signature'] as const;
+
+/**
+ * Snapshot only an exact plain data record. Reading descriptors rather than
+ * properties prevents untrusted getters from running during evidence verification.
+ * Introspection exceptions fail closed; structural checks are not proof of caller provenance.
+ */
+function snapshotPlainDataRecord(value: unknown, expectedKeys: readonly string[]): Record<string, unknown> | null {
+  try {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const ownKeys = Reflect.ownKeys(value);
+    const expected = new Set(expectedKeys);
+    if (ownKeys.length !== expectedKeys.length ||
+        ownKeys.some(key => typeof key !== 'string' || !expected.has(key))) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const snapshot: Record<string, unknown> = Object.create(null);
+    for (const key of expectedKeys) {
+      const descriptor = descriptors[key];
+      if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) return null;
+      snapshot[key] = descriptor.value;
+    }
+    return snapshot;
+  } catch {
+    return null;
+  }
+}
+
+/** Ed25519 signatures must use one canonical Base64 spelling for exactly 64 bytes. */
+function decodeCanonicalEd25519Signature(value: unknown): Buffer | null {
+  if (typeof value !== 'string' || value.length !== 88 || !/^[A-Za-z0-9+/]{86}==$/.test(value)) return null;
+  const decoded = Buffer.from(value, 'base64');
+  return decoded.length === 64 && decoded.toString('base64') === value ? decoded : null;
+}
+
 function canonical(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonical).join(',') }]`;
@@ -70,8 +110,13 @@ export function ingestSignedOutcomeArtifact(
   // In particular, task split/family/prompt identity must not come from an unbound
   // parallel manifest, even if taskId/version/verifier happen to match.
   let suppliedManifestFingerprint: string;
+  let canonicalManifest: TaskManifestEntry[];
   try {
-    suppliedManifestFingerprint = new VerifiedOutcomeLedger(manifest).manifestFingerprint();
+    const suppliedManifestLedger = new VerifiedOutcomeLedger(manifest);
+    suppliedManifestFingerprint = suppliedManifestLedger.manifestFingerprint();
+    // Do not dereference the caller-owned array a second time: its prototype or
+    // properties could be changed after the manifest fingerprint was checked.
+    canonicalManifest = suppliedManifestLedger.snapshot().manifest;
   } catch {
     return { accepted: false, artifactFingerprint: '', rejection: 'invalid-supplied-manifest' };
   }
@@ -79,26 +124,37 @@ export function ingestSignedOutcomeArtifact(
     return { accepted: false, artifactFingerprint: '', rejection: 'supplied-manifest-mismatch' };
   }
 
-  const payload = artifact?.payload;
-  if (!payload || typeof payload !== 'object' || payload.schemaVersion !== 1) {
+  const artifactRecord = snapshotPlainDataRecord(artifact, SIGNED_OUTCOME_ARTIFACT_KEYS);
+  if (!artifactRecord || typeof artifactRecord.signature !== 'string') {
     return { accepted: false, artifactFingerprint: '', rejection: 'invalid-artifact-schema' };
+  }
+  const payloadRecord = snapshotPlainDataRecord(artifactRecord.payload, SIGNED_OUTCOME_PAYLOAD_KEYS);
+  if (!payloadRecord || payloadRecord.schemaVersion !== 1) {
+    return { accepted: false, artifactFingerprint: '', rejection: 'invalid-artifact-schema' };
+  }
+  // Continue only with the descriptor-backed snapshot, never the caller's mutable object.
+  const payload = payloadRecord as unknown as SignedOutcomePayload;
+  const signature = artifactRecord.signature;
+  if (typeof payload.manifestFingerprint !== 'string' ||
+      !isNonEmptyString(payload.artifactId) || !isNonEmptyString(payload.runId) ||
+      !isNonEmptyString(payload.taskId) || !isNonEmptyString(payload.taskVersion) ||
+      !isNonEmptyString(payload.method) || !isNonEmptyString(payload.verifierId) ||
+      !Number.isSafeInteger(payload.seed) || payload.seed < 0 ||
+      !Number.isSafeInteger(payload.attempt) || payload.attempt < 1 ||
+      typeof payload.passed !== 'boolean' ||
+      typeof payload.observedAt !== 'number' || !Number.isFinite(payload.observedAt) || payload.observedAt <= 0) {
+    return { accepted: false, artifactFingerprint: '', rejection: 'invalid-artifact-fields' };
   }
   const fingerprint = outcomePayloadFingerprint(payload);
   if (!/^[a-f0-9]{64}$/i.test(payload.manifestFingerprint) ||
       payload.manifestFingerprint !== ledger.manifestFingerprint()) {
     return { accepted: false, artifactFingerprint: fingerprint, rejection: 'manifest-fingerprint-mismatch' };
   }
-  if (!isNonEmptyString(payload.artifactId) || !isNonEmptyString(payload.runId) ||
-      !isNonEmptyString(payload.taskId) || !isNonEmptyString(payload.taskVersion) ||
-      !isNonEmptyString(payload.method) || !isNonEmptyString(payload.verifierId) ||
-      !Number.isSafeInteger(payload.seed) || payload.seed < 0 ||
-      !Number.isSafeInteger(payload.attempt) || payload.attempt < 1 ||
-      typeof payload.passed !== 'boolean' ||
-      !Number.isFinite(payload.observedAt) || payload.observedAt <= 0 ||
-      typeof artifact.signature !== 'string' || !artifact.signature.trim()) {
-    return { accepted: false, artifactFingerprint: fingerprint, rejection: 'invalid-artifact-fields' };
+  const signatureBytes = decodeCanonicalEd25519Signature(signature);
+  if (!signatureBytes) {
+    return { accepted: false, artifactFingerprint: fingerprint, rejection: 'invalid-signature-encoding' };
   }
-  const task = manifest.find(entry => entry.taskId === payload.taskId);
+  const task = canonicalManifest.find(entry => entry.taskId === payload.taskId);
   if (!task || task.version !== payload.taskVersion || task.verifierId !== payload.verifierId) {
     return { accepted: false, artifactFingerprint: fingerprint, rejection: 'manifest-task-or-verifier-mismatch' };
   }
@@ -112,7 +168,7 @@ export function ingestSignedOutcomeArtifact(
       null,
       Buffer.from(canonicalOutcomePayload(payload), 'utf8'),
       publicKey,
-      Buffer.from(artifact.signature, 'base64'),
+      signatureBytes,
     );
   } catch {
     signatureValid = false;

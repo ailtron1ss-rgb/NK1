@@ -1,3 +1,38 @@
+## WorkPass344 — verified-outcome ledger and promotion-policy trust boundary (2026-10-26)
+
+- Ledger manifest/outcome/snapshot inputs use own data descriptors, so caller getters are not invoked; unknown fields are not copied into trusted rows; sparse arrays and array subclasses fail closed.
+- Signed outcome ingestion reuses the canonical manifest snapshot for task lookup instead of dereferencing caller-owned arrays after fingerprint validation.
+- The real promotion proposal producer rejects non-finite/out-of-range thresholds and malformed/accessor-backed options instead of clamping invalid policy.
+- Regressions cover malformed signed Base64, payload/envelope getters and extra fields, ledger getters, sparse arrays/subclasses, snapshot restore and strict promotion policy.
+- **Exact code/test HEAD PASS:** `60c038454cfcf3bdb710d75f73632f585dcf65ff`. [WorkPass110 continual-learning metrics + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298598); [WorkPass108 paired evidence identity / verified promotion gate](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298708); [WorkPass105 verified outcome ledger](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298611); [Project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298594); [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298596). All five workflow runs completed `success` on this same SHA, including the P23 producer regressions, ledger restore/authentication, runtime TypeScript typecheck, app build/tests, cognitive integration contracts and runtime/research smoke.
+- **Evidence boundary:** scores remain unchanged. These integrity fixes do not claim external learning/transfer uplift or production readiness.
+
+---
+
+## WorkPass336 — harden signed outcome artifact trust boundary (2026-10-26)
+
+- [CODE] `VerifiedOutcomeArtifact.ts` now accepts only exact plain-data v1 artifact/payload records and snapshots descriptor values before validation, preventing payload or envelope getters from running during evidence ingestion.
+- [CRYPTO] Signed outcome Ed25519 signatures now require canonical standard Base64 for exactly 64 bytes, matching the activation/rollback approval boundary.
+- [REGRESSION] Expanded the signed-outcome lifecycle test for junk-prefixed, truncated, and malformed-padding signatures; accessor-bearing payload/envelope objects; and extra unbound fields in the v1 payload.
+- [VALIDATION] All five required workflows passed on exact code/test HEAD `338902ce5587c8d887acc20ae5c5181f79cd1f87`: [WorkPass110 P23 regressions + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843579), [WorkPass108 paired evidence / promotion gate](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843575), [WorkPass105 verified outcome ledger](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843582), [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843740) and [project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843566). The signed outcome artifact regression passed within WorkPass110; unified integration included app typecheck/build/tests, cognitive contracts, approval gateway E2E and runtime/research bridge smoke.
+- [SCOPE] Security-boundary hardening only; scores remain unchanged and no empirical learning uplift or full release readiness is claimed.
+
+---
+
+## WorkPass335 — verified skill revision gate hardening — 2026-10-26
+
+- **Input integrity:** malformed holdout observations with non-string task, family, method, verifier or evidence fields are safely rejected as rows; invalid top-level arrays/options return explicit errors rather than crashing on string methods.
+- **Threshold integrity:** `minPairedTasks` must be an integer from 2 to 10,000; gain and family-regression thresholds must be finite numbers in `[0, 1]`. Invalid values are rejected rather than silently clamped or defaulted.
+- The production proposal producer (`VerifiedSkillPromotion.ts`) now enforces the same strict contract before building an authenticated proposal: invalid paired-task minimum, gain/regression thresholds and complete-seed minimum raise explicit errors, and non-object options are rejected.
+- Add producer-level regressions for NaN, out-of-range thresholds, invalid complete-seed counts and null options, so malformed runtime configuration cannot be silently softened before reaching the lower-level gate.
+- **Evidence accounting:** baseline/candidate observations with mismatched task families are excluded from the paired denominator and increment `rejectedRows` exactly once per invalid pair.
+- **Regression coverage:** adds malformed-row and cross-family cases, invalid and exact-boundary threshold cases, and updates the proposal test to expect explicit failure for `NaN` configuration.
+- **Activation boundary:** candidate generation remains advisory; independent evaluation, trusted shadow evidence and explicit signed approval remain required before a skill can become active.
+
+Validation PASS on exact tested HEAD `2aa76acb545ac1a485962f4016c6586766424a0a`: [WorkPass110 continual learning metrics (P23 tests + runtime typecheck)](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825176), [Project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825161), and [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40252825150). These checks validate the code/test change; they do not establish external learning uplift or production readiness. Progress estimates remain unchanged.
+
+---
+
 ## WorkPass343 — reconcile future cognitive-substrate sidecar ticks (2026-10-26)
 
 - **Defect:** a restored sidecar could contain a valid but future `lastTick`, including `Number.MAX_SAFE_INTEGER`. Because runtime used `Math.max(coreTick, sidecarTick + 1)`, the derived projection's clock kept moving ahead of the canonical Core clock and eventually supplied an unsafe tick to `integrate()`, preventing future integration.
