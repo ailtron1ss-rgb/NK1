@@ -15,6 +15,7 @@ import {
   sampleVisemeClock,
   sampleVisemeTimeline,
   smoothEmbodimentAffect,
+  deriveEmbodimentPose,
   timelineOffsetForCharIndex,
 } from "../src/components/avatar/embodimentTimeline.ts";
 
@@ -37,11 +38,24 @@ function intent(overrides = {}) {
     expressionIntensity: 0.5,
     mouth: { open: 0.3, form: 0.2, viseme: "wide" },
     gaze: { x: 0.1, y: -0.1, driven: true },
-    body: { headTilt: 0.02, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 17 },
+    body: { headTilt: 0.02, headAngleX: 0.12, headAngleY: -0.05, bodyAngleX: 0.04, bodyAngleY: 0.03, bodyAngleZ: -0.02, breathIntensity: 0.7, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 17 },
     voiceEmphasis: 0.3,
     ...overrides,
   };
 }
+
+test("action and emotion produce bounded independent head/body pose channels", () => {
+  const explore = deriveEmbodimentPose("explore", "curiosity", 0.7);
+  const rest = deriveEmbodimentPose("rest", "sadness", 0.2);
+  const stressed = deriveEmbodimentPose("verify", "anxiety", 0.9);
+  assert.notEqual(explore.headAngleX, explore.bodyAngleX);
+  assert.ok(stressed.breathIntensity > rest.breathIntensity);
+  for (const pose of [explore, rest, stressed]) {
+    for (const key of ["headAngleX", "headAngleY", "bodyAngleX", "bodyAngleY", "bodyAngleZ"]) assert.ok(pose[key] >= -1 && pose[key] <= 1, key + " must be bounded");
+    assert.ok(pose.breathIntensity >= 0 && pose.breathIntensity <= 1);
+  }
+  assert.deepEqual(deriveEmbodimentPose("unknown", "unknown", Number.NaN), deriveEmbodimentPose("wait", "calm", 0.2));
+});
 
 test("builds grapheme-level viseme frames with UTF-16 offsets for SpeechSynthesis boundary events", () => {
   const text = "Курису 🙂 говорит!";
@@ -138,6 +152,7 @@ test("the intent envelope requires a speech identity and audio clock while speak
   assert.equal(isEmbodimentIntentV1(intent({ speechPhase: "speaking", speechEventId: null })), false);
   assert.equal(isEmbodimentIntentV1(intent({ audioTimeMs: Number.NaN })), false);
   assert.equal(isEmbodimentIntentV1(intent({ mouth: { open: 2, form: 0, viseme: "wide" } })), false, "the shared protocol rejects out-of-range values before rendering");
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...intent().body, bodyAngleY: 1.01 } })), false, "normalized torso channels reject out-of-range values");
 });
 
 test("AvatarStage publishes one versioned embodiment intent and rejects stale utterance callbacks", async () => {
@@ -149,6 +164,10 @@ test("AvatarStage publishes one versioned embodiment intent and rejects stale ut
   assert.match(source, /timelineOffsetForCharIndex/);
   assert.doesNotMatch(source, /type: "kurisu_lipsync"|type: "kurisu_embodiment"|type: "kurisu_expression"/, "the app must not split one state over legacy control messages");
   assert.match(viewer, /d\.type!=='kurisu_embodiment_intent'/);
+  assert.ok(viewer.includes("setCore('ParamBodyAngleX'"));
+  assert.ok(viewer.includes("setCore('ParamBreath'"));
+  assert.ok(viewer.includes("headAngleX"));
+
   assert.match(viewer, /intent\.stateVersion/);
   assert.doesNotMatch(viewer, /d\.type==='kurisu_lipsync'|d\.type==='kurisu_embodiment'|d\.type==='kurisu_expression'/, "viewer must accept the unified control contract, not competing writers");
 });
@@ -195,6 +214,8 @@ test("AvatarStage applies the shared affect smoothing to expression, gaze, pose 
   assert.match(source, /expressionIntensity: affectState\.expressionIntensity/);
   assert.match(source, /gaze: \{ x: affectState\.gazeX, y: affectState\.gazeY/);
   assert.match(source, /headTilt: affectState\.headTilt/);
+  assert.match(source, /deriveEmbodimentPose\(snap\.lastOption/);
+  assert.match(source, /\.\.\.bodyPose/);
   assert.match(source, /voiceEmphasis: affectState\.voiceEmphasis/);
   assert.match(source, /mouth: activeUtterance \? mouthPose : CLOSED_MOUTH/,
     "mouth pose remains driven by audio-boundary timing rather than affect smoothing");
@@ -205,6 +226,8 @@ test("versioned EmbodimentIntent JSON schema is present and pins all synchronize
   const schema = JSON.parse(await readFile(join(root, "../contracts/embodiment-intent.v1.schema.json"), "utf8"));
   assert.equal(schema.properties.protocolVersion.const, 1);
   assert.ok(schema.properties.clockSource.enum.includes("runtime-tts-start-anchored-monotonic"));
+  assert.equal(schema.properties.body.properties.bodyAngleX.minimum, -1);
+  assert.equal(schema.properties.body.properties.breathIntensity.maximum, 1);
   assert.equal(isEmbodimentIntentV1(intent({ clockSource: "runtime-tts-start-anchored-monotonic" })), true,
     "runtime TTS start-clock intents must satisfy the same v1 envelope");
   for (const key of ["stateVersion", "speechEventId", "audioClockId", "speechPhase", "audioTimeMs", "priority", "cancellationToken", "expression", "mouth", "gaze", "body", "voiceEmphasis"]) {
