@@ -1,4 +1,4 @@
-import type { OrganismSnapshot, ActionKind, EmotionLabel, MemoryRecord, Skill, Goal, Belief } from "@/organism/types";
+import type { OrganismSnapshot, ActionKind, EmotionLabel, MemoryRecord, Skill, Goal, Belief, EmotionAffectSnapshot } from "@/organism/types";
 import type { BackendUiSnapshot } from "./types";
 
 const clamp = (n: unknown, fallback = 0) => {
