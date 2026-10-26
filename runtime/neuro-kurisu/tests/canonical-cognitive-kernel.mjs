@@ -811,6 +811,16 @@ assert.equal(Object.hasOwn(externalObservationEvent?.payload??{},'expectedPostco
   'raw external postcondition text must not be persisted');
 assert.equal(receiptFabric.appendToolExternalObservation(externalObservationInput).replayed,true,
   'external observation replay must be idempotent');
+const detachedNestedIndexSnapshot=receiptFabric.snapshot();
+const detachedNestedIndex=detachedNestedIndexSnapshot.receiptProjectionIndex[0];
+assert.ok(detachedNestedIndex?.receiptRevisions?.length);
+assert.ok(detachedNestedIndex?.externalObservations?.length);
+detachedNestedIndex.receiptRevisions[0].projectionHash='d'.repeat(64);
+detachedNestedIndex.externalObservations[0].projectionHash='c'.repeat(64);
+assert.equal(receiptFabric.appendToolReceiptRevision(revisionInput).replayed,true,
+  'mutating nested exported revision refs must not poison live revision replay guards');
+assert.equal(receiptFabric.appendToolExternalObservation(externalObservationInput).replayed,true,
+  'mutating nested exported observation refs must not poison live observation replay guards');
 const expandedEvidenceSnapshot=receiptFabric.snapshot();
 const expandedEvidenceRestored=new CognitiveEventFabric(128);
 expandedEvidenceRestored.restore(expandedEvidenceSnapshot);
