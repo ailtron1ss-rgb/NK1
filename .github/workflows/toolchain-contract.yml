@@ -53,6 +53,7 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - name: Validate toolchain contract logic
         run: npm run test:toolchain-contract
       - name: Check startup and installation script syntax
