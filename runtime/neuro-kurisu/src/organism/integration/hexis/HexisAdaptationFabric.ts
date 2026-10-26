@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
 import { isValidHmxApplyReceipt } from './HexisCanonicalMemoryProjector.mjs';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
@@ -272,45 +272,6 @@ const isHmxRecord = (value: unknown): value is Record<string, unknown> =>
 const isHmxText = (value: unknown, max = 256): value is string =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max &&
     !/[\u0000-\u001f\u007f]/.test(value);
-const hasValidHmxApplicationReceipt = (stage: HexisHmxStage): boolean => {
-    const receipt: unknown = stage.application;
-    if (!isHmxRecord(receipt)) return false;
-    const keys = [
-        'version', 'exportId', 'sourceLineageId', 'stageId', 'stageDigest', 'attempt',
-        'appliedAt', 'status', 'complete', 'candidateMemoryRecords', 'uniqueMemoryRecords',
-        'importedCount', 'deduplicatedCount', 'projectedRelationships', 'deferredRelationships',
-        'semanticEdgeIds', 'memoryIds', 'createdMemoryIds', 'deferredSections', 'warnings', 'digest',
-    ];
-    if (Object.keys(receipt).length !== keys.length || keys.some((key) => !Object.hasOwn(receipt, key))) return false;
-    if (receipt.version !== 1 ||
-        receipt.exportId !== stage.exportId ||
-        receipt.sourceLineageId !== stage.sourceLineageId ||
-        receipt.stageId !== stage.stagingId ||
-        typeof stage.digest !== 'string' || receipt.stageDigest !== stage.digest ||
-        !Number.isSafeInteger(receipt.attempt) || Number(receipt.attempt) < 1 ||
-        !Number.isFinite(receipt.appliedAt) || Number(receipt.appliedAt) < 0 ||
-        !['applied', 'partial', 'noop'].includes(String(receipt.status)) ||
-        typeof receipt.complete !== 'boolean') return false;
-    for (const field of [
-        'candidateMemoryRecords', 'uniqueMemoryRecords', 'importedCount',
-        'deduplicatedCount', 'projectedRelationships', 'deferredRelationships',
-    ]) {
-        if (!Number.isSafeInteger(receipt[field]) || Number(receipt[field]) < 0) return false;
-    }
-    for (const field of ['semanticEdgeIds', 'memoryIds', 'createdMemoryIds', 'warnings']) {
-        if (!Array.isArray(receipt[field]) || !receipt[field].every((item: unknown) => typeof item === 'string')) return false;
-    }
-    if (!isHmxRecord(receipt.deferredSections) ||
-        Object.values(receipt.deferredSections).some((count: unknown) => !Number.isSafeInteger(count) || Number(count) < 0)) return false;
-    try {
-        const { digest: receiptDigest, ...base } = receipt;
-        return typeof receiptDigest === 'string' &&
-            /^[a-f0-9]{64}$/.test(receiptDigest) &&
-            createHash('sha256').update(JSON.stringify(base)).digest('hex') === receiptDigest;
-    } catch {
-        return false;
-    }
-};
 export function defaultHexisAdaptationState(): HexisAdaptationState {
     return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], goalProposals: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, hmxApplied: 0, hmxGoalProposalsCreated: 0, hmxGoalProposalsApproved: 0, hmxGoalProposalsRejected: 0, hmxGoalProposalsActivated: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
@@ -802,7 +763,7 @@ export class HexisAdaptationFabric {
         if (!stage) return null;
         if (decision === 'apply') {
             if (stage.status === 'applied') {
-                if (!hasValidHmxApplicationReceipt(stage)) throw new Error('hmx-applied-receipt-invalid');
+                if (!isValidHmxApplyReceipt(stage, stage.application)) throw new Error('hmx-applied-receipt-invalid');
                 return structuredClone(stage);
             }
             if (stage.status !== 'accepted' || stage.conflicts.length) return structuredClone(stage);
