@@ -161,6 +161,25 @@ assert.throws(
   MemoryLifecycleCommandRecoveryRequiredError,
   'control characters in persisted command IDs must invalidate receipt certainty',
 );
+const validDuplicateReceipt=durable.fabric.mutationReceipts.find(row=>row.resultKind==='memory'&&row.memoryId);
+assert.ok(validDuplicateReceipt,'fixture requires a canonical memory receipt');
+const duplicateReceiptRuntime=new MemorySubsystemRuntime();
+duplicateReceiptRuntime.fabric.restore({mutationReceipts:[validDuplicateReceipt,{...validDuplicateReceipt,memoryId:'forged-memory-id'}]});
+assert.throws(
+  () => duplicateReceiptRuntime.fabric.encode(seedInput,{commandId:validDuplicateReceipt.commandId}),
+  MemoryLifecycleCommandRecoveryRequiredError,
+  'duplicate persisted command IDs with conflicting result metadata must not replay either cached receipt',
+);
+
+const duplicateReceiptMigration=migratePersistedOrganism({
+  schemaVersion:ORGANISM_STATE_SCHEMA,
+  state:{version:ORGANISM_STATE_SCHEMA},
+  facets:{advanced:{memoryFabric:{...durable.fabric,mutationReceipts:[validDuplicateReceipt,{...validDuplicateReceipt,memoryId:'forged-memory-id'}]}}},
+});
+assert.equal(duplicateReceiptMigration.facets.advanced.memoryFabric.retiredMutationReceiptBloomCorrupt,true,
+  'state migration must mark duplicate command IDs uncertain even while deduplicating their rows');
+assert.equal(duplicateReceiptMigration.facets.advanced.memoryFabric.mutationReceipts.filter(row=>row.commandId===validDuplicateReceipt.commandId).length,1,
+  'state migration must retain at most one row for a duplicate command identity');
 
 // The journal itself remains bounded even under a long-lived organism session.
 for (let index = 0; index < 520; index++) {

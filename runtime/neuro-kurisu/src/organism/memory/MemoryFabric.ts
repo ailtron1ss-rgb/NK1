@@ -541,13 +541,18 @@ export class MemoryFabric {
       if(row.resultKind!=='boolean'&&row.booleanValue!==undefined)return false;
       return true;
     };
+    const conflictingReceiptIds=new Set<string>();
     for(const row of (Array.isArray(rawReceipts)?rawReceipts:[]).slice(-this.maxMutationReceipts)){
       if(!validReceipt(row)){this.retiredMutationReceiptBloomCorrupt=true;continue;}
       const commandId=row.commandId;
       const normalized={...row,commandId,fingerprint:row.fingerprint.toLowerCase(),at:Math.floor(row.at)};
+      if(conflictingReceiptIds.has(commandId)){this.retiredMutationReceiptBloomCorrupt=true;continue;}
       const prior=this.mutationReceipts.get(commandId);
-      if(prior&&(prior.fingerprint!==normalized.fingerprint||prior.action!==normalized.action)){
+      if(prior){
+        // Any duplicated command identity is outside the snapshot contract; even a byte-identical
+        // duplicate makes the replay journal uncertain. Never retain a receipt for that key.
         this.mutationReceipts.delete(commandId);
+        conflictingReceiptIds.add(commandId);
         this.retiredMutationReceiptBloomCorrupt=true;
         continue;
       }

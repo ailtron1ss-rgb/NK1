@@ -3,7 +3,7 @@
 - [FIX] `MemoryFabric.restore()` now requires canonical command IDs, strict numeric timestamps, bounded receipt shapes, and action/result-kind consistency. Conflicting duplicate receipt IDs mark the persisted journal uncertain.
 - [FIX] State migration no longer silently normalizes malformed or oversized hot receipt journals or malformed Bloom metadata into apparently healthy replay state. It preserves valid rows but sets the existing fail-closed corruption flag when receipt certainty is lost.
 - [SAFETY] When a receipt row is dropped or conflicting replay metadata is detected, new idempotency-keyed memory mutations require recovery instead of risking duplicate writes after restart.
-- [TEST] Extended WorkPass31 with migration and direct-restore corruption cases; Core CI now invokes the memory lifecycle replay regression explicitly alongside the new outcome-index guard.
+- [TEST] Extended WorkPass31 with migration/direct-restore corruption, control-character, and duplicate-command-ID conflicts; Core CI invokes the memory lifecycle replay regression alongside the outcome-index guard.
 - [VALIDATION] Source and test fixtures have been statically inspected; GitHub Actions currently fails before runner steps execute, so full runtime validation is not yet confirmed.
 
 ## NK1 WorkPass328 — validate restored outcome projection indexes (2026-10-26)
