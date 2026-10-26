@@ -1,3 +1,16 @@
+# WorkPass366 — strict provider revision and external evidence ingress (2026-10-26)
+
+- [HARDENED] Replace String/Boolean coercion, clamping and identity truncation in authoritative receipt revisions and external observations with own-data snapshotting and strict typed validation.
+- [FIXED] Reject non-safe ticks/revision numbers, invalid timestamps, malformed 64-hex digests, non-boolean verification/outcome flags, unsupported status values and out-of-range confidence before ledger mutation.
+- [INTEGRITY] Preserve a validated revisionNumber in revision replay references; require revisions to advance monotonically and reject duplicate/out-of-order revision evidence.
+- [RESTORE] Reconstruct revision refs only when stored revision numbers match the event payload and sequence order; discard duplicate or inconsistent observation/revision reference sets.
+- [PRIVACY] Cap postcondition text before normalization and persist only normalized hashes/presence flags, not the raw text.
+- [REGRESSION] Add replay-after-restore and no-mutation cases for provider revisions/external observations, including accessor-backed inputs and coercion attacks.
+- [VALIDATION] Exact-head CI is required; this entry records implementation, not a test PASS.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass365 — atomic tool-receipt projection and fingerprint binding (2026-10-26)
 
 - [HARDENED] Snapshot receipt inputs through own data descriptors; reject accessor-backed fields, unsafe ticks/timestamps, non-boolean evidence flags, invalid confidence and non-canonical identity strings before mutation.
