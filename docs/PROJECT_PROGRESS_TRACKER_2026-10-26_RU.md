@@ -1,3 +1,12 @@
+## WorkPass412 — проверить HMX recovery после реального JSON round-trip (2026-10-26)
+
+- **Регрессия:** `dccd678206df42ac6ed7c1f057e741619c0d453e`.
+- Усилены тесты WorkPass408: перед восстановлением вся Hexis adaptation snapshot сериализуется через `JSON.stringify/JSON.parse`. Обычный прерванный accept и восстановление изменённого payload теперь проходят через ту же JSON-границу, что использует сохранённое состояние runtime, а не только через копию в памяти.
+- Остаются обязательными проверки терминального `uncertain`, сохранения решения оператора, точного учёта исходных записей, защиты от повторного accept и сохранения конфликта integrity.
+- **Валидация:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass411 — не приписывать каждому uncertain HMX откату (2026-10-26)
 
 - **Текст UI:** `1f45d8ec3cc7eb16efa8e75da262197c4ff73cb9`; **wiring-audit:** `545b8e01a234e9e959b1d6e8ab33462ad5e27617`.
