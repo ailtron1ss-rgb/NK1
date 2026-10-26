@@ -6,6 +6,7 @@ import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 import { FeedbackDeliveryGuard } from '../src/organism/core/FeedbackDeliveryGuard.ts';
 
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
+const persistenceRuntime = await readFile(new URL('../src/organism/core/PersistenceRuntime.ts', import.meta.url), 'utf8');
 const b272 = await readFile(new URL('../src/organism/cognition/B272EndogenousGoalGenesis.ts', import.meta.url), 'utf8');
 const b273 = await readFile(new URL('../src/organism/cognition/B273AutonomousGoalLifecycle.ts', import.meta.url), 'utf8');
 const b274 = await readFile(new URL('../src/organism/cognition/B274AutonomousSkillLaboratory.ts', import.meta.url), 'utf8');
@@ -57,8 +58,12 @@ assert.ok(stateMigrations.includes('feedbackDeliveryReceipt?: unknown;'),
 assert.ok(stateMigrations.includes('feedbackDeliveryReceipt: raw.system?.feedbackDeliveryReceipt'),
   'state migration must preserve the receipt so restart cannot silently reopen feedback replay');
 
-assert.ok(core.includes("private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard()"),
-  'Core must own a feedback delivery guard');
+assert.ok(core.includes('private get feedbackDeliveryGuard() { return this.persistence.feedbackDeliveryGuard; }'),
+  'Core must route feedback replay checks through its persistence-owned guard');
+assert.doesNotMatch(core, /private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard\(\)/,
+  'Core must not construct a second private feedback guard');
+assert.ok(persistenceRuntime.includes('readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard()'),
+  'PersistenceRuntime must own the in-memory guard paired with the durable receipt sidecar');
 
 const spineStart = core.indexOf('private async feedbackSpineOnly');
 const spineEnd = core.indexOf('private expectedClosureDomains', spineStart);
