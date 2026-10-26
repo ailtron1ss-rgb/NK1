@@ -1,3 +1,11 @@
+## WorkPass349 — verify restored receipt projection fingerprints — 2026-10-26
+
+- **Defect:** snapshot restore accepted a syntactically valid `receiptProjectionIndex.projectionHash` without checking it against the action/outcome/evidence nodes it referenced. A damaged snapshot could therefore restore a false replay guard and create spurious receipt conflicts.
+- **Fix:** when event-level postcondition hashes are present, reconstruct the normalized receipt fingerprint from the retained causal nodes and restore the index only when the calculated hash matches. Reject partial hash pairs. Preserve the legacy path only when both event-level hashes are absent and the old full-input fingerprint is valid.
+- **Regression coverage:** tampered index hash is discarded while exact retained evidence can rebuild it; tampered/partial event hashes discard the index and conflicting replay is rejected; legacy hashless snapshots remain compatible.
+- **Validation:** exact-head CI is required; no PASS is claimed before the dedicated test and all required checks finish on the same SHA.
+
+---
 ## WorkPass348 — atomic tool-receipt projection — 2026-10-26
 
 - **Defect:** `appendToolReceiptTrace()` appended action, outcome and evidence records sequentially without rollback. A failure on the second/third append could leave an incomplete receipt. Replay also floored invalid fractional ticks before its existing-receipt branch and coerced malformed booleans/IDs into normalized values.

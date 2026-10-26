@@ -237,6 +237,51 @@ export class CognitiveEventFabric {
       if(action?.stage!=='tool-action' || outcome?.stage!=='tool-outcome' || evidence?.stage!=='tool-evidence') continue;
       if(action.payload.executionId!==entry.executionId || outcome.payload.executionId!==entry.executionId || evidence.payload.executionId!==entry.executionId) continue;
       if(!outcome.parentIds.includes(action.id) || !evidence.parentIds.includes(outcome.id)) continue;
+      const suppliedProjectionHash=typeof entry.projectionHash==='string'?entry.projectionHash.toLowerCase():'';
+      const projectionHashValid=/^[a-f0-9]{64}$/.test(suppliedProjectionHash);
+      const expectedHash=evidence.payload.expectedPostconditionHash;
+      const observedHash=evidence.payload.observedPostconditionHash;
+      const hasExpectedHash=typeof expectedHash==='string';
+      const hasObservedHash=typeof observedHash==='string';
+      // Legacy snapshots stored the full fingerprint only in the projection index.
+      // Modern snapshots store the postcondition hashes on the evidence node too,
+      // allowing the index fingerprint to be recomputed and checked against its evidence.
+      const legacyHashless=!hasExpectedHash&&!hasObservedHash;
+      if(!projectionHashValid||hasExpectedHash!==hasObservedHash)continue;
+      if(legacyHashless) {
+        // Keep the documented compatibility path for old snapshots that have a valid
+        // full-input projection fingerprint but no event-level postcondition hashes.
+        if(entry.projectionHash!==suppliedProjectionHash)continue;
+      } else {
+        if(!/^[a-f0-9]{64}$/i.test(expectedHash as string)||!/^[a-f0-9]{64}$/i.test(observedHash as string))continue;
+        if(typeof action.payload.tool!=='string'||typeof outcome.payload.ok!=='boolean'||
+          typeof outcome.payload.verified!=='boolean'||typeof outcome.payload.outcomeClass!=='string'||
+          typeof evidence.payload.verificationBasis!=='string'||
+          typeof evidence.payload.externalObservation!=='boolean'||
+          (evidence.payload.observationId!==null&&typeof evidence.payload.observationId!=='string')||
+          typeof evidence.payload.expectedPostconditionPresent!=='boolean'||
+          typeof evidence.payload.observedPostconditionPresent!=='boolean'||
+          typeof evidence.payload.observationIntegrated!=='boolean')continue;
+        const reconstructedProjection={
+          tick:outcome.tick,
+          executionId:entry.executionId,
+          toolId:action.payload.tool,
+          decisionId:(action.payload.requestedDecisionId??action.payload.decisionId)??null,
+          ok:outcome.payload.ok,
+          verified:outcome.payload.verified,
+          outcomeClass:outcome.payload.outcomeClass,
+          confidence01:clamp01(Number(outcome.confidence01)),
+          verificationBasis:evidence.payload.verificationBasis,
+          externalObservation:evidence.payload.externalObservation,
+          observationId:evidence.payload.observationId??null,
+          expectedPostconditionPresent:evidence.payload.expectedPostconditionPresent,
+          observedPostconditionPresent:evidence.payload.observedPostconditionPresent,
+          expectedPostconditionHash:expectedHash,
+          observedPostconditionHash:observedHash,
+          observationIntegrated:evidence.payload.observationIntegrated,
+        };
+        if(sha256Stable(reconstructedProjection)!==suppliedProjectionHash)continue;
+      }
       const externalObservations=Array.isArray(entry.externalObservations)?entry.externalObservations.slice(-32).filter((ref:any)=>{
         if(!ref||typeof ref.observationId!=='string'||!ref.observationId.trim()||ref.observationId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
         const event=restoredById.get(String(ref.eventId));
