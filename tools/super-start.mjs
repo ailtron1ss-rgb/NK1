@@ -3,10 +3,12 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveRuntimeServerEntry } from './super-runtime-paths.mjs';
+import { ensureUiBuilt } from './super-ui-build.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const stateDir = resolve(ROOT, '.super-state');
 const runtimeServerEntry = resolveRuntimeServerEntry(ROOT);
+ensureUiBuilt(ROOT);
 if (!existsSync(runtimeServerEntry)) {
   throw new Error(`Neuro-Kurisu runtime server entry is missing: ${runtimeServerEntry}`);
 }
