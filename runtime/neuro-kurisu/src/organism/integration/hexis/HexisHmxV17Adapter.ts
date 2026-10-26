@@ -84,8 +84,12 @@ function describeSection(section: string, value: unknown, exportId: string, issu
         if (row.valid_until != null && !isDateTime(row.valid_until)) {
           issues.push({ path: path + '[' + index + '].valid_until', kind: 'schema', detail: 'valid_until must be null or a valid ISO date-time.' });
         }
-        if (row.content_hash_v1 != null && (typeof row.content_hash_v1 !== 'string' || !/^[0-9a-f]{64}$/.test(row.content_hash_v1))) {
-          issues.push({ path: path + '[' + index + '].content_hash_v1', kind: 'schema', detail: 'content_hash_v1 must be a lowercase SHA-256 hash when supplied.' });
+        if (row.content_hash_v1 != null) {
+          if (typeof row.content_hash_v1 !== 'string' || !/^[0-9a-f]{64}$/.test(row.content_hash_v1)) {
+            issues.push({ path: path + '[' + index + '].content_hash_v1', kind: 'schema', detail: 'content_hash_v1 must be a lowercase SHA-256 hash when supplied.' });
+          } else if (typeof row.content === 'string' && sha256(row.content) !== row.content_hash_v1) {
+            issues.push({ path: path + '[' + index + '].content_hash_v1', kind: 'integrity', detail: 'Memory content does not match its supplied SHA-256 hash.' });
+          }
         }
         if (row.access_count != null && (!Number.isSafeInteger(row.access_count) || Number(row.access_count) < 0)) {
           issues.push({ path: path + '[' + index + '].access_count', kind: 'schema', detail: 'access_count must be a non-negative integer.' });
