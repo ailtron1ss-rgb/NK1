@@ -246,6 +246,181 @@ function requiresDurableIdempotency(tool:ToolDefinition|undefined):boolean {
   }
   return false;
 }
+class ActionGatewayIngressError extends TypeError {
+  readonly outcomeCode:string;
+  constructor(outcomeCode:string,message='action-gateway-input-invalid') {
+    super(message);
+    this.name='ActionGatewayIngressError';
+    this.outcomeCode=outcomeCode;
+  }
+}
+
+function actionGatewayOwnDataRecord(value:unknown,fields:readonly string[],context:string):Record<string,unknown>{
+  if(value===null||typeof value!=='object'||Array.isArray(value)) {
+    throw new ActionGatewayIngressError('action-gateway-input-invalid',context+'-must-be-a-record');
+  }
+  let prototype:object|null;
+  let ownKeys:PropertyKey[];
+  try {
+    prototype=Object.getPrototypeOf(value);
+    ownKeys=Reflect.ownKeys(value);
+  } catch {
+    throw new ActionGatewayIngressError('action-gateway-input-invalid',context+'-uninspectable-record');
+  }
+  if(prototype!==Object.prototype&&prototype!==null) {
+    throw new ActionGatewayIngressError('action-gateway-input-invalid',context+'-non-plain-record');
+  }
+  if(ownKeys.some(key=>typeof key!=='string')) {
+    throw new ActionGatewayIngressError('action-gateway-input-invalid',context+'-symbol-field');
+  }
+  const copied:Record<string,unknown>={};
+  for(const key of fields) {
+    let descriptor:PropertyDescriptor|undefined;
+    try { descriptor=Object.getOwnPropertyDescriptor(value,key); }
+    catch { throw new ActionGatewayIngressError('action-gateway-input-invalid',context+'-field-uninspectable:'+key); }
+    if(!descriptor)continue;
+    if(!Object.prototype.hasOwnProperty.call(descriptor,'value')) {
+      throw new ActionGatewayIngressError('action-gateway-input-invalid',context+'-field-accessor:'+key);
+    }
+    if(descriptor.enumerable!==true) {
+      throw new ActionGatewayIngressError('action-gateway-input-invalid',context+'-field-not-enumerable:'+key);
+    }
+    Object.defineProperty(copied,key,{value:descriptor.value,enumerable:true,writable:true,configurable:true});
+  }
+  return copied;
+}
+
+function cloneActionGatewayJson(value:unknown,state:{seen:Set<object>;nodes:number},depth=0):unknown {
+  state.nodes+=1;
+  if(state.nodes>16384||depth>32) {
+    throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-json-budget-exceeded');
+  }
+  if(value===null||typeof value==='string'||typeof value==='boolean')return value;
+  if(typeof value==='number') {
+    if(!Number.isFinite(value))throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-non-finite-number');
+    return value;
+  }
+  if(value===undefined)return undefined;
+  if(typeof value!=='object')throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-non-json-value');
+  if(state.seen.has(value))throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-circular-reference');
+  state.seen.add(value);
+  try {
+    let prototype:object|null;
+    let ownKeys:PropertyKey[];
+    try {
+      prototype=Object.getPrototypeOf(value);
+      ownKeys=Reflect.ownKeys(value);
+    } catch {
+      throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-uninspectable-value');
+    }
+    if(Array.isArray(value)) {
+      if(prototype!==Array.prototype||ownKeys.some(key=>typeof key!=='string'&&key!=='length')) {
+        throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-invalid-array');
+      }
+      let lengthDescriptor:PropertyDescriptor|undefined;
+      try { lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length'); }
+      catch { throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-array-length-uninspectable'); }
+      const length=lengthDescriptor&&Object.prototype.hasOwnProperty.call(lengthDescriptor,'value')
+        ?lengthDescriptor.value:undefined;
+      if(typeof length!=='number'||!Number.isSafeInteger(length)||length<0||length>4096) {
+        throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-array-length-invalid');
+      }
+      const enumerableKeys=ownKeys.filter(key=>key!=='length');
+      if(enumerableKeys.length!==length||enumerableKeys.some((key,index)=>key!==String(index))) {
+        throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-sparse-or-extended-array');
+      }
+      const copied:unknown[]=[];
+      for(let index=0;index<length;index++) {
+        let descriptor:PropertyDescriptor|undefined;
+        try { descriptor=Object.getOwnPropertyDescriptor(value,String(index)); }
+        catch { throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-array-element-uninspectable:'+index); }
+        if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true) {
+          throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-array-element-accessor-or-hole:'+index);
+        }
+        const item=cloneActionGatewayJson(descriptor.value,state,depth+1);
+        copied.push(item===undefined?null:item);
+      }
+      return copied;
+    }
+    if(prototype!==Object.prototype&&prototype!==null) {
+      throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-non-plain-object');
+    }
+    if(ownKeys.length>4096)throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-object-too-large');
+    const copied:Record<string,unknown>={};
+    for(const key of ownKeys) {
+      if(typeof key!=='string')throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-symbol-field');
+      let descriptor:PropertyDescriptor|undefined;
+      try { descriptor=Object.getOwnPropertyDescriptor(value,key); }
+      catch { throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-field-uninspectable:'+key); }
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true) {
+        throw new ActionGatewayIngressError('idempotency-input-not-serializable','action-gateway-field-accessor-or-hidden:'+key);
+      }
+      if(descriptor.value===undefined)continue; // Match stable JSON's object-field omission, using the detached copy.
+      const copiedValue=cloneActionGatewayJson(descriptor.value,state,depth+1);
+      Object.defineProperty(copied,key,{value:copiedValue,enumerable:true,writable:true,configurable:true});
+    }
+    return copied;
+  } finally {
+    state.seen.delete(value);
+  }
+}
+
+function snapshotActionGatewayOptions(value:unknown):ActionGatewayExecutionOptions {
+  const data=actionGatewayOwnDataRecord(value,[
+    'idempotencyKey','decisionId','autonomous','expectedOutputKeys','approvalId',
+  ],'action-gateway-options');
+  const options:ActionGatewayExecutionOptions={};
+  if(data.idempotencyKey!==undefined) {
+    if(typeof data.idempotencyKey!=='string')throw new ActionGatewayIngressError('invalid-action-gateway-options','idempotency-key-must-be-a-string');
+    options.idempotencyKey=data.idempotencyKey.trim();
+  }
+  if(data.decisionId!==undefined) {
+    if(typeof data.decisionId!=='string'||data.decisionId.length>180||
+      data.decisionId!==data.decisionId.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(data.decisionId)) {
+      throw new ActionGatewayIngressError('invalid-action-gateway-options','decision-id-invalid');
+    }
+    if(data.decisionId)options.decisionId=data.decisionId;
+  }
+  if(data.autonomous!==undefined) {
+    if(typeof data.autonomous!=='boolean')throw new ActionGatewayIngressError('invalid-action-gateway-options','autonomous-must-be-boolean');
+    options.autonomous=data.autonomous;
+  }
+  if(data.approvalId!==undefined) {
+    if(typeof data.approvalId!=='string'||data.approvalId.length>180||
+      data.approvalId!==data.approvalId.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(data.approvalId)) {
+      throw new ActionGatewayIngressError('invalid-action-gateway-options','approval-id-invalid');
+    }
+    if(data.approvalId)options.approvalId=data.approvalId;
+  }
+  if(data.expectedOutputKeys!==undefined) {
+    if(!Array.isArray(data.expectedOutputKeys)) {
+      throw new ActionGatewayIngressError('invalid-action-gateway-options','expected-output-keys-must-be-an-array');
+    }
+    options.expectedOutputKeys=canonicalExpectedOutputKeys(data.expectedOutputKeys)??[];
+  }
+  return options;
+}
+
+function snapshotActionGatewayRequest(
+  id:unknown,input:unknown,reason:unknown,options:unknown,
+):{id:string;input:Record<string,unknown>;reason:string;options:ActionGatewayExecutionOptions} {
+  if(typeof id!=='string'||!/^[a-z0-9._-]{2,64}$/i.test(id)) {
+    throw new ActionGatewayIngressError('action-gateway-input-invalid','tool-id-invalid');
+  }
+  if(typeof reason!=='string')throw new ActionGatewayIngressError('action-gateway-input-invalid','reason-must-be-a-string');
+  let clonedInput:unknown;
+  try { clonedInput=cloneActionGatewayJson(input,{seen:new Set<object>(),nodes:0}); }
+  catch(error) {
+    if(error instanceof ActionGatewayIngressError)throw error;
+    throw new ActionGatewayIngressError('idempotency-input-not-serializable');
+  }
+  if(clonedInput===null||typeof clonedInput!=='object'||Array.isArray(clonedInput)) {
+    throw new ActionGatewayIngressError('idempotency-input-not-serializable','tool-input-must-be-a-record');
+  }
+  const safeOptions=snapshotActionGatewayOptions(options);
+  return {id,input:clonedInput as Record<string,unknown>,reason:reason.slice(0,240),options:safeOptions};
+}
+
 function safeApprovalPreview(input:Record<string,unknown>):{keys:string[];preview:Record<string,unknown>} {
   const preview:Record<string,unknown>={};
   const redact=/(secret|password|passwd|token|authorization|credential|cookie|api.?key|private.?key|access.?key|raw.?content|binary|base64|file.?content|document.?body|prompt.?context|^(?:content|fileContents?|patch|diff|raw|document|body)$)/i;
@@ -270,8 +445,20 @@ function safeApprovalPreview(input:Record<string,unknown>):{keys:string[];previe
   return {keys:entries.map(([key])=>key),preview};
 }
 function canonicalExpectedOutputKeys(values:unknown):string[]|null {
-  if (!Array.isArray(values)) return null;
-  return [...new Set(values.map((value)=>String(value).trim()).filter(Boolean))].sort().slice(0,32);
+  if (values===undefined||values===null) return null;
+  if(!Array.isArray(values))throw new ActionGatewayIngressError('invalid-action-gateway-options','expected-output-keys-must-be-an-array');
+  const copied=cloneActionGatewayJson(values,{seen:new Set<object>(),nodes:0});
+  if(!Array.isArray(copied))throw new ActionGatewayIngressError('invalid-action-gateway-options','expected-output-keys-must-be-an-array');
+  if(copied.length>256)throw new ActionGatewayIngressError('invalid-action-gateway-options','expected-output-keys-too-large');
+  const normalized:string[]=[];
+  for(const value of copied) {
+    if(typeof value!=='string')throw new ActionGatewayIngressError('invalid-action-gateway-options','expected-output-key-must-be-a-string');
+    const key=value.trim();
+    if(!key)continue;
+    if(key.length>160||/[\u0000-\u001f\u007f-\u009f]/u.test(key))throw new ActionGatewayIngressError('invalid-action-gateway-options','expected-output-key-invalid');
+    normalized.push(key);
+  }
+  return [...new Set(normalized)].sort().slice(0,32);
 }
 export class ActionGateway {
   private readonly live:boolean;
@@ -531,7 +718,15 @@ export class ActionGateway {
   }
 
   async executeTool(id:string,input:Record<string,unknown>={},reason='tool-request',options:ActionGatewayExecutionOptions={}):Promise<ToolExecution> {
-    const rawKey=options?.idempotencyKey;
+    try {
+      const request=snapshotActionGatewayRequest(id,input,reason,options);
+      id=request.id;input=request.input;reason=request.reason;options=request.options;
+    } catch(error) {
+      const safeId=typeof id==='string'&&/^[a-z0-9._-]{2,64}$/i.test(id)?id:'unknown';
+      const code=error instanceof ActionGatewayIngressError?error.outcomeCode:'action-gateway-input-invalid';
+      return this.result(safeId,this.tools.get(safeId)?.capability??'unknown',code,'idempotency-conflict',`exec-${randomUUID()}`,{error:code},'tool execution input was rejected before any tool side effect');
+    }
+    const rawKey=options.idempotencyKey;
     if(rawKey===undefined || rawKey===null || rawKey==='') {
       if(requiresDurableIdempotency(this.tools.get(id))) return this.result(id,this.tools.get(id)?.capability??'unknown','idempotency-key-required','idempotency-key-required',`exec-${randomUUID()}`,{error:'idempotency-key-required'},'this operation is classified as side-effecting or high-risk and requires a stable key plus durable receipt ledger');
       const permission=await this.consumeDirectActionApproval(id,input,options.approvalId,options,'execute');
@@ -572,7 +767,15 @@ export class ActionGateway {
    * fail-closed for later reconciliation.
    */
   async reconcileToolExecution(id:string,input:Record<string,unknown>={},reason='tool-receipt-reconciliation',options:ActionGatewayExecutionOptions={}):Promise<ToolExecution> {
-    const rawKey=options?.idempotencyKey;
+    try {
+      const request=snapshotActionGatewayRequest(id,input,reason,options);
+      id=request.id;input=request.input;reason=request.reason;options=request.options;
+    } catch(error) {
+      const safeId=typeof id==='string'&&/^[a-z0-9._-]{2,64}$/i.test(id)?id:'unknown';
+      const code=error instanceof ActionGatewayIngressError?error.outcomeCode:'action-gateway-input-invalid';
+      return this.result(safeId,this.tools.get(safeId)?.capability??'unknown',code,'idempotency-conflict',`exec-${randomUUID()}`,{error:code},'reconciliation input was rejected before any provider lookup or tool side effect');
+    }
+    const rawKey=options.idempotencyKey;
     if(rawKey===undefined||rawKey===null||rawKey==='') return this.result(id,'unknown','reconciliation-idempotency-key-required','idempotency-recovery-required',`exec-${randomUUID()}`,{error:'reconciliation-idempotency-key-required'},'receipt reconciliation requires the original idempotency key');
     const key=String(rawKey).trim();
     if(!key||key.length>160||/[\u0000-\u001f\u007f]/.test(key)) return this.result(id,'unknown','invalid-idempotency-key','idempotency-conflict',`exec-${randomUUID()}`,{error:'invalid-idempotency-key'},'idempotency key must be 1..160 printable characters');
