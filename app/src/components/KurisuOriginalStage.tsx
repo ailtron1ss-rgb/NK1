@@ -240,10 +240,10 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
         <p className="font-display text-lg tracking-tight text-slate-100">Kurisu <span style={{ color: accent.color }}>// NK1</span></p>
         <p className="text-[10px] uppercase tracking-[.18em] text-cyan-100/60">Original 2D concept · {moodLabel[emotion]}{thinking ? " · анализ" : speaking ? " · речь" : ""}</p>
       </div>
-      <button type="button" onClick={() => setSettingsOpen((open) => !open)} aria-expanded={settingsOpen} className="absolute right-3 top-3 z-30 rounded-md border border-white/15 bg-black/60 px-2.5 py-1.5 text-[10px] font-mono text-white/85 backdrop-blur hover:border-cyan-200/50">
+      <button type="button" onClick={() => setSettingsOpen((open) => !open)} aria-expanded={settingsOpen} className="absolute right-3 top-[5.5rem] z-30 rounded-md border border-white/15 bg-black/60 px-2.5 py-1.5 text-[10px] font-mono text-white/85 backdrop-blur hover:border-cyan-200/50 md:top-3">
         {settingsOpen ? "Скрыть настройки" : "Настроить образ"}
       </button>
-      {settingsOpen ? <div className="absolute inset-x-3 top-12 z-30 max-h-[68%] overflow-y-auto rounded-lg border border-white/15 bg-[#07131b]/95 p-3 text-white shadow-xl backdrop-blur-md">
+      {settingsOpen ? <div className="absolute inset-x-3 top-20 z-30 max-h-[62%] overflow-y-auto rounded-lg border border-white/15 bg-[#07131b]/95 p-3 text-white shadow-xl backdrop-blur-md md:top-12 md:max-h-[68%]">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div><p className="text-xs font-semibold text-white">Вариант NK1 Original</p><p className="mt-0.5 text-[10px] text-white/55">Настройки сохраняются на этом устройстве.</p></div>
           <button type="button" onClick={() => { setOutfit("lab"); setEyeTone("ice"); setHairTone("copper"); setAccentTone("cyan"); setMotion("soft"); setScale(1); }} className="text-[10px] text-white/60 underline">Сбросить</button>
