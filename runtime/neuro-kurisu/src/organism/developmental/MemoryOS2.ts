@@ -1005,7 +1005,7 @@ export class MemoryOS2{
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    return structuredClone(m.context??{});
  }
- updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'|'evidenceSources'>>, reason='reconsolidation') {
+ updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'|'evidenceSources'|'sourceAuthority01'>>, reason='reconsolidation') {
    const m=this.state.items.find(x=>x.id===id); if(!m) return null;
    const before=estimateMemoryBytes(m);
    const fromStatus=m.epistemicStatus;
@@ -1023,6 +1023,18 @@ export class MemoryOS2{
     // Merge independent evidence through the canonical lineage rules. This preserves
     // replay guards, the bounded eight-source trail and the bounded 32-key tombstone.
     this.mergeIncomingEvidence(m,{...m,evidenceSources:patch.evidenceSources},updatedAt);
+   }
+   if(patch.sourceAuthority01!==undefined){
+    // Authority correction is deliberately monotonic: generic signal updates may
+    // reduce over-trusted state but can never promote a source's authority.
+    const authorityCap=c(patch.sourceAuthority01);
+    m.sourceAuthority01=Math.min(c(m.sourceAuthority01),authorityCap);
+    m.evidenceSources=(m.evidenceSources??[]).map(source=>{
+     if(source.provenanceClass==='external'&&String(source.source??'').startsWith('hexis:')){
+      return {...source,sourceAuthority01:Math.min(c(source.sourceAuthority01),authorityCap)};
+     }
+     return source;
+    });
    }
    m.lastAccessAt=updatedAt;
    m.temperature01=memoryTemperature(m);
