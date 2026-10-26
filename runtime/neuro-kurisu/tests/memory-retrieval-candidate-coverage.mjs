@@ -49,4 +49,20 @@ for (let i = 0; i < 16; i++) isolated.encode({
 });
 const exactFirst = isolated.retrieve('violet compass migration', 8, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.equal(exactFirst[0]?.id, 'separate-0', 'exact relevant memory must lead unrelated memories');
+// Tokenless queries must not fall through to recency candidates or score every item as an empty-string exact match.
+const queryless = new MemoryOS2();
+queryless.restore(structuredClone(baseline));
+const untouchedItems = queryless.snapshot().items.map(row => ({
+  id: row.id, lastAccessAt: row.lastAccessAt, retrievalCount: row.retrievalCount, temperature01: row.temperature01,
+}));
+for (const emptyQuery of ['', ' \n!!!🙂', 'a']) {
+  assert.deepEqual(queryless.retrieve(emptyQuery, 8, 0, 0, { temporalMode: 'at', asOfAt: now }), [],
+    `tokenless query must return no memories: ${JSON.stringify(emptyQuery)}`);
+  assert.equal(queryless.retrievalDiagnostics().candidateCount, 0);
+  assert.equal(queryless.retrievalDiagnostics().bm25CandidateCount, 0);
+}
+assert.deepEqual(queryless.snapshot().items.map(row => ({
+  id: row.id, lastAccessAt: row.lastAccessAt, retrievalCount: row.retrievalCount, temperature01: row.temperature01,
+})), untouchedItems, 'empty retrieval must not touch memory access, count or temperature fields');
+
 console.log('MEMORY_RETRIEVAL_CANDIDATE_COVERAGE=PASS', JSON.stringify({ candidateCount: ordered.retrievalDiagnostics().candidateCount, resultOrderStable: JSON.stringify(a) === JSON.stringify(b), retainedTarget: a.includes('row-000'), exactFirst: exactFirst[0]?.id }));
