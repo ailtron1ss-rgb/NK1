@@ -118,6 +118,35 @@ try {
   if (importedMemory.epistemicStatus !== 'belief' || Number(importedMemory.confidence) > 0.55 ||
       importedMemory.source !== 'hexis-hmx-import') throw new Error('hexis-hmx-external-trust-firewall');
 
+  // Accepting a protected/unmapped identity section must fail at the HTTP
+  // boundary rather than return 200 with a misleading successful stage.
+  const protectedExport = {
+    ...exportRes.document,
+    export_id: 'exp_abcdef0123456789',
+    sections: {
+      memories: [{
+        ref: 'exp_abcdef0123456789:memory:protected-test',
+        type: 'semantic',
+        content: 'This memory is only a fixture for protected-section testing.',
+      }],
+      identity: [{ id: 'self', summary: 'protected identity section must not merge' }],
+    },
+  };
+  const protectedStageResponse = await post('/api/organism/integration/hexis/hmx/stage', {
+    document: protectedExport, intent: 'telepathy', strategy: 'additive',
+  });
+  const protectedStage = await protectedStageResponse.json();
+  if (!protectedStageResponse.ok || protectedStage.stage?.status !== 'staged' ||
+      !protectedStage.stage?.conflicts?.length) throw new Error('hexis-hmx-protected-stage-block');
+  const protectedAcceptResponse = await post('/api/organism/integration/hexis/hmx/decide', {
+    stagingId: protectedStage.stage.stagingId, decision: 'accept',
+  });
+  const protectedAccept = await protectedAcceptResponse.json();
+  if (protectedAcceptResponse.status !== 409 || protectedAccept.ok !== false ||
+      protectedAccept.error !== 'hmx-stage-has-conflicts' ||
+      protectedAccept.stage?.status !== 'staged') throw new Error('hexis-hmx-protected-accept-fail-closed');
+
+
   if (memoryIndex.memoryIndex[0]?.id) {
     const proposal = await (await post('/api/organism/integration/hexis/retention/propose', { memoryId: memoryIndex.memoryIndex[0].id, action: 'archive', reason: 'server-smoke' })).json();
     if (!proposal.ok || !proposal.proposal?.id) throw new Error('hexis-retention-propose');
