@@ -85,7 +85,11 @@ assert.equal(retryReceipt.status, 'applied');
 assert.equal(retryReceipt.attempt, 2);
 const afterRetry = runtime.fabric.canonicalSnapshot().items;
 assert.equal(afterRetry.length, canonicalBaseline.length + 1);
-assert.equal(afterRetry[0].epistemicStatus, 'quarantined',
+const importedQuarantined = afterRetry.find(item =>
+  item.context?.hexisExportId === stage.exportId &&
+  item.context?.hexisMemoryRef === 'exp_0123456789abcdef:quarantined-record');
+assert.ok(importedQuarantined, 'the successful retry must leave its single canonical import');
+assert.equal(importedQuarantined.epistemicStatus, 'quarantined',
   'a successful retry may retain the quarantined record, but only once');
 assert.equal(temporalState.assertions.length, 1,
   'retry must produce exactly one temporal assertion after the failed attempt was rolled back');
@@ -93,6 +97,6 @@ assert.equal(temporalState.assertions.length, 1,
 console.log('WorkPass430 protected HMX rollback: PASS', JSON.stringify({
   attempts: [1, retryReceipt.attempt],
   canonicalItems: afterRetry.length,
-  status: afterRetry[0].epistemicStatus,
+  status: importedQuarantined.epistemicStatus,
   receiptJournal: runtime.fabric.inspect().mutationReceiptJournal,
 }));
