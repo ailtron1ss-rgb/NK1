@@ -22,6 +22,12 @@ for (let i = 0; i < args.length; i += 1) {
   }
 }
 
+function isIsoCalendarDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(value + 'T00:00:00.000Z');
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
 const checks = [];
 const check = (id, pass, detail) => checks.push({ id, pass: Boolean(pass), detail: String(detail ?? '') });
 async function json(rel) {
@@ -50,10 +56,13 @@ const runbook = await text('docs/RUNBOOK.md');
 const passMatch = String(superVersion?.build ?? '').match(/WORKPASS(\d+)/i);
 const currentPass = passMatch ? Number(passMatch[1]) : 0;
 const currentPassTag = Number.isInteger(currentPass) && currentPass > 0 ? `WORKPASS${currentPass}` : 'WORKPASS_UNKNOWN';
-// Current report names follow the actual release metadata date instead of a frozen date.
-// The fallback preserves older isolated contract fixtures that predate SUPER_VERSION.date.
+// Status-report names must follow a real calendar date from the release manifest.
+// Never silently fall back to a historical date: that can make stale metadata look valid.
 const statusDateCandidate = String(superVersion?.date ?? '');
-const statusDate = /^\d{4}-\d{2}-\d{2}$/.test(statusDateCandidate) ? statusDateCandidate : '2026-10-10';
+const statusDateValid = isIsoCalendarDate(statusDateCandidate);
+check('release-date-is-valid-iso-calendar-date', statusDateValid,
+  statusDateCandidate ? `date=${statusDateCandidate}` : 'SUPER_VERSION.date is missing');
+const statusDate = statusDateValid ? statusDateCandidate : 'invalid-date';
 const statusReport = await text(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${currentPassTag}.md`);
 const statusInventory = await json(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${currentPassTag}.json`);
 const scorecard = await json(`docs/PROJECT_PROGRESS_SCORECARD_${statusDate}_${currentPassTag}.json`);
@@ -65,6 +74,14 @@ if (rootPkg && superVersion) {
     `SUPER_VERSION.json=${superVersion.canonicalRuntime}; runtime package=${runtimePkg?.version}`);
   check('schema-is-valid', Number.isInteger(superVersion.schema) && superVersion.schema > 0,
     `schema=${superVersion.schema}`);
+  const releaseRootDate = String(superVersion.releaseRoot ?? '').match(/_(\d{4}-\d{2}-\d{2})$/)?.[1] ?? '';
+  const sourceBaselineDate = String(superVersion.sourceBaseline ?? '').match(/_(\d{4}-\d{2}-\d{2})\.zip$/)?.[1] ?? '';
+  check('release-root-date-aligned',
+    statusDateValid && isIsoCalendarDate(releaseRootDate) && releaseRootDate === statusDateCandidate,
+    `releaseDate=${statusDateCandidate || '(missing)'}; releaseRootDate=${releaseRootDate || '(missing/invalid)'}`);
+  check('source-baseline-date-not-after-release-date',
+    statusDateValid && isIsoCalendarDate(sourceBaselineDate) && sourceBaselineDate <= statusDateCandidate,
+    `releaseDate=${statusDateCandidate || '(missing)'}; sourceBaselineDate=${sourceBaselineDate || '(missing/invalid)'}`);
   check('not-marked-release-ready', /implementation-workpass/i.test(superVersion.releaseStatus || '') && !/release.ready/i.test(superVersion.releaseStatus || ''),
     `releaseStatus=${superVersion.releaseStatus}`);
   check('workpass-build-lineage', currentPass >= 1 && new RegExp(`WORKPASS${currentPass}`).test(superVersion.build || '') && new RegExp(`WORKPASS${currentPass}`).test(superVersion.releaseRoot || '') && new RegExp(`WORKPASS${currentPass - 1}`).test(superVersion.sourceBaseline || ''),
