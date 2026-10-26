@@ -36,3 +36,21 @@ export function decideSupervisedChildExit({ label, code, signal, shuttingDown })
     message: `[super] ${service} exited unexpectedly with code ${exitCode}`,
   };
 }
+
+export function decideSupervisedChildSpawnError({ label, errorMessage, shuttingDown }) {
+  if (shuttingDown === true) {
+    return { action: 'ignore', reason: 'supervisor-shutdown', message: '' };
+  }
+
+  const service = typeof label === 'string' && label.trim()
+    ? label.trim().replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80)
+    : 'unknown-service';
+  const detail = typeof errorMessage === 'string'
+    ? errorMessage.replace(/[\\u0000-\\u001f\\u007f-\\u009f]/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 200)
+    : '';
+  return {
+    action: 'shutdown',
+    reason: `child:${service}:spawn-error`,
+    message: `[super] ${service} spawn error${detail ? `: ${detail}` : ''}`,
+  };
+}
