@@ -1,3 +1,14 @@
+# WorkPass353 — make completion retries idempotent and preflight cycle finalization (2026-10-26)
+
+- [FIXED] `CanonicalCognitiveKernel.completeCycle()` reuses the stored outcome event timestamp when a replay omits `at`. A valid retry no longer generates a fresh wall-clock time and falsely conflicts with the same stable event IDs; explicit timestamps remain part of the identity.
+- [FIXED] Added `UnifiedCognitiveCycle.assertCanAdvance()` and call it before completion event writes. Strict tick monotonicity and safe-integer counter capacity are checked before outcome, learning, or self-update can be appended.
+- [REGRESSION] Added cases proving an omitted-timestamp completion replay is read-only and a restored counter at `Number.MAX_SAFE_INTEGER` fails without appending any of the three completion records or mutating cycle state.
+- [INTEGRATION] Exposed `npm run test:canonical-cognitive-kernel` for the existing canonical-kernel regression suite. The unified WorkPass331 CI workflow already includes the modified kernel, cycle ledger and regression file.
+- [VALIDATION] Exact-head GitHub Actions validation is required and will be reported only after its actual result is checked.
+- [RELEASE] `main` and the published Release ZIP are unchanged.
+
+---
+
 # WorkPass352 — block stale decision resurrection after event retention (2026-10-26)
 
 - [FIXED] `CanonicalCognitiveKernel.beginDecisionCycle()` now reads the monotonic `UnifiedCognitiveCycle.lastTick` before writing. A decision tick at or below the finalized watermark can only be returned as a read-only replay when all eight canonical stage records still exist and match; otherwise it fails with `canonical-cognitive-kernel-stale-decision` without recreating evicted events.
