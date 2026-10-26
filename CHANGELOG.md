@@ -1,3 +1,13 @@
+## WorkPass405 — quarantine HMX imports with an incomplete rollback (2026-10-26)
+
+- **Code commit:** `7c50f4a34dfc1198b9ec1347b1938d38fd7e73cc`; **regression commit:** `637429b82ae8913760b89b9544cd21a00457c3bd`.
+- Found a receipt dead-end in the WorkPass403 accounting guard: the core's `rollback-incomplete` path can report a syntactically `partial` result whose counters do not match the source row count, leaving an already-accepted import stuck at `pending`.
+- The receipt ledger now distinguishes terminal `uncertain` from ordinary `partial`. For the explicit `memory-encode-failed-rollback-incomplete` reason, it keeps only positively reported created/reused counts, derives the remaining source count, validates exact accounting, and closes the receipt. A later accept cannot replay the same stage or rewrite the terminal result.
+- Regression verifies an incomplete-rollback result is persisted as `uncertain`, its counters account for the source record, and a subsequent nominal `applied` receipt cannot overwrite it.
+- **Validation:** PENDING exact-head runtime typecheck, `test:hexis-adaptation`, server smoke and Unified integration. No PASS/readiness uplift claimed until an exact-head run exposes usable steps/logs. `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass404 — uniform non-object body rejection across Hexis API (2026-10-26)
 
 - **Server code:** `9e67b36842b28042de4b82ad049452e5b01ad747`; **server-smoke regression:** `0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a`.
