@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass391 — reject HMX reference collisions (2026-10-26)
+
+- [SAFETY] HMX memory sections now fail atomically when a reference is repeated, even when the repeated rows share identical text but differ in type or other metadata.
+- [FIX] This also catches collisions produced by native-ID slug normalization (for example, `Foo Bar` and `foo-bar`) before the adapter can select the first row and silently discard the second.
+- [TEST] Added direct duplicate-reference and exporter-generated slug-collision regressions. The whole memory section remains omitted and the stage is not eligible for acceptance.
+- [VALIDATION] The regression is wired into the existing HMX integration suite; execution remains unconfirmed while Actions jobs fail before runner allocation.
+
 ## [NK1][Hexis] WorkPass390 — recover partial canonical writes and keep temporal replays idempotent (2026-10-26)
 
 - [FIX] The HMX projector now verifies that candidate canonical memory IDs were actually removed during compensation. A writer that commits then throws, followed by a failed/non-effective forget, is reported as an incomplete rollback instead of silently presenting a clean failure.
