@@ -107,6 +107,23 @@ assert.throws(() => fabric.append(makeEvent({
 assert.equal(fabric.snapshot().total, beforeInvalidPayload);
 assert.equal(fabric.snapshot().recent.some(event => event.id === 'cef:test:identity:cyclic'), false);
 
+// Identity and source values must be canonical at write time, so trim-based aliases
+// cannot be accepted as replays and cannot disappear after a restart.
+const beforeNonCanonical=fabric.snapshot().total;
+assert.throws(
+  ()=>fabric.append(makeEvent({id:' cef:test:identity:padded-id',source:'identity-test'})),
+  /invalid-cognitive-event-id/,
+);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:control-source',source:'bad\\nsource'})),
+  /invalid-cognitive-event-source/,
+);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:padded-parent',parentIds:[' parent:1']})),
+  /invalid-cognitive-event-parent-id/,
+);
+assert.equal(fabric.snapshot().total,beforeNonCanonical,'non-canonical identity fields must fail before ledger mutation');
+
 // Identity-bearing source and parent fields reject overflow instead of aliasing.
 const boundedSource='s'.repeat(120);
 const boundedSourceEvent=fabric.append(makeEvent({
@@ -173,6 +190,27 @@ restoreBounds.restore({
 assert.equal(restoreBounds.getById(boundedRestoreId)?.payload.recovered,'id');
 assert.equal(restoreBounds.getById('cef:test:restore:bounded-parent')?.payload.recovered,'parent');
 assert.equal(restoreBounds.getById('cef:test:restore:bounded-source')?.payload.recovered,'source');
+
+const nonCanonicalRestore=new CognitiveEventFabric(128);
+const canonicalId='cef:test:restore:canonical-id';
+const canonicalParentId='cef:test:restore:canonical-parent';
+const canonicalSourceId='cef:test:restore:canonical-source';
+const canonicalRows=[
+  {...makeEvent({id:` ${canonicalId}`}),payload:{recovered:false}},
+  {...makeEvent({id:canonicalId}),payload:{recovered:true}},
+  {...makeEvent({id:canonicalParentId,parentIds:[' parent:1']}),payload:{recovered:false}},
+  {...makeEvent({id:canonicalParentId,parentIds:['parent:1']}),payload:{recovered:true}},
+  {...makeEvent({id:canonicalSourceId,source:'bad\\nsource'}),payload:{recovered:false}},
+  {...makeEvent({id:canonicalSourceId,source:'source-valid'}),payload:{recovered:true}},
+];
+nonCanonicalRestore.restore({
+  version:1,capacity:128,total:canonicalRows.length,buffered:canonicalRows.length,
+  linkedParentEvents:0,danglingParentLinks:0,lineageIntegrity01:1,cycleCoverage01:0,
+  causalDensity01:0,recentTicks:0,recent:canonicalRows,
+});
+assert.equal(nonCanonicalRestore.getById(canonicalId)?.payload.recovered,true);
+assert.equal(nonCanonicalRestore.getById(canonicalParentId)?.payload.recovered,true);
+assert.equal(nonCanonicalRestore.getById(canonicalSourceId)?.payload.recovered,true);
 
 // Restore must skip malformed clock/evidence types instead of flooring/coercing them.
 // Invalid rows must not reserve their IDs, so a following valid copy can be recovered.
