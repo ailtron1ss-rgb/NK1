@@ -5,6 +5,13 @@ import { MemoryOS2 } from '../../src/organism/developmental/MemoryOS2.ts';
 import { HexisAdaptationFabric } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 import { P65EpistemicLedger } from '../../src/organism/memory/P65EpistemicLedger.ts';
 import { SourceMonitor } from '../../src/organism/memory/SourceMonitor.ts';
+import { MemoryFabric, MemoryLifecycleCommandConflictError } from '../../src/organism/memory/MemoryFabric.ts';
+import { EventLog } from '../../src/organism/memory/EventSourcing.ts';
+import { MultiTimescaleMemory } from '../../src/organism/memory/MultiTimescaleMemory.ts';
+import { MemorySubstrateCoordinator } from '../../src/organism/developmental/MemorySubstrateCoordinator.ts';
+import { UnifiedMemorySystem } from '../../src/organism/developmental/UnifiedMemorySystem.ts';
+import { P62MemoryFabric } from '../../src/organism/memory/P62MemoryFabric.ts';
+import { SemanticMemoryGraph } from '../../src/organism/memory/SemanticMemoryGraph.ts';
 
 function encode(memoryOS, content, kind = 'semantic', source = 'learning-review-fixture') {
   return memoryOS.encode({
@@ -31,6 +38,17 @@ function encode(memoryOS, content, kind = 'semantic', source = 'learning-review-
 
 // Correction creates a canonical temporal revision, and records its review origin once.
 const memoryOS = new MemoryOS2({ signalFusionProfile: 'balanced' });
+const events = new EventLog(128);
+const makeMemoryFabric = (store, eventLog) => new MemoryFabric(
+  store,
+  eventLog,
+  new MultiTimescaleMemory(),
+  new MemorySubstrateCoordinator(),
+  new UnifiedMemorySystem(),
+  new P62MemoryFabric(),
+  new SemanticMemoryGraph(),
+);
+const fabric = makeMemoryFabric(memoryOS, events);
 const original = encode(memoryOS, 'The original learned fact.');
 const reviewed = new HexisAdaptationFabric().createLearningReview({
   periodStart: 0,
@@ -48,35 +66,70 @@ const item = reviewed.items[0];
 assert.ok(item);
 const reviewId = reviewed.id;
 const itemId = item.id;
-const corrected = memoryOS.reviseContent(original.id, 'The corrected canonical fact.', {
+const correctionText = 'The corrected canonical fact.';
+const correctionOptions = {
   reason: 'hexis-learning-review-correction',
   source: 'hexis-learning-review',
   confidence: original.confidence,
+};
+const correctionCommandId = 'hexis-review-correction:fixture-' + reviewId + '-' + itemId;
+const corrected = fabric.reviseContent(original.id, correctionText, correctionOptions, {
+  commandId: correctionCommandId,
+  tick: 2,
 });
 assert.ok(corrected);
 assert.notEqual(corrected.id, original.id, 'a content correction must create a revision row');
 assert.equal(memoryOS.get(original.id).supersededById, corrected.id, 'the old row must point to its corrected successor');
 assert.equal(memoryOS.temporalAt(original.id, Date.now())?.id, corrected.id, 'current temporal recall must select the corrected revision');
+const eventsAfterCorrection = events.list().length;
+const retryCorrection = fabric.reviseContent(original.id, correctionText, correctionOptions, {
+  commandId: correctionCommandId,
+  tick: 3,
+});
+assert.equal(retryCorrection?.id, corrected.id, 'the same review correction command must replay the same revision');
+assert.equal(memoryOS.temporalChain(original.id).length, 2, 'retry must not create another temporal revision');
+assert.equal(events.list().length, eventsAfterCorrection, 'replaying correction must not emit a second lifecycle event');
+assert.ok(fabric.snapshot().mutationReceipts.some(row => row.commandId === correctionCommandId), 'correction command receipt is durable');
 
 const reviewEvidenceKey = 'hexis-review:fixture-' + reviewId + '-' + itemId;
-const receipt = memoryOS.recordEvidence(corrected.id, {
+const evidenceCommandId = 'hexis-review-evidence:fixture-' + reviewId + '-' + itemId + '-' + corrected.id;
+const receipt = fabric.recordEvidence(corrected.id, {
   source: 'hexis-learning-review:' + reviewId,
   provenanceClass: 'unknown',
   sourceAuthority01: .5,
   independenceKey: reviewEvidenceKey,
-});
+}, { commandId: evidenceCommandId, tick: 4 });
 assert.equal(receipt.ok, true);
 assert.equal(receipt.added, true, 'the review origin is recorded once on the corrected memory');
 assert.equal(memoryOS.hasEvidenceLineage(corrected.id, reviewEvidenceKey), true);
+
 const restored = new MemoryOS2({ signalFusionProfile: 'balanced' });
 restored.restore(memoryOS.snapshot());
+const restoredEvents = new EventLog(128);
+restoredEvents.restore(events.list());
+const restoredFabric = makeMemoryFabric(restored, restoredEvents);
+restoredFabric.restore(fabric.snapshot());
 assert.equal(restored.hasEvidenceLineage(corrected.id, reviewEvidenceKey), true, 'the review lineage survives restore');
-assert.equal(restored.recordEvidence(corrected.id, {
+const eventsBeforeReplay = restoredEvents.list().length;
+const restoredCorrection = restoredFabric.reviseContent(original.id, correctionText, correctionOptions, {
+  commandId: correctionCommandId,
+  tick: 5,
+});
+assert.equal(restoredCorrection?.id, corrected.id, 'restored correction receipt returns the same revision');
+assert.equal(restoredEvents.list().length, eventsBeforeReplay, 'restored correction replay emits no duplicate event');
+const restoredEvidence = restoredFabric.recordEvidence(corrected.id, {
   source: 'hexis-learning-review:' + reviewId,
   provenanceClass: 'unknown',
   sourceAuthority01: .5,
   independenceKey: reviewEvidenceKey,
-}).added, false, 'a retry after restore must not append the same review source twice');
+}, { commandId: evidenceCommandId, tick: 6 });
+assert.equal(restoredEvidence.added, false, 'restored evidence receipt prevents a duplicate independent source');
+assert.equal(restoredEvents.list().length, eventsBeforeReplay, 'restored evidence replay emits no duplicate event');
+assert.throws(() => restoredFabric.reviseContent(original.id, 'Conflicting correction payload.', correctionOptions, {
+  commandId: correctionCommandId,
+  tick: 7,
+}), MemoryLifecycleCommandConflictError, 'same mutation command ID with a different correction must fail closed');
+assert.equal(memoryOS.temporalChain(original.id).length, 2, 'restore replay must preserve a single correction revision');
 assert.equal(restored.indexDiagnostics().pass, true);
 
 // The canonical memory policy already forbids deleting protected identity and quarantined records.
