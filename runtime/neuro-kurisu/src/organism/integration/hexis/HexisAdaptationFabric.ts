@@ -1028,6 +1028,11 @@ export class HexisAdaptationFabric {
             entry.status = 'published';
             entry.publishedAt = at;
             delete entry.reconciliationRequiredAt;
+            // A late success ACK supersedes any earlier "not published" conclusion;
+            // preserve that conclusion only in resolutionHistory.
+            delete entry.resolution;
+            delete entry.resolutionEvidenceRef;
+            delete entry.resolvedAt;
             entry.updatedAt = at;
             if (error) entry.lastError = String(error).slice(0, 500);
             return structuredClone(entry);
@@ -1067,7 +1072,7 @@ export class HexisAdaptationFabric {
             entry.status = 'published';
             entry.publishedAt = at;
             this.state.metrics.outboxPublished += 1;
-            entry.lastError = undefined;
+            delete entry.lastError;
         } else {
             entry.status = entry.attempts >= 3 ? 'failed' : 'pending';
             entry.lastError = 'reconciled-not-published:' + reference;
