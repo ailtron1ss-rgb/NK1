@@ -201,6 +201,91 @@ export interface HexisAdaptationState {
 }
 const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
 const digest = (value: unknown) => sha256Stable(value, 'legacy');
+function hmxStageDigestInput(stage: HexisHmxStage) {
+    return {
+        exportId: stage.exportId,
+        intent: stage.intent,
+        strategy: stage.strategy,
+        sourceSubjectId: stage.sourceSubjectId,
+        sectionCounts: stage.sectionCounts,
+        protectedSections: stage.protectedSections,
+        conflicts: stage.conflicts,
+        stagedSections: stage.stagedSections,
+        applicationMode: stage.applicationMode,
+    };
+}
+
+/**
+ * Revalidate a pending HMX stage before any state transition. The original
+ * source is never read again; only the bounded staged snapshot is rechecked.
+ */
+function pendingHmxStageIntegrityIssue(stage: HexisHmxStage): string | null {
+    try {
+        if (!stage || typeof stage !== 'object' ||
+            typeof stage.stagingId !== 'string' ||
+            typeof stage.exportId !== 'string' ||
+            !/^exp_[0-9a-f]{16}$/.test(stage.exportId) ||
+            !['port', 'duplicate', 'telepathy', 'analysis'].includes(stage.intent) ||
+            !['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(stage.strategy) ||
+            !Number.isFinite(stage.createdAt) ||
+            !Array.isArray(stage.protectedSections) ||
+            !Array.isArray(stage.conflicts) ||
+            !stage.sectionCounts || typeof stage.sectionCounts !== 'object' || Array.isArray(stage.sectionCounts) ||
+            !stage.stagedSections || typeof stage.stagedSections !== 'object' || Array.isArray(stage.stagedSections)) {
+            return 'persisted-stage-shape-invalid';
+        }
+
+        const expectedMode = stage.intent === 'telepathy' && stage.strategy === 'additive'
+            ? 'memory-merge'
+            : 'preview-only';
+        if (stage.applicationMode !== expectedMode) return 'persisted-stage-application-mode-mismatch';
+        if (typeof stage.digest !== 'string' || digest(hmxStageDigestInput(stage)) !== stage.digest) {
+            return 'persisted-stage-digest-mismatch';
+        }
+        if (stage.conflicts.length > 0) return 'persisted-stage-has-validation-conflicts';
+
+        const countKeys = Object.keys(stage.sectionCounts).sort();
+        const stagedKeys = Object.keys(stage.stagedSections).sort();
+        if (countKeys.length !== stagedKeys.length ||
+            countKeys.some((key, index) => key !== stagedKeys[index])) {
+            return 'persisted-stage-section-count-keys-mismatch';
+        }
+        for (const key of stagedKeys) {
+            const declaredCount = stage.sectionCounts[key];
+            const value = stage.stagedSections[key];
+            const actualCount = Array.isArray(value) ? value.length
+                : value && typeof value === 'object' ? Object.keys(value as Record<string, unknown>).length
+                : 1;
+            if (!Number.isSafeInteger(declaredCount) || declaredCount < 0 || declaredCount !== actualCount) {
+                return 'persisted-stage-section-count-mismatch:' + key;
+            }
+        }
+
+        const sourceSubjectId = typeof stage.sourceSubjectId === 'string' && stage.sourceSubjectId.trim()
+            ? stage.sourceSubjectId
+            : 'nk1-stage-validation';
+        const validationIssues = validateHmxV17Document({
+            hmx_version: '1.7',
+            export_id: stage.exportId,
+            export_intent: stage.intent,
+            exported_at: '2026-10-26T00:00:00.000Z',
+            source: {
+                instance_id: sourceSubjectId,
+                schema_version: '1.7',
+                embedding_model: 'nk1-stage-validation',
+                embedding_dimension: 1,
+                hexis_lineage_id: sourceSubjectId,
+            },
+            sections: stage.stagedSections,
+        }, stage.intent);
+        if (validationIssues.length > 0) {
+            return 'persisted-stage-schema-revalidation-failed:' + validationIssues[0].kind;
+        }
+        return null;
+    } catch {
+        return 'persisted-stage-integrity-check-failed';
+    }
+}
 const sourceKey = (source: HexisEvidenceSource) => String(source.ref || source.label || source.contentHash || digest(source));
 const nowMs = () => Date.now();
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
@@ -229,10 +314,35 @@ export class HexisAdaptationFabric {
             retentionProposals: Array.isArray(value.retentionProposals) ? value.retentionProposals.slice(-512) : [],
             fidelityReceipts: Array.isArray(value.fidelityReceipts) ? value.fidelityReceipts.slice(-512) : [],
             hmxStages: Array.isArray(value.hmxStages)
-                ? value.hmxStages.slice(-32).map((stage: any) => ({
-                    ...stage,
-                    stagedSections: stage?.stagedSections && typeof stage.stagedSections === 'object' ? stage.stagedSections : {},
-                  }))
+                ? value.hmxStages.slice(-32).map((rawStage: any) => {
+                    const stage: HexisHmxStage = {
+                        ...rawStage,
+                        stagedSections: rawStage?.stagedSections && typeof rawStage.stagedSections === 'object' && !Array.isArray(rawStage.stagedSections)
+                            ? rawStage.stagedSections
+                            : Object.create(null),
+                    };
+                    if (stage.status !== 'staged') return stage;
+                    const integrityIssue = pendingHmxStageIntegrityIssue(stage);
+                    if (!integrityIssue) return stage;
+                    const conflict = {
+                        path: '$',
+                        kind: 'persisted-stage-integrity-failure',
+                        detail: integrityIssue,
+                    };
+                    return {
+                        ...stage,
+                        status: 'rejected' as const,
+                        conflicts: [...(Array.isArray(stage.conflicts) ? stage.conflicts : []), conflict].slice(-64),
+                        importResult: {
+                            status: 'skipped' as const,
+                            created: 0,
+                            reused: 0,
+                            skipped: Math.max(0, Number(stage.sectionCounts?.memories) || 0),
+                            reason: 'persisted-stage-integrity-failure',
+                            completedAt: nowMs(),
+                        },
+                    };
+                  })
                 : [],
             outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
             connectorPolicies: normalizedPolicies,
@@ -432,8 +542,30 @@ export class HexisAdaptationFabric {
     }
     decideHmx(stagingId: string, decision: 'accept' | 'reject'): HexisHmxStage | null {
         const stage = this.state.hmxStages.find((item) => item.stagingId === stagingId);
-        if (!stage || stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length)) {
-            return stage ? structuredClone(stage) : null;
+        if (!stage) return null;
+        if (stage.status === 'staged') {
+            const integrityIssue = pendingHmxStageIntegrityIssue(stage);
+            if (integrityIssue) {
+                const conflict = {
+                    path: '$',
+                    kind: 'persisted-stage-integrity-failure',
+                    detail: integrityIssue,
+                };
+                stage.status = 'rejected';
+                stage.conflicts = [...(Array.isArray(stage.conflicts) ? stage.conflicts : []), conflict].slice(-64);
+                stage.importResult = {
+                    status: 'skipped',
+                    created: 0,
+                    reused: 0,
+                    skipped: Math.max(0, Number(stage.sectionCounts?.memories) || 0),
+                    reason: 'persisted-stage-integrity-failure',
+                    completedAt: nowMs(),
+                };
+                return structuredClone(stage);
+            }
+        }
+        if (stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length)) {
+            return structuredClone(stage);
         }
         stage.status = decision === 'accept' ? 'accepted' : 'rejected';
         if (decision === 'reject') {
