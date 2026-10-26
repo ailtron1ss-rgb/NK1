@@ -1,3 +1,25 @@
+## WorkPass335 — verified skill revision gate hardening — 2026-10-26
+
+- **Input integrity:** malformed holdout observations with non-string task, family, method, verifier or evidence fields are safely rejected as rows; invalid top-level arrays/options return explicit errors rather than crashing on string methods.
+- **Threshold integrity:** `minPairedTasks` must be an integer from 2 to 10,000; gain and family-regression thresholds must be finite numbers in `[0, 1]`. Invalid values are rejected rather than silently clamped or defaulted.
+- **Evidence accounting:** baseline/candidate observations with mismatched task families are excluded from the paired denominator and increment `rejectedRows` exactly once per invalid pair.
+- **Regression coverage:** adds malformed-row and cross-family cases, invalid and exact-boundary threshold cases, and updates the proposal test to expect explicit failure for `NaN` configuration.
+- **Activation boundary:** candidate generation remains advisory; independent evaluation, trusted shadow evidence and explicit signed approval remain required before a skill can become active.
+
+Validation: exact-head P23 tests, runtime typecheck and the linked CI suites remain pending. Progress estimates are unchanged; no learning-performance uplift or production-readiness claim is made.
+
+---
+
+## WorkPass335 — canonical Ed25519 approval signature encoding — 2026-10-26
+
+- Require promotion and rollback approval signatures to use canonical standard Base64 representing exactly 64 Ed25519 bytes. Round-trip validation rejects whitespace, trailing junk, truncation and other alternate encodings before cryptographic verification.
+- Apply the same guard to both skill activation and rollback paths without weakening the existing default-deny approval and evidence checks.
+- Add regression cases proving canonical signatures remain valid while malformed promotion and rollback encodings are rejected.
+
+Validation: exact-head versioned skill-store regression and runtime typecheck are pending. This is an integrity hardening change, not evidence of better task performance or release readiness.
+
+---
+
 ## WorkPass338 — отключён автокэш npm в standalone ledger CI (2026-10-26)
 
 - Первый запуск WorkPass336 остановился на `actions/setup-node@v6` до тестов: автокэш искал lockfile в корне, где его нет (lockfiles находятся в отдельных workspaces).
