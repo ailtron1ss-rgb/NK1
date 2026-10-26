@@ -62,7 +62,15 @@ const statusDateCandidate = String(superVersion?.date ?? '');
 const statusDateValid = isIsoCalendarDate(statusDateCandidate);
 check('release-date-is-valid-iso-calendar-date', statusDateValid,
   statusDateCandidate ? `date=${statusDateCandidate}` : 'SUPER_VERSION.date is missing');
+
 const statusDate = statusDateValid ? statusDateCandidate : 'invalid-date';
+// Parse the current entry, not arbitrary historical references in the changelog.
+// The first dated heading is the current entry; WorkPass lineage comes from the
+// first WorkPass heading. Historical archive references must not advance lineage.
+const firstChangelogHeading = changelog.split(/\r?\n/).find(line => /^\s*#{1,6}\s+\S/.test(line)) || '';
+const firstWorkpassHeading = changelog.split(/\r?\n/).find(line => /^\s*#{1,6}\s*WorkPass\s*\d+\b/i.test(line)) || '';
+const latestChangelogPass = Number(firstWorkpassHeading.match(/\bWorkPass\s*(\d+)\b/i)?.[1] ?? 0);
+const firstChangelogDate = firstChangelogHeading.match(/\b(\d{4}-\d{2}-\d{2})\b/)?.[1] || '';
 const statusReport = await text(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${currentPassTag}.md`);
 const statusInventory = await json(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${currentPassTag}.json`);
 const scorecard = await json(`docs/PROJECT_PROGRESS_SCORECARD_${statusDate}_${currentPassTag}.json`);
