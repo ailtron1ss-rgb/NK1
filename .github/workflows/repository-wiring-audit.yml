@@ -53,6 +53,7 @@ on:
       - workpass70-source
       - audit/repository-wiring-contracts-2026-10-25
       - audit/b276-execution-attribution-2026-10-26
+      - hexis-h1-memory-evidence-lineage-2026-10-26
     paths:
       - ".github/workflows/**"
       - "package.json"
