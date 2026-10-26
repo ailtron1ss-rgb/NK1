@@ -202,4 +202,93 @@ assert.throws(() => kernel.beginDecisionCycle({
   plan: stage('pl'), action: stage('act'),
 }), /tick/);
 
-console.log('WorkPass349 canonical cognitive kernel: PASS');
+
+ // The shared event fabric must enforce the full stable-ID envelope, not only tick/stage/source.
+ const idempotencyFabric = new CognitiveEventFabric(256);
+ const canonicalEvent = {
+   id: 'cef:external:stable-1',
+   tick: 12,
+   at: 1200,
+   stage: 'tool-outcome',
+   source: 'action-gateway',
+   parentIds: ['decision-12', 'execution-12'],
+   external: true,
+   confidence01: 0.85,
+   payload: { ok: true, outcome: { status: 'executed' } },
+ };
+ const appendedEvent = idempotencyFabric.append(canonicalEvent);
+ const firstEnvelopeTotal = idempotencyFabric.snapshot().total;
+ const replayEvent = idempotencyFabric.append({
+   ...canonicalEvent,
+   payload: { outcome: { status: 'executed' }, ok: true },
+ });
+ assert.equal(replayEvent.id, appendedEvent.id, 'key-order-equivalent JSON is an idempotent replay');
+ assert.equal(idempotencyFabric.snapshot().total, firstEnvelopeTotal);
+
+ const conflictingEnvelopes = [
+   { ...canonicalEvent, payload: { ok: false, outcome: { status: 'executed' } } },
+   { ...canonicalEvent, parentIds: ['execution-12', 'decision-12'] },
+   { ...canonicalEvent, parentIds: ['decision-12'] },
+   { ...canonicalEvent, external: false },
+   { ...canonicalEvent, confidence01: 0.2 },
+   { ...canonicalEvent, at: 1201 },
+   { ...canonicalEvent, stage: 'tool-action' },
+   { ...canonicalEvent, source: 'different-source' },
+   { ...canonicalEvent, tick: 13 },
+ ];
+ for (const conflicting of conflictingEnvelopes) {
+   assert.throws(
+     () => idempotencyFabric.append(conflicting),
+     /cognitive-event-id-conflict/,
+     'reusing an event ID with different evidence or causal parents must fail closed',
+   );
+   assert.equal(idempotencyFabric.snapshot().total, firstEnvelopeTotal,
+     'conflicting event-ID replay must not mutate the shared ledger');
+ }
+ const originalEnvelope = idempotencyFabric.getById(canonicalEvent.id);
+ assert.deepEqual(originalEnvelope?.payload, canonicalEvent.payload);
+ assert.deepEqual(originalEnvelope?.parentIds, canonicalEvent.parentIds);
+
+ // Payload state must be detached from caller-owned nested objects and returned event objects.
+ const callerPayload = { nested: { value: 'canonical' } };
+ const detached = idempotencyFabric.append({
+   ...canonicalEvent,
+   id: 'cef:external:detached-payload',
+   at: 1202,
+   payload: callerPayload,
+ });
+ callerPayload.nested.value = 'caller-mutated';
+ detached.payload.nested.value = 'returned-object-mutated';
+ assert.equal(idempotencyFabric.getById('cef:external:detached-payload')?.payload.nested.value, 'canonical');
+ assert.equal(idempotencyFabric.snapshot().total, firstEnvelopeTotal + 1);
+
+ // Invalid payloads must fail before append can increment the journal or leave a partial node.
+ const cyclicEventPayload = {};
+ cyclicEventPayload.self = cyclicEventPayload;
+ const beforeCyclicAppend = idempotencyFabric.snapshot().total;
+ assert.throws(() => idempotencyFabric.append({
+   ...canonicalEvent,
+   id: 'cef:external:cyclic-payload',
+   tick: 14,
+   at: 1400,
+   payload: cyclicEventPayload,
+ }), /circular/);
+ assert.equal(idempotencyFabric.snapshot().total, beforeCyclicAppend);
+ assert.equal(idempotencyFabric.getById('cef:external:cyclic-payload'), null);
+
+ let payloadGetterExecuted = false;
+ const accessorPayload = {};
+ Object.defineProperty(accessorPayload, 'secret', {
+   enumerable: true,
+   get() { payloadGetterExecuted = true; throw new Error('event payload getter must not run'); },
+ });
+ const accessorEvent = idempotencyFabric.append({
+   ...canonicalEvent,
+   id: 'cef:external:accessor-payload',
+   at: 1203,
+   payload: accessorPayload,
+ });
+ assert.equal(payloadGetterExecuted, false, 'top-level payload accessors must be omitted without execution');
+ assert.deepEqual(accessorEvent.payload, {});
+
+console.log('WorkPass351 canonical cognitive kernel: PASS');

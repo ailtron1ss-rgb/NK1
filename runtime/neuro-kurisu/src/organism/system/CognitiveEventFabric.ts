@@ -72,7 +72,16 @@ export interface CognitiveEventFabricSnapshot {
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
-const cleanPayload=(x:unknown):Record<string,unknown>=>isRecord(x)?{...x}:{};
+const cleanPayload=(x:unknown):Record<string,unknown>=>{
+  if(!isRecord(x)) return {};
+  const detached:Record<string,unknown>={};
+  // Do not invoke top-level getters while projecting a causal event payload.
+  for(const key of Object.keys(x)){
+    const descriptor=Object.getOwnPropertyDescriptor(x,key);
+    if(descriptor && Object.hasOwn(descriptor,'value')) detached[key]=descriptor.value;
+  }
+  return detached;
+};
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
 export class CognitiveEventFabric {
@@ -146,26 +155,58 @@ export class CognitiveEventFabric {
     const at=Number.isFinite(input.at)?Number(input.at):Date.now();
     const suppliedId=typeof input.id==='string'?input.id.trim():'';
     if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
+
+    const normalizedTick=Math.max(0,Math.floor(input.tick));
+    const normalizedSource=String(input.source||'unknown').slice(0,120);
+    const parentIds=[...(input.parentIds??[])].map(String).slice(0,12);
+    const external=Boolean(input.external);
+    const confidence01=clamp01(input.confidence01??0.5);
+    const payload=structuredClone(cleanPayload(input.payload));
+    // Validate serializability before mutating the event ledger; cyclic or non-JSON payloads fail closed.
+    sha256Stable(payload);
+
     if(suppliedId){
       const prior=this.events.find(event=>event.id===suppliedId);
       if(prior){
-        if(prior.tick!==Math.max(0,Math.floor(input.tick))||prior.stage!==input.stage||prior.source!==String(input.source||'unknown').slice(0,120))
-          throw new Error('cognitive-event-id-conflict');
-        return {...prior,parentIds:[...prior.parentIds],payload:{...prior.payload}};
+        // Missing/invalid arrival time means "replay the original event time";
+        // an explicit finite timestamp, however, is part of the event envelope.
+        const comparisonAt=Number.isFinite(input.at)?Number(input.at):prior.at;
+        const expectedFingerprint=sha256Stable({
+          tick:normalizedTick,
+          at:comparisonAt,
+          stage:input.stage,
+          source:normalizedSource,
+          parentIds,
+          external,
+          confidence01,
+          payload,
+        });
+        const priorFingerprint=sha256Stable({
+          tick:prior.tick,
+          at:prior.at,
+          stage:prior.stage,
+          source:prior.source,
+          parentIds:prior.parentIds,
+          external:prior.external,
+          confidence01:prior.confidence01,
+          payload:prior.payload,
+        });
+        if(expectedFingerprint!==priorFingerprint) throw new Error('cognitive-event-id-conflict');
+        return structuredClone(prior);
       }
     }
+
     const event:CognitiveEventNode={
-      id:suppliedId||`cef:${at}:${Math.max(0,Math.floor(input.tick))}:${Math.random().toString(16).slice(2)}`,
-      tick:Math.max(0,Math.floor(input.tick)), at,
-      stage:input.stage, source:String(input.source||'unknown').slice(0,120),
-      parentIds:[...(input.parentIds??[])].map(String).slice(0,12),
-      external:Boolean(input.external), confidence01:clamp01(input.confidence01??0.5), payload:cleanPayload(input.payload),
+      id:suppliedId||`cef:${at}:${normalizedTick}:${Math.random().toString(16).slice(2)}`,
+      tick:normalizedTick, at,
+      stage:input.stage, source:normalizedSource,
+      parentIds, external, confidence01, payload,
     };
     this.events.unshift(event);
     if(this.events.length>this.capacity)this.events=this.events.slice(0,this.capacity);
     this.total+=1;
     this.pruneReceiptProjectionIndex();
-    return {...event,parentIds:[...event.parentIds],payload:{...event.payload}};
+    return structuredClone(event);
   }
 
   private pruneReceiptProjectionIndex():void {
