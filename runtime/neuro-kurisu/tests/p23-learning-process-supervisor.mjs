@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runLearningProcess, readLearningExecutionReceipt } from '../src/organism/learning/LearningProcessSupervisor.ts';
@@ -76,6 +76,46 @@ try {
     error => error.code === 'ENOENT',
     'invalid configuration must not create any run scratch directory',
   );
+
+  // The generic supervisor protects its own storage roots even when it is
+  // called without the host-owned evaluator wrapper.
+  const insecureRoot = path.join(root, 'insecure-runs');
+  await mkdir(insecureRoot, { mode: 0o700 });
+  if (process.platform !== 'win32') {
+    await chmod(insecureRoot, 0o777);
+    await assert.rejects(
+      () => runLearningProcess(run, 'b'.repeat(64), { ...base, runRoot: insecureRoot }),
+      /learning-process-run-root-permissions-must-be-private/,
+    );
+    assert.deepEqual(await readdir(insecureRoot), [],
+      'a rejected world-writable run root must not receive receipts or execution scratch');
+  }
+
+  const overlappingRoot = path.join(root, 'overlapping-runs');
+  await assert.rejects(
+    () => runLearningProcess(run, 'b'.repeat(64), {
+      ...base, runRoot: overlappingRoot, surviveDir: path.join(overlappingRoot, 'survive'),
+    }),
+    /learning-process-storage-roots-must-be-disjoint/,
+  );
+  await assert.rejects(
+    () => readdir(overlappingRoot),
+    error => error.code === 'ENOENT',
+    'overlapping storage roots must be rejected before either directory is allocated',
+  );
+
+  if (process.platform !== 'win32') {
+    const symlinkTarget = path.join(root, 'private-run-target');
+    const symlinkRoot = path.join(root, 'symlinked-run-root');
+    await mkdir(symlinkTarget, { mode: 0o700 });
+    await symlink(symlinkTarget, symlinkRoot, 'dir');
+    await assert.rejects(
+      () => runLearningProcess(run, 'b'.repeat(64), { ...base, runRoot: symlinkRoot }),
+      /learning-process-run-root-must-be-a-real-directory/,
+    );
+    assert.deepEqual(await readdir(symlinkTarget), [],
+      'a symlinked root must be rejected before any child run data is written');
+  }
 
   // A failed durable trusted-run registration must remove its pre-spawn directory.
   const rejectedRegistrationRoot = path.join(root, 'rejected-registration-runs');
