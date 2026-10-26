@@ -41,7 +41,7 @@ const boundary = fabric.append({
   source: 'payload-budget-test',
   payload: { text: 'x'.repeat(131068) },
 });
-assert.equal((boundary.payload.text as string).length, 131068);
+assert.equal(boundary.payload.text.length, 131068);
 const beforeOversized = fabric.snapshot();
 
 assert.throws(() => fabric.append({
