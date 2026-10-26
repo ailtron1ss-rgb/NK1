@@ -316,7 +316,8 @@ assert.equal(goalSlugCollisionStage.stagedSections.goals, undefined,
   'a goal-ref collision must exclude the whole goals section before proposal generation');
 
 const crossSectionRefExportId = 'exp_5555555555555557';
-const crossSectionRefStage = new HexisAdaptationFabric().stageHmx({
+const crossSectionRefOwner = new HexisAdaptationFabric();
+const crossSectionRefStage = crossSectionRefOwner.stageHmx({
   document: makeHmxDocument(crossSectionRefExportId, {
     memories: [{ ref: crossSectionRefExportId + ':shared-entity', type: 'semantic', content: 'Memory with a shared entity ref.' }],
     goals: [{ ref: crossSectionRefExportId + ':shared-entity', title: 'Goal with the same entity ref.' }],
@@ -328,8 +329,8 @@ assert(crossSectionRefStage.conflicts.some(conflict => conflict.kind === 'duplic
 assert.equal(crossSectionRefStage.stagedSections.goals, undefined,
   'entity refs must be unique across memories and goals, not only within one section');
 assert.equal(crossSectionRefStage.stagedSections.memories.length, 1);
-assert.equal(new HexisAdaptationFabric().decideHmx(crossSectionRefStage.stagingId, 'accept'), null,
-  'a conflict-bearing cross-section collision must not be accidentally accepted by another stage owner');
+assert.equal(crossSectionRefOwner.decideHmx(crossSectionRefStage.stagingId, 'accept')?.status, 'staged',
+  'a conflict-bearing cross-section collision must remain ineligible for acceptance');
 
 function makeHmxDocument(exportId, sections) {
   return ({
