@@ -76,6 +76,8 @@ export interface IndependentCandidateEvaluationConfig {
   environmentFingerprint: string;
   /** Per-service deadline; timeout aborts the service signal and fails closed. Defaults to 30s. */
   serviceTimeoutMs?: number;
+  /** Hard wall-clock budget for the complete candidate evaluation, across all tasks/services. Defaults to 5m. */
+  evaluationTimeoutMs?: number;
 }
 const isDigest = (x: unknown): x is string => typeof x === 'string' && /^[a-f0-9]{64}$/i.test(x);
 const isSafeRunId = (value: unknown): value is string =>
@@ -138,7 +140,10 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
       !config.verifier || typeof config.verifier.verify !== 'function' ||
       !config.safetyScanner || typeof config.safetyScanner.scan !== 'function' ||
       !isDigest(config.environmentFingerprint) ||
-      (config.serviceTimeoutMs !== undefined && (!Number.isSafeInteger(config.serviceTimeoutMs) || config.serviceTimeoutMs < 10 || config.serviceTimeoutMs > 300_000))) throw new Error('independent-candidate-evaluator-config-invalid');
+      (config.serviceTimeoutMs !== undefined && (!Number.isSafeInteger(config.serviceTimeoutMs) || config.serviceTimeoutMs < 10 || config.serviceTimeoutMs > 300_000)) ||
+      (config.evaluationTimeoutMs !== undefined && (!Number.isSafeInteger(config.evaluationTimeoutMs) || config.evaluationTimeoutMs < 10 || config.evaluationTimeoutMs > 1_800_000))) {
+    throw new Error('independent-candidate-evaluator-config-invalid');
+  }
   // Different interface names are not independent authorities if they resolve to
   // the same object or dispatch function. Reject self-attesting configurations
   // before any candidate code can execute. Actual trust still depends on the host
@@ -244,6 +249,7 @@ export function createIndependentSkillCandidateEvaluator(
   // an evaluation with a different runtime/tool-policy fingerprint.
   const environmentFingerprint = config.environmentFingerprint;
   const serviceTimeoutMs = config.serviceTimeoutMs ?? 30_000;
+  const evaluationTimeoutMs = config.evaluationTimeoutMs ?? 300_000;
   // Capture trusted service entry points too: replacing a method on the caller-owned
   // object after construction must not replace the verifier or safety authority.
   const executeCandidate = config.executor.execute.bind(config.executor);
@@ -294,7 +300,14 @@ export function createIndependentSkillCandidateEvaluator(
     };
     const runBindings: Array<{ taskId: string; trialId: string; taskFamily: string | null; runId: string | null; plannedRunId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
     const seenRunIds = new Set<string>();
+    const evaluationDeadlineAt = Date.now() + evaluationTimeoutMs;
+    const remainingEvaluationMs = (): number => {
+      const remaining = evaluationDeadlineAt - Date.now();
+      if (remaining <= 0) throw new Error('independent-candidate-evaluator-total-timeout');
+      return remaining;
+    };
     for (const task of tasks) {
+      remainingEvaluationMs();
       const experimentPlan = authority
         ? (task.split === 'validation' ? authority.validationPlan : authority.holdoutPlan)
         : undefined;
@@ -318,12 +331,13 @@ export function createIndependentSkillCandidateEvaluator(
         // The executor is outside this trust boundary. Detach its returned object
         // immediately so later mutation of a retained reference cannot rewrite the
         // trace while verification or safety scanning is awaiting other services.
-        execution = structuredClone(await runWithServiceDeadline('candidate-sandbox-execution', serviceTimeoutMs, signal => executeCandidate({
+        execution = structuredClone(await runWithServiceDeadline('candidate-sandbox-execution', Math.min(serviceTimeoutMs, remainingEvaluationMs()), signal => executeCandidate({
           payload: structuredClone(candidatePayload),
           task: structuredClone(task),
           context: structuredClone(executionContext),
           signal,
         })));
+        remainingEvaluationMs();
         if (!execution || !isSafeRunId(execution.runId) ||
             !Array.isArray(execution.observedStepIds) ||
             execution.observedStepIds.some(step => typeof step !== 'string' || !step.trim()) ||
@@ -333,18 +347,22 @@ export function createIndependentSkillCandidateEvaluator(
         if (seenRunIds.has(execution.runId)) throw new Error('candidate-sandbox-reused-run-id');
         seenRunIds.add(execution.runId);
       } catch {
+        // A total-budget timeout aborts the entire experiment rather than being
+        // downgraded to one ordinary failed task.
+        remainingEvaluationMs();
         // Execution failure or reused run identity is never treated as executable.
         executable = false;
         execution = undefined;
       }
       if (execution) {
         try {
-          const verified = await runWithServiceDeadline('independent-task-verification', serviceTimeoutMs, signal => verifyCandidate({
+          const verified = await runWithServiceDeadline('independent-task-verification', Math.min(serviceTimeoutMs, remainingEvaluationMs()), signal => verifyCandidate({
             task: structuredClone(task),
             execution: structuredClone(execution),
             context: structuredClone(executionContext),
             signal,
           }));
+          remainingEvaluationMs();
           if (!verified || typeof verified.bindingVerified !== 'boolean' ||
               typeof verified.passed !== 'boolean' || !Array.isArray(verified.coveredCapabilityIds) ||
               verified.coveredCapabilityIds.some(id => typeof id !== 'string' || !id.trim()) ||
@@ -362,16 +380,24 @@ export function createIndependentSkillCandidateEvaluator(
           verifierPassed = verified.passed && bindingVerified;
           coveredCapabilityIds = bindingVerified ? verified.coveredCapabilityIds : [];
         } catch {
+          remainingEvaluationMs();
           // A verifier failure fails task success but does not rewrite execution as non-executable.
           verifierPassed = false;
         }
       }
-      const safety = await runWithServiceDeadline('independent-candidate-safety-scan', serviceTimeoutMs, signal => scanCandidateSafety({
-        payload: structuredClone(candidatePayload), task: structuredClone(task),
-        ...(execution ? { execution: structuredClone(execution) } : {}),
-        context: structuredClone(executionContext),
-        signal,
-      }));
+      let safety: { violationCount: number };
+      try {
+        safety = await runWithServiceDeadline('independent-candidate-safety-scan', Math.min(serviceTimeoutMs, remainingEvaluationMs()), signal => scanCandidateSafety({
+          payload: structuredClone(candidatePayload), task: structuredClone(task),
+          ...(execution ? { execution: structuredClone(execution) } : {}),
+          context: structuredClone(executionContext),
+          signal,
+        }));
+        remainingEvaluationMs();
+      } catch (error) {
+        remainingEvaluationMs();
+        throw error;
+      }
       if (!safety || !Number.isSafeInteger(safety.violationCount) || safety.violationCount < 0) {
         throw new Error('independent-candidate-safety-result-invalid');
       }
@@ -438,6 +464,7 @@ export function createIndependentSkillCandidateEvaluator(
         runBindings,
       },
     };
+    remainingEvaluationMs();
     const evaluationFingerprint = sha256(canonical(evaluation));
     return { payloadFingerprint, evaluationFingerprint, evaluation };
   };
