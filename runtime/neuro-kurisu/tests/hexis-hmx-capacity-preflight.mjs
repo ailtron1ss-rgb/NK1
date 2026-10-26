@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { HexisAdaptationFabric } from '../src/organism/integration/hexis/HexisAdaptationFabric.ts';
+import { CANONICAL_MEMORY_CAPACITY } from '../src/organism/memory/CanonicalMemoryCapacity.ts';
 import { HexisCanonicalMemoryProjector } from '../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
 
 const exportId = 'exp_1234567890abcdef';
-const existing = Array.from({ length: 1599 }, (_, index) => ({
+const existing = Array.from({ length: CANONICAL_MEMORY_CAPACITY - 1 }, (_, index) => ({
   id: 'existing-' + index,
   source: 'user',
   content: 'existing canonical memory ' + index,
@@ -46,7 +47,9 @@ assert.deepEqual(stage.conflicts, []);
 assert.equal(owner.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
 assert.throws(
   () => owner.decideHmx(stage.stagingId, 'apply'),
-  /hmx-apply-canonical-memory-capacity-exceeded:1601\/1600/,
+  error => error instanceof Error &&
+    error.message === 'hmx-apply-canonical-memory-capacity-exceeded:' +
+      (CANONICAL_MEMORY_CAPACITY + 1) + '/' + CANONICAL_MEMORY_CAPACITY,
 );
 assert.equal(writeCalls, 0, 'capacity rejection must happen before any canonical write');
 assert.equal(rollbackCalls, 0, 'preflight rejection must not need compensation');
