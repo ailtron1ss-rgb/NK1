@@ -41,6 +41,9 @@ export const computeHmxStageLifecycleDigest = stage =>
   createHash('sha256').update(stableLegacyJson(stageLifecyclePayload(stage))).digest('hex');
 
 export const refreshHmxStageLifecycleDigest = stage => {
+  // Older persisted staged records did not have the attempt counter. Normalize
+  // that safe pre-review state before installing the new lifecycle seal.
+  if (stage.applicationAttempts === undefined) stage.applicationAttempts = 0;
   stage.lifecycleDigest = computeHmxStageLifecycleDigest(stage);
   return stage.lifecycleDigest;
 };
