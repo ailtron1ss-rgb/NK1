@@ -9,6 +9,7 @@
 - The UI never treats the typed ID as proof of status: the server still checks the stage lifecycle seal/status and conflicts, while acceptance and canonical apply remain separately confirmed. This allows recovery without weakening server-side invariants.
 
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
+- [INTEGRITY] Reject duplicate semantic-edge IDs even when receipt counters and staged relationship counts otherwise reconcile; canonical projector receipts already emit unique edge IDs.
 
 - [CI WIRING] Add path-filtered push execution of the canonical HMX apply workflow on the integration branch and include the branch in WorkPass71 validation, so checks execute before the consolidation PR is merged.
 
