@@ -1,9 +1,9 @@
 ## WorkPass397 — safe HMX snapshot and accessor-free validation (2026-10-26)
 
-- **Code commits:** `aead364e098b462b5f99f48e65b76585f927975f` (bounded HMX plain-JSON snapshot) and `83343d9ba5765050c734218a64d8bbe6e9883f2f` (stage from that same snapshot); **regressions:** `0f9c34c54ad2b858a142c5e14d0de28fb763f5b5`.
+- **Code commits:** `aead364e098b462b5f99f48e65b76585f927975f` (bounded HMX plain-JSON snapshot) and `83343d9ba5765050c734218a64d8bbe6e9883f2f` (stage from that same snapshot); **regressions:** `0f9c34c54ad2b858a142c5e14d0de28fb763f5b5` and `28920aa46a888ddff4a0297ae8a93526e879da85`.
 - HMX validation now first snapshots a bounded plain-JSON tree using own data descriptors. Accessors, sparse/extended arrays, unsupported object prototypes, cycles, non-finite numbers and resource-bound violations are rejected before schema inspection; JSON serialization and staging operate on the captured data rather than the caller's original object.
 - `stageHmx` uses the same captured document for validation and section staging, avoiding a validate-one-value/stage-another discrepancy.
-- Added root and nested getter regressions. Both require zero getter executions, an explicit `unsafe-input` conflict, no staged memory payload and refusal of acceptance. These complement WorkPass396's atomic over-limit/malformed section tests.
+- Added root and nested getter regressions plus sparse-array, cyclic-metadata, non-finite-number and custom-prototype cases. Tests require zero getter executions, an explicit `unsafe-input` conflict, no staged memory payload and refusal of acceptance. These complement WorkPass396's atomic over-limit/malformed section tests.
 - **Validation:** PENDING exact-head typecheck, `test:hexis-adaptation`, Hexis server smoke and unified cognitive integration. The tests are authored but have not executed successfully on this exact head; no PASS/readiness claim. `main` and the canonical Release ZIP remain untouched.
 
 ## WorkPass396 — atomic HMX section staging (2026-10-26)
