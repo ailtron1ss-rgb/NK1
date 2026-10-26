@@ -1,3 +1,11 @@
+## WorkPass353 — reject oversized causal identity fields (2026-10-26)
+
+- **Defect:** `CognitiveEventFabric.append()` silently truncated sources longer than 120 characters, parent IDs longer than 180 characters, and parent arrays to 12 entries. Distinct causal envelopes could therefore normalize to the same replay fingerprint and be accepted as an idempotent replay.
+- **Fix:** reject oversized source/parent IDs and parent lists before payload normalization or event-ledger mutation; preserve the full validated values rather than truncating identity-bearing fields.
+- **Regression coverage:** same-ID replay with an oversized source suffix, same-ID replay with an oversized parent suffix, more than 12 parents rejected with zero ledger mutation, and the 12-parent boundary remains accepted.
+- **Validation:** changes are on `work/nk1-event-envelope-bounds-2026-10-26-r1`; exact-head CI has not yet run. No runtime PASS is claimed until the dedicated event-identity test and unified integration suite finish on the final branch SHA.
+
+---
 ## WorkPass348 — atomic tool-receipt projection — 2026-10-26
 
 - **Defect:** `appendToolReceiptTrace()` appended action, outcome and evidence records sequentially without rollback. A failure on the second/third append could leave an incomplete receipt. Replay also floored invalid fractional ticks before its existing-receipt branch and coerced malformed booleans/IDs into normalized values.
