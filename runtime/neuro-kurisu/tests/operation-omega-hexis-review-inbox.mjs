@@ -1,0 +1,235 @@
+import assert from 'node:assert/strict';
+import { createHash, generateKeyPairSync, sign as signSignature } from 'node:crypto';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
+import { AtomicFileTrustedSkillShadowRunRegistry } from '../src/organism/learning/TrustedSkillShadowRunRegistry.ts';
+import { signSkillShadowArtifactForFixture, skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
+import { createReviewedSkillPromotionApprovalRequest } from '../scripts/create-skill-promotion-approval-request.mjs';
+import { canonicalSkillReviewDecisionPayload } from '../src/organism/learning/AuthenticatedSkillReviewDecision.ts';
+import { createSkillReviewDecisionSigningRequest } from '../scripts/create-skill-review-decision-signing-request.mjs';
+import {
+  ingestSignedOutcomeArtifact, signOutcomePayloadForFixture,
+} from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
+import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
+import { HexisSkillReviewInbox, assertSkillReviewReadyForSignedPromotion } from '../src/organism/learning/HexisSkillReviewInbox.ts';
+import { AtomicFileSkillReviewInboxPersistence } from '../src/organism/learning/AtomicFileSkillReviewInboxPersistence.mjs';
+
+const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+const privatePem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const { publicKey: reviewPublicKey, privateKey: reviewPrivateKey } = generateKeyPairSync('ed25519');
+const reviewPublicPem = reviewPublicKey.export({ type: 'spki', format: 'pem' }).toString();
+const reviewPrivatePem = reviewPrivateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const verifierId = 'omega-fixture-verifier';
+const manifest = Array.from({ length: 8 }, (_, i) => ({
+  taskId: 'omega-task-' + i,
+  family: ['memory', 'reasoning', 'transfer'][i % 3],
+  split: 'holdout',
+  promptFingerprint: VerifiedOutcomeLedger.fingerprintPrompt('Omega verified task prompt ' + i),
+  verifierId,
+  version: '1',
+}));
+const ledger = new VerifiedOutcomeLedger(manifest);
+const trustedKeys = new Map([[verifierId, publicPem]]);
+let artifactCount = 0;
+for (let seed = 0; seed < 3; seed++) {
+  for (const task of manifest) {
+    for (const method of ['baseline', 'candidate']) {
+      const payload = {
+        schemaVersion: 1,
+        artifactId: 'omega-artifact-' + artifactCount++,
+        runId: 'omega-run-' + seed + '-' + task.taskId + '-' + method,
+        manifestFingerprint: ledger.manifestFingerprint(),
+        taskId: task.taskId,
+        taskVersion: task.version,
+        method,
+        seed,
+        attempt: 1,
+        passed: method === 'candidate',
+        verifierId,
+        observedAt: 1_800_000_000_000 + artifactCount,
+      };
+      const artifact = signOutcomePayloadForFixture(payload, privatePem);
+      const result = ingestSignedOutcomeArtifact(ledger, manifest, artifact, trustedKeys);
+      assert.equal(result.accepted, true, 'the signed fixture outcome must enter the evidence ledger');
+    }
+  }
+}
+const proposal = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate');
+assert.equal(proposal.gate.accepted, true, 'independent paired evidence should produce an accepted proposal');
+assert.equal(proposal.unauthenticatedEvidenceRows, 0);
+assert.equal(proposal.completePairedSeeds, 3);
+
+const skillId = 'omega-memory-skill';
+const payload = { instructions: 'A review-only fixture; not a live skill.' };
+const canonical = value => {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+  return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
+};
+const artifactFingerprint = createHash('sha256').update(canonical(payload)).digest('hex');
+const proposalId = proposal.proposalId;
+const candidateId = createHash('sha256').update(JSON.stringify([
+  skillId, 1, proposalId, artifactFingerprint,
+])).digest('hex');
+const candidate = {
+  candidateId,
+  skillId,
+  version: 1,
+  payload,
+  payloadFingerprint: artifactFingerprint,
+  proposalId,
+  proposalOutcomeFingerprint: proposal.outcomeFingerprint,
+  baseVersion: null,
+  previousActive: null,
+  status: 'shadow',
+  shadowObservations: [],
+  createdAt: 1_800_000_000_000,
+};
+
+const root = mkdtempSync(path.join(os.tmpdir(), 'nk1-omega-review-'));
+try {
+  const inboxPath = path.join(root, 'skill-review-inbox.json');
+  const storePath = path.join(root, 'candidates.json');
+  const registryPath = path.join(root, 'trusted-shadow-runs.json');
+  const registry = new AtomicFileTrustedSkillShadowRunRegistry(registryPath);
+  candidate.shadowObservations = [1, 2, 3].map(n => {
+    const runId = 'omega-shadow-run-' + n;
+    const taskId = 'omega-shadow-task-' + n;
+    const seed = n;
+    const context = {
+      runId, taskId, seed, manifestFingerprint: 'c'.repeat(64), runtimeVersion: 'omega-fixture-runtime',
+    };
+    registry.register(context);
+    const signedPayload = {
+      schemaVersion: 1,
+      artifactId: 'omega-shadow-artifact-' + n,
+      candidateId: candidate.candidateId,
+      skillId: candidate.skillId,
+      candidateVersion: candidate.version,
+      payloadFingerprint: candidate.payloadFingerprint,
+      proposalOutcomeFingerprint: candidate.proposalOutcomeFingerprint,
+      runId, taskId, manifestFingerprint: context.manifestFingerprint, seed,
+      runtimeVersion: context.runtimeVersion,
+      passed: true,
+      observedAt: 1_800_000_000_100 + n,
+      verifierId,
+    };
+    return {
+      runId,
+      evidenceFingerprint: skillShadowPayloadFingerprint(signedPayload),
+      passed: true,
+      observedAt: signedPayload.observedAt,
+      artifact: signSkillShadowArtifactForFixture(signedPayload, privatePem),
+    };
+  });
+  const persistence = new AtomicFileSkillReviewInboxPersistence(inboxPath);
+  const inbox = new HexisSkillReviewInbox(persistence);
+  const submitted = inbox.submit(proposal, candidate, 1_800_000_000_300);
+  assert.equal(submitted.status, 'pending');
+  assert.equal(submitted.packet.candidateId, candidate.candidateId);
+  assert.equal(submitted.packet.artifactFingerprint, artifactFingerprint);
+  assert.equal(submitted.packet.authenticatedEvidenceRows, proposal.authenticatedEvidenceRows);
+  assert.equal(submitted.packet.evaluation.absoluteGain, 1);
+  assert.equal(JSON.stringify(submitted.packet).includes('Omega verified task prompt'), false,
+    'the human review packet must not expose raw holdout prompts');
+  assert.equal(inbox.submit(proposal, candidate, 1_800_000_000_300).packet.reviewId, submitted.packet.reviewId,
+    'identical evidence packet submissions must be idempotent');
+  assert.throws(() => assertSkillReviewReadyForSignedPromotion(submitted, candidate),
+    /completed positive human review/,
+    'a pending review must not be accepted as authorization to request signed promotion');
+
+  const approved = inbox.decide(submitted.packet.reviewId, {
+    outcome: 'approve', reviewerId: 'reviewer-omega', rationale: 'Evidence and regression summaries reviewed',
+    decidedAt: 1_800_000_000_320,
+  });
+  assert.equal(approved.status, 'approved-for-signed-promotion');
+  assert.doesNotThrow(() => assertSkillReviewReadyForSignedPromotion(approved, candidate));
+
+  await writeFileSync(storePath, JSON.stringify({
+    schemaVersion: 1, revision: 3, active: [], candidates: [candidate],
+  }), 'utf8');
+  const reviewSigningKeyId = 'omega-review-signer';
+  const signingRequest = await createSkillReviewDecisionSigningRequest({
+    reviewInboxPath: inboxPath, reviewId: approved.packet.reviewId, keyId: reviewSigningKeyId,
+  });
+  const signedReviewPayload = signingRequest.payload;
+  const canonicalReviewPayload = canonicalSkillReviewDecisionPayload(signedReviewPayload);
+  assert.equal(signingRequest.status, 'unsigned-review-decision-signing-request');
+  assert.equal(signingRequest.canonicalPayload, canonicalReviewPayload);
+  assert.match(signingRequest.warning, /never put that private key into NK1/);
+  const signedReviewArtifact = {
+    payload: signedReviewPayload,
+    signature: signSignature(null, Buffer.from(canonicalReviewPayload, 'utf8'), reviewPrivateKey).toString('base64'),
+  };
+  const reviewDecisionPath = path.join(root, 'signed-review-decision.json');
+  const reviewVerifierKeys = JSON.stringify({ [reviewSigningKeyId]: reviewPublicPem });
+  await writeFileSync(reviewDecisionPath, JSON.stringify({
+    ...signedReviewArtifact, signature: 'A'.repeat(88),
+  }), 'utf8');
+  await assert.rejects(
+    () => createReviewedSkillPromotionApprovalRequest({
+      storePath, registryPath, reviewInboxPath: inboxPath, reviewId: approved.packet.reviewId, signedReviewDecisionPath: reviewDecisionPath,
+      rawReviewVerifierKeys: reviewVerifierKeys,
+      rawVerifierKeys: JSON.stringify({ [verifierId]: publicPem }),
+      candidateId, approverId: 'omega-operator', approvalId: 'omega-approval-request-bad-review-signature',
+      minShadowRuns: 3, now: 1_800_000_000_500,
+    }),
+    /signature|signed review decision/i,
+    'an unsigned or malformed reviewer decision must fail closed',
+  );
+  await writeFileSync(reviewDecisionPath, JSON.stringify(signedReviewArtifact), 'utf8');
+  await assert.rejects(
+    () => createReviewedSkillPromotionApprovalRequest({
+      storePath, registryPath, reviewInboxPath: inboxPath, reviewId: approved.packet.reviewId, signedReviewDecisionPath: reviewDecisionPath,
+      rawReviewVerifierKeys: JSON.stringify({ 'unrelated-key': reviewPublicPem }),
+      rawVerifierKeys: JSON.stringify({ [verifierId]: publicPem }),
+      candidateId, approverId: 'omega-operator', approvalId: 'omega-approval-request-untrusted-review-key',
+      minShadowRuns: 3, now: 1_800_000_000_500,
+    }),
+    /not trusted/,
+  );
+  const reviewedRequest = await createReviewedSkillPromotionApprovalRequest({
+    storePath, registryPath, reviewInboxPath: inboxPath, reviewId: approved.packet.reviewId, signedReviewDecisionPath: reviewDecisionPath,
+    rawReviewVerifierKeys: reviewVerifierKeys,
+    rawVerifierKeys: JSON.stringify({ [verifierId]: publicPem }),
+    candidateId, approverId: 'omega-operator', approvalId: 'omega-approval-request',
+    minShadowRuns: 3, now: 1_800_000_000_500,
+  });
+  assert.equal(reviewedRequest.status, 'approval-request-only');
+  assert.equal(reviewedRequest.humanReview.status, 'approved-for-signed-promotion');
+  assert.equal(reviewedRequest.humanReview.authenticated, true);
+  assert.equal(reviewedRequest.humanReview.signingKeyId, reviewSigningKeyId);
+  assert.equal(reviewedRequest.humanReview.reviewId, approved.packet.reviewId);
+  assert.equal(reviewedRequest.payload.shadowEvidenceFingerprint, approved.packet.shadowEvidenceFingerprint);
+  assert.match(reviewedRequest.warning, /matching approved human review was verified/);
+  assert.match(reviewedRequest.warning, /does not authorize activation/);
+  assert.throws(() => inbox.decide(submitted.packet.reviewId, {
+    outcome: 'reject', reviewerId: 'reviewer-omega', rationale: 'Contradictory duplicate decision',
+    decidedAt: 1_800_000_000_330,
+  }), /already has a final decision/);
+
+  const staleCandidate = {
+    ...candidate,
+    payloadFingerprint: 'e'.repeat(64),
+  };
+  assert.throws(() => assertSkillReviewReadyForSignedPromotion(approved, staleCandidate), /stale or bound to another/);
+
+  const reopened = new HexisSkillReviewInbox(new AtomicFileSkillReviewInboxPersistence(inboxPath));
+  assert.equal(reopened.snapshot().revision, 2, 'the packet and decision must persist over restart');
+  assert.equal(reopened.getForCandidate(candidateId).status, 'approved-for-signed-promotion');
+
+  const tampered = reopened.snapshot();
+  tampered.records[0].packet.artifactFingerprint = 'f'.repeat(64);
+  writeFileSync(inboxPath, JSON.stringify(tampered), 'utf8');
+  assert.throws(() => new HexisSkillReviewInbox(new AtomicFileSkillReviewInboxPersistence(inboxPath)), /digest|snapshot|review inbox record|packet/i,
+    'the digest-bound review packet must reject on-disk tampering');
+
+  const fake = { ...proposal, proposalId: '9'.repeat(64) };
+  assert.throws(() => new HexisSkillReviewInbox().submit(fake, candidate, 1_800_000_000_340), /authentic proposal/);
+  console.log('OPERATION_OMEGA_HEXIS_REVIEW_INBOX=PASS signed evidence -> review packet -> durable human decision; activation remains separately signed');
+} finally {
+  rmSync(root, { recursive: true, force: true });
+}
