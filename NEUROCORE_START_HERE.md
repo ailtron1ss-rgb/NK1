@@ -1,3 +1,26 @@
+## Latest checkpoint — WorkPass341 (2026-10-26)
+
+- **Scope:** adds a separate minimum number of distinct paired holdout tasks for every skill family where trusted promotion policy demands a gain. Repeated seeds cannot inflate the unique-task coverage.
+- **Security:** thresholds are read from operator-owned `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`, not candidate bundle fields; family floors and per-family task coverage participate in the authenticated proposal identity.
+- **Activation:** this is still proposal/staging only. Verified candidates cannot activate automatically; owner/authority approval and canary/shadow evidence remain separate.
+- **Validation:** exact-head CI pending. Do not increase progress/learning scores until the new tests and full workflow pass.
+
+---
+
+## Latest checkpoint — WorkPass340 (2026-10-26)
+
+- **Branch:** `work/nk1-unified-substrate-runtime-integration-2026-10-26-r4`, freshly based on current WorkPass334 source line after WorkPass339 security PR merge. No direct changes to `main` or release ZIP.
+- **Implementation:** `UnifiedCognitiveSubstrate.ts` is now used from `OrganismRuntime` after each canonical Core cycle; guarded persisted sidecar `*.cognitive-substrate.json`, periodic save and final stop flush are wired. The substrate can only constrain optional counterfactuals; Core remains action owner.
+- **Code/test checkpoint:** `9dfa27fe823ed14cd54ca34758821772e4756795`; includes strict schema/restore, live cycle integration, read-only diagnostic snapshot, wiring regression and 30-cycle smoke/restart persistence check.
+- **Type correctness:** the earlier divergent branch’s CI exposed two TypeScript issues. Both are corrected here: explicit `unknown` bridge for prediction-debt aggregation, and no read from nonexistent `cycleObservation.vision`; P41 relation count is zero until typed relation evidence exists.
+- **Validation:** branch was 11 commits ahead / 0 behind at last comparison. Exact-head Actions typecheck, `test:unified-substrate-runtime-wiring`, and smoke/restart are pending. The old branch’s failed test is recorded and is not treated as a pass.
+- **Progress accounting:** WorkPass339 remains recorded as CI-validated; historical progress/status rows still use their original tested baseline SHA. WorkPass340 does not increase scores before new CI results.
+- **Release gates:** rebuild and verify the large release ZIP, Android/Termux resource soak, voice/Live2D/device E2E, independent learning/transfer holdout and external postcondition E2E remain outstanding.
+
+---
+
+---
+
 ## Latest checkpoint — WorkPass339 (2026-10-26)
 
 - **Branch:** `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5`, based on the current WorkPass334 source branch. No direct changes to `main` or release ZIP.
