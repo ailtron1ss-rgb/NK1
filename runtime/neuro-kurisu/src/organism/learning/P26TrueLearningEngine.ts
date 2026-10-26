@@ -92,13 +92,40 @@ export class P26TrueLearningEngine{
       seenIds.add(evidenceId);seenSamples.add(identity);restoredEvidence.push(row);
     }
     const usedKeys=new Set<string>();
-    if(Array.isArray(raw?.usedHoldoutEvidenceKeys))for(const key of raw!.usedHoldoutEvidenceKeys!){
+    // Dedupe state is newest-last. Bound input before walking it, then retain the
+    // newest keys so a large/corrupt snapshot cannot consume unbounded restore work.
+    if(Array.isArray(raw?.usedHoldoutEvidenceKeys))for(const key of raw!.usedHoldoutEvidenceKeys!.slice(-4096)){
       if(typeof key==='string'&&key.length>4&&key.length<=1024&&!hasUnsafeControl(key))usedKeys.add(key);
     }
     for(const row of restoredEvidence){usedKeys.add(holdoutIdKey(row.evidenceId));usedKeys.add(holdoutIdentityKey(row));}
-    this.state={...d,...(raw??{}),metrics:{...d.metrics,...(raw?.metrics??{})},
-      processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.slice(-4096):[],
-      holdoutEvidence:restoredEvidence,usedHoldoutEvidenceKeys:[...usedKeys].slice(-4096)};
+
+    const sourceMetrics=raw?.metrics??{};
+    const metrics={...d.metrics,...sourceMetrics};
+    const count=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+    const unit=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?clamp(value):0;
+    const signed=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?Math.max(-1,Math.min(1,value)):0;
+    metrics.outcomeSamples=count(sourceMetrics.outcomeSamples);
+    metrics.onlineUpdates=count(sourceMetrics.onlineUpdates);
+    metrics.replayUpdates=count(sourceMetrics.replayUpdates);
+    metrics.learningDelta01=signed(sourceMetrics.learningDelta01);
+    metrics.recentLoss01=unit(sourceMetrics.recentLoss01);
+    metrics.holdoutBaseline01=unit(sourceMetrics.holdoutBaseline01);
+    metrics.holdoutLearned01=unit(sourceMetrics.holdoutLearned01);
+    metrics.holdoutDelta01=signed(sourceMetrics.holdoutDelta01);
+    metrics.lastUpdatedAt=typeof sourceMetrics.lastUpdatedAt==='number'&&Number.isFinite(sourceMetrics.lastUpdatedAt)&&sourceMetrics.lastUpdatedAt>=0
+      ?Math.floor(sourceMetrics.lastUpdatedAt):0;
+
+    const processedTraceIds:string[]=[];
+    const seenTraceIds=new Set<string>();
+    // IDs are recorded newest-first. Keep that prefix rather than slicing from the
+    // tail (which silently discarded the most recent dedupe guards on restart).
+    for(const value of Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds!.slice(0,4096):[]){
+      const id=safeEvidenceText(value,240);
+      if(!id||seenTraceIds.has(id))continue;
+      seenTraceIds.add(id);processedTraceIds.push(id);
+    }
+    this.state={...d,...(raw??{}),metrics,
+      processedTraceIds,holdoutEvidence:restoredEvidence,usedHoldoutEvidenceKeys:[...usedKeys].slice(-4096)};
     this.learner.restore(this.state.policy);
     this.refreshDerivedMetrics();
   }
