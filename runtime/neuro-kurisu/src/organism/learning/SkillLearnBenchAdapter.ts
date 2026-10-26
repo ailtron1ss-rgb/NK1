@@ -9,6 +9,8 @@
 export interface SkillLearnBenchTrialInput {
   taskId: string;
   trialId: string;
+  /** Canonical family label copied from the trusted task manifest. */
+  taskFamily?: string;
   /** Result from an independent task verifier, never inferred from the skill. */
   verifierPassed: boolean;
   skill: {
@@ -30,6 +32,8 @@ export interface SkillLearnBenchTrialInput {
 export interface SkillLearnBenchTrialReport {
   taskId: string;
   trialId: string;
+  /** Manifest-owned task stratum; it must be carried through evaluation unchanged. */
+  taskFamily?: string;
   taskSuccess: { passed: boolean; passRate: number };
   skillQuality: {
     functionalCoverage: number;
@@ -83,6 +87,7 @@ export function evaluateSkillLearnBenchTrial(
   if (!input || !isNonEmptyString(input.taskId) || !isNonEmptyString(input.trialId)) {
     throw new Error('invalid-trial-identity');
   }
+  if (input.taskFamily !== undefined && !isNonEmptyString(input.taskFamily)) throw new Error('invalid-task-family');
   if (typeof input.verifierPassed !== 'boolean') throw new Error('invalid-verifier-result');
   if (!input.skill || typeof input.skill.executable !== 'boolean') throw new Error('invalid-skill-executability');
   if (!input.trajectory || typeof input.trajectory !== 'object') throw new Error('invalid-trajectory');
@@ -127,6 +132,7 @@ export function evaluateSkillLearnBenchTrial(
   return {
     taskId: input.taskId.trim(),
     trialId: input.trialId.trim(),
+    ...(input.taskFamily === undefined ? {} : { taskFamily: input.taskFamily.trim() }),
     taskSuccess: { passed: input.verifierPassed, passRate: input.verifierPassed ? 1 : 0 },
     skillQuality: {
       functionalCoverage,
@@ -156,10 +162,11 @@ export function aggregateSkillLearnBenchReports(
   taskSuccessRate: number;
   meanSkillQuality: number;
   meanTrajectoryQuality: number;
-  byTask: Array<{ taskId: string; trialCount: number; taskSuccessRate: number; meanSkillQuality: number; meanTrajectoryQuality: number }>;
+  byTask: Array<{ taskId: string; taskFamily?: string; trialCount: number; taskSuccessRate: number; meanSkillQuality: number; meanTrajectoryQuality: number }>;
 } {
   if (!Array.isArray(reports) || reports.length === 0) throw new Error('reports-required');
   const groups = new Map<string, SkillLearnBenchTrialReport[]>();
+  const familyByTask = new Map<string, string | null>();
   const seenTrials = new Set<string>();
   for (const report of reports) {
     const inRange = (value: unknown): value is number =>
@@ -169,7 +176,8 @@ export function aggregateSkillLearnBenchReports(
         !inRange(report.taskSuccess?.passRate) ||
         report.taskSuccess.passRate !== (report.taskSuccess.passed ? 1 : 0) ||
         !inRange(report.skillQuality?.aggregate) ||
-        !inRange(report.trajectoryQuality?.aggregate)) {
+        !inRange(report.trajectoryQuality?.aggregate) ||
+        (report.taskFamily !== undefined && !isNonEmptyString(report.taskFamily))) {
       throw new Error('invalid-report');
     }
     const taskId = report.taskId.trim();
@@ -177,13 +185,17 @@ export function aggregateSkillLearnBenchReports(
     const trialKey = JSON.stringify([taskId, trialId]);
     if (seenTrials.has(trialKey)) throw new Error('duplicate-report-trial');
     seenTrials.add(trialKey);
+    const family = report.taskFamily === undefined ? null : report.taskFamily.trim();
+    if (familyByTask.has(taskId) && familyByTask.get(taskId) !== family) throw new Error('task-family-changed-within-task');
+    familyByTask.set(taskId, family);
     const group = groups.get(taskId) ?? [];
-    group.push(report);
+    group.push({ ...report, taskId, trialId, ...(family === null ? {} : { taskFamily: family }) });
     groups.set(taskId, group);
   }
   const mean = (values: number[]) => Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(6));
   const byTask = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([taskId, rows]) => ({
     taskId,
+    ...(rows[0]?.taskFamily ? { taskFamily: rows[0].taskFamily } : {}),
     trialCount: rows.length,
     taskSuccessRate: mean(rows.map((r) => r.taskSuccess.passRate)),
     meanSkillQuality: mean(rows.map((r) => r.skillQuality.aggregate)),
