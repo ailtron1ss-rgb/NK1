@@ -1,3 +1,12 @@
+## Compose workflow filter repair — 2026-10-26
+
+- Removed the root `package-lock.json` path from both path-filter lists in `.github/workflows/nk1-compose-smoke.yml`: the repository does not contain that file, and the repository wiring audit correctly rejected the dangling workflow reference.
+- Kept the real root `package.json` and existing app/runtime manifest and lockfile filters intact.
+
+Validation: repository wiring audit is rerun on the resulting commit; no successful result is claimed until the exact-head workflow completes.
+
+---
+
 ## Container build hardening follow-up (2026-10-26)
 
 - Ensured the image build does not set `NODE_ENV=production` before `npm run install:all`; otherwise npm may omit dev dependencies needed by Vite's first-start build.
