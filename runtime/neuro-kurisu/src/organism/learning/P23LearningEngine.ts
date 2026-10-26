@@ -165,6 +165,46 @@ const isPlainRecord=(value:unknown):value is Record<string,unknown>=>{
   const prototype=Object.getPrototypeOf(value);
   return prototype===Object.prototype||prototype===null;
 };
+
+/** Validate durable state as a bounded, getter-free data tree before reading any fields. */
+function isPlainDataGraph(
+  value:unknown,
+  seen=new WeakSet<object>(),
+  budget={remaining:100_000},
+  depth=0,
+):boolean {
+  if(value===null||value===undefined||typeof value==='string'||typeof value==='boolean'||typeof value==='number')return true;
+  if(typeof value!=='object'||depth>32||budget.remaining<=0)return false;
+  if(seen.has(value))return false; // persisted snapshots must be trees, not aliases or cycles
+  seen.add(value);
+  budget.remaining-=1;
+  try {
+    const array=Array.isArray(value);
+    const prototype=Object.getPrototypeOf(value);
+    if(array?prototype!==Array.prototype:(prototype!==Object.prototype&&prototype!==null))return false;
+    const keys=Reflect.ownKeys(value);
+    budget.remaining-=keys.length;
+    if(budget.remaining<0)return false;
+    if(array) {
+      const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
+      if(!lengthDescriptor||!Object.prototype.hasOwnProperty.call(lengthDescriptor,'value')||
+         !Number.isSafeInteger(lengthDescriptor.value)||lengthDescriptor.value<0||lengthDescriptor.value>budget.remaining+keys.length)return false;
+      if(keys.length!==lengthDescriptor.value+1)return false; // reject holes and custom array properties
+    }
+    for(const key of keys) {
+      if(typeof key!=='string')return false;
+      if(array&&key==='length')continue;
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true)return false;
+      if(array&&(!/^(0|[1-9][0-9]*)$/.test(key)||!Number.isSafeInteger(Number(key))||Number(key)>=value.length))return false;
+      if(!isPlainDataGraph(descriptor.value,seen,budget,depth+1))return false;
+    }
+    return true;
+  } catch {
+    // Proxy traps and exotic host objects are not valid persisted learning state.
+    return false;
+  }
+}
 const isPersistedText=(value:unknown,max=512):value is string=>
   typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&
   !Array.from(value).some(character=>{
@@ -411,6 +451,7 @@ export class P23LearningEngine {
   restore(raw?:Partial<P23LearningState>|null):void {
     const d=defaultP23Learning();
     if(raw!==undefined&&raw!==null&&!isPlainRecord(raw))throw new TypeError('P23 persisted learning state must be a plain object');
+    if(raw!==undefined&&raw!==null&&!isPlainDataGraph(raw))throw new TypeError('P23 persisted learning state must contain only bounded plain data properties');
     const source=(raw??{}) as Partial<P23LearningState>;
     if(source.version!==undefined&&source.version!==1)throw new RangeError('unsupported P23 learning state version');
     // Parse untrusted persistence into fresh rows; newest-first histories retain their valid prefix.
