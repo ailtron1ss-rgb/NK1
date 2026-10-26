@@ -54,14 +54,22 @@ export class FeedbackDeliveryGuard {
     if (!ACTIONS.includes(input.action)) throw new TypeError('feedback delivery action is invalid');
 
     const prior = input.previousReceipt;
-    if (isRecord(prior) && prior.tick === input.tick) {
-      if (prior.version !== 1
+    if (prior !== undefined && prior !== null) {
+      if (!isRecord(prior)
+        || !Number.isSafeInteger(prior.tick)
+        || (prior.tick as number) < 0
+        || prior.version !== 1
         || prior.status !== 'completed'
         || !isDecisionId(prior.decisionId)
         || !ACTIONS.includes(prior.action as ActionKind)) {
-        throw new Error('feedback delivery receipt for the current tick is malformed; refusing replay');
+        throw new Error('feedback delivery receipt is malformed; refusing replay');
       }
-      throw new Error(`feedback for organism tick ${input.tick} has already been finalized`);
+      if (prior.tick >= input.tick) {
+        if (prior.tick === input.tick) {
+          throw new Error(`feedback for organism tick ${input.tick} has already been finalized`);
+        }
+        throw new Error('feedback delivery receipt is from a future tick; refusing clock regression');
+      }
     }
 
     const inFlight = this.inFlightByTick.get(input.tick);
