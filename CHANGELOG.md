@@ -1,3 +1,10 @@
+# WorkPass360 — make floating-point feedback assertions numerically robust (2026-10-26)
+
+- [FIXED] Change the damaged-feedback regression to use a tight tolerance for the mathematically-one weighted sum (IEEE-754 produced 0.9999999999999999); production normalization remains bounded and unchanged.
+- [VALIDATION] WorkPass359 typecheck passed; the new substrate unit test exposed only this exact-equality floating-point assertion. Fresh exact-head CI must confirm the corrected test and runtime restart suite.
+
+---
+
 # WorkPass359 — close substrate-to-resource feedback (2026-10-26)
 
 - [INTEGRATED] Feed the previous unified substrate frame into the next CognitiveResourceEconomy allocation through a bounded pure projection of uncertainty, novelty and unresolved prediction pressure.

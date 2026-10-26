@@ -174,7 +174,7 @@ const damagedFeedback = resolveUnifiedCognitiveResourceSignals({
   predictionDebtPriority01: -2,
   priorSubstrate: { world: { uncertainty01: Number.NaN, newEntityRate01: 2 }, prediction: { error01: Infinity, priority01: -1 } },
 });
-assert.equal(damagedFeedback.uncertainty01, 1);
+assert.ok(Math.abs(damagedFeedback.uncertainty01 - 1) < 1e-12);
 assert.ok(Math.abs(damagedFeedback.novelty01 - 0.6) < 1e-12);
 assert.ok(Math.abs(damagedFeedback.predictionDebt01 - 1) < 1e-12);
 
