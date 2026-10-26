@@ -1,3 +1,11 @@
+## NK1 [validation] — run cross-ledger evidence regressions in CI (2026-10-26)
+
+- Extended the perception integrity workflow's path filters to include the P41 semantic snapshot contract, ActionGateway/CEF/RealityEvidenceLedger/P65 code, and the associated regressions.
+- CI now runs the canonical ActionGateway → CognitiveEventFabric → RealityEvidenceLedger/P65 integration test, plus replay/quarantine/evidence identity regressions before typecheck.
+- Corrected the P65 control-character regression to pass an actual newline-containing event ID, rather than a literal backslash sequence.
+
+---
+
 ## NK1 [perception] — drain semantic vision frames independent of sensor snapshots (2026-10-26)
 
 - Fixed P41 frame selection: the semantic perception engine also creates snapshots for sensor/text/world ingress, so slicing the raw snapshot ring by the vision observation counter could select non-vision state and starve a pending frame.
