@@ -1,3 +1,13 @@
+## WorkPass372 — strict unified cognitive-cycle input and restore integrity (2026-10-26)
+
+- **Defect:** `UnifiedCognitiveCycle.evaluate()` and `restore()` read external object fields/arrays directly. Accessor properties could execute during validation, proxy traps were not consistently converted to closed rejection, and sparse or malformed `lastMissingStages` could distort whether a restored cycle appeared complete.
+- **Fix:** snapshot consumed fields through own data descriptors, reject accessor-backed inputs without invoking getters, bound and validate stage-list slots, stage the restored aggregate locally and only replace active state after validation succeeds.
+- **Regression:** root/stage getter rejection with zero getter calls, proxy descriptor trap, getter-backed restored state/array slots, sparse/malformed stage history, state preservation on invalid input and normal complete-cycle compatibility.
+- **Integration:** the focused test is registered in `test:rebuild-recovered`, `test:cognitive-integration-suite`, and the WorkPass287–288 PR/push workflow.
+- **Validation:** current release-candidate branch `work/nk1-unified-cycle-integrity-release-2026-10-26-r1`; exact-head cognitive contracts, typecheck, unified integration and release gate are pending. No PASS is claimed until the new HEAD completes its workflows.
+- **Progress scoring:** no numeric maturity percentages are increased; this is an integrity fix, not evidence of real-world learning uplift.
+
+---
 ## WorkPass371 — cross-ledger atomic operational-cycle commit (2026-10-26)
 
 - **Defect:** CEF wrote the operational event trace transactionally, but `OrganismRuntime` verified lineage and advanced `UnifiedCognitiveCycle` afterwards. A thrown verification/evaluation error could leave the event ledger populated while aggregate cycle counters remained unchanged; an evaluator that mutates and then throws could leave the aggregate partially advanced.
