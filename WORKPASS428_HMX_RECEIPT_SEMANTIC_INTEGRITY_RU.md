@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** fix/outcome-projection-index-restore-2026-10-26  
 **База:** current consolidated PR #236 branch; updated through WorkPass428 commits  
-**Статус:** код и регрессии опубликованы; exact-head GitHub Actions завершились с `failure`, но job steps/log blobs недоступны (`BlobNotFound`), поэтому точная причина пока не подтверждена. Найденный дефект test-fixture исправлен в `4a159dfd32c8c24c67a5e4ba97c9c6df062848b1`; повторный HMX/Core/Metrics запуск на этом head ещё требует диагностируемого результата.
+**Статус:** код и регрессии опубликованы; exact-head GitHub Actions завершились с `failure`, но job steps/log blobs недоступны (`BlobNotFound`), поэтому точная причина пока не подтверждена. Найденный дефект test-fixture исправлен в `4a159dfd32c8c24c67a5e4ba97c9c6df062848b1`; после него добавлены дублированные semantic-edge, bound-ID и cross-store rollback/retry регрессии. Latest exact-head CI still requires a run with readable steps/logs; recent connector responses remain `BlobNotFound`.
 
 ## Почему потребовался отдельный проход
 
@@ -31,6 +31,8 @@
 - Полный projector apply пустого memory batch с будущим ключом `__proto__` и успешная последующая validation receipt.
 
 ## Проверка и границы
+
+- Failure injection after canonical write and graph projection confirms the expected rollback/retry contract in the regression source: MemoryFabric returns to baseline, semantic graph and temporal ledger restore, and retry creates exactly one memory/node/assertion/belief.
 
 - Успешные тесты не заявлены до запуска Actions на конечном head. Workflow должен выполнить pinned runtime/UI typecheck, canonical HMX tests и существующие проверки UI wiring.
 - `main` и опубликованный WorkPass70 Release ZIP не менялись.
