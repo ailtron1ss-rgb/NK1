@@ -29,6 +29,10 @@ on:
       - "runtime/neuro-kurisu/tests/unified-cognitive-substrate.mjs"
       - "runtime/neuro-kurisu/tests/unified-substrate-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/P26TrueLearningEngine.ts"
+      - "runtime/neuro-kurisu/tests/p26-*.mjs"
+      - "runtime/neuro-kurisu/tests/causal-replay-*.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-115-causal-replay.mjs"
       - ".nvmrc"
       - "package.json"
       - "tools/runtime-requirements.mjs"
@@ -84,7 +88,7 @@ concurrency:
 jobs:
   canonical-cognitive-kernel:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -133,6 +137,12 @@ jobs:
       - name: Verify spontaneous dialogue, feedback learning, and restore continuity
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass50-autonomous-runtime-loop.mjs
+      - name: Verify P26 holdout provenance and interleaved learning replay
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:learning-replay
+      - name: Verify P26 learning integrity, recovery and continual matrix
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:learning-input-integrity && npm run test:p26:learning-recovery-benchmark && npm run test:p26:learning-continual-matrix
       - name: Verify initiative on the background cognitive clock
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass50-autonomous-background-clock.mjs
