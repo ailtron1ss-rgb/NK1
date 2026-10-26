@@ -222,7 +222,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
               <ellipse cx="210" cy="160" rx={5 + Math.abs(mouthPose.form) * 4} ry={mouthHeight} fill="#5d2038" stroke="#8b4559" strokeWidth="1.2"/>
               <ellipse cx="210" cy={160 + mouthHeight * .45} rx="5" ry={Math.max(1, mouthHeight*.28)} fill="#e97d95" opacity=".92"/>
             </g> : <path d={EMOTION_MOUTH[emotion]} fill="none" stroke="#914657" strokeWidth="2.1" strokeLinecap="round"/>}
-            {(emotion === "joy" || emotion === "embarrassed" || emotion === "protective") ? <g fill="#ec8998" opacity=".32"><ellipse cx="170" cy="143" rx="10" ry="4"/><ellipse cx="250" cy="143" rx="10" ry="4"/></g> : null}
+            {(emotion === "joy" || emotion === "anxiety" || emotion === "protective") ? <g fill="#ec8998" opacity=".32"><ellipse cx="170" cy="143" rx="10" ry="4"/><ellipse cx="250" cy="143" rx="10" ry="4"/></g> : null}
             {/* Loose front fringe with asymmetry to reinforce the NK1 silhouette. */}
             <path d="M153 92 Q151 48 187 39 Q224 32 255 58 L268 89 L248 77 L240 104 L226 82 L207 111 L195 76 L177 107 L171 88Z" fill="url(#nk-hair)" stroke={hair.shade} strokeWidth="1.5"/>
             <path d="M160 70 Q177 46 195 44 M208 43 Q231 44 249 64" fill="none" stroke="#f0a06f" strokeOpacity=".58" strokeWidth="2.5" strokeLinecap="round"/>
