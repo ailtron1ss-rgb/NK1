@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** workpass364-event-fabric-append-ingress  
 **База:** WorkPass363 head 9b507034237c9366b9842829adcd58fbbfdd0494  
-**Статус:** опубликовано; exact-head CI требует завершения.
+**Статус:** CI first attempt found TS2322 in event-ID type narrowing; fixed in commit f6a15d15ddc3a40263d758c160567cf746652ada. Fresh exact-head workflows are required.
 
 ## Найденный разрыв
 
