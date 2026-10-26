@@ -19,6 +19,7 @@ export function buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable }) 
       command: nodeExecutable,
       args: ['--experimental-strip-types', 'src/server/server.mjs'],
       cwd: runtimeRoot,
+      preflightPaths: ['src/server/server.mjs'],
       env: {
         PORT: '3310',
         HOST: '127.0.0.1',
@@ -31,6 +32,7 @@ export function buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable }) 
       command: 'python3',
       args: ['research/research_bridge.py'],
       cwd: projectRoot,
+      preflightPaths: ['research/research_bridge.py'],
       env: { RESEARCH_PORT: '8765' },
     },
     {
@@ -38,6 +40,7 @@ export function buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable }) 
       command: 'npm',
       args: ['--prefix', 'app', 'run', 'preview'],
       cwd: projectRoot,
+      preflightPaths: ['app/package.json', 'app/node_modules/vite/bin/vite.js', 'app/dist/index.html'],
       env: {},
     },
     {
@@ -45,6 +48,7 @@ export function buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable }) 
       command: nodeExecutable,
       args: ['tools/super-gateway.mjs'],
       cwd: projectRoot,
+      preflightPaths: ['tools/super-gateway.mjs'],
       env: {
         SUPER_GATEWAY_PORT: '8080',
         SUPER_UI_PORT: '8081',
@@ -53,4 +57,34 @@ export function buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable }) 
       },
     },
   ];
+}
+
+
+/**
+ * Return unavailable service prerequisites without creating state or launching
+ * any child process. The injected path probe keeps the policy independently
+ * testable; production passes fs.existsSync.
+ */
+export function missingServiceRequirements(specs, pathExists) {
+  if (!Array.isArray(specs)) throw new TypeError('service specs must be an array');
+  if (typeof pathExists !== 'function') throw new TypeError('path existence probe is required');
+  const missing = [];
+  for (const spec of specs) {
+    const label = typeof spec?.label === 'string' && spec.label.trim() ? spec.label.trim() : 'unknown-service';
+    if (typeof spec?.cwd !== 'string' || !spec.cwd.trim() || !Array.isArray(spec.preflightPaths)) {
+      missing.push({ label, path: '<invalid-service-spec>' });
+      continue;
+    }
+    for (const relativePath of spec.preflightPaths) {
+      if (typeof relativePath !== 'string' || !relativePath.trim()) {
+        missing.push({ label, path: '<invalid-prerequisite-path>' });
+        continue;
+      }
+      const candidate = resolve(spec.cwd, relativePath);
+      let exists = false;
+      try { exists = pathExists(candidate) === true; } catch { exists = false; }
+      if (!exists) missing.push({ label, path: candidate });
+    }
+  }
+  return missing;
 }
