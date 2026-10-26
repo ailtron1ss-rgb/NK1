@@ -12,6 +12,12 @@
 - Add regressions proving a `NaN` rate counter cannot bypass limits after restore, invalid live limits are rejected, and valid restored limits still work.
 - Validation status: source and regression committed; exact-head runtime/typecheck execution is not yet confirmed.
 
+## [NK1][Hexis] WorkPass426 — version memory type reclassification correctly (2026-10-26)
+
+- [CONSISTENCY] Newly imported HMX versions now include native memory type in canonical identity alongside source lineage/ref/content. Exact persisted versions reuse their prior identity for replay compatibility; a type-only correction (for example, semantic → procedural) quarantines the old canonical row and withdraws its active graph/belief projections.
+- [REGRESSION] Added type-only reclassification coverage proving the canonical kind changes under a new ID, the old version stays as quarantined history, projections move to the corrected version, and later re-export stays idempotent.
+- [VALIDATION] Source and regression are committed but not executed in a working runtime. The latest HMX Actions job still exposes no executed steps, so no PASS is claimed.
+
 ## [NK1][Hexis] WorkPass425 — retire stale projections on source-content correction (2026-10-26)
 
 - [CONSISTENCY] A changed HMX record with the same source lineage and stable reference now quarantines prior canonical versions without deleting history, and removes their stale semantic-graph and belief-mirror projections before accepting the correction.
