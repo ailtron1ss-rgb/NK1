@@ -71,4 +71,28 @@ assert.equal(appendCalls, 4);
 assert.equal(rollback.snapshot().total, 0, 'unexpected append error must roll back the lifetime total');
 assert.equal(rollback.snapshot().recent.length, 0, 'unexpected append error must roll back inserted events');
 
+// Cross-ledger failure after the aggregate mutates must roll back both owners.
+const coordinatedFabric = new CognitiveEventFabric(128);
+const coordinatedCycle = new UnifiedCognitiveCycle();
+const coordinatedCycleBefore = coordinatedCycle.snapshot();
+const realEvaluate = coordinatedCycle.evaluate.bind(coordinatedCycle);
+let evaluateCalls = 0;
+coordinatedCycle.evaluate = function(input) {
+  evaluateCalls += 1;
+  const result = realEvaluate(input);
+  throw new Error('injected-post-evaluation-failure');
+};
+assert.throws(
+  () => commitOperationalCognitiveCycleAtomically({
+    eventFabric: coordinatedFabric,
+    unifiedCycle: coordinatedCycle,
+    cycleInput: cycleInput(),
+  }),
+  /injected-post-evaluation-failure/,
+);
+assert.equal(evaluateCalls, 1, 'failure must occur after aggregate mutation');
+assert.equal(coordinatedFabric.snapshot().total, 0, 'causal ledger must roll back');
+assert.equal(coordinatedFabric.snapshot().recent.length, 0, 'partial stage events must not survive');
+assert.deepEqual(coordinatedCycle.snapshot(), coordinatedCycleBefore, 'aggregate must restore its pre-transaction state');
+
 console.log('WorkPass347 operational-cycle atomicity: PASS');
