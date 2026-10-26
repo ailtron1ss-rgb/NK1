@@ -1,3 +1,7 @@
+## [NK1][Hexis] WorkPass396 — exercise an actual newline in the input guard regression (2026-10-26)
+
+- [TEST] Ensure the invalid-title fixture contains a real newline at runtime, so the control-character regression tests the intended boundary rather than a literal backslash sequence.
+
 ## [NK1][Hexis] WorkPass395 — enforce literal control-character checks on agency goal input (2026-10-26)
 
 - [FIX] Corrected escaped control-character regexes in the SelfProjectEngine import boundary so they match actual C0/DEL characters instead of backslash-plus-letter sequences.
