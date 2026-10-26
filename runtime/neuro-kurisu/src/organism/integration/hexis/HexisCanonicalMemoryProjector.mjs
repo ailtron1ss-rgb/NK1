@@ -580,7 +580,9 @@ export class HexisCanonicalMemoryProjector {
             item?.id &&
             !beforeIds.has(item.id) &&
             String(item.source ?? '').startsWith('hexis:') &&
-            String(item.context?.hexisExportId ?? '') === exportId
+            String(item.context?.hexisExportId ?? '') === exportId &&
+            String(item.context?.hexisImportStageId ?? '') === String(stage.stagingId) &&
+            String(item.context?.hexisImportAttempt ?? '') === String(attempt)
           ) rollbackIds.add(item.id);
         }
       } catch (snapshotError) {
