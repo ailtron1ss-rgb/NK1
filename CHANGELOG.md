@@ -2,6 +2,7 @@
 
 - Implemented the missing `P26TrueLearningEngine.trainInterleaved()` API used by the sequential continual-learning benchmark. Current-experience updates and historical rehearsal are separately counted; contradictory same-action feedback from a nearby state is screened with a bounded candidate budget, while sufficiently distinct novelty/world contexts can preserve separate task outcomes.
 - Input rows, reward ranges and option caps are validated; a zero replay budget still permits current learning without historical replay.
+- The replay budget counts successful optimizer updates, not rejected candidates; a conflicting row cannot consume the budget and starve a later eligible sample.
 - Added `p26-interleaved-training-contract.mjs` to cover conflict rejection, contextual admission, an explicit zero replay budget, bounded comparisons and malformed-input rejection. Wired it into P26 CI.
 - Updated the P26 workflow to use the repository `.nvmrc` instead of hard-coded Node 22.12.0.
 - This implementation is a synthetic benchmark contract, not evidence of general learning improvement on external tasks. Exact-head P26 CI remains required.
