@@ -366,6 +366,18 @@ assert.throws(() => recordIndependentEvaluationOutcomes(
 assert.equal(authorityLedger.snapshot().acceptedOutcomes, 0,
   'a malformed later binding must be rejected before any experiment outcome is committed');
 
+// WorkPass336: SHA-256 is an integrity checksum, not an origin signature. Copying
+// an evaluator result, substituting a valid-looking execution ID, and recomputing
+// the digest must not mint authority to record a fabricated execution reference.
+const forgedExecutionIdentity = structuredClone(authorityEvaluation);
+forgedExecutionIdentity.evaluation.provenance.runBindings[0].runId = 'forged-execution-run';
+forgedExecutionIdentity.evaluationFingerprint = digest(forgedExecutionIdentity.evaluation);
+assert.throws(() => recordIndependentEvaluationOutcomes(
+  forgedExecutionIdentity, experimentAuthority, 1700000000000,
+), /independent-evaluation-ledger-evaluator-attestation-missing/);
+assert.equal(authorityLedger.snapshot().acceptedOutcomes, 0,
+  'a recomputed public digest must not authorize a copied or forged evaluator envelope');
+
 // WorkPass215: validated verifier/scanner function references cannot be swapped
 // through the caller-owned service objects after evaluator construction.
 const mutableVerifierService = {
