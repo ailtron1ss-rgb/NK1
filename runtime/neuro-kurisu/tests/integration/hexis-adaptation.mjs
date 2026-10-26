@@ -279,6 +279,25 @@ assert.equal(restoredInterruptedStage?.importResult?.reason, 'accepted-stage-imp
 assert.equal(restoredInterruptedFabric.decideHmx(interruptedStage.stagingId, 'accept')?.importResult?.status, 'uncertain',
   'a repeated accept cannot turn an interrupted restore into a new import attempt');
 
+// A reject sent after acceptance cannot turn an accepted+pending stage back
+// into an apply-eligible result: the first decision may already have side effects.
+const lateRejectFabric = new HexisAdaptationFabric();
+const lateRejectStage = lateRejectFabric.stageHmx({
+  document: validHmx,
+  intent: 'telepathy',
+  strategy: 'additive',
+});
+assert.equal(lateRejectFabric.decideHmx(lateRejectStage.stagingId, 'accept')?.status, 'accepted');
+const lateRejectResult = lateRejectFabric.decideHmx(lateRejectStage.stagingId, 'reject');
+assert.equal(lateRejectResult?.status, 'accepted',
+  'a reject received after acceptance cannot undo an already-recorded decision');
+assert.equal(lateRejectResult?.importResult?.status, 'uncertain',
+  'late reject must quarantine an accepted pending import rather than leave it apply-eligible');
+assert.equal(lateRejectResult?.importResult?.reason, 'reject-request-after-accept-before-import-receipt');
+assert.equal(lateRejectFabric.decideHmx(lateRejectStage.stagingId, 'accept')?.importResult?.status, 'uncertain',
+  'subsequent accept must not replay a stage quarantined by a late reject');
+
+
 // Tampering with an accepted stage before restore is also surfaced for review;
 // it must not re-enable import merely because a new receipt was synthesized.
 const interruptedTamperedSnapshot = interruptedFabric.snapshot();
