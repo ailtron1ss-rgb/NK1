@@ -2183,3 +2183,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+## P23 rollback test contract — 2026-10-26
+
+- Updated the versioned skill-store lifecycle fixture to call rollback with the current approval object and an expected active version, rather than the retired positional arguments.
+- Added negative cases for a missing active-version guard and for plausible approval metadata with no trusted rollback verifier. Rejected requests must preserve active skill state and must not persist rollback approval data.
+- Production rollback authorization remains default-deny and unchanged. WorkPass110 and focused skill-store CI should be rechecked on this branch head.
