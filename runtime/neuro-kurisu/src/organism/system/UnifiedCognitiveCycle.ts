@@ -156,6 +156,9 @@ export class UnifiedCognitiveCycle {
     if(typeof parentIntegrity01!=='number'||!Number.isFinite(parentIntegrity01)||parentIntegrity01<0||parentIntegrity01>1) {
       throw new RangeError('parentIntegrity01 must be a finite value in [0, 1]');
     }
+    if(root.stageIds===null||typeof root.stageIds!=='object'||Array.isArray(root.stageIds)) {
+      throw new TypeError('stageIds must be an object');
+    }
     const stageIds=snapshotOwnDataFields(root.stageIds,[...ALL_STAGES],'cognitive-cycle-stage-ids');
 
     if(this.state.cycles>=Number.MAX_SAFE_INTEGER)throw new RangeError('cognitive cycle counter reached its safe integer limit');
