@@ -79,7 +79,10 @@ function cloneJsonValue(value: unknown, ancestors = new Set<object>(), arrayItem
   if (value === undefined || typeof value === 'function' || typeof value === 'symbol') return arrayItem ? null : OMIT_JSON_VALUE;
   if (typeof value === 'bigint') throw new TypeError('BigInt is not JSON-serializable');
   if (typeof value !== 'object') return arrayItem ? null : OMIT_JSON_VALUE;
-  if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.toJSON() : null;
+  if (value instanceof Date) {
+    const timestamp = Date.prototype.getTime.call(value);
+    return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+  }
   if (ancestors.has(value)) throw new TypeError('Converting circular structure to JSON');
   ancestors.add(value);
   try {
