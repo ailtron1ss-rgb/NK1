@@ -177,5 +177,5 @@ jobs:
 
       - name: Verify routing policy remains connected to the live runtime
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-routing-policy-runtime-wiring
-      - name: Verify Hexis evidence lineage, HMX integrity, and live API wiring
-        run: npm --prefix runtime/neuro-kurisu run test:hexis-adaptation && npm --prefix runtime/neuro-kurisu run test:hexis-memory-evidence-lineage && npm --prefix runtime/neuro-kurisu run test:hexis-p65-persistence && npm --prefix runtime/neuro-kurisu run test:omega:hexis-memory-provenance && npm --prefix runtime/neuro-kurisu run test:omega:hexis-source-monitor && npm --prefix runtime/neuro-kurisu run test:omega:hexis-review-inbox && npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
+      - name: Verify Hexis evidence lineage, learning review ordering, HMX integrity, and live API wiring
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-adaptation && npm --prefix runtime/neuro-kurisu run test:hexis-memory-evidence-lineage && npm --prefix runtime/neuro-kurisu run test:hexis-learning-review-canonical-memory && npm --prefix runtime/neuro-kurisu run test:hexis-p65-persistence && npm --prefix runtime/neuro-kurisu run test:omega:hexis-memory-provenance && npm --prefix runtime/neuro-kurisu run test:omega:hexis-source-monitor && npm --prefix runtime/neuro-kurisu run test:omega:hexis-review-inbox && npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
