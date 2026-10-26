@@ -631,11 +631,13 @@ export function normalizeHmxV17Memory(
     const sourceSubjectId = descriptors.sourceSubjectId?.value;
     const exportedAt = descriptors.exportedAt?.value;
     if (typeof exportId !== 'string' || !EXPORT_ID_PATTERN.test(exportId) ||
-        (sourceSubjectId !== undefined && typeof sourceSubjectId !== 'string') ||
-        (exportedAt !== undefined && typeof exportedAt !== 'string')) return null;
+        (sourceSubjectId !== undefined &&
+          (typeof sourceSubjectId !== 'string' || !sourceSubjectId.trim() || sourceSubjectId.length > 180)) ||
+        (exportedAt !== undefined &&
+          (typeof exportedAt !== 'string' || exportedAt.length > 64 || !isDateTime(exportedAt)))) return null;
     options = {
       exportId,
-      ...(typeof sourceSubjectId === 'string' ? { sourceSubjectId: sourceSubjectId.slice(0, 180) } : {}),
+      ...(typeof sourceSubjectId === 'string' ? { sourceSubjectId } : {}),
       ...(typeof exportedAt === 'string' ? { exportedAt } : {}),
     };
   } catch {
