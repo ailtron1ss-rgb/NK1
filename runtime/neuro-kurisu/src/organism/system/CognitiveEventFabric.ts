@@ -437,10 +437,18 @@ export class CognitiveEventFabric {
         'projectionHash','externalObservations','receiptRevisions',
       ]);
       if(!entry)continue;
-      if(!entry || typeof entry.executionId!=='string' || !entry.executionId.trim() || entry.executionId.length>180) continue;
-      if(typeof entry.actionEventId!=='string' || typeof entry.outcomeEventId!=='string' || typeof entry.evidenceEventId!=='string') continue;
-      const projectedAt=Number(entry.projectedAt);
-      if(!Number.isFinite(projectedAt) || projectedAt<0) continue;
+      const executionId=entry.executionId;
+      const actionEventId=entry.actionEventId;
+      const outcomeEventId=entry.outcomeEventId;
+      const evidenceEventId=entry.evidenceEventId;
+      const canonicalReceiptId=(value:unknown):value is string=>
+        typeof value==='string'&&value.length>0&&value.length<=180&&value===value.trim()&&
+        !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
+      if(!canonicalReceiptId(executionId)||!canonicalReceiptId(actionEventId)||
+        !canonicalReceiptId(outcomeEventId)||!canonicalReceiptId(evidenceEventId))continue;
+      const projectedAt=entry.projectedAt;
+      if(typeof projectedAt!=='number'||!Number.isFinite(projectedAt)||projectedAt<0)continue;
+      if(restoredReceiptProjectionIndex.has(executionId))continue;
       const action=restoredById.get(entry.actionEventId), outcome=restoredById.get(entry.outcomeEventId), evidence=restoredById.get(entry.evidenceEventId);
       // Never restore a replay guard whose three referenced nodes have aged out,
       // been truncated or no longer match the execution identity/stage contract.
@@ -477,7 +485,7 @@ export class CognitiveEventFabric {
           ok:outcome.payload.ok,
           verified:outcome.payload.verified,
           outcomeClass:outcome.payload.outcomeClass,
-          confidence01:clamp01(Number(outcome.confidence01)),
+          confidence01:outcome.confidence01,
           verificationBasis:evidence.payload.verificationBasis,
           externalObservation:evidence.payload.externalObservation,
           observationId:evidence.payload.observationId??null,
@@ -542,7 +550,7 @@ export class CognitiveEventFabric {
       const externalObservations=decodeReceiptRefs('externalObservations');
       const receiptRevisions=decodeReceiptRefs('receiptRevisions');
       if(externalObservations===null||receiptRevisions===null)continue;
-      restoredReceiptProjectionIndex.set(entry.executionId,{executionId:entry.executionId,actionEventId:entry.actionEventId.slice(0,180),outcomeEventId:entry.outcomeEventId.slice(0,180),evidenceEventId:entry.evidenceEventId.slice(0,180),projectedAt,...(/^[a-f0-9]{64}$/i.test(String(entry.projectionHash??''))?{projectionHash:String(entry.projectionHash).toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
+      restoredReceiptProjectionIndex.set(executionId,{executionId,actionEventId,outcomeEventId,evidenceEventId,projectedAt,...(/^[a-f0-9]{64}$/i.test(String(entry.projectionHash??''))?{projectionHash:String(entry.projectionHash).toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
       if(restoredReceiptProjectionIndex.size>=256) break;
     }
     const rawTotal=rootHas('total')?rootValue('total') as number:restored.length;
