@@ -1,3 +1,10 @@
+## P26 replay ordering and signed-shadow candidate identity — 2026-10-26
+
+- Reordered admitted interleaved rehearsal so each current experience is trained after its historical sample. This protects new-task plasticity when replay is dense without bypassing contradiction screening or the replay-update budget.
+- Corrected the bounded replay contract fixture to include one conflicting historical sample and one admissible same-action sample in a distinct novelty context.
+- Updated the signed-shadow end-to-end fixture to derive its expected candidate ID using the canonical five-field identity, including explicit `null` when revision provenance is absent. The runtime must continue to authenticate the resulting signed observation normally.
+- Validation snapshot before these follow-on changes: P26 replay-policy sweep failed at seed 17 / `interleave-1` (new-task accuracy 0.520), and signed-shadow observation failed on candidate-ID mismatch. The exact new head still needs CI confirmation; no replay-policy improvement is claimed yet.
+
 ## Bounded P26 interleaved replay and exact-head regression — 2026-10-26
 
 - Implemented the missing `P26TrueLearningEngine.trainInterleaved()` API used by the sequential continual-learning benchmark. Current-experience updates and historical rehearsal are separately counted; contradictory same-action feedback from a nearby state is screened with a bounded candidate budget, while sufficiently distinct novelty/world contexts can preserve separate task outcomes.
