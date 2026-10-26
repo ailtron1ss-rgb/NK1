@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** fix/outcome-projection-index-restore-2026-10-26  
 **База:** current consolidated PR #236 branch; updated through WorkPass428 commits  
-**Статус:** код и регрессии опубликованы; подтверждённого PASS на последнем head `fa50eba0b1055d4de12e67ad65b63e34aa0fe8fc` нет. Последний полностью видимый run set на head `fa2d0fbd13c437a2ba224d3fabf758b8310dce6f` дал `failure` по 14 workflow: HMX `40349924802`, Core `40349924811`, P26 `40349924459`, metrics `40349924789` и смежные WorkPass-гейты. У четырёх перечисленных jobs шаги пусты, log requests возвращают `BlobNotFound`; точную причину кода/тестов установить нельзя. Позднейшие изменения включают ограничение полного JSON-tree бюджета, preflight типа известных HMX-секций, scalar deferred handling и cross-store rollback/retry; новый head требует диагностируемого прогона.
+**Статус:** код/регрессии опубликованы, exact-head PASS не подтверждён. На head `4486e7c700b6ba5fe50661123872093626e50f51` последние видимые jobs все завершились `failure`: HMX `40350570360`, Core regression `40350570381`, validation `40350570761`, metrics `40350570818`, verified-outcomes `40350570702`. В этих job records отсутствуют шаги (`steps` не возвращён) и `logs_url=null`; runner ID/annotation не доступны, поэтому root cause не заявляется. Дальнейшие изменения требуют подтверждённого запуска с доступными шагами/логами.
 
 ## Почему потребовался отдельный проход
 
