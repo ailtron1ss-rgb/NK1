@@ -63,6 +63,14 @@ try {
       confidence: .73,
       note: 'server smoke canonical envelope',
     };
+    const forgedReceiptOrigin = await post('/api/organism/integration/hexis/evidence/review', {
+      ...canonicalEnvelope,
+      evidenceId: 'hexis:server-smoke:forged-receipt-origin',
+      observedAtOrigin: 'server-receipt',
+    });
+    if (forgedReceiptOrigin.status !== 400)
+      throw new Error('hexis-public-ingress-must-not-accept-internal-timestamp-marker');
+
     const stagedResponse = await post('/api/organism/integration/hexis/evidence/review', canonicalEnvelope);
     const staged = await stagedResponse.json();
     if (stagedResponse.status !== 202 || !staged.ok || staged.result?.status !== 'review-pending')
