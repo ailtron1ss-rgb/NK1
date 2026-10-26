@@ -201,6 +201,20 @@ test("AvatarStage applies the shared affect smoothing to expression, gaze, pose 
 });
 
 // Check that the committed contract schema matches the versioned control envelope.
+test("React and standalone runtime share affect smoothing while keeping speech audio-timed", async () => {
+  const wrapper = await readFile(join(root, "src/components/avatar/embodimentTimeline.ts"), "utf8");
+  const runtimeViewer = await readFile(join(root, "../runtime/neuro-kurisu/public/avatar.html"), "utf8");
+  const affectCore = await readFile(join(root, "../runtime/neuro-kurisu/public/embodiment-affect-core.mjs"), "utf8");
+  assert.match(wrapper, /embodiment-affect-core\.mjs/);
+  assert.match(runtimeViewer, /import \{ smoothEmbodimentAffect \} from '\.\/embodiment-affect-core\.mjs'/);
+  assert.match(runtimeViewer, /smoothEmbodimentAffect\(affectSmoothingState, target, now\)/);
+  assert.match(affectCore, /if \(now <= previous\.sampleAtMs\) return \{ \.\.\.previous \}/);
+  assert.match(runtimeViewer, /sampleAvatarSpeechTimeline\(speechCursor\.timeline, speechElapsedAt\(now\)\)/,
+    "mouth visemes must remain sampled from the speech clock, not the affect smoother");
+  assert.match(runtimeViewer, /now < affectTransitionUntil/,
+    "idle affect transitions should publish only inside a bounded settle window");
+});
+
 test("versioned EmbodimentIntent JSON schema is present and pins all synchronized channels", async () => {
   const schema = JSON.parse(await readFile(join(root, "../contracts/embodiment-intent.v1.schema.json"), "utf8"));
   assert.equal(schema.properties.protocolVersion.const, 1);
