@@ -107,6 +107,32 @@ assert.throws(() => fabric.append(makeEvent({
 assert.equal(fabric.snapshot().total, beforeInvalidPayload);
 assert.equal(fabric.snapshot().recent.some(event => event.id === 'cef:test:identity:cyclic'), false);
 
+// Payload text is bounded cumulatively across keys and values on append.
+const beforeOversizedText=fabric.snapshot().total;
+assert.throws(
+  ()=>fabric.append(makeEvent({
+    id:'cef:test:identity:oversized-text',
+    payload:{content:'x'.repeat(140_000)},
+  })),
+  /cognitive-event-payload-text-budget/,
+);
+assert.equal(fabric.snapshot().total,beforeOversizedText,'text-budget rejection must not mutate the event ledger');
+
+// Restore applies the same text budget and leaves a later valid row with the same ID recoverable.
+const restoreTextBudget=new CognitiveEventFabric(128);
+const oversizedTextId='cef:test:restore:oversized-text';
+const restoredAfterOversizedText={...makeEvent({id:oversizedTextId}),payload:{recovered:'safe'}};
+restoreTextBudget.restore({
+  version:1,capacity:128,total:2,buffered:2,linkedParentEvents:0,danglingParentLinks:0,
+  lineageIntegrity01:1,cycleCoverage01:0,causalDensity01:0,recentTicks:0,
+  recent:[
+    {...makeEvent({id:oversizedTextId}),payload:{content:'x'.repeat(140_000)}},
+    restoredAfterOversizedText,
+  ],
+});
+assert.equal(restoreTextBudget.getById(oversizedTextId)?.payload.recovered,'safe',
+  'an oversized payload must not reserve the ID or block later valid recovery');
+
 // Identity and source values must be canonical at write time, so trim-based aliases
 // cannot be accepted as replays and cannot disappear after a restart.
 const beforeNonCanonical=fabric.snapshot().total;
@@ -477,5 +503,64 @@ confidenceRestore.restore({
 });
 assert.equal(confidenceRestore.getById('cef:test:restore:confidence-valid')?.confidence01,0.8,
   'invalid confidence rows must not reserve IDs or be clamped into valid evidence');
+
+
+// Snapshot root failures must not erase or partially replace an already-live ledger.
+const atomicRestore=new CognitiveEventFabric(128);
+atomicRestore.append(makeEvent({id:'cef:test:restore:atomic-sentinel',tick:41,payload:{preserve:true}}));
+const stableBeforeRejectedRestore=atomicRestore.snapshot();
+let rootGetterCalls=0;
+const rootWithAccessor={version:1,total:0,capacity:128,receiptEvents:[],receiptProjectionIndex:[],recent:[]};
+Object.defineProperty(rootWithAccessor,'recent',{enumerable:true,configurable:true,get(){rootGetterCalls+=1;throw new Error('root recent getter must not run');}});
+const invalidRootCases=[
+  ['unknown-version',{version:2,recent:[],total:0}],
+  ['present-undefined-version',{version:undefined,recent:[],total:0}],
+  ['missing-recent',{version:1,total:0}],
+  ['non-array-recent',{version:1,recent:{},total:0}],
+  ['present-undefined-recent',{version:1,recent:undefined,total:0}],
+  ['non-array-receipt-events',{version:1,recent:[],receiptEvents:null,total:0}],
+  ['non-array-receipt-index',{version:1,recent:[],receiptProjectionIndex:{},total:0}],
+  ['invalid-total-string',{version:1,recent:[],total:'0'}],
+  ['invalid-total-fraction',{version:1,recent:[],total:0.5}],
+  ['invalid-total-negative',{version:1,recent:[],total:-1}],
+  ['invalid-total-unsafe',{version:1,recent:[],total:Number.MAX_SAFE_INTEGER+1}],
+  ['accessor-root',rootWithAccessor],
+  ['scalar-root',42],
+  ['array-root',[]],
+];
+for(const [label,invalidRoot] of invalidRootCases){
+  assert.throws(()=>atomicRestore.restore(invalidRoot),error=>error instanceof Error,'invalid root must be rejected: '+label);
+  assert.deepEqual(atomicRestore.snapshot(),stableBeforeRejectedRestore,'invalid root must preserve the live ledger: '+label);
+}
+assert.equal(rootGetterCalls,0,'root accessors must never be invoked');
+
+const proxyRoot=new Proxy({version:1,recent:[],total:0},{
+  ownKeys(){throw new Error('snapshot ownKeys trap');},
+});
+assert.throws(()=>atomicRestore.restore(proxyRoot),/invalid-cognitive-event-fabric-snapshot-root/);
+assert.deepEqual(atomicRestore.snapshot(),stableBeforeRejectedRestore);
+
+// Malformed row getters are skipped without invocation, and later valid rows recover.
+let eventIdGetterCalls=0;
+let payloadGetterCalls=0;
+const rowWithIdGetter=makeEvent({id:'cef:test:restore:row-accessor',payload:{recovered:false}});
+Object.defineProperty(rowWithIdGetter,'id',{enumerable:true,configurable:true,get(){eventIdGetterCalls+=1;return 'cef:test:restore:row-accessor';}});
+const rowWithPayloadGetter=makeEvent({id:'cef:test:restore:payload-accessor',payload:{recovered:false}});
+Object.defineProperty(rowWithPayloadGetter.payload,'secret',{enumerable:true,configurable:true,get(){payloadGetterCalls+=1;return 'should-not-run';}});
+const atomicRecovered=new CognitiveEventFabric(128);
+atomicRecovered.restore({
+  // Legacy snapshots without a version or optional receipt fields remain compatible.
+  total:4,
+  recent:[
+    rowWithIdGetter,
+    {...makeEvent({id:'cef:test:restore:row-accessor'}),payload:{recovered:true}},
+    rowWithPayloadGetter,
+    {...makeEvent({id:'cef:test:restore:payload-accessor'}),payload:{recovered:true}},
+  ],
+});
+assert.equal(eventIdGetterCalls,0);
+assert.equal(payloadGetterCalls,0);
+assert.equal(atomicRecovered.getById('cef:test:restore:row-accessor')?.payload.recovered,true);
+assert.equal(atomicRecovered.getById('cef:test:restore:payload-accessor')?.payload.recovered,true);
 
 console.log('WorkPass345 CognitiveEventFabric identity: PASS');
