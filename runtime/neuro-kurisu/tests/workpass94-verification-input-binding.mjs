@@ -64,4 +64,20 @@ const invalidCorrelationContext = await service.verify({
 assert.equal(invalidCorrelationContext.verified, false,
   'malformed correlation identifiers must never upgrade an outcome to verified');
 
+const boundaryControlContext = await service.verify({
+  toolId: 'device.set-state',
+  input,
+  result: { accepted: true },
+  executionId: '\\nexec-12345678-valid',
+  decisionId: 'decision-12345678-valid\\t',
+}, async (context) => {
+  assert.equal(context.executionId, undefined,
+    'leading LF must be rejected before trim can erase it');
+  assert.equal(context.decisionId, undefined,
+    'trailing TAB must be rejected before trim can erase it');
+  return { verified: false, basis: 'none', confidence01: 0 };
+});
+assert.equal(boundaryControlContext.verified, false,
+  'boundary control characters must fail closed');
+
 console.log('WORKPASS94_VERIFICATION_INPUT_BINDING=PASS exact-structural-match partial-input-rejected nested-change-rejected copied-token-rejected malformed-input-rejected');
