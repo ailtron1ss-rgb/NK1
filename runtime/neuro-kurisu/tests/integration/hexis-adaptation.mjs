@@ -773,6 +773,26 @@ assert(materializedGoal.project.reason?.includes('independent observations'),
   'materialized agency project must retain the reviewed Hexis goal description');
 assert.equal(goalPipelineSystems.agency.selfProjects.activeProjects().some(project => project.hexisProposalId === goalProposal.id), false,
   'a materialized proposal must not be auto-selected by ensureActiveProject');
+const goalGraphBeforeFault = goalPipelineSystems.memory.semanticMemory.snapshot();
+const originalGoalDecisionRecord = goalPipelineSystems.agency.deliberation.record.bind(goalPipelineSystems.agency.deliberation);
+goalPipelineSystems.agency.deliberation.record = () => { throw new Error('injected-goal-deliberation-failure'); };
+assert.throws(
+  () => goalPipelineSystems.activateHexisGoalProposal(goalProposal.id),
+  /injected-goal-deliberation-failure/,
+  'an activation failure after the receipt write must roll all participating states back',
+);
+assert.equal(
+  goalPipelineSystems.agency.selfProjects.snapshot().projects.find(project => project.hexisProposalId === goalProposal.id)?.status,
+  'paused',
+  'failed deliberation must restore the project to its pre-activation paused state',
+);
+assert.equal(goalPipelineSystems.hexisAdaptation.getGoalProposal(goalProposal.id)?.goalRelationshipReceipt, undefined,
+  'failed activation must not leave a persisted success receipt');
+assert.deepEqual(goalPipelineSystems.memory.semanticMemory.snapshot(), goalGraphBeforeFault,
+  'failed activation must restore the semantic graph snapshot');
+assert.equal(goalPipelineSystems.agency.deliberation.snapshot().records.length, 0,
+  'failed activation must restore the deliberation ledger');
+goalPipelineSystems.agency.deliberation.record = originalGoalDecisionRecord;
 const activatedGoal = goalPipelineSystems.activateHexisGoalProposal(goalProposal.id);
 assert.equal(activatedGoal.proposal.status, 'materialized');
 assert.equal(activatedGoal.project.status, 'active');
