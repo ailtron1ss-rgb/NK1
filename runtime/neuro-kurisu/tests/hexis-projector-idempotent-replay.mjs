@@ -110,6 +110,11 @@ for (let depth = 0; depth < 65; depth++) overDepthTree = { next: overDepthTree }
 assert.equal(isSafeJsonTree(overDepthTree), false, 'trees beyond the public depth limit must fail');
 assert.equal(isSafeJsonTree(overDepthTree, new Set(), -1000, { nodes: -1000 }), false,
   'extra JavaScript arguments cannot weaken the validator depth or node budget');
+assert.equal(isSafeJsonTree('x'.repeat(1_000_001)), false,
+  'a single unbounded JSON string must fail the structural validation budget');
+const wideTree = Object.fromEntries(Array.from({ length: 4097 }, (_, index) => ['field-' + index, index]));
+assert.equal(isSafeJsonTree(wideTree), false,
+  'a single object cannot bypass the tree budget with an excessive number of own keys');
 
 // WorkPass428: the exported receipt validator is a trust boundary, not only a digest check.
 const coherentAppliedStage = {
