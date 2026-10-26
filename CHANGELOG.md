@@ -1,3 +1,10 @@
+### WorkPass328 build-hardening follow-up (2026-10-25)
+
+- Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation; retained the version that validates same-tick required stages, optional appraisal/attention/memory/goal/plan edges, and required causal parents.
+- Corrected invalid control-character regex syntax in outcome correlation IDs, repaired learning type mismatches (replay options import, forgetting-risk option, optional retrieval parameters, compound-skill counters, literal dataset schema tags, and optional causal policy vectors), and added the missing compound-repair runtime-clock kind.
+- Expanded local Node.js compatibility declarations for file APIs, filesystem promises, public-key parsing, path resolution/separators, process platform metadata, Buffer allocation/byte counts, and standard error shapes. Explicitly typed child-process error/close callbacks to remain strict-mode safe.
+- These are compile-oriented fixes found from actual CI. No claim that the full runtime typecheck is yet green; more errors may be exposed by the next run.
+
 ## NK1 WorkPass328 — normalize operational sensor boundary (2026-10-25)
 
 - Added one shared, own-property-only sensor normalizer for the operational micro-cycle. Body energy, cognitive capacity, thermal strain, battery, sensory freshness, CPU load, and RAM pressure now all become finite values in `[0, 1]` before any downstream subsystem sees them.
