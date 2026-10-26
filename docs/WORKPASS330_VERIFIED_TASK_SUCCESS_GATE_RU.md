@@ -13,10 +13,12 @@
 ## Изменения в коде
 
 - Добавлена опция `minimumValidationTaskSuccess01`, default `0.80`.
+- Добавлена опция `minimumValidationTasks`, default `2`: повторения одной задачи не считаются широтой validation-набора.
 - Порог валидируется как конечное число в диапазоне [0, 1].
 - Если macro-average independently verified validation task success ниже порога, добавляется hard-gate причина `validation-task-success-below-threshold`; кандидат становится не eligible независимо от совокупного прироста.
 - Существующее сообщение feedback теперь явно указывает на promotion threshold.
 - Обязательная регрессия в `tests/p29-hermes-reflective-candidate-gate.mjs` проверяет случай: кандидат с 50% успехом задач, но хорошими траекторией/skill quality, всё же получает отказ при стандартном пороге 80%.
+- Та же регрессия проверяет второй failure mode: две попытки на одном validation task с высоким приростом не заменяют минимум двух независимых по identity задач.
 - Проверяется и контролируемая настройка порога 50%, а также отказ при значении > 1.
 
 ## Границы и сохранённые инварианты
