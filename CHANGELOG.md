@@ -1,3 +1,11 @@
+## [NK1][Hexis-H10] Make HMX acceptance replay-safe — 2026-10-26
+
+- HMX memory imports now use a deterministic MemoryFabric command ID bound to the persisted staging ID, record index, normalized kind, and content. Repeating `accept` does not re-emit a create/reconsolidation event or replay write statistics for rows already committed.
+- Import timestamps fall back to the immutable stage creation time rather than `Date.now()`, so the same row retains the same mutation fingerprint across retries and process restores.
+- This also gives recovery semantics for interrupted acceptance: already-receipted rows replay without side effects and not-yet-imported rows can complete from the still-accepted stage.
+- Added a dynamic Core-coordinator regression that accepts the same staged HMX document twice and asserts one new memory, one set of command receipts, and no new events on the second pass.
+- **Validation status:** regression is wired into `test:hexis-learning-review-canonical-memory`; the current GitHub Actions runner issue still prevents runtime PASS evidence.
+
 ## [NK1][Hexis-H9] Make finalized learning-review requests idempotent — 2026-10-26
 
 - The public Core review coordinator now treats a repeated matching decision as a replay, not an invalid pending-item request. It requires the decision and correction to match the finalized item and requires matching P65/SourceMonitor provenance before returning success.
