@@ -1,3 +1,8 @@
+## 2026-10-26 — CI compatibility follow-up
+
+- CI reliability gate требует approved Node.js 24-compatible GitHub Actions v7+; cognitive integration workflow выровнен с repository policy на `actions/checkout@v7` и `actions/setup-node@v7`.
+- Первичный runtime integration suite после фикса закреплённых TypeScript dependencies завершился PASS; полный core regression был заблокирован только проверкой action-tag policy до исполнения тестов.
+
 ## 2026-10-25 — WorkPass320: когнитивная связность и маршрутизация- Устранён выявленный CI-дефект TS2688: runtime теперь сам фиксирует `typescript@5.9.3`, `@types/node@22.20.4` и их lockfile-зависимость `undici-types`, не зависит от случайного наличия `app/node_modules`.
 
 
