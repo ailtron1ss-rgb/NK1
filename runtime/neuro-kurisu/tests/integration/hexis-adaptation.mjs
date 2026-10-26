@@ -215,6 +215,44 @@ for (const accessorCase of accessorCases) {
     `${accessorCase.name}: unsafe input must remain ineligible for acceptance`);
 }
 
+// A pending HMX receipt must still be intact after persistence restore.
+const integrityFabric = new HexisAdaptationFabric();
+const integrityPending = integrityFabric.stageHmx({
+  document: validHmx,
+  intent: 'telepathy',
+  strategy: 'additive',
+});
+assert.equal(integrityPending.conflicts.length, 0);
+const corruptedPersistence = integrityFabric.snapshot();
+const corruptedPending = corruptedPersistence.hmxStages.find(row => row.stagingId === integrityPending.stagingId);
+assert.ok(corruptedPending);
+corruptedPending.stagedSections.memories[0].content = 'Tampered after review, before acceptance.';
+const restoredIntegrityFabric = new HexisAdaptationFabric();
+restoredIntegrityFabric.restore(corruptedPersistence);
+const restoredCorruptedStage = restoredIntegrityFabric.getHmxStage(integrityPending.stagingId);
+assert.equal(restoredCorruptedStage?.status, 'rejected',
+  'a stale digest must quarantine a pending stage on restore');
+assert(restoredCorruptedStage?.conflicts.some(issue =>
+  issue.kind === 'persisted-stage-integrity-failure' &&
+  issue.detail.includes('persisted-stage-digest-mismatch')));
+assert.equal(restoredIntegrityFabric.decideHmx(integrityPending.stagingId, 'accept')?.status, 'rejected',
+  'an altered pending stage must never reach canonical apply');
+
+// A valid stage with ordinary validation conflicts remains staged for operator
+// inspection; this is different from a stale/tampered persistence receipt.
+const validConflictRestoreFabric = new HexisAdaptationFabric();
+const pendingConflictSnapshot = validConflictRestoreFabric.snapshot();
+const conflictStage = validConflictRestoreFabric.stageHmx({
+  document: { ...validHmx, sections: { ...validHmx.sections, identity: [{ id: 'protected' }] } },
+  intent: 'telepathy',
+  strategy: 'additive',
+});
+const conflictRestoredFabric = new HexisAdaptationFabric();
+conflictRestoredFabric.restore(validConflictRestoreFabric.snapshot());
+assert.equal(conflictRestoredFabric.getHmxStage(conflictStage.stagingId)?.status, 'staged');
+assert.equal(conflictRestoredFabric.decideHmx(conflictStage.stagingId, 'accept')?.status, 'staged',
+  'a validly digested stage with source-validation conflicts remains available for review');
+
 // Untrusted section names must not mutate the prototypes of stage diagnostics.
 const protoKeyHmx = structuredClone(validHmx);
 Object.defineProperty(protoKeyHmx.sections, '__proto__', {
