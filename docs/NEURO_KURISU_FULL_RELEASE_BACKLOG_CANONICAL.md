@@ -1,3 +1,17 @@
+## WorkPass355 — central environment secret/injection policy (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`
+
+- [x] Export one shared sensitive-environment predicate from `LearningProcessSupervisor.ts`.
+- [x] Reuse the predicate in the host-owned executor/verifier/scanner adapter; remove the duplicate local deny-list.
+- [x] Reject sensitive/loader-injection names in inherited environment keys at the generic supervisor boundary.
+- [x] Reject sensitive/loader-injection names in explicitly supplied environment entries before allocating run/survive roots.
+- [x] Add regressions for inherited and explicit `OPENAI_API_KEY` and verify rejected requests create no run root.
+- [ ] Run the focused WorkPass349 workflow on the exact new code/test SHA, including supervisor regression, evaluator path tests and runtime typecheck.
+- **Status:** code/tests committed; exact-head CI pending. Host credentials should remain host-owned; environment filtering does not replace a real executor sandbox.
+
+---
+
 ## WorkPass354 — private, disjoint storage roots for learning child processes (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`
