@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass394 — deduplicate deferred goal relationships and tighten relation typing (2026-10-26)
+
+- [FIX] Use explicit relation narrowing for the SemanticMemoryGraph edge union rather than returning an un-narrowed string.
+- [FIX] Deduplicate HMX goal-related relationship rows by source ref, target ref and normalized relation before graph projection. Duplicate export rows no longer reinforce the same semantic edge or inflate the receipt.
+- [FIX] Make `sourceStageFound` report whether the source stage exists, while projection remains gated on actual canonical apply.
+- [TEST] Added a duplicate HMX relationship row and asserted one candidate/projected edge with unchanged weight.
+
 ## [NK1][Hexis] WorkPass393 — retain goal rationale in agency materialization (2026-10-26)
 
 - [INTEGRATION] Preserve the reviewed HMX goal description as the NK1 self-project rationale instead of dropping explanatory content during materialization.
