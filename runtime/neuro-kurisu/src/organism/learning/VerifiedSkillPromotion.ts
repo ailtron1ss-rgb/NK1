@@ -87,8 +87,27 @@ export function isAuthenticVerifiedSkillPromotionProposal(value: unknown): value
   try { return proposalDigest(value) === expected; } catch { return false; }
 }
 
-const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
-  Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
+function configuredInteger(
+  value: number | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+  label: string,
+): number {
+  const selected = value === undefined ? fallback : value;
+  if (!Number.isSafeInteger(selected) || selected < min || selected > max) {
+    throw new RangeError(`verified-skill-promotion-${label}-must-be-an-integer-from-${min}-to-${max}`);
+  }
+  return selected;
+}
+
+function configuredUnitThreshold(value: number | undefined, fallback: number, label: string): number {
+  const selected = value === undefined ? fallback : value;
+  if (typeof selected !== 'number' || !Number.isFinite(selected) || selected < 0 || selected > 1) {
+    throw new RangeError(`verified-skill-promotion-${label}-must-be-finite-and-in-range-0-to-1`);
+  }
+  return selected;
+}
 
 /** Normalize family requirements as explicit, auditable policy rather than hidden global assumptions. */
 function normalizeMinimumFamilyGainByFamily(value: unknown): Record<string, number> {
@@ -131,14 +150,19 @@ export function proposeVerifiedSkillPromotion(
   candidateMethod: string,
   options: VerifiedSkillPromotionOptions = {},
 ): VerifiedSkillPromotionProposal {
-  if (!baselineMethod?.trim() || !candidateMethod?.trim() || baselineMethod === candidateMethod) {
+  if (typeof baselineMethod !== 'string' || baselineMethod.trim().length === 0 ||
+      typeof candidateMethod !== 'string' || candidateMethod.trim().length === 0 ||
+      baselineMethod === candidateMethod) {
     throw new Error('two distinct method names are required');
   }
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    throw new TypeError('verified-skill-promotion-options-must-be-an-object');
+  }
   const evaluationPolicy = {
-    minPairedTasks: boundedInteger(options.minPairedTasks, 8, 2, 10000),
-    minAbsoluteGain: Math.max(0, Math.min(1, Number.isFinite(options.minAbsoluteGain) ? options.minAbsoluteGain! : 0.02)),
-    maxFamilyRegression: Math.max(0, Math.min(1, Number.isFinite(options.maxFamilyRegression) ? options.maxFamilyRegression! : 0.10)),
-    minCompleteSeeds: boundedInteger(options.minCompleteSeeds, 3, 3, 1000),
+    minPairedTasks: configuredInteger(options.minPairedTasks, 8, 2, 10000, 'min-paired-tasks'),
+    minAbsoluteGain: configuredUnitThreshold(options.minAbsoluteGain, 0.02, 'min-absolute-gain'),
+    maxFamilyRegression: configuredUnitThreshold(options.maxFamilyRegression, 0.10, 'max-family-regression'),
+    minCompleteSeeds: configuredInteger(options.minCompleteSeeds, 3, 3, 1000, 'min-complete-seeds'),
     minimumFamilyGainByFamily: normalizeMinimumFamilyGainByFamily(options.minimumFamilyGainByFamily),
   };
   const snapshot = ledger.snapshot();
