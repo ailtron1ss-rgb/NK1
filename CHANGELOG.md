@@ -1,3 +1,10 @@
+## [NK1][Hexis-H7] Recover interrupted learning-review corrections — 2026-10-26
+
+- Learning-review correction now uses a stable MemoryFabric command ID. If the content revision was committed but the process stopped before recording review provenance or closing the review item, the next attempt recognizes the exact generated revision by reviewed revision group, parent ID, source `hexis-learning-review`, and exact correction text.
+- Only that exact self-generated successor may be resumed; any other newer revision still returns `review-source-memory-superseded`. Recovery records the same review-evidence lineage and then finalizes the pending review, without creating another content revision.
+- The mutation result distinguishes a recovered prior correction from a true no-op correction. The regression asserts the source, parent, revision-group, text, and stable-command guards at the Core boundary.
+- **Validation status:** source-level guards and test registration verified; end-to-end execution remains unverified because GitHub Actions is still failing before runner assignment across unrelated workflows on this PR head.
+
 ## [NK1][Hexis-H6] Recover interrupted belief revisions and normalize evidence identity — 2026-10-26
 
 - Normalized evidence identity consistently across MemoryOS2, Hexis, and Core: NFKC normalization, bounded key length, trimmed text, and case-insensitive comparison. Restored Hexis belief projections now normalize legacy source-key arrays before duplicate detection.
