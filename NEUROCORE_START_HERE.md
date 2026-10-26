@@ -1,12 +1,12 @@
 ## Latest checkpoint — WorkPass356 MemoryOS restore safety (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
-**Code/test SHA under CI:** `8ed25644b3728ae033d7b9696d013804f21df315`.
+**Validated code/test SHA:** `40991fca3c441ed874ce8c58791d29a9c92ebb21`; [focused workflow #40290234073 passed](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290234073).
 
 - `MemoryOS2.restore` now refuses invalid top-level state and future schema versions before mutating the live graph. Older/versionless snapshots remain eligible for migration.
 - Restore filters malformed rows, drops all rows on duplicate memory IDs, recomputes content hashes, normalizes scoring and epistemic fields, rejects non-finite semantic vectors, and removes malformed links.
 - New `workpass356-memoryos-restore-boundary.mjs` covers those boundaries and is wired into the focused CI workflow.
-- **Validation pending:** the exact-head focused run must finish this regression and runtime typecheck. Older green results do not validate this new pass.
+- **Validation:** exact-head focused workflow #40290234073 passed: native provider 10/10, evaluator-config 16/16, `WORKPASS356_MEMORYOS_RESTORE_BOUNDARY=PASS`, and runtime typecheck pass. End-to-end file-backed restart/retrieval remains a separate open gate.
 - Next required memory proof: file-backed end-to-end restart/retrieval test with causal/autobiographical memory—not just a snapshot round-trip. Broader release gates remain deployment sandbox, matched independent learning comparison, clean startup, production UI/database, browser/Live2D, Android/Termux audio, soak and license review.
 
 ---
