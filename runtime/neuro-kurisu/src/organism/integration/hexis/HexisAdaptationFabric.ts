@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
-import { validateHmxV17Document } from './HexisHmxV17Adapter.ts';
+import { snapshotHmxV17Document, validateHmxV17Document } from './HexisHmxV17Adapter.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
@@ -352,14 +352,18 @@ export class HexisAdaptationFabric {
         intent: HexisHmxIntent;
         strategy: HexisHmxStrategy;
     }): HexisHmxStage {
-        const document = input.document && typeof input.document === 'object' && !Array.isArray(input.document)
-            ? input.document as Record<string, unknown>
+        const captured = snapshotHmxV17Document(input.document);
+        const capturedDocument = captured.ok ? captured.value : undefined;
+        const document = capturedDocument && typeof capturedDocument === 'object' && !Array.isArray(capturedDocument)
+            ? capturedDocument as Record<string, unknown>
             : {};
         const sections = document.sections && typeof document.sections === 'object' && !Array.isArray(document.sections)
             ? document.sections as Record<string, unknown>
             : {};
-        const conflicts: HexisHmxStage['conflicts'] = validateHmxV17Document(input.document, input.intent)
-            .map((issue) => ({ path: issue.path, kind: issue.kind, detail: issue.detail }));
+        const conflicts: HexisHmxStage['conflicts'] = captured.ok
+            ? validateHmxV17Document(captured.value, input.intent)
+                .map((issue) => ({ path: issue.path, kind: issue.kind, detail: issue.detail }))
+            : [{ path: captured.issue.path, kind: captured.issue.kind, detail: captured.issue.detail }];
         const names = Object.keys(sections);
         const sectionCounts: Record<string, number> = {};
         const stagedSections: Record<string, unknown> = {};
