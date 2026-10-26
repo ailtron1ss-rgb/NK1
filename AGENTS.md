@@ -1,10 +1,12 @@
 # NeuroCore — repository working rules
 
-> **Current continuation point (2026-10-24):** read `NEUROCORE_START_HERE.md`, then `docs/WORKPASS331_UNIFIED_COGNITIVE_KERNEL_RU.md`. Current source integration work is on `workpass332-live-runtime-kernel-2026-10-24`, based on `workpass331-unified-cognitive-kernel-2026-10-24`. Keep `main` stable as the release/metadata branch; do not merge the source stack into `main` without a separately verified release sync.
+> **Current continuation point (2026-10-26):** start with `NEUROCORE_START_HERE.md`; current code/security pass is `workpass349-native-dataset-path-identity-2026-10-26`, based on source-stack commit `71e9286f9fe11c6afec851359a96f9e9b0011259`.
 >
-> WorkPass332 now routes the actual `OrganismRuntime` cycle through `CanonicalCognitiveKernel` and adds a regression that ensures the live path no longer bypasses it through manual `recordOperationalCycle` / direct `unifiedCycle.evaluate`. The code and CI edits exist on the WorkPass332 branch; **do not treat the exact-head integration as validated until its fresh Actions run has executed and passed.**
+> **WorkPass349 change:** native Hermes/P23 signed-dataset loading now binds the inspected `lstat` object, canonical target and opened descriptor to the same device/inode, opens the original configured path with `O_NOFOLLOW` on POSIX, and preserves pre-/post-read mutation checks. Focused regression coverage and CHANGELOG/backlog/checkpoint updates are committed.
 >
-> Parent WorkPass331 commit `5f318ad801f30ddd82150ed6be56baafc1c567a9` had successful kernel/learning-validation Actions runs on 2026-10-24, but those results do not prove the new WorkPass332 change. Continue with exact-head CI, runtime/app typechecks, organism smoke, persistence/restart and UI/device E2E. Do not claim recall uplift without a paired multi-seed comparison on the same validated corpus and frozen holdout.
+> **Validation is pending on the exact head.** Do not infer success from earlier WorkPass347/348 CI: run `npm run test:workpass346:native-repair-provider`, runtime typecheck, and the WorkPass335 Hermes host-evaluator workflow, then record their exact-head results. No local execution or fresh CI success is asserted here.
+>
+> Keep `main` stable as the release/metadata branch; do not merge the source stack into `main` without a separately verified release sync. Continue code-first, with the existing canonical runtime, memory owner and learning gates; avoid parallel sources of truth, placeholders, fake metrics, and unsupported claims of consciousness or learning uplift.
 
 ## Project objective
 
