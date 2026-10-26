@@ -1,3 +1,10 @@
+## WorkPass401 — prototype-free HMX staging maps (2026-10-26)
+
+- **Code commit:** `47d88fcc1a8b5737cca6c542a51e3d0011f8281a`; **regression:** `76830a380ab2cdbd825994062de793c2a1a0c2f0`.
+- `sectionCounts` and `stagedSections` are now null-prototype dictionaries. An untrusted HMX section named `__proto__` remains a diagnostic key instead of invoking an inherited setter or changing the dictionary prototype.
+- Regression requires the section to be reported as unsupported, the source count to remain visible, the staged payload to omit the conflicted section, both dictionaries to have no prototype, and acceptance to remain blocked.
+- **Validation:** PENDING exact-head typecheck, HMX adaptation test, server smoke and Unified integration. No PASS claimed; exact-head runner output remains unavailable. Progress/readiness scores unchanged; `main` and canonical Release ZIP unchanged.
+
 ## WorkPass400 — guard Hexis routes against non-object JSON bodies (2026-10-26)
 
 - **Server code:** `416c8df040e778c431ac999242d0d339a0a5940f`; **smoke regression:** `6132b9112a398d37d1dc975fe08bff0b48a9d6f5`.
