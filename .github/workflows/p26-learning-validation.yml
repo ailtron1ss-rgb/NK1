@@ -36,18 +36,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-      - name: Set up Node.js
+      - name: Set up repository Node version
         uses: actions/setup-node@v7
         with:
-          node-version: "22.12.0"
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install pinned TypeScript compiler and Node typings
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Install locked dependencies
         working-directory: runtime/neuro-kurisu
         run: npm ci
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
+      - name: Run bounded interleaved replay admission contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:interleaved-training-contract
       - name: Validate learning input integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:learning-input-integrity

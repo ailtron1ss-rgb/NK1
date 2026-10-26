@@ -39,17 +39,19 @@ const nonEmpty = (value: unknown): value is string =>
  * Randomness is injectable so tests and experiments can be reproduced.
  */
 export class ContinualReplayBuffer {
+  readonly capacity: number;
   private readonly memory: ReplayExperience[] = [];
   private seen = 0;
   private readonly random: () => number;
   private readonly actions: Set<string>;
 
   constructor(
-    readonly capacity: number,
+    capacity: number,
     actions: readonly ActionKind[] = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'],
     random: () => number = Math.random,
   ) {
     if (!Number.isSafeInteger(capacity) || capacity < 1) throw new RangeError('replay-capacity-must-be-positive-integer');
+    this.capacity = capacity;
     if (typeof random !== 'function') throw new TypeError('replay-random-must-be-function');
     this.actions = new Set(actions);
     if (this.actions.size === 0) throw new TypeError('replay-actions-required');

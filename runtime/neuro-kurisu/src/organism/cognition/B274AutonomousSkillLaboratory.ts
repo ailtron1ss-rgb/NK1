@@ -38,6 +38,8 @@ export interface B274State {
   imaginedExperiments:number;
   realTrials:number;
   independentEvaluations:number;
+  unmatchedOutcomeCount:number;
+  unmatchedOutcomeHistory:Array<{tick:number;candidateId:string;selectedAction:ActionKind;expectedAction:ActionKind}>;
   promotions:number;
   rejections:number;
   transfers:number;
@@ -83,14 +85,17 @@ export interface B274StepResult {
 }
 
 export function defaultB274State():B274State{
-  return {version:1,ticks:0,cycles:0,imaginedExperiments:0,realTrials:0,independentEvaluations:0,promotions:0,rejections:0,transfers:0,reversions:0,candidates:[],promotedSkillIds:[],activeCandidateId:null,lastExperimentId:null,endogenousSkillPressure01:.35,discoveryRate01:0,transferRate01:0,promotionConfidence01:.35,neuralGrounding01:.35,autonomyContribution01:.35,selfAlignment01:.5,personalityFit01:.5,rollbackSafety01:.9,transferKeys:[]};
+  return {version:1,ticks:0,cycles:0,imaginedExperiments:0,realTrials:0,independentEvaluations:0,unmatchedOutcomeCount:0,unmatchedOutcomeHistory:[],promotions:0,rejections:0,transfers:0,reversions:0,candidates:[],promotedSkillIds:[],activeCandidateId:null,lastExperimentId:null,endogenousSkillPressure01:.35,discoveryRate01:0,transferRate01:0,promotionConfidence01:.35,neuralGrounding01:.35,autonomyContribution01:.35,selfAlignment01:.5,personalityFit01:.5,rollbackSafety01:.9,transferKeys:[]};
 }
 
 export class B274AutonomousSkillLaboratory{
   private state=defaultB274State();
   restore(raw?:Partial<B274State>|null){
     const d=defaultB274State(),r=raw??{};
-    this.state={...d,...r,candidates:Array.isArray(r.candidates)?r.candidates.slice(-96).map((c:any)=>({...c,actions:Array.isArray(c?.actions)?c.actions.slice(0,6).filter((a:any)=>ACTIONS.includes(a)):['reflect']})):[],promotedSkillIds:Array.isArray(r.promotedSkillIds)?r.promotedSkillIds.slice(-64):[],transferKeys:Array.isArray(r.transferKeys)?r.transferKeys.slice(-128):[]};
+    this.state={...d,...r,
+      unmatchedOutcomeCount:Number.isSafeInteger(r.unmatchedOutcomeCount)&&Number(r.unmatchedOutcomeCount)>=0?Math.min(Number.MAX_SAFE_INTEGER,Number(r.unmatchedOutcomeCount)):0,
+      unmatchedOutcomeHistory:Array.isArray(r.unmatchedOutcomeHistory)?r.unmatchedOutcomeHistory.slice(-128).filter((e:any)=>e&&typeof e==='object'&&Number.isSafeInteger(e.tick)&&e.tick>=0&&typeof e.candidateId==='string'&&ACTIONS.includes(e.selectedAction)&&ACTIONS.includes(e.expectedAction)).map((e:any)=>({tick:e.tick,candidateId:e.candidateId,selectedAction:e.selectedAction,expectedAction:e.expectedAction})):[],
+      candidates:Array.isArray(r.candidates)?r.candidates.slice(-96).map((c:any)=>({...c,actions:Array.isArray(c?.actions)?c.actions.slice(0,6).filter((a:any)=>ACTIONS.includes(a)):['reflect']})):[],promotedSkillIds:Array.isArray(r.promotedSkillIds)?r.promotedSkillIds.slice(-64):[],transferKeys:Array.isArray(r.transferKeys)?r.transferKeys.slice(-128):[]};
   }
   snapshot(){return structuredClone(this.state);}
 
@@ -150,8 +155,16 @@ export class B274AutonomousSkillLaboratory{
     return {candidateId:id,candidateCreated:created,experimentActions,imaginedGain01:imaginedGain,novelty01:fit.novelty,selfAlignment01:fit.selfAlignment,neuralGrounding01:fit.neuralGrounding,autonomyContribution01:this.state.autonomyContribution01};
   }
 
-  observeTrial(input:{tick:number;candidateId:string;reward01:number;independentGain01:number;predictionError01:number;personalityAlignment01:number;selfAlignment01:number;worldNovelty01:number;neuralReliability01:number;transferTestGain01?:number;robustness01?:number}){
-    const c=this.state.candidates.find(x=>x.id===input.candidateId);if(!c)return {accepted:false,promoted:false,rejected:false,transfer:false,rollback:false,skillId:null};
+  observeTrial(input:{tick:number;candidateId:string;selectedAction:ActionKind;reward01:number;independentGain01:number;predictionError01:number;personalityAlignment01:number;selfAlignment01:number;worldNovelty01:number;neuralReliability01:number;transferTestGain01?:number;robustness01?:number}){
+    if(!Number.isSafeInteger(input.tick)||input.tick<0) throw new RangeError('B274 trial tick must be a non-negative safe integer');
+    if(!ACTIONS.includes(input.selectedAction)) throw new TypeError('B274 selected action is invalid');
+    const c=this.state.candidates.find(x=>x.id===input.candidateId);if(!c)return {accepted:false,promoted:false,rejected:false,transfer:false,rollback:false,skillId:null,attributionMismatch:false};
+    const expectedAction=c.actions[0];
+    if(!expectedAction||input.selectedAction!==expectedAction){
+      this.state.unmatchedOutcomeCount=Math.min(Number.MAX_SAFE_INTEGER,this.state.unmatchedOutcomeCount+1);
+      this.state.unmatchedOutcomeHistory=[...this.state.unmatchedOutcomeHistory.slice(-127),{tick:input.tick,candidateId:c.id,selectedAction:input.selectedAction,expectedAction:expectedAction??'reflect'}];
+      return {accepted:false,promoted:false,rejected:false,transfer:false,rollback:false,skillId:null,attributionMismatch:true,expectedAction:expectedAction??'reflect'};
+    }
     this.state.realTrials++;this.state.independentEvaluations++;
     const evidence=clamp01(.28*input.reward01+.34*clamp01(.5+input.independentGain01)+.14*(1-input.predictionError01)+.12*input.personalityAlignment01+.12*input.neuralReliability01);
     const gain=input.independentGain01;
@@ -166,7 +179,7 @@ export class B274AutonomousSkillLaboratory{
     if((input.transferTestGain01??0)>.04 && c.status==='promoted'){this.state.transferRate01=clamp01(this.state.transferRate01*.84+.16);transfer=true;}
     if(!acceptance && c.status==='candidate'){c.status='trial';this.state.rollbackSafety01=clamp01(this.state.rollbackSafety01*.95+.05);rollback=true;}
     const localRate=this.state.realTrials?this.state.promotions/this.state.realTrials:0;this.state.discoveryRate01=clamp01(this.state.discoveryRate01*.86+localRate*.14);this.state.promotionConfidence01=clamp01(this.state.promotionConfidence01*.84+evidence*.16);
-    return {accepted:acceptance,promoted,rejected:c.status==='retired',transfer,rollback,skillId:c.status==='promoted'?c.id:null,evidence01:evidence,empiricalGain01:c.empiricalGain01,transferGain01:c.transferGain01,robustness01:c.robustness01};
+    return {accepted:acceptance,promoted,rejected:c.status==='retired',transfer,rollback,skillId:c.status==='promoted'?c.id:null,evidence01:evidence,empiricalGain01:c.empiricalGain01,transferGain01:c.transferGain01,robustness01:c.robustness01,attributionMismatch:false};
   }
 
   promoteTransferred(input:{tick:number;sourceSkillId:string;newGoalVector:number[];selfLatent:number[];neuralAssembly:number[];independentGain01:number;robustness01:number}){
@@ -206,6 +219,7 @@ export class B274AutonomousSkillLaboratory{
       neuralGrounding01:this.state.neuralGrounding01, autonomyContribution01:this.state.autonomyContribution01,
       selfAlignment01:this.state.selfAlignment01, personalityFit01:this.state.personalityFit01,
       rollbackSafety01:this.state.rollbackSafety01, activeCandidateId:this.state.activeCandidateId,
+      unmatchedOutcomeCount:this.state.unmatchedOutcomeCount,
     };
   }
 }

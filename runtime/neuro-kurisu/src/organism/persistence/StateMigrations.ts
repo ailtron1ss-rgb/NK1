@@ -193,6 +193,8 @@ export interface PersistedShapeCurrent {
     lastStateHash: string;
     replaySignature: string;
     lastReplayAt: number;
+    /** Raw boundary payload is preserved so FeedbackDeliveryGuard can fail closed on corrupted receipts. */
+    feedbackDeliveryReceipt?: unknown;
     actionExecutionLedger?: import('../system/ActionGateway.ts').ActionExecutionLedgerSnapshot;
     subjectIdentity: import('../core/types.ts').SubjectIdentityRecord;
     externalObserver?: import('../system/ExternalObserverFabric.ts').ExternalObserverState;
@@ -1197,6 +1199,9 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
       lastStateHash:String(raw.system?.lastStateHash ?? ''),
       replaySignature:String(raw.system?.replaySignature ?? ''),
       lastReplayAt:Number(raw.system?.lastReplayAt ?? 0),
+      // Preserve the receipt verbatim: dropping it here would re-enable same-tick learning replay after restart.
+      // The runtime guard performs strict validation and fails closed on a malformed value.
+      feedbackDeliveryReceipt: raw.system?.feedbackDeliveryReceipt,
       actionExecutionLedger: raw.system?.actionExecutionLedger && Array.isArray(raw.system.actionExecutionLedger.records)
         ? { version:1, records:raw.system.actionExecutionLedger.records.slice(-128), ...(raw.system.actionExecutionLedger.permissions && typeof raw.system.actionExecutionLedger.permissions==='object' ? { permissions:raw.system.actionExecutionLedger.permissions } : {}) }
         : { version:1, records:[] },

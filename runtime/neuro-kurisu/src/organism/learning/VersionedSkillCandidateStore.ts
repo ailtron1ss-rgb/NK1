@@ -194,13 +194,22 @@ function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): Acti
  * This store is deliberately separate from the live runtime skill resolver.
  */
 export class VersionedSkillCandidateStore {
+  private readonly persistence: SkillStorePersistence;
+  private readonly verifyApproval: SkillPromotionApprovalVerifier;
+  private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier;
+  private readonly verifyRollbackApproval: SkillRollbackApprovalVerifier;
+
   constructor(
-    private readonly persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
-    private readonly verifyApproval: SkillPromotionApprovalVerifier = () => false,
-    private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
-    private readonly verifyRollbackApproval: SkillRollbackApprovalVerifier = () => false,
+    persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
+    verifyApproval: SkillPromotionApprovalVerifier = () => false,
+    verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
+    verifyRollbackApproval: SkillRollbackApprovalVerifier = () => false,
   ) {
-    const initial = persistence.read();
+    this.persistence = persistence;
+    this.verifyApproval = verifyApproval;
+    this.verifyShadowEvidence = verifyShadowEvidence;
+    this.verifyRollbackApproval = verifyRollbackApproval;
+    const initial = this.persistence.read();
     if (initial.schemaVersion !== 1 || !Number.isSafeInteger(initial.revision) ||
         initial.revision < 0 || !Array.isArray(initial.active) || !Array.isArray(initial.candidates)) {
       throw new Error('invalid versioned skill store snapshot');
@@ -315,7 +324,7 @@ export class VersionedSkillCandidateStore {
     }
     if (revisionProvenance && (
       revisionProvenance.schemaVersion !== 1 ||
-      !(/^[a-f0-9]{64}$/.test(revisionProvenance.evaluationFingerprint ?? '')) ||
+      (revisionProvenance.evaluationFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(revisionProvenance.evaluationFingerprint)) ||
       !(revisionProvenance.sourceCandidateId === null || /^[a-f0-9]{64}$/.test(revisionProvenance.sourceCandidateId)) ||
       !/^[a-f0-9]{64}$/.test(revisionProvenance.planFingerprint) ||
       !/^[a-f0-9]{64}$/.test(revisionProvenance.datasetFingerprint) ||

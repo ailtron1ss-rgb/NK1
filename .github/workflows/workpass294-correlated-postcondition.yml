@@ -23,6 +23,8 @@ jobs:
           package-manager-cache: false
       - name: Enforce runtime version
         run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Install pinned TypeScript compiler and Node typings
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Type-check runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck

@@ -1,3 +1,94 @@
+## P26 replay ordering and signed-shadow candidate identity — 2026-10-26
+
+- Reordered admitted interleaved rehearsal so each current experience is trained after its historical sample. This protects new-task plasticity when replay is dense without bypassing contradiction screening or the replay-update budget.
+- Corrected the bounded replay contract fixture to include one conflicting historical sample and one admissible same-action sample in a distinct novelty context.
+- Updated the signed-shadow end-to-end fixture to derive its expected candidate ID using the canonical five-field identity, including explicit `null` when revision provenance is absent. The runtime must continue to authenticate the resulting signed observation normally.
+- Validation snapshot before these follow-on changes: P26 replay-policy sweep failed at seed 17 / `interleave-1` (new-task accuracy 0.520), and signed-shadow observation failed on candidate-ID mismatch. The exact new head still needs CI confirmation; no replay-policy improvement is claimed yet.
+
+## Bounded P26 interleaved replay and exact-head regression — 2026-10-26
+
+- Implemented the missing `P26TrueLearningEngine.trainInterleaved()` API used by the sequential continual-learning benchmark. Current-experience updates and historical rehearsal are separately counted; contradictory same-action feedback from a nearby state is screened with a bounded candidate budget, while sufficiently distinct novelty/world contexts can preserve separate task outcomes.
+- Input rows, reward ranges and option caps are validated; a zero replay budget still permits current learning without historical replay.
+- The replay budget counts successful optimizer updates, not rejected candidates; a conflicting row cannot consume the budget and starve a later eligible sample.
+- Added `p26-interleaved-training-contract.mjs` to cover conflict rejection, contextual admission, an explicit zero replay budget, bounded comparisons and malformed-input rejection. Wired it into P26 CI.
+- Updated the P26 workflow to use the repository `.nvmrc` instead of hard-coded Node 22.12.0.
+- This implementation is a synthetic benchmark contract, not evidence of general learning improvement on external tasks. Exact-head P26 CI remains required.
+
+## Core feedback-guard ownership — 2026-10-26
+
+- Moved construction of `FeedbackDeliveryGuard` from `OrganismCore` into `PersistenceRuntime`, where the replay barrier belongs with durable feedback-receipt continuity. Core retains a getter and existing call sites, so this is an ownership relocation, not a change to receipt semantics.
+- This brings Core's direct-constructor count back within the existing strict ownership ceiling rather than weakening the audit policy.
+- Exact-head WorkPass79 and NeuroCore validation are required to confirm the extraction and runtime behavior.
+
+## Durable skill-store provenance identity — 2026-10-26
+
+- Aligned atomic-file persistence validation with provenance-bound candidate IDs while preserving compatibility with legacy four-field IDs when no revision provenance is present.
+- Optional `evaluationFingerprint` remains optional and is validated only when supplied. A structurally invalid or mismatched candidate ID remains fail-closed.
+- Updated the durable lifecycle fixture to use the current rollback approval API and added default-deny rollback cases. Exact-head WorkPass110 remains the authority for the final durable-store verdict.
+
+## B274 executed-action attribution — 2026-10-26
+
+- B274 now receives the canonical selected action with every real-trial outcome. It updates a skill candidate only when the executed action matches the candidate plan's first action; otherwise the reward is rejected before trial/evaluation counters or candidate quality and promotion state change.
+- Unmatched outcomes are preserved in bounded diagnostics. The Core integration test now accepts either a genuine trial or an explicit mismatch record, rather than forcing false attribution.
+- Focused Repository wiring contract audit [#40256974246](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256974246) passed all steps, including B274 lifecycle/evaluator/migration/Core integration and the full cognitive graph/routing tests. PR [#159](https://github.com/ailtron1ss-rgb/NK1/pull/159) merged to this audit branch (merge commit `e03b33721696f5f7db06b35ba9359f79c02fbfe9`).
+- Separate broader workflow [WorkPass110 run #40256795814](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256795814) remains red in `VersionedSkillCandidateStore.rollback` because the existing test call lacks the required signed rollback approval identity/timestamp/active-version guard; this is not part of B274 attribution and remains unresolved.
+
+## B274 executed-action attribution — 2026-10-26
+
+- B274 now receives the canonical selected action with each real-trial result. A candidate is evaluated only when the executed action matches its first planned action; otherwise the reward is rejected before candidate quality, attempts, real-trial count or promotion state changes.
+- Unmatched outcomes are recorded in a bounded diagnostic history for review. Focused CI validation is pending.
+
+## B273 outcome attribution — 2026-10-26
+
+- Both Core feedback paths now pass B273 reward only when the canonical selected action belongs to the exact B273-generated plan. The B273 learning API validates tick, action membership and exact plan identity, including for direct wrapper calls.
+- Actions outside the generated plan are retained as bounded unselected-candidate evidence without goal progress, skill updates or rewarded outcome-history writes. A skill prototype is only created or reinforced when the plan's primary action was actually selected; a selected secondary plan alternative may contribute to goal progress but cannot be mislabeled as execution of the primary plan.
+- Focused run [#40256370655](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256370655) passed all steps: B273 lifecycle, persisted-state migration, Core integration, B272/B273 attribution, cognitive graph continuity and routing connection. PR [#158](https://github.com/ailtron1ss-rgb/NK1/pull/158) was squash-merged into this audit branch (merge commit `f3134a8ded0e1126a18fd57152ead8d1943c62f2`).
+
+## Spine-only feedback crash recovery — 2026-10-26
+
+- The spine-only observation loop now detects a durable receipt at the current/ahead tick before retrying feedback, records a `feedback-recovery` decision event, discards the ambiguous reward, and continues advancing the cognitive tick.
+- Prevented a discarded outcome from being attached to the next selected action. Invalid receipts also suppress unsafe learning without freezing the spine-only cycle.
+- Verified by focused Repository wiring contract audit [#40255940523](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255940523): all workflow steps succeeded. PR [#157](https://github.com/ailtron1ss-rgb/NK1/pull/157) squash-merged into the audit branch (merge commit `a3e8119113be6493507b31a0ac49afeab59c150b`).
+
+## Feedback delivery idempotence — 2026-10-26
+
+- Added a tick-scoped feedback delivery guard at the entry to both normal and spine-only feedback paths, before any downstream learning/state mutation.
+- The guard rejects concurrent duplicate delivery, persisted same-tick replays after restart, malformed receipts and future-tick clock regression; a failed in-flight delivery remains blocked rather than being replayed against partially updated learners.
+- A dedicated atomic `feedback-delivery-receipt.json` sidecar is durably saved before feedback mutates learners, then atomically replaced by the completed receipt. This avoids forcing a full neural-state projection for each feedback event; if a process crashes mid-feedback, the restored in-progress receipt blocks replay of that tick.
+- `migratePersistedOrganism` also preserves the receipt in the main snapshot. Focused run [#40255558788](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255558788) passed on the PR merge candidate with zero failed steps: receipt guard, FileStateStore round-trip/recovery, B272 attribution, repository wiring, cognitive graph continuity and routing checks. PR [#156](https://github.com/ailtron1ss-rgb/NK1/pull/156) was squash-merged into this audit branch.
+
+## Cognitive dependency frame integrity — 2026-10-25
+
+- The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
+- Dirty domains are activated only by own properties whose values are exactly `true`; inherited properties and truthy coercion no longer create false wake signals.
+- Added regression cases for replayed ticks, malformed domain containers, and prototype-inherited activation. Confirmed by focused CI run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- Focused CI runs the WorkPass320 restore/frame regression and WorkPass324 interrupt-episode regression when the graph or either test changes; both passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- The focused workflow's push and pull-request path filters both cover the graph implementation and its two regression tests, so these changes remain linked to validation on either trigger.
+- Connected `CognitiveDependencyGraph` to the live `OrganismRuntime` cycle: it builds a routing frame from the normalized observation and current organism state, records an evidence-bus event, and atomically checkpoints its small state in a sidecar when routing/interrupt state changes, every 16 organism ticks, and at shutdown.
+- The graph's routing frame identity remains monotonic across a recovery where the organism snapshot is restored from an older valid backup. Core's canonical action arbitration remains unchanged; the first integration records/wires routing evidence rather than independently selecting actions.
+- Added an integration regression for final sidecar flush and restart continuity. It passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- Added `CognitiveRoutingPolicy` to adapt graph interrupts/governance pressure to the optional speculative-work budget. It only reduces the existing resource allocator's branch count; it does not replace canonical Core action arbitration.
+- Critical resource/thermal/memory interrupts deny counterfactual branches, ordinary active interrupts cap them at one and skip matched alternative projections, and governance pressure caps optional work. Zero upstream branch budget also disables matched alternate projections.
+- Added policy unit tests and wired them into focused CI for push/pull requests; the budget and interrupt-threshold tests passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- Added a runtime-wiring contract test that checks the policy is fed the live graph state and upstream resource cap, that critical routing can skip reservation, and that canonical `plan.steps[0]` remains the source of the selected world action. The integration test also requires a runtime evidence-bus record for the admitted budget.
+- The same bounded policy now adjusts only the recurring cognitive clock: non-resource interrupts may reduce its next delay by at most 25%, while critical resource interrupts do not accelerate work. Scheduler decisions carry a `cognitive-interrupt` reason for observability; other maintenance clocks and canonical action arbitration are unchanged.
+- Fixed a live feedback-boundary defect exposed by the runtime integration test: Core previously passed the canonically selected action into B272 even when B272 had generated a different candidate action. Core now credits B272's action learner only when its generated action actually won arbitration; otherwise it records a terminal unselected-candidate decision without attributing another action's reward.
+- B272 now persists a bounded, validated `unselectedActionHistory`; restore quarantines duplicate terminal-decision ticks across executed outcomes and unselected candidates. The Core snapshot is refreshed after feedback so B272's new terminal decision and any actual learning update survive restart.
+- Added regression checks that a non-selected candidate is finalized but receives no action-prototype, goal-outcome-memory, or executed-outcome-history reward credit. Focused CI now runs the B272 goal-attribution test before the live runtime/restart integration test.
+- A second B272 reward-attribution path in the B338 world-transition branch was fixed with the same selected-action equality gate and terminal-state persistence as the no-transition branch. Both branches passed the B272 outcome regression and the new dual-path wiring contract in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019).
+- Added `cognitive-feedback-attribution-wiring.mjs` to guard both the no-world-transition and B338 world-transition B272 credit paths; verifies canonical selected-action matching, terminal unselected-candidate recording, state persistence, and no reward leakage into action prototypes or goal outcome memory.
+
+## Repository wiring audit — cross-layer linkage and strict test typing (2026-10-25)
+
+- Fixed command-order handling in the wiring audit: each `cd`, Node/Python file reference, and nested `npm run` is now resolved against the directory active at that point in the shell sequence. Added a regression for `node … && cd runtime && node …`.
+
+- Added `tools/verify-repository-wiring.mjs` to check reachable npm-script chains, recursive script cycles, referenced Node/Python entry points, exact workflow path filters, local actions, working directories, setup-node file inputs, and `workflow_run` workflow names.
+- Added isolated regression fixtures for healthy and intentionally broken wiring, including missing files/scripts, absent workflow names and recursive npm-script cycles.
+- Added `audit:repo-wiring` and `test:repo-wiring` to the root package scripts and connected them to `audit:quick`; added a focused GitHub Actions workflow using the repository's `.nvmrc`.
+- Corrected the avatar-storage test harness's strict JavaScript typing and unsafe `delete globalThis.window` operations identified by the previous exact-head validation.
+- Focused exact-head CI passed in run [#40227836019](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40227836019), including workflow/path audit and cognitive routing regressions. This does not claim the full application/runtime suite or production release is validated.
+- Follow-up CI found that multiline `cd runtime/neuro-kurisu` blocks were still being misread by the executable-path audit even though one-line chained commands passed. Reworked shell parsing to process `&&`, `||`, and `;` segments sequentially across lines and added a regression that exercises a real multiline workflow `run` block.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2120,3 +2211,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+## P23 rollback test contract — 2026-10-26
+
+- Updated the versioned skill-store lifecycle fixture to call rollback with the current approval object and an expected active version, rather than the retired positional arguments.
+- Added negative cases for a missing active-version guard and for plausible approval metadata with no trusted rollback verifier. Rejected requests must preserve active skill state and must not persist rollback approval data.
+- Production rollback authorization remains default-deny and unchanged. WorkPass110 and focused skill-store CI should be rechecked on this branch head.
+- Corrected the signed-CAS tamper fixture to mutate only the unsigned `approval.expectedActiveVersion` wrapper while preserving the prior-version linkage, so the assertion reaches the intended signature/context binding guard instead of failing at an earlier rollback-target invariant.

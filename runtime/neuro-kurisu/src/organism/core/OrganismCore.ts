@@ -11,6 +11,7 @@ import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvide
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
+import type { FeedbackDeliveryReceipt, FeedbackDeliveryToken } from './FeedbackDeliveryGuard.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
@@ -1239,9 +1240,16 @@ export class OrganismCore {
     private b297FacadeCache = { identity01: .5, agency01: .5, budget01: .5, memoryPressure01: .2, embodimentCapacity01: .75 };
     private cognitiveCycleAnchors: Partial<Record<'observation' | 'prediction' | 'appraisal' | 'attention' | 'memory' | 'goal' | 'plan' | 'action', string>> = {};
     private persisted: PersistedOrganism = defaultPersisted();
+    /** Persistence runtime owns the durable feedback-replay barrier and its in-memory guard. */
+    private get feedbackDeliveryGuard() { return this.persistence.feedbackDeliveryGuard; }
+    /** Small atomic sidecar keeps the replay barrier durable without forcing a full neural-state projection. */
+    private readonly feedbackDeliveryReceiptStore: FileStateStore<FeedbackDeliveryReceipt> | null;
     private ready = false;
     constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
         this.store = store;
+        this.feedbackDeliveryReceiptStore = store instanceof FileStateStore
+            ? new FileStateStore<FeedbackDeliveryReceipt>(store.siblingPath('feedback-delivery-receipt.json'))
+            : null;
         const candidateStorePath = store instanceof FileStateStore
             ? store.siblingPath('verified-skill-candidates.json')
             : (process.env.NEURO_SKILL_CANDIDATE_STORE_PATH || 'state/verified-skill-candidates.json');
@@ -1434,6 +1442,21 @@ export class OrganismCore {
                 cognition: { ...defaultCognitionFacet(), ...(facets.cognition ?? {}) },
                 advanced: { ...defaultAdvancedFacet(), ...(facets.advanced ?? {}) },
             }, system: { ...defaultPersisted().system, ...(this.persisted.system ?? {}) } };
+        if (this.feedbackDeliveryReceiptStore) {
+            try {
+                const sidecarReceipt = await this.feedbackDeliveryReceiptStore.load();
+                if (sidecarReceipt !== null) (this.persisted.system as any).feedbackDeliveryReceipt = sidecarReceipt;
+            } catch (error) {
+                // Do not prevent the organism from starting because a tiny sidecar is corrupt;
+                // instead preserve an invalid sentinel so the feedback guard refuses unsafe replay.
+                (this.persisted.system as any).feedbackDeliveryReceipt = {
+                    version: -1, tick: this.persisted.state.tick,
+                    decisionId: 'corrupt-feedback-delivery-receipt', action: 'wait', status: 'corrupt',
+                    reason: String((error as Error)?.message ?? error).slice(0, 160),
+                };
+                console.error('[OrganismCore] feedback receipt sidecar unreadable; feedback replay is disabled until repaired.');
+            }
+        }
         this.persisted.system.lastEncodedMemoryIds = Array.isArray(this.persisted.system.lastEncodedMemoryIds) ? this.persisted.system.lastEncodedMemoryIds.slice(0, 16) : [];
         this.persisted.system.subjectIdentity = ensureSubjectIdentity(this.persisted.system);
         await this.actionExecutionLedgerArchive?.load();
@@ -3396,8 +3419,25 @@ export class OrganismCore {
     private async observeSpineOnly(observation: OrganismObservation = {}, resultMode: 'full' | 'operational' = 'operational'): Promise<OrganismCycleResult> {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
+        let suppressInterruptedOutcome = false;
         if (observation.reward !== undefined || observation.success !== undefined) {
-            await this.feedbackSpineOnly(observation);
+            const blockedReceipt = this.feedbackReceiptBlocksSpineOutcome();
+            if (blockedReceipt) {
+                suppressInterruptedOutcome = true;
+                this.memorySubsystem.events.append(makeEvent('decision', this.persisted.state.tick, {
+                    source: 'feedback-recovery',
+                    disposition: 'discarded-interrupted-terminal-outcome',
+                    decisionId: blockedReceipt.decisionId,
+                    action: blockedReceipt.action,
+                    receiptTick: blockedReceipt.tick,
+                    suppliedReward: observation.reward ?? null,
+                    suppliedSuccess: observation.success ?? null,
+                    reason: blockedReceipt.reason,
+                } as any));
+                this.markPersistenceDirty();
+            } else {
+                await this.feedbackSpineOnly(observation);
+            }
         }
         const state = this.persisted.state;
         const previous: OrganismState = { ...state, needs: { ...state.needs } };
@@ -3845,7 +3885,7 @@ export class OrganismCore {
         };
         decision.semanticEvidence = buildDecisionSemanticEvidence({ stateBefore: previous, candidates, selected, worldContextKey });
         this.persisted.traces = [decision, ...this.persisted.traces].slice(0, 64);
-        if (observation.reward !== undefined || observation.success !== undefined) {
+        if (!suppressInterruptedOutcome && (observation.reward !== undefined || observation.success !== undefined)) {
             decision.outcome = { success: clamp(observation.success ?? (observation.reward == null ? .5 : .5 + observation.reward * .5)), reward: observation.reward, surprise: observation.surprise, notes: 'spine-only-inline-feedback', at: Date.now() };
         }
         const workspace: WorkspaceFrame = { tick: state.tick, broadcastId: `spine:${state.tick}`, selected: selected ? [selected.action] : [], content: { mode: 'SPINE_ONLY', b299LearningUpdates: this.developmentalNeural.causalPersonalityDevelopmentB299.snapshot().learningUpdates, b269Cycles: b269Snapshot.cycles, b269Prediction01: b269Prediction01, b269FiringRate01: b269Frame.firingRate01, b269Plasticity01: b269Frame.plasticity01 }, recurrentCycles: 1 };
@@ -3855,6 +3895,67 @@ export class OrganismCore {
             await this.checkpoint(false);
         return { state: structuredClone(state), goals: this.persisted.goals.slice(0, 16).map(g => ({ ...g })), memories: [], workspace, decision };
     }
+    private async beginFeedbackDelivery(input: { tick: number; decisionId: string; action: ActionKind }): Promise<FeedbackDeliveryToken> {
+        const token = this.feedbackDeliveryGuard.begin({
+            ...input,
+            previousReceipt: (this.persisted.system as any).feedbackDeliveryReceipt,
+        });
+        const pendingReceipt: FeedbackDeliveryReceipt = {
+            version: 1, tick: token.tick, decisionId: token.decisionId, action: token.action, status: 'in-progress',
+        };
+        // Durably record intent before any learner updates. If a process dies mid-feedback,
+        // startup can refuse replay of the affected tick without serializing the full neural graph.
+        await this.feedbackDeliveryReceiptStore?.save(pendingReceipt);
+        (this.persisted.system as any).feedbackDeliveryReceipt = pendingReceipt;
+        return token;
+    }
+
+    private async completeFeedbackDelivery(token: FeedbackDeliveryToken): Promise<void> {
+        const receipt: FeedbackDeliveryReceipt = {
+            version: 1, tick: token.tick, decisionId: token.decisionId, action: token.action, status: 'completed',
+        };
+        // The atomic sidecar is the durability boundary; the main organism snapshot may be
+        // intentionally deferred by the projection governor.
+        await this.feedbackDeliveryReceiptStore?.save(receipt);
+        (this.persisted.system as any).feedbackDeliveryReceipt = receipt;
+        this.feedbackDeliveryGuard.complete(token);
+    }
+
+    private feedbackReceiptBlocksSpineOutcome(): { tick: number | null; decisionId: string; action: ActionKind; reason: string } | null {
+        const raw: unknown = (this.persisted.system as any).feedbackDeliveryReceipt;
+        if (raw === undefined || raw === null) return null;
+        if (typeof raw !== 'object' || Array.isArray(raw)) {
+            return { tick: null, decisionId: 'unknown-feedback-decision', action: 'wait', reason: 'malformed persisted feedback receipt' };
+        }
+        const receipt = raw as Record<string, unknown>;
+        const tick = Number.isSafeInteger(receipt.tick) && (receipt.tick as number) >= 0 ? receipt.tick as number : null;
+        const decisionId = typeof receipt.decisionId === 'string' ? receipt.decisionId : 'unknown-feedback-decision';
+        const actions: readonly ActionKind[] = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'];
+        const validDecisionId = typeof receipt.decisionId === 'string'
+            && receipt.decisionId.length > 0
+            && receipt.decisionId.length <= 256
+            && receipt.decisionId.trim() === receipt.decisionId
+            && !Array.from(receipt.decisionId).some((character) => {
+                const code = character.charCodeAt(0);
+                return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+            });
+        const valid = receipt.version === 1
+            && tick !== null
+            && validDecisionId
+            && actions.includes(receipt.action as ActionKind)
+            && (receipt.status === 'in-progress' || receipt.status === 'completed');
+        const action = actions.includes(receipt.action as ActionKind) ? receipt.action as ActionKind : 'wait';
+        // Unknown/corrupt receipts are fail-closed for learning, but never stall the cognitive tick.
+        if (!valid) return { tick, decisionId: validDecisionId ? decisionId : 'unknown-feedback-decision', action, reason: 'malformed persisted feedback receipt' };
+        if ((tick as number) < this.persisted.state.tick) return null;
+        const reason = receipt.status === 'in-progress'
+            ? 'in-progress receipt prevents same-tick replay'
+            : (tick === this.persisted.state.tick
+                ? 'completed receipt prevents same-tick replay'
+                : 'receipt is ahead of organism tick; awaiting state continuity');
+        return { tick, decisionId, action, reason };
+    }
+
     private async feedbackSpineOnly(outcome: {
         success?: number;
         reward?: number;
@@ -3868,6 +3969,9 @@ export class OrganismCore {
         const trace = this.persisted.traces[0];
         if (!trace?.selected)
             return;
+        const feedbackDeliveryToken = await this.beginFeedbackDelivery({
+            tick: state.tick, decisionId: trace.id, action: trace.selected.action,
+        });
         const success = clamp(outcome.success ?? (outcome.reward == null ? .5 : .5 + outcome.reward * .5));
         const surprise = clamp(outcome.surprise ?? Math.abs(.5 - success));
         state.lastActionSuccess = success;
@@ -3956,6 +4060,7 @@ export class OrganismCore {
         }
         if (trace.selected)
             trace.outcome = { success, reward: outcome.reward, surprise, notes: outcome.notes, at: Date.now() };
+        await this.completeFeedbackDelivery(feedbackDeliveryToken);
         this.markPersistenceDirty();
     }
     private expectedClosureDomains(observation: OrganismObservation, normalizedObservation: OrganismObservation): CognitiveDomain[] {
@@ -8107,7 +8212,7 @@ export class OrganismCore {
         const replayEvents = this.memorySubsystem.experienceContinuum.snapshot().replay.events.slice(-8);
         for (const event of replayEvents.filter(e => e.at === state.at)) {
             const cxReplay = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick: state.tick, taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: clamp(event.learningOpportunity01), novelty01: clamp(event.priorityBefore01), uncertainty01: clamp(1 - event.priorityAfter01), identityRelevance01: event.identityWeight01, goalPressure01: state.needs.goalPressure, causalStrength01: clamp(event.learningOpportunity01), traceId: event.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: event.memoryId, evidenceKey: `replay:${event.memoryId}` });
-            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: cxReplay.surprise01, novelty01: cxReplay.novelty01, causalStrength01: cxReplay.causalStrength01, transferPotential01: clamp(event.learningOpportunity01 * .72), provenance: 'experience-replay' } as any);
+            if (cxReplay) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: cxReplay.surprise01, novelty01: cxReplay.novelty01, causalStrength01: cxReplay.causalStrength01, transferPotential01: clamp(event.learningOpportunity01 * .72), provenance: 'experience-replay' } as any);
         }
         this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot();
         this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot();
@@ -8367,6 +8472,12 @@ export class OrganismCore {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
         const state = this.persisted.state;
+        const feedbackTraceForDelivery = this.persisted.traces[0];
+        const feedbackDeliveryToken = feedbackTraceForDelivery?.selected
+            ? await this.beginFeedbackDelivery({
+                tick: state.tick, decisionId: feedbackTraceForDelivery.id, action: feedbackTraceForDelivery.selected.action,
+            })
+            : null;
         // P80 is read-only during feedback; keep one detached view instead of cloning it
         // repeatedly for each downstream learning/neural branch.
         const p80FeedbackState = this.selfSubsystem.p80UnifiedSelfState.snapshot();
@@ -9417,13 +9528,40 @@ export class OrganismCore {
                 this.developmentalNeural.neuralAutobiographicalCoreB271.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, traits: this.developmentalNeural.neuralGerminalOrganismB270.autonomousSnapshot().traitValues, goal: this.developmentalNeural.neuralAutobiographicalCoreB271.snapshotAutobiography().proposedGoal, acceptedExternalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b272GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b272IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                const b272Learning = this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal });
+                const b272Learner = this.developmentalNeural.endogenousGoalGenesisB272;
+                // Reward credit belongs only to the candidate action that actually won
+                // canonical arbitration. If Core selected another action, finalize the
+                // B272 proposal as unselected without training its action prototypes on
+                // an unrelated outcome; never weaken B272's strict action identity check.
+                const b272Learning = trace.selected.action === b272GoalState.action
+                    ? b272Learner.learnFromOutcome({
+                        tick: state.tick, action: b272GoalState.action, reward01: gatedReward01,
+                        predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b272IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    })
+                    : b272Learner.recordUnselectedAction({
+                        tick: state.tick, generatedAction: b272GoalState.action, selectedAction: trace.selected.action,
+                    });
+                this.persisted.system.endogenousGoalGenesisB272 = b272Learner.snapshot();
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
+                const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;
+                const b273Learning = b273Current.plan.includes(trace.selected.action)
+                    ? b273Learner.learnFromOutcome({
+                        tick: state.tick, action: trace.selected.action, plan: b273Current.plan,
+                        reward01: gatedReward01, predictionError01: state.predictionError,
+                        independentGain01: b272IndependentGain,
+                        personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                    })
+                    : b273Learner.recordUnselectedAction({
+                        tick: state.tick, generatedAction: b273Current.action,
+                        selectedAction: trace.selected.action, plan: b273Current.plan,
+                    });
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
                 const b274CandidateId = b274Diag.activeCandidateId;
                 if (b274CandidateId) {
-                    const b274Trial = this.developmentalNeural.autonomousSkillLaboratoryB274.observeTrial({ tick: state.tick, candidateId: b274CandidateId, reward01: gatedReward01, independentGain01: b272IndependentGain, predictionError01: state.predictionError, personalityAlignment01: clamp(.5 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 6), selfAlignment01: clamp(p80FeedbackState.continuity01), worldNovelty01: state.needs.novelty, neuralReliability01: clamp(.45 + (this.developmentalNeural.spikingPlasticNeuralB269.snapshot().homeostaticError01 < .2 ? 0.45 : 0.35)), transferTestGain01: b272IndependentGain, robustness01: clamp(1 - state.predictionError) });
+                    const b274Trial = this.developmentalNeural.autonomousSkillLaboratoryB274.observeTrial({ tick: state.tick, candidateId: b274CandidateId, selectedAction: trace.selected.action, reward01: gatedReward01, independentGain01: b272IndependentGain, predictionError01: state.predictionError, personalityAlignment01: clamp(.5 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 6), selfAlignment01: clamp(p80FeedbackState.continuity01), worldNovelty01: state.needs.novelty, neuralReliability01: clamp(.45 + (this.developmentalNeural.spikingPlasticNeuralB269.snapshot().homeostaticError01 < .2 ? 0.45 : 0.35)), transferTestGain01: b272IndependentGain, robustness01: clamp(1 - state.predictionError) });
                     if (b274Trial.promoted && b274Trial.skillId && state.tick % 8 === 0) {
                         const goalNow = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                         this.developmentalNeural.autonomousSkillLaboratoryB274.promoteTransferred({ tick: state.tick, sourceSkillId: b274Trial.skillId, newGoalVector: goalNow.goal?.vector ?? b272GoalState.vector, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, neuralAssembly: this.developmentalNeural.spikingPlasticNeuralB269.snapshot().lastAssembly ?? [], independentGain01: b272IndependentGain, robustness01: clamp(1 - state.predictionError) });
@@ -9691,26 +9829,47 @@ export class OrganismCore {
             if (outcome.worldTransition) {
                 const b338GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                    independentEvaluatorGain01: b338IndependentGain,
-                    acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
-                });
+                const b338Learner = this.developmentalNeural.endogenousGoalGenesisB272;
+                // The world-transition branch must obey the same credit-assignment
+                // contract as the no-transition branch: only the selected generated
+                // action earns this outcome; an unselected proposal is finalized without reward credit.
+                const b338Learning = trace.selected.action === b338GoalState.action
+                    ? b338Learner.learnFromOutcome({
+                        tick: state.tick,
+                        action: b338GoalState.action,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b338IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    })
+                    : b338Learner.recordUnselectedAction({
+                        tick: state.tick,
+                        generatedAction: b338GoalState.action,
+                        selectedAction: trace.selected.action,
+                    });
+                this.persisted.system.endogenousGoalGenesisB272 = b338Learner.snapshot();
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    plan: b338Lifecycle.plan,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    independentGain01: b338IndependentGain,
-                    personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                });
+                const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;
+                if (b338Lifecycle.plan.includes(trace.selected.action)) {
+                    b273Learner.learnFromOutcome({
+                        tick: state.tick,
+                        action: trace.selected.action,
+                        plan: b338Lifecycle.plan,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        independentGain01: b338IndependentGain,
+                        personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                    });
+                } else {
+                    b273Learner.recordUnselectedAction({
+                        tick: state.tick,
+                        generatedAction: b338Lifecycle.action,
+                        selectedAction: trace.selected.action,
+                        plan: b338Lifecycle.plan,
+                    });
+                }
                 this.persisted.system.endogenousGoalGenesisB272 = this.developmentalNeural.endogenousGoalGenesisB272.snapshot();
                 this.persisted.system.autonomousGoalLifecycleB273 = this.developmentalNeural.autonomousGoalLifecycleB273.snapshot();
             }
@@ -10336,6 +10495,9 @@ export class OrganismCore {
         this.persisted.facets.learning.verifiedAutonomousLife = this.developmentalNeural.verifiedAutonomousLife.snapshot();
         this.persisted.facets.learning.researchGradeOrganism = this.developmentalNeural.researchGradeOrganism.snapshot();
         this.persisted.facets.learning.operationalLife = this.developmentalNeural.operationalLife.snapshot();
+        if (feedbackDeliveryToken) {
+            await this.completeFeedbackDelivery(feedbackDeliveryToken);
+        }
         await this.checkpoint(false);
     }
     cameraEvidenceSnapshot() { return this.embodimentSubsystem.cameraEvidence.snapshot(); }
@@ -10409,7 +10571,7 @@ export class OrganismCore {
         if (r.independentVerified && r.verificationTransition !== 'duplicate') {
             const tick = Number(this.persisted.state.tick ?? 0);
             const cx = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick, taskId: input.taskId ?? `replay-validation:${input.memoryId}`, action: 'verify', reward01: r.retentionScore01, success01: r.retentionScore01, surprise01: Math.abs(r.retentionGain01), novelty01: r.transferPotential01, uncertainty01: r.interferenceRisk01, causalStrength01: Math.max(0, Math.min(1, .5 * r.retentionScore01 + .3 * r.transferPotential01 + .2 * (1 - r.interferenceRisk01))), identityRelevance01: 0, goalPressure01: this.persisted.state.needs.goalPressure, traceId: r.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: r.memoryId, evidenceKey: r.evidenceKey });
-            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
+            if (cx) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
         }
         this.persisted.facets.advanced.experienceContinuum = this.memorySubsystem.experienceContinuum.snapshot();
         this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
@@ -11023,7 +11185,7 @@ export class OrganismCore {
      * the registrar: this Core instance records provenance before child spawn.
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
-        return executeTrustedShadowLearningProcess({ ...input, core: this });
+        return executeTrustedShadowLearningProcess({ ...input, core: { registerTrustedSkillShadowRun: context => this.registerTrustedSkillShadowRun(context) } });
     }
     /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
     verifiedSkillCandidateSnapshot() {
@@ -11415,7 +11577,7 @@ export class OrganismCore {
                             if (variant)
                                 this.cognitiveRuntime.skillLibrary.recordVariantExecution(skill.id, variant.id, { success01: 1, verified: true, independent: Boolean(input.independentEvidence), holdout: true, context: String(input.contextKey ?? input.context ?? '') });
                             const causalRepair = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick: this.persisted.state.tick, taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: clamp(.35 + (1 - confidence)), novelty01: .45, uncertainty01: clamp(1 - confidence), identityRelevance01: this.persisted.state.needs.identityCoherence, goalPressure01: this.persisted.state.needs.goalPressure, causalStrength01: clamp(.28 + confidence * .5), traceId: `repair:${skill.id}:${step.id}:${candidateTool}`, provenance: 'skill-repair', stateGrounded: false, evidenceKey: `repair:${skill.id}:${step.id}` });
-                            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: causalRepair.surprise01, novelty01: causalRepair.novelty01, causalStrength01: causalRepair.causalStrength01, transferPotential01: .72, provenance: 'skill-repair' });
+                            if (causalRepair) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: causalRepair.surprise01, novelty01: causalRepair.novelty01, causalStrength01: causalRepair.causalStrength01, transferPotential01: .72, provenance: 'skill-repair' });
                             this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot();
                             this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot();
                             this.persisted.facets.cognition.skills = this.cognitiveRuntime.skillLibrary.snapshot();

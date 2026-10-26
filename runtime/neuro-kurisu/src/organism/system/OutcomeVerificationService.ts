@@ -115,7 +115,7 @@ const boundedText = (value: unknown, max: number): string | undefined => {
 const boundedCorrelationId = (value: unknown, max: number): string | undefined => {
   if (typeof value !== 'string') return undefined;
   const normalized = value.normalize('NFKC').trim();
-  if (!normalized || normalized.length > max || /[\\u0000-\\u001f\\u007f-\\u009f]/.test(normalized)) return undefined;
+  if (!normalized || normalized.length > max || /[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
   return normalized;
 };
 

@@ -71,6 +71,8 @@ export interface B273State {
   intrinsicDrive01:number;
   lifecycleMode:'incubating'|'pursuing'|'revising'|'completing'|'recovering';
   outcomeHistory:Array<{tick:number;goalId:string|null;action:ActionKind;reward01:number;predictionError01:number;independentGain01:number}>;
+  unselectedActionCount:number;
+  unselectedActionHistory:Array<{tick:number;goalId:string|null;generatedAction:ActionKind;selectedAction:ActionKind;plan:ActionKind[]}>;
 }
 export interface B273StepInput {
   tick:number;
@@ -104,7 +106,7 @@ export interface B273StepResult {
 
 export function defaultB273State():B273State{
   const goalTransitionWeights=Array.from({length:8},(_,i)=>Array.from({length:8},(_,j)=>i===j?.18:(i+j+3)%5===0?.035:-.012));
-  return {version:1,tick:0,cycles:0,learningUpdates:0,goalCreations:0,goalRevisions:0,goalCompletions:0,goalAbandonments:0,subgoalCreations:0,skillCreations:0,skillUses:0,activeGoalId:null,rootGoalId:null,goals:[],skills:[],goalTransitionWeights,goalUtilityWeights:[.25,.18,.18,.14,.10,.08,.07],lastGoalVector:new Array(8).fill(0),lastActionPlan:['reflect'],lastAction:'reflect',lastDecisionConfidence01:.35,autonomy01:.4,goalConflict01:.3,goalStability01:.4,selfAlignment01:.5,longHorizonValue01:.5,intrinsicDrive01:.4,lifecycleMode:'incubating',outcomeHistory:[]};
+  return {version:1,tick:0,cycles:0,learningUpdates:0,goalCreations:0,goalRevisions:0,goalCompletions:0,goalAbandonments:0,subgoalCreations:0,skillCreations:0,skillUses:0,activeGoalId:null,rootGoalId:null,goals:[],skills:[],goalTransitionWeights,goalUtilityWeights:[.25,.18,.18,.14,.10,.08,.07],lastGoalVector:new Array(8).fill(0),lastActionPlan:['reflect'],lastAction:'reflect',lastDecisionConfidence01:.35,autonomy01:.4,goalConflict01:.3,goalStability01:.4,selfAlignment01:.5,longHorizonValue01:.5,intrinsicDrive01:.4,lifecycleMode:'incubating',outcomeHistory:[],unselectedActionCount:0,unselectedActionHistory:[]};
 }
 
 export class B273AutonomousGoalLifecycle{
@@ -120,7 +122,14 @@ export class B273AutonomousGoalLifecycle{
       goalTransitionWeights:matrix(r.goalTransitionWeights,d.goalTransitionWeights),
       goalUtilityWeights:Array.isArray(r.goalUtilityWeights)?r.goalUtilityWeights.slice(0,8).map((x:any,i:number)=>clamp11(Number(x??d.goalUtilityWeights[i]??0))):d.goalUtilityWeights,
       lastGoalVector:vec(r.lastGoalVector,8),lastActionPlan:Array.isArray(r.lastActionPlan)?r.lastActionPlan.slice(0,6).filter((a:any)=>ACTIONS.includes(a)):d.lastActionPlan,
-      lastAction:ACTIONS.includes(r.lastAction)?r.lastAction:'reflect',outcomeHistory:Array.isArray(r.outcomeHistory)?r.outcomeHistory.slice(-128):[]
+      lastAction:ACTIONS.includes(r.lastAction)?r.lastAction:'reflect',
+      outcomeHistory:Array.isArray(r.outcomeHistory)?r.outcomeHistory.slice(-128):[],
+      unselectedActionCount:Number.isSafeInteger(r.unselectedActionCount)&&Number(r.unselectedActionCount)>=0?Math.min(Number.MAX_SAFE_INTEGER,Number(r.unselectedActionCount)):0,
+      unselectedActionHistory:Array.isArray(r.unselectedActionHistory)
+        ? r.unselectedActionHistory.slice(-128)
+          .filter((entry:any)=>entry&&typeof entry==='object'&&Number.isSafeInteger(entry.tick)&&entry.tick>=0&&(entry.goalId===null||typeof entry.goalId==='string')&&ACTIONS.includes(entry.generatedAction)&&ACTIONS.includes(entry.selectedAction)&&entry.generatedAction!==entry.selectedAction&&Array.isArray(entry.plan)&&entry.plan.length>=1&&entry.plan.length<=6&&entry.plan.every((action:any)=>ACTIONS.includes(action)))
+          .map((entry:any)=>({tick:entry.tick,goalId:entry.goalId,generatedAction:entry.generatedAction,selectedAction:entry.selectedAction,plan:entry.plan.slice(0,6)}))
+        : []
     };
   }
   private available(input:B273StepInput){return (input.availableActions??ACTIONS).filter((a):a is ActionKind=>ACTIONS.includes(a));}
@@ -237,7 +246,34 @@ export class B273AutonomousGoalLifecycle{
     const skill=this.state.skills.filter(s=>s.actions[0]===action&&s.success01>=.58).sort((a,b)=>(b.success01+b.support01)-(a.success01+a.support01))[0];if(skill){skill.uses++;skill.lastUsedTick=input.tick;this.state.skillUses++;}
     return {goalId:goal.id,goalVector:goal.vector.slice(),action,plan,mode,autonomy01:this.state.autonomy01,confidence01:confidence,selfAlignment01:selfAlignment,longHorizonValue01:longHorizon,conflict01:conflict,created,revised,skillId:skill?.id??null};
   }
+  private assertGeneratedDecision(input:{tick:number;action:ActionKind;plan:ActionKind[]}){
+    if(!Number.isSafeInteger(input.tick)||input.tick<0||input.tick!==this.state.tick){
+      throw new RangeError('B273 outcome tick must match generated decision');
+    }
+    if(!ACTIONS.includes(input.action)||!this.state.lastActionPlan.includes(input.action)){
+      throw new RangeError('B273 outcome action must be present in generated plan');
+    }
+    if(!Array.isArray(input.plan)||input.plan.length<1||input.plan.length>6
+      ||input.plan.length!==this.state.lastActionPlan.length
+      ||input.plan.some((action,index)=>!ACTIONS.includes(action)||action!==this.state.lastActionPlan[index])
+      ||input.plan[0]!==this.state.lastAction){
+      throw new RangeError('B273 outcome plan must match generated plan');
+    }
+  }
+  recordUnselectedAction(input:{tick:number;generatedAction:ActionKind;selectedAction:ActionKind;plan:ActionKind[]}):{
+    accepted:boolean;revised:boolean;completed:boolean;abandoned:boolean;skillCreated:boolean;goalId:string|null;gain01:number;recorded:boolean
+  }{
+    this.assertGeneratedDecision({tick:input.tick,action:input.generatedAction,plan:input.plan});
+    if(!ACTIONS.includes(input.selectedAction)||input.selectedAction===input.generatedAction||input.plan.includes(input.selectedAction)){
+      throw new RangeError('B273 unselected action must be outside generated plan');
+    }
+    const record={tick:input.tick,goalId:this.state.activeGoalId,generatedAction:input.generatedAction,selectedAction:input.selectedAction,plan:input.plan.slice(0,6)};
+    this.state.unselectedActionHistory=[...this.state.unselectedActionHistory.slice(-127),record];
+    this.state.unselectedActionCount=Math.min(Number.MAX_SAFE_INTEGER,this.state.unselectedActionCount+1);
+    return {accepted:false,revised:false,completed:false,abandoned:false,skillCreated:false,goalId:this.state.activeGoalId,gain01:0,recorded:true};
+  }
   learnFromOutcome(input:{tick:number;action:ActionKind;plan:ActionKind[];reward01:number;predictionError01:number;independentGain01:number;personalityAlignment01:number;externalEvidence01:number}):{accepted:boolean;revised:boolean;completed:boolean;abandoned:boolean;skillCreated:boolean;goalId:string|null;gain01:number}{
+    this.assertGeneratedDecision(input);
     const goal=this.state.activeGoalId?this.state.goals.find(g=>g.id===this.state.activeGoalId):null;
     if(!goal){return {accepted:false,revised:false,completed:false,abandoned:false,skillCreated:false,goalId:null,gain01:0};}
     const gain=clamp11((input.reward01-.5)*.72+(input.independentGain01)*.62+(1-input.predictionError01)*.18+(input.personalityAlignment01-.5)*.14);
@@ -285,7 +321,7 @@ export class B273AutonomousGoalLifecycle{
         this.state.goalCreations++;
       }
     }
-    const goodSkill=accepted && input.plan.length>=2 && input.plan.length<=5 && input.predictionError01<.72;
+    const goodSkill=accepted && input.action===input.plan[0] && input.plan.length>=2 && input.plan.length<=5 && input.predictionError01<.72;
     let skillCreated=false;
     if(goodSkill){
       const sid=`skill273-${hashVector(goal.vector)}-${input.plan.join('-')}`;let skill=this.state.skills.find(s=>s.id===sid);
@@ -312,6 +348,7 @@ export class B273AutonomousGoalLifecycle{
       version: 1,
       cycles: this.state.cycles,
       learningUpdates: this.state.learningUpdates,
+      unselectedActionCount: this.state.unselectedActionCount,
       goalCreations: this.state.goalCreations,
       goalRevisions: this.state.goalRevisions,
       goalCompletions: this.state.goalCompletions,

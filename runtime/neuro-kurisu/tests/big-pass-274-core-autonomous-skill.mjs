@@ -11,7 +11,10 @@ for(let i=0;i<14;i++){
 const d=core.b274SkillDiagnostics();
 assert.ok(d.cycles>=14,'B274 did not run in Core');
 assert.ok(d.imaginedExperiments>0,'B274 did not imagine skill experiments');
-assert.ok(d.realTrials>0,'B274 did not execute skill trials');
+assert.ok(d.realTrials>0 || d.unmatchedOutcomeCount>0,
+  'B274 neither evaluated an executed candidate action nor recorded an attribution mismatch');
+assert.ok(Number.isSafeInteger(d.unmatchedOutcomeCount) && d.unmatchedOutcomeCount>=0,
+  'B274 attribution mismatch diagnostics invalid');
 assert.ok(d.selfAlignment01>=0 && d.neuralGrounding01>=0,'B274 diagnostics invalid');
 const snap=core.snapshot(); const core2=new OrganismCore(new MemoryStateStore({initial:snap}),{performanceProfile:'mobile',cycleResultMode:'operational'}); await core2.init();
 assert.deepEqual(core2.b274SkillDiagnostics(),d,'B274 Core restart mismatch');

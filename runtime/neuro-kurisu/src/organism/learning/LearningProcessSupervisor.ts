@@ -54,7 +54,7 @@ export interface LearningProcessResult {
 /** Trusted registration capability owned by the host runtime, never supplied by the child process. */
 export interface TrustedShadowRunRegistration {
   runtimeVersion: string;
-  register(context: { runId: string; taskId: string; seed: number; manifestFingerprint: string; runtimeVersion: string }): void | Promise<unknown>;
+  register(context: { runId: string; taskId: string; seed: number; manifestFingerprint: string; runtimeVersion: string }): unknown | Promise<unknown>;
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -189,8 +189,8 @@ export async function runLearningProcess(
     explicitEnv: explicitEnvKeys.map(key => [key, env[key] ?? null]),
   }));
 
-  let stdout = Buffer.alloc(0);
-  let stderr = Buffer.alloc(0);
+  let stdout: Uint8Array = Buffer.alloc(0);
+  let stderr: Uint8Array = Buffer.alloc(0);
   let stdoutBytes = 0;
   let stderrBytes = 0;
   let outputTruncated = false;
@@ -225,10 +225,10 @@ export async function runLearningProcess(
     }
     try { child.kill('SIGKILL'); } catch { /* the child may already have exited */ }
   };
-  const append = (current: Buffer, chunk: Buffer, isStdout: boolean): Buffer => {
+  const append = (current: Uint8Array, chunk: Uint8Array, isStdout: boolean): Uint8Array => {
     if (isStdout) stdoutBytes += chunk.length;
     else stderrBytes += chunk.length;
-    const combined = Buffer.concat([current, chunk]);
+    const combined = Buffer.concat([Buffer.from(current), Buffer.from(chunk)]);
     if (combined.length > maxOutputBytes) {
       outputTruncated = true;
       terminalStatus = 'output-limit';
@@ -288,8 +288,8 @@ export async function runLearningProcess(
     status: terminalStatus,
     exitCode,
     signal,
-    stdout: stdout.toString('utf8') + (spawnFailure ? `\nSPAWN_ERROR: ${spawnFailure}` : ''),
-    stderr: stderr.toString('utf8'),
+    stdout: Buffer.from(stdout).toString('utf8') + (spawnFailure ? `\nSPAWN_ERROR: ${spawnFailure}` : ''),
+    stderr: Buffer.from(stderr).toString('utf8'),
     stdoutBytes,
     stderrBytes,
     outputTruncated,

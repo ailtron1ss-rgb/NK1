@@ -391,93 +391,6 @@ export class CognitiveEventFabric {
     return ids;
   }
 
-  verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
-    const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
-    const optional = ['appraisal','attention','memory','goal','plan'] as const;
-    const byId = new Map(this.events.map(event => [event.id, event] as const));
-    const found = new Map<string, CognitiveEventNode>();
-    const missingStages: string[] = [];
-    const invalidStages: string[] = [];
-    let cycleTick: number | null = null;
-
-    for (const stage of required) {
-      const id = stageIds[stage];
-      const event = id ? byId.get(id) : undefined;
-      if (!event) { missingStages.push(stage); continue; }
-      if (event.stage !== stage) { invalidStages.push(stage + ':expected-stage-' + stage + '-got-' + event.stage); continue; }
-      if (cycleTick === null) cycleTick = event.tick;
-      if (event.tick !== cycleTick) { invalidStages.push(stage + ':tick-mismatch'); continue; }
-      found.set(stage, event);
-    }
-
-    for (const stage of optional) {
-      const id = stageIds[stage];
-      if (id === undefined) continue;
-      if (typeof id !== 'string' || !id) { invalidStages.push(stage + ':invalid-id'); continue; }
-      const event = byId.get(id);
-      if (!event) { invalidStages.push(stage + ':missing-event'); continue; }
-      if (event.stage !== stage) { invalidStages.push(stage + ':expected-stage-' + stage + '-got-' + event.stage); continue; }
-      if (cycleTick === null) cycleTick = event.tick;
-      if (event.tick !== cycleTick) { invalidStages.push(stage + ':tick-mismatch'); continue; }
-      found.set(stage, event);
-    }
-
-    const requiredEdges: Array<[OperationalCycleStageName, OperationalCycleStageName, string]> = [
-      ['prediction','observation','prediction->observation'],
-      ['action','prediction','action->prediction'],
-      ['action','observation','action->observation'],
-      ['outcome','action','outcome->action'],
-      ['learning','outcome','learning->outcome'],
-      ['self-update','learning','self-update->learning'],
-    ];
-    const missingEdges: string[] = [];
-    let validEdges = 0;
-    for (const [childStage, parentStage, label] of requiredEdges) {
-      const child = found.get(childStage);
-      const parent = found.get(parentStage);
-      if (child && parent && child.parentIds.includes(parent.id)) validEdges++;
-      else missingEdges.push(label);
-    }
-
-    const extendedParents:Record<(typeof optional)[number], readonly OperationalCycleStageName[]> = {
-      appraisal:['observation','prediction'],
-      attention:['appraisal','prediction'],
-      memory:['attention','observation'],
-      goal:['appraisal','memory'],
-      plan:['goal','prediction'],
-    };
-    let extendedEdgeCount = 0;
-    for (const childStage of optional) {
-      if (stageIds[childStage] === undefined) continue;
-      const child = found.get(childStage);
-      for (const parentStage of extendedParents[childStage]) {
-        extendedEdgeCount++;
-        const parent = found.get(parentStage);
-        if (child && parent && child.parentIds.includes(parent.id)) validEdges++;
-        else missingEdges.push(childStage + '->' + parentStage);
-      }
-    }
-    // When a plan is part of the same trace, the action must cite that plan.
-    if (stageIds.plan !== undefined) {
-      extendedEdgeCount++;
-      const action = found.get('action');
-      const plan = found.get('plan');
-      if (action && plan && action.parentIds.includes(plan.id)) validEdges++;
-      else missingEdges.push('action->plan');
-    }
-
-    const requiredFoundCount = required.filter(stage => found.has(stage)).length;
-    const stageCoverage = requiredFoundCount / required.length;
-    const optionalRequestedCount = optional.filter(stage => stageIds[stage] !== undefined).length;
-    const optionalCoverage = optionalRequestedCount
-      ? optional.filter(stage => stageIds[stage] !== undefined && found.has(stage)).length / optionalRequestedCount
-      : 1;
-    const edgeCoverage = validEdges / Math.max(1, requiredEdges.length + extendedEdgeCount);
-    const integrity01 = clamp01(.50 * stageCoverage + .32 * edgeCoverage + .18 * optionalCoverage);
-    const complete = missingStages.length === 0 && invalidStages.length === 0 && missingEdges.length === 0;
-    return { tick: cycleTick, complete, integrity01: complete ? 1 : integrity01, missingStages, invalidStages, missingEdges };
-  }
-
   /**
    * Verify one cycle against its own causal edges rather than the whole rolling
    * buffer. Global lineage can fall when old parents age out of the ring buffer;
@@ -491,6 +404,7 @@ export class CognitiveEventFabric {
     const missingStages: string[] = [];
     const invalidStages: string[] = [];
     let cycleTick: number | null = null;
+
     for (const stage of required) {
       const id = stageIds[stage];
       const event = id ? byId.get(id) : undefined;
@@ -500,7 +414,7 @@ export class CognitiveEventFabric {
       if (event.tick !== cycleTick) { invalidStages.push(`${stage}:tick-mismatch`); continue; }
       found.set(stage, event);
     }
-    const edgeRequirements: Array<[keyof typeof stageIds, keyof typeof stageIds, string]> = [
+    const edgeRequirements: Array<[OperationalCycleStageName, OperationalCycleStageName, string]> = [
       ['prediction','observation','prediction->observation'],
       ['action','prediction','action->prediction'],
       ['action','observation','action->observation'],
@@ -511,8 +425,8 @@ export class CognitiveEventFabric {
     const missingEdges: string[] = [];
     let validEdges = 0;
     for (const [childStage, parentStage, label] of edgeRequirements) {
-      const child = found.get(childStage as string);
-      const parent = found.get(parentStage as string);
+      const child = found.get(childStage);
+      const parent = found.get(parentStage);
       if (child && parent && child.parentIds.includes(parent.id)) validEdges++;
       else missingEdges.push(label);
     }

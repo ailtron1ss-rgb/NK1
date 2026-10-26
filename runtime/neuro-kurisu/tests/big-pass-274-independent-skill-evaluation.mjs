@@ -9,7 +9,7 @@ const asm=Array.from({length:16},(_,i)=>.10+(i%4)*.018);
 let promoted=null;
 for(let t=0;t<18;t++){
   const r=lab.step({tick:t,goalVector:[.72,.18,.06,.31,.44,.52,.12,.28],plan:['explore','verify','reflect'],selfLatent:self,worldLatent:world,neuralAssembly:asm,needs:{novelty01:.76,uncertainty01:.36,goalPressure01:.58,autonomy01:.70,coherence01:.74},traits,imaginedPlanScores:[{actions:['explore','verify','reflect'],predictedGain01:.66,uncertainty01:.22},{actions:['verify','reflect'],predictedGain01:.61,uncertainty01:.24}]});
-  const e=lab.observeTrial({tick:t,candidateId:r.candidateId,reward01:.80,independentGain01:.12,predictionError01:.20,personalityAlignment01:.72,selfAlignment01:.75,worldNovelty01:.76,neuralReliability01:.84,transferTestGain01:.08,robustness01:.82});
+  const e=lab.observeTrial({tick:t,candidateId:r.candidateId,selectedAction:r.experimentActions[0],reward01:.80,independentGain01:.12,predictionError01:.20,personalityAlignment01:.72,selfAlignment01:.75,worldNovelty01:.76,neuralReliability01:.84,transferTestGain01:.08,robustness01:.82});
   if(e.promoted) promoted=e.skillId;
 }
 assert.ok(promoted,'B274 did not promote any independently verified skill');
