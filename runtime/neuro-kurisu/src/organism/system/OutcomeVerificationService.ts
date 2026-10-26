@@ -21,7 +21,7 @@ export type ExternalPostconditionAssessment = 'not-external' | 'match' | 'contra
 function canonicalPostcondition(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const normalized = value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
-  return normalized && normalized.length <= 1024 && !/[\u0000-\u001f\u007f]/.test(normalized) ? normalized : undefined;
+  return normalized && normalized.length <= 1024 && !/[\u0000-\u001f\u007f-\u009f]/.test(normalized) ? normalized : undefined;
 }
 
 /**
