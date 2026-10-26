@@ -4,6 +4,7 @@
 - **Fix:** reject oversized/control-character source values, padded event/parent IDs and parent-list overflow before mutation. Restore skips invalid identity/clock/evidence rows without reserving IDs, so later valid rows can recover.
 - **Regression coverage:** source/parent suffix collisions, canonical ID/source/parent requirements, parent-count boundary, malformed restore ID/source/parents/tick/time/confidence/boolean fields and valid duplicate recovery.
 - **CI correction:** the first exact-head attempt caught an over-escaped control-character regex that rejected ordinary IDs such as `parent:1`. Fixed the literal character class and retained the failure as evidence.
+- **Test correction:** while reviewing the regression fixture, found two test literals that encoded a backslash-plus-`n` instead of a newline. Corrected the fixture so both append and restore paths exercise actual control characters.
 - **Validation:** PR #180 / branch `work/nk1-event-envelope-bounds-2026-10-26-r2`. Only a fresh exact-head CI after these final edits may count; earlier failed/passing runs are not evidence for the current head.
 
 ---
