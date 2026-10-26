@@ -1,3 +1,10 @@
+## NK1 core persistence architecture — share bounded data-tree validation (2026-10-26)
+
+- Extracted the bounded plain-data validator into `organism/core/BoundedPlainData.ts` and reused it in P23 learning restore, unified cognitive-cycle restore, and intrinsic-motivation restore. These state boundaries now reject accessors, custom prototypes, sparse/custom arrays, symbols, cycles/aliases, and over-budget/deep structures before trusting persisted state.
+- Updated cycle and motivation contracts to assert strict rejection and prove that invalid snapshots leave live internal state unchanged. Existing finite/range sanitization remains responsible for ordinary numeric fields, so this change does not convert NaN handling into an unbounded or permissive path.
+
+---
+
 ## NK1 P26 verification — stabilize ADWIN mean assertion (2026-10-26)
 
 - Replaced the exact comparison for the adaptive-window detector's stationary mean with an absolute `1e-12` tolerance. Repeated online updates accumulate normal IEEE-754 rounding, so a constant 0.2 stream may produce `0.19999999999999962`.
