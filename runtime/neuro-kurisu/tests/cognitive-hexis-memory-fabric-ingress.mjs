@@ -44,6 +44,15 @@ const hexis = new HexisAdaptationFabric();
 const system = new OrganismSystemFabric({ memory: owner, hexisAdaptation: hexis });
 const memory = createMemory(owner.memoryOS, "Canonical belief whose confidence requires review approval.", 0.5);
 const initialConfidence = memory.confidence;
+// Simulate the active organism cycle; evidence/review actions must reuse this
+// logical counter rather than replacing it with an ISO timestamp in milliseconds.
+owner.events.append({
+  id: "test-cycle-27",
+  tick: 27,
+  at: Date.now(),
+  type: "cycle",
+  payload: { source: "hexix-fabric-ingress-regression" },
+});
 const incoming = evidence(memory.id, "hexis:fabric-ingress:001");
 
 const pending = system.ingestHexisEvidenceForReview(incoming);
@@ -56,6 +65,8 @@ const evidenceEvents = eventsAfterIngress.filter((event) =>
   event.payload.evidenceId === incoming.evidenceId,
 );
 assert.equal(evidenceEvents.length, 1, "canonical MemoryFabric writer emits one lifecycle receipt");
+assert.equal(evidenceEvents[0].tick, 27, "evidence ingress must preserve the logical organism tick");
+assert.ok(evidenceEvents[0].tick < 1_000_000_000, "wall-clock milliseconds must never be stored as a logical tick");
 assert.equal(Object.hasOwn(evidenceEvents[0].payload, "note"), false, "private evidence note must not leak into lifecycle event");
 assert.equal(Object.hasOwn(evidenceEvents[0].payload, "sourceRef"), false, "raw source reference must not leak into lifecycle event");
 const receipt = owner.fabric.snapshot().mutationReceipts.find((item) =>
@@ -93,13 +104,16 @@ assert.equal(
   owner.memoryOS.get(memory.id).confidence,
   "Hexis belief projection must be rebased to canonical MemoryOS2 confidence",
 );
-assert.ok(owner.events.list().some((event) =>
+const confidenceEvents = owner.events.list().filter((event) =>
   event.type === "memory-lifecycle" &&
   event.payload.action === "update-signals" &&
   event.payload.memoryId === memory.id &&
   Array.isArray(event.payload.fields) &&
   event.payload.fields.includes("confidence"),
-), "approved confidence mutation must use the same MemoryFabric event/receipt boundary");
+);
+assert.equal(confidenceEvents.length, 1, "approval emits one canonical confidence lifecycle event");
+assert.equal(confidenceEvents[0].tick, 27, "approval must reuse the logical organism tick instead of evidence timestamp milliseconds");
+assert.ok(confidenceEvents[0].tick < 1_000_000_000, "approval tick must remain a logical cycle count");
 assert.ok(owner.fabric.snapshot().mutationReceipts.some((item) =>
   item.action === "update-signals" && item.memoryId === memory.id,
 ), "approved confidence mutation must be idempotency-receipted");
