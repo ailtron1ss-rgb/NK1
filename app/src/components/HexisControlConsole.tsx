@@ -324,7 +324,7 @@ export function HexisControlConsole() {
                 event.currentTarget.value = "";
               }} />
             </label>
-            <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxAccepted(false); setHmxApplyConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
+            <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxAccepted(false); setHmxConfirmed(false); setHmxApplyConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void acceptHmx()}>Accept staged</Button>
