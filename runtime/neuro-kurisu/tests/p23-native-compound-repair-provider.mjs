@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
-import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -8,11 +8,15 @@ import { fingerprintSkillPayload, VersionedSkillCandidateStore } from '../src/or
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { isAuthenticVerifiedSkillPromotionProposal, proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
-import { createNativeCompoundRepairRevisionProvider } from '../src/organism/learning/P23CompoundRepairRevisionProvider.ts';
+import { createNativeCompoundRepairRevisionProvider, hasSameFileIdentity } from '../src/organism/learning/P23CompoundRepairRevisionProvider.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const privatePem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const providerSource = await readFile(
+  new URL('../src/organism/learning/P23CompoundRepairRevisionProvider.ts', import.meta.url),
+  'utf8',
+);
 const previousKeyring = process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON;
 process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = JSON.stringify({ 'verifier-v1': publicPem });
 
@@ -138,6 +142,27 @@ function createStoreWithActiveBaseline(proposal, sourcePayload) {
   const candidate = candidateStore.stageCandidate(proposal, 'skill-a', sourcePayload);
   return { candidateStore, candidate };
 }
+
+test('dataset path identity comparison detects inode and device substitutions', () => {
+  assert.equal(hasSameFileIdentity({ dev: 7, ino: 42 }, { dev: 7, ino: 42 }), true);
+  assert.equal(hasSameFileIdentity({ dev: 8, ino: 42 }, { dev: 7, ino: 42 }), false,
+    'a path redirected to another device must not pass the identity gate');
+  assert.equal(hasSameFileIdentity({ dev: 7, ino: 43 }, { dev: 7, ino: 42 }), false,
+    'a path redirected to another inode must not pass the identity gate');
+});
+
+test('native dataset read binds lstat, canonical target, and opened descriptor to one file', () => {
+  assert.match(providerSource,
+    /!actualInfo\\.isFile\\(\\) \\|\\| !hasSameFileIdentity\\(linkInfo, actualInfo\\)/,
+    'the canonical target must match the original non-symlink lstat identity');
+  assert.match(providerSource, /await open\\(configured, flags\\)/,
+    'O_NOFOLLOW must protect the configured path component that was inspected');
+  assert.match(providerSource,
+    /!hasSameFileIdentity\\(openedInfo, linkInfo\\)[\\s\\S]*?!hasSameFileIdentity\\(openedInfo, actualInfo\\)/,
+    'the opened descriptor must match both checked identities');
+  assert.doesNotMatch(providerSource, /open\\(actualPath,\\s*flags\\)/,
+    'opening only a previously resolved target leaves the configured path race unguarded');
+});
 
 test('native provider rebuilds an authentic proposal from signed artifacts and finds its staged source', async () => {
   await temporary(async ({ root, stateDirectory, configDirectory }) => {
