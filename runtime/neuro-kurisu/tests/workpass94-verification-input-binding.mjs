@@ -48,4 +48,20 @@ circular.self = circular;
 assert.equal(isTrustedExternalPostconditionVerification(evidence, circular), false,
   'non-serializable expected input must fail closed');
 
+const invalidCorrelationContext = await service.verify({
+  toolId: 'device.set-state',
+  input,
+  result: { accepted: true },
+  executionId: 'exec-12345678\u0001forged',
+  decisionId: 'decision-12345678\u009fforged',
+}, async (context) => {
+  assert.equal(context.executionId, undefined,
+    'embedded C0 controls in execution IDs must be rejected, not treated as ordinary characters');
+  assert.equal(context.decisionId, undefined,
+    'embedded C1 controls in decision IDs must be rejected, not treated as ordinary characters');
+  return { verified: false, basis: 'none', confidence01: 0 };
+});
+assert.equal(invalidCorrelationContext.verified, false,
+  'malformed correlation identifiers must never upgrade an outcome to verified');
+
 console.log('WORKPASS94_VERIFICATION_INPUT_BINDING=PASS exact-structural-match partial-input-rejected nested-change-rejected copied-token-rejected malformed-input-rejected');
