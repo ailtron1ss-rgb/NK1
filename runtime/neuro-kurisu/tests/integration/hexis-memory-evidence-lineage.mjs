@@ -102,7 +102,7 @@ assert.equal(restored.recordEvidence(memory.id, {
 assert.equal(restored.indexDiagnostics().pass, true, 'evidence integration must preserve memory indexes');
 
 // A long-lived canonical memory must still reject evidence replay after the 32-key exact ring rolls over.
-const longTrailOS = new MemoryOS2({ signalFusionProfile: 'balanced' });
+const longTrailOS = new MemoryOS2();
 const lineageEpoch = Date.now() + 1_000;
 const longLineageInput = (index, overrides = {}) => ({
   content: 'One canonical fact with many independent lineage identifiers for replay-guard rollover testing.',
@@ -138,7 +138,7 @@ assert.equal(longTrailOS.hasEvidenceLineage(longTrailMemory.id, 'hexis-rollover-
 const longTrailConfidence = longTrailBeforeReplay.confidence;
 longTrailOS.encode(longLineageInput(0, { confidence: .99, sourceAuthority01: 1 }), { clone: false });
 assert.equal(longTrailOS.snapshot().items.find(row => row.id === longTrailMemory.id).confidence, longTrailConfidence, 'replaying the oldest source cannot change confidence after 140 newer sources');
-const longTrailRestored = new MemoryOS2({ signalFusionProfile: 'balanced' });
+const longTrailRestored = new MemoryOS2();
 longTrailRestored.restore(structuredClone(longTrailOS.snapshot()));
 assert.equal(longTrailRestored.hasEvidenceLineage(longTrailMemory.id, 'hexis-rollover-0'), true, 'Bloom replay guard survives snapshot/restore');
 const restoredLongTrailConfidence = longTrailRestored.snapshot().items.find(row => row.id === longTrailMemory.id).confidence;
