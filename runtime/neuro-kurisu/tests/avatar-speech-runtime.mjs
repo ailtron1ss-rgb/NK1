@@ -70,4 +70,16 @@ assert.match(generatedSpeechIds[0], /^speech-[0-9a-f-]{36}$/);
 assert.match(generatedSpeechIds[1], /^speech-[0-9a-f-]{36}$/);
 assert.equal(identityRuntime.voiceSnapshot().state.utteranceCount, 2);
 console.log('AVATAR_SPEECH_IDENTITY=PASS distinct-default-operations/explicit-id-preserved');
+const malformedIdRuntime = new EmbodimentRuntime();
+malformedIdRuntime.body = { ...defaultBodyState(), ttsAvailable: true };
+let malformedIdDispatches = 0;
+malformedIdRuntime.setSpeechGatewayDispatcher(async () => {
+  malformedIdDispatches += 1;
+  return { ok: true };
+});
+assert.equal(await malformedIdRuntime.speak('Do not dispatch this', { speechEventId: 'speech-\n-invalid' }), false);
+assert.equal(malformedIdRuntime.voiceSnapshot().state.lastError, 'tts-invalid-context');
+assert.equal(malformedIdDispatches, 0, 'control characters in explicit operation IDs fail closed before touching TTS');
+console.log('AVATAR_SPEECH_ID_VALIDATION=PASS control-character-rejection/fail-closed');
+
 
