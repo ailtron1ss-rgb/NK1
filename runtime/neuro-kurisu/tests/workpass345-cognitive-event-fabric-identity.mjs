@@ -132,6 +132,27 @@ assert.throws(
 );
 assert.equal(fabric.snapshot().total,beforeNonCanonical,'non-canonical identity fields must fail before ledger mutation');
 
+// Causal parent arrays must be dense data arrays; holes/accessors cannot create
+// undefined parent references or execute caller code during normalization.
+let parentGetterCalls=0;
+const accessorParents=[];
+Object.defineProperty(accessorParents,'0',{enumerable:true,configurable:true,get(){parentGetterCalls+=1;throw new Error('parent getter must not run');}});
+accessorParents.length=1;
+const beforeAccessorParents=fabric.snapshot().total;
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:parent-accessor',parentIds:accessorParents})),
+  /invalid-cognitive-event-parent-id/,
+);
+assert.equal(parentGetterCalls,0);
+assert.equal(fabric.snapshot().total,beforeAccessorParents);
+
+const sparseParents=Array(1);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:parent-hole',parentIds:sparseParents})),
+  /invalid-cognitive-event-parent-id/,
+);
+assert.equal(fabric.snapshot().total,beforeAccessorParents);
+
 // Identity-bearing source and parent fields reject overflow instead of aliasing.
 const boundedSource='s'.repeat(120);
 const boundedSourceEvent=fabric.append(makeEvent({
