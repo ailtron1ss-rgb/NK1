@@ -2870,21 +2870,58 @@ export class OrganismCore {
         const before = this.hexisAdaptation.snapshot();
         const review = before.learningReviews.find((x) => x.id === reviewId);
         const item = review?.items.find((x) => x.id === itemId);
-        const result = this.hexisAdaptation.decideLearningReview(reviewId, itemId, decision, correction);
-        if (!result)
+        if (!item || item.status !== 'pending' || !['approve', 'correct', 'forget'].includes(decision) || (decision === 'correct' && !String(correction ?? '').trim())) {
             return { ok: false, error: 'review-item-not-found-or-invalid' };
-        if (result.status === 'corrected' && result.sourceMemoryId && correction) {
-            this.memorySubsystem.fabric.reviseContent(result.sourceMemoryId, correction, { reason: 'hexis-learning-review-correction', source: 'hexis-learning-review' }, { tick: this.persisted.state.tick });
         }
-        if (result.status === 'forgotten' && result.sourceMemoryId) {
-            const memory = this.memorySubsystem.memoryOS.get(result.sourceMemoryId);
-            if (memory) {
-                this.forgetMemoryById(memory.id, 'hexis-learning-review-forget');
+        let memoryMutation: Record<string, unknown> = { kind: 'none' };
+        const sourceMemoryId = item.sourceMemoryId ? String(item.sourceMemoryId) : '';
+        if (decision === 'correct' || decision === 'forget') {
+            if (!sourceMemoryId)
+                return { ok: false, error: 'review-source-memory-required' };
+            const memory = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items.find((row) => row.id === sourceMemoryId);
+            if (memory && (memory.kind === 'identity' || memory.kind === 'autobiographical' || memory.epistemicStatus === 'quarantined')) {
+                return { ok: false, error: 'protected-memory-requires-explicit-review', memoryId: sourceMemoryId };
+            }
+            if (decision === 'correct') {
+                if (!memory)
+                    return { ok: false, error: 'memory-not-found', memoryId: sourceMemoryId };
+                const revised = this.memorySubsystem.fabric.reviseContent(sourceMemoryId, String(correction).trim(), {
+                    reason: 'hexis-learning-review-correction',
+                    source: 'hexis-learning-review',
+                    confidence: memory.confidence,
+                }, { tick: this.persisted.state.tick });
+                if (!revised)
+                    return { ok: false, error: 'memory-correction-rejected', memoryId: sourceMemoryId };
+                // The review is provenance, not independent external corroboration: keep authority conservative.
+                const evidenceKey = `hexis-review:${sha256Stable({ reviewId, itemId }, 'legacy')}`;
+                const evidence = this.memorySubsystem.memoryOS.recordEvidence(revised.id, {
+                    source: `hexis-learning-review:${reviewId}`,
+                    provenanceClass: 'unknown',
+                    sourceAuthority01: 0.5,
+                    independenceKey: evidenceKey,
+                    observedAt: Date.now(),
+                    evidenceFreshnessAt: Date.now(),
+                });
+                if (!evidence.ok)
+                    return { ok: false, error: 'review-evidence-record-failed', memoryId: revised.id };
+                memoryMutation = { kind: 'correct', sourceMemoryId, memoryId: revised.id, unchanged: revised.id === memory.id && revised.content === memory.content, evidence };
+            } else if (memory) {
+                const removed = this.forgetMemoryById(memory.id, 'hexis-learning-review-forget');
+                if (!removed)
+                    return { ok: false, error: 'memory-forget-rejected', memoryId: memory.id };
+                memoryMutation = { kind: 'forget', sourceMemoryId, removed: true };
+            } else {
+                // Idempotent recovery: if the canonical row is already absent, close the pending forget review without deleting anything else.
+                memoryMutation = { kind: 'forget', sourceMemoryId, removed: false, alreadyAbsent: true };
             }
         }
+        // Every condition checked by decideLearningReview is preflighted before touching canonical memory.
+        const result = this.hexisAdaptation.decideLearningReview(reviewId, itemId, decision, correction);
+        if (!result)
+            return { ok: false, error: 'review-commit-rejected', reviewId, itemId, memoryMutation };
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
-        return { ok: true, result, reviewId };
+        return { ok: true, result, reviewId, memoryMutation };
     }
     hexisListLearningReviews(status = 'pending') { const rows = this.hexisAdaptation.snapshot().learningReviews; return status === 'all' ? rows : rows.filter((x) => x.status === status); }
     hexisProposeRetention(memoryId: string, action: 'compress' | 'archive' | 'forget', reason = 'operator-review') {
