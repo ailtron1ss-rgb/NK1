@@ -241,7 +241,6 @@ assert.equal(restoredIntegrityFabric.decideHmx(integrityPending.stagingId, 'acce
 // A valid stage with ordinary validation conflicts remains staged for operator
 // inspection; this is different from a stale/tampered persistence receipt.
 const validConflictRestoreFabric = new HexisAdaptationFabric();
-const pendingConflictSnapshot = validConflictRestoreFabric.snapshot();
 const conflictStage = validConflictRestoreFabric.stageHmx({
   document: { ...validHmx, sections: { ...validHmx.sections, identity: [{ id: 'protected' }] } },
   intent: 'telepathy',
