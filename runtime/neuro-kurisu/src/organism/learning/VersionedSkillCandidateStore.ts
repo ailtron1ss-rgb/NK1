@@ -324,7 +324,7 @@ export class VersionedSkillCandidateStore {
     }
     if (revisionProvenance && (
       revisionProvenance.schemaVersion !== 1 ||
-      !(/^[a-f0-9]{64}$/.test(revisionProvenance.evaluationFingerprint ?? '')) ||
+      (revisionProvenance.evaluationFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(revisionProvenance.evaluationFingerprint)) ||
       !(revisionProvenance.sourceCandidateId === null || /^[a-f0-9]{64}$/.test(revisionProvenance.sourceCandidateId)) ||
       !/^[a-f0-9]{64}$/.test(revisionProvenance.planFingerprint) ||
       !/^[a-f0-9]{64}$/.test(revisionProvenance.datasetFingerprint) ||
