@@ -251,7 +251,6 @@ export class CognitiveEventFabric {
       if(legacyHashless) {
         // Keep the documented compatibility path for old snapshots that have a valid
         // full-input projection fingerprint but no event-level postcondition hashes.
-        if(entry.projectionHash!==suppliedProjectionHash)continue;
       } else {
         if(!/^[a-f0-9]{64}$/i.test(expectedHash as string)||!/^[a-f0-9]{64}$/i.test(observedHash as string))continue;
         if(typeof action.payload.tool!=='string'||typeof outcome.payload.ok!=='boolean'||

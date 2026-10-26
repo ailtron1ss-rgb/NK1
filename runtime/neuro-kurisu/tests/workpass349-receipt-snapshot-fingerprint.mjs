@@ -26,6 +26,13 @@ const saved = sourceFabric.snapshot();
 assert.equal(first.replayed, false);
 assert.equal(saved.receiptProjectionIndex.length, 1);
 
+const validRestoredFabric = new CognitiveEventFabric(128);
+validRestoredFabric.restore(saved);
+assert.equal(validRestoredFabric.snapshot().receiptProjectionIndex.length, 1, 'valid reconstructed projection fingerprint should restore');
+const validRestoredTotal = validRestoredFabric.snapshot().total;
+assert.equal(validRestoredFabric.appendToolReceiptTrace(receipt()).replayed, true);
+assert.equal(validRestoredFabric.snapshot().total, validRestoredTotal);
+
 // A syntactically valid but false projection hash must not be restored as a replay guard.
 const badIndexSnapshot = {
   ...saved,
@@ -93,6 +100,7 @@ const legacySnapshot = {
 const legacyFabric = new CognitiveEventFabric(128);
 legacyFabric.restore(legacySnapshot);
 const legacyTotal=legacyFabric.snapshot().total;
+assert.equal(legacyFabric.snapshot().receiptProjectionIndex.length, 1, 'legacy projection index stays recoverable');
 assert.equal(legacyFabric.appendToolReceiptTrace(receipt()).replayed,true);
 assert.equal(legacyFabric.snapshot().total,legacyTotal);
 
