@@ -61,8 +61,9 @@ export interface P26InterleavedTrainingResult {
   eligibleReplayRows:number;
   conflictComparisons:number;
   conflictCandidateCap:number;
-  /** Actual replay rate after bounding historical influence by replay cadence. */
+  /** Conservative replay-rate bound before context-separation admission. */
   effectiveReplayLearningRate01:number;
+  contextSeparatedReplayRows:number;
   meanLoss01:number;
 }
 
@@ -223,31 +224,39 @@ export class P26TrueLearningEngine{
       candidatesByActionAndEnergy.set(key,bucket);
     }
 
-    let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0;
+    let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,contextSeparatedReplayRows=0;
     let onlineLoss=0,replayLoss=0,replayCursor=0;
     const targetFor=(row:P26InterleavedExperience)=>{
       if(targetMode==='reward') return clamp(row.reward);
       const next=Math.max(...this.learner.predict(row.nextState,extras).map(p=>p.value),.5);
       return clamp(row.reward+.78*next);
     };
-    const conflictsWithCurrent=(historical:P26InterleavedExperience)=>{
-      let compared=0;
+    const assessReplayContext=(historical:P26InterleavedExperience)=>{
+      let compared=0,nearContext=0,farContext=0,conflict=false;
       const center=energyBucket(historical.state);
-      let conflict=false;
       search: for(let offset=-2;offset<=2;offset+=1) {
         const candidates=candidatesByActionAndEnergy.get(`${historical.action}|${center+offset}`)??[];
         for(const current of candidates) {
           if(compared>=candidateCap) break search;
           compared++;
-          if(Math.abs(current.reward-historical.reward)>=.5 &&
-             stateContextDistance(current.state,historical.state)<=.35) {
-            conflict=true;
-            break search;
+          const distance=stateContextDistance(current.state,historical.state);
+          if(distance<=.35) {
+            nearContext++;
+            if(Math.abs(current.reward-historical.reward)>=.5) {
+              conflict=true;
+              break search;
+            }
+          } else {
+            farContext++;
           }
         }
       }
       conflictComparisons+=compared;
-      return conflict;
+      // Only infer a separate context after seeing several neighbors and every
+      // bounded comparison is distant. Sparse/ambiguous rows use the conservative
+      // cadence cap; clearly separate contexts can preserve prior-task behavior.
+      const contextSeparated=!conflict && compared>=3 && farContext>=3 && nearContext===0;
+      return {conflict,contextSeparated};
     };
 
     for(let index=0;index<currentExperiences.length;index+=1) {
@@ -265,14 +274,19 @@ export class P26TrueLearningEngine{
          replayUpdates>=maxReplayUpdates) continue;
       const historical=replayExperiences[replayCursor%replayExperiences.length];
       replayCursor+=1;
-      if(conflictsWithCurrent(historical)) {
+      const contextAssessment=assessReplayContext(historical);
+      if(contextAssessment.conflict) {
         blockedReplayRows+=1;
         continue;
       }
       eligibleReplayRows+=1;
+      const rowReplayLearningRate01=contextAssessment.contextSeparated
+        ? Math.max(effectiveReplayLearningRate01,currentLearningRate01)
+        : effectiveReplayLearningRate01;
+      if(contextAssessment.contextSeparated) contextSeparatedReplayRows+=1;
       const replayResult=this.learner.train({
         state:historical.state,action:historical.action,target01:targetFor(historical),
-        learningRate01:effectiveReplayLearningRate01,extras,
+        learningRate01:rowReplayLearningRate01,extras,
       });
       replayUpdates+=1;
       replayLoss+=replayResult.loss01;
@@ -292,6 +306,7 @@ export class P26TrueLearningEngine{
       onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,
       conflictComparisons,conflictCandidateCap:candidateCap,
       effectiveReplayLearningRate01,
+      contextSeparatedReplayRows,
       meanLoss01:total?(onlineLoss+replayLoss)/total:0,
     };
   }
