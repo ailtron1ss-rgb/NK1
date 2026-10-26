@@ -1,3 +1,17 @@
+## Latest checkpoint — WorkPass351 learning-process cleanup (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code/workflow SHA:** `0d1af65888b7d89fd3b0484bc2fbca8b9f369b9b`.
+
+- The learning process supervisor now validates environment config before allocating scratch storage and removes the per-run scratch directory if trusted-run registration fails or pre-spawn cancellation is detected.
+- Added regressions in `tests/p23-learning-process-supervisor.mjs`; dedicated workflow #40285085066 passed: native P23 provider 10/10, supervisor cleanup regression PASS, runtime `TYPECHECK=PASS`.
+- WorkPass349/350 continue to bind signed-dataset and host-evaluator authority to actual filesystem identity; hard-link aliases and writable evaluator parents are rejected on POSIX.
+- **Current CI snapshot:** at prior PR head `0551a8d7fdeb13fb860ea5ad8c1707bf66fbda8d`, all 14 visible workflow runs completed successfully. WorkPass351 focused checks passed on newer code SHA `0d1af658...`; aggregate PR checks should be re-evaluated on the latest documentation-only head after this checkpoint commit.
+- Keep `main` stable; PR #192 remains draft and targets the source-stack branch, not `main`.
+- Remaining release gates: external production-owned executor/verifier/scanner availability, independent paired-seed uplift evidence, durable recall/restart proof, broader organism smoke, production UI/database build, browser/Live2D E2E, real Android/Termux audio, long-duration soak and license review.
+
+---
+
 ## Latest checkpoint — WorkPass350 host-evaluator authority boundary (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
