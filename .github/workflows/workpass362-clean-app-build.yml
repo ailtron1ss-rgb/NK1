@@ -44,6 +44,20 @@ jobs:
   clean-app-build:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nk1_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nk1_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     env:
       CI: "true"
     steps:
@@ -66,6 +80,10 @@ jobs:
         env:
           NODE_ENV: "production"
         run: npm --prefix app run build
+      - name: Exercise real PostgreSQL migration apply, rerun and rollback
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nk1_ci
+        run: node app/scripts/migrate-postgres.integration.mjs
       - name: Verify UI-to-runtime API linkage
         run: npm run audit:ui-api-linkage
       - name: Verify runtime schema contracts
