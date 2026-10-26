@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { buildSupervisedServiceSpecs } from './supervised-service-specs.mjs';
+
+const root = '/opt/neuro-kurisu';
+const stateDir = '/opt/neuro-kurisu/.super-state';
+const nodeExecutable = '/usr/local/bin/node';
+
+test('runtime service resolves its relative entrypoint from the runtime workspace', () => {
+  const specs = buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable });
+  const runtime = specs.find(spec => spec.label === 'neuro-kurisu');
+  assert.ok(runtime);
+  assert.equal(runtime.command, nodeExecutable);
+  assert.equal(runtime.cwd, '/opt/neuro-kurisu/runtime/neuro-kurisu');
+  assert.deepEqual(runtime.args, ['--experimental-strip-types', 'src/server/server.mjs']);
+  assert.equal(runtime.env.STATE_DIR, '/opt/neuro-kurisu/.super-state/organism');
+});
+
+test('project-level bridge, preview and gateway run from repository root', () => {
+  const specs = buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable });
+  assert.deepEqual(specs.map(spec => spec.label), [
+    'neuro-kurisu', 'research-bridge', 'ui-preview', 'gateway',
+  ]);
+  for (const label of ['research-bridge', 'ui-preview', 'gateway']) {
+    assert.equal(specs.find(spec => spec.label === label).cwd, root, label);
+  }
+  assert.deepEqual(specs.find(spec => spec.label === 'research-bridge').args, ['research/research_bridge.py']);
+  assert.deepEqual(specs.find(spec => spec.label === 'ui-preview').args, ['--prefix', 'app', 'run', 'preview']);
+  assert.deepEqual(specs.find(spec => spec.label === 'gateway').args, ['tools/super-gateway.mjs']);
+});
+
+test('service specs reject missing launch inputs instead of constructing unusable paths', () => {
+  assert.throws(() => buildSupervisedServiceSpecs({ root: '', stateDir, nodeExecutable }), /root is required/);
+  assert.throws(() => buildSupervisedServiceSpecs({ root, stateDir: '', nodeExecutable }), /state directory is required/);
+  assert.throws(() => buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable: '' }), /Node executable is required/);
+});
