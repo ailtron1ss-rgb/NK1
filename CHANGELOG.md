@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass420 — validate apply receipts before stage promotion (2026-10-26)
+
+- [CONTRACT] `decideHmx(..., 'apply')` now validates the handler receipt against the same export, lineage, stage ID and digest contract used on restored replay before setting `status='applied'`.
+- [REGRESSION] A malformed receipt must leave the HMX stage accepted, leave its application unset, and not increment the applied metric.
+- [VALIDATION] Changes are committed; runtime/typecheck remain unverified because GitHub Actions jobs return failure with no steps/logs.
+
 ## [NK1][Hexis] WorkPass419 — fail visibly when canonical compensation is incomplete (2026-10-26)
 
 - [ATOMICITY] After issuing compensating forget commands, the HMX projector now re-reads canonical memory and reports any imported record that remains. A non-throwing no-op compensator can no longer be mistaken for successful rollback.
