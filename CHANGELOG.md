@@ -1,3 +1,12 @@
+## WorkPass383 — keep Hexis lifecycle events on logical organism ticks (2026-10-26)
+
+- **Code/test head:** `7c62bebea1564b067f31343914c40004dc87d28e` on `work/hexis-evidence-adapter-2026-10-26`; bridge implementation commit `26837c72cece9145bbcce864949e2922b4d42f21`.
+- **Defect:** the approval path used `Date.parse(observedAt)` (epoch milliseconds) as `MemoryFabric`'s logical event tick. That mixed wall-clock time with the organism-cycle counter and could make later events appear chronologically out of scale.
+- **Fix:** external Hexis ingress and approval now reuse the latest non-negative logical tick from the canonical event log; missing or timestamp-like values fail closed to zero. Event wall-clock time remains the separate event `at` field.
+- **Regression:** the production integration test runs through `OrganismSystemFabric`, seeds logical tick 27, and checks evidence and approved-confidence events both retain tick 27 and never record epoch milliseconds.
+- **Validation:** fresh exact-head typecheck, focused tests, unified integration and release gates are **pending**. No retrieval/readiness score increase claimed. `main` and the canonical Release ZIP are unchanged.
+
+---
 ## WorkPass381 — make Hexis rollback assertions schema-safe (2026-10-26)
 
 - **Code/test commit:** `d6fbf28a61024f6739bcf4dfe1be58627cdf0da6`; branch `work/hexis-evidence-adapter-2026-10-26`.
