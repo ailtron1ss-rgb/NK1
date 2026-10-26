@@ -176,6 +176,42 @@
         "motionToken": {
           "type": "integer",
           "minimum": 0
+        },
+        "headAngleX": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Optional normalized head yaw; absent on older v1 messages."
+        },
+        "headAngleY": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Optional normalized head pitch; absent on older v1 messages."
+        },
+        "bodyAngleX": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Optional normalized torso yaw."
+        },
+        "bodyAngleY": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Optional normalized torso pitch/lean."
+        },
+        "bodyAngleZ": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Optional normalized torso roll."
+        },
+        "breathIntensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Optional breathing animation amplitude."
         }
       }
     },

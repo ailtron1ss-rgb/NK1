@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { buildAvatarPresentation, buildAvatarSpeechTimeline, sampleAvatarSpeechTimeline } from '../public/avatar-state.mjs';
+import { deriveEmbodimentPose } from '../public/embodiment-pose.mjs';
 import { buildVisemeTimeline, sampleVisemeTimeline, poseForGrapheme } from '../public/speech-viseme-core.mjs';
 
 const explore = buildAvatarPresentation({
@@ -18,6 +19,10 @@ assert.equal(explore.emotion, 'curiosity');
 assert.equal(explore.expression, 'thinking');
 assert.equal(explore.body.motionGroup, 'TapBody');
 assert.equal(explore.body.gazeDriven, true);
+assert.equal(typeof explore.body.headAngleX, 'number');
+assert.equal(typeof explore.body.bodyAngleX, 'number');
+assert.equal(typeof explore.body.breathIntensity, 'number');
+assert.notEqual(explore.body.headAngleX, explore.body.gazeX, 'head orientation is independent from eye gaze');
 assert.equal(explore.body.expressionIntensity, 0.7);
 assert.equal(explore.body.speaking, false);
 assert.equal(explore.lipsync, 0);
@@ -66,7 +71,7 @@ for (const source of ['Ку́рису 🙂', 'а🙂‍↔️б\\n', 'а🙂‍�
   const actual = buildAvatarSpeechTimeline(source, 0.96, 'ru-RU');
   assert.deepEqual(
     actual.map(({ startMs, endMs, pose, grapheme }) => ({ startMs, endMs, pose, grapheme })),
-    expected.map(frame => ({ startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose, grapheme: normalizedSource.slice(frame.charIndex, frame.endCharIndex) })),
+    expected.map(frame => ({ startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose, grapheme: source.slice(frame.charIndex, frame.endCharIndex) })),
     'combining marks, joined emoji, flags and real/control-character newlines must retain canonical UTF-16 grapheme windows',
   );
 }
@@ -94,5 +99,16 @@ assert.deepEqual(sampleAvatarSpeechTimeline(visemes, Number.NaN), { open: 0.015,
 assert.deepEqual(buildAvatarSpeechTimeline('', 1), []);
 assert.deepEqual(buildAvatarSpeechTimeline({ toString: () => 'unsafe' }, 1), []);
 assert.deepEqual(sampleAvatarSpeechTimeline(visemes, visemes.at(-1).endMs + 20), { open: 0.015, form: 0, viseme: 'rest' });
+
+const restingPose = deriveEmbodimentPose('rest', 'sadness', 0.2);
+const stressedPose = deriveEmbodimentPose('verify', 'anxiety', 0.9);
+assert.ok(stressedPose.breathIntensity > restingPose.breathIntensity, 'arousal/stress should increase breathing amplitude');
+for (const pose of [restingPose, stressedPose, deriveEmbodimentPose('unknown', 'unknown', Number.NaN)]) {
+  for (const key of ['headAngleX', 'headAngleY', 'bodyAngleX', 'bodyAngleY', 'bodyAngleZ']) {
+    assert.ok(pose[key] >= -1 && pose[key] <= 1, key + ' must be bounded');
+  }
+  assert.ok(pose.breathIntensity >= 0 && pose.breathIntensity <= 1);
+}
+assert.deepEqual(deriveEmbodimentPose('unknown', 'unknown', Number.NaN), deriveEmbodimentPose('wait', 'calm', 0.2), 'unknown labels use deterministic safe defaults');
 
 console.log('AVATAR_STATE_MAPPING=PASS explore/respond/emotion/speech/bounds');

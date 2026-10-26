@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
+import { KurisuOriginalStage } from "./KurisuOriginalStage";
+import { deriveAvatarGaze } from "./avatar/avatarPresentation";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import {
   appendVisemeClockAnchor,
@@ -12,6 +14,7 @@ import {
   sampleVisemeClock,
   sampleVisemeTimeline,
   smoothEmbodimentAffect,
+  deriveEmbodimentPose,
   timelineOffsetForCharIndex,
   type VisemeClockAnchor,
   type EmbodimentIntentV1,
@@ -25,7 +28,8 @@ const EXPR: Record<EmotionLabel, string> = {
   curiosity: "thinking", calm: "neutral", joy: "happy", anxiety: "sad",
   frustration: "angry", sadness: "sad", anger: "angry", protective: "focused",
 };
-type ViewMode = "live2d" | "legacy";
+type ViewMode = "live2d" | "legacy" | "original";
+type RuntimeProfile = "auto" | "mobile" | "balanced" | "quality";
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 
 function inferSpeechLanguage(text: string): string {
@@ -84,9 +88,17 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceStatus, setVoiceStatus] = useState<"off" | "ready" | "unsupported" | "speaking" | "unknown">(() => typeof window !== "undefined" && "speechSynthesis" in window ? "off" : "unsupported");
   const [mouthPose, setMouthPose] = useState<MouthPose>(CLOSED_MOUTH);
-  const [mode, setMode] = useState<ViewMode>(() => readAvatarPreference("kurisu-avatar-mode") === "legacy" ? "legacy" : "live2d");
+  const [mode, setMode] = useState<ViewMode>(() => {
+    const saved = readAvatarPreference("kurisu-avatar-mode");
+    return saved === "legacy" || saved === "original" ? saved : "live2d";
+  });
+  const [runtimeProfile, setRuntimeProfile] = useState<RuntimeProfile>(() => {
+    const saved = readAvatarPreference("kurisu-live2d-profile");
+    return saved === "mobile" || saved === "balanced" || saved === "quality" ? saved : "auto";
+  });
   const lastTurn = snap.chat[snap.chat.length - 1];
   const turnKey = lastTurn?.role === "kurisu" ? `${String(lastTurn.id ?? lastTurn.at)}:${String(lastTurn.at)}:${lastTurn.text}` : "";
+  const originalGaze = deriveAvatarGaze(snap.lastOption, snap.emotion.valence);
 
   const stopSpeech = () => {
     const active = activeSpeechSessionRef.current;
@@ -125,9 +137,10 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   useEffect(() => {
     // Each preference is best-effort: a blocked storage write must not prevent avatar/voice controls.
     writeAvatarPreference("kurisu-avatar-mode", mode);
+    writeAvatarPreference("kurisu-live2d-profile", runtimeProfile);
     writeAvatarPreference("kurisu-avatar-voice-enabled", String(voiceEnabled));
     writeAvatarPreference("kurisu-avatar-voice-name", voiceName);
-  }, [mode, voiceEnabled, voiceName]);
+  }, [mode, runtimeProfile, voiceEnabled, voiceName]);
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) { setVoiceStatus("unsupported"); return; }
@@ -302,12 +315,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
     const expression = EXPR[snap.emotion.label] ?? "neutral";
-    const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
-      explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
-      respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
-    };
-    const gaze = gazeByAction[snap.lastOption] ?? gazeByAction.wait;
-    const valenceOffset = (snap.emotion.valence - 0.5) * 0.16;
+    const gaze = deriveAvatarGaze(snap.lastOption, snap.emotion.valence);
     const headTiltByEmotion: Record<EmotionLabel, number> = {
       curiosity: -0.045, calm: 0, joy: 0.018, anxiety: -0.018,
       frustration: 0.035, sadness: 0.055, anger: 0.025, protective: -0.01,
@@ -319,7 +327,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     // directly to audio boundaries and are deliberately not smoothed here.
     const affectState = smoothEmbodimentAffect(affectSmoothingRef.current, {
       expressionIntensity: snap.emotion.arousal,
-      gazeX: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)),
+      gazeX: gaze.x,
       gazeY: gaze.y,
       headTilt: headTiltByEmotion[snap.emotion.label],
       voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
@@ -333,6 +341,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const audioTimeMs = activeSession
       ? speechAudioClockNow(activeSession, performance.now())
       : Math.max(0, Number(session?.lastAudioElapsedMs ?? 0));
+    const bodyPose = deriveEmbodimentPose(snap.lastOption, snap.emotion.label, affectState.expressionIntensity);
     const intent: EmbodimentIntentV1 = {
       type: "kurisu_embodiment_intent",
       protocolVersion: 1,
@@ -351,6 +360,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       gaze: { x: affectState.gazeX, y: affectState.gazeY, driven: true },
       body: {
         headTilt: affectState.headTilt,
+        ...bodyPose,
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
@@ -366,12 +376,25 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       <div className="absolute left-3 top-3 z-30 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1 rounded-md border border-border bg-black/60 p-1 backdrop-blur">
         <button type="button" onClick={() => { setMode("live2d"); if (!live) setViewerAttempt((attempt) => attempt + 1); }} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "live2d" ? "bg-accent text-accent-fg" : "text-white/70")}>Live2D</button>
         <button type="button" onClick={() => setMode("legacy")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "legacy" ? "bg-accent text-accent-fg" : "text-white/70")}>Legacy</button>
+        <button type="button" onClick={() => setMode("original")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "original" ? "bg-accent text-accent-fg" : "text-white/70")}>NK1 Original</button>
         <button type="button" aria-pressed={voiceEnabled} onClick={() => { if (voiceEnabled) stopSpeech(); setVoiceEnabled((value) => !value); }} disabled={voiceStatus === "unsupported"} className={cn("rounded px-2 py-1 text-[10px] font-mono", voiceEnabled ? "bg-accent text-accent-fg" : "text-white/70")}>{voiceEnabled ? "Голос: вкл." : "Голос: выкл."}</button>
+        {mode === "live2d" ? <select aria-label="Профиль производительности Live2D" value={runtimeProfile} onChange={(event) => {
+          const value = event.target.value;
+          if (value !== "auto" && value !== "mobile" && value !== "balanced" && value !== "quality") return;
+          setRuntimeProfile(value);
+          setLive(false);
+          setViewerAttempt((attempt) => attempt + 1);
+        }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white">
+          <option value="auto">Профиль: авто</option>
+          <option value="mobile">Профиль: мобильный</option>
+          <option value="balanced">Профиль: баланс</option>
+          <option value="quality">Профиль: качество</option>
+        </select> : null}
         {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
       </div>
-      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : <>
+      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
-        <iframe key={viewerAttempt} ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
+        <iframe key={viewerAttempt} ref={frame} title="Kurisu Live2D" src={`/live2d/viewer.html?profile=${runtimeProfile}`} className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between p-4">
           <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p><p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p></div>

@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import vm from "node:vm";
 import { buildAvatarSpeechTimeline as buildRuntimeSpeechTimeline } from "../../runtime/neuro-kurisu/public/avatar-state.mjs";
+import { deriveAvatarGaze } from "../src/components/avatar/avatarPresentation.ts";
+import { listAllSprites, resolveSpritePath } from "../src/legacy/avatar/spriteEngine.ts";
 import {
   buildVisemeTimeline,
   CLOSED_MOUTH,
@@ -15,6 +17,7 @@ import {
   sampleVisemeClock,
   sampleVisemeTimeline,
   smoothEmbodimentAffect,
+  deriveEmbodimentPose,
   timelineOffsetForCharIndex,
 } from "../src/components/avatar/embodimentTimeline.ts";
 
@@ -37,11 +40,24 @@ function intent(overrides = {}) {
     expressionIntensity: 0.5,
     mouth: { open: 0.3, form: 0.2, viseme: "wide" },
     gaze: { x: 0.1, y: -0.1, driven: true },
-    body: { headTilt: 0.02, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 17 },
+    body: { headTilt: 0.02, headAngleX: 0.12, headAngleY: -0.05, bodyAngleX: 0.04, bodyAngleY: 0.03, bodyAngleZ: -0.02, breathIntensity: 0.7, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 17 },
     voiceEmphasis: 0.3,
     ...overrides,
   };
 }
+
+test("action and emotion produce bounded independent head/body pose channels", () => {
+  const explore = deriveEmbodimentPose("explore", "curiosity", 0.7);
+  const rest = deriveEmbodimentPose("rest", "sadness", 0.2);
+  const stressed = deriveEmbodimentPose("verify", "anxiety", 0.9);
+  assert.notEqual(explore.headAngleX, explore.bodyAngleX);
+  assert.ok(stressed.breathIntensity > rest.breathIntensity);
+  for (const pose of [explore, rest, stressed]) {
+    for (const key of ["headAngleX", "headAngleY", "bodyAngleX", "bodyAngleY", "bodyAngleZ"]) assert.ok(pose[key] >= -1 && pose[key] <= 1, key + " must be bounded");
+    assert.ok(pose.breathIntensity >= 0 && pose.breathIntensity <= 1);
+  }
+  assert.deepEqual(deriveEmbodimentPose("unknown", "unknown", Number.NaN), deriveEmbodimentPose("wait", "calm", 0.2));
+});
 
 test("builds grapheme-level viseme frames with UTF-16 offsets for SpeechSynthesis boundary events", () => {
   const text = "Курису 🙂 говорит!";
@@ -132,12 +148,53 @@ test("a late SpeechSynthesis elapsedTime cannot rewind the published audio clock
   assert.equal(sampleMonotonicAudioClock(anchored.highWaterMs, anchored.anchorElapsedMs, anchored.anchorPerformanceAtMs, 1450), 750);
 });
 
+test("manual legacy sprite selection is allowlisted and uses only bundled sprite paths", () => {
+  const sprites = listAllSprites();
+  assert.equal(sprites.length, 32);
+  assert.equal(new Set(sprites.map((sprite) => sprite.id)).size, sprites.length);
+  for (const sprite of sprites) {
+    assert.equal(resolveSpritePath("happy", { spriteId: sprite.id }), sprite.path);
+    assert.ok(sprite.label.length > 0);
+    assert.ok(sprite.path.startsWith("/sprites/"));
+  }
+  for (const invalid of ["../viewer.html", "../../private", "constructor", "toString", "not-a-sprite"]) {
+    const resolved = resolveSpritePath("neutral", { spriteId: invalid });
+    assert.ok(sprites.some((sprite) => sprite.path === resolved),
+      "untrusted saved values must fall back to a canonical bundled sprite");
+  }
+});
+
+test("one bounded action/valence gaze signal can drive Live2D and NK1 Original", async () => {
+  const actions = ["respond", "explore", "verify", "rest", "reflect", "wait"];
+  for (const action of actions) {
+    for (const valence of [0, 0.5, 1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const gaze = deriveAvatarGaze(action, valence);
+      assert.ok(Number.isFinite(gaze.x) && gaze.x >= -0.4 && gaze.x <= 0.4);
+      assert.ok(Number.isFinite(gaze.y) && gaze.y >= -0.4 && gaze.y <= 0.4);
+    }
+  }
+  assert.ok(deriveAvatarGaze("explore", 0.5).x > deriveAvatarGaze("reflect", 0.5).x,
+    "exploration looks outward while reflection turns gaze inward");
+  assert.deepEqual(deriveAvatarGaze("explore", Number.NaN), deriveAvatarGaze("explore", 0.5),
+    "invalid emotional valence must fall back to neutral gaze influence");
+
+  const stage = await readFile(join(root, "src/components/AvatarStage.tsx"), "utf8");
+  const original = await readFile(join(root, "src/components/KurisuOriginalStage.tsx"), "utf8");
+  assert.ok(stage.includes("deriveAvatarGaze(snap.lastOption, snap.emotion.valence)"));
+  assert.ok(stage.includes("gazeX={originalGaze.x} gazeY={originalGaze.y}"));
+  assert.ok(original.includes("translate(${pupilOffsetX} ${pupilOffsetY})"),
+    "SVG pupils must visibly track the shared gaze vector");
+  assert.ok(original.includes("nk-blink") && original.includes("nk-eye-left"),
+    "the original face should blink without a remote sprite dependency");
+});
+
 test("the intent envelope requires a speech identity and audio clock while speaking", () => {
   assert.equal(isEmbodimentIntentV1(intent()), true);
   assert.equal(isEmbodimentIntentV1(intent({ stateVersion: 0 })), false);
   assert.equal(isEmbodimentIntentV1(intent({ speechPhase: "speaking", speechEventId: null })), false);
   assert.equal(isEmbodimentIntentV1(intent({ audioTimeMs: Number.NaN })), false);
   assert.equal(isEmbodimentIntentV1(intent({ mouth: { open: 2, form: 0, viseme: "wide" } })), false, "the shared protocol rejects out-of-range values before rendering");
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...intent().body, bodyAngleY: 1.01 } })), false, "normalized torso channels reject out-of-range values");
 });
 
 test("AvatarStage publishes one versioned embodiment intent and rejects stale utterance callbacks", async () => {
@@ -149,8 +206,32 @@ test("AvatarStage publishes one versioned embodiment intent and rejects stale ut
   assert.match(source, /timelineOffsetForCharIndex/);
   assert.doesNotMatch(source, /type: "kurisu_lipsync"|type: "kurisu_embodiment"|type: "kurisu_expression"/, "the app must not split one state over legacy control messages");
   assert.match(viewer, /d\.type!=='kurisu_embodiment_intent'/);
+  assert.ok(viewer.includes("setCore('ParamBodyAngleX'"));
+  assert.ok(viewer.includes("setCore('ParamBreath'"));
+  assert.ok(viewer.includes("headAngleX"));
+
   assert.match(viewer, /intent\.stateVersion/);
   assert.doesNotMatch(viewer, /d\.type==='kurisu_lipsync'|d\.type==='kurisu_embodiment'|d\.type==='kurisu_expression'/, "viewer must accept the unified control contract, not competing writers");
+});
+
+test("avatar UI switches to the persistent NK1 Original design and exposes real appearance controls", async () => {
+  const stage = await readFile(join(root, "src/components/AvatarStage.tsx"), "utf8");
+  const original = await readFile(join(root, "src/components/KurisuOriginalStage.tsx"), "utf8");
+  assert.ok(stage.includes('type ViewMode = "live2d" | "legacy" | "original"'));
+  assert.ok(stage.includes('setMode("original")'));
+  assert.ok(stage.includes('<KurisuOriginalStage emotion={snap.emotion.label}'));
+  assert.ok(stage.includes('saved === "legacy" || saved === "original"'), "the selected variant can be restored after a reload");
+  assert.ok(original.includes('data-testid="kurisu-original-stage"'));
+  for (const persistedSetting of [
+    "kurisu-original-outfit", "kurisu-original-eyes", "kurisu-original-hair",
+    "kurisu-original-accent", "kurisu-original-motion", "kurisu-original-pose", "kurisu-original-scale",
+  ]) assert.ok(original.includes(persistedSetting), `missing persisted visual setting: ${persistedSetting}`);
+  for (const control of ["Лаборатория", "Город", "Ночной режим", "Аметист", "Морская волна", "Красное дерево", "Выразительное", "Скрестить руки", "Думать", "Объяснять", "Масштаб персонажа"]) {
+    assert.ok(original.includes(control), `missing original avatar appearance control: ${control}`);
+  }
+  assert.ok(original.includes("scale(\${scale})"), "scale slider must affect the actual SVG");
+  assert.ok(original.includes("prefers-reduced-motion"), "decorative animation must respect reduced-motion preference");
+  assert.ok(original.includes("mouthPose.open"), "mouth animation must use the shared speech-timed viseme pose");
 });
 
 test("AvatarStage exposes an explicit retry path after a Live2D viewer failure", async () => {
@@ -195,6 +276,8 @@ test("AvatarStage applies the shared affect smoothing to expression, gaze, pose 
   assert.match(source, /expressionIntensity: affectState\.expressionIntensity/);
   assert.match(source, /gaze: \{ x: affectState\.gazeX, y: affectState\.gazeY/);
   assert.match(source, /headTilt: affectState\.headTilt/);
+  assert.match(source, /deriveEmbodimentPose\(snap\.lastOption/);
+  assert.match(source, /\.\.\.bodyPose/);
   assert.match(source, /voiceEmphasis: affectState\.voiceEmphasis/);
   assert.match(source, /mouth: activeUtterance \? mouthPose : CLOSED_MOUTH/,
     "mouth pose remains driven by audio-boundary timing rather than affect smoothing");
@@ -205,6 +288,8 @@ test("versioned EmbodimentIntent JSON schema is present and pins all synchronize
   const schema = JSON.parse(await readFile(join(root, "../contracts/embodiment-intent.v1.schema.json"), "utf8"));
   assert.equal(schema.properties.protocolVersion.const, 1);
   assert.ok(schema.properties.clockSource.enum.includes("runtime-tts-start-anchored-monotonic"));
+  assert.equal(schema.properties.body.properties.bodyAngleX.minimum, -1);
+  assert.equal(schema.properties.body.properties.breathIntensity.maximum, 1);
   assert.equal(isEmbodimentIntentV1(intent({ clockSource: "runtime-tts-start-anchored-monotonic" })), true,
     "runtime TTS start-clock intents must satisfy the same v1 envelope");
   for (const key of ["stateVersion", "speechEventId", "audioClockId", "speechPhase", "audioTimeMs", "priority", "cancellationToken", "expression", "mouth", "gaze", "body", "voiceEmphasis"]) {
@@ -212,6 +297,93 @@ test("versioned EmbodimentIntent JSON schema is present and pins all synchronize
   }
 });
 
+
+test("AvatarStage exposes a persisted, validated Live2D performance profile selector", async () => {
+  const source = await readFile(join(root, "src/components/AvatarStage.tsx"), "utf8");
+  assert.match(source, /type RuntimeProfile = "auto" \| "mobile" \| "balanced" \| "quality"/u);
+  assert.match(source, /readAvatarPreference\("kurisu-live2d-profile"\)/u);
+  assert.match(source, /writeAvatarPreference\("kurisu-live2d-profile", runtimeProfile\)/u);
+  assert.match(source, /aria-label="Профиль производительности Live2D"/u);
+  assert.match(source, /value=\{runtimeProfile\}/u);
+  assert.match(source, /setViewerAttempt\(\(attempt\) => attempt \+ 1\)/u,
+    "changing profile must remount the static viewer instead of leaving its old policy active");
+  assert.ok(source.includes('src={`/live2d/viewer.html?profile=${runtimeProfile}`}'),
+    "the chosen safe profile must flow into the viewer URL");
+  for (const profile of ["auto", "mobile", "balanced", "quality"]) {
+    assert.ok(source.includes(`<option value="${profile}">`), `profile option ${profile} must be selectable`);
+  }
+});
+
+test("Live2D profile presets have enforceable frame budgets in both shipped viewers", async () => {
+  const viewers = [
+    { name: "app", path: join(root, "public/live2d/viewer.html") },
+    { name: "runtime", path: join(root, "../runtime/neuro-kurisu/public/live2d/viewer.html") },
+  ];
+  const serializedPolicies = [];
+  for (const viewer of viewers) {
+    const html = await readFile(viewer.path, "utf8");
+    const policy = html.match(/const PROFILE_POLICY=Object\.freeze\([\s\S]*?\);/u)?.[0];
+    const activeState = html.match(/function visualStateIsActive\(signal=bodySignal\)\{[^\n]*\}/u)?.[0];
+    const chooseProfile = html.match(/function chooseProfile\(\)\{[\s\S]*?\n  \}/u)?.[0];
+    const modelForProfile = html.match(/function modelForProfile\(profile\)\{[\s\S]*?\n  \}/u)?.[0];
+    const tickerBudget = html.match(/function updateTickerBudget\(\)\{[^\n]*\}/u)?.[0];
+    assert.ok(policy, `${viewer.name}: profile policy catalog must exist`);
+    assert.ok(activeState, `${viewer.name}: active-state classifier must exist`);
+    assert.ok(chooseProfile, `${viewer.name}: profile selector must exist`);
+    assert.ok(modelForProfile, `${viewer.name}: model selection must use the catalog`);
+    assert.ok(tickerBudget, `${viewer.name}: frame budget must use the selected profile`);
+    assert.match(html, /powerPreference:PROFILE_POLICY\[assetProfile\]\.powerPreference/u,
+      `${viewer.name}: renderer power preference must match selected profile`);
+    const sandbox = {
+      URLSearchParams,
+      location: { search: "?profile=quality" },
+      navigator: { deviceMemory: 8, maxTouchPoints: 0 },
+      innerWidth: 1200,
+      innerHeight: 800,
+      assetProfile: "quality",
+      bodySignal: { speaking: true },
+      app: { ticker: { maxFPS: 0 } },
+    };
+    const api = vm.runInNewContext(
+      [policy, activeState, chooseProfile, modelForProfile, tickerBudget,
+        "({ PROFILE_POLICY, chooseProfile, modelForProfile, updateTickerBudget })"].join("\n"),
+      sandbox,
+      { filename: `${viewer.name}-live2d-profile-policy.js`, timeout: 1000 },
+    );
+    const normalizedPolicy = JSON.parse(JSON.stringify(api.PROFILE_POLICY));
+    assert.deepEqual(Object.keys(normalizedPolicy).sort(), ["balanced", "mobile", "quality"]);
+    assert.equal(api.chooseProfile(), "quality");
+    assert.equal(api.modelForProfile("mobile"), "./Kurisu.mobile/Kurisu-mobile.model3.json");
+    assert.equal(api.modelForProfile("balanced"), "./Kurisu/Kurisu.model3.json");
+    assert.equal(api.modelForProfile("quality"), "./Kurisu/Kurisu.model3.json");
+    assert.deepEqual(normalizedPolicy.mobile, {
+      modelPath: "./Kurisu.mobile/Kurisu-mobile.model3.json", activeFps: 24, idleFps: 10, powerPreference: "low-power",
+    });
+    assert.deepEqual(normalizedPolicy.balanced, {
+      modelPath: "./Kurisu/Kurisu.model3.json", activeFps: 30, idleFps: 14, powerPreference: "low-power",
+    });
+    assert.deepEqual(normalizedPolicy.quality, {
+      modelPath: "./Kurisu/Kurisu.model3.json", activeFps: 60, idleFps: 24, powerPreference: "high-performance",
+    });
+    for (const [profile, activeFps, idleFps] of [
+      ["mobile", 24, 10], ["balanced", 30, 14], ["quality", 60, 24],
+    ]) {
+      sandbox.assetProfile = profile;
+      sandbox.bodySignal = { speaking: true };
+      api.updateTickerBudget();
+      assert.equal(sandbox.app.ticker.maxFPS, activeFps, `${viewer.name}: ${profile} active budget`);
+      sandbox.bodySignal = {};
+      api.updateTickerBudget();
+      assert.equal(sandbox.app.ticker.maxFPS, idleFps, `${viewer.name}: ${profile} idle budget`);
+    }
+    sandbox.location.search = "?profile=unsupported";
+    sandbox.navigator.deviceMemory = 4;
+    assert.equal(api.chooseProfile(), "mobile", `${viewer.name}: unknown profile falls back to device policy`);
+    serializedPolicies.push(JSON.stringify(normalizedPolicy));
+  }
+  assert.equal(serializedPolicies[0], serializedPolicies[1],
+    "app and standalone runtime must ship the same model and frame-budget profiles");
+});
 
 test("actual Live2D viewer message handler accepts current state and rejects duplicate, rewound and wrong-cancel messages", async () => {
   const html = await readFile(join(root, "public/live2d/viewer.html"), "utf8");
@@ -226,7 +398,7 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
   );
   script = script.replace(
     "applyEmbodiment(intent);\n  });\n  boot();",
-    "applyEmbodiment(intent);\n    window.__w70AppliedCount=(window.__w70AppliedCount||0)+1;\n    window.__w70LastApplied={stateVersion:intent.stateVersion,speechEventId:intent.speechEventId,audioClockId:intent.audioClockId,speechPhase:intent.speechPhase,audioTimeMs:intent.audioTimeMs,speaking:intent.speaking,mouthOpen:lipTarget,mouthForm:lipFormTarget};\n  });\n  boot();"
+    "applyEmbodiment(intent);\n    window.__w70AppliedCount=(window.__w70AppliedCount||0)+1;\n    window.__w70LastApplied={stateVersion:intent.stateVersion,speechEventId:intent.speechEventId,audioClockId:intent.audioClockId,speechPhase:intent.speechPhase,audioTimeMs:intent.audioTimeMs,speaking:intent.speaking,mouthOpen:lipTarget,mouthForm:lipFormTarget,headAngleX:intent.headAngleX,bodyAngleX:intent.bodyAngleX,bodyAngleY:intent.bodyAngleY,breathIntensity:intent.breathIntensity};\n  });\n  boot();"
   );
   const listeners = new Map();
   const parent = { postMessage() {} };
@@ -259,12 +431,18 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
     clockSource: "speech-synthesis-boundary-anchored-monotonic", priority: 70, cancellationToken: "cancel:speech-real-handler",
     expression: "thinking", expressionIntensity: .5, mouth: { open: .72, form: .2, viseme: "open" },
     gaze: { x: .1, y: -.1, driven: true },
-    body: { headTilt: .02, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 1 }, voiceEmphasis: .3,
+    body: { headTilt: .02, headAngleX: .14, headAngleY: -.06, bodyAngleX: .18, bodyAngleY: .07, bodyAngleZ: -.03, breathIntensity: .75, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 1 }, voiceEmphasis: .3,
     ...overrides,
   });
   dispatch(message());
   assert.equal(fakeWindow.__w70AppliedCount, 1);
   assert.equal(fakeWindow.__w70LastApplied.mouthOpen, .72);
+  assert.equal(fakeWindow.__w70LastApplied.headAngleX, .14);
+  assert.equal(fakeWindow.__w70LastApplied.bodyAngleX, .18);
+  assert.equal(fakeWindow.__w70LastApplied.bodyAngleY, .07);
+  assert.equal(fakeWindow.__w70LastApplied.breathIntensity, .75);
+  dispatch(message({ stateVersion: 2, body: { ...message().body, bodyAngleY: 1.01 } }));
+  assert.equal(fakeWindow.__w70AppliedCount, 1, "out-of-range full-body channels must be rejected before stateVersion advances");
   dispatch(message({ mouth: { open: .1, form: 0, viseme: "closed" } }));
   assert.equal(fakeWindow.__w70AppliedCount, 1, "duplicate stateVersion must be rejected");
   dispatch(message({ stateVersion: 2, audioTimeMs: 140 }));

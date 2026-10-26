@@ -1,3 +1,51 @@
+## NK1 WorkPass109 — selectable and persistent Live2D profile control (2026-10-26)
+
+- Added an in-UI selector for `Авто`, `Мобильный`, `Баланс`, and `Качество`; the selected profile is validated against the four-value TypeScript union before it changes UI state.
+- Persists the choice via NK1's safe avatar-preference storage and passes it to the iframe URL. Switching profile clears the stale Live2D-ready state and remounts the viewer so the selected FPS and renderer policy are actually applied.
+- Added regression checks for all four options, storage wiring, controlled select state, and dynamic viewer URL. Full browser/runtime/TypeScript workflow is the validation gate; status will be reported from the run rather than assumed.
+
+- Updated the expression-cache workflow harness to supply the actual profile catalog to its isolated VM, and extended it to assert idle/active budgets for all three rendering profiles. This prevents the test harness from evaluating the new selector function without one of its required inputs.
+
+- Tightened the profile budget regression to execute the production `visualStateIsActive()` implementation in the isolated VM instead of a test mock, so active/idle FPS assertions follow the same state classifier as the viewer.
+
+---
+
+## NK1 WorkPass108 — truthful Live2D performance profiles (2026-10-26)
+
+- Replaced the previously cosmetic `quality` profile acceptance with an explicit profile policy catalog in both the app viewer and standalone runtime viewer. All model URLs remain pinned to the bundled allowlist; `mobile` uses the mobile model, while `balanced` and `quality` use the full model.
+- Profiles now drive real runtime behavior: `mobile` caps at 24 FPS active / 10 FPS idle with low-power rendering; `balanced` uses 30 / 14 FPS and low-power rendering; explicit `quality` uses 60 / 24 FPS and requests high-performance rendering. Hidden tabs are still paused by the existing visibility path.
+- Added executable regression checks against both shipped viewer implementations for profile selection, exact local model paths, frame budgets, power preference, unknown-profile handling, and app/runtime policy parity.
+- This is a rendering/performance policy change, not a claim that a separate higher-resolution Cubism model was authored; `quality` currently reuses the full bundled model asset.
+
+---
+
+## NK1 WorkPass107 — selectable original avatar and appearance controls (2026-10-26)
+
+- Added `app/src/components/KurisuOriginalStage.tsx`: separate authored SVG concept body with layered hair/face/coat/legs, affect-driven pose and expression, procedural idle/hair/breath animation, reduced-motion support, and speech-clock-linked mouth opening.
+- Added a third mode to `AvatarStage`: existing Live2D, new `NK1 Original`, and the prior Legacy sprite deck. The classic Live2D path remains intact and the view preference persists across reloads.
+- Added persisted, functional appearance settings to NK1 Original: lab/casual/night outfit silhouettes, eye tint, hair palette, accent colour, motion intensity profile, and 85–115% scale. Pose presets also include auto, crossed arms, thinking, and explain.
+- Added a regression contract test for variant selection and the appearance controls.
+- A shared action/valence gaze mapping now drives both Live2D intent and NK1 Original. The SVG eye whites blink procedurally and the pupils track that same bounded gaze signal; reduced-motion support suppresses blink animation. Added deterministic gaze-policy regressions.
+- Legacy SpriteDeck now offers an explicit selector with thumbnails for all 32 bundled sprites, supports returning to emotion-driven auto-selection, persists the selected sprite, and rejects values outside the local sprite allowlist. Added resolver tests.
+- Researched public alternatives. `Akatosh6DW/Amadeus` shows model-registry/outfit-selection architecture, but its own ASSETS_LICENSE keeps copyright with the model's original author and scope-limits the permission to that project. `mohui666/Amadeus` demonstrates PSD/Cubism authoring but uses source art from the original game; its code MIT license is not treated as asset permission. No third-party model binaries were copied.
+- Release caveat: GitHub release metadata shows the latest ZIP dated 2026-10-19; the GitHub connector did not expose binary archive contents, so this pass does not claim the new code is inside the released ZIP. Changes reside on this feature branch and draft PR #179.
+- Added the separate [NK1 Original art brief](docs/NK1_ORIGINAL_AVATAR_ART_BRIEF_RU.md) with palette, pose language, PSD layer map, parameter plan, authoring-tool research and production acceptance gates.
+- Exact code head `7e9eb76b1eba2f58ba11899dd9319949ecfa9cb6` passed `Live2D runtime validation` / `browser-contracts`: asset sync/integrity, both Live2D browser smoke tests, expression cache, runtime `test:live2d`, app `test:embodiment-timeline` (sprite-path allowlist and bounded gaze regressions included), and strict TypeScript. [Passing job](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290005553/job/121462570324). The same head's separate `WorkPass110 continual learning metrics` job fails at causal-experience identity/replay-diversity/restore regression, outside avatar files. [Failing job](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290005539/job/121462570216).
+- The separate `WorkPass110 continual learning metrics` job fails at the causal-experience identity/replay diversity/restore regression outside avatar paths ([run details](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40285122929/job/121446839572)); overall repository checks therefore are not fully green.
+
+---
+
+## NK1 WorkPass106 — independent head/body pose channels for the 2.5D body (2026-10-26)
+
+- Added shared `runtime/neuro-kurisu/public/embodiment-pose.mjs`: bounded action/emotion/arousal → head orientation, torso orientation and breathing intensity. Both React and standalone runtime use the same semantic mapping.
+- Extended `EmbodimentIntent v1` additively with optional `headAngleX/Y`, `bodyAngleX/Y/Z` and `breathIntensity`; old v1 payloads still have a fallback.
+- Wired both Live2D viewers to separate eye gaze from head rotation and apply `ParamBodyAngleX/Y/Z` plus animated `ParamBreath`. These IDs are present in the current Kurisu model's CDI3 parameter catalog.
+- Added pose-policy, bounds, protocol-schema and dual-viewer integrity assertions. Expanded the full production specification at [NEURO_KURISU_2P5D_BODY_PRODUCTION_SPEC_RU.md](docs/NEURO_KURISU_2P5D_BODY_PRODUCTION_SPEC_RU.md).
+- Validation on code head `ace708a42d08047c5742979a2cd8e7d6b973812c`: the `Live2D runtime validation` workflow passed, including assets sync, both Live2D browser suites, expression cache, runtime `test:live2d`, app `test:embodiment-timeline`, and strict app TypeScript check. The separate `WorkPass110 continual learning metrics` workflow failed at its causal-experience/restore-regression step outside these avatar paths ([run details](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40281959561/job/121437016261)); overall repository checks therefore are not fully green. Android/Termux, measured-audio lip-sync validation, and actual layered PSD/GLB asset validation remain pending.
+- Scope boundary: this pass improves the existing Live2D full-body rig. A newly authored layered PSD/Cubism project and true 3D `.blend/.glb` model remain production gates, as do visual calibration, licence/provenance review, physical audio and Android/Termux testing.
+
+---
+
 ## NK1 WorkPass105 — align runtime viseme labels with normalized speech text (2026-10-25)
 
 - Fixed a UTF-16 offset mismatch in the standalone avatar speech timeline: its frame times were built after CR/LF/tab normalization, while the displayed grapheme labels were sliced from the unnormalized source. Real line breaks could therefore label a viseme with the wrong character.

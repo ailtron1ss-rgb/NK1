@@ -1,4 +1,5 @@
 import { CLOSED_MOUTH, buildVisemeTimeline, sampleVisemeTimeline } from './speech-viseme-core.mjs';
+import { deriveEmbodimentPose } from './embodiment-pose.mjs';
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const clamp = (value, low, high, fallback = 0) =>
   Math.max(low, Math.min(high, typeof value === 'number' && Number.isFinite(value) ? value : fallback));
@@ -62,6 +63,7 @@ export function buildAvatarPresentation(snapshot) {
   const valence = clamp(emotion.valence, 0, 1, 0.5);
   const arousal = clamp(emotion.arousal, 0, 1, 0.2);
   const [baseGazeX, baseGazeY] = GAZE[action];
+  const pose = deriveEmbodimentPose(action, emotionLabel, arousal);
   const gazeX = clamp(baseGazeX + (valence - 0.5) * 0.16, -0.4, 0.4);
   const gesture = speaking || ['respond', 'explore', 'verify', 'reflect'].includes(action);
   const motionGroup = speaking || action === 'respond'
@@ -85,6 +87,7 @@ export function buildAvatarPresentation(snapshot) {
       gazeY: clamp(baseGazeY, -0.4, 0.4),
       gazeDriven: true,
       headTilt: HEAD_TILT[emotionLabel],
+      ...pose,
       expressionIntensity: arousal,
       speaking,
       gesture,
@@ -107,12 +110,15 @@ export function buildAvatarSpeechTimeline(text, rate = 1, language = 'ru-RU') {
   if (typeof text !== 'string') return [];
   // The canonical timeline replaces control whitespace before calculating UTF-16 offsets.
   // Normalize here too so grapheme labels use the exact same source string as the frames.
-  const normalized = text.slice(0, 2000).replace(/[\r\n\t]/gu, ' ');
+  const sourceText = text.slice(0, 2000);
+  const normalized = sourceText.replace(/[\r\n\t]/gu, ' ');
   if (!normalized.trim()) return [];
   return buildVisemeTimeline(normalized, rate, language).map(frame => ({
     ...frame,
     pose: { ...frame.pose },
-    grapheme: normalized.slice(frame.charIndex, frame.endCharIndex),
+    // Keep the original grapheme label while calculating timing against the
+    // normalized text. Control whitespace is one UTF-16 code unit, so offsets align.
+    grapheme: sourceText.slice(frame.charIndex, frame.endCharIndex),
   }));
 }
 

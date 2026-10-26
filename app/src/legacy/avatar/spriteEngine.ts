@@ -42,7 +42,14 @@ const SHEET_OF: Record<string, string> = {};
 
 import type { VisualProfileDef } from "./outfitCatalog";
 
-export function resolveSpritePath(expression: string, options: { preferLab?: boolean; profile?: VisualProfileDef } = {}): string {
+export function resolveSpritePath(expression: string, options: { preferLab?: boolean; profile?: VisualProfileDef; spriteId?: SpriteId | null } = {}): string {
+  const requestedSprite = options.spriteId;
+  // Explicit sprite selection is allowlisted against the local sheet registry.
+  // Never interpolate arbitrary persisted values into a resource path.
+  if (typeof requestedSprite === "string" && Object.prototype.hasOwnProperty.call(SHEET_OF, requestedSprite)) {
+    const sheet = SHEET_OF[requestedSprite] || "sheet_anime_office";
+    return `/sprites/${sheet}/${requestedSprite}.png`;
+  }
   const preferLab = options.preferLab ?? true;
   const profile = options.profile;
   const key = String(expression || 'neutral').toLowerCase();
@@ -72,9 +79,10 @@ export function resolveSpritePath(expression: string, options: { preferLab?: boo
   return `/sprites/${sheet}/${id}.png`;
 }
 
-export function listAllSprites(): { id: string; path: string }[] {
+export function listAllSprites(): { id: string; path: string; label: string }[] {
   return Object.keys(SHEET_OF).map(id => ({
     id,
+    label: id.replace(/_/gu, " "),
     path: `/sprites/${SHEET_OF[id]}/${id}.png`
   }));
 }
