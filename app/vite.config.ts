@@ -13,6 +13,8 @@ import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
 
 const organismApiTarget = process.env.NEURO_KURISU_API_TARGET ?? "http://127.0.0.1:3310";
+const organismApiToken = process.env.NEURO_API_TOKEN?.trim();
+const organismApiProxyHeaders = organismApiToken ? { Authorization: `Bearer ${organismApiToken}` } : undefined;
 
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
 function hasGlobbedMigrations(root: string): boolean {
@@ -153,7 +155,16 @@ export default defineConfig(({ command, isPreview }) => ({
     port: 8080,
     strictPort: true,
     proxy: {
-      "/api/organism": { target: organismApiTarget, changeOrigin: true },
+      "/api/health": {
+        target: organismApiTarget,
+        changeOrigin: true,
+        ...(organismApiProxyHeaders ? { headers: organismApiProxyHeaders } : {}),
+      },
+      "/api/organism": {
+        target: organismApiTarget,
+        changeOrigin: true,
+        ...(organismApiProxyHeaders ? { headers: organismApiProxyHeaders } : {}),
+      },
       "/api/research": { target: "http://127.0.0.1:8765", changeOrigin: true },
     },
   },
