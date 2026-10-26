@@ -1,3 +1,10 @@
+# WorkPass363 — fix clean app typecheck failures (2026-10-26)
+
+- [DIAGNOSTIC] The first full-stack clean-checkout run [#40292398129](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292398129) exposed app-layer errors not covered by runtime-only CI: implicit types and deletion of a required `globalThis.window` member in `safeLocalStorage.test.mjs`, plus TypeScript module resolution failing to expose the already-locked `@types/pg` package to `app/tsconfig.json`.
+- [FIX] Typed the fake window and localStorage test callbacks, replaced illegal `delete globalThis.window` operations with `Reflect.deleteProperty`, and constrained the in-memory fixture to `Map<string, string>`.
+- [FIX] Added `pg` to the explicit TypeScript `types` list; `@types/pg` was already a locked dev dependency, so no dependency/version or lockfile drift was introduced.
+- [VALIDATION] Re-run [#40292575724](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292575724) covers the test fixture correction; latest head [#40292593216](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292593216) includes the explicit `pg` type-package fix and is pending. Do not mark app build complete until the full latest workflow passes through production build, schema and asset audits.
+ 
 # WorkPass362 — clean production UI build + migration/schema contracts (2026-10-26)
 
 - [CI] Added `.github/workflows/workpass362-clean-app-build.yml` on Node 24. It runs the clean-checkout doctor before package installation, installs the app and runtime from their own locked dependency trees, runs the app dependency/script contracts, performs the combined app/runtime typecheck, builds the production UI through the existing env/assets wrapper, and then runs UI→runtime API linkage, schema and asset consistency audits.
