@@ -299,14 +299,20 @@ assert(
   'root section preservation must be visible to reviewers',
 );
 const extraRootMetadataExport = normalizeNk1HmxExport({
+  hmx_version: '1.7',
+  record_type: 'document',
+  created_at: '2026-10-26T00:00:00.000Z',
+  intent: 'port',
+  strategy: 'additive',
+  source: { hexis_lineage_id: 'unconsumed-root-metadata-preservation' },
   sourceSubjectId: 'unconsumed-root-metadata-preservation',
   legacyExporterState: { version: 3, flags: ['archive', 'signed'], active: false },
   sections: { memories: [] },
 });
 assert.deepEqual(
-  extraRootMetadataExport.sections.config.nk1NativeExport.extraRootFields.legacyExporterState,
-  { version: 3, flags: ['archive', 'signed'], active: false },
-  'unconsumed top-level source metadata must survive the NK1-to-HMX mapping',
+  extraRootMetadataExport.sections.config.nk1NativeExport.extraRootFields,
+  { legacyExporterState: { version: 3, flags: ['archive', 'signed'], active: false } },
+  'unknown source metadata must survive while standard HMX envelope fields are consumed normally',
 );
 assert(
   extraRootMetadataExport.export_warnings.some(warning => warning.includes('legacyExporterState')),
