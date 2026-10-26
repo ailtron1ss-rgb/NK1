@@ -1,3 +1,13 @@
+## WorkPass418 — исключить дублирующее глубокое копирование после bounded HMX snapshot (2026-10-26)
+
+- **Код fabric:** `8325edfe46cc263b79a146dee94268e14c07c6d0`; **регрессия изоляции:** `849453058df8ca197e623432b66d6d17bad0e945`.
+- `stageHmx` использует ссылки на секции внутри уже изолированного bounded plain-JSON snapshot вместо повторного deep clone каждого массива/объекта. Метод по-прежнему возвращает `structuredClone` всей стадии, поэтому caller не получает доступ к сохранённому внутреннему состоянию.
+- Это снижает дублирующие аллокации на больших HMX-файлах, сохраняя проверку accessors/prototypes/resource bounds и атомарное исключение conflicted-секций.
+- Регрессия независимо меняет исходный HMX документ и возвращённый объект стадии и проверяет, что сохранённое содержимое не меняется ни в одном случае.
+- **Валидация:** PENDING exact-head HMX adaptation test, runtime typecheck, server smoke и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass417 — снимок HMX request envelope без выполнения getters (2026-10-26)
 
 - **Код fabric:** `ff87945607101053a2ec4dad99eb41772d989a56`; **регрессия:** `cc2bf0633fbc61f1da5862c0df214f688cf9ac07`.
