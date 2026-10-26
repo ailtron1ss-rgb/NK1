@@ -1,3 +1,12 @@
+## NK1 Hexis canonical HMX apply (2026-10-26)
+
+- [IMPLEMENTED] Split HMX import into staging, explicit acceptance, and explicit canonical application. Acceptance alone no longer mutates canonical memory.
+- [IMPLEMENTED] Normalize NK1-native exports to HMX 1.7 with stable source lineage and canonical references.
+- [IMPLEMENTED] Project accepted memories through the canonical MemoryFabric/MemoryOS2 write path, preserve source provenance and temporal bounds, and project relationships only when both endpoints are imported records.
+- [SAFETY] Defer structural identity, goals, narrative, policy and other non-memory sections; reject conflicting duplicate refs before writes; compensate failed writes; record a digest-bearing application receipt.
+- [WIRING] Bind the projector from OrganismSystemFabric, persist touched memory/semantic graph/event-log owners, and validate the `decision: "apply"` API transition.
+- [TESTS] Added canonical import and server apply/replay/invalid-decision regressions. Execution status remains pending CI; this entry does not claim a passing run.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
