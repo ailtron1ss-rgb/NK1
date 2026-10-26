@@ -366,6 +366,8 @@
 - [ ] E30. Критерий: Hexis evidence-to-review подтверждён в живом runtime после restart/process-kill, и его state ownership однозначен.
 - [ ] E31. При принятии review заново канонизировать payload через `adaptHexisEvidence`, пересчитать digest и сверить stance/source/timestamp/confidence/note с canonical receipt; при любом расхождении отказать без изменения memory или review state.
 - [ ] E32. Добавить tampering-регрессии, где review snapshot меняет source ref/label/note/time/stance при сохранении старого digest; проверять отказ, неизменность canonical confidence и возможность безопасного повтора после восстановления доверенного snapshot.
+- [ ] E33. Провести аудит всех legacy/public методов, которые напрямую вызывают `reviseBelief`, `updateSignals` или эквивалентную запись confidence; переводить их на canonical evidence→pending-review→explicit decision, а direct-mutation пути закрывать regression contract тестом.
+- [ ] E34. Зафиксировать idempotency policy для evidence ID: identity зависит от canonical memory + source kind/reference + content fingerprint; stance/label/note/confidence входят в payload digest и их изменение при replay должно давать conflict, а не новый независимый vote.
 
 ## Definition of Done — жёсткие финальные ворота
 1. Один канонический source SHA и чистая install.
