@@ -1,3 +1,15 @@
+# WorkPass355 — harden unified cognitive substrate state boundaries (2026-10-26)
+
+- [FIXED] Replace broad persisted-state spreading with an allow-listed restore path; ignore prototype/accessor properties, normalize text, guard schema versions and sanitize counters/metrics.
+- [FIXED] Validate every live integration section, metric, counter and monotonically increasing tick before mutating the substrate snapshot.
+- [HARDENED] Reject accessor-backed live values without executing getters; invalid input leaves the last committed substrate state unchanged.
+- [REGRESSION] Expand the substrate regression to cover forward schemas, getter/prototype attacks, malformed persistence, out-of-range metrics, unsafe counters, duplicate ticks and atomic rejection.
+- [CI] Register the substrate module/test in both WorkPass331 path filters and run npm run test:substrate in the Node 24 workflow.
+- [VALIDATION] Exact-head CI is pending after this commit; no local execution or passing workflow is claimed yet.
+- [RELEASE] This is a stacked PR on WorkPass354. main and the published WorkPass70 ZIP remain unchanged.
+
+---
+
 # WorkPass354 — validate retained completion anchor provenance (2026-10-26)
 
 - [FIXED] Before writing completion events, `CanonicalCognitiveKernel.completeCycle()` now checks every supplied, still-retained decision anchor against the expected logical tick and stage. A stale/cross-tick or wrong-stage anchor is rejected with `canonical-cognitive-kernel-anchor-provenance-conflict` before mutation.
