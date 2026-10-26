@@ -3,7 +3,7 @@
 - Added the sequential continual-learning benchmark and deterministic multi-seed replay-policy sweep as explicit steps in the P26 Learning Validation workflow, alongside the new bounded interleaved replay contract.
 - This closes a coverage gap: the interleaved API contract alone could pass while the deeper sweep still failed new-task retention under dense replay.
 - The current-experience update keeps its existing order; the historical update is separately rate-limited so dense replay cannot dominate the per-sample update budget.
-- When the configured replay rate is below the current-step rate, the effective historical rate is capped at 10% of the current-step rate times the replay stride and returned in diagnostics. Equal-or-higher replay rates remain an explicit balanced-retention choice. Direct contracts cover dense, sparse, and equal-rate cases.
+- When the configured replay rate is below the current-step rate, the effective historical rate is capped at 10% of the current-step rate times the replay stride and returned in diagnostics. A historical row receives the balanced-retention rate only when at least three bounded same-action/energy neighbors are all outside the same context radius; ambiguous or overlapping contexts keep the conservative rate, and conflicting rewards remain blocked. Direct contracts cover dense, sparse, equal-rate, and context-separated cases.
 - The sweep must pass on the exact workflow head before any replay-quality improvement is claimed.
 
 ## P26 replay ordering and signed-shadow candidate identity — 2026-10-26
