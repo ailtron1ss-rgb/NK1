@@ -926,10 +926,19 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/decide') {
             const input = await body(req);
-            const decision = input.decision === 'accept' ? 'accept' : 'reject';
-            const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
-            await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), stage: result });
+            const decision = String(input.decision ?? '');
+            if (!['accept', 'reject', 'apply'].includes(decision)) {
+                return json(res, 400, { ok: false, error: 'invalid-hmx-decision' });
+            }
+            try {
+                const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
+                await runtime.core.flush();
+                if (!result) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
+                return json(res, 200, { ok: true, stage: result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                return json(res, 409, { ok: false, error: String(error?.message ?? error) });
+            }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
