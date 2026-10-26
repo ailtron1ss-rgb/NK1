@@ -2,6 +2,8 @@
 
 - [FIXED] Before writing completion events, `CanonicalCognitiveKernel.completeCycle()` now checks every supplied, still-retained decision anchor against the expected logical tick and stage. A stale/cross-tick or wrong-stage anchor is rejected with `canonical-cognitive-kernel-anchor-provenance-conflict` before mutation.
 - [HARDENED] Reusing the same supplied event ID across multiple canonical stages is rejected as ambiguous causal identity.
+- [HARDENED] Anchor IDs must be normalized strings within the event-ID size/control-character contract. This prevents lookup trimming from accepting one ID while the stored parent reference keeps a different string.
+- [REGRESSION] Added zero-write tests for duplicated unknown anchor IDs and whitespace-altered anchor IDs.
 - [COMPATIBILITY] Missing event records are still allowed for delayed feedback after retention eviction; those cases continue through the normal lineage verifier and cannot be reported as a complete cycle without required evidence.
 - [REGRESSION] Added a wrong-tick observation-anchor case requiring zero completion writes/counter changes, plus a control case proving missing anchors produce incomplete (not fabricated-complete) outcome evidence.
 - [CI] Existing WorkPass331 workflow includes the canonical kernel and regression test; exact-head CI remains the acceptance gate.
