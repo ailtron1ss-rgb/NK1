@@ -1,3 +1,24 @@
+## WorkPass359 — validate operational-cycle phase envelopes before recording (2026-10-26)
+
+- **Defect:** `recordOperationalCycle()` treated every falsy phase value as omitted and passed explicit phase payloads through `cleanPayload()`, allowing malformed roots such as arrays, primitives and `null` to normalize into empty payloads. Confidence and source validation could be deferred to append after preparation.
+- **Fix:** snapshot known cycle-root and phase fields through own-data descriptors; skip only absent (`undefined`) phases; reject malformed/falsy phase envelopes, non-record payload roots, non-canonical source IDs and confidence outside `[0,1]` during preflight. Every phase is validated before the first ledger mutation.
+- **Regression:** `runtime/neuro-kurisu/tests/cognitive-operational-cycle-envelope.mjs` covers malformed payloads in a late learning phase, falsy phases, root/phase getters that must not execute, padded source, out-of-range confidence, unchanged ledger state, and normal record/omitted-payload compatibility. Wired into `test:cognitive-integration-suite`.
+- **Validation:** exact-head CI pending for the expanded combined WorkPass358/359 branch. WorkPass358’s prior code/test snapshot passed all 13 workflows; the new operational-cycle boundary changes require a fresh run. Readiness scores unchanged.
+
+---
+
+## WorkPass358 — integrate strict CEF receipt ingress and proxy-safe parent restore on latest base (2026-10-26)
+
+- **Base:** newest target checkpoint observed when this branch was created: `f38d3189777649da490f8b0dbb3a8d19c7444811`. Preserves the latest WorkPass370 cross-ledger cognitive-cycle integrity and WorkPass372 strict unified-cycle input/restore checks.
+- **Receipt trace ingress:** `appendToolReceiptTrace()` reads only own data descriptors before replay lookup, requires canonical execution/tool/decision/observation identifiers, and rejects confidence outside `[0,1]`.
+- **Authoritative receipt revisions:** `appendToolReceiptRevision()` rejects accessor-backed fields, padded/overlong identifiers, non-string hashes, invalid ticks/revision numbers/statuses, non-boolean outcomes, confidence outside `[0,1]`, and wrong-typed text rather than coercing/truncating/clamping it.
+- **External observations:** `appendToolExternalObservation()` uses descriptor-only input reads, validates identity/clock/boolean/confidence/text types, and avoids string-coercion of evidence values or stored tool identifiers.
+- **Restore lineage:** `restore()` validates nested `parentIds` arrays through a bounded native-array inspector using own data descriptors, so proxy `get` traps cannot falsify the length or parent slots.
+- **Regressions:** add `cognitive-tool-receipt-input-boundary.mjs` and `cognitive-event-parent-proxy-restore.mjs`, wired into `test:cognitive-integration-suite`. Tests cover getter suppression, non-coercion, unchanged ledger/replay state on rejection, exact revision replay idempotency, true parent preservation, and recovery after an uninspectable parent proxy.
+- **Exact-head CI PASS:** PR head `bf2f20b554890babb917ca43ab04c7e9ad8e0ba9` passed Unified project integration [#40293367296](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367296), project progress-ledger integrity [#40293367206](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367206), WorkPass110 [#40293367155](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367155), P26 [#40293367156](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367156), and nine additional focused workflows. The unified run passed cognitive integration, governed approval E2E, public-gateway/service startup, runtime/research bridge smoke and final release gates without publishing an archive. Code/test checkpoint `813fdde7361ae1a690cbd690e4e7f4337fa38a4e`; subsequent tracker-only commits do not alter runtime code or tests. Progress scores unchanged.
+
+---
+
 ## WorkPass372 — strict unified cognitive-cycle input and restore integrity (2026-10-26)
 
 - **Defect:** `UnifiedCognitiveCycle.evaluate()` and `restore()` read external object fields/arrays directly. Accessor properties could execute during validation, proxy traps were not consistently converted to closed rejection, and sparse or malformed `lastMissingStages` could distort whether a restored cycle appeared complete.
