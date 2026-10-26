@@ -115,6 +115,7 @@ try {
     ['/api/organism/integration/hexis/retention/apply', { proposalId: 'missing-proposal', confirmed: 'true' }, 'hexis-retention-confirmation-type'],
     ['/api/organism/integration/hexis/hmx/stage', { document: {}, intent: 'autonomous-admin', strategy: 'additive' }, 'hexis-hmx-stage-intent'],
     ['/api/organism/integration/hexis/hmx/decide', { stagingId: {}, decision: 'apply' }, 'hexis-hmx-staging-id'],
+    ['/api/organism/integration/hexis/hmx/decide', { stagingId: 'smoke-stage', decision: 'accept', confirmed: 'true' }, 'hexis-hmx-confirmation-type'],
     ['/api/organism/integration/hexis/goals/prepare', { stagingId: {} }, 'hexis-goal-staging-id'],
     ['/api/organism/integration/hexis/goals/decide', { proposalId: {}, decision: 'approve' }, 'hexis-goal-proposal-id'],
     ['/api/organism/integration/hexis/outbox/claim', { id: {} }, 'hexis-outbox-claim-id'],
