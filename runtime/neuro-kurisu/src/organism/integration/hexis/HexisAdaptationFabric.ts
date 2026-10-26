@@ -567,11 +567,15 @@ export class HexisAdaptationFabric {
                     // for acceptance until the caller narrows/fixes the export.
                     continue;
                 }
-                stagedSections[name] = structuredClone(records);
+                // The bounded document snapshot already owns this data; reuse
+                // its detached section here and clone only the full stage returned
+                // to the caller, avoiding one extra deep copy per accepted section.
+                stagedSections[name] = records;
                 continue;
             }
 
-            stagedSections[name] = structuredClone(records);
+            // This object is also detached by snapshotHmxV17Document.
+            stagedSections[name] = records;
         }
         const source = document.source && typeof document.source === 'object' && !Array.isArray(document.source)
             ? document.source as Record<string, unknown>
