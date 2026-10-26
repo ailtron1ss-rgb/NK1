@@ -1,3 +1,11 @@
+## [NK1][Hexis-H6] Recover interrupted belief revisions and normalize evidence identity — 2026-10-26
+
+- Normalized evidence identity consistently across MemoryOS2, Hexis, and Core: NFKC normalization, bounded key length, trimmed text, and case-insensitive comparison. Restored Hexis belief projections now normalize legacy source-key arrays before duplicate detection.
+- Changed the belief-revision sequence to retain the deterministic Hexis audit before the canonical evidence write, then update confidence through a replay-safe MemoryFabric command. If the source receipt or confidence update is interrupted, a retry recovers the existing audit and completes missing canonical effects without adding a second source vote.
+- Recovery only reconciles confidence when canonical confidence still equals the original audit's prior value; a newer independently changed canonical value is preserved rather than overwritten by stale posterior state.
+- Added regression coverage for normalized source replay, recovery-contract wiring, command receipt restoration, event redaction, and same-command/different-payload rejection.
+- **Validation status:** these H6 tests are registered in the Hexis regression path. Current GitHub Actions runs on this PR and unrelated NK1 branches continue to fail before runner assignment (runner_id=0, no executable steps/logs), so runtime validation remains pending.
+
 ## [NK1][Hexis-H5] Journal evidence writes through MemoryFabric — 2026-10-26
 
 - Added `record-evidence` to MemoryFabric's lifecycle command contract. Evidence writes now use the existing canonical mutation boundary, action fingerprint, durable command receipt, and `memory-lifecycle` event stream instead of bypassing the journal from Hexis Core.
