@@ -63,7 +63,13 @@ export const isValidHmxStageDigest = stage => {
   try {
     if (!isRecord(stage) || !isSafeJsonTree(stage) || typeof stage.digest !== 'string' || !/^[a-f0-9]{64}$/.test(stage.digest)) return false;
     if (typeof stage.exportId !== 'string' || !['port', 'duplicate', 'telepathy', 'analysis'].includes(stage.intent) ||
-        !['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(stage.strategy)) return false;
+        !['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(stage.strategy) ||
+        !['staged', 'accepted', 'rejected', 'applied'].includes(stage.status)) return false;
+    // The content digest intentionally excludes lifecycle fields so an accepted
+    // stage can transition to applied without changing the reviewed payload hash.
+    // But a persisted success receipt may never coexist with a non-applied status:
+    // otherwise changing only status could re-enter the write path on replay.
+    if (stage.status !== 'applied' && Object.hasOwn(stage, 'application') && stage.application !== undefined) return false;
     if (!isRecord(stage.sectionCounts) || !Array.isArray(stage.protectedSections) ||
         !Array.isArray(stage.conflicts) || !isRecord(stage.stagedSections)) return false;
     return computeHmxStageDigest(stage) === stage.digest;
