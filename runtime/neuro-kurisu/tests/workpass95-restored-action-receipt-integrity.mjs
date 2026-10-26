@@ -41,6 +41,57 @@ for (const [name, corrupt] of [
   assert.equal(executions, 1, `${name}: rejecting a malformed receipt must not re-run the original side effect`);
 }
 
+// Root/row accessors must not execute, and failed restore must preserve the live ledger.
+let rootGetterCalls = 0;
+const accessorRoot = {};
+Object.defineProperty(accessorRoot, 'records', {
+  enumerable: true,
+  get() { rootGetterCalls += 1; return baseline.records; },
+});
+assert.throws(() => original.restoreExecutionLedger(accessorRoot), /accessor-field:records/);
+assert.equal(rootGetterCalls, 0, 'root getters must not execute during restore');
+
+let rowGetterCalls = 0;
+const accessorRow = { ...baseline.records[0] };
+Object.defineProperty(accessorRow, 'keyHash', {
+  enumerable: true,
+  get() { rowGetterCalls += 1; return baseline.records[0].keyHash; },
+});
+assert.throws(() => original.restoreExecutionLedger({
+  version: 1, records: [accessorRow], permissions: baseline.permissions,
+}), /accessor-field:keyHash/);
+assert.equal(rowGetterCalls, 0, 'ledger row getters must not execute during restore');
+
+assert.throws(() => original.restoreExecutionLedger({
+  version: 1, records: new Array(1), permissions: baseline.permissions,
+}), /sparse-or-accessor-slot/);
+
+// A nested response accessor becomes a recovery tombstone without executing.
+let responseGetterCalls = 0;
+const accessorResponse = { ...baseline.records[0].response };
+Object.defineProperty(accessorResponse, 'executionId', {
+  enumerable: true,
+  get() { responseGetterCalls += 1; return baseline.records[0].response.executionId; },
+});
+const nestedAccessorSnapshot = {
+  version: 1,
+  records: [{ ...baseline.records[0], response: accessorResponse }],
+  permissions: baseline.permissions,
+};
+const nestedAccessorGateway = makeGateway();
+nestedAccessorGateway.restoreExecutionLedger(nestedAccessorSnapshot);
+assert.equal(responseGetterCalls, 0, 'nested receipt getters must not execute');
+const nestedAccessorReplay = await nestedAccessorGateway.executeTool('organism.inspect', {}, 'nested-accessor-replay', options);
+assert.equal(nestedAccessorReplay.ok, false);
+assert.equal(nestedAccessorReplay.outcomeClass, 'idempotency-recovery-required');
+assert.equal(executions, 1, 'nested accessor receipt must not cause re-execution');
+
+// The earlier live ledger survives failed root/row restores and remains replayable.
+const priorReplay = await original.executeTool('organism.inspect', {}, 'restore-atomicity-check', options);
+assert.equal(priorReplay.ok, true);
+assert.equal(priorReplay.idempotentReplay, true);
+assert.equal(executions, 1);
+
 const restoredValid = makeGateway();
 restoredValid.restoreExecutionLedger(baseline);
 const validReplay = await restoredValid.executeTool('organism.inspect', {}, 'valid-replay', options);

@@ -1,3 +1,14 @@
+## [NK1][WorkPass386] Make ActionGateway restore descriptor-safe and atomic — 2026-10-26
+
+- **Defect:** ledger restore directly read persisted root/record/response/approval properties. Accessors could execute during restore; permissions validation also happened after ledger mutation.
+- **Fix:** read only own data descriptors for known root/row/approval fields; reject accessor-backed roots/rows, sparse arrays, unsupported versions and out-of-budget record arrays before mutating live state. Deep-copy nested response/preview values through bounded plain-data traversal; malformed nested receipts become reserved non-replayable tombstones.
+- **Atomicity:** preflight ledger and permission state locally, then replace both; if expiry/commit throws, rollback to the previous live maps. Missing/null snapshot is a no-op, not an implicit clear.
+- **Regression:** WP95 covers root/row getter non-execution, sparse ledger arrays, nested response getter tombstoning, and preservation/replayability of the pre-existing live key after failed restores.
+- **Validation:** exact-head runtime typecheck, WorkPass95, WorkPass71 rebuild and Repository Wiring Audit are required. Prior hosted Actions attempts on the previous SHA ended before the first step, so they provide no code-level result.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][WorkPass384] Route project execution through canonical Core wrappers — 2026-10-26
 
 - **Failure:** WorkPass71 exposed a static contract mismatch in `workpass97-autonomous-planner-gateway-route.mjs`: the project executor called ActionGateway directly instead of the established Core wrappers.

@@ -122,6 +122,108 @@ const ACTION_OUTCOME_CLASS_VALUES:ReadonlySet<string>=new Set<ActionOutcomeClass
 const isReceiptRecord=(value:unknown):value is Record<string,unknown> =>
   value!==null && typeof value==='object' && !Array.isArray(value);
 
+const ACTION_LEDGER_ROW_FIELDS = [
+  'keyHash','requestHash','status','recordedAt','executionId','toolId','decisionId',
+  'autonomous','responseOmitted','response',
+] as const;
+const ACTION_PERMISSION_FIELDS = [
+  'version','requests','created','approved','declined','consumed','expired','lastChangeAt',
+] as const;
+const ACTION_APPROVAL_FIELDS = [
+  'id','toolId','permissionClass','operation','requestHash','status','createdAt','expiresAt',
+  'resolvedAt','consumedAt','actor','reasonCode','inputKeys','inputPreview','decisionId','autonomous',
+] as const;
+
+/** Read only own data descriptors. Persisted restore must not execute accessors. */
+function ownDataRecord(value:unknown,fields:readonly string[],label:string):Record<string,unknown> {
+  if(value===null||typeof value!=='object')throw new TypeError(label+':invalid-record');
+  let prototype:object|null;
+  try {
+    if(Array.isArray(value))throw new TypeError(label+':array-not-record');
+    prototype=Object.getPrototypeOf(value);
+  } catch {
+    throw new TypeError(label+':uninspectable-record');
+  }
+  if(prototype!==Object.prototype&&prototype!==null)throw new TypeError(label+':non-plain-record');
+  const output=Object.create(null) as Record<string,unknown>;
+  for(const field of fields) {
+    let descriptor:PropertyDescriptor|undefined;
+    try { descriptor=Object.getOwnPropertyDescriptor(value,field); }
+    catch { throw new TypeError(label+':uninspectable-field:'+field); }
+    if(!descriptor)continue;
+    if(!Object.hasOwn(descriptor,'value'))throw new TypeError(label+':accessor-field:'+field);
+    output[field]=descriptor.value;
+  }
+  return output;
+}
+
+/** Require a bounded dense data array; sparse/accessor slots cannot become silent omissions. */
+function ownDenseArray(value:unknown,label:string,maxLength:number):unknown[] {
+  let isArray=false;
+  try { isArray=Array.isArray(value); } catch { throw new TypeError(label+':uninspectable-array'); }
+  if(!isArray)throw new TypeError(label+':invalid-array');
+  let descriptor:PropertyDescriptor|undefined;
+  try { descriptor=Object.getOwnPropertyDescriptor(value,'length'); }
+  catch { throw new TypeError(label+':uninspectable-length'); }
+  const length=descriptor?.value;
+  if(typeof length!=='number'||!Number.isSafeInteger(length)||length<0||length>maxLength)throw new RangeError(label+':array-length-out-of-range');
+  let keys:string[];
+  try { keys=Object.keys(value); } catch { throw new TypeError(label+':uninspectable-array-keys'); }
+  for(const key of keys) {
+    if(!/^(0|[1-9]\d*)$/.test(key)||Number(key)>=length)throw new TypeError(label+':unexpected-array-property');
+  }
+  const output:unknown[]=[];
+  for(let i=0;i<length;i++) {
+    let slot:PropertyDescriptor|undefined;
+    try { slot=Object.getOwnPropertyDescriptor(value,String(i)); }
+    catch { throw new TypeError(label+':uninspectable-slot:'+i); }
+    if(!slot||!slot.enumerable||!Object.hasOwn(slot,'value'))throw new TypeError(label+':sparse-or-accessor-slot:'+i);
+    output.push(slot.value);
+  }
+  return output;
+}
+
+/** Clone JSON-like persisted values by descriptors, never by property reads or getters. */
+function clonePersistedData(value:unknown,state:{nodes:number;path:WeakSet<object>}={nodes:0,path:new WeakSet<object>()},depth=0):unknown {
+  state.nodes++;
+  if(state.nodes>25000||depth>32)throw new RangeError('persisted-action-data-budget-exceeded');
+  if(value===null||typeof value==='string'||typeof value==='boolean'||typeof value==='undefined') {
+    if(typeof value==='string'&&value.length>1_000_000)throw new RangeError('persisted-action-string-too-large');
+    return value;
+  }
+  if(typeof value==='number') {
+    if(!Number.isFinite(value))throw new TypeError('persisted-action-non-finite-number');
+    return value;
+  }
+  if(typeof value!=='object')throw new TypeError('persisted-action-non-data-value');
+  if(state.path.has(value))throw new TypeError('persisted-action-cyclic-value');
+  state.path.add(value);
+  try {
+    let array=false;
+    try { array=Array.isArray(value); } catch { throw new TypeError('persisted-action-uninspectable-container'); }
+    if(array) {
+      const rows=ownDenseArray(value,'persisted-action-array',10000);
+      return rows.map(row=>clonePersistedData(row,state,depth+1));
+    }
+    let prototype:object|null;
+    try { prototype=Object.getPrototypeOf(value); } catch { throw new TypeError('persisted-action-uninspectable-object'); }
+    if(prototype!==Object.prototype&&prototype!==null)throw new TypeError('persisted-action-non-plain-object');
+    let keys:string[];
+    try { keys=Object.keys(value); } catch { throw new TypeError('persisted-action-uninspectable-keys'); }
+    if(keys.length>10000)throw new RangeError('persisted-action-object-too-large');
+    const result=Object.create(null) as Record<string,unknown>;
+    for(const key of keys) {
+      let property:PropertyDescriptor|undefined;
+      try { property=Object.getOwnPropertyDescriptor(value,key); } catch { throw new TypeError('persisted-action-uninspectable-key:'+key); }
+      if(!property||!property.enumerable||!Object.hasOwn(property,'value'))throw new TypeError('persisted-action-accessor:'+key);
+      result[key]=clonePersistedData(property.value,state,depth+1);
+    }
+    return result;
+  } finally {
+    state.path.delete(value);
+  }
+}
+
 /**
  * Persisted receipts are replay authority: validate their identity and internal
  * outcome invariants before returning a saved response as if it were the result
@@ -519,45 +621,125 @@ export class ActionGateway {
 
 
   restoreExecutionLedger(snapshot:unknown):void {
-    const raw=snapshot && typeof snapshot==='object' ? snapshot as Partial<ActionExecutionLedgerSnapshot> : {};
-    const rows=Array.isArray(raw.records)?raw.records:[];
+    // No snapshot means no state was persisted; do not erase a live ledger.
+    if(snapshot===undefined||snapshot===null)return;
+    const root=ownDataRecord(snapshot,['version','records','permissions'],'action-ledger-snapshot');
+    if(root.version!==undefined&&root.version!==1)throw new RangeError('unsupported-action-ledger-snapshot-version');
+    const rows=ownDenseArray(root.records,'action-ledger-records',512);
     const restored=new Map<string,ActionExecutionLedgerEntry>();
-    for(const value of rows) {
-      if(!value || typeof value!=='object') continue;
-      const row=value as ActionExecutionLedgerEntry;
-      if(!/^[a-f0-9]{64}$/i.test(String(row.keyHash??'')) || !/^[a-f0-9]{64}$/i.test(String(row.requestHash??''))) continue;
-      if(row.status!=='pending' && row.status!=='completed') continue;
-      const recordedAt=Number(row.recordedAt); if(!Number.isFinite(recordedAt)||recordedAt<0) continue;
-      const safe:ActionExecutionLedgerEntry={keyHash:row.keyHash.toLowerCase(),requestHash:row.requestHash.toLowerCase(),status:row.status,recordedAt,
+    for(let index=0;index<rows.length;index++) {
+      const row=ownDataRecord(rows[index],ACTION_LEDGER_ROW_FIELDS,'action-ledger-row:'+index);
+      const rawKeyHash=row.keyHash;
+      const rawRequestHash=row.requestHash;
+      const status=row.status;
+      const recordedAt=row.recordedAt;
+      if(typeof rawKeyHash!=='string'||!/^[a-f0-9]{64}$/i.test(rawKeyHash))throw new TypeError('invalid-action-ledger-key-hash');
+      if(typeof rawRequestHash!=='string'||!/^[a-f0-9]{64}$/i.test(rawRequestHash))throw new TypeError('invalid-action-ledger-request-hash');
+      if(status!=='pending'&&status!=='completed')throw new TypeError('invalid-action-ledger-status');
+      if(typeof recordedAt!=='number'||!Number.isFinite(recordedAt)||recordedAt<0)throw new TypeError('invalid-action-ledger-recorded-at');
+      const safe:ActionExecutionLedgerEntry={
+        keyHash:rawKeyHash.toLowerCase(),requestHash:rawRequestHash.toLowerCase(),status,recordedAt,
         ...(typeof row.executionId==='string'&&/^exec-[a-z0-9-]{8,80}$/i.test(row.executionId)?{executionId:row.executionId}:{}),
-        ...(typeof row.toolId==='string'&&row.toolId.length<=64?{toolId:row.toolId}:{}),
-        ...(typeof row.decisionId==='string'&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
-        ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{})};
-      if(row.responseOmitted===true) safe.responseOmitted=true;
-      if(row.status==='completed' && row.response && typeof row.response==='object') {
-        try {
-          const cloned=structuredClone(row.response);
-          if(isReplayableActionReceipt(safe,cloned)) safe.response=cloned;
-          else safe.responseOmitted=true;
-        } catch { safe.responseOmitted=true; }
-      } else if(row.status==='completed') safe.responseOmitted=true;
+        ...(typeof row.toolId==='string'&&row.toolId.length>0&&row.toolId.length<=64?{toolId:row.toolId}:{}),
+        ...(typeof row.decisionId==='string'&&row.decisionId.length>0&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
+        ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{}),
+      };
+      if(row.responseOmitted===true)safe.responseOmitted=true;
+      if(status==='completed') {
+        if(row.response!==undefined) {
+          try {
+            const cloned=clonePersistedData(row.response);
+            if(isReplayableActionReceipt(safe,cloned))safe.response=cloned;
+            else safe.responseOmitted=true;
+          } catch {
+            // Identity is known, so reserve the key but refuse to replay the body.
+            safe.responseOmitted=true;
+          }
+        } else safe.responseOmitted=true;
+      }
       const prior=restored.get(safe.keyHash);
-      if(prior && (prior.requestHash!==safe.requestHash || stableJson(prior)!==stableJson(safe))) throw new Error('action-ledger-snapshot-key-conflict');
+      if(prior&&(prior.requestHash!==safe.requestHash||stableJson(prior)!==stableJson(safe)))throw new Error('action-ledger-snapshot-key-conflict');
       restored.set(safe.keyHash,safe);
     }
-    this.executionLedger.clear();
-    for(const row of [...restored.values()].sort((a,b)=>a.recordedAt-b.recordedAt)) this.executionLedger.set(row.keyHash,row);
-    const permissions=raw.permissions as Partial<ActionToolPermissionSnapshot>|undefined;
-    const cleanRequests:Array<ActionToolApprovalRecord>=[];
-    if(Array.isArray(permissions?.requests)) for(const item of permissions!.requests.slice(-128)) {
-      if(!item||typeof item!=='object'||typeof item.id!=='string'||!item.id.startsWith('approval-')||!['web','device','filesystem','code','system','self-modification'].includes(item.permissionClass)||!['execute','reconcile','direct'].includes(item.operation)||!['pending','approved','declined','consumed','expired'].includes(item.status)||!/^[a-f0-9]{64}$/i.test(String(item.requestHash??''))) continue;
-      const createdAt=Number(item.createdAt),expiresAt=Number(item.expiresAt); if(!Number.isFinite(createdAt)||!Number.isFinite(expiresAt)||expiresAt<createdAt||expiresAt-createdAt>5*60_000+1000) continue;
-      cleanRequests.push({...structuredClone(item),requestHash:item.requestHash.toLowerCase(),createdAt,expiresAt,inputKeys:Array.isArray(item.inputKeys)?item.inputKeys.slice(0,24).map(x=>String(x).slice(0,80)):[],inputPreview:item.inputPreview&&typeof item.inputPreview==='object'?structuredClone(item.inputPreview):{},autonomous:Boolean(item.autonomous)});
-    }
-    this.permissionState={version:1,requests:cleanRequests,created:Math.max(0,Math.floor(Number(permissions?.created??cleanRequests.length))),approved:Math.max(0,Math.floor(Number(permissions?.approved??0))),declined:Math.max(0,Math.floor(Number(permissions?.declined??0))),consumed:Math.max(0,Math.floor(Number(permissions?.consumed??0))),expired:Math.max(0,Math.floor(Number(permissions?.expired??0))),lastChangeAt:Math.max(0,Number(permissions?.lastChangeAt??0))};
-    this.expirePermissionRequests();
-  }
 
+    // Stage approval state before touching live maps. Accessor-backed root/row
+    // data aborts restore without wiping the current idempotency ledger.
+    const rawPermissions=root.permissions;
+    let nextPermissionState=defaultActionToolPermissions();
+    if(rawPermissions!==undefined&&rawPermissions!==null) {
+      const permissions=ownDataRecord(rawPermissions,ACTION_PERMISSION_FIELDS,'action-ledger-permissions');
+      if(permissions.version!==undefined&&permissions.version!==1)throw new RangeError('unsupported-action-permissions-version');
+      const requestRows=permissions.requests===undefined?[]:ownDenseArray(permissions.requests,'action-approval-requests',2048);
+      const cleanRequests:typeof nextPermissionState.requests=[];
+      for(const rawItem of requestRows.slice(-128)) {
+        const item=ownDataRecord(rawItem,ACTION_APPROVAL_FIELDS,'action-approval-row');
+        const permissionClasses=['web','device','filesystem','code','system','self-modification'];
+        const operations=['execute','reconcile','direct'];
+        const statuses=['pending','approved','declined','consumed','expired'];
+        if(typeof item.id!=='string'||!item.id.startsWith('approval-')||
+          typeof item.toolId!=='string'||!item.toolId||item.toolId.length>64||
+          typeof item.permissionClass!=='string'||!permissionClasses.includes(item.permissionClass)||
+          typeof item.operation!=='string'||!operations.includes(item.operation)||
+          typeof item.status!=='string'||!statuses.includes(item.status)||
+          typeof item.requestHash!=='string'||!/^[a-f0-9]{64}$/i.test(item.requestHash))continue;
+        const createdAt=item.createdAt,expiresAt=item.expiresAt;
+        if(typeof createdAt!=='number'||typeof expiresAt!=='number'||!Number.isFinite(createdAt)||!Number.isFinite(expiresAt)||
+          createdAt<0||expiresAt<createdAt||expiresAt-createdAt>5*60_000+1000)continue;
+        const rawKeys=item.inputKeys===undefined?[]:ownDenseArray(item.inputKeys,'action-approval-input-keys',128);
+        if(rawKeys.some(key=>typeof key!=='string'))continue;
+        let inputPreview:Record<string,unknown>={};
+        if(item.inputPreview!==undefined&&item.inputPreview!==null) {
+          try {
+            const cloned=clonePersistedData(item.inputPreview);
+            if(!isReceiptRecord(cloned)||new TextEncoder().encode(stableJson(cloned)).length>16*1024)continue;
+            inputPreview=cloned;
+          } catch { continue; }
+        }
+        if(item.reasonCode!==undefined&&typeof item.reasonCode!=='string')continue;
+        if(item.autonomous!==undefined&&typeof item.autonomous!=='boolean')continue;
+        if(item.decisionId!==undefined&&(typeof item.decisionId!=='string'||item.decisionId.length>180))continue;
+        if(item.actor!==undefined&&typeof item.actor!=='string')continue;
+        if(item.resolvedAt!==undefined&&(typeof item.resolvedAt!=='number'||!Number.isFinite(item.resolvedAt)||item.resolvedAt<0))continue;
+        if(item.consumedAt!==undefined&&(typeof item.consumedAt!=='number'||!Number.isFinite(item.consumedAt)||item.consumedAt<0))continue;
+        cleanRequests.push({
+          id:item.id,toolId:item.toolId,permissionClass:item.permissionClass as typeof nextPermissionState.requests[number]['permissionClass'],
+          operation:item.operation as typeof nextPermissionState.requests[number]['operation'],status:item.status as typeof nextPermissionState.requests[number]['status'],
+          requestHash:item.requestHash.toLowerCase(),createdAt,expiresAt,
+          ...(typeof item.resolvedAt==='number'?{resolvedAt:item.resolvedAt}:{}),
+          ...(typeof item.consumedAt==='number'?{consumedAt:item.consumedAt}:{}),
+          ...(typeof item.actor==='string'?{actor:item.actor}:{}),
+          reasonCode:typeof item.reasonCode==='string'?item.reasonCode:'restored',
+          inputKeys:(rawKeys as string[]).slice(0,24).map(key=>key.slice(0,80)),
+          inputPreview,
+          ...(typeof item.decisionId==='string'?{decisionId:item.decisionId}:{}),
+          autonomous:item.autonomous===true,
+        });
+      }
+      const count=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)&&value>=0?Math.floor(value):fallback;
+      const lastChangeAt=permissions.lastChangeAt;
+      nextPermissionState={
+        version:1,requests:cleanRequests,
+        created:count(permissions.created,cleanRequests.length),
+        approved:count(permissions.approved,0),declined:count(permissions.declined,0),
+        consumed:count(permissions.consumed,0),expired:count(permissions.expired,0),
+        lastChangeAt:typeof lastChangeAt==='number'&&Number.isFinite(lastChangeAt)&&lastChangeAt>=0?lastChangeAt:0,
+      };
+    }
+
+    const previousRows=[...this.executionLedger.entries()];
+    const previousPermissions=this.permissionState;
+    try {
+      this.executionLedger.clear();
+      for(const row of [...restored.values()].sort((a,b)=>a.recordedAt-b.recordedAt))this.executionLedger.set(row.keyHash,row);
+      this.permissionState=nextPermissionState;
+      this.expirePermissionRequests();
+    } catch(error) {
+      this.executionLedger.clear();
+      for(const [key,row] of previousRows)this.executionLedger.set(key,row);
+      this.permissionState=previousPermissions;
+      throw error;
+    }
+  }
   authorize(action:ActionKind,reason:string):ActionAuditRecord {
     const accepted=this.allowed.has(action);
     const rec:ActionAuditRecord={at:Date.now(),action,accepted,mode:this.live?'live':'dry-run',reason:reason.slice(0,240),outcomeClass:accepted?undefined:'policy-refused'};
