@@ -948,6 +948,66 @@ async function route(req, res) {
                 return json(res, 409, { ok: false, error: String(error?.message ?? error) });
             }
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/goals') {
+            try {
+                const status=url.searchParams.get('status') || undefined;
+                const limit=Math.max(1,Math.min(128,Number(url.searchParams.get('limit') || 64)));
+                return json(res,200,{ok:true,proposals:runtime.core.hexisListGoalProposals(status,limit)});
+            } catch(error) {
+                return json(res,400,{ok:false,error:String(error?.message ?? error)});
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/goals/prepare') {
+            const input=await body(req);
+            try {
+                if(!String(input.stagingId ?? '').trim()) return json(res,400,{ok:false,error:'stagingId-required'});
+                const result=runtime.core.hexisPrepareGoalProposals(String(input.stagingId));
+                await runtime.core.flush();
+                return json(res,200,{ok:true,...result});
+            } catch(error) {
+                await runtime.core.flush().catch(()=>{});
+                const message=String(error?.message ?? error);
+                return json(res,/not-found/.test(message)?404:409,{ok:false,error:message});
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/goals/decide') {
+            const input=await body(req);
+            const decision=String(input.decision ?? '');
+            if(!['approve','reject'].includes(decision)) return json(res,400,{ok:false,error:'invalid-hexis-goal-decision'});
+            try {
+                const proposal=runtime.core.hexisDecideGoalProposal(String(input.proposalId || ''),decision);
+                await runtime.core.flush();
+                if(!proposal) return json(res,404,{ok:false,error:'hexis-goal-proposal-not-found'});
+                return json(res,200,{ok:true,proposal});
+            } catch(error) {
+                await runtime.core.flush().catch(()=>{});
+                return json(res,409,{ok:false,error:String(error?.message ?? error)});
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/goals/materialize') {
+            const input=await body(req);
+            try {
+                const result=runtime.core.hexisMaterializeGoalProposal(String(input.proposalId || ''));
+                await runtime.core.flush();
+                return json(res,200,{ok:true,...result});
+            } catch(error) {
+                await runtime.core.flush().catch(()=>{});
+                const message=String(error?.message ?? error);
+                return json(res,/not-found/.test(message)?404:409,{ok:false,error:message});
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/goals/activate') {
+            const input=await body(req);
+            try {
+                const result=runtime.core.hexisActivateGoalProposal(String(input.proposalId || ''));
+                await runtime.core.flush();
+                return json(res,200,{ok:true,...result});
+            } catch(error) {
+                await runtime.core.flush().catch(()=>{});
+                const message=String(error?.message ?? error);
+                return json(res,/not-found/.test(message)?404:409,{ok:false,error:message});
+            }
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
         }
