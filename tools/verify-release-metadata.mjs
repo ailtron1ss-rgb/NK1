@@ -22,6 +22,12 @@ for (let i = 0; i < args.length; i += 1) {
   }
 }
 
+function isIsoCalendarDate(value) {
+  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+  const parsed = new Date(value + 'T00:00:00.000Z');
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
 const checks = [];
 const check = (id, pass, detail) => checks.push({ id, pass: Boolean(pass), detail: String(detail ?? '') });
 async function json(rel) {
@@ -50,10 +56,13 @@ const runbook = await text('docs/RUNBOOK.md');
 const passMatch = String(superVersion?.build ?? '').match(/WORKPASS(\d+)/i);
 const currentPass = passMatch ? Number(passMatch[1]) : 0;
 const currentPassTag = Number.isInteger(currentPass) && currentPass > 0 ? `WORKPASS${currentPass}` : 'WORKPASS_UNKNOWN';
-// Current report names follow the actual release metadata date instead of a frozen date.
-// The fallback preserves older isolated contract fixtures that predate SUPER_VERSION.date.
+// Status-report names must follow a real calendar date from the release manifest.
+// Never silently fall back to a historical date: that can make stale metadata look valid.
 const statusDateCandidate = String(superVersion?.date ?? '');
-const statusDate = /^\d{4}-\d{2}-\d{2}$/.test(statusDateCandidate) ? statusDateCandidate : '2026-10-10';
+const statusDateValid = isIsoCalendarDate(statusDateCandidate);
+check('release-date-is-valid-iso-calendar-date', statusDateValid,
+  statusDateCandidate ? `date=${statusDateCandidate}` : 'SUPER_VERSION.date is missing');
+const statusDate = statusDateValid ? statusDateCandidate : 'invalid-date';
 const statusReport = await text(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${currentPassTag}.md`);
 const statusInventory = await json(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${currentPassTag}.json`);
 const scorecard = await json(`docs/PROJECT_PROGRESS_SCORECARD_${statusDate}_${currentPassTag}.json`);
