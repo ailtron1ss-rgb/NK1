@@ -3058,7 +3058,14 @@ export class OrganismCore {
                 ? memoryState.items.filter((row) => (row.revisionGroupId ?? row.id) === (requestedMemory.revisionGroupId ?? requestedMemory.id) && row.validUntilAt == null)
                     .sort((a, b) => Number(b.revisionSequence ?? 1) - Number(a.revisionSequence ?? 1) || Number(b.observedAt ?? b.createdAt) - Number(a.observedAt ?? a.createdAt))[0] ?? requestedMemory
                 : null;
-            if (requestedMemory && memory && requestedMemory.id !== memory.id) {
+            const recoveredCorrection = Boolean(
+                decision === 'correct' && requestedMemory && memory && requestedMemory.id !== memory.id &&
+                memory.supersedesId === requestedMemory.id &&
+                (memory.revisionGroupId ?? memory.id) === (expectedRevisionGroupId || requestedMemory.revisionGroupId || requestedMemory.id) &&
+                memory.source === 'hexis-learning-review' &&
+                memory.content === String(correction ?? '').trim()
+            );
+            if (requestedMemory && memory && requestedMemory.id !== memory.id && !recoveredCorrection) {
                 return { ok: false, error: 'review-source-memory-superseded', memoryId: sourceMemoryId, currentMemoryId: memory.id };
             }
             if (!requestedMemory && expectedGroupRows.length) {
@@ -3075,11 +3082,16 @@ export class OrganismCore {
             if (decision === 'correct') {
                 if (!memory)
                     return { ok: false, error: 'memory-not-found', memoryId: sourceMemoryId };
-                const revised = this.memorySubsystem.fabric.reviseContent(sourceMemoryId, String(correction).trim(), {
-                    reason: 'hexis-learning-review-correction',
-                    source: 'hexis-learning-review',
-                    confidence: memory.confidence,
-                }, { tick: this.persisted.state.tick });
+                const revised = recoveredCorrection
+                    ? memory
+                    : this.memorySubsystem.fabric.reviseContent(sourceMemoryId, String(correction).trim(), {
+                        reason: 'hexis-learning-review-correction',
+                        source: 'hexis-learning-review',
+                        confidence: memory.confidence,
+                    }, {
+                        tick: this.persisted.state.tick,
+                        commandId: `hexis-review-correction:${createHash('sha256').update(`${reviewId}|${itemId}|${sourceMemoryId}|${String(correction).trim()}`).digest('hex')}`,
+                    });
                 if (!revised)
                     return { ok: false, error: 'memory-correction-rejected', memoryId: sourceMemoryId };
                 // The review is provenance, not independent external corroboration: keep authority conservative.
@@ -3095,7 +3107,7 @@ export class OrganismCore {
                 });
                 if (!evidence.ok)
                     return { ok: false, error: 'review-evidence-record-failed', memoryId: revised.id };
-                memoryMutation = { kind: 'correct', sourceMemoryId, memoryId: revised.id, unchanged: revised.id === memory.id && revised.content === memory.content, evidence };
+                memoryMutation = { kind: 'correct', sourceMemoryId, memoryId: revised.id, unchanged: revised.id === memory.id && revised.content === memory.content, recovered: recoveredCorrection, evidence };
             } else if (memory) {
                 const removed = this.forgetMemoryById(memory.id, 'hexis-learning-review-forget');
                 if (!removed)
