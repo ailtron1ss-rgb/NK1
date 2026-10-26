@@ -77,6 +77,34 @@ try {
     'invalid configuration must not create any run scratch directory',
   );
 
+  // Secrets and runtime-injection variables must not reach a learner even
+  // when this generic supervisor is called without the host-owned adapter.
+  const forbiddenInheritedRoot = path.join(root, 'forbidden-inherited-runs');
+  await assert.rejects(
+    () => runLearningProcess(run, 'b'.repeat(64), {
+      ...base, runRoot: forbiddenInheritedRoot, inheritEnv: ['OPENAI_API_KEY'],
+    }),
+    /forbidden inherited environment key/,
+  );
+  await assert.rejects(
+    () => readdir(forbiddenInheritedRoot),
+    error => error.code === 'ENOENT',
+    'forbidden inherited secrets must be rejected before storage allocation',
+  );
+
+  const forbiddenExplicitRoot = path.join(root, 'forbidden-explicit-runs');
+  await assert.rejects(
+    () => runLearningProcess(run, 'b'.repeat(64), {
+      ...base, runRoot: forbiddenExplicitRoot, env: { OPENAI_API_KEY: 'must-not-leak' },
+    }),
+    /forbidden explicit environment key/,
+  );
+  await assert.rejects(
+    () => readdir(forbiddenExplicitRoot),
+    error => error.code === 'ENOENT',
+    'forbidden explicit secrets must be rejected before storage allocation',
+  );
+
   // The generic supervisor protects its own storage roots even when it is
   // called without the host-owned evaluator wrapper.
   const insecureRoot = path.join(root, 'insecure-runs');
