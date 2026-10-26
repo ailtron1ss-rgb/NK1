@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
+import { HexisRemoteApiBridge, HexisRemoteBridgeError, parseHexisRemoteApiConfig } from '../../src/organism/integration/hexis/HexisRemoteApiBridge.ts';
 
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
@@ -66,3 +67,110 @@ const exec = fabric.planExecution({actionKind:'code.execute',requestedPlacement:
 assert.equal(exec.resolvedPlacement,'sandbox');
 console.log('HEXIS_ADAPTATION_PASS');
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
+
+
+// Remote QuixiAI/Hexis is an optional peer, not a replacement memory owner.
+// These tests keep it offline and verify explicit opt-in, transport/auth gates,
+// bounded context projection, API compatibility and the non-evidence contract.
+const disabledPeer = new HexisRemoteApiBridge({});
+assert.equal(disabledPeer.config.enabled, false);
+assert.equal(disabledPeer.config.consultEnabled, false);
+assert.equal((await disabledPeer.status()).reason, 'not-configured');
+await assert.rejects(
+  () => disabledPeer.consult({ question: 'hello', confirmExternalConsult: true }),
+  (error) => error instanceof HexisRemoteBridgeError && error.code === 'hexis-remote-disabled',
+);
+
+assert.throws(
+  () => parseHexisRemoteApiConfig({ NK1_HEXIS_REMOTE_BASE_URL: 'http://hexis.example', NK1_HEXIS_REMOTE_API_KEY: 'key' }),
+  (error) => error instanceof HexisRemoteBridgeError && error.code === 'hexis-remote-insecure-transport',
+);
+assert.throws(
+  () => parseHexisRemoteApiConfig({ NK1_HEXIS_REMOTE_BASE_URL: 'https://hexis.example', NK1_HEXIS_REMOTE_CONSULT_ENABLED: 'true' }),
+  (error) => error instanceof HexisRemoteBridgeError && error.code === 'hexis-remote-auth-required',
+);
+assert.throws(
+  () => parseHexisRemoteApiConfig({ NK1_HEXIS_REMOTE_BASE_URL: 'https://hexis.example/path', NK1_HEXIS_REMOTE_API_KEY: 'key' }),
+  (error) => error instanceof HexisRemoteBridgeError && error.code === 'hexis-remote-invalid-config',
+);
+
+let remoteCalls = [];
+const fakeFetch = async (input, init = {}) => {
+  const url = String(input);
+  remoteCalls.push({ url, init });
+  if (url.endsWith('/health')) {
+    return new Response(JSON.stringify({ status: 'ok', checks: { db: true } }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    });
+  }
+  if (url.endsWith('/v1/models')) {
+    return new Response(JSON.stringify({ data: [{ id: 'hexis-test-model' }] }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    });
+  }
+  if (url.endsWith('/v1/chat/completions')) {
+    const body = JSON.parse(String(init.body));
+    assert.equal(body.model, 'hexis-test-model');
+    assert.equal(body.stream, false);
+    const forwarded = JSON.parse(body.messages[1].content);
+    assert.equal(forwarded.question, 'Compare these two hypotheses.');
+    assert.equal(forwarded.nk1_context.currentGoal, 'Improve recall');
+    assert.equal(forwarded.nk1_context.privateNotes, undefined);
+    assert.equal(forwarded.nk1_context.memoryCandidates[0].sourceRef, 'memory:17');
+    return new Response(JSON.stringify({
+      model: 'hexis-test-model',
+      choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: 'Hypothesis B fits the cited observation better.' } }],
+      usage: { prompt_tokens: 31, completion_tokens: 12, total_tokens: 43 },
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  }
+  throw new Error('unexpected fake Hexis URL');
+};
+const enabledPeer = new HexisRemoteApiBridge({
+  NK1_HEXIS_REMOTE_BASE_URL: 'https://hexis.example',
+  NK1_HEXIS_REMOTE_API_KEY: 'test-secret-never-return-this',
+  NK1_HEXIS_REMOTE_CONSULT_ENABLED: 'true',
+}, { fetchImpl: fakeFetch });
+assert.equal((await enabledPeer.status()).reachable, true);
+const countBeforeUnconfirmed = remoteCalls.length;
+await assert.rejects(
+  () => enabledPeer.consult({ question: 'Do not forward this yet.' }),
+  (error) => error instanceof HexisRemoteBridgeError && error.code === 'hexis-remote-confirmation-required',
+);
+assert.equal(remoteCalls.length, countBeforeUnconfirmed, 'missing external-send confirmation must not make a network call');
+
+const peerResult = await enabledPeer.consult({
+  question: 'Compare these two hypotheses.',
+  confirmExternalConsult: true,
+  context: {
+    tick: 42,
+    currentGoal: 'Improve recall',
+    recentObservations: ['Holdout retrieval remains flat'],
+    memoryCandidates: [{ id: 'memory:17', summary: 'Retrieval test summary', confidence01: 0.6, sourceRef: 'memory:17', privateNotes: 'must not pass' }],
+    privateNotes: 'must not pass',
+    accessToken: 'must not pass',
+  },
+});
+assert.equal(peerResult.provider, 'QuixiAI/Hexis');
+assert.equal(peerResult.response, 'Hypothesis B fits the cited observation better.');
+assert.equal(peerResult.usage?.totalTokens, 43);
+assert.equal(peerResult.advisoryOnly, true);
+assert.equal(peerResult.externalAgentToolsMayRun, true);
+assert.equal(peerResult.nk1StateChanged, false);
+assert.equal(peerResult.eligibleAsVerifiedEvidence, false);
+assert.match(peerResult.promotionPath, /HMX staging/);
+assert.equal(remoteCalls.at(-1).init.redirect, 'error', 'bearer credentials must not follow redirects');
+assert.equal(new Headers(remoteCalls.at(-1).init.headers).get('authorization'), 'Bearer test-secret-never-return-this');
+
+const consultDisabledPeer = new HexisRemoteApiBridge({
+  NK1_HEXIS_REMOTE_BASE_URL: 'https://hexis.example',
+  NK1_HEXIS_REMOTE_API_KEY: 'key',
+  NK1_HEXIS_REMOTE_CONSULT_ENABLED: 'false',
+}, { fetchImpl: fakeFetch });
+const countBeforeDisabled = remoteCalls.length;
+await assert.rejects(
+  () => consultDisabledPeer.consult({ question: 'hello', confirmExternalConsult: true }),
+  (error) => error instanceof HexisRemoteBridgeError && error.code === 'hexis-remote-consult-disabled',
+);
+assert.equal(remoteCalls.length, countBeforeDisabled, 'disabled consultation must not make a network call');
+
+console.log('HEXIS_REMOTE_API_BRIDGE_PASS');
