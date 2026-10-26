@@ -96,7 +96,13 @@ export class OutcomeCognitionFabric {
     const validRecord=(value:unknown):value is OutcomeCognitionProjection['verificationRecord']=>{
       if(!value||typeof value!=='object')return false;
       const row=value as OutcomeCognitionProjection['verificationRecord'];
-      return Number.isFinite(Number(row.at))&&typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&
+      const executionIdentityValid=row.executionId===undefined||(
+        typeof row.executionId==='string'&&boundedText(row.executionId,180)===row.executionId);
+      return typeof row.at==='number'&&Number.isFinite(row.at)&&row.at>=0&&
+        typeof row.tick==='number'&&Number.isFinite(row.tick)&&row.tick>=0&&
+        typeof row.confidence01==='number'&&Number.isFinite(row.confidence01)&&row.confidence01>=0&&row.confidence01<=1&&
+        executionIdentityValid&&typeof row.externalObservation==='boolean'&&
+        typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&
         ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean';
     };
     this.records=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).slice(-this.maxRecords).map(r=>structuredClone(r)):[];

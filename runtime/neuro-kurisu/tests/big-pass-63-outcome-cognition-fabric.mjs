@@ -54,6 +54,13 @@ fingerprintRestored.restore(fingerprintTamperSnapshot);
 const fingerprintReplay=fingerprintRestored.project(indexIntegrityInput);
 assert.equal(fingerprintReplay.verificationRecord.executionId,indexIntegrityInput.executionId,'a well-formed but stale fingerprint must not poison same-key replay');
 assert.equal(fingerprintRestored.snapshot().projectionIndex[0].fingerprint,originalIndexSnapshot.projectionIndex[0].fingerprint);
+const confidenceTamperSnapshot=structuredClone(originalIndexSnapshot);
+confidenceTamperSnapshot.projectionIndex[0].record.confidence01=1.5;
+const confidenceRestored=new OutcomeCognitionFabric();
+confidenceRestored.restore(confidenceTamperSnapshot);
+const confidenceReplay=confidenceRestored.project(indexIntegrityInput);
+assert.equal(confidenceReplay.verificationRecord.confidence01,.84,'restored index must not surface a confidence outside [0,1]');
+assert.equal(confidenceRestored.snapshot().projectionIndex[0].record.confidence01,.84,'invalid index confidence must be rebuilt from retained canonical records');
 
 const conflictingDuplicateSnapshot=structuredClone(originalIndexSnapshot);
 conflictingDuplicateSnapshot.projectionIndex.push({
