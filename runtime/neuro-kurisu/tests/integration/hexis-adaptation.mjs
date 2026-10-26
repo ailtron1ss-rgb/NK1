@@ -315,6 +315,22 @@ assert.equal(goalSlugCollisionStage.sectionCounts.goals, 2);
 assert.equal(goalSlugCollisionStage.stagedSections.goals, undefined,
   'a goal-ref collision must exclude the whole goals section before proposal generation');
 
+const crossSectionRefExportId = 'exp_5555555555555557';
+const crossSectionRefStage = new HexisAdaptationFabric().stageHmx({
+  document: makeHmxDocument(crossSectionRefExportId, {
+    memories: [{ ref: crossSectionRefExportId + ':shared-entity', type: 'semantic', content: 'Memory with a shared entity ref.' }],
+    goals: [{ ref: crossSectionRefExportId + ':shared-entity', title: 'Goal with the same entity ref.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(crossSectionRefStage.conflicts.some(conflict => conflict.kind === 'duplicate-reference'));
+assert.equal(crossSectionRefStage.stagedSections.goals, undefined,
+  'entity refs must be unique across memories and goals, not only within one section');
+assert.equal(crossSectionRefStage.stagedSections.memories.length, 1);
+assert.equal(new HexisAdaptationFabric().decideHmx(crossSectionRefStage.stagingId, 'accept'), null,
+  'a conflict-bearing cross-section collision must not be accidentally accepted by another stage owner');
+
 function makeHmxDocument(exportId, sections) {
   return ({
   hmx_version: '1.7',
