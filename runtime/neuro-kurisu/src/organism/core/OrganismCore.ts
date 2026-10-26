@@ -3107,7 +3107,7 @@ export class OrganismCore {
                 });
                 if (!evidence.ok)
                     return { ok: false, error: 'review-evidence-record-failed', memoryId: revised.id };
-                memoryMutation = { kind: 'correct', sourceMemoryId, memoryId: revised.id, unchanged: revised.id === memory.id && revised.content === memory.content, recovered: recoveredCorrection, evidence };
+                memoryMutation = { kind: 'correct', sourceMemoryId, memoryId: revised.id, unchanged: !recoveredCorrection && revised.id === memory.id && revised.content === memory.content, recovered: recoveredCorrection, evidence };
             } else if (memory) {
                 const removed = this.forgetMemoryById(memory.id, 'hexis-learning-review-forget');
                 if (!removed)
