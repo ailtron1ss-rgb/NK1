@@ -86,5 +86,32 @@ try {
     throw new Error('organism did not complete a cognitive cycle after unsupported graph schema recovery');
   }
   await recoveredFromInvalidGraph.stop();
+
+  // Corrupt a procedural-skill record that throws inside restore(). The runtime
+  // should discard only this derived skill cache, log the failure and still boot.
+  const skillSidecarPath = path.join(dir, 'state.json.procedural-skills.json');
+  const skillSidecar = JSON.parse(await readFile(skillSidecarPath, 'utf8'));
+  skillSidecar.skills = [null];
+  await writeFile(skillSidecarPath, JSON.stringify(skillSidecar), 'utf8');
+  const recoveredFromInvalidSkills = new OrganismRuntime({
+    stateFile:path.join(dir,'state.json'),
+    worldStateFile:path.join(dir,'world.json'),
+    enableLanguage:false,
+    stateStore:new MemoryStateStore(),
+    worldStateStore:new MemoryStateStore(),
+    journal:new BoundedOperationalJournal(),
+    performanceProfile:'mobile',
+    cycleResultMode:'summary',
+  });
+  await recoveredFromInvalidSkills.init();
+  const recoveredSkillState = recoveredFromInvalidSkills.proceduralSkillLibrarySnapshot();
+  if (recoveredSkillState.skills.length !== 0 || recoveredSkillState.compoundSkills.length !== 0) {
+    throw new Error('invalid procedural skill sidecar did not reset to a safe empty state');
+  }
+  const skillRecoveryStep = await recoveredFromInvalidSkills.autonomousStep();
+  if (recoveredFromInvalidSkills.cognitiveDependencyGraph.diagnostics().lastTick !== skillRecoveryStep.cycle.state.tick) {
+    throw new Error('organism did not complete a canonical cycle after procedural skill restore recovery');
+  }
+  await recoveredFromInvalidSkills.stop();
   console.log('CLEAN_ORGANISM_SMOKE=PASS');
 } finally { await rm(dir,{recursive:true,force:true}); }

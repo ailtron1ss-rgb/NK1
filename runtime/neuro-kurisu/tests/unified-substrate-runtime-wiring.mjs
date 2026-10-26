@@ -279,6 +279,8 @@ assert.match(runtime, /cognitiveDependencyGraph\.reconcileLastTick\(canonicalCor
 assert.match(runtime, /runtime\.cognitive-dependency\.tick-reconciled/);
 assert.match(runtime, /runtime\.cognitive-dependency\.restore-failed/);
 assert.match(runtime, /this\.cognitiveDependencyGraph\.restore\(\);/);
+assert.match(runtime, /runtime\.procedural-skills\.restore-failed/);
+assert.match(runtime, /try \{\s*this\.proceduralSkillLibrary\.restore\(await this\.proceduralSkillStore\.load\(\) \?\? undefined\);\s*\} catch \(error\) \{\s*this\.proceduralSkillLibrary\.restore\(undefined\);/);
 assert.match(runtime, /memoryPressure01: 1 - resourceAllocation\.memory01/);
 const observeAt = runtime.indexOf('const cycle = await this.core.observe(cycleObservation);');
 const integrateAt = runtime.indexOf('this.unifiedCognitiveSubstrate.integrate(', observeAt);

@@ -359,7 +359,16 @@ export class OrganismRuntime {
           message: String((error as any)?.message ?? error).slice(0, 200),
         }).catch(() => {});
       }
-      this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
+      try {
+        this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
+      } catch (error) {
+        // Procedural skills are learned derived state. If the snapshot is unreadable,
+        // keep Core bootable and expose the lost cache through the operational journal.
+        this.proceduralSkillLibrary.restore(undefined);
+        await this.journal.write('warn', 'runtime.procedural-skills.restore-failed', {
+          message: String((error as any)?.message ?? error).slice(0, 200),
+        }).catch(() => {});
+      }
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
