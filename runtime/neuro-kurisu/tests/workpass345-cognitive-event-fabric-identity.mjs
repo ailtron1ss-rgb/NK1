@@ -107,6 +107,32 @@ assert.throws(() => fabric.append(makeEvent({
 assert.equal(fabric.snapshot().total, beforeInvalidPayload);
 assert.equal(fabric.snapshot().recent.some(event => event.id === 'cef:test:identity:cyclic'), false);
 
+// Payload text is bounded cumulatively across keys and values on append.
+const beforeOversizedText=fabric.snapshot().total;
+assert.throws(
+  ()=>fabric.append(makeEvent({
+    id:'cef:test:identity:oversized-text',
+    payload:{content:'x'.repeat(140_000)},
+  })),
+  /cognitive-event-payload-text-budget/,
+);
+assert.equal(fabric.snapshot().total,beforeOversizedText,'text-budget rejection must not mutate the event ledger');
+
+// Restore applies the same text budget and leaves a later valid row with the same ID recoverable.
+const restoreTextBudget=new CognitiveEventFabric(128);
+const oversizedTextId='cef:test:restore:oversized-text';
+const restoredAfterOversizedText={...makeEvent({id:oversizedTextId}),payload:{recovered:'safe'}};
+restoreTextBudget.restore({
+  version:1,capacity:128,total:2,buffered:2,linkedParentEvents:0,danglingParentLinks:0,
+  lineageIntegrity01:1,cycleCoverage01:0,causalDensity01:0,recentTicks:0,
+  recent:[
+    {...makeEvent({id:oversizedTextId}),payload:{content:'x'.repeat(140_000)}},
+    restoredAfterOversizedText,
+  ],
+});
+assert.equal(restoreTextBudget.getById(oversizedTextId)?.payload.recovered,'safe',
+  'an oversized payload must not reserve the ID or block later valid recovery');
+
 // Identity and source values must be canonical at write time, so trim-based aliases
 // cannot be accepted as replays and cannot disappear after a restart.
 const beforeNonCanonical=fabric.snapshot().total;
