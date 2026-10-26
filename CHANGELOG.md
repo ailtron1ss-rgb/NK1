@@ -1,3 +1,12 @@
+## WorkPass330 — hard gate for independently verified task success (2026-10-26)
+
+- **Defect:** the SkillLearnBench-compatible candidate gate treated validation task-success below 0.80 as feedback only. Since the composite also includes trajectory/skill quality, a candidate with low verified task success could still be marked eligible when those other metrics increased.
+- **Code fix:** added `minimumValidationTaskSuccess01` (default 0.80, validated within [0, 1]) as an explicit eligibility condition. Low task success now adds `validation-task-success-below-threshold` and blocks eligibility instead of merely emitting a warning.
+- **Regression:** `p29-hermes-reflective-candidate-gate.mjs` constructs a candidate with 50% verified task success but enough trajectory/skill quality to improve the composite score; it must be rejected at the default floor and may only pass when a caller explicitly configures a 0.50 floor and other gates pass.
+- **Safety invariants preserved:** the gate still only recommends eligibility; it does not activate candidates or replace authenticated approval, independent evaluation, untouched holdout, or hard safety checks.
+- **Validation status:** code and regression are committed; this editing environment did not execute the repository test process. Require exact-head P26 Learning Validation/CI results before reporting a pass.
+- **Release remains blocked:** real external task-transfer/tool-use uplift, live UI/Live2D/TTS, Android/Termux audio, long soak, license review and reproducible release archive remain outstanding.
+
 ## WorkPass329 — сводка learning/skill-evolution evidence (2026-10-25)
 
 - **Independent CI:** на проверенном кодовом head `9d0e1fa5d7cb94e0e252cce09bdfca4551d0ddba` успешны WorkPass110 continual-learning metrics, P26 Learning Validation, WorkPass99 replay strategy, WorkPass105 verified outcome ledger, WorkPass108 paired evidence/promotion gates, WorkPass287–288 cognitive contracts, WorkPass291–294, WorkPass293 autonomous P23 repair.
