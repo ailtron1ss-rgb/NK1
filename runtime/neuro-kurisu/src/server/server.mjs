@@ -863,7 +863,6 @@ async function route(req, res) {
             if (!['supports', 'contradicts', 'contextualizes'].includes(stance))
                 return json(res, 400, { ok: false, error: 'invalid-evidence-stance' });
             const confidence = Number(input?.evidence?.trust01 ?? input?.trust01 ?? 0.5);
-            const observedAt = input?.observedAt === undefined ? new Date().toISOString() : String(input.observedAt);
             const identity = {
                 memoryId,
                 sourceRef,
@@ -873,6 +872,19 @@ async function route(req, res) {
             const evidenceId = String(input?.evidenceId || input?.evidence?.evidenceId || (
                 'hexis-legacy:' + createHash('sha256').update(JSON.stringify(identity)).digest('hex')
             ));
+            // The legacy endpoint synthesizes the receipt timestamp. On retry,
+            // reuse the canonical timestamp for this evidence ID; otherwise an
+            // identical old-client request would hash a new timestamp and conflict.
+            let observedAt = input?.observedAt === undefined ? undefined : String(input.observedAt);
+            if (observedAt === undefined) {
+                const canonicalMemory = runtime.core.memoryInspectorSnapshot(1600)
+                    .find(memory => memory.id === memoryId);
+                const existingEvidence = canonicalMemory?.evidenceRecords?.find(record => record.evidenceId === evidenceId);
+                const storedObservedAt = Number(existingEvidence?.observedAt);
+                observedAt = Number.isFinite(storedObservedAt) && storedObservedAt > 0
+                    ? new Date(storedObservedAt).toISOString()
+                    : new Date().toISOString();
+            }
             const envelope = {
                 memoryId,
                 evidenceId,
