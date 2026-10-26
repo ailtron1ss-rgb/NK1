@@ -940,6 +940,46 @@ async function route(req, res) {
                 return json(res, 409, { ok: false, error: String(error?.message ?? error) });
             }
         }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/goals/prepare') {
+            const input = await body(req);
+            try {
+                const result = runtime.core.hexisPrepareGoalProposals(String(input.stagingId || ''));
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, ...result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                const message = String(error?.message ?? error);
+                const status = message === 'hmx-goal-stage-not-found' ? 404
+                    : message.includes('must-be-accepted') || message.includes('has-conflicts') ? 409 : 400;
+                return json(res, status, { ok: false, error: message });
+            }
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/hmx/goals/proposals') {
+            const requestedStatus = url.searchParams.get('status') || undefined;
+            const allowedStatuses = ['pending', 'approved', 'rejected', 'materialized'];
+            if (requestedStatus && !allowedStatuses.includes(requestedStatus)) {
+                return json(res, 400, { ok: false, error: 'invalid-hmx-goal-proposal-status' });
+            }
+            const requestedLimit = Number(url.searchParams.get('limit') || 64);
+            const limit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(128, Math.floor(requestedLimit))) : 64;
+            return json(res, 200, { ok: true, proposals: runtime.core.hexisGoalProposals({ status: requestedStatus, limit }) });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/goals/proposals/decide') {
+            const input = await body(req);
+            const decision = String(input.decision ?? '');
+            if (!['approve', 'reject'].includes(decision)) {
+                return json(res, 400, { ok: false, error: 'invalid-hmx-goal-proposal-decision' });
+            }
+            try {
+                const proposal = runtime.core.hexisDecideGoalProposal(String(input.proposalId || ''), decision);
+                await runtime.core.flush();
+                if (!proposal) return json(res, 404, { ok: false, error: 'hmx-goal-proposal-not-found' });
+                return json(res, 200, { ok: true, proposal });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                return json(res, 409, { ok: false, error: String(error?.message ?? error) });
+            }
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
         }
