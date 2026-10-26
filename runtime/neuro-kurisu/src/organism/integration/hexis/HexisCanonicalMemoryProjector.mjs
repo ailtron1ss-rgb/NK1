@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { hasValidHmxApplicationReceipt } from './HexisHmxReceiptGuard.ts';
+import { hasValidHmxApplicationReceipt, hasValidHmxStageDigest } from './HexisHmxReceiptGuard.ts';
 import { CANONICAL_MEMORY_CAPACITY } from '../../memory/CanonicalMemoryCapacity.ts';
 
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
@@ -107,6 +107,7 @@ export class HexisCanonicalMemoryProjector {
     if (!isRecord(stage) || stage.status !== 'accepted') throw new Error('hmx-stage-must-be-accepted-before-apply');
     if (!asText(stage.stagingId, 128) || !asText(stage.digest, 128)) throw new Error('hmx-stage-identity-required');
     if (!Array.isArray(stage.conflicts) || stage.conflicts.length > 0) throw new Error('hmx-stage-has-conflicts');
+    if (!hasValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
     if (stage.intent !== 'port' || stage.strategy !== 'additive') throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
     const sections = isRecord(stage.stagedSections) ? stage.stagedSections : {};
     const records = Array.isArray(sections.memories) ? sections.memories : [];
