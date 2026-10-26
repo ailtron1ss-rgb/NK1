@@ -1,3 +1,11 @@
+## WorkPass353 — reject oversized causal identity fields (2026-10-26)
+
+- **Defect:** `CognitiveEventFabric.append()` silently truncated source strings, parent IDs and oversized parent lists. Restore also truncated event IDs/sources/parents and filtered invalid parents, which could make distinct or malformed persisted envelopes appear valid and reserve IDs ahead of valid recovery rows.
+- **Fix:** reject oversized source/parent IDs and parent lists before event mutation; preserve validated identity fields instead of truncating. Restore now skips malformed identity rows without reserving their IDs, allowing a later valid recovery row to be restored.
+- **Regression coverage:** same-ID replay with oversized source/parent suffixes, 13 parents rejected without ledger mutation, exact 12-parent boundary accepted, and restore recovery after oversized ID/source/parent data.
+- **Validation:** `work/nk1-event-envelope-bounds-2026-10-26-r2`; exact-head CI must pass after all edits. No runtime PASS is claimed before the new commit's checks complete.
+
+---
 ## WorkPass349 — verify restored receipt projection fingerprints — 2026-10-26
 
 - **Defect:** snapshot restore accepted a syntactically valid `receiptProjectionIndex.projectionHash` without checking it against the action/outcome/evidence nodes it referenced. A damaged snapshot could therefore restore a false replay guard and create spurious receipt conflicts.
