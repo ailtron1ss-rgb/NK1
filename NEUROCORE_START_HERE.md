@@ -1,13 +1,14 @@
 ## Latest checkpoint — WorkPass362–364 clean app build and toolchain (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
-**Current validation:** [WorkPass362 run #40292876890](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292876890) on code head `9020481492b447e719c30bdb678b42a4e3ab3d99` is in progress at the combined app/runtime typecheck.
+**Validation:** [WorkPass362 run #40292876890 — success](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292876890) on code head `9020481492b447e719c30bdb678b42a4e3ab3d99`.
 
 - Added clean Node 24 production-build workflow: clean-checkout doctor, locked app/runtime installs, app script contracts, combined typecheck, production UI build/migration entry point, UI/API linkage, schema and public-asset audits.
 - First two attempts surfaced real setup/code defects: test-only MJS files had strict-mode type problems, and job-level `NODE_ENV=production` omitted the dev-only but locked `@types/pg` needed by typecheck.
 - MJS regression fixtures now use valid JavaScript with JSDoc typing; `Reflect.deleteProperty` preserves valid JavaScript semantics. `NODE_ENV=production` is scoped to the actual build step so TypeScript/dev tools remain installed during validation.
-- Earlier steps in #40292876890 already passed clean-checkout preflight, app and runtime lockfile installs, and app dependency/script contracts. Wait for the exact run's final job conclusion before marking WorkPass362–364 green.
-- Next: inspect any remaining typecheck/build/migration/API/schema/asset failure by exact step, fix root cause, then rerun the current workflow. A green CI build would still not substitute for production Postgres migration, browser/Live2D E2E, Android/Termux audio, long soak, independent held-out learning uplift or license review.
+- Exact-head result: clean-checkout doctor PASS; app/runtime locked installs PASS; app dependency/script regressions PASS (232); combined app/runtime `TYPECHECK=PASS`; production Vite client/SSR/Nitro build PASS; UI/API linkage PASS (`routes=131`, `runtimeAtlas=50`, `requiredSeams=5`); schema check PASS; canonical asset audit PASS.
+- `app/scripts/migrate.mjs` executed but intentionally skipped external PostgreSQL because `DATABASE_URL` was absent (its log says PGLite fallback migrates itself). This CI does not count as a real external database migration or deployed production DB acceptance.
+- The first failures were correctly attributed to MJS fixture typing and job-level `NODE_ENV=production` omitting dev type packages; WorkPass363/364 fixes are now covered by the green run. Still open: real Postgres migration, browser/Live2D E2E, Android/Termux audio, long soak, paired held-out learning uplift, production launch configuration and license review.
 
 ---
 
@@ -18,7 +19,7 @@
 
 - Added a dedicated broad workflow with Node 24, pinned runtime dependencies, runtime typecheck, standard organism smoke, legacy restart persistence, canonical persistence/restore continuity, persistent-continuity organism integration, and verified autonomous-life restart regression.
 - This sits alongside the narrower WorkPass349 regression stack (signed P23 provider, environment filtering, safe MemoryOS restore, file-backed separate-process memory retrieval, and full OrganismRuntime restart with canonical MemoryOS2 ID).
-- Do not count WorkPass361 as complete until every listed test and the typecheck has a green exact-head result. Triage individual failures against the latest Core/MemoryOS changes.
+- WorkPass361 is complete: the exact run passed the listed smoke/restart/persistence tests and runtime typecheck. Preserve its original SHA/run association; newer unrelated code still requires its own CI evidence.
 - Still open: clean-machine production launch with configured host evaluator authorities, independent matched held-out learning/retrieval uplift, production UI/database migrations, physical browser/Live2D, Android/Termux voice/audio, extended soak and license review.
 
 ---
