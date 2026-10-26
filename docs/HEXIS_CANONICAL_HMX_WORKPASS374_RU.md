@@ -23,7 +23,7 @@ The branch registers npm run test:hexis-canonical-apply to cover:
 4. idempotent receipt replay with zero reads/writes on the replay path;
 5. HMX goals become idempotent pending proposals, with list/approve/reject endpoints, explicit confirmation for canonical materialization, candidate-state assertion, semantic-edge projection and materialization replay.
 
-A branch-specific GitHub Actions workflow runs the runtime typecheck and focused tests. The latest exact-head Actions jobs are reported as failed, but the connector returns no step summaries and the log endpoint responds BlobNotFound; this is an observability blocker, not evidence that the tests passed or a diagnosis of a code failure. Local execution was not available through the GitHub connector. Keep the PR draft until reproducible validation is obtained.
+A branch-specific GitHub Actions workflow runs the runtime typecheck and focused tests, captures command outputs/exit codes, and uploads an evidence artifact before enforcing the gate. However, exact-head run #40336104593 completed in about two seconds with runner_id=0, an empty runner_name, and steps=[]; the artifact endpoint reported zero artifacts. The unified integration run #40336104584 has the same pre-step failure signature. Therefore npm ci, typecheck and tests did not execute in these jobs; no code pass/fail conclusion can be drawn. The job-log endpoint responds BlobNotFound and a local run is unavailable in this environment. Keep the PR draft until GitHub assigns a runner and the exact-head validation becomes observable.
 
 ## Current status
 
