@@ -297,6 +297,25 @@ assert.equal(lateRejectResult?.importResult?.reason, 'reject-request-after-accep
 assert.equal(lateRejectFabric.decideHmx(lateRejectStage.stagingId, 'accept')?.importResult?.status, 'uncertain',
   'subsequent accept must not replay a stage quarantined by a late reject');
 
+// A repeated accept while the first import receipt is still pending is also
+// ambiguous. It must close as uncertain before core can re-enter its apply gate.
+const repeatAcceptFabric = new HexisAdaptationFabric();
+const repeatAcceptStage = repeatAcceptFabric.stageHmx({
+  document: validHmx,
+  intent: 'telepathy',
+  strategy: 'additive',
+});
+assert.equal(repeatAcceptFabric.decideHmx(repeatAcceptStage.stagingId, 'accept')?.status, 'accepted');
+assert.equal(repeatAcceptFabric.getHmxStage(repeatAcceptStage.stagingId)?.importResult?.status, 'pending');
+const repeatedAcceptance = repeatAcceptFabric.decideHmx(repeatAcceptStage.stagingId, 'accept');
+assert.equal(repeatedAcceptance?.status, 'accepted');
+assert.equal(repeatedAcceptance?.importResult?.status, 'uncertain',
+  'duplicate accept cannot return an accepted+pending stage to the canonical apply path');
+assert.equal(repeatedAcceptance?.importResult?.reason, 'repeat-accept-after-accept-before-import-receipt');
+assert.equal(repeatAcceptFabric.decideHmx(repeatAcceptStage.stagingId, 'accept')?.importResult?.status, 'uncertain',
+  'further repeated acceptance remains terminal and cannot replay');
+
+
 
 // Tampering with an accepted stage before restore is also surfaced for review;
 // it must not re-enable import merely because a new receipt was synthesized.
