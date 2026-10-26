@@ -1,3 +1,10 @@
+## WorkPass395 — bind every Hexis review decision to canonical evidence (2026-10-26)
+
+- **Code commit:** `c43d05d2e6be965e4c16bcc0d803d5ee48e30f85`; **regression commit:** `98421af0dfc17fe6c5855490554ae77116c74755` on `fix/hexis-review-digest-binding-live-2026-10-26`.
+- Closed a decision-boundary gap: `correct` and `forget` now verify the pending review against the canonical MemoryOS2 evidence receipt before changing review state, just like `approve`. A tampered persisted source, note, stance, timestamp or confidence can no longer become a terminal review decision merely because it does not directly write confidence.
+- Expanded review-binding coverage from six metadata tampering cases to all three terminal decisions (`approve`, `correct`, `forget`) — 18 decision-boundary regressions. Every rejected attempt must preserve canonical memory and leave the pending review unchanged.
+- **Validation:** PENDING exact-head runtime typecheck, focused Hexis evidence-review test, server smoke and Unified integration. Tests were added but have not been executed in this session; no PASS, retrieval uplift or production-readiness claim is made. Progress scores remain unchanged; `main` and the canonical Release ZIP are untouched.
+
 ## WorkPass394 — Prove pending Hexis review recovery after SIGKILL (2026-10-26)
 
 - Strengthened the server smoke from graceful SIGTERM restart to an abrupt SIGKILL after the canonical evidence-review endpoint has already returned its pending-review response.
