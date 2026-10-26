@@ -37,15 +37,21 @@ export interface SkillRevisionGateResult {
 const clamp = (x: number, fallback: number) => Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
 const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
-const valid = (x: RevisionObservation) => Boolean(
-  x && x.taskId?.trim() && x.family?.trim() && x.method?.trim() &&
-  Number.isSafeInteger(x.seed) && x.seed >= 0 &&
-  Number.isSafeInteger(x.attempt) && x.attempt === 1 &&
-  x.split === 'holdout' && typeof x.passed === 'boolean' &&
-  (x.authority === 'independent-verifier' || x.authority === 'human-review') &&
-  x.verifierId?.trim() && x.evidenceRef?.trim() &&
-  (x.authority !== 'independent-verifier' || x.verifierId === x.expectedVerifierId)
-);
+const nonEmptyText = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+/** Treat runtime/persisted rows as untrusted values; malformed fields are rejected, never invoked. */
+const valid = (value: unknown): value is RevisionObservation => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const x = value as Record<string, unknown>;
+  if (!nonEmptyText(x.taskId) || !nonEmptyText(x.family) || !nonEmptyText(x.method) ||
+      !Number.isSafeInteger(x.seed) || Number(x.seed) < 0 ||
+      !Number.isSafeInteger(x.attempt) || x.attempt !== 1 ||
+      x.split !== 'holdout' || typeof x.passed !== 'boolean' ||
+      (x.authority !== 'independent-verifier' && x.authority !== 'human-review') ||
+      !nonEmptyText(x.verifierId) || !nonEmptyText(x.evidenceRef)) return false;
+  return x.authority !== 'independent-verifier' || x.verifierId === x.expectedVerifierId;
+};
 
 /** Pair on exact task/version identity (taskId), seed and first attempt; retries and replayed evidence receipts are not independent samples. */
 export function evaluateSkillRevision(
@@ -54,8 +60,14 @@ export function evaluateSkillRevision(
   candidateMethod: string,
   options: SkillRevisionGateOptions = {},
 ): SkillRevisionGateResult {
-  if (!baselineMethod?.trim() || !candidateMethod?.trim() || baselineMethod === candidateMethod) {
+  if (typeof baselineMethod !== 'string' || baselineMethod.trim().length === 0 ||
+      typeof candidateMethod !== 'string' || candidateMethod.trim().length === 0 ||
+      baselineMethod === candidateMethod) {
     throw new Error('two distinct method names are required');
+  }
+  if (!Array.isArray(observations)) throw new Error('revision observations must be an array');
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    throw new Error('skill revision gate options must be an object');
   }
   const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
   const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02, .02);
