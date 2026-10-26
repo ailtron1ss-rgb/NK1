@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass356 is rebased directly on latest target head 084c80745446c38bf514c43000844c433110f0c4, retaining the newer transactional snapshot restore and bounded payload clone already in that base. Code/test checkpoint ae9a66a6f831b73d9c8457de4ea4454c376e3c1a adds strict receipt-trace/revision/external-observation ingress and regression coverage. Exact-head CI pending; historical ciSnapshot records and readiness scores unchanged.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass356 is rebased directly on latest target head 084c80745446c38bf514c43000844c433110f0c4, retaining the newer transactional snapshot restore and bounded payload clone already in that base. Code/test checkpoint ae9a66a6f831b73d9c8457de4ea4454c376e3c1a adds strict receipt-trace/revision/external-observation ingress and regression coverage. Exact-head CI pending; historical ciSnapshot records and readiness scores unchanged. WorkPass357 adds descriptor-only validation for nested parentIds arrays in snapshot restore, avoiding direct parentIds.length/slot reads that could execute Proxy get traps. Code/test checkpoint 810f60f2227db466dd1f96b1e3edf39741951f9d is stacked on WorkPass356 branch head 1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee; exact-head CI is pending. Historical ciSnapshot rows and readiness scores remain unchanged.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -359,17 +359,16 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass356",
+    "id": "WorkPass357",
     "date": "2026-10-26",
-    "branch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26-r2",
-    "codeCommit": "ae9a66a6f831b73d9c8457de4ea4454c376e3c1a",
-    "summary": "Hardened the three public CEF receipt ingress paths against getter/accessor execution, lossy identifier normalization and type coercion; added event/replay-ledger preservation and idempotent replay regressions.",
+    "branch": "fix/workpass357-parent-lineage-proxy-restore-2026-10-26-r2",
+    "codeCommit": "810f60f2227db466dd1f96b1e3edf39741951f9d",
+    "summary": "Removed direct parentIds.length reads at the snapshot restore boundary. Added bounded descriptor-only nested-array inspection, with regressions for forged proxy length, getter suppression, descriptor trap failure and later valid duplicate recovery.",
     "testsAdded": [
-      "receipt trace rejects accessor-backed inputs without getter execution or ledger mutation",
-      "trace rejects padded/overlong IDs, non-boolean fields and confidence outside [0,1]",
-      "provider receipt revisions reject accessors, lossy IDs, invalid hashes/counters/flags/confidence without mutation",
-      "external observations reject accessors, coercion, overlong/non-canonical IDs and malformed evidence fields",
-      "valid receipt revision remains idempotent"
+      "proxy length trap cannot erase restored parent IDs",
+      "direct slot getters are not executed",
+      "descriptor enumeration failure is caught and malformed row is skipped",
+      "later valid row with the same ID can recover"
     ],
     "validationStatus": "pending exact-head CI",
     "progressPercentagesChanged": false,
@@ -377,6 +376,23 @@
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass357",
+      "date": "2026-10-26",
+      "branch": "fix/workpass357-parent-lineage-proxy-restore-2026-10-26-r2",
+      "codeCommit": "810f60f2227db466dd1f96b1e3edf39741951f9d",
+      "summary": "Removed direct parentIds.length reads at the snapshot restore boundary. Added bounded descriptor-only nested-array inspection, with regressions for forged proxy length, getter suppression, descriptor trap failure and later valid duplicate recovery.",
+      "testsAdded": [
+        "proxy length trap cannot erase restored parent IDs",
+        "direct slot getters are not executed",
+        "descriptor enumeration failure is caught and malformed row is skipped",
+        "later valid row with the same ID can recover"
+      ],
+      "validationStatus": "pending exact-head CI",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass356",
       "date": "2026-10-26",
@@ -465,8 +481,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "ae9a66a6f831b73d9c8457de4ea4454c376e3c1a",
-  "branchHeadBeforeTrackerCommit": "ae9a66a6f831b73d9c8457de4ea4454c376e3c1a",
+  "latestUnverifiedCodeTestHead": "810f60f2227db466dd1f96b1e3edf39741951f9d",
+  "branchHeadBeforeTrackerCommit": "810f60f2227db466dd1f96b1e3edf39741951f9d",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -506,38 +522,34 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass342",
+    "id": "WorkPass356",
     "date": "2026-10-26",
-    "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
-    "codeCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
-    "summary": "Bound the integration client deadline to each CPU research probe: quick control/approval requests retain 8 seconds; NeuroCore/NOMEGA have 60 seconds; DeepCode CPU smoke has 200 seconds, safely above its 180-second subprocess limit. Revalidated the complete suite with WorkPass340 substrate and WorkPass341 task-family promotion coverage present.",
+    "branch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26-r2",
+    "codeCommit": "ae9a66a6f831b73d9c8457de4ea4454c376e3c1a",
+    "summary": "Hardened the three public CEF receipt ingress paths against getter/accessor execution, lossy identifier normalization and type coercion; added event/replay-ledger preservation and idempotent replay regressions.",
     "testsAdded": [
-      "bounded, per-probe timeout config rejects invalid bounds",
-      "full runtime/research bridge smoke completes all post-approval probes within their appropriate finite deadlines",
-      "NeuroCore, NOMEGA and DeepCode approval-denial and explicit-owner-approval paths pass on the same smoke",
-      "UI and runtime typechecks pass after the full integration run"
+      "receipt trace rejects accessor-backed inputs without getter execution or ledger mutation",
+      "trace rejects padded/overlong IDs, non-boolean fields and confidence outside [0,1]",
+      "provider receipt revisions reject accessors, lossy IDs, invalid hashes/counters/flags/confidence without mutation",
+      "external observations reject accessors, coercion, overlong/non-canonical IDs and malformed evidence fields",
+      "valid receipt revision remains idempotent"
     ],
-    "validationStatus": "PASS on exact combined code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; merged to active source branch as 39af7eb67c9ab05efd45d01cbd4b4d1d44751454. Unified project integration, WorkPass110, WorkPass108, P26 and progress-ledger integrity all passed.",
+    "validationStatus": "pending exact-head CI",
     "progressPercentagesChanged": false,
-    "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
-    "workflowRuns": [
-      40257525157,
-      40257525071,
-      40257525093,
-      40257525095,
-      40257525008,
-      40257525009,
-      40257525022,
-      40257525001,
-      40257525128,
-      40257525003,
-      40257525076,
-      40257525205,
-      40257525121
-    ],
-    "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
+    "testedHeadSha": null,
+    "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass357",
+    "sourceBranch": "fix/workpass357-parent-lineage-proxy-restore-2026-10-26-r2",
+    "codeTestHead": "810f60f2227db466dd1f96b1e3edf39741951f9d",
+    "baseHead": "1d2a02d3091fd960f6d38880aa85e8d8bf9a1fee",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "CognitiveEventFabric.restore now inspects nested parentIds arrays through own data descriptors and a bounded dense-array validator; it never reads proxy-backed .length or slots directly, and malformed lineage rows do not reserve IDs.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass356",
     "sourceBranch": "fix/workpass356-strict-tool-receipt-ingress-2026-10-26-r2",
     "codeTestHead": "ae9a66a6f831b73d9c8457de4ea4454c376e3c1a",
