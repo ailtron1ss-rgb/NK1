@@ -1,3 +1,15 @@
+## WorkPass322 — signed holdout evidence and source-candidate artifact (2026-10-26)
+
+- Added a host-owned P26 Ed25519 verifier loaded from `NEURO_P26_HOLDOUT_VERIFIERS_JSON`. Public-key identities are pinned to protocol allowlists; the exact evidence identity, sample-set hash and score pair are signed. Private signing keys remain in the independent evaluator and are never configured in NK1.
+- Added the authenticated canonical runtime endpoint `POST /api/organism/true-learning/holdout-evidence`; invalid signatures, unconfigured trust, unapproved protocols and duplicate evidence fail closed. The endpoint persists an accepted record through Core, not through a disconnected test-only instance.
+- The server smoke generates an ephemeral Ed25519 key pair and proves end-to-end: a modified score is rejected, a valid signed result is accepted/persisted, and the same evidence is rejected on replay. Unit coverage also tests restore-time signature revalidation and malformed trust configuration.
+- Vite's local proxy reads the actual `.env` and forwards the internal runtime token to `/api/health` and `/api/organism`, matching the production same-origin gateway behavior.
+- CI now audits the source/assets after the container smoke, creates a ZIP from the exact verified git commit, scans it for unsafe paths/local env/credential/private-key material, computes SHA-256, and uploads a 14-day Actions candidate artifact. This is **not** a GitHub Release publication.
+- `main` remains unchanged and PR #129 remains draft. The official October 19 WorkPass70 ZIP remains unchanged pending review and separate release-asset publication.
+- Verification of this packaging commit is running in the exact-HEAD CI; see the workflow run linked from PR #129 after it completes.
+
+---
+
 ## WorkPass321 — unified React UI, canonical runtime and trusted evidence boundary (2026-10-26)
 
 - Unified the real React/TanStack application and canonical cognitive runtime behind one same-origin Caddy gateway. Added Node.js 24 multi-stage app build and included the root canonical Live2D asset manifest required by the hydrator.

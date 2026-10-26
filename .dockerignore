@@ -16,3 +16,8 @@ node_modules
 *.log
 npm-debug.log*
 .DS_Store
+legacy
+backups
+*.zip
+*.tar
+*.tar.gz

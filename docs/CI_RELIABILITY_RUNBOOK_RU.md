@@ -52,6 +52,14 @@
 
 [PR #129](https://github.com/ailtron1ss-rgb/NK1/pull/129) остаётся draft; main не изменён. GitHub Release ZIP ещё не синхронизирован с этим source branch: текущий attachment относится к WorkPass70 от 2026-10-19. Смотрите также [WorkPass320](WORKPASS320_RUNTIME_TYPECHECK_DEPENDENCY_CONTRACTS_2026-10-25.md).
 
+## WorkPass322 — доверенная оценка и source candidate
+
+P26 получает Ed25519-проверяющий callback из `NEURO_P26_HOLDOUT_VERIFIERS_JSON`. Конфигурация связывает `verifierId` с публичным Ed25519 ключом и allowlist протоколов. Публичный ключ может храниться в окружении runtime; **private key принадлежит внешнему независимому оценщику и не должен появляться в NK1**. Канонический endpoint `POST /api/organism/true-learning/holdout-evidence` доступен через Core → P26; score tampering и повторные evidence-ID/sample-set отклоняются. Если allowlist пуст, метрика обобщения не увеличивается — это fail-closed поведение.
+
+После полного успешного Compose smoke workflow выполняет `npm run audit:assets` и `npm run release:verify`, затем собирает source ZIP с точного `GITHUB_SHA`, сканирует пути и секретные файлы, вычисляет SHA-256 и загружает candidate artifact через Actions. В отчёте ZIP указаны точный commit, run URL и SHA. Такой artifact — **кандидат для review, не release publication**.
+
+Текущий code-stack прогон [40251315322](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251315322) прошёл all steps на `c1d3b149dd8022af39d5b52d829f030526bf9849`, включая Ed25519 unit tests, server/security, clean restart и UI → runtime Compose smoke. Новая упаковка требует отдельного точного run после изменений в workflow.
+
 ## Подтверждённый результат WorkPass321 — 2026-10-26
 
 [Actions run 40250314917](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250314917) завершился `success` на source HEAD `e5bdcaf2732bd38298c27160ff612b66f4d16253`. Проверены установки обеих lockfile, app/runtime TypeScript, production-сборка React UI, когнитивный цикл/мотивация, P26 integrity и continual-learning matrix, causal replay, шлюз и финализация действий, server security, restart persistence, Compose build/boot и same-origin UI → runtime API. Финальный smoke сообщил `gateway=200`, `runtime=true`, `architecture=true`.

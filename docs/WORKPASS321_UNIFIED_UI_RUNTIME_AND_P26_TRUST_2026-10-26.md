@@ -37,7 +37,7 @@ The CI test also confirms the application server, canonical runtime and reverse 
 
 ## Learning evidence and limits
 
-The P26 retention results are deterministic synthetic regression results, not a production learning-quality score or evidence of generalized skill improvement on independent real-world tasks. The built-in runtime does not configure a trusted independent holdout verifier by default; therefore it correctly refuses to count new holdout claims as authenticated generalization evidence until a host-owned verifier is actually wired and deployed. This is safer than silently converting self-report into ground truth, but deployment of that evaluator remains open work.
+The P26 retention results are deterministic synthetic regression results, not a production learning-quality score or evidence of generalized skill improvement on independent real-world tasks. The built-in runtime does not configure a trusted independent holdout verifier by default; therefore it correctly refuses to count new holdout claims as authenticated generalization evidence until an independent evaluator is deployed and its trusted Ed25519 public key/protocol allowlist is configured in `NEURO_P26_HOLDOUT_VERIFIERS_JSON`. The host-verification callback and authenticated Core endpoint are now wired; they still fail closed by default. This is safer than silently converting self-report into ground truth, but deployment of that evaluator remains open work.
 
 ## Release boundary
 

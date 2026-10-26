@@ -163,6 +163,115 @@ jobs:
           console.log('COMPOSE_UNIFIED_STACK_SMOKE=PASS', JSON.stringify({ gateway: page.status, runtime: runtimeHealth.ready, architecture: architecture.architecture.validation.ok }));
           NODE
 
+      - name: Audit source assets and release safety boundaries
+        if: ${{ success() }}
+        run: |
+          npm run audit:assets
+          npm run release:verify
+
+      - name: Package validated source commit
+        if: ${{ success() }}
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD)"
+          test "$SHA" = "$GITHUB_SHA"
+          SHORT_SHA="${SHA:0:12}"
+          ROOT="Neuro_Kurisu_WORKPASS322_CANDIDATE_${SHORT_SHA}"
+          ZIP_NAME="${ROOT}.zip"
+          ZIP_PATH="$RUNNER_TEMP/$ZIP_NAME"
+          CHECKSUM_NAME="${ZIP_NAME}.sha256"
+          REPORT_NAME="${ROOT}_REPORT.md"
+          git archive --format=zip --prefix="${ROOT}/" "$SHA" > "$ZIP_PATH"
+          python3 - "$ZIP_PATH" "$ROOT" <<'PY'
+          import pathlib, re, stat, sys, zipfile
+
+          zip_path, root = sys.argv[1], sys.argv[2]
+          required = [
+              "README.md", ".env.example", "Caddyfile", "docker-compose.yml",
+              "app/Dockerfile", "app/package-lock.json",
+              "runtime/neuro-kurisu/Dockerfile", "runtime/neuro-kurisu/package-lock.json",
+              "runtime/neuro-kurisu/src/organism/learning/P26TrustedHoldoutEvidenceAuthority.ts",
+              "runtime/neuro-kurisu/tests/p26-signed-holdout-verifier.mjs",
+              "contracts/inventory/canonical-public-assets-workpass42.json",
+              "docs/QUICKSTART_NEURO_KURISU_RU.md", "tools/verify-final-release.mjs",
+          ]
+          errors = []
+          with zipfile.ZipFile(zip_path) as z:
+              names = set(z.namelist())
+              prefix = root + "/"
+              for name in names:
+                  path = pathlib.PurePosixPath(name)
+                  if path.is_absolute() or ".." in path.parts or "\\" in name:
+                      errors.append("unsafe archive path: " + name)
+                      continue
+                  if not name.startswith(prefix):
+                      errors.append("missing common archive root: " + name)
+                      continue
+                  rel = name[len(prefix):]
+                  parts = pathlib.PurePosixPath(rel).parts
+                  base = pathlib.PurePosixPath(rel).name.lower()
+                  if any(x in {"node_modules", ".git", "__pycache__", ".super-state", ".verify-state"} for x in parts):
+                      errors.append("generated/private directory in candidate: " + rel)
+                  if base == ".env" or (base.startswith(".env.") and base != ".env.example"):
+                      errors.append("local environment file in candidate: " + rel)
+                  if base == "gmail-credentials.json":
+                      errors.append("credential file in candidate: " + rel)
+                  info = z.getinfo(name)
+                  mode = info.external_attr >> 16
+                  if stat.S_ISLNK(mode):
+                      target = z.read(name).decode("utf-8", "replace")
+                      if pathlib.PurePosixPath(target).is_absolute() or ".." in pathlib.PurePosixPath(target).parts:
+                          errors.append("escaping symlink in candidate: " + rel)
+                  if not info.is_dir() and info.file_size <= 8 * 1024 * 1024 and pathlib.PurePosixPath(rel).suffix.lower() in {
+                      ".env", ".json", ".js", ".mjs", ".ts", ".tsx", ".md", ".txt", ".yml", ".yaml", ".toml", ".sh", ".conf", ".xml"
+                  }:
+                      data = z.read(name)
+                      for marker in (b"-----BEGIN PRIVATE KEY-----", b"-----BEGIN RSA PRIVATE KEY-----",
+                                     b"-----BEGIN EC PRIVATE KEY-----", b"-----BEGIN OPENSSH PRIVATE KEY-----"):
+                          if marker in data:
+                              errors.append("private-key material in candidate: " + rel)
+                              break
+              for rel in required:
+                  if prefix + rel not in names:
+                      errors.append("required file missing: " + rel)
+          if errors:
+              print("\\n".join(errors), file=sys.stderr)
+              raise SystemExit(1)
+          print("CANDIDATE_ZIP_SAFETY=PASS", "requiredFiles=", len(required), "members=", len(names))
+          PY
+          sha256sum "$ZIP_PATH" | awk -v n="$ZIP_NAME" '{print $1 "  " n}' > "$RUNNER_TEMP/$CHECKSUM_NAME"
+          cat > "$RUNNER_TEMP/$REPORT_NAME" <<EOF
+          # Neuro Kurisu — verified source candidate (not an official release)
+
+          - Commit: `$SHA`
+          - Branch: `$GITHUB_REF_NAME`
+          - Validation run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          - Candidate archive: `$ZIP_NAME`
+          - SHA-256 file: `$CHECKSUM_NAME`
+
+          This archive is packaged only after the workflow's locked-dependency checks, TypeScript checks, production build, cognitive/learning/action regressions, server/security/restart smoke, Compose build/boot, same-origin React UI → runtime test, asset audit and release-safety audit pass. The archive path/secret scan also passed.
+
+          **Not published:** this is a candidate artifact for review. It does not replace the official GitHub Release ZIP, update release metadata, or change `main`. The existing WorkPass70 Release asset remains unchanged.
+          EOF
+          echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
+          echo "checksum_name=$CHECKSUM_NAME" >> "$GITHUB_OUTPUT"
+          echo "report_name=$REPORT_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload verified source candidate artifact
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: Neuro-Kurisu-WORKPASS322-CANDIDATE-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/${{ steps.candidate.outputs.zip_name }}
+            ${{ runner.temp }}/${{ steps.candidate.outputs.checksum_name }}
+            ${{ runner.temp }}/${{ steps.candidate.outputs.report_name }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
       - name: Dump runtime container logs on failure
         if: ${{ failure() }}
         run: docker compose logs --no-color neuro-kurisu neuro-kurisu-app gateway

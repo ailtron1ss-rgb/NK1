@@ -6,14 +6,14 @@ The Compose stack builds the modern `app/` UI with Nitro's standalone Node prese
 
 ---
 
-## Current source-stack checkpoint — WorkPass321 (2026-10-26)
+## Current source-stack checkpoint — WorkPass322 (2026-10-26)
 
-- **Unified launch:** the current Compose stack builds the modern React/TanStack UI, canonical cognitive runtime and Caddy same-origin gateway. Only the gateway port is published, bound to `127.0.0.1` by default; the internal token is shared between gateway and runtime.
-- **Persistent state:** organism state and the app's PGlite database have separate named volumes. Runtime/app healthchecks participate in Compose readiness.
-- **Exact-head CI:** [run 40250314917](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250314917) passed on `e5bdcaf2732bd38298c27160ff612b66f4d16253`: app/runtime TypeScript, production app build, cognitive/motivation/learning/action contracts, runtime/server/security/restart smoke, and full Compose build + UI → runtime API smoke (`gateway=200`, `runtime=true`, `architecture=true`).
-- **P26 safety boundary:** corrupt metric restore and newest trace dedupe are covered. Independent holdout evidence only advances after a trusted host-owned verifier authenticates it; the default runtime does not claim an independently measured learning uplift.
-- **PR #129 remains draft;** `main` stays untouched. The GitHub Release asset still points to the October 19 WorkPass70 ZIP and has not been rebuilt from this branch.
-- **Still open:** independently deployed evaluator, real external-task learning measurements, external LLM credentials, speech/Live2D/camera end-to-end and target-device soak.
+- **Unified run:** the real React/TanStack UI, canonical cognitive runtime and Caddy same-origin gateway run together; the latest completed end-to-end code run is [40251315322](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251315322), commit `c1d3b149dd8022af39d5b52d829f030526bf9849` (`gateway=200`, `runtime=true`, `architecture=true`).
+- **P26 trust:** Ed25519 verifier configuration binds trusted public keys to protocol allowlists. A signed holdout result is now accepted only through the Core-owned engine and authenticated runtime endpoint; score tampering and duplicate replay are rejected. No verified evaluator is configured by default, so without public-key configuration the engine safely counts no new independent holdout evidence.
+- **Learning restore:** metric counters are sanitized and newest trace IDs are retained through restore. Context-aware training results remain synthetic regression measures, not independent real-task accuracy.
+- **Candidate ZIP:** the CI job now prepares a source ZIP from the exact tested Git commit after locked dependency checks, TS/build, cognitive/learning/action tests, security/restart, same-origin Compose smoke, asset audit and release-safety audit. It scans paths/secrets, writes SHA-256 and uploads a candidate artifact; publication to GitHub Releases remains a separate action.
+- **PR #129 remains draft and `main` is unchanged.** The existing official release asset remains `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`; the candidate workflow does not silently overwrite it.
+- **Still open:** configure/deploy the independent evaluator's private signing service, external model credentials, speech/Live2D/camera E2E, target-device soak and licensing review.
 
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
