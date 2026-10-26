@@ -21,6 +21,10 @@ assert.equal(first.evidence.observedAt, "2026-10-26T09:30:00.000Z");
 assert.equal(Object.isFrozen(first.evidence), true);
 assert.equal(Object.isFrozen(first.evidence.source), true);
 
+const receiptTimestamp = adaptHexisEvidence({ ...valid, observedAtOrigin: "server-receipt" });
+assert.equal(receiptTimestamp.accepted, true, "internal compatibility marker should be canonicalized");
+if (receiptTimestamp.accepted) assert.equal(receiptTimestamp.evidence.observedAtOrigin, "server-receipt");
+
 const duplicate = adaptHexisEvidence(valid, new Set([first.evidence.idempotencyKey]));
 assert.equal(duplicate.accepted, true);
 if (!duplicate.accepted) throw new Error("duplicate should be an explicit accepted no-op");
@@ -33,6 +37,7 @@ for (const patch of [
   { evidenceId: " padded " },
   { stance: "guess" },
   { observedAt: "not-a-date" },
+  { observedAtOrigin: "client-supplied" },
   { source: { kind: "document", ref: "" } },
   { protectedMemory: "yes" },
   { note: " " },
