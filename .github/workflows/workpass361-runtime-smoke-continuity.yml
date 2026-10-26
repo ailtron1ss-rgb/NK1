@@ -1,0 +1,63 @@
+name: WorkPass361 runtime smoke and persistence continuity
+
+on:
+  push:
+    branches: [workpass349-native-dataset-path-identity-2026-10-26]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/organism-smoke.mjs"
+      - "runtime/neuro-kurisu/tests/restart-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/pass20-persistence-restore-continuity.mjs"
+      - "runtime/neuro-kurisu/tests/persistent-continuity-organism-integration.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-155-restart-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/workpass358-organism-runtime-restart-memory.mjs"
+      - ".github/workflows/workpass361-runtime-smoke-continuity.yml"
+  pull_request:
+    branches: [workpass334-inner-imperative-homeostasis-2026-10-24]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/organism-smoke.mjs"
+      - "runtime/neuro-kurisu/tests/restart-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/pass20-persistence-restore-continuity.mjs"
+      - "runtime/neuro-kurisu/tests/persistent-continuity-organism-integration.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-155-restart-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/workpass358-organism-runtime-restart-memory.mjs"
+      - ".github/workflows/workpass361-runtime-smoke-continuity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-workpass361-runtime-continuity-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  runtime-smoke-and-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install pinned runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Type-check runtime
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Run standard organism smoke
+        run: npm --prefix runtime/neuro-kurisu run test:smoke
+      - name: Run legacy persistence and restart regression
+        run: npm --prefix runtime/neuro-kurisu run test:restart
+      - name: Run canonical persistence restore continuity regression
+        run: npm --prefix runtime/neuro-kurisu run test:pass20:persistence-restore
+      - name: Run persistent continuity organism integration
+        run: npm --prefix runtime/neuro-kurisu run test:pcontinuity:integration
+      - name: Run verified autonomous life restart regression
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-155:restart
