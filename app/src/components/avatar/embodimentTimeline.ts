@@ -17,6 +17,8 @@ import type { MouthPose, VisemeFrame, VisemeName } from "../../../../runtime/neu
 
 export { CLOSED_MOUTH, buildVisemeTimeline, poseForGrapheme, sampleVisemeTimeline, timelineOffsetForCharIndex };
 export type { MouthPose, VisemeFrame, VisemeName };
+export { smoothEmbodimentAffect } from "../../../../runtime/neuro-kurisu/public/embodiment-affect-core.mjs";
+export type { EmbodimentAffectState, EmbodimentAffectTarget } from "../../../../runtime/neuro-kurisu/public/embodiment-affect-core.mjs";
 export type SpeechPhase = "idle" | "starting" | "speaking" | "ended" | "cancelled" | "unknown";
 
 /** A provider-observed character boundary mapped onto the monotonic audio clock. */
@@ -54,53 +56,6 @@ export interface EmbodimentIntentV1 {
 
 const clamp = (n: number, low: number, high: number): number =>
   Math.max(low, Math.min(high, Number.isFinite(n) ? n : low));
-
-export interface EmbodimentAffectState {
-  sampleAtMs: number;
-  expressionIntensity: number;
-  gazeX: number;
-  gazeY: number;
-  headTilt: number;
-  voiceEmphasis: number;
-}
-export type EmbodimentAffectTarget = Omit<EmbodimentAffectState, "sampleAtMs">;
-
-/**
- * Smooth the slow affective channels while leaving viseme/audio timing untouched.
- * A monotonic timestamp and bounded time constant prevent late snapshots from
- * rewinding the avatar or producing large single-frame jumps.
- */
-export function smoothEmbodimentAffect(
-  previous: EmbodimentAffectState | null,
-  target: EmbodimentAffectTarget,
-  nowMs: number,
-  timeConstantMs = 180,
-): EmbodimentAffectState {
-  const bounded = {
-    expressionIntensity: clamp(target.expressionIntensity, 0, 1),
-    gazeX: clamp(target.gazeX, -1, 1),
-    gazeY: clamp(target.gazeY, -1, 1),
-    headTilt: clamp(target.headTilt, -0.15, 0.15),
-    voiceEmphasis: clamp(target.voiceEmphasis, 0, 1),
-  };
-  const now = Number.isFinite(nowMs) ? Math.max(0, nowMs) : (previous?.sampleAtMs ?? 0);
-  if (!previous) return { sampleAtMs: now, ...bounded };
-  if (!Number.isFinite(previous.sampleAtMs) || now <= previous.sampleAtMs) return { ...previous };
-  const tau = clamp(timeConstantMs, 40, 1000);
-  const elapsed = Math.min(1000, now - previous.sampleAtMs);
-  const alpha = 1 - Math.exp(-elapsed / tau);
-  const blend = (before: number, after: number, low: number, high: number) =>
-    clamp(before + (after - before) * alpha, low, high);
-  return {
-    sampleAtMs: now,
-    expressionIntensity: blend(previous.expressionIntensity, bounded.expressionIntensity, 0, 1),
-    gazeX: blend(previous.gazeX, bounded.gazeX, -1, 1),
-    gazeY: blend(previous.gazeY, bounded.gazeY, -1, 1),
-    headTilt: blend(previous.headTilt, bounded.headTilt, -0.15, 0.15),
-    voiceEmphasis: blend(previous.voiceEmphasis, bounded.voiceEmphasis, 0, 1),
-  };
-}
-
 
 /**
  * Append a SpeechSynthesis boundary without admitting stale/out-of-order events.
