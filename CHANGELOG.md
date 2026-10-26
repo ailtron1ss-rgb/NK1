@@ -1,8 +1,8 @@
-# WorkPass351 — avoid orphaned learning-run scratch directories (2026-10-26)
+# WorkPass352 — protect host authority executable parent directories (2026-10-26)
 
-- [RELIABILITY] Validate inherited and explicit environment entries before creating per-run directories. Invalid supervisor configuration now fails without creating a scratch root.
-- [RELIABILITY] If trusted shadow-run registration rejects or cancellation is observed before process spawn, remove the newly allocated run directory before propagating the error. No process is started and no orphan scratch directory is left masquerading as an execution record.
-- [TEST] Extend `p23-learning-process-supervisor.mjs` with regression coverage for invalid environment configuration and a failed trusted-run registration. Successful/started runs still retain their receipt and evidence directories.
-- [CI] Dedicated WorkPass349 security workflow now also runs the supervisor cleanup regression. Run #40285085066 passed on SHA `0d1af65888b7d89fd3b0484bc2fbca8b9f369b9b`: native P23 dataset suite 10/10, supervisor regression PASS, and runtime `TYPECHECK=PASS`.
-- **Boundary:** this is pre-spawn filesystem cleanup; it does not claim that child processes are sandboxed or that the organism is production-ready.
+- [SECURITY] Host-owned executor/verifier/safety-scanner configuration now checks the canonical executable's parent directory is a directory and not group/world writable on POSIX. A non-writable executable file alone is insufficient when the directory entry can be replaced.
+- [SECURITY] The executable parent's filesystem identity (device/inode on POSIX, canonical path on Windows) is stored at preparation and revalidated immediately before each host authority dispatch. A replaced parent directory fails closed even if a new executable is placed at the old path.
+- [TEST] Added regressions for a read-only executable inside a writable parent and for replacing the parent directory after service construction.
+- [CI] WorkPass349 focused run #40285352614 passed on SHA `b9e0e90710e1380cac0ee57e1a0deaf74e214cf1`: native P23 provider suite 10/10, process-supervisor failure-cleanup regression, host-owned evaluator executable path/parent regressions, and runtime `TYPECHECK=PASS`.
+- **Boundary:** host-owned path integrity is defense in depth, not an OS sandbox. Deployment must still provide genuinely isolated executor/verifier/scanner binaries.
 
