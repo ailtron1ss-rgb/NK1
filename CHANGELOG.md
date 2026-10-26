@@ -1,3 +1,10 @@
+# WorkPass360 — bind whole-organism restart evidence to canonical MemoryOS2 (2026-10-26)
+
+- [TEST HARDENING] The WorkPass358 restart test no longer searches recursively across arbitrary snapshot values. It reads only `OrganismCore.snapshot().facets.advanced.memoryOS.items`, the canonical persisted MemoryOS2 owner, and requires the same marker-bearing item/ID before and after process restart.
+- [PURPOSE] Prevents unrelated journal, trace, compatibility projection, or diagnostic copies from satisfying the memory-continuity assertion by accident.
+- [VALIDATION] Focused workflow [#40291427381](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291427381) is running on the strict test head; do not mark WorkPass360 complete until the full-runtime restart assertion and typecheck both pass.
+- [LIMIT] This test validates persistence through the runtime-owned state files in a controlled fixture. It does not yet prove production-scale memory migrations, multi-store crash consistency, or memory retrieval quality uplift.
+
 # WorkPass359 — preserve action/goal attribution under executive arbitration (2026-10-26)
 
 - [RUNTIME BUG] A full `OrganismRuntime.step` could throw `RangeError: B272 outcome action must match the generated action` when the canonical decision/policy selected an action different from the endogenous B272 goal generator's proposed action.
