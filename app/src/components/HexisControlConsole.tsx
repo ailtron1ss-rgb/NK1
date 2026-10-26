@@ -42,7 +42,7 @@ export function HexisControlConsole() {
   const [policyWindowMs, setPolicyWindowMs] = useState("60000");
   const [confirmed, setConfirmed] = useState(false);
   const [stageId, setStageId] = useState("");
-  const [hmxIntent, setHmxIntent] = useState<"port" | "duplicate" | "telepathy" | "analysis">("port");
+  const [hmxIntent, setHmxIntent] = useState<"port" | "duplicate" | "telepathy" | "analysis">("telepathy");
   const [hmxStrategy, setHmxStrategy] = useState<"additive" | "authoritative" | "deliberative" | "analysis_only">("additive");
   const [hmxConfirmed, setHmxConfirmed] = useState(false);
   const [placement, setPlacement] = useState("local");
@@ -84,9 +84,9 @@ export function HexisControlConsole() {
 
   const exportHmx = async () => {
     const result = await run("Export HMX", () => neuroApi.hexisHmxExport());
-    const document = (result as any)?.document;
-    if (!document) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
+    const hmxDocument = (result as any)?.document;
+    if (!hmxDocument) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(hmxDocument, null, 2)], { type: "application/json" }));
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = "neuro-kurisu-hexis-hmx.json";
@@ -205,7 +205,10 @@ export function HexisControlConsole() {
           <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={retentionConfirmed} onChange={e => setRetentionConfirmed(e.target.checked)} /> I explicitly approve this memory-retention change.</label>
         </Panel>
 
-        <Panel title="Portable HMX" icon={<Download className="size-4" />}>
+        <Panel title="Portable HMX 1.7" icon={<Download className="size-4" />}>
+          <p className="mb-2 text-[11px] leading-relaxed text-muted">
+            NK1 currently exports a bounded memory-only HMX 1.7 document. To import regular memories, use telepathy + additive. Unknown or protected populated sections are rejected instead of silently dropped; other intent/strategy pairs stage as preview-only.
+          </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <select value={hmxIntent} onChange={e => setHmxIntent(e.target.value as typeof hmxIntent)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="port">port</option><option value="duplicate">duplicate</option><option value="telepathy">telepathy</option><option value="analysis">analysis</option></select>
             <select value={hmxStrategy} onChange={e => setHmxStrategy(e.target.value as typeof hmxStrategy)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="additive">additive</option><option value="authoritative">authoritative</option><option value="deliberative">deliberative</option><option value="analysis_only">analysis_only</option></select>
@@ -217,7 +220,7 @@ export function HexisControlConsole() {
             <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void run("Accept HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"))}>Accept staged</Button>
             <Button variant="outline" disabled={busy || !stageId} onClick={() => void run("Reject HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"))}>Reject</Button>
           </div>
-          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX import.</label>
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX operation after checking its conflicts, source and application mode.</label>
         </Panel>
 
         <Panel title="QuixiAI/Hexis remote peer" icon={<Radio className="size-4" />}>
