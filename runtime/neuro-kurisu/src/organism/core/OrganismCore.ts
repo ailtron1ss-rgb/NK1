@@ -11,7 +11,7 @@ import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvide
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
-import { FeedbackDeliveryGuard, type FeedbackDeliveryReceipt, type FeedbackDeliveryToken } from './FeedbackDeliveryGuard.ts';
+import type { FeedbackDeliveryReceipt, FeedbackDeliveryToken } from './FeedbackDeliveryGuard.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
@@ -1240,8 +1240,8 @@ export class OrganismCore {
     private b297FacadeCache = { identity01: .5, agency01: .5, budget01: .5, memoryPressure01: .2, embodimentCapacity01: .75 };
     private cognitiveCycleAnchors: Partial<Record<'observation' | 'prediction' | 'appraisal' | 'attention' | 'memory' | 'goal' | 'plan' | 'action', string>> = {};
     private persisted: PersistedOrganism = defaultPersisted();
-    /** Reject duplicate terminal feedback before it can mutate any learning subsystem. */
-    private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard();
+    /** Persistence runtime owns the durable feedback-replay barrier and its in-memory guard. */
+    private get feedbackDeliveryGuard() { return this.persistence.feedbackDeliveryGuard; }
     /** Small atomic sidecar keeps the replay barrier durable without forcing a full neural-state projection. */
     private readonly feedbackDeliveryReceiptStore: FileStateStore<FeedbackDeliveryReceipt> | null;
     private ready = false;
@@ -9545,11 +9545,23 @@ export class OrganismCore {
                     });
                 this.persisted.system.endogenousGoalGenesisB272 = b272Learner.snapshot();
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
+                const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;
+                const b273Learning = b273Current.plan.includes(trace.selected.action)
+                    ? b273Learner.learnFromOutcome({
+                        tick: state.tick, action: trace.selected.action, plan: b273Current.plan,
+                        reward01: gatedReward01, predictionError01: state.predictionError,
+                        independentGain01: b272IndependentGain,
+                        personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                    })
+                    : b273Learner.recordUnselectedAction({
+                        tick: state.tick, generatedAction: b273Current.action,
+                        selectedAction: trace.selected.action, plan: b273Current.plan,
+                    });
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
                 const b274CandidateId = b274Diag.activeCandidateId;
                 if (b274CandidateId) {
-                    const b274Trial = this.developmentalNeural.autonomousSkillLaboratoryB274.observeTrial({ tick: state.tick, candidateId: b274CandidateId, reward01: gatedReward01, independentGain01: b272IndependentGain, predictionError01: state.predictionError, personalityAlignment01: clamp(.5 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 6), selfAlignment01: clamp(p80FeedbackState.continuity01), worldNovelty01: state.needs.novelty, neuralReliability01: clamp(.45 + (this.developmentalNeural.spikingPlasticNeuralB269.snapshot().homeostaticError01 < .2 ? 0.45 : 0.35)), transferTestGain01: b272IndependentGain, robustness01: clamp(1 - state.predictionError) });
+                    const b274Trial = this.developmentalNeural.autonomousSkillLaboratoryB274.observeTrial({ tick: state.tick, candidateId: b274CandidateId, selectedAction: trace.selected.action, reward01: gatedReward01, independentGain01: b272IndependentGain, predictionError01: state.predictionError, personalityAlignment01: clamp(.5 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 6), selfAlignment01: clamp(p80FeedbackState.continuity01), worldNovelty01: state.needs.novelty, neuralReliability01: clamp(.45 + (this.developmentalNeural.spikingPlasticNeuralB269.snapshot().homeostaticError01 < .2 ? 0.45 : 0.35)), transferTestGain01: b272IndependentGain, robustness01: clamp(1 - state.predictionError) });
                     if (b274Trial.promoted && b274Trial.skillId && state.tick % 8 === 0) {
                         const goalNow = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                         this.developmentalNeural.autonomousSkillLaboratoryB274.promoteTransferred({ tick: state.tick, sourceSkillId: b274Trial.skillId, newGoalVector: goalNow.goal?.vector ?? b272GoalState.vector, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, neuralAssembly: this.developmentalNeural.spikingPlasticNeuralB269.snapshot().lastAssembly ?? [], independentGain01: b272IndependentGain, robustness01: clamp(1 - state.predictionError) });
@@ -9838,16 +9850,26 @@ export class OrganismCore {
                     });
                 this.persisted.system.endogenousGoalGenesisB272 = b338Learner.snapshot();
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    plan: b338Lifecycle.plan,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    independentGain01: b338IndependentGain,
-                    personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                });
+                const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;
+                if (b338Lifecycle.plan.includes(trace.selected.action)) {
+                    b273Learner.learnFromOutcome({
+                        tick: state.tick,
+                        action: trace.selected.action,
+                        plan: b338Lifecycle.plan,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        independentGain01: b338IndependentGain,
+                        personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                    });
+                } else {
+                    b273Learner.recordUnselectedAction({
+                        tick: state.tick,
+                        generatedAction: b338Lifecycle.action,
+                        selectedAction: trace.selected.action,
+                        plan: b338Lifecycle.plan,
+                    });
+                }
                 this.persisted.system.endogenousGoalGenesisB272 = this.developmentalNeural.endogenousGoalGenesisB272.snapshot();
                 this.persisted.system.autonomousGoalLifecycleB273 = this.developmentalNeural.autonomousGoalLifecycleB273.snapshot();
             }
