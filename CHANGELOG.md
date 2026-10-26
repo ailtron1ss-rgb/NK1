@@ -1,3 +1,12 @@
+## WorkPass380 — repair Hexis rollback regression and verify retry semantics (2026-10-26)
+
+- **Code/test commit:** `90f8b111d3e1d5b6b6e7b82f187eaf9ddb365e28` on `work/hexis-evidence-adapter-2026-10-26`.
+- **Fix:** removed stale test references to a nonexistent rollback target/evidence variable; assertions now query the canonical `MemoryOS2` record and verify the failed receipt, replay ID and source trail are absent.
+- **Regression strengthened:** after injecting a review-queue failure, restore the real review writer and retry the same evidence ID; it must become `review-pending`, proving the rollback did not strand it behind a duplicate receipt.
+- **Validation:** fresh exact-head typecheck and unified integration run are pending for this commit. The preceding run on `c3ab5b45d434768de9a1f153ff741d587d470bab` was still in progress at this checkpoint; no PASS claim, retrieval uplift, or production-readiness claim.
+- **Release discipline:** no `main` or canonical Release ZIP modification.
+
+---
 ## WorkPass379 — Make Hexis evidence-to-review ingress atomic (2026-10-26)
 
 - Snapshot canonical MemoryOS2 and Hexis review state before evidence append; if pending-review construction fails, restore both owners and return a stable rejection so retries cannot become stranded behind a duplicate evidence ID.
