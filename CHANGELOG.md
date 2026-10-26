@@ -10,6 +10,7 @@
 - Correct cross-family holdout-pair accounting: baseline/candidate rows with mismatched task families remain excluded and now increment `rejectedRows`; the regression asserts both the paired denominator and rejection count.
 - Reject invalid gate thresholds instead of silently clipping them; paired-task minimum must be an integer in range, and gain/regression thresholds must be finite values in `[0, 1]`.
 - Align the promotion-proposal regression with the strict contract: `NaN` thresholds are expected to throw instead of relying on implicit defaults.
+- Exercise exact valid threshold boundaries (`minPairedTasks=10`, zero tolerated family regression) so strict validation still accepts well-formed configurations at the edge of the documented range.
 
 Validation: code and regression tests are committed on the working branch. Local runtime tests were not run in this environment; CI results remain pending.
 
