@@ -257,7 +257,9 @@ export class CognitiveEventFabric {
         // serializers can evaluate nested getters, so neither is an admissible parser
         // for an untrusted restored event.
         const payloadRaw=payloadValue===undefined?{}:payloadValue;
-        const payload=clonePlainJsonData(payloadRaw) as Record<string,unknown>;
+        // Preserve the established contract: omit top-level payload accessors without invoking them,
+    // then strictly clone nested data. Nested accessors remain invalid and fail closed.
+    const payload=clonePlainJsonData(cleanPayload(payloadRaw)) as Record<string,unknown>;
         if(!isRecord(payload))continue;
         sha256Stable(payload);
         const node:CognitiveEventNode={
