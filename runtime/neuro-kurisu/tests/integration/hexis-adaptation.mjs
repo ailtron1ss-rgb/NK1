@@ -322,6 +322,121 @@ assert.equal(invalidReceiptAfter?.application, undefined,
 assert.equal(invalidReceiptHexis.snapshot().metrics.hmxApplied, invalidReceiptMetricBefore,
   'rejected receipts must not increment the applied metric');
 
+// Imported status is external metadata, not proof. Test every accepted lifecycle
+// label through the live canonical MemoryFabric and ensure only true beliefs enter
+// Hexis' active belief mirror. Imported confidence/authority is capped independently.
+const statusRuntime = new MemorySubsystemRuntime();
+const statusCases = [
+  ['active', 'belief'],
+  ['belief', 'belief'],
+  ['fact', 'belief'],
+  ['hypothesis', 'hypothesis'],
+  ['quarantined', 'quarantined'],
+  ['archived', 'quarantined'],
+  ['deleted', 'quarantined'],
+  ['rejected', 'quarantined'],
+  ['superseded', 'quarantined'],
+  ['unknown', 'unknown'],
+  ['future-upstream-status-v2', 'unknown'],
+  [undefined, 'unknown'],
+];
+for (let index = 0; index < statusCases.length; index++) {
+  const [sourceStatus, expectedStatus] = statusCases[index];
+  const exportId = 'exp_' + String(index + 1).padStart(16, '0');
+  const content = 'HMX status policy fixture ' + index + ' ' + String(sourceStatus ?? 'missing');
+  const statusFabric = new HexisAdaptationFabric();
+  const statusProjector = new HexisCanonicalMemoryProjector(statusRuntime.fabric, statusRuntime.semanticMemory, statusFabric);
+  statusFabric.bindCanonicalMemoryApply(stage => statusProjector.apply(stage));
+  const row = {
+    ref: exportId + ':status-memory',
+    type: 'semantic',
+    content,
+    trust_level: 0.99,
+    ...(sourceStatus === undefined ? {} : { status: sourceStatus }),
+  };
+  const staged = statusFabric.stageHmx({
+    document: makeHmxDocument(exportId, { memories: [row] }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert.deepEqual(staged.conflicts, [], 'well-formed status metadata should stage: ' + String(sourceStatus));
+  assert.equal(statusFabric.decideHmx(staged.stagingId, 'accept')?.status, 'accepted');
+  assert.equal(statusFabric.decideHmx(staged.stagingId, 'apply')?.status, 'applied');
+  const imported = statusRuntime.fabric.canonicalSnapshot().items.find(item => item.content === content);
+  assert(imported, 'status fixture should be stored in canonical memory');
+  assert.equal(imported.epistemicStatus, expectedStatus, 'status mapping: ' + String(sourceStatus));
+  assert.equal(imported.context?.hexisOriginalStatus, sourceStatus ?? 'unknown',
+    'original upstream status remains visible for inspection');
+  assert.equal(imported.context?.hexisAppliedAuthorityCap, '0.65');
+  assert(Number(imported.sourceAuthority01) <= 0.65, 'untrusted upstream cannot set canonical authority above the cap');
+  assert.equal(statusFabric.snapshot().beliefs.some(belief => belief.memoryId === imported.id),
+    expectedStatus === 'belief',
+    'only active beliefs may populate the Hexis belief mirror');
+  assert.equal(
+    statusRuntime.semanticMemory.snapshot().nodes.some(node => node.sourceKey === imported.context?.hexisGraphSourceKey),
+    expectedStatus === 'belief' || expectedStatus === 'hypothesis',
+    'unknown/quarantined imports must not populate the active semantic graph',
+  );
+}
+
+// A re-export may demote the same memory, but an active-looking later export must
+// never resurrect a source that was already archived/quarantined.
+const transitionRuntime = new MemorySubsystemRuntime();
+const transitionLedger = new HexisAdaptationFabric();
+const transitionProjector = new HexisCanonicalMemoryProjector(
+  transitionRuntime.fabric, transitionRuntime.semanticMemory, transitionLedger,
+);
+transitionLedger.bindCanonicalMemoryApply(stage => transitionProjector.apply(stage));
+const transitionContent = 'Same source memory whose upstream lifecycle changes.';
+const applyTransition = (exportId, status) => {
+  const stage = transitionLedger.stageHmx({
+    document: makeHmxDocument(exportId, {
+      memories: [{ ref: exportId + ':same-memory', type: 'semantic', content: transitionContent, status }],
+    }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert.deepEqual(stage.conflicts, []);
+  assert.equal(transitionLedger.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
+  assert.equal(transitionLedger.decideHmx(stage.stagingId, 'apply')?.status, 'applied');
+};
+applyTransition('exp_0000000000009001', 'active');
+const beforeArchive = transitionRuntime.fabric.canonicalSnapshot().items.find(item => item.content === transitionContent);
+assert.equal(beforeArchive?.epistemicStatus, 'belief');
+assert(transitionLedger.snapshot().beliefs.some(belief => belief.memoryId === beforeArchive.id));
+assert(transitionRuntime.semanticMemory.snapshot().nodes.some(node => node.sourceKey === beforeArchive.context?.hexisGraphSourceKey));
+applyTransition('exp_0000000000009002', 'archived');
+const afterArchive = transitionRuntime.fabric.canonicalSnapshot().items.find(item => item.content === transitionContent);
+assert.equal(afterArchive?.id, beforeArchive?.id, 'status changes must not duplicate canonical memory');
+assert.equal(afterArchive?.epistemicStatus, 'quarantined', 'archiving must demote the canonical memory');
+assert.equal(transitionLedger.snapshot().beliefs.some(belief => belief.memoryId === afterArchive.id), false,
+  'archived memory must leave the active belief mirror');
+assert.equal(transitionRuntime.semanticMemory.snapshot().nodes.some(node => node.sourceKey === afterArchive.context?.hexisGraphSourceKey), false,
+  'archived memory must leave the active semantic graph');
+applyTransition('exp_0000000000009003', 'active');
+const afterReimport = transitionRuntime.fabric.canonicalSnapshot().items.find(item => item.content === transitionContent);
+assert.equal(afterReimport?.id, beforeArchive?.id);
+assert.equal(afterReimport?.epistemicStatus, 'quarantined',
+  'a later active-looking export must not silently reactivate quarantined memory');
+assert.equal(transitionLedger.snapshot().beliefs.some(belief => belief.memoryId === afterReimport.id), false);
+
+// Malformed status values must fail staging rather than being silently coerced.
+for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
+  const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
+  const malformedFabric = new HexisAdaptationFabric();
+  const malformedStage = malformedFabric.stageHmx({
+    document: makeHmxDocument(exportId, {
+      memories: [{ ref: exportId + ':invalid-status', type: 'semantic', content: 'Invalid status fixture.', status: invalidStatus }],
+    }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert(malformedStage.conflicts.some(conflict => conflict.path === 'sections.memories[0].status'),
+    'malformed status must be a schema conflict: ' + typeof invalidStatus);
+  assert.equal(malformedFabric.decideHmx(malformedStage.stagingId, 'accept')?.status, 'staged',
+    'malformed status must not be accepted');
+}
+
 // Analysis and authoritative strategies are reviewable, but the current projector
 // only implements additive port semantics and must reject writes from other strategies.
 for (const [exportId, intent, strategy] of [
