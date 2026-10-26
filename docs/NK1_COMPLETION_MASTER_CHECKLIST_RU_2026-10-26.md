@@ -350,6 +350,21 @@
 - [ ] P14. Сценарий: удаление пользовательских данных отражается в retrieval, snapshots, cache и дальнейших ответах.
 - [ ] P15. Критерий: все сценарии работают на конечной собранной версии, с receipt/log/benchmark доказательствами, а не только unit mocks.
 
+
+## Дополнение после проверки фактического runtime wiring (2026-10-26)
+Проверка исходников обнаружила, что `HexisEvidenceMemoryBridge.ts` экспортирует ingress/review API и тестируется отдельно, но в активном `runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts` на проверенном HEAD нет его импорта/вызова и нет импорта `MemoryOS2`. Поэтому модульная интеграция пока не доказывает интеграцию с работающим организмом.
+
+- [ ] E21. Определить реальный активный владелец памяти в `OrganismRuntime/OrganismCore` и доказать, как он соотносится с `MemoryOS2`; не объявлять MemoryOS2 каноническим для runtime без реального call path.
+- [ ] E22. Выбрать единственный правильный runtime ingress для внешнего/Hexis evidence; подключить адаптер через существующие event/permission boundaries, а не прямой UI/HTTP обход.
+- [ ] E23. Передавать canonical memory ID, source, digest, stance, observation time, independence key и review IDs из runtime-контекста, исключив caller-controlled provenance.
+- [ ] E24. Подключить реальное сохранение/восстановление памяти, Hexis review, approvals и audit state к жизненному циклу production runtime.
+- [ ] E25. Добавить end-to-end тест, который запускает runtime, импортирует evidence, подтверждает pending review, перезапускает процесс, восстанавливает review и принимает решение без повторной записи evidence.
+- [ ] E26. Сделать аварийный тест с SIGKILL между canonical evidence append и review creation; in-process try/catch rollback не считается crash atomicity. Нужен durable transaction/outbox либо согласованный recovery/reconciliation protocol.
+- [ ] E27. Проверить поведение при повторном событии после сбоя: pending review обнаруживается/восстанавливается, а не теряется за статусом duplicate.
+- [ ] E28. Проверить реальную runtime memory API совместимость и миграцию существующих пользователей до подключения нового store; запрещено незаметно вводить второй writable memory owner.
+- [ ] E29. Обновить architecture graph и runtime integration suite так, чтобы он падал, если Hexis API существует, но не подключён к активному runtime path.
+- [ ] E30. Критерий: Hexis evidence-to-review подтверждён в живом runtime после restart/process-kill, и его state ownership однозначен.
+
 ## Definition of Done — жёсткие финальные ворота
 1. Один канонический source SHA и чистая install.
 2. Production build и миграции/restore/rollback пройдены.
