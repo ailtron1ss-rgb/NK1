@@ -69,7 +69,7 @@ const itemId = item.id;
 const correctionText = 'The   corrected canonical fact.';
 const correctionOptions = {
   reason: 'hexis-learning-review-correction',
-  source: 'hexis-learning-review',
+  source: `hexis-learning-review:${reviewId}:${itemId}`,
   confidence: original.confidence,
 };
 const correctionCommandId = 'hexis-review-correction:fixture-' + reviewId + '-' + itemId;
@@ -162,7 +162,7 @@ assert.ok(body.includes("review-source-memory-superseded"), 'stale reviews must 
 assert.ok(body.includes('expectedGroupRows.length'), 'an absent reviewed row must not be mistaken for a completed forget while its revision chain remains');
 assert.ok(body.includes('const recoveredCorrection = Boolean('), 'a correction committed before review closure must be recognized on retry');
 assert.ok(body.includes("memory.supersedesId === requestedMemory.id"), 'the recovered correction must directly supersede the exact reviewed row');
-assert.ok(body.includes("memory.source === 'hexis-learning-review'"), 'only a revision attributable to this workflow is eligible for correction recovery');
+assert.ok(body.includes("memory.source === `hexis-learning-review:${reviewId}:${itemId}`"), 'only a revision attributable to this workflow is eligible for correction recovery');
 assert.ok(body.includes("memory.content === canonicalizeMemoryContent(String(correction ?? ''))"), 'recovery must match the canonicalized requested corrected text');
 assert.ok(body.includes('hexis-review-correction:'), 'correction mutations must use a stable lifecycle command ID');
 assert.ok(body.includes('!recoveredCorrection'), 'other stale review revisions remain rejected');
