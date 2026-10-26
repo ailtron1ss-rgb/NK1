@@ -380,7 +380,7 @@ export class HexisAdaptationFabric {
             exportId: String(document.export_id ?? randomUUID()),
             intent: input.intent,
             strategy: input.strategy,
-            sourceSubjectId: String(source.hexis_lineage_id ?? source.instance_id ?? document.source_subject_id ?? '') || undefined,
+            sourceSubjectId: String(source.hexis_lineage_id ?? source.instance_id ?? document.source_subject_id ?? '').slice(0, 180) || undefined,
             sectionCounts,
             protectedSections: names.filter((name) => protectedSections.has(name)),
             conflicts,
@@ -403,7 +403,7 @@ export class HexisAdaptationFabric {
             },
         };
         this.state.hmxStages.push(stage);
-        this.state.hmxStages = this.state.hmxStages.slice(-32);
+        this.state.hmxStages = this.state.hmxStages.slice(-8);
         this.state.metrics.hmxStaged += 1;
         return structuredClone(stage);
     }
