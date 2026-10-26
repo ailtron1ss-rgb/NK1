@@ -2957,6 +2957,7 @@ export class OrganismCore {
                     sourceAuthority01: projected.sourceAuthority01,
                     independenceKey: projected.independenceKey,
                     evidenceFreshnessAt: projected.evidenceFreshnessAt,
+                    ...(projected.createdAt !== undefined ? { createdAt: projected.createdAt } : {}),
                     validFromAt: projected.validFromAt,
                     validUntilAt: projected.validUntilAt,
                     observedAt: projected.observedAt,
