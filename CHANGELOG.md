@@ -1,3 +1,14 @@
+# WorkPass370 — transactional writes for the canonical cognitive kernel (2026-10-26)
+
+- [FIXED] Run all eight `beginDecisionCycle()` appends inside one synchronous CEF ledger transaction; a late event conflict/append failure rolls back earlier decision stages.
+- [FIXED] Run outcome/learning/self-update appends and unified-cycle evaluation transactionally; if any step fails, CEF nodes/counter/index and the `UnifiedCognitiveCycle` aggregate snapshot both return to their pre-completion states.
+- [API] Expose `withAtomicLedgerTransaction()` for synchronous in-process kernel orchestration and reject Promise/thenable callbacks so no transaction is silently committed before awaited work finishes.
+- [REGRESSION] Inject failures on the fourth decision append and second completion append; assert complete rollback, unchanged cycle counters, and a subsequent successful retry with no duplicates.
+- [VALIDATION] Exact-head CI is required; this entry records implementation, not a test PASS.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass369 — atomic operational cognitive-cycle writes (2026-10-26)
 
 - [CI-DRIVEN FIX] First canonical-kernel run passed runtime typecheck but stopped on an incorrect test regex: the implementation correctly reports `operational-cycle-phase-input-field-accessor:confidence01`. Updated the assertion to the exact error contract; a fresh exact-head workflow is required.
