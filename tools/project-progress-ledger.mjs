@@ -17,7 +17,7 @@ export function validateProjectProgressLedger(value) {
     return ['ledger-must-be-an-object'];
   }
   if (value.schemaVersion !== 1) issues.push('schema-version-must-be-1');
-  if (typeof value.snapshotDate !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value.snapshotDate)) {
+  if (typeof value.snapshotDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.snapshotDate)) {
     issues.push('snapshot-date-must-be-iso-date');
   }
   if (!value.methodology || typeof value.methodology.note !== 'string' ||
@@ -77,7 +77,7 @@ export function validateProjectProgressLedger(value) {
         continue;
       }
       if (!ALLOWED_CI_STATUS.has(check.status)) issues.push('ci-check-' + index + '-status-invalid');
-      if (typeof check.runUrl !== 'string' || !/^https:\/\/github\\.com\//.test(check.runUrl)) {
+      if (typeof check.runUrl !== 'string' || !/^https:\/\/github\.com\//.test(check.runUrl)) {
         issues.push('ci-check-' + index + '-run-url-invalid');
       }
     }
@@ -133,7 +133,7 @@ async function main() {
   const ledger = JSON.parse(raw);
   const issues = validateProjectProgressLedger(ledger);
   if (issues.length) {
-    process.stderr.write(JSON.stringify({ marker: 'NK1_PROJECT_PROGRESS_LEDGER=FAIL', issues }, null, 2) + '\\n');
+    process.stderr.write(JSON.stringify({ marker: 'NK1_PROJECT_PROGRESS_LEDGER=FAIL', issues }, null, 2) + '\n');
     process.exitCode = 1;
     return;
   }
