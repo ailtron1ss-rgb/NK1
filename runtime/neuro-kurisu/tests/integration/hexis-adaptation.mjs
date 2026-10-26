@@ -29,6 +29,7 @@ const rolledBack = applyHmxMemoryBatchAtomically(transactionPorts, [
 ], ['existing']);
 assert.equal(rolledBack.outcome, 'rolled-back');
 assert.equal(rolledBack.created, 0);
+assert.deepEqual(rolledBack.createdIds, [], 'rolled-back record IDs must not be exposed as committed events');
 assert.deepEqual(transactionItems, [{ id: 'existing' }]);
 assert.deepEqual(transactionReceipts, ['before']);
 
@@ -50,6 +51,7 @@ const committed = applyHmxMemoryBatchAtomically({
 assert.equal(committed.outcome, 'committed');
 assert.equal(committed.created, 1);
 assert.equal(committed.reused, 1);
+assert.deepEqual(committed.createdIds, ['new-one'], 'only committed new IDs may feed the batch audit event');
 assert(transactionItems.some(row => row.id === 'new-one'));
 
 let incompleteItems = [];
@@ -72,6 +74,7 @@ const rollbackIncomplete = applyHmxMemoryBatchAtomically({
 assert.equal(rollbackIncomplete.outcome, 'rollback-incomplete');
 assert.equal(rollbackIncomplete.reason, 'rollback-failed');
 assert.equal(rollbackIncomplete.created, 1, 'incomplete rollback must not be reported as a clean skip');
+assert.deepEqual(rollbackIncomplete.createdIds, ['survived-uncertainly'], 'incomplete rollback exposes potentially surviving IDs only with rollback-incomplete status');
 
 
 const first = fabric.reviseBelief({ memoryId:'mem-1', confidence01:.5, trust01:.6, stance:'supports', evidence:{ref:'source-a',trust01:.9}, context:'test' });
