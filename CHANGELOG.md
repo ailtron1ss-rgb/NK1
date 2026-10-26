@@ -1,3 +1,11 @@
+## NK1 full branch/file census — 2026-10-26
+
+- Added `docs/NK1_FULL_BRANCH_FILE_AUDIT_2026-10-26.md` with the source-stack baseline, branch-tree SHA deltas, CI linkage findings, active integration risks and a safe merge plan.
+- Recorded the critical finding that `main` and PR #90's head do not contain the runtime source stack, and that 82 historical branch names in the observed snapshot alias one old commit rather than 82 distinct implementations.
+- The report distinguishes recursive tree/path/blob-SHA census from a line-by-line review of every file, and marks still-running validation as pending rather than green.
+
+---
+
 ## P26 replay stability — cap rehearsal relative to fresh learning (2026-10-26)
 
 - The multi-seed policy sweep exposed a plasticity regression in the initial interleaved replay implementation: on the stride-1 schedule the replay-attempt budget could allow one historical sample for every current-task sample, despite the intended replay cadence.
