@@ -14,6 +14,8 @@ test('root launchers resolve the runtime server from its owning workspace', () =
 
   const startSource = readFileSync(new URL('./super-start.mjs', import.meta.url), 'utf8');
   assert.match(startSource, /ensureUiBuilt\(ROOT\)/, 'production launcher must materialize a missing frontend build before preview starts');
+  assert.match(startSource, /launch\('ui-preview', 'npm', \['--prefix', 'app', 'run', 'preview'\]\)/, 'launcher must preview the built UI only after the UI preflight');
+  assert.ok(startSource.indexOf('ensureUiBuilt(ROOT)') < startSource.indexOf("launch('ui-preview'"), 'UI preflight must run before preview is spawned');
 
   for (const launcher of ['super-start.mjs', 'super-dev.mjs']) {
     const source = readFileSync(new URL(`./${launcher}`, import.meta.url), 'utf8');
