@@ -16,17 +16,17 @@
 - Actions outside the generated plan are retained as bounded unselected-candidate evidence without goal progress, skill updates or rewarded outcome-history writes. A skill prototype is only created or reinforced when the plan's primary action was actually selected; a selected secondary plan alternative may contribute to goal progress but cannot be mislabeled as execution of the primary plan.
 - Focused run [#40256370655](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256370655) passed all steps: B273 lifecycle, persisted-state migration, Core integration, B272/B273 attribution, cognitive graph continuity and routing connection. PR [#158](https://github.com/ailtron1ss-rgb/NK1/pull/158) was squash-merged into this audit branch (merge commit `f3134a8ded0e1126a18fd57152ead8d1943c62f2`).
 
-## Clean-startup trigger contract — 2026-10-26
-
-- Expanded both pull-request and work-branch push path filters so the full clean-install/build/live-stack smoke reruns when gateway routing/forwarded-origin logic, supervisor preflight/exit policy, the Node/npm toolchain contract, the runtime compiler wrapper, or their critical regressions change.
-- Added `tools/clean-startup-workflow-contract.test.mjs` to require those critical paths in both event filters and to preserve manual dispatch. Wired it into `audit:quick` and the Node 24 toolchain workflow.
-- Baseline validation immediately before this trigger-only change passed on `df05dc79a74f1ac65789d9169cf3b0d0bbad6ec5`: WorkPass110, P26 learning validation, host-owned independent evaluation, and clean install/build/typecheck/organism smoke/full supervised stack endpoint smoke all completed successfully. The new trigger-contract workflow run is still required for this follow-on commit.
-
 ## Spine-only feedback crash recovery — 2026-10-26
 
 - The spine-only observation loop now detects a durable receipt at the current/ahead tick before retrying feedback, records a `feedback-recovery` decision event, discards the ambiguous reward, and continues advancing the cognitive tick.
 - Prevented a discarded outcome from being attached to the next selected action. Invalid receipts also suppress unsafe learning without freezing the spine-only cycle.
 - Verified by focused Repository wiring contract audit [#40255940523](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255940523): all workflow steps succeeded. PR [#157](https://github.com/ailtron1ss-rgb/NK1/pull/157) squash-merged into the audit branch (merge commit `a3e8119113be6493507b31a0ac49afeab59c150b`).
+
+## Clean-startup trigger contract — 2026-10-26
+
+- Expanded both pull-request and work-branch push path filters so the full clean-install/build/live-stack smoke reruns when gateway routing/forwarded-origin logic, supervisor preflight/exit policy, the Node/npm toolchain contract, the runtime compiler wrapper, or their critical regressions change.
+- Added `tools/clean-startup-workflow-contract.test.mjs` to require those critical paths in both event filters and to preserve manual dispatch. Wired it into `audit:quick` and the Node 24 toolchain workflow.
+- Baseline validation immediately before this trigger-only change passed on `df05dc79a74f1ac65789d9169cf3b0d0bbad6ec5`: WorkPass110, P26 learning validation, host-owned independent evaluation, and clean install/build/typecheck/organism smoke/full supervised stack endpoint smoke all completed successfully. The new trigger-contract workflow run is still required for this follow-on commit.
 
 ## UI build diagnostic test contract — 2026-10-26
 
