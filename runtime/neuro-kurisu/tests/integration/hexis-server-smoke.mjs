@@ -29,6 +29,20 @@ try {
   const peerConsultResponse = await post('/api/organism/integration/hexis/peer/consult', { question: 'This must not be sent to any remote peer.', confirmExternalConsult: true });
   const peerConsult = await peerConsultResponse.json();
   if (peerConsultResponse.status !== 503 || peerConsult.error !== 'hexis-remote-disabled' || peerConsult.nk1StateChanged !== false) throw new Error('hexis-peer-disabled-consult');
+  const nullBodyCases = [
+    ['/api/organism/integration/hexis/reviews/decide', 'hexis-review-null-body'],
+    ['/api/organism/integration/hexis/retention/propose', 'hexis-retention-null-body'],
+    ['/api/organism/integration/hexis/hmx/stage', 'hexis-hmx-stage-null-body'],
+    ['/api/organism/integration/hexis/hmx/decide', 'hexis-hmx-decide-null-body'],
+  ];
+  for (const [route, label] of nullBodyCases) {
+    const response = await post(route, null);
+    const result = await response.json();
+    if (response.status !== 400 || result.error !== 'hexis-invalid-request-body') {
+      throw new Error(label + ': expected HTTP 400 for JSON null body');
+    }
+  }
+
   const invalidReviewDecisionResponse = await post('/api/organism/integration/hexis/reviews/decide', {
     reviewId: 'must-not-be-read-or-mutated',
     itemId: 'must-not-be-read-or-mutated',
