@@ -67,6 +67,17 @@ tamperedPayloadStage.stagedSections.memories = [{ ref: stage.exportId + ':tamper
 assert.throws(() => projector.apply(tamperedPayloadStage), /hmx-stage-digest-invalid/);
 assert.equal(writes, 0, 'tampered stage payload must be rejected before canonical storage is touched');
 
+// A completed stage cannot be downgraded to "accepted" while retaining its
+// application receipt; doing so would bypass the no-write replay path.
+const downgradedAppliedStage = structuredClone(stage);
+downgradedAppliedStage.status = 'accepted';
+assert.throws(
+  () => projector.apply(downgradedAppliedStage),
+  /hmx-stage-digest-invalid/,
+  'a persisted application receipt and an accepted lifecycle state are inconsistent',
+);
+assert.equal(writes, 0, 'lifecycle tampering must be rejected before canonical storage is touched');
+
 // A receipt copied from another stage must not be accepted as the result of this stage.
 assert.throws(
   () => projector.apply({ ...stage, application: makeReceipt({ stageId: 'some-other-stage' }) }),
@@ -82,7 +93,7 @@ assert.throws(
 );
 assert.throws(
   () => projector.apply({ ...stage, status: 'pending' }),
-  /hmx-stage-must-be-accepted-before-apply/,
+  /hmx-stage-digest-invalid/,
 );
 assert.equal(writes, 0);
 
