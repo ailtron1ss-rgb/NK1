@@ -189,7 +189,7 @@ const snapshotOwnDataFields=(value:unknown,fields:readonly string[],context:stri
 };
 const hasCanonicalBoundedText=(value:unknown,maxLength:number,allowEmpty=false):value is string=>
   typeof value==='string'&&value.length<=maxLength&&value===value.trim()&&
-  (allowEmpty||value.length>0)&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
+  (allowEmpty||value.length>0)&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 const isSha256Hex=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/i.test(value);
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
