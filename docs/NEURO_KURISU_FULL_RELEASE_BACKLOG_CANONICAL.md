@@ -1,3 +1,17 @@
+## WorkPass352 — host authority executable parent integrity (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code/workflow SHA:** `b9e0e90710e1380cac0ee57e1a0deaf74e214cf1`.
+
+- [x] Reject host-owned executor/verifier/scanner executable files whose parent directory is group/world writable on POSIX.
+- [x] Bind parent directory device/inode identity during preparation and re-check it before each dispatch.
+- [x] Add regressions for writable executable parent and parent replacement after service construction.
+- [x] Dedicated WorkPass349 workflow #40285352614 passed: native P23 dataset tests 10/10, supervisor cleanup regression, host-owned executor path regressions, runtime `TYPECHECK=PASS`.
+- [ ] Re-validate broad release gates on the latest PR head; deployment isolation, restart/retrieval, organism smoke, browser/Live2D and Android/Termux E2E, long soak and license checks remain open.
+- **Status:** executable-directory integrity fix is committed and CI-validated; no claim of production readiness.
+
+---
+
 ## WorkPass351 — pre-spawn learning process failure cleanup (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
