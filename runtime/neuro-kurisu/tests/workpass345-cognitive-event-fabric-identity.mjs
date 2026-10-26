@@ -107,6 +107,58 @@ assert.throws(() => fabric.append(makeEvent({
 assert.equal(fabric.snapshot().total, beforeInvalidPayload);
 assert.equal(fabric.snapshot().recent.some(event => event.id === 'cef:test:identity:cyclic'), false);
 
+// Identity fields must not be silently truncated, because truncation can disguise
+// conflicting evidence as an exact replay of an existing stable event ID.
+const boundedSource='s'.repeat(120);
+const boundedSourceEvent=fabric.append(makeEvent({
+  id:'cef:test:identity:source-boundary',
+  source:boundedSource,
+}));
+const afterBoundedSource=fabric.snapshot().total;
+assert.equal(boundedSourceEvent.source.length,120);
+assert.throws(
+  ()=>fabric.append(makeEvent({
+    id:boundedSourceEvent.id,
+    source:boundedSource+'different-suffix',
+  })),
+  /invalid-cognitive-event-source/,
+  'oversized source must be rejected instead of truncated into a matching replay',
+);
+assert.equal(fabric.snapshot().total,afterBoundedSource);
+
+const boundedParent='p'.repeat(180);
+const boundedParentEvent=fabric.append(makeEvent({
+  id:'cef:test:identity:parent-boundary',
+  parentIds:[boundedParent],
+}));
+const afterBoundedParent=fabric.snapshot().total;
+assert.equal(boundedParentEvent.parentIds[0].length,180);
+assert.throws(
+  ()=>fabric.append(makeEvent({
+    id:boundedParentEvent.id,
+    parentIds:[boundedParent+'different-suffix'],
+  })),
+  /invalid-cognitive-event-parent-id/,
+  'oversized parent IDs must be rejected instead of truncated into a matching replay',
+);
+assert.equal(fabric.snapshot().total,afterBoundedParent);
+
+const beforeTooManyParents=fabric.snapshot().total;
+assert.throws(
+  ()=>fabric.append(makeEvent({
+    id:'cef:test:identity:too-many-parents',
+    parentIds:Array.from({length:13},(_,index)=>`parent:${index}`),
+  })),
+  /invalid-cognitive-event-parent-count/,
+);
+assert.equal(fabric.snapshot().total,beforeTooManyParents,'parent-count overflow must not mutate the ledger');
+
+const acceptedMaximumParents=fabric.append(makeEvent({
+  id:'cef:test:identity:max-parents',
+  parentIds:Array.from({length:12},(_,index)=>`parent:${index}`),
+}));
+assert.equal(acceptedMaximumParents.parentIds.length,12);
+
 
  // Event identity must cover the normalized causal envelope and reject invalid clocks.
  assert.equal(new CognitiveEventFabric(Number.NaN).snapshot().capacity,512);
