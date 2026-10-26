@@ -1253,5 +1253,94 @@ assert.equal(ingressSuccessfulCompletion.completionRecorded,true);
 assert.equal(ingressFabric.snapshot().total,11,
   'failed ingress attempts leave no partial records; the valid decision+completion contains eleven events');
 console.log('WorkPass371 canonical kernel ingress boundary: PASS');
+
+// WorkPass372: UnifiedCognitiveCycle restore/evaluate must read own data fields only.
+const unifiedIngressCycle=new UnifiedCognitiveCycle();
+const unifiedValidIds={
+  observation:'unified:observation',prediction:'unified:prediction',action:'unified:action',
+  outcome:'unified:outcome',learning:'unified:learning','self-update':'unified:self-update',
+};
+unifiedIngressCycle.evaluate({tick:0,stageIds:unifiedValidIds,parentIntegrity01:1});
+const unifiedIngressBefore=unifiedIngressCycle.snapshot();
+
+let restoreCyclesGetterExecuted=false;
+const accessorCycleState={
+  version:1,completeCycles:1,incompleteCycles:0,brokenLineages:0,
+  meanStageCoverage01:1,meanCausalContinuity01:1,lastTick:0,lastComplete:true,
+  lastMissingStages:[],
+};
+Object.defineProperty(accessorCycleState,'cycles',{
+  enumerable:true,
+  get(){restoreCyclesGetterExecuted=true;throw new Error('cycle restore getter must not execute');},
+});
+assert.throws(()=>unifiedIngressCycle.restore(accessorCycleState),
+  /cognitive-cycle-state-field-accessor:cycles/);
+assert.equal(restoreCyclesGetterExecuted,false,'persisted cycle state accessors must not execute');
+assert.deepEqual(unifiedIngressCycle.snapshot(),unifiedIngressBefore,
+  'failed restore must preserve the previous aggregate cycle state');
+
+let missingStageArrayGetterExecuted=false;
+const accessorMissingStages=[];
+Object.defineProperty(accessorMissingStages,'0',{
+  enumerable:true,configurable:true,
+  get(){missingStageArrayGetterExecuted=true;throw new Error('missing-stage element getter must not execute');},
+});
+accessorMissingStages.length=1;
+assert.throws(()=>unifiedIngressCycle.restore({
+  version:1,cycles:1,completeCycles:1,incompleteCycles:0,brokenLineages:0,
+  meanStageCoverage01:1,meanCausalContinuity01:1,lastTick:0,lastComplete:true,
+  lastMissingStages:accessorMissingStages,
+}),/cognitive-cycle-last-missing-stages-array-element-accessor:0/);
+assert.equal(missingStageArrayGetterExecuted,false,'persisted missing-stage array getters must not execute');
+assert.deepEqual(unifiedIngressCycle.snapshot(),unifiedIngressBefore,
+  'failed array projection must not partly replace aggregate state');
+
+assert.throws(()=>unifiedIngressCycle.restore({
+  version:undefined,cycles:1,completeCycles:1,incompleteCycles:0,brokenLineages:0,
+  meanStageCoverage01:1,meanCausalContinuity01:1,lastTick:0,lastComplete:true,lastMissingStages:[],
+}),/unsupported cognitive-cycle state version/,
+'present undefined schema version must not be treated as a missing legacy version');
+assert.deepEqual(unifiedIngressCycle.snapshot(),unifiedIngressBefore);
+
+let evaluateTickGetterExecuted=false;
+const accessorEvaluationInput={stageIds:unifiedValidIds,parentIntegrity01:1};
+Object.defineProperty(accessorEvaluationInput,'tick',{
+  enumerable:true,
+  get(){evaluateTickGetterExecuted=true;throw new Error('cycle evaluation tick getter must not execute');},
+});
+assert.throws(()=>unifiedIngressCycle.evaluate(accessorEvaluationInput),
+  /cognitive-cycle-evaluation-input-field-accessor:tick/);
+assert.equal(evaluateTickGetterExecuted,false,'cycle evaluation root getters must not execute');
+assert.deepEqual(unifiedIngressCycle.snapshot(),unifiedIngressBefore);
+
+let stageIdsGetterExecuted=false;
+const accessorStageIds={...unifiedValidIds};
+Object.defineProperty(accessorStageIds,'action',{
+  enumerable:true,
+  get(){stageIdsGetterExecuted=true;throw new Error('stage ID getter must not execute');},
+});
+assert.throws(()=>unifiedIngressCycle.evaluate({tick:1,stageIds:accessorStageIds,parentIntegrity01:1}),
+  /cognitive-cycle-stage-ids-field-accessor:action/);
+assert.equal(stageIdsGetterExecuted,false,'individual stage ID getters must not execute');
+assert.deepEqual(unifiedIngressCycle.snapshot(),unifiedIngressBefore);
+
+let parentIntegrityGetterExecuted=false;
+const accessorIntegrityInput={tick:1,stageIds:unifiedValidIds};
+Object.defineProperty(accessorIntegrityInput,'parentIntegrity01',{
+  enumerable:true,
+  get(){parentIntegrityGetterExecuted=true;throw new Error('parent integrity getter must not execute');},
+});
+assert.throws(()=>unifiedIngressCycle.evaluate(accessorIntegrityInput),
+  /cognitive-cycle-evaluation-input-field-accessor:parentIntegrity01/);
+assert.equal(parentIntegrityGetterExecuted,false,'parent integrity accessors must not execute');
+assert.deepEqual(unifiedIngressCycle.snapshot(),unifiedIngressBefore);
+
+const validUnifiedRestore=new UnifiedCognitiveCycle();
+validUnifiedRestore.restore(unifiedIngressBefore);
+assert.deepEqual(validUnifiedRestore.snapshot(),unifiedIngressBefore,
+  'descriptor-safe ingress must preserve valid persisted unified-cycle state');
+assert.equal(validUnifiedRestore.evaluate({tick:1,stageIds:unifiedValidIds,parentIntegrity01:1}).complete,true);
+assert.equal(validUnifiedRestore.snapshot().cycles,2);
+console.log('WorkPass372 unified cycle accessor-safe ingress: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
