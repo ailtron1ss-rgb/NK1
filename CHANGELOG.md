@@ -1,11 +1,11 @@
 ## WorkPass344 — verified-outcome ledger and promotion-policy trust boundary (2026-10-26)
 
-- Ledger manifest/outcome/snapshot inputs are read via own data descriptors, so caller getters are not invoked; unknown fields are not copied into trusted rows; sparse arrays and array subclasses fail closed.
-- Signed outcome ingestion reuses the canonical manifest snapshot for task lookup rather than dereferencing caller-owned arrays after fingerprint validation.
+- Ledger manifest/outcome/snapshot inputs use own data descriptors, so caller getters are not invoked; unknown fields are not copied into trusted rows; sparse arrays and array subclasses fail closed.
+- Signed outcome ingestion reuses the canonical manifest snapshot for task lookup instead of dereferencing caller-owned arrays after fingerprint validation.
 - The real promotion proposal producer rejects non-finite/out-of-range thresholds and malformed/accessor-backed options instead of clamping invalid policy.
-- Regressions cover malformed signed Base64, payload/envelope getters and extra fields, ledger getters, sparse arrays/subclasses, snapshot restore, option getters, and invalid promotion policy.
-- Exact combined-head CI is pending after the latest TypeScript syntax correction. Earlier failed runs on old HEAD are not treated as validation.
-- Progress scores remain unchanged; no empirical learning/transfer uplift or production-readiness claim is made.
+- Regressions cover malformed signed Base64, payload/envelope getters and extra fields, ledger getters, sparse arrays/subclasses, snapshot restore and strict promotion policy.
+- **Exact code/test HEAD PASS:** `60c038454cfcf3bdb710d75f73632f585dcf65ff`. [WorkPass110 continual-learning metrics + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298598); [WorkPass108 paired evidence identity / verified promotion gate](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298708); [WorkPass105 verified outcome ledger](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298611); [Project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298594); [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298596). All five workflow runs completed `success` on this same SHA, including the P23 producer regressions, ledger restore/authentication, runtime TypeScript typecheck, app build/tests, cognitive integration contracts and runtime/research smoke.
+- **Evidence boundary:** scores remain unchanged. These integrity fixes do not claim external learning/transfer uplift or production readiness.
 
 ---
 

@@ -1,10 +1,11 @@
 ## Latest integration checkpoint — WorkPass344 verified-outcome trust boundary (2026-10-26)
 
-- **Branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`; checkpoint is built on the currently observed cognitive-progress base `cddb58ae48dace8952fe29b37b7e33efae0cdec5`. No direct merge into `main` or release ZIP replacement was performed.
-- **Runtime:** ledger manifest/outcome/snapshot inputs use descriptor snapshots, signed outcome verification reuses the validated manifest snapshot, and promotion producer options fail closed instead of clamping invalid thresholds.
-- **Regressions:** getter non-execution, unknown metadata, sparse/subclass arrays, snapshot restore, canonical signed outcome encoding/schema and strict producer policy are covered.
-- **Validation:** earlier exact-head runs exposed a missing closing brace in `snapshotPromotionOptions`; it is fixed. The latest combined source/test head requires a fresh CI pass.
-- **Evidence boundary:** progress scores unchanged; external transfer/retrieval, device voice/Live2D, long soak, licensing and reproducible release ZIP gates remain open.
+- **Branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`, current base `cddb58ae48dace8952fe29b37b7e33efae0cdec5`. No direct merge into `main` or release ZIP replacement was performed.
+- **Exact tested code/test HEAD:** `60c038454cfcf3bdb710d75f73632f585dcf65ff`. [WorkPass110 continual-learning metrics + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298598); [WorkPass108 paired evidence identity / verified promotion gate](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298708); [WorkPass105 verified outcome ledger](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298611); [Project progress ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298594); [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40273298596).
+- **Runtime:** descriptor-backed ledger manifest/outcome/snapshot validation, canonical manifest snapshot at signed outcome ingestion, strict promotion threshold and option validation.
+- **Regressions:** getter non-execution, ignored extra fields, sparse/subclass arrays, snapshot restore, signed outcome canonical encoding/schema, and producer threshold/config cases. Obsolete NaN expectations now assert explicit configuration errors.
+- **Progress evidence:** scorecard values remain unchanged. No empirical real-world learning or transfer uplift is claimed.
+- **Remaining release gates:** external held-out transfer/retrieval, target-device voice/Live2D E2E, long soak, license review and reproducible release ZIP rebuild.
 
 ---
 

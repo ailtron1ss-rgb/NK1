@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; thirteen named workflows passed on that exact head. The newer WorkPass343 code/test head 8b38a354e7a32ea8822e4cd44866c73f00ce0d1c adds canonical Core/derived-sidecar tick reconciliation, a MAX_SAFE_INTEGER restore regression, a real runtime restart smoke with a corrupted future sidecar, and explicit workflow path filters. Exact-head CI evidence has not yet been returned; scores remain unchanged until validation. WorkPass335/336 and WorkPass339 are included in the validated code/test snapshot 621864d0d7f2676245383adab86f1dcc6d0f741f. Branch head before this tracker update: ba629fde5976dfea07d1658d6c3e6078353dbd9f. WorkPass344 hardens verified-outcome ledger and promotion policy ingress; the synchronized combined source/test head is pending exact-head validation. Scores remain unchanged; no empirical learning uplift is inferred.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; thirteen named workflows passed on that exact head. The newer WorkPass343 code/test head 8b38a354e7a32ea8822e4cd44866c73f00ce0d1c adds canonical Core/derived-sidecar tick reconciliation, a MAX_SAFE_INTEGER restore regression, a real runtime restart smoke with a corrupted future sidecar, and explicit workflow path filters. Exact-head CI evidence has not yet been returned; scores remain unchanged until validation. WorkPass335/336 and WorkPass339 are included in the validated code/test snapshot 621864d0d7f2676245383adab86f1dcc6d0f741f. Branch head before this tracker update: ba629fde5976dfea07d1658d6c3e6078353dbd9f. WorkPass344 hardens verified-outcome ledger and promotion policy ingress; the synchronized combined source/test head is pending exact-head validation. Scores remain unchanged; no empirical learning uplift is inferred. WorkPass344 exact code/test HEAD 60c038454cfcf3bdb710d75f73632f585dcf65ff passed all five required exact-head workflows; no score changes or empirical learning uplift are inferred.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -362,7 +362,7 @@
     "id": "WorkPass344",
     "date": "2026-10-26",
     "branch": "work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1",
-    "codeCommit": "9c9fd069046bd8040c382d0e7355da2a50ef8d88",
+    "codeCommit": "60c038454cfcf3bdb710d75f73632f585dcf65ff",
     "summary": "Strict descriptor-backed validation of verified outcome ledger and signed-artifact inputs, plus strict runtime policy validation at the actual skill promotion producer; keeps newer family-wise holdout coverage and cognitive substrate code intact.",
     "testsAdded": [
       "manifest and outcome getters denied without invoking accessor bodies",
@@ -373,8 +373,17 @@
       "signed outcome envelope/payload getters and unknown v1 fields rejected",
       "promotion producer rejects invalid thresholds, null options and accessor-backed policy"
     ],
-    "validationStatus": "PENDING exact combined-head CI; historical P23/WorkPass342 passes do not validate this combined tree.",
-    "progressPercentagesChanged": false
+    "validationStatus": "PASS on exact code/test HEAD 60c038454cfcf3bdb710d75f73632f585dcf65ff: WorkPass110 40273298598; WorkPass108 40273298708; WorkPass105 40273298611; Unified integration 40273298596; progress ledger 40273298594. All five completed success.",
+    "progressPercentagesChanged": false,
+    "testedHeadSha": "60c038454cfcf3bdb710d75f73632f585dcf65ff",
+    "testedBaseSha": "cddb58ae48dace8952fe29b37b7e33efae0cdec5",
+    "workflowRuns": [
+      40273298598,
+      40273298708,
+      40273298611,
+      40273298596,
+      40273298594
+    ]
   },
   "recentEngineeringPasses": [
     {
