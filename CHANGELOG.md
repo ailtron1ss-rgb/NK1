@@ -1,3 +1,13 @@
+## WorkPass368 — connect B273/B274 outcomes to the action actually executed (2026-10-26)
+
+- **Cross-branch defect:** the audit branch had added attribution records for B273, but the unified cognitive line still trained the current goal lifecycle unconditionally and allowed B274 trials to update candidate quality without knowing the selected environment action. A hypothetical/generated plan could therefore receive credit for an action the planner/arbitrator did not execute.
+- **B273 integration:** `OrganismCore.feedback()` now trains the lifecycle only when the actual selected action belongs to the generated plan. Otherwise it records a bounded unselected-action event without mutating goals, action skills or outcome weights. The post-feedback B273 snapshot is explicitly reattached to persisted system state.
+- **B274 integration:** every real trial now carries `selectedAction`; the skill laboratory checks it against the candidate's planned first action before incrementing trial/evaluation counts, changing quality or considering promotion. Mismatches are retained in bounded diagnostics and candidate state remains unchanged.
+- **Regression/CI:** ported the audited B273/B274 lifecycle changes and tests, updated the B274 evaluation fixture to name the executed action, and wired goal/skill-attribution and live-Core restart tests into both relevant workflows and path filters.
+- **Scope:** this improves attribution of evidence, not general intelligence by itself. The commit is kept on the cognitive-substrate branch rather than merging the diverged audit branch wholesale.
+
+---
+
 ## WorkPass367 — persist feedback replay barrier across schema migration (2026-10-26)
 
 - **Critical restart gap closed:** `migratePersistedOrganism()` now preserves `feedbackDeliveryReceipt` verbatim in the typed current-state schema. The receipt is intentionally `unknown` at the migration boundary so the runtime guard, not migration coercion, validates it; malformed payloads still fail closed.

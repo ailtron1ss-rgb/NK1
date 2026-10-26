@@ -10,6 +10,12 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/src/organism/core/FeedbackDeliveryGuard.ts'
       - 'runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/B274AutonomousSkillLaboratory.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-273-autonomous-goal-lifecycle.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-274-autonomous-skill-laboratory.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-274-core-autonomous-skill.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-274-independent-skill-evaluation.mjs'
       - 'runtime/neuro-kurisu/tests/cognitive-feedback-attribution-wiring.mjs'
       - 'runtime/neuro-kurisu/src/organism/system/CognitiveResourceEconomy.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-resource-economy-workpass322.mjs'
@@ -24,6 +30,12 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/src/organism/core/FeedbackDeliveryGuard.ts'
       - 'runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/B274AutonomousSkillLaboratory.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-273-autonomous-goal-lifecycle.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-274-autonomous-skill-laboratory.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-274-core-autonomous-skill.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-274-independent-skill-evaluation.mjs'
       - 'runtime/neuro-kurisu/tests/cognitive-feedback-attribution-wiring.mjs'
       - 'runtime/neuro-kurisu/src/organism/system/CognitiveResourceEconomy.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-resource-economy-workpass322.mjs'
@@ -53,6 +65,12 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-resource-economy-workpass322.mjs
       - name: Verify exactly-once cognitive feedback delivery
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-feedback-attribution-wiring.mjs
+      - name: Run B273 generated-action attribution regression
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-273
+      - name: Run B274 selected-action skill attribution regression
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-274
+      - name: Run B274 live Core attribution and restart regression
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-274:core
       - name: Run B272 goal-credit attribution and embodied outcome regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-338-endogenous-goal-plasticity-core.mjs
       - name: Existing unified-cycle contract
