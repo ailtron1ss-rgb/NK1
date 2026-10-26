@@ -329,13 +329,26 @@ export class CognitiveEventFabric {
     if(!input.source.trim()||input.source!==input.source.trim()||input.source.length>120||/[\u0000-\u001f\u007f]/.test(input.source)) {
       throw new RangeError('invalid-cognitive-event-source');
     }
-    if(input.parentIds!==undefined&&!Array.isArray(input.parentIds)) throw new TypeError('invalid-cognitive-event-parents');
-    if((input.parentIds?.length??0)>12) throw new RangeError('invalid-cognitive-event-parent-count');
-    if(input.parentIds?.some(parent=>typeof parent!=='string'||!parent.trim()||parent!==parent.trim())) {
-      throw new TypeError('invalid-cognitive-event-parent-id');
-    }
-    if(input.parentIds?.some(parent=>parent.length>180||/[\u0000-\u001f\u007f]/.test(parent))) {
-      throw new RangeError('invalid-cognitive-event-parent-id');
+    const rawParentIds=input.parentIds;
+    if(rawParentIds!==undefined&&!Array.isArray(rawParentIds)) throw new TypeError('invalid-cognitive-event-parents');
+    if((rawParentIds?.length??0)>12) throw new RangeError('invalid-cognitive-event-parent-count');
+    const parentIds:string[]=[];
+    if(Array.isArray(rawParentIds)){
+      for(let index=0;index<rawParentIds.length;index+=1){
+        const descriptor=Object.getOwnPropertyDescriptor(rawParentIds,String(index));
+        // Do not execute array getters or silently accept holes in causal lineage.
+        if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value')) {
+          throw new TypeError('invalid-cognitive-event-parent-id');
+        }
+        const parent=descriptor.value;
+        if(typeof parent!=='string'||!parent.trim()||parent!==parent.trim()) {
+          throw new TypeError('invalid-cognitive-event-parent-id');
+        }
+        if(parent.length>180||/[\u0000-\u001f\u007f]/.test(parent)) {
+          throw new RangeError('invalid-cognitive-event-parent-id');
+        }
+        parentIds.push(parent);
+      }
     }
     if(input.external!==undefined&&typeof input.external!=='boolean') throw new TypeError('invalid-cognitive-event-external-flag');
     if(input.confidence01!==undefined&&(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01))) {
@@ -343,8 +356,7 @@ export class CognitiveEventFabric {
     }
 
     const normalizedTick=input.tick;
-    const normalizedSource=input.source||'unknown';
-    const parentIds=[...(input.parentIds??[])];
+    const normalizedSource=input.source;
     const external=input.external??false;
     const confidence01=clamp01(input.confidence01??0.5);
     // Deep clone and canonicalize before lookup/mutation: invalid evidence cannot
