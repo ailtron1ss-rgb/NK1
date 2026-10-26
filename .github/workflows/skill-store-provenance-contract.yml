@@ -1,0 +1,39 @@
+name: Skill store provenance contract
+
+on:
+  push:
+    branches:
+      - work/nk1-toolchain-cognitive-closure-20261025-r2
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
+      - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-skill-store-failure-boundaries.mjs'
+      - '.github/workflows/skill-store-provenance-contract.yml'
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
+      - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-skill-store-failure-boundaries.mjs'
+      - '.github/workflows/skill-store-provenance-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  skill-store-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Versioned candidate and durable restart contract
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs
+      - name: Skill-store failure boundaries
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-skill-store-failure-boundaries.mjs

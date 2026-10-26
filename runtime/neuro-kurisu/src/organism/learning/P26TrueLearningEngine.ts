@@ -61,6 +61,11 @@ export interface P26InterleavedTrainingResult {
   eligibleReplayRows:number;
   conflictComparisons:number;
   conflictCandidateCap:number;
+  /** Conservative replay-rate bound before context-separation admission. */
+  effectiveReplayLearningRate01:number;
+  /** Rate used for rows whose context separation is supported by bounded neighbours. */
+  contextSeparatedReplayLearningRate01:number;
+  contextSeparatedReplayRows:number;
   meanLoss01:number;
 }
 
@@ -204,6 +209,19 @@ export class P26TrueLearningEngine{
       ? clamp(options.currentLearningRate01!) : .05;
     const replayLearningRate01=Number.isFinite(options.replayLearningRate01)
       ? clamp(options.replayLearningRate01!) : .035;
+    // If the caller requests a lower per-sample historical rate than the
+    // current rate, dense cadence can still make its aggregate weight dominate.
+    // Bound that case to 10% of the current step per replay stride. An equal or
+    // higher configured replay rate is an explicit balanced-retention choice.
+    const effectiveReplayLearningRate01 = replayLearningRate01 < currentLearningRate01
+      ? Math.min(replayLearningRate01, currentLearningRate01 * 0.15 * replayEveryNCurrent)
+      : replayLearningRate01;
+    // Context separation allows distinct outcomes to coexist, but alone is
+    // not enough evidence to override the conservative cadence cap. A stronger
+    // retention rate must be an explicit caller choice (replay >= current rate).
+    const contextSeparatedReplayLearningRate01 = replayLearningRate01 >= currentLearningRate01
+      ? replayLearningRate01
+      : effectiveReplayLearningRate01;
 
     const candidatesByActionAndEnergy=new Map<string,P26InterleavedExperience[]>();
     const energyBucket=(state:OrganismState)=>Math.round(readStateNeed(state,'energy')*20);
@@ -214,62 +232,72 @@ export class P26TrueLearningEngine{
       candidatesByActionAndEnergy.set(key,bucket);
     }
 
-    let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0;
+    let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,contextSeparatedReplayRows=0;
     let onlineLoss=0,replayLoss=0,replayCursor=0;
     const targetFor=(row:P26InterleavedExperience)=>{
       if(targetMode==='reward') return clamp(row.reward);
       const next=Math.max(...this.learner.predict(row.nextState,extras).map(p=>p.value),.5);
       return clamp(row.reward+.78*next);
     };
-    const conflictsWithCurrent=(historical:P26InterleavedExperience)=>{
-      let compared=0;
+    const assessReplayContext=(historical:P26InterleavedExperience)=>{
+      let compared=0,nearContext=0,farContext=0,conflict=false;
       const center=energyBucket(historical.state);
-      let conflict=false;
       search: for(let offset=-2;offset<=2;offset+=1) {
         const candidates=candidatesByActionAndEnergy.get(`${historical.action}|${center+offset}`)??[];
         for(const current of candidates) {
           if(compared>=candidateCap) break search;
           compared++;
-          if(Math.abs(current.reward-historical.reward)>=.5 &&
-             stateContextDistance(current.state,historical.state)<=.35) {
-            conflict=true;
-            break search;
+          const distance=stateContextDistance(current.state,historical.state);
+          if(distance<=.35) {
+            nearContext++;
+            if(Math.abs(current.reward-historical.reward)>=.5) {
+              conflict=true;
+              break search;
+            }
+          } else {
+            farContext++;
           }
         }
       }
       conflictComparisons+=compared;
-      return conflict;
+      // Only infer a separate context after seeing several neighbors and every
+      // bounded comparison is distant. Sparse/ambiguous rows use the conservative
+      // cadence cap; clearly separate contexts can preserve prior-task behavior.
+      const contextSeparated=!conflict && compared>=3 && farContext>=3 && nearContext===0;
+      return {conflict,contextSeparated};
     };
 
     for(let index=0;index<currentExperiences.length;index+=1) {
       const current=currentExperiences[index];
-
-      // Admit one eligible historical update before the current update. Keeping
-      // fresh experience last prevents dense replay from immediately undoing the
-      // very new-task update that triggered the rehearsal step.
-      if(replayExperiences.length && (index+1)%replayEveryNCurrent===0 &&
-         replayUpdates<maxReplayUpdates) {
-        const historical=replayExperiences[replayCursor%replayExperiences.length];
-        replayCursor+=1;
-        if(conflictsWithCurrent(historical)) {
-          blockedReplayRows+=1;
-        } else {
-          eligibleReplayRows+=1;
-          const replayResult=this.learner.train({
-            state:historical.state,action:historical.action,target01:targetFor(historical),
-            learningRate01:replayLearningRate01,extras,
-          });
-          replayUpdates+=1;
-          replayLoss+=replayResult.loss01;
-        }
-      }
-
       const trained=this.learner.train({
         state:current.state,action:current.action,target01:targetFor(current),
         learningRate01:currentLearningRate01,extras,
       });
       onlineUpdates+=1;
       onlineLoss+=trained.loss01;
+
+      // maxReplayUpdates counts successful historical optimizer steps only.
+      // A rejected conflict cannot spend the budget or starve later valid rows.
+      if(!replayExperiences.length || (index+1)%replayEveryNCurrent!==0 ||
+         replayUpdates>=maxReplayUpdates) continue;
+      const historical=replayExperiences[replayCursor%replayExperiences.length];
+      replayCursor+=1;
+      const contextAssessment=assessReplayContext(historical);
+      if(contextAssessment.conflict) {
+        blockedReplayRows+=1;
+        continue;
+      }
+      eligibleReplayRows+=1;
+      const rowReplayLearningRate01=contextAssessment.contextSeparated
+        ? contextSeparatedReplayLearningRate01
+        : effectiveReplayLearningRate01;
+      if(contextAssessment.contextSeparated) contextSeparatedReplayRows+=1;
+      const replayResult=this.learner.train({
+        state:historical.state,action:historical.action,target01:targetFor(historical),
+        learningRate01:rowReplayLearningRate01,extras,
+      });
+      replayUpdates+=1;
+      replayLoss+=replayResult.loss01;
     }
 
     this.state.metrics.outcomeSamples+=onlineUpdates;
@@ -285,6 +313,9 @@ export class P26TrueLearningEngine{
     return {
       onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,
       conflictComparisons,conflictCandidateCap:candidateCap,
+      effectiveReplayLearningRate01,
+      contextSeparatedReplayLearningRate01,
+      contextSeparatedReplayRows,
       meanLoss01:total?(onlineLoss+replayLoss)/total:0,
     };
   }

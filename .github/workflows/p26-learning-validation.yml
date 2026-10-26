@@ -53,6 +53,12 @@ jobs:
       - name: Run bounded interleaved replay admission contract
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:interleaved-training-contract
+      - name: Run sequential continual-learning benchmark
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:sequential-benchmark
+      - name: Run replay-policy sweep across deterministic seeds
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:replay-policy-sweep
       - name: Validate learning input integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:learning-input-integrity

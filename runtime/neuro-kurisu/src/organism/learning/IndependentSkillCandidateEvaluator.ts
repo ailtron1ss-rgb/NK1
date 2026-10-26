@@ -371,7 +371,9 @@ export function createIndependentSkillCandidateEvaluator(
         plannedRunId: plannedRun?.runId ?? null,
         seed: task.seed,
         split: task.split,
-        executable: executable && bindingVerified,
+        // Executability describes the sandbox result itself; authenticity is recorded separately.
+        // A verifier outage must fail task success without erasing a valid execution from quality metrics.
+        executable,
         observedStepIds: bindingVerified ? execution?.observedStepIds ?? [] : [],
         bindingVerified,
         verifierPassed: executable && bindingVerified && verifierPassed,
@@ -388,7 +390,9 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          // Keep the measured execution property independent from the verification gate.
+          // Task success and credited trajectory remain gated on trustedExecution above.
+          executable,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {

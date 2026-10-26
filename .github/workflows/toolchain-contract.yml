@@ -1,0 +1,110 @@
+name: NK1 toolchain contract
+
+on:
+  push:
+    branches:
+      - "work/**"
+      - "rebuild"
+      - "workpass70-source"
+    paths:
+      - ".nvmrc"
+      - "package.json"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "tools/super-doctor.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-start.mjs"
+      - "tools/toolchain-contract.mjs"
+      - "tools/toolchain-contract.test.mjs"
+      - "tools/clean-startup-workflow-contract.test.mjs"
+      - "tools/typecheck-runtime-contract.test.mjs"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
+      - "tools/supervisor-exit-policy.mjs"
+      - "tools/supervisor-exit-policy.test.mjs"
+      - "tools/supervised-service-specs.mjs"
+      - "tools/supervised-service-specs.test.mjs"
+      - "tools/super-gateway.mjs"
+      - "tools/super-gateway-headers.mjs"
+      - "tools/super-gateway-headers.test.mjs"
+      - "tools/supervisor-preflight.mjs"
+      - "tools/supervisor-preflight.test.mjs"
+      - "tools/super-dev.mjs"
+      - ".github/workflows/toolchain-contract.yml"
+  pull_request:
+    paths:
+      - ".nvmrc"
+      - "package.json"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "tools/super-doctor.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-start.mjs"
+      - "tools/toolchain-contract.mjs"
+      - "tools/toolchain-contract.test.mjs"
+      - "tools/clean-startup-workflow-contract.test.mjs"
+      - "tools/typecheck-runtime-contract.test.mjs"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
+      - "tools/supervisor-exit-policy.mjs"
+      - "tools/supervisor-exit-policy.test.mjs"
+      - "tools/supervised-service-specs.mjs"
+      - "tools/supervised-service-specs.test.mjs"
+      - "tools/super-gateway.mjs"
+      - "tools/super-gateway-headers.mjs"
+      - "tools/super-gateway-headers.test.mjs"
+      - "tools/supervisor-preflight.mjs"
+      - "tools/supervisor-preflight.test.mjs"
+      - "tools/super-dev.mjs"
+      - ".github/workflows/toolchain-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-toolchain-contract-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  toolchain-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up repository Node version
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Validate toolchain contract logic
+        run: npm run test:toolchain-contract
+      - name: Validate clean-startup workflow trigger coverage
+        run: npm run test:clean-startup-workflow-contract
+      - name: Validate shared supervisor toolchain preflight
+        run: npm run test:supervisor-preflight
+      - name: Validate fail-closed runtime TypeScript compiler contract
+        run: npm run test:runtime-typecheck-contract
+      - name: Validate supervised service exit policy
+        run: npm run test:supervisor-exit-policy
+      - name: Validate supervised service launch specifications
+        run: npm run test:supervised-service-specs
+      - name: Validate gateway public-origin forwarding
+        run: npm run test:super-gateway-headers
+      - name: Check startup and installation script syntax
+        run: |
+          node --check tools/super-doctor.mjs
+          node --check tools/super-install.mjs
+          node --check tools/super-start.mjs
+          node --check tools/super-dev.mjs
+          node --check tools/supervisor-preflight.mjs
+          node --check tools/supervisor-exit-policy.mjs
+          node --check tools/supervised-service-specs.mjs
+          node --check tools/super-gateway.mjs
+          node --check tools/super-gateway-headers.mjs
+          node --check runtime/neuro-kurisu/scripts/typecheck-runtime.mjs
+      - name: Run environment doctor
+        run: npm run doctor

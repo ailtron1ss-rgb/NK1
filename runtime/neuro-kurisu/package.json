@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Autonomous artificial-organism research runtime with unified neural substrate, causal memory, embodied grounding, active information gain, adaptive world-model routing, counterfactual verification, developmental autonomy and persistent life continuity.",
   "engines": {
-    "node": ">=22.12.0",
+    "node": ">=24.0.0",
     "npm": ">=10.8.0"
   },
   "scripts": {
@@ -1780,6 +1780,6 @@
     "test:cognitive-dependency-runtime-wiring": "node --experimental-strip-types tests/cognitive-dependency-runtime-wiring.mjs",
     "test:cognitive-routing-policy": "node --experimental-strip-types tests/cognitive-routing-policy.mjs",
     "test:cognitive-routing-policy-runtime-wiring": "node tests/cognitive-routing-policy-runtime-wiring.mjs",
-    "test:cognitive-feedback-attribution-wiring": "node --experimental-strip-types tests/cognitive-feedback-attribution-wiring.mjs"
+    "test:cognitive-feedback-attribution-wiring": "node tests/cognitive-feedback-attribution-wiring.mjs"
   }
 }

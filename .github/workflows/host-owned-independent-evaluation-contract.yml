@@ -1,0 +1,43 @@
+name: NK1 host-owned independent evaluation contract
+
+on:
+  push:
+    branches:
+      - "work/**"
+      - "rebuild"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts"
+      - "runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs"
+      - ".github/workflows/host-owned-independent-evaluation-contract.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts"
+      - "runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs"
+      - ".github/workflows/host-owned-independent-evaluation-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-host-owned-evaluation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-owned-independent-evaluation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Check host-owned authority service syntax
+        run: node --check runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts
+      - name: Test independent executable and storage identity guards
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs

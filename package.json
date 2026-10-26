@@ -14,7 +14,7 @@
     "research": "python3 research/research_bridge.py",
     "audit:assets": "node tools/audit-assets.mjs",
     "inventory": "node tools/super-inventory.mjs",
-    "audit:quick": "npm run inventory && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax && npm run audit:repo-wiring && npm run test:repo-wiring",
+    "audit:quick": "npm run inventory && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax && npm run test:toolchain-contract && npm run test:clean-startup-workflow-contract && npm run test:supervisor-preflight && npm run test:runtime-typecheck-contract && npm run test:super-gateway-headers && npm run test:supervisor-exit-policy && npm run test:supervised-service-specs && npm run audit:repo-wiring && npm run test:repo-wiring",
     "doctor": "node tools/super-doctor.mjs",
     "install:all": "node tools/super-install.mjs",
     "backup": "node tools/super-backup.mjs",
@@ -185,12 +185,20 @@
     "audit:workpass70": "npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:app-dependency-contract && npm run test:super-install && npm run test:workpass70 && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run verify:release-source && npm run audit:release-metadata",
     "audit:ci-reliability": "node tools/verify-ci-reliability.mjs",
     "audit:repo-wiring": "node tools/verify-repository-wiring.mjs",
-    "test:repo-wiring": "node --test tools/verify-repository-wiring.test.mjs"
+    "test:repo-wiring": "node --test tools/verify-repository-wiring.test.mjs",
+    "test:toolchain-contract": "node --test tools/toolchain-contract.test.mjs",
+    "test:clean-startup-workflow-contract": "node --test tools/clean-startup-workflow-contract.test.mjs",
+    "test:supervisor-preflight": "node --test tools/supervisor-preflight.test.mjs",
+    "test:supervisor-exit-policy": "node --test tools/supervisor-exit-policy.test.mjs",
+    "test:supervised-service-specs": "node --test tools/supervised-service-specs.test.mjs",
+    "test:supervisor-start-smoke": "node tools/supervisor-start-smoke.mjs",
+    "test:super-gateway-headers": "node --test tools/super-gateway-headers.test.mjs",
+    "test:runtime-typecheck-contract": "node tools/typecheck-runtime-contract.test.mjs"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
   "engines": {
-    "node": ">=22.12.0",
+    "node": ">=24.0.0",
     "npm": ">=10.8.0"
   }
 }

@@ -1,3 +1,10 @@
+## Активная работа с исходным стеком — 26 октября 2026
+
+- Draft PR: [#141 — Node 24, runtime supervisor and P23 persistence fixes](https://github.com/ailtron1ss-rgb/NK1/pull/141). Рабочая ветка `work/nk1-toolchain-cognitive-closure-20261025-r2`, база `audit/repository-wiring-contracts-2026-10-25`; изменения пока не влиты.
+- Исправлены контракты Node 24, код завершения супервизора при отказе обязательного сервиса, рабочий каталог runtime-процесса и валидатор идентификаторов кандидатов в durable P23 store.
+- Это **не новый релиз**: канонический ZIP WorkPass70 Hotfix 1 от 19 октября не заменён и не проверен в этом проходе. Текущий исходный PR не должен считаться частью release-архива до явной пересборки и проверки целостности.
+- Текущие CI и оставшиеся ворота перечислены в [WorkPass295 handover](docs/WORKPASS295_TOOLCHAIN_RUNTIME_CLOSURE_2026-10-26.md); перед любым release claim требуется повторно проверить exact-head Actions.
+
 # NeuroCore
 
 Основной репозиторий проекта NeuroCore. Репозиторий хранит release-процессы и отчёты; полное дерево исходников текущей рабочей базы доступно в ветке `workpass70-source`.
