@@ -206,13 +206,13 @@ export class P26TrueLearningEngine{
       ? clamp(options.currentLearningRate01!) : .05;
     const replayLearningRate01=Number.isFinite(options.replayLearningRate01)
       ? clamp(options.replayLearningRate01!) : .035;
-    // Dense replay must not outweigh fresh updates simply because a replay is
-    // scheduled after every current sample. Bound per-sample historical weight
-    // to 10% of the current step, scaling the allowance with the replay stride.
-    const effectiveReplayLearningRate01=Math.min(
-      replayLearningRate01,
-      currentLearningRate01 * 0.1 * replayEveryNCurrent,
-    );
+    // If the caller requests a lower per-sample historical rate than the
+    // current rate, dense cadence can still make its aggregate weight dominate.
+    // Bound that case to 10% of the current step per replay stride. An equal or
+    // higher configured replay rate is an explicit balanced-retention choice.
+    const effectiveReplayLearningRate01 = replayLearningRate01 < currentLearningRate01
+      ? Math.min(replayLearningRate01, currentLearningRate01 * 0.1 * replayEveryNCurrent)
+      : replayLearningRate01;
 
     const candidatesByActionAndEnergy=new Map<string,P26InterleavedExperience[]>();
     const energyBucket=(state:OrganismState)=>Math.round(readStateNeed(state,'energy')*20);
