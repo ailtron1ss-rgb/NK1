@@ -207,6 +207,16 @@ assert.throws(
 );
 const validDuplicateReceipt=durable.fabric.mutationReceipts.find(row=>row.resultKind==='memory'&&row.memoryId);
 assert.ok(validDuplicateReceipt,'fixture requires a canonical memory receipt');
+const c1MemoryIdRuntime=new MemorySubsystemRuntime();
+c1MemoryIdRuntime.fabric.restore({mutationReceipts:[{
+  ...validDuplicateReceipt,
+  memoryId:'wp31:bad'+String.fromCharCode(0x009f)+'memory',
+}]});
+assert.throws(
+  () => c1MemoryIdRuntime.fabric.encode(seedInput,{commandId:'wp31:c1-memory-id-blocked'}),
+  MemoryLifecycleCommandRecoveryRequiredError,
+  'C1 controls in persisted receipt memory IDs must invalidate receipt certainty',
+);
 const duplicateReceiptRuntime=new MemorySubsystemRuntime();
 duplicateReceiptRuntime.fabric.restore({mutationReceipts:[validDuplicateReceipt,{...validDuplicateReceipt,memoryId:'forged-memory-id'}]});
 assert.throws(
