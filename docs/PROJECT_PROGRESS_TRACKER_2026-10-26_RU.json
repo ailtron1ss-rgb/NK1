@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all four named workflows passed on that exact head. Newer WorkPass335 code/test head ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745 adds fail-closed validation before ledger writes but exact-head CI evidence has not yet been returned; therefore this snapshot intentionally does not raise scores for WorkPass335. The branch head immediately before this tracker update was d43846db3451caae5062cb4b5c92533765b60f21.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all four named workflows passed on that exact head. Newer WorkPass335/336 code/test head bb7a76c55d83ff36358ded56e966b880b38cc7d9 adds ledger-binding schema checks and an in-process evaluator-origin capability, but exact-head CI evidence has not yet been returned; therefore this snapshot intentionally does not raise scores for these passes. The branch head immediately before this tracker update was 5e05c44f2a605c5e33309f47946cf335eedd3729.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -135,9 +135,9 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "WorkPass335 adds runtime preflight for all persisted run bindings, but its newer code/test head has not yet received exact-head CI confirmation",
+        "WorkPass335/336 added runtime preflight and in-process evaluator-origin capability, but the newer code/test head still requires exact-head CI confirmation",
         "Family-aware evaluation and bounded deadlines improve evidence integrity, not measured generalization on external held-out tasks",
-        "Task-family labels must stay bound to the trusted manifest and verified execution evidence",
+        "Serialized or cross-process evidence still requires separate trusted signed-receipt verification",
         "Need independently measured tool-use/transfer uplift and regression resistance before raising learning-effectiveness scores"
       ],
       "evidence": [
@@ -315,6 +315,6 @@
       "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending."
     }
   ],
-  "latestUnverifiedCodeTestHead": "ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745",
-  "branchHeadBeforeTrackerCommit": "d43846db3451caae5062cb4b5c92533765b60f21"
+  "latestUnverifiedCodeTestHead": "bb7a76c55d83ff36358ded56e966b880b38cc7d9",
+  "branchHeadBeforeTrackerCommit": "5e05c44f2a605c5e33309f47946cf335eedd3729"
 }
