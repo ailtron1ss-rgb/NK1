@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass295 (2026-10-26)
+
+- Current working source branch: `work/nk1-toolchain-cognitive-closure-20261025-r2`; draft PR [#141](https://github.com/ailtron1ss-rgb/NK1/pull/141), base `audit/repository-wiring-contracts-2026-10-25`, not merged. This source-stack PR has not updated the GitHub Release ZIP.
+- Implemented Node 24 contract consistency, supervisor non-zero failure propagation, runtime child cwd correction, regression coverage for all service entrypoint working directories, and a P23 durable candidate identity fix for revision provenance.
+- Latest code head at this checkpoint: `3f1c38d67e9adccbae1bf20ef4aea61e244a603b`. Cross-cutting repository wiring audit and WorkPass291/292 passed on this head. WorkPass110 and toolchain were queued; P26 was in progress. Re-query exact-head CI before citing PASS.
+- The durable skill-store regression passed on head `3a53e7f`; the signed-shadow e2e fixture was then corrected to the current five-field candidate identity. Exact-head completion remains required.
+- Read the full [WorkPass295 handover](docs/WORKPASS295_TOOLCHAIN_RUNTIME_CLOSURE_2026-10-26.md) for code changes, precise evidence and next queue.
+- Release gates remain open: no clean-room full install/build/multi-service restart proof, no independent learning/recall uplift claim, and no refreshed Release ZIP because the existing binary could not be downloaded in this environment.
+- Keep learning-quality estimates unchanged until independent holdout/transfer evidence exists. Do not claim consciousness from software tests.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
