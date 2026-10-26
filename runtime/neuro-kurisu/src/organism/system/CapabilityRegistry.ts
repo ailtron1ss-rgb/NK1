@@ -64,7 +64,7 @@ export class CapabilityRegistry {
         source:'language',
         reason:process.env.LLAMA_CPP_URL?'local OpenAI-compatible endpoint configured':'set LLAMA_CPP_URL to an explicitly configured loopback llama-server URL',
         refreshedAt:now },
-        
+
       { id:'world.simulation',available:true,status:'simulation-only',evidence:'simulation-contract',owner:'WorldEnvironment',source:'simulation',reason:'embedded deterministic environment; never external ground truth',refreshedAt:now },
       { id:'network', available:envBool('NETWORK_ONLINE',false), status:envBool('NETWORK_ONLINE',false)?'runtime-available':'unavailable', evidence:'configuration', owner:'NetworkRuntime', source:'network', reason:envBool('NETWORK_ONLINE')?'declared online':'not asserted online', refreshedAt:now },
     ];

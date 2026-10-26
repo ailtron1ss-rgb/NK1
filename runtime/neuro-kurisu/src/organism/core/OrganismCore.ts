@@ -5234,7 +5234,7 @@ export class OrganismCore {
               `body-focus=${feelingEpisode.bodilyFocus01.toFixed(2)}`,
               `feeling-mismatch=${feelingEpisode.interoceptiveMismatch01.toFixed(2)}`],
               energyCost: clamp(.025 + n.cognitiveLoad * .06 + emotionEpisode.arousal01 * .025) },
-              
+
         ];
         const broadcast = this.config.enableCognitiveNetwork ? this.cognitiveRuntime.cognitiveNetwork.stimulate(networkSignals, state.tick, state.attentionBudget * neuromod.attentionGain01) : null;
         // Cognitive network is projected by PersistenceProjectionCoordinator at checkpoint boundaries.

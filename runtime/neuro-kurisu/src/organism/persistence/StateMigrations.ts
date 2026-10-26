@@ -1270,7 +1270,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
             'unknown'].includes(o.sourceClass)?o.sourceClass:undefined,
             independenceKey:o.independenceKey==null?undefined:String(o.independenceKey).slice(0,
             120)})):[],
-            
+
           externalEvidenceStatus:['none','corroborated','contradicted','mixed'].includes(r?.externalEvidenceStatus)?r.externalEvidenceStatus:'none',
           observedWorldContextAfter:r?.observedWorldContextAfter && typeof r.observedWorldContextAfter==='object'?r.observedWorldContextAfter:undefined,
         })):[],
@@ -1310,7 +1310,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
               'unknown'].includes(o.sourceClass)?o.sourceClass:undefined,
               independenceKey:o.independenceKey==null?undefined:String(o.independenceKey).slice(0,
               120)})):[],
-              
+
             externalEvidenceStatus:['none','corroborated','contradicted','mixed'].includes(entry.record.externalEvidenceStatus)?entry.record.externalEvidenceStatus:'none',
           },
         })):[],
@@ -1347,7 +1347,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
           observationId:r.observationId==null?undefined:String(r.observationId).slice(0,
           180),
           status:r.status})):[],
-          
+
       },
       causalAccountability: {
         version:1,
@@ -1376,7 +1376,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
           confidence01:Math.max(0,
           Math.min(1,
           Number(row.confidence01??0)))})):[],
-          
+
       },
       resourceAllocation: raw.system?.resourceAllocation ?? undefined,
       unifiedCognitiveSubstrate: raw.system?.unifiedCognitiveSubstrate ?? undefined,

@@ -52,7 +52,7 @@ const SUBSYSTEMS:CognitiveArchitectureSubsystem[]=[
     dependsOn:['sensorium',
     'world-model'],
     purpose:'Produce bounded affective and motivational state that changes attention and actions without claiming biological emotion or sentience.'},
-    
+
   {id:'self-model',label:'Identity, self-model & continuity',layer:'self-model',owner:'OrganismCore persisted identity state',cadence:'each-cycle',components:['runtime/neuro-kurisu/src/organism/cognition/IdentityContinuity.ts','runtime/neuro-kurisu/src/organism/cognition/SelfAuthorship.ts','runtime/neuro-kurisu/src/organism/system/IdentityContinuityGuard.ts','runtime/neuro-kurisu/src/organism/system/PersistentContinuityKernel.ts'],inputs:['autobiographical memories','capability evidence','values','external pressure'],outputs:['identity continuity','self prediction','identity guard decision'],dependsOn:['memory','world-model','outcome-learning'],purpose:'Keep identity and self-claims grounded in longitudinal evidence and preserve continuity across restart/model changes.'},
   {id:'goal-value',label:'Endogenous goals & values',layer:'goals-values',owner:'OrganismCore + canonical goal/value engines',cadence:'each-cycle',components:['runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts','runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts','runtime/neuro-kurisu/src/organism/system/AutonomousValueFormationEngine.ts','runtime/neuro-kurisu/src/organism/learning/CanonicalActionPolicyArbiter.ts'],inputs:['needs','identity','prediction error','evidence','commitments'],outputs:['active goals','goal pressure','value constraints','ranked action candidates'],dependsOn:['self-model','world-model','homeostasis-affect'],purpose:'Generate and revise goals under stable identity/value constraints; no goal bypasses action governance.'},
   {id:'world-model',label:'World state, prediction & causality',layer:'world-model',owner:'WorldSubsystemRuntime',cadence:'each-cycle',components:['runtime/neuro-kurisu/src/organism/world/ContextualWorldModel.ts','runtime/neuro-kurisu/src/organism/world/ActiveInferenceEngine.ts','runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts'],inputs:['percepts','actions','verified outcomes','temporal context'],outputs:['world state','counterfactual predictions','uncertainty','causal hypotheses'],dependsOn:['sensorium','outcome-learning'],purpose:'Maintain explicit world beliefs and distinguish prediction from observed reality.'},
@@ -78,7 +78,7 @@ const SUBSYSTEMS:CognitiveArchitectureSubsystem[]=[
     'outcome-learning',
     'self-model'],
     purpose:'Keep one writable memory authority; other memory-like systems are adapters, projections, indexes or research candidates.'},
-    
+
   {id:'executive',
     label:'Executive planning & action arbitration',
     layer:'executive',
@@ -102,7 +102,7 @@ const SUBSYSTEMS:CognitiveArchitectureSubsystem[]=[
     'self-model',
     'metacognition'],
     purpose:'Use one decision authority and one execution gateway, with policy checks before side effects.'},
-    
+
   {id:'embodiment-action',label:'Body, motor control & tool execution',layer:'embodiment',owner:'EmbodiedActionExecutor behind ActionGateway',cadence:'after-action',components:['runtime/neuro-kurisu/src/organism/body/EmbodiedActionExecutor.ts','runtime/neuro-kurisu/src/organism/cognition/SensorimotorLoop.ts','runtime/neuro-kurisu/src/organism/body/AndroidEmbodimentBridge.ts','runtime/neuro-kurisu/src/organism/body/VoiceEmbodiment.ts'],inputs:['governed action','device capabilities','resource/thermal state'],outputs:['tool/device result','execution ID','motor telemetry'],dependsOn:['executive','sensorium'],purpose:'Execute only available capabilities, preserve action identity, and explicitly report unavailable devices/providers.'},
   {id:'outcome-learning',
     label:'Reality checks, reafference & learning',
@@ -128,7 +128,7 @@ const SUBSYSTEMS:CognitiveArchitectureSubsystem[]=[
     dependsOn:['embodiment-action',
     'world-model'],
     purpose:'Close the action loop only from attributable evidence. External repair/replay reports remain hypotheses; only grounded runtime transitions enter the unified reward, consolidation and replay lane.'},
-    
+
   {id:'social-model',label:'Social cognition & relationships',layer:'social',owner:'OrganismCore + autonomous relationship subsystem',cadence:'each-cycle',components:['runtime/neuro-kurisu/src/organism/system/AutonomousRelationshipManager.ts','runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts','runtime/neuro-kurisu/src/organism/cognition/B288SocialPredictiveSelfOtherBrain.ts'],inputs:['social observations','interaction outcomes','user preferences','identity/energy'],outputs:['relationship state','other-agent predictions','social initiative'],dependsOn:['sensorium','self-model','memory','outcome-learning','homeostasis-affect'],purpose:'Track relationship context and social expectations with provenance instead of treating guessed mental states as facts.'},
   {id:'metacognition',label:'Metacognition, safety & recovery',layer:'metacognition',owner:'GovernanceSubsystemRuntime',cadence:'each-cycle',components:['runtime/neuro-kurisu/src/organism/cognition/MetaCognitiveMonitor.ts','runtime/neuro-kurisu/src/organism/cognition/CognitiveImmuneSystem.ts','runtime/neuro-kurisu/src/organism/system/IntegritySentinel.ts','runtime/neuro-kurisu/src/organism/persistence/RecoveryWatchdog.ts'],inputs:['uncertainty','contradictions','capability permissions','resource pressure','recovery state'],outputs:['confidence calibration','holds/deferrals','rollback/recovery decision'],dependsOn:['self-model','world-model','executive'],purpose:'Reject unsafe/unsupported actions and provide recovery paths; governance is not bypassed by developmental systems.'},
   {id:'lifecycle',
@@ -154,7 +154,7 @@ const SUBSYSTEMS:CognitiveArchitectureSubsystem[]=[
     'executive',
     'outcome-learning'],
     purpose:'Own cycle timing and reduced-resolution ticks; a heartbeat is not an action execution, and fast/micro ticks must not attribute stale actions, fabricate success, or bypass durability.'},
-    
+
   {id:'research',label:'Research, evaluation & controlled improvement',layer:'research',owner:'EvidenceResearchSubsystemRuntime + read-only research bridge',cadence:'background',components:['runtime/neuro-kurisu/src/organism/research/','research/research_bridge.py','runtime/neuro-kurisu/src/organism/system/ResearchClaimAssessment.ts','runtime/neuro-kurisu/src/organism/system/SandboxedSelfRewriteEngine.ts'],inputs:['research questions','candidate source code','holdout evaluation','provenance/licence data'],outputs:['candidate patch','evidence report','promotion/rejection decision'],dependsOn:['memory','world-model','metacognition'],purpose:'Source reuse and self-improvement remain evidence-gated; research candidates cannot mutate canonical runtime until separately qualified.'},
 ];
 
