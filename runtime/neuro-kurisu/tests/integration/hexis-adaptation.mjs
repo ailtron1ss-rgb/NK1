@@ -285,7 +285,15 @@ const exportedMemoryRefs = new Set(ambiguousNativeReferenceExport.sections.memor
 assert.equal(ambiguousRelationship.source_ref, ambiguousRelationship.target_ref);
 assert.equal(exportedMemoryRefs.has(ambiguousRelationship.source_ref), false,
   'an ambiguous native ID must not be bound to either the memory or skill record');
-const ambiguousReferenceStage = new HexisAdaptationFabric().stageHmx({
+const ambiguousReferenceRuntime = new MemorySubsystemRuntime();
+const ambiguousReferenceOwner = new HexisAdaptationFabric();
+const ambiguousReferenceProjector = new HexisCanonicalMemoryProjector(
+  ambiguousReferenceRuntime.fabric,
+  ambiguousReferenceRuntime.semanticMemory,
+  ambiguousReferenceOwner,
+);
+ambiguousReferenceOwner.bindCanonicalMemoryApply(candidate => ambiguousReferenceProjector.apply(candidate));
+const ambiguousReferenceStage = ambiguousReferenceOwner.stageHmx({
   document: ambiguousNativeReferenceExport,
   intent: 'port',
   strategy: 'additive',
@@ -294,6 +302,12 @@ assert.deepEqual(ambiguousReferenceStage.conflicts, [],
   'an unresolved but structurally valid native relation should be staged for review rather than miswired');
 assert.equal(ambiguousReferenceStage.stagedSections.relationships.length, 1);
 assert.equal(ambiguousReferenceStage.stagedSections.relationships[0].source_ref, ambiguousRelationship.source_ref);
+assert.equal(ambiguousReferenceOwner.decideHmx(ambiguousReferenceStage.stagingId, 'accept')?.status, 'accepted');
+const ambiguousReferenceApplied = ambiguousReferenceOwner.decideHmx(ambiguousReferenceStage.stagingId, 'apply');
+assert.equal(ambiguousReferenceApplied?.application?.projectedRelationships, 0);
+assert.equal(ambiguousReferenceApplied?.application?.deferredRelationships, 1,
+  'an ambiguous native endpoint must be deferred instead of wired to an arbitrary canonical memory');
+assert.equal(ambiguousReferenceRuntime.semanticMemory.snapshot().edges.length, 0);
 
 // Goal IDs are export-global refs too. A slug collision must not collapse two goal
 // proposals into one apparently valid target.
