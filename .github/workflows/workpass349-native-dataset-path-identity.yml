@@ -8,6 +8,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
       - "runtime/neuro-kurisu/tests/workpass356-memoryos-restore-boundary.mjs"
+      - "runtime/neuro-kurisu/tests/workpass357-memory-restart-retrieval.mjs"
       - "runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs"
       - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts"
