@@ -36,6 +36,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+          package-manager-cache: false
       - name: Validate tracker and regression tests
         run: npm run test:progress-ledger
       - name: Emit weighted engineering snapshot
