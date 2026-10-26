@@ -216,5 +216,5 @@ test('release metadata rejects a source baseline from a newer workpass even if i
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
   const r = run(root);
   assert.equal(r.status, 1, r.stdout + r.stderr);
-  assert.match(r.stdout, /workpass-build-lineage[\\s\\S]*?"pass": false/);
+  assert.match(r.stdout, /workpass-build-lineage[\s\S]*?"pass": false/);
 });
