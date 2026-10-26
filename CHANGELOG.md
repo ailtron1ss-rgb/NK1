@@ -2,19 +2,12 @@
 
 - **Runtime integration:** добавлен durable sidecar `*.cognitive-substrate.json`; слой восстанавливается при старте, агрегирует каждый завершённый Core cycle и сохраняется при изменении существенных сигналов/каждые 16 тиков, плюс финальный flush на остановке.
 - **Cross-system frame:** объединяются self/continuity, world uncertainty/conflict, prediction debt, device resources, memory pressure и provenance/coverage из живого runtime, а не отдельного демонстрационного вызова.
-- **Governed planning:** counterfactual branch budget и matched simulation admission теперь являются пересечением ресурсо-политики, dependency graph/interruption policy и substrate work policy. Substrate может только урезать необязательные симуляции; канонический выбор action остаётся у `OrganismCore`.
-- **Restore hardening:** упрощённый адаптер заменён строгой схемой с проверкой версии, own-property reads, безопасной нормализацией finite metrics/counters/text и отказом от невалидного состояния. Повреждение производного sidecar логируется и не должно само по себе блокировать запуск организма.
-- **Regression/CI wiring:** добавлен `tests/unified-substrate-runtime-wiring.mjs`; test подключён к `test:cognitive-integration-suite` и `test:rebuild-recovered`. Новых runtime dependencies не добавлено.
+- **Governed planning:** counterfactual branch budget и matched simulation admission являются пересечением ресурсной политики, dependency graph/interruption policy и substrate work policy. Substrate может только урезать необязательные симуляции; канонический выбор action остаётся у `OrganismCore`.
+- **Restore hardening:** слой проверяет версию схемы, own-property reads, finite metrics/counters/text; повреждённое производное состояние сбрасывается с operational warning вместо блокировки старта.
+- **Live regression:** добавлен read-only `unifiedCognitiveSubstrateSnapshot()`; расширен `organism-smoke.mjs` — после 30 реальных runtime cycles он проверяет, что substrate tick/cycle продвигается, coupling остаётся конечным и snapshot восстанавливается после stop/re-init. Источник теста также покрывает злонамеренные persisted inputs и fail-closed work-budget.
+- **CI wiring:** `tests/unified-substrate-runtime-wiring.mjs` плюс runtime smoke подключены к `test:cognitive-integration-suite` и `test:rebuild-recovered`. Новых runtime dependencies не добавлено.
 
-**Validation status:** exact-head typecheck, behavioral test and CI are pending. No progress scores were increased before validation.
-
----
-
-## WorkPass338 — отключён автокэш npm в standalone ledger CI (2026-10-26)
-
-- Первый запуск WorkPass336 остановился на `actions/setup-node@v6` до тестов: автокэш искал lockfile в корне, где его нет (lockfiles находятся в отдельных workspaces).
-- В лёгком workflow отключён `package-manager-cache`: проверки используют встроенный Node.js и не требуют установки зависимостей.
-- Run `40252253918` зафиксирован как инфраструктурный FAIL до исполнения тестов; его нельзя трактовать как провал самого валидатора. Новый HEAD должен получить отдельный запуск.
+**Validation status:** код и тесты закоммичены в `work/nk1-unified-substrate-runtime-integration-2026-10-26-r2`; exact-head typecheck, behavioral tests и CI ещё должны завершиться. Прогресс не повышен до подтверждения Actions.
 
 ---
 
