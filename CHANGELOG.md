@@ -1,3 +1,12 @@
+## P26 replay stability — cap rehearsal relative to fresh learning (2026-10-26)
+
+- The multi-seed policy sweep exposed a plasticity regression in the initial interleaved replay implementation: on the stride-1 schedule the replay-attempt budget could allow one historical sample for every current-task sample, despite the intended replay cadence.
+- Replaced that implementation with the bounded, CI-validated P26 interleaving contract. Replay attempts now obey both the configured maximum and `floor(currentBatch.length * maxReplayRatio01)` (default ratio 0.5), so a high-frequency replay stride cannot overwhelm the current-task updates.
+- Conflict screening uses the learner's actual normalized feature vector, with a bounded comparison cap and a target disagreement threshold; well-separated novelty contexts remain eligible for replay. Input batches are validated before mutation.
+- Evidence: the equivalent implementation on the active r3 integration branch passed the full P26 Learning Validation workflow, including the multi-seed replay policy sweep. The repaired receipt-integrity branch still requires its own exact-head Actions run before its PR can be considered validated.
+
+---
+
 ## P26 replay policy sweep — identify failing policy precisely (2026-10-26)
 
 - Expanded the sequential replay sweep's failing assertion message to report strategy, random seed, new-task accuracy, and prior-task accuracy. The score floor and test semantics are unchanged; this makes CI identify which replay cadence violates the plasticity contract.
