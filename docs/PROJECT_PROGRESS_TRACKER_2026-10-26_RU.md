@@ -1,9 +1,9 @@
 ## WorkPass397 — безопасный HMX snapshot на границе импорта (2026-10-26)
 
-- **Кодовые коммиты:** `aead364e098b462b5f99f48e65b76585f927975f` (ограниченный plain-JSON snapshot) и `83343d9ba5765050c734218a64d8bbe6e9883f2f` (staging использует тот же snapshot); **регрессии:** `0f9c34c54ad2b858a142c5e14d0de28fb763f5b5`.
+- **Кодовые коммиты:** `aead364e098b462b5f99f48e65b76585f927975f` (ограниченный plain-JSON snapshot) и `83343d9ba5765050c734218a64d8bbe6e9883f2f` (staging использует тот же snapshot); **регрессии:** `0f9c34c54ad2b858a142c5e14d0de28fb763f5b5` и `28920aa46a888ddff4a0297ae8a93526e879da85`.
 - До schema inspection HMX копируется через own-data descriptors с ограничениями по глубине/узлам/байтам. Accessors, sparse/extended arrays, неподдерживаемые прототипы, циклы и non-finite numbers отклоняются без чтения свойств через getter.
 - Validation и stage работают с захваченным снимком, а не с исходным объектом; это убирает расхождение «проверили одно, сохранили другое».
-- Регрессии проверяют root и вложенный getter: число вызовов равно нулю, создаётся `unsafe-input`, memory payload не попадает в staging, принять stage нельзя.
+- Регрессии проверяют root/вложенный getter (0 вызовов), sparse array, цикл, non-finite number и нестандартный prototype. Во всех случаях появляется `unsafe-input`, memory payload не попадает в staging, принять stage нельзя.
 - **Валидация:** PENDING exact-head typecheck, `test:hexis-adaptation`, server smoke и Unified integration. Тесты добавлены, но не подтверждены успешным запуском. Проценты/оценки не повышены; `main` и canonical Release ZIP не менялись.
 
 ---
