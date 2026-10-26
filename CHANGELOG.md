@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass418 — preserve malformed native root sections (2026-10-26)
+
+- [DATA FIDELITY] If a native export explicitly supplies a non-object `sections` value, the HMX adapter retains the original payload in `sections.config.nk1NativeSections.sections_invalid_root` rather than normalizing it away.
+- [REGRESSION] Added a test for an invalid scalar root section and an explicit warning, complementing the identity/config preservation checks.
+- [VALIDATION] Regression is committed; runtime execution remains unconfirmed because current Actions jobs fail before exposing usable steps.
+
 ## [NK1][CI] WorkPass418 — close strict avatar-storage typecheck gap (2026-10-26)
 
 - [FIX] Annotate avatar-storage test helper, Map state and callback parameters for strict checkJs; use Reflect.deleteProperty to remove the temporary window global without violating TypeScript delete-operand rules.
