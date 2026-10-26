@@ -185,6 +185,8 @@ const revisionEnd = coreSource.indexOf('Temporal views delegate to MemoryOS2', r
 assert.ok(revisionStart >= 0 && revisionEnd > revisionStart, 'Hexis belief revision must remain in Core');
 const revisionBody = coreSource.slice(revisionStart, revisionEnd);
 assert.ok(revisionBody.includes('memoryOS.hasEvidenceLineage'), 'Core must consult canonical lineage before revision');
+assert.ok(revisionBody.includes('legacyEvidenceSourceKey') && revisionBody.includes('hasCanonicalEvidence'),
+  'normalization migration must also recognize existing case-sensitive canonical evidence keys');
 assert.ok(revisionBody.includes('fabric.recordEvidence'), 'Core must write evidence through the MemoryFabric lifecycle journal');
 assert.ok(revisionBody.includes('canonicalDuplicate,'), 'Core must pass canonical duplicate status to the belief policy');
 assert.ok(revisionBody.includes('if (audit.applied)') && revisionBody.includes('if (!evidence?.added)'),
