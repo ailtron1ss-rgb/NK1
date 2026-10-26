@@ -1,8 +1,25 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from '/opt/nvm/versions/node/v22.16.0/lib/node_modules/typescript/lib/typescript.js';
+import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 const root=process.cwd();
+
+// Resolve the parser from the repository's pinned dependencies, not a developer
+// machine's version-specific global Node installation. Prefer runtime-local
+// TypeScript when available; the unified workflow pins the shared compiler in app/.
+const runtimeRequire = createRequire(path.resolve(root, 'package.json'));
+const appRequire = createRequire(path.resolve(root, '../../app/package.json'));
+let ts;
+try { ts = runtimeRequire('typescript'); }
+catch {
+  try { ts = appRequire('typescript'); }
+  catch (error) {
+    throw new Error(
+      'audit-executable-syntax requires the repository-pinned TypeScript package; run npm ci --prefix app first',
+      { cause: error },
+    );
+  }
+}
 const skip=new Set(['legacy-original','node_modules','state','.git']);
 const files=[];
 function walk(dir){for(const ent of fs.readdirSync(dir,{withFileTypes:true})){if(skip.has(ent.name))continue;const p=path.join(dir,ent.name);if(ent.isDirectory())walk(p);else files.push(p);}}

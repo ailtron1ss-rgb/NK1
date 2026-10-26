@@ -1,0 +1,131 @@
+name: NK1 cognitive reliability regression
+
+on:
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - ".github/workflows/nk1-cognitive-reliability.yml"
+      - "CHANGELOG.md"
+      - "package.json"
+      - "app/package.json"
+      - "app/src/legacy/avatar/safeLocalStorage.test.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "research/requirements-integration.txt"
+      - "tools/verify-integration.mjs"
+      - "runtime/neuro-kurisu/scripts/audit-executable-syntax.mjs"
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
+      - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts"
+      - "runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs"
+      - "runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs"
+      - "research/research_bridge.py"
+  push:
+    branches:
+      - workpass70-source
+    paths:
+      - ".github/workflows/nk1-cognitive-reliability.yml"
+      - "CHANGELOG.md"
+      - "package.json"
+      - "app/package.json"
+      - "app/src/legacy/avatar/safeLocalStorage.test.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "research/requirements-integration.txt"
+      - "tools/verify-integration.mjs"
+      - "runtime/neuro-kurisu/scripts/audit-executable-syntax.mjs"
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs"
+      - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts"
+      - "runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs"
+      - "runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs"
+      - "research/research_bridge.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cognitive-reliability:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@v7
+
+      - name: Select repository Node.js runtime
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Verify runtime pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          printf 'expected=%s actual=%s\n' "$expected" "$actual"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) exit 1 ;; esac ;;
+          esac
+
+      - name: Install locked app dependencies without install scripts
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+
+      - name: Run quick architecture, integrity, syntax and asset audit
+        run: npm run audit:quick
+
+      - name: Typecheck app and runtime
+        run: npm run typecheck
+
+      - name: Run app test suite
+        run: npm run test:ui
+
+      - name: Test restored action receipt integrity (WorkPass95)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass95:receipt-integrity
+
+      - name: Test versioned skill lifecycle and durable provenance restore (P23)
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs
+
+      - name: Test execution capability vs verifier trust (WorkPass203)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass203:independent-candidate-evaluator
+
+      - name: Test host-owned executor and storage-root integrity (WorkPass243)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass243:host-owned-independent-evaluation-services
+
+      - name: Install isolated CPU research dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          research_venv="$RUNNER_TEMP/nk1-research-ci-venv"
+          python3 -m venv "$research_venv"
+          "$research_venv/bin/python" -m pip install --disable-pip-version-check --no-cache-dir --index-url https://download.pytorch.org/whl/cpu -r research/requirements-integration.txt
+          echo "RESEARCH_PYTHON=$research_venv/bin/python" >> "$GITHUB_ENV"
+
+      - name: Verify runtime, approval-gated research probes and cross-layer integration
+        run: npm run test:integration
+
+      - name: Run runtime smoke test
+        run: npm run test:runtime:smoke
+
+      - name: Run recovered unified cognitive-cycle regressions
+        run: npm --prefix runtime/neuro-kurisu run test:rebuild-recovered
+
+      - name: Run full runtime audit
+        run: npm --prefix runtime/neuro-kurisu run audit:full
+
+      - name: Run aggregate runtime audit
+        run: npm --prefix runtime/neuro-kurisu run audit:all

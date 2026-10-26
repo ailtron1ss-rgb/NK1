@@ -1,0 +1,4 @@
+# CPU-only dependencies for the cross-layer integration smoke test.
+# Install only into a disposable research venv; these are not runtime/app dependencies.
+# NeuroCore V143 and DeepCode v21 probes use PyTorch directly.
+torch>=2.2,<3

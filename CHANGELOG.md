@@ -1,3 +1,29 @@
+## App/runtime typecheck fixture repair — 2026-10-26
+
+- Added explicit JSDoc types to the safe avatar-storage test fixture so the app's strict TypeScript check can validate the .mjs test without implicit-any errors.
+- Replaced direct deletion of the global `window` property with `Reflect.deleteProperty`, preserving the test semantics while satisfying the type contract.
+- Added the fixture path to both active regression-workflow filters.
+
+Validation: exact-head app/runtime typecheck and app tests must pass before release readiness can be claimed.
+
+---
+
+## Cognitive reliability pass — 2026-10-26
+
+- Hardened restored ActionGateway receipts: compare the persisted response identity with its ledger row, require audit/outcome/verification consistency, reject malformed or oversized payloads, and retain invalid entries as fail-closed recovery tombstones.
+- Preserved the `payload-omitted` state for legitimate compacted idempotency receipts across restart; regression coverage asserts replay does not re-run the original side effect.
+- Aligned `VersionedSkillCandidateStore` identity generation with its durable validator: legacy candidates keep the four-field identity; revision-provenance candidates bind the canonical provenance fingerprint. The file-backed adapter validates provenance schema and conditional identity before restore.
+- Extended the P23 lifecycle regression for authenticated rollback authority and durable provenance restore; the production default-deny rollback verifier remains strict.
+- Separated structural executability from verifier trust in `IndependentSkillCandidateEvaluator`: valid executor output is measurable as executable, while task success and promotion-grade evidence still require independent binding.
+- Corrected the WorkPass243 test fixture to restore executable permissions after a deliberate negative permission case; runtime security checks were not weakened.
+- Made the executable-syntax audit load the repository-pinned TypeScript package instead of a version-specific global Node path.
+- Added isolated CPU-only PyTorch dependencies and interpreter selection for the integration research probes. The temporary environment is outside the repository and does not expand the canonical app/runtime dependency graph; failed probe output now includes the underlying error.
+- Added `nk1-cognitive-reliability.yml` as a focused source-branch gate for the affected regressions, app/runtime typechecks, integration smoke, cognitive-cycle regressions and full runtime audits.
+
+Validation status: target regressions and the broad audit must pass on the current source-branch PR before this pass is called complete. Receipt structural checks establish internal consistency, not cryptographic authenticity of snapshots writable by an attacker.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

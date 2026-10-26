@@ -34,7 +34,9 @@ try {
   runtime = spawn('node', ['--experimental-strip-types', 'runtime/neuro-kurisu/src/server/server.mjs'], {
     cwd: ROOT, env: { ...process.env, PORT: '3311', HOST: '127.0.0.1', STATE_DIR: resolve(verifyState, 'organism') }, stdio: ['ignore', 'pipe', 'pipe']
   });
-  bridge = spawn('python3', ['research/research_bridge.py'], { cwd: ROOT, env: { ...process.env, RESEARCH_PORT: '8766', ORGANISM_RUNTIME_URL: 'http://127.0.0.1:3311' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  // Research probes run in a dedicated venv in CI; local developers may keep using python3.
+  const researchPython = process.env.RESEARCH_PYTHON || 'python3';
+  bridge = spawn(researchPython, ['research/research_bridge.py'], { cwd: ROOT, env: { ...process.env, RESEARCH_PORT: '8766', ORGANISM_RUNTIME_URL: 'http://127.0.0.1:3311' }, stdio: ['ignore', 'pipe', 'pipe'] });
   await new Promise(r => setTimeout(r, 3500));
   const fetchJson = async (url, init) => {
     const res = await fetch(url, init);
@@ -59,11 +61,20 @@ try {
     return await fetchJson(base,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({approvalId:blocked.data.approvalRequest.id})});
   };
   const nc = await runApprovedProbe('neurocore');
-  record('research:neurocore-probe-after-approval', nc.res.ok && Boolean(nc.data?.ok) && nc.data?.status === 'pass', `delta=${nc.data?.delta ?? '—'}`);
+  record('research:neurocore-probe-after-approval', nc.res.ok && Boolean(nc.data?.ok) && nc.data?.status === 'pass',
+    nc.data?.status === 'pass'
+      ? \`delta=\${nc.data?.delta ?? '—'}\`
+      : \`error=\${String(nc.data?.error ?? nc.data?.detail ?? nc.data?.trace ?? 'unknown').replace(/\s+/g, ' ').slice(0, 180)}\`);
   const nm = await runApprovedProbe('nomega-registry');
-  record('research:nomega-registry-after-approval', nm.res.ok && Boolean(nm.data?.ok) && nm.data?.status === 'pass', `modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'}`);
+  record('research:nomega-registry-after-approval', nm.res.ok && Boolean(nm.data?.ok) && nm.data?.status === 'pass',
+    nm.data?.status === 'pass'
+      ? \`modules=\${nm.data?.total_modules ?? '—'} cycles=\${nm.data?.cycles ?? '—'}\`
+      : \`error=\${String(nm.data?.error ?? nm.data?.detail ?? nm.data?.trace ?? 'unknown').replace(/\s+/g, ' ').slice(0, 180)}\`);
   const dc = await runApprovedProbe('deepcode');
-  record('research:deepcode-probe-after-approval', dc.res.ok && Boolean(dc.data?.ok) && dc.data?.status === 'pass', `smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'}`);
+  record('research:deepcode-probe-after-approval', dc.res.ok && Boolean(dc.data?.ok) && dc.data?.status === 'pass',
+    dc.data?.status === 'pass'
+      ? \`smoke=\${dc.data?.result?.smoke ?? '—'} learn_steps=\${dc.data?.result?.learn_steps ?? '—'}\`
+      : \`error=\${String(dc.data?.error ?? dc.data?.detail ?? dc.data?.trace ?? 'unknown').replace(/\s+/g, ' ').slice(0, 180)}\`);
 } catch (error) {
   record('runtime/bridge:http', false, String(error));
 } finally {
