@@ -175,6 +175,15 @@ assert.ok(body.includes('priorReviewClaim') && body.includes('priorReviewTrace')
 assert.ok(body.includes("if (item.status !== 'pending')"), 'finalized review submissions must have an explicit idempotent replay path');
 assert.ok(body.includes("review-decision-already-finalized"), 'conflicting repeated decisions must fail closed');
 assert.ok(body.includes("review-finalization-memory-incomplete"), 'completed corrections must be verified against canonical memory before replay success');
+const hmxMethodStart = coreSource.indexOf('hexisDecideHmx(stagingId: string');
+const hmxMethodEnd = coreSource.indexOf('hexisEnqueueOutbox(', hmxMethodStart);
+assert.ok(hmxMethodStart >= 0 && hmxMethodEnd > hmxMethodStart, 'HMX acceptance must remain in Core');
+const hmxMethodBody = coreSource.slice(hmxMethodStart, hmxMethodEnd);
+assert.ok(hmxMethodBody.includes('commandId: importCommandId'), 'HMX imports must pass through stable MemoryFabric mutation receipts');
+assert.ok(hmxMethodBody.includes('stagingId: stage.stagingId') && hmxMethodBody.includes('rowIndex'),
+  'HMX import receipt identity must be bound to the exact stage and row position');
+assert.ok(hmxMethodBody.includes('evidenceFreshnessAt') && hmxMethodBody.includes('stage.createdAt'),
+  'replayed import payloads must not vary their source timestamps');
 
 // The same review event is an observable system event and an explicitly unverified epistemic claim.
 const p65 = new P65EpistemicLedger();
@@ -285,6 +294,42 @@ const conflictingCoreDecision = OrganismCore.prototype.hexisDecideLearningReview
 );
 assert.equal(conflictingCoreDecision.ok, false, 'a conflicting completed review retry must fail closed');
 assert.ok(['review-evidence-conflict', 'review-finalization-memory-incomplete'].includes(conflictingCoreDecision.error));
+
+// HMX acceptance recovers through the same stable MemoryFabric receipts after repeated decisions.
+const hmxDocument = {
+  hmx_version: '1.7',
+  export_id: 'h10-replay-fixture',
+  source_subject_id: 'h10-subject',
+  sections: { memories: [{ kind: 'semantic', content: 'HMX import must execute exactly once per staged row.' }] },
+};
+const hmxStage = OrganismCore.prototype.hexisStageHmx.call(core, hmxDocument, 'port', 'additive');
+assert.equal(hmxStage.status, 'staged');
+const beforeHmxSize = coordinatorOS.size();
+const beforeHmxEvents = coordinatorEvents.list().length;
+const firstHmxDecision = OrganismCore.prototype.hexisDecideHmx.call(core, hmxStage.stagingId, 'accept');
+assert.equal(firstHmxDecision.status, 'accepted');
+assert.equal(firstHmxDecision.importResult.created, 1);
+const importedHmxMemory = coordinatorOS.snapshot({ clone: false }).items.find(row =>
+  row.content === 'HMX import must execute exactly once per staged row.'
+);
+assert.ok(importedHmxMemory);
+assert.equal(coordinatorOS.size(), beforeHmxSize + 1);
+const afterFirstHmxEvents = coordinatorEvents.list().length;
+assert.ok(afterFirstHmxEvents > beforeHmxEvents, 'first HMX acceptance must emit a canonical memory lifecycle event');
+const hmxReceiptIds = coordinatorFabric.snapshot().mutationReceipts
+  .filter(row => row.commandId.startsWith('hexis-hmx-import:'))
+  .map(row => row.commandId);
+assert.equal(hmxReceiptIds.length, 1, 'each staged HMX memory row must have one stable command receipt');
+const secondHmxDecision = OrganismCore.prototype.hexisDecideHmx.call(core, hmxStage.stagingId, 'accept');
+assert.equal(secondHmxDecision.status, 'accepted');
+assert.equal(coordinatorOS.size(), beforeHmxSize + 1, 'repeated accept must not duplicate imported memory');
+assert.equal(coordinatorEvents.list().length, afterFirstHmxEvents, 'repeated accept must not emit another lifecycle event');
+assert.deepEqual(
+  coordinatorFabric.snapshot().mutationReceipts.filter(row => row.commandId.startsWith('hexis-hmx-import:')).map(row => row.commandId),
+  hmxReceiptIds,
+  'repeated accept must replay the same receipt set',
+);
+assert.ok(secondHmxDecision.importResult.reused >= 1);
 
 // The live operator surface must display domain rejection as an error, even when HTTP status is 200.
 const uiSource = await readFile(new URL('../../../../app/src/components/HexisControlConsole.tsx', import.meta.url), 'utf8');
