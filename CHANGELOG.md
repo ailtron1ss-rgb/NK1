@@ -1,3 +1,16 @@
+## WorkPass340 — Unified Cognitive Substrate connected to the live runtime — 2026-10-26
+
+- **Runtime wiring:** added a durable `*.cognitive-substrate.json` sidecar, guarded restore, periodic save on meaningful change/every 16 ticks, and orderly-stop flush. The substrate now integrates the already-completed canonical Core cycle instead of remaining a standalone helper.
+- **Unified state frame:** couples self/continuity, world uncertainty/conflict, prediction debt, device resource telemetry, memory pressure, and evidence coverage/provenance. The substrate state is exposed only as a read-only diagnostic snapshot.
+- **Governed planning:** combines the existing resource/dependency routing policy with `resolveUnifiedCognitiveWorkPolicy`. The added layer can only reduce optional counterfactual branches/matched projections; `OrganismCore` stays the canonical action arbiter.
+- **State validation:** strict schema version, own-property reads, bounded finite metrics/safe counters/text. A bad derived sidecar is logged and reset instead of preventing the whole organism from booting.
+- **Regression:** added `tests/unified-substrate-runtime-wiring.mjs` and expanded `organism-smoke.mjs` to check 30 live cycles, finite coupling, and substrate continuity after stop/re-init. Wired into `test:cognitive-integration-suite` and `test:rebuild-recovered`.
+- **CI-driven correction:** an earlier integration attempt caught two real TypeScript errors (a direct `PredictionDebtState` cast and reading nonexistent `cycleObservation.vision`). Current code uses an explicit `unknown` bridge and leaves relation count at zero until typed P41 evidence is available; it no longer fabricates vision relations.
+
+**Validation status:** the earlier branch’s first integration attempt failed typecheck; that failure is recorded rather than hidden. This fresh-base branch has not yet completed exact-HEAD Actions CI, so its new typecheck/smoke regressions remain pending. Progress scores are unchanged.
+
+---
+
 ## WorkPass335 — full preflight for outcome-ledger writes (2026-10-26)
 
 - **Defect:** `recordIndependentEvaluationOutcomes` previously checked some execution-binding fields only for truthiness. A malformed but truthy non-string `runId` could get as far as `VerifiedOutcomeLedger.record`, where its evidence reference was rejected. If malformed data arrived in a later row, an earlier row could already have been committed.
