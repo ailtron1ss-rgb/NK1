@@ -134,6 +134,7 @@ export interface ChatBackendResponse {
 
 export type HexisHmxIntent = "port" | "duplicate" | "telepathy" | "analysis";
 export type HexisHmxStrategy = "additive" | "authoritative" | "deliberative" | "analysis_only";
+export type HexisHmxDecision = "accept" | "reject" | "apply";
 export type HexisHmxStageStatus = "staged" | "accepted" | "rejected" | "applied";
 export type HexisGoalProposalStatus = "pending" | "approved" | "rejected" | "materialized";
 export type HexisGoalReviewDecision = "approve" | "reject";
