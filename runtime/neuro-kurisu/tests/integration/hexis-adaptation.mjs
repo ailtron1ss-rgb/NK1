@@ -266,6 +266,33 @@ assert(slugCollisionStage.conflicts.some(conflict => conflict.kind === 'duplicat
 assert.equal(slugCollisionStage.stagedSections.memories, undefined,
   'normalized exports with colliding references must fail atomically before canonical writes');
 
+// A raw native ID reused across memories and skills is ambiguous. The exporter must not
+// point a relationship at whichever section happened to be indexed last.
+const ambiguousNativeReferenceExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'ambiguous-native-reference',
+  sourceLineageId: 'ambiguous-native-reference-lineage',
+  sections: {
+    memories: [{ id: 'shared-id', type: 'semantic', content: 'Native memory endpoint.' }],
+    skills: [{ id: 'shared-id', name: 'Shared skill', instructions: 'Native procedure endpoint.' }],
+    relationships: [{ source: 'shared-id', target: 'shared-id', edge_type: 'supports' }],
+  },
+});
+assert(ambiguousNativeReferenceExport.export_warnings.some(warning => warning.includes('Ambiguous native reference')));
+const ambiguousRelationship = ambiguousNativeReferenceExport.sections.relationships[0];
+const exportedMemoryRefs = new Set(ambiguousNativeReferenceExport.sections.memories.map(memory => memory.ref));
+assert.equal(ambiguousRelationship.source_ref, ambiguousRelationship.target_ref);
+assert.equal(exportedMemoryRefs.has(ambiguousRelationship.source_ref), false,
+  'an ambiguous native ID must not be bound to either the memory or skill record');
+const ambiguousReferenceStage = new HexisAdaptationFabric().stageHmx({
+  document: ambiguousNativeReferenceExport,
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(ambiguousReferenceStage.conflicts, [],
+  'an unresolved but structurally valid native relation should be staged for review rather than miswired');
+assert.equal(ambiguousReferenceStage.stagedSections.relationships.length, 1);
+assert.equal(ambiguousReferenceStage.stagedSections.relationships[0].source_ref, ambiguousRelationship.source_ref);
+
 function makeHmxDocument(exportId, sections) {
   return ({
   hmx_version: '1.7',
