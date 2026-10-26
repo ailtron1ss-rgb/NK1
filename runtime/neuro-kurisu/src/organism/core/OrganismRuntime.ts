@@ -665,9 +665,9 @@ export class OrganismRuntime {
       },
       prediction: {
         error01: cycle.state.predictionError,
-        openCount: debtCount('openCount'),
-        agingCount: debtCount('agingCount'),
-        expiredCount: debtCount('expiredCount'),
+        openCount: debtCount(predictionDebt.openCount),
+        agingCount: debtCount(predictionDebt.agingCount),
+        expiredCount: debtCount(predictionDebt.expiredCount),
         priority01: predictionPriority,
       },
       resources: {

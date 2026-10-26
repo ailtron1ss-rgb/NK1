@@ -1,3 +1,11 @@
+## WorkPass340 — сохранены реальные счётчики prediction debt (2026-10-26)
+
+- Закрыт дефект в call sites после перехода на типизированный \`PredictionDebtState\`: \`openCount\`, \`agingCount\` и \`expiredCount\` теперь передаются валидатору как числовые поля, а не как строковые имена свойств.
+- Регрессия WorkPass339 проверяет все три связи, поэтому future-рефакторинг не сможет незаметно обнулить debt-сигналы.
+- Typecheck и focused runtime wiring должны быть подтверждены новым exact-HEAD CI; результат старого HEAD не переносится на новый.
+
+---
+
 ## WorkPass339 — исправлена типовая и фактическая связь prediction debt / vision graph (2026-10-26)
 
 - Удалено небезопасное приведение \`PredictionDebtState\` к \`Record<string, unknown>\`: runtime теперь читает типизированные \`openCount\`, \`agingCount\`, \`expiredCount\`, \`meanPriority01\` и нормализует числовые значения перед интеграцией.
