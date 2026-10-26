@@ -69,7 +69,7 @@ export class FeedbackDeliveryGuard {
       throw new Error(`feedback for organism tick ${input.tick} is already in progress; refusing duplicate delivery`);
     }
 
-    const key = `${input.tick}\\u0000${input.decisionId}\\u0000${input.action}`;
+    const key = JSON.stringify([input.tick, input.decisionId, input.action]);
     this.inFlightByTick.set(input.tick, key);
     return { key, tick: input.tick, decisionId: input.decisionId, action: input.action };
   }
