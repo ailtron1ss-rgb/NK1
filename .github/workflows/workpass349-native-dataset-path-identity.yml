@@ -8,6 +8,8 @@ on:
       - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
       - "runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs"
       - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts"
+      - "runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs"
       - ".github/workflows/workpass349-native-dataset-path-identity.yml"
   pull_request:
     branches: [workpass334-inner-imperative-homeostasis-2026-10-24]
@@ -16,6 +18,8 @@ on:
       - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
       - "runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs"
       - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts"
+      - "runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs"
       - ".github/workflows/workpass349-native-dataset-path-identity.yml"
   workflow_dispatch:
 
@@ -41,5 +45,7 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Test signed dataset path identity and P23 provider
         run: npm --prefix runtime/neuro-kurisu run test:workpass346:native-repair-provider
+      - name: Test learning process supervisor failure cleanup
+        run: npm --prefix runtime/neuro-kurisu run test:p23:learning-process-supervisor
       - name: Type-check the runtime
         run: npm --prefix runtime/neuro-kurisu run typecheck
