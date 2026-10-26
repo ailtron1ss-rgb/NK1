@@ -175,6 +175,22 @@ export class CognitiveEventFabric {
       :512;
   }
 
+
+  private withAtomicLedgerMutation<T>(operation:()=>T):T{
+    const eventsBefore=this.events.slice();
+    const totalBefore=this.total;
+    const receiptIndexBefore=[...this.receiptProjectionIndex.entries()];
+    try{
+      return operation();
+    }catch(error){
+      this.events=eventsBefore;
+      this.total=totalBefore;
+      this.receiptProjectionIndex.clear();
+      for(const [executionId,entry] of receiptIndexBefore)this.receiptProjectionIndex.set(executionId,entry);
+      throw error;
+    }
+  }
+
   restore(raw?:Partial<CognitiveEventFabricSnapshot>|null):void{
     const recentRows=Array.isArray(raw?.recent)?raw!.recent:[];
     const receiptEvents=Array.isArray((raw as CognitiveEventFabricSnapshot | undefined)?.receiptEvents)
@@ -319,21 +335,41 @@ export class CognitiveEventFabric {
     expectedPostcondition?:string; observedPostcondition?:string;
     observationIntegrated:boolean; at?:number;
   }): { replayed:boolean; executionId:string; actionEventId:string; outcomeEventId:string; evidenceEventId:string } {
-    const executionId=String(input.executionId??'').trim().slice(0,180);
-    if(!executionId) throw new Error('tool-receipt-execution-id-required');
-    const safeTool=String(input.toolId??'unknown').slice(0,64);
-    const decisionId=String(input.decisionId??'').trim().slice(0,180)||undefined;
+    if(typeof input.executionId!=='string')throw new TypeError('invalid-tool-receipt-execution-id');
+    const executionId=input.executionId.trim();
+    if(!executionId)throw new Error('tool-receipt-execution-id-required');
+    if(executionId.length>180)throw new RangeError('invalid-tool-receipt-execution-id');
+    if(typeof input.toolId!=='string'||!input.toolId.trim())throw new TypeError('invalid-tool-receipt-tool-id');
+    if(input.toolId.length>64)throw new RangeError('invalid-tool-receipt-tool-id');
+    if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('invalid-cognitive-event-tick');
+    if(input.at!==undefined&&(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0))throw new RangeError('invalid-cognitive-event-timestamp');
+    if(typeof input.ok!=='boolean'||typeof input.verified!=='boolean'||typeof input.externalObservation!=='boolean'||typeof input.observationIntegrated!=='boolean')throw new TypeError('invalid-tool-receipt-boolean');
+    if(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01))throw new TypeError('invalid-cognitive-event-confidence');
+    const optionalText=(value:unknown,key:string,maxLength:number):string|undefined=>{
+      if(value===undefined||value===null)return undefined;
+      if(typeof value!=='string')throw new TypeError(`invalid-tool-receipt-${key}`);
+      if(value.length>maxLength)throw new RangeError(`invalid-tool-receipt-${key}`);
+      return value;
+    };
+    const decisionValue=optionalText(input.decisionId,'decision-id',180);
+    const decisionId=decisionValue?.trim()||undefined;
+    const outcomeClass=optionalText(input.outcomeClass,'outcome-class',64)??'unknown';
+    const verificationBasis=optionalText(input.verificationBasis,'verification-basis',48)??'none';
+    const observationValue=optionalText(input.observationId,'observation-id',180)??'';
+    const expectedPostcondition=optionalText(input.expectedPostcondition,'expected-postcondition',16384)??'';
+    const observedPostcondition=optionalText(input.observedPostcondition,'observed-postcondition',16384)??'';
+    const safeTool=input.toolId;
     const normalized={
-      tick:Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0)),executionId,toolId:safeTool,decisionId:decisionId??null,
-      ok:Boolean(input.ok),verified:Boolean(input.verified),outcomeClass:String(input.outcomeClass??'unknown').slice(0,64),
-      confidence01:clamp01(input.confidence01),verificationBasis:String(input.verificationBasis??'none').slice(0,48),
-      externalObservation:Boolean(input.externalObservation),observationId:String(input.observationId??'').slice(0,180)||null,
-      expectedPostconditionPresent:Boolean(String(input.expectedPostcondition??'').trim()),
-      observedPostconditionPresent:Boolean(String(input.observedPostcondition??'').trim()),
-      // Hash canonical claims into the immutable receipt fingerprint without writing raw postcondition text into CEF.
-      expectedPostconditionHash:String(input.expectedPostcondition??'').trim()?sha256Stable(String(input.expectedPostcondition).normalize('NFKC').trim()):null,
-      observedPostconditionHash:String(input.observedPostcondition??'').trim()?sha256Stable(String(input.observedPostcondition).normalize('NFKC').trim()):null,
-      observationIntegrated:Boolean(input.observationIntegrated),
+      tick:input.tick,executionId,toolId:safeTool,decisionId:decisionId??null,
+      ok:input.ok,verified:input.verified,outcomeClass,
+      confidence01:clamp01(input.confidence01),verificationBasis,
+      externalObservation:input.externalObservation,observationId:observationValue||null,
+      expectedPostconditionPresent:Boolean(expectedPostcondition.trim()),
+      observedPostconditionPresent:Boolean(observedPostcondition.trim()),
+      // Keep canonical claims as hashes only; never copy raw postcondition text into the event ledger.
+      expectedPostconditionHash:expectedPostcondition.trim()?sha256Stable(expectedPostcondition.normalize('NFKC').trim()):null,
+      observedPostconditionHash:observedPostcondition.trim()?sha256Stable(observedPostcondition.normalize('NFKC').trim()):null,
+      observationIntegrated:input.observationIntegrated,
     };
     const projectionHash=sha256Stable(normalized);
     const allForExecution=this.events.filter(event=>event.payload.executionId===executionId&&['tool-action','tool-outcome','tool-evidence'].includes(event.stage));
@@ -350,8 +386,6 @@ export class CognitiveEventFabric {
         if(candidateNodes.some(Boolean))throw new Error('tool-receipt-trace-incomplete-reconciliation-required');
       } else {
         const storedMatches=action!.payload.tool===normalized.toolId&&
-          // Preserve the requested decision identity separately from a resolved causal edge.
-          // A supplied ID may be absent from this bounded event window; that must not turn an exact replay into a conflict.
           (action!.payload.requestedDecisionId??action!.payload.decisionId)===(normalized.decisionId??null)&&
           outcome!.tick===normalized.tick&&outcome!.payload.tool===normalized.toolId&&outcome!.payload.ok===normalized.ok&&
           outcome!.payload.verified===normalized.verified&&outcome!.payload.outcomeClass===normalized.outcomeClass&&
@@ -370,28 +404,31 @@ export class CognitiveEventFabric {
         return {...replayEntry,replayed:true};
       }
     }
-    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+    const at=input.at===undefined?Date.now():input.at;
     const decision=this.events.find(event=>event.id===decisionId);
-    const action=this.append({
-      tick:input.tick,stage:'tool-action',source:'action-gateway',
-      parentIds:decision?[decision.id]:[],external:false,confidence01:input.verified?Math.max(.5,clamp01(input.confidence01)):.5,at,
-      payload:{executionId,tool:safeTool,decisionId:decision?.id??null,requestedDecisionId:normalized.decisionId??null,decisionLinked:Boolean(decision)},
+    return this.withAtomicLedgerMutation(()=>{
+      const action=this.append({
+        tick:input.tick,stage:'tool-action',source:'action-gateway',
+        parentIds:decision?[decision.id]:[],external:false,confidence01:input.verified?Math.max(.5,clamp01(input.confidence01)):.5,at,
+        payload:{executionId,tool:safeTool,decisionId:decision?.id??null,requestedDecisionId:normalized.decisionId??null,decisionLinked:Boolean(decision)},
+      });
+      const outcome=this.append({
+        tick:input.tick,stage:'tool-outcome',source:'action-gateway-outcome',
+        parentIds:[action.id],external:false,confidence01:clamp01(input.confidence01),at,
+        payload:{executionId,tool:safeTool,ok:input.ok,verified:input.verified,outcomeClass},
+      });
+      const evidence=this.append({
+        tick:input.tick,stage:'tool-evidence',source:'outcome-verification',
+        parentIds:[outcome.id],external:input.externalObservation,confidence01:clamp01(input.confidence01),at,
+        payload:{executionId,tool:safeTool,verificationBasis,externalObservation:input.externalObservation,observationId:observationValue||null,observationIntegrated:input.observationIntegrated,expectedPostconditionPresent:normalized.expectedPostconditionPresent,observedPostconditionPresent:normalized.observedPostconditionPresent,expectedPostconditionHash:normalized.expectedPostconditionHash,observedPostconditionHash:normalized.observedPostconditionHash},
+      });
+      const entry:ToolReceiptProjectionIndexEntry={executionId,actionEventId:action.id,outcomeEventId:outcome.id,evidenceEventId:evidence.id,projectedAt:at,projectionHash};
+      this.receiptProjectionIndex.set(executionId,entry);
+      while(this.receiptProjectionIndex.size>256) { const oldest=this.receiptProjectionIndex.keys().next().value; if(oldest===undefined) break; this.receiptProjectionIndex.delete(oldest); }
+      return {...entry,replayed:false};
     });
-    const outcome=this.append({
-      tick:input.tick,stage:'tool-outcome',source:'action-gateway-outcome',
-      parentIds:[action.id],external:false,confidence01:clamp01(input.confidence01),at,
-      payload:{executionId,tool:safeTool,ok:Boolean(input.ok),verified:Boolean(input.verified),outcomeClass:String(input.outcomeClass??'unknown').slice(0,64)},
-    });
-    const evidence=this.append({
-      tick:input.tick,stage:'tool-evidence',source:'outcome-verification',
-      parentIds:[outcome.id],external:Boolean(input.externalObservation),confidence01:clamp01(input.confidence01),at,
-      payload:{executionId,tool:safeTool,verificationBasis:String(input.verificationBasis??'none').slice(0,48),externalObservation:Boolean(input.externalObservation),observationId:String(input.observationId??'').slice(0,180)||null,observationIntegrated:Boolean(input.observationIntegrated),expectedPostconditionPresent:Boolean(String(input.expectedPostcondition??'').trim()),observedPostconditionPresent:Boolean(String(input.observedPostcondition??'').trim()),expectedPostconditionHash:normalized.expectedPostconditionHash,observedPostconditionHash:normalized.observedPostconditionHash},
-    });
-    const entry:ToolReceiptProjectionIndexEntry={executionId,actionEventId:action.id,outcomeEventId:outcome.id,evidenceEventId:evidence.id,projectedAt:at,projectionHash};
-    this.receiptProjectionIndex.set(executionId,entry);
-    while(this.receiptProjectionIndex.size>256) { const oldest=this.receiptProjectionIndex.keys().next().value; if(oldest===undefined) break; this.receiptProjectionIndex.delete(oldest); }
-    return {...entry,replayed:false};
   }
+
 
 
   hasToolReceiptTrace(executionId:string):boolean{
@@ -564,12 +601,7 @@ export class CognitiveEventFabric {
     }
 
     const ids:Partial<Record<PhaseKey,string>>={};
-    // append() can still throw unexpectedly (for example, a future validation added to a
-    // stage). Keep a rollback boundary as a second line of defence after preflight.
-    const eventsBefore=this.events.slice();
-    const totalBefore=this.total;
-    const receiptIndexBefore=[...this.receiptProjectionIndex.entries()];
-    try{
+    return this.withAtomicLedgerMutation(()=>{
       for(const spec of specs){
         const phase=prepared[spec.key];
         if(!phase)continue;
@@ -587,13 +619,7 @@ export class CognitiveEventFabric {
         ids[spec.key]=event.id;
       }
       return ids;
-    }catch(error){
-      this.events=eventsBefore;
-      this.total=totalBefore;
-      this.receiptProjectionIndex.clear();
-      for(const [executionId,entry] of receiptIndexBefore)this.receiptProjectionIndex.set(executionId,entry);
-      throw error;
-    }
+    });
   }
 
   verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
