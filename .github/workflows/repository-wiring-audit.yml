@@ -7,6 +7,7 @@ on:
       - audit/repository-wiring-contracts-2026-10-25
       - audit/b276-execution-attribution-2026-10-26
       - hexis-h1-memory-evidence-lineage-2026-10-26
+      - workpass375-hexis-evidence-to-memoryos2-r2
     paths:
       - ".github/workflows/repository-wiring-audit.yml"
       - ".github/workflows/**"
@@ -14,9 +15,11 @@ on:
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/HexisEvidenceAdapter.ts"
       - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts"
       - "runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs"
       - "runtime/neuro-kurisu/tests/integration/hexis-memory-evidence-lineage.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-hexis-evidence-adapter.mjs"
       - "runtime/neuro-kurisu/tests/integration/hexis-server-smoke.mjs"
       - "runtime/neuro-kurisu/tests/hexis-p65-pending-prediction-retention.mjs"
       - "runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts"
@@ -56,9 +59,11 @@ on:
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/HexisEvidenceAdapter.ts"
       - "runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts"
       - "runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs"
       - "runtime/neuro-kurisu/tests/integration/hexis-memory-evidence-lineage.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-hexis-evidence-adapter.mjs"
       - "runtime/neuro-kurisu/tests/integration/hexis-server-smoke.mjs"
       - "runtime/neuro-kurisu/tests/hexis-p65-pending-prediction-retention.mjs"
       - "runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts"
