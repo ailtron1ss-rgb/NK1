@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass336 connects strict unified-substrate state into the runtime cycle and optional counterfactual-work governance, but exact-head tests/CI remain pending, so no progress score is increased and no prior PASS row is treated as validation of this new branch.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass336 connects strict unified-substrate state into the live runtime cycle and optional counterfactual-work governance, with a 30-cycle smoke/restart regression authored. Exact-head typecheck/tests/CI are pending; no new score is inferred from code presence.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -284,15 +284,17 @@
     "id": "WorkPass336",
     "date": "2026-10-26",
     "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r2",
-    "codeCommit": "833fa38f6c4207588e840c7b01657f97323566f1",
+    "codeCommit": "29393dad1e81da2949c62eb332f3f356a74c426f",
     "summary": "Wire hardened UnifiedCognitiveSubstrate into OrganismRuntime restore, cycle integration, bounded optional-work policy, periodic persistence and stop flush.",
     "testsAdded": [
       "strict persisted-state sanitization and schema-version rejection",
       "invalid and replayed tick inputs do not mutate substrate state",
       "invalid resource/evidence policy fails closed for speculative work",
-      "runtime source-contract asserts persistence and wiring order"
+      "runtime source-contract asserts persistence and wiring order",
+      "30-cycle smoke confirms live substrate cycle count advances",
+      "runtime stop/re-init confirms persisted substrate continuity"
     ],
-    "validationStatus": "pending exact-head typecheck, unified-substrate runtime regression, and Actions CI",
+    "validationStatus": "pending exact-head typecheck, unified-substrate wiring regression, 30-cycle runtime smoke/restart, and Actions CI",
     "progressPercentagesChanged": false,
     "scoredBaselineHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626"
   },
