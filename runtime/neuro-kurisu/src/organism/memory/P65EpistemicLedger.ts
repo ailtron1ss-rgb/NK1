@@ -21,7 +21,9 @@ export class P65EpistemicLedger{
   const pending=this.state.claimsData.filter(c=>c.kind==='prediction'&&!c.resolved);
   const recent=this.state.claimsData.filter(c=>!(c.kind==='prediction'&&!c.resolved)).slice(0,128);
   const seen=new Set<string>();
-  const unique=[...pending,...recent].filter(c=>{if(seen.has(c.id))return false;seen.add(c.id);return true;});\n  // Pending predictions are safety-critical learning obligations: never truncate them to make room for recent history.\n  const claimsData=unique.slice(0,Math.max(160,pending.length)).map(c=>({...c,parentIds:c.parentIds.slice()}));
+  const unique=[...pending,...recent].filter(c=>{if(seen.has(c.id))return false;seen.add(c.id);return true;});
+  // Pending predictions are safety-critical learning obligations: never truncate them to make room for recent history.
+  const claimsData=unique.slice(0,Math.max(160,pending.length)).map(c=>({...c,parentIds:c.parentIds.slice()}));
   return {...this.state,claimsData,recentIds:this.state.recentIds.slice(0,256)};
  }
  record(input:{tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;parentIds?:string[];predicted01?:number}):string{
