@@ -8,8 +8,8 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export type P65Kind='observation'|'inference'|'belief'|'prediction'|'counterfactual';
 export interface P65Claim {id:string;tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;resolved:boolean;parentIds:string[];predicted01?:number;actual01?:number;error01?:number;lastSupportedAt:number;supportCount:number;status:'active'|'stale'|'expired'|'resolved';}
-export interface P65State {version:2;claims:number;observations:number;inferences:number;beliefs:number;predictions:number;counterfactuals:number;resolvedPredictions:number;meanConfidence01:number;meanPredictionError01:number;unresolved:number;claimsData:P65Claim[];recentIds:string[];beliefHalfLifeMs:number;expiredBeliefs:number;staleBeliefs:number;}
-export const defaultP65=():P65State=>({version:2,claims:0,observations:0,inferences:0,beliefs:0,predictions:0,counterfactuals:0,resolvedPredictions:0,meanConfidence01:.5,meanPredictionError01:.5,unresolved:0,claimsData:[],recentIds:[],beliefHalfLifeMs:7*24*60*60*1000,expiredBeliefs:0,staleBeliefs:0});
+export interface P65State {version:2;claims:number;observations:number;inferences:number;beliefs:number;predictions:number;counterfactuals:number;resolvedPredictions:number;meanConfidence01:number;meanPredictionError01:number;unresolved:number;claimsData:P65Claim[];recentIds:string[];beliefHalfLifeMs:number;expiredBeliefs:number;staleBeliefs:number;rejectedPredictionAdds:number;}
+export const defaultP65=():P65State=>({version:2,claims:0,observations:0,inferences:0,beliefs:0,predictions:0,counterfactuals:0,resolvedPredictions:0,meanConfidence01:.5,meanPredictionError01:.5,unresolved:0,claimsData:[],recentIds:[],beliefHalfLifeMs:7*24*60*60*1000,expiredBeliefs:0,staleBeliefs:0,rejectedPredictionAdds:0});
 const MAX_PENDING_PREDICTIONS = 1024;
 const MAX_RECENT_CLAIMS = 128;
 const MAX_RECENT_IDS = 512;
@@ -86,7 +86,7 @@ const sourceTrust=(source:string):number=>{ const s=String(source||'unknown').to
 function stableId(tick:number,kind:P65Kind,content:string,source:string){let h=2166136261>>>0;for(const c of `${tick}|${kind}|${source}|${content.slice(0,220)}`)h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;return `p65:${tick}:${kind}:${h.toString(16)}`;}
 export class P65EpistemicLedger{
  private state=defaultP65();
- restore(raw?:Partial<P65State>|null){const d=defaultP65(),r=raw??{};this.state={...d,...r,version:2,claimsData:retainP65Claims(Array.isArray(r.claimsData)?r.claimsData:[]),recentIds:normalizeP65RecentIds(r.recentIds)};}
+ restore(raw?:Partial<P65State>|null){const d=defaultP65(),r=raw??{};this.state={...d,...r,version:2,claimsData:retainP65Claims(Array.isArray(r.claimsData)?r.claimsData:[]),recentIds:normalizeP65RecentIds(r.recentIds),rejectedPredictionAdds:Number.isSafeInteger(r.rejectedPredictionAdds)&&Number(r.rejectedPredictionAdds)>=0?Number(r.rejectedPredictionAdds):0};}
  snapshot(){return structuredClone(this.state);}
  /** Durable projection retains every currently unresolved prediction plus a recent non-prediction tail. */
  persistenceSnapshot(){
@@ -96,7 +96,7 @@ export class P65EpistemicLedger{
  record(input:{tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;parentIds?:string[];predicted01?:number}):string{
   const content=String(input.content??'').slice(0,320);if(!content)return '';
   const id=stableId(input.tick,input.kind,content,input.source);if(this.state.recentIds.includes(id))return id;
-  if(input.kind==='prediction'&&this.state.claimsData.filter(c=>c.kind==='prediction'&&!c.resolved).length>=MAX_PENDING_PREDICTIONS)return '';
+  if(input.kind==='prediction'&&this.state.claimsData.filter(c=>c.kind==='prediction'&&!c.resolved).length>=MAX_PENDING_PREDICTIONS){this.state.rejectedPredictionAdds++;return '';}
   const claim:P65Claim={id,tick:input.tick,at:input.at,kind:input.kind,content,confidence01:clamp(input.confidence01),source:String(input.source||'unknown'),resolved:false,parentIds:(input.parentIds??[]).slice(0,8),predicted01:input.kind==='prediction'?clamp(input.predicted01 ?? input.confidence01):undefined,lastSupportedAt:input.at,supportCount:1,status:'active'};
   this.state.claims++;
   if(input.kind==='observation') this.state.observations++;
@@ -123,5 +123,5 @@ export class P65EpistemicLedger{
   const kindPenalty=input.kind==='prediction' ? .03 : input.kind==='counterfactual' ? .16 : input.kind==='inference' ? .08 : 0;
   return clamp(input.base01+provenance+grounding*.05-contradiction*.22-kindPenalty);
  }
- summary(){return {claims:this.state.claims,observations:this.state.observations,inferences:this.state.inferences,beliefs:this.state.beliefs,predictions:this.state.predictions,counterfactuals:this.state.counterfactuals,resolvedPredictions:this.state.resolvedPredictions,meanConfidence01:this.state.meanConfidence01,meanPredictionError01:this.state.meanPredictionError01,unresolved:this.state.unresolved,expiredBeliefs:this.state.expiredBeliefs,staleBeliefs:this.state.staleBeliefs};}
+ summary(){return {claims:this.state.claims,observations:this.state.observations,inferences:this.state.inferences,beliefs:this.state.beliefs,predictions:this.state.predictions,counterfactuals:this.state.counterfactuals,resolvedPredictions:this.state.resolvedPredictions,meanConfidence01:this.state.meanConfidence01,meanPredictionError01:this.state.meanPredictionError01,unresolved:this.state.unresolved,expiredBeliefs:this.state.expiredBeliefs,staleBeliefs:this.state.staleBeliefs,rejectedPredictionAdds:this.state.rejectedPredictionAdds};}
 }
