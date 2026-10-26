@@ -72,6 +72,7 @@ export interface CognitiveEventFabricSnapshot {
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const isPlainRecord=(value:unknown):value is Record<string,unknown>=>isRecord(value)&&(()=>{const prototype=Object.getPrototypeOf(value);return prototype===Object.prototype||prototype===null;})();
 const OMIT_PAYLOAD_VALUE=Symbol('omit-cognitive-payload-value');
 const MAX_COGNITIVE_PAYLOAD_DEPTH=32;
 const MAX_COGNITIVE_PAYLOAD_NODES=16384;
@@ -323,6 +324,10 @@ export class CognitiveEventFabric {
   }
 
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
+    // Validate the root payload before canonicalization or idempotency lookup: cleanPayload intentionally normalizes non-records.
+    if(input.payload!==undefined&&!isPlainRecord(input.payload)) {
+      throw new TypeError('invalid-cognitive-event-payload');
+    }
     const suppliedId=typeof input.id==='string'?input.id:'';
     if(input.id!==undefined&&(
       !suppliedId||suppliedId!==suppliedId.trim()||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId)
