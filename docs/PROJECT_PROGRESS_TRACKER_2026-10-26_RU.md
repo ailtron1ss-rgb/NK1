@@ -82,7 +82,7 @@
 
 - **Implementation branch:** hexis-integration-workpass373-20261026, based on WorkPass373 cross-ledger-rollback source line.
 - **Integrated code:** normalized HMX 1.7 export; review-gated canonical memory projection through MemoryFabric; source-provenance semantic namespace; idempotent application receipt; rollback-aware apply path; explicit HTTP decision validation; focused tests and workflow.
-- **Goal boundary:** accepted HMX goals can be converted to idempotent pending review proposals, listed and approved/rejected via the API; they are not silently materialized or activated.
+- **Goal boundary:** accepted HMX goals can be converted to idempotent pending review proposals, listed and approved/rejected via the API; they are not silently materialized or activated. Explicitly confirmed materialization now creates/reuses a canonical candidate goal, reconciles goal↔memory graph edges where both endpoints exist, writes a typed event receipt and replays without creating a second goal.
 - **Validation state:** unverified. Exact-head GitHub Actions report failed jobs but the connector exposes no step list/logs (log endpoint returns BlobNotFound); no pass is claimed. Runtime typecheck, focused Hexis tests, unified cognitive integration and release verification must be observable on the exact head before promotion.
 - **Scoring:** preserve the prior weighted metrics. This pass is code integration only until exact-head checks and independent evaluation provide new evidence.
 - **Unchanged:** main and the published Release ZIP.
