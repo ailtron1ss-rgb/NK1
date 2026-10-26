@@ -267,6 +267,7 @@ export class MemoryFabric {
         break;
       }
       case 'rollback-created': {
+        if(!commandId)throw new Error('memory-lifecycle-hmx-rollback-command-id-required');
         const before=this.findCanonical(command.id);
         if(!before){
           // Compensation is idempotent: an absent row is already rolled back.
