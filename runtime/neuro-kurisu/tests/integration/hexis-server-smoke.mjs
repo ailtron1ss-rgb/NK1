@@ -40,11 +40,16 @@ try {
     if (!duplicate.ok || duplicate.result?.audit?.applied !== false) throw new Error('hexis-belief-dedupe');
   }
   const exportRes = await (await fetch(`${base}/api/organism/integration/hexis/hmx/export`)).json();
-  if (!exportRes.ok || exportRes.document?.hmx_version !== '1.7' || !Array.isArray(exportRes.document?.sections?.memories)) throw new Error('hexis-hmx-export');
-  const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: exportRes.document, intent: 'port', strategy: 'additive' })).json();
-  if (!stageRes.ok || stageRes.stage?.status !== 'staged') throw new Error('hexis-hmx-stage');
+  if (!exportRes.ok || exportRes.document?.hmx_version !== '1.7' ||
+      !/^exp_[0-9a-f]{16}$/.test(String(exportRes.document?.export_id)) ||
+      exportRes.document?.export_intent !== 'telepathy' || !exportRes.document?.exported_at ||
+      !exportRes.document?.source?.hexis_lineage_id || !Array.isArray(exportRes.document?.sections?.memories) ||
+      Object.keys(exportRes.document?.sections ?? {}).some(key => key !== 'memories')) throw new Error('hexis-hmx-v17-export-contract');
+  const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: exportRes.document, intent: 'telepathy', strategy: 'additive' })).json();
+  if (!stageRes.ok || stageRes.stage?.status !== 'staged' || stageRes.stage?.applicationMode !== 'memory-merge' || stageRes.stage?.conflicts?.length !== 0) throw new Error('hexis-hmx-stage');
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
-  if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted') throw new Error('hexis-hmx-accept');
+  if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted' || !['applied', 'skipped'].includes(acceptRes.stage?.importResult?.status)) throw new Error('hexis-hmx-accept-and-apply');
+  for (const count of ['created', 'reused', 'skipped']) if (Number(acceptRes.stage?.importResult?.[count] ?? -1) < 0) throw new Error('hexis-hmx-import-counts');
   if (memoryIndex.memoryIndex[0]?.id) {
     const proposal = await (await post('/api/organism/integration/hexis/retention/propose', { memoryId: memoryIndex.memoryIndex[0].id, action: 'archive', reason: 'server-smoke' })).json();
     if (!proposal.ok || !proposal.proposal?.id) throw new Error('hexis-retention-propose');
