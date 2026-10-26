@@ -11,6 +11,7 @@ import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvide
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
+import { FeedbackDeliveryGuard } from './FeedbackDeliveryGuard.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
@@ -1239,6 +1240,8 @@ export class OrganismCore {
     private b297FacadeCache = { identity01: .5, agency01: .5, budget01: .5, memoryPressure01: .2, embodimentCapacity01: .75 };
     private cognitiveCycleAnchors: Partial<Record<'observation' | 'prediction' | 'appraisal' | 'attention' | 'memory' | 'goal' | 'plan' | 'action', string>> = {};
     private persisted: PersistedOrganism = defaultPersisted();
+    /** Reject duplicate terminal feedback before it can mutate any learning subsystem. */
+    private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard();
     private ready = false;
     constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
         this.store = store;
@@ -3868,6 +3871,10 @@ export class OrganismCore {
         const trace = this.persisted.traces[0];
         if (!trace?.selected)
             return;
+        const feedbackDeliveryToken = this.feedbackDeliveryGuard.begin({
+            tick: state.tick, decisionId: trace.id, action: trace.selected.action,
+            previousReceipt: (this.persisted.system as any).feedbackDeliveryReceipt,
+        });
         const success = clamp(outcome.success ?? (outcome.reward == null ? .5 : .5 + outcome.reward * .5));
         const surprise = clamp(outcome.surprise ?? Math.abs(.5 - success));
         state.lastActionSuccess = success;
@@ -3956,6 +3963,7 @@ export class OrganismCore {
         }
         if (trace.selected)
             trace.outcome = { success, reward: outcome.reward, surprise, notes: outcome.notes, at: Date.now() };
+        (this.persisted.system as any).feedbackDeliveryReceipt = this.feedbackDeliveryGuard.complete(feedbackDeliveryToken);
         this.markPersistenceDirty();
     }
     private expectedClosureDomains(observation: OrganismObservation, normalizedObservation: OrganismObservation): CognitiveDomain[] {
@@ -8367,6 +8375,13 @@ export class OrganismCore {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
         const state = this.persisted.state;
+        const feedbackTraceForDelivery = this.persisted.traces[0];
+        const feedbackDeliveryToken = feedbackTraceForDelivery?.selected
+            ? this.feedbackDeliveryGuard.begin({
+                tick: state.tick, decisionId: feedbackTraceForDelivery.id, action: feedbackTraceForDelivery.selected.action,
+                previousReceipt: (this.persisted.system as any).feedbackDeliveryReceipt,
+            })
+            : null;
         // P80 is read-only during feedback; keep one detached view instead of cloning it
         // repeatedly for each downstream learning/neural branch.
         const p80FeedbackState = this.selfSubsystem.p80UnifiedSelfState.snapshot();
@@ -10362,6 +10377,9 @@ export class OrganismCore {
         this.persisted.facets.learning.verifiedAutonomousLife = this.developmentalNeural.verifiedAutonomousLife.snapshot();
         this.persisted.facets.learning.researchGradeOrganism = this.developmentalNeural.researchGradeOrganism.snapshot();
         this.persisted.facets.learning.operationalLife = this.developmentalNeural.operationalLife.snapshot();
+        if (feedbackDeliveryToken) {
+            (this.persisted.system as any).feedbackDeliveryReceipt = this.feedbackDeliveryGuard.complete(feedbackDeliveryToken);
+        }
         await this.checkpoint(false);
     }
     cameraEvidenceSnapshot() { return this.embodimentSubsystem.cameraEvidence.snapshot(); }
