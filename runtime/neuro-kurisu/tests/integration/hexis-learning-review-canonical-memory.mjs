@@ -95,7 +95,7 @@ const reviewEnd = coreSource.indexOf("hexisListLearningReviews(status = 'pending
 assert.ok(reviewStart >= 0 && reviewEnd > reviewStart, 'the learning-review coordinator must remain in Core');
 const body = coreSource.slice(reviewStart, reviewEnd);
 const applyCorrectionAt = body.indexOf('this.memorySubsystem.fabric.reviseContent');
-const recordEvidenceAt = body.indexOf('this.memorySubsystem.memoryOS.recordEvidence');
+const recordEvidenceAt = body.indexOf('this.memorySubsystem.fabric.recordEvidence');
 const commitDecisionAt = body.indexOf('this.hexisAdaptation.decideLearningReview');
 assert.ok(applyCorrectionAt >= 0 && recordEvidenceAt > applyCorrectionAt, 'correction must be applied and linked to canonical memory');
 assert.ok(commitDecisionAt > recordEvidenceAt, 'the review status must be finalized after the canonical correction/evidence');
