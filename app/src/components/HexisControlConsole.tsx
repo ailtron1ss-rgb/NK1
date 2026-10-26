@@ -97,6 +97,7 @@ export function HexisControlConsole() {
   };
 
   const stageCurrentHmx = async () => {
+    setHmxConfirmed(false);
     const exported = await neuroApi.hexisHmxExport();
     const staged = await run("Stage HMX", () => neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy }));
     const nextId = (staged as any)?.stage?.stagingId;
@@ -104,6 +105,7 @@ export function HexisControlConsole() {
   };
 
   const stageImportedHmx = async () => {
+    setHmxConfirmed(false);
     let hmxDocument: unknown;
     try {
       hmxDocument = JSON.parse(hmxImportText);
@@ -130,6 +132,7 @@ export function HexisControlConsole() {
   };
 
   const consultRemotePeer = async () => {
+    setRemoteConfirmation(false);
     const result = await run("Consult QuixiAI/Hexis", () => neuroApi.hexisRemotePeerConsult({
       question: remoteQuestion,
       context: {},
@@ -233,13 +236,13 @@ export function HexisControlConsole() {
             NK1 exports a bounded memory-only HMX 1.7 document. It is not redacted: inspect content and consent before sharing it. For ordinary memory import, use telepathy + additive. Unknown or protected populated sections are rejected instead of silently dropped; other intent/strategy pairs stage as preview-only.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            <select value={hmxIntent} onChange={e => setHmxIntent(e.target.value as typeof hmxIntent)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="port">port</option><option value="duplicate">duplicate</option><option value="telepathy">telepathy</option><option value="analysis">analysis</option></select>
-            <select value={hmxStrategy} onChange={e => setHmxStrategy(e.target.value as typeof hmxStrategy)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="additive">additive</option><option value="authoritative">authoritative</option><option value="deliberative">deliberative</option><option value="analysis_only">analysis_only</option></select>
+            <select value={hmxIntent} onChange={e => { setHmxIntent(e.target.value as typeof hmxIntent); setHmxConfirmed(false); }} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="port">port</option><option value="duplicate">duplicate</option><option value="telepathy">telepathy</option><option value="analysis">analysis</option></select>
+            <select value={hmxStrategy} onChange={e => { setHmxStrategy(e.target.value as typeof hmxStrategy); setHmxConfirmed(false); }} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="additive">additive</option><option value="authoritative">authoritative</option><option value="deliberative">deliberative</option><option value="analysis_only">analysis_only</option></select>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button disabled={busy} onClick={() => void exportHmx()}>Export HMX</Button>
             <Button variant="outline" disabled={busy} onClick={() => void stageCurrentHmx()}>Stage current HMX</Button>
-            <input value={stageId} onChange={e => setStageId(e.target.value)} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
+            <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
             <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void run("Accept HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"))}>Accept staged</Button>
             <Button variant="outline" disabled={busy || !stageId} onClick={() => void run("Reject HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"))}>Reject</Button>
           </div>
@@ -296,7 +299,7 @@ export function HexisControlConsole() {
           <pre className="mb-3 max-h-24 overflow-auto rounded-md border border-border bg-bg p-2 text-[10px] leading-relaxed text-muted">{remotePeerStatus ? fmt(remotePeerStatus) : "No remote status loaded. The remote connector is disabled until configured by the operator."}</pre>
           <textarea
             value={remoteQuestion}
-            onChange={e => setRemoteQuestion(e.target.value)}
+            onChange={e => { setRemoteQuestion(e.target.value); setRemoteConfirmation(false); }}
             maxLength={6000}
             rows={3}
             placeholder="Ask a focused question for the external Hexis peer…"
