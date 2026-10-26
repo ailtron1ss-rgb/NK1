@@ -191,20 +191,6 @@ export class CanonicalCognitiveKernel {
     }
   }
 
-  private appendStage(
-    tick:number,
-    at:number,
-    stage:CognitiveStage,
-    input:CanonicalCognitiveStageInput,
-    parentIds:string[]=[],
-  ):CognitiveEventNode {
-    return this.appendPreparedStage(
-      tick,
-      stage,
-      this.prepareStageEvent(tick,at,stage,input,parentIds),
-    );
-  }
-
   beginDecisionCycle(input: {
     tick: number;
     at?: number;
@@ -365,7 +351,9 @@ export class CanonicalCognitiveKernel {
           ? 'canonical-cognitive-kernel-stale-completion'
           : 'canonical-cognitive-kernel-completion-already-finalized');
       }
-      const [outcomeEvent,learningEvent,selfUpdateEvent]=existing as [CognitiveEventNode,CognitiveEventNode,CognitiveEventNode];
+      const outcomeEvent=existing[0]!;
+      const learningEvent=existing[1]!;
+      const selfUpdateEvent=existing[2]!;
       const cycleLineage=this.eventFabric.verifyOperationalCycle(stageIds);
       let cycleResult:UnifiedCognitiveCycleResult;
       if(tick===prior.lastTick) {
@@ -403,9 +391,9 @@ export class CanonicalCognitiveKernel {
       };
     }
 
-    const [outcomeEvent,learningEvent,selfUpdateEvent]=prepared.map(item=>
-      this.appendPreparedStage(tick,item.stage,item.eventInput)
-    ) as [CognitiveEventNode,CognitiveEventNode,CognitiveEventNode];
+    const outcomeEvent=this.appendPreparedStage(tick,prepared[0]!.stage,prepared[0]!.eventInput);
+    const learningEvent=this.appendPreparedStage(tick,prepared[1]!.stage,prepared[1]!.eventInput);
+    const selfUpdateEvent=this.appendPreparedStage(tick,prepared[2]!.stage,prepared[2]!.eventInput);
     const cycleLineage=this.eventFabric.verifyOperationalCycle(stageIds);
     const cycleResult=this.unifiedCycle.evaluate({
       tick,
