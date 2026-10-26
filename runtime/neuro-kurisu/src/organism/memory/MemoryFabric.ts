@@ -12,9 +12,11 @@ import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type Memor
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
 
-export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
+export type MemoryLifecycleAction = 'encode'|'record-evidence'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
+type MemoryLifecycleEvidenceInput = Parameters<MemoryOS2['recordEvidence']>[1];
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean }
+  | { action:'record-evidence'; id:string; input:MemoryLifecycleEvidenceInput; commandId?:string; tick?:number }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
@@ -213,6 +215,31 @@ export class MemoryFabric {
         eventPayload={memoryId:item.id,kind:item.kind,source:item.source,created,action:created?'encode':'reconsolidate',commandId:commandId||undefined};
         if(command.syncCompatibility)this.projectCompatibility(32);
         if(command.emitEvent===false)eventPayload=undefined;
+        break;
+      }
+      case 'record-evidence': {
+        const before=this.findCanonical(command.id);
+        if(!before){result=null;memoryId=command.id;break;}
+        const receipt=this.memoryOS.recordEvidence(command.id,command.input);
+        if(!receipt.ok){result=null;memoryId=command.id;break;}
+        const item=this.findCanonical(command.id);
+        result=item;memoryId=item?.id??command.id;
+        outcome=receipt.added?'applied':'noop';
+        if(item){
+          this.touchHot(item.id);
+          if(receipt.added){
+            this.statsData.reconsolidations++;
+            eventPayload={
+              action,
+              memoryId:item.id,
+              source:String(command.input.source??'unknown').slice(0,160),
+              provenanceClass:command.input.provenanceClass??'unknown',
+              sourceAuthority01:Math.max(0,Math.min(1,Number(command.input.sourceAuthority01??.5))),
+              independenceKeyDigest:createHash('sha256').update(String(command.input.independenceKey)).digest('hex'),
+              commandId:commandId||undefined,
+            };
+          }
+        }
         break;
       }
       case 'revise-status': {
@@ -542,6 +569,30 @@ export class MemoryFabric {
   retrieveWithPolicyDecision(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean}={}){
     const rows=this.retrieve(query,limit,goalRelevance,identityRelevance,context);
     return {decisionId:this.lastPolicyDecisionId??null,rows};
+  }
+
+  /** Record source provenance through the lifecycle journal and its replay-safe command receipts. */
+  recordEvidence(id:string,input:MemoryLifecycleEvidenceInput,context:{tick?:number;commandId?:string}={}):ReturnType<MemoryOS2['recordEvidence']>{
+    const key=String(input.independenceKey??'').trim();
+    const memoryId=String(id);
+    // Validation/missing-target failures are read-only; delegate to canonical validator without creating a lifecycle event.
+    if(!key||!this.findCanonical(memoryId))return this.memoryOS.recordEvidence(memoryId,input);
+    const previouslyKnown=this.memoryOS.hasEvidenceLineage(memoryId,key);
+    const item=this.applyLifecycleCommand({
+      action:'record-evidence',
+      id:memoryId,
+      input:{...input,independenceKey:key},
+      ...context,
+    }) as MemoryItem2|null;
+    if(!item)return {ok:false,added:false,reason:'memory-not-found',memoryId,independentSources:0};
+    const added=!previouslyKnown&&this.memoryOS.hasEvidenceLineage(item.id,key);
+    return {
+      ok:true,
+      added,
+      reason:added?'added':'duplicate-source',
+      memoryId:item.id,
+      independentSources:this.memoryOS.evidenceTrail(item.id)?.independentSources??0,
+    };
   }
 
   revise(id:string,to:MemoryItem2['epistemicStatus'],reason:string,options:{tick?:number;commandId?:string}={}){
