@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 import { HexisRemoteApiBridge, HexisRemoteBridgeError, parseHexisRemoteApiConfig } from '../../src/organism/integration/hexis/HexisRemoteApiBridge.ts';
-import { buildNk1HmxV17Document, normalizeHmxV17Memory, validateHmxV17Document } from '../../src/organism/integration/hexis/HexisHmxV17Adapter.ts';
+import { buildNk1HmxV17Document, normalizeHmxV17Memory, snapshotAndValidateHmxV17Document, validateHmxV17Document } from '../../src/organism/integration/hexis/HexisHmxV17Adapter.ts';
 import { applyHmxMemoryBatchAtomically } from '../../src/organism/integration/hexis/HexisHmxImportTransaction.ts';
 
 const fabric = new HexisAdaptationFabric();
@@ -126,6 +126,29 @@ const validHmx = {
   },
 };
 assert.deepEqual(validateHmxV17Document(validHmx, 'telepathy'), []);
+
+// The staging path needs both the safely detached input and its schema issues.
+// This combined boundary must return one owned snapshot and validate that exact
+// value; public validateHmxV17Document still accepts arbitrary raw inputs safely.
+const combinedHmxValidation = snapshotAndValidateHmxV17Document(validHmx, 'telepathy');
+assert.equal(combinedHmxValidation.ok, true);
+if (combinedHmxValidation.ok) {
+  assert.deepEqual(combinedHmxValidation.issues, []);
+  assert.notEqual(combinedHmxValidation.value, validHmx,
+    'combined validation must return a detached snapshot, never the caller object');
+  assert.deepEqual(combinedHmxValidation.value, validHmx);
+}
+let combinedValidationGetterCalls = 0;
+const accessorCombinedHmx = { ...validHmx };
+Object.defineProperty(accessorCombinedHmx, 'export_intent', {
+  enumerable: true,
+  get() { combinedValidationGetterCalls += 1; return 'telepathy'; },
+});
+const rejectedCombinedHmx = snapshotAndValidateHmxV17Document(accessorCombinedHmx, 'telepathy');
+assert.equal(rejectedCombinedHmx.ok, false);
+if (!rejectedCombinedHmx.ok) assert.equal(rejectedCombinedHmx.issue.kind, 'unsafe-input');
+assert.equal(combinedValidationGetterCalls, 0,
+  'combined capture-and-validate must reject accessors without evaluating them');
 
 // Malformed-but-JSON metadata must produce validation issues or a null projection,
 // never a TypeError during string/number coercion of a null-prototype snapshot.
