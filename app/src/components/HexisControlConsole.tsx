@@ -10,6 +10,10 @@ import type {
   HexisGoalProposalListResponse,
   HexisGoalProposalPrepareResponse,
   HexisGoalProposalStatus,
+  HexisHmxExportResponse,
+  HexisHmxStage,
+  HexisHmxStageInput,
+  HexisHmxStageResponse,
 } from "@/neuro-kurisu/types";
 
 const fmt = (value: unknown) => JSON.stringify(value, null, 2);
@@ -56,7 +60,7 @@ export function HexisControlConsole() {
   const [hmxConfirmed, setHmxConfirmed] = useState(false);
   const [hmxApplyConfirmed, setHmxApplyConfirmed] = useState(false);
   const [hmxAccepted, setHmxAccepted] = useState(false);
-  const [hmxStage, setHmxStage] = useState<any | null>(null);
+  const [hmxStage, setHmxStage] = useState<HexisHmxStage | null>(null);
   const [goalProposals, setGoalProposals] = useState<HexisGoalProposal[]>([]);
   const [goalProposalId, setGoalProposalId] = useState("");
   const [goalProposalStatus, setGoalProposalStatus] = useState<HexisGoalProposalStatus>("pending");
@@ -102,7 +106,7 @@ export function HexisControlConsole() {
   };
 
   const exportHmx = async () => {
-    const result = await run("Export HMX", () => neuroApi.hexisHmxExport()) as { document?: unknown } | null;
+    const result = await run("Export HMX", () => neuroApi.hexisHmxExport()) as HexisHmxExportResponse | null;
     const hmxDocument = result?.document;
     if (!hmxDocument || typeof hmxDocument !== "object" || Array.isArray(hmxDocument)) return;
     const url = URL.createObjectURL(new Blob([JSON.stringify(hmxDocument, null, 2)], { type: "application/json" }));
@@ -122,7 +126,7 @@ export function HexisControlConsole() {
       }
       return neuroApi.hexisHmxStage({ document: hmxDocument, intent: hmxIntent, strategy: hmxStrategy });
     });
-    const stage = (staged as any)?.stage ?? null;
+    const stage = (staged as HexisHmxStageResponse | null)?.stage ?? null;
     if (stage?.stagingId) {
       setStageId(String(stage.stagingId));
       setHmxStage(stage);
@@ -154,10 +158,11 @@ export function HexisControlConsole() {
       setMessage("Stage imported HMX: the request exceeds the conservative 240 KB limit for the current server body cap.");
       return;
     }
-    const result = await run("Stage imported HMX", () => neuroApi.hexisHmxStage({
+    const stageInput: HexisHmxStageInput = {
       document: parsed as Record<string, unknown>, intent: hmxIntent, strategy: hmxStrategy,
-    }));
-    const stage = (result as any)?.stage ?? null;
+    };
+    const result = await run("Stage imported HMX", () => neuroApi.hexisHmxStage(stageInput));
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
     if (stage?.stagingId) {
       setStageId(String(stage.stagingId));
       setHmxStage(stage);
@@ -169,7 +174,7 @@ export function HexisControlConsole() {
 
   const acceptHmx = async () => {
     const result = await run("Accept staged HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"));
-    const stage = (result as any)?.stage ?? null;
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
     if (stage) {
       setHmxStage(stage);
       setHmxAccepted(stage.status === "accepted");
@@ -179,7 +184,7 @@ export function HexisControlConsole() {
 
   const rejectHmx = async () => {
     const result = await run("Reject staged HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"));
-    const stage = (result as any)?.stage ?? null;
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
     if (stage) {
       setHmxStage(stage);
       setHmxAccepted(false);
@@ -189,7 +194,7 @@ export function HexisControlConsole() {
 
   const applyHmx = async () => {
     const result = await run("Apply canonical HMX", () => neuroApi.hexisHmxDecide(stageId, "apply"));
-    const stage = (result as any)?.stage ?? null;
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
     if (stage) {
       setHmxStage(stage);
       setHmxAccepted(false);
