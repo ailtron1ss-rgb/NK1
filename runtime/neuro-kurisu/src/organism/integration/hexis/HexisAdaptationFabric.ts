@@ -14,7 +14,7 @@ export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
 export type HexisHmxDecision = 'accept' | 'reject' | 'apply';
 export type HexisHmxStrategy = 'additive' | 'authoritative' | 'deliberative' | 'analysis_only';
-export type HexisOutboxStatus = 'pending' | 'publishing' | 'published' | 'failed';
+export type HexisOutboxStatus = 'pending' | 'publishing' | 'published' | 'failed' | 'uncertain';
 export type HexisExecutionPlacement = 'local' | 'sandbox' | 'remote' | 'companion';
 export interface HexisEvidenceSource {
     ref?: string;
@@ -175,6 +175,11 @@ export interface HexisOutboxEntry {
     createdAt: number;
     updatedAt: number;
     publishedAt?: number;
+    /** Unknown remote outcome must be reconciled before this item can be claimed again. */
+    reconciliationRequiredAt?: number;
+    resolution?: 'published' | 'not-published';
+    resolutionEvidenceRef?: string;
+    resolvedAt?: number;
     lastError?: string;
 }
 export interface HexisConnectorPolicy {
@@ -958,36 +963,127 @@ export class HexisAdaptationFabric {
         kind: string;
         channel: string;
         payload: unknown;
-    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict'; idempotencyKey: string; existingId?: string } {
+    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict' | 'outbox-capacity-reached' | 'invalid-outbox-payload'; idempotencyKey: string; existingId?: string } {
         const idempotencyKey = String(input.idempotencyKey ?? '').trim();
-        if (!idempotencyKey) return { ok: false, error: 'idempotency-key-required', idempotencyKey };
-        const kind = String(input.kind), channel = String(input.channel);
-        const requestDigest = digest({ kind, channel, payload: input.payload });
-        // Include failed rows too: a timeout/failure may have happened after the remote
-        // side effect, so silently creating a new row with the same key can duplicate it.
+        if (!idempotencyKey || idempotencyKey.length > 180 || /[\\u0000-\\u001f\\u007f]/.test(idempotencyKey)) {
+            return { ok: false, error: 'idempotency-key-required', idempotencyKey };
+        }
+        const kind = String(input.kind ?? '').trim(), channel = String(input.channel ?? '').trim();
+        if (!kind || kind.length > 128 || !channel || channel.length > 128 || /[\\u0000-\\u001f\\u007f]/.test(kind + channel)) {
+            return { ok: false, error: 'invalid-outbox-payload', idempotencyKey };
+        }
+        let requestDigest: string;
+        let payload: unknown;
+        try {
+            payload = structuredClone(input.payload);
+            requestDigest = digest({ kind, channel, payload });
+        } catch {
+            return { ok: false, error: 'invalid-outbox-payload', idempotencyKey };
+        }
+        // Include every prior status in deduplication; an uncertain side effect is
+        // not a new logical action and must never be silently re-created.
         const existing = this.state.outbox.find((x) => x.idempotencyKey === idempotencyKey);
         if (existing) {
-            const existingDigest = digest({ kind: existing.kind, channel: existing.channel, payload: existing.payload });
+            let existingDigest: string;
+            try { existingDigest = digest({ kind: existing.kind, channel: existing.channel, payload: existing.payload }); }
+            catch { return { ok: false, error: 'invalid-outbox-payload', idempotencyKey, existingId: existing.id }; }
             if (existingDigest === requestDigest) return structuredClone(existing);
             this.state.metrics.outboxIdempotencyConflicts += 1;
             return { ok: false, error: 'idempotency-key-conflict', idempotencyKey, existingId: existing.id };
         }
-        const at = nowMs(); const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload: structuredClone(input.payload), status: 'pending', attempts: 0, createdAt: at, updatedAt: at }; this.state.outbox.push(entry); this.state.outbox = this.state.outbox.slice(-512); this.state.metrics.outboxQueued += 1; return structuredClone(entry);
+        // Never evict an older idempotency tombstone to make room: after eviction,
+        // a retry could create a second remote effect under the same logical key.
+        if (this.state.outbox.length >= 512) {
+            return { ok: false, error: 'outbox-capacity-reached', idempotencyKey };
+        }
+        const at = nowMs();
+        const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload, status: 'pending', attempts: 0, createdAt: at, updatedAt: at };
+        this.state.outbox.push(entry);
+        this.state.metrics.outboxQueued += 1;
+        return structuredClone(entry);
     }
-    claimOutbox(id: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id && x.status === 'pending'); if (!entry)
-        return null; entry.status = 'publishing'; entry.attempts += 1; entry.updatedAt = nowMs(); return structuredClone(entry); }
-    ackOutbox(id: string, published: boolean, error?: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id); if (!entry)
-        return null; entry.status = published ? 'published' : (entry.attempts >= 3 ? 'failed' : 'pending'); entry.updatedAt = nowMs(); if (published) {
-        entry.publishedAt = entry.updatedAt;
-        this.state.metrics.outboxPublished += 1;
-    } if (error)
-        entry.lastError = String(error).slice(0, 500); return structuredClone(entry); }
-    reclaimOutbox(maxAgeMs = 60000): number { const cutoff = nowMs() - Math.max(1000, maxAgeMs); let count = 0; for (const entry of this.state.outbox)
-        if (entry.status === 'publishing' && entry.updatedAt < cutoff) {
+    claimOutbox(id: string): HexisOutboxEntry | null {
+        const entry = this.state.outbox.find((x) => x.id === id && x.status === 'pending');
+        if (!entry) return null;
+        entry.status = 'publishing';
+        entry.attempts += 1;
+        entry.updatedAt = nowMs();
+        delete entry.reconciliationRequiredAt;
+        delete entry.resolution;
+        delete entry.resolutionEvidenceRef;
+        delete entry.resolvedAt;
+        return structuredClone(entry);
+    }
+    /** An unqualified negative ACK is ambiguous: it must not trigger an automatic retry. */
+    ackOutbox(id: string, published: boolean, error?: string): HexisOutboxEntry | null {
+        const entry = this.state.outbox.find((x) => x.id === id);
+        if (!entry) return null;
+        const at = nowMs();
+        if (published) {
+            if (entry.status !== 'published') this.state.metrics.outboxPublished += 1;
+            entry.status = 'published';
+            entry.publishedAt = at;
+            delete entry.reconciliationRequiredAt;
+            entry.updatedAt = at;
+            if (error) entry.lastError = String(error).slice(0, 500);
+            return structuredClone(entry);
+        }
+        if (entry.status === 'published') return structuredClone(entry);
+        if (entry.status === 'failed' && entry.resolution === 'not-published') return structuredClone(entry);
+        entry.status = 'uncertain';
+        entry.reconciliationRequiredAt = at;
+        entry.updatedAt = at;
+        entry.lastError = String(error || 'outbox-negative-ack-with-unknown-remote-effect').slice(0, 500);
+        delete entry.resolution;
+        delete entry.resolutionEvidenceRef;
+        delete entry.resolvedAt;
+        return structuredClone(entry);
+    }
+    /** Resolve an ambiguous side effect using an operator/provider evidence reference. */
+    resolveOutbox(id: string, resolution: 'published' | 'not-published', evidenceRef: string): HexisOutboxEntry | null {
+        const entry = this.state.outbox.find((x) => x.id === id);
+        if (!entry) return null;
+        if (resolution !== 'published' && resolution !== 'not-published') throw new Error('invalid-outbox-resolution');
+        const reference = String(evidenceRef ?? '').trim();
+        if (!reference || reference.length > 512 || /[\\u0000-\\u001f\\u007f]/.test(reference)) {
+            throw new Error('outbox-resolution-evidence-required');
+        }
+        if (entry.status !== 'uncertain') {
+            if (entry.resolution === resolution && entry.resolutionEvidenceRef === reference) return structuredClone(entry);
+            throw new Error('outbox-resolution-requires-uncertain-state');
+        }
+        const at = nowMs();
+        entry.resolution = resolution;
+        entry.resolutionEvidenceRef = reference;
+        entry.resolvedAt = at;
+        entry.updatedAt = at;
+        delete entry.reconciliationRequiredAt;
+        if (resolution === 'published') {
+            entry.status = 'published';
+            entry.publishedAt = at;
+            this.state.metrics.outboxPublished += 1;
+            entry.lastError = undefined;
+        } else {
             entry.status = entry.attempts >= 3 ? 'failed' : 'pending';
-            entry.updatedAt = nowMs();
-            count += 1;
-        } return count; }
+            entry.lastError = 'reconciled-not-published:' + reference;
+        }
+        return structuredClone(entry);
+    }
+    /** Expired in-flight claims may have escaped remotely; never automatically resend them. */
+    reclaimOutbox(maxAgeMs = 60000): number {
+        const cutoff = nowMs() - Math.max(1000, maxAgeMs);
+        let count = 0;
+        for (const entry of this.state.outbox) {
+            if (entry.status === 'publishing' && entry.updatedAt < cutoff) {
+                entry.status = 'uncertain';
+                entry.reconciliationRequiredAt = nowMs();
+                entry.updatedAt = entry.reconciliationRequiredAt;
+                entry.lastError = 'outbox-publish-claim-expired; remote effect is unknown';
+                count += 1;
+            }
+        }
+        return count;
+    }
     grantConnectorPolicy(input: {
         connectorId: string;
         actionKind: string;
