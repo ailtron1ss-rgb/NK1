@@ -53,10 +53,27 @@ const memoryKind = value => {
     ? kind
     : (kind === 'relationship' ? 'social' : 'semantic');
 };
-const memoryStatus = value => {
-  const status = String(value ?? '').toLowerCase();
-  return status === 'quarantined' ? 'hypothesis' : 'belief';
+const hasControlCharacters = value => {
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    if (code <= 31 || (code >= 127 && code <= 159)) return true;
+  }
+  return false;
 };
+const normalizeHmxMemoryStatus = value => {
+  if (value === undefined || value === null) return 'unknown';
+  if (typeof value !== 'string' || value.length > 64 || hasControlCharacters(value)) {
+    throw new Error('hmx-apply-memory-status-invalid');
+  }
+  const status = value.trim().toLowerCase();
+  if (status === 'active' || status === 'belief' || status === 'fact') return 'belief';
+  if (status === 'hypothesis') return 'hypothesis';
+  if (status === 'unknown' || status === '') return 'unknown';
+  if (['archived', 'quarantined', 'deleted', 'rejected', 'superseded', 'inactive', 'disabled', 'forgotten'].includes(status)) return 'quarantined';
+  return 'unknown';
+};
+const epistemicStatusRank = status => ({ belief: 0, hypothesis: 1, unknown: 2, quarantined: 3 }[status] ?? 2);
+const MAX_IMPORTED_EXTERNAL_CONFIDENCE = 0.65;
 const contextText = value => {
   if (typeof value === 'string') return value.slice(0, 1200);
   try { return JSON.stringify(value).slice(0, 1200); } catch { return ''; }
@@ -126,6 +143,20 @@ export class HexisCanonicalMemoryProjector {
     return node.id;
   }
 
+  removeSemanticProjection(sourceKey) {
+    if (!this.semanticGraph) return;
+    const snapshot = this.semanticGraph.snapshot();
+    const removed = new Set(snapshot.nodes
+      .filter(node => String(node.sourceKey ?? '') === String(sourceKey ?? ''))
+      .map(node => node.id));
+    if (!removed.size) return;
+    this.semanticGraph.restore({
+      ...snapshot,
+      nodes: snapshot.nodes.filter(node => !removed.has(node.id)),
+      edges: snapshot.edges.filter(edge => !removed.has(edge.from) && !removed.has(edge.to)),
+    });
+  }
+
   apply(stage) {
     // Idempotent replay must be checked before the accepted-stage guard: persisted
     // stages transition out of `accepted` after application, but their receipt remains
@@ -155,6 +186,7 @@ export class HexisCanonicalMemoryProjector {
       const ref = asText(row.ref, 512);
       const type = asText(row.type, 128);
       const content = asText(row.content, 250000);
+      const epistemicStatus = normalizeHmxMemoryStatus(row.status);
       if (!ref || !new RegExp('^' + exportId + ':.+$').test(ref)) throw new Error('hmx-apply-memory-ref-invalid:' + index);
       if (!type) throw new Error('hmx-apply-memory-type-required:' + index);
       if (!content) throw new Error('hmx-apply-memory-content-required:' + index);
@@ -163,7 +195,7 @@ export class HexisCanonicalMemoryProjector {
       if (prior && prior !== contentHash) throw new Error('hmx-apply-duplicate-ref-conflict:' + ref);
       if (prior) continue;
       seenRefs.set(ref, contentHash);
-      normalized.push({ row, ref, type, content, contentHash });
+      normalized.push({ row, ref, type, content, contentHash, epistemicStatus });
     }
 
     const existingItems = this.memoryFabric.canonicalSnapshot().items ?? [];
@@ -187,7 +219,7 @@ export class HexisCanonicalMemoryProjector {
 
     try {
       for (const item of normalized) {
-        const { row, ref, type, content: memoryText, contentHash } = item;
+        const { row, ref, type, content: memoryText, contentHash, epistemicStatus } = item;
         const nativeType = type.toLowerCase();
         // HMX refs are export-scoped. Use the stable record suffix plus lineage/content
         // for memory identity so re-exporting the same source does not create duplicates.
@@ -198,8 +230,21 @@ export class HexisCanonicalMemoryProjector {
         const salience = clamp01(Number.isFinite(Number(row.importance)) ? Number(row.importance) : 0.55);
         if (existingImportKeys.has(existingKey)) {
           const duplicate = existingItems.find(candidate => candidate.source === source && stableRecordContent(candidate.content) === stableRecordContent(memoryText));
-          if (duplicate?.id) importedIds.push(duplicate.id);
-          this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
+          if (duplicate?.id) {
+            importedIds.push(duplicate.id);
+            const currentStatus = normalizeHmxMemoryStatus(duplicate.epistemicStatus);
+            const targetStatus = epistemicStatusRank(currentStatus) >= epistemicStatusRank(epistemicStatus) ? currentStatus : epistemicStatus;
+            if (String(duplicate.epistemicStatus) !== targetStatus) {
+              this.memoryFabric.revise(
+                duplicate.id,
+                targetStatus,
+                'hexis-source-status-reconciliation:' + (typeof row.status === 'string' ? row.status.slice(0, 64) : 'unknown'),
+                { commandId: 'hexis-status:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + targetStatus).slice(0, 48) },
+              );
+            }
+            if (targetStatus === 'quarantined' || targetStatus === 'unknown') this.removeSemanticProjection(graphSourceKey);
+            else this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
+          }
           deduplicatedCount++;
           continue;
         }
@@ -208,10 +253,12 @@ export class HexisCanonicalMemoryProjector {
         const validFromAt = dateMs(row.valid_from ?? row.validFrom) ?? observedAt;
         const validUntilAt = dateMs(row.valid_until ?? row.validUntil);
         const trustValue = row.trust_level ?? row.trustLevel ?? row.provenance?.confidence;
-        const confidence = clamp01(Number.isFinite(Number(trustValue)) ? Number(trustValue) : 0.45);
+        const sourceTrustClaim = Number.isFinite(Number(trustValue)) ? clamp01(Number(trustValue)) : 0.45;
+        const confidence = Math.min(sourceTrustClaim, MAX_IMPORTED_EXTERNAL_CONFIDENCE);
         const tags = [...new Set([
           'hexis-import',
           'hexis:' + nativeType.slice(0, 64),
+          'hexis-status:' + (typeof row.status === 'string' && row.status.trim() ? row.status.trim().toLowerCase().slice(0, 64) : 'unknown'),
           ...arrayOfText(row.metadata?.tags),
           asText(row.metadata?.category, 96),
         ].filter(Boolean))].slice(0, 32);
@@ -222,6 +269,9 @@ export class HexisCanonicalMemoryProjector {
           hexisGraphSourceKey: graphSourceKey,
           hexisSourceLineageId: lineageId.slice(0, 512),
           hexisOriginalType: nativeType,
+          hexisOriginalStatus: typeof row.status === 'string' && row.status.trim() ? row.status.trim().toLowerCase().slice(0, 64) : 'unknown',
+          hexisSourceTrustClaim: Number.isFinite(Number(trustValue)) ? String(clamp01(Number(trustValue))) : 'unspecified',
+          hexisAppliedAuthorityCap: String(MAX_IMPORTED_EXTERNAL_CONFIDENCE),
           hexisImportedAt: String(appliedAt),
           hexisSourceSchema: 'hmx-1.7',
           ...(provenancePayload ? { hexisProvenance: contextText(provenancePayload) } : {}),
@@ -244,7 +294,7 @@ export class HexisCanonicalMemoryProjector {
           socialRelevance: clamp01(Number(row.metadata?.socialRelevance ?? row.metadata?.social_relevance ?? (nativeType === 'social' || nativeType === 'relationship' ? 0.45 : 0.05))),
           predictionError: 0,
           confidence,
-          epistemicStatus: memoryStatus(row.status),
+          epistemicStatus,
           source,
           entities: arrayOfText(row.metadata?.entities),
           semanticLinks: [],
@@ -276,7 +326,9 @@ export class HexisCanonicalMemoryProjector {
           beforeIds.add(inserted.id);
           importedCount++;
         }
-        this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
+        if (epistemicStatus === 'belief' || epistemicStatus === 'hypothesis') {
+          this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
+        }
         existingImportKeys.add(existingKey);
       }
 
@@ -335,6 +387,10 @@ export class HexisCanonicalMemoryProjector {
         for (const id of [...new Set(importedIds)]) {
           const memory = canonicalById.get(id);
           if (!memory) throw new Error('hmx-belief-canonical-memory-missing:' + id);
+          if (memory.epistemicStatus !== 'belief') {
+            if (typeof this.temporalLedger.removeBeliefProjection === 'function') this.temporalLedger.removeBeliefProjection(id);
+            continue;
+          }
           this.temporalLedger.registerOrUpdateBelief({
             memoryId: id,
             confidence01: clamp01(memory.confidence),
