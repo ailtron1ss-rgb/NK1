@@ -20,7 +20,7 @@ export type MemoryLifecycleCommand =
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
   | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number }
-  | { action:'rollback-created'; id:string; exportId:string; reason?:string; commandId?:string; tick?:number };
+  | { action:'rollback-created'; id:string; exportId:string; stagingId:string; attempt:number; reason?:string; commandId?:string; tick?:number };
 
 interface MemoryLifecycleReceipt {
   commandId:string;
@@ -273,14 +273,17 @@ export class MemoryFabric {
           result=true; booleanValue=true; memoryId=command.id; outcome='noop';
           break;
         }
-        if(!String(before.source??'').startsWith('hexis:')||before.context?.hexisExportId!==command.exportId){
+        if(!String(before.source??'').startsWith('hexis:')||
+          before.context?.hexisExportId!==command.exportId||
+          before.context?.hexisImportStageId!==command.stagingId||
+          before.context?.hexisImportAttempt!==String(command.attempt)){
           throw new Error('memory-lifecycle-hmx-rollback-scope-mismatch');
         }
-        const removed=this.memoryOS.rollbackCreatedHmxImport(command.id,command.exportId);
+        const removed=this.memoryOS.rollbackCreatedHmxImport(command.id,command.exportId,command.stagingId,command.attempt);
         if(!removed&&this.findCanonical(command.id))throw new Error('memory-lifecycle-hmx-rollback-not-applied');
         result=true; booleanValue=true; memoryId=command.id; outcome=removed?'applied':'noop';
         this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));
-        eventPayload={action,memoryId:command.id,exportId:command.exportId,reason:String(command.reason??'hmx-apply-rollback').slice(0,240),commandId:commandId||undefined};
+        eventPayload={action,memoryId:command.id,exportId:command.exportId,stagingId:command.stagingId,attempt:command.attempt,reason:String(command.reason??'hmx-apply-rollback').slice(0,240),commandId:commandId||undefined};
         break;
       }
       case 'forget': {
@@ -632,12 +635,14 @@ export class MemoryFabric {
   /** Scoped compensation for a newly-created HMX row when ordinary forgetting correctly
    * refuses protected states (quarantined/identity). The export check prevents touching native memory.
    */
-  rollbackHmxCreatedMemory(id:string,exportId:string,reason='hmx-apply-rollback',context:{tick?:number;commandId?:string}={}):boolean {
+  rollbackHmxCreatedMemory(id:string,exportId:string,stagingId:string,attempt:number,reason='hmx-apply-rollback',context:{tick?:number;commandId?:string}={}):boolean {
     if(typeof id!=='string'||!id||id.length>256||/[\u0000-\u001f\u007f-\u009f]/u.test(id)||
-      typeof exportId!=='string'||!/^exp_[a-f0-9]{16}$/.test(exportId)){
+      typeof exportId!=='string'||!/^exp_[a-f0-9]{16}$/.test(exportId)||
+      typeof stagingId!=='string'||!stagingId||stagingId.length>512||stagingId!==stagingId.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(stagingId)||
+      !Number.isSafeInteger(attempt)||attempt<1){
       throw new TypeError('memory-lifecycle-hmx-rollback-input-invalid');
     }
-    return this.applyLifecycleCommand({action:'rollback-created',id,exportId,reason,...context}) as boolean;
+    return this.applyLifecycleCommand({action:'rollback-created',id,exportId,stagingId,attempt,reason,...context}) as boolean;
   }
 
   canonicalSize(){return this.memoryOS.size();}
