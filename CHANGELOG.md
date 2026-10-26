@@ -2539,3 +2539,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+
+## WorkPass336 — harden signed outcome artifact trust boundary (2026-10-26)
+
+- [CODE] `VerifiedOutcomeArtifact.ts` now accepts only exact plain-data v1 artifact/payload records and snapshots descriptor values before validation, preventing payload or envelope getters from running during evidence ingestion.
+- [CRYPTO] Signed outcome Ed25519 signatures now require canonical standard Base64 for exactly 64 bytes, matching the activation/rollback approval boundary.
+- [REGRESSION] Expanded the signed-outcome lifecycle test for junk-prefixed, truncated, and malformed-padding signatures; accessor-bearing payload/envelope objects; and extra unbound fields in the v1 payload.
+- [VALIDATION] CI is pending for the exact branch checkpoint. No PASS is claimed until Actions complete against that head.
+- [SCOPE] Security-boundary hardening only; scores remain unchanged and no empirical learning uplift or full release readiness is claimed.
