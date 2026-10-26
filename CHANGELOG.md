@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass425 — retire stale projections on source-content correction (2026-10-26)
+
+- [CONSISTENCY] A changed HMX record with the same source lineage and stable reference now quarantines prior canonical versions without deleting history, and removes their stale semantic-graph and belief-mirror projections before accepting the correction.
+- [REGRESSION] Added a correction/re-export/reversion test: the previous version remains in canonical storage as quarantined history; active graph/belief projections move off the superseded version; identical re-export is idempotent; reverting to a quarantined old value cannot reactivate it or leave the intervening version active.
+- [VALIDATION] Source and regression are committed but not executed in a usable runtime. Exact-head Actions status is being checked separately; no test PASS is claimed.
+
 ## [NK1][Hexis] WorkPass424 — reject stale apply receipts on lifecycle downgrade (2026-10-26)
 
 - [REPLAY SAFETY] The shared HMX stage validator now rejects unknown lifecycle states and rejects any non-applied stage that still carries an application receipt. A stale persisted `applied → accepted` status mutation can no longer re-enter the canonical write path while keeping the old receipt.
