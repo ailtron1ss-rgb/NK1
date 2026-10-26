@@ -96,8 +96,12 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
+  // Candidate identity includes the optional revision-provenance fingerprint,
+  // exactly matching VersionedSkillCandidateStore.stageCandidate(). Without the
+  // fifth slot, durable storage rejects every otherwise-valid first-stage candidate.
   const expectedId = createHash('sha256').update(JSON.stringify([
     value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+    value.revisionProvenance ? payloadFingerprint(value.revisionProvenance) : null,
   ])).digest('hex');
   if (value.candidateId !== expectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
