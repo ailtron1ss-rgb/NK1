@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass419 — fail visibly when canonical compensation is incomplete (2026-10-26)
+
+- [ATOMICITY] After issuing compensating forget commands, the HMX projector now re-reads canonical memory and reports any imported record that remains. A non-throwing no-op compensator can no longer be mistaken for successful rollback.
+- [REGRESSION] Added a fault-injected case where memory insertion commits and the compensator returns `false`; the apply must surface `canonical-uncompensated`, restore the graph, and never report a clean rollback.
+- [VALIDATION] Committed but not executed locally; GitHub Actions runner logs are not being exposed for this PR.
+
 ## [NK1][Hexis] WorkPass418 — preserve malformed native root sections (2026-10-26)
 
 - [DATA FIDELITY] If a native export explicitly supplies a non-object `sections` value, the HMX adapter retains the original payload in `sections.config.nk1NativeSections.sections_invalid_root` rather than normalizing it away.
