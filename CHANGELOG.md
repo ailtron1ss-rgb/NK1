@@ -1,3 +1,14 @@
+# WorkPass363 — reject malformed event-fabric root schema atomically (2026-10-26)
+
+- [FIXED] Distinguish a genuinely omitted legacy schema version from a present but invalid value such as `version: undefined`.
+- [FIXED] Reject present non-array `recent`, `receiptEvents`, and `receiptProjectionIndex` fields rather than silently restoring an empty/partial journal.
+- [FIXED] Reject malformed present `total` counters (strings, undefined, negative, fractional or unsafe integers) before mutation.
+- [REGRESSION] Add atomic preservation tests for every malformed root case and retain a legacy-snapshot compatibility check when optional fields are genuinely absent.
+- [VALIDATION] Exact-head CI is pending for the WorkPass363 branch; no PASS is claimed until GitHub Actions reports the result.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass362 — strict, atomic cognitive event-fabric restore (2026-10-26)
 
 - [FIXED] Validate a present event-fabric schema version before mutation. Unknown versions and accessor-backed root fields fail closed without replacing the previous live ledger.
