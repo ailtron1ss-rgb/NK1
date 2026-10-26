@@ -1,3 +1,11 @@
+## WorkPass355 — bound aggregate text in causal payloads (2026-10-26)
+
+- **Defect:** the event fabric bounded object depth, node count, array size and key count but not aggregate string/key length; a single oversized text payload could still drive disproportionate memory use during append or restore.
+- **Fix:** enforce a 131,072 UTF-16-code-unit budget across all payload keys and values in both live event append and strict snapshot restoration. Reject over-budget append before ledger mutation; skip malformed persisted rows without reserving IDs.
+- **Regression coverage:** oversized append payload fails without changing ledger total; oversized persisted row is skipped and a later valid row with the same ID is restored.
+- **Validation:** exact-head CI is required on the final branch SHA. Earlier runs did not include this budget change and do not validate it.
+
+---
 ## WorkPass354d — narrow the validated receipt record in restore closures (2026-10-26)
 
 - **CI finding:** after the first restore typing fix, TypeScript correctly flagged that a nested decoder closure captured a nullable `entry` record; narrowing outside the closure was not preserved.
