@@ -1,14 +1,15 @@
 ## WorkPass344 — финальный release gate: metadata, architecture и hygiene — 2026-10-26
 
-- **Дефект:** `npm run release:verify` не запускал канонический release metadata validator. Добавлен обязательный gate для UI wiring, архитектуры и metadata; отсутствие или ошибка любого gate блокирует итоговый PASS.
-- **Отчёт о сбоях:** теперь `summary.failed` включает не только упавшие child-checks, но и tree-hygiene ошибки. При `ok=false` отчёт больше не показывает ложный `failed: 0`.
-- **Строгий и CI-режимы:** `npm run release:verify` остаётся строгим и блокирует generated Python bytecode. После Research Bridge smoke CI запускает `npm run release:verify:ci`, который может игнорировать только файлы `*.pyc` внутри `__pycache__` и выводит их в warnings; прочие файлы в cache-папке и stray `.pyc` вне неё по-прежнему блокируют gate.
-- **Regression:** семь тестов проверяют metadata pass/fail/missing, unknown CLI flag, строгий отказ на pycache, CI override только для transient bytecode и отказ на stray bytecode/non-bytecode в cache.
-- **CI-driven fixes:** исправлен false positive architecture scanner, вызванный строкой ожидаемого import в substrate regression; тест строит эту строку из токенов. Затем исправлена обработка временных Python cache и подсчёт tree failures.
+- **Gate:** `release:verify` теперь требует UI wiring, архитектуру и каноническую release metadata; любой отсутствующий или падающий gate блокирует PASS.
+- **Точная отчётность:** JSON summary разделяет direct-check и filesystem/tree failures, так что `ok=false` больше не может сочетаться с `failed: 0`.
+- **Строгий/CI режимы:** операторский `npm run release:verify` остаётся строгим. После Research Bridge smoke CI применяет `release:verify:ci`, который позволяет только неотслеживаемые `*.pyc` внутри `__pycache__` и выводит каждый в warnings. Отслеживаемый source member, обычный файл в cache directory или stray `.pyc` вне неё всё равно блокирует gate.
+- **Regression:** 8 тестов покрывают metadata success/failure/missing, unknown CLI argument, strict cache rejection, cache-aware CI mode, stray/non-bytecode file rejection и tracked-bytecode rejection.
+- **CI-driven corrections:** устранён architecture scanner false positive от строкового import assertion; затем ограничен cache override и добавлена Git-index проверка, чтобы нельзя было игнорировать tracked bytecode.
 
-**Validation status:** pending exact-head CI on code/test checkpoint `e446318f56a38597947f71f7e10f8033cae0f34f`. Historical WorkPass340–342 PASS remains attached to its exact tested SHA, not this newer branch. Progress scores unchanged.
+**Validation status:** pending fresh exact-head CI on code/test checkpoint `064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6`. Ранее проверенные WorkPass340–342 PASS привязаны к исходному SHA; scores не меняются и старые PASS не считаются проверкой WorkPass344.
 
 ---
+
 
 
 
