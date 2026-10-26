@@ -2,7 +2,7 @@
 
 - [DIAGNOSTIC] WorkPass362 run [#40292700286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292700286) failed with `TS2688: Cannot find type definition file for 'pg'`. Root cause: job-level `NODE_ENV=production` made `npm ci` omit devDependencies, including the already-locked `@types/pg`.
 - [FIX] Removed production `NODE_ENV` from the whole workflow job so app/runtime typecheck and tests install the complete locked toolchain. `NODE_ENV=production` is now set only for the production build step; no fake Postgres credentials are added.
-- [VALIDATION] New clean-build run [#40292876890](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292876890) is queued on head `9020481492b447e719c30bdb678b42a4e3ab3d99`; it includes both WorkPass363's valid-JSDoc fix for the executable `.mjs` tests and WorkPass364's install-environment correction. The production build gate remains open until this exact-head run finishes all steps.
+- [VALIDATION] Clean-build run [#40292876890](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292876890) passed on head `9020481492b447e719c30bdb678b42a4e3ab3d99`: doctor, locked app/runtime installs, app dependency/script contracts (232 tests), combined app/runtime `TYPECHECK=PASS`, production Vite client/SSR/Nitro build, UI/API linkage (`routes=131`, `runtimeAtlas=50`, `requiredSeams=5`), schema (`SCHEMA_CHECK=PASS`) and canonical asset audit all succeeded. The migration entry point truthfully skipped external Postgres because `DATABASE_URL` was absent; this is not a live DB migration result.
 
 # WorkPass363 — fix clean app typecheck failures (2026-10-26)
 
@@ -10,14 +10,14 @@
 - [FIX] Typed the fake window and localStorage test callbacks, replaced illegal `delete globalThis.window` operations with `Reflect.deleteProperty`, and constrained the in-memory fixture to `Map<string, string>`.
 - [FIX] Added `pg` to the explicit TypeScript `types` list; `@types/pg` was already a locked dev dependency, so no dependency/version or lockfile drift was introduced.
 - [DIAGNOSTIC] [#40292593216](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292593216) caught a second mistake: TypeScript type annotations were temporarily placed in an executable `.mjs` test. Replaced them with JSDoc types and a context-typed fake storage object; `.mjs` remains valid JavaScript.
-- [VALIDATION] Run [#40292700286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292700286) reached typecheck but failed because job-level production mode omitted the locked `@types/pg`; WorkPass364 moved `NODE_ENV=production` to the build step. Corrected run #40292876890 now includes both the JSDoc-only `.mjs` fix and complete dev toolchain, and is queued.
+- [VALIDATION] Run [#40292876890](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292876890) passed the corrected `.mjs` type fixture and combined app/runtime typecheck. The app build then completed with all UI/API/schema/asset checks green; the remaining explicit limit is that the CI environment did not provide a real Postgres `DATABASE_URL`.
  
 # WorkPass362 — clean production UI build + migration/schema contracts (2026-10-26)
 
 - [CI] Added `.github/workflows/workpass362-clean-app-build.yml` on Node 24. It runs the clean-checkout doctor before package installation, installs the app and runtime from their own locked dependency trees, runs the app dependency/script contracts, performs the combined app/runtime typecheck, builds the production UI through the existing env/assets wrapper, and then runs UI→runtime API linkage, schema and asset consistency audits.
 - [MIGRATION] The production build invokes the existing `app/scripts/migrate.mjs`; without `DATABASE_URL`, the migrator must explicitly report that it skipped external PostgreSQL migration (PGLite/local startup migrations are separately tested). No fake database credentials are supplied.
 - [SCOPE] This is a real clean-checkout build gate, but it does not prove a deployed PostgreSQL migration against a production-like database or browser/Live2D/device E2E.
-- [VALIDATION] Focused WorkPass362 workflow is expected to run on its matching app/runtime paths; record the exact head and all step conclusions before marking green.
+- [VALIDATION] WorkPass362 workflow [#40292876890](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292876890) passed on the exact code head: combined app/runtime typecheck, production UI build, UI/API linkage, schema and canonical asset consistency all succeeded. Real external PostgreSQL migration and browser/device E2E remain separate gates.
 
 # WorkPass361 — broad runtime smoke and persistence continuity validation (2026-10-26)
 
