@@ -218,3 +218,46 @@ test('release metadata rejects a source baseline from a newer workpass even if i
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /workpass-build-lineage[\s\S]*?"pass": false/);
 });
+
+
+test('release metadata rejects a manifest WorkPass older than the current changelog heading', async t => {
+  const root = await fixture();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await upgradeFixtureToWorkpass349(root);
+  const fs = await import('node:fs/promises');
+  await fs.writeFile(path.join(root, 'CHANGELOG.md'), '# WorkPass 350 — current entry\n');
+  const r = run(root);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /release-manifest-not-behind-changelog-workpass[\s\S]*?"pass": false/);
+});
+
+test('release metadata rejects a release date older than the first changelog heading', async t => {
+  const root = await fixture();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await upgradeFixtureToWorkpass349(root);
+  const fs = await import('node:fs/promises');
+  await fs.writeFile(
+    path.join(root, 'CHANGELOG.md'),
+    '## Current implementation entry — 2026-10-27\n\n# WorkPass 349\n',
+  );
+  const r = run(root);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /release-date-not-before-current-changelog-entry[\s\S]*?"pass": false/);
+});
+
+test('release metadata passes with a current WorkPass and an older published baseline', async t => {
+  const root = await fixture();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await upgradeFixtureToWorkpass349(root);
+  const fs = await import('node:fs/promises');
+  await fs.writeFile(
+    path.join(root, 'CHANGELOG.md'),
+    '## Current implementation entry — 2026-10-26\n\n# WorkPass 349\n\nOlder WorkPass 70 baseline remains historical.\n',
+  );
+  const r = run(root);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const body = JSON.parse(r.stdout);
+  assert.equal(body.ok, true);
+  assert.equal(body.checks.find(check => check.id === 'release-manifest-not-behind-changelog-workpass')?.pass, true);
+  assert.equal(body.checks.find(check => check.id === 'release-date-not-before-current-changelog-entry')?.pass, true);
+});
