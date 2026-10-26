@@ -1,5 +1,6 @@
 # WorkPass372 — accessor-safe UnifiedCognitiveCycle ingress (2026-10-26)
 
+- [CI-DRIVEN FIX] The next WorkPass287-288 contract assertion expects the existing `stageIds` error text for absent/non-record stage maps. Restored that explicit type guard before descriptor snapshotting; accessor protection remains applied to object-valued maps.
 - [CI-DRIVEN FIX] The dedicated WorkPass287-288 contract suite caught a changed error message for null/array evaluation inputs. Restored the pre-existing `cognitive cycle input must be an object` guard before descriptor snapshotting, preserving the public error contract while keeping accessor-safe reads for object inputs.
 - [HARDENED] Snapshot persisted cycle-state fields via own data descriptors before reading; root getters and accessor-backed missing-stage array slots are rejected without executing.
 - [FIXED] Distinguish omitted legacy `version` from a present `version: undefined`; an explicitly present invalid schema version fails before replacing aggregate state.
