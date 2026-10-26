@@ -1,3 +1,13 @@
+## WorkPass394 — crash-recovery Hexis review после SIGKILL (2026-10-26)
+
+- **Код/тест:** `c8ad7c0327edf63a03ce9152577d9397097fdf1a` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`.
+- Smoke теперь принудительно завершает сервер через SIGKILL после подтверждённого ответа о создании canonical evidence-review, запускает его снова с тем же `STATE_DIR`, проверяет восстановление точного pending review/item и одобряет восстановленный review через canonical gate.
+- Пустой memory fixture больше не позволяет тихо пропустить сценарий — smoke завершится явной ошибкой.
+- **Валидация:** PENDING exact-head typecheck, focused Hexis тесты и Unified integration. GitHub Actions для последних heads возвращает failed без доступных шагов/логов (`BlobNotFound`), поэтому это не считается ни PASS, ни доказанным code failure.
+- Прогресс/readiness/recall оценки не изменены; `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass393 — каноническая привязка Hexis review и восстановление после рестарта (2026-10-26)
 
 - **Код/тесты до tracker-коммита:** `0af14583e35a5edb76d05ab99e1b916e828650ab` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`, поверх актуального на тот момент integration head `b25b6b572f4f0366fd3b23f795763e921bf84f7f`.
