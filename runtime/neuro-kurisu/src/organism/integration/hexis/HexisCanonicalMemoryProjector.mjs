@@ -429,6 +429,8 @@ export class HexisCanonicalMemoryProjector {
         const provenancePayload = row.provenance ?? row.source_attribution ?? null;
         const context = {
           hexisExportId: exportId,
+          hexisImportStageId: String(stage.stagingId),
+          hexisImportAttempt: String(attempt),
           hexisMemoryRef: ref,
           hexisGraphSourceKey: graphSourceKey,
           hexisSourceLineageId: lineageId.slice(0, 512),
@@ -599,6 +601,8 @@ export class HexisCanonicalMemoryProjector {
             removed = this.memoryFabric.rollbackHmxCreatedMemory(
               id,
               exportId,
+              String(stage.stagingId),
+              attempt,
               'hexis-hmx-apply-rollback',
               {
                 commandId: 'hexis-hmx-rollback-protected:' +
