@@ -267,9 +267,16 @@ export class CognitiveEventFabric {
     }
     if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
     if(typeof input.source!=='string') throw new TypeError('invalid-cognitive-event-source');
+    // Identity-bearing fields must be rejected when oversized, never truncated.
+    // Truncation can alias two distinct causal envelopes into the same replay fingerprint.
+    if(input.source.length>120) throw new RangeError('invalid-cognitive-event-source');
     if(input.parentIds!==undefined&&!Array.isArray(input.parentIds)) throw new TypeError('invalid-cognitive-event-parents');
+    if((input.parentIds?.length??0)>12) throw new RangeError('invalid-cognitive-event-parent-count');
     if(input.parentIds?.some(parent=>typeof parent!=='string'||!parent.trim())) {
       throw new TypeError('invalid-cognitive-event-parent-id');
+    }
+    if(input.parentIds?.some(parent=>parent.length>180||/[\u0000-\u001f\u007f]/.test(parent))) {
+      throw new RangeError('invalid-cognitive-event-parent-id');
     }
     if(input.external!==undefined&&typeof input.external!=='boolean') throw new TypeError('invalid-cognitive-event-external-flag');
     if(input.confidence01!==undefined&&(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01))) {
@@ -277,8 +284,8 @@ export class CognitiveEventFabric {
     }
 
     const normalizedTick=input.tick;
-    const normalizedSource=input.source.slice(0,120)||'unknown';
-    const parentIds=(input.parentIds??[]).map(parent=>parent.slice(0,180)).slice(0,12);
+    const normalizedSource=input.source||'unknown';
+    const parentIds=[...(input.parentIds??[])];
     const external=input.external??false;
     const confidence01=clamp01(input.confidence01??0.5);
     // Deep clone and canonicalize before lookup/mutation: invalid evidence cannot
