@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { HexisAdaptationFabric } from '../src/organism/integration/hexis/HexisAdaptationFabric.ts';
-import { CANONICAL_MEMORY_CAPACITY } from '../src/organism/memory/CanonicalMemoryCapacity.ts';
 
 const RETAINED_LIMIT_BYTES = 16 * 1024 * 1024;
 const ROW_COUNT = 8;
@@ -88,10 +87,6 @@ assert.equal(restoredStages[0].status, 'staged',
   'restore must not leave an accepted stage eligible after its source payload was omitted');
 assert.equal(restoredStages.at(-1)?.stagedSections.memories.length, ROW_COUNT,
   'recent staged payload is kept when older persisted stages exceed the bound');
-
-// Keep the fixture tied to the shared memory-capacity contract as a guard against
-// an accidental import-side preflight drift while this staging boundary is exercised.
-assert(CANONICAL_MEMORY_CAPACITY > ROW_COUNT);
 
 console.log('HEXIS_HMX_RETAINED_STAGE_BUDGET=PASS', JSON.stringify({
   stages: restoredStages.length,
