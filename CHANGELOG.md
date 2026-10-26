@@ -4,7 +4,7 @@
 - [BOUNDARY] Rejects equal/nested run and survive roots before filesystem allocation; after canonicalization it also rejects aliased roots sharing the same path or filesystem identity. The execution fingerprint now records canonical storage roots and their identities.
 - [REPLACEMENT] On POSIX, a root's immediate parent must not be group/world writable unless the sticky bit protects directory entries. This prevents a private-looking child path from being trivially replaced by another account.
 - [TEST] Added direct-supervisor regressions for writable run roots, overlapping storage roots and symlinked run roots. Invalid run-root setup is validated before the survive root is created.
-- [VALIDATION] Code and regression commits are present on the WorkPass349 source branch; focused workflow and runtime typecheck are pending for this new pass. The WorkPass353 run (#40289015403) predates these code changes and does not validate them. No dependency added; this is not a sandbox or a production-readiness claim.
+- [VALIDATION] Focused workflow [#40289252511](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289252511) passed on code/test SHA `959ced22f50267dd18d5c7f9403d2905e37dd716`: native P23 provider 10/10, supervisor regression process completed successfully, evaluator-config wiring 16/16, and runtime `TYPECHECK=PASS`. Later checkpoint commits are documentation-only. No dependency added; these path controls are not a sandbox or a production-readiness claim.
 
 # WorkPass353 — canonicalize the mutable-state boundary for evaluator config (2026-10-26)
 
