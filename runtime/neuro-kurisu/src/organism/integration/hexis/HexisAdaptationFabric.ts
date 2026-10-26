@@ -215,7 +215,7 @@ function normalizeHexisStringKeys(value: unknown, limit = 256): string[] {
 function normalizeHexisBeliefProjection(value: unknown): HexisBeliefState | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const row = value as Record<string, unknown>;
-    const memoryId = typeof row.memoryId === 'string' ? row.memoryId.trim() : '';
+    const memoryId = typeof row.memoryId === 'string' ? row.memoryId.trim().normalize('NFKC') : '';
     const confidence01 = row.confidence01;
     if (!memoryId || memoryId.length > 240 ||
         typeof confidence01 !== 'number' || !Number.isFinite(confidence01) ||
@@ -242,6 +242,20 @@ function normalizeHexisBeliefProjection(value: unknown): HexisBeliefState | null
     };
 }
 
+/**
+ * A snapshot is expected to contain exactly one projection per canonical memory ID.
+ * If duplicate IDs survive into a restored sidecar, discard that ambiguous projection;
+ * MemoryOS2 remains authoritative and can rebuild the projection on the next revision.
+ */
+function normalizeHexisBeliefProjections(value: unknown): HexisBeliefState[] {
+    if (!Array.isArray(value)) return [];
+    const candidates = value.slice(-1024)
+        .map(normalizeHexisBeliefProjection)
+        .filter((row): row is HexisBeliefState => row !== null);
+    const counts = new Map<string, number>();
+    for (const row of candidates) counts.set(row.memoryId, (counts.get(row.memoryId) ?? 0) + 1);
+    return candidates.filter((row) => counts.get(row.memoryId) === 1);
+}
 function normalizeHexisMetrics(
     value: unknown,
     defaults: HexisAdaptationState['metrics'],
@@ -276,9 +290,7 @@ export class HexisAdaptationFabric {
         this.state = {
             ...defaults, ...value,
             source: { ...defaults.source, ...(value.source ?? {}) },
-            beliefs: Array.isArray(value.beliefs)
-                ? value.beliefs.slice(-1024).map(normalizeHexisBeliefProjection).filter((row): row is HexisBeliefState => row !== null)
-                : [],
+            beliefs: normalizeHexisBeliefProjections(value.beliefs),
             beliefAudit: Array.isArray(value.beliefAudit) ? value.beliefAudit.slice(-2048) : [],
             temporal: Array.isArray(value.temporal) ? value.temporal.slice(-4096) : [],
             learningReviews: Array.isArray(value.learningReviews) ? value.learningReviews.slice(-96) : [],
