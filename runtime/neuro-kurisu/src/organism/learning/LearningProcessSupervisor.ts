@@ -210,10 +210,10 @@ export async function runLearningProcess(
   if (!areStoragePathsDisjoint(configuredRunRoot, configuredSurviveRoot)) {
     throw new Error('learning-process-storage-roots-must-be-disjoint');
   }
-  const [runStorage, surviveStorage] = await Promise.all([
-    preparePrivateStorageDirectory(configuredRunRoot, 'run-root'),
-    preparePrivateStorageDirectory(configuredSurviveRoot, 'survive-root'),
-  ]);
+  // Prepare sequentially so an invalid run-root fails before creating any
+  // survive directory or other state as a side effect.
+  const runStorage = await preparePrivateStorageDirectory(configuredRunRoot, 'run-root');
+  const surviveStorage = await preparePrivateStorageDirectory(configuredSurviveRoot, 'survive-root');
   if (!areStoragePathsDisjoint(runStorage.path, surviveStorage.path) ||
       runStorage.identity === surviveStorage.identity) {
     throw new Error('learning-process-storage-roots-must-be-disjoint');
