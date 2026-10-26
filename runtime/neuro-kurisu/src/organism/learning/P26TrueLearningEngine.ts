@@ -104,7 +104,7 @@ function stateContextDistance(a:OrganismState,b:OrganismState):number {
   if(typeof left.worldContextVersion==='number' && typeof right.worldContextVersion==='number' &&
      left.worldContextVersion!==right.worldContextVersion) return 1;
   const av=stateContextVector(a),bv=stateContextVector(b);
-  return Math.max(...av.map((value,index)=>Math.abs(value-bv[index]??0)));
+  return Math.max(...av.map((value,index)=>Math.abs(value-(bv[index]??value))));
 }
 
 export class P26TrueLearningEngine{
