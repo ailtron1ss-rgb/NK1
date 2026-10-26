@@ -629,6 +629,10 @@ let projectedBeliefMemory = beliefProjectionSystems.memory.fabric.canonicalSnaps
 assert.equal(projectedBeliefMemory?.confidence, supportAudit.posteriorConfidence01,
   'the shared cognitive composition must project the posterior confidence into canonical memory');
 assert(projectedBeliefMemory?.revisionHistory.at(-1)?.reason.startsWith('hexis-belief-revision:supports:'));
+assert.equal(projectedBeliefMemory?.evidenceSources?.filter(source => source.source.startsWith('hexis-evidence:')).length, 1,
+  'a successful belief update must append exactly one independent source to canonical provenance');
+assert(projectedBeliefMemory?.evidenceLineageKeys?.some(key => key.startsWith('lineage:hexis-belief:')),
+  'canonical memory must persist the lineage tombstone used to suppress cross-store replay');
 const canonicalConfidenceAfterSupport = projectedBeliefMemory.confidence;
 const duplicateSupportAudit = beliefProjectionSystems.hexisAdaptation.reviseBelief({
   memoryId: beliefProjectionMemory.id,
@@ -642,6 +646,8 @@ assert.equal(duplicateSupportAudit.reason, 'duplicate_source');
 projectedBeliefMemory = beliefProjectionSystems.memory.fabric.canonicalSnapshot().items.find(item => item.id === beliefProjectionMemory.id);
 assert.equal(projectedBeliefMemory?.confidence, canonicalConfidenceAfterSupport,
   'duplicate source replay must not update canonical recall confidence a second time');
+assert.equal(projectedBeliefMemory?.evidenceSources?.filter(source => source.source.startsWith('hexis-evidence:')).length, 1,
+  'duplicate evidence must not duplicate the canonical evidence source');
 const contradictionAudit = beliefProjectionSystems.hexisAdaptation.reviseBelief({
   memoryId: beliefProjectionMemory.id,
   confidence01: canonicalConfidenceAfterSupport,
@@ -654,8 +660,46 @@ projectedBeliefMemory = beliefProjectionSystems.memory.fabric.canonicalSnapshot(
 assert.equal(projectedBeliefMemory?.confidence, contradictionAudit.posteriorConfidence01);
 assert(projectedBeliefMemory.confidence < canonicalConfidenceAfterSupport,
   'independent contradictory evidence must lower canonical confidence used by retrieval');
+assert.equal(projectedBeliefMemory.evidenceSources?.filter(source => source.source.startsWith('hexis-evidence:')).length, 2,
+  'independent contradictory evidence must append its own lineage without overwriting the prior source');
 assert.equal(beliefProjectionSystems.hexisAdaptation.snapshot().beliefAudit.length, 3,
   'support, duplicate and contradiction events must each remain auditable');
+
+// A fresh Hexis ledger must still respect canonical evidence lineage instead of
+// counting a source again after one side of persisted state has been reset.
+const canonicalBeforeCrossStoreReplay = beliefProjectionSystems.memory.fabric.canonicalSnapshot().items.find(item => item.id === beliefProjectionMemory.id);
+assert(canonicalBeforeCrossStoreReplay);
+const evidenceSourcesBeforeCrossStoreReplay = canonicalBeforeCrossStoreReplay.evidenceSources?.length ?? 0;
+const confidenceBeforeCrossStoreReplay = canonicalBeforeCrossStoreReplay.confidence;
+beliefProjectionSystems.hexisAdaptation.restore();
+const crossStoreReplayAudit = beliefProjectionSystems.hexisAdaptation.reviseBelief({
+  memoryId: beliefProjectionMemory.id,
+  confidence01: confidenceBeforeCrossStoreReplay,
+  evidence: { ref: 'independent-counter-evidence', trust01: 0.8 },
+  stance: 'contradicts',
+});
+assert.equal(crossStoreReplayAudit.applied, false);
+assert.equal(crossStoreReplayAudit.reason, 'duplicate_source',
+  'canonical lineage must defeat a replay even when the Hexis belief ledger starts empty');
+const canonicalAfterCrossStoreReplay = beliefProjectionSystems.memory.fabric.canonicalSnapshot().items.find(item => item.id === beliefProjectionMemory.id);
+assert.equal(canonicalAfterCrossStoreReplay?.confidence, confidenceBeforeCrossStoreReplay);
+assert.equal(canonicalAfterCrossStoreReplay?.evidenceSources?.length ?? 0, evidenceSourcesBeforeCrossStoreReplay,
+  'cross-store replay must not add a second evidence source');
+
+const failingBeliefProjection = new HexisAdaptationFabric();
+failingBeliefProjection.bindCanonicalBeliefProjection(() => { throw new Error('injected-canonical-belief-projection-failure'); });
+assert.throws(() => failingBeliefProjection.reviseBelief({
+  memoryId: 'canonical-target',
+  confidence01: 0.5,
+  evidence: { ref: 'failure-source', trust01: 0.9 },
+  stance: 'supports',
+}), /injected-canonical-belief-projection-failure/);
+assert.equal(failingBeliefProjection.snapshot().beliefs.length, 0,
+  'failed canonical projection must not commit a partial Hexis belief');
+assert.equal(failingBeliefProjection.snapshot().beliefAudit.length, 0,
+  'failed canonical projection must not leave a misleading evidence audit');
+assert.equal(failingBeliefProjection.snapshot().metrics.beliefRevisions, 0,
+  'failed canonical projection must not advance revision metrics');
 
 
 console.log('HEXIS_ADAPTATION_PASS');
