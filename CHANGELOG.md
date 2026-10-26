@@ -1,3 +1,11 @@
+## WorkPass354 — atomic CognitiveEventFabric snapshot restore (2026-10-26)
+
+- **Defect:** restore converted malformed root arrays/counters to empty defaults, accessed root/event properties directly, and replaced the live event journal before rebuilding receipt projections. Invalid or accessor-backed snapshots could erase or partially replace causal state.
+- **Fix:** validate schema version/capacity/total, reject root accessors and malformed bounded arrays, read event and receipt rows through own data descriptors, stage the event ledger and receipt projection map locally, and publish state only after decoding completes. Legacy snapshots may omit version/optional fields.
+- **Regression:** invalid versions, root arrays, counters, scalar/proxy roots and accessors are rejected without mutation; event-row getters do not run; malformed rows do not reserve IDs ahead of valid recovery rows.
+- **Validation:** branch `work/nk1-cef-restore-atomicity-2026-10-26-r1`, based on release checkpoint `18afd253dcd7413c02136537ea1acc10b7764768`. Exact-head runtime typecheck and integration/release gate are required; no PASS is claimed before they finish.
+
+---
 ## CognitiveEventFabric append-ingress contract — 2026-10-26
 
 - **Defect:** confidence outside `[0, 1]` was silently clamped; append could execute top-level getters while reading event fields; duplicate parent IDs could inflate causal lineage; restore could clamp invalid stored confidence.
