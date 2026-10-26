@@ -351,7 +351,9 @@ export class CognitiveEventFabric {
           Math.abs(clamp01(Number(outcome!.confidence01))-normalized.confidence01)<1e-9&&
           evidence!.payload.verificationBasis===normalized.verificationBasis&&evidence!.payload.externalObservation===normalized.externalObservation&&
           evidence!.payload.observationId===normalized.observationId&&evidence!.payload.observationIntegrated===normalized.observationIntegrated&&
-          evidence!.payload.expectedPostconditionPresent===normalized.expectedPostconditionPresent&&evidence!.payload.observedPostconditionPresent===normalized.observedPostconditionPresent;
+          evidence!.payload.expectedPostconditionPresent===normalized.expectedPostconditionPresent&&evidence!.payload.observedPostconditionPresent===normalized.observedPostconditionPresent&&
+          evidence!.payload.expectedPostconditionHash===normalized.expectedPostconditionHash&&
+          evidence!.payload.observedPostconditionHash===normalized.observedPostconditionHash;
         if(!storedMatches||(prior?.projectionHash&&prior.projectionHash!==projectionHash))throw new Error('tool-receipt-execution-id-conflict');
         const replayEntry:ToolReceiptProjectionIndexEntry={executionId,actionEventId:action!.id,outcomeEventId:outcome!.id,evidenceEventId:evidence!.id,projectedAt:prior?.projectedAt??action!.at,projectionHash};
         this.receiptProjectionIndex.set(executionId,replayEntry);
@@ -373,7 +375,7 @@ export class CognitiveEventFabric {
     const evidence=this.append({
       tick:input.tick,stage:'tool-evidence',source:'outcome-verification',
       parentIds:[outcome.id],external:Boolean(input.externalObservation),confidence01:clamp01(input.confidence01),at,
-      payload:{executionId,tool:safeTool,verificationBasis:String(input.verificationBasis??'none').slice(0,48),externalObservation:Boolean(input.externalObservation),observationId:String(input.observationId??'').slice(0,180)||null,observationIntegrated:Boolean(input.observationIntegrated),expectedPostconditionPresent:Boolean(String(input.expectedPostcondition??'').trim()),observedPostconditionPresent:Boolean(String(input.observedPostcondition??'').trim())},
+      payload:{executionId,tool:safeTool,verificationBasis:String(input.verificationBasis??'none').slice(0,48),externalObservation:Boolean(input.externalObservation),observationId:String(input.observationId??'').slice(0,180)||null,observationIntegrated:Boolean(input.observationIntegrated),expectedPostconditionPresent:Boolean(String(input.expectedPostcondition??'').trim()),observedPostconditionPresent:Boolean(String(input.observedPostcondition??'').trim()),expectedPostconditionHash:normalized.expectedPostconditionHash,observedPostconditionHash:normalized.observedPostconditionHash},
     });
     const entry:ToolReceiptProjectionIndexEntry={executionId,actionEventId:action.id,outcomeEventId:outcome.id,evidenceEventId:evidence.id,projectedAt:at,projectionHash};
     this.receiptProjectionIndex.set(executionId,entry);

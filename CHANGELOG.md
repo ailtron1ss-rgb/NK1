@@ -1,3 +1,12 @@
+## WorkPass347 — preserve postcondition fingerprints in restored receipt traces (2026-10-26)
+
+- **FIXED:** `appendToolReceiptTrace()` now persists hashes of expected and observed postconditions inside its sanitized evidence event, without storing raw postcondition text.
+- **FIXED:** receipt replay compares both hashes against the submitted receipt even when the bounded projection index is absent or has been lost during restore.
+- **REGRESSION:** added an indexless restore scenario proving a changed-but-nonempty postcondition conflicts before new events are appended, while an exact receipt replay remains idempotent.
+- **VALIDATION:** exact-head CI is required after this follow-up commit.
+
+---
+
 ## WorkPass346 — enforce event identity and payload immutability in active runtime (2026-10-26)
 
 - **FIXED:** active `CognitiveEventFabric.append()` now validates the complete stable-ID envelope (tick, timestamp, stage, source, causal parents, external flag, confidence and canonical payload). Reusing an ID with changed evidence fails before mutation.

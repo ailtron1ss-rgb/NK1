@@ -76,6 +76,44 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
   assert.equal(getterExecuted,false,'accessor payloads must not execute getters');
   assert.deepEqual(safeAccessorEvent.payload,{});
   assert.equal(fabric.getById('cef:test:accessor')?.payload.secret,undefined);
+
+  // Receipt replay remains conflict-safe after persistence drops the bounded replay index.
+  const receiptFabric=new CognitiveEventFabric(128);
+  const receiptInput={
+    tick:12,executionId:'receipt-execution-12',toolId:'filesystem.write',decisionId:'decision-12',
+    ok:true,verified:true,outcomeClass:'success',confidence01:0.9,verificationBasis:'external-postcondition',
+    externalObservation:true,observationId:'observation-12',
+    expectedPostcondition:'report.json exists and has expected digest',
+    observedPostcondition:'report.json exists and digest matches',
+    observationIntegrated:true,at:1200,
+  };
+  const receiptResult=receiptFabric.appendToolReceiptTrace(receiptInput);
+  assert.equal(receiptResult.replayed,false);
+  const receiptSnapshot=receiptFabric.snapshot();
+  const receiptEvidence=receiptSnapshot.recent.find(event=>event.id===receiptResult.evidenceEventId);
+  assert.ok(receiptEvidence);
+  assert.equal(receiptEvidence.payload.expectedPostconditionHash?.length,64);
+  assert.equal(receiptEvidence.payload.observedPostconditionHash?.length,64);
+  assert.equal(JSON.stringify(receiptEvidence.payload).includes(receiptInput.expectedPostcondition),false,
+    'raw postcondition text must not be stored in the causal ledger');
+
+  const indexlessSnapshot={...receiptSnapshot,receiptProjectionIndex:[]};
+  const restoredReceiptFabric=new CognitiveEventFabric(128);
+  restoredReceiptFabric.restore(indexlessSnapshot);
+  const restoredTotal=restoredReceiptFabric.snapshot().total;
+  assert.throws(
+    ()=>restoredReceiptFabric.appendToolReceiptTrace({
+      ...receiptInput,
+      expectedPostcondition:'a different condition that is also non-empty',
+    }),
+    /tool-receipt-execution-id-conflict/,
+    'the event evidence itself must preserve postcondition identity when the bounded index is absent',
+  );
+  assert.equal(restoredReceiptFabric.snapshot().total,restoredTotal,
+    'a conflicting restored receipt must not append additional causal events');
+  const restoredExactReplay=restoredReceiptFabric.appendToolReceiptTrace(receiptInput);
+  assert.equal(restoredExactReplay.replayed,true,'an exact receipt replay remains idempotent after restore');
+  assert.equal(restoredReceiptFabric.snapshot().total,restoredTotal);
 }
 
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'nk161-'));
