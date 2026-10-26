@@ -33,6 +33,7 @@ import {
   buildAvatarSpeechTimeline,
   sampleAvatarSpeechTimeline,
 } from './avatar-state.mjs';
+import { smoothEmbodimentAffect } from './embodiment-affect-core.mjs';
 
 const frame = document.getElementById('live2d');
 const fallback = document.getElementById('fallback');
@@ -49,7 +50,36 @@ let motionToken = 0;
 let motionIdentity = "";
 let lastPublishedSpeechIdentity = "";
 let lastPublishedSpeechPhase = "idle";
+let affectSmoothingState = null;
+let lastAffectTarget = null;
+let affectTransitionUntil = 0;
+const AFFECT_SETTLE_MS = 900; // five 180ms time constants
+const AFFECT_TARGET_EPSILON = 0.0005;
 const CLOSED_POSE = Object.freeze({ open: 0.015, form: 0, viseme: 'rest' });
+
+function affectTargetFor(body, active) {
+  const intensity = Number.isFinite(body.expressionIntensity) ? body.expressionIntensity : 0;
+  return {
+    expressionIntensity: intensity,
+    gazeX: Number.isFinite(body.gazeX) ? body.gazeX : 0,
+    gazeY: Number.isFinite(body.gazeY) ? body.gazeY : 0,
+    headTilt: Number.isFinite(body.headTilt) ? body.headTilt : 0,
+    // Match React: spoken emphasis rises with arousal, then eases back to zero.
+    voiceEmphasis: active ? Math.min(1, Math.max(0, intensity) + 0.15) : 0,
+  };
+}
+
+function sampleAffect(body, active, now) {
+  const target = affectTargetFor(body, active);
+  if (lastAffectTarget) {
+    const changed = Object.keys(target).some(key =>
+      Math.abs(target[key] - lastAffectTarget[key]) > AFFECT_TARGET_EPSILON);
+    if (changed) affectTransitionUntil = now + AFFECT_SETTLE_MS;
+  }
+  lastAffectTarget = target;
+  affectSmoothingState = smoothEmbodimentAffect(affectSmoothingState, target, now);
+  return affectSmoothingState;
+}
 
 function post(type, data = {}) {
   try { frame.contentWindow.postMessage({ type, ...data }, location.origin); } catch {}
@@ -154,6 +184,7 @@ function publishIntent(now, sampledPose = null) {
   };
   const phase = currentSpeechPhase(now);
   const active = phase === 'speaking';
+  const affect = sampleAffect(body, active, now);
   const pose = active
     ? (sampledPose ?? sampleAvatarSpeechTimeline(speechCursor.timeline, speechElapsedAt(now)))
     : CLOSED_POSE;
@@ -179,21 +210,21 @@ function publishIntent(now, sampledPose = null) {
     priority: active ? 70 : phase === 'unknown' ? 55 : 30,
     cancellationToken: phase === 'cancelled' && eventId ? ('cancel:' + eventId) : null,
     expression: latestPresentation?.expression || 'neutral',
-    expressionIntensity: Math.max(0, Math.min(1, Number(body.expressionIntensity) || 0)),
+    expressionIntensity: affect.expressionIntensity,
     mouth: { open: pose.open, form: pose.form, viseme: pose.viseme },
     gaze: {
-      x: Math.max(-1, Math.min(1, Number(body.gazeX) || 0)),
-      y: Math.max(-1, Math.min(1, Number(body.gazeY) || 0)),
+      x: affect.gazeX,
+      y: affect.gazeY,
       driven: body.gazeDriven === true,
     },
     body: {
-      headTilt: Math.max(-0.15, Math.min(0.15, Number(body.headTilt) || 0)),
+      headTilt: affect.headTilt,
       gesture: active || Boolean(body.gesture),
       motionGroup,
       motionIndex,
       motionToken,
     },
-    voiceEmphasis: active ? Math.max(0, Math.min(1, Number(body.voiceEmphasis) || 0)) : 0,
+    voiceEmphasis: affect.voiceEmphasis,
   };
   post('kurisu_embodiment_intent', intent);
   lastPublishedSpeechIdentity = speechCursor?.identity ?? '';
@@ -212,6 +243,11 @@ function animateSpeech(now) {
       && (mouthWasActive || phase !== lastPublishedSpeechPhase || identity !== lastPublishedSpeechIdentity)) {
     publishIntent(now, CLOSED_POSE);
     mouthWasActive = false;
+    lastControlAt = now;
+  } else if (!active && now - lastControlAt >= 32 && now < affectTransitionUntil) {
+    // Keep publishing only during a short affect settle window while idle; speech
+    // remains on its existing 30fps viseme clock and no permanent polling is added.
+    publishIntent(now, CLOSED_POSE);
     lastControlAt = now;
   }
   window.requestAnimationFrame(animateSpeech);
