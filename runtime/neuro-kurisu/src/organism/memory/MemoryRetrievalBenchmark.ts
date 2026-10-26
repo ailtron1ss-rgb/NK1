@@ -374,7 +374,25 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     abstentionConfidenceNonInferioritySupported,
   };
   const promotionAllowed=Object.values(promotionGates).every(Boolean);
-  const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!enoughUnanswerableEvidence?'insufficient-unanswerable-holdout':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':!abstentionSafe?'unsupported-retrieval-rate-regression':!abstentionConfidenceNonInferioritySupported?'unsupported-retrieval-regression-not-confidence-bounded':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':'holdout-gates-passed';
+  const reason =
+    !seedInputValid ? 'invalid-bootstrap-seed'
+      : !corpusIntegrity.validForPromotion ? 'corpus-integrity-failed'
+        : !dataIntegrity.validForPromotion ? 'dataset-integrity-failed'
+          : !provenanceComplete ? 'dataset-provenance-incomplete'
+            : !enoughEvidence ? 'insufficient-labelled-holdout-or-corpus'
+              : !enoughUnanswerableEvidence ? 'insufficient-unanswerable-holdout'
+                : !quarantineSafe ? 'candidate-returned-quarantined-memory'
+                  : !staleSafe ? 'candidate-returned-out-of-window-memory'
+                    : !dormantSafe ? 'candidate-returned-dormant-memory'
+                      : !epistemicStatusSafe ? 'candidate-returned-invalid-epistemic-status'
+                        : !validRateSafe ? 'candidate-result-integrity-regression'
+                          : !abstentionSafe ? 'unsupported-retrieval-rate-regression'
+                            : !abstentionConfidenceNonInferioritySupported ? 'unsupported-retrieval-regression-not-confidence-bounded'
+                              : recallDelta < minUplift ? 'recall-uplift-below-threshold'
+                                : !confidenceSupported ? 'recall-uplift-not-confidence-supported'
+                                  : !mrrNonInferioritySupported ? 'mrr-regression-not-confidence-bounded'
+                                    : mrrDelta < -mrrTolerance ? 'mrr-regression-exceeds-tolerance'
+                                      : 'holdout-gates-passed';
   return {
     schemaVersion:6 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
     now,k,corpusSize:corpus.length,trainQueries:train.length,holdoutQueries:holdout.length,datasetFingerprint,corpusFingerprint:corpusHash,retrievalConfigurationFingerprint:retrievalConfigHash,corpusIntegrity,

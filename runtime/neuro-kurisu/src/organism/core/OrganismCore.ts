@@ -1336,7 +1336,33 @@ export class OrganismCore {
         this.cognitiveRuntime.actionGateway.registerTool({ id: 'organism.inspect', capability: 'core.read', destructive: false, projectAllowed: true, execute: async () => ({ ok: true, verified: true, tick: this.persisted.state.tick, lastAction: this.persisted.state.lastAction, energy: this.persisted.state.needs.energy }) });
         this.cognitiveRuntime.actionGateway.registerTool({ id: 'organism.project.context', capability: 'project.read', destructive: false, projectAllowed: true, execute: async () => { const p = this.agencySubsystem.selfProjects.activeProject(); return { ok: Boolean(p), verified: true, projectId: p?.id ?? null, title: p?.title ?? null, progress01: p?.progress ?? 0, nextMilestone: p?.nextMilestone ?? null, skillGain01: p?.skillGain01 ?? 0 }; } });
         this.cognitiveRuntime.actionGateway.registerTool({ id: 'organism.project.evidence', capability: 'project.evidence.read', destructive: false, projectAllowed: true, execute: async () => { const p = this.agencySubsystem.selfProjects.activeProject(); const e = this.evidenceResearchSubsystem.externalEvidenceTrust.snapshot(); const rows = e.records.filter(r => r.claimKey.startsWith('action:')).slice(0, 16); return { ok: Boolean(p), verified: true, projectId: p?.id ?? null, evidenceCount: p?.evidenceCount ?? 0, validatedEvidenceCount: p?.validatedEvidenceCount ?? 0, replicatedEvidenceCount: p?.replicatedEvidenceCount ?? 0, independentSources: rows.map(r => r.source) }; } });
-        this.cognitiveRuntime.actionGateway.registerTool({ id: 'organism.project.research', capability: 'project.external.research', destructive: false, projectAllowed: true, execute: async (input) => this.evidenceResearchSubsystem.externalProjectResearchTool.fetchUrl({ url: String(input.url ?? ''), query: String(input.query ?? process.env.NEURO_PROJECT_RESEARCH_QUERY ?? ''), claim: String(input.claim ?? '') }).then(r => ({ ok: r.ok, verified: r.verified, externalEvidence: r.externalEvidence, url: r.url, finalUrl: r.finalUrl, status: r.status, contentType: r.contentType, title: r.title, contentHash: r.contentHash, bytes: r.bytes, snippet: r.snippet, trust01: r.trust01, independenceKey: r.independenceKey, sourceHost: r.sourceHost, fetchedAt: r.fetchedAt, queryHash: r.queryHash, relevance01: r.relevance01, matchedQueryTerms: r.matchedQueryTerms, claim: r.claim, redirects: r.redirects, error: r.error })) });
+        this.cognitiveRuntime.actionGateway.registerTool({ id: 'organism.project.research',
+          capability: 'project.external.research',
+          destructive: false,
+          projectAllowed: true,
+          execute: async (input) => this.evidenceResearchSubsystem.externalProjectResearchTool.fetchUrl({ url: String(input.url ?? ''),
+          query: String(input.query ?? process.env.NEURO_PROJECT_RESEARCH_QUERY ?? ''),
+          claim: String(input.claim ?? '') }).then(r => ({ ok: r.ok,
+          verified: r.verified,
+          externalEvidence: r.externalEvidence,
+          url: r.url,
+          finalUrl: r.finalUrl,
+          status: r.status,
+          contentType: r.contentType,
+          title: r.title,
+          contentHash: r.contentHash,
+          bytes: r.bytes,
+          snippet: r.snippet,
+          trust01: r.trust01,
+          independenceKey: r.independenceKey,
+          sourceHost: r.sourceHost,
+          fetchedAt: r.fetchedAt,
+          queryHash: r.queryHash,
+          relevance01: r.relevance01,
+          matchedQueryTerms: r.matchedQueryTerms,
+          claim: r.claim,
+          redirects: r.redirects,
+          error: r.error })) });
         this.cognitiveRuntime.actionGateway.registerTool({ id: 'organism.device.status', capability: 'device.read', destructive: false, projectAllowed: false, execute: async () => {
                 const previous = this.persisted.facets.embodiment.body as any;
                 const sampled = await sampleAndroidTelemetry(previous);
@@ -5193,7 +5219,22 @@ export class OrganismCore {
             { specialist: 'memory', score: Math.min(1, retrieved.length * .18 + state.predictionError * .4), confidence: .66, target: 'memory', evidence: [`retrieved=${retrieved.length}`], energyCost: .06 },
             { specialist: 'social', score: n.socialNeed, confidence: .62, target: 'user', evidence: [`socialNeed=${n.socialNeed.toFixed(2)}`], energyCost: .05 },
             { specialist: 'language', score: observation.text ? .62 : .12, confidence: .75, target: 'expression', evidence: [observation.text ? 'external-message' : 'no-message'], energyCost: .04 },
-            { specialist: 'affect', score: clamp(Math.max(emotionEpisode.interoceptiveDelta.attentionCapture01, emotionEpisode.arousal01 * .9, p66Homeostasis.pressure01 * .82) + emotionEpisode.appraisal.relevance01 * .22 + emotionEpisode.interoceptiveDelta.stress01 * .18 + emotionEpisode.arousal01 * .08 + feelingEpisode.intensity01 * .08 + feelingEpisode.bodilyFocus01 * .04 + feelingEpisode.interoceptiveMismatch01 * .03), confidence: clamp(emotionEpisode.confidence01 * .75 + feelingEpisode.selfAccessConfidence01 * .25), target: emotionEpisode.label, evidence: [`tendency=${emotionEpisode.actionTendency}`, `valence=${emotionEpisode.valence01.toFixed(2)}`, `arousal=${emotionEpisode.arousal01.toFixed(2)}`, `stress=${emotionEpisode.interoceptiveDelta.stress01.toFixed(2)}`, `relevance=${emotionEpisode.appraisal.relevance01.toFixed(2)}`, `feeling-intensity=${feelingEpisode.intensity01.toFixed(2)}`, `body-focus=${feelingEpisode.bodilyFocus01.toFixed(2)}`, `feeling-mismatch=${feelingEpisode.interoceptiveMismatch01.toFixed(2)}`], energyCost: clamp(.025 + n.cognitiveLoad * .06 + emotionEpisode.arousal01 * .025) },
+            { specialist: 'affect',
+              score: clamp(Math.max(emotionEpisode.interoceptiveDelta.attentionCapture01,
+              emotionEpisode.arousal01 * .9,
+              p66Homeostasis.pressure01 * .82) + emotionEpisode.appraisal.relevance01 * .22 + emotionEpisode.interoceptiveDelta.stress01 * .18 + emotionEpisode.arousal01 * .08 + feelingEpisode.intensity01 * .08 + feelingEpisode.bodilyFocus01 * .04 + feelingEpisode.interoceptiveMismatch01 * .03),
+              confidence: clamp(emotionEpisode.confidence01 * .75 + feelingEpisode.selfAccessConfidence01 * .25),
+              target: emotionEpisode.label,
+              evidence: [`tendency=${emotionEpisode.actionTendency}`,
+              `valence=${emotionEpisode.valence01.toFixed(2)}`,
+              `arousal=${emotionEpisode.arousal01.toFixed(2)}`,
+              `stress=${emotionEpisode.interoceptiveDelta.stress01.toFixed(2)}`,
+              `relevance=${emotionEpisode.appraisal.relevance01.toFixed(2)}`,
+              `feeling-intensity=${feelingEpisode.intensity01.toFixed(2)}`,
+              `body-focus=${feelingEpisode.bodilyFocus01.toFixed(2)}`,
+              `feeling-mismatch=${feelingEpisode.interoceptiveMismatch01.toFixed(2)}`],
+              energyCost: clamp(.025 + n.cognitiveLoad * .06 + emotionEpisode.arousal01 * .025) },
+              
         ];
         const broadcast = this.config.enableCognitiveNetwork ? this.cognitiveRuntime.cognitiveNetwork.stimulate(networkSignals, state.tick, state.attentionBudget * neuromod.attentionGain01) : null;
         // Cognitive network is projected by PersistenceProjectionCoordinator at checkpoint boundaries.
