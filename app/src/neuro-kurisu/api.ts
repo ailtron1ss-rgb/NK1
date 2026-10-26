@@ -1,4 +1,4 @@
-import type { BackendUiSnapshot, ChatBackendResponse } from "./types";
+import type { BackendUiSnapshot, ChatBackendResponse, HexisGoalActivationResponse, HexisGoalMaterializeResponse, HexisGoalProposalDecisionResponse, HexisGoalProposalListResponse, HexisGoalProposalPrepareResponse, HexisGoalProposalStatus } from "./types";
 import { waitForActionApproval } from "./action-approval-broker.ts";
 
 const API_BASE = String(import.meta.env?.VITE_NEURO_KURISU_API_BASE ?? "").replace(/\/$/, "");
