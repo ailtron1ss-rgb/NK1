@@ -1005,8 +1005,9 @@ export class MemoryOS2{
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    return structuredClone(m.context??{});
  }
- updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'>>, reason='reconsolidation') {
+ updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'|'evidenceSources'>>, reason='reconsolidation') {
    const m=this.state.items.find(x=>x.id===id); if(!m) return null;
+   const before=estimateMemoryBytes(m);
    const fromStatus=m.epistemicStatus;
    const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
    if(patch.salience!==undefined)m.salience=c(patch.salience);
@@ -1017,9 +1018,16 @@ export class MemoryOS2{
    if(patch.predictionError!==undefined)m.predictionError=c(patch.predictionError);
    if(patch.confidence!==undefined)m.confidence=c(patch.confidence);
    if(patch.dormant!==undefined)m.dormant=Boolean(patch.dormant);
-   m.lastAccessAt=Date.now();
+   const updatedAt=Date.now();
+   if(patch.evidenceSources!==undefined){
+    // Merge independent evidence through the canonical lineage rules. This preserves
+    // replay guards, the bounded eight-source trail and the bounded 32-key tombstone.
+    this.mergeIncomingEvidence(m,{...m,evidenceSources:patch.evidenceSources},updatedAt);
+   }
+   m.lastAccessAt=updatedAt;
    m.temperature01=memoryTemperature(m);
    if(reason){this.recordRevision(m,{at:m.lastAccessAt,from:fromStatus,to:fromStatus,reason});}
+   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    this.state.reconsolidations++;
    return structuredClone(m);
  }
