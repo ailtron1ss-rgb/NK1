@@ -1,11 +1,11 @@
-## Latest checkpoint — WorkPass333 (2026-10-26)
+## Latest checkpoint — WorkPass334 (2026-10-26)
 
-- **Branch / PR:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`, draft [PR #135](https://github.com/ailtron1ss-rgb/NK1/pull/135); target remains `work/node24-project-pin-rebased-20261025`. No merge to `main`; no release ZIP update.
-- **Security correction:** per-family thresholds are now sourced from trusted host environment variable `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`, keyed by the exact skill ID. The candidate bundle cannot choose, lower, or replace its own threshold.
-- **Fail-closed behavior:** missing skill policy, empty family map, invalid/zero floor, and a family absent from the holdout manifest all block staging before the candidate store is mutated.
-- **Regression set:** confirms host policy cannot be overridden by an embedded bundle field, validates an actual scoped gain, and rejects aggregate `+0.20` with zero gain in the required memory family. Failed staging leaves existing candidates unchanged.
-- **Validation state:** CI must be read against the final WorkPass333 branch head before declaring test/typecheck PASS. The currently running WorkPass332 checks use its prior head and will not validate this hardening by themselves.
-- **Next:** after the new head passes, gather real independently held-out task-family evidence (especially tool-use/transfer), measure uplift rather than infer it from fixtures, and retain separate voice/Live2D, Android audio, soak, release archive, and license gates.
+- **Branch / PR:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`, draft [PR #135](https://github.com/ailtron1ss-rgb/NK1/pull/135), based on `work/node24-project-pin-rebased-20261025`. No merge to `main`; no release ZIP update.
+- **Code:** `VerifiedSkillPromotion.ts` and the real `stage-verified-skill-candidate.mjs` path now enforce both a per-family minimum gain and a minimum number of distinct paired holdout tasks. Target families default to two tasks for direct API callers; deployment policy explicitly specifies the count for each family.
+- **Evidence:** `familyTaskCoverage` counts unique task IDs with baseline and candidate results for attempt 1. Repeating a small set of prompts across many seeds does not inflate distinct-task coverage; coverage is included in proposal identity/authenticity.
+- **Regression:** fixture has five distinct memory tasks across five paired seeds; a policy requiring six distinct memory tasks is blocked, and the persistent candidate store remains unchanged.
+- **Validation:** WorkPass333 exact-head CI passed for WorkPass110, P26, unified integration, WorkPass108 and associated replay/evidence workflows. WorkPass334 is a new head; its own CI is pending and must be checked separately.
+- **Next:** verify WorkPass334 CI, then move from synthetic regressions to independent, real tool-use/transfer holdout runs and measured uplift. UI/Live2D/TTS, Android audio, long soak, release packaging, and licensing remain distinct release gates.
 
 ## Latest checkpoint — WorkPass330 (2026-10-26)
 

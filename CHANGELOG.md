@@ -1,3 +1,12 @@
+## WorkPass334 — require distinct holdout-task coverage per skill family (2026-10-26)
+
+- **Gap:** WorkPass333 bound improvement thresholds to trusted host policy, but repeated seeds over a tiny family could satisfy the family-gain check without demonstrating breadth across distinct tasks.
+- **Code:** added `minimumFamilyTasksByFamily` to the authenticated proposal policy. Each configured gain family defaults to a floor of two distinct paired holdout tasks unless set explicitly; the trusted staging path requires both per-family gain and task-count floors in operator-owned `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`.
+- **Evidence accounting:** proposal output now exposes `familyTaskCoverage`, counting distinct attempt-1 tasks with paired baseline/candidate outcomes rather than treating each seed repetition as a new task. Task floors and measured coverage are bound into the proposal identity/authenticity digest.
+- **Regression:** proposal-level and signed staging tests reject a policy requiring six memory tasks when only five distinct memory tasks exist, even though the outcomes repeat across five seeds. Rejection leaves candidate storage and activation state unchanged.
+- **Validation:** code/test changes are committed together; exact-head CI for WorkPass334 must complete before claiming this regression or typecheck passed.
+- **Safety:** configured families must still show adequate paired-seed coverage and meet the authenticated gain floor. Specialised skills are not required to improve unrelated families; only explicitly scoped family floors demand positive uplift.
+
 ## WorkPass333 — move promotion family floors into trusted host configuration (2026-10-26)
 
 - **Security boundary:** WorkPass332 made a family floor mandatory but placed it inside the candidate bundle. That bundle is external input, so its author could lower the threshold that was supposed to constrain the candidate.

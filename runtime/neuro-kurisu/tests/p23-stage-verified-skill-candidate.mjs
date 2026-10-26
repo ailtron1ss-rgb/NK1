@@ -88,7 +88,7 @@ try {
   );
 
   // The untrusted candidate bundle cannot select or weaken its promotion policy.
-  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { memory: 0.2 } });
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { minimumFamilyGainByFamily: { memory: 0.2 }, minimumFamilyTasksByFamily: { memory: 3 } } });
   const embeddedPolicyBundle = {
     ...validBundle,
     promotionPolicy: { minimumFamilyGainByFamily: { memory: 0.0001 } },
@@ -99,19 +99,19 @@ try {
     /unknown top-level fields/,
   );
 
-  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { transfer: 0.01 } });
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { minimumFamilyGainByFamily: { transfer: 0.01 }, minimumFamilyTasksByFamily: { transfer: 3 } } });
   await writeFile(bundlePath, JSON.stringify(validBundle));
   await assert.rejects(
     () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
     /not represented in holdout manifest: transfer/,
   );
-  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { memory: 0 } });
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { minimumFamilyGainByFamily: { memory: 0 }, minimumFamilyTasksByFamily: { memory: 3 } } });
   await assert.rejects(
     () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
     /thresholds must be finite numbers in \(0, 1\]/,
   );
 
-  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { memory: 0.2 } });
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { minimumFamilyGainByFamily: { memory: 0.2 }, minimumFamilyTasksByFamily: { memory: 3 } } });
   await writeFile(bundlePath, JSON.stringify(validBundle));
   const staged = await stageVerifiedSkillCandidateBundle({ bundlePath, stateFile });
   assert.equal(staged.status, 'staged');
@@ -119,6 +119,8 @@ try {
   assert.equal(staged.canActivateAutomatically, false);
   assert.equal(staged.authenticatedEvidenceRows, 100);
   assert.deepEqual(staged.evaluationPolicy.minimumFamilyGainByFamily, { memory: 0.2 });
+  assert.deepEqual(staged.evaluationPolicy.minimumFamilyTasksByFamily, { memory: 3 });
+  assert.equal(staged.familyTaskCoverage.memory, 5);
   assert.ok(staged.familyEvaluation.find(item => item.family === 'memory').absoluteGain >= 0.2,
     'the actual staging path must expose and enforce gain in the skill-scoped family');
   assert.match(staged.candidateId, /^[a-f0-9]{64}$/);
@@ -154,7 +156,7 @@ try {
   assert.deepEqual(afterInvalidSkill.active, []);
 
   // An aggregate gain of 0.20 is still rejected when the required memory family has zero gain.
-  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { memory: 0.01 } });
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: { minimumFamilyGainByFamily: { memory: 0.01 }, minimumFamilyTasksByFamily: { memory: 3 } } });
   const zeroMemoryGainBundle = {
     ...validBundle,
     artifacts: createArtifacts(i => i < 6, i => i < 8),
@@ -167,6 +169,19 @@ try {
   const afterFamilyGate = new OrganismCore(new FileStateStore(stateFile)).verifiedSkillCandidateSnapshot();
   assert.equal(afterFamilyGate.candidates.length, 1, 'family-gate rejection must not stage another candidate');
   assert.deepEqual(afterFamilyGate.active, [], 'family-gate rejection must never activate a skill');
+
+  process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON = JSON.stringify({ [skill.id]: {
+    minimumFamilyGainByFamily: { memory: 0.01 }, minimumFamilyTasksByFamily: { memory: 6 },
+  } });
+  await writeFile(bundlePath, JSON.stringify(validBundle));
+  await assert.rejects(
+    () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
+    /required-family-task-coverage-insufficient:memory/,
+  );
+  const afterTaskCoverageGate = new OrganismCore(new FileStateStore(stateFile)).verifiedSkillCandidateSnapshot();
+  assert.equal(afterTaskCoverageGate.candidates.length, 1,
+    'under-covered task families must not create extra staged candidates');
+  assert.deepEqual(afterTaskCoverageGate.active, []);
 
   console.log('P23_STAGE_VERIFIED_SKILL_CANDIDATE=PASS explicit family floors required, signed gains scoped, misleading aggregate rejected, durable stage no activation');
 } finally {
