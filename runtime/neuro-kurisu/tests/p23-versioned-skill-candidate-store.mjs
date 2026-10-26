@@ -102,7 +102,7 @@ assert.equal(store.snapshot().candidates.find(item => item.candidateId === c1.ca
   'rollback restores the prior version lifecycle status as well as its payload');
 assert.equal(store.snapshot().candidates.find(item => item.candidateId === c2.candidateId).approval.approvedBy, 'human-reviewer-1',
   'promotion approval is retained as an audit record');
-assert.throws(() => store.rollback(c2.candidateId, 2), /currently promoted/);
+assert.throws(() => store.rollback(c2.candidateId, { approvedBy: 'test-rollback-reviewer', approvedAt: Date.now(), expectedActiveVersion: 2 }), /currently promoted/);
 
 // The production-safe default denies promotion even if a caller fabricates plausible audit fields.
 const denyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => false, () => true); // allow fixture shadow rows while testing default-deny approval
