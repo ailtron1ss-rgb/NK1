@@ -1,3 +1,68 @@
+# WorkPass361 — align runtime-wiring regression with resource-feedback import (2026-10-26)
+
+- [FIXED] Update the source-contract assertion for the actual runtime import after WorkPass359 added `resolveUnifiedCognitiveResourceSignals`.
+- [VALIDATION] WorkPass360 exact-head run passed the substrate unit suite and full runtime typecheck, then failed the wiring test only because it asserted the previous import string. Fresh exact-head workflow must verify all downstream runtime/restart checks.
+
+---
+
+# WorkPass360 — make floating-point feedback assertions numerically robust (2026-10-26)
+
+- [FIXED] Change the damaged-feedback regression to use a tight tolerance for the mathematically-one weighted sum (IEEE-754 produced 0.9999999999999999); production normalization remains bounded and unchanged.
+- [VALIDATION] WorkPass359 typecheck passed; the new substrate unit test exposed only this exact-equality floating-point assertion. Fresh exact-head CI must confirm the corrected test and runtime restart suite.
+
+---
+
+# WorkPass359 — close substrate-to-resource feedback (2026-10-26)
+
+- [INTEGRATED] Feed the previous unified substrate frame into the next CognitiveResourceEconomy allocation through a bounded pure projection of uncertainty, novelty and unresolved prediction pressure.
+- [VALIDATED] Add deterministic unit regressions for the feedback math and conservative fallback behavior when inputs/previous state are invalid.
+- [FIXED] Remove the remaining unchecked predictionDebtSnapshot() as any read from sampleEmbodiment(); use one shared validator in stepInternal, sampleEmbodiment and substrate integration.
+- [REGRESSION] Assert runtime wiring uses the feedback projection and no longer casts prediction debt to any.
+- [VALIDATION] WorkPass358's exact-head WorkPass331 workflow passed. This commit requires fresh exact-head validation.
+
+---
+
+# WorkPass358 — conservative persisted identity and bounded optional work (2026-10-26)
+
+- [FIXED] Stop clamping corrupt persisted self-continuity values into potentially optimistic high confidence; malformed or out-of-range continuity now falls back conservatively to zero (or the default only when absent).
+- [HARDENED] Cap the exported substrate work policy at three counterfactual branches even if a future caller requests a larger value; retain the stricter one-branch limit under uncertainty/pressure.
+- [REGRESSION] Add corrupt identity-metric and oversized work-budget tests.
+- [VALIDATION] WorkPass357's exact-head WorkPass331 workflow passed, including the extended restart persistence assertions. WorkPass358 needs its own exact-head run.
+
+---
+
+# WorkPass357 — close substrate policy type boundary (2026-10-26)
+
+- [FIXED] CI found TS18046 errors because validated properties remained typed as unknown after Object.values checks; make the policy's local post-read representation explicit numeric values while retaining runtime rejection of non-numeric/out-of-range data.
+- [VALIDATION] Previous WorkPass356 exact-head run correctly failed at runtime typecheck; downstream tests were skipped. Fresh exact-head Actions validation is required.
+
+---
+
+# WorkPass356 — wire the unified substrate into the live organism runtime (2026-10-26)
+
+- [INTEGRATED] Connect the cross-system substrate to the actual OrganismRuntime cycle using Core state, world snapshot, prediction debt, device telemetry and cognitive resource allocation.
+- [PERSISTENCE] Load the versioned sidecar at startup, persist material substrate updates and flush the final snapshot during shutdown; corrupt restore is recoverable and journaled.
+- [GOVERNANCE] Use evidence/resource state only to constrain optional counterfactual branches and matched projections. Core action selection remains authoritative.
+- [SAFETY] Validate prediction debt before resource allocation; rejected substrate input does not abort the canonical runtime cycle and disables optimistic optional work.
+- [REGRESSION] Add runtime wiring/policy contracts and extend restart-persistence to verify sidecar flush plus restore.
+- [CI] Add the runtime wiring test to WorkPass331 and isolate push versus pull_request concurrency groups to prevent cross-event cancellation.
+- [VALIDATION] The previous SHA passed substrate/typecheck/smoke/autonomy/dialogue/background-clock/restart steps but its workflow conclusion was cancelled by concurrent events; this WorkPass356 SHA needs a fresh exact-head run.
+- [RELEASE] main and the published release ZIP remain unchanged pending the stacked PR sequence.
+
+---
+
+# WorkPass355 — harden unified cognitive substrate state boundaries (2026-10-26)
+
+- [FIXED] Replace broad persisted-state spreading with an allow-listed restore path; ignore prototype/accessor properties, normalize text, guard schema versions and sanitize counters/metrics.
+- [FIXED] Validate every live integration section, metric, counter and monotonically increasing tick before mutating the substrate snapshot.
+- [HARDENED] Reject accessor-backed live values without executing getters; invalid input leaves the last committed substrate state unchanged.
+- [REGRESSION] Expand the substrate regression to cover forward schemas, getter/prototype attacks, malformed persistence, out-of-range metrics, unsafe counters, duplicate ticks and atomic rejection.
+- [CI] Register the substrate module/test in both WorkPass331 path filters and run npm run test:substrate in the Node 24 workflow.
+- [VALIDATION] Exact-head CI is pending after this commit; no local execution or passing workflow is claimed yet.
+- [RELEASE] This is a stacked PR on WorkPass354. main and the published WorkPass70 ZIP remain unchanged.
+
+---
+
 # WorkPass354 — validate retained completion anchor provenance (2026-10-26)
 
 - [FIXED] Before writing completion events, `CanonicalCognitiveKernel.completeCycle()` now checks every supplied, still-retained decision anchor against the expected logical tick and stage. A stale/cross-tick or wrong-stage anchor is rejected with `canonical-cognitive-kernel-anchor-provenance-conflict` before mutation.
