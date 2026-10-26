@@ -1,3 +1,14 @@
+## WorkPass355 — safe and transactional CognitiveEventFabric snapshot restore (2026-10-26)
+
+- **Defect:** `restore()` directly read snapshot fields and used array spread/iteration, so a corrupt or hostile snapshot could execute getters on the envelope, event rows, parent arrays or receipt projection index. A late exception could leave the live event ledger replaced while its replay index was only partially rebuilt.
+- **Fix:** read known snapshot/event/receipt fields through own data descriptors; inspect arrays slot-by-slot without iterators; skip accessor-backed or sparse event/parent rows; bound restored collection scans; validate canonical receipt IDs and numeric timestamps; build the event list and replay index locally, then commit both together.
+- **Compatibility:** ordinary JSON snapshots and omitted legacy fields remain supported. Missing/null snapshot retains reset semantics. A snapshot with accessor-backed top-level fields is rejected without mutating the live ledger.
+- **Regression:** new `runtime/neuro-kurisu/tests/cognitive-event-restore-envelope.mjs` checks zero getter execution for the envelope, event rows, array slots, parent IDs and receipt-index entries, preserves existing state when the envelope is rejected, and verifies malformed duplicate rows do not reserve IDs.
+- **Integration:** regression is wired into `test:cognitive-integration-suite` and matches the workflow's `tests/cognitive-*.mjs` path filter.
+- **Validation:** current code/test checkpoint `38b17bf610c06de1a23ba5e54d21cb4a1b7ac905`; exact-head typecheck and integration CI pending. No readiness scores increased.
+
+---
+
 ## CognitiveEventFabric append-ingress contract — 2026-10-26
 
 - **Defect:** confidence outside `[0, 1]` was silently clamped; append could execute top-level getters while reading event fields; duplicate parent IDs could inflate causal lineage; restore could clamp invalid stored confidence.
