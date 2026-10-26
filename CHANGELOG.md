@@ -1,3 +1,11 @@
+## [NK1][Hexis] WorkPass388 — preserve temporal validity through HMX import (2026-10-26)
+
+- [FIX] Extended the Hexis temporal assertion contract with an explicit optional `validUntil`. Imported canonical memory expiry now carries through to the temporal ledger; an expired assertion is no longer returned as current.
+- [FIX] Reject invalid or negative temporal timestamps and intervals whose `valid_until` precedes `valid_from`. The staging adapter excludes the entire invalid memory section instead of silently converting a malformed expiry to an open-ended assertion.
+- [TEST] Added direct interval-end and invalid-bound regressions plus an end-to-end HMX import case that checks canonical and temporal validity agree at the expiry boundary.
+- [WIRING] Added the validity test to `audit:hexis` and WorkPass71 primary CI.
+- [VALIDATION] Changes are committed; hosted checks still must execute the tests before this pass can be marked validated.
+
 ## [NK1][Hexis] WorkPass387 — preflight canonical memory capacity (2026-10-26)
 
 - [FIX] Detect HMX batches that would exceed MemoryOS2's 1,600-item canonical bound and reject them before the first write. This avoids an import causing the memory store to evict an unrelated older record that rollback cannot restore.
