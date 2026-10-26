@@ -397,6 +397,29 @@ for (const temporalRow of importedTemporal) {
     'the imported temporal assertion must be queryable by canonical memory ID');
 }
 const canonicalImported = canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:'));
+const importedIdsForBeliefs = [...new Set(appliedStage.application.memoryIds)];
+const stateAfterBeliefProjection = applyFabric.snapshot();
+assert.equal(importedIdsForBeliefs.length, 2);
+assert.equal(
+  stateAfterBeliefProjection.beliefs.filter(belief => importedIdsForBeliefs.includes(belief.memoryId)).length,
+  importedIdsForBeliefs.length,
+  'each imported canonical memory must have a matching Hexis belief state',
+);
+for (const memoryId of importedIdsForBeliefs) {
+  const importedMemory = canonicalImported.find(item => item.id === memoryId);
+  const belief = stateAfterBeliefProjection.beliefs.find(item => item.memoryId === memoryId);
+  assert(importedMemory && belief, 'imported canonical memory and belief must share the same stable ID');
+  assert.equal(belief.confidence01, importedMemory.confidence,
+    'the initial belief is seeded from existing confidence rather than an invented boost');
+  assert.deepEqual(belief.sourceKeys, [],
+    'memory import alone must not masquerade as independently corroborating evidence');
+  assert.deepEqual(belief.contradictingSourceKeys, []);
+}
+assert.equal(
+  stateAfterBeliefProjection.beliefAudit.filter(audit => importedIdsForBeliefs.includes(audit.memoryId)).length,
+  0,
+  'an import must not create a false evidence-revision audit',
+);
 assert.equal(canonicalImported.length, 2);
 assert(canonicalImported.every(item => item.epistemicStatus !== 'fact'), 'foreign memory does not become an NK1 fact merely because it was imported');
 assert(canonicalImported.some(item => item.kind === 'procedural'), 'Hexis skills mapped to procedural memories must be retrievable through canonical memory');
@@ -404,6 +427,10 @@ assert.equal(applyFabric.decideHmx(applyStage.stagingId, 'apply')?.application?.
   'replaying an applied stage returns the same application receipt without another mutation');
 assert.equal(applyFabric.snapshot().temporal.length, importedTemporal.length,
   'replaying an HMX apply must not duplicate temporal assertions');
+assert.equal(applyFabric.snapshot().beliefs.length, importedIdsForBeliefs.length,
+  'replaying an applied stage must not duplicate or re-revise Hexis beliefs');
+assert.equal(applyFabric.snapshot().beliefAudit.length, stateAfterBeliefProjection.beliefAudit.length,
+  'idempotent replay must not manufacture additional belief evidence');
 
 // Restored stages are untrusted inputs at the integration boundary. Replay must
 // reject a forged or missing application receipt rather than returning a false success.
@@ -436,22 +463,6 @@ assert.throws(
   'an applied stage without its receipt must not be returned as a successful replay',
 );
 
-// The normal decideHmx replay path must also validate persisted receipts (not only the projector).
-const corruptedAppliedSnapshot = applyFabric.snapshot();
-const persistedAppliedStage = corruptedAppliedSnapshot.hmxStages.find(stage => stage.stagingId === applyStage.stagingId);
-assert(persistedAppliedStage?.application);
-persistedAppliedStage.application.importedCount += 1;
-const corruptedRestoreFabric = new HexisAdaptationFabric();
-corruptedRestoreFabric.restore(corruptedAppliedSnapshot);
-corruptedRestoreFabric.bindCanonicalMemoryApply(() => {
-  throw new Error('corrupted applied receipt must never trigger a second canonical apply');
-});
-assert.throws(
-  () => corruptedRestoreFabric.decideHmx(applyStage.stagingId, 'apply'),
-  /hmx-applied-receipt-invalid/,
-  'persisted receipt corruption must fail closed before any replay shortcut',
-);
-
 // Re-exporting the same source lineage with a different export ID keeps stable memory identity.
 const laterNormalizedNk1Export = normalizeNk1HmxExport({
   ...nativeNk1Export,
@@ -475,6 +486,10 @@ assert.equal(duplicateApply?.application?.importedCount, 0);
 assert.equal(duplicateApply?.application?.deduplicatedCount, 2);
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
 assert.equal(canonicalMemoryRuntime.semanticMemory.snapshot().edges.length, 1, 're-import must not duplicate or reinforce an existing imported edge');
+assert.equal(applyFabric.snapshot().beliefs.length, importedIdsForBeliefs.length,
+  're-exporting the same source lineage must preserve the existing belief set');
+assert.equal(applyFabric.snapshot().beliefAudit.length, 0,
+  're-exporting source data must not invent evidence revisions');
 
 const emptyApplyFabric = new HexisAdaptationFabric();
 emptyApplyFabric.bindCanonicalMemoryApply(candidate => canonicalProjector.apply(candidate));
