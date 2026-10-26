@@ -36,10 +36,15 @@ for (const patch of [
   { source: { kind: "document", ref: "" } },
   { protectedMemory: "yes" },
   { note: " " },
+  { unexpectedAuthority: true },
 ]) {
   const result = adaptHexisEvidence({ ...valid, ...patch });
   assert.equal(result.accepted, false, JSON.stringify(patch));
 }
+
+const symbolEnvelope = { ...valid, [Symbol("untrusted")]: "ignored?" };
+assert.equal(adaptHexisEvidence(symbolEnvelope).accepted, false);
+assert.equal(adaptHexisEvidence({ ...valid, source: { ...valid.source, extra: "smuggled" } }).accepted, false);
 
 let getterCalls = 0;
 const hostile = { ...valid };
@@ -60,4 +65,15 @@ const hostileProxy = new Proxy({ ...valid }, {
   ownKeys() { throw new Error("hostile ownKeys trap"); },
 });
 assert.equal(adaptHexisEvidence(hostileProxy).accepted, false);
+
+const hostileDedupeIndex = new Proxy(new Set(), {
+  get(target, property) {
+    if (property === "has") return () => { throw new Error("hostile dedupe index"); };
+    return Reflect.get(target, property, target);
+  },
+});
+const badIndexResult = adaptHexisEvidence(valid, hostileDedupeIndex);
+assert.equal(badIndexResult.accepted, false);
+if (!badIndexResult.accepted) assert.equal(badIndexResult.reason, "invalid-evidence-dedupe-index");
+
 console.log("Hexis evidence adapter contract: PASS");
