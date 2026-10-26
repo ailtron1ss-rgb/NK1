@@ -4,6 +4,40 @@ const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) 
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const asText = (value, max = 2048) => typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : '';
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
+const isValidAppliedReceipt = (stage, receipt) => {
+  if (!isRecord(stage) || !isRecord(receipt)) return false;
+  const keys = [
+    'version', 'exportId', 'sourceLineageId', 'stageId', 'stageDigest', 'attempt',
+    'appliedAt', 'status', 'complete', 'candidateMemoryRecords', 'uniqueMemoryRecords',
+    'importedCount', 'deduplicatedCount', 'projectedRelationships', 'deferredRelationships',
+    'semanticEdgeIds', 'memoryIds', 'createdMemoryIds', 'deferredSections', 'warnings', 'digest',
+  ];
+  if (Object.keys(receipt).length !== keys.length || keys.some(key => !Object.hasOwn(receipt, key))) return false;
+  if (receipt.version !== 1 ||
+      receipt.exportId !== stage.exportId ||
+      receipt.sourceLineageId !== stage.sourceLineageId ||
+      receipt.stageId !== stage.stagingId ||
+      typeof stage.digest !== 'string' || receipt.stageDigest !== stage.digest ||
+      !Number.isSafeInteger(receipt.attempt) || receipt.attempt < 1 ||
+      !Number.isFinite(receipt.appliedAt) || receipt.appliedAt < 0 ||
+      !['applied', 'partial', 'noop'].includes(receipt.status) ||
+      typeof receipt.complete !== 'boolean') return false;
+  for (const field of [
+    'candidateMemoryRecords', 'uniqueMemoryRecords', 'importedCount',
+    'deduplicatedCount', 'projectedRelationships', 'deferredRelationships',
+  ]) {
+    if (!Number.isSafeInteger(receipt[field]) || receipt[field] < 0) return false;
+  }
+  for (const field of ['semanticEdgeIds', 'memoryIds', 'createdMemoryIds', 'warnings']) {
+    if (!Array.isArray(receipt[field]) || !receipt[field].every(item => typeof item === 'string')) return false;
+  }
+  if (!isRecord(receipt.deferredSections) ||
+      Object.values(receipt.deferredSections).some(count => !Number.isSafeInteger(count) || count < 0)) return false;
+  const { digest: receiptDigest, ...base } = receipt;
+  return typeof receiptDigest === 'string' &&
+    /^[a-f0-9]{64}$/.test(receiptDigest) &&
+    hash(JSON.stringify(base)) === receiptDigest;
+};
 const dateMs = value => {
   if (value === null || value === undefined || value === '') return null;
   const parsed = typeof value === 'number' ? value : Date.parse(String(value));
@@ -96,7 +130,10 @@ export class HexisCanonicalMemoryProjector {
     // Idempotent replay must be checked before the accepted-stage guard: persisted
     // stages transition out of `accepted` after application, but their receipt remains
     // the authoritative answer for retries. This branch performs no writes.
-    if (isRecord(stage) && stage.status === 'applied' && isRecord(stage.application)) {
+    if (isRecord(stage) && stage.status === 'applied') {
+      if (!isValidAppliedReceipt(stage, stage.application)) {
+        throw new Error('hmx-applied-receipt-invalid');
+      }
       return structuredClone(stage.application);
     }
     if (!isRecord(stage) || stage.status !== 'accepted') throw new Error('hmx-stage-must-be-accepted-before-apply');
