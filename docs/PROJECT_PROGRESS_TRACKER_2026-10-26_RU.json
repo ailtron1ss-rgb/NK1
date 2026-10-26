@@ -359,24 +359,50 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass418",
+    "id": "WorkPass419",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "8325edfe46cc263b79a146dee94268e14c07c6d0",
-    "testCommit": "849453058df8ca197e623432b66d6d17bad0e945",
-    "codeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
-    "summary": "Reduce redundant HMX section deep copies after the bounded request/document snapshot. Reuse detached snapshot sections internally and retain a structured clone at the stage-return boundary.",
+    "codeCommit": "c39fd277fc2e5c79495a92df1d215171502539c0",
+    "testCommit": "f6ff13bb81276752e1500181ea83f9f75f57a657",
+    "codeTestHead": "f6ff13bb81276752e1500181ea83f9f75f57a657",
+    "summary": "Make HMX validation and normalization robust against malformed JSON values that would otherwise be coerced through String/Number. Enforce typed memory metadata, safe intent/privacy comparisons, bounded refs, and null-return rather than throw for malformed memory projections.",
     "testsAdded": [
-      "mutating caller's source document after stage creation cannot alter stored staged memory content",
-      "mutating returned stage clone cannot alter stored staged memory content",
-      "safe snapshot isolation is preserved with reduced intermediate copies"
+      "object-valued export_intent returns a schema issue without throwing",
+      "object-valued privacy redaction policy and consent scope return schema issues",
+      "object-valued nk1_kind/confidence and non-string tags return schema issues",
+      "object-valued memory type returns a schema issue without throwing",
+      "object-valued source authority returns a schema issue without throwing",
+      "oversized memory refs return a schema issue",
+      "normalizer returns null for malformed confidence metadata rather than coercion failure"
     ],
-    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass419",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "c39fd277fc2e5c79495a92df1d215171502539c0",
+      "testCommit": "f6ff13bb81276752e1500181ea83f9f75f57a657",
+      "codeTestHead": "f6ff13bb81276752e1500181ea83f9f75f57a657",
+      "summary": "Make HMX validation and normalization robust against malformed JSON values that would otherwise be coerced through String/Number. Enforce typed memory metadata, safe intent/privacy comparisons, bounded refs, and null-return rather than throw for malformed memory projections.",
+      "testsAdded": [
+        "object-valued export_intent returns a schema issue without throwing",
+        "object-valued privacy redaction policy and consent scope return schema issues",
+        "object-valued nk1_kind/confidence and non-string tags return schema issues",
+        "object-valued memory type returns a schema issue without throwing",
+        "object-valued source authority returns a schema issue without throwing",
+        "oversized memory refs return a schema issue",
+        "normalizer returns null for malformed confidence metadata rather than coercion failure"
+      ],
+      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass418",
       "date": "2026-10-26",
@@ -391,25 +417,6 @@
         "safe snapshot isolation is preserved with reduced intermediate copies"
       ],
       "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
-    {
-      "id": "WorkPass417",
-      "date": "2026-10-26",
-      "branch": "hexis-remote-bridge-20261026",
-      "codeCommit": "ff87945607101053a2ec4dad99eb41772d989a56",
-      "testCommit": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
-      "codeTestHead": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
-      "summary": "Snapshot the HMX stage request envelope through own data descriptors and reject accessors/custom-prototype/extra-key envelopes before field reads. Keep the existing bounded HMX-document snapshot and runtime enum allowlists.",
-      "testsAdded": [
-        "intent getter is rejected without execution",
-        "document getter is rejected without execution",
-        "unsafe HMX request envelopes create no stage or metrics mutation",
-        "invalid intent/strategy direct-call regressions remain in place"
-      ],
-      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
@@ -582,8 +589,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
-  "branchHeadBeforeTrackerCommit": "849453058df8ca197e623432b66d6d17bad0e945",
+  "latestUnverifiedCodeTestHead": "f6ff13bb81276752e1500181ea83f9f75f57a657",
+  "branchHeadBeforeTrackerCommit": "f6ff13bb81276752e1500181ea83f9f75f57a657",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -623,39 +630,38 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass417",
+    "id": "WorkPass418",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "ff87945607101053a2ec4dad99eb41772d989a56",
-    "testCommit": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
-    "codeTestHead": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
-    "summary": "Snapshot the HMX stage request envelope through own data descriptors and reject accessors/custom-prototype/extra-key envelopes before field reads. Keep the existing bounded HMX-document snapshot and runtime enum allowlists.",
+    "codeCommit": "8325edfe46cc263b79a146dee94268e14c07c6d0",
+    "testCommit": "849453058df8ca197e623432b66d6d17bad0e945",
+    "codeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
+    "summary": "Reduce redundant HMX section deep copies after the bounded request/document snapshot. Reuse detached snapshot sections internally and retain a structured clone at the stage-return boundary.",
     "testsAdded": [
-      "intent getter is rejected without execution",
-      "document getter is rejected without execution",
-      "unsafe HMX request envelopes create no stage or metrics mutation",
-      "invalid intent/strategy direct-call regressions remain in place"
+      "mutating caller's source document after stage creation cannot alter stored staged memory content",
+      "mutating returned stage clone cannot alter stored staged memory content",
+      "safe snapshot isolation is preserved with reduced intermediate copies"
     ],
-    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regressions are authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass419",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "f6ff13bb81276752e1500181ea83f9f75f57a657",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Make HMX schema validation fail closed with structured issues rather than throwing on null-prototype object values; validate typed trust/metadata fields and reference bounds before any canonical memory import. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass418",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "849453058df8ca197e623432b66d6d17bad0e945",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Reduce redundant HMX deep copies only after input has been captured into a detached bounded plain-JSON snapshot, while preserving both source-input isolation and returned-stage isolation. Scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass417",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "cc2bf0633fbc61f1da5862c0df214f688cf9ac07",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Capture HMX stage request metadata via data descriptors; refuse accessor-backed or non-plain envelopes before reading values, while preserving the separate bounded snapshot and existing diagnostics for malformed HMX document contents. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
