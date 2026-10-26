@@ -6,6 +6,8 @@ import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 const root = process.cwd();
 const runtimeSource = readFileSync(resolve(root, 'src/organism/core/OrganismRuntime.ts'), 'utf8');
 const coordinatorSource = readFileSync(resolve(root, 'src/organism/learning/P23CompoundRepairRevisionCoordinator.ts'), 'utf8');
+const independentProviderSource = readFileSync(resolve(root, 'src/organism/learning/P23IndependentEvaluationProvider.ts'), 'utf8');
+const engineSource = readFileSync(resolve(root, 'src/organism/learning/P23LearningEngine.ts'), 'utf8');
 const candidateStoreSource = readFileSync(resolve(root, 'src/organism/learning/VersionedSkillCandidateStore.ts'), 'utf8');
 
 assert.match(runtimeSource, /backgroundRevision\?:\s*\{\s*enabled:\s*boolean/);
@@ -20,6 +22,14 @@ assert.match(runtimeSource, /body\.thermalStrain01 < 0\.72/);
 assert.match(runtimeSource, /unifiedLearningExternalHypotheses\(128\)/,
   'untrusted repair hypotheses may guide triage but cannot replace the runtime repair ledger');
 assert.match(runtimeSource, /explicit promotion approval remain required/);
+assert.match(coordinatorSource, /snapshotAuthenticVerifiedSkillPromotionProposal\(prepared\.proposal\)/,
+  'the coordinator must preserve process-local authenticity when detaching its proposal snapshot');
+assert.match(independentProviderSource, /snapshotAuthenticVerifiedSkillPromotionProposal\(prepared\.proposal\)/,
+  'the independent evaluation bridge must preserve proposal authenticity after its own snapshot');
+assert.match(engineSource, /assertCanonicalLineageCurrent\?\.\(\)/,
+  'the P23 engine must recheck the canonical active/source identity immediately before staging');
+assert.match(runtimeSource, /input\.assertCanonicalLineageCurrent/,
+  'the runtime must thread the final canonical-lineage recheck into the engine call');
 assert.match(coordinatorSource, /sourceEvidenceFingerprint: initialEvidenceDigest/,
   'the exact observed-repair digest must be carried to P23');
 assert.match(candidateStoreSource, /sourceEvidenceFingerprint\?: string/,

@@ -1,10 +1,18 @@
 # NeuroCore — repository working rules
 
-> **Current continuation point (2026-10-24):** read `NEUROCORE_START_HERE.md`, then `docs/WORKPASS331_UNIFIED_COGNITIVE_KERNEL_RU.md`. Current source integration work is on `workpass332-live-runtime-kernel-2026-10-24`, based on `workpass331-unified-cognitive-kernel-2026-10-24`. Keep `main` stable as the release/metadata branch; do not merge the source stack into `main` without a separately verified release sync.
+> **Current continuation point (2026-10-26):** read `NEUROCORE_START_HERE.md` first. Cumulative source branch: `workpass349-native-dataset-path-identity-2026-10-26` (WorkPass349–352). Keep `main` stable.
 >
-> WorkPass332 now routes the actual `OrganismRuntime` cycle through `CanonicalCognitiveKernel` and adds a regression that ensures the live path no longer bypasses it through manual `recordOperationalCycle` / direct `unifiedCycle.evaluate`. The code and CI edits exist on the WorkPass332 branch; **do not treat the exact-head integration as validated until its fresh Actions run has executed and passed.**
+> **WorkPass349:** signed dataset validation/opening binds original path, canonical target and file descriptor identity.
 >
-> Parent WorkPass331 commit `5f318ad801f30ddd82150ed6be56baafc1c567a9` had successful kernel/learning-validation Actions runs on 2026-10-24, but those results do not prove the new WorkPass332 change. Continue with exact-head CI, runtime/app typechecks, organism smoke, persistence/restart and UI/device E2E. Do not claim recall uplift without a paired multi-seed comparison on the same validated corpus and frozen holdout.
+> **WorkPass350:** host evaluator config rejects group/world-writable parent directories and provider/evaluator hard-link aliases.
+>
+> **WorkPass351:** learning supervisor validates environment before scratch allocation and cleans pre-spawn scratch directories when trusted registration fails or cancellation is observed.
+>
+> **WorkPass352:** host executor/verifier/scanner executable parent permissions and device/inode identity are validated at setup and each dispatch; regressions guard writable parents and replaced directories.
+>
+> **Validation:** dedicated WorkPass349 workflow #40285352614 passed native dataset tests 10/10, supervisor cleanup, host-owned executable path regressions and runtime `TYPECHECK=PASS` on SHA `b9e0e90710e1380cac0ee57e1a0deaf74e214cf1`. Older broad workflow results apply to their stated code SHAs. Full production readiness, independent learning uplift and real device E2E remain unproven.
+>
+> Never treat filesystem checks as a substitute for an OS sandbox. Keep the source stack out of `main` until separately verified release synchronization is authorized and complete.
 
 ## Project objective
 

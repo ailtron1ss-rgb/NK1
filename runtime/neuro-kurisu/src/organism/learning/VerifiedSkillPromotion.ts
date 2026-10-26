@@ -73,6 +73,23 @@ export function isAuthenticVerifiedSkillPromotionProposal(value: unknown): value
   try { return proposalDigest(value) === expected; } catch { return false; }
 }
 
+/**
+ * Copy an issued proposal without losing its process-local authenticity proof.
+ * The original object must already be authentic; callers cannot mint trust for
+ * caller-constructed data. The copied payload is re-digested immediately, so
+ * any subsequent mutation invalidates this snapshot as well.
+ */
+export function snapshotAuthenticVerifiedSkillPromotionProposal(
+  value: unknown,
+): VerifiedSkillPromotionProposal {
+  if (!isAuthenticVerifiedSkillPromotionProposal(value)) {
+    throw new Error('verified-skill-proposal-snapshot-requires-authentic-source');
+  }
+  const snapshot = structuredClone(value);
+  authenticProposals.set(snapshot, proposalDigest(snapshot));
+  return snapshot;
+}
+
 const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
 

@@ -1,3 +1,60 @@
+## Latest checkpoint — WorkPass352 host executable parent integrity (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code/workflow SHA:** `b9e0e90710e1380cac0ee57e1a0deaf74e214cf1`.
+
+- Host-owned executor, verifier and safety-scanner preparation now rejects group/world-writable executable parent directories on POSIX and pins parent device/inode for dispatch-time revalidation.
+- Regressions prove writable-parent rejection and failure when the executable's parent directory is replaced after service construction.
+- Dedicated CI run #40285352614 passed: native P23 provider 10/10, supervisor failure-cleanup regression, host-owned evaluator executable path regressions, runtime `TYPECHECK=PASS` — [run details](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40285352614).
+- The latest change protects host authority path integrity; it does not replace an OS/container sandbox. Do not launch untrusted candidate code without a real deployment-owned sandbox launcher.
+- PR #192 is still a draft against the source-stack branch, not `main`; main remains untouched.
+- Remaining: review latest aggregate CI, real deployment-owned executor/verifier/scanner integration, independent paired-seed learning uplift, durable recall/restart proof, organism smoke, production UI/database build, browser/Live2D E2E, Android/Termux audio E2E, soak and licensing review.
+
+---
+
+## Latest checkpoint — WorkPass351 learning-process cleanup (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code/workflow SHA:** `0d1af65888b7d89fd3b0484bc2fbca8b9f369b9b`.
+
+- The learning process supervisor now validates environment config before allocating scratch storage and removes the per-run scratch directory if trusted-run registration fails or pre-spawn cancellation is detected.
+- Added regressions in `tests/p23-learning-process-supervisor.mjs`; dedicated workflow #40285085066 passed: native P23 provider 10/10, supervisor cleanup regression PASS, runtime `TYPECHECK=PASS`.
+- WorkPass349/350 continue to bind signed-dataset and host-evaluator authority to actual filesystem identity; hard-link aliases and writable evaluator parents are rejected on POSIX.
+- **Current CI snapshot:** at prior PR head `0551a8d7fdeb13fb860ea5ad8c1707bf66fbda8d`, all 14 visible workflow runs completed successfully. WorkPass351 focused checks passed on newer code SHA `0d1af658...`; aggregate PR checks should be re-evaluated on the latest documentation-only head after this checkpoint commit.
+- Keep `main` stable; PR #192 remains draft and targets the source-stack branch, not `main`.
+- Remaining release gates: external production-owned executor/verifier/scanner availability, independent paired-seed uplift evidence, durable recall/restart proof, broader organism smoke, production UI/database build, browser/Live2D E2E, real Android/Termux audio, long-duration soak and license review.
+
+---
+
+## Latest checkpoint — WorkPass350 host-evaluator authority boundary (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Last code-validation SHA:** `5484b3567965870a4596336503a6b22985dbb17f`. Subsequent changes in this checkpoint block are documentation-only unless another code commit is explicitly recorded.
+
+- The independent evaluator loader now checks its module's parent directory permissions and compares provider/evaluator device+inode identity, not only path strings. Hard-link aliases and group/world-writable parent directories fail closed on POSIX.
+- Added two regressions to `tests/workpass330-production-revision-wiring.mjs`. WorkPass335 Actions run #40284703984 passed 15/15 evaluator wiring tests and `TYPECHECK=PASS`. WorkPass349 Actions run #40284698566 passed 10/10 native provider tests and `TYPECHECK=PASS`.
+- The source-stack draft PR is [#192](https://github.com/ailtron1ss-rgb/NK1/pull/192). Keep `main` stable; do not merge into it without separate verified release synchronization.
+- Remaining: completion of aggregate CI; independent paired-seed learning-uplift evidence; durable recall after restart; broader organism smoke; production UI/database build; browser/Live2D and Android/Termux device E2E; soak and license review.
+- These checks establish regression/type safety for the changed paths, not consciousness, autonomous-learning uplift, or production readiness.
+
+---
+
+## Latest checkpoint — WorkPass349 signed-dataset path integrity (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Base:** WorkPass348 source commit `71e9286f9fe11c6afec851359a96f9e9b0011259`.  
+**Release line:** keep `main` stable; do not merge this source stack into `main` without a separately verified release sync.
+
+- **Code committed:** `P23CompoundRepairRevisionProvider.ts` now binds the initial `lstat`, canonical `realpath/stat`, and open file descriptor to the same device/inode; it opens the original configured path with `O_NOFOLLOW` on POSIX and retains the pre-/post-read mutation checks.
+- **Regression committed:** the native Hermes/P23 suite tests device/inode identity mismatches and guards the configured-path-open / three-way-identity contract. Existing signature, payload fingerprint, unsafe permission, symlink and mutation checks remain in place.
+- **Change tracking:** WorkPass349 is recorded in `CHANGELOG.md` and at the top of `docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md`. No dependency was added.
+- **CI wiring and evidence:** the dedicated `.github/workflows/workpass349-native-dataset-path-identity.yml` ran successfully on code SHA `5484b3567965870a4596336503a6b22985dbb17f` (10/10 P23 provider tests plus runtime typecheck). The WorkPass335 host-owned evaluator workflow on the same SHA also passed (15/15 wiring tests plus runtime typecheck).
+- **Implementation status:** WorkPass349 and WorkPass350 source fixes, focused regressions and tracking updates are committed. **Validation status:** both focused workflows and their runtime typechecks passed on code SHA `5484b3567965870a4596336503a6b22985dbb17f`. Broader aggregate workflows may be in progress; do not infer full release readiness from these focused passes.
+- **Next required actions:** review draft PR #192 against the source-stack branch (not `main`), finish the remaining aggregate CI gates, then run wider P23 learning/promotion, persistence/restart/retrieval and organism-smoke gates. Deployment-owned executor/verifier/scanner, independent paired-seed uplift, restart/retrieval proof, production UI/database build, browser/Live2D E2E, real Android/Termux audio, long soak and license review remain open release gates.
+- **Evidence boundary:** this change reduces a path-substitution race in signed dataset loading. It does not establish production readiness, autonomous-learning uplift, or consciousness.
+
+---
+
 ## Latest checkpoint — WorkPass345 emotion evidence-source grounding (2026-10-24)
 
 - Core feedback previously labelled any nonempty `evidenceSource` as an external emotion cause. In runtime paths that provide `LearningProvenance`, a simulated/shadow outcome could have a nonempty source name and be misclassified.

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { OrganismRuntime } from '../core/OrganismRuntime.ts';
 import type { P23LearningEngine } from './P23LearningEngine.ts';
+import { snapshotAuthenticVerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 
 type RevisionArgs = Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>;
 type Proposal = RevisionArgs[0];
@@ -18,6 +19,8 @@ export interface CompoundRepairRevisionInputs {
   generate: Generator;
   evaluateRevisedCandidate: Evaluator;
   options?: Options;
+  /** Synchronous check of active/source versions immediately before canonical staging. */
+  assertCanonicalLineageCurrent?: () => void;
 }
 
 export type CompoundRepairRevisionInputProvider = (
@@ -215,7 +218,7 @@ export class P23CompoundRepairRevisionCoordinator {
     let candidateEvaluation: typeof prepared.candidateEvaluation;
     let options: typeof prepared.options;
     try {
-      proposal = structuredClone(prepared.proposal);
+      proposal = snapshotAuthenticVerifiedSkillPromotionProposal(prepared.proposal);
       baseline = structuredClone(prepared.baseline);
       candidateEvaluation = structuredClone(prepared.candidateEvaluation);
       options = prepared.options === undefined ? undefined : structuredClone(prepared.options);
@@ -225,6 +228,10 @@ export class P23CompoundRepairRevisionCoordinator {
     const sourceCandidateId = prepared.sourceCandidateId;
     const generate = prepared.generate;
     const evaluateRevisedCandidate = prepared.evaluateRevisedCandidate;
+    const assertCanonicalLineageCurrent = prepared.assertCanonicalLineageCurrent;
+    if (assertCanonicalLineageCurrent !== undefined && typeof assertCanonicalLineageCurrent !== 'function') {
+      throw new Error('trusted revision input provider returned invalid canonical lineage recheck');
+    }
 
     // The provider may perform asynchronous work. Re-read the runtime ledger before
     // staging so the proposal/evaluation cannot silently drift away from the repairs
@@ -247,6 +254,7 @@ export class P23CompoundRepairRevisionCoordinator {
       evaluateRevisedCandidate,
       ...(options ? { options } : {}),
       sourceEvidenceFingerprint: initialEvidenceDigest,
+      ...(assertCanonicalLineageCurrent ? { assertCanonicalLineageCurrent } : {}),
     });
     return {
       status: 'candidate-staged' as const,

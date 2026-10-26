@@ -15,6 +15,8 @@ export interface SignedOutcomePayload {
   passed: boolean;
   verifierId: string;
   observedAt: number;
+  /** Optional legacy-compatible binding to the exact payload evaluated by this method. */
+  payloadFingerprint?: string;
 }
 
 export interface SignedOutcomeArtifact {
@@ -95,6 +97,7 @@ export function ingestSignedOutcomeArtifact(
       !Number.isSafeInteger(payload.attempt) || payload.attempt < 1 ||
       typeof payload.passed !== 'boolean' ||
       !Number.isFinite(payload.observedAt) || payload.observedAt <= 0 ||
+      (payload.payloadFingerprint !== undefined && !/^[a-f0-9]{64}$/i.test(payload.payloadFingerprint)) ||
       typeof artifact.signature !== 'string' || !artifact.signature.trim()) {
     return { accepted: false, artifactFingerprint: fingerprint, rejection: 'invalid-artifact-fields' };
   }

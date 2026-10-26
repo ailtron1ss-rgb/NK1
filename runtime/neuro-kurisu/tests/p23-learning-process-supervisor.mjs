@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runLearningProcess, readLearningExecutionReceipt } from '../src/organism/learning/LearningProcessSupervisor.ts';
@@ -62,6 +62,34 @@ try {
     () => runLearningProcess(run, 'b'.repeat(64), { ...base, signal: preCancelled.signal }),
     /cancelled before spawn/,
   );
+
+  // Invalid environment input must be rejected before a run directory is allocated.
+  const invalidEnvironmentRoot = path.join(root, 'invalid-environment-runs');
+  await assert.rejects(
+    () => runLearningProcess(run, 'b'.repeat(64), {
+      ...base, runRoot: invalidEnvironmentRoot, env: { 'INVALID KEY': 'bad' },
+    }),
+    /invalid environment entry/,
+  );
+  await assert.rejects(
+    () => readdir(invalidEnvironmentRoot),
+    error => error.code === 'ENOENT',
+    'invalid configuration must not create any run scratch directory',
+  );
+
+  // A failed durable trusted-run registration must remove its pre-spawn directory.
+  const rejectedRegistrationRoot = path.join(root, 'rejected-registration-runs');
+  await assert.rejects(
+    () => runLearningProcess(
+      { ...run, runId: 'run-registration-rejected', arm: 'candidate', method: 'shadow' },
+      'b'.repeat(64),
+      { ...base, runRoot: rejectedRegistrationRoot },
+      { runtimeVersion: 'test-runtime', register: async () => { throw new Error('registry-unavailable'); } },
+    ),
+    /registry-unavailable/,
+  );
+  assert.deepEqual(await readdir(rejectedRegistrationRoot), [],
+    'failed registration must not leave a scratch directory without a spawn receipt');
 
   // Caller-owned command objects must not be able to change what is executed
   // while trusted run registration is awaiting a durable host write.

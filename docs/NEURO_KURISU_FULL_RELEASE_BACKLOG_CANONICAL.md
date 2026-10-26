@@ -1,3 +1,61 @@
+## WorkPass352 — host authority executable parent integrity (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code/workflow SHA:** `b9e0e90710e1380cac0ee57e1a0deaf74e214cf1`.
+
+- [x] Reject host-owned executor/verifier/scanner executable files whose parent directory is group/world writable on POSIX.
+- [x] Bind parent directory device/inode identity during preparation and re-check it before each dispatch.
+- [x] Add regressions for writable executable parent and parent replacement after service construction.
+- [x] Dedicated WorkPass349 workflow #40285352614 passed: native P23 dataset tests 10/10, supervisor cleanup regression, host-owned executor path regressions, runtime `TYPECHECK=PASS`.
+- [ ] Re-validate broad release gates on the latest PR head; deployment isolation, restart/retrieval, organism smoke, browser/Live2D and Android/Termux E2E, long soak and license checks remain open.
+- **Status:** executable-directory integrity fix is committed and CI-validated; no claim of production readiness.
+
+---
+
+## WorkPass351 — pre-spawn learning process failure cleanup (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code/workflow SHA:** `0d1af65888b7d89fd3b0484bc2fbca8b9f369b9b`.
+
+- [x] Validate inherited and explicit environment entries before creating the run root/scratch directory.
+- [x] Remove the allocated per-run directory when trusted shadow-run registration rejects or cancellation is detected before spawn.
+- [x] Add regressions asserting invalid environment input creates no run-root directory and rejected registration leaves no orphan child directory.
+- [x] Dedicated WorkPass349 workflow #40285085066 passes native P23 dataset tests 10/10, supervisor regression, and runtime `TYPECHECK=PASS`.
+- [ ] Continue full operational checks of executor/verifier/scanner deployments, restart/retrieval, broader organism smoke, browser/Live2D and Android/Termux E2E, long soak, and license review.
+- **Status:** the pre-spawn cleanup contract is implemented and CI-validated; release/deployment gates remain open.
+
+---
+
+## WorkPass350 — host-evaluator module identity and parent-directory integrity (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code SHA:** `5484b3567965870a4596336503a6b22985dbb17f`.
+
+- [x] Require the canonical evaluator config's parent to be a directory and reject group/world write permissions on POSIX.
+- [x] Reject evaluator/provider modules that share one device/inode even if `realpath` returns distinct hard-link pathnames.
+- [x] Add regressions for hard-link authority aliasing and a writable parent directory.
+- [x] WorkPass335 host-owned evaluator workflow: 15/15 evaluator wiring tests; runtime `TYPECHECK=PASS` (run #40284703984).
+- [x] WorkPass349 native signed-dataset workflow: 10/10 provider tests; runtime `TYPECHECK=PASS` (run #40284698566).
+- [ ] Finish the remaining broad P23 evidence/replay/learning-metric runs and restart/retrieval plus organism-smoke gates; browser/Live2D and Android/Termux E2E remain manual/device release gates.
+- **Status:** the two filesystem-boundary defects are fixed and their focused workflows pass. This records code/security verification, not production approval or measured learning uplift.
+
+---
+
+## WorkPass349 — signed-evidence dataset path identity and race closure (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`, based on source-stack commit `71e9286f9fe11c6afec851359a96f9e9b0011259`.
+
+- [x] Compare the original non-symlink `lstat` identity with the canonical `realpath/stat` target; reject a path that changes identity during resolution.
+- [x] Open the configured path itself with `O_NOFOLLOW` on POSIX, rather than opening only a resolved path that might no longer refer to the inspected directory entry.
+- [x] Require the opened descriptor to match both the original inspected identity and the canonical target, then retain the existing pre-/post-read mutation checks.
+- [x] Add device/inode identity tests and a source-contract regression for configured-path opening and the three-way identity binding.
+- [x] Run `npm run test:workpass346:native-repair-provider` on code SHA `5484b3567965870a4596336503a6b22985dbb17f`: 10/10 tests pass.
+- [x] Run runtime typecheck and the WorkPass335 Hermes host-evaluator workflow on the same code SHA; evaluator wiring 15/15 and `TYPECHECK=PASS`.
+- [ ] Re-run the broader P23 evidence, promotion-gate, restart/retrieval, and organism smoke gates; keep physical browser/Live2D and Android/Termux E2E as separately unverified release gates.
+- **Status:** focused provider and host-evaluator workflows passed on code SHA `5484b3567965870a4596336503a6b22985dbb17f`. Wider aggregate validation and release gates remain open. No dependency was added and no production readiness or learning-quality gain is claimed.
+
+---
+
 ## WorkPass285 — independent evaluator capability scope
 
 - [x] Reject verifier coverage IDs outside each task's declared required-capability set.

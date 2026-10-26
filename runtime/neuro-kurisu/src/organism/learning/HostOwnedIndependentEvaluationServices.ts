@@ -107,6 +107,7 @@ function validateCommand(command: HostOwnedAuthorityCommand, name: string): void
 type PreparedHostOwnedAuthorityCommand = HostOwnedAuthorityCommand & {
   executable: string;
   executableIdentity: string;
+  executableParentIdentity: string;
   cwdIdentity: string;
   runRootIdentity: string;
   surviveDirIdentity: string;
@@ -127,6 +128,16 @@ async function prepareCommand(command: HostOwnedAuthorityCommand, name: string):
   if (!executableMetadata.isFile()) {
     throw new Error('host-owned-' + name + '-executable-must-be-regular-file');
   }
+  // Protect the directory entry as well as the file. A read-only executable in a
+  // writable parent can still be replaced by rename between this check and spawn.
+  const executableParent = path.dirname(executable);
+  const executableParentMetadata = await stat(executableParent);
+  if (!executableParentMetadata.isDirectory()) {
+    throw new Error('host-owned-' + name + '-executable-parent-must-be-directory');
+  }
+  if (process.platform !== 'win32' && (executableParentMetadata.mode & 0o022) !== 0) {
+    throw new Error('host-owned-' + name + '-executable-parent-must-not-be-group-or-world-writable');
+  }
   // The configured authority must not be replaceable by another account through
   // group/other write permission. This is a host executable integrity check, not
   // a substitute for signing or an immutable deployment image.
@@ -136,6 +147,9 @@ async function prepareCommand(command: HostOwnedAuthorityCommand, name: string):
   const executableIdentity = process.platform === 'win32'
     ? executable.toLowerCase()
     : `${executableMetadata.dev}:${executableMetadata.ino}`;
+  const executableParentIdentity = process.platform === 'win32'
+    ? executableParent.toLowerCase()
+    : `${executableParentMetadata.dev}:${executableParentMetadata.ino}`;
   const cwd = await realpath(command.cwd);
   const cwdMetadata = await stat(cwd);
   if (!cwdMetadata.isDirectory()) throw new Error('host-owned-' + name + '-working-directory-must-be-directory');
@@ -160,7 +174,7 @@ async function prepareCommand(command: HostOwnedAuthorityCommand, name: string):
     throw new Error('host-owned-' + name + '-storage-roots-must-be-disjoint');
   }
   return {
-    ...command, executable, executableIdentity, cwd, cwdIdentity,
+    ...command, executable, executableIdentity, executableParentIdentity, cwd, cwdIdentity,
     runRoot: roots[0].path, runRootIdentity: roots[0].identity,
     surviveDir: roots[1].path, surviveDirIdentity: roots[1].identity,
   };
@@ -174,6 +188,17 @@ async function assertPreparedExecutableIdentity(
   // path replacement after service construction (for example, a writable deployment
   // directory swapping the verifier before the next evaluation).
   const resolved = await realpath(command.executable);
+  const parent = path.dirname(resolved);
+  const parentMetadata = await stat(parent);
+  const currentParentIdentity = process.platform === 'win32'
+    ? parent.toLowerCase()
+    : `${parentMetadata.dev}:${parentMetadata.ino}`;
+  if (!parentMetadata.isDirectory() || currentParentIdentity !== command.executableParentIdentity) {
+    throw new Error('host-owned-' + name + '-executable-parent-identity-changed');
+  }
+  if (process.platform !== 'win32' && (parentMetadata.mode & 0o022) !== 0) {
+    throw new Error('host-owned-' + name + '-executable-parent-must-not-be-group-or-world-writable');
+  }
   const metadata = await stat(resolved);
   const currentIdentity = process.platform === 'win32'
     ? resolved.toLowerCase()

@@ -184,6 +184,11 @@ function fingerprint(value: unknown): string {
   return createHash('sha256').update(canonicalJson).digest('hex');
 }
 
+/** Stable canonical fingerprint used to bind signed evaluation outcomes to a skill payload. */
+export function fingerprintSkillPayload(value: unknown): string {
+  return fingerprint(value);
+}
+
 function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): ActiveSkillVersion | null {
   return snapshot.active.find(item => item.skillId === skillId) ?? null;
 }

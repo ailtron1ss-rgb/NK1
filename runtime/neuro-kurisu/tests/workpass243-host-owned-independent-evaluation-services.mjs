@@ -168,6 +168,24 @@ process.stdout.write(JSON.stringify({
     // Restore fixture state before testing the distinct run-root identity boundary.
     await chmod(executor.executable, 0o700);
   }
+
+  if (process.platform !== 'win32') {
+    // A read-only executable is still replaceable by rename if its parent allows
+    // group/other writes; protect the containing directory as part of the authority.
+    const writableParent = path.join(root, 'writable-executable-parent');
+    await mkdir(writableParent, { mode: 0o700 });
+    const writableExecutor = { ...executor, executable: path.join(writableParent, 'authority.mjs') };
+    await writeFile(writableExecutor.executable, '#!/usr/bin/env node\\nprocess.stdout.write("{}");\\n', { mode: 0o700, flag: 'wx' });
+    await chmod(writableExecutor.executable, 0o700);
+    await chmod(writableParent, 0o777);
+    await assert.rejects(
+      createHostOwnedIndependentEvaluationServices({
+        executor: writableExecutor, verifier, safetyScanner: scanner,
+      }),
+      /host-owned-executor-executable-parent-must-not-be-group-or-world-writable/,
+    );
+    await chmod(writableParent, 0o700);
+  }
   if (process.platform !== 'win32') {
     // Prepared authority handles must fail closed if the executable path is
     // replaced after setup; a distinct path at setup time is not enough.
@@ -188,6 +206,20 @@ process.stdout.write(JSON.stringify({
     await assert.rejects(
       services.executor.execute({ payload: { answer: 42 }, task, context }),
       /host-owned-executor-run-root-identity-changed/,
+    );
+  }
+
+  if (process.platform !== 'win32') {
+    // Replacing the executable's parent directory must be detected even when an
+    // attacker supplies a new executable at the same pathname.
+    const movedExecutableParent = executor.cwd + '-replaced';
+    await rename(executor.cwd, movedExecutableParent);
+    await mkdir(executor.cwd, { mode: 0o700 });
+    await writeFile(executor.executable, '#!/usr/bin/env node\\nprocess.stdout.write("{}");\\n', { mode: 0o700, flag: 'wx' });
+    await chmod(executor.executable, 0o700);
+    await assert.rejects(
+      services.executor.execute({ payload: { answer: 42 }, task, context }),
+      /host-owned-executor-executable-parent-identity-changed/,
     );
   }
   console.log('WorkPass258 dispatch-time authority path identity regression: authored');
