@@ -1,3 +1,12 @@
+## WorkPass415 — проверка intent/strategy HMX на HTTP-границе (2026-10-26)
+
+- **Код сервера:** `9f9601df7a72d9d0f6c46e24030052c554087237`; **server-smoke:** `bd2f036238b7b3582c6e9a17ee49991a66e0df54`.
+- HMX staging route теперь принимает только разрешённые значения intent (`port`, `duplicate`, `telepathy`, `analysis`) и strategy (`additive`, `authoritative`, `deliberative`, `analysis_only`). Отсутствующие поля сохраняют явные preview-only defaults; переданные неверные типы/значения получают HTTP 400 до вызова fabric.
+- Регрессия отправляет ошибочный intent и недопустимую strategy, проверяет `hmx-invalid-intent`/`hmx-invalid-strategy`, затем продолжает с валидным telepathy/additive stage.
+- **Валидация:** PENDING exact-head `test:hexis-server-smoke`, runtime typecheck, HMX adaptation и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass414 — блокировка повторного accept до сохранения HMX-квитанции (2026-10-26)
 
 - **Код адаптера:** `0fc2a3880ef1276106e78dbcd4ab15ce53feb1d2`; **регрессия:** `daa458f2abd935f136b249d1cb3ae6b9ccccf0c5`.
