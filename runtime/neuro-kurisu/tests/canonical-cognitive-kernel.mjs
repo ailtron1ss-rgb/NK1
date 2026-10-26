@@ -965,5 +965,29 @@ lineageGuardRestored.restore(lineageGuardFabric.snapshot());
 assert.equal(lineageGuardRestored.hasToolReceiptTrace(lineageGuardInput.executionId),true,
   'valid event-bound receipt lineage remains valid after restore');
 console.log('WorkPass367 trusted receipt lineage verification: PASS');
+
+// WorkPass368: an existing revision/observation cannot replay once its causal parent edge is severed.
+const tamperedRevisionLineageSnapshot368=receiptFabric.snapshot();
+const tamperedRevisionNode368=tamperedRevisionLineageSnapshot368.recent.find(event=>event.id===revisionResult.eventId);
+assert.ok(tamperedRevisionNode368);
+tamperedRevisionNode368.parentIds=[];
+const tamperedRevisionRestored368=new CognitiveEventFabric(128);
+tamperedRevisionRestored368.restore(tamperedRevisionLineageSnapshot368);
+assert.equal(tamperedRevisionRestored368.hasToolReceiptTrace(receiptInput.executionId),true);
+assert.throws(()=>tamperedRevisionRestored368.appendToolReceiptRevision(revisionInput),
+  /tool-receipt-revision-lineage-conflict/,
+  'a same-ID provider revision without its outcome parent cannot be trusted as replay');
+
+const tamperedObservationLineageSnapshot368=receiptFabric.snapshot();
+const tamperedObservationNode368=tamperedObservationLineageSnapshot368.recent.find(event=>event.id===externalObservationResult.eventId);
+assert.ok(tamperedObservationNode368);
+tamperedObservationNode368.parentIds=[];
+const tamperedObservationRestored368=new CognitiveEventFabric(128);
+tamperedObservationRestored368.restore(tamperedObservationLineageSnapshot368);
+assert.equal(tamperedObservationRestored368.hasToolReceiptTrace(receiptInput.executionId),true);
+assert.throws(()=>tamperedObservationRestored368.appendToolExternalObservation(externalObservationInput),
+  /external-observation-lineage-conflict/,
+  'a same-ID external observation without its outcome parent cannot be trusted as replay');
+console.log('WorkPass368 receipt reference causal lineage: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
