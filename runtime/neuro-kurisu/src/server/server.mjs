@@ -925,12 +925,15 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const decision = String(input.decision ?? '');
-            if (!['approve', 'correct', 'forget'].includes(decision)) {
+            if (typeof input.reviewId !== 'string' || !input.reviewId.trim() || input.reviewId.length > 160 ||
+                typeof input.itemId !== 'string' || !input.itemId.trim() || input.itemId.length > 160 ||
+                typeof input.decision !== 'string' || !['approve', 'correct', 'forget'].includes(input.decision) ||
+                (input.correction !== undefined && (typeof input.correction !== 'string' || input.correction.length > 20000))) {
                 return json(res, 400, { ok: false, error: 'invalid-hexis-review-decision' });
             }
+            const decision = input.decision;
             try {
-                const result = runtime.core.hexisDecideLearningReview(String(input.reviewId || ''), String(input.itemId || ''), decision, input.correction ? String(input.correction) : undefined);
+                const result = runtime.core.hexisDecideLearningReview(input.reviewId, input.itemId, decision, input.correction || undefined);
                 await runtime.core.flush();
                 if (result?.ok === false) {
                     const status = /not-found|missing/.test(String(result.error ?? '')) ? 404 : 409;
@@ -952,7 +955,11 @@ async function route(req, res) {
                     return json(res, 400, { ok: false, error: 'hexis-retention-invalid-action' });
                 }
                 const action = input.action;
-                const result = runtime.core.hexisProposeRetention(String(input.memoryId || ''), action, input.reason ? String(input.reason) : 'operator-review');
+                if (typeof input.memoryId !== 'string' || !input.memoryId.trim() || input.memoryId.length > 256 ||
+                    (input.reason !== undefined && (typeof input.reason !== 'string' || input.reason.length > 1000))) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-retention-proposal' });
+                }
+                const result = runtime.core.hexisProposeRetention(input.memoryId, action, input.reason || 'operator-review');
                 await runtime.core.flush();
                 return json(res, result.ok === false ? 404 : 200, { ok: result.ok, ...result });
             }
@@ -965,8 +972,12 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
+            if (typeof input.proposalId !== 'string' || !input.proposalId.trim() || input.proposalId.length > 256 ||
+                (input.confirmed !== undefined && typeof input.confirmed !== 'boolean')) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-retention-apply' });
+            }
             try {
-                const result = await runtime.core.hexisApplyRetention(String(input.proposalId || ''), input.confirmed === true);
+                const result = await runtime.core.hexisApplyRetention(input.proposalId, input.confirmed === true);
                 const status = result.ok ? 200 : (result.error === 'retention-explicit-confirmation-required' ? 403 : result.error === 'retention-proposal-not-found' ? 404 : 400);
                 return json(res, status, { ...result });
             }
@@ -988,8 +999,13 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
+            if (!input.document || typeof input.document !== 'object' || Array.isArray(input.document) ||
+                (input.intent !== undefined && !['port', 'duplicate', 'telepathy', 'analysis'].includes(input.intent)) ||
+                (input.strategy !== undefined && !['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(input.strategy))) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-hmx-stage-input' });
+            }
             try {
-                const result = runtime.core.hexisStageHmx(input.document, input.intent || 'analysis', input.strategy || 'analysis_only');
+                const result = runtime.core.hexisStageHmx(input.document, input.intent ?? 'analysis', input.strategy ?? 'analysis_only');
                 await runtime.core.flush();
                 return json(res, 200, { ok: true, stage: result });
             }
@@ -1002,12 +1018,13 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const decision = String(input.decision ?? '');
-            if (!['accept', 'reject', 'apply'].includes(decision)) {
+            if (typeof input.stagingId !== 'string' || !input.stagingId.trim() || input.stagingId.length > 256 ||
+                typeof input.decision !== 'string' || !['accept', 'reject', 'apply'].includes(input.decision)) {
                 return json(res, 400, { ok: false, error: 'invalid-hmx-decision' });
             }
+            const decision = input.decision;
             try {
-                const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
+                const result = runtime.core.hexisDecideHmx(input.stagingId, decision);
                 await runtime.core.flush();
                 if (!result) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
                 return json(res, 200, { ok: true, stage: result });
@@ -1031,8 +1048,9 @@ async function route(req, res) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
             try {
-                if(!String(input.stagingId ?? '').trim()) return json(res,400,{ok:false,error:'stagingId-required'});
-                const result=runtime.core.hexisPrepareGoalProposals(String(input.stagingId));
+                if(typeof input.stagingId !== 'string' || !input.stagingId.trim() || input.stagingId.length > 256)
+                    return json(res,400,{ok:false,error:'invalid-hexis-goal-staging-id'});
+                const result=runtime.core.hexisPrepareGoalProposals(input.stagingId);
                 await runtime.core.flush();
                 return json(res,200,{ok:true,...result});
             } catch(error) {
@@ -1046,10 +1064,12 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const decision=String(input.decision ?? '');
-            if(!['approve','reject'].includes(decision)) return json(res,400,{ok:false,error:'invalid-hexis-goal-decision'});
+            if(typeof input.proposalId !== 'string' || !input.proposalId.trim() || input.proposalId.length > 256 ||
+               typeof input.decision !== 'string' || !['approve','reject'].includes(input.decision))
+                return json(res,400,{ok:false,error:'invalid-hexis-goal-decision'});
+            const decision=input.decision;
             try {
-                const proposal=runtime.core.hexisDecideGoalProposal(String(input.proposalId || ''),decision);
+                const proposal=runtime.core.hexisDecideGoalProposal(input.proposalId,decision);
                 await runtime.core.flush();
                 if(!proposal) return json(res,404,{ok:false,error:'hexis-goal-proposal-not-found'});
                 return json(res,200,{ok:true,proposal});
@@ -1134,7 +1154,10 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const result = runtime.core.hexisClaimOutbox(String(input.id || ''));
+            if (typeof input.id !== 'string' || !input.id.trim() || input.id.length > 256) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-outbox-claim-id' });
+            }
+            const result = runtime.core.hexisClaimOutbox(input.id);
             await runtime.core.flush();
             return json(res, 200, { ok: Boolean(result), result });
         }
@@ -1247,7 +1270,10 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const result = runtime.core.hexisRevokeConnectorPolicy(String(input.id || ''));
+            if (typeof input.id !== 'string' || !input.id.trim() || input.id.length > 256) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-policy-revoke-id' });
+            }
+            const result = runtime.core.hexisRevokeConnectorPolicy(input.id);
             await runtime.core.flush();
             return json(res, 200, { ok: result });
         }
