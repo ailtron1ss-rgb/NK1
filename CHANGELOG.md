@@ -1,3 +1,15 @@
+## WorkPass335 — verified skill revision gate hardening — 2026-10-26
+
+- **Input integrity:** malformed holdout observations with non-string task, family, method, verifier or evidence fields are safely rejected as rows; invalid top-level arrays/options return explicit errors rather than crashing on string methods.
+- **Threshold integrity:** `minPairedTasks` must be an integer from 2 to 10,000; gain and family-regression thresholds must be finite numbers in `[0, 1]`. Invalid values are rejected instead of silently clamped or defaulted.
+- **Evidence accounting:** baseline/candidate observations with mismatched task families are excluded from the paired denominator and increment `rejectedRows` exactly once per invalid pair.
+- **Regression coverage:** adds malformed-row and cross-family cases, invalid and exact-boundary threshold cases, and updates the proposal test to expect explicit failure for `NaN` configuration. The strict Ed25519 signature checks and regression remain in this same learning-security line.
+- **Activation boundary:** candidate generation remains advisory; independent evaluation, trusted shadow evidence and explicit signed approval are still required before a skill can become active.
+
+**Validation status:** the new focused gate and store regressions plus runtime typecheck must pass on the exact updated head. No progress score was increased and no claim of improved task performance or production readiness is made.
+
+---
+
 ## WorkPass335 — каноническая кодировка подписей Ed25519 — 2026-10-26
 
 - **Runtime fix:** promotion и rollback approval verifier теперь проверяют detached Ed25519 signature как канонический Base64, представляющий ровно 64 байта: фиксированная длина, строгий алфавит, ожидаемый padding и round-trip декодирование/кодирование без изменения строки.
