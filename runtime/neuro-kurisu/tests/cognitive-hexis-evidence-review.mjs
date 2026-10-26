@@ -347,6 +347,12 @@ assert.doesNotMatch(
   /this\.hexisAdaptation\.reviseBelief\(|this\.memorySubsystem\.fabric\.updateSignals\(/,
   "legacy entry point must not mutate belief confidence directly",
 );
+assert.match(legacyRevisionMethod, /canonical-evidence-envelope-required/);
+assert.match(legacyRevisionMethod, /invalid-evidence-stance/);
+assert.match(legacyRevisionMethod, /canonical-evidence-source-reference-required/);
+assert.match(legacyRevisionMethod, /invalid-evidence-confidence/);
+assert.match(legacyRevisionMethod, /invalid-legacy-evidence-text/);
+
 
 console.log("Hexis evidence → canonical MemoryOS2 → gated Hexis review: PASS", JSON.stringify({
   approvalChangesCanonicalConfidence: true,
