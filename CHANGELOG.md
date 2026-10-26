@@ -1,3 +1,9 @@
+## NK1 WorkPass110 external outcome restore expectation (2026-10-26)
+
+- [FIX] Align the causal-stream restore regression with the trust boundary: restoring external-only evidence must not count it as trusted runtime outcomes.
+- [VALIDATION] This corrects a stale assertion observed before the workflow's later checks; exact-head rerun is still required.
+- [SCOPE] No production learning behavior is relaxed; main and the canonical Release ZIP remain unchanged.
+
 ## NK1 Hexis HMX atomic section staging (2026-10-26)
 
 - [FIX] Oversized or malformed HMX array sections are omitted atomically instead of retaining a truncated/filtered prefix alongside the original source count.
