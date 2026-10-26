@@ -2934,7 +2934,12 @@ export class OrganismCore {
                     kind: projected.kind,
                     source: 'hexis-hmx-import',
                     tags: projected.tags,
-                    context: projected.context,
+                    context: {
+                        ...projected.context,
+                        hmx_source_ref: projected.ref,
+                        hmx_export_id: stage.exportId,
+                        hmx_source_lineage: String(stage.sourceSubjectId ?? 'unknown').slice(0, 180),
+                    },
                     salience: projected.salience,
                     emotionalWeight: 0.1,
                     identityRelevance: 0,
