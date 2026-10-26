@@ -2213,3 +2213,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Normalize memory IDs with NFKC and discard duplicate projection IDs on restore rather than choosing an arbitrary/conflicting confidence value.
 - Extended the malformed-snapshot regression with conflicting duplicate IDs to prove that ambiguous sidecar rows are dropped while the valid projection and subsequent revision survive.
 - Validation still depends on the exact current PR-head workflow; do not infer a passing test from earlier code/test runs.
+
+### Hexis H1 validation wiring — correct branch and path filters (2026-10-26)
+
+- **[FIX]** The repository-wiring workflow had the target `audit/b276-execution-attribution-2026-10-26` duplicated under `push`, but missing under `pull_request`. The H1 PR targets that base, so its Hexis gate was not guaranteed to run on pull-request updates.
+- **[FIX]** Added the active H1 branch to the push trigger, removed the duplicate push branch, added the actual PR base branch to pull-request filters, and added explicit Hexis adapter, MemoryOS2, and integration-test paths to both filter sets.
+- **[VALIDATION]** Workflow YAML and path selection have been updated in code; a successful run that executes `test:hexis-memory-evidence-lineage` on the new head is still required before this gate is marked passed.
