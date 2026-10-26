@@ -1,3 +1,18 @@
+## [NK1][Hexis-H5] Journal evidence writes through MemoryFabric — 2026-10-26
+
+- Added `record-evidence` to MemoryFabric's lifecycle command contract. Evidence writes now use the existing canonical mutation boundary, action fingerprint, durable command receipt, and `memory-lifecycle` event stream instead of bypassing the journal from Hexis Core.
+- Lifecycle events store source class, clamped authority, and a one-way digest of the independent-source key; they do not copy evidence content or the raw independence key into the event payload.
+- Hexis belief revision and learning-review correction now call `MemoryFabric.recordEvidence` with deterministic command IDs. A retry after snapshot/restore returns the existing receipt, cannot add another independent vote, and cannot synthesize a second lifecycle event.
+- Extended `test:hexis-memory-evidence-lineage` to cover mutation receipts, exactly-once event emission, replay, and restore; updated the learning-review regression to guard against future direct writes around MemoryFabric.
+- **Validation status:** source-level wiring and test-script registration confirmed. GitHub Actions attempts on these heads are failing before job steps start (`runner_id=0`, empty step arrays, no logs), and the same immediate failures affect unrelated NK1 branches; focused tests are therefore still unverified, not marked green.
+
+## [NK1][Hexis-H4] Link review events to epistemic and source-provenance ledgers — 2026-10-26
+
+- Every finalized learning-review decision is linked to P65 and SourceMonitor as one deterministic, bounded system-event trace. Its evidence class remains `unverified`: this captures that a review operation occurred, not that its content became external truth.
+- The paired event uses a stable source ID and content fingerprint. If partial restore leaves a conflicting record under the same ID, Core refuses to finalize the review rather than overwrite the provenance trail.
+- Added persistence/lineage coverage for both ledgers and statically asserted that the Core review path writes those records before closing the Hexis review.
+- **Validation status:** execution on the current head is pending due to the repository-wide Actions runner initialization failures described above.
+
 ## [NK1][Hexis-H3] Commit learning-review decisions with canonical memory effects — 2026-10-26
 
 - Reordered Core learning review so correction/forget operations are preflighted and applied through the canonical memory owner before the Hexis review item is finalized. Failed or rejected memory mutations leave the review pending instead of creating a false completed decision.
