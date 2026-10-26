@@ -1,3 +1,18 @@
+## WorkPass354 — private, disjoint storage roots for learning child processes (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`
+
+- [x] Create new `runRoot` / `surviveDir` directories with owner-only mode and reject existing roots whose permissions are not private on POSIX.
+- [x] Reject final-component symlinks and bind `lstat`, canonical real path and opened directory identity before allocating per-run scratch.
+- [x] Reject equal/nested storage paths before allocation and aliases/same filesystem identity after canonicalization.
+- [x] Require the immediate parent to be a directory that cannot be replaced by group/other users (except sticky-bit directories).
+- [x] Include canonical storage-root identities in the command fingerprint so results bind to the storage layout used.
+- [x] Add direct-supervisor regressions for writable roots, overlap and symlinked roots; check invalid setup creates no scratch.
+- [ ] Run focused WorkPass349 workflow and runtime typecheck on the exact new code/test head.
+- **Status:** code and regression committed; exact-head validation pending. These checks harden evidence storage but do not isolate untrusted code; a genuine deployment-owned OS/container sandbox remains required.
+
+---
+
 ## WorkPass353 — canonical mutable-state path identity for evaluator config (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`
