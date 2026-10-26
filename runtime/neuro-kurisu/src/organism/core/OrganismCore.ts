@@ -2948,7 +2948,7 @@ export class OrganismCore {
                     temporalLinks: [],
                     causalLinks: [],
                     contradictionLinks: [],
-                    provenanceClass: 'external',
+                    provenanceClass: 'external' as const,
                     sourceAuthority01: projected.sourceAuthority01,
                     independenceKey: projected.independenceKey,
                     evidenceFreshnessAt: projected.evidenceFreshnessAt,
