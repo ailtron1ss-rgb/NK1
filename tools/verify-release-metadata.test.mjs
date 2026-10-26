@@ -127,3 +127,28 @@ test('release metadata validator rejects impossible calendar dates', async t => 
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /release-date-is-valid-iso-calendar-date[\s\S]*?"pass": false/);
 });
+
+
+test('release metadata validator detects release-root date drift', async t => {
+  const root = await fixture(); t.after(() => rm(root, { recursive: true, force: true }));
+  const fs = await import('node:fs/promises');
+  const p = path.join(root, 'SUPER_VERSION.json');
+  const manifest = JSON.parse(await fs.readFile(p, 'utf8'));
+  manifest.date = '2026-10-11';
+  await fs.writeFile(p, JSON.stringify(manifest, null, 2));
+  const r = run(root);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /release-root-date-aligned[\s\\S]*?"pass": false/);
+});
+
+test('release metadata validator rejects a source baseline dated after the release', async t => {
+  const root = await fixture(); t.after(() => rm(root, { recursive: true, force: true }));
+  const fs = await import('node:fs/promises');
+  const p = path.join(root, 'SUPER_VERSION.json');
+  const manifest = JSON.parse(await fs.readFile(p, 'utf8'));
+  manifest.sourceBaseline = 'Neuro_Kurisu_WORKPASS13_2026-10-11.zip';
+  await fs.writeFile(p, JSON.stringify(manifest, null, 2));
+  const r = run(root);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /source-baseline-date-not-after-release-date[\s\\S]*?"pass": false/);
+});
