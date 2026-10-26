@@ -14,7 +14,7 @@
     "research": "python3 research/research_bridge.py",
     "audit:assets": "node tools/audit-assets.mjs",
     "inventory": "node tools/super-inventory.mjs",
-    "audit:quick": "npm run inventory && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax && npm run test:toolchain-contract && npm run test:supervisor-exit-policy && npm run test:supervised-service-specs && npm run audit:repo-wiring && npm run test:repo-wiring",
+    "audit:quick": "npm run inventory && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax && npm run test:toolchain-contract && npm run test:runtime-typecheck-contract && npm run test:supervisor-exit-policy && npm run test:supervised-service-specs && npm run audit:repo-wiring && npm run test:repo-wiring",
     "doctor": "node tools/super-doctor.mjs",
     "install:all": "node tools/super-install.mjs",
     "backup": "node tools/super-backup.mjs",
@@ -188,7 +188,8 @@
     "test:repo-wiring": "node --test tools/verify-repository-wiring.test.mjs",
     "test:toolchain-contract": "node --test tools/toolchain-contract.test.mjs",
     "test:supervisor-exit-policy": "node --test tools/supervisor-exit-policy.test.mjs",
-    "test:supervised-service-specs": "node --test tools/supervised-service-specs.test.mjs"
+    "test:supervised-service-specs": "node --test tools/supervised-service-specs.test.mjs",
+    "test:runtime-typecheck-contract": "node tools/typecheck-runtime-contract.test.mjs"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
