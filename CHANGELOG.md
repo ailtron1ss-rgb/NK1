@@ -1,3 +1,10 @@
+## [NK1][Hexis] Prevent imported-memory resurrection and cap external authority (2026-10-26)
+
+- [FIX] HMX status is now mapped explicitly: missing/future statuses remain `unknown`; archived, quarantined, deleted, rejected, superseded and inactive records remain quarantined; external `fact` labels do not become NK1-verified facts.
+- [INTEGRITY] Re-exports can demote canonical memory status but cannot promote an existing hypothesis/unknown/quarantined record back to belief. A demoted source is removed from the active semantic graph and Hexis belief mirror, while canonical history is retained.
+- [TRUST] Claimed upstream confidence/authority is capped at 0.65; the raw claim and applied cap are retained as inspectable provenance metadata.
+- [VALIDATION] Added integration cases for the status matrix, invalid status payloads, trust cap, graph/belief mirror consistency, and active → archived → active replay. These tests are authored but remain pending exact-head runtime/typecheck/CI execution. No readiness score or release status is promoted.
+
 ## [NK1][Hexis] WorkPass421 — preserve unconsumed native root metadata (2026-10-26)
 
 - [DATA FIDELITY] The export bridge now preserves top-level native fields it does not consume in `sections.config.nk1NativeExport.extraRootFields`. The adapter emits a warning listing the preserved keys, avoiding silent loss during NK1→HMX mapping.
