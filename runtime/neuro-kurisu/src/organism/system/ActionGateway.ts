@@ -111,6 +111,54 @@ export interface ActionExecutionLedgerEntry {
   response?:ToolExecution; responseOmitted?:boolean;
 }
 
+const ACTION_OUTCOME_CLASS_VALUES:ReadonlySet<string>=new Set<ActionOutcomeClass>([
+  'unavailable','competence-insufficient','gate-check-failed','policy-refused','execution-failed',
+  'executed-unverified','executed-verified','executed-contradicted','idempotency-conflict',
+  'idempotency-recovery-required','idempotency-storage-failed','idempotency-ledger-full',
+  'failed-no-effect','executed-partial','reconciled-not-executed','idempotency-key-required',
+  'approval-required','approval-invalid','approval-storage-failed',
+]);
+
+const isReceiptRecord=(value:unknown):value is Record<string,unknown> =>
+  value!==null && typeof value==='object' && !Array.isArray(value);
+
+/**
+ * Persisted receipts are replay authority: validate their identity and internal
+ * outcome invariants before returning a saved response as if it were the result
+ * of the original tool call. Invalid entries are retained as non-replayable
+ * tombstones so their idempotency keys continue preventing a second side effect.
+ */
+function isReplayableActionReceipt(entry:ActionExecutionLedgerEntry,responseValue:unknown):responseValue is ToolExecution {
+  try {
+    if(!entry.executionId || !/^exec-[a-z0-9-]{8,80}$/i.test(entry.executionId)) return false;
+    if(typeof entry.toolId!=='string' || !entry.toolId || entry.toolId.length>64) return false;
+    if(!isReceiptRecord(responseValue)) return false;
+    const response=responseValue as unknown as Record<string,unknown>;
+    if(response.executionId!==entry.executionId || response.tool!==entry.toolId) return false;
+    if(typeof response.ok!=='boolean' || typeof response.verified!=='boolean') return false;
+    if(typeof response.outcomeClass!=='string' || !ACTION_OUTCOME_CLASS_VALUES.has(response.outcomeClass)) return false;
+    if(!isReceiptRecord(response.result) || !isReceiptRecord(response.audit) || !isReceiptRecord(response.verification)) return false;
+
+    const audit=response.audit;
+    const verification=response.verification;
+    if(audit.executionId!==undefined && audit.executionId!==entry.executionId) return false;
+    if(audit.tool!==undefined && audit.tool!==entry.toolId) return false;
+    if(audit.action!==undefined && audit.action!=='tool') return false;
+    if(typeof audit.accepted!=='boolean' || audit.accepted!==response.ok) return false;
+    if(typeof audit.verified==='boolean' && audit.verified!==response.verified) return false;
+    if(typeof audit.outcomeClass==='string' && audit.outcomeClass!==response.outcomeClass) return false;
+    if(response.verified===true && (response.ok!==true || verification.verified!==true || audit.verified!==true)) return false;
+
+    // Match the same hard response-size bound used when writing ledger receipts.
+    // Serialization errors (cycles, accessors, unsupported values) fail closed.
+    const bytes=new TextEncoder().encode(stableJson(response)).length;
+    if(bytes>48*1024) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export interface ToolExecutionContext {
   /** Stable across every retry/recovery of the same keyed operation. */
   executionId:string;
@@ -485,8 +533,13 @@ export class ActionGateway {
         ...(typeof row.toolId==='string'&&row.toolId.length<=64?{toolId:row.toolId}:{}),
         ...(typeof row.decisionId==='string'&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
         ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{})};
+      if(row.responseOmitted===true) safe.responseOmitted=true;
       if(row.status==='completed' && row.response && typeof row.response==='object') {
-        try { safe.response=structuredClone(row.response); } catch { safe.responseOmitted=true; }
+        try {
+          const cloned=structuredClone(row.response);
+          if(isReplayableActionReceipt(safe,cloned)) safe.response=cloned;
+          else safe.responseOmitted=true;
+        } catch { safe.responseOmitted=true; }
       } else if(row.status==='completed') safe.responseOmitted=true;
       const prior=restored.get(safe.keyHash);
       if(prior && (prior.requestHash!==safe.requestHash || stableJson(prior)!==stableJson(safe))) throw new Error('action-ledger-snapshot-key-conflict');
@@ -872,11 +925,16 @@ export class ActionGateway {
   }
 
   private replayLedgerEntry(entry:ActionExecutionLedgerEntry,id:string):ToolExecution {
-    if(entry.response) {
+    if(entry.response && isReplayableActionReceipt(entry,entry.response)) {
       const response=structuredClone(entry.response);
       return {...response,idempotentReplay:true,idempotencyStatus:entry.responseOmitted?'payload-omitted':'replayed'};
     }
-    return this.result(id,'unknown','idempotency-recovery-required','idempotency-recovery-required',`exec-${randomUUID()}`,{error:'idempotency-recovery-required'},'completed receipt has no replayable result; refusing to execute the side effect again');
+    // Invalid or missing payloads leave a completed key as a recovery tombstone.
+    // Never invoke the original executor and never bless a forged persisted response.
+    return this.result(id,'unknown','idempotency-recovery-required','idempotency-recovery-required',
+      entry.executionId??this.executionIdForKey(entry.keyHash),
+      {error:'idempotency-recovery-required',originalExecutionId:entry.executionId??null},
+      'completed receipt failed identity/outcome integrity validation; refusing replay and side-effect re-execution');
   }
 
   private idempotencyConflict(id:string,executionId:string):ToolExecution {
