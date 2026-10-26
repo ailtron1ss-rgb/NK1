@@ -31,8 +31,8 @@ function canonicalPostcondition(value: unknown): string | undefined {
  */
 export function assessExternalPostcondition(value: Partial<OutcomeVerification> | undefined): ExternalPostconditionAssessment {
   if (value?.basis !== 'external-postcondition' || value.externalObservation !== true) return 'not-external';
-  const observationId = typeof value.observationId === 'string' ? value.observationId.trim() : '';
-  if (!observationId || observationId.length > 180 || /[\u0000-\u001f\u007f]/.test(observationId)) return 'unknown';
+  const observationId = boundedCorrelationId(value.observationId, 180);
+  if (!observationId) return 'unknown';
   const expected = canonicalPostcondition(value.expectedPostcondition);
   const observed = canonicalPostcondition(value.observedPostcondition);
   if (!expected || !observed) return 'unknown';
@@ -201,8 +201,7 @@ export class OutcomeVerificationService {
         return failed('external observation requires external-postcondition basis');
       }
       const external = basis === 'external-postcondition';
-      const observationIdRaw = boundedText(checked.observationId, 180);
-      const observationId = observationIdRaw && !/[\u0000-\u001f\u007f]/.test(observationIdRaw) ? observationIdRaw : undefined;
+      const observationId = boundedCorrelationId(checked.observationId, 180);
       let verified = checked.verified === true && basis !== 'none';
       let notes = boundedText(checked.notes, 320);
       if (verified && external && !observationId) {
