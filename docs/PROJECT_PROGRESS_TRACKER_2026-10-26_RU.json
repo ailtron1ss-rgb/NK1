@@ -3,10 +3,10 @@
   "snapshotDate": "2026-10-26",
   "project": "Neuro Kurisu / NK1",
   "sourceOfTruth": "https://github.com/ailtron1ss-rgb/NK1",
-  "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
-  "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
+  "sourceBranchAtSnapshot": "fix/workpass353-invalid-event-payload-2026-10-26",
+  "sourceHeadAtSnapshot": "c0521842ae59c9fce651d7a669c3d121e567f2de",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass354 separates the current source/test checkpoint (c0521842ae59c9fce651d7a669c3d121e567f2de) from the last validated CI evidence SHA (621864d0d7f2676245383adab86f1dcc6d0f741f). The exact-head CI run had stopped before runtime tests because historical testedHead values were incorrectly compared to the newer source head; this ledger fix retains the original historical evidence and requires fresh CI for current code. Scores remain unchanged.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -241,7 +241,7 @@
   ],
   "ciSnapshot": {
     "observedAt": "2026-10-26",
-    "currentBaseHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454",
+    "currentBaseHead": "887d48947cf32e297c765cdef3cfdeac377388ca",
     "statuses": [
       {
         "name": "Unified project integration suite",
@@ -347,7 +347,8 @@
         "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525121",
         "testedHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
       }
-    ]
+    ],
+    "evidenceHead": "621864d0d7f2676245383adab86f1dcc6d0f741f"
   },
   "learningScorecard": {
     "p23SymbolicCorePercent": 61,
