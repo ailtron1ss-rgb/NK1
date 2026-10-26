@@ -179,32 +179,99 @@ export function ingestHexisEvidenceForReview(
 ): HexisEvidenceReviewIngressResult {
   const adapted = adaptHexisEvidence(input);
   if (!adapted.accepted) return { status: "rejected", reason: adapted.reason };
-  const ingress = resultFromCanonicalMemory(memoryOS, adapted.evidence);
-  if (ingress.status !== "accepted") return ingress;
 
-  const evidence = ingress.evidence;
-  const digest = sha256Stable(evidence, "legacy");
-  const snapshot = memoryOS.snapshot();
-  const memory = snapshot.items.find((item) => item.id === evidence.memoryId);
-  if (!memory) {
-    // This is an invariant failure after a successful canonical append; retain
-    // the durable receipt and report the missing target rather than fabricating
-    // a review against a different memory.
-    return { status: "rejected", memoryId: evidence.memoryId, evidenceId: evidence.evidenceId, reason: "memory-missing-after-canonical-evidence-append" };
-  }
+  // The evidence receipt and its pending review are one logical operation across
+  // two owners. Snapshot both before the canonical append so a thrown/failed
+  // review creation cannot leave durable evidence that can never be reviewed
+  // on retry (the duplicate receipt would otherwise short-circuit ingestion).
+  const memoryBefore = memoryOS.snapshot();
+  const fabricBefore = fabric.snapshot();
+  let failureReason = "hexis-review-ingress-failed";
+  let memoryId = adapted.evidence.memoryId;
+  let evidenceId = adapted.evidence.evidenceId;
+  try {
+    const ingress = resultFromCanonicalMemory(memoryOS, adapted.evidence);
+    if (ingress.status !== "accepted") return ingress;
 
-  let proposedConfidence01 = memory.confidence;
-  let previewApplied = false;
-  let previewReason = "contextual-evidence-only";
-  const baselineConfidence01 = memory.confidence;
-  const protectedBelief = memory.kind === "identity" || memory.kind === "autobiographical";
-  if (evidence.stance !== "contextualizes") {
-    const belief = fabric.registerOrUpdateBelief({
-      memoryId: memory.id,
-      confidence01: memory.confidence,
-      trust01: memory.sourceAuthority01 ?? 0.5,
-      at: Date.parse(evidence.observedAt),
-    });
+    const evidence = ingress.evidence;
+    const digest = sha256Stable(evidence, "legacy");
+    const snapshot = memoryOS.snapshot();
+    const memory = snapshot.items.find((item) => item.id === evidence.memoryId);
+    if (!memory) {
+      failureReason = "memory-missing-after-canonical-evidence-append";
+      throw new Error(failureReason);
+    }
+
+    let proposedConfidence01 = memory.confidence;
+    let previewApplied = false;
+    let previewReason = "contextual-evidence-only";
+    const baselineConfidence01 = memory.confidence;
+    const protectedBelief = memory.kind === "identity" || memory.kind === "autobiographical";
+    if (evidence.stance !== "contextualizes") {
+      const belief = fabric.registerOrUpdateBelief({
+        memoryId: memory.id,
+        confidence01: memory.confidence,
+        trust01: memory.sourceAuthority01 ?? 0.5,
+        at: Date.parse(evidence.observedAt),
+      });
+      const payload: HexisEvidenceReviewPayload = {
+        pipeline: "nk1.hexis-evidence-review.v1",
+        memoryId: memory.id,
+        evidenceId: evidence.evidenceId,
+        digest,
+        stance: evidence.stance,
+        source: evidence.source,
+        observedAt: evidence.observedAt,
+        evidenceConfidence01: evidence.confidence,
+        ...(evidence.note ? { note: evidence.note } : {}),
+        baselineConfidence01,
+        proposedConfidence01,
+        previewApplied,
+        previewReason,
+      };
+      const reviewInput = reviewInputFromPayload(payload, memory.confidence, belief.trust01, protectedBelief);
+      if (!reviewInput) {
+        failureReason = "hexis-review-input-expected";
+        throw new Error(failureReason);
+      }
+      const preview = fabric.previewBeliefRevision(reviewInput);
+      proposedConfidence01 = preview.posteriorConfidence01;
+      previewApplied = preview.applied;
+      previewReason = preview.reason;
+      payload.proposedConfidence01 = proposedConfidence01;
+      payload.previewApplied = previewApplied;
+      payload.previewReason = previewReason;
+      const review = fabric.createLearningReview({
+        periodStart: Date.parse(evidence.observedAt),
+        periodEnd: Date.parse(evidence.observedAt),
+        summary: "Hexis evidence requires review before canonical belief confidence may change.",
+        items: [{
+          kind: "semantic_belief",
+          title: evidence.stance === "supports" ? "Review supporting evidence" : "Review contradicting evidence",
+          content: (evidence.note || "Evidence from " + evidence.source.kind + ":" + evidence.source.ref + " was recorded for canonical memory " + memory.id).slice(0, 2000),
+          sourceMemoryId: memory.id,
+          evidence: payload as unknown as Record<string, unknown>,
+        }],
+      });
+      const item = review.items[0];
+      if (!item) {
+        failureReason = "hexis-review-item-not-created";
+        throw new Error(failureReason);
+      }
+      return {
+        status: "review-pending",
+        memoryId: memory.id,
+        evidenceId: evidence.evidenceId,
+        stance: evidence.stance,
+        reviewId: review.id,
+        reviewItemId: item.id,
+        baselineConfidence01,
+        proposedConfidence01,
+        previewApplied,
+        previewReason,
+      };
+    }
+
     const payload: HexisEvidenceReviewPayload = {
       pipeline: "nk1.hexis-evidence-review.v1",
       memoryId: memory.id,
@@ -220,29 +287,23 @@ export function ingestHexisEvidenceForReview(
       previewApplied,
       previewReason,
     };
-    const reviewInput = reviewInputFromPayload(payload, memory.confidence, belief.trust01, protectedBelief);
-    if (!reviewInput) throw new Error("hexis-review-input-expected");
-    const preview = fabric.previewBeliefRevision(reviewInput);
-    proposedConfidence01 = preview.posteriorConfidence01;
-    previewApplied = preview.applied;
-    previewReason = preview.reason;
-    payload.proposedConfidence01 = proposedConfidence01;
-    payload.previewApplied = previewApplied;
-    payload.previewReason = previewReason;
     const review = fabric.createLearningReview({
       periodStart: Date.parse(evidence.observedAt),
       periodEnd: Date.parse(evidence.observedAt),
-      summary: "Hexis evidence requires review before canonical belief confidence may change.",
+      summary: "Contextual Hexis evidence is recorded for review; it does not revise confidence.",
       items: [{
         kind: "semantic_belief",
-        title: evidence.stance === "supports" ? "Review supporting evidence" : "Review contradicting evidence",
-        content: (evidence.note || "Evidence from " + evidence.source.kind + ":" + evidence.source.ref + " was recorded for canonical memory " + memory.id).slice(0, 2000),
+        title: "Review contextual evidence",
+        content: (evidence.note || "Context from " + evidence.source.kind + ":" + evidence.source.ref + " was recorded for canonical memory " + memory.id).slice(0, 2000),
         sourceMemoryId: memory.id,
         evidence: payload as unknown as Record<string, unknown>,
       }],
     });
     const item = review.items[0];
-    if (!item) return { status: "rejected", memoryId: memory.id, evidenceId: evidence.evidenceId, reason: "hexis-review-item-not-created" };
+    if (!item) {
+      failureReason = "hexis-review-item-not-created";
+      throw new Error(failureReason);
+    }
     return {
       status: "review-pending",
       memoryId: memory.id,
@@ -255,49 +316,15 @@ export function ingestHexisEvidenceForReview(
       previewApplied,
       previewReason,
     };
+  } catch {
+    try {
+      memoryOS.restore(memoryBefore);
+      fabric.restore(fabricBefore);
+    } catch {
+      failureReason = "hexis-review-ingress-rollback-failed";
+    }
+    return { status: "rejected", reason: failureReason, memoryId, evidenceId };
   }
-
-  const payload: HexisEvidenceReviewPayload = {
-    pipeline: "nk1.hexis-evidence-review.v1",
-    memoryId: memory.id,
-    evidenceId: evidence.evidenceId,
-    digest,
-    stance: evidence.stance,
-    source: evidence.source,
-    observedAt: evidence.observedAt,
-    evidenceConfidence01: evidence.confidence,
-    ...(evidence.note ? { note: evidence.note } : {}),
-    baselineConfidence01,
-    proposedConfidence01,
-    previewApplied,
-    previewReason,
-  };
-  const review = fabric.createLearningReview({
-    periodStart: Date.parse(evidence.observedAt),
-    periodEnd: Date.parse(evidence.observedAt),
-    summary: "Contextual Hexis evidence is recorded for review; it does not revise confidence.",
-    items: [{
-      kind: "semantic_belief",
-      title: "Review contextual evidence",
-      content: (evidence.note || "Context from " + evidence.source.kind + ":" + evidence.source.ref + " was recorded for canonical memory " + memory.id).slice(0, 2000),
-      sourceMemoryId: memory.id,
-      evidence: payload as unknown as Record<string, unknown>,
-    }],
-  });
-  const item = review.items[0];
-  if (!item) return { status: "rejected", memoryId: memory.id, evidenceId: evidence.evidenceId, reason: "hexis-review-item-not-created" };
-  return {
-    status: "review-pending",
-    memoryId: memory.id,
-    evidenceId: evidence.evidenceId,
-    stance: evidence.stance,
-    reviewId: review.id,
-    reviewItemId: item.id,
-    baselineConfidence01,
-    proposedConfidence01,
-    previewApplied,
-    previewReason,
-  };
 }
 
 /**
