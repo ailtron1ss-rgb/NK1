@@ -1,11 +1,19 @@
 import { sha256Stable } from "../core/StableSerialization.ts";
 import type { MemoryProvenanceClass, MemoryOS2 } from "../developmental/MemoryOS2.ts";
+import type { MemoryFabric } from "./MemoryFabric.ts";
+import type { EventLog } from "./EventSourcing.ts";
 import {
   type HexisBeliefRevisionInput,
   type HexisReviewDecision,
   type HexisAdaptationFabric,
 } from "../integration/hexis/HexisAdaptationFabric.ts";
 import { adaptHexisEvidence, type CanonicalHexisEvidence } from "./HexisEvidenceAdapter.ts";
+
+/** The canonical runtime writer/event log; used by production ingress, not a parallel store. */
+export interface HexisCanonicalMemoryWriter {
+  fabric: MemoryFabric;
+  events: EventLog;
+}
 
 export type HexisMemoryEvidenceIngressResult =
   | { status: "accepted"; memoryId: string; evidenceId: string; stance: CanonicalHexisEvidence["stance"]; independentSources: number; evidence: CanonicalHexisEvidence }
@@ -73,6 +81,7 @@ function provenanceClassForHexisSource(kind: string): MemoryProvenanceClass {
 function resultFromCanonicalMemory(
   memoryOS: MemoryOS2,
   evidence: CanonicalHexisEvidence,
+  writer?: HexisCanonicalMemoryWriter,
 ): HexisMemoryEvidenceIngressResult {
   if (evidence.protectedMemory) {
     return {
@@ -85,11 +94,39 @@ function resultFromCanonicalMemory(
   const observedAt = Date.parse(evidence.observedAt);
   const provenanceClass = provenanceClassForHexisSource(evidence.source.kind);
   const digest = sha256Stable(evidence, "legacy");
+  // Detect both visible conflicts and replay after the detailed evidence ring
+  // rotated. This check prevents a retry from creating a second pending review.
+  const canonicalMemory = memoryOS.snapshot().items.find((item) => item.id === evidence.memoryId);
+  if (!canonicalMemory) {
+    return { status: "rejected", memoryId: evidence.memoryId, evidenceId: evidence.evidenceId, reason: "memory-not-found" };
+  }
+  const visible = canonicalMemory.evidenceRecords?.find((record) => record.evidenceId === evidence.evidenceId);
+  if (visible) {
+    if (visible.digest.toLowerCase() !== digest.toLowerCase()) {
+      return { status: "conflict", memoryId: evidence.memoryId, evidenceId: evidence.evidenceId, reason: "evidence-id-conflict" };
+    }
+    return {
+      status: "duplicate",
+      memoryId: evidence.memoryId,
+      evidenceId: evidence.evidenceId,
+      reason: "duplicate-evidence",
+      independentSources: memoryOS.evidenceTrail(evidence.memoryId)?.sources.length ?? 0,
+    };
+  }
+  if (memoryOS.hasEvidenceId(evidence.memoryId, evidence.evidenceId)) {
+    return {
+      status: "duplicate",
+      memoryId: evidence.memoryId,
+      evidenceId: evidence.evidenceId,
+      reason: "duplicate-retired-evidence",
+      independentSources: memoryOS.evidenceTrail(evidence.memoryId)?.sources.length ?? 0,
+    };
+  }
   const independenceKey = sha256Stable(
     { kind: evidence.source.kind, ref: evidence.source.ref },
     "legacy",
   );
-  const result = memoryOS.recordEvidence(evidence.memoryId, {
+  const recordInput = {
     evidenceId: evidence.evidenceId,
     digest,
     stance: evidence.stance,
@@ -103,7 +140,36 @@ function resultFromCanonicalMemory(
     protectedMemory: false,
     provenanceClass,
     independenceKey,
-  });
+  };
+  let result: ReturnType<MemoryOS2["recordEvidence"]>;
+  try {
+    if (writer) {
+      const commandId = "hexis-evidence:" + sha256Stable(
+        { memoryId: evidence.memoryId, evidenceId: evidence.evidenceId },
+        "legacy",
+      );
+      const commandResult = writer.fabric.applyLifecycleCommand({
+        action: "record-evidence",
+        id: evidence.memoryId,
+        input: recordInput,
+        commandId,
+        tick: Math.max(0, Math.floor(observedAt)),
+      });
+      if (!commandResult || typeof commandResult !== "object" || !("ok" in commandResult) || !("added" in commandResult)) {
+        return { status: "rejected", memoryId: evidence.memoryId, evidenceId: evidence.evidenceId, reason: "memory-fabric-evidence-result-invalid" };
+      }
+      result = commandResult as ReturnType<MemoryOS2["recordEvidence"]>;
+    } else {
+      result = memoryOS.recordEvidence(evidence.memoryId, recordInput);
+    }
+  } catch (error) {
+    return {
+      status: "rejected",
+      memoryId: evidence.memoryId,
+      evidenceId: evidence.evidenceId,
+      reason: "memory-fabric-evidence-write-failed:" + String((error as Error)?.message ?? error).slice(0, 160),
+    };
+  }
 
   if (!result.ok) {
     if (result.reason === "protected-memory-review-required") {
@@ -140,10 +206,11 @@ function resultFromCanonicalMemory(
 export function ingestHexisEvidenceIntoMemory(
   memoryOS: MemoryOS2,
   input: unknown,
+  writer?: HexisCanonicalMemoryWriter,
 ): HexisMemoryEvidenceIngressResult {
   const adapted = adaptHexisEvidence(input);
   if (!adapted.accepted) return { status: "rejected", reason: adapted.reason };
-  return resultFromCanonicalMemory(memoryOS, adapted.evidence);
+  return resultFromCanonicalMemory(memoryOS, adapted.evidence, writer);
 }
 
 function reviewInputFromPayload(payload: HexisEvidenceReviewPayload, confidence01: number, trust01?: number, protectedBelief?: boolean): HexisBeliefRevisionInput | null {
@@ -176,6 +243,7 @@ export function ingestHexisEvidenceForReview(
   memoryOS: MemoryOS2,
   fabric: HexisAdaptationFabric,
   input: unknown,
+  writer?: HexisCanonicalMemoryWriter,
 ): HexisEvidenceReviewIngressResult {
   const adapted = adaptHexisEvidence(input);
   if (!adapted.accepted) return { status: "rejected", reason: adapted.reason };
@@ -186,11 +254,13 @@ export function ingestHexisEvidenceForReview(
   // on retry (the duplicate receipt would otherwise short-circuit ingestion).
   const memoryBefore = memoryOS.snapshot();
   const fabricBefore = fabric.snapshot();
+  const memoryFabricBefore = writer?.fabric.snapshot();
+  const eventLogBefore = writer?.events.list();
   let failureReason = "hexis-review-ingress-failed";
   let memoryId = adapted.evidence.memoryId;
   let evidenceId = adapted.evidence.evidenceId;
   try {
-    const ingress = resultFromCanonicalMemory(memoryOS, adapted.evidence);
+    const ingress = resultFromCanonicalMemory(memoryOS, adapted.evidence, writer);
     if (ingress.status !== "accepted") return ingress;
 
     const evidence = ingress.evidence;
@@ -319,6 +389,8 @@ export function ingestHexisEvidenceForReview(
   } catch {
     try {
       memoryOS.restore(memoryBefore);
+      if (writer && memoryFabricBefore) writer.fabric.restore(memoryFabricBefore);
+      if (writer && eventLogBefore) writer.events.restore(eventLogBefore);
       fabric.restore(fabricBefore);
     } catch {
       failureReason = "hexis-review-ingress-rollback-failed";
@@ -340,6 +412,7 @@ export function decideHexisEvidenceReview(
   reviewItemId: string,
   decision: HexisReviewDecision,
   correction?: string,
+  writer?: HexisCanonicalMemoryWriter,
 ): HexisEvidenceReviewDecisionResult {
   const review = fabric.getLearningReview(reviewId);
   const item = review?.items.find((candidate) => candidate.id === reviewItemId);
@@ -415,6 +488,8 @@ export function decideHexisEvidenceReview(
       };
     } catch {
       memoryOS.restore(memoryBefore);
+      if (writer && memoryFabricBefore) writer.fabric.restore(memoryFabricBefore);
+      if (writer && eventLogBefore) writer.events.restore(eventLogBefore);
       fabric.restore(fabricBefore);
       return reject("approval-failed-and-rolled-back");
     }
@@ -431,6 +506,8 @@ export function decideHexisEvidenceReview(
   }
 
   const fabricBefore = fabric.snapshot();
+  const memoryFabricBefore = writer?.fabric.snapshot();
+  const eventLogBefore = writer?.events.list();
   try {
     const decided = fabric.decideLearningReview(reviewId, reviewItemId, "approve");
     if (!decided) return reject("review-decision-rejected");
@@ -443,8 +520,18 @@ export function decideHexisEvidenceReview(
     const audit = fabric.reviseBelief(revisionInput);
     let updatedConfidence01 = memory.confidence;
     if (audit.applied) {
-      const updated = memoryOS.updateSignals(memory.id, { confidence: audit.posteriorConfidence01 }, "hexis-reviewed-evidence:" + payload.evidenceId);
-      if (!updated) throw new Error("canonical-confidence-update-failed");
+      const updatedRaw = writer
+        ? writer.fabric.applyLifecycleCommand({
+            action: "update-signals",
+            id: memory.id,
+            patch: { confidence: audit.posteriorConfidence01 },
+            reason: "hexis-reviewed-evidence:" + payload.evidenceId,
+            commandId: "hexis-review-confidence:" + sha256Stable({ reviewId, reviewItemId, memoryId: memory.id }, "legacy"),
+            tick: Math.max(0, Math.floor(Date.parse(payload.observedAt))),
+          })
+        : memoryOS.updateSignals(memory.id, { confidence: audit.posteriorConfidence01 }, "hexis-reviewed-evidence:" + payload.evidenceId);
+      if (!updatedRaw || typeof updatedRaw !== "object" || !("confidence" in updatedRaw)) throw new Error("canonical-confidence-update-failed");
+      const updated = updatedRaw as { confidence: number };
       updatedConfidence01 = updated.confidence;
       fabric.registerOrUpdateBelief({
         memoryId: memory.id,
@@ -470,6 +557,8 @@ export function decideHexisEvidenceReview(
     };
   } catch {
     memoryOS.restore(memorySnapshot);
+    if (writer && memoryFabricBefore) writer.fabric.restore(memoryFabricBefore);
+    if (writer && eventLogBefore) writer.events.restore(eventLogBefore);
     fabric.restore(fabricBefore);
     return reject("approval-failed-and-rolled-back");
   }
