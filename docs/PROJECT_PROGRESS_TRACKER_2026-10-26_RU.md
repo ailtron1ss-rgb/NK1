@@ -1,9 +1,9 @@
 ## WorkPass393 — каноническая привязка Hexis review и восстановление после рестарта (2026-10-26)
 
-- **Код/тесты до tracker-коммита:** `930245acc4e2b16d7e27b710050e6e60f6f0e772` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`, поверх актуального на тот момент integration head `b25b6b572f4f0366fd3b23f795763e921bf84f7f`.
+- **Код/тесты до tracker-коммита:** `0af14583e35a5edb76d05ab99e1b916e828650ab` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`, поверх актуального на тот момент integration head `b25b6b572f4f0366fd3b23f795763e921bf84f7f`.
 - В каноническом bridge общий digest используется при ingress, создании review и проверке решения. Перед одобрением payload повторно проходит strict adapter и сверяется с точной записью MemoryOS2 по evidence ID, digest, stance, source kind/reference, label, author, note, confidence, timestamp и protected-memory flag.
 - Для старых pending reviews с `observedAtOrigin=server-receipt` сохранена ограниченная совместимость со старым raw digest. Она разрешена только при совпадении полной канонической записи и служебной метки; изменение любого evidence-поля по-прежнему отклоняется.
-- Регрессии: шесть tampering-сценариев; старый receipt-time digest; smoke сверяет результат с сохранённой confidence без предположения, что значение обязано расти у policy ceiling; отдельный процессный restart smoke проверяет восстановление точного pending review из прежнего `STATE_DIR` перед одобрением.
+- Регрессии: шесть tampering-сценариев; старый receipt-time digest; smoke сверяет результат с сохранённой confidence без предположения, что значение обязано расти у policy ceiling; отдельный процессный restart smoke требует наличие canonical-memory fixture, проверяет восстановление точного pending review из прежнего `STATE_DIR`, затем проверяет успешное одобрение восстановленного review через canonical gate.
 - **Валидация:** PENDING exact-head typecheck, focused Hexis tests, серверный smoke и Unified integration. GitHub Actions на последнем head завершились до получения шагов/журналов; такие запуски не считаются ни доказанным code failure, ни PASS.
 - Проценты готовности, recall и learning uplift не изменены. `main` и canonical Release ZIP не менялись.
 
