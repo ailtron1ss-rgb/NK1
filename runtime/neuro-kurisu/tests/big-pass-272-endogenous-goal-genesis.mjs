@@ -72,7 +72,7 @@ const badIdentifierSnapshot=net.snapshot();
 badIdentifierSnapshot.goalHistory=[{
   tick:badIdentifierSnapshot.tick,
   id:String.fromCharCode(1),
-  vector:badIdentifierSnapshot.currentGoal,
+  vector:badIdentifierSnapshot.currentGoal.slice(),
   action:badIdentifierSnapshot.currentAction,
   reward01:0.5,
   predictionError01:0.5,
