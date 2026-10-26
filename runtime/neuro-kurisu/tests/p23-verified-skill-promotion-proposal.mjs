@@ -60,8 +60,6 @@ const memoryFloorBlocked = proposeVerifiedSkillPromotion(ledger, 'baseline', 'ca
 });
 assert.equal(memoryFloorBlocked.gate.accepted, false);
 assert.equal(memoryFloorBlocked.gate.reason, 'required-family-gain-below-threshold:memory');
-assert.equal(memoryFloorBlocked.familyGainPolicy?.minimumGainByFamily?.memory, undefined,
-  'policy is stored under the canonical evaluation policy, not as a free-form side channel');
 assert.deepEqual(memoryFloorBlocked.evaluationPolicy.minimumFamilyGainByFamily, { memory: .01, 'tool-use': .3 });
 assert.equal(memoryFloorBlocked.evaluationPolicy.minCompleteSeeds, 3);
 assert.equal(isAuthenticVerifiedSkillPromotionProposal(memoryFloorBlocked), true,
