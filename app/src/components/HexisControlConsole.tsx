@@ -45,6 +45,8 @@ export function HexisControlConsole() {
   const [hmxIntent, setHmxIntent] = useState<"port" | "duplicate" | "telepathy" | "analysis">("telepathy");
   const [hmxStrategy, setHmxStrategy] = useState<"additive" | "authoritative" | "deliberative" | "analysis_only">("additive");
   const [hmxConfirmed, setHmxConfirmed] = useState(false);
+  const [hmxImportText, setHmxImportText] = useState("");
+  const [hmxImportName, setHmxImportName] = useState("");
   const [placement, setPlacement] = useState("local");
   const [executionAction, setExecutionAction] = useState("tool.execute");
   const [risk, setRisk] = useState("0.4");
@@ -97,6 +99,27 @@ export function HexisControlConsole() {
   const stageCurrentHmx = async () => {
     const exported = await neuroApi.hexisHmxExport();
     const staged = await run("Stage HMX", () => neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy }));
+    const nextId = (staged as any)?.stage?.stagingId;
+    if (nextId) setStageId(String(nextId));
+  };
+
+  const stageImportedHmx = async () => {
+    let hmxDocument: unknown;
+    try {
+      hmxDocument = JSON.parse(hmxImportText);
+    } catch {
+      setMessage("Stage imported HMX: input is not valid JSON");
+      return;
+    }
+    if (!hmxDocument || typeof hmxDocument !== "object" || Array.isArray(hmxDocument)) {
+      setMessage("Stage imported HMX: expected a JSON object");
+      return;
+    }
+    const staged = await run("Stage imported HMX", () => neuroApi.hexisHmxStage({
+      document: hmxDocument,
+      intent: hmxIntent,
+      strategy: hmxStrategy,
+    }));
     const nextId = (staged as any)?.stage?.stagingId;
     if (nextId) setStageId(String(nextId));
   };
@@ -219,6 +242,43 @@ export function HexisControlConsole() {
             <input value={stageId} onChange={e => setStageId(e.target.value)} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
             <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void run("Accept HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"))}>Accept staged</Button>
             <Button variant="outline" disabled={busy || !stageId} onClick={() => void run("Reject HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"))}>Reject</Button>
+          </div>
+          <div className="mt-3 rounded-md border border-border p-3">
+            <p className="text-xs font-medium text-fg">Import an external Hexis HMX file</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted">Choose a JSON file exported by your Hexis instance, or paste its contents below. This is a local file operation; it is not sent to the remote chat peer. For memory merging choose the source document's own intent (normally telepathy) and additive strategy. The server validates before staging.</p>
+            <input
+              type="file"
+              accept=".json,application/json"
+              disabled={busy}
+              onChange={async e => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 2 * 1024 * 1024) {
+                  setMessage("Import HMX: file exceeds 2 MiB");
+                  e.target.value = "";
+                  return;
+                }
+                try {
+                  const text = await file.text();
+                  setHmxImportText(text);
+                  setHmxImportName(file.name);
+                  setMessage("Loaded HMX file locally: " + file.name);
+                } catch {
+                  setMessage("Import HMX: could not read the selected file");
+                }
+              }}
+              className="mt-2 block w-full text-[11px] text-muted file:mr-3 file:rounded-md file:border-0 file:bg-bg file:px-3 file:py-2 file:text-fg"
+            />
+            {hmxImportName ? <p className="mt-1 text-[10px] text-subtle">Loaded: {hmxImportName}</p> : null}
+            <textarea
+              value={hmxImportText}
+              onChange={e => { setHmxImportText(e.target.value); setHmxImportName(""); }}
+              rows={4}
+              maxLength={2 * 1024 * 1024}
+              placeholder="Paste an HMX 1.7 JSON document…"
+              className="mt-2 w-full rounded-md border border-border bg-bg px-3 py-2 font-mono text-[10px] leading-relaxed text-fg"
+            />
+            <Button variant="outline" className="mt-2" disabled={busy || !hmxImportText.trim()} onClick={() => void stageImportedHmx()}>Validate & stage imported HMX</Button>
           </div>
           <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX operation after checking its conflicts, source and application mode.</label>
         </Panel>
