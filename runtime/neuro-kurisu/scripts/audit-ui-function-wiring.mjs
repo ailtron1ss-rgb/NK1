@@ -26,7 +26,8 @@ const hmxOutcomeIsExplicit =
   hexisUi.includes('const acceptHmxStage = async () =>') &&
   hexisUi.includes('receipt.status === "uncertain"') &&
   hexisUi.includes('Do not retry this stage') &&
-  hexisUi.includes('Counts reported by the interrupted attempt (not verified)') &&
+  hexisUi.includes('the import outcome could not be confirmed; memory changes may have survived') &&
+  hexisUi.includes('Unverified bookkeeping counts (not proof of applied rows)') &&hexisUi.includes('Do not retry this stage') &&
   hexisUi.includes('receipt.status === "pending"') &&
   hexisUi.includes('onClick={() => void acceptHmxStage()}');
 const operationResultSurvivesRefreshFailure =
