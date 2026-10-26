@@ -126,16 +126,18 @@ const inheritedCycleState=Object.create({
   meanStageCoverage01:1,meanCausalContinuity01:1,lastTick:9,lastComplete:true,lastMissingStages:[],
 });
 const inheritedCycle=new UnifiedCognitiveCycle();
-inheritedCycle.restore(inheritedCycleState);
-assert.equal(inheritedCycle.snapshot().cycles,0,'prototype-injected counters must not restore a completed cycle');
-assert.equal(inheritedCycle.snapshot().lastComplete,false);
-assert.deepEqual(inheritedCycle.snapshot().lastMissingStages,['observation','prediction','action','outcome','learning','self-update']);
+const beforeInheritedCycle=inheritedCycle.snapshot();
+assert.throws(()=>inheritedCycle.restore(inheritedCycleState),/bounded plain data properties/,
+  'prototype-injected state must be rejected before a completed cycle is restored');
+assert.deepEqual(inheritedCycle.snapshot(),beforeInheritedCycle,'rejected prototype state must not mutate cycle state');
 
 const accessorCycleState={};
 Object.defineProperty(accessorCycleState,'cycles',{enumerable:true,get(){throw new Error('restore must not execute snapshot getters');}});
 const accessorCycle=new UnifiedCognitiveCycle();
-assert.doesNotThrow(()=>accessorCycle.restore(accessorCycleState),'restore must ignore accessor-backed counters');
-assert.equal(accessorCycle.snapshot().cycles,0);
+const beforeAccessorCycle=accessorCycle.snapshot();
+assert.throws(()=>accessorCycle.restore(accessorCycleState),/bounded plain data properties/,
+  'accessor-backed counters must be rejected before field reads');
+assert.deepEqual(accessorCycle.snapshot(),beforeAccessorCycle,'rejected accessor state must not mutate cycle state');
 
 assert.throws(()=>cycle.evaluate(null),/input must be an object/);
 assert.throws(()=>cycle.evaluate({tick:6,stageIds:null,parentIntegrity01:1}),/stageIds/);
