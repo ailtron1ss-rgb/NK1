@@ -77,3 +77,11 @@
 5. Длительный restart/soak test, полная лицензия/provenance проверка исходных источников и воспроизводимая пересборка главного release ZIP.
 
 Панель разделяет «код есть», «контракты проверяются», «есть независимые полевые результаты» и «готово к релизу», чтобы одна цифра не скрывала незакрытые области.
+
+## WorkPass374 — Hexis HMX canonical-memory integration (2026-10-26; validation pending)
+
+- **Implementation branch:** hexis-integration-workpass373-20261026, based on WorkPass373 cross-ledger-rollback source line.
+- **Integrated code:** normalized HMX 1.7 export; review-gated canonical memory projection through MemoryFabric; source-provenance semantic namespace; idempotent application receipt; rollback-aware apply path; explicit HTTP decision validation; focused tests and workflow.
+- **Validation state:** authored/registered, not yet validated. Exact-head GitHub Actions must run runtime typecheck and focused Hexis tests; unified cognitive integration and release-verifier workflows remain required before promotion.
+- **Scoring:** preserve the prior weighted metrics. This pass is code integration only until exact-head checks and independent evaluation provide new evidence.
+- **Unchanged:** main and the published Release ZIP.
