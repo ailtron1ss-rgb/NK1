@@ -2,6 +2,21 @@ name: WorkPass294 correlated external postconditions
 on:
   pull_request:
     paths:
+      - '.github/workflows/workpass294-correlated-postcondition.yml'
+      - 'tools/verify-integration.mjs'
+      - 'research/requirements-integration.txt'
+      - 'runtime/neuro-kurisu/scripts/audit-executable-syntax.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts'
+      - 'runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts'
+      - 'runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+      - 'package.json'
       - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/src/organism/system/ActionGateway.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
@@ -14,7 +29,7 @@ permissions:
 jobs:
   correlated-postcondition:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -23,9 +38,40 @@ jobs:
           package-manager-cache: false
       - name: Enforce runtime version
         run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
-      - name: Type-check runtime
-        working-directory: runtime/neuro-kurisu
+      - name: Install pinned app dependencies without install scripts
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Run quick architecture, integrity, syntax and asset audit
+        run: npm run audit:quick
+      - name: Typecheck app and runtime
         run: npm run typecheck
-      - name: Verify exact action and decision lineage
+      - name: Run app test suite
+        run: npm run test:ui
+      - name: Test restored action receipt integrity (WorkPass95)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass95:receipt-integrity
+      - name: Test versioned skill lifecycle and durable provenance restore (P23)
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs
+      - name: Test execution capability versus verifier trust (WorkPass203)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass203:independent-candidate-evaluator
+      - name: Test host-owned executor and storage-root integrity (WorkPass243)
+        run: npm --prefix runtime/neuro-kurisu run test:workpass243:host-owned-independent-evaluation-services
+      - name: Verify exact action and decision lineage (WorkPass294)
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass294:correlated-postcondition
+      - name: Install isolated CPU research dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          research_venv="$RUNNER_TEMP/nk1-research-ci-venv"
+          python3 -m venv "$research_venv"
+          "$research_venv/bin/python" -m pip install --disable-pip-version-check --no-cache-dir --index-url https://download.pytorch.org/whl/cpu -r research/requirements-integration.txt
+          echo "RESEARCH_PYTHON=$research_venv/bin/python" >> "$GITHUB_ENV"
+      - name: Verify runtime and approval-gated research probes
+        run: npm run test:integration
+      - name: Run runtime smoke test
+        run: npm run test:runtime:smoke
+      - name: Run recovered unified cognitive-cycle regressions
+        run: npm --prefix runtime/neuro-kurisu run test:rebuild-recovered
+      - name: Run full runtime audit
+        run: npm --prefix runtime/neuro-kurisu run audit:full
+      - name: Run aggregate runtime audit
+        run: npm --prefix runtime/neuro-kurisu run audit:all
