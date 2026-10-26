@@ -405,6 +405,22 @@ assert.equal(applyFabric.decideHmx(applyStage.stagingId, 'apply')?.application?.
 assert.equal(applyFabric.snapshot().temporal.length, importedTemporal.length,
   'replaying an HMX apply must not duplicate temporal assertions');
 
+// The normal decideHmx replay path must also validate persisted receipts (not only the projector).
+const corruptedAppliedSnapshot = applyFabric.snapshot();
+const persistedAppliedStage = corruptedAppliedSnapshot.hmxStages.find(stage => stage.stagingId === applyStage.stagingId);
+assert(persistedAppliedStage?.application);
+persistedAppliedStage.application.importedCount += 1;
+const corruptedRestoreFabric = new HexisAdaptationFabric();
+corruptedRestoreFabric.restore(corruptedAppliedSnapshot);
+corruptedRestoreFabric.bindCanonicalMemoryApply(() => {
+  throw new Error('corrupted applied receipt must never trigger a second canonical apply');
+});
+assert.throws(
+  () => corruptedRestoreFabric.decideHmx(applyStage.stagingId, 'apply'),
+  /hmx-applied-receipt-invalid/,
+  'persisted receipt corruption must fail closed before any replay shortcut',
+);
+
 // Re-exporting the same source lineage with a different export ID keeps stable memory identity.
 const laterNormalizedNk1Export = normalizeNk1HmxExport({
   ...nativeNk1Export,
