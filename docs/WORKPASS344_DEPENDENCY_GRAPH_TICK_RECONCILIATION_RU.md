@@ -3,7 +3,7 @@
 Дата: 2026-10-26  
 Ветка: `fix/mega-cognitive-progress-tracking-2026-10-26-r3`  
 Code/test commit: `5b86768a67c3893e6c76c044bffe822aa41e14ae`  
-Статус: **код и регрессии добавлены; точный CI для этого SHA пока не подтверждён**.
+Статус: **PASS на точном combined checkout `a5aafc5274f44974aadf52e155213e12200cc4da`**. Unified project integration suite [run #40279636593](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279636593) завершился успешно. Он включает WP344 и предыдущий WorkPass343; более новый WorkPass345 в этот checkout ещё не входил.
 
 ## Что исправлено
 

@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; thirteen named workflows passed on that exact head. WorkPass343 added canonical Core/derived-substrate tick reconciliation; WorkPass344 extends recovery to the cognitive-dependency graph sidecar and corrupts both sidecars in a real restart smoke. Latest combined code/test head 5b86768a67c3893e6c76c044bffe822aa41e14ae has unit/runtime regressions and explicit workflow path filters, but exact-head CI has not yet been returned; scores remain unchanged until validation. WorkPass335/336 and WorkPass339 are included in verified code/test snapshot 621864d0d7f2676245383adab86f1dcc6d0f741f.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; thirteen named workflows passed on that exact head. WorkPass343–344 future-tick reconciliation has now passed the full Unified project integration suite on exact checkout a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593). WorkPass345 extends the recovery boundary so unsupported/corrupt dependency sidecars do not abort organism startup; code/test head 216d79086bfac2dd5f25e2c995fe6b5a44b61476 has Unified project integration run #40279847281 in progress. Scores remain unchanged until this latest regression is validated.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -26,7 +26,7 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "WorkPass343–344 add restart regressions for future substrate and dependency-graph sidecar ticks; exact-head CI confirmation for code/test head 5b86768a67c3893e6c76c044bffe822aa41e14ae is pending",
+        "WorkPass345 adds fail-open recovery for invalid dependency-graph sidecar schema; exact-head CI for 216d79086bfac2dd5f25e2c995fe6b5a44b61476 is in progress (run #40279847281). WorkPass343–344 future-tick recovery passed Unified project integration on a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593).",
         "Long-duration process-kill/restart soak tests and real device/browser/voice/avatar integration remain open",
         "Independent external task benchmarks are required before raising field evidence or learning-effectiveness scores"
       ],
@@ -359,23 +359,44 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass344",
+    "id": "WorkPass345",
     "date": "2026-10-26",
     "branch": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
-    "codeCommit": "5b86768a67c3893e6c76c044bffe822aa41e14ae",
-    "summary": "Re-anchor the persisted CognitiveDependencyGraph tick to canonical Core during runtime init; preserve routing counters/wake mask/interrupt state; test MAX_SAFE_INTEGER restore and recover both derived sidecars in the runtime restart smoke.",
+    "codeCommit": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
+    "summary": "Make invalid/unreadable cognitive-dependency graph sidecar fail-open during OrganismRuntime.init; reset only derived routing state, log restore failure, and continue startup.",
     "testsAdded": [
-      "graph MAX_SAFE_INTEGER re-anchor preserves wake mask, transition counters, per-domain transition counts and active safety interrupt",
-      "invalid canonical graph tick does not mutate state; the next canonical frame is accepted",
-      "restart smoke corrupts both cognitive sidecars and verifies a new autonomous cycle resumes on the canonical Core tick",
-      "workflow path filters include organism-smoke.mjs for pull_request and push"
+      "runtime source contract verifies the dedicated restore-failed fallback path and warning event",
+      "restart smoke corrupts the dependency sidecar schema and verifies init succeeds",
+      "post-recovery autonomous cycle advances dependency graph on the canonical Core tick"
     ],
-    "validationStatus": "PENDING: exact-head GitHub Actions workflows/statuses were not returned for code/test head 5b86768a67c3893e6c76c044bffe822aa41e14ae. No pass claimed.",
+    "validationStatus": "PENDING: Unified project integration suite run #40279847281 is in_progress on exact code/test head 216d79086bfac2dd5f25e2c995fe6b5a44b61476; no pass claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
-    "workflowRuns": []
+    "workflowRuns": [],
+    "activeWorkflowRuns": [
+      40279847281
+    ]
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass345",
+      "date": "2026-10-26",
+      "branch": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
+      "codeCommit": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
+      "summary": "Make invalid/unreadable cognitive-dependency graph sidecar fail-open during OrganismRuntime.init; reset only derived routing state, log restore failure, and continue startup.",
+      "testsAdded": [
+        "runtime source contract verifies the dedicated restore-failed fallback path and warning event",
+        "restart smoke corrupts the dependency sidecar schema and verifies init succeeds",
+        "post-recovery autonomous cycle advances dependency graph on the canonical Core tick"
+      ],
+      "validationStatus": "PENDING: Unified project integration suite run #40279847281 is in_progress on exact code/test head 216d79086bfac2dd5f25e2c995fe6b5a44b61476; no pass claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": [],
+      "activeWorkflowRuns": [
+        40279847281
+      ]
+    },
     {
       "id": "WorkPass344",
       "date": "2026-10-26",
@@ -388,10 +409,12 @@
         "restart smoke corrupts both cognitive sidecars and verifies a new autonomous cycle resumes on the canonical Core tick",
         "workflow path filters include organism-smoke.mjs for pull_request and push"
       ],
-      "validationStatus": "PENDING: exact-head GitHub Actions workflows/statuses were not returned for code/test head 5b86768a67c3893e6c76c044bffe822aa41e14ae. No pass claimed.",
+      "validationStatus": "PASS on exact combined checkout a5aafc5274f44974aadf52e155213e12200cc4da; Unified project integration suite run #40279636593 completed successfully and includes WorkPass343–344 recovery plus CI trigger correction. Later WorkPass345 code is not included in this tested SHA.",
       "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
+      "testedHeadSha": "a5aafc5274f44974aadf52e155213e12200cc4da",
+      "workflowRuns": [
+        40279636593
+      ]
     },
     {
       "id": "WorkPass342",
@@ -454,8 +477,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "5b86768a67c3893e6c76c044bffe822aa41e14ae",
-  "branchHeadBeforeTrackerCommit": "5b86768a67c3893e6c76c044bffe822aa41e14ae",
+  "latestUnverifiedCodeTestHead": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
+  "branchHeadBeforeTrackerCommit": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",

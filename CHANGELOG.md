@@ -1,3 +1,10 @@
+## WorkPass345 — fail-open recovery for invalid cognitive-dependency sidecars (2026-10-26)
+
+- **Defect:** `CognitiveDependencyGraph.restore()` was outside a recovery boundary in `OrganismRuntime.init()`. An unsupported sidecar schema or load/parse error could abort the whole organism startup even though this graph is derived routing state.
+- **Fix:** dependency graph restore + WorkPass344 canonical-tick re-anchor now run inside a dedicated try/catch. On failure, only the graph is reset to its safe default and runtime logs `runtime.cognitive-dependency.restore-failed`; Core startup proceeds.
+- **Regression:** the wiring test asserts the runtime fallback path; runtime restart smoke supplies an unsupported dependency schema, confirms init succeeds, and runs another canonical autonomous cycle.
+- **Validation:** code/test head `216d79086bfac2dd5f25e2c995fe6b5a44b61476`; Unified project integration run [#40279847281](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279847281) is in progress. No pass claimed.
+
 ## WorkPass344 — reconcile future cognitive-dependency graph ticks (2026-10-26)
 
 - **Defect:** the cognitive-dependency sidecar could restore a valid but future `lastTick`, including `Number.MAX_SAFE_INTEGER`. Runtime derived its next routing frame from `max(coreTick, previousGraphTick + 1)`, which could produce an unsafe frame tick and block routing after restart.
