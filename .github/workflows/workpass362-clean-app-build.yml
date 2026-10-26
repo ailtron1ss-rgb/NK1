@@ -46,7 +46,6 @@ jobs:
     timeout-minutes: 35
     env:
       CI: "true"
-      NODE_ENV: "production"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -64,6 +63,8 @@ jobs:
       - name: Type-check app and organism runtime together
         run: npm run typecheck
       - name: Build production UI and exercise the migration entry point
+        env:
+          NODE_ENV: "production"
         run: npm --prefix app run build
       - name: Verify UI-to-runtime API linkage
         run: npm run audit:ui-api-linkage
