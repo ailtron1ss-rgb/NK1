@@ -2257,3 +2257,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **[BOUNDS]** Idempotency keys are limited to 256 characters; action kind and channel identifiers are bounded before request hashing.
 - **[REGRESSION]** Hexis adapter integration test now covers 520 pending deliveries, terminal rotation past 512, exact replay and changed-payload conflict after retirement, restart restoration, and overlong-key rejection.
 - **[VALIDATION]** CI is the source of truth for execution. No successful exact-head run is claimed until the updated Hexis integration workflow completes.
+
+
+## WorkPass110 follow-up — candidate identity fixture alignment (2026-10-26)
+
+- **[TEST FIX]** Updated the signed-shadow E2E fixture to compute candidate identity with the canonical five-field tuple, including explicit null revision provenance when no revision is supplied.
+- **[WHY]** Candidate IDs now bind optional revision provenance; a fixture using the earlier four-field tuple failed before the shadow-registration behavior could be exercised.
+- **[VALIDATION]** Re-run WorkPass110 on the exact updated head. A fix to the expected identity alone is not counted as a passing end-to-end run.
