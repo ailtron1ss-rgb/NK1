@@ -15,6 +15,19 @@ export interface HexisCanonicalMemoryWriter {
   events: EventLog;
 }
 
+/**
+ * MemoryFabric event ticks are logical organism-cycle counters, not timestamps.
+ * External evidence arrives outside a guaranteed cycle context, so retain the
+ * latest canonical event tick when available and fail closed to zero for an
+ * absent or timestamp-like value.
+ */
+function logicalMemoryFabricTick(writer?: HexisCanonicalMemoryWriter): number {
+  const candidate = writer?.events.list().at(-1)?.tick;
+  return Number.isSafeInteger(candidate) && Number(candidate) >= 0 && Number(candidate) < 1_000_000_000
+    ? Math.floor(Number(candidate))
+    : 0;
+}
+
 export type HexisMemoryEvidenceIngressResult =
   | { status: "accepted"; memoryId: string; evidenceId: string; stance: CanonicalHexisEvidence["stance"]; independentSources: number; evidence: CanonicalHexisEvidence }
   | { status: "duplicate"; memoryId: string; evidenceId: string; reason: "duplicate-evidence" | "duplicate-retired-evidence"; independentSources: number }
@@ -153,7 +166,7 @@ function resultFromCanonicalMemory(
         id: evidence.memoryId,
         input: recordInput,
         commandId,
-        tick: 0,
+        tick: logicalMemoryFabricTick(writer),
       });
       if (!commandResult || typeof commandResult !== "object" || !("ok" in commandResult) || !("added" in commandResult)) {
         return { status: "rejected", memoryId: evidence.memoryId, evidenceId: evidence.evidenceId, reason: "memory-fabric-evidence-result-invalid" };
@@ -529,7 +542,7 @@ export function decideHexisEvidenceReview(
             patch: { confidence: audit.posteriorConfidence01 },
             reason: "hexis-reviewed-evidence:" + payload.evidenceId,
             commandId: "hexis-review-confidence:" + sha256Stable({ reviewId, reviewItemId, memoryId: memory.id }, "legacy"),
-            tick: Math.max(0, Math.floor(Date.parse(payload.observedAt))),
+            tick: logicalMemoryFabricTick(writer),
           })
         : memoryOS.updateSignals(memory.id, { confidence: audit.posteriorConfidence01 }, "hexis-reviewed-evidence:" + payload.evidenceId);
       if (!updatedRaw || typeof updatedRaw !== "object" || !("confidence" in updatedRaw)) throw new Error("canonical-confidence-update-failed");
