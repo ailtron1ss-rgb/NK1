@@ -53,6 +53,13 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+export function hasSameFileIdentity(
+  left: { readonly dev: number; readonly ino: number },
+  right: { readonly dev: number; readonly ino: number },
+): boolean {
+  return left.dev === right.dev && left.ino === right.ino;
+}
+
 function isPathWithin(parent: string, candidate: string): boolean {
   const root = path.resolve(parent);
   const target = path.resolve(candidate);
@@ -222,7 +229,11 @@ async function readDataset(pathSetting: string, root: string, stateDirectory: st
   }
   const actualPath = await realpath(configured);
   const actualInfo = await stat(actualPath);
-  if (!actualInfo.isFile()) throw new Error('native-p23-revision-dataset-must-be-a-regular-file');
+  // Bind the original lstat result to the canonical target. If the configured
+  // path was swapped for a symlink between lstat() and realpath(), fail closed.
+  if (!actualInfo.isFile() || !hasSameFileIdentity(linkInfo, actualInfo)) {
+    throw new Error('native-p23-revision-dataset-file-changed-before-open');
+  }
   const actualParent = await stat(path.dirname(actualPath));
   if (process.platform !== 'win32' && (actualParent.mode & 0o022) !== 0) {
     throw new Error('native-p23-revision-dataset-parent-must-not-be-group-or-world-writable');
@@ -236,11 +247,15 @@ async function readDataset(pathSetting: string, root: string, stateDirectory: st
   // before open, and a second fstat detects mutation while the bytes are read.
   const flags = constants.O_RDONLY |
     (process.platform === 'win32' ? 0 : (constants.O_NOFOLLOW ?? 0));
-  const handle = await open(actualPath, flags);
+  // Open the configured path, not the result of realpath(). O_NOFOLLOW must
+  // protect the same final path component that lstat() inspected.
+  const handle = await open(configured, flags);
   let raw: string;
   try {
     const openedInfo = await handle.stat();
-    if (!openedInfo.isFile() || openedInfo.dev !== actualInfo.dev || openedInfo.ino !== actualInfo.ino) {
+    if (!openedInfo.isFile() ||
+        !hasSameFileIdentity(openedInfo, linkInfo) ||
+        !hasSameFileIdentity(openedInfo, actualInfo)) {
       throw new Error('native-p23-revision-dataset-file-changed-before-open');
     }
     if (process.platform !== 'win32' && (openedInfo.mode & 0o022) !== 0) {
