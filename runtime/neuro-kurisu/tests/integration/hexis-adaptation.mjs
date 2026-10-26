@@ -52,6 +52,43 @@ assert.equal(oversizedStage.stagedSections.memories, undefined,
 assert.equal(fabric.decideHmx(oversizedStage.stagingId, 'accept')?.status, 'staged',
   'a size-conflicted stage must remain ineligible for acceptance');
 
+// Record-level schema errors poison the whole section, not just the bad row.
+const malformedMemoryExportId = 'exp_5555555555555555';
+const malformedMemoryStage = fabric.stageHmx({
+  document: makeHmxDocument(malformedMemoryExportId, {
+    memories: [
+      { ref: malformedMemoryExportId + ':valid-memory', type: 'semantic', content: 'Valid row must not be staged alone.' },
+      { ref: malformedMemoryExportId + ':invalid-memory', type: 'semantic', content: '' },
+    ],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(malformedMemoryStage.conflicts.some(conflict => conflict.path === 'sections.memories[1].content'));
+assert.equal(malformedMemoryStage.sectionCounts.memories, 2);
+assert.equal(malformedMemoryStage.stagedSections.memories, undefined,
+  'a schema-invalid memory array must be omitted atomically');
+assert.equal(fabric.decideHmx(malformedMemoryStage.stagingId, 'accept')?.status, 'staged');
+
+// Relationship refs must remain in the export namespace; malformed edges cannot be silently deferred.
+const malformedRelationshipExportId = 'exp_6666666666666666';
+const malformedRelationshipStage = fabric.stageHmx({
+  document: makeHmxDocument(malformedRelationshipExportId, {
+    relationships: [{
+      source_ref: 'exp_7777777777777777:memory-1',
+      target_ref: malformedRelationshipExportId + ':goal-1',
+      edge_type: 'supports',
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(malformedRelationshipStage.conflicts.some(conflict => conflict.kind === 'reference-export-mismatch'));
+assert.equal(malformedRelationshipStage.sectionCounts.relationships, 1);
+assert.equal(malformedRelationshipStage.stagedSections.relationships, undefined,
+  'one invalid edge must prevent partial relationship staging');
+assert.equal(fabric.decideHmx(malformedRelationshipStage.stagingId, 'accept')?.status, 'staged');
+
 const protectedStage = fabric.stageHmx({
   document: makeHmxDocument('exp_2222222222222222', {
     identity: [{ key: 'self', content: 'External identity must remain protected.' }],
@@ -163,6 +200,30 @@ const normalizedStage = importedNormalizedExport.stageHmx({
 assert.deepEqual(normalizedStage.conflicts, [], 'NK1 native export adapter must emit a conflict-free HMX 1.7 envelope');
 assert.equal(importedNormalizedExport.decideHmx(normalizedStage.stagingId, 'accept')?.status, 'accepted');
 
+// The producer and consumer must agree on the document budget. This normalized HMX
+// document deliberately exceeds the old 1 MB cap while remaining below the 8 MiB contract.
+const largeNativeExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'large-export-roundtrip',
+  sections: {
+    memories: Array.from({ length: 6 }, (_, index) => ({
+      id: 'large-memory-' + index,
+      type: 'semantic',
+      content: 'L'.repeat(180_000),
+    })),
+  },
+});
+const largeExportBytes = Buffer.byteLength(JSON.stringify(largeNativeExport), 'utf8');
+assert(largeExportBytes > 1_000_000 && largeExportBytes < 8 * 1024 * 1024,
+  'fixture must exercise the formerly incompatible export/import size boundary');
+const largeRoundTripFabric = new HexisAdaptationFabric();
+const largeRoundTripStage = largeRoundTripFabric.stageHmx({
+  document: largeNativeExport,
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(largeRoundTripStage.conflicts, [],
+  'a normalized export within the shared byte budget must be accepted for staging');
+assert.equal(largeRoundTripStage.stagedSections.memories.length, 6);
 
 function makeHmxDocument(exportId, sections) {
   return ({
