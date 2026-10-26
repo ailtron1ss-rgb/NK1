@@ -338,25 +338,34 @@ export class HexisCanonicalMemoryProjector {
         semanticEdgeIds.push(edge.id);
         projectedRelationships++;
       }
-      if (this.temporalLedger && createdIds.length) {
+      if (this.temporalLedger && importedIds.length) {
+        // Reconcile temporal indexing for every memory represented in the application
+        // receipt, not only IDs created by this attempt. If a prior writer committed
+        // before throwing and compensation failed, its retry is a dedupe and must still
+        // repair the missing temporal index.
+        const importedIdSet = new Set(importedIds);
         const canonicalItems = this.memoryFabric.canonicalSnapshot().items ?? [];
-        const canonicalById = new Map(canonicalItems.filter(item => createdIds.includes(item.id)).map(item => [item.id, item]));
+        const canonicalById = new Map(canonicalItems.filter(item => importedIdSet.has(item.id)).map(item => [item.id, item]));
         const sourceRowsByRef = new Map(normalized.map(item => [item.ref, item.row]));
-        for (const id of createdIds) {
+        const temporalSnapshot = this.temporalLedger.snapshot();
+        const temporalRows = Array.isArray(temporalSnapshot?.temporal) ? temporalSnapshot.temporal : [];
+        for (const id of importedIdSet) {
           const memory = canonicalById.get(id);
           if (!memory) throw new Error('hmx-temporal-canonical-memory-missing:' + id);
           const ref = asText(memory.context?.hexisMemoryRef, 512);
           const sourceRef = ref.startsWith(exportId + ':') ? ref.slice(exportId.length + 1) : ref;
+          const temporalSource = 'hexis:' + lineageId + ':' + sourceRef;
+          if (temporalRows.some(row => row.memoryId === id && row.validUntil === null && row.source === temporalSource)) continue;
           const inputRow = sourceRowsByRef.get(ref);
           const validFrom = dateMs(memory.validFromAt) ?? dateMs(memory.observedAt) ?? appliedAt;
           const validUntil = dateMs(memory.validUntilAt);
-          this.temporalLedger.recordTemporalAssertion({
+          const receipt = this.temporalLedger.recordTemporalAssertion({
             memoryId: id,
             summary: String(memory.content ?? '').slice(0, 2000),
             confidence01: clamp01(memory.confidence),
             validFrom,
             validUntil,
-            source: 'hexis:' + lineageId + ':' + sourceRef,
+            source: temporalSource,
             value: {
               sourceLineageId: lineageId,
               sourceRef,
@@ -364,6 +373,7 @@ export class HexisCanonicalMemoryProjector {
               provenance: inputRow?.provenance ?? inputRow?.source_attribution ?? null,
             },
           });
+          temporalRows.push(receipt);
         }
       }
     } catch (error) {
@@ -378,6 +388,15 @@ export class HexisCanonicalMemoryProjector {
         } catch (rollbackError) {
           rollbackErrors.push(String(rollbackError?.message ?? rollbackError).slice(0, 240));
         }
+      }
+      try {
+        const afterRollbackItems = this.memoryFabric.canonicalSnapshot().items ?? [];
+        const remainingIds = new Set(afterRollbackItems.filter(item => !beforeIds.has(item.id)).map(item => item.id));
+        for (const id of new Set([...rollbackCandidateIds, ...createdIds])) {
+          if (remainingIds.has(id)) rollbackErrors.push('canonical-memory-remains:' + id);
+        }
+      } catch (verificationError) {
+        rollbackErrors.push('canonical-rollback-verification:' + String(verificationError?.message ?? verificationError).slice(0, 220));
       }
       if (this.semanticGraph && semanticGraphBefore) {
         try {
