@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass389 — preserve chronology for out-of-order temporal imports (2026-10-26)
+
+- [FIX] Temporal assertions now close only earlier intervals that cover the inserted timestamp; historical assertions received after newer ones are capped at the next known start instead of wiping out future history.
+- [SAFETY] Preserve legitimate gaps between validity intervals, and prefer the active correction when assertions share the same start time.
+- [TEST] Extended the Hexis temporal-boundary regression with reverse-order insertion, interval-gap, and future-assertion preservation cases.
+- [VALIDATION] Code and regressions are committed; execution remains unverified while GitHub Actions fails before step initialization.
+
 ## [NK1][Hexis] WorkPass388 — preserve temporal validity through HMX import (2026-10-26)
 
 - [FIX] Extended the Hexis temporal assertion contract with an explicit optional `validUntil`. Imported canonical memory expiry now carries through to the temporal ledger; an expired assertion is no longer returned as current.
