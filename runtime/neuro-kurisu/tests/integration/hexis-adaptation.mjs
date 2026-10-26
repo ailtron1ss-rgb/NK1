@@ -2,9 +2,77 @@ import assert from 'node:assert/strict';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 import { HexisRemoteApiBridge, HexisRemoteBridgeError, parseHexisRemoteApiConfig } from '../../src/organism/integration/hexis/HexisRemoteApiBridge.ts';
 import { buildNk1HmxV17Document, normalizeHmxV17Memory, validateHmxV17Document } from '../../src/organism/integration/hexis/HexisHmxV17Adapter.ts';
+import { applyHmxMemoryBatchAtomically } from '../../src/organism/integration/hexis/HexisHmxImportTransaction.ts';
 
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
+
+// Batch application must roll canonical memory and the mutation-receipt ledger
+// back together if any encode throws after making an observable side effect.
+let transactionItems = [{ id: 'existing' }];
+let transactionReceipts = ['before'];
+const transactionPorts = {
+  snapshotMemory: () => structuredClone(transactionItems),
+  restoreMemory: snapshot => { transactionItems = structuredClone(snapshot); },
+  snapshotLifecycle: () => structuredClone(transactionReceipts),
+  restoreLifecycle: snapshot => { transactionReceipts = structuredClone(snapshot); },
+  encode: (input, commandId) => {
+    transactionItems.push({ id: input.id });
+    transactionReceipts.push(commandId);
+    if (input.fail === true) throw new Error('test failure after partial mutation');
+    return { id: input.id };
+  },
+};
+const rolledBack = applyHmxMemoryBatchAtomically(transactionPorts, [
+  { input: { id: 'new-one' }, commandId: 'test:one' },
+  { input: { id: 'failure', fail: true }, commandId: 'test:failure' },
+], ['existing']);
+assert.equal(rolledBack.outcome, 'rolled-back');
+assert.equal(rolledBack.created, 0);
+assert.deepEqual(transactionItems, [{ id: 'existing' }]);
+assert.deepEqual(transactionReceipts, ['before']);
+
+const committed = applyHmxMemoryBatchAtomically({
+  snapshotMemory: () => structuredClone(transactionItems),
+  restoreMemory: snapshot => { transactionItems = structuredClone(snapshot); },
+  snapshotLifecycle: () => structuredClone(transactionReceipts),
+  restoreLifecycle: snapshot => { transactionReceipts = structuredClone(snapshot); },
+  encode: (input, commandId) => {
+    const prior = transactionItems.find(row => row.id === input.id);
+    if (!prior) transactionItems.push({ id: input.id });
+    transactionReceipts.push(commandId);
+    return { id: input.id };
+  },
+}, [
+  { input: { id: 'new-one' }, commandId: 'test:success-one' },
+  { input: { id: 'existing' }, commandId: 'test:reuse-existing' },
+], ['existing']);
+assert.equal(committed.outcome, 'committed');
+assert.equal(committed.created, 1);
+assert.equal(committed.reused, 1);
+assert(transactionItems.some(row => row.id === 'new-one'));
+
+let incompleteItems = [];
+let incompleteReceipts = [];
+const rollbackIncomplete = applyHmxMemoryBatchAtomically({
+  snapshotMemory: () => structuredClone(incompleteItems),
+  restoreMemory: () => { throw new Error('simulated memory restore failure'); },
+  snapshotLifecycle: () => structuredClone(incompleteReceipts),
+  restoreLifecycle: snapshot => { incompleteReceipts = structuredClone(snapshot); },
+  encode: (input, commandId) => {
+    incompleteItems.push({ id: input.id });
+    incompleteReceipts.push(commandId);
+    if (input.fail === true) throw new Error('simulated encode failure');
+    return { id: input.id };
+  },
+}, [
+  { input: { id: 'survived-uncertainly' }, commandId: 'test:partial-one' },
+  { input: { id: 'failure', fail: true }, commandId: 'test:partial-two' },
+], []);
+assert.equal(rollbackIncomplete.outcome, 'rollback-incomplete');
+assert.equal(rollbackIncomplete.reason, 'rollback-failed');
+assert.equal(rollbackIncomplete.created, 1, 'incomplete rollback must not be reported as a clean skip');
+
 
 const first = fabric.reviseBelief({ memoryId:'mem-1', confidence01:.5, trust01:.6, stance:'supports', evidence:{ref:'source-a',trust01:.9}, context:'test' });
 assert.equal(first.applied, true);
