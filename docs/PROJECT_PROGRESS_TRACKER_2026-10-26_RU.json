@@ -246,28 +246,28 @@
         "status": "success",
         "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935755",
         "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
-        "scopeNote": "Exact source head at this snapshot; TypeScript and P26 learning regression passed."
+        "scopeNote": "PASS on exact code head 1755f129afc9e3eb953bdd96461e0a684b42f1a3; TypeScript typecheck, learning input integrity, and the extended Hermes/SkillLearnBench familywise candidate gate passed."
       },
       {
         "name": "WorkPass108 paired evidence identity and verified promotion gate",
         "status": "success",
         "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935759",
         "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
-        "scopeNote": "Verified promotion/evidence identity suite passed on the same source head."
+        "scopeNote": "PASS on exact code head 1755f129afc9e3eb953bdd96461e0a684b42f1a3; signed evidence identity/promotion contract passed with the family consistency check."
       },
       {
         "name": "WorkPass110 continual learning metrics",
         "status": "success",
         "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935746",
         "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
-        "scopeNote": "Full WorkPass110 metrics and runtime typecheck passed, including WorkPass203 manifest-family ledger tamper regression."
+        "scopeNote": "PASS on exact code head 1755f129afc9e3eb953bdd96461e0a684b42f1a3, including TypeScript runtime typecheck and the manifest-family report/run-binding tamper checks before VerifiedOutcomeLedger mutation."
       },
       {
         "name": "Unified project integration suite",
-        "status": "in_progress",
+        "status": "success",
         "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935805",
         "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
-        "scopeNote": "Progress ledger tests/reporter and integration contracts are running; no final conclusion is recorded yet."
+        "scopeNote": "PASS on exact code head 1755f129afc9e3eb953bdd96461e0a684b42f1a3. The progress-ledger step, pinned workspace install, app typecheck/build/tests, cognitive integration contracts, governed approval gateway E2E and unified runtime/research bridge smoke passed."
       }
     ]
   },
