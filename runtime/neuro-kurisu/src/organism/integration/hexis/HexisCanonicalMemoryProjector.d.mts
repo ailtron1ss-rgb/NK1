@@ -6,3 +6,6 @@ export declare class HexisCanonicalMemoryProjector {
   constructor(memoryFabric: MemoryFabric, semanticGraph?: SemanticMemoryGraph, temporalLedger?: { snapshot(): unknown; restore(state: any): void; recordTemporalAssertion(input: { memoryId: string; summary: string; confidence01: number; validFrom: number; source?: string; value?: unknown }): unknown });
   apply(stage: HexisHmxStage): HexisHmxApplyReceipt;
 }
+
+/** Shared receipt contract used by both the projector and persisted-stage replay path. */
+export declare function isValidHmxApplyReceipt(stage: HexisHmxStage, receipt: unknown): receipt is HexisHmxApplyReceipt;
