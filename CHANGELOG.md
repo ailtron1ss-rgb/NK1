@@ -2,8 +2,8 @@
 
 - **Defect:** a restored sidecar could contain a valid but future `lastTick`, including `Number.MAX_SAFE_INTEGER`. Because runtime used `Math.max(coreTick, sidecarTick + 1)`, the derived projection's clock kept moving ahead of the canonical Core clock and eventually supplied an unsafe tick to `integrate()`, preventing future integration.
 - **Fix:** added `UnifiedCognitiveSubstrate.reconcileLastTick(canonicalCoreTick)` and wired it into `OrganismRuntime.init()` after sidecar restore. If the sidecar is ahead of the durable Core tick, only its clock is re-anchored; cognitive metrics and cycle count are preserved. Invalid canonical ticks fail closed and the existing derived-state recovery path handles the failure.
-- **Regression:** unified-substrate runtime-wiring test restores `Number.MAX_SAFE_INTEGER`, reconciles to Core tick 7, checks other fields stay intact, checks invalid input is non-mutating, and verifies the next integration tick 8 succeeds. Runtime source contract checks startup wiring and warning event.
-- **Validation:** code and regression committed. The previous combined CI passed on code/test head `621864d0d7f2676245383adab86f1dcc6d0f741f`; WorkPass343's newer code/test HEAD still requires its own exact-head CI result.
+- **Regression:** `unified-substrate-runtime-wiring.mjs` restores `Number.MAX_SAFE_INTEGER`, reconciles to Core tick 7, preserves other fields, and verifies tick 8 succeeds. `organism-smoke.mjs` now writes a future tick into the durable sidecar, restarts a real `OrganismRuntime`, verifies reconciliation, and executes another autonomous step to ensure integration resumes. Both run through `test:cognitive-integration-suite`. The workflow path filters explicitly include the wiring test for PR and branch-push events.
+- **Validation:** current code/test head is `8b38a354e7a32ea8822e4cd44866c73f00ce0d1c`; exact-head CI remains pending. The previous combined CI passed on code/test head `621864d0d7f2676245383adab86f1dcc6d0f741f`, which does not include WorkPass343.
 - **Checkpoint:** `docs/WORKPASS343_SUBSTRATE_TICK_RECONCILIATION_RU.md`.
 
 ---
