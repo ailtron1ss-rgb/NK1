@@ -1,3 +1,10 @@
+## NK1 P26 regression coverage — prove malformed control fallbacks match explicit defaults (2026-10-26)
+
+- The `ParametricPolicyLearner` true-learning contract now has an explicit fallback-equivalence regression: training with non-finite rate/weight controls must produce the same parameters as the declared finite defaults (`learningRate01=0.03`, `sampleWeight01=0.1`). The feature-vector path is checked separately.
+- The production change keeps action/target validation strict while permitting the already-implemented bounded fallback logic to run before SGD updates. Any non-finite model state remains covered by existing finite-weight/bias assertions.
+
+---
+
 ## NK1 P26 learner — make bounded training-control fallbacks reachable (2026-10-26)
 
 - Removed the contradictory early rejection of non-finite `learningRate01` and `sampleWeight01` from `assertTrainingScalars()`. Both `train()` and `trainFeatures()` already replace malformed controls with conservative finite defaults and clamp effective rates/weights before any parameter update.
