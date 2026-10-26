@@ -12,6 +12,9 @@ test('root launchers resolve the runtime server from its owning workspace', () =
   assert.equal(runtimeEntry, path.resolve(root, 'runtime/neuro-kurisu/src/server/server.mjs'));
   assert.equal(existsSync(runtimeEntry), true, `runtime server entry must exist at ${runtimeEntry}`);
 
+  const startSource = readFileSync(new URL('./super-start.mjs', import.meta.url), 'utf8');
+  assert.match(startSource, /ensureUiBuilt\(ROOT\)/, 'production launcher must materialize a missing frontend build before preview starts');
+
   for (const launcher of ['super-start.mjs', 'super-dev.mjs']) {
     const source = readFileSync(new URL(`./${launcher}`, import.meta.url), 'utf8');
     assert.match(source, /resolveRuntimeServerEntry\(ROOT\)/, `${launcher} must use the shared runtime path resolver`);
