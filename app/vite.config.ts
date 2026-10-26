@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "vite";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -11,10 +11,6 @@ import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
 // @ts-expect-error JS plugin alongside the TS vite config
 import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
-
-const organismApiTarget = process.env.NEURO_KURISU_API_TARGET ?? "http://127.0.0.1:3310";
-const organismApiToken = process.env.NEURO_API_TOKEN?.trim();
-const organismApiProxyHeaders = organismApiToken ? { Authorization: `Bearer ${organismApiToken}` } : undefined;
 
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
 function hasGlobbedMigrations(root: string): boolean {
@@ -149,7 +145,14 @@ function authPopupPlugin(): Plugin {
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
-export default defineConfig(({ command, isPreview }) => ({
+export default defineConfig(({ command, isPreview, mode }) => {
+  // Vite reads .env after evaluating its config unless we explicitly load it.
+  // Resolve proxy credentials here so local dev and the container agree.
+  const configEnv = loadEnv(mode, process.cwd(), "");
+  const organismApiTarget = process.env.NEURO_KURISU_API_TARGET ?? configEnv.NEURO_KURISU_API_TARGET ?? "http://127.0.0.1:3310";
+  const organismApiToken = (process.env.NEURO_API_TOKEN ?? configEnv.NEURO_API_TOKEN)?.trim();
+  const organismApiProxyHeaders = organismApiToken ? { Authorization: `Bearer ${organismApiToken}` } : undefined;
+  return ({
   server: {
     host: "0.0.0.0",
     port: 8080,
@@ -197,4 +200,5 @@ export default defineConfig(({ command, isPreview }) => ({
       : []),
     viteReact(),
   ],
-}));
+});
+});
