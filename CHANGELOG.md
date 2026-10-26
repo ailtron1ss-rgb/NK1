@@ -1,3 +1,11 @@
+## [NK1][Hexis] WorkPass426 — make outbound delivery retries evidence-gated (2026-10-26)
+
+- [DELIVERY SAFETY] A negative outbox ACK and an expired `publishing` lease now transition to `uncertain`; neither can be claimed for another send until a reconciliation endpoint records an evidence reference and confirms `published` or `not-published`.
+- [IDEMPOTENCY] Capacity pressure no longer evicts old outbox keys. After 512 retained rows, new logical actions fail closed instead of creating a path for an old key to trigger a duplicate side effect.
+- [INTEGRATION] Added `OrganismCore.hexisResolveOutbox`, the server reconciliation route, retained resolution history, and an explicit count of uncertain deliveries in Hexis diagnostics.
+- [REGRESSION] Expanded adapter and server smoke tests for ambiguous ACKs, stale claims, evidence-gated retries, persistent idempotency keys and full-capacity rejection.
+- [VALIDATION] Tests and route wiring are committed but not claimed as executed; the current GitHub Actions jobs still fail without accessible step logs.
+
 ## [NK1][Hexis] WorkPass425 — bind approved goals to reviewed content (2026-10-26)
 
 - [APPROVAL INTEGRITY] Goal approval now stores a digest over the reviewed proposal identity, source lineage/ref, title, description, importance, urgency and confidence. The adapter validates it on repeated approval, materialization and activation; system-level materialize/activate entrypoints revalidate before mutating canonical state.
