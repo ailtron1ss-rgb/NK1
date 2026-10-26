@@ -63,6 +63,19 @@ const receipt = owner.fabric.snapshot().mutationReceipts.find((item) =>
 );
 assert.ok(receipt, "evidence append must be covered by the MemoryFabric idempotency ledger");
 assert.equal(receipt.outcome, "applied");
+assert.equal(receipt.evidenceInput.note, incoming.note);
+
+// Snapshot callers must not get a mutable reference to the stored receipt payload.
+const detachedReceiptSnapshot = owner.fabric.snapshot();
+const detachedEvidenceReceipt = detachedReceiptSnapshot.mutationReceipts.find((item) =>
+  item.action === "record-evidence" && item.memoryId === memory.id,
+);
+detachedEvidenceReceipt.evidenceInput.note = "snapshot caller attempted to rewrite the canonical receipt";
+assert.equal(
+  owner.fabric.snapshot().mutationReceipts.find((item) => item.commandId === receipt.commandId).evidenceInput.note,
+  incoming.note,
+  "MemoryFabric receipt snapshots must deep-copy nested evidence input",
+);
 
 const beforeReplayEvents = owner.events.list();
 const beforeReplayReviews = hexis.snapshot().learningReviews.length;
