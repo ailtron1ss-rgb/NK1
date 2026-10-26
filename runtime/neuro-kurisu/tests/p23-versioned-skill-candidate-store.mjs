@@ -40,6 +40,41 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
           verifierId: task.verifierId, observedAt: Date.now(),
         };
         const artifact = signOutcomePayloadForFixture(payload, privateKeyPem);
+        if (seed === 1 && i === 0 && method === 'baseline') {
+          // The signed-outcome verifier must enforce the same canonical Ed25519 encoding as the activation authority.
+          for (const signature of [
+            '!' + artifact.signature,
+            artifact.signature.replace(/==$/, '='),
+            artifact.signature.replace(/==$/, 'AA'),
+          ]) {
+            const result = ingestSignedOutcomeArtifact(ledger, manifest, { ...artifact, signature }, trustedKeys);
+            assert.equal(result.accepted, false, 'non-canonical signature encodings must be rejected');
+            assert.equal(result.rejection, 'invalid-signature-encoding');
+          }
+
+          const accessorPayload = { ...payload };
+          Object.defineProperty(accessorPayload, 'taskId', {
+            enumerable: true, configurable: true,
+            get() { throw new Error('untrusted payload getter must not execute'); },
+          });
+          assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, {
+            payload: accessorPayload, signature: artifact.signature,
+          }, trustedKeys).rejection, 'invalid-artifact-schema',
+          'payload accessors must be rejected before any field is read');
+
+          assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, {
+            payload: { ...payload, unboundExtraField: 'must not enter the signed v1 schema' },
+            signature: artifact.signature,
+          }, trustedKeys).rejection, 'invalid-artifact-schema',
+          'v1 signed payloads must have an exact field set');
+
+          const envelopeWithGetter = { payload };
+          Object.defineProperty(envelopeWithGetter, 'signature', {
+            enumerable: true, get() { throw new Error('untrusted envelope getter must not execute'); },
+          });
+          assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, envelopeWithGetter, trustedKeys).rejection,
+            'invalid-artifact-schema', 'artifact envelope accessors must be rejected');
+        }
         assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifact, trustedKeys).accepted, true);
       }
     }
