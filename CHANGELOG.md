@@ -1,3 +1,8 @@
+## [NK1][Hexis] Typecheck the Hexis frontend in CI (2026-10-26)
+
+- The canonical HMX workflow now triggers for the Hexis UI/API/type contract files and runs pinned frontend install plus `npm run typecheck` before runtime typecheck and HMX integration tests.
+- Hosted results remain unverified while Actions reports failed jobs with no step records/log blobs.
+
 ## [NK1][Hexis] Goal activation and HMX console closure (2026-10-26)
 
 - Goal activation now requires a second explicit confirmation; the smoke test verifies a denied attempt leaves the proposal materialized.
