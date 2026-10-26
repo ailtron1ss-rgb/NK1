@@ -952,7 +952,15 @@ async function route(req, res) {
             const decision = input.decision === 'accept' ? 'accept' : 'reject';
             const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
             await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), stage: result });
+            if (!result) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
+            if (decision === 'accept' && result.status !== 'accepted') {
+                return json(res, 409, {
+                    ok: false,
+                    error: result.conflicts?.length ? 'hmx-stage-has-conflicts' : 'hmx-stage-not-acceptable',
+                    stage: result,
+                });
+            }
+            return json(res, 200, { ok: true, stage: result });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
