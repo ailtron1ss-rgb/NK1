@@ -2,7 +2,8 @@
 
 - [FIX] Aligned HMX import staging with the export adapter's 8 MiB UTF-8 document budget; normalized exports that expand beyond the same budget now fail explicitly instead of producing an artifact that the importer cannot stage.
 - [FIX] HMX memory/relationship arrays with record-level schema errors are omitted atomically. Relationship endpoints must be valid refs in the same export namespace, and optional properties must be objects.
-- [FIX] Idempotent replay now requires a well-formed, digest-valid application receipt bound to the exact stage ID, export ID, lineage, and stage digest. Cross-stage or tampered receipts fail closed without touching canonical storage.
+- [FIX] Idempotent replay now requires a well-formed, digest-valid application receipt bound to the exact stage ID, export ID, lineage, and stage digest at both projector and normal `decideHmx('apply')` entry points. Cross-stage or tampered receipts fail closed without touching canonical storage.
+- [WIRING] Added the direct receipt regression to `audit:hexis` and added the receipt, HMX integration, and server-smoke regressions to WorkPass71 primary CI.
 - [TEST] Added round-trip coverage for a normalized export above 1 MiB, atomic malformed-memory/relationship rejection, and forged/stale/tampered replay receipts.
 - [VALIDATION] Source and tests are committed; this pass could not run Node/TypeScript locally because the container cannot resolve GitHub. Hosted Actions must still provide actionable exact-head results. Main and the canonical Release ZIP remain unchanged.
 
