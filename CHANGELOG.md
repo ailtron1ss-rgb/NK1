@@ -1,3 +1,8 @@
+## [NK1][Hexis] Require a valid proposal ID before materialization (2026-10-26)
+
+- Remove the last coercive `String(input.proposalId || '')` call from Hexis POST ingress; materialization now rejects missing, blank, or non-string proposal IDs before invoking the core.
+- Add a server-smoke regression for a confirmed request that omits the proposal ID.
+
 ## [NK1][Hexis] Resume staged HMX actions after a console reload (2026-10-26)
 
 - Manually entered stage IDs can now be submitted after a reload even when the local React state has no cached stage snapshot.
