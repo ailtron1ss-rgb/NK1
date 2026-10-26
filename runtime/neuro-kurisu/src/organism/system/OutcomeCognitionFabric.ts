@@ -101,17 +101,41 @@ export class OutcomeCognitionFabric {
     };
     this.records=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).slice(-this.maxRecords).map(r=>structuredClone(r)):[];
     this.projectionIndex.clear();
+    const conflictingProjectionIds=new Set<string>();
     if(Array.isArray(snapshot?.projectionIndex)) for(const candidate of snapshot.projectionIndex.slice(-this.maxProjectionIndex)){
       if(!candidate||typeof candidate.executionId!=='string'||!candidate.executionId.trim()||candidate.executionId.length>180||
         !/^[a-f0-9]{64}$/i.test(String(candidate.fingerprint??''))||!validRecord(candidate.record))continue;
       const executionId=candidate.executionId.trim();
-      this.projectionIndex.set(executionId,{executionId,fingerprint:candidate.fingerprint.toLowerCase(),record:structuredClone(candidate.record),verifiedExternal:Boolean(candidate.verifiedExternal)});
+      // The index key, record identity and immutable fingerprint must describe the same
+      // execution. A well-formed 64-hex string is not proof that the restored entry is sound.
+      if(candidate.record.executionId!==executionId||conflictingProjectionIds.has(executionId))continue;
+      const fingerprint=String(candidate.fingerprint).toLowerCase();
+      try {
+        if(this.fingerprintFromRecord(candidate.record)!==fingerprint)continue;
+        const prior=this.projectionIndex.get(executionId);
+        if(prior){
+          const identical=prior.fingerprint===fingerprint&&sha256Stable(prior.record)===sha256Stable(candidate.record);
+          if(!identical){this.projectionIndex.delete(executionId);conflictingProjectionIds.add(executionId);}
+          continue;
+        }
+        const record=structuredClone(candidate.record);
+        // Never trust a separately persisted derived boolean when the record itself is
+        // the authority for whether this original outcome was externally verified.
+        const verifiedExternal=Boolean(record.ok&&record.verified&&record.basis==='external-postcondition'&&record.externalObservation&&record.observationId);
+        this.projectionIndex.set(executionId,{executionId,fingerprint,record,verifiedExternal});
+      } catch {
+        // Corrupt/cyclic entries are dropped; valid canonical records below can rebuild the index.
+        continue;
+      }
     }
-    // Backward-compatible seeding for snapshots created before the projection index.
+    // Backward-compatible repair for missing, stale or conflicting index entries.
+    // The retained verification records rebuild the index from the immutable outcome fields.
     for(const record of this.records){
-      if(!record.executionId||this.projectionIndex.has(record.executionId))continue;
+      const executionId=boundedText(record.executionId,180);
+      if(!executionId||this.projectionIndex.has(executionId))continue;
       const fingerprint=this.fingerprintFromRecord(record);
-      this.projectionIndex.set(record.executionId,{executionId:record.executionId,fingerprint,record:structuredClone(record),verifiedExternal:Boolean(record.ok&&record.verified&&record.basis==='external-postcondition'&&record.externalObservation&&record.observationId)});
+      const verifiedExternal=Boolean(record.ok&&record.verified&&record.basis==='external-postcondition'&&record.externalObservation&&record.observationId);
+      this.projectionIndex.set(executionId,{executionId,fingerprint,record:structuredClone(record),verifiedExternal});
     }
     this.trimProjectionIndex();
     this.evidenceRevisions=Array.isArray(snapshot?.evidenceRevisions)

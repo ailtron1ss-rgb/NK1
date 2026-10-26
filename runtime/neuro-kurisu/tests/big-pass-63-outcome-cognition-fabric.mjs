@@ -30,4 +30,41 @@ learner.project({tick:11,tool:'door.open',ok:true,executionId:'exec-learning-wit
 const observed=learner.resolveExternalObservation({tick:12,tool:'door.open',executionId:'exec-learning-with-source',observationId:'external-door-observed',verified:true,confidence01:.91,assessment:'match',sourceId:'door-sensor-a',sourceClass:'device',independenceKey:'door-sensor-bus-a',expectedPostcondition:'door=open',observedPostcondition:'door=open'});
 assert.equal(observed.resolved,true);
 assert.ok(observed.causal.nodes.some(n=>n.kind==='learning'&&n.data?.observationId==='external-door-observed'&&n.data?.evidenceThresholdMet===true));
+
+// Restored projection-index entries must agree with the canonical execution ID and the
+// immutable fingerprint. A stale, mismatched or conflicting entry is rebuilt from records.
+const indexIntegrityInput={tick:13,tool:'storage.write',ok:true,executionId:'exec-restore-index-integrity',verification:{verified:true,basis:'tool-contract',confidence01:.84,externalObservation:false}};
+const indexIntegritySource=new OutcomeCognitionFabric();
+const indexIntegrityOriginal=indexIntegritySource.project(indexIntegrityInput);
+const originalIndexSnapshot=indexIntegritySource.snapshot();
+assert.equal(originalIndexSnapshot.projectionIndex.length,1);
+const identityTamperSnapshot=structuredClone(originalIndexSnapshot);
+identityTamperSnapshot.projectionIndex[0].record.executionId='exec-forged-other-operation';
+const identityRestored=new OutcomeCognitionFabric();
+identityRestored.restore(identityTamperSnapshot);
+const identityReplay=identityRestored.project(indexIntegrityInput);
+assert.equal(identityReplay.verificationRecord.executionId,indexIntegrityInput.executionId,'restored index record must not substitute another execution identity');
+assert.equal(identityReplay.verificationRecord.tool,indexIntegrityInput.tool);
+assert.equal(identityRestored.snapshot().projectionIndex[0].executionId,indexIntegrityInput.executionId);
+
+const fingerprintTamperSnapshot=structuredClone(originalIndexSnapshot);
+fingerprintTamperSnapshot.projectionIndex[0].fingerprint='a'.repeat(64);
+const fingerprintRestored=new OutcomeCognitionFabric();
+fingerprintRestored.restore(fingerprintTamperSnapshot);
+const fingerprintReplay=fingerprintRestored.project(indexIntegrityInput);
+assert.equal(fingerprintReplay.verificationRecord.executionId,indexIntegrityInput.executionId,'a well-formed but stale fingerprint must not poison same-key replay');
+assert.equal(fingerprintRestored.snapshot().projectionIndex[0].fingerprint,originalIndexSnapshot.projectionIndex[0].fingerprint);
+
+const conflictingDuplicateSnapshot=structuredClone(originalIndexSnapshot);
+conflictingDuplicateSnapshot.projectionIndex.push({
+  ...structuredClone(conflictingDuplicateSnapshot.projectionIndex[0]),
+  record:{...structuredClone(conflictingDuplicateSnapshot.projectionIndex[0].record),tool:'other.tool'},
+});
+const conflictRestored=new OutcomeCognitionFabric();
+conflictRestored.restore(conflictingDuplicateSnapshot);
+const conflictReplay=conflictRestored.project(indexIntegrityInput);
+assert.equal(conflictReplay.verificationRecord.executionId,indexIntegrityInput.executionId,'conflicting duplicate index entries must recover from retained canonical records');
+assert.equal(conflictReplay.verificationRecord.tool,indexIntegrityInput.tool);
+assert.equal(conflictRestored.snapshot().projectionIndex.length,1,'conflicting duplicate index entries must collapse to one canonical execution');
+
 console.log('BIG_PASS_63_OUTCOME_COGNITION_FABRIC=PASS records='+f.summary().records+' nodes='+f.summary().causal.nodes+' edges='+f.summary().causal.edges+' external-evidence-contract=fail-closed learning=provenance-gated');
