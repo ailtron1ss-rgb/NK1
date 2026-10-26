@@ -7,6 +7,7 @@
 - Harden the lower-level holdout revision gate against malformed runtime/persisted fields: numeric/object task IDs, family/method/verifier/evidence fields, invalid top-level arrays, and malformed options now fail closed instead of crashing the evaluator.
 - Add regressions showing valid paired holdout outcomes still evaluate and seven malformed row variants are rejected without disrupting the valid pairs.
 - Correct the persisted CAS tamper fixture to alter the signed approval claim without breaking the candidate's prior-version chain, so it reaches the assertion it intends to cover.
+- Correct cross-family holdout-pair accounting: baseline/candidate rows with mismatched task families remain excluded and now increment `rejectedRows`; the regression asserts both the paired denominator and rejection count.
 
 Validation: code and regression tests are committed on the working branch. Local runtime tests were not run in this environment; CI results remain pending.
 
