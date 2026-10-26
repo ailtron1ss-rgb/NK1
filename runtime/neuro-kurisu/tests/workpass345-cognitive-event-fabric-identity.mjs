@@ -397,4 +397,85 @@ assert.equal(strictRestore.getById('cef:test:restore:oversized-source')?.source,
    'legacy exact replay remains valid when the persisted projection hash verifies the complete input');
  assert.equal(legacyReceiptFabric.snapshot().total,legacyTotal);
 
+
+// Explicit confidence must be within the semantic range; it is not silently clamped.
+const beforeBadConfidence=fabric.snapshot().total;
+for(const [index,confidence] of [-0.01,1.01,Number.NaN,Number.POSITIVE_INFINITY,'0.5',null].entries()){
+  assert.throws(
+    ()=>fabric.append(makeEvent({id:'cef:test:identity:bad-confidence:'+index,confidence01:confidence})),
+    /invalid-cognitive-event-confidence/,
+  );
+  assert.equal(fabric.snapshot().total,beforeBadConfidence,'invalid confidence must not mutate the journal');
+}
+const confidenceZero=fabric.append(makeEvent({id:'cef:test:identity:confidence-zero',confidence01:0}));
+const confidenceOne=fabric.append(makeEvent({id:'cef:test:identity:confidence-one',confidence01:1}));
+assert.equal(confidenceZero.confidence01,0);
+assert.equal(confidenceOne.confidence01,1);
+
+// Top-level accessors are rejected without invoking their getters.
+const accessorFields=['id','tick','at','stage','source','parentIds','external','confidence01','payload'];
+for(const field of accessorFields){
+  let fieldGetterCalls=0;
+  const candidate=makeEvent({id:'cef:test:identity:input-accessor:'+field});
+  Object.defineProperty(candidate,field,{
+    configurable:true,enumerable:true,
+    get(){fieldGetterCalls+=1;return field==='id'?'cef:test:identity:input-accessor:'+field:undefined;},
+  });
+  const beforeAccessorInput=fabric.snapshot().total;
+  assert.throws(
+    ()=>fabric.append(candidate),
+    /cognitive-event-input-field-accessor/,
+    'top-level input accessor must be rejected: '+field,
+  );
+  assert.equal(fieldGetterCalls,0,'accessor getter must never execute: '+field);
+  assert.equal(fabric.snapshot().total,beforeAccessorInput,'accessor input must not mutate the journal');
+}
+
+// A proxy descriptor trap is caught before event writes.
+const beforeDescriptorTrap=fabric.snapshot().total;
+const descriptorTrapInput=new Proxy(makeEvent({id:'cef:test:identity:descriptor-trap'}),{
+  getOwnPropertyDescriptor(target,key){
+    if(key==='tick')throw new Error('descriptor trap');
+    return Reflect.getOwnPropertyDescriptor(target,key);
+  },
+});
+assert.throws(
+  ()=>fabric.append(descriptorTrapInput),
+  /invalid-cognitive-event-input-field:tick/,
+);
+assert.equal(fabric.snapshot().total,beforeDescriptorTrap);
+
+// Duplicate parents and C1 control characters are not valid causal identity.
+const beforeInvalidLineage=fabric.snapshot().total;
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:duplicate-parents',parentIds:['parent:same','parent:same']})),
+  /invalid-cognitive-event-duplicate-parent-id/,
+);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:c1-id\u0085suffix'})),
+  /invalid-cognitive-event-id/,
+);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:c1-source',source:'source\u0085suffix'})),
+  /invalid-cognitive-event-source/,
+);
+assert.throws(
+  ()=>fabric.append(makeEvent({id:'cef:test:identity:c1-parent',parentIds:['parent:\u0085suffix']})),
+  /invalid-cognitive-event-parent-id/,
+);
+assert.equal(fabric.snapshot().total,beforeInvalidLineage,'invalid lineage identity must not mutate the journal');
+
+// Restored evidence must reject out-of-range confidence instead of changing its meaning.
+const confidenceRestore=new CognitiveEventFabric(16);
+const confidenceRestoreBase=makeEvent({id:'cef:test:restore:confidence-valid',confidence01:0.8});
+confidenceRestore.restore({
+  version:1,capacity:16,total:2,buffered:2,linkedParentEvents:0,danglingParentLinks:0,
+  lineageIntegrity01:1,cycleCoverage01:0,causalDensity01:0,recentTicks:0,recent: [
+    {...confidenceRestoreBase,payload:{recovered:false},confidence01:1.1},
+    {...confidenceRestoreBase,payload:{recovered:true},confidence01:0.8},
+  ],
+});
+assert.equal(confidenceRestore.getById('cef:test:restore:confidence-valid')?.confidence01,0.8,
+  'invalid confidence rows must not reserve IDs or be clamped into valid evidence');
+
 console.log('WorkPass345 CognitiveEventFabric identity: PASS');
