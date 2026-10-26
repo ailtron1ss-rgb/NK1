@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decideSupervisedChildExit } from './supervisor-exit-policy.mjs';
+import { decideSupervisedChildExit, decideSupervisedChildSpawnError } from './supervisor-exit-policy.mjs';
 
 test('clean child exit during shutdown is ignored', () => {
   assert.deepEqual(decideSupervisedChildExit({
@@ -46,3 +46,27 @@ test('service labels and signal text are bounded and sanitized', () => {
 });
 
 console.log('NK1 supervised-child exit policy regressions passed');
+
+test('spawn failure shuts down siblings rather than leaving a partial organism alive', () => {
+  assert.deepEqual(decideSupervisedChildSpawnError({
+    label: 'research-bridge', errorMessage: 'ENOENT: python3 missing', shuttingDown: false,
+  }), {
+    action: 'shutdown',
+    reason: 'child:research-bridge:spawn-error',
+    message: '[super] research-bridge spawn error: ENOENT: python3 missing',
+  });
+});
+
+test('spawn errors during coordinated shutdown are ignored and details are sanitized', () => {
+  assert.deepEqual(decideSupervisedChildSpawnError({
+    label: 'runtime', errorMessage: 'already stopping', shuttingDown: true,
+  }), { action: 'ignore', reason: 'supervisor-shutdown', message: '' });
+  const result = decideSupervisedChildSpawnError({
+    label: 'ui-preview',
+    errorMessage: 'bad\nmessage\u0000more',
+    shuttingDown: false,
+  });
+  assert.equal(result.action, 'shutdown');
+  assert.doesNotMatch(result.message, /[\u0000-\u001f\u007f-\u009f]/);
+  assert.ok(result.message.length < 320);
+});
