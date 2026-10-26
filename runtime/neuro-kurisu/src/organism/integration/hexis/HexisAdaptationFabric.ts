@@ -444,9 +444,26 @@ export class HexisAdaptationFabric {
         if (validUntil !== null && (!Number.isFinite(validUntil) || validUntil < validFrom)) {
             throw new Error('temporal-valid-until-invalid');
         }
-        const existing = this.state.temporal.find((row) => row.memoryId === memoryId && row.validUntil === null);
         const at = nowMs();
-        if (existing) existing.validUntil = Math.max(existing.validFrom, validFrom);
+        const history = this.state.temporal.filter((row) => row.memoryId === memoryId);
+        const prior = history
+            .filter((row) => row.validFrom <= validFrom && (row.validUntil === null || validFrom < row.validUntil))
+            .sort((a, b) => b.validFrom - a.validFrom || b.at - a.at)[0];
+        const next = history
+            .filter((row) => row.validFrom > validFrom)
+            .sort((a, b) => a.validFrom - b.validFrom || a.at - b.at)[0];
+        // Insertions can arrive out of chronological order. Close every earlier
+        // interval that currently covers this point, then cap the new interval at
+        // the next known assertion so history never overlaps or erases future facts.
+        for (const row of history) {
+            if (row.validFrom <= validFrom && (row.validUntil === null || validFrom < row.validUntil)) {
+                row.validUntil = Math.max(row.validFrom, validFrom);
+            }
+        }
+        let effectiveValidUntil = validUntil;
+        if (next && (effectiveValidUntil === null || next.validFrom < effectiveValidUntil)) {
+            effectiveValidUntil = next.validFrom;
+        }
         const created: HexisTemporalAssertion = {
             id: randomUUID(),
             memoryId,
@@ -454,8 +471,8 @@ export class HexisAdaptationFabric {
             summary: String(input.summary).slice(0, 2000),
             confidence01: clamp(input.confidence01),
             validFrom,
-            validUntil,
-            supersedesId: existing?.id,
+            validUntil: effectiveValidUntil,
+            supersedesId: prior?.id,
             source: String(input.source ?? 'canonical-memory'),
             at,
         };
