@@ -1,3 +1,11 @@
+## NK1 [evidence] — reject inconsistent P65 claim aliases
+
+- A new upstream event ID can now alias an existing stable P65 claim only if the retained claim fingerprint exactly matches the candidate semantic payload.
+- Fingerprint mismatch quarantines the incoming alias ID and preserves the canonical claim unchanged; it cannot insert a contradictory index entry that would be discovered only at restore time.
+- Added a regression for two event IDs colliding on the stable claim key but differing in confidence.
+
+---
+
 ## NK1 [evidence] — snapshot P65 records before processing caller input (2026-10-26)
 
 - `P65EpistemicLedger.record` now snapshots bounded plain input before reading fields, rejects getter-backed/cyclic/exotic input without invoking getters, and fails closed before changing claim/index state.

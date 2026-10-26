@@ -358,6 +358,23 @@ test('P65 record rejects accessors and cyclic input without invoking caller gett
     'a rejected cyclic input cannot mutate P65 claim state');
 });
 
+test('P65 does not bind a new event alias to a claim with a different fingerprint', () => {
+  const ledger = new P65EpistemicLedger();
+  const base = {
+    tick: 23, at: 2300000000000, kind: 'inference', content: 'stable semantic claim for alias check',
+    confidence01: 0.41, source: 'organism', eventId: 'upstream:event:canonical',
+  };
+  const canonicalClaimId = ledger.record(base);
+  const conflictingAlias = { ...base, confidence01: 0.92, eventId: 'upstream:event:conflicting-alias' };
+  assert.throws(() => ledger.record(conflictingAlias), /p65-event-identity-conflict/);
+  const state = ledger.snapshot();
+  assert.ok(state.quarantinedEventIds.includes(conflictingAlias.eventId));
+  assert.equal(state.eventIdentityIndex.some(row => row.eventId === conflictingAlias.eventId), false);
+  assert.equal(state.claimsData.find(row => row.id === canonicalClaimId)?.confidence01, base.confidence01,
+    'rejecting an inconsistent alias must not rewrite the canonical claim');
+  assert.throws(() => ledger.record(conflictingAlias), /p65-event-identity-quarantined/);
+});
+
 test('P65 fails closed when an event identity is reused with conflicting evidence', () => {
   const eventId = realityEvidenceEventId('exec-p65-quarantine-518', 'tool-outcome', 'canonical');
   const input = {

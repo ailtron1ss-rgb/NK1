@@ -214,7 +214,14 @@ export class P65EpistemicLedger{
   if(this.state.recentIds.includes(id)){
     if(eventId){
       const priorClaim=this.state.claimsData.find(row=>row.id===id);
-      if(priorClaim&&!priorClaim.eventId)priorClaim.eventId=eventId;
+      if(priorClaim){
+        const priorFingerprint=eventFingerprint(claimIdentityPayload(priorClaim));
+        if(priorFingerprint!==fingerprint){
+          this.quarantineEventId(eventId);
+          throw new TypeError('p65-event-identity-conflict');
+        }
+        if(!priorClaim.eventId)priorClaim.eventId=eventId;
+      }
       this.state.eventIdentityIndex=[{eventId,claimId:id,fingerprint},...(this.state.eventIdentityIndex??[]).filter(row=>row.eventId!==eventId)].slice(0,512);
     }
     return id;
