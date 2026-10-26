@@ -9,6 +9,7 @@
 - The UI never treats the typed ID as proof of status: the server still checks the stage lifecycle seal/status and conflicts, while acceptance and canonical apply remain separately confirmed. This allows recovery without weakening server-side invariants.
 
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
+- [ATOMICITY REGRESSION] Inject a temporal-ledger failure after canonical MemoryFabric commit and semantic-node projection; assert compensating rollback restores memory, graph and ledger baselines, then a retry produces exactly one valid object per store.
 - [IDENTITY] Require canonical trimmed stage lineage/staging IDs and bound receipt IDs/warnings; recomputed digests no longer legitimize padded identity fields.
 - [BOUNDS] Receipt memory/semantic IDs are capped at 512 characters, stage lineage/staging IDs must be trimmed canonical strings, and warning strings are capped at 2048 characters with control characters rejected.
 - [INTEGRITY] Reject duplicate semantic-edge IDs even when projected relationship counters are otherwise consistent with the staged relationship array.
