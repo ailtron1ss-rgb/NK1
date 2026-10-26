@@ -20,6 +20,10 @@
 
 Важно: `recordVerifiedHoldout()` — типизированная граница admission API; поля `verified/independent` должны выставляться доверенным независимым verifier-контуром. Само наличие этих полей не криптографически доказывает честность verifier; для production-трастинга нужно дальше связать admission с подписанным P23 evidence artifact.
 
+## Дополнительное исправление по результатам policy sweep
+
+Первый полный policy sweep показал `interleave-1`, seed 17: новая задача падала до `0.52`, старая сохранялась на `0.94`. Причина — каждый слот завершался replay-обновлением прошлого опыта после текущего примера, поэтому градиент последней задачи систематически перекрывался. Переставлен порядок: replay выполняется до current sample; ограниченный конфликтный скрининг равномерно охватывает всю текущую выборку. Порог новой задачи `>0.60` не ослаблялся. Добавлен прямой тест фактического порядка target-обновлений; повторный `test:learning-replay` нужен для подтверждения улучшения на всех стратегиях/seeds.
+
 ## Регрессии и CI
 
 - Добавлен `tests/p26-interleaved-contract.mjs`: отделение training exposure от generalization evidence, rejection unverified/dependent holdout, duplicate guard после restore, atomic preflight и rollback.
