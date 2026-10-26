@@ -1,3 +1,11 @@
+## NK1 endogenous-goal persistence — enforce shared bounded data boundary (2026-10-26)
+
+- Connected `B272EndogenousGoalGenesis.restore()` to the shared core data-tree validator. Goal state no longer reads accessor-backed, custom-prototype, cyclic, aliased, sparse, or over-budget snapshots before validation.
+- A 300,000 combined node/key budget preserves the existing large-matrix quarantine regression while still applying the canonical fixed-size matrix restore; the validator imposes a hard 500,000 budget cap and depth cap.
+- Added accessor and cycle tests that prove rejection leaves goal-genesis state unchanged. Goal scoring and outcome-credit logic are unchanged.
+
+---
+
 ## NK1 core persistence architecture — share bounded data-tree validation (2026-10-26)
 
 - Extracted the bounded plain-data validator into `organism/core/BoundedPlainData.ts` and reused it in P23 learning restore, unified cognitive-cycle restore, and intrinsic-motivation restore. These state boundaries now reject accessors, custom prototypes, sparse/custom arrays, symbols, cycles/aliases, and over-budget/deep structures before trusting persisted state.
