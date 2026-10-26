@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { MemorySubsystemRuntime } from "../src/organism/core/MemorySubsystemRuntime.ts";
 import { HexisAdaptationFabric } from "../src/organism/integration/hexis/HexisAdaptationFabric.ts";
-import {
-  ingestHexisEvidenceForReview,
-  decideHexisEvidenceReview,
-} from "../src/organism/memory/HexisEvidenceMemoryBridge.ts";
+import { OrganismSystemFabric } from "../src/organism/core/OrganismSystemFabric.ts";
 
 function createMemory(memoryOS, content, confidence = 0.5) {
   return memoryOS.encode({
@@ -44,12 +41,12 @@ function evidence(memoryId, evidenceId, patch = {}) {
 
 const owner = new MemorySubsystemRuntime();
 const hexis = new HexisAdaptationFabric();
+const system = new OrganismSystemFabric({ memory: owner, hexisAdaptation: hexis });
 const memory = createMemory(owner.memoryOS, "Canonical belief whose confidence requires review approval.", 0.5);
 const initialConfidence = memory.confidence;
-const writer = owner;
 const incoming = evidence(memory.id, "hexis:fabric-ingress:001");
 
-const pending = ingestHexisEvidenceForReview(owner.memoryOS, hexis, incoming, writer);
+const pending = system.ingestHexisEvidenceForReview(incoming);
 assert.equal(pending.status, "review-pending");
 assert.equal(owner.memoryOS.get(memory.id).confidence, initialConfidence, "evidence append must not revise confidence before review");
 const eventsAfterIngress = owner.events.list();
@@ -69,14 +66,12 @@ assert.equal(receipt.outcome, "applied");
 
 const beforeReplayEvents = owner.events.list();
 const beforeReplayReviews = hexis.snapshot().learningReviews.length;
-const replay = ingestHexisEvidenceForReview(owner.memoryOS, hexis, incoming, writer);
+const replay = system.ingestHexisEvidenceForReview(incoming);
 assert.equal(replay.status, "duplicate");
 assert.deepEqual(owner.events.list(), beforeReplayEvents, "evidence retry must not emit a second lifecycle event");
 assert.equal(hexis.snapshot().learningReviews.length, beforeReplayReviews, "evidence retry must not create a second review");
 
-const decision = decideHexisEvidenceReview(
-  owner.memoryOS, hexis, pending.reviewId, pending.reviewItemId, "approve", undefined, writer,
-);
+const decision = system.decideHexisEvidenceReview(pending.reviewId, pending.reviewItemId, "approve");
 assert.equal(decision.status, "decided");
 assert.equal(decision.confidenceChanged, true);
 assert.ok(owner.memoryOS.get(memory.id).confidence > initialConfidence);
@@ -97,7 +92,7 @@ assert.ok(owner.fabric.snapshot().mutationReceipts.some((item) =>
 ), "approved confidence mutation must be idempotency-receipted");
 
 const afterApprovalConfidence = owner.memoryOS.get(memory.id).confidence;
-const replayAfterApproval = ingestHexisEvidenceForReview(owner.memoryOS, hexis, incoming, writer);
+const replayAfterApproval = system.ingestHexisEvidenceForReview(incoming);
 assert.equal(replayAfterApproval.status, "duplicate");
 assert.equal(owner.memoryOS.get(memory.id).confidence, afterApprovalConfidence);
 
@@ -105,6 +100,7 @@ assert.equal(owner.memoryOS.get(memory.id).confidence, afterApprovalConfidence);
 // including MemoryFabric command receipts and EventLog history, so retry remains possible.
 const rollbackMemory = createMemory(owner.memoryOS, "A second memory used to test cross-owner rollback.", 0.47);
 const rollbackFabric = new HexisAdaptationFabric();
+const rollbackSystem = new OrganismSystemFabric({ memory: owner, hexisAdaptation: rollbackFabric });
 const rollbackInput = evidence(rollbackMemory.id, "hexis:fabric-ingress:rollback");
 const memoryBefore = structuredClone(owner.memoryOS.snapshot());
 const memoryFabricBefore = structuredClone(owner.fabric.snapshot());
@@ -112,7 +108,7 @@ const eventsBefore = structuredClone(owner.events.list());
 const reviewBefore = structuredClone(rollbackFabric.snapshot());
 const realCreateReview = rollbackFabric.createLearningReview.bind(rollbackFabric);
 rollbackFabric.createLearningReview = () => { throw new Error("simulated review-queue outage"); };
-const failed = ingestHexisEvidenceForReview(owner.memoryOS, rollbackFabric, rollbackInput, writer);
+const failed = rollbackSystem.ingestHexisEvidenceForReview(rollbackInput);
 rollbackFabric.createLearningReview = realCreateReview;
 assert.equal(failed.status, "rejected");
 assert.equal(failed.reason, "hexis-review-ingress-failed");
@@ -120,7 +116,7 @@ assert.deepEqual(owner.memoryOS.snapshot(), memoryBefore, "failed review must ro
 assert.deepEqual(owner.fabric.snapshot(), memoryFabricBefore, "failed review must remove the MemoryFabric receipt");
 assert.deepEqual(owner.events.list(), eventsBefore, "failed review must remove the lifecycle event");
 assert.deepEqual(rollbackFabric.snapshot(), reviewBefore, "failed review must rollback the review queue");
-const retried = ingestHexisEvidenceForReview(owner.memoryOS, rollbackFabric, rollbackInput, writer);
+const retried = rollbackSystem.ingestHexisEvidenceForReview(rollbackInput);
 assert.equal(retried.status, "review-pending", "same evidence must be retryable after an atomic rollback");
 assert.equal(owner.events.list().filter((event) =>
   event.type === "memory-lifecycle" &&
