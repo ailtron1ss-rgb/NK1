@@ -1,3 +1,13 @@
+## WorkPass417 — snapshot the HMX stage request envelope without executing getters (2026-10-26)
+
+- **Fabric code commit:** `ff87945607101053a2ec4dad99eb41772d989a56`; **regression commit:** `cc2bf0633fbc61f1da5862c0df214f688cf9ac07`.
+- `stageHmx` now captures the exact `document`, `intent` and `strategy` values via own data descriptors from a plain request envelope. Accessors, inherited/custom-prototype envelopes and extra keys are rejected as `hmx-unsafe-stage-request` before field reads, document validation, stage creation or metric mutation.
+- The captured `document` still goes through the existing bounded HMX document snapshot, preserving the existing diagnostic-stage behavior for malformed HMX payloads. This prevents getter-backed request metadata from changing between allowlist validation and staging.
+- Regressions require intent and document getter functions not to run, require both requests to fail closed, and verify the stage ledger stays empty. Runtime enum allowlist checks remain in place after capture.
+- **Validation:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass416 — enforce HMX mode allowlists inside the adaptation fabric (2026-10-26)
 
 - **Fabric code commit:** `d82d5f9c77a303322b6a379e9b664111917f9bf0`; **direct-call regression:** `b1595b492f0424b754e50e600aadebd2d379f7ae`.
