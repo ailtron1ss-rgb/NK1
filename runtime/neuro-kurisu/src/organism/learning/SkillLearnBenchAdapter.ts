@@ -217,6 +217,8 @@ export interface SkillLearnBenchCandidateGateOptions {
   minimumHoldoutTasks?: number;
   /** Minimum macro-average independently verified validation task success for eligibility. */
   minimumValidationTaskSuccess01?: number;
+  /** Minimum distinct validation tasks; multiple trials of one task are not breadth. */
+  minimumValidationTasks?: number;
 }
 
 export interface SkillLearnBenchCandidateGateReport {
@@ -332,6 +334,7 @@ export function evaluateSkillLearnBenchCandidate(
   const maxRegression = options.maximumHoldoutRegression01 ?? 0.02;
   const minHoldoutTasks = options.minimumHoldoutTasks ?? 2;
   const minValidationTaskSuccess = options.minimumValidationTaskSuccess01 ?? 0.8;
+  const minValidationTasks = options.minimumValidationTasks ?? 2;
   if (!Number.isFinite(minGain) || minGain < 0 || minGain > 1) {
     throw new RangeError('candidate-minimum-validation-gain-invalid');
   }
@@ -343,6 +346,9 @@ export function evaluateSkillLearnBenchCandidate(
   }
   if (!Number.isFinite(minValidationTaskSuccess) || minValidationTaskSuccess < 0 || minValidationTaskSuccess > 1) {
     throw new RangeError('candidate-minimum-validation-task-success-invalid');
+  }
+  if (!Number.isSafeInteger(minValidationTasks) || minValidationTasks < 1) {
+    throw new RangeError('candidate-minimum-validation-tasks-invalid');
   }
 
   const baselineValidation = validateCandidateReports(baseline.validation, 'baseline-validation');
@@ -376,6 +382,7 @@ export function evaluateSkillLearnBenchCandidate(
   const feedback: string[] = [];
 
   if (validationGain < minGain) reasons.push('validation-improvement-below-threshold');
+  if (validation.taskCount < minValidationTasks) reasons.push('validation-task-coverage-insufficient');
   if (validationTaskSuccess < minValidationTaskSuccess) reasons.push('validation-task-success-below-threshold');
   if (holdout.taskCount < minHoldoutTasks) reasons.push('holdout-task-coverage-insufficient');
   if (holdoutDelta < -maxRegression) reasons.push('holdout-regression-exceeds-tolerance');
