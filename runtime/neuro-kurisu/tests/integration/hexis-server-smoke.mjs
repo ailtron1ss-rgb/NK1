@@ -7,7 +7,7 @@ const root = path.resolve(process.cwd());
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-'));
 const port = 35600 + Math.floor(Math.random() * 800);
 const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: stateDir };
-const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+const child = spawn(process.execPath, ['--experimental-transform-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let output = '';
 child.stdout.on('data', d => output += d);
 child.stderr.on('data', d => output += d);
@@ -38,6 +38,39 @@ try {
   if (!stageRes.ok || stageRes.stage?.status !== 'staged') throw new Error('hexis-hmx-stage');
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
   if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted') throw new Error('hexis-hmx-accept');
+
+  const applyExportId = 'exp_0123456789abcdea';
+  const applyRefA = applyExportId + ':memory:smoke-a';
+  const applyRefB = applyExportId + ':memory:smoke-b';
+  const applyDocument = structuredClone(exportRes.document);
+  applyDocument.export_id = applyExportId;
+  applyDocument.source.hexis_lineage_id = 'nk1-server-smoke-lineage';
+  applyDocument.exported_at = new Date().toISOString();
+  applyDocument.sections.memories = [
+    { ref: applyRefA, type: 'semantic', status: 'active', content: 'NK1_HEXIS_CANONICAL_APPLY_SMOKE_A', importance: .72, trust_level: .85, provenance: { source_id: 'smoke-source-a', confidence: .85 } },
+    { ref: applyRefB, type: 'episodic', status: 'active', content: 'NK1_HEXIS_CANONICAL_APPLY_SMOKE_B', importance: .66, trust_level: .75, provenance: { source_id: 'smoke-source-b', confidence: .75 } },
+  ];
+  applyDocument.sections.relationships = [
+    { ref: applyExportId + ':relationship:smoke-supports-a-b', source_ref: applyRefA, target_ref: applyRefB, edge_type: 'supports', properties: { weight: .8 } },
+  ];
+  const applyStageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: applyDocument, intent: 'port', strategy: 'additive' })).json();
+  if (!applyStageRes.ok || applyStageRes.stage?.status !== 'staged' || applyStageRes.stage?.conflicts?.length) {
+    throw new Error('hexis-hmx-apply-stage:' + JSON.stringify(applyStageRes.stage?.conflicts));
+  }
+  const applyAcceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'accept' })).json();
+  if (!applyAcceptRes.ok || applyAcceptRes.stage?.status !== 'accepted') throw new Error('hexis-hmx-apply-accept');
+  const applyRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply' })).json();
+  if (!applyRes.ok || applyRes.stage?.status !== 'applied' || applyRes.stage?.application?.importedCount !== 2 || applyRes.stage?.application?.projectedRelationships !== 1) {
+    throw new Error('hexis-hmx-canonical-apply:' + JSON.stringify(applyRes));
+  }
+  const applyReplay = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply' })).json();
+  if (!applyReplay.ok || applyReplay.stage?.application?.digest !== applyRes.stage.application.digest) throw new Error('hexis-hmx-apply-replay');
+  const invalidDecision = await fetch(`${base}/api/organism/integration/hexis/hmx/decide`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ stagingId: applyStageRes.stage.stagingId, decision: 'activate-everything' }),
+  });
+  if (invalidDecision.status !== 400) throw new Error('hexis-hmx-decision-validation:' + invalidDecision.status);
+
   if (memoryIndex.memoryIndex[0]?.id) {
     const proposal = await (await post('/api/organism/integration/hexis/retention/propose', { memoryId: memoryIndex.memoryIndex[0].id, action: 'archive', reason: 'server-smoke' })).json();
     if (!proposal.ok || !proposal.proposal?.id) throw new Error('hexis-retention-propose');
