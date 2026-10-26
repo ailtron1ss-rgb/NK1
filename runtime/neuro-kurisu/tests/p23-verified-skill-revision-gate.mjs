@@ -53,6 +53,20 @@ result = evaluateSkillRevision([...rows, ...malformedRows], 'baseline', 'candida
 assert.equal(result.pairedN, 10, 'malformed rows must not disturb valid matched task pairs');
 assert.ok(result.rejectedRows >= malformedRows.length,
   'every malformed row must be rejected before string/normalization methods are called');
+
+// Cross-family rows are not a valid paired sample and must be counted as rejected evidence.
+const mismatchedFamilyPair = [
+  { ...rows[0], taskId: 'mismatch-family-task', family: 'memory', method: 'baseline',
+    evidenceRef: 'artifact://mismatch-family/baseline' },
+  { ...rows[1], taskId: 'mismatch-family-task', family: 'tool-use', method: 'candidate',
+    evidenceRef: 'artifact://mismatch-family/candidate' },
+];
+result = evaluateSkillRevision([...rows, ...mismatchedFamilyPair], 'baseline', 'candidate', {
+  minPairedTasks: 8, minAbsoluteGain: .1,
+});
+assert.equal(result.pairedN, 10, 'cross-family rows must not enter the matched holdout denominator');
+assert.equal(result.rejectedRows, 1, 'the cross-family pair must count as one rejected pair');
+
 assert.throws(() => evaluateSkillRevision(null, 'baseline', 'candidate'),
   /revision observations must be an array/);
 assert.throws(() => evaluateSkillRevision(rows, 7, 'candidate'),
