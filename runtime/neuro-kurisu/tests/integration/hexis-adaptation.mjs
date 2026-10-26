@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 
 const fabric = new HexisAdaptationFabric();
@@ -460,6 +461,79 @@ assert.equal(noOpApplied?.status, 'applied');
 assert.equal(noOpApplied?.application?.status, 'noop');
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.length, beforeNoopApply,
   'an empty memory section must not claim or cause a canonical memory mutation');
+
+// Deterministic import IDs must not overwrite an unrelated canonical record that
+// happens to occupy the same ID (e.g. a restored/corrupt snapshot or ID collision).
+const collisionIdRuntime = new MemorySubsystemRuntime();
+const collisionExportId = 'exp_8888888888888888';
+const collisionMemoryRef = collisionExportId + ':memory-1';
+const collisionMemoryContent = 'A memory with this text belongs to the Hexis import.';
+const contentHashForCollision = createHash('sha256').update(collisionMemoryContent).digest('hex');
+const expectedHexisMemoryId = 'hexis-memory:' + createHash('sha256')
+  .update('hexis-test-lineage\\0memory-1\\0' + contentHashForCollision)
+  .digest('hex').slice(0, 48);
+const unrelatedCollision = collisionIdRuntime.fabric.encode({
+  id: expectedHexisMemoryId,
+  content: 'Unrelated canonical content that must be preserved.',
+  tags: ['do-not-overwrite'],
+  context: { sentinel: 'collision-preserve' },
+  kind: 'semantic',
+  salience: 0.7,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.1,
+  goalRelevance: 0.1,
+  socialRelevance: 0.1,
+  predictionError: 0,
+  confidence: 0.9,
+  epistemicStatus: 'fact',
+  source: 'user',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  provenanceClass: 'user',
+  sourceAuthority01: 0.9,
+  independenceKey: 'collision-preservation-test',
+}, { forceDistinct: true });
+const unrelatedSnapshot = {
+  id: unrelatedCollision.id,
+  content: unrelatedCollision.content,
+  source: unrelatedCollision.source,
+  tags: [...unrelatedCollision.tags],
+  context: { ...unrelatedCollision.context },
+};
+const collisionImportOwner = new HexisAdaptationFabric();
+const collisionImportProjector = new HexisCanonicalMemoryProjector(
+  collisionIdRuntime.fabric, collisionIdRuntime.semanticMemory, collisionImportOwner,
+);
+collisionImportOwner.bindCanonicalMemoryApply(candidate => collisionImportProjector.apply(candidate));
+const collisionImportStage = collisionImportOwner.stageHmx({
+  document: makeHmxDocument(collisionExportId, {
+    memories: [{
+      ref: collisionMemoryRef,
+      type: 'semantic',
+      content: collisionMemoryContent,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(collisionImportStage.conflicts, []);
+collisionImportOwner.decideHmx(collisionImportStage.stagingId, 'accept');
+assert.throws(
+  () => collisionImportOwner.decideHmx(collisionImportStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:hmx-apply-canonical-id-conflict/,
+  'a deterministic ID occupied by unrelated canonical memory must fail before writing',
+);
+assert.deepEqual(
+  (() => {
+    const after = collisionIdRuntime.fabric.canonicalSnapshot().items.find(item => item.id === unrelatedSnapshot.id);
+    return { id: after?.id, content: after?.content, source: after?.source, tags: [...(after?.tags ?? [])], context: { ...(after?.context ?? {}) } };
+  })(),
+  unrelatedSnapshot,
+  'import preflight must preserve an unrelated row that collides with a deterministic HMX ID',
+);
+assert.equal(collisionIdRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 0);
 
 // Fault injection: if a batch write fails halfway, newly created memories are compensated
 // through MemoryFabric's canonical forget command and the accepted stage remains retryable.
