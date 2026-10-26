@@ -602,5 +602,31 @@ assert.equal(atomicRestoreFabric.getById(atomicRestoreNode.id)?.payload.kept,tru
 
 console.log('WorkPass354 completion anchor provenance: PASS');
 console.log('WorkPass353 canonical completion replay/preflight: PASS');
+// Root schema corruption must fail before replacing the live causal ledger.
+const rootBoundaryFabric = new CognitiveEventFabric(128);
+const rootBoundaryEvent = rootBoundaryFabric.append({
+  id:'restore:root-schema-baseline',tick:58,at:5800,stage:'observation',
+  source:'restore-test',parentIds:[],external:false,confidence01:0.75,payload:{preserve:'root-schema'},
+});
+const rootBoundaryBefore = rootBoundaryFabric.snapshot();
+const malformedRootSnapshots = [
+  {snapshot:{version:undefined,recent:[]},pattern:/unsupported-cognitive-event-fabric-snapshot-version/,label:'a present undefined schema version is not a legacy omission'},
+  {snapshot:{version:1,recent:{}},pattern:/field-must-be-an-array:recent/,label:'a present non-array recent field must not erase history'},
+  {snapshot:{version:1,recent:[],receiptEvents:null},pattern:/field-must-be-an-array:receiptEvents/,label:'a present malformed receiptEvents field must fail closed'},
+  {snapshot:{version:1,recent:[],receiptProjectionIndex:{}},pattern:/field-must-be-an-array:receiptProjectionIndex/,label:'a present non-array receipt index must not be silently discarded'},
+  {snapshot:{version:1,recent:[],total:'9'},pattern:/total-must-be-a-safe-integer/,label:'a string total is not a valid persisted event counter'},
+  {snapshot:{version:1,recent:[],total:undefined},pattern:/total-must-be-a-safe-integer/,label:'a present undefined total is not equivalent to a missing legacy field'},
+  {snapshot:{version:1,recent:[],total:Number.MAX_SAFE_INTEGER+1},pattern:/total-must-be-a-safe-integer/,label:'an unsafe total cannot contaminate event-count telemetry'},
+];
+for(const item of malformedRootSnapshots) {
+  assert.throws(()=>rootBoundaryFabric.restore(item.snapshot),item.pattern,item.label);
+  assert.deepEqual(rootBoundaryFabric.snapshot(),rootBoundaryBefore, item.label+'; previous live state must remain equivalent');
+}
+assert.equal(rootBoundaryFabric.getById(rootBoundaryEvent.id)?.payload.preserve,'root-schema');
+const legacyWithoutOptionalRootFields = new CognitiveEventFabric(128);
+legacyWithoutOptionalRootFields.restore({recent:[restoreSourceEvent]});
+assert.equal(legacyWithoutOptionalRootFields.getById(restoreSourceEvent.id)?.tick,55,
+  'legacy snapshots that omit optional version, total and index fields remain readable');
+console.log('WorkPass363 event-fabric root schema atomicity: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
