@@ -34,6 +34,29 @@ try {
   }
   const exportRes = await (await fetch(`${base}/api/organism/integration/hexis/hmx/export`)).json();
   if (!exportRes.ok || exportRes.document?.hmx_version !== '1.7' || !Array.isArray(exportRes.document?.sections?.memories)) throw new Error('hexis-hmx-export');
+  // HMX has a bounded larger request budget than the general 256 KB API body limit.
+  const largeHmxExportId = 'exp_aaaaaaaaaaaaaaaa';
+  const largeHmxDocument = {
+    hmx_version: '1.7',
+    export_id: largeHmxExportId,
+    export_intent: 'analysis',
+    exported_at: new Date().toISOString(),
+    source: {
+      instance_id: 'nk1-large-body-smoke',
+      schema_version: '1.7',
+      embedding_model: 'test-text-only',
+      embedding_dimension: 1,
+      hexis_lineage_id: 'nk1-large-body-smoke-lineage',
+    },
+    sections: { config: { transportSizeProbe: 'x'.repeat(300_000) } },
+  };
+  const largeHmxResponse = await post('/api/organism/integration/hexis/hmx/stage', {
+    document: largeHmxDocument, intent: 'analysis', strategy: 'analysis_only',
+  });
+  const largeHmxStage = await largeHmxResponse.json();
+  if (!largeHmxResponse.ok || largeHmxStage.stage?.status !== 'staged' || largeHmxStage.stage?.conflicts?.length) {
+    throw new Error('hexis-hmx-bounded-large-body:' + JSON.stringify(largeHmxStage));
+  }
   const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: exportRes.document, intent: 'port', strategy: 'additive' })).json();
   if (!stageRes.ok || stageRes.stage?.status !== 'staged') throw new Error('hexis-hmx-stage');
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
