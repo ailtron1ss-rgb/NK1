@@ -3,10 +3,10 @@
   "snapshotDate": "2026-10-26",
   "project": "Neuro Kurisu / NK1",
   "sourceOfTruth": "https://github.com/ailtron1ss-rgb/NK1",
-  "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
-  "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
+  "sourceBranchAtSnapshot": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r2",
+  "sourceHeadAtSnapshot": "b1eedd07383cc9598bb1cbaad2048d90653c5bc0",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Percentages describe each lane against the repository's stated goals; automated-validation percentages describe coverage and do not imply a pass on the current HEAD. Scores in this snapshot are anchored to code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626. All four named GitHub Actions suites passed on that exact head; subsequent progress/changelog documentation commits do not change the scored runtime/test code.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. This snapshot is anchored to code checkpoint b1eedd07383cc9598bb1cbaad2048d90653c5bc0 on work/nk1-ed25519-approval-encoding-closure-2026-10-26-r2. WorkPass335 adds strict canonical Ed25519 approval signature decoding and regressions for promotion/rollback; exact-HEAD tests and CI remain pending. Percentages remain unchanged because implementation presence and regression authoring are not equivalent to validation passes or external efficacy. Documentation commits after the code checkpoint do not change scored code.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -279,5 +279,22 @@
     "measuredUpliftClaimed": false,
     "source": "docs/P23_CONTINUAL_LEARNING_SCORECARD_2026-10-20.md — WorkPass333 score update",
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
+  },
+  "latestEngineeringPass": {
+    "id": "WorkPass335",
+    "date": "2026-10-26",
+    "branch": "work/nk1-ed25519-approval-encoding-closure-2026-10-26-r2",
+    "codeCommit": "b1eedd07383cc9598bb1cbaad2048d90653c5bc0",
+    "summary": "Strict canonical Base64 decoding for 64-byte Ed25519 promotion and rollback approval signatures.",
+    "testsAdded": [
+      "canonical promotion signature accepted",
+      "promotion signature with trailing junk rejected",
+      "promotion signature with leading whitespace rejected",
+      "truncated promotion signature rejected",
+      "canonical rollback signature accepted",
+      "rollback signature with trailing junk rejected"
+    ],
+    "validationStatus": "pending exact-head P23 regression, runtime typecheck, and CI",
+    "progressPercentagesChanged": false
   }
 }
