@@ -246,7 +246,12 @@ export class CognitiveEventFabric {
     ))throw new TypeError('invalid-cognitive-event-fabric-snapshot-total');
 
     const readSnapshotArray=(key:string,limit:number):unknown[]=>{
-      if(!rootHas(key))return [];
+      if(!rootHas(key)){
+        // 'recent' is the primary persisted ledger. Missing it is a truncated snapshot,
+        // not an instruction to erase valid in-memory causal history.
+        if(key==='recent')throw new TypeError('invalid-cognitive-event-fabric-snapshot-array:recent');
+        return [];
+      }
       const candidate=rootValue(key);
       let array=false;
       try { array=Array.isArray(candidate); } catch { /* reject below */ }
