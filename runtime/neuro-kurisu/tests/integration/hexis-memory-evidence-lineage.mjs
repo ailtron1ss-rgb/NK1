@@ -120,6 +120,8 @@ recoveredProjection.restore({
     { memoryId: '', confidence01: .4, trust01: .5, sourceKeys: [], contradictingSourceKeys: [], updatedAt: 1 },
     { memoryId: 'bad-confidence', confidence01: Number.NaN, trust01: .5, sourceKeys: [], contradictingSourceKeys: [], updatedAt: 1 },
     { memoryId: 'bad-trust', confidence01: .4, trust01: Number.NaN, sourceKeys: [], contradictingSourceKeys: [], updatedAt: 1 },
+    { memoryId: 'ambiguous-memory', confidence01: .2, trust01: .4, sourceKeys: ['old'], contradictingSourceKeys: [], updatedAt: 100 },
+    { memoryId: 'ambiguous-memory', confidence01: .8, trust01: .9, sourceKeys: ['new'], contradictingSourceKeys: [], updatedAt: 200 },
     {
       memoryId: 'survivor-memory',
       confidence01: .62,
@@ -133,6 +135,7 @@ recoveredProjection.restore({
 });
 const recoveredState = recoveredProjection.snapshot();
 assert.equal(recoveredState.beliefs.length, 1, 'invalid belief projections are dropped without discarding valid memory-side state');
+assert.equal(recoveredState.beliefs.some(row => row.memoryId === 'ambiguous-memory'), false, 'duplicate IDs are dropped rather than selecting an arbitrary confidence projection');
 assert.deepEqual(recoveredState.beliefs[0].sourceKeys, ['source-a'], 'replayed keys are trimmed, deduplicated and type-checked');
 assert.deepEqual(recoveredState.beliefs[0].contradictingSourceKeys, [], 'malformed key arrays normalize to empty arrays');
 assert.equal(recoveredState.beliefs[0].updatedAt, 0, 'invalid projection timestamps normalize conservatively');
