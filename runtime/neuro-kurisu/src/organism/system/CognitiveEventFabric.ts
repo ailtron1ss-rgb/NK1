@@ -72,6 +72,7 @@ export interface CognitiveEventFabricSnapshot {
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const isPlainRecord=(value:unknown):value is Record<string,unknown>=>isRecord(value)&&(()=>{const prototype=Object.getPrototypeOf(value);return prototype===Object.prototype||prototype===null;})();
 const OMIT_PAYLOAD_VALUE=Symbol('omit-cognitive-payload-value');
 const MAX_COGNITIVE_PAYLOAD_DEPTH=32;
 const MAX_COGNITIVE_PAYLOAD_NODES=16384;
@@ -374,6 +375,10 @@ export class CognitiveEventFabric {
     const confidence01=clamp01(input.confidence01??0.5);
     // Deep clone and canonicalize before lookup/mutation: invalid evidence cannot
     // partially mutate the event journal or escape into a later snapshot.
+    // Malformed explicitly supplied root payloads must not collapse into a valid empty-payload event.
+    if(input.payload!==undefined&&!isPlainRecord(input.payload)) {
+      throw new TypeError('invalid-cognitive-event-payload');
+    }
     const payload=cleanPayload(input.payload);
     const prior=suppliedId?this.events.find(event=>event.id===suppliedId):undefined;
     const at=input.at!==undefined?input.at:(prior?.at??Date.now());

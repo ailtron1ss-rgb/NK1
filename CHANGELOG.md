@@ -1,3 +1,12 @@
+## CognitiveEventFabric payload-envelope hardening — 2026-10-26
+
+- **Defect:** the generic payload sanitizer maps non-record roots such as arrays, primitives and `Date` instances to `{}`. At `append()` this can disguise malformed evidence or a malformed retry as a legitimate empty-payload event.
+- **Fix:** explicitly supplied `payload` must be a plain object or null-prototype record before canonicalization, existing-ID lookup or ledger mutation. Omitted payload remains backward-compatible and becomes `{}`.
+- **Regression:** new `runtime/neuro-kurisu/tests/cognitive-event-payload-envelope.mjs` covers arrays, primitives, Date/class instances, zero-mutation rejection, an invalid retry against an existing stable ID, preservation of the original valid payload and omitted-payload compatibility.
+- **Integration:** the regression is wired into `test:cognitive-integration-suite`; its `tests/cognitive-*.mjs` path is included in the current cognitive integration workflow filter.
+- **Validation:** exact-head CI pending on this branch; no PASS is claimed until the current branch SHA passes runtime typecheck and unified integration.
+
+---
 ## WorkPass353 — reject oversized and non-canonical causal identity fields (2026-10-26)
 
 - **Defect:** `CognitiveEventFabric.append()` silently truncated source strings, parent IDs and oversized parent lists. Snapshot restore also previously truncated IDs/sources/parents and coerced malformed ticks/timestamps/confidence/flags into valid-looking records.
