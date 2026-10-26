@@ -40,7 +40,7 @@ const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEO
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
 const configuredHmxBodyBytes = Number(process.env.NEURO_HMX_MAX_BODY_BYTES || 8 * 1024 * 1024);
 const MAX_HMX_BODY_BYTES = Number.isFinite(configuredHmxBodyBytes)
-    ? Math.max(MAX_BODY_BYTES, Math.min(8 * 1024 * 1024, Math.floor(configuredHmxBodyBytes)))
+    ? Math.max(Math.min(MAX_BODY_BYTES, 8 * 1024 * 1024), Math.min(8 * 1024 * 1024, Math.floor(configuredHmxBodyBytes)))
     : 8 * 1024 * 1024;
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
