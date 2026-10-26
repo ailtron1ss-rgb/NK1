@@ -183,7 +183,11 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
     if (Array.isArray(nativeValue)) {
       const invalidRows = nativeValue.filter(value => !isRecord(value));
       if (invalidRows.length) malformedNativeSections[name + '_non_object_rows'] = cloneJson(invalidRows);
-    } else if (nativeValue !== undefined && nativeValue !== null && name !== 'identity') {
+    } else if (
+      nativeValue !== undefined &&
+      nativeValue !== null &&
+      !(name === 'identity' && isRecord(nativeValue))
+    ) {
       malformedNativeSections[name + '_invalid_section'] = cloneJson(nativeValue);
     }
   }
