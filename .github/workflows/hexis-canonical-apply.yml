@@ -18,6 +18,10 @@ on:
       - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+      - 'app/src/neuro-kurisu/api.ts'
+      - 'app/src/components/HexisControlConsole.tsx'
   workflow_dispatch:
 
 permissions:
@@ -30,7 +34,7 @@ concurrency:
 jobs:
   canonical-hmx-apply:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -83,6 +87,36 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit 0
 
+      - name: Capture app dependency installation output
+        working-directory: app
+        run: |
+          mkdir -p "$RUNNER_TEMP/nk1-validation-evidence"
+          set +e
+          npm ci --no-audit --no-fund > "$RUNNER_TEMP/nk1-validation-evidence/app-npm-ci.log" 2>&1
+          rc=$?
+          set -e
+          printf '%s\\n' "$rc" > "$RUNNER_TEMP/nk1-validation-evidence/app-npm-ci.exit"
+          {
+            echo "## App npm ci (exit $rc)"
+            tail -n 100 "$RUNNER_TEMP/nk1-validation-evidence/app-npm-ci.log"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: Capture app TypeScript typecheck output
+        working-directory: app
+        run: |
+          mkdir -p "$RUNNER_TEMP/nk1-validation-evidence"
+          set +e
+          npm run typecheck > "$RUNNER_TEMP/nk1-validation-evidence/app-typecheck.log" 2>&1
+          rc=$?
+          set -e
+          printf '%s\\n' "$rc" > "$RUNNER_TEMP/nk1-validation-evidence/app-typecheck.exit"
+          {
+            echo "## App typecheck (exit $rc)"
+            tail -n 160 "$RUNNER_TEMP/nk1-validation-evidence/app-typecheck.log"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
       - name: Upload reproducible validation evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -97,7 +131,7 @@ jobs:
         working-directory: runtime/neuro-kurisu
         run: |
           failed=0
-          for check in npm-ci typecheck hexis-tests; do
+          for check in npm-ci typecheck hexis-tests app-npm-ci app-typecheck; do
             rc="$(cat "$RUNNER_TEMP/nk1-validation-evidence/$check.exit" 2>/dev/null || echo 99)"
             echo "$check exit code: $rc"
             if [ "$rc" != "0" ]; then failed=1; fi
