@@ -166,7 +166,44 @@ try {
   const memoryStrategy=await (await fetch(`http://127.0.0.1:${port}/api/organism/memory-strategy`)).json(); if(!memoryStrategy.ok || memoryStrategy.readOnly!==true || !memoryStrategy.diagnostics || !Number.isFinite(memoryStrategy.diagnostics.maxAbsoluteBias01)) throw new Error('adaptive memory strategy endpoint');
   const contextBudget=await (await fetch(`http://127.0.0.1:${port}/api/organism/context-budget`)).json(); if(!contextBudget.ok || contextBudget.readOnly!==true || contextBudget.report?.owner!=='LanguageOrgan' || !Array.isArray(contextBudget.report?.receipts)) throw new Error('language context budget endpoint');
   const knownEntities=await (await fetch(`http://127.0.0.1:${port}/api/organism/known-entities?limit=8`)).json(); if(!knownEntities.ok || knownEntities.readOnly!==true || knownEntities.report?.derivedProjection!==true || knownEntities.report?.writesCanonicalState!==false || !Array.isArray(knownEntities.report?.entities)) throw new Error('known entity dossier projection endpoint');
-  const memoryBenchmark=await (await fetch(`http://127.0.0.1:${port}/api/organism/memory-benchmark`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({examples:[{id:'smoke-train',query:'server status',relevantIds:['missing-id'],split:'train'},null],options:{seed:19,bootstrapSamples:200,datasetProvenance:{datasetId:'server-smoke',datasetVersion:'1',sourceRef:'server-smoke-test',labelingProtocol:'single explicit synthetic smoke label'}}})})).json(); if(!memoryBenchmark.ok || memoryBenchmark.readOnly!==true || memoryBenchmark.report?.guardrails?.liveMemoryMutated!==false || memoryBenchmark.report?.promotion?.allowed!==false || memoryBenchmark.report?.datasetIntegrity?.unknownRelevantMemoryIdCount!==1 || memoryBenchmark.report?.datasetIntegrity?.droppedExamples!==1 || memoryBenchmark.report?.promotion?.reason!=='dataset-integrity-failed' || memoryBenchmark.report?.confidence?.seed!==19) throw new Error('memory retrieval benchmark dataset-integrity/no-promotion endpoint');
+  const memoryBenchmarkResponse = await fetch(
+    `http://127.0.0.1:${port}/api/organism/memory-benchmark`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        examples: [
+          { id: 'smoke-train', query: 'server status', relevantIds: ['missing-id'], split: 'train' },
+          null,
+        ],
+        options: {
+          seed: 19,
+          bootstrapSamples: 200,
+          datasetProvenance: {
+            datasetId: 'server-smoke',
+            datasetVersion: '1',
+            sourceRef: 'server-smoke-test',
+            labelingProtocol: 'single explicit synthetic smoke label',
+          },
+        },
+      }),
+    },
+  );
+  const memoryBenchmark = await memoryBenchmarkResponse.json();
+  const benchmarkIntegrity = memoryBenchmark.report?.datasetIntegrity;
+  if (
+    !memoryBenchmarkResponse.ok ||
+    memoryBenchmark.ok !== true ||
+    memoryBenchmark.readOnly !== true ||
+    memoryBenchmark.report?.guardrails?.liveMemoryMutated !== false ||
+    memoryBenchmark.report?.promotion?.allowed !== false ||
+    benchmarkIntegrity?.unknownRelevantMemoryIdCount !== 1 ||
+    benchmarkIntegrity?.droppedExamples !== 1 ||
+    memoryBenchmark.report?.promotion?.reason !== 'dataset-integrity-failed' ||
+    memoryBenchmark.report?.confidence?.seed !== 19
+  ) {
+    throw new Error('memory retrieval benchmark dataset-integrity/no-promotion endpoint');
+  }
   const sensoriumStatus=await (await fetch(`http://127.0.0.1:${port}/api/organism/sensorium/status`)).json(); if(!sensoriumStatus.ok) throw new Error('organism sensorium status route mismatch');
   const embodiment=await (await fetch(`http://127.0.0.1:${port}/api/embodiment/status`)).json(); if(!embodiment.ok || !embodiment.modelPresent || !embodiment.corePresent || !embodiment.texturePresent) throw new Error('embodiment assets endpoint');
   const camera=await fetch(`http://127.0.0.1:${port}/api/organism/vision/capture-if-useful`,{method:'POST',headers:{'content-type':'application/json'},body:'{}'}); const cameraBody=await camera.json(); if(!((camera.status===200 && cameraBody.skipped===true) || (camera.status===400 && cameraBody.error==='camera-capture-idempotency-key-required'))) throw new Error(`capture-if-useful must skip safely or require a key before physical capture: HTTP ${camera.status} ${JSON.stringify(cameraBody)}`);
