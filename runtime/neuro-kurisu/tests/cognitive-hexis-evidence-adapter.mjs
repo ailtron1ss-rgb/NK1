@@ -123,6 +123,7 @@ const invalidInputs = [
   { name: "timestamp-string", value: { ...sourceInput, independenceKey: "bad-timestamp", observedAt: "1000" }, reason: "invalid-evidence-timestamp" },
   { name: "bad-freshness", value: { ...sourceInput, independenceKey: "bad-freshness", evidenceFreshnessAt: Number.POSITIVE_INFINITY }, reason: "invalid-evidence-freshness" },
   { name: "overlong-lineage", value: { ...sourceInput, independenceKey: "x".repeat(97) }, reason: "invalid-evidence-independence-key" },
+  { name: "control-character-lineage", value: { ...sourceInput, independenceKey: "bad\nlineage" }, reason: "invalid-evidence-independence-key" },
   { name: "control-character-source", value: { ...sourceInput, independenceKey: "bad-source-control", source: "bad\nsource" }, reason: "invalid-evidence-source-identity" },
   { name: "invalid-source-class", value: { ...sourceInput, independenceKey: "bad-source-class", provenanceClass: "untrusted-new-class" }, reason: "invalid-evidence-provenance-class" },
 ];
