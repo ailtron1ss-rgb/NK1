@@ -1,3 +1,11 @@
+## NK1 [evidence] — preserve event time in live identity checks (2026-10-26)
+
+- Fixed a mismatch between live writes and restore validation: an existing upstream `eventId` now conflicts when the observation timestamp changes, rather than being accepted as an exact replay.
+- Added a regression that proves timestamp mutation fails closed, quarantines the event ID, and blocks later reuse of that ID.
+- **Validation boundary:** source, regression and changelog are committed together; hosted exact-head execution remains unverified until Actions can run test steps.
+
+---
+
 ## NK1 [perception] — runtime sensor and world-context integrity (2026-10-25)
 
 - Fixed P41 semantic-vision burst handling: when multiple vision snapshots arrive between runtime cycles, the runtime drains the oldest pending snapshots one per cycle instead of advancing the observation counter to the total and silently skipping intermediate frames.

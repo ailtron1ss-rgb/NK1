@@ -50,6 +50,25 @@ assert.throws(() => ledger.record({
   confidence01: 0.82, independenceKey: 'device:android-battery',
 }), /reality-evidence-event-identity-conflict/);
 
+// Timestamp is immutable evidence payload: reusing an event ID with altered capture
+// time must quarantine that ID, and even its formerly valid payload is then rejected.
+const timestampBound = ledger.record({
+  tick: 17, at: 1700, eventId: 'execution:device:timestamp',
+  realityClass: 'device-observation', claim: 'A sensor event was captured at its original timestamp.',
+  confidence01: 0.8, independenceKey: 'device:timestamp',
+});
+assert.equal(timestampBound.at, 1700);
+assert.throws(() => ledger.record({
+  tick: 17, at: 1701, eventId: 'execution:device:timestamp',
+  realityClass: 'device-observation', claim: 'A sensor event was captured at its original timestamp.',
+  confidence01: 0.8, independenceKey: 'device:timestamp',
+}), /reality-evidence-event-identity-conflict/);
+assert.throws(() => ledger.record({
+  tick: 17, at: 1700, eventId: 'execution:device:timestamp',
+  realityClass: 'device-observation', claim: 'A sensor event was captured at its original timestamp.',
+  confidence01: 0.8, independenceKey: 'device:timestamp',
+}), /reality-evidence-event-id-quarantined/);
+
 assert.equal(ledger.claimAssessment(first.claim).externalSamples, 1);
 assert.equal(ledger.claimAssessment(first.claim).independentExternalSources, 1);
 
