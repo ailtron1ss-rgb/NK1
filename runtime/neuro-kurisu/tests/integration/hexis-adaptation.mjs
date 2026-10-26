@@ -133,6 +133,20 @@ longHorizonRestored.restore(longHorizon.snapshot());
 const restoredRetiredReplay = longHorizonRestored.enqueueOutbox({idempotencyKey:'retired-key',kind:'notify',channel:'test',payload:{message:'already sent'}});
 assert.equal(restoredRetiredReplay.error, 'idempotency-key-history-expired', 'retired key guard must survive snapshot/restore');
 assert.equal(longHorizonRestored.snapshot().metrics.outboxRetiredKeyReplays, 2);
+
+const corruptOutboxSnapshot = longHorizon.snapshot();
+corruptOutboxSnapshot.outbox.push(null);
+const corruptOutboxRestore = new HexisAdaptationFabric();
+corruptOutboxRestore.restore(corruptOutboxSnapshot);
+assert.equal(corruptOutboxRestore.snapshot().outboxIdempotencyLedgerSaturated, true,
+  'invalid persisted outbox rows must saturate the trust ledger instead of silently forgetting possible side effects');
+const newAfterCorruption = corruptOutboxRestore.enqueueOutbox({
+  idempotencyKey:'new-action-after-corrupt-restore',kind:'notify',channel:'test',payload:{message:'must fail closed'},
+});
+assert.equal(newAfterCorruption.error, 'idempotency-ledger-saturated',
+  'ambiguous outbox restoration must reject previously unseen actions');
+
+
 assert.equal(longHorizonRestored.enqueueOutbox({idempotencyKey:'x'.repeat(257),kind:'notify',channel:'test',payload:{}}).error, 'idempotency-key-too-long');
 
 const policy = fabric.grantConnectorPolicy({connectorId:'telegram',actionKind:'send',contexts:['chat'],requiresApproval:true,allowedTargets:['123'],maxPerWindow:1,windowMs:60_000});
