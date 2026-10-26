@@ -196,8 +196,8 @@ export class HexisCanonicalMemoryProjector {
     const plannedNewItems = normalized.filter(item => {
       const stableRefKey = item.ref.replace(/^exp_[a-f0-9]{16}:/, '');
       const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' +
-        hash(stableRefKey + '\\0' + item.contentHash).slice(0, 24);
-      return !existingImportKeys.has(source + '\\0' + stableRecordContent(item.content));
+        hash(stableRefKey + '\0' + item.contentHash).slice(0, 24);
+      return !existingImportKeys.has(source + '\0' + stableRecordContent(item.content));
     });
     if (existingItems.length + plannedNewItems.length > canonicalMemoryCapacity) {
       throw new Error(
@@ -210,9 +210,9 @@ export class HexisCanonicalMemoryProjector {
     for (const item of plannedNewItems) {
       const stableRefKey = item.ref.replace(/^exp_[a-f0-9]{16}:/, '');
       const plannedId = 'hexis-memory:' +
-        hash(lineageId + '\\0' + stableRefKey + '\\0' + item.contentHash).slice(0, 48);
+        hash(lineageId + '\0' + stableRefKey + '\0' + item.contentHash).slice(0, 48);
       const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' +
-        hash(stableRefKey + '\\0' + item.contentHash).slice(0, 24);
+        hash(stableRefKey + '\0' + item.contentHash).slice(0, 24);
       const collision = existingItems.find(candidate => candidate.id === plannedId);
       if (collision && !(collision.source === source &&
           stableRecordContent(collision.content) === stableRecordContent(item.content))) {
