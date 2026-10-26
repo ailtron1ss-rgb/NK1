@@ -752,7 +752,7 @@ export class MemoryOS2{
    const queryIntentMode=detectMemoryQueryIntent(query);
    // A query without any searchable token is not an invitation to return the recent-memory fallback.
    // In particular, String.includes('') is always true, so empty queries must exit before exact-match scoring.
-   if(qTokens.length===0){
+   if(qTokens.size===0){
      this.lastCandidateCount=0;
      this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,
        identifierBias:false,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:0,
