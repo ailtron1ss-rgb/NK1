@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass393 — refuse ambiguous native reference wiring (2026-10-26)
+
+- [FIX] The NK1 → HMX reference index now records collisions instead of overwriting earlier entries when a native ID/name/ref maps to multiple records across memories, skills, or goals.
+- [SAFETY] Relationships and episode links involving an ambiguous native reference are emitted as unresolved HMX references, so the canonical projector defers them instead of wiring them to whichever record was visited last. Ambiguous goal-parent links remain null for review.
+- [TEST] Added an exporter regression for an ID shared by a memory and skill; its relationship endpoint must not match either canonical memory ref, and the adapter must emit a clear warning.
+- [VALIDATION] Source and tests are wired, but test execution remains blocked by GitHub Actions runner allocation failures.
+
 ## [NK1][Hexis] WorkPass392 — enforce integrity at the canonical projector boundary (2026-10-26)
 
 - [SAFETY] The projector now independently requires an accepted stage with a non-empty stage ID/digest and zero staging conflicts; direct callers can no longer bypass the review/staging conflict gate.
