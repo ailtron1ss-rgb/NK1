@@ -95,6 +95,8 @@ on:
       - 'runtime/neuro-kurisu/tests/workpass227-bounded-independent-evaluation.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts'
       - 'runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs'
+      - 'runtime/neuro-kurisu/src/organism/system/ActionGateway.ts'
+      - 'runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
       - 'runtime/neuro-kurisu/package-lock.json'
       - 'runtime/neuro-kurisu/tsconfig.clean.json'
@@ -105,7 +107,7 @@ on:
       - 'app/package-lock.json'
       - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
   push:
-    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry, workpass206-runtime-evaluator-wiring]
+    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry, workpass206-runtime-evaluator-wiring, fix/unified-substrate-runtime-wiring-rebased-2026-10-25]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/CausalExperienceStream.ts'
@@ -162,6 +164,8 @@ on:
       - 'runtime/neuro-kurisu/tests/workpass227-bounded-independent-evaluation.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts'
       - 'runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs'
+      - 'runtime/neuro-kurisu/src/organism/system/ActionGateway.ts'
+      - 'runtime/neuro-kurisu/tests/workpass95-restored-action-receipt-integrity.mjs'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillLifecycleBootstrap.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillPromotionApproval.ts'
@@ -253,6 +257,9 @@ jobs:
       - name: Run canonical trusted shadow run coordinator regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:trusted-shadow-run-coordinator
+      - name: Run restored ActionGateway receipt integrity regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs
       - name: Run versioned skill candidate lifecycle regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs

@@ -29,7 +29,7 @@ requireFeedbackGate(
 );
 requireFeedbackGate(
   'world-transition feedback',
-  'const b338Learning = trace.selected.action === b338GoalState.action',
+  'const b338Learning = b338GoalSnapshot.tick === state.tick && trace.selected.action === b338GoalState.action',
   'const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();',
   'b338',
 );

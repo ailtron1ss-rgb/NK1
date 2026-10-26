@@ -24,6 +24,7 @@ import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
+import { UnifiedCognitiveSubstrate, type UnifiedCognitiveSubstrateState, resolveUnifiedCognitiveWorkPolicy } from './UnifiedCognitiveSubstrate.ts';
 import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
 import { CausalDomainClosureLedger, type CausalDomainEvidence } from '../system/CausalDomainClosureLedger.ts';
@@ -149,6 +150,7 @@ export class OrganismRuntime {
   private stepsSinceConsolidation = 0;
   private readonly worldStore: JsonStateStore<PersistedWorld>;
   private readonly cognitiveDependencyStore: JsonStateStore<CognitiveDependencyState>;
+  private readonly unifiedCognitiveSubstrateStore: JsonStateStore<UnifiedCognitiveSubstrateState>;
   private readonly journal: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
   private readonly sensorIntervalMs: number;
   private readonly phonePolicy: PhonePolicyConfig;
@@ -167,6 +169,7 @@ export class OrganismRuntime {
     };
   }
   private readonly cognitiveDependencyGraph = new CognitiveDependencyGraph();
+  private readonly unifiedCognitiveSubstrate = new UnifiedCognitiveSubstrate();
   private readonly clockScheduler = new RuntimeClockScheduler();
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
@@ -299,6 +302,7 @@ export class OrganismRuntime {
     // Keep this small routing state in an atomic sidecar so injected in-memory test stores
     // and production persistence share the same restart semantics without widening core schema.
     this.cognitiveDependencyStore = new FileStateStore<CognitiveDependencyState>(`${config.stateFile}.cognitive-dependencies.json`);
+    this.unifiedCognitiveSubstrateStore = new FileStateStore<UnifiedCognitiveSubstrateState>(`${config.stateFile}.cognitive-substrate.json`);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
@@ -318,6 +322,16 @@ export class OrganismRuntime {
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
       this.cognitiveDependencyGraph.restore(await this.cognitiveDependencyStore.load() ?? undefined);
+      try {
+        this.unifiedCognitiveSubstrate.restore(await this.unifiedCognitiveSubstrateStore.load() ?? undefined);
+      } catch (error) {
+        // A corrupt/forward-version sidecar must not make the entire organism
+        // unbootable. Reset only this derived projection and keep an auditable trace.
+        this.unifiedCognitiveSubstrate.restore();
+        await this.journal.write('warn', 'runtime.unified-cognitive-substrate.restore-failed', {
+          message: String((error as any)?.message ?? error).slice(0, 200),
+        }).catch(() => {});
+      }
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
@@ -556,7 +570,15 @@ export class OrganismRuntime {
       cognitiveLoad01: body.cognitiveCapacity01 <= 0 ? 1 : 1 - body.cognitiveCapacity01,
       uncertainty01: this.core.operationalStatusSnapshot().predictionError,
       novelty01: this.core.operationalStatusSnapshot().autonomyScore,
-      predictionDebt01: Number((this.core.predictionDebtSnapshot() as any)?.meanPriority01 ?? 0),
+      predictionDebt01: (() => {
+        const debt = this.core.predictionDebtSnapshot();
+        const countsValid = [
+          debt.openCount, debt.agingCount, debt.expiredCount,
+        ].every(value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
+        const priority = debt.meanPriority01;
+        return countsValid && typeof priority === 'number' &&
+          Number.isFinite(priority) && priority >= 0 && priority <= 1 ? priority : 1;
+      })(),
       thermalStrain01: body.thermalStrain01,
       ramPressure01: clamp01((1-body.cognitiveCapacity01)*.65 + (1-body.cognitiveCapacity01)*.35),
       performancePressure01: 0,
@@ -618,6 +640,96 @@ export class OrganismRuntime {
     };
     this.cognitiveDependencyGraph.resolve(cognitiveFrame);
     const dependencyState = this.cognitiveDependencyGraph.snapshot();
+    // Aggregate the already-produced cycle into a bounded cross-system frame. This
+    // substrate observes canonical state; Core remains the sole action arbiter.
+    const previousSubstrateState = this.unifiedCognitiveSubstrate.snapshot();
+    const substrateWorld = cycleObservation.worldContext ?? this.environment.observationContext();
+    const predictionDebt = this.core.predictionDebtSnapshot();
+    const debtCount = (value: unknown): number =>
+      typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
+    const predictionDebtCountsValid = [
+      predictionDebt.openCount, predictionDebt.agingCount, predictionDebt.expiredCount,
+    ].every(value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
+    const predictionPriority =
+      predictionDebtCountsValid &&
+      typeof predictionDebt.meanPriority01 === 'number' &&
+      Number.isFinite(predictionDebt.meanPriority01) &&
+      predictionDebt.meanPriority01 >= 0 &&
+      predictionDebt.meanPriority01 <= 1
+        ? predictionDebt.meanPriority01
+        : 1;
+    const directObservation = body.telemetry.source === 'android-termux' && body.telemetry.staleMs === 0;
+    const substrateState = this.unifiedCognitiveSubstrate.integrate({
+      tick: Math.max(cycle.state.tick, previousSubstrateState.lastTick + 1),
+      self: {
+        continuity01: cycle.state.needs.identityCoherence,
+        coherence01: cycle.state.needs.identityCoherence,
+        agency01: cycle.state.autonomyScore,
+        realityAlignment01: 1 - cycle.state.predictionError,
+        mode: resourceAllocation.mode,
+        lastAction: cycle.state.lastAction === 'none' ? 'wait' : cycle.state.lastAction,
+      },
+      world: {
+        confidence01: 1 - clamp01(substrateWorld.uncertainty),
+        uncertainty01: substrateWorld.uncertainty,
+        entityCount: substrateWorld.objects.length,
+        eventCount: substrateWorld.events.length,
+        relationCount: this.core.p41PerceptionSnapshot().relations.length,
+        conflict01: substrateWorld.objects.length > 0
+          ? substrateWorld.objects.filter(object => 'evidenceKind' in object && object.evidenceKind === 'conflict').length / substrateWorld.objects.length
+          : 0,
+        newEntityRate01: clamp01(Math.max(0, substrateWorld.objects.length - previousSubstrateState.world.entityCount) / Math.max(1, substrateWorld.objects.length)),
+      },
+      prediction: {
+        error01: cycle.state.predictionError,
+        openCount: debtCount(predictionDebt.openCount),
+        agingCount: debtCount(predictionDebt.agingCount),
+        expiredCount: debtCount(predictionDebt.expiredCount),
+        priority01: predictionPriority,
+      },
+      resources: {
+        battery01: body.telemetry.battery01,
+        thermal01: body.thermalStrain01,
+        ramPressure01: body.telemetry.ramPressure01,
+        computeCapacity01: body.cognitiveCapacity01,
+        scarcity01: resourceAllocation.scarcity01,
+        efficiency01: 1 - resourceAllocation.scarcity01,
+      },
+      memoryPressure01: 1 - resourceAllocation.memory01,
+      evidenceCoverage01: body.sensoryFreshness01,
+      realObservationCoverage01: directObservation ? body.sensoryFreshness01 : 0,
+      unknown01: 1 - clamp01(body.sensoryFreshness01),
+      reason: `runtime-cycle:${cycle.state.tick};action:${cycle.decision.selected?.action ?? 'wait'}`,
+    });
+    const substrateSignalChanged =
+      previousSubstrateState.self.mode !== substrateState.self.mode ||
+      previousSubstrateState.self.lastAction !== substrateState.self.lastAction ||
+      Math.abs(previousSubstrateState.coupling.actionReadiness01 - substrateState.coupling.actionReadiness01) >= 0.15 ||
+      Math.abs(previousSubstrateState.world.uncertainty01 - substrateState.world.uncertainty01) >= 0.15 ||
+      Math.abs(previousSubstrateState.resources.battery01 - substrateState.resources.battery01) >= 0.15 ||
+      Math.abs(previousSubstrateState.provenance.unknown01 - substrateState.provenance.unknown01) >= 0.15;
+    if (substrateSignalChanged || cycle.state.tick % 16 === 0) {
+      await this.unifiedCognitiveSubstrateStore.save(substrateState).catch(async error => {
+        await this.journal.write('warn', 'runtime.unified-cognitive-substrate.persist-failed', {
+          tick: cycle.state.tick,
+          message: String((error as any)?.message ?? error).slice(0, 200),
+        }).catch(() => {});
+      });
+    }
+    this.evidenceBus.publish({
+      tick: cycle.state.tick,
+      kind: 'model',
+      source: 'unified-cognitive-substrate',
+      confidence01: substrateState.provenance.evidenceCoverage01,
+      payload: {
+        substrateTick: substrateState.lastTick,
+        actionReadiness01: substrateState.coupling.actionReadiness01,
+        predictionGrounding01: substrateState.coupling.predictionGrounding01,
+        realityAlignment01: substrateState.self.realityAlignment01,
+        unknown01: substrateState.provenance.unknown01,
+        selectedActionBias: this.unifiedCognitiveSubstrate.actionBias(cycle.decision.selected?.action ?? 'wait'),
+      },
+    });
     const dependencyStateChanged =
       previousDependencyState.wakeMask !== dependencyState.wakeMask ||
       previousDependencyState.dirtyCount !== dependencyState.dirtyCount ||
@@ -656,7 +768,24 @@ export class OrganismRuntime {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
     const internalAction = cycle.decision.selected?.action ?? 'wait';
-    const routingPolicy = resolveCognitiveRoutingPolicy(dependencyState, resourceAllocation.maxCounterfactualBranches);
+    const baseRoutingPolicy = resolveCognitiveRoutingPolicy(dependencyState, resourceAllocation.maxCounterfactualBranches);
+    // The substrate is an adaptive optional-work governor, never an alternate
+    // action selector. It may reduce counterfactual cost or withhold matched
+    // projections when evidence quality, readiness or device pressure is poor.
+    const substrateWorkPolicy = resolveUnifiedCognitiveWorkPolicy(
+      substrateState,
+      baseRoutingPolicy.maxCounterfactualBranches,
+    );
+    const routingPolicy = {
+      ...baseRoutingPolicy,
+      maxCounterfactualBranches: Math.min(
+        baseRoutingPolicy.maxCounterfactualBranches,
+        substrateWorkPolicy.maxCounterfactualBranches,
+      ),
+      allowMatchedCounterfactual:
+        baseRoutingPolicy.allowMatchedCounterfactual && substrateWorkPolicy.allowMatchedCounterfactual,
+      reason: `${baseRoutingPolicy.reason};${substrateWorkPolicy.reason}`.slice(0, 240),
+    };
     this.evidenceBus.publish({
       tick: cycle.state.tick,
       kind: 'resource',
@@ -671,6 +800,10 @@ export class OrganismRuntime {
         interruptPriority01: routingPolicy.interruptPriority01,
         cognitiveCycleDelayMultiplier01: routingPolicy.cognitiveCycleDelayMultiplier01,
         governanceWake: this.cognitiveDependencyGraph.shouldWake('governance'),
+        substrateReadiness01: substrateState.coupling.actionReadiness01,
+        substrateGrounding01: substrateState.coupling.predictionGrounding01,
+        substrateBudgetReason: substrateWorkPolicy.reason,
+        substrateMatchedAllowed: substrateWorkPolicy.allowMatchedCounterfactual,
       },
     });
     const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
@@ -1256,7 +1389,15 @@ export class OrganismRuntime {
       cognitiveLoad01: body.cognitiveCapacity01 <= 0 ? 1 : 1 - body.cognitiveCapacity01,
       uncertainty01: this.core.operationalStatusSnapshot().predictionError,
       novelty01: this.core.operationalStatusSnapshot().autonomyScore,
-      predictionDebt01: Number((this.core.predictionDebtSnapshot() as any)?.meanPriority01 ?? 0),
+      predictionDebt01: (() => {
+        const debt = this.core.predictionDebtSnapshot();
+        const countsValid = [
+          debt.openCount, debt.agingCount, debt.expiredCount,
+        ].every(value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
+        const priority = debt.meanPriority01;
+        return countsValid && typeof priority === 'number' &&
+          Number.isFinite(priority) && priority >= 0 && priority <= 1 ? priority : 1;
+      })(),
       thermalStrain01: body.thermalStrain01,
       ramPressure01: body.telemetry.ramPressure01,
       performancePressure01: this.runtimePerformance.decision().performancePressure01,
@@ -1529,6 +1670,12 @@ export class OrganismRuntime {
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
       await this.cognitiveDependencyStore.save(this.cognitiveDependencyGraph.snapshot()).catch(async error => {
         await this.journal.write('warn', 'runtime.cognitive-dependency.final-flush-failed', {
+          tick: runtimeView.tick,
+          message: String((error as any)?.message ?? error).slice(0, 200),
+        }).catch(() => {});
+      });
+      await this.unifiedCognitiveSubstrateStore.save(this.unifiedCognitiveSubstrate.snapshot()).catch(async error => {
+        await this.journal.write('warn', 'runtime.unified-cognitive-substrate.final-flush-failed', {
           tick: runtimeView.tick,
           message: String((error as any)?.message ?? error).slice(0, 200),
         }).catch(() => {});

@@ -1,3 +1,234 @@
+## WorkPass363 — type-safe prediction-debt input to resource allocation (2026-10-26)
+
+- **Early-path fix:** both runtime resource-allocation paths no longer use `predictionDebtSnapshot() as any` or convert a missing/invalid mean priority to zero. They validate all three debt counters and finite [0,1] priority before passing a value into `CognitiveResourceEconomy`; invalid debt uses priority `1`.
+- **Coverage:** the unified runtime wiring regression now prevents reintroducing the untyped cast and checks the guarded priority input path.
+- **Validation boundary:** exact-head focused substrate/runtime CI and TypeScript checks remain required for this new commit.
+
+---
+
+## WorkPass362 — correct regular-expression escaping in prediction-debt regression (2026-10-26)
+
+- Corrected escaping in the source-level regression's regex literal so it matches the actual `predictionDebt.meanPriority01` ternary fallback across line breaks. This is test-only; runtime code is unchanged.
+- The exact-head substrate/runtime workflow is the authority for verification.
+
+---
+
+## WorkPass361 — make prediction-priority source assertion whitespace-independent (2026-10-26)
+
+- Corrected the static runtime wiring regression to match the actual multiline conditional expression used to assign priority `1` on invalid debt input. The previous assertion depended on a colon/newline sequence that did not exist in the source formatting; runtime behavior was not changed.
+- CI on the exact HEAD will verify the source contract plus focused cognitive substrate integration. No verification claim is carried over from a prior commit.
+
+---
+
+## WorkPass360 — make prediction-debt pressure part of the shared cognitive work policy (2026-10-26)
+
+- **Cross-layer defect:** `OrganismRuntime` previously mapped non-finite/out-of-range prediction priority to `0`, which means no urgency. The substrate's optional-work policy also trusted the already-derived coupling score and did not validate the underlying prediction error/priority or debt counters.
+- **Runtime correction:** prediction-debt counts are now validated as a group; malformed counters or invalid priority normalize to maximum priority rather than zero. The policy validates the prediction frame and all debt counters before using it.
+- **Work-budget coupling:** high prediction error/priority now caps optional counterfactual work, critical priority disables it, and matched counterfactual credit requires a low enough prediction-error/debt signal. The actual environment action remains owned by the canonical core/gateway.
+- **Regressions:** added high/critical prediction-debt cases, malformed count rejection, missing-subsystem rejection and a source contract proving runtime does not convert invalid debt to zero.
+- **Validation:** exact-head substrate wiring and runtime typecheck are required; prior passing snapshots are not substituted for the new head.
+
+---
+
+## WorkPass359 — fail closed on missing live telemetry (2026-10-26)
+
+- **Follow-on defect:** WorkPass356's conservative fallback applied to invalid values, but a missing live field still selected the historical default (for example, battery `0.82`). A runtime sensor omission could therefore masquerade as a healthy reading.
+- **Runtime fix:** the live `integrate()` path now uses conservative defaults for missing or invalid control/resource/provenance metrics. Legacy-state restore remains backward compatible for absent fields; explicitly malformed persisted sections remain fail-closed.
+- **Regression:** added a high-agency, otherwise well-grounded frame with a missing battery sample. The substrate must record battery as exhausted and the unified work policy must disable all optional branches.
+- **Validation:** this change is committed independently; check the focused substrate/runtime regression and TypeScript check on the exact new HEAD before treating it as verified.
+
+---
+
+## WorkPass358 — distinguish inherited fields from explicitly malformed telemetry (2026-10-26)
+
+- **CI regression repair:** the WorkPass356 fixture uses an inherited `agency01` property. The substrate correctly ignores inherited properties and uses the documented default for an absent own property; the assertion was incorrectly expecting the conservative fallback used for an explicitly present but invalid value.
+- **Correction:** expect `0.5` for inherited-only agency while retaining the separate live-input regression that expects non-finite, explicitly supplied agency to fail closed to `0`.
+- **Validation:** prior WorkPass356 exact-head CI exposed this test expectation mismatch. The focused wiring workflow is rerun on the corrected HEAD; no passing status is claimed until that run completes.
+
+---
+
+## WorkPass357 — resource-aware policy gates for optional cognition (2026-10-26)
+
+- **Follow-on defect:** the unified policy validated RAM/thermal/scarcity but omitted battery, compute capacity, and efficiency from its required-metric contract. Even after WorkPass356 normalized corrupted sensors conservatively, low battery alone could still leave the requested counterfactual branch budget open.
+- **Runtime fix:** battery, compute capacity and efficiency are now validated as required finite [0,1] metrics. Critical values disable all optional branches; low-but-noncritical values cap optional branches to one; matched counterfactual credit requires explicit minimum battery, compute and efficiency.
+- **Regressions:** added independent low-battery, low-compute, low-efficiency, constrained-battery, and non-finite battery cases. High agency/readiness cannot bypass the direct resource floors.
+- **Boundary:** this policy only gates optional simulation/counterfactual work; it does not select the actual environment action or replace the canonical action gateway. CI and runtime typecheck on the new exact HEAD are required before declaring verification complete.
+
+---
+
+## WorkPass356 — fail-closed telemetry normalization for cognitive work budgeting (2026-10-26)
+
+- **Defect:** normalized sensor fields were clamped into [0,1]. A negative RAM-pressure/scarcity/conflict reading could turn into an apparently healthy zero and leave optional counterfactual work enabled; non-finite/wrong-typed resource signals could quietly inherit optimistic defaults.
+- **Runtime fix:** added strict trusted-metric normalization at the cognitive substrate boundary. Invalid resource, world-conflict, uncertainty, prediction-error and evidence-provenance inputs now use conservative fallbacks (e.g. RAM pressure/thermal/scarcity/conflict/unknown -> 1; compute/battery/evidence coverage -> 0). Missing fields retain documented defaults for partial legacy snapshots; explicitly malformed sections fail closed.
+- **Integration invariant:** invalid resource/world evidence now drives the shared work policy to zero optional branches; the canonical action arbitration remains in OrganismCore and is not replaced by the substrate.
+- **Regression coverage:** updated restore/live-input expectations and added a hostile sensor fixture that supplies negative thermal/RAM/scarcity/conflict values and verifies the optional-work policy refuses all speculative branches.
+- **Evidence boundary:** regression code is committed separately and must pass the substrate wiring workflow and runtime typecheck on the exact new HEAD. This closes a telemetry-normalization issue; it does not claim a gain in general intelligence or production readiness.
+
+---
+
+## WorkPass355 — стабилизированы B272 contract tests и authority fixture (2026-10-26)
+
+- Исправлен source-contract между world-transition и endogenous-goal learner: assertion теперь ищет новую tick+action guard, а не устаревший action-only marker.
+- Runtime regression B338 использует ограниченное окно исходного блока, а не нестабильный следующий комментарий как конец секции.
+- В тесте host-owned evaluator после проверки запрета небезопасного режима права исполнителя возвращаются к `0700`; проверка замены run-root теперь действительно доходит до identity guard, а не повторно падает на предыдущем permission guard.
+- Production-проверки не ослаблены: это правки к тестовым маркерам и изоляции сценариев.
+
+---
+
+## WorkPass354 — independent evaluator различает исполнение и trust binding в regression suite (2026-10-26)
+
+- В тест кандидата добавлены два независимых ожидания после сбоя verifier: execution capability остаётся `true`, но `bindingVerified` становится `false`.
+- Это не разрешает продвижение по недоверенной трассе: evaluator production logic продолжает считать task success только после verifier и trusted binding. Так тест фиксирует семантику WorkPass346 и не позволяет возвратить прежнее смешение сигналов.
+
+---
+
+## WorkPass353 — B272 tick-bound credit assignment получил runtime regression (2026-10-26)
+
+- Расширен реальный runtime test B338: кроме проверки обучения эндогенной цели на воплощённых исходах он теперь защищает invariant `snapshot.tick === state.tick && generatedAction === selectedAction`.
+- Тест запускается в ветке unified-substrate workflow и реагирует на изменения `OrganismCore.ts` и самой регрессии.
+- Это объединяет поведенческую проверку нескольких реальных шагов организма с узкой защитой от повторного/чужого reward credit.
+
+---
+
+## WorkPass352 — endogenous-goal learning привязан к точному tick/action (2026-10-26)
+
+- Исправлена граница credit assignment в world-transition ветке B272: reward передаётся в генератор эндогенной цели только если snapshot создан на текущем `state.tick` и сгенерированное действие совпадает с фактически выбранным действием.
+- Оставлена существующая ветка `recordUnselectedAction` для несоответствующей пары, поэтому исполнитель policy и остальные outcome consumers по-прежнему учатся на фактическом исходе, но B272 не получает чужой credit.
+- Это переносит точечный фикс из соседней learning-линии без замены 1,3-МБ `OrganismCore.ts` целиком на несовместимую версию.
+
+---
+
+## WorkPass351 — устранены повторные helper methods после P26 cherry-pick (2026-10-26)
+
+- Исправлена граница переноса `trainInterleaved`: из donor-блока удалены дублирующие реализации `replayCausalRecords` и `recordVerifiedHoldout`; оригинальные версии, уже присутствовавшие в NK1, сохранены.
+- В runtime остаётся ровно по одной реализации `trainInterleaved`, `replayCausalRecords`, `recordVerifiedHoldout` и `recordHoldout`.
+- TypeScript сообщил о дублированных методах на предыдущем exact HEAD; после исправления требуется новый runtime typecheck и последовательный benchmark.
+
+---
+
+## WorkPass350 — ActionGateway receipt restore regression включён в CI (2026-10-26)
+
+- Добавлен end-to-end regression с четырьмя повреждёнными receipt (execution ID mismatch, противоречивое verification, несогласованный audit outcome, oversized payload) и валидным idempotent replay.
+- Подтверждённое поведение: повреждённый receipt должен стать `idempotency-recovery-required` tombstone; исходный executor не запускается повторно. Валидная запись остаётся replayable без повторного побочного эффекта.
+- Новая проверка включена в WorkPass110, расширены PR path filters и direct push ветки, чтобы последующие изменения ActionGateway не обходили regression.
+
+---
+
+## WorkPass349 — fail-closed restore для completed action receipts (2026-10-26)
+
+- При восстановлении action ledger из persistence завершённый receipt теперь принимается только если его execution/tool ID совпадает с enclosing row, audit/outcome поля внутренне согласованы и verification claim допустим по основанию.
+- Проверяется allowlist outcome классов и размер сериализованного payload (48 KiB); повреждённый/слишком большой receipt сохраняется как recovery tombstone без доверенного ответа, а не проигрывается как успех.
+- Положительный `verified=true` требует согласованного `ok=true`, `verification.verified=true` и `executed-verified`. Это защита целостности сохранённого состояния, а не криптографическая подпись пользовательского файла.
+- Следующий шаг — включить регрессионный тест restore/replay в exact-HEAD workflow.
+
+---
+
+## WorkPass348 — sequential replay benchmark включает atomicity и конфликтные сценарии (2026-10-26)
+
+- Перенесён сопровождающий P26 sequential-learning benchmark для новой interleaved реализации.
+- Добавлена регрессия: недопустимая запись в конце пакета должна быть отвергнута до первого обновления весов/метрик; некорректный лимит конфликтных кандидатов также должен fail-fast.
+- Benchmark измеряет online updates, replay, отсеивание конфликтующих записей, bounded comparison count и удержание новой задачи; результат остаётся синтетической диагностикой, не внешним доказательством обобщения.
+
+---
+
+## WorkPass347 — возвращено interleaved online/replay learning в P26 (2026-10-26)
+
+- Интегрирован отсутствовавший `P26TrueLearningEngine.trainInterleaved`, который чередует обучение на свежем опыте с ограниченным replay вместо выбора между чистым online и отложенным воспроизведением.
+- Встроен preflight всех строк до изменения весов, проверка action/state/reward/nextState и границ, ограничение конфликтных сравнений, обнаружение близких состояний с противоречивыми reward и отдельные счётчики blocked/eligible/replay updates.
+- Для низкого replay learning rate применяется частотное масштабирование; синтетическая метрика не выдаётся за независимое holdout-доказательство.
+- На следующем проходе будет перенесён сопровождающий sequential benchmark, который проверяет отсутствие частичного изменения состояния на недопустимом позднем примере.
+
+---
+
+## WorkPass346 — разделены executability и доверие к execution trace (2026-10-26)
+
+- В независимом оценщике свойство `executable` теперь отражает фактическую способность выполнить действие, а не успешность проверки подписи/привязки трассы.
+- Успех задачи, доверенная последовательность шагов и доказательства для promotion по-прежнему требуют `executable && bindingVerified && verifierPassed` и нулевых нарушений безопасности. Это делает диагностику точнее, не повышая доверие к неподтверждённому запуску.
+- Паттерн и регрессии перенесены из соседней CI-зелёной линии; проверка текущего HEAD должна подтвердить интеграцию.
+
+---
+
+## WorkPass345 — проверена линия происхождения skill-кандидатов при durable restore (2026-10-26)
+
+- Адаптер атомарного файла теперь валидирует поля `revisionProvenance` (evaluation, source candidate/evidence, plan/dataset fingerprints, измерения и время) вместо принятия только внешнего массива кандидатов.
+- Идентификатор нового кандидата использует историческую 4-полевую форму, когда provenance отсутствует, и добавляет digest происхождения только если оно присутствует. Это устраняет рассогласование между producer и persistence validator.
+- Связанный regression из WorkPass344 покрывает рестарт и идентичность кандидата с provenance; неподписанные поля происхождения не дают полномочий на promotion.
+- `main` и ZIP-релиз не менялись.
+
+---
+
+## WorkPass344 — исправлен CAS regression и добавлен durable provenance test (2026-10-26)
+
+- Исправлен false-negative в тесте: подмена выполняется в подписанном `approval.expectedActiveVersion`, не ломая раньше времени связь исторического rollback target.
+- Добавлена проверка сохранения evaluation/plan/dataset/evidence provenance при записи версии кандидата и восстановлении из JSON-файла.
+- Этот коммит обновляет регрессию; соответствующие persistence и candidate-ID исправления переносятся следующим code-first коммитом, чтобы новый тест не маскировал отсутствующую реализацию.
+- `main` и release ZIP не изменялись.
+
+---
+
+## WorkPass343 — повторный rollback-тест использует текущий approval-контракт (2026-10-26)
+
+- В lifecycle test обновлён и второй старый positional-вызов rollback, который проверяет отказ повторной операции. Он теперь проходит форму одобрения, чтобы тест действительно достигал проверки статуса кандидата, а не падал раньше на валидации аргумента.
+- Обновлённая regression suite не использует старую сигнатуру rollback ни для первого перехода, ни для проверки повторного отката.
+
+---
+
+## WorkPass342 — версия кандидатов использует подписанный протокол rollback (2026-10-26)
+
+- Обновлён устаревший lifecycle test: rollback больше не вызывается старой positional-сигнатурой; тестовый путь явно использует test-only verifier и объект с identity/timestamp/active-version CAS.
+- Добавлена отдельная криптографическая регрессия rollback: Ed25519-подпись связывается с конкретным кандидатом, его payload, shadow evidence и предыдущей активной версией. Неподписанное/подменённое одобрение блокируется; валидный подписанный rollback исполняется и переживает восстановление snapshot.
+- Проверяется и fail-closed поведение без настроенного rollback verifier: одна подпись или audit-поля сами по себе не дают полномочий.
+- Не ослаблялись проверки store; цель изменения — синхронизировать test fixture с текущим протоколом и покрыть authenticated rollback end-to-end.
+
+---
+
+## WorkPass341 — исправлен самотест source-wiring после смены типизированных полей (2026-10-26)
+
+- Первое выполнение нового focused regression подтвердило, что дополнительные assertions с чрезмерно экранированными regex не соответствовали обычному тексту TypeScript. Это ошибка теста, а не откат runtime-исправления.
+- Заменены хрупкие regex для буквальных фрагментов на прямые \`includes()\` / отрицательные проверки, оставляя все семь контрактов: отсутствие unsafe cast, типизированные счётчики debt и реальный P41-граф отношений.
+- Новый exact-HEAD workflow должен пройти весь набор, включая restart smoke; промежуточный FAIL на HEAD \`13913e2...\` остаётся известен и не маскируется.
+
+---
+
+## WorkPass340 — сохранены реальные счётчики prediction debt (2026-10-26)
+
+- Закрыт дефект в call sites после перехода на типизированный \`PredictionDebtState\`: \`openCount\`, \`agingCount\` и \`expiredCount\` теперь передаются валидатору как числовые поля, а не как строковые имена свойств.
+- Регрессия WorkPass339 проверяет все три связи, поэтому future-рефакторинг не сможет незаметно обнулить debt-сигналы.
+- Typecheck и focused runtime wiring должны быть подтверждены новым exact-HEAD CI; результат старого HEAD не переносится на новый.
+
+---
+
+## WorkPass339 — исправлена типовая и фактическая связь prediction debt / vision graph (2026-10-26)
+
+- Удалено небезопасное приведение \`PredictionDebtState\` к \`Record<string, unknown>\`: runtime теперь читает типизированные \`openCount\`, \`agingCount\`, \`expiredCount\`, \`meanPriority01\` и нормализует числовые значения перед интеграцией.
+- \`relationCount\` теперь берётся из реального графа \`P41SemanticPerception\` через \`p41PerceptionSnapshot().relations\`, куда поступают связи, извлечённые семантическим vision backend. Поле \`vision\` не выдумывается на \`cycleObservation\`, у которого такой части по контракту нет.
+- Добавлены source-wiring regressions, защищающие typed prediction-debt path и реальный P41 relation graph.
+- Точный runtime typecheck на новом HEAD — обязательный критерий: ранее P26 и WorkPass294 выявили оба дефекта на HEAD \`8237e3a...\`. Старые успешные focused tests не трактуются как доказательство исправления.
+
+---
+
+## WorkPass337 — исправлен разбор npm --prefix после run в wiring-аудите (2026-10-26)
+
+- **Корневая причина CI-сбоя:** регулярное выражение в `tools/verify-repository-wiring.mjs` поддерживало только `npm --prefix <path> run <script>`, но не эквивалентный вариант `npm run <script> --prefix <path>`. Из-за этого три корректные команды runtime-workspace ошибочно проверялись как scripts корневого package.json.
+- **Исправление:** аудитор теперь разрешает `--prefix` как до, так и после команды `run`; фактический каталог выбранного package.json проверяется до поиска script.
+- **Регрессия:** добавлен fixture, в котором postfix-`--prefix` должен найти script runtime-пакета, а не выдать ложный missing-script.
+- **Проверка:** требуется новый exact-HEAD run `Repository wiring contract audit`; ранее упавший run на `d0d8e739...` остаётся свидетельством старой версии аудитора, не результатом новой.
+- Никакие проверки не ослаблены, пороги не изменены; `main` и release ZIP не тронуты.
+
+---
+
+## Unified cognitive substrate runtime wiring — 2026-10-25
+
+- Replaced unsafe nested-object spreading in `UnifiedCognitiveSubstrate.restore()` with schema-aware own-property reads, finite [0,1] metric normalization, safe non-negative counters, bounded text, and an explicit state-version guard.
+- Applied the same normalization to live integration inputs and rejected malformed sections, invalid ticks, and replayed ticks before state mutation; derived coupling metrics now consume normalized values only.
+- Wired the substrate into the real `OrganismRuntime` cycle after `OrganismCore.observe()`, with a dedicated `.cognitive-substrate.json` sidecar, bounded cadence/meaningful-change checkpointing, restart restore, final stop flush, and evidence-bus diagnostics. Core remains the canonical action arbiter; this change does not claim a learning or task-success uplift.
+- Substrate restore now degrades to a clean derived projection and journals a warning if its sidecar is corrupt or from an unsupported version, rather than blocking the organism's entire startup. Memory-pressure coupling uses the resource allocator's memory budget; RAM pressure remains its separate resource dimension.
+- Added adversarial restore/input and source-wiring regressions, registered them in `test:rebuild-recovered`, and added a Node 24 focused workflow.
+- Extended `test:smoke` to execute 30 real runtime steps, verify the sidecar was flushed, reinitialize the organism, and prove the substrate cycle/tick remain monotonic across restart. The focused Node 24 workflow now runs this operational smoke after the focused contracts.
+- Added `resolveUnifiedCognitiveWorkPolicy()` as a bounded optional-work governor: low readiness, weak evidence, high unknowns, or device pressure can reduce counterfactual branches and withhold matched projections; it never replaces Core action selection. Regression cases cover open, constrained, critical, and malformed-budget states.
+- The optional-work governor now fails closed for malformed/non-finite substrate frames as well as invalid resource budgets; no optional simulation branches are admitted from invalid policy inputs.
+- Validation status at commit time: authored and wired; exact-head execution remains pending. No production-readiness or consciousness claim is implied.
+
 ## Cognitive dependency frame integrity — 2026-10-25
 
 - The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.
