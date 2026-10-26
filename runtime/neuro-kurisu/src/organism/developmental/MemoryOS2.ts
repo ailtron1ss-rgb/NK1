@@ -258,7 +258,7 @@ function isPlainRecord(value: unknown): value is Record<string, any> {
 }
 function isSafeMemoryId(value: unknown): value is string {
  return typeof value === 'string' && value.length > 0 && value.length <= 256 &&
-  value.trim() === value && !/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
+  value.trim() === value && !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 }
 function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
  if(!Array.isArray(value))return [];
@@ -540,7 +540,7 @@ export class MemoryOS2{
   }),0);
   const savedEstimate=Math.max(0,Math.floor(Number((s as any)?.estimatedBytes??legacyEstimate)));
   this.state={
-   ...defaultMemoryOS2(),...(s??{}),version:7,
+   ...defaultMemoryOS2(),...(s??{}),version:MEMORY_OS_STATE_VERSION,
    implicitConflictCandidates:Math.max(0,Math.floor(Number((s as any)?.implicitConflictCandidates??0))),
    implicitConflictsResolved:Math.max(0,Math.floor(Number((s as any)?.implicitConflictsResolved??0))),
    staleRetrievalsAvoided:Math.max(0,Math.floor(Number((s as any)?.staleRetrievalsAvoided??0))),
