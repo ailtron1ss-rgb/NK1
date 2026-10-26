@@ -176,6 +176,16 @@ const caseNormalizedPostcondition = await service.verify({
 assert.equal(caseNormalizedPostcondition.verified, true,
   'case-insensitive postcondition comparison must remain stable');
 
+assert.equal(assessExternalPostcondition({
+  verified: true,
+  basis: 'external-postcondition',
+  externalObservation: true,
+  observationId: 'readback-case-normalization-public-assessor',
+  expectedPostcondition: 'RELAY-MAIN=ON',
+  observedPostcondition: 'relay-main=on',
+}), 'match',
+  'the public postcondition assessor must use the same deterministic case normalization');
+
 const maxLengthPostcondition = await service.verify({
   toolId: 'device.set-state',
   input,
