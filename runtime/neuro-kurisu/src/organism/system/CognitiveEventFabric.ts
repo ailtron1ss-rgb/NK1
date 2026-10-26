@@ -178,7 +178,7 @@ export class CognitiveEventFabric {
           source:sourceValue===undefined?'restored-unknown':sourceValue as string,
           parentIds,
           external:externalValue===undefined?false:externalValue as boolean,
-          confidence01:confidenceValue===undefined?.5:confidenceValue as number,
+          confidence01:confidenceValue===undefined ? 0.5 : confidenceValue as number,
           payload,
         };
         seen.add(idValue);
