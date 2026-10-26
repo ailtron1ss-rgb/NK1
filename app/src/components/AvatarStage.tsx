@@ -3,6 +3,7 @@ import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
+import { deriveAvatarGaze } from "./avatar/avatarPresentation";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import {
   appendVisemeClockAnchor,
@@ -92,6 +93,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   });
   const lastTurn = snap.chat[snap.chat.length - 1];
   const turnKey = lastTurn?.role === "kurisu" ? `${String(lastTurn.id ?? lastTurn.at)}:${String(lastTurn.at)}:${lastTurn.text}` : "";
+  const originalGaze = deriveAvatarGaze(snap.lastOption, snap.emotion.valence);
 
   const stopSpeech = () => {
     const active = activeSpeechSessionRef.current;
@@ -307,12 +309,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
     const expression = EXPR[snap.emotion.label] ?? "neutral";
-    const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
-      explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
-      respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
-    };
-    const gaze = gazeByAction[snap.lastOption] ?? gazeByAction.wait;
-    const valenceOffset = (snap.emotion.valence - 0.5) * 0.16;
+    const gaze = deriveAvatarGaze(snap.lastOption, snap.emotion.valence);
     const headTiltByEmotion: Record<EmotionLabel, number> = {
       curiosity: -0.045, calm: 0, joy: 0.018, anxiety: -0.018,
       frustration: 0.035, sadness: 0.055, anger: 0.025, protective: -0.01,
@@ -324,7 +321,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     // directly to audio boundaries and are deliberately not smoothed here.
     const affectState = smoothEmbodimentAffect(affectSmoothingRef.current, {
       expressionIntensity: snap.emotion.arousal,
-      gazeX: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)),
+      gazeX: gaze.x,
       gazeY: gaze.y,
       headTilt: headTiltByEmotion[snap.emotion.label],
       voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
@@ -377,7 +374,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         <button type="button" aria-pressed={voiceEnabled} onClick={() => { if (voiceEnabled) stopSpeech(); setVoiceEnabled((value) => !value); }} disabled={voiceStatus === "unsupported"} className={cn("rounded px-2 py-1 text-[10px] font-mono", voiceEnabled ? "bg-accent text-accent-fg" : "text-white/70")}>{voiceEnabled ? "Голос: вкл." : "Голос: выкл."}</button>
         {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
       </div>
-      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} /> : <>
+      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
         <iframe key={viewerAttempt} ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}

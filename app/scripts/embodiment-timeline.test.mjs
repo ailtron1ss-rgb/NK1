@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import vm from "node:vm";
 import { buildAvatarSpeechTimeline as buildRuntimeSpeechTimeline } from "../../runtime/neuro-kurisu/public/avatar-state.mjs";
+import { deriveAvatarGaze } from "../src/components/avatar/avatarPresentation.ts";
 import {
   buildVisemeTimeline,
   CLOSED_MOUTH,
@@ -144,6 +145,30 @@ test("a late SpeechSynthesis elapsedTime cannot rewind the published audio clock
   assert.equal(anchored.highWaterMs, 700);
   assert.equal(anchored.anchorElapsedMs, 700);
   assert.equal(sampleMonotonicAudioClock(anchored.highWaterMs, anchored.anchorElapsedMs, anchored.anchorPerformanceAtMs, 1450), 750);
+});
+
+test("one bounded action/valence gaze signal can drive Live2D and NK1 Original", async () => {
+  const actions = ["respond", "explore", "verify", "rest", "reflect", "wait"];
+  for (const action of actions) {
+    for (const valence of [0, 0.5, 1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const gaze = deriveAvatarGaze(action, valence);
+      assert.ok(Number.isFinite(gaze.x) && gaze.x >= -0.4 && gaze.x <= 0.4);
+      assert.ok(Number.isFinite(gaze.y) && gaze.y >= -0.4 && gaze.y <= 0.4);
+    }
+  }
+  assert.ok(deriveAvatarGaze("explore", 0.5).x > deriveAvatarGaze("reflect", 0.5).x,
+    "exploration looks outward while reflection turns gaze inward");
+  assert.deepEqual(deriveAvatarGaze("explore", Number.NaN), deriveAvatarGaze("explore", 0.5),
+    "invalid emotional valence must fall back to neutral gaze influence");
+
+  const stage = await readFile(join(root, "src/components/AvatarStage.tsx"), "utf8");
+  const original = await readFile(join(root, "src/components/KurisuOriginalStage.tsx"), "utf8");
+  assert.ok(stage.includes("deriveAvatarGaze(snap.lastOption, snap.emotion.valence)"));
+  assert.ok(stage.includes("gazeX={originalGaze.x} gazeY={originalGaze.y}"));
+  assert.ok(original.includes("translate(${pupilOffsetX} ${pupilOffsetY})"),
+    "SVG pupils must visibly track the shared gaze vector");
+  assert.ok(original.includes("nk-blink") && original.includes("nk-eye-left"),
+    "the original face should blink without a remote sprite dependency");
 });
 
 test("the intent envelope requires a speech identity and audio clock while speaking", () => {

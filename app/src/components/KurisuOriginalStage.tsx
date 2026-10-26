@@ -80,6 +80,8 @@ export interface KurisuOriginalStageProps {
   emotion: EmotionLabel;
   action: ActionKind;
   arousal: number;
+  gazeX: number;
+  gazeY: number;
   speaking: boolean;
   mouthPose: MouthPose;
   thinking: boolean;
@@ -91,7 +93,7 @@ export interface KurisuOriginalStageProps {
  * organism state and audio-timed mouth signal, and is intended to be the art
  * direction + switchable UI while a production PSD/Cubism rig is authored.
  */
-export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthPose, thinking }: KurisuOriginalStageProps) {
+export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking }: KurisuOriginalStageProps) {
   const [outfit, setOutfit] = useState<Outfit>(() => stored("kurisu-original-outfit", OUTFITS, "lab"));
   const [eyeTone, setEyeTone] = useState<EyeTone>(() => stored("kurisu-original-eyes", EYES, "ice"));
   const [hairTone, setHairTone] = useState<HairTone>(() => stored("kurisu-original-hair", HAIR, "copper"));
@@ -108,6 +110,8 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
   const accent = ACCENTS.find((choice) => choice.id === accentTone) ?? ACCENTS[0];
   const pose = poseFor(action, emotion, arousal, motion);
   const mouthHeight = speaking ? Math.max(2, Math.min(14, mouthPose.open * 18)) : 2.5;
+  const pupilOffsetX = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeX) ? gazeX : 0)) * 15;
+  const pupilOffsetY = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeY) ? gazeY : 0)) * 10;
   const browLift = EMOTION_BROW[emotion];
   const moodLabel: Record<EmotionLabel, string> = {
     curiosity: "интерес", calm: "спокойствие", joy: "радость", anxiety: "тревога",
@@ -139,11 +143,14 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
         @keyframes nk-hair { 0%,100% { transform: rotate(-.45deg) } 50% { transform: rotate(.65deg) } }
         @keyframes nk-breath { 0%,100% { transform: translateY(0px) } 50% { transform: translateY(1.8px) } }
         @keyframes nk-scanner { 0% { transform: translateY(-35px); opacity: 0 } 15% { opacity: .5 } 85% { opacity: .28 } 100% { transform: translateY(255px); opacity: 0 } }
+        @keyframes nk-blink { 0%, 44%, 47%, 100% { transform: scaleY(1) } 45.2%, 46.2% { transform: scaleY(.035) } }
+        .nk-eye { transform-box: fill-box; transform-origin: center; animation: nk-blink 6.2s ease-in-out infinite; }
+        .nk-eye-right { animation-delay: .08s; }
         .nk-float { animation: nk-float ${motionDuration} ease-in-out infinite; transform-origin: 210px 270px; }
         .nk-hair { animation: nk-hair 6.2s ease-in-out infinite; transform-origin: 210px 110px; }
         .nk-breath { animation: nk-breath ${pose.breathMs}s ease-in-out infinite; transform-origin: 210px 240px; }
         .nk-scanner { animation: nk-scanner 8s linear infinite; }
-        @media (prefers-reduced-motion: reduce) { .nk-float,.nk-hair,.nk-breath,.nk-scanner { animation: none !important; } }
+        @media (prefers-reduced-motion: reduce) { .nk-float,.nk-hair,.nk-breath,.nk-scanner,.nk-eye { animation: none !important; } }
       `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_36%,rgba(38,113,133,.35),transparent_47%),linear-gradient(180deg,#0a1b25,#050b12)]" />
       <svg viewBox="0 0 420 560" role="img" aria-label={`NK1 Original — Курису, ${moodLabel[emotion]}, ${OUTFITS.find((item) => item.id === outfit)?.label}`} className="relative z-10 h-[320px] w-full md:h-[420px]" preserveAspectRatio="xMidYMid meet" style={{ transform: `scale(${scale})`, transformOrigin: "50% 55%", transition: "transform 180ms ease" }}>
@@ -239,13 +246,13 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
             <path d="M157 72 Q168 48 195 44 Q222 40 245 60 Q216 51 201 59 Q178 65 157 88Z" fill="#ee9d6c" opacity=".65"/>
             {/* Eye line, lids and iris are separately parameterizable shapes. */}
             <g transform="translate(179 118)">
-              <path d={emotion === "anger" || emotion === "frustration" ? "M-14 -2 Q0 -13 15 -1 Q2 10 -14 -2Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
-              <ellipse cx="1" cy="0" rx="6.5" ry="9" fill="url(#nk-iris)"/><ellipse cx="1" cy="1" rx="3.5" ry="6.5" fill="#2a354b"/><circle cx="3" cy="-4" r="2.5" fill="#fff"/>
+              <g className="nk-eye nk-eye-left"><path d={emotion === "anger" || emotion === "frustration" ? "M-14 -2 Q0 -13 15 -1 Q2 10 -14 -2Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
+              <g transform={`translate(${pupilOffsetX} ${pupilOffsetY})`}> <ellipse cx="1" cy="0" rx="6.5" ry="9" fill="url(#nk-iris)"/><ellipse cx="1" cy="1" rx="3.5" ry="6.5" fill="#2a354b"/><circle cx="3" cy="-4" r="2.5" fill="#fff"/> </g></g>
               <path d={`M-16 -1 Q0 ${-11-browLift} 16 -1`} fill="none" stroke={hair.shade} strokeWidth="3" strokeLinecap="round"/>
             </g>
             <g transform="translate(241 118)">
-              <path d={emotion === "anger" || emotion === "frustration" ? "M-15 -1 Q0 -13 14 -2 Q3 11 -15 -1Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
-              <ellipse cx="-1" cy="0" rx="6.5" ry="9" fill="url(#nk-iris)"/><ellipse cx="-1" cy="1" rx="3.5" ry="6.5" fill="#2a354b"/><circle cx="1" cy="-4" r="2.5" fill="#fff"/>
+              <g className="nk-eye nk-eye-right"><path d={emotion === "anger" || emotion === "frustration" ? "M-15 -1 Q0 -13 14 -2 Q3 11 -15 -1Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
+              <g transform={`translate(${pupilOffsetX} ${pupilOffsetY})`}> <ellipse cx="-1" cy="0" rx="6.5" ry="9" fill="url(#nk-iris)"/><ellipse cx="-1" cy="1" rx="3.5" ry="6.5" fill="#2a354b"/><circle cx="1" cy="-4" r="2.5" fill="#fff"/> </g></g>
               <path d={`M-16 -1 Q0 ${-11+browLift*.25} 16 -1`} fill="none" stroke={hair.shade} strokeWidth="3" strokeLinecap="round"/>
             </g>
             <path d="M210 127 L206 143 L212 145" fill="none" stroke="#bb7b7c" strokeWidth="1.6" strokeLinecap="round"/>
