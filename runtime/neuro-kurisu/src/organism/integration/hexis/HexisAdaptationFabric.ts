@@ -70,6 +70,8 @@ export interface HexisLearningReviewItem {
     title: string;
     content: string;
     sourceMemoryId?: string;
+    /** Canonical NK1 memory/revision materialized by the integrated review decision. */
+    canonicalMemoryId?: string;
     evidence: Record<string, unknown>;
     status: 'pending' | 'approved' | 'corrected' | 'forgotten';
     correction?: string;
@@ -497,9 +499,9 @@ export class HexisAdaptationFabric {
         summary: string;
         items: Array<Omit<HexisLearningReviewItem, 'id' | 'status' | 'createdAt'>>;
     }): HexisLearningReview { const createdAt = nowMs(); const review: HexisLearningReview = { id: randomUUID(), periodStart: input.periodStart, periodEnd: input.periodEnd, summary: String(input.summary).slice(0, 2000), status: 'pending', items: input.items.slice(0, 50).map((item) => ({ ...item, id: randomUUID(), status: 'pending', createdAt })), createdAt }; this.state.learningReviews.push(review); this.state.learningReviews = this.state.learningReviews.slice(-96); this.state.metrics.reviewsCreated += 1; return structuredClone(review); }
-    decideLearningReview(reviewId: string, itemId: string, decision: HexisReviewDecision, correction?: string): HexisLearningReviewItem | null { const review = this.state.learningReviews.find((x) => x.id === reviewId); const item = review?.items.find((x) => x.id === itemId); if (!item || item.status !== 'pending' || !['approve', 'correct', 'forget'].includes(decision) || (decision === 'correct' && !String(correction ?? '').trim()))
+    decideLearningReview(reviewId: string, itemId: string, decision: HexisReviewDecision, correction?: string, canonicalMemoryId?: string): HexisLearningReviewItem | null { const review = this.state.learningReviews.find((x) => x.id === reviewId); const item = review?.items.find((x) => x.id === itemId); if (!item || item.status !== 'pending' || !['approve', 'correct', 'forget'].includes(decision) || (decision === 'correct' && !String(correction ?? '').trim()))
         return null; item.status = decision === 'approve' ? 'approved' : decision === 'correct' ? 'corrected' : 'forgotten'; if (correction)
-        item.correction = String(correction).slice(0, 2000); item.decidedAt = nowMs(); if (review && review.items.every((x) => x.status !== 'pending')) {
+        item.correction = String(correction).slice(0, 2000); if (canonicalMemoryId) item.canonicalMemoryId = String(canonicalMemoryId).slice(0, 160); item.decidedAt = nowMs(); if (review && review.items.every((x) => x.status !== 'pending')) {
         review.status = 'completed';
         review.completedAt = item.decidedAt;
     } this.state.metrics.reviewDecisions += 1; return structuredClone(item); }
