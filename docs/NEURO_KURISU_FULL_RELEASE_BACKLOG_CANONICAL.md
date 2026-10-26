@@ -3,8 +3,8 @@
 - [x] Remove the recursive search over arbitrary snapshot descendants from the WorkPass358 runtime-restart test.
 - [x] Read `snapshot.facets.advanced.memoryOS.items` explicitly and require the canonical MemoryOS2 collection and schema version.
 - [x] Confirm the marker-bearing memory is in that canonical item list before shutdown and after restart, and compare the stable memory ID.
-- [ ] Pass the updated exact-head focused workflow [#40291427381](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291427381), including full-runtime restart and runtime typecheck.
-- **Status:** strict test committed; CI pending. This removes false-positive paths in the continuity regression but does not establish retrieval uplift or production crash consistency.
+- [x] Focused workflow [#40291427381](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291427381) passed on head `638efa8ca5f3b95a4083b63018c5e2b199c75a81`: native provider 10/10, evaluator-config 16/16, MemoryOS restore boundary PASS, file-backed process recall PASS, strict canonical MemoryOS2 full-runtime restart PASS, runtime `TYPECHECK=PASS`.
+- **Status:** strict canonical-owner assertion and its focused workflow are validated on head `638efa8ca5f3b95a4083b63018c5e2b199c75a81`. This removes false-positive paths in the continuity regression but does not establish retrieval uplift or production crash consistency.
 
 ---
 
