@@ -146,6 +146,18 @@ const restoredLongTrailConfidence = longTrailRestored.snapshot().items.find(row 
 longTrailRestored.encode(longLineageInput(0, { confidence: .99, sourceAuthority01: 1 }), { clone: false });
 assert.equal(longTrailRestored.snapshot().items.find(row => row.id === longTrailMemory.id).confidence, restoredLongTrailConfidence, 'restored oldest-lineage replay cannot ratchet confidence');
 assert.equal(longTrailRestored.indexDiagnostics().pass, true, 'long-horizon provenance filter preserves canonical memory indexes');
+const normalizedReplay = longTrailRestored.recordEvidence(longTrailMemory.id, {
+  source: 'replay-normalization-regression',
+  provenanceClass: 'external',
+  sourceAuthority01: 1,
+  independenceKey: '  ＨＥＸＩＳ－ＲＯＬＬＯＶＥＲ－０  ',
+  observedAt: lineageEpoch + 10_000,
+  evidenceFreshnessAt: lineageEpoch + 10_000,
+});
+assert.equal(normalizedReplay.added, false, 'NFKC-equivalent full-width and case-normalized lineage keys cannot bypass the replay guard');
+assert.equal(normalizedReplay.reason, 'duplicate-source');
+assert.equal(longTrailRestored.snapshot().items.find(row => row.id === longTrailMemory.id).confidence, restoredLongTrailConfidence, 'normalized replay cannot ratchet confidence');
+assert.equal(longTrailRestored.indexDiagnostics().pass, true, 'normalized replay rejection preserves memory indexes');
 
 // A malformed persisted filter must fail closed instead of forgetting lineage and re-voting old evidence.
 const corruptFilterSnapshot = structuredClone(longTrailOS.snapshot());
