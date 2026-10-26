@@ -4,8 +4,10 @@
 - Apply the same strict decoding to skill promotion and rollback approvals. This prevents permissive Base64 parsing from ignoring whitespace or trailing non-alphabet characters and accepting multiple textual representations of one signed artifact.
 - Extend the versioned skill-store regression test: canonical signatures remain accepted; appended junk, leading whitespace, and truncated signatures are denied for promotion, and appended junk is denied for rollback.
 - The approval boundary remains default-deny; the patch does not bypass independent evaluation, shadow-evidence authentication, or explicit approval.
+- Harden the lower-level holdout revision gate against malformed runtime/persisted fields: numeric/object task IDs, family/method/verifier/evidence fields, invalid top-level arrays, and malformed options now fail closed instead of crashing the evaluator.
+- Add regressions showing valid paired holdout outcomes still evaluate and seven malformed row variants are rejected without disrupting the valid pairs.
 
-Validation: source and regression updates are committed on a dedicated working branch. Local runtime tests were not run in this environment; CI results remain pending.
+Validation: code and regression tests are committed on the working branch. Local runtime tests were not run in this environment; CI results remain pending.
 
 ---
 
