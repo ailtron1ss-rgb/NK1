@@ -1031,7 +1031,7 @@ assert.deepEqual(atomicCycleFabric.snapshot(),atomicCycleBefore);
 let cyclePhaseGetterExecuted=false;
 const accessorCyclePhase={source:'safe'};
 Object.defineProperty(accessorCyclePhase,'confidence01',{enumerable:true,get(){cyclePhaseGetterExecuted=true;throw new Error('phase confidence getter must not run');}});
-assert.throws(()=>atomicCycleFabric.recordOperationalCycle({tick:42,observation:accessorCyclePhase}),/operational-cycle-phase-field-accessor:confidence01/);
+assert.throws(()=>atomicCycleFabric.recordOperationalCycle({tick:42,observation:accessorCyclePhase}),/operational-cycle-phase-input-field-accessor:confidence01/);
 assert.equal(cyclePhaseGetterExecuted,false,'phase accessors must never execute');
 assert.deepEqual(atomicCycleFabric.snapshot(),atomicCycleBefore);
 
