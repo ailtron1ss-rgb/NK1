@@ -2975,7 +2975,7 @@ export class OrganismCore {
                     validFromAt: projected.validFromAt,
                     validUntilAt: projected.validUntilAt,
                     observedAt: projected.observedAt,
-                } satisfies MemoryLifecycleEncodeInput;
+                };
                 plans.push({ projected, key, input: importedMemory });
             }
 
