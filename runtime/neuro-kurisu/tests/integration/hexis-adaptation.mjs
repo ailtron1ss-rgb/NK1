@@ -243,6 +243,69 @@ function makeHmxDocument(exportId, sections) {
   });
 }
 
+// Imported epistemic status is never promoted by a permissive default. Archived and
+// terminal/non-active source records remain quarantined; unknown future statuses remain
+// unknown; external "fact" labels are not NK1-verified facts.
+const statusRuntime = new MemorySubsystemRuntime();
+const statusProjector = new HexisCanonicalMemoryProjector(statusRuntime.fabric, statusRuntime.semanticMemory);
+const statusCases = [
+  ['active', 'belief'],
+  ['belief', 'belief'],
+  ['fact', 'belief'],
+  ['hypothesis', 'hypothesis'],
+  ['quarantined', 'quarantined'],
+  ['archived', 'quarantined'],
+  ['deleted', 'quarantined'],
+  ['rejected', 'quarantined'],
+  ['superseded', 'quarantined'],
+  ['unknown', 'unknown'],
+  ['future-upstream-status-v2', 'unknown'],
+  [undefined, 'unknown'],
+];
+for (let index = 0; index < statusCases.length; index++) {
+  const [sourceStatus, expectedStatus] = statusCases[index];
+  const exportId = 'exp_' + String(index + 1).padStart(16, '0');
+  const content = 'HMX status policy fixture ' + index + ' ' + String(sourceStatus ?? 'missing');
+  const statusFabric = new HexisAdaptationFabric();
+  statusFabric.bindCanonicalMemoryApply(stage => statusProjector.apply(stage));
+  const row = {
+    ref: exportId + ':status-memory',
+    type: 'semantic',
+    content,
+    ...(sourceStatus === undefined ? {} : { status: sourceStatus }),
+  };
+  const staged = statusFabric.stageHmx({
+    document: makeHmxDocument(exportId, { memories: [row] }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert.deepEqual(staged.conflicts, [], 'valid HMX status metadata should stage: ' + String(sourceStatus));
+  assert.equal(statusFabric.decideHmx(staged.stagingId, 'accept')?.status, 'accepted');
+  assert.equal(statusFabric.decideHmx(staged.stagingId, 'apply')?.status, 'applied');
+  const imported = statusRuntime.fabric.canonicalSnapshot().items.find(item => item.content === content);
+  assert(imported, 'status fixture should be recorded in canonical memory');
+  assert.equal(imported.epistemicStatus, expectedStatus, 'source status mapping: ' + String(sourceStatus));
+  assert.equal(imported.context?.hexisOriginalStatus, sourceStatus ?? 'unknown',
+    'original upstream status remains inspectable');
+}
+
+// Malformed status types and control characters must be rejected during staging.
+for (const invalidStatus of [42, false, {}, 'active\\nadmin']) {
+  const exportId = 'exp_' + (100 + (invalidStatus === 42 ? 1 : invalidStatus === false ? 2 : invalidStatus === null ? 3 : invalidStatus === 'active\\nadmin' ? 4 : 5)).toString().padStart(16, '0');
+  const malformedStatusFabric = new HexisAdaptationFabric();
+  const staged = malformedStatusFabric.stageHmx({
+    document: makeHmxDocument(exportId, {
+      memories: [{ ref: exportId + ':bad-status', type: 'semantic', content: 'Must not be accepted.', status: invalidStatus }],
+    }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert(staged.conflicts.some(conflict => conflict.path === 'sections.memories[0].status'),
+    'malformed status should be an explicit schema conflict: ' + typeof invalidStatus);
+  assert.equal(malformedStatusFabric.decideHmx(staged.stagingId, 'accept')?.status, 'staged',
+    'malformed status must not become an accepted import');
+}
+
 // Analysis and authoritative strategies are reviewable, but the current projector
 // only implements additive port semantics and must reject writes from other strategies.
 for (const [exportId, intent, strategy] of [
