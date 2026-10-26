@@ -1,3 +1,14 @@
+## Latest checkpoint — WorkPass344 final release gate (pending CI)
+
+- **Branch:** `work/nk1-final-release-gate-2026-10-26-r2`, created from the latest source baseline so the base's WorkPass343 cognitive-substrate tick-reconciliation fix is preserved.
+- **Release verifier:** `tools/verify-final-release.mjs` now requires metadata consistency in addition to UI wiring and architecture checks. Missing or failing metadata validation is fail-closed.
+- **Regression:** four scenarios added to `tools/verify-final-release.test.mjs`; root `audit:workpass70` and Unified project integration CI run the test plus `npm run release:verify`.
+- **CI-driven fix:** the first run failed because architecture audit mistook a literal import assertion string for an actual relative import. The assertion is now assembled from tokens to avoid that false graph edge. New exact-head CI is pending.
+- **Previously verified source:** WorkPass340–342 remain validated on head `621864d0d7f2676245383adab86f1dcc6d0f741f`; that result does not automatically cover current-base WorkPass343/344.
+- **Scores:** unchanged. The large release ZIP is still old; Android/Termux sensor/audio, browser/Live2D hardware, soak and licensing remain open.
+
+---
+
 ## Latest checkpoint — WorkPass342 validated / WorkPass340–342 merged (2026-10-26)
 
 - **Merged PR:** #154 integrated WorkPass340–342 into `fix/mega-cognitive-progress-tracking-2026-10-26-r3`; merge commit `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. It does not change `main` or publish a release ZIP.
