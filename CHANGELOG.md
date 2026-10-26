@@ -1,3 +1,13 @@
+## [NK1][WorkPass376] Reject ambiguous Hexis timestamps and C1 controls — 2026-10-26
+
+- **Defect:** Date.parse alone accepted ambiguous timestamp strings and may normalize invalid calendar dates; Hexis note/source validation rejected C0/DEL but allowed C1 controls.
+- **Fix:** require timezone-qualified ISO-8601 timestamps, validate calendar/time/offset components before parsing, canonicalize accepted instants to UTC milliseconds, and reject C0/DEL/C1 controls from normalized text.
+- **Regression:** extend tests/cognitive-hexis-evidence-adapter.mjs with shorthand, missing-timezone, rollover-date, invalid-hour/offset and C1 cases for note, label, author and source reference. The test is chained into test:hexis-memory-evidence-lineage.
+- **Validation:** prior WorkPass375 Actions results do not validate this delta; exact-head workflows must pass before claiming this fix validated.
+- **Release:** main and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][WorkPass375] Route Hexis evidence through canonical MemoryOS2 ingress — 2026-10-26
 
 - **Integration:** wire the Hexis evidence adapter into the actual `MemoryOS2.recordEvidence()` write boundary. MemoryOS2 remains the only writable memory authority; no parallel memory store or runtime is introduced.
