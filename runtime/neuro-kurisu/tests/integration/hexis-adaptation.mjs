@@ -167,7 +167,30 @@ assert.equal(invalidHmxModesFabric.snapshot().hmxStages.length, 0,
 
 
 
+// HMX ingress owns a detached snapshot. Removing redundant intermediate
+// deep copies is safe only while both caller input and returned stage remain isolated.
+const isolationFabric = new HexisAdaptationFabric();
+const mutableHmxSource = structuredClone(validHmx);
+const isolatedStage = isolationFabric.stageHmx({
+  document: mutableHmxSource,
+  intent: 'telepathy',
+  strategy: 'additive',
+});
+mutableHmxSource.sections.memories[0].content = 'Mutated after stage creation.';
+assert.equal(
+  isolationFabric.getHmxStage(isolatedStage.stagingId)?.stagedSections.memories[0].content,
+  'A canonical imported fact.',
+  'the detached ingress snapshot must not alias the caller document',
+);
+isolatedStage.stagedSections.memories[0].content = 'Mutated from returned stage clone.';
+assert.equal(
+  isolationFabric.getHmxStage(isolatedStage.stagingId)?.stagedSections.memories[0].content,
+  'A canonical imported fact.',
+  'mutating the returned stage clone must not mutate persisted staging state',
+);
+
 // Stage HMX arrays atomically: over-capacity or malformed source data must
+// not leave a misleading valid-looking prefix in stagedSections.// Stage HMX arrays atomically: over-capacity or malformed source data must
 // not leave a misleading valid-looking prefix in stagedSections.
 const oversizedExportId = 'exp_3333333333333333';
 const oversizedHmx = {
