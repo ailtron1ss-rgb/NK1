@@ -95,6 +95,55 @@ assert.equal(malformedStage.stagedSections.memories, undefined, 'one malformed r
 assert.equal(fabric.decideHmx(malformedStage.stagingId, 'accept')?.status, 'staged',
   'a malformed section cannot enter canonical memory');
 
+// HMX validation and staging must inspect data descriptors, not execute getters.
+const accessorCases = [
+  {
+    name: 'root-export-id',
+    create(onRead) {
+      const document = { ...validHmx };
+      Object.defineProperty(document, 'export_id', {
+        enumerable: true,
+        configurable: true,
+        get() { onRead(); return 'exp_0123456789abcdef'; },
+      });
+      return document;
+    },
+  },
+  {
+    name: 'nested-memories',
+    create(onRead) {
+      const document = structuredClone(validHmx);
+      Object.defineProperty(document.sections, 'memories', {
+        enumerable: true,
+        configurable: true,
+        get() { onRead(); return validHmx.sections.memories; },
+      });
+      return document;
+    },
+  },
+];
+for (const accessorCase of accessorCases) {
+  let getterReads = 0;
+  const accessorDocument = accessorCase.create(() => { getterReads += 1; });
+  const issues = validateHmxV17Document(accessorDocument, 'telepathy');
+  assert(issues.some(issue => issue.kind === 'unsafe-input'),
+    `${accessorCase.name}: accessor-backed HMX must be rejected`);
+  assert.equal(getterReads, 0, `${accessorCase.name}: validation must not execute getters`);
+
+  const accessorStage = fabric.stageHmx({
+    document: accessorDocument,
+    intent: 'telepathy',
+    strategy: 'additive',
+  });
+  assert(accessorStage.conflicts.some(issue => issue.kind === 'unsafe-input'),
+    `${accessorCase.name}: staging must retain an explicit unsafe-input conflict`);
+  assert.equal(getterReads, 0, `${accessorCase.name}: staging must not execute getters`);
+  assert.equal(accessorStage.stagedSections.memories, undefined,
+    `${accessorCase.name}: rejected source must not leave a staged memory payload`);
+  assert.equal(fabric.decideHmx(accessorStage.stagingId, 'accept')?.status, 'staged',
+    `${accessorCase.name}: unsafe input must remain ineligible for acceptance`);
+}
+
 assert.equal(validateHmxV17Document(validHmx, 'port').some(issue => issue.kind === 'intent-mismatch'), true);
 assert.equal(validateHmxV17Document({ ...validHmx, export_id: 'random-uuid' }, 'telepathy').some(issue => issue.path === 'export_id'), true);
 
