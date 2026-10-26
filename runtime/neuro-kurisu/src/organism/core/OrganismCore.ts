@@ -2933,6 +2933,72 @@ export class OrganismCore {
                 memoryMutation = { kind: 'forget', sourceMemoryId, removed: false, alreadyAbsent: true };
             }
         }
+        // Materialize a bounded, explicitly unverified event in both epistemic and source-monitor ledgers.
+        // It describes the review action; it does not promote the corrected content to external truth.
+        const reviewCapturedAt = Date.now();
+        const reviewSourceId = `hexis-review:${reviewId}:${itemId}`;
+        const reviewedMemoryId = String(memoryMutation.memoryId ?? sourceMemoryId ?? '').slice(0, 192);
+        const reviewEventPayload = {
+            schemaVersion: 1,
+            reviewId: String(reviewId),
+            itemId: String(itemId),
+            decision,
+            sourceMemoryId: reviewedMemoryId || null,
+            correctionHash: decision === 'correct'
+                ? createHash('sha256').update(String(correction ?? '').trim()).digest('hex')
+                : null,
+        };
+        const reviewFingerprint = createHash('sha256').update(JSON.stringify(reviewEventPayload)).digest('hex');
+        const reviewEventContent = `Hexis learning-review request ${decision}; review=${reviewId}; item=${itemId}; memory=${reviewedMemoryId || 'none'}. This is process provenance, not external truth.`;
+        const p65 = this.memorySubsystem.p65EpistemicLedger;
+        const sourceMonitor = this.cognitiveRuntime.sourceMonitor;
+        const priorReviewClaim = p65.snapshot().claimsData.find((claim) => claim.provenance?.sourceId === reviewSourceId);
+        const priorReviewTrace = sourceMonitor.snapshot().traces.find((trace) => trace.id === reviewSourceId);
+        const provenanceMatches = (provenance: { sourceId: string; contentFingerprint?: string } | undefined) =>
+            provenance?.sourceId === reviewSourceId && provenance.contentFingerprint === reviewFingerprint;
+        if (priorReviewClaim && (!provenanceMatches(priorReviewClaim.provenance) || priorReviewClaim.content !== reviewEventContent)) {
+            return { ok: false, error: 'review-evidence-conflict', reviewId, itemId, sourceId: reviewSourceId };
+        }
+        if (priorReviewTrace && (!provenanceMatches(priorReviewTrace.provenance) || priorReviewTrace.kind !== 'hexis-learning-review')) {
+            return { ok: false, error: 'review-source-trace-conflict', reviewId, itemId, sourceId: reviewSourceId };
+        }
+        const provenance = {
+            sourceId: reviewSourceId,
+            sourceKind: 'hexis-learning-review',
+            capturedAt: priorReviewClaim?.provenance?.capturedAt ?? priorReviewTrace?.provenance?.capturedAt ?? reviewCapturedAt,
+            evidenceClass: 'unverified' as const,
+            contentFingerprint: reviewFingerprint,
+            citation: reviewedMemoryId ? `memory:${reviewedMemoryId}` : `review:${reviewId}`,
+        };
+        if (!priorReviewClaim) {
+            const claimId = p65.record({
+                tick: Math.max(0, Math.floor(Number(this.persisted.state.tick) || 0)),
+                at: provenance.capturedAt,
+                kind: 'observation',
+                content: reviewEventContent,
+                confidence01: 0.5,
+                source: 'hexis-review',
+                provenance,
+            });
+            if (!claimId)
+                return { ok: false, error: 'review-epistemic-ledger-rejected', reviewId, itemId };
+        }
+        if (!priorReviewTrace) {
+            sourceMonitor.record({
+                id: reviewSourceId,
+                source: 'system',
+                kind: 'hexis-learning-review',
+                confidence: 0.5,
+                epistemicStatus: 'observation',
+                at: provenance.capturedAt,
+                provenance,
+            });
+            const acceptedTrace = sourceMonitor.snapshot().traces.find((trace) => trace.id === reviewSourceId);
+            if (!acceptedTrace || acceptedTrace.provenance?.contentFingerprint !== reviewFingerprint)
+                return { ok: false, error: 'review-source-trace-rejected', reviewId, itemId };
+        }
+        this.persisted.facets.advanced.p65EpistemicLedger = p65.snapshot();
+        this.persisted.facets.cognition.sources = sourceMonitor.snapshot();
         // Every condition checked by decideLearningReview is preflighted before touching canonical memory.
         const result = this.hexisAdaptation.decideLearningReview(reviewId, itemId, decision, correction);
         if (!result)
