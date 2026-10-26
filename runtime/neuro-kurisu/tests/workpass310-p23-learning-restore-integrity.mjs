@@ -94,4 +94,16 @@ assert.deepEqual(engine.snapshot(),beforeUnsupported,'unsupported version must n
 assert.throws(()=>engine.restore([]),/plain object/);
 assert.deepEqual(engine.snapshot(),beforeUnsupported,'non-object state must be rejected before mutation');
 
+const topLevelAccessor={...beforeUnsupported};
+Object.defineProperty(topLevelAccessor,'experiences',{enumerable:true,get(){throw new Error('restore must not read persisted getters');}});
+assert.throws(()=>engine.restore(topLevelAccessor),/plain data properties/,
+  'top-level accessors must be rejected before the learner reads restored fields');
+assert.deepEqual(engine.snapshot(),beforeUnsupported,'accessor-backed state must not partially mutate the learner');
+
+const nestedAccessor={...beforeUnsupported,experiences:[{...beforeUnsupported.experiences[0]}]};
+Object.defineProperty(nestedAccessor.experiences[0],'success',{enumerable:true,get(){throw new Error('restore must not read nested getters');}});
+assert.throws(()=>engine.restore(nestedAccessor),/plain data properties/,
+  'accessors nested in a durable row must be rejected before row parsing');
+assert.deepEqual(engine.snapshot(),beforeUnsupported,'nested accessor state must not partially mutate the learner');
+
 console.log('WORKPASS310_P23_RESTORE_INTEGRITY=PASS');
