@@ -115,6 +115,54 @@ const hasOwnAccessorField=(value:unknown,key:string):boolean=>{
 const hasOnlyCanonicalEventId=(value:unknown):value is string=>
   typeof value==='string'&&value.length>0&&value.length<=180&&value===value.trim()&&
   !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
+const clonePlainJsonData=(value:unknown,state:{seen:Set<object>;nodes:number}={seen:new Set<object>(),nodes:0},depth=0):unknown=>{
+  state.nodes+=1;
+  if(depth>32||state.nodes>16384)throw new TypeError('event-payload-json-budget-exceeded');
+  if(value===null||typeof value==='string'||typeof value==='boolean')return value;
+  if(typeof value==='number') {
+    if(!Number.isFinite(value))throw new TypeError('event-payload-non-finite-number');
+    return value;
+  }
+  if(typeof value!=='object')throw new TypeError('event-payload-non-json-value');
+  if(state.seen.has(value))throw new TypeError('event-payload-circular-reference');
+  state.seen.add(value);
+  try {
+    if(Array.isArray(value)) {
+      if(Object.getPrototypeOf(value)!==Array.prototype||value.length>4096) {
+        throw new TypeError('event-payload-invalid-array');
+      }
+      const keys=Object.keys(value);
+      if(keys.length!==value.length||keys.some((key,index)=>key!==String(index))) {
+        throw new TypeError('event-payload-sparse-or-extended-array');
+      }
+      const copied:unknown[]=[];
+      for(let i=0;i<value.length;i++) {
+        const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+        if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true) {
+          throw new TypeError('event-payload-accessor-or-hole');
+        }
+        copied.push(clonePlainJsonData(descriptor.value,state,depth+1));
+      }
+      return copied;
+    }
+    const proto=Object.getPrototypeOf(value);
+    if(proto!==Object.prototype&&proto!==null)throw new TypeError('event-payload-non-plain-object');
+    const copied:Record<string,unknown>={};
+    for(const key of Object.keys(value)) {
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true) {
+        throw new TypeError('event-payload-accessor');
+      }
+      Object.defineProperty(copied,key,{
+        value:clonePlainJsonData(descriptor.value,state,depth+1),
+        enumerable:true,writable:true,configurable:true,
+      });
+    }
+    return copied;
+  } finally {
+    state.seen.delete(value);
+  }
+};
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
 export class CognitiveEventFabric {
@@ -181,9 +229,12 @@ export class CognitiveEventFabric {
           parentIds.push(...rawParents as string[]);
         }
 
-        const payload=structuredClone(cleanPayload(payloadValue));
-        // The causal ledger must contain stable JSON payloads; do not restore a
-        // cyclic/function-bearing payload that can make later snapshots fail.
+        // Copy nested payload data through own property descriptors. structuredClone/JSON
+        // serializers can evaluate nested getters, so neither is an admissible parser
+        // for an untrusted restored event.
+        const payloadRaw=payloadValue===undefined?{}:payloadValue;
+        const payload=clonePlainJsonData(payloadRaw) as Record<string,unknown>;
+        if(!isRecord(payload))continue;
         sha256Stable(payload);
         const node:CognitiveEventNode={
           id:idValue,
