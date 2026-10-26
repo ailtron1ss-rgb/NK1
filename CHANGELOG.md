@@ -1,5 +1,6 @@
 # WorkPass369 — restore P26 interleaved runtime contract and holdout provenance (2026-10-26)
 
+- [CI-DRIVEN FIX] The full replay sweep exposed a retention failure at `interleave-1`, seed 17: replay was applied after each current sample, leaving the old-task gradient last in every slot (`newAfter=0.52`, `oldAfter=0.94`). Interleaved scheduling now applies replay before the fresh sample; bounded conflict screening samples across the full current batch rather than one contiguous slice. A direct target-order regression protects the contract without lowering benchmark thresholds.
 - [FIXED] Restore the missing `trainInterleaved()` path consumed by sequential/contextual replay benchmarks, with full-batch preflight, bounded conflict screening, reward/TD target modes and rollback of model weights plus metrics on mid-batch failure.
 - [FIXED] Add `recordVerifiedHoldout()` with strict own-data schema checks, mandatory verified/independent flags, bounded score/timestamp validation and duplicate-evidence protection across restore.
 - [METRICS] Separate training exposure from independent generalization evidence. Online/replay updates and within-batch diagnostics no longer inflate `generalizationEvidence01`.
