@@ -828,7 +828,7 @@ const legacyTrustProjector = new HexisCanonicalMemoryProjector(
 );
 legacyTrustLedger.bindCanonicalMemoryApply(stage => legacyTrustProjector.apply(stage));
 const legacyTrustContent = 'Persisted HMX memory predating the authority cap.';
-const applyLegacyTrust = exportId => {
+const stageLegacyTrust = exportId => {
   const stage = legacyTrustLedger.stageHmx({
     document: makeHmxDocument(exportId, {
       memories: [{
@@ -844,7 +844,12 @@ const applyLegacyTrust = exportId => {
   });
   assert.deepEqual(stage.conflicts, []);
   assert.equal(legacyTrustLedger.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
+  return stage;
+};
+const applyLegacyTrust = exportId => {
+  const stage = stageLegacyTrust(exportId);
   assert.equal(legacyTrustLedger.decideHmx(stage.stagingId, 'apply')?.status, 'applied');
+  return stage;
 };
 applyLegacyTrust('exp_0000000000009201');
 const importedLegacyTrust = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.content === legacyTrustContent);
@@ -862,7 +867,42 @@ legacyTrustRuntime.memoryOS.restore({
 const overTrustedSnapshot = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.id === importedLegacyTrust.id);
 assert.equal(overTrustedSnapshot?.confidence, 0.99, 'fixture emulates a persisted pre-policy import');
 assert.equal(overTrustedSnapshot?.sourceAuthority01, 0.99);
-applyLegacyTrust('exp_0000000000009202');
+const rollbackLegacyTrustStage = stageLegacyTrust('exp_0000000000009202');
+const signalBaselineBeforeFailure = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.id === importedLegacyTrust.id);
+assert(signalBaselineBeforeFailure);
+const signalBaseline = Object.fromEntries([
+  'confidence', 'sourceAuthority01', 'evidenceSources', 'evidenceLineageKeys',
+  'salience', 'emotionalWeight', 'identityRelevance', 'goalRelevance', 'socialRelevance',
+  'predictionError', 'dormant', 'lastAccessAt', 'temperature01', 'revisionHistory',
+].map(field => [field, structuredClone(signalBaselineBeforeFailure[field])]));
+const realRegisterLegacyBelief = legacyTrustLedger.registerOrUpdateBelief.bind(legacyTrustLedger);
+legacyTrustLedger.registerOrUpdateBelief = () => {
+  throw new Error('injected-legacy-trust-belief-commit-failure');
+};
+assert.throws(
+  () => legacyTrustLedger.decideHmx(rollbackLegacyTrustStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-legacy-trust-belief-commit-failure/,
+  'a failure after duplicate authority-cap mutation must trigger signal compensation',
+);
+legacyTrustLedger.registerOrUpdateBelief = realRegisterLegacyBelief;
+assert.equal(legacyTrustLedger.getHmxStage(rollbackLegacyTrustStage.stagingId)?.status, 'accepted');
+assert.equal(legacyTrustLedger.getHmxStage(rollbackLegacyTrustStage.stagingId)?.applicationAttempts, 1);
+const trustAfterFailedApply = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.id === importedLegacyTrust.id);
+assert(trustAfterFailedApply);
+assert.deepEqual(
+  Object.fromEntries([
+    'confidence', 'sourceAuthority01', 'evidenceSources', 'evidenceLineageKeys',
+    'salience', 'emotionalWeight', 'identityRelevance', 'goalRelevance', 'socialRelevance',
+    'predictionError', 'dormant', 'lastAccessAt', 'temperature01', 'revisionHistory',
+  ].map(field => [field, structuredClone(trustAfterFailedApply[field])])),
+  signalBaseline,
+  'failed HMX apply must restore the exact pre-existing canonical signal and provenance state',
+);
+assert.equal(
+  legacyTrustLedger.decideHmx(rollbackLegacyTrustStage.stagingId, 'apply')?.status,
+  'applied',
+  'the same accepted HMX stage must retry after trust-signal compensation',
+);
 const remediatedLegacyTrust = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.id === importedLegacyTrust.id);
 assert(remediatedLegacyTrust);
 assert.equal(remediatedLegacyTrust.confidence, 0.65, 're-import must cap an old persisted confidence');
