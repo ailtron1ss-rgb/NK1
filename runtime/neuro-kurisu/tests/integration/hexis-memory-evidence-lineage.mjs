@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { MemoryFabric } from '../../src/organism/memory/MemoryFabric.ts';
+import { MemoryFabric, MemoryLifecycleCommandConflictError } from '../../src/organism/memory/MemoryFabric.ts';
 import { EventLog } from '../../src/organism/memory/EventSourcing.ts';
 import { MultiTimescaleMemory } from '../../src/organism/memory/MultiTimescaleMemory.ts';
 import { MemorySubstrateCoordinator } from '../../src/organism/developmental/MemorySubstrateCoordinator.ts';
@@ -272,6 +272,14 @@ const journalFirst = journalFabric.recordEvidence(journalMemory.id, journalEvide
 assert.equal(journalFirst.added, true);
 const eventRowsAfterFirst = journalEvents.list().filter(event => event.type === 'memory-lifecycle' && event.payload?.action === 'record-evidence');
 assert.equal(eventRowsAfterFirst.length, 1, 'new source evidence emits one lifecycle event');
+assert.ok(/^[a-f0-9]{64}$/.test(String(eventRowsAfterFirst[0].payload.independenceKeyDigest)), 'event records only the one-way source digest');
+assert.equal('independenceKey' in eventRowsAfterFirst[0].payload, false, 'raw source-lineage key stays out of the event payload');
+assert.equal('content' in eventRowsAfterFirst[0].payload, false, 'memory content stays out of the evidence event payload');
+assert.throws(() => journalFabric.recordEvidence(journalMemory.id, {
+  ...journalEvidence,
+  source: 'different-source-for-same-command-key',
+}, { commandId: journalCommandId, tick: 18 }), MemoryLifecycleCommandConflictError,
+  'reusing an evidence command ID with a different payload must fail closed');
 const journalReplay = journalFabric.recordEvidence(journalMemory.id, journalEvidence, { commandId: journalCommandId, tick: 19 });
 assert.equal(journalReplay.added, false, 'same command ID is replay-safe without a second evidence vote');
 assert.equal(journalEvents.list().filter(event => event.type === 'memory-lifecycle' && event.payload?.action === 'record-evidence').length, 1,
