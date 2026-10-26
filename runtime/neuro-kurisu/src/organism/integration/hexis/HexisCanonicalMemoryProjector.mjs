@@ -230,11 +230,29 @@ export class HexisCanonicalMemoryProjector {
       for (const item of normalized) {
         const { row, ref, type, content: memoryText, contentHash, epistemicStatus } = item;
         const nativeType = type.toLowerCase();
-        // HMX refs are export-scoped. Use the stable record suffix plus lineage/content
-        // for memory identity so re-exporting the same source does not create duplicates.
-        const stableRefKey = ref.replace(/^exp_[a-f0-9]{16}:/, '');
-        const graphSourceKey = 'hexis:' + hash(lineageId).slice(0, 12) + ':' + hash(stableRefKey + '\0' + contentHash).slice(0, 24);
-        const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' + hash(stableRefKey + '\0' + contentHash).slice(0, 24);
+        // HMX refs are export-scoped. Canonical identity follows the stable source
+        // ref, normalized content and type. Reuse a matching persisted version's old
+        // key on replay so this schema evolution does not duplicate existing imports.
+        const stableRefKey = stableHmxMemoryRef(ref);
+        const exactVersions = existingItems.filter(candidate =>
+          candidate?.id &&
+          String(candidate.source ?? '').startsWith('hexis:') &&
+          String(candidate.context?.hexisSourceLineageId ?? '') === lineageId &&
+          stableHmxMemoryRef(candidate.context?.hexisMemoryRef) === stableRefKey &&
+          stableRecordContent(candidate.content) === stableRecordContent(memoryText) &&
+          String(candidate.context?.hexisOriginalType ?? '').toLowerCase() === nativeType,
+        );
+        const exactVersion = exactVersions.find(candidate =>
+          candidate.epistemicStatus === 'belief' || candidate.epistemicStatus === 'hypothesis',
+        ) ?? exactVersions[0];
+        const nextGraphSourceKey = 'hexis:' + hash(lineageId).slice(0, 12) + ':' +
+          hash(stableRefKey + '\0' + nativeType + '\0' + contentHash).slice(0, 24);
+        const persistedGraphSourceKey = asText(exactVersion?.context?.hexisGraphSourceKey, 512) ||
+          (String(exactVersion?.source ?? '').startsWith('hexis:') ? String(exactVersion.source) : '');
+        const graphSourceKey = persistedGraphSourceKey || nextGraphSourceKey;
+        const source = String(exactVersion?.source ?? '').startsWith('hexis:')
+          ? String(exactVersion.source)
+          : nextGraphSourceKey;
         const existingKey = source + '\0' + stableRecordContent(memoryText);
         const salience = clamp01(Number.isFinite(Number(row.importance)) ? Number(row.importance) : 0.55);
 
@@ -248,7 +266,8 @@ export class HexisCanonicalMemoryProjector {
           String(candidate.source ?? '').startsWith('hexis:') &&
           String(candidate.context?.hexisSourceLineageId ?? '') === lineageId &&
           stableHmxMemoryRef(candidate.context?.hexisMemoryRef) === stableRefKey &&
-          stableRecordContent(candidate.content) !== stableRecordContent(memoryText),
+          (stableRecordContent(candidate.content) !== stableRecordContent(memoryText) ||
+            String(candidate.context?.hexisOriginalType ?? '').toLowerCase() !== nativeType),
         );
         for (const prior of priorVersions) {
           if (!supersededIds.includes(prior.id)) supersededIds.push(prior.id);
@@ -353,7 +372,7 @@ export class HexisCanonicalMemoryProjector {
         const independenceKey = asText(row.provenance?.source_id ?? row.provenance?.sourceId ?? row.source_attribution?.source_id, 96) || ('hexis-ref:' + hash(ref).slice(0, 24));
         const commandId = 'hexis-hmx:' + hash(exportId + '\0' + ref + '\0' + contentHash + '\0' + attempt).slice(0, 48);
         const memoryInput = {
-          id: 'hexis-memory:' + hash(lineageId + '\0' + stableRefKey + '\0' + contentHash).slice(0, 48),
+          id: 'hexis-memory:' + hash(lineageId + '\0' + stableRefKey + '\0' + nativeType + '\0' + contentHash).slice(0, 48),
           content: memoryText,
           tags,
           context,
@@ -557,7 +576,7 @@ export class HexisCanonicalMemoryProjector {
     }
 
     if (supersededIds.length) {
-      warnings.push('Changed HMX source content superseded ' + supersededIds.length + ' prior canonical version(s); historical records remain stored while their active belief and semantic projections are withdrawn.');
+      warnings.push('Changed HMX source version superseded ' + supersededIds.length + ' prior canonical version(s); historical records remain stored while their active belief and semantic projections are withdrawn.');
     }
     const deferredSections = deferredSectionCounts(sections);
     if (Array.isArray(sections.relationships)) {
