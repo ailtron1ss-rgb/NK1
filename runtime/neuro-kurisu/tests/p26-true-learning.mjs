@@ -38,16 +38,33 @@ const learned=correct/120;
 assert(learner.snapshot().updates===train.length);
 assert(learned>0.90,`held-out generalization too low: ${learned}`);
 
+const malformedModel={weights:{explore:[NaN,Infinity,-Infinity]},bias:{explore:NaN}};
 const hardened=new ParametricPolicyLearner();
-hardened.restore({weights:{explore:[NaN,Infinity,-Infinity]},bias:{explore:NaN}});
+hardened.restore(malformedModel);
+const explicitTrainFallback=new ParametricPolicyLearner();
+explicitTrainFallback.restore(malformedModel);
 assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'restored policy weights must remain finite');
 assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'restored policy biases must remain finite');
-hardened.train({state:mkState(.7,.4,.3),action:'explore',target01:.9,learningRate01:NaN,sampleWeight01:NaN});
+const trainInput={state:mkState(.7,.4,.3),action:'explore',target01:.9};
+hardened.train({...trainInput,learningRate01:NaN,sampleWeight01:NaN});
+explicitTrainFallback.train({...trainInput,learningRate01:.03,sampleWeight01:.1});
+assert.deepEqual(hardened.snapshot().weights,explicitTrainFallback.snapshot().weights,
+  'non-finite train controls must use the same bounded defaults as explicit .03/.1 controls');
+assert.deepEqual(hardened.snapshot().bias,explicitTrainFallback.snapshot().bias,
+  'train fallback must not create a different bias update');
 assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'malformed learning rates must not poison learned weights');
 assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'malformed sample weights must not poison learned biases');
 assert.equal(hardened.snapshot().updates,1);
-hardened.trainFeatures({features:new Array(15).fill(.5),action:'explore',target01:.8,learningRate01:Infinity,sampleWeight01:NaN});
-assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'feature-level updates must reject non-finite training controls');
+const featureInput={features:new Array(15).fill(.5),action:'explore',target01:.8};
+const explicitFeatureFallback=new ParametricPolicyLearner();
+explicitFeatureFallback.restore(hardened.snapshot());
+hardened.trainFeatures({...featureInput,learningRate01:Infinity,sampleWeight01:NaN});
+explicitFeatureFallback.trainFeatures({...featureInput,learningRate01:.03,sampleWeight01:.1});
+assert.deepEqual(hardened.snapshot().weights,explicitFeatureFallback.snapshot().weights,
+  'non-finite feature controls must use the same bounded defaults as explicit .03/.1 controls');
+assert.deepEqual(hardened.snapshot().bias,explicitFeatureFallback.snapshot().bias,
+  'feature fallback must not create a different bias update');
+assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'feature-level updates must preserve finite weights');
 assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'feature-level updates must preserve finite biases');
 assert.equal(hardened.snapshot().updates,2);
 console.log(`P26_TRUE_LEARNING=PASS updates=${learner.snapshot().updates} heldout=${learned.toFixed(3)} preExplore=${(before.reduce((a,b)=>a+b,0)/before.length).toFixed(3)} finiteGuard=PASS`);
