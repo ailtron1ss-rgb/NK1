@@ -1,3 +1,10 @@
+## WorkPass377 — Reject C1 control characters in Hexis provenance text (2026-10-26)
+
+- Tightened the shared Hexis evidence text validator to reject C1 controls (U+0080–U+009F), in addition to C0 and DEL. These invisible/control-bearing characters must not enter source references, labels, authors or notes where provenance is displayed, hashed and reviewed.
+- Added focused regression cases for C1 controls in note, source reference, label and author fields.
+- Scope stays within the existing adapter and its existing focused test; no extra memory owner, dependency, or automatic belief/skill promotion.
+- Validation status: implementation and regression are committed; exact-head test/typecheck/unified CI still must pass before marking validated. No retrieval or learning uplift is claimed.
+
 ## WorkPass375 — Hexis evidence routed into canonical MemoryOS2 (2026-10-26)
 
 - **Code/test head before documentation:** `61fdb0ad6b098f91bd3b0884bf3b209f4ee514dc` on `work/hexis-evidence-adapter-2026-10-26`.
