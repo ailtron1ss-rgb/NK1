@@ -1,3 +1,12 @@
+## WorkPass407 — полная матрица неверных JSON body для Hexis POST (2026-10-26)
+
+- **Server-smoke regression:** `1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3`.
+- Расширен smoke для всех 17 POST-маршрутов Hexis: каждый получает JSON `null`, массив, строку, число и boolean.
+- Каждый некорректный тип обязан возвращать HTTP 400 `hexis-invalid-request-body`; сообщение ошибки включает маршрут и конкретное значение. Проверка теперь не опирается только на один вариант `null`.
+- **Валидация:** PENDING exact-head `test:hexis-server-smoke`, runtime typecheck и Unified integration. PASS не заявляется, оценки не повышены; `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass406 — UI явно показывает итог HMX import receipt (2026-10-26)
 
 - **UI-код:** `a330d9bd1ca2602e3cfcc0fe75d513a8f67e7875`; **audit regression:** `ddcc11684dcc7cb51c2d1cabae3a9c8ff999b122`.
