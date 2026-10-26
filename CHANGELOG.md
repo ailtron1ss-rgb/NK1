@@ -1,3 +1,15 @@
+## [NK1][WorkPass376] Bridge OMEGA source lineage into canonical Hexis evidence — 2026-10-26
+
+- **Integration:** add `HexisCanonicalEvidenceBridge` from `SourceMonitor` and `P65EpistemicLedger` into canonical `MemoryOS2.recordEvidence()`; no second memory store is created.
+- **Gating:** allow only current observation/fact traces with direct/corroborated provenance and a declared SHA-256-shaped content fingerprint; reject inferences, unverified claims, model output and memory echoes.
+- **Cross-store dedup:** derive one stable independence key from upstream source ID + fingerprint, so the same observation arriving via SourceMonitor and P65 cannot count twice.
+- **Safety:** bridge records provenance only, applies conservative metadata caps and never mutates belief confidence, authenticates a source, authorizes a tool or promotes a skill. The fingerprint remains descriptive, not cryptographic proof.
+- **Regression/CI:** add `test:hexis-canonical-evidence-bridge` to the Hexis lineage suite and repository wiring path filters. Checkpoint: `docs/WORKPASS376_HEXIS_SOURCE_TO_CANONICAL_MEMORY_RU.md`.
+- **Validation:** exact-head typecheck, bridge tests, H1 lineage/restore and OMEGA source monitor/review inbox tests are pending.
+- **Release:** `main` and the published Release ZIP are unchanged.
+
+---
+
 ## [NK1][WorkPass375] Route Hexis evidence through canonical MemoryOS2 ingress — 2026-10-26
 
 - **Integration:** wire the Hexis evidence adapter into the actual `MemoryOS2.recordEvidence()` write boundary. MemoryOS2 remains the only writable memory authority; no parallel memory store or runtime is introduced.
