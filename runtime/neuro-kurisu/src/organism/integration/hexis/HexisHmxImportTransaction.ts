@@ -4,6 +4,8 @@ export interface HmxAtomicImportResult {
   outcome: HmxAtomicImportOutcome;
   created: number;
   reused: number;
+  /** IDs emitted only for a successful commit; provisional IDs are discarded on clean rollback. */
+  createdIds: string[];
   reason?: 'encode-failed' | 'rollback-failed';
 }
 
@@ -37,7 +39,7 @@ export function applyHmxMemoryBatchAtomically<
   operations: readonly HmxAtomicImportOperation<TInput>[],
   existingIds: Iterable<string>,
 ): HmxAtomicImportResult {
-  if (operations.length === 0) return { outcome: 'committed', created: 0, reused: 0 };
+  if (operations.length === 0) return { outcome: 'committed', created: 0, reused: 0, createdIds: [] };
 
   // Snapshot before the first side effect. Snapshot failure therefore cannot
   // leave a partial batch and is allowed to propagate to the caller.
@@ -59,7 +61,7 @@ export function applyHmxMemoryBatchAtomically<
         createdIds.add(id);
       }
     }
-    return { outcome: 'committed', created, reused };
+    return { outcome: 'committed', created, reused, createdIds: [...createdIds] };
   } catch {
     let memoryRestored = true;
     let lifecycleRestored = true;
@@ -74,8 +76,8 @@ export function applyHmxMemoryBatchAtomically<
       lifecycleRestored = false;
     }
     if (memoryRestored && lifecycleRestored) {
-      return { outcome: 'rolled-back', created: 0, reused: 0, reason: 'encode-failed' };
+      return { outcome: 'rolled-back', created: 0, reused: 0, createdIds: [], reason: 'encode-failed' };
     }
-    return { outcome: 'rollback-incomplete', created, reused, reason: 'rollback-failed' };
+    return { outcome: 'rollback-incomplete', created, reused, createdIds: [...createdIds], reason: 'rollback-failed' };
   }
 }
