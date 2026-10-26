@@ -1,3 +1,14 @@
+## WorkPass374 — Hexis provenance ingress vertical slice (2026-10-26)
+
+- **Branch:** `work/hexis-evidence-adapter-2026-10-26`.
+- **Code/test:** `runtime/neuro-kurisu/src/organism/memory/HexisEvidenceAdapter.ts` and `runtime/neuro-kurisu/tests/cognitive-hexis-evidence-adapter.mjs`.
+- **Integration:** registered `test:cognitive-hexis-evidence-adapter` in `runtime/neuro-kurisu/package.json` and in `test:cognitive-integration-suite`. Test filename uses the existing `cognitive-*.mjs` convention so the focused workflow path filter can detect it.
+- **Contract:** canonical evidence provenance + source identity + stance + timestamp + confidence; idempotent duplicate detection; protected-memory marker preserved; accessor/proxy-safe fail-closed validation. No persistence adapter or confidence-revision policy is silently substituted.
+- **Validation:** **PENDING** exact-head CI. Required: runtime typecheck, focused adapter regression, unified cognitive integration suite and release verification. No score increase and no claim of memory-retrieval uplift.
+- **Scope guard:** source ideas are adapted; no Hexis service, database, credentials, or runtime dependency is added. `main` and the latest Release ZIP remain unchanged.
+
+---
+
 ## WorkPass373 — aggregate payload text budget (2026-10-26)
 
 - **Implementation commit:** `390093223cdb38114827a27beb62d60fb897ac67`.
