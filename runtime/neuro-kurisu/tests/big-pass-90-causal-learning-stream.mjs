@@ -235,7 +235,7 @@ assert.equal(externalStream.recordOutcome(
   overlongRuntimeTrace, mkState({ tick: 22 }),
   { reward01: .5, success01: .5, surprise01: .5, novelty01: .5 },
 ), null, "an overlong runtime trace cannot be silently truncated into another identity");
-assert.equal(externalStream.summary().outcomes, 1);
+assert.equal(externalStream.summary().outcomes, 0, "invalid external inputs must not affect trusted outcome totals");
 
 const corruptSnapshot = externalStream.snapshot();
 corruptSnapshot.records.push({
