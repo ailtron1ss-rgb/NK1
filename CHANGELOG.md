@@ -1,3 +1,28 @@
+## WorkPass345 — fail-closed release-date contract — 2026-10-26
+
+- **Defect:** `verify-release-metadata.mjs` silently substituted the historical date `2026-10-10` when `SUPER_VERSION.date` was missing or malformed. That fallback could make an incomplete release manifest resolve an old status report instead of failing on the missing date.
+- **Fix:** validate that `SUPER_VERSION.date` is a real ISO calendar date and emit the explicit `release-date-is-valid-iso-calendar-date` gate. Invalid dates no longer select a historical status-report filename.
+- **Regression coverage:** added tests for a missing release date and an impossible calendar date (`2026-02-30`); aligned the contract fixture with an explicit date.
+- **Lineage consistency:** also require the date embedded in `releaseRoot` to match `SUPER_VERSION.date`, and reject a source baseline dated after the release. Added regressions for both drift cases.
+- **Validation:** pending exact-head CI for branch `work/nk1-release-date-contract-2026-10-26-r1`. Existing green runs from parent SHA `d795bd5513f0a99176c79f10d18c8cb4e69ced23` are not considered proof for this change.
+
+---
+
+## WorkPass344 — финальный release gate: metadata, architecture и hygiene — 2026-10-26
+
+- **Gate:** `release:verify` теперь требует UI wiring, архитектуру и каноническую release metadata; любой отсутствующий или падающий gate блокирует PASS.
+- **Точная отчётность:** JSON summary разделяет direct-check и filesystem/tree failures, так что `ok=false` больше не может сочетаться с `failed: 0`.
+- **Строгий/CI режимы:** операторский `npm run release:verify` остаётся строгим. После Research Bridge smoke CI применяет `release:verify:ci`, который позволяет только неотслеживаемые `*.pyc` внутри `__pycache__` и выводит каждый в warnings. Отслеживаемый source member, обычный файл в cache directory или stray `.pyc` вне неё всё равно блокирует gate.
+- **Regression:** 8 тестов покрывают metadata success/failure/missing, unknown CLI argument, strict cache rejection, cache-aware CI mode, stray/non-bytecode file rejection и tracked-bytecode rejection.
+- **CI-driven corrections:** устранён architecture scanner false positive от строкового import assertion; затем ограничен cache override и добавлена Git-index проверка, чтобы нельзя было игнорировать tracked bytecode.
+
+**Validation status:** pending fresh exact-head CI on code/test checkpoint `064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6`. Ранее проверенные WorkPass340–342 PASS привязаны к исходному SHA; scores не меняются и старые PASS не считаются проверкой WorkPass344.
+
+---
+
+
+
+
 ## WorkPass343 — reconcile future cognitive-substrate sidecar ticks (2026-10-26)
 
 - **Defect:** a restored sidecar could contain a valid but future `lastTick`, including `Number.MAX_SAFE_INTEGER`. Because runtime used `Math.max(coreTick, sidecarTick + 1)`, the derived projection's clock kept moving ahead of the canonical Core clock and eventually supplied an unsafe tick to `integrate()`, preventing future integration.

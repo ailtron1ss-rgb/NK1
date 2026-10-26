@@ -11,6 +11,21 @@
 **Машиночитаемый источник процентов:** [PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json).  
 **Проверка таблицы:** `npm run test:progress-ledger`; **сводный отчёт:** `npm run progress:report`.
 
+## WorkPass344 — final release gate (pending exact-head CI)
+
+- `release:verify` requires UI wiring, architecture and metadata checks; JSON summary includes filesystem/tree failures.
+- Default operator mode remains strict. After research smoke, CI mode allows only untracked `.pyc` files below `__pycache__`, reports warnings, and still rejects tracked bytecode, stray bytecode and non-bytecode files in cache directories.
+- Eight regression cases cover metadata, CLI, strict/CI cache policies and attempts to bypass those policies.
+- Current code/test checkpoint `064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6` includes the final tracked-bytecode guard. New exact-head CI is pending; scores remain unchanged.
+
+## WorkPass344 — fail-closed final release verification (pending current-head CI)
+
+- `npm run release:verify` now requires UI wiring, architecture and metadata checks. The summary counts tree hygiene failures separately so a failed gate cannot report `failed: 0`.
+- Six tests cover metadata pass/fail/missing-validator, unknown CLI args, strict Python cache rejection, and an explicit cache-tolerant CI mode.
+- The integration workflow runs `release:verify:ci` only after research smoke. The normal operator `release:verify` remains strict and does not silently ignore bytecode.
+- The first runs found and corrected two real pipeline issues: architecture scanner false-positive from an import assertion string and transient `__pycache__` from research smoke. Current code/test checkpoint `71176fa2275149a726a3aadeec827866d88a0cc0` needs new CI.
+- WorkPass343 substrate tick reconciliation is preserved from the freshest source base. Scores remain unchanged; prior CI evidence is still anchored to `621864d0d7f2676245383adab86f1dcc6d0f741f`.
+
 ## Как читать проценты
 
 Это начальная инженерная оценка по 12 направлениям, а не измерение «разума». Веса суммируются до 100%; скрипт считает четыре раздельных взвешенных показателя:

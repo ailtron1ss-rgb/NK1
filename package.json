@@ -182,7 +182,7 @@
     "audit:workpass69": "npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:app-dependency-contract && npm run test:super-install && npm run test:workpass69 && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run verify:release-source && npm run audit:release-metadata",
     "test:embodiment-timeline": "npm --prefix app run test:embodiment-timeline",
     "test:workpass70": "npm run test:embodiment-timeline && npm run test:workpass69",
-    "audit:workpass70": "npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:app-dependency-contract && npm run test:super-install && npm run test:workpass70 && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run verify:release-source && npm run audit:release-metadata",
+    "audit:workpass70": "npm run test:final-release-verifier && npm run release:verify && npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:app-dependency-contract && npm run test:super-install && npm run test:workpass70 && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run verify:release-source && npm run audit:release-metadata",
     "audit:ci-reliability": "node tools/verify-ci-reliability.mjs",
     "audit:repo-wiring": "node tools/verify-repository-wiring.mjs",
     "test:repo-wiring": "node --test tools/verify-repository-wiring.test.mjs",
@@ -197,7 +197,9 @@
     "test:supervisor-preflight": "node --test tools/supervisor-preflight.test.mjs",
     "test:toolchain-contract": "node --test tools/toolchain-contract.test.mjs",
     "test:super-gateway-headers": "node --test tools/super-gateway-headers.test.mjs",
-    "test:supervisor-start-smoke": "node tools/supervisor-start-smoke.mjs"
+    "test:supervisor-start-smoke": "node tools/supervisor-start-smoke.mjs",
+    "test:final-release-verifier": "node --test tools/verify-final-release.test.mjs",
+    "release:verify:ci": "node tools/verify-final-release.mjs --allow-generated-python-cache"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",

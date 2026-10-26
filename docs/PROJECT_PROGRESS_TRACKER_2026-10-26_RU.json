@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; thirteen named workflows passed on that exact head. The newer WorkPass343 code/test head 8b38a354e7a32ea8822e4cd44866c73f00ce0d1c adds canonical Core/derived-sidecar tick reconciliation, a MAX_SAFE_INTEGER restore regression, a real runtime restart smoke with a corrupted future sidecar, and explicit workflow path filters. Exact-head CI evidence has not yet been returned; scores remain unchanged until validation. WorkPass335/336 and WorkPass339 are included in the validated code/test snapshot 621864d0d7f2676245383adab86f1dcc6d0f741f. Branch head before this tracker update: ba629fde5976dfea07d1658d6c3e6078353dbd9f.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -450,10 +450,19 @@
       "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
       "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454",
       "progressPercentagesChanged": false
+    },
+    {
+      "id": "WorkPass344",
+      "date": "2026-10-26",
+      "branch": "work/nk1-final-release-gate-2026-10-26-r3",
+      "summary": "Fail-closed release metadata gate; accurate tree-failure summary; strict operator mode plus CI-only allowance for untracked .pyc under __pycache__; eight regressions including tracked-bytecode rejection.",
+      "codeCommit": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
+      "validationStatus": "Pending fresh exact-head CI for tracked-bytecode guard and eight-test regression suite.",
+      "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "8b38a354e7a32ea8822e4cd44866c73f00ce0d1c",
-  "branchHeadBeforeTrackerCommit": "ba629fde5976dfea07d1658d6c3e6078353dbd9f",
+  "latestUnverifiedCodeTestHead": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
+  "branchHeadBeforeTrackerCommit": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
