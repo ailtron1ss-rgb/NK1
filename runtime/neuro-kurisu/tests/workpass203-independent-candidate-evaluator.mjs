@@ -354,6 +354,18 @@ assert.throws(() => recordIndependentEvaluationOutcomes(relabeledAuthorityBindin
 assert.equal(authorityLedger.snapshot().acceptedOutcomes, 0,
   'family identity failures must leave the canonical outcome ledger untouched');
 
+// WorkPass335: validate the complete persisted binding envelope before the first
+// ledger write. A truthy but non-string run ID in the second split used to reach
+// ledger.record only after the first split could already have been committed.
+const malformedLaterRunId = structuredClone(authorityEvaluation);
+malformedLaterRunId.evaluation.provenance.runBindings[1].runId = 42;
+malformedLaterRunId.evaluationFingerprint = digest(malformedLaterRunId.evaluation);
+assert.throws(() => recordIndependentEvaluationOutcomes(
+  malformedLaterRunId, experimentAuthority, 1700000000000,
+), /independent-evaluation-ledger-unbound-run/);
+assert.equal(authorityLedger.snapshot().acceptedOutcomes, 0,
+  'a malformed later binding must be rejected before any experiment outcome is committed');
+
 // WorkPass215: validated verifier/scanner function references cannot be swapped
 // through the caller-owned service objects after evaluator construction.
 const mutableVerifierService = {
