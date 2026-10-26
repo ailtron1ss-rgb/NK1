@@ -33,3 +33,8 @@
 2. End-to-end runtime step/restart test с реальными persistence failures и проверкой, что canonical action не меняется при разных substrate work budgets.
 3. Soak/heap/CPU evaluation на целевом Android/Termux устройстве.
 4. Независимые holdout-измерения learning/transfer и внешние postcondition outcomes.
+
+
+## Additional runtime smoke added in this pass
+
+The runtime now exposes `unifiedCognitiveSubstrateSnapshot()` as a cloned diagnostic read. `tests/organism-smoke.mjs` runs the existing 30-cycle mobile smoke, then asserts that the substrate cycle/tick advanced and coupling metrics are finite. It stops the runtime, reconstructs it against the same state-file path and checks that the substrate sidecar restores at least the prior cycle count/tick. The integration script now runs both `unified-substrate-runtime-wiring.mjs` and `organism-smoke.mjs`. This is authored coverage; it remains pending until the exact-head Actions result completes.
