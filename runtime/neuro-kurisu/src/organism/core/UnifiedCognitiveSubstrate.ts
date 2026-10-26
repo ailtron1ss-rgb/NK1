@@ -84,6 +84,9 @@ export function resolveUnifiedCognitiveWorkPolicy(
     state.coupling.predictionGrounding01,
     state.provenance.unknown01,
     state.provenance.evidenceCoverage01,
+    state.resources.battery01,
+    state.resources.computeCapacity01,
+    state.resources.efficiency01,
     state.resources.scarcity01,
     state.resources.ramPressure01,
     state.resources.thermal01,
@@ -100,7 +103,9 @@ export function resolveUnifiedCognitiveWorkPolicy(
   const ramPressure01 = state.resources.ramPressure01;
   const thermal01 = state.resources.thermal01;
   const conflict01 = state.world.conflict01;
-  if (actionReadiness01 < 0.25 || conflict01 > 0.9 || scarcity01 > 0.94 || thermal01 > 0.98) {
+  const { battery01, computeCapacity01, efficiency01 } = state.resources;
+  if (actionReadiness01 < 0.25 || conflict01 > 0.9 || scarcity01 > 0.94 || thermal01 > 0.98 ||
+      battery01 < 0.05 || computeCapacity01 < 0.1 || efficiency01 < 0.1) {
     return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'substrate-critical-pressure' };
   }
 
@@ -108,6 +113,9 @@ export function resolveUnifiedCognitiveWorkPolicy(
     actionReadiness01 < 0.55 ||
     predictionGrounding01 < 0.45 ||
     unknown01 > 0.75 ||
+    battery01 < 0.25 ||
+    computeCapacity01 < 0.35 ||
+    efficiency01 < 0.35 ||
     scarcity01 > 0.75 ||
     ramPressure01 > 0.85 ||
     thermal01 > 0.9;
@@ -118,6 +126,9 @@ export function resolveUnifiedCognitiveWorkPolicy(
     predictionGrounding01 >= 0.5 &&
     evidenceCoverage01 >= 0.3 &&
     unknown01 <= 0.7 &&
+    battery01 >= 0.2 &&
+    computeCapacity01 >= 0.5 &&
+    efficiency01 >= 0.4 &&
     scarcity01 <= 0.8 &&
     conflict01 <= 0.5;
 

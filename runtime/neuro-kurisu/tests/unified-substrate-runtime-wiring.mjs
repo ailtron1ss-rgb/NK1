@@ -267,3 +267,29 @@ const faultPolicy = resolveUnifiedCognitiveWorkPolicy(faultFrame, 4);
 assert.equal(faultPolicy.maxCounterfactualBranches, 0, 'invalid resource/conflict telemetry must fail closed');
 assert.equal(faultPolicy.allowMatchedCounterfactual, false);
 assert.match(faultPolicy.reason, /critical-pressure/);
+
+// Optional work must consider battery/compute/efficiency explicitly, not only
+// a derived readiness scalar; high agency cannot compensate for an exhausted
+// or incorrectly reported resource budget.
+for (const [metricName, value] of [
+  ['battery01', 0.04],
+  ['computeCapacity01', 0.08],
+  ['efficiency01', 0.08],
+]) {
+  const lowResource = structuredClone(groundedFrame);
+  lowResource.resources[metricName] = value;
+  const policy = resolveUnifiedCognitiveWorkPolicy(lowResource, 4);
+  assert.equal(policy.maxCounterfactualBranches, 0, metricName + ' below critical floor blocks all optional work');
+  assert.equal(policy.allowMatchedCounterfactual, false);
+}
+const reducedBattery = structuredClone(groundedFrame);
+reducedBattery.resources.battery01 = 0.15;
+const reducedBatteryPolicy = resolveUnifiedCognitiveWorkPolicy(reducedBattery, 4);
+assert.equal(reducedBatteryPolicy.maxCounterfactualBranches, 1, 'low but noncritical battery caps optional branches');
+assert.equal(reducedBatteryPolicy.allowMatchedCounterfactual, false, 'low battery cannot authorize matched counterfactual credit');
+
+const invalidBattery = structuredClone(groundedFrame);
+invalidBattery.resources.battery01 = Number.NaN;
+const invalidBatteryPolicy = resolveUnifiedCognitiveWorkPolicy(invalidBattery, 4);
+assert.equal(invalidBatteryPolicy.maxCounterfactualBranches, 0);
+assert.equal(invalidBatteryPolicy.reason, 'invalid-substrate-state', 'non-finite battery evidence must fail closed');

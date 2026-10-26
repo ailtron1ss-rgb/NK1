@@ -1,3 +1,12 @@
+## WorkPass357 — resource-aware policy gates for optional cognition (2026-10-26)
+
+- **Follow-on defect:** the unified policy validated RAM/thermal/scarcity but omitted battery, compute capacity, and efficiency from its required-metric contract. Even after WorkPass356 normalized corrupted sensors conservatively, low battery alone could still leave the requested counterfactual branch budget open.
+- **Runtime fix:** battery, compute capacity and efficiency are now validated as required finite [0,1] metrics. Critical values disable all optional branches; low-but-noncritical values cap optional branches to one; matched counterfactual credit requires explicit minimum battery, compute and efficiency.
+- **Regressions:** added independent low-battery, low-compute, low-efficiency, constrained-battery, and non-finite battery cases. High agency/readiness cannot bypass the direct resource floors.
+- **Boundary:** this policy only gates optional simulation/counterfactual work; it does not select the actual environment action or replace the canonical action gateway. CI and runtime typecheck on the new exact HEAD are required before declaring verification complete.
+
+---
+
 ## WorkPass356 — fail-closed telemetry normalization for cognitive work budgeting (2026-10-26)
 
 - **Defect:** normalized sensor fields were clamped into [0,1]. A negative RAM-pressure/scarcity/conflict reading could turn into an apparently healthy zero and leave optional counterfactual work enabled; non-finite/wrong-typed resource signals could quietly inherit optimistic defaults.
