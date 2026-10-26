@@ -1,3 +1,4 @@
+- [BLOCKER FIX] Correct the over-escaped control-character regex in `OutcomeVerificationService`; it prevented the organism core from loading in Node 24 before the Hexis path could execute.
 ## NK1 Hexis canonical HMX apply (2026-10-26)
 
 - [IMPLEMENTED] Split HMX import into staging, explicit acceptance, and explicit canonical application. Acceptance alone no longer mutates canonical memory.
