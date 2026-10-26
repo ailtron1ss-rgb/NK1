@@ -882,5 +882,46 @@ assert.equal(receiptFabric.appendToolExternalObservation(accessorExternalObserva
 assert.equal(observationGetterExecuted,false,'external observation accessors must not execute');
 
 console.log('WorkPass366 provider revision and external observation ingress: PASS');
+
+// WorkPass367: receipt trust requires an actual same-execution causal chain, not stage names alone.
+const lineageGuardFabric = new CognitiveEventFabric(128);
+const lineageGuardInput={...receiptInput,executionId:'receipt-lineage:guard-case',decisionId:undefined};
+const lineageGuardTrace=lineageGuardFabric.appendToolReceiptTrace(lineageGuardInput);
+assert.equal(lineageGuardFabric.hasToolReceiptTrace(lineageGuardInput.executionId),true);
+assert.equal(lineageGuardFabric.hasToolReceiptTrace(' '+lineageGuardInput.executionId+' '),false,
+  'lookup must not normalize arbitrary caller IDs into an existing evidence key');
+assert.equal(lineageGuardFabric.hasToolReceiptTrace(42),false,
+  'receipt lookup must not stringify non-string identifiers');
+const decoyOutcome=lineageGuardFabric.append({
+  id:'receipt-lineage:decoy-outcome',tick:12,at:1201,stage:'tool-outcome',source:'test-decoy',
+  parentIds:[],external:false,confidence01:0.8,
+  payload:{executionId:lineageGuardInput.executionId,tool:lineageGuardInput.toolId,ok:true,verified:true},
+});
+const decoyEvidence=lineageGuardFabric.append({
+  id:'receipt-lineage:decoy-evidence',tick:12,at:1202,stage:'tool-evidence',source:'test-decoy',
+  parentIds:[],external:false,confidence01:0.8,
+  payload:{executionId:lineageGuardInput.executionId,tool:lineageGuardInput.toolId,externalObservation:false},
+});
+const lineageIndex=lineageGuardFabric.receiptProjectionIndex.get(lineageGuardInput.executionId);
+assert.ok(lineageIndex);
+lineageGuardFabric.receiptProjectionIndex.set(lineageGuardInput.executionId,{
+  ...lineageIndex,outcomeEventId:decoyOutcome.id,evidenceEventId:decoyEvidence.id,
+});
+assert.equal(lineageGuardFabric.hasToolReceiptTrace(lineageGuardInput.executionId),false,
+  'same-stage nodes with matching execution IDs but missing causal edges are not a valid receipt');
+lineageGuardFabric.receiptProjectionIndex.set(lineageGuardInput.executionId,lineageIndex);
+assert.equal(lineageGuardFabric.hasToolReceiptTrace(lineageGuardInput.executionId),true,
+  'restoring the original replay index must restore valid lineage');
+lineageGuardFabric.receiptProjectionIndex.set(lineageGuardInput.executionId,{
+  ...lineageIndex,projectionHash:'a'.repeat(64),
+});
+assert.equal(lineageGuardFabric.hasToolReceiptTrace(lineageGuardInput.executionId),false,
+  'receipt index hashes must match the event-bound fingerprint');
+lineageGuardFabric.receiptProjectionIndex.set(lineageGuardInput.executionId,lineageIndex);
+const lineageGuardRestored=new CognitiveEventFabric(128);
+lineageGuardRestored.restore(lineageGuardFabric.snapshot());
+assert.equal(lineageGuardRestored.hasToolReceiptTrace(lineageGuardInput.executionId),true,
+  'valid event-bound receipt lineage remains valid after restore');
+console.log('WorkPass367 trusted receipt lineage verification: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
