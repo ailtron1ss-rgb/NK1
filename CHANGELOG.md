@@ -1,3 +1,11 @@
+## WorkPass363 — type-safe prediction-debt input to resource allocation (2026-10-26)
+
+- **Early-path fix:** both runtime resource-allocation paths no longer use `predictionDebtSnapshot() as any` or convert a missing/invalid mean priority to zero. They validate all three debt counters and finite [0,1] priority before passing a value into `CognitiveResourceEconomy`; invalid debt uses priority `1`.
+- **Coverage:** the unified runtime wiring regression now prevents reintroducing the untyped cast and checks the guarded priority input path.
+- **Validation boundary:** exact-head focused substrate/runtime CI and TypeScript checks remain required for this new commit.
+
+---
+
 ## WorkPass362 — correct regular-expression escaping in prediction-debt regression (2026-10-26)
 
 - Corrected escaping in the source-level regression's regex literal so it matches the actual `predictionDebt.meanPriority01` ternary fallback across line breaks. This is test-only; runtime code is unchanged.

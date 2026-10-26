@@ -229,6 +229,9 @@ assert.match(runtime, /memoryPressure01: 1 - resourceAllocation\.memory01/);
 
 assert.ok(runtime.includes('const predictionDebt = this.core.predictionDebtSnapshot();'));
 assert.ok(!runtime.includes('predictionDebtSnapshot() as Record<string, unknown>'));
+assert.ok(!runtime.includes('predictionDebtSnapshot() as any'));
+assert.ok(runtime.includes('predictionDebt01: (() => {'));
+assert.ok(runtime.includes('countsValid && typeof priority === \'number\''));
 assert.ok(runtime.includes('openCount: debtCount(predictionDebt.openCount)'));
 assert.ok(runtime.includes('agingCount: debtCount(predictionDebt.agingCount)'));
 assert.ok(runtime.includes('expiredCount: debtCount(predictionDebt.expiredCount)'));

@@ -570,7 +570,15 @@ export class OrganismRuntime {
       cognitiveLoad01: body.cognitiveCapacity01 <= 0 ? 1 : 1 - body.cognitiveCapacity01,
       uncertainty01: this.core.operationalStatusSnapshot().predictionError,
       novelty01: this.core.operationalStatusSnapshot().autonomyScore,
-      predictionDebt01: Number((this.core.predictionDebtSnapshot() as any)?.meanPriority01 ?? 0),
+      predictionDebt01: (() => {
+        const debt = this.core.predictionDebtSnapshot();
+        const countsValid = [
+          debt.openCount, debt.agingCount, debt.expiredCount,
+        ].every(value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
+        const priority = debt.meanPriority01;
+        return countsValid && typeof priority === 'number' &&
+          Number.isFinite(priority) && priority >= 0 && priority <= 1 ? priority : 1;
+      })(),
       thermalStrain01: body.thermalStrain01,
       ramPressure01: clamp01((1-body.cognitiveCapacity01)*.65 + (1-body.cognitiveCapacity01)*.35),
       performancePressure01: 0,
@@ -1381,7 +1389,15 @@ export class OrganismRuntime {
       cognitiveLoad01: body.cognitiveCapacity01 <= 0 ? 1 : 1 - body.cognitiveCapacity01,
       uncertainty01: this.core.operationalStatusSnapshot().predictionError,
       novelty01: this.core.operationalStatusSnapshot().autonomyScore,
-      predictionDebt01: Number((this.core.predictionDebtSnapshot() as any)?.meanPriority01 ?? 0),
+      predictionDebt01: (() => {
+        const debt = this.core.predictionDebtSnapshot();
+        const countsValid = [
+          debt.openCount, debt.agingCount, debt.expiredCount,
+        ].every(value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
+        const priority = debt.meanPriority01;
+        return countsValid && typeof priority === 'number' &&
+          Number.isFinite(priority) && priority >= 0 && priority <= 1 ? priority : 1;
+      })(),
       thermalStrain01: body.thermalStrain01,
       ramPressure01: body.telemetry.ramPressure01,
       performancePressure01: this.runtimePerformance.decision().performancePressure01,
