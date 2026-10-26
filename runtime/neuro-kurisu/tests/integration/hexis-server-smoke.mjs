@@ -50,6 +50,74 @@ try {
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
   if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted' || !['applied', 'skipped'].includes(acceptRes.stage?.importResult?.status)) throw new Error('hexis-hmx-accept-and-apply');
   for (const count of ['created', 'reused', 'skipped']) if (Number(acceptRes.stage?.importResult?.[count] ?? -1) < 0) throw new Error('hexis-hmx-import-counts');
+
+  // Exercise the actual OrganismCore -> MemoryFabric -> MemoryOS2 write path
+  // with one unique externally sourced record. Self-asserted upstream confidence
+  // and "fact" metadata must not cross the NK1 evidence gate.
+  const externalExportId = 'exp_fedcba9876543210';
+  const externalContent = 'NK1_HEXIS_HMX_E2E_IMPORT_UNIQUE_2026-10-26';
+  const externalDocument = {
+    ...exportRes.document,
+    export_id: externalExportId,
+    export_intent: 'telepathy',
+    exported_at: new Date().toISOString(),
+    source: {
+      ...exportRes.document.source,
+      instance_id: 'hexis-e2e-peer',
+      schema_version: '1.7',
+      embedding_model: 'hexis-e2e-embedding',
+      embedding_dimension: 2,
+      hexis_lineage_id: 'hexis-e2e-lineage',
+    },
+    sections: {
+      memories: [{
+        ref: externalExportId + ':memory:e2e-unique',
+        type: 'episodic',
+        content: externalContent,
+        importance: 0.99,
+        trust_level: 1,
+        created_at: '2026-10-25T12:00:00.000Z',
+        updated_at: new Date().toISOString(),
+        valid_from: '2026-10-25T12:00:00.000Z',
+        valid_until: null,
+        access_count: 0,
+        last_accessed: null,
+        source_attribution: { origin: 'local-e2e-mock' },
+        metadata: {
+          nk1_kind: 'episodic',
+          nk1_confidence: 1,
+          nk1_salience: 0.9,
+          nk1_epistemic_status: 'fact',
+          tags: ['hexis', 'e2e'],
+          context: { origin: 'local-mock', ignored: { private: true } },
+          entities: ['NK1'],
+        },
+        provenance: { acquisition_mode: 'experienced', origin_instance: 'hexis-e2e-lineage' },
+      }],
+    },
+  };
+  const importedStageResponse = await post('/api/organism/integration/hexis/hmx/stage', {
+    document: externalDocument, intent: 'telepathy', strategy: 'additive',
+  });
+  const importedStage = await importedStageResponse.json();
+  if (!importedStageResponse.ok || importedStage.stage?.applicationMode !== 'memory-merge' ||
+      importedStage.stage?.conflicts?.length !== 0) throw new Error('hexis-hmx-external-stage');
+  const importedResponse = await post('/api/organism/integration/hexis/hmx/decide', {
+    stagingId: importedStage.stage.stagingId, decision: 'accept',
+  });
+  const imported = await importedResponse.json();
+  if (!importedResponse.ok || imported.stage?.importResult?.status !== 'applied' ||
+      imported.stage?.importResult?.created !== 1 ||
+      imported.stage?.importResult?.reused !== 0 ||
+      imported.stage?.importResult?.skipped !== 0) throw new Error('hexis-hmx-core-memory-apply');
+
+  const importedIndexResponse = await fetch(base + '/api/organism/integration/hexis/memories?limit=128');
+  const importedIndex = await importedIndexResponse.json();
+  const importedMemory = importedIndex.memoryIndex?.find(item => item.summary === externalContent);
+  if (!importedIndexResponse.ok || !importedMemory) throw new Error('hexis-hmx-imported-memory-not-retrievable');
+  if (importedMemory.epistemicStatus !== 'belief' || Number(importedMemory.confidence) > 0.55 ||
+      importedMemory.source !== 'hexis-hmx-import') throw new Error('hexis-hmx-external-trust-firewall');
+
   if (memoryIndex.memoryIndex[0]?.id) {
     const proposal = await (await post('/api/organism/integration/hexis/retention/propose', { memoryId: memoryIndex.memoryIndex[0].id, action: 'archive', reason: 'server-smoke' })).json();
     if (!proposal.ok || !proposal.proposal?.id) throw new Error('hexis-retention-propose');
