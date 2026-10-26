@@ -1,3 +1,12 @@
+## WorkPass354 — separate source snapshot from validated CI evidence (2026-10-26)
+
+- **Observed failure:** Unified integration run [#40282049399](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282049399) stopped at the progress-ledger validation step. Historical successful CI rows were pinned to `621864d0d7f2676245383adab86f1dcc6d0f741f`, but the validator required every row to match the newer source checkpoint; runtime tests were skipped.
+- **Fix:** add explicit `ciSnapshot.evidenceHead` and compare each CI row to that field. `sourceHeadAtSnapshot` continues to track the current code/test checkpoint. Historical tested SHAs are not rewritten or represented as current-head passes.
+- **Regression coverage:** verifies coexistence of a newer source checkpoint and older pinned evidence, invalid evidence-head rejection, per-row tested-head mismatch and canonical run URL validation.
+- **Evidence discipline:** most recent validated CI snapshot remains `621864d0d7f2676245383adab86f1dcc6d0f741f`; current code/test checkpoint `c0521842ae59c9fce651d7a669c3d121e567f2de` is pending fresh exact-head CI. Scores unchanged.
+
+---
+
 ## CognitiveEventFabric payload-envelope hardening — 2026-10-26
 
 - **Defect:** the generic payload sanitizer maps non-record roots such as arrays, primitives and `Date` instances to `{}`. At `append()` this can disguise malformed evidence or a malformed retry as a legitimate empty-payload event.
