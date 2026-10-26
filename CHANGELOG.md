@@ -3,6 +3,7 @@
 - Correlation IDs are checked for C0/C1 controls before trimming, so leading LF/TAB cannot disappear during normalization.
 - External observation IDs now use the same bounded validation contract; malformed or overlong identifiers are rejected, not trimmed/truncated into aliases.
 - Expected/observed postconditions are validated without truncation. Canonical comparison rejects control characters before whitespace normalization, preventing distinct overlong strings or boundary controls from being accepted as identical evidence.
+- Case folding uses locale-independent `toLowerCase()` so the same postcondition cannot compare differently on hosts with different default locales.
 - Expanded the focused regression for embedded C0/C1, boundary LF/TAB, ordinary valid IDs, overlong observation IDs, overlong postcondition suffix collisions, and the exact 1024-character boundary.
 - Wired the focused workflow to this current integration branch and its PR target. Full project test and runtime typecheck results remain pending; no pass is claimed.
 
