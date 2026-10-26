@@ -9,7 +9,8 @@ import { organismSystemContract, organismSystemContracts, type OrganismSystemCon
 import { WillIntegrationBridge } from '../integration/will/WillIntegrationBridge.ts';
 import { LuminaAdaptationFabric } from '../integration/lumina/LuminaAdaptationFabric.ts';
 import { HexisAdaptationFabric, type HexisGoalProposal, type HexisLearningReviewItem, type HexisReviewDecision } from '../integration/hexis/HexisAdaptationFabric.ts';
-import { HexisCanonicalMemoryProjector } from '../integration/hexis/HexisCanonicalMemoryProjector.mjs';
+import { HexisCanonicalMemoryProjector, isValidHmxApplyReceipt } from '../integration/hexis/HexisCanonicalMemoryProjector.mjs';
+import { isValidHmxStageDigest } from '../integration/hexis/HexisStageIntegrity.mjs';
 import { LettaGovernanceAdaptationFabric } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import { buildCognitiveArchitectureSnapshot } from './CognitiveArchitectureMap.ts';
@@ -193,10 +194,17 @@ export class OrganismSystemFabric {
     const graphState=this.memory.semanticMemory.snapshot();
     const deliberationState=this.agency.deliberation.snapshot();
     try {
+      // Goal relationships are read again at activation time, which can occur
+      // after snapshot restore. Revalidate the source payload and its application
+      // receipt before making the project active or projecting any graph edge.
+      const stage=this.hexisAdaptation.getHmxStage(proposal.stageId);
+      if(stage && !isValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
+      if(stage?.status==='applied' && !isValidHmxApplyReceipt(stage,stage.application)) {
+        throw new Error('hmx-applied-receipt-invalid');
+      }
       const activeProject=this.agency.selfProjects.activateApprovedHexisGoal(proposal.canonicalGoalId,proposal.id);
       if(!activeProject) throw new Error('hexis-goal-project-activation-failed');
 
-      const stage=this.hexisAdaptation.getHmxStage(proposal.stageId);
       const stageIsApplied=Boolean(stage?.status==='applied');
       const rawRelationshipRows=stage && Array.isArray(stage.stagedSections?.relationships)
         ? stage.stagedSections.relationships.filter((row:any)=>String(row?.source_ref??'')===proposal.sourceRef||String(row?.target_ref??'')===proposal.sourceRef)
