@@ -51,6 +51,7 @@ on:
       - "runtime/neuro-kurisu/tests/p23-stage-verified-skill-candidate.mjs"
       - "runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs"
       - "runtime/neuro-kurisu/tests/unified-substrate-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/organism-smoke.mjs"
       - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - ".github/workflows/cognitive-integration-suite.yml"
   push:
@@ -108,6 +109,7 @@ on:
       - "runtime/neuro-kurisu/tests/p23-stage-verified-skill-candidate.mjs"
       - "runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs"
       - "runtime/neuro-kurisu/tests/unified-substrate-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/organism-smoke.mjs"
       - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - ".github/workflows/cognitive-integration-suite.yml"
 

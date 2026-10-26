@@ -78,6 +78,19 @@ export class CognitiveDependencyGraph {
     this.previous={self:Boolean(wakeMask&BIT.self),world:Boolean(wakeMask&BIT.world),memory:Boolean(wakeMask&BIT.memory),agency:Boolean(wakeMask&BIT.agency),embodiment:Boolean(wakeMask&BIT.embodiment),research:Boolean(wakeMask&BIT.research),governance:Boolean(wakeMask&BIT.governance)};
   }
 
+  /**
+   * Re-anchor this derived routing sidecar to the canonical Core clock.
+   * A crash can persist a later projection tick than the Core snapshot; keep
+   * routing counters and wake/interrupt state, but never carry that future
+   * clock into the next cycle.
+   */
+  reconcileLastTick(canonicalTick:number):boolean {
+    if(!Number.isSafeInteger(canonicalTick)||canonicalTick<0)throw new RangeError('cognitive dependency canonical tick must be a non-negative safe integer');
+    if(this.state.lastTick<=canonicalTick)return false;
+    this.state={...this.state,lastTick:canonicalTick};
+    return true;
+  }
+
   snapshot(){return structuredClone(this.state);}
 
   resolve(frame:CognitiveFrame){

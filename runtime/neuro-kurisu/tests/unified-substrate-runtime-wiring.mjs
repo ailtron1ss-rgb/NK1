@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { CognitiveDependencyGraph } from '../src/organism/core/CognitiveDependencyGraph.ts';
 import {
   UnifiedCognitiveSubstrate,
   defaultUnifiedCognitiveSubstrate,
@@ -91,6 +92,32 @@ const nextAfterReconcile = futureTickSubstrate.integrate({
   unknown01: aligned.provenance.unknown01,
 });
 assert.equal(nextAfterReconcile.lastTick, 8, 'reconciled sidecar must accept the next canonical cycle');
+
+// The dependency graph is a second derived-clock sidecar. Recovery must
+// preserve its routing state while rebasing a future clock to canonical Core.
+const futureDependencyGraph = new CognitiveDependencyGraph();
+futureDependencyGraph.restore({
+  version: 1,
+  lastTick: Number.MAX_SAFE_INTEGER,
+  wakeMask: 2,
+  transitionCount: 11,
+  interrupts: 3,
+  interrupt: { active: true, priority01: 0.8, type: 'resource-critical', domains: ['world'] },
+  domainTransitions: { world: 5 },
+});
+assert.equal(futureDependencyGraph.diagnostics().lastTick, Number.MAX_SAFE_INTEGER);
+assert.equal(futureDependencyGraph.reconcileLastTick(7), true);
+const reconciledDependencyState = futureDependencyGraph.diagnostics();
+assert.equal(reconciledDependencyState.lastTick, 7);
+assert.equal(reconciledDependencyState.wakeMask, 2, 'reconciliation preserves wake state');
+assert.equal(reconciledDependencyState.transitionCount, 11, 'reconciliation preserves routing counters');
+assert.equal(reconciledDependencyState.domainTransitions.world, 5, 'reconciliation preserves per-domain transition counters');
+assert.equal(reconciledDependencyState.interrupt.active, true, 'reconciliation preserves active safety interrupts');
+assert.equal(futureDependencyGraph.reconcileLastTick(7), false, 'an aligned graph clock is unchanged');
+assert.throws(() => futureDependencyGraph.reconcileLastTick(Number.NaN), /canonical tick/);
+assert.deepEqual(futureDependencyGraph.diagnostics(), reconciledDependencyState, 'invalid canonical ticks must not mutate routing state');
+futureDependencyGraph.resolve({ tick: 8, dirtyDomains: { world: true }, reason: 'post-restart-recovery' });
+assert.equal(futureDependencyGraph.diagnostics().lastTick, 8, 'the graph accepts the next canonical frame after recovery');
 
 // Own-property reads prevent inherited state values from being treated as
 // persisted facts.
@@ -248,6 +275,8 @@ assert.match(runtime, /unifiedCognitiveSubstrate\.restore\(await this\.unifiedCo
 assert.match(runtime, /runtime\.unified-cognitive-substrate\.restore-failed/);
 assert.match(runtime, /unifiedCognitiveSubstrate\.reconcileLastTick\(canonicalCoreTick\)/);
 assert.match(runtime, /runtime\.unified-cognitive-substrate\.tick-reconciled/);
+assert.match(runtime, /cognitiveDependencyGraph\.reconcileLastTick\(canonicalCoreTickForDependency\)/);
+assert.match(runtime, /runtime\.cognitive-dependency\.tick-reconciled/);
 assert.match(runtime, /memoryPressure01: 1 - resourceAllocation\.memory01/);
 const observeAt = runtime.indexOf('const cycle = await this.core.observe(cycleObservation);');
 const integrateAt = runtime.indexOf('this.unifiedCognitiveSubstrate.integrate(', observeAt);

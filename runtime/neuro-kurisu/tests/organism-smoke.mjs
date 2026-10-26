@@ -25,6 +25,10 @@ try {
   const sidecar = JSON.parse(await readFile(substrateSidecarPath, 'utf8'));
   sidecar.lastTick = Number.MAX_SAFE_INTEGER;
   await writeFile(substrateSidecarPath, JSON.stringify(sidecar), 'utf8');
+  const dependencySidecarPath = path.join(dir, 'state.json.cognitive-dependencies.json');
+  const dependencySidecar = JSON.parse(await readFile(dependencySidecarPath, 'utf8'));
+  dependencySidecar.lastTick = Number.MAX_SAFE_INTEGER;
+  await writeFile(dependencySidecarPath, JSON.stringify(dependencySidecar), 'utf8');
   const restarted = new OrganismRuntime({
     stateFile:path.join(dir,'state.json'),
     worldStateFile:path.join(dir,'world.json'),
@@ -40,8 +44,17 @@ try {
   if (restoredSubstrate.cycles < 30 || restoredSubstrate.lastTick > substrate.lastTick) {
     throw new Error('future substrate sidecar tick was not reconciled to the canonical Core tick');
   }
-  await restarted.autonomousStep();
+  const canonicalRestartTick = restarted.core.operationalStatusSnapshot().tick;
+  const restoredDependencyGraph = restarted.cognitiveDependencyGraph.diagnostics();
+  if (restoredDependencyGraph.lastTick > canonicalRestartTick) {
+    throw new Error('future dependency-graph sidecar tick was not reconciled to the canonical Core tick');
+  }
+  const resumedStep = await restarted.autonomousStep();
   const afterReconciledCycle = restarted.unifiedCognitiveSubstrateSnapshot();
+  const resumedDependencyGraph = restarted.cognitiveDependencyGraph.diagnostics();
+  if (resumedDependencyGraph.lastTick !== resumedStep.cycle.state.tick) {
+    throw new Error('dependency graph did not resume on the canonical Core tick after recovery');
+  }
   if (afterReconciledCycle.lastTick <= restoredSubstrate.lastTick || afterReconciledCycle.cycles <= restoredSubstrate.cycles) {
     throw new Error('runtime did not resume substrate integration after future-tick recovery');
   }

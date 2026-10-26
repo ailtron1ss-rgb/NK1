@@ -322,6 +322,14 @@ export class OrganismRuntime {
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
       this.cognitiveDependencyGraph.restore(await this.cognitiveDependencyStore.load() ?? undefined);
+      const canonicalCoreTickForDependency = this.core.operationalStatusSnapshot().tick;
+      const restoredDependencyTick = this.cognitiveDependencyGraph.diagnostics().lastTick;
+      if (this.cognitiveDependencyGraph.reconcileLastTick(canonicalCoreTickForDependency)) {
+        await this.journal.write('warn', 'runtime.cognitive-dependency.tick-reconciled', {
+          restoredDependencyTick,
+          canonicalCoreTick: canonicalCoreTickForDependency,
+        }).catch(() => {});
+      }
       try {
         this.unifiedCognitiveSubstrate.restore(await this.unifiedCognitiveSubstrateStore.load() ?? undefined);
         const canonicalCoreTick = this.core.operationalStatusSnapshot().tick;
