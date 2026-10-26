@@ -1,3 +1,13 @@
+## WorkPass360 — whole-organism restart must prove canonical MemoryOS2 identity (2026-10-26)
+
+- [x] Remove the recursive search over arbitrary snapshot descendants from the WorkPass358 runtime-restart test.
+- [x] Read `snapshot.facets.advanced.memoryOS.items` explicitly and require the canonical MemoryOS2 collection and schema version.
+- [x] Confirm the marker-bearing memory is in that canonical item list before shutdown and after restart, and compare the stable memory ID.
+- [ ] Pass the updated exact-head focused workflow [#40291427381](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291427381), including full-runtime restart and runtime typecheck.
+- **Status:** strict test committed; CI pending. This removes false-positive paths in the continuity regression but does not establish retrieval uplift or production crash consistency.
+
+---
+
 ## WorkPass359 — action/goal mismatch no longer crashes the live organism (2026-10-26)
 
 - [x] Reproduce the failure through the real `OrganismRuntime.step`: B272 raises when the selected action differs from its generated action.
