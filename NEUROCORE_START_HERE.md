@@ -1,13 +1,67 @@
-## Latest integration checkpoint — WorkPass336 signed outcome boundary (2026-10-26)
+## Latest integration checkpoint — WorkPass343 verified-outcome ledger boundary (2026-10-26)
 
-- **Latest synchronized base:** `11812cbf2146c677ec2059616e6f1d6b9a9a7cae`; the branch includes both this base's evaluator-origin attestation work and the signed-outcome artifact hardening below.
+- **Branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`; synchronized with current cognitive-progress base `22e37b72e20086053d2308d9adf83f18e5828696`. The primary release branch and release ZIP are unchanged.
+- **Changes:** manifest, outcome and snapshot ingestion now uses descriptor-backed data snapshots; sparse arrays and array subclasses are rejected; signed outcome ingestion reuses a canonical manifest snapshot; promotion policy options reject invalid thresholds rather than clamp them.
+- **Tests:** added getter non-execution checks, sparse/subclass array rejection, restore snapshot round-trip and malformed snapshot tests, plus producer-level invalid-threshold/options regressions.
+- **Validation:** exact combined HEAD CI is pending. Historical WorkPass336/342 PASS runs are not substitutes for this combined checkpoint.
+- **Evidence boundary:** scores unchanged; no measured learning uplift. External held-out transfer/retrieval, target-device voice/Live2D, soak, licensing and reproducible release ZIP remain open.
 
-- **Integration branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`, with current base `11812cbf2146c677ec2059616e6f1d6b9a9a7cae` incorporated as a merge parent at `11812cbf2146c677ec2059616e6f1d6b9a9a7cae` HEAD `11812cbf2146c677ec2059616e6f1d6b9a9a7cae`. `main` and the release ZIP remain unchanged.
-- **Code/test commits:** signed outcome trust-boundary runtime fix `4c817208c27d623474e08b6db1dbf2e81cc82991`; regression additions `05fad9f67960af1d1cb9f7ed535aba3e49b2973f`. The current combined tree preserves base WorkPass335 ledger preflight and WorkPass339 approval-signature hardening as well as this branch's strict revision gate and proposal producer.
-- **Runtime change:** `VerifiedOutcomeArtifact.ts` requires exact plain-data artifact/payload records, snapshots property descriptors without invoking getters, rejects extra fields from signed schema v1, and verifies only canonical Base64 encoding for 64-byte Ed25519 signatures.
-- **Regressions:** junk-prefixed, truncated and malformed-padding signatures; payload and envelope getters; unknown payload keys. The synchronized base also retains the independent-evaluator-origin capability and its regression in `docs/WORKPASS336_EVALUATOR_ORIGIN_ATTESTATION_RU.md`.
-- **Validation PASS on exact code/test HEAD `338902ce5587c8d887acc20ae5c5181f79cd1f87`:** [WorkPass110 P23 regressions + runtime typecheck](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843579), [WorkPass108](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843575), [WorkPass105](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843582), [Unified project integration suite](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843740), and [progress-ledger integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40254843566). These are current combined-head runs, distinct from historical WorkPass335/WorkPass339 evidence.
-- **Progress evidence:** scores remain unchanged. No measured learning/transfer uplift or production readiness is claimed; external holdout, device/voice/Live2D, soak, licensing and reproducible release-archive gates remain open.
+---
+
+## Latest checkpoint — WorkPass342 validated / WorkPass340–342 merged (2026-10-26)
+
+- **Merged PR:** #154 integrated WorkPass340–342 into `fix/mega-cognitive-progress-tracking-2026-10-26-r3`; merge commit `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. It does not change `main` or publish a release ZIP.
+- **Exact tested code/test head:** `621864d0d7f2676245383adab86f1dcc6d0f741f`. Unified project integration suite [#40257525157](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525157), WorkPass110 [#40257525071](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525071), WorkPass108 [#40257525093](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525093), P26 [#40257525095](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525095) and ledger integrity [#40257525008](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525008) all passed. Outcome-ledger, replay, cognitive-contract, verified-experience, autonomous P23 repair, reflection and correlated-postcondition suites also passed on the same head.
+- **Cognitive runtime:** strict substrate runs in the live cycle, uses durable sidecar restore/periodic save/final flush, only constrains optional work, and passes the 30-cycle stop/re-init smoke. Core retains action ownership.
+- **Learning gate:** per-family distinct paired holdout tasks must satisfy trusted coverage and gain policy; proposal/staging remain non-activating.
+- **Research smoke:** per-probe bounded HTTP deadlines fixed the DeepCode false timeout; NeuroCore/NOMEGA/DeepCode owner-approved probes all passed.
+- **Scores:** unchanged. CI validates integration/safety, not improved real-world transfer. Physical Android/Termux sensor/audio, browser/Live2D hardware, long soak, license review, and the current release ZIP replacement remain open.
+- **Progress evidence:** tracker JSON and markdown now point to exact tested head `621864d0d7f2676245383adab86f1dcc6d0f741f`, while explicitly keeping score values unchanged.
+
+---
+
+## Latest checkpoint — WorkPass342 (2026-10-26)
+
+- **Scope:** fixed the integration smoke's false timeout for CPU-heavy research probes. `fetchJson` now has an explicit finite deadline; health/status/approval calls keep 8 seconds, NeuroCore/NOMEGA use 60 seconds, and DeepCode CPU smoke uses 200 seconds to cover its 180-second subprocess limit plus cold-start overhead.
+- **Cognitive integration:** WorkPass340 strict `UnifiedCognitiveSubstrate` is live in `OrganismRuntime`, persists a sidecar and passes the 30-cycle stop/re-init test. The canonical action owner remains `OrganismCore`.
+- **Learning safety:** WorkPass341 requires distinct paired holdout tasks per configured family. Insufficient measurements, insufficient task breadth and insufficient family gain fail separately; signed candidate staging still never activates a skill automatically.
+- **Exact-head validation PASS:** `b8bc8316e996700a5562b93f38fd354f1ea5d69b`. Unified project integration [#40256159897](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159897), WorkPass110 [#40256159892](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159892), WorkPass108 [#40256159870](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159870), P26 [#40256159877](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159877), and progress-ledger integrity [#40256159868](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159868) all passed. The unified smoke reports `CLEAN_ORGANISM_SMOKE=PASS`, all three Research Bridge probes pass after explicit owner approval, and UI/runtime typechecks passed.
+- **Scores:** intentionally unchanged. The new checks validate integration/safety, not improved external learning/transfer. Android/Termux audio/sensor E2E, browser/Live2D hardware E2E, long soak, licensing and release ZIP replacement remain open.
+
+---
+
+## Latest checkpoint — WorkPass341 (2026-10-26)
+
+- **Scope:** adds a separate minimum number of distinct paired holdout tasks for every skill family where trusted promotion policy demands a gain. Repeated seeds cannot inflate the unique-task coverage.
+- **Security:** thresholds are read from operator-owned `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`, not candidate bundle fields; family floors and per-family task coverage participate in the authenticated proposal identity.
+- **Activation:** this is still proposal/staging only. Verified candidates cannot activate automatically; owner/authority approval and canary/shadow evidence remain separate.
+- **Validation:** exact code/test head `b81ec539a1e2d442141e13929b376d2b549c9e64` passed the Unified project integration suite [#40255622845](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622845), WorkPass110 [#40255622606](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622606), WorkPass108 [#40255622678](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622678) and P26 Learning Validation [#40255622511]. The logs show `CLEAN_ORGANISM_SMOKE=PASS`, `P23_STAGE_VERIFIED_SKILL_CANDIDATE=PASS`, `P23_VERIFIED_SKILL_PROMOTION_PROPOSAL=PASS`, UI/runtime typecheck PASS, and all three governed Research Bridge probes pass after explicit owner approval.
+- **Scores:** unchanged; this validates implementation integrity and gates, not improved external learning/transfer. Android/Termux audio, physical-sensor calibration, hardware/browser Live2D E2E, extended soak, license review and release ZIP replacement remain open.
+
+---
+
+## Latest checkpoint — WorkPass340 (2026-10-26)
+
+- **Branch:** `work/nk1-unified-substrate-runtime-integration-2026-10-26-r4`, freshly based on current WorkPass334 source line after WorkPass339 security PR merge. No direct changes to `main` or release ZIP.
+- **Implementation:** `UnifiedCognitiveSubstrate.ts` is now used from `OrganismRuntime` after each canonical Core cycle; guarded persisted sidecar `*.cognitive-substrate.json`, periodic save and final stop flush are wired. The substrate can only constrain optional counterfactuals; Core remains action owner.
+- **Code/test checkpoint:** `9dfa27fe823ed14cd54ca34758821772e4756795`; includes strict schema/restore, live cycle integration, read-only diagnostic snapshot, wiring regression and 30-cycle smoke/restart persistence check.
+- **Type correctness:** the earlier divergent branch’s CI exposed two TypeScript issues. Both are corrected here: explicit `unknown` bridge for prediction-debt aggregation, and no read from nonexistent `cycleObservation.vision`; P41 relation count is zero until typed relation evidence exists.
+- **Validation:** branch was 11 commits ahead / 0 behind at last comparison. Exact-head Actions typecheck, `test:unified-substrate-runtime-wiring`, and smoke/restart are pending. The old branch’s failed test is recorded and is not treated as a pass.
+- **Progress accounting:** WorkPass339 remains recorded as CI-validated; historical progress/status rows still use their original tested baseline SHA. WorkPass340 does not increase scores before new CI results.
+- **Release gates:** rebuild and verify the large release ZIP, Android/Termux resource soak, voice/Live2D/device E2E, independent learning/transfer holdout and external postcondition E2E remain outstanding.
+
+---
+
+---
+
+## Latest checkpoint — WorkPass339 (2026-10-26)
+
+- **Branch:** `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5`, based on the current WorkPass334 source branch. No direct changes to `main` or release ZIP.
+- **Code + regression checkpoint:** `02372e4949c2094b5cd1a3c4420aeda86a2fdfa1`. Promotion and rollback approval verifiers require a canonical standard Base64 Ed25519 encoding for exactly 64 bytes before cryptographic verification.
+- **Regression authored:** canonical approval remains accepted; promotion signatures with trailing junk, leading whitespace or truncated padding are denied; rollback signature with trailing junk is denied.
+- **Docs:** `CHANGELOG.md`, `docs/WORKPASS339_STRICT_ED25519_APPROVAL_ENCODING_RU.md`, and progress tracker updated without increasing scored progress.
+- **Validation:** PR merge result `4a41db0` passed the Unified project integration suite (#119), runtime TypeScript (`TYPECHECK=PASS`), P23 versioned skill candidate store (included in WorkPass110 metrics #4641), and progress-ledger integrity (#20). The exact result is recorded in the report/tracker; local clone/test execution remains unavailable due DNS resolution for `github.com`.
+- **Release gates:** independent holdout learning/transfer, external postcondition E2E, browser/Live2D/voice, Android/Termux soak, license review and reproducible release ZIP rebuild remain outstanding.
 
 ---
 
@@ -543,4 +597,3 @@ When the user says “работай над проектом”, “продол
 - **Regression:** `test:p23:verified-skill-lifecycle-bootstrap` is registered in the continual-learning workflow.
 - **Verification:** exact-head Actions runs fail before steps start; the jobs have no step output and the logs endpoint returns `BlobNotFound`. This is consistent with the known runner/infrastructure problem, but does **not** prove the code or tests pass. Local typecheck/test execution is unavailable in this pass.
 - **Next P0:** connect the real learning/shadow supervisor to `registerTrustedSkillShadowRun` before receipt ingestion; provision trusted verifier keys; integrate authenticated approval; then get an actionable successful CI/typecheck run and audit every store creation/activation path.
-

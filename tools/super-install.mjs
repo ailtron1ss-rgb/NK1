@@ -34,8 +34,11 @@ for (const workspace of workspaces) {
     const manifest = JSON.parse(readFileSync(packageFile, 'utf8'));
     const lock = JSON.parse(readFileSync(lockFile, 'utf8'));
     const lockRoot = lock.packages?.[''];
-    if (!lockRoot || lockRoot.name !== manifest.name || (manifest.version && lockRoot.version !== manifest.version)) {
-      console.error(`SUPER_INSTALL=FAIL workspace=${workspace.name} reason=lockfile-root-mismatch manifest=${manifest.name}@${manifest.version ?? 'unspecified'} lock=${lockRoot?.name ?? 'missing'}@${lockRoot?.version ?? 'unspecified'}`);
+    const engineNodeMatches = manifest.engines?.node === lockRoot?.engines?.node;
+    const engineNpmMatches = manifest.engines?.npm === lockRoot?.engines?.npm;
+    if (!lockRoot || lockRoot.name !== manifest.name || (manifest.version && lockRoot.version !== manifest.version)
+        || !engineNodeMatches || !engineNpmMatches) {
+      console.error(`SUPER_INSTALL=FAIL workspace=${workspace.name} reason=lockfile-root-mismatch manifest=${manifest.name}@${manifest.version ?? 'unspecified'} lock=${lockRoot?.name ?? 'missing'}@${lockRoot?.version ?? 'unspecified'} nodeEngine=${manifest.engines?.node ?? 'missing'}/${lockRoot?.engines?.node ?? 'missing'} npmEngine=${manifest.engines?.npm ?? 'missing'}/${lockRoot?.engines?.npm ?? 'missing'}`);
       process.exit(1);
     }
   } catch (error) {

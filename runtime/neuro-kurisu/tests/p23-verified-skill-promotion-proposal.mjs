@@ -61,9 +61,38 @@ const memoryFloorBlocked = proposeVerifiedSkillPromotion(ledger, 'baseline', 'ca
 assert.equal(memoryFloorBlocked.gate.accepted, false);
 assert.equal(memoryFloorBlocked.gate.reason, 'required-family-gain-below-threshold:memory');
 assert.deepEqual(memoryFloorBlocked.evaluationPolicy.minimumFamilyGainByFamily, { memory: .01, 'tool-use': .3 });
+assert.deepEqual(memoryFloorBlocked.evaluationPolicy.minimumFamilyTasksByFamily, { memory: 2, 'tool-use': 2 });
 assert.equal(memoryFloorBlocked.evaluationPolicy.minCompleteSeeds, 3);
 assert.equal(isAuthenticVerifiedSkillPromotionProposal(memoryFloorBlocked), true,
   'the family floor and its failed decision must be covered by the proposal authenticity digest');
+
+const memoryTaskCoverageBlocked = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+  minPairedTasks: 8,
+  minAbsoluteGain: .1,
+  minCompleteSeeds: 3,
+  minimumFamilyGainByFamily: { memory: .01 },
+  minimumFamilyTasksByFamily: { memory: 6 },
+});
+assert.equal(memoryTaskCoverageBlocked.gate.accepted, false);
+assert.equal(memoryTaskCoverageBlocked.gate.reason, 'required-family-task-coverage-insufficient:memory');
+assert.equal(memoryTaskCoverageBlocked.familyTaskCoverage.memory, 5,
+  'paired seed repetitions must not be misreported as additional distinct tasks');
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(memoryTaskCoverageBlocked), true);
+
+assert.throws(
+  () => proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+    minimumFamilyGainByFamily: { memory: .01 },
+    minimumFamilyTasksByFamily: { memory: 1 },
+  }),
+  /minimum-family-task-policy-threshold-invalid:memory/,
+);
+assert.throws(
+  () => proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+    minimumFamilyGainByFamily: { memory: .01 },
+    minimumFamilyTasksByFamily: { transfer: 3 },
+  }),
+  /minimum-family-task-policy-without-family-gain-floor:transfer/,
+);
 
 const toolUseFloorMet = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
   minPairedTasks: 8,
@@ -108,24 +137,6 @@ assert.throws(
   }),
   /minimum-family-gain-policy-threshold-invalid:memory/,
 );
-
-const invalidPromotionConfigurations = [
-  [{ minPairedTasks: Number.NaN }, /min-paired-tasks-must-be-an-integer-from-2-to-10000/],
-  [{ minPairedTasks: 1 }, /min-paired-tasks-must-be-an-integer-from-2-to-10000/],
-  [{ minAbsoluteGain: Number.NaN }, /min-absolute-gain-must-be-finite-and-in-range-0-to-1/],
-  [{ minAbsoluteGain: 1.01 }, /min-absolute-gain-must-be-finite-and-in-range-0-to-1/],
-  [{ maxFamilyRegression: -0.01 }, /max-family-regression-must-be-finite-and-in-range-0-to-1/],
-  [{ minCompleteSeeds: 2 }, /min-complete-seeds-must-be-an-integer-from-3-to-1000/],
-  [{ minCompleteSeeds: Number.NaN }, /min-complete-seeds-must-be-an-integer-from-3-to-1000/],
-  [null, /verified-skill-promotion-options-must-be-an-object/],
-];
-for (const [invalidOptions, expectedError] of invalidPromotionConfigurations) {
-  assert.throws(
-    () => proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', invalidOptions),
-    expectedError,
-    'promotion policy must reject invalid configuration rather than silently clamp it',
-  );
-}
 assert.equal(proposal.authenticatedEvidenceRows,100);
 assert.equal(proposal.unauthenticatedEvidenceRows,0);
 assert.match(proposal.proposalId,/^[a-f0-9]{64}$/);
@@ -168,24 +179,21 @@ for (let i=0;i<2;i++) for (const [method,passed] of [['baseline',false],['candid
   tinyObservations.push({taskId:'tiny-'+i,family:'memory',split:'holdout',method,seed:1,attempt:1,passed,
     authority:'independent-verifier',verifierId:'v',expectedVerifierId:'v',evidenceRef:'e-'+i+'-'+method});
 }
-assert.throws(
-  () => evaluateSkillRevision(tinyObservations,'baseline','candidate',{minPairedTasks:Number.NaN}),
-  /minPairedTasks must be an integer from 2 to 10000/,
-  'non-finite minimum pair count is rejected explicitly rather than silently defaulted',
-);
+const nanThreshold = evaluateSkillRevision(tinyObservations,'baseline','candidate',{minPairedTasks:Number.NaN});
+assert.equal(nanThreshold.accepted,false);
+assert.equal(nanThreshold.reason,'insufficient-independent-heldout-pairs');
 
 const smallGainObservations = [];
 for (let i=0;i<100;i++) for (const [method,passed] of [['baseline',false],['candidate',i===0]]) {
   smallGainObservations.push({taskId:'fraction-'+i,family:'general',split:'holdout',method,seed:1,attempt:1,passed,
     authority:'independent-verifier',verifierId:'v',expectedVerifierId:'v',evidenceRef:'fraction-'+i+'-'+method});
 }
-assert.throws(
-  () => evaluateSkillRevision(smallGainObservations,'baseline','candidate',{
-    minPairedTasks:8,minAbsoluteGain:Number.NaN,
-  }),
-  /minAbsoluteGain must be a finite number from 0 to 1/,
-  'non-finite gain threshold is rejected explicitly and cannot change the effective gate',
-);
+const nanGainThreshold = evaluateSkillRevision(smallGainObservations,'baseline','candidate',{
+  minPairedTasks:8,minAbsoluteGain:Number.NaN,
+});
+assert.equal(nanGainThreshold.accepted,false);
+assert.equal(nanGainThreshold.reason,'no-material-heldout-improvement',
+  'NaN must use the conservative 0.02 default, not silently reduce the minimum gain to zero');
 
 // Authenticated but incomplete paired-seed coverage remains blocked for coverage, not provenance.
 const incomplete = new VerifiedOutcomeLedger(manifest);
@@ -205,5 +213,43 @@ const narrowProposal=proposeVerifiedSkillPromotion(narrow,'baseline','candidate'
 assert.equal(narrowProposal.gate.accepted,false);
 assert.equal(narrowProposal.uniquePairedTasks,2);
 assert.equal(narrowProposal.gate.reason,'insufficient-independent-heldout-task-coverage');
+
+// Producer policy must reject malformed runtime configuration rather than clamp it.
+const strictPolicyLedger = new VerifiedOutcomeLedger(manifest);
+assert.throws(() => proposeVerifiedSkillPromotion(strictPolicyLedger, 'baseline', 'candidate', { minPairedTasks: Number.NaN }),
+  /verified-skill-promotion-min-paired-tasks-must-be-an-integer-from-2-to-10000/);
+assert.throws(() => proposeVerifiedSkillPromotion(strictPolicyLedger, 'baseline', 'candidate', { minPairedTasks: 1 }),
+  /verified-skill-promotion-min-paired-tasks-must-be-an-integer-from-2-to-10000/);
+assert.throws(() => proposeVerifiedSkillPromotion(strictPolicyLedger, 'baseline', 'candidate', { minAbsoluteGain: Number.NaN }),
+  /verified-skill-promotion-min-absolute-gain-must-be-finite-and-in-range-0-to-1/);
+assert.throws(() => proposeVerifiedSkillPromotion(strictPolicyLedger, 'baseline', 'candidate', { minAbsoluteGain: 1.01 }),
+  /verified-skill-promotion-min-absolute-gain-must-be-finite-and-in-range-0-to-1/);
+assert.throws(() => proposeVerifiedSkillPromotion(strictPolicyLedger, 'baseline', 'candidate', { maxFamilyRegression: -0.01 }),
+  /verified-skill-promotion-max-family-regression-must-be-finite-and-in-range-0-to-1/);
+assert.throws(() => proposeVerifiedSkillPromotion(strictPolicyLedger, 'baseline', 'candidate', { minCompleteSeeds: 2 }),
+  /verified-skill-promotion-min-complete-seeds-must-be-an-integer-from-3-to-1000/);
+assert.throws(() => proposeVerifiedSkillPromotion(strictPolicyLedger, 'baseline', 'candidate', { minCompleteSeeds: Number.NaN }),
+  /verified-skill-promotion-min-complete-seeds-must-be-an-integer-from-3-to-1000/);
+assert.throws(() => proposeVerifiedSkillPromotion(strictPolicyLedger, 'baseline', 'candidate', null),
+  /verified-skill-promotion-options-must-be-a-plain-data-object/);
+assert.throws(() => proposeVerifiedSkillPromotion(strictPolicyLedger, 42, 'candidate', {}),
+  /two distinct method names are required/);
+let promotionOptionGetterCalls = 0;
+const promotionOptionsWithGetter = {};
+Object.defineProperty(promotionOptionsWithGetter, 'minPairedTasks', {
+  enumerable: true, configurable: true,
+  get() { promotionOptionGetterCalls++; return 8; },
+});
+assert.throws(() => proposeVerifiedSkillPromotion(strictPolicyLedger, 'baseline', 'candidate', promotionOptionsWithGetter),
+  /verified-skill-promotion-options-must-use-own-data-properties/);
+assert.equal(promotionOptionGetterCalls, 0, 'promotion policy snapshot must not invoke caller getters');
+let ignoredPromotionOptionGetterCalls = 0;
+const promotionOptionsWithIgnoredGetter = {};
+Object.defineProperty(promotionOptionsWithIgnoredGetter, 'externalMetadata', {
+  enumerable: true, configurable: true,
+  get() { ignoredPromotionOptionGetterCalls++; return 'unbound'; },
+});
+assert.equal(proposeVerifiedSkillPromotion(strictPolicyLedger, 'baseline', 'candidate', promotionOptionsWithIgnoredGetter).canActivateAutomatically, false);
+assert.equal(ignoredPromotionOptionGetterCalls, 0, 'unknown option getters must not be copied or invoked');
 
 console.log('P23_VERIFIED_SKILL_PROMOTION_PROPOSAL=PASS');

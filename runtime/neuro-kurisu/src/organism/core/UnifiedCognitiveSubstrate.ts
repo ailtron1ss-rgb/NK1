@@ -12,6 +12,23 @@ export interface UnifiedCognitiveSubstrateState {
 }
 
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+const isRecord = (value:unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+const own = (record:Record<string, unknown>, key:string):unknown =>
+  Object.hasOwn(record, key) ? record[key] : undefined;
+const section = (record:Record<string, unknown>, key:string):Record<string, unknown> => {
+  const value = own(record, key);
+  return isRecord(value) ? value : {};
+};
+const metric = (value:unknown, fallback:number):number =>
+  typeof value === 'number' && Number.isFinite(value) ? clamp(value) : fallback;
+const counter = (value:unknown, fallback=0):number =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : fallback;
+const cleanText = (value:unknown, fallback:string, maxLength:number):string => {
+  if (typeof value !== 'string') return fallback;
+  const text = value.replace(/[\u0000-\u001f\u007f-\u009f]/gu, ' ').replace(/\s+/gu, ' ').trim().slice(0, maxLength);
+  return text || fallback;
+};
 
 export const defaultUnifiedCognitiveSubstrate = (): UnifiedCognitiveSubstrateState => ({
   version:1, cycles:0, lastTick:0,
@@ -24,25 +41,154 @@ export const defaultUnifiedCognitiveSubstrate = (): UnifiedCognitiveSubstrateSta
   lastReason:'initial',
 });
 
-/** Bounded cross-system projection. It never owns canonical domain state. */
+export interface UnifiedCognitiveWorkPolicy {
+  maxCounterfactualBranches: number;
+  allowMatchedCounterfactual: boolean;
+  reason: string;
+}
+
+/**
+ * Bound optional simulation work by the same cross-system state frame used for
+ * continuity diagnostics. This policy can only reduce speculative work; it
+ * cannot select or replace the action chosen by OrganismCore.
+ */
+export function resolveUnifiedCognitiveWorkPolicy(
+  state: UnifiedCognitiveSubstrateState,
+  requestedMaxBranches: number,
+): UnifiedCognitiveWorkPolicy {
+  if (!Number.isSafeInteger(requestedMaxBranches) || requestedMaxBranches < 0) {
+    return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'invalid-resource-budget' };
+  }
+  if (requestedMaxBranches === 0) {
+    return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'upstream-budget-zero' };
+  }
+  if (!isRecord(state) || !isRecord(state.coupling) || !isRecord(state.provenance) ||
+      !isRecord(state.resources) || !isRecord(state.world)) {
+    return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'invalid-substrate-state' };
+  }
+  const requiredMetrics = [
+    state.coupling.actionReadiness01,
+    state.coupling.predictionGrounding01,
+    state.provenance.unknown01,
+    state.provenance.evidenceCoverage01,
+    state.resources.scarcity01,
+    state.resources.ramPressure01,
+    state.resources.thermal01,
+    state.world.conflict01,
+  ];
+  if (requiredMetrics.some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1)) {
+    return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'invalid-substrate-state' };
+  }
+
+  const { actionReadiness01, predictionGrounding01 } = state.coupling;
+  const unknown01 = state.provenance.unknown01;
+  const evidenceCoverage01 = state.provenance.evidenceCoverage01;
+  const scarcity01 = state.resources.scarcity01;
+  const ramPressure01 = state.resources.ramPressure01;
+  const thermal01 = state.resources.thermal01;
+  const conflict01 = state.world.conflict01;
+  if (actionReadiness01 < 0.25 || conflict01 > 0.9 || scarcity01 > 0.94 || thermal01 > 0.98) {
+    return { maxCounterfactualBranches: 0, allowMatchedCounterfactual: false, reason: 'substrate-critical-pressure' };
+  }
+
+  const constrained =
+    actionReadiness01 < 0.55 ||
+    predictionGrounding01 < 0.45 ||
+    unknown01 > 0.75 ||
+    scarcity01 > 0.75 ||
+    ramPressure01 > 0.85 ||
+    thermal01 > 0.9;
+  const maxCounterfactualBranches = constrained ? Math.min(1, requestedMaxBranches) : requestedMaxBranches;
+  const allowMatchedCounterfactual =
+    maxCounterfactualBranches > 0 &&
+    actionReadiness01 >= 0.45 &&
+    predictionGrounding01 >= 0.5 &&
+    evidenceCoverage01 >= 0.3 &&
+    unknown01 <= 0.7 &&
+    scarcity01 <= 0.8 &&
+    conflict01 <= 0.5;
+
+  const reasons = [
+    constrained ? 'substrate-budget-constrained' : 'substrate-budget-open',
+    allowMatchedCounterfactual ? 'matched-counterfactual-grounded' : 'matched-counterfactual-withheld',
+  ];
+  return { maxCounterfactualBranches, allowMatchedCounterfactual, reason: reasons.join(';') };
+}
+
+/**
+ * Bounded cross-system projection. It never owns canonical domain state.
+ * Persisted snapshots and live inputs are treated as untrusted data: no spread
+ * of an arbitrary object is allowed to bypass the finite/range/schema boundary.
+ */
 export class UnifiedCognitiveSubstrate {
   private state = defaultUnifiedCognitiveSubstrate();
 
-  restore(raw?: Partial<UnifiedCognitiveSubstrateState> | null) {
+  restore(raw?: Partial<UnifiedCognitiveSubstrateState> | null): void {
+    const source = isRecord(raw) ? raw : {};
+    const storedVersion = own(source, 'version');
+    if (storedVersion !== undefined && storedVersion !== 1) {
+      throw new RangeError('unsupported unified-cognitive-substrate state version');
+    }
     const d = defaultUnifiedCognitiveSubstrate();
-    const r = raw ?? {};
+    const self = section(source, 'self');
+    const world = section(source, 'world');
+    const prediction = section(source, 'prediction');
+    const resources = section(source, 'resources');
+    const coupling = section(source, 'coupling');
+    const provenance = section(source, 'provenance');
+
     this.state = {
-      ...d, ...r,
-      self:{...d.self,...(r.self??{})},
-      world:{...d.world,...(r.world??{})},
-      prediction:{...d.prediction,...(r.prediction??{})},
-      resources:{...d.resources,...(r.resources??{})},
-      coupling:{...d.coupling,...(r.coupling??{})},
-      provenance:{...d.provenance,...(r.provenance??{})},
+      version: 1,
+      cycles: counter(own(source, 'cycles'), d.cycles),
+      lastTick: counter(own(source, 'lastTick'), d.lastTick),
+      self: {
+        continuity01: metric(own(self, 'continuity01'), d.self.continuity01),
+        coherence01: metric(own(self, 'coherence01'), d.self.coherence01),
+        agency01: metric(own(self, 'agency01'), d.self.agency01),
+        realityAlignment01: metric(own(self, 'realityAlignment01'), d.self.realityAlignment01),
+        mode: cleanText(own(self, 'mode'), d.self.mode, 64),
+        lastAction: cleanText(own(self, 'lastAction'), d.self.lastAction, 64),
+      },
+      world: {
+        confidence01: metric(own(world, 'confidence01'), d.world.confidence01),
+        uncertainty01: metric(own(world, 'uncertainty01'), d.world.uncertainty01),
+        entityCount: counter(own(world, 'entityCount'), d.world.entityCount),
+        eventCount: counter(own(world, 'eventCount'), d.world.eventCount),
+        relationCount: counter(own(world, 'relationCount'), d.world.relationCount),
+        conflict01: metric(own(world, 'conflict01'), d.world.conflict01),
+        newEntityRate01: metric(own(world, 'newEntityRate01'), d.world.newEntityRate01),
+      },
+      prediction: {
+        error01: metric(own(prediction, 'error01'), d.prediction.error01),
+        openCount: counter(own(prediction, 'openCount'), d.prediction.openCount),
+        agingCount: counter(own(prediction, 'agingCount'), d.prediction.agingCount),
+        expiredCount: counter(own(prediction, 'expiredCount'), d.prediction.expiredCount),
+        priority01: metric(own(prediction, 'priority01'), d.prediction.priority01),
+      },
+      resources: {
+        battery01: metric(own(resources, 'battery01'), d.resources.battery01),
+        thermal01: metric(own(resources, 'thermal01'), d.resources.thermal01),
+        ramPressure01: metric(own(resources, 'ramPressure01'), d.resources.ramPressure01),
+        computeCapacity01: metric(own(resources, 'computeCapacity01'), d.resources.computeCapacity01),
+        scarcity01: metric(own(resources, 'scarcity01'), d.resources.scarcity01),
+        efficiency01: metric(own(resources, 'efficiency01'), d.resources.efficiency01),
+      },
+      coupling: {
+        selfWorld01: metric(own(coupling, 'selfWorld01'), d.coupling.selfWorld01),
+        predictionGrounding01: metric(own(coupling, 'predictionGrounding01'), d.coupling.predictionGrounding01),
+        memoryPressure01: metric(own(coupling, 'memoryPressure01'), d.coupling.memoryPressure01),
+        actionReadiness01: metric(own(coupling, 'actionReadiness01'), d.coupling.actionReadiness01),
+      },
+      provenance: {
+        evidenceCoverage01: metric(own(provenance, 'evidenceCoverage01'), d.provenance.evidenceCoverage01),
+        realObservationCoverage01: metric(own(provenance, 'realObservationCoverage01'), d.provenance.realObservationCoverage01),
+        unknown01: metric(own(provenance, 'unknown01'), d.provenance.unknown01),
+      },
+      lastReason: cleanText(own(source, 'lastReason'), d.lastReason, 256),
     };
   }
 
-  snapshot() { return structuredClone(this.state); }
+  snapshot(): UnifiedCognitiveSubstrateState { return structuredClone(this.state); }
 
   integrate(input: {
     tick:number;
@@ -51,40 +197,98 @@ export class UnifiedCognitiveSubstrate {
     prediction:UnifiedCognitiveSubstrateState['prediction'];
     resources:UnifiedCognitiveSubstrateState['resources'];
     memoryPressure01:number; evidenceCoverage01:number; realObservationCoverage01:number; unknown01:number; reason?:string;
-  }) {
+  }): UnifiedCognitiveSubstrateState {
+    if (!isRecord(input)) throw new TypeError('unified cognitive substrate input must be an object');
+    if (!Number.isSafeInteger(input.tick) || input.tick < 0) {
+      throw new RangeError('unified cognitive substrate tick must be a non-negative safe integer');
+    }
+    if (input.tick <= this.state.lastTick) {
+      throw new RangeError('unified cognitive substrate tick must strictly increase');
+    }
+    if (![input.self, input.world, input.prediction, input.resources].every(isRecord)) {
+      throw new TypeError('unified cognitive substrate sections must be objects');
+    }
+
+    const d = defaultUnifiedCognitiveSubstrate();
+    const rawSelf = input.self as unknown as Record<string, unknown>;
+    const rawWorld = input.world as unknown as Record<string, unknown>;
+    const rawPrediction = input.prediction as unknown as Record<string, unknown>;
+    const rawResources = input.resources as unknown as Record<string, unknown>;
+    const self = {
+      continuity01: metric(own(rawSelf, 'continuity01'), d.self.continuity01),
+      coherence01: metric(own(rawSelf, 'coherence01'), d.self.coherence01),
+      agency01: metric(own(rawSelf, 'agency01'), d.self.agency01),
+      realityAlignment01: metric(own(rawSelf, 'realityAlignment01'), d.self.realityAlignment01),
+      mode: cleanText(own(rawSelf, 'mode'), d.self.mode, 64),
+      lastAction: cleanText(own(rawSelf, 'lastAction'), d.self.lastAction, 64),
+    };
+    const world = {
+      confidence01: metric(own(rawWorld, 'confidence01'), d.world.confidence01),
+      uncertainty01: metric(own(rawWorld, 'uncertainty01'), d.world.uncertainty01),
+      entityCount: counter(own(rawWorld, 'entityCount')),
+      eventCount: counter(own(rawWorld, 'eventCount')),
+      relationCount: counter(own(rawWorld, 'relationCount')),
+      conflict01: metric(own(rawWorld, 'conflict01'), d.world.conflict01),
+      newEntityRate01: metric(own(rawWorld, 'newEntityRate01'), d.world.newEntityRate01),
+    };
+    const prediction = {
+      error01: metric(own(rawPrediction, 'error01'), d.prediction.error01),
+      openCount: counter(own(rawPrediction, 'openCount')),
+      agingCount: counter(own(rawPrediction, 'agingCount')),
+      expiredCount: counter(own(rawPrediction, 'expiredCount')),
+      priority01: metric(own(rawPrediction, 'priority01'), d.prediction.priority01),
+    };
+    const resources = {
+      battery01: metric(own(rawResources, 'battery01'), d.resources.battery01),
+      thermal01: metric(own(rawResources, 'thermal01'), d.resources.thermal01),
+      ramPressure01: metric(own(rawResources, 'ramPressure01'), d.resources.ramPressure01),
+      computeCapacity01: metric(own(rawResources, 'computeCapacity01'), d.resources.computeCapacity01),
+      scarcity01: metric(own(rawResources, 'scarcity01'), d.resources.scarcity01),
+      efficiency01: metric(own(rawResources, 'efficiency01'), d.resources.efficiency01),
+    };
+    const memoryPressure01 = metric(input.memoryPressure01, d.coupling.memoryPressure01);
+    const evidenceCoverage01 = metric(input.evidenceCoverage01, d.provenance.evidenceCoverage01);
+    const realObservationCoverage01 = metric(input.realObservationCoverage01, d.provenance.realObservationCoverage01);
+    const unknown01 = metric(input.unknown01, d.provenance.unknown01);
+
+    // All math below consumes normalized values only. A NaN in a restored or
+    // live field therefore cannot poison every derived coupling metric.
     const selfWorld = clamp(
-      input.self.realityAlignment01*.30 +
-      input.world.confidence01*.34 +
-      (1-input.world.conflict01)*.18 +
-      input.self.coherence01*.18
+      self.realityAlignment01*.30 +
+      world.confidence01*.34 +
+      (1-world.conflict01)*.18 +
+      self.coherence01*.18
     );
     const predictionGrounding = clamp(
-      (1-input.prediction.error01)*.28 +
-      input.world.confidence01*.28 +
-      input.self.realityAlignment01*.22 +
-      input.evidenceCoverage01*.22
+      (1-prediction.error01)*.28 +
+      world.confidence01*.28 +
+      self.realityAlignment01*.22 +
+      evidenceCoverage01*.22
     );
     const actionReadiness = clamp(
-      input.self.agency01*.26 +
-      input.self.coherence01*.18 +
-      input.resources.computeCapacity01*.20 +
-      (1-input.world.uncertainty01)*.18 +
-      (1-input.prediction.error01)*.18
+      self.agency01*.26 +
+      self.coherence01*.18 +
+      resources.computeCapacity01*.20 +
+      (1-world.uncertainty01)*.18 +
+      (1-prediction.error01)*.18
     );
+
     this.state = {
-      version:1, cycles:this.state.cycles+1, lastTick:input.tick,
-      self:{...input.self,continuity01:clamp(input.self.continuity01),coherence01:clamp(input.self.coherence01),agency01:clamp(input.self.agency01),realityAlignment01:clamp(input.self.realityAlignment01)},
-      world:{...input.world,confidence01:clamp(input.world.confidence01),uncertainty01:clamp(input.world.uncertainty01),conflict01:clamp(input.world.conflict01),newEntityRate01:clamp(input.world.newEntityRate01)},
-      prediction:{...input.prediction,error01:clamp(input.prediction.error01),priority01:clamp(input.prediction.priority01)},
-      resources:{...input.resources,battery01:clamp(input.resources.battery01),thermal01:clamp(input.resources.thermal01),ramPressure01:clamp(input.resources.ramPressure01),computeCapacity01:clamp(input.resources.computeCapacity01),scarcity01:clamp(input.resources.scarcity01),efficiency01:clamp(input.resources.efficiency01)},
-      coupling:{selfWorld01:selfWorld,predictionGrounding01:predictionGrounding,memoryPressure01:clamp(input.memoryPressure01),actionReadiness01:actionReadiness},
-      provenance:{evidenceCoverage01:clamp(input.evidenceCoverage01),realObservationCoverage01:clamp(input.realObservationCoverage01),unknown01:clamp(input.unknown01)},
-      lastReason:input.reason ?? `tick=${input.tick};selfWorld=${selfWorld.toFixed(2)};predictionGrounding=${predictionGrounding.toFixed(2)}`,
+      version:1,
+      cycles:Math.min(Number.MAX_SAFE_INTEGER, this.state.cycles + 1),
+      lastTick:input.tick,
+      self,
+      world,
+      prediction,
+      resources,
+      coupling:{selfWorld01:selfWorld,predictionGrounding01:predictionGrounding,memoryPressure01,actionReadiness01:actionReadiness},
+      provenance:{evidenceCoverage01,realObservationCoverage01,unknown01},
+      lastReason:cleanText(input.reason, `tick=${input.tick};selfWorld=${selfWorld.toFixed(2)};predictionGrounding=${predictionGrounding.toFixed(2)}`, 256),
     };
     return this.snapshot();
   }
 
-  actionBias(action:string) {
+  actionBias(action:string):number {
     const readiness=this.state.coupling.actionReadiness01;
     const grounding=this.state.coupling.predictionGrounding01;
     const resource=this.state.resources.efficiency01;

@@ -116,6 +116,34 @@ assert.throws(() => store.stageCandidate(forgedProposal, 'memory-repair', { inst
 const c1 = store.stageCandidate(p1, 'memory-repair', { instruction: 'version one', schemaVersion: 1 });
 assert.equal(c1.version, 1);
 assert.equal(c1.status, 'staged');
+
+// evaluationFingerprint is optional lineage metadata. Its absence must not make
+// an otherwise valid revision provenance impossible to stage or restore.
+const optionalFingerprintProvenance = {
+  schemaVersion: 1,
+  sourceCandidateId: null,
+  planFingerprint: 'a'.repeat(64),
+  datasetFingerprint: 'b'.repeat(64),
+  dimensions: ['task-success'],
+  createdAt: Date.now(),
+};
+const optionalFingerprintCandidate = store.stageCandidate(
+  proposal('optional-evaluation-fingerprint'),
+  'optional-evaluation-fingerprint',
+  { instruction: 'valid provenance without a separate evaluator report' },
+  optionalFingerprintProvenance,
+);
+assert.equal(optionalFingerprintCandidate.revisionProvenance?.evaluationFingerprint, undefined);
+assert.ok(store.snapshot().candidates.some(item => item.candidateId === optionalFingerprintCandidate.candidateId),
+  'optional evaluation lineage must survive candidate store snapshot');
+
+assert.throws(() => store.stageCandidate(
+  proposal('malformed-evaluation-fingerprint'),
+  'malformed-evaluation-fingerprint',
+  { instruction: 'invalid explicit evaluator digest' },
+  { ...optionalFingerprintProvenance, evaluationFingerprint: 'not-a-fingerprint' },
+), /invalid reflective skill revision provenance/,
+  'an explicitly supplied malformed evaluation fingerprint must still fail closed');
 assert.equal(store.stageCandidate(p1, 'memory-repair', { instruction: 'version one', schemaVersion: 1 }).candidateId, c1.candidateId,
   'repeating the same stage request is idempotent');
 assert.throws(() => store.stageCandidate(proposal('c', false), 'memory-repair', { instruction: 'bad' }), /accepted proposal/);

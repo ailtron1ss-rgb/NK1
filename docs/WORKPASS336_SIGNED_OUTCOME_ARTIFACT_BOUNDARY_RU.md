@@ -4,7 +4,7 @@
 **Ветка:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`  
 **Code commit:** `4c817208c27d623474e08b6db1dbf2e81cc82991`  
 **Regression commit:** `05fad9f67960af1d1cb9f7ed535aba3e49b2973f`  
-**Статус:** PASS на exact code/test HEAD `338902ce5587c8d887acc20ae5c5181f79cd1f87` после синхронизации с базой `11812cbf2146c677ec2059616e6f1d6b9a9a7cae`.
+**Статус:** PASS на exact code/test HEAD `338902ce5587c8d887acc20ae5c5181f79cd1f87` после синхронизации с базой `22e37b72e20086053d2308d9adf83f18e5828696`.
 
 ## Что изменено
 

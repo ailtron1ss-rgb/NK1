@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { request as httpRequest } from 'node:http';
+import { buildGatewayUpstreamHeaders } from './super-gateway-headers.mjs';
 
 const PORT = Number(process.env.SUPER_GATEWAY_PORT || 8080);
 const UI_PORT = Number(process.env.SUPER_UI_PORT || 8081);
@@ -12,7 +13,7 @@ const forward = (req, res, targetPort, targetHost = '127.0.0.1') => {
     port: targetPort,
     path: req.url,
     method: req.method,
-    headers: { ...req.headers, host: `${targetHost}:${targetPort}` },
+    headers: buildGatewayUpstreamHeaders(req.headers, targetHost, targetPort),
   }, (upstreamRes) => {
     res.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers);
     upstreamRes.pipe(res);

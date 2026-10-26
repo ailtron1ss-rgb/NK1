@@ -28,10 +28,28 @@ on:
       - "tools/super-install.mjs"
       - "tools/super-doctor.mjs"
       - "tools/verify-integration.mjs"
+      - "tools/supervised-service-specs.mjs"
+      - "tools/supervised-service-specs.test.mjs"
+      - "tools/supervisor-exit-policy.mjs"
+      - "tools/supervisor-exit-policy.test.mjs"
+      - "tools/supervisor-preflight.mjs"
+      - "tools/supervisor-preflight.test.mjs"
+      - "tools/supervisor-start-smoke.mjs"
+      - "tools/super-gateway-headers.mjs"
+      - "tools/super-gateway-headers.test.mjs"
+      - "tools/toolchain-contract.test.mjs"
+      - "tools/toolchain-contract.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/super-gateway.mjs"
       - "tools/project-progress-ledger.mjs"
       - "tools/project-progress-ledger.test.mjs"
       - "docs/PROJECT_PROGRESS_TRACKER_2026-10-26_RU.*"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts"
+      - "runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs"
+      - "runtime/neuro-kurisu/tests/p23-stage-verified-skill-candidate.mjs"
+      - "runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs"
       - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - ".github/workflows/cognitive-integration-suite.yml"
   push:
@@ -66,10 +84,28 @@ on:
       - "tools/super-install.mjs"
       - "tools/super-doctor.mjs"
       - "tools/verify-integration.mjs"
+      - "tools/supervised-service-specs.mjs"
+      - "tools/supervised-service-specs.test.mjs"
+      - "tools/supervisor-exit-policy.mjs"
+      - "tools/supervisor-exit-policy.test.mjs"
+      - "tools/supervisor-preflight.mjs"
+      - "tools/supervisor-preflight.test.mjs"
+      - "tools/supervisor-start-smoke.mjs"
+      - "tools/super-gateway-headers.mjs"
+      - "tools/super-gateway-headers.test.mjs"
+      - "tools/toolchain-contract.test.mjs"
+      - "tools/toolchain-contract.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-dev.mjs"
+      - "tools/super-gateway.mjs"
       - "tools/project-progress-ledger.mjs"
       - "tools/project-progress-ledger.test.mjs"
       - "docs/PROJECT_PROGRESS_TRACKER_2026-10-26_RU.*"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts"
+      - "runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs"
+      - "runtime/neuro-kurisu/tests/p23-stage-verified-skill-candidate.mjs"
+      - "runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs"
       - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - ".github/workflows/cognitive-integration-suite.yml"
 
@@ -116,9 +152,18 @@ jobs:
         run: |
           npm --prefix app run typecheck
           npm --prefix app run build:dev
+      - name: Verify supervised service contracts and fail-together shutdown
+        run: |
+          npm run test:supervised-service-specs
+          npm run test:supervisor-exit-policy
+          npm run test:supervisor-preflight
+          npm run test:toolchain-contract
+          npm run test:super-gateway-headers
       - name: Verify cognitive integration contracts
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite
       - name: Run governed approval gateway and bridge E2E
         run: npm --prefix runtime/neuro-kurisu run test:workpass53
+      - name: Start every required service and verify the public gateway
+        run: npm run test:supervisor-start-smoke
       - name: Run unified runtime and research bridge smoke
         run: npm run test:integration
