@@ -1,3 +1,8 @@
+## [NK1][Hexis] Resume staged HMX actions after a console reload (2026-10-26)
+
+- Manually entered stage IDs can now be submitted after a reload even when the local React state has no cached stage snapshot.
+- The UI never treats the typed ID as proof of status: the server still checks the stage lifecycle seal/status and conflicts, while acceptance and canonical apply remain separately confirmed. This allows recovery without weakening server-side invariants.
+
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
 
 - [INTEGRATION] Preserve the current independent HMX lifecycleDigest contract while integrating attempt-counter binding and semantic apply-receipt checks into the consolidated Hexis/restore branch.
