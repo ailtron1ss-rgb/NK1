@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass395 — enforce export-global entity refs (2026-10-26)
+
+- [SAFETY] HMX staging now tracks entity refs across `memories`, `episodes`, and `goals`, not just duplicates within a single memory array. Duplicate refs across entity sections poison the affected section before review/acceptance.
+- [FIX] Episode and goal records must carry an export-scoped ref. This prevents goal proposals or episode references from silently collapsing because two source identifiers normalize to the same slug.
+- [TEST] Added a goal-slug collision regression alongside the existing memory-slug collision case; conflicting goals are omitted atomically and cannot enter proposal generation.
+- [VALIDATION] Source and regression are wired into the existing HMX integration suite; exact-head execution still requires a functioning GitHub Actions runner.
+
 ## [NK1][Hexis] WorkPass394 — centralize HMX application receipt integrity (2026-10-26)
 
 - [WIRING] Moved applied-receipt structural, stage/export/lineage binding, and SHA-256 integrity checks into one shared `HexisHmxReceiptGuard.ts` used by both `HexisAdaptationFabric` and `HexisCanonicalMemoryProjector`.
