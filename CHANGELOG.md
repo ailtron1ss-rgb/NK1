@@ -1,3 +1,114 @@
+## WorkPass334 — require distinct holdout-task coverage per skill family (2026-10-26)
+
+- **Gap:** WorkPass333 bound improvement thresholds to trusted host policy, but repeated seeds over a tiny family could satisfy the family-gain check without demonstrating breadth across distinct tasks.
+- **Code:** added `minimumFamilyTasksByFamily` to the authenticated proposal policy. Each configured gain family defaults to a floor of two distinct paired holdout tasks unless set explicitly; the trusted staging path requires both per-family gain and task-count floors in operator-owned `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`.
+- **Evidence accounting:** proposal output now exposes `familyTaskCoverage`, counting distinct attempt-1 tasks with paired baseline/candidate outcomes rather than treating each seed repetition as a new task. Task floors and measured coverage are bound into the proposal identity/authenticity digest.
+- **Regression:** proposal-level and signed staging tests reject a policy requiring six memory tasks when only five distinct memory tasks exist, even though the outcomes repeat across five seeds. Rejection leaves candidate storage and activation state unchanged.
+- **Validation:** code/test changes are committed together; exact-head CI for WorkPass334 must complete before claiming this regression or typecheck passed.
+- **Safety:** configured families must still show adequate paired-seed coverage and meet the authenticated gain floor. Specialised skills are not required to improve unrelated families; only explicitly scoped family floors demand positive uplift.
+
+## WorkPass333 — move promotion family floors into trusted host configuration (2026-10-26)
+
+- **Security boundary:** WorkPass332 made a family floor mandatory but placed it inside the candidate bundle. That bundle is external input, so its author could lower the threshold that was supposed to constrain the candidate.
+- **Code:** `stage-verified-skill-candidate.mjs` now reads `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON` from host process configuration. The JSON is keyed by exact skill ID, and each skill entry maps intended holdout task-family names to positive finite gain floors. No matching skill entry, no floor, an unmeasured family, and any threshold outside `(0, 1]` all fail closed.
+- **Anti-override:** candidate bundles no longer accept a `promotionPolicy` field. An embedded attempt to override host thresholds is rejected as an unknown top-level field; the trusted map is passed to `proposeVerifiedSkillPromotion` and returned with measured family gains.
+- **Regression:** end-to-end tests cover missing host policy, attempted bundle override, unmeasured family, zero floor, a valid per-skill policy, and an aggregate gain of `+0.20` with zero required memory-family gain. All rejected candidates must leave storage unchanged and none can activate a skill.
+- **Validation:** new-head CI must be checked after this prepared commit is moved onto the branch. No PASS is claimed for this commit before its own tests and typecheck complete.
+- **Configuration example:** `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON='{"stage-memory-repair":{"memory":0.20}}'` alongside the trusted verifier-key environment variable. Operators should maintain the policy outside candidate bundles and manage it as trusted deployment configuration.
+
+## WorkPass332 — enforce per-skill task-family floors in candidate staging (2026-10-26)
+
+- **Integration gap:** WorkPass331 added authenticated family-aware promotion criteria, but the real `stage-verified-skill-candidate.mjs` caller still used only aggregate settings. The production staging route could therefore bypass the per-family guard by omitting its optional argument.
+- **Code:** every signed candidate bundle must now carry `promotionPolicy.minimumFamilyGainByFamily`. Each configured family must exist in the holdout manifest and specify a positive finite gain floor no greater than 1; missing, unknown, or non-positive policy fails before candidate staging.
+- **Runtime wiring:** the staging script forwards the validated per-skill family map into `proposeVerifiedSkillPromotion` and returns the policy plus measured family gains for inspection.
+- **Regression:** the end-to-end signed-bundle fixture now has real positive gains for its intended memory family; it rejects a missing policy, a family with no holdout tasks, a zero floor, and an otherwise-positive aggregate whose memory-family gain is zero. Rejection leaves the durable candidate set unchanged.
+- **Validation:** this commit's exact-head tests and typecheck are pending CI. WorkPass331's related validation workflows passed on the previous head; those results do not substitute for the new end-to-end regression.
+- **Safety:** staging remains separate from activation; authenticated approval, signed shadow evidence, rollback protections, and `canActivateAutomatically: false` remain in force.
+
+## WorkPass331 — bind task-family floors to verified skill proposals (2026-10-26)
+
+- **Gap:** authenticated proposal generation blocked significant regressions by family, but an aggregate positive result could still pass if an important family had zero gain. The family results were reported, yet callers could not require improvement on the task families a particular skill is meant to serve.
+- **Code:** `VerifiedSkillPromotionOptions.minimumFamilyGainByFamily` now lets the caller declare per-family minimum gains. Every configured family must have at least `minCompleteSeeds` paired seeds and reach its own floor; missing family evidence or insufficient coverage fails closed with an explicit reason.
+- **Policy binding:** the normalized policy (`minPairedTasks`, minimum aggregate gain, maximum family regression, complete-seed floor, and per-family minimum gains) is included in the proposal and the proposal identity digest. Changing a floor changes `proposalId` even if the candidate still passes, so an approval cannot silently be reused under different criteria.
+- **Regression:** the existing ledger-bound signed-outcome test now checks that overall gain from memory cannot mask a zero-gain required memory family, that an adequately improved required tool-use family can pass, that required but unmeasured transfer evidence is rejected, malformed policy is rejected, and policy changes alter proposal IDs.
+- **Integration:** the existing WorkPass110 learning workflow already triggers on the source/test paths and invokes `npm run test:p23:verified-skill-promotion-proposal`; no duplicate test script was added.
+- **Validation status:** implementation and regressions are committed. This pass did not execute the test suite; exact-head CI status could not be retrieved, so this must remain IMPLEMENTED / CI NOT VERIFIED until a runner executes the test and runtime typecheck.
+- **Scope:** per-family gates are explicit per skill/task-family purpose; no global requirement is imposed on a specialized memory skill to improve unrelated transfer. Proposal generation never activates a skill; authenticated approval, shadow evidence, and rollback protections remain required.
+
+## WorkPass330 — hard gate for independently verified task success (2026-10-26)
+
+- **Defect:** the SkillLearnBench-compatible candidate gate treated validation task-success below 0.80 as feedback only. Since the composite also includes trajectory/skill quality, a candidate with low verified task success could still be marked eligible when those other metrics increased.
+- **Code fix:** added `minimumValidationTaskSuccess01` (default 0.80, validated within [0, 1]) as an explicit eligibility condition. Low task success now adds `validation-task-success-below-threshold` and blocks eligibility instead of merely emitting a warning.
+- **Regression:** `p29-hermes-reflective-candidate-gate.mjs` constructs a candidate with 50% verified task success but enough trajectory/skill quality to improve the composite score; it must be rejected at the default floor and may only pass when a caller explicitly configures a 0.50 floor and other gates pass.
+- **Validation breadth:** added `minimumValidationTasks` (default 2); repeated trials of a single task no longer count as broad validation coverage. The regression proves that a high composite gain on one task still fails unless the deployment explicitly chooses a one-task floor.
+- **Safety invariants preserved:** the gate still only recommends eligibility; it does not activate candidates or replace authenticated approval, independent evaluation, untouched holdout, or hard safety checks.
+- **Validation status:** code and regression are committed; this editing environment did not execute the repository test process. Require exact-head P26 Learning Validation/CI results before reporting a pass.
+- **CI reproducibility:** P26 Learning Validation now uses Node 24 to match root `.nvmrc`, runs `npm run doctor` on the real runner before installation, and triggers when `.nvmrc`/runtime-pin checks change.
+- **Release remains blocked:** real external task-transfer/tool-use uplift, live UI/Live2D/TTS, Android/Termux audio, long soak, license review and reproducible release archive remain outstanding.
+
+## WorkPass329 — сводка learning/skill-evolution evidence (2026-10-25)
+
+- **Independent CI:** на проверенном кодовом head `9d0e1fa5d7cb94e0e252cce09bdfca4551d0ddba` успешны WorkPass110 continual-learning metrics, P26 Learning Validation, WorkPass99 replay strategy, WorkPass105 verified outcome ledger, WorkPass108 paired evidence/promotion gates, WorkPass287–288 cognitive contracts, WorkPass291–294, WorkPass293 autonomous P23 repair.
+- **Replay diagnostic:** в пяти фиксированных seed-ах balanced replay дал mean MAE 0.095652 против 0.253034 без replay; prioritized replay — 0.109323. Benchmark прямо предупреждает, что это синтетический proxy-composition diagnostic, не оценка популяционного/реального прироста.
+- **P26 deterministic tests:** 20,160 update smoke; test MAE 0.5 initial → 0.9144 learned → 0.0823 reversed; holdout=1.0 в синтетическом deterministic probe. Matrix-тест сообщает order sensitivity spread 0.0154 и repair gain 0.7584.
+- **Verified outcome fixture:** pairedN=20, baseline pass rate .30, candidate .80, absolute gain .50; approx 95% CI [0.198, 0.802]. Это fixture-based evaluation, не реальные пользовательские задачи.
+- **Known gap:** P23 seed-clustered outcome comparison — aggregate gain .50 по 4 paired seeds, но improvement family gains составили memory=1, tool-use=0, transfer=0. Поэтому нельзя утверждать, что current evidence доказывает улучшение применения навыков и переноса; эти outcomes требуют отдельного held-out dataset/benchmark.
+- **Quality interpretation:** pipeline integrity, authorization, signed evidence, restart/replay and evaluator gates have broad passing regression coverage. Effectiveness evidence is still synthetic / diagnostic and is not an intelligence or consciousness score.
+- **Release gates remain:** real browser/Live2D/TTS, Android/Termux audio, independent real-world held-out learning, long soak, licensing and clean release archive reproduction.
+
+## WorkPass328 — детерминированная политика повторов approval persistence (2026-10-25)
+
+- **Refactor:** алгоритм повторов вынесен из `server.mjs` в `src/server/transient-approval-storage-retry.mjs`; три approval endpoint используют общий протестированный helper.
+- **Strict deadline:** после истечения окна не запускается новая попытка. Параметры clock/sleep инъецируются в тесте, чтобы сценарии выполнялись детерминированно.
+- **Four regressions:** восстановление после трёх transient busy ответов; точный deadline и отсутствие лишнего вызова; отсутствие повторов для постоянной ошибки хранения; проброс неожиданного исключения.
+- **Exact-head CI:** Unified project integration suite **#55** на `9d0e1fa5d7cb94e0e252cce09bdfca4551d0ddba` завершился **SUCCESS**. Маркеры `WORKPASS327_TRANSIENT_APPROVAL_RETRY=PASS scenarios=4`, `WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=25`, `WORKPASS53_RESEARCH_BRIDGE_APPROVAL=PASS scenarios=10`, `WORKPASS53_APPROVAL_BRIDGE_E2E=PASS scenarios=20`; когнитивный frame-тест прошёл 6 сценариев, UI/runtime typecheck/build и общий research smoke прошли.
+- **Full smoke:** NeuroCore блокируется без разрешения (403), после owner approval проходит (MSE delta -0.8120257); NOMEGA registry PASS (313 modules, 0 cycles); DeepCode CPU probe PASS после явного согласования.
+- **Release boundary:** этот проход подтвердил интеграционную ветку и CI, но не закрывает production UI/Live2D/TTS, Android/Termux audio, независимую held-out оценку learning uplift, long soak, полный license review и воспроизводимую публикацию release archive. Main и release ZIP не изменялись.
+
+## WorkPass327 — согласование с ограниченным HTTP timeout и чистые CI path filters (2026-10-25)
+
+- **Bridge timeout contract:** Python research bridge теперь даёт permission request/resolve/consume endpoint timeout до 12 сек по умолчанию (ограничен диапазоном 9–30 сек), что превышает 8-секундное окно bounded server retry. Остальные runtime POST остаются с timeout 4 сек.
+- **Regression:** test research bridge проверяет, что approval timeout остаётся больше retry budget, а обычные POST не получают избыточный timeout.
+- **CI path filters:** убраны повторяющиеся PR path filters; push filters теперь включают runtime system/server, approval bridge tests и NeuroCore/DeepCode Python dependency paths.
+- **Developer setup:** добавлена команда `npm run install:research:cpu` для явной установки CPU-only torch в окружениях, где используются полноценные PyTorch research probes. Она не включена в обязательный mobile/Node install, где CPU wheels могут быть недоступны.
+- **CI status:** WorkPass326 head уже подтвердил setup-python + CPU torch install, app/runtime typecheck/build, cognitive integration и `test:workpass53` (включая approval bridge E2E). Unified smoke ещё выполнялся на момент записи; WorkPass327 bridge timeout change требует нового exact-head evidence.
+- **Release boundary:** нет merge в main и нет изменения release ZIP. UI/Live2D/TTS, Android/Termux и long-soak/holdout learning остаются открытыми.
+
+## WorkPass326 — approval persistence contention and research runtime dependencies (2026-10-25)
+
+- **Approval correctness:** distinguish the known transient `action-ledger-persistence-busy` checkpoint condition from permanent `approval-storage-failed`, while retaining rollback of newly created/resolved/consumed approval tickets.
+- **Bounded HTTP retry:** permission request, resolve and consume endpoints retry only the explicit busy condition, with an 8-second bounded exponential delay. No approval is implicitly granted and no request bypasses exact ticket binding; core/internal callers do not retry, avoiding self-deadlock within an active persistence batch.
+- **Regression:** expanded `test:workpass53` approval-boundary tests to cover request/resolve/consume rollback and subsequent success after contention clears.
+- **Python runtime:** added `research/requirements-cpu.txt` from the declared NeuroCore `torch>=2.0` dependency and added Python 3.12 + CPU-only PyTorch installation to the unified integration workflow. The governed approval E2E now runs before the all-up smoke.
+- **CI results:** pending for the updated exact head. Prior exact-head evidence: cognitive suite passed; overall smoke failed as diagnosed due approval storage contention and missing `torch`. Do not transfer that earlier failure or pass to the new head.
+- **Release boundary:** no merge into `main`, no release ZIP replacement. Full UI/Live2D/TTS, Android/Termux and long-soak/held-out learning validation remain open.
+
+## WorkPass323 — реальная RAM-телеметрия в resource allocator (2026-10-25)
+
+- **Code fix:** `OrganismRuntime` больше не подставляет `1 - cognitiveCapacity01` как `ramPressure01`. Resource economy получает измеренное `body.telemetry.ramPressure01`, отдельно от `cognitiveLoad01`.
+- **Observability:** событие `cognitive-resource-economy` теперь публикует оба входа — `cognitiveCapacity01` и `ramPressure01` — чтобы обнаружить рассинхронизацию датчика и решения.
+- **Regression:** `cognitive-dependency-runtime-wiring.mjs` разводит входы (capacity=0.85, RAM pressure=0.88), проверяет evidence payload и проверяет фактическую формулу scarcity.
+- **CI status:** remote tests/typecheck still require real completed runner steps on the updated PR head; missing status records must not be treated as a pass.
+- **Scope boundary:** эта правка улучшает управление ресурсным бюджетом, но сама по себе не подтверждает production-readiness или измеримый uplift обучения.
+
+## WorkPass322 — critical interrupt activation from interoception (2026-10-25)
+
+- **Code fix:** `CognitiveFrame` now treats `resource-critical`, `thermal-critical`, and `memory-pressure` as active interrupts even when their weighted scalar score is below the generic 0.72 threshold. Single-sensor fixtures showed why the two signals must not be conflated: energy=0.17 gives about 0.714, thermal=0.83 about 0.664, and RAM pressure=0.87 about 0.679.
+- **Defense in depth:** `CognitiveRoutingPolicy` now suppresses optional counterfactual work whenever a recognized critical label is present, even if the active bit is contradictory; `CognitiveDependencyGraph` also restores recognized critical labels as active.
+- **Regression coverage:** added a raw-telemetry-to-policy test for all three cases, expanded policy tests for contradictory inactive critical labels, and hardened the restored snapshot fixture.
+- **CI reachability:** added the current fix branch to the push branch filters in the cognitive integration workflow and repository wiring audit. The composite cognitive gate now includes the raw-frame regression and the previously omitted dependency restore test.
+- **Validation honesty:** no focused test/typecheck result is yet confirmed. The latest checked workflow-run/status endpoints returned no records; recheck exact head after the trigger changes. Do not infer pass/fail from missing run metadata.
+- **Release status:** implementation checkpoint, not production clearance. UI/Live2D/TTS, Android/Termux audio, independent held-out memory/learning, soak and license review remain open.
+
+## WorkPass321 — Cognitive interrupt severity normalization (2026-10-25)
+
+- **Code fix:** critical interrupt labels are normalized with trim/lowercase before policy routing; case variants of `thermal-critical`, `resource-critical`, and `memory-pressure` now disable optional counterfactual branches even below the numeric 0.90 priority threshold.
+- **Persistence contract:** the cognitive dependency graph canonicalizes restored/resolved interrupt labels as well.
+- **Regression coverage:** added case-variant policy cases plus restored-state coverage for `RESOURCE-CRITICAL`.
+- **Integration wiring:** `test:p320:cognitive-dependency-restore` is now part of `test:cognitive-integration-suite`; previously it existed as a standalone script but was omitted from the composite gate.
+- **Validation honesty:** implementation and tests are committed to the work branch. Focused tests and typecheck were not executed in this editing environment; exact-head CI must be checked before calling them passing.
+- **Release status:** implementation checkpoint only. Production build, browser/Live2D/TTS, Android audio, independent memory/learning holdout, long soak, and license review remain open.
+
 ## [NK1][integration] Make runtime smoke deterministic and bounded (2026-10-25)
 
 - Replaced the shared repository-local `.verify-state` folder with a unique OS temporary directory so concurrent smoke runs cannot erase or mutate one another's state.

@@ -1,3 +1,113 @@
+## Latest checkpoint — WorkPass334 (2026-10-26)
+
+- **Branch / PR:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`, draft [PR #135](https://github.com/ailtron1ss-rgb/NK1/pull/135), based on `work/node24-project-pin-rebased-20261025`. No merge to `main`; no release ZIP update.
+- **Code:** `VerifiedSkillPromotion.ts` and the real `stage-verified-skill-candidate.mjs` path now enforce both a per-family minimum gain and a minimum number of distinct paired holdout tasks. Target families default to two tasks for direct API callers; deployment policy explicitly specifies the count for each family.
+- **Evidence:** `familyTaskCoverage` counts unique task IDs with baseline and candidate results for attempt 1. Repeating a small set of prompts across many seeds does not inflate distinct-task coverage; coverage is included in proposal identity/authenticity.
+- **Regression:** fixture has five distinct memory tasks across five paired seeds; a policy requiring six distinct memory tasks is blocked, and the persistent candidate store remains unchanged.
+- **Validation:** WorkPass333 exact-head CI passed for WorkPass110, P26, unified integration, WorkPass108 and associated replay/evidence workflows. WorkPass334 is a new head; its own CI is pending and must be checked separately.
+- **Next:** verify WorkPass334 CI, then move from synthetic regressions to independent, real tool-use/transfer holdout runs and measured uplift. UI/Live2D/TTS, Android audio, long soak, release packaging, and licensing remain distinct release gates.
+
+## Latest checkpoint — WorkPass330 (2026-10-26)
+
+- **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; continuation PR recorded in this handover as [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135). No merge to `main` and no release ZIP update.
+- **Code commits:** task-success gate `c180e9afbfb54c4ee5ec5566d74e54b990b78cf6`; regression `a7e0c0f9d16b52065c1c1d57f6a90a9d8f9b0aee`; distinct-validation-task coverage `ac82342216ad7e36aa1795271b69b4741a935b76`; coverage regression `9dc92673637fa86a0216f980a9c796a354f3f1f8`; Node 24 CI contract `551cdf361a95d3e85a2f8409838d1679741cad6c`.
+- **Defect fixed:** `SkillLearnBenchAdapter` previously used `validationTaskSuccess < 0.8` to add feedback only. Stronger trajectory/skill sub-scores could still make a low-success candidate eligible. The gate now has configurable `minimumValidationTaskSuccess01` (default 0.80), validates its range and rejects below-threshold candidates with `validation-task-success-below-threshold`.
+- **Regression added:** constructs a candidate with 50% verified task success but positive composite gain; confirms default denial, explicit 0.50 override behavior and rejection of an out-of-range threshold.
+- **Validation breadth:** `minimumValidationTasks` defaults to 2; multiple trials of one task no longer pass as broad validation. The new regression checks denial for one-task validation and permits an explicit one-task configuration only when intended.
+- **CI contract:** `.github/workflows/p26-learning-validation.yml` is now aligned to Node 24, matching the root `.nvmrc`; it executes `npm run doctor` before installing locked workspaces and triggers on changes to the runtime pin contract. Workflow change commit: `551cdf361a95d3e85a2f8409838d1679741cad6c`.
+- **Validation:** test/typecheck have not been executed in this pass. Connector status/PR workflow lookup did not return exact-head check records; do not count that as either PASS or test failure. Verify P26 Learning Validation on the current PR head, including runtime typecheck and `p29-hermes-reflective-candidate-gate.mjs`.
+- **Next code-first priorities:** (1) inspect exact-head CI and fix any concrete failures; (2) move beyond synthetic candidate gates to independently held-out tool-use/transfer tasks with paired seeds and task-family reporting; (3) bind promotion criteria to per-family evidence without letting aggregate memory gains hide zero tool-use/transfer; (4) trace a real accepted action through external postcondition proof and learning credit.
+- **Do not overclaim:** this closes a promotion-gate logic gap. It does not demonstrate improved actual learning, general intelligence, consciousness or production readiness.
+
+---
+
+## Learning evidence addendum — WorkPass329 (2026-10-25)
+
+- Exact code checkpoint `9d0e1fa5d7cb94e0e252cce09bdfca4551d0ddba` passed the independent CI workflows: WorkPass110, P26 Learning Validation, WorkPass99 replay benchmark, WorkPass105 verified outcome ledger, WorkPass108 signed evidence/promotion gate, WorkPass287–288 cognitive contracts and WorkPass291–294.
+- Replay ablation (5 deterministic seeds): mean MAE without replay 0.253034; balanced replay 0.095652; prioritized replay 0.109323. The benchmark labels its protocol synthetic proxy-composition only; interpret as implementation diagnostic, not production user-task learning gain.
+- Deterministic P26 run: 20,160 updates; MAE 0.5 → 0.9144 after learning → 0.0823 after reversed-target adaptation; synthetic holdout=1.0. It tests learning mechanics and forgetting/reversal behavior, not generalized real-world competency.
+- Paired verified-outcome fixture: N=20, baseline pass 0.30, candidate 0.80, absolute gain 0.50, approximate 95% CI [0.198, 0.802]. Treat as fixture evidence, not an external held-out benchmark.
+- Crucial limitation from P23 seed-clustered outcome comparison: aggregate gain 0.50 across four paired seeds, but family gains were memory=1, tool-use=0, transfer=0. Current evidence supports memory/replay pathway integrity more than generalized tool-use or transfer gains. Next useful learning pass should prioritize independent task-level transfer and tool-use evaluation, not inflate current score.
+- Current engineering estimate: learning-system integrity and promotion-safety coverage is strong; real-world learning effectiveness is not yet proven. Do not interpret any score here as IQ, autonomous general intelligence, or consciousness.
+## Latest checkpoint — WorkPass328 (2026-10-25)
+
+- **Verified source branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135) targets `work/node24-project-pin-rebased-20261025`, not `main`.
+- **Verified head:** `9d0e1fa5d7cb94e0e252cce09bdfca4551d0ddba`.
+- **Exact-head evidence:** Unified project integration suite run **#55 / 40229436759** completed success. Runner installed Node 24, Python 3.12 and CPU-only PyTorch; environment doctor and both locked npm installs passed; supervisor tests, app build/typecheck, cognitive integration, approval gateway E2E and unified runtime/research smoke all passed.
+- **New shared retry module:** `runtime/neuro-kurisu/src/server/transient-approval-storage-retry.mjs` is used by request/resolve/consume permission routes. It retries only the explicitly tagged transient `approval-storage-busy`, uses bounded exponential backoff, never starts a new operation at/after the deadline, fails fast on permanent storage errors, and propagates unexpected exceptions.
+- **Deterministic regression:** `tests/workpass327-transient-approval-retry.mjs` ran and emitted `WORKPASS327_TRANSIENT_APPROVAL_RETRY=PASS scenarios=4`: recovery after busy results, strict 90ms deadline, no retry for permanent failure, and thrown-error propagation.
+- **Other exact-head test markers:** `COGNITIVE_FRAME_CRITICAL_INTERRUPT=PASS scenarios=6 routeClosed=true`; `WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=25`; `WORKPASS53_RESEARCH_BRIDGE_APPROVAL=PASS scenarios=10`; `WORKPASS53_APPROVAL_BRIDGE_E2E=PASS scenarios=20`.
+- **Research evidence:** NeuroCore denied without approval (403) then passed after owner approval (MSE delta `-0.8120256662368774`); NOMEGA denied without approval then passed with 313 modules / 0 cycles; DeepCode denied without approval and passed after explicit approval.
+- **Next code-first focus:** check the latest source/Actions on each pass; extend runtime-level assertions for critical interrupts/resource budget through the full cycle; inspect actual learning outputs and independent holdout results; then continue memory → planning → action → independently verified postcondition → learning integration. Do not re-run old static audits when a targeted code/CI failure can be fixed directly.
+- **Still open before calling the whole project release-ready:** real browser/UI and Live2D/TTS, Android/Termux audio, independent held-out retrieval and learning-transfer uplift, a long-duration soak, license review and clean-machine release archive reproduction. No release ZIP update or merge into main was performed.
+
+---
+
+## Latest checkpoint — WorkPass327 (2026-10-25)
+
+- **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135) remains draft, based on source branch `work/node24-project-pin-rebased-20261025`.
+- **New timeout contract:** `research/research_bridge.py` formerly gave every runtime POST a fixed 4 s timeout; that would cut off the new 8 s bounded persistence-busy retry on the server. Approval request/resolve/consume now use `ORGANISM_APPROVAL_TIMEOUT_SECONDS` (default 12 s, clamp 9–30 s); all other runtime calls retain 4 s.
+- **Bridge regression:** `tests/workpass53-research-bridge-approval.mjs` monkey-patches urllib transport and checks the approval request's timeout exceeds 8 s while normal route timeout remains exactly 4 s.
+- **Workflow hygiene:** duplicate pull-request path filters were removed. Push filters now cover source system/server, approval tests, research bridge, DeepCode/NeuroCore and CPU dependency manifest.
+- **Supported setup:** root package now offers `npm run install:research:cpu` to install the declared CPU PyTorch dependency for research-heavy Linux environments. This remains explicit/optional rather than part of the default app installer because Android/Termux CPU PyTorch wheels may not be available.
+- **Latest completed validations before WorkPass327 changes:** the PR-head runner successfully installed Python 3.12 + CPU torch, completed Node 24/installer/doctor/locked npm installs/app build/typecheck/cognitive suite and `test:workpass53` approval E2E. The all-up smoke was still running at last poll; these earlier results do not validate the timeout/path-filter changes.
+- **Next:** inspect run for WorkPass327 head, especially all-up research smoke and the independent continual-learning workflow. If another probe fails, use emitted per-probe error text rather than suppressing it.
+- **Remaining release gates:** browser/UI/real Live2D/TTS, Android/Termux audio, independent held-out memory/learning uplift, long-duration soak, license review and clean-machine release reproduction. Release archive and main were not changed.
+
+---
+
+## Latest checkpoint — WorkPass326 (2026-10-25)
+
+- **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), source base `work/node24-project-pin-rebased-20261025`. No merge to `main`; release archive not touched.
+- **Diagnosis from executed CI logs:** source typecheck and cognitive integration passed, but unified smoke failed because two research approval requests returned `approval-storage-failed`; the persister uses `action-ledger-persistence-busy` when a checkpoint is already inside a runtime persistence batch. A third probe made it through approval but failed at `import torch` because CI had no declared/installed Python research dependency.
+- **Gateway fix:** ActionGateway maps only that exact known checkpoint-busy cause to `approval-storage-busy`, retaining rollback for pending/resolved/consumed tickets. Permanent persistence errors remain `approval-storage-failed`.
+- **HTTP boundary:** `/api/organism/tools/permissions/request|resolve|consume` now perform bounded exponential retry (up to 8 sec) only on `approval-storage-busy`, returning retryable 503 if the window expires. No auto-approval or side-effect bypass. Core/internal methods do not self-retry, preventing deadlock when called inside a persistence batch.
+- **Tests:** `tests/workpass53-action-approval-boundary.mjs` now covers busy rollback + retry success for request, resolve and consume. CI workflow explicitly runs `npm --prefix runtime/neuro-kurisu run test:workpass53` including real approval bridge E2E.
+- **Python dependency:** added `research/requirements-cpu.txt` (`torch>=2.0`, CPU wheel index, aligned to `research/neurocore-v143/pyproject.toml`) and setup-python 3.12/install/check steps before integration smoke. Workflow path filters now cover server/system/bridge/dependency changes.
+- **Evidence status:** latest changes are committed to branch; new exact-head CI must complete before calling them passing. Previously, the latest complete run passed all earlier steps, runtime/app typechecks and cognitive suite, but failed all-up smoke for the above two causes.
+- **Next actions:** check exact-head CI logs; if PyTorch install or DeepCode exposes additional undeclared imports, add dependency pins intentionally to the CPU research manifest. Then inspect another real server launch/approval cycle, memory restore integrity, action outcome/learning closure, and the release startup path.
+- **Remaining release gates:** production UI/browser/Live2D/TTS, Android/Termux audio, independent held-out memory retrieval/learning uplift, long-duration soak, license review, clean-machine archive/release reproduction.
+
+---
+
+## Latest checkpoint — WorkPass323 (2026-10-25)
+
+- **Active branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), base `work/node24-project-pin-rebased-20261025`. It is unmerged; no main merge or release ZIP edit.
+- **Resource wiring defect fixed:** `OrganismRuntime.stepInternal()` previously fed `CognitiveResourceEconomy.allocate()` with `ramPressure01 = 1 - cognitiveCapacity01`, not the available telemetry `body.telemetry.ramPressure01`. These signals have different semantics. It now routes the measured RAM pressure directly and includes both values in resource evidence.
+- **Regression:** the runtime integration test injects capacity=0.85 with measured RAM pressure=0.88, validates telemetry evidence and verifies computed scarcity against the allocator formula.
+- **Critical interruption fixes from WorkPass321–322:** normalize critical labels; make labels such as `resource-critical`, `thermal-critical`, `memory-pressure` activate interrupts despite the generic weighted threshold; choose these physical-resource signals before generic prediction errors; suppress optional counterfactual work even with contradictory inactive flags; normalize restored state. The raw-frame test covers three independent critical sensor states and the same three mixed with prediction error.
+- **Composite checks wired:** `test:cognitive-frame-critical-interrupt` and `test:p320:cognitive-dependency-restore` are in the cognitive integration suite. The current branch is included in the push filters for the cognitive integration suite and repository wiring audit.
+- **Validation:** do not call tests passing unless there are completed steps/results from a runner on the code changes. Fetch the latest PR #135 workflow runs/jobs/steps; older queued runs may refer to an earlier head.
+- **Next code-first actions:** (1) confirm current PR-head runner, typecheck and cognitive suite; (2) fix any specific failures in actual logs; (3) add a runtime integration case forcing critical telemetry through the graph and verifying the published `admittedBranchBudget=0`; (4) check other signal-to-policy unit conversions and distinguish measured hardware signals from derived capacity; (5) continue memory → planning → action → independent postcondition → learning wiring.
+- **Unresolved release gates:** production UI/browser/Live2D/TTS, Android/Termux audio, held-out memory retrieval and learning transfer, long soak, license review, full clean-machine release reproduction. No consciousness claim is supported by module presence or these targeted fixes.
+
+---
+
+## Latest checkpoint — WorkPass322 (2026-10-25)
+
+- **Active branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135) targets `work/node24-project-pin-rebased-20261025`. It remains unmerged and does not target `main`.
+- **Newly found upstream defect:** `CognitiveFrame` gave critical type labels based on thresholds (energy < .18, thermal > .82, RAM > .86) but set `interrupt.active` only when weighted priority exceeded .72. With a single abnormal sensor those weighted contributions are 0.714, 0.664 and 0.679, respectively, so the critical label could be inactive.
+- **Code fixes:** critical labels force `active=true` at the source; the router suppresses counterfactuals based on critical type even if `active=false`; restore canonicalizes the type and preserves activation. Case-insensitive matching from WorkPass321 remains.
+- **Regressions added:** `tests/cognitive-frame-critical-interrupt.mjs` exercises low-energy, high-thermal and high-RAM raw input all the way through the routing policy. Additional tests cover uppercase labels, contradictory persisted activation, and zero speculative branches. `test:cognitive-integration-suite` now runs both the raw-telemetry regression and the existing dependency-restore test.
+- **CI wiring:** new branch `fix/cognitive-interrupt-severity-normalization-2026-10-25` is included in the push filters for `.github/workflows/cognitive-integration-suite.yml` and `.github/workflows/repository-wiring-audit.yml`. Last check at the previous workflow commits returned no workflow-run or status records; check the latest head again before interpreting test status.
+- **Validation:** no tests/typecheck have run successfully in the local tool environment. CI evidence is still pending/unavailable; tests being committed is not a pass.
+- **Next code-first actions:** (1) verify exact-head Actions jobs now that branch trigger filters are enabled; (2) correct any actual typecheck/runtime regression reported by executed steps; (3) add a runtime-level test that injects critical telemetry through `OrganismRuntime` and verifies published policy evidence; (4) audit all severity producers/consumers and state restore paths; (5) continue cross-layer memory → planning → action → independently verified outcome → learning integration.
+- **Release gates:** UI build/real browser and Live2D/TTS, Android/Termux audio, independent held-out retrieval/learning uplift, long-duration soak and license review remain open. No release asset was modified and no consciousness claim is inferred.
+
+---
+
+## Latest checkpoint — WorkPass321 (2026-10-25)
+
+- **Active work branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`, based on `work/node24-project-pin-rebased-20261025`; no merge into `main` or release ZIP was performed.
+- **Code checkpoint before handover docs:** `84cf83ef97ebcd631cb0e6e6c19dbc62ea17b032`.
+- **Defect fixed:** case-sensitive classification could admit one counterfactual branch for an active `RESOURCE-CRITICAL` / `THERMAL-CRITICAL` signal with priority 0.84. Routing now trims and lowercases severity labels before classification; graph restore/resolve uses the same canonical representation.
+- **Tests added:** case-variant severity labels, normalized restored state, and the previously omitted standalone dependency-graph restore test is now included in the cognitive composite suite.
+- **Validation:** tests/typecheck not executed in this pass. Verify exact-head CI and require a runner plus real steps/logs; a zero-step startup failure is not a code-test result.
+- **Next code-first actions:** (1) inspect latest Actions for this exact branch/head and run focused cognitive suite; (2) close any runtime typecheck failures without semantic downgrade to syntax-only passing; (3) trace actual interrupt producers into `CognitiveDependencyGraph` and add runtime tests that force active/critical signals through the real cycle; (4) continue memory ↔ learning ↔ verified-action integration; (5) refresh the canonical release archive only after verified source checks, if release-asset tooling allows it.
+- **Evidence rule:** no learning uplift, production-ready claim, or consciousness claim follows from this fix alone.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.

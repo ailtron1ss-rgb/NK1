@@ -42,6 +42,65 @@ assert.equal(accepted.pairedValidationTrials, 2);
 
 assert.equal(accepted.pairedHoldoutTrials, 2);
 
+// Aggregate improvement in trajectory/skill quality must not disguise low
+// independently verified task success. The old gate emitted a warning only,
+// so this candidate could remain eligible with a 50% task pass rate.
+const lowPassButHighQuality = {
+  ...trial('task-a', 'v1', 'good'),
+  taskSuccess: { passed: false, passRate: 0 },
+};
+const lowSuccessCandidate = {
+  validation: [lowPassButHighQuality, trial('task-b', 'v1', 'good')],
+  holdout: baseline.holdout,
+};
+const lowSuccessGate = evaluateSkillLearnBenchCandidate(baseline, lowSuccessCandidate);
+assert.equal(lowSuccessGate.validationGain01 > 0.005, true,
+  'fixture must retain aggregate validation gain so the task-success gate is exercised');
+assert.equal(lowSuccessGate.eligible, false,
+  'an aggregate score gain cannot bypass the independently verified task-success floor');
+assert.ok(lowSuccessGate.reasons.includes('validation-task-success-below-threshold'));
+assert.ok(lowSuccessGate.feedback.some(line => line.includes('below the promotion threshold')));
+
+// Deployment may explicitly select a different task-success target, but the
+// threshold must be visible and constrained to [0, 1].
+const lowerDeclaredThreshold = evaluateSkillLearnBenchCandidate(
+  baseline,
+  lowSuccessCandidate,
+  { minimumValidationTaskSuccess01: 0.5 },
+);
+assert.equal(lowerDeclaredThreshold.eligible, true,
+  'a 50% result meets an explicitly configured 50% floor when other gates pass');
+assert.throws(
+  () => evaluateSkillLearnBenchCandidate(baseline, lowSuccessCandidate, { minimumValidationTaskSuccess01: 1.01 }),
+  /candidate-minimum-validation-task-success-invalid/,
+);
+
+const oneTaskValidationBaseline = {
+  validation: [trial('task-a', 'v1', 'weak'), trial('task-a', 'v2', 'weak')],
+  holdout: baseline.holdout,
+};
+const oneTaskValidationCandidate = {
+  validation: [trial('task-a', 'v1', 'good'), trial('task-a', 'v2', 'good')],
+  holdout: baseline.holdout,
+};
+const oneTaskValidationGate = evaluateSkillLearnBenchCandidate(
+  oneTaskValidationBaseline,
+  oneTaskValidationCandidate,
+);
+assert.equal(oneTaskValidationGate.validationGain01 > 0.005, true);
+assert.equal(oneTaskValidationGate.eligible, false,
+  'many repetitions on one validation task must not count as broad task coverage');
+assert.ok(oneTaskValidationGate.reasons.includes('validation-task-coverage-insufficient'));
+assert.equal(
+  evaluateSkillLearnBenchCandidate(oneTaskValidationBaseline, oneTaskValidationCandidate, { minimumValidationTasks: 1 }).eligible,
+  true,
+  'deployment may intentionally lower the task-count floor while keeping the setting explicit',
+);
+assert.throws(
+  () => evaluateSkillLearnBenchCandidate(oneTaskValidationBaseline, oneTaskValidationCandidate, { minimumValidationTasks: 0 }),
+  /candidate-minimum-validation-tasks-invalid/,
+);
+
 // Task macro-average: repeating one task must not give it extra weight.
 const imbalanced = {
   validation: [

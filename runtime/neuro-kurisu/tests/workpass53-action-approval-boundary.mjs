@@ -78,4 +78,41 @@ families.setExecutionLedgerPersister(async () => {});
 assert.equal((await families.requestToolApproval('http.voice.listen',{},'mic',{},'direct')).request.permissionClass,'device');
 assert.equal((await families.requestToolApproval('http.integration.outbound',{channel:'telegram',target:'user',payload:{text:'hi'}},'send',{},'direct')).request.permissionClass,'web');
 assert.equal((await families.requestToolApproval('http.research.probe.nomega-registry',{kind:'nomega-registry'},'probe',{},'direct')).request.permissionClass,'web');
-console.log('WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=22');
+// A persistence batch can transiently refuse checkpointing. This is not a
+// permanent storage failure: preserve fail-closed behavior but surface a retryable
+// status so the external HTTP boundary can wait for the batch to finish.
+const busy = new ActionGateway({ live: true });
+let busyPersist = false;
+let busyWrites = 0;
+busy.setExecutionLedgerPersister(async () => {
+  busyWrites += 1;
+  if (busyPersist) throw new Error('action-ledger-persistence-busy');
+});
+const busyTool = 'http.research.probe.neurocore';
+const busyInput = { kind: 'neurocore' };
+busyPersist = true;
+const busyRequest = await busy.requestToolApproval(busyTool, busyInput, 'transient batch contention', {}, 'direct');
+assert.equal(busyRequest.created, false);
+assert.equal(busyRequest.error, 'approval-storage-busy');
+assert.equal(busy.toolPermissionSnapshot().pending, 0, 'a rejected busy write must roll the ticket back');
+busyPersist = false;
+const durableRequest = await busy.requestToolApproval(busyTool, busyInput, 'transient batch contention', {}, 'direct');
+assert.equal(durableRequest.created, true);
+busyPersist = true;
+const busyResolve = await busy.resolveToolApproval(durableRequest.request.id, true);
+assert.equal(busyResolve.ok, false);
+assert.equal(busyResolve.error, 'approval-storage-busy');
+assert.equal(busy.toolPermissionSnapshot().requests.find(row => row.id === durableRequest.request.id).status, 'pending');
+busyPersist = false;
+assert.equal((await busy.resolveToolApproval(durableRequest.request.id, true)).ok, true);
+busyPersist = true;
+const busyConsume = await busy.consumeDirectActionApproval(busyTool, busyInput, durableRequest.request.id, {}, 'direct');
+assert.equal(busyConsume.ok, false);
+assert.equal(busyConsume.reason, 'approval-storage-busy');
+assert.equal(busy.toolPermissionSnapshot().requests.find(row => row.id === durableRequest.request.id).status, 'approved');
+busyPersist = false;
+assert.equal((await busy.consumeDirectActionApproval(busyTool, busyInput, durableRequest.request.id, {}, 'direct')).ok, true);
+assert.ok(busyWrites >= 6, 'request, resolution and consumption each attempt a durable write');
+console.log('WORKPASS325_APPROVAL_STORAGE_BUSY=PASS operations=request,resolve,consume');
+
+console.log('WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=25');

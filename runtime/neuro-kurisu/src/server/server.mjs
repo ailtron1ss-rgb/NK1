@@ -15,6 +15,7 @@ import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
 import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
 import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs';
+import { retryTransientApprovalStorage } from './transient-approval-storage-retry.mjs';
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
@@ -91,6 +92,9 @@ const VISION_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.GEMINI_VISIO
 let languageCallCount = 0;
 let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
+
+const APPROVAL_STORAGE_RETRY_WINDOW_MS = Math.max(500, Math.min(15000, Number(process.env.NEURO_APPROVAL_STORAGE_RETRY_MS || 8000)));
+
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
 const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
 const rateBuckets = new Map();
@@ -1989,8 +1993,13 @@ async function route(req, res) {
             const options={...(decisionId?{decisionId}:{}),...(input.autonomous===true?{autonomous:true}:{}),...(Array.isArray(input.expectedOutputKeys)?{expectedOutputKeys:input.expectedOutputKeys.slice(0,32).map(String)}:{})};
             if(!id) return json(res,400,{ok:false,error:'missing-tool-id'});
             try {
-                const approval=await runtime.core.requestActionToolApproval(id,toolInput,reason,options,operation);
-                if(!approval.created && !approval.request) return json(res,503,{ok:false,error:approval.error||'approval-request-failed'});
+                const attempt = await retryTransientApprovalStorage(
+                    () => runtime.core.requestActionToolApproval(id,toolInput,reason,options,operation),
+                    result => !result.created && result.error === 'approval-storage-busy',
+                    { timeoutMs: APPROVAL_STORAGE_RETRY_WINDOW_MS },
+                );
+                const approval = attempt.result;
+                if(!approval.created && !approval.request) return json(res,503,{ok:false,error:approval.error||'approval-request-failed',retryable:attempt.exhausted && approval.error==='approval-storage-busy'});
                 return json(res,201,{ok:true,approval:approval.request,created:approval.created});
             } catch(error) { return json(res,400,{ok:false,error:String(error?.message||error)}); }
         }
@@ -1998,8 +2007,13 @@ async function route(req, res) {
             const input=await body(req);
             const requestId=String(input.requestId||'').trim().slice(0,120);
             if(!requestId) return json(res,400,{ok:false,error:'missing-approval-request-id'});
-            const result=await runtime.core.resolveActionToolApproval(requestId,input.approved===true);
-            return json(res,result.ok?200:409,result);
+            const attempt = await retryTransientApprovalStorage(
+                () => runtime.core.resolveActionToolApproval(requestId,input.approved===true),
+                result => !result.ok && result.error === 'approval-storage-busy',
+                { timeoutMs: APPROVAL_STORAGE_RETRY_WINDOW_MS },
+            );
+            const result = attempt.result;
+            return json(res,result.ok?200:attempt.exhausted && result.error==='approval-storage-busy'?503:409,{...result,...(attempt.exhausted?{retryable:true}:{})});
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/tools/permissions/consume') {
             const input=await body(req);
@@ -2007,8 +2021,13 @@ async function route(req, res) {
             const approvalId=String(input.approvalId||'').trim().slice(0,120);
             const toolInput=input.toolInput&&typeof input.toolInput==='object'&&!Array.isArray(input.toolInput)?input.toolInput:{};
             if(!id||!approvalId) return json(res,400,{ok:false,error:'missing-tool-or-approval-id'});
-            const result=await runtime.core.consumeDirectActionApproval(id,toolInput,approvalId,{});
-            return json(res,result.ok?200:403,result);
+            const attempt = await retryTransientApprovalStorage(
+                () => runtime.core.consumeDirectActionApproval(id,toolInput,approvalId,{}),
+                result => !result.ok && result.reason === 'approval-storage-busy',
+                { timeoutMs: APPROVAL_STORAGE_RETRY_WINDOW_MS },
+            );
+            const result = attempt.result;
+            return json(res,result.ok?200:attempt.exhausted && result.reason==='approval-storage-busy'?503:403,{...result,...(attempt.exhausted?{retryable:true}:{})});
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/tools/reconcile') {
             const input = await body(req);

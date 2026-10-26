@@ -12,6 +12,67 @@ const MAX_BUNDLE_BYTES = 10 * 1024 * 1024;
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const nonEmpty = value => typeof value === 'string' && value.trim().length > 0;
 
+function readPromotionFamilyPolicy(raw, skillId, manifest) {
+  const missingPolicy = 'NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON is required as a JSON object keyed by skill ID';
+  if (!nonEmpty(raw)) throw new Error(missingPolicy);
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch { throw new Error('NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON must be valid JSON'); }
+  if (!isRecord(parsed) || Object.keys(parsed).length === 0 || Object.keys(parsed).length > 256) {
+    throw new Error('NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON must map 1 to 256 skill IDs to family-gain policies');
+  }
+  for (const [configuredSkillId, configuredPolicy] of Object.entries(parsed)) {
+    if (!configuredSkillId || configuredSkillId !== configuredSkillId.trim() ||
+        configuredSkillId.length > 128 || !isRecord(configuredPolicy)) {
+      throw new Error('trusted skill promotion family policy contains an invalid skill entry');
+    }
+  }
+  if (!Object.prototype.hasOwnProperty.call(parsed, skillId)) {
+    throw new Error(`trusted promotion policy is missing for skill: ${skillId}`);
+  }
+  const skillPolicy = parsed[skillId];
+  const allowedPolicyKeys = new Set(['minimumFamilyGainByFamily', 'minimumFamilyTasksByFamily']);
+  if (!isRecord(skillPolicy) || Object.keys(skillPolicy).some(key => !allowedPolicyKeys.has(key)) ||
+      !isRecord(skillPolicy.minimumFamilyGainByFamily) || !isRecord(skillPolicy.minimumFamilyTasksByFamily)) {
+    throw new Error('trusted skill policy must contain minimumFamilyGainByFamily and minimumFamilyTasksByFamily maps only');
+  }
+  const gainEntries = Object.entries(skillPolicy.minimumFamilyGainByFamily).sort(([a], [b]) => a.localeCompare(b));
+  const taskEntries = Object.entries(skillPolicy.minimumFamilyTasksByFamily).sort(([a], [b]) => a.localeCompare(b));
+  if (gainEntries.length === 0 || gainEntries.length !== taskEntries.length ||
+      gainEntries.some(([family], index) => family !== taskEntries[index]?.[0])) {
+    throw new Error('trusted policy must specify a task-count floor for every required family-gain floor');
+  }
+  const holdoutFamilies = new Set(manifest
+    .filter(task => isRecord(task) && task.split === 'holdout' && nonEmpty(task.family))
+    .map(task => task.family));
+  const normalizedGains = [];
+  const normalizedTasks = [];
+  for (const [family, gain] of gainEntries) {
+    const hasControlCharacter = Array.from(family).some(character => {
+      const code = character.codePointAt(0) ?? 0;
+      return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+    });
+    if (!family || family !== family.trim() || family.length > 128 || hasControlCharacter) {
+      throw new Error('trusted promotion policy contains an invalid task-family name');
+    }
+    if (!holdoutFamilies.has(family)) {
+      throw new Error(`promotion policy family is not represented in holdout manifest: ${family}`);
+    }
+    if (typeof gain !== 'number' || !Number.isFinite(gain) || gain <= 0 || gain > 1) {
+      throw new Error('promotion family gain thresholds must be finite numbers in (0, 1]');
+    }
+    const minimumTasks = skillPolicy.minimumFamilyTasksByFamily[family];
+    if (typeof minimumTasks !== 'number' || !Number.isSafeInteger(minimumTasks) || minimumTasks < 2 || minimumTasks > 10000) {
+      throw new Error(`promotion family task-count thresholds must be integers in [2, 10000]: ${family}`);
+    }
+    normalizedGains.push([family, gain]);
+    normalizedTasks.push([family, minimumTasks]);
+  }
+  return {
+    minimumFamilyGainByFamily: Object.fromEntries(normalizedGains),
+    minimumFamilyTasksByFamily: Object.fromEntries(normalizedTasks),
+  };
+}
 function readTrustedVerifierKeys(raw) {
   if (!nonEmpty(raw)) throw new Error('NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON is required to stage a verified candidate');
   let parsed;
@@ -77,6 +138,11 @@ export async function stageVerifiedSkillCandidateBundle({ bundlePath, stateFile 
   try { bundle = JSON.parse(await readFile(absoluteBundlePath, 'utf8')); }
   catch (error) { throw new Error(`candidate bundle JSON could not be read: ${String(error?.message || error)}`); }
   const skill = validateBundle(bundle);
+  const promotionFamilyPolicy = readPromotionFamilyPolicy(
+    process.env.NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON,
+    skill.id,
+    bundle.manifest,
+  );
   const trustedKeys = readTrustedVerifierKeys(process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON);
   const ledger = new VerifiedOutcomeLedger(bundle.manifest);
   for (let i = 0; i < bundle.artifacts.length; i++) {
@@ -89,6 +155,8 @@ export async function stageVerifiedSkillCandidateBundle({ bundlePath, stateFile 
     minPairedTasks: 8,
     minAbsoluteGain: 0.1,
     minCompleteSeeds: 3,
+    minimumFamilyGainByFamily: promotionFamilyPolicy.minimumFamilyGainByFamily,
+    minimumFamilyTasksByFamily: promotionFamilyPolicy.minimumFamilyTasksByFamily,
   });
   if (!proposal.gate.accepted || proposal.authenticatedEvidenceRows < 1 || proposal.unauthenticatedEvidenceRows !== 0) {
     throw new Error(`verified promotion proposal did not pass the evidence gate: ${proposal.gate.reason || 'rejected'}`);
@@ -115,6 +183,13 @@ export async function stageVerifiedSkillCandidateBundle({ bundlePath, stateFile 
     authenticatedEvidenceRows: proposal.authenticatedEvidenceRows,
     pairedTaskSeedN: proposal.pairedTaskSeedN,
     completePairedSeeds: proposal.completePairedSeeds,
+    evaluationPolicy: proposal.evaluationPolicy,
+    familyTaskCoverage: proposal.familyTaskCoverage,
+    familyEvaluation: proposal.familyEvaluation.map(item => ({
+      family: item.family,
+      pairedN: item.pairedN,
+      absoluteGain: item.absoluteGain,
+    })),
     canActivateAutomatically: false,
     note: 'candidate staged only; shadow observation and authenticated human/authority approval are separate steps',
   };
@@ -124,7 +199,7 @@ const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve
 if (isMain) {
   const [, , bundlePath, stateFile] = process.argv;
   if (!bundlePath || !stateFile) {
-    console.error('Usage: node --experimental-strip-types scripts/stage-verified-skill-candidate.mjs <signed-bundle.json> <organism-state-file.json>');
+    console.error('Usage: NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON=\'<Ed25519 public keys JSON>\' NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON=\'{"<skill-id>":{"<holdout-family>":0.05}}\' node --experimental-strip-types scripts/stage-verified-skill-candidate.mjs <signed-bundle.json> <organism-state-file.json>');
     process.exitCode = 2;
   } else {
     try {

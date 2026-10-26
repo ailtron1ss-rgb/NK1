@@ -48,6 +48,95 @@ assert.ok(proposal.seedClusteredEvaluation.bootstrap95CI[0] > 0,
   'promotion requires positive lower bounds from both parametric and seed-cluster bootstrap intervals');
 assert.equal(proposal.familyEvaluation.length,2);
 assert.equal(proposal.canActivateAutomatically,false);
+
+// An aggregate memory/overall gain must not hide a required task family with
+// zero improvement. Family floors are explicit per-skill policy, not a hidden
+// global ban on specialized skills.
+const memoryFloorBlocked = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+  minPairedTasks: 8,
+  minAbsoluteGain: .1,
+  minCompleteSeeds: 3,
+  minimumFamilyGainByFamily: { memory: .01, 'tool-use': .3 },
+});
+assert.equal(memoryFloorBlocked.gate.accepted, false);
+assert.equal(memoryFloorBlocked.gate.reason, 'required-family-gain-below-threshold:memory');
+assert.deepEqual(memoryFloorBlocked.evaluationPolicy.minimumFamilyGainByFamily, { memory: .01, 'tool-use': .3 });
+assert.deepEqual(memoryFloorBlocked.evaluationPolicy.minimumFamilyTasksByFamily, { memory: 2, 'tool-use': 2 });
+assert.equal(memoryFloorBlocked.evaluationPolicy.minCompleteSeeds, 3);
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(memoryFloorBlocked), true,
+  'the family floor and its failed decision must be covered by the proposal authenticity digest');
+
+const memoryTaskCoverageBlocked = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+  minPairedTasks: 8,
+  minAbsoluteGain: .1,
+  minCompleteSeeds: 3,
+  minimumFamilyGainByFamily: { memory: .01 },
+  minimumFamilyTasksByFamily: { memory: 6 },
+});
+assert.equal(memoryTaskCoverageBlocked.gate.accepted, false);
+assert.equal(memoryTaskCoverageBlocked.gate.reason, 'required-family-task-coverage-insufficient:memory');
+assert.equal(memoryTaskCoverageBlocked.familyTaskCoverage.memory, 5,
+  'paired seed repetitions must not be misreported as additional distinct tasks');
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(memoryTaskCoverageBlocked), true);
+
+assert.throws(
+  () => proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+    minimumFamilyGainByFamily: { memory: .01 },
+    minimumFamilyTasksByFamily: { memory: 1 },
+  }),
+  /minimum-family-task-policy-threshold-invalid:memory/,
+);
+assert.throws(
+  () => proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+    minimumFamilyGainByFamily: { memory: .01 },
+    minimumFamilyTasksByFamily: { transfer: 3 },
+  }),
+  /minimum-family-task-policy-without-family-gain-floor:transfer/,
+);
+
+const toolUseFloorMet = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+  minPairedTasks: 8,
+  minAbsoluteGain: .1,
+  minCompleteSeeds: 3,
+  minimumFamilyGainByFamily: { 'tool-use': .3 },
+});
+assert.equal(toolUseFloorMet.gate.accepted, true, 'the tool-use family exceeds its explicitly required gain');
+assert.notEqual(toolUseFloorMet.proposalId, proposal.proposalId,
+  'changing promotion thresholds must change the authenticated proposal identity');
+assert.notEqual(toolUseFloorMet.proposalId, memoryFloorBlocked.proposalId);
+const stricterPolicyStillMet = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+  minPairedTasks: 8,
+  minAbsoluteGain: .1,
+  minCompleteSeeds: 3,
+  minimumFamilyGainByFamily: { 'tool-use': .35 },
+});
+assert.equal(stricterPolicyStillMet.gate.accepted, true);
+assert.notEqual(stricterPolicyStillMet.proposalId, toolUseFloorMet.proposalId,
+  'different thresholds must produce different proposal IDs even when both candidates pass');
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(stricterPolicyStillMet), true);
+
+const missingFamilyEvidence = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+  minPairedTasks: 8,
+  minAbsoluteGain: .1,
+  minCompleteSeeds: 3,
+  minimumFamilyGainByFamily: { transfer: .01 },
+});
+assert.equal(missingFamilyEvidence.gate.accepted, false);
+assert.equal(missingFamilyEvidence.gate.reason, 'required-family-evidence-insufficient:transfer',
+  'required but unmeasured families must fail closed rather than inherit aggregate gains');
+
+assert.throws(
+  () => proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+    minimumFamilyGainByFamily: null,
+  }),
+  /minimum-family-gain-policy-must-be-a-plain-object/,
+);
+assert.throws(
+  () => proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+    minimumFamilyGainByFamily: { memory: 1.01 },
+  }),
+  /minimum-family-gain-policy-threshold-invalid:memory/,
+);
 assert.equal(proposal.authenticatedEvidenceRows,100);
 assert.equal(proposal.unauthenticatedEvidenceRows,0);
 assert.match(proposal.proposalId,/^[a-f0-9]{64}$/);

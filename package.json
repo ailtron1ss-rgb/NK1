@@ -188,7 +188,8 @@
     "test:repo-wiring": "node --test tools/verify-repository-wiring.test.mjs",
     "test:cognitive-integration-suite": "npm --prefix runtime/neuro-kurisu run test:cognitive-integration-suite",
     "test:runtime-pin-contract": "node --test tools/project-runtime-pin.test.mjs",
-    "test:integration-supervisor": "node --test tools/integration-supervisor.test.mjs"
+    "test:integration-supervisor": "node --test tools/integration-supervisor.test.mjs",
+    "install:research:cpu": "python3 -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu -r research/requirements-cpu.txt"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",

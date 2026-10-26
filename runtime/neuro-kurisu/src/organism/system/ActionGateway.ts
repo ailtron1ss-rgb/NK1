@@ -241,6 +241,9 @@ function classifyVerifiedExecution(toolOk:boolean, verification:OutcomeVerificat
   return {ok,verified,outcomeClass,contradicted};
 }
 const defaultActionToolPermissions=():ActionToolPermissionSnapshot=>({version:1,requests:[],created:0,approved:0,declined:0,consumed:0,expired:0,lastChangeAt:0});
+function isActionLedgerPersistenceBusy(error:unknown):boolean {
+  return error instanceof Error && error.message === 'action-ledger-persistence-busy';
+}
 const DIRECT_PERMISSION_ACTIONS = new Set(['http.voice.speak','http.voice.listen','http.voice.turn','http.voice.speak-reply']);
 function inferPermissionClass(id:string, capability=''):ActionToolPermissionClass|null {
   const normalizedId=String(id||'').toLocaleLowerCase();
@@ -460,7 +463,7 @@ export class ActionGateway {
       ...(typeof options.decisionId==='string'&&options.decisionId.trim()?{decisionId:options.decisionId.trim().slice(0,180)}:{}),autonomous:Boolean(options.autonomous)};
     this.permissionState.requests=[...this.permissionState.requests,rec].slice(-128);
     this.permissionState.created++; this.permissionState.lastChangeAt=at;
-    try { await this.persistExecutionLedger(); } catch { this.permissionState.requests=this.permissionState.requests.filter(x=>x.id!==rec.id); this.permissionState.created=Math.max(0,this.permissionState.created-1); return {created:false,error:'approval-storage-failed',request:null}; }
+    try { await this.persistExecutionLedger(); } catch (error) { this.permissionState.requests=this.permissionState.requests.filter(x=>x.id!==rec.id); this.permissionState.created=Math.max(0,this.permissionState.created-1); return {created:false,error:isActionLedgerPersistenceBusy(error)?'approval-storage-busy':'approval-storage-failed',request:null}; }
     return {created:true,request:this.publicApproval(rec)};
     });
   }
@@ -475,7 +478,7 @@ export class ActionGateway {
     row.status=approved?'approved':'declined'; row.resolvedAt=at; row.actor=String(actor||'owner').slice(0,40);
     if(approved)this.permissionState.approved++;else this.permissionState.declined++;
     this.permissionState.lastChangeAt=at;
-    try { await this.persistExecutionLedger(); } catch { row.status='pending'; row.resolvedAt=undefined; row.actor=undefined; if(approved)this.permissionState.approved=Math.max(0,this.permissionState.approved-1);else this.permissionState.declined=Math.max(0,this.permissionState.declined-1); return {ok:false,error:'approval-storage-failed'}; }
+    try { await this.persistExecutionLedger(); } catch (error) { row.status='pending'; row.resolvedAt=undefined; row.actor=undefined; if(approved)this.permissionState.approved=Math.max(0,this.permissionState.approved-1);else this.permissionState.declined=Math.max(0,this.permissionState.declined-1); return {ok:false,error:isActionLedgerPersistenceBusy(error)?'approval-storage-busy':'approval-storage-failed'}; }
     return {ok:true,request:this.publicApproval(row)};
     });
   }
@@ -496,7 +499,7 @@ export class ActionGateway {
     const priorLastChangeAt=this.permissionState.lastChangeAt;
     row.status='consumed'; row.consumedAt=now; this.permissionState.consumed++; this.permissionState.lastChangeAt=now;
     try { await this.persistExecutionLedger(); }
-    catch { row.status='approved'; row.consumedAt=undefined; this.permissionState.consumed=Math.max(0,this.permissionState.consumed-1); this.permissionState.lastChangeAt=priorLastChangeAt; return {ok:false,reason:'approval-storage-failed'}; }
+    catch (error) { row.status='approved'; row.consumedAt=undefined; this.permissionState.consumed=Math.max(0,this.permissionState.consumed-1); this.permissionState.lastChangeAt=priorLastChangeAt; return {ok:false,reason:isActionLedgerPersistenceBusy(error)?'approval-storage-busy':'approval-storage-failed'}; }
     return {ok:true};
     });
   }

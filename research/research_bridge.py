@@ -96,11 +96,24 @@ print(json.dumps({"status":"pass","result":result}, default=str))
         return {"ok": True, "status":"pass","raw":r.stdout[-8000:]}
 
 
+APPROVAL_GATEWAY_PATHS = {
+    "/api/organism/tools/permissions/request",
+    "/api/organism/tools/permissions/resolve",
+    "/api/organism/tools/permissions/consume",
+}
+try:
+    APPROVAL_GATEWAY_TIMEOUT_SECONDS = float(os.environ.get("ORGANISM_APPROVAL_TIMEOUT_SECONDS", "12"))
+except (TypeError, ValueError):
+    APPROVAL_GATEWAY_TIMEOUT_SECONDS = 12.0
+APPROVAL_GATEWAY_TIMEOUT_SECONDS = max(9.0, min(30.0, APPROVAL_GATEWAY_TIMEOUT_SECONDS))
+
+
 def runtime_post(path: str, payload: dict):
     raw=json.dumps(payload, ensure_ascii=False).encode("utf-8")
     request=urllib.request.Request(f"{RUNTIME_API}{path}", data=raw, headers={"content-type":"application/json"}, method="POST")
+    timeout = APPROVAL_GATEWAY_TIMEOUT_SECONDS if path in APPROVAL_GATEWAY_PATHS else 4
     try:
-        with urllib.request.urlopen(request, timeout=4) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as error:
         try: return json.loads(error.read().decode("utf-8"))
@@ -117,7 +130,7 @@ def authorize_probe(kind: str, approval_id: str | None):
         ticket=created.get("approval") if isinstance(created,dict) else None
         if created.get("ok") and isinstance(ticket,dict):
             return {"allowed":False,"status":403,"body":{"ok":False,"approvalRequired":True,"error":"explicit-approval-required","approvalRequest":ticket}}
-        return {"allowed":False,"status":503,"body":{"ok":False,"error":created.get("error","approval-gateway-unavailable"),"detail":str(created.get("detail",""))[:900]}}
+        return {"allowed":False,"status":503,"body":{"ok":False,"error":created.get("error","approval-gateway-unavailable")}}
     consumed=runtime_post("/api/organism/tools/permissions/consume", {"id":tool_id,"toolInput":tool_input,"approvalId":approval_id})
     if not consumed.get("ok"):
         return {"allowed":False,"status":403,"body":{"ok":False,"error":consumed.get("reason",consumed.get("error","approval-invalid")),"approvalRequired":False}}

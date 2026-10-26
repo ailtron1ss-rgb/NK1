@@ -96,9 +96,16 @@ export function buildCognitiveFrame(state: OrganismState, observation: OrganismO
     expectedInformationGain01*.34 + predictionError01*.24 + goalPressure01*.18 + uncertainty01*.12 + novelty01*.08 + complexity01*.04,
   );
   const interruptPriority01=clamp(Math.max(predictionError01*.92, surprise01*.88, goalPressure01*.78, uncertainty01*.74, (1-energy01)*.86, thermal01*.80, ramPressure01*.78));
-  const interruptType = predictionError01>.7?'prediction-error':surprise01>.68?'surprise':goalPressure01>.78?'goal-pressure':uncertainty01>.82?'uncertainty':energy01<.18?'resource-critical':thermal01>.82?'thermal-critical':ramPressure01>.86?'memory-pressure':externalInput?'external-input':'none';
+  // Physical resource emergencies outrank ordinary cognitive interrupts. A large
+  // prediction error must not mask a critical thermal, memory, or energy state.
+  const interruptType = thermal01>.82?'thermal-critical':ramPressure01>.86?'memory-pressure':energy01<.18?'resource-critical':predictionError01>.7?'prediction-error':surprise01>.68?'surprise':goalPressure01>.78?'goal-pressure':uncertainty01>.82?'uncertainty':externalInput?'external-input':'none';
   const interruptDomains = (Object.entries(domains).filter(([domain,active])=>active && ['self','world','memory','agency','embodiment','research','governance'].includes(domain)).map(([domain])=>domain as CognitiveDomain));
-  const interrupt={active:interruptPriority01>.72 && interruptType!=='none',priority01:interruptPriority01,type:interruptType,domains:interruptDomains};
+  const criticalInterruptType = interruptType === 'resource-critical'
+    || interruptType === 'thermal-critical'
+    || interruptType === 'memory-pressure';
+  // Explicit critical labels outrank the generic salience threshold. Their
+  // weighted scalar score can be < .72 when only one sensor is abnormal.
+  const interrupt={active:(interruptPriority01>.72 && interruptType!=='none') || criticalInterruptType,priority01:interruptPriority01,type:interruptType,domains:interruptDomains};
   // Attention is scarce by design. It becomes the soft resource shared by all
   // downstream planners instead of each subsystem assuming an unlimited focus.
   const attentionBudget01=clamp(.18 + cognitiveCapacity01*.42 + energy01*.18 + (1-thermal01)*.12 + (1-ramPressure01)*.10);

@@ -7,6 +7,14 @@ import { buildVerifiedSessionDataset } from './VerifiedSessionDataset.ts';
 export interface VerifiedSkillPromotionOptions extends SkillRevisionGateOptions {
   /** Optional second, independent requirement for the number of complete paired seeds. */
   minCompleteSeeds?: number;
+  /**
+   * Optional hard floors for task-family gains. Configure this for the skill's
+   * intended scope; omitting a family does not silently make a specialized skill
+   * fail merely because it is not a general-purpose learner.
+   */
+  minimumFamilyGainByFamily?: Record<string, number>;
+  /** Minimum number of distinct paired holdout tasks required within each configured family. */
+  minimumFamilyTasksByFamily?: Record<string, number>;
 }
 export interface VerifiedSkillPromotionProposal {
   schemaVersion: 1;
@@ -25,6 +33,17 @@ export interface VerifiedSkillPromotionProposal {
   uniquePairedTasks: number;
   completePairedSeeds: number;
   gate: SkillRevisionGateResult;
+  /** Exact evaluation criteria bound into proposalId and authenticated proposal contents. */
+  evaluationPolicy: {
+    minPairedTasks: number;
+    minAbsoluteGain: number;
+    maxFamilyRegression: number;
+    minCompleteSeeds: number;
+    minimumFamilyGainByFamily: Record<string, number>;
+    minimumFamilyTasksByFamily: Record<string, number>;
+  };
+  /** Count of distinct attempt-1 paired holdout tasks measured inside each family. */
+  familyTaskCoverage: Record<string, number>;
   seedClusteredEvaluation: ReturnType<VerifiedOutcomeLedger['comparePairedBySeed']>;
   familyEvaluation: ReturnType<VerifiedOutcomeLedger['comparePairedByFamilyAndSeed']>;
   canActivateAutomatically: false;
@@ -76,6 +95,80 @@ export function isAuthenticVerifiedSkillPromotionProposal(value: unknown): value
 const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
 
+/** Normalize family requirements as explicit, auditable policy rather than hidden global assumptions. */
+function normalizeMinimumFamilyGainByFamily(value: unknown): Record<string, number> {
+  if (value === undefined) return {};
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('minimum-family-gain-policy-must-be-a-plain-object');
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError('minimum-family-gain-policy-must-be-a-plain-object');
+  }
+  if (Object.getOwnPropertySymbols(value).some(symbol => Object.prototype.propertyIsEnumerable.call(value, symbol))) {
+    throw new TypeError('minimum-family-gain-policy-symbol-keys-are-not-supported');
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const normalizedEntries: Array<[string, number]> = [];
+  for (const key of Object.keys(descriptors).filter(key => descriptors[key]?.enumerable).sort((a, b) => a.localeCompare(b))) {
+    const descriptor = descriptors[key]!;
+    if (!('value' in descriptor)) throw new TypeError('minimum-family-gain-policy-accessors-are-not-supported');
+    if (!key || key !== key.trim() || key.length > 128 ||
+        Array.from(key).some(character => {
+          const code = character.codePointAt(0) ?? 0;
+          return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+        })) {
+      throw new TypeError('minimum-family-gain-policy-family-name-invalid');
+    }
+    const gain = descriptor.value;
+    if (typeof gain !== 'number' || !Number.isFinite(gain) || gain < 0 || gain > 1) {
+      throw new RangeError(`minimum-family-gain-policy-threshold-invalid:${key}`);
+    }
+    normalizedEntries.push([key, gain]);
+  }
+  return Object.fromEntries(normalizedEntries);
+}
+
+/** Normalize family task floors; configured gain families default to two distinct tasks if no floor is supplied. */
+function normalizeMinimumFamilyTasksByFamily(value: unknown, gainFamilies: readonly string[]): Record<string, number> {
+  if (value !== undefined && (value === null || typeof value !== 'object' || Array.isArray(value))) {
+    throw new TypeError('minimum-family-task-policy-must-be-a-plain-object');
+  }
+  const record = (value ?? {}) as Record<string, unknown>;
+  const prototype = Object.getPrototypeOf(record);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError('minimum-family-task-policy-must-be-a-plain-object');
+  }
+  if (Object.getOwnPropertySymbols(record).some(symbol => Object.prototype.propertyIsEnumerable.call(record, symbol))) {
+    throw new TypeError('minimum-family-task-policy-symbol-keys-are-not-supported');
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(record);
+  const normalized = new Map<string, number>();
+  for (const key of Object.keys(descriptors).filter(key => descriptors[key]?.enumerable).sort((a, b) => a.localeCompare(b))) {
+    const descriptor = descriptors[key]!;
+    if (!('value' in descriptor)) throw new TypeError('minimum-family-task-policy-accessors-are-not-supported');
+    if (!key || key !== key.trim() || key.length > 128 ||
+        Array.from(key).some(character => {
+          const code = character.codePointAt(0) ?? 0;
+          return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+        })) {
+      throw new TypeError('minimum-family-task-policy-family-name-invalid');
+    }
+    if (!gainFamilies.includes(key)) {
+      throw new TypeError(`minimum-family-task-policy-without-family-gain-floor:${key}`);
+    }
+    const count = descriptor.value;
+    if (typeof count !== 'number' || !Number.isSafeInteger(count) || count < 2 || count > 10000) {
+      throw new RangeError(`minimum-family-task-policy-threshold-invalid:${key}`);
+    }
+    normalized.set(key, count);
+  }
+  for (const family of gainFamilies) {
+    if (!normalized.has(family)) normalized.set(family, 2);
+  }
+  return Object.fromEntries([...normalized.entries()].sort(([a], [b]) => a.localeCompare(b)));
+}
+
 /** Create a proposal from authenticated, manifest-bound evidence; never mutate the live skill library. */
 export function proposeVerifiedSkillPromotion(
   ledger: VerifiedOutcomeLedger,
@@ -86,6 +179,19 @@ export function proposeVerifiedSkillPromotion(
   if (!baselineMethod?.trim() || !candidateMethod?.trim() || baselineMethod === candidateMethod) {
     throw new Error('two distinct method names are required');
   }
+  const minimumFamilyGainByFamily = normalizeMinimumFamilyGainByFamily(options.minimumFamilyGainByFamily);
+  const minimumFamilyTasksByFamily = normalizeMinimumFamilyTasksByFamily(
+    options.minimumFamilyTasksByFamily,
+    Object.keys(minimumFamilyGainByFamily),
+  );
+  const evaluationPolicy = {
+    minPairedTasks: boundedInteger(options.minPairedTasks, 8, 2, 10000),
+    minAbsoluteGain: Math.max(0, Math.min(1, Number.isFinite(options.minAbsoluteGain) ? options.minAbsoluteGain! : 0.02)),
+    maxFamilyRegression: Math.max(0, Math.min(1, Number.isFinite(options.maxFamilyRegression) ? options.maxFamilyRegression! : 0.10)),
+    minCompleteSeeds: boundedInteger(options.minCompleteSeeds, 3, 3, 1000),
+    minimumFamilyGainByFamily,
+    minimumFamilyTasksByFamily,
+  };
   const snapshot = ledger.snapshot();
   const taskById = new Map(snapshot.manifest.map(task => [task.taskId, task]));
   const relevantOutcomes = snapshot.outcomes.filter(outcome => {
@@ -105,7 +211,11 @@ export function proposeVerifiedSkillPromotion(
       verifierId: outcome.verifierId, expectedVerifierId: task.verifierId, evidenceRef: outcome.evidenceRef,
     }];
   });
-  const gate = evaluateSkillRevision(observations, baselineMethod, candidateMethod, options);
+  const gate = evaluateSkillRevision(observations, baselineMethod, candidateMethod, {
+    minPairedTasks: evaluationPolicy.minPairedTasks,
+    minAbsoluteGain: evaluationPolicy.minAbsoluteGain,
+    maxFamilyRegression: evaluationPolicy.maxFamilyRegression,
+  });
   const holdoutTasks = snapshot.manifest.filter(task => task.split === 'holdout').map(task => task.taskId);
   const pairedMethodsByTaskSeed = new Map<string, Set<string>>();
   for (const row of observations.filter(item => item.attempt === 1)) {
@@ -118,6 +228,20 @@ export function proposeVerifiedSkillPromotion(
     pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId, row.seed, row.attempt]))?.has(baselineMethod) &&
     pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId, row.seed, row.attempt]))?.has(candidateMethod)
   ).map(row => row.taskId)).size;
+  const pairedTaskIdsByFamily = new Map<string, Set<string>>();
+  for (const row of observations.filter(item => item.attempt === 1)) {
+    const methods = pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId, row.seed, row.attempt]));
+    if (!methods?.has(baselineMethod) || !methods.has(candidateMethod)) continue;
+    const task = taskById.get(row.taskId);
+    if (!task) continue;
+    const tasks = pairedTaskIdsByFamily.get(task.family) ?? new Set<string>();
+    tasks.add(task.taskId);
+    pairedTaskIdsByFamily.set(task.family, tasks);
+  }
+  const familyTaskCoverage = Object.fromEntries(
+    [...pairedTaskIdsByFamily.entries()].sort(([a], [b]) => a.localeCompare(b))
+      .map(([family, tasks]) => [family, tasks.size]),
+  );
   const bySeed = new Map<number, Set<string>>();
   for (const row of observations.filter(item => item.attempt === 1)) {
     const set = bySeed.get(row.seed) ?? new Set<string>();
@@ -129,24 +253,36 @@ export function proposeVerifiedSkillPromotion(
       seen.has(taskId + '\u0000' + baselineMethod) && seen.has(taskId + '\u0000' + candidateMethod),
     ),
   ).length;
-  const minCompleteSeeds = boundedInteger(options.minCompleteSeeds, 3, 3, 1000);
+  const { minCompleteSeeds, minAbsoluteGain, maxFamilyRegression, minPairedTasks } = evaluationPolicy;
   const seedClusteredEvaluation = ledger.comparePairedBySeed(baselineMethod, candidateMethod, 'holdout');
   const familyEvaluation = ledger.comparePairedByFamilyAndSeed(baselineMethod, candidateMethod, 'holdout');
   const seedCoverageOkay = completePairedSeeds >= minCompleteSeeds && seedClusteredEvaluation.pairedN >= minCompleteSeeds;
-  const minAbsoluteGain = Math.max(0, Math.min(1, Number.isFinite(options.minAbsoluteGain) ? options.minAbsoluteGain! : 0.02));
   const seedClusteredGainOkay = seedClusteredEvaluation.absoluteGain >= minAbsoluteGain &&
     seedClusteredEvaluation.approximate95CI !== null && seedClusteredEvaluation.approximate95CI[0] > 0 &&
     seedClusteredEvaluation.bootstrap95CI !== null && seedClusteredEvaluation.bootstrap95CI !== undefined &&
     seedClusteredEvaluation.bootstrap95CI[0] > 0;
-  const maxFamilyRegression = Math.max(0, Math.min(1, Number.isFinite(options.maxFamilyRegression) ? options.maxFamilyRegression! : 0.10));
   const familyRegression = familyEvaluation.find(row => row.pairedN >= minCompleteSeeds && row.absoluteGain < -maxFamilyRegression);
-  const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
+  const requiredFamilyFailure = Object.entries(evaluationPolicy.minimumFamilyGainByFamily).map(([family, minimumGain]) => {
+    const evidence = familyEvaluation.find(row => row.family === family);
+    if (!evidence || evidence.pairedN < minCompleteSeeds) {
+      return { family, reason: `required-family-evidence-insufficient:${family}` };
+    }
+    if ((familyTaskCoverage[family] ?? 0) < evaluationPolicy.minimumFamilyTasksByFamily[family]!) {
+      return { family, reason: `required-family-task-coverage-insufficient:${family}` };
+    }
+    if (evidence.absoluteGain < minimumGain) {
+      return { family, reason: `required-family-gain-below-threshold:${family}` };
+    }
+    return null;
+  }).find((failure): failure is { family: string; reason: string } => failure !== null);
   const finalGate: SkillRevisionGateResult = unauthenticatedEvidenceRows > 0 ? {
     ...gate, accepted: false, reason: 'unauthenticated-outcome-evidence',
   } : uniquePairedTasks < minPairedTasks ? {
     ...gate, accepted: false, reason: 'insufficient-independent-heldout-task-coverage',
   } : !seedCoverageOkay ? {
     ...gate, accepted: false, reason: 'insufficient-complete-holdout-seed-coverage',
+  } : requiredFamilyFailure ? {
+    ...gate, accepted: false, reason: requiredFamilyFailure.reason,
   } : familyRegression ? {
     ...gate, accepted: false, reason: 'seed-clustered-family-regression',
   } : !seedClusteredGainOkay ? {
@@ -160,8 +296,10 @@ export function proposeVerifiedSkillPromotion(
   const outcomeFingerprint = createHash('sha256').update(JSON.stringify(canonicalOutcomes)).digest('hex');
   const identity = JSON.stringify({
     manifestFingerprint, outcomeFingerprint, datasetFingerprint, baselineMethod, candidateMethod,
+    evaluationPolicy,
+    accepted: finalGate.accepted, reason: finalGate.reason,
     pairedN: finalGate.pairedN, absoluteGain: finalGate.absoluteGain,
-    familyGains: finalGate.familyGains, completePairedSeeds, uniquePairedTasks,
+    familyGains: finalGate.familyGains, completePairedSeeds, uniquePairedTasks, familyTaskCoverage,
     authenticatedEvidenceRows: authenticatedOutcomes.length, unauthenticatedEvidenceRows,
     seedClusteredEvaluation, familyEvaluation,
   });
@@ -171,7 +309,7 @@ export function proposeVerifiedSkillPromotion(
     evaluatedAt: Date.now(), outcomeRowsSeen: snapshot.outcomes.length,
     authenticatedEvidenceRows: authenticatedOutcomes.length, unauthenticatedEvidenceRows,
     pairedTaskSeedN: finalGate.pairedN, uniquePairedTasks, completePairedSeeds,
-    gate: finalGate, seedClusteredEvaluation, familyEvaluation,
+    gate: finalGate, evaluationPolicy, seedClusteredEvaluation, familyEvaluation, familyTaskCoverage,
     canActivateAutomatically: false,
     activationRequirements: [
       'Revalidate the manifest fingerprint and ledger snapshot at review time.',

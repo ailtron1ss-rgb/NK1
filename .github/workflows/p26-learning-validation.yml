@@ -20,6 +20,11 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - ".github/workflows/p26-learning-validation.yml"
+      - ".nvmrc"
+      - "package.json"
+      - "tools/project-runtime-pin.mjs"
+      - "tools/project-runtime-pin.test.mjs"
+      - "tools/super-doctor.mjs"
   workflow_dispatch:
 
 permissions:
@@ -39,9 +44,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "22.12.0"
+          node-version: "24"
           cache: npm
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Verify project runtime pin on the actual runner
+        run: npm run doctor
       - name: Install pinned TypeScript compiler and Node typings
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Install locked dependencies

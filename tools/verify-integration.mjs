@@ -127,19 +127,9 @@ try {
       headers: { 'content-type': 'application/json' },
       body: '{}',
     });
-    const explain = data => {
-      const detail = {
-        error: data?.error,
-        reason: data?.reason,
-        detail: data?.detail,
-        trace: typeof data?.trace === 'string' ? data.trace.slice(-900) : undefined,
-      };
-      return Object.entries(detail).filter(([, value]) => value !== undefined && value !== '')
-        .map(([key, value]) => `${key}=${String(value).replace(/\s+/g, ' ').slice(0, 900)}`).join(' ');
-    };
     record(`research:${kind}:blocked-without-approval`,
       blocked.res.status === 403 && blocked.data?.approvalRequired === true && Boolean(blocked.data?.approvalRequest?.id),
-      `status=${blocked.res.status} ${explain(blocked.data)}`);
+      `status=${blocked.res.status} error=${blocked.data?.error ?? '—'} approvalId=${blocked.data?.approvalRequest?.id ? 'present' : 'missing'}`);
     if (blocked.res.status !== 403 || !blocked.data?.approvalRequest?.id) return { res: blocked.res, data: blocked.data };
 
     const decision = await fetchJson(`${runtimeUrl}/api/organism/tools/permissions/resolve`, {
@@ -148,7 +138,7 @@ try {
       body: JSON.stringify({ requestId: blocked.data.approvalRequest.id, approved: true }),
     });
     record(`research:${kind}:explicit-owner-approval`, decision.res.ok && decision.data?.ok === true,
-      `status=${decision.res.status}`);
+      `status=${decision.res.status} error=${decision.data?.error ?? '—'}`);
     if (!decision.res.ok) return { res: decision.res, data: decision.data };
     return await fetchJson(base, {
       method: 'POST',
@@ -160,17 +150,17 @@ try {
   const nc = await runApprovedProbe('neurocore');
   record('research:neurocore-probe-after-approval',
     nc.res.ok && Boolean(nc.data?.ok) && nc.data?.status === 'pass',
-    `status=${nc.res.status} delta=${nc.data?.delta ?? '—'} error=${nc.data?.error ?? '—'} detail=${String(nc.data?.detail ?? nc.data?.trace ?? '').replace(/\s+/g, ' ').slice(0, 900)}`);
+    `delta=${nc.data?.delta ?? '—'} error=${nc.data?.error ?? '—'}`);
 
   const nm = await runApprovedProbe('nomega-registry');
   record('research:nomega-registry-after-approval',
     nm.res.ok && Boolean(nm.data?.ok) && nm.data?.status === 'pass',
-    `status=${nm.res.status} modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'} error=${nm.data?.error ?? '—'} detail=${String(nm.data?.detail ?? nm.data?.trace ?? '').replace(/\s+/g, ' ').slice(0, 900)}`);
+    `modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'} error=${nm.data?.error ?? '—'}`);
 
   const dc = await runApprovedProbe('deepcode');
   record('research:deepcode-probe-after-approval',
     dc.res.ok && Boolean(dc.data?.ok) && dc.data?.status === 'pass',
-    `status=${dc.res.status} smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'} error=${dc.data?.error ?? '—'} detail=${String(dc.data?.detail ?? dc.data?.trace ?? '').replace(/\s+/g, ' ').slice(0, 900)}`);
+    `smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'} error=${dc.data?.error ?? '—'}`);
 } catch (error) {
   record('runtime/bridge:http', false, error instanceof Error ? error.message : String(error));
 } finally {
