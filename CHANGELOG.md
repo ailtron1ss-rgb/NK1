@@ -1,3 +1,8 @@
+## [NK1][Hexis] WorkPass391 — prepare evidence audit before canonical mutation (2026-10-26)
+
+- [SAFETY] Clone caller-supplied evidence before projecting any posterior into canonical memory, so an invalid/uncloneable payload cannot mutate canonical confidence and then fail before the local Hexis audit is committed.
+- [VALIDATION] Source change committed on the open draft PR branch; the project CI runner remains unable to provide executed test steps/logs.
+
 ## [NK1][Hexis] WorkPass390 — persist belief evidence lineage atomically with canonical confidence (2026-10-26)
 
 - [INTEGRATION] Extended the canonical memory signal update to merge independent evidence through existing MemoryOS2 lineage normalization, preserving its bounded eight-source trail and 32-key replay tombstone.
