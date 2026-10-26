@@ -353,7 +353,7 @@ export class HexisCanonicalMemoryProjector {
           const memory = canonicalById.get(id);
           if (!memory) throw new Error('hmx-temporal-canonical-memory-missing:' + id);
           const ref = asText(memory.context?.hexisMemoryRef, 512);
-          const sourceRef = ref.startsWith(exportId + ':') ? ref.slice(exportId.length + 1) : ref;
+          const sourceRef = ref.replace(/^exp_[a-f0-9]{16}:/, '');
           const temporalSource = 'hexis:' + lineageId + ':' + sourceRef;
           if (temporalRows.some(row => row.memoryId === id && row.validUntil === null && row.source === temporalSource)) continue;
           const inputRow = sourceRowsByRef.get(ref);
