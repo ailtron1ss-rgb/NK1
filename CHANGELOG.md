@@ -1,3 +1,12 @@
+## WorkPass349 — fail-closed restore для completed action receipts (2026-10-26)
+
+- При восстановлении action ledger из persistence завершённый receipt теперь принимается только если его execution/tool ID совпадает с enclosing row, audit/outcome поля внутренне согласованы и verification claim допустим по основанию.
+- Проверяется allowlist outcome классов и размер сериализованного payload (48 KiB); повреждённый/слишком большой receipt сохраняется как recovery tombstone без доверенного ответа, а не проигрывается как успех.
+- Положительный `verified=true` требует согласованного `ok=true`, `verification.verified=true` и `executed-verified`. Это защита целостности сохранённого состояния, а не криптографическая подпись пользовательского файла.
+- Следующий шаг — включить регрессионный тест restore/replay в exact-HEAD workflow.
+
+---
+
 ## WorkPass348 — sequential replay benchmark включает atomicity и конфликтные сценарии (2026-10-26)
 
 - Перенесён сопровождающий P26 sequential-learning benchmark для новой interleaved реализации.
