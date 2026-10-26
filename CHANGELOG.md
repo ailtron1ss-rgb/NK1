@@ -2246,7 +2246,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **[BOUNDEDNESS]** Retains at most 1,024 unresolved predictions and the newest 128 non-pending claims. Once the pending limit is reached, a new prediction is rejected (record returns an empty ID) instead of silently deleting an earlier unresolved obligation.
 - **[RESTORE]** Sanitizes claim rows, deduplicates IDs, preserves newest-first order, validates supported kinds/statuses, and normalizes recent replay IDs without reversing a newest-first array.
 - **[REGRESSION]** Extends the focused test to over 1,000 pending predictions, non-prediction history churn, cap rejection, restore sanitization, and repeated persistence. Wired into npm run audit:hexis.
-- **[VALIDATION]** Source and test are committed; exact-head CI must complete successfully before this is counted as validated. This change protects memory lifecycle correctness; it does not assert measured retrieval uplift or full-system readiness.
+- **[VALIDATION]** GitHub Actions P65 regression passed on head `9eb588aa8bc255f3dbbdc1b955bfa2a778e556a9` (run `40301977562`). This validates bounded retention and restore behavior; it does not assert measured retrieval uplift or full-system readiness.
 
 
 ## Hexis H1 follow-up — durable outbox idempotency (2026-10-26)
@@ -2256,11 +2256,21 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **[FIX]** Outbox rotation now preserves pending and publishing entries as active delivery obligations, while only terminal rows are subject to the 512-row history window. New active deliveries are capped at 1,024.
 - **[BOUNDS]** Idempotency keys are limited to 256 characters; action kind and channel identifiers are bounded before request hashing.
 - **[REGRESSION]** Hexis adapter integration test now covers 520 pending deliveries, terminal rotation past 512, exact replay and changed-payload conflict after retirement, restart restoration, and overlong-key rejection.
-- **[VALIDATION]** CI is the source of truth for execution. No successful exact-head run is claimed until the updated Hexis integration workflow completes.
+- **[VALIDATION]** Repository-wiring audit passed on head `9eb588aa8bc255f3dbbdc1b955bfa2a778e556a9` (run `40301977349`), including the Hexis adaptation integration test after outbox rotation, restore, and saturation cases.
 
 
 ## WorkPass110 follow-up — candidate identity fixture alignment (2026-10-26)
 
 - **[TEST FIX]** Updated the signed-shadow E2E fixture to compute candidate identity with the canonical five-field tuple, including explicit null revision provenance when no revision is supplied.
 - **[WHY]** Candidate IDs now bind optional revision provenance; a fixture using the earlier four-field tuple failed before the shadow-registration behavior could be exercised.
-- **[VALIDATION]** Re-run WorkPass110 on the exact updated head. A fix to the expected identity alone is not counted as a passing end-to-end run.
+- **[VALIDATION]** WorkPass110 passed on head `9eb588aa8bc255f3dbbdc1b955bfa2a778e556a9` (run `40301977431`), including signed-shadow, independent evaluator, host-owned subprocess and path-identity regressions.
+
+
+## Hexis H1 follow-up — valid-time history and restore hardening (2026-10-26)
+
+- **[FIX]** Temporal assertions are now ordered by effective time, not delivery time. Late arrivals rebuild the affected memory's valid-time intervals and predecessor lineage, rather than truncating the prior current assertion at the arrival timestamp.
+- **[IDEMPOTENCY]** An exact semantic replay at the same memory/effective time returns the original assertion. Conflicting values for that exact effective time are rejected before any state mutation.
+- **[VALIDATION]** Rejects empty/overlong memory IDs, empty summaries, negative/non-finite valid-time values, and treats the temporal history cap as a bound on stored current values plus recent closed history. Late-arrival, replay, conflict, no-partial-mutation, interval and restore tests were added to the Hexis adaptation integration suite.
+- **[RESTORE]** Restored outbox rows are schema-checked and deduplicated deterministically. Corrupt or ambiguous outbox state saturates the idempotency gate so new unseen actions are rejected rather than risking duplicate external effects.
+- **[RECLAIM]** Bulk outbox reclamation now reapplies retention after stale publishing rows are recovered, keeping terminal history bounded while preserving active delivery obligations. A mass-reclaim regression covers 520 stale rows, the 512-row cap and retired-key rejection.
+- **[VALIDATION]** The repository-wiring audit passed on head `9eb588aa8bc255f3dbbdc1b955bfa2a778e556a9` (run `40301977349`). Later edits to this changelog are documentation-only; the Release ZIP remains untouched.
