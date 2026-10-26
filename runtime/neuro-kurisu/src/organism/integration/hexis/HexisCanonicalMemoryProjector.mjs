@@ -585,13 +585,31 @@ export class HexisCanonicalMemoryProjector {
         rollbackErrors.push('canonical-reconcile:' + String(snapshotError?.message ?? snapshotError).slice(0, 220));
       }
       for (const id of [...rollbackIds].reverse()) {
+        let removed = false;
         try {
-          this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
+          removed = this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
             commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
-          });
-        } catch (rollbackError) {
-          rollbackErrors.push(String(rollbackError?.message ?? rollbackError).slice(0, 240));
+          }) === true;
+        } catch {
+          // Try the scoped compensator below if ordinary forgetting throws after
+          // a partial commit, or refuses a protected imported state.
         }
+        if (!removed && typeof this.memoryFabric.rollbackHmxCreatedMemory === 'function') {
+          try {
+            removed = this.memoryFabric.rollbackHmxCreatedMemory(
+              id,
+              exportId,
+              'hexis-hmx-apply-rollback',
+              {
+                commandId: 'hexis-hmx-rollback-protected:' +
+                  hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
+              },
+            ) === true;
+          } catch (rollbackError) {
+            rollbackErrors.push('canonical-compensation:' + String(rollbackError?.message ?? rollbackError).slice(0, 220));
+          }
+        }
+        if (!removed) rollbackErrors.push('canonical-remove-unconfirmed:' + id);
       }
       // A non-throwing compensator can still fail to remove a committed item.
       // Verify the postcondition rather than assuming that a return means rollback.
