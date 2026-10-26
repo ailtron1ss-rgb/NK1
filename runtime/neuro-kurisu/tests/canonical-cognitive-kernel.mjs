@@ -628,5 +628,52 @@ legacyWithoutOptionalRootFields.restore({recent:[restoreSourceEvent]});
 assert.equal(legacyWithoutOptionalRootFields.getById(restoreSourceEvent.id)?.tick,55,
   'legacy snapshots that omit optional version, total and index fields remain readable');
 console.log('WorkPass363 event-fabric root schema atomicity: PASS');
+
+// Event append and restore must share one non-coercive data contract.
+const appendBoundaryFabric = new CognitiveEventFabric(128);
+const appendBaseline = appendBoundaryFabric.append({
+  id:'append-boundary:baseline',tick:3,at:300,stage:'observation',source:'append-test',
+  parentIds:[],external:false,confidence01:0.7,payload:{stable:{value:1}},
+});
+const appendBefore = appendBoundaryFabric.snapshot();
+let appendNestedGetterExecuted=false;
+const appendNestedAccessor={};
+Object.defineProperty(appendNestedAccessor,'unsafe',{
+  enumerable:true,
+  get(){appendNestedGetterExecuted=true;throw new Error('append must not evaluate payload getter');},
+});
+const malformedAppendInputs = [
+  {input:{id:'append-boundary:string-tick',tick:'3',at:301,stage:'observation',source:'append-test'},pattern:/invalid-cognitive-event-tick/,label:'string ticks must not be coerced'},
+  {input:{id:'append-boundary:fractional-tick',tick:3.5,at:302,stage:'observation',source:'append-test'},pattern:/invalid-cognitive-event-tick/,label:'fractional ticks must not be rounded'},
+  {input:{id:'append-boundary:negative-tick',tick:-1,at:303,stage:'observation',source:'append-test'},pattern:/invalid-cognitive-event-tick/,label:'negative ticks must not be clamped to zero'},
+  {input:{id:'append-boundary:unsafe-tick',tick:Number.MAX_SAFE_INTEGER+1,at:304,stage:'observation',source:'append-test'},pattern:/invalid-cognitive-event-tick/,label:'unsafe integer ticks must not enter the ledger'},
+  {input:{id:'append-boundary:negative-at',tick:4,at:-1,stage:'observation',source:'append-test'},pattern:/invalid-cognitive-event-timestamp/,label:'negative timestamps must not be recorded and later dropped on restore'},
+  {input:{id:'append-boundary:string-at',tick:4,at:'304',stage:'observation',source:'append-test'},pattern:/invalid-cognitive-event-timestamp/,label:'string timestamps must not be replaced with wall-clock time'},
+  {input:{id:'append-boundary:invalid-stage',tick:4,at:305,stage:'not-a-cognitive-stage',source:'append-test'},pattern:/invalid-cognitive-event-stage/,label:'unknown stages must not be recorded'},
+  {input:{id:'append-boundary:string-external',tick:4,at:306,stage:'observation',source:'append-test',external:'false'},pattern:/invalid-cognitive-event-external-flag/,label:'string false must not become boolean true'},
+  {input:{id:'append-boundary:invalid-confidence',tick:4,at:307,stage:'observation',source:'append-test',confidence01:1.1},pattern:/invalid-cognitive-event-confidence/,label:'out-of-range confidence must not be clamped into accepted evidence'},
+  {input:{id:'append-boundary:string-parent-list',tick:4,at:308,stage:'observation',source:'append-test',parentIds:'append-boundary:baseline'},pattern:/invalid-cognitive-event-parent-ids/,label:'a string cannot be expanded into causal parent characters'},
+  {input:{id:'append-boundary:noncanonical-parent',tick:4,at:309,stage:'observation',source:'append-test',parentIds:[' append-boundary:baseline ']},pattern:/invalid-cognitive-event-parent-ids/,label:'noncanonical parent IDs must be rejected'},
+  {input:{id:'append-boundary:nested-accessor',tick:4,at:310,stage:'observation',source:'append-test',payload:{nested:appendNestedAccessor}},pattern:/event-payload-accessor/,label:'nested payload getters must not run during append'},
+];
+for(const item of malformedAppendInputs) {
+  assert.throws(()=>appendBoundaryFabric.append(item.input),item.pattern,item.label);
+  assert.deepEqual(appendBoundaryFabric.snapshot(),appendBefore,item.label+'; failed append must not mutate the journal');
+}
+const accessorInput={tick:4,at:311,stage:'observation',source:'append-test',payload:{}};
+let appendInputGetterExecuted=false;
+Object.defineProperty(accessorInput,'tick',{
+  enumerable:true,
+  get(){appendInputGetterExecuted=true;throw new Error('input getter must not run');},
+});
+assert.throws(()=>appendBoundaryFabric.append(accessorInput),/cognitive-event-input-field-accessor:tick/);
+assert.equal(appendInputGetterExecuted,false,'append must not execute accessors on the outer input');
+assert.equal(appendNestedGetterExecuted,false,'append must not execute nested payload accessors');
+assert.equal(appendBoundaryFabric.getById(appendBaseline.id)?.payload.stable.value,1);
+const appendRestore = new CognitiveEventFabric(128);
+appendRestore.restore(appendBoundaryFabric.snapshot());
+assert.equal(appendRestore.getById(appendBaseline.id)?.payload.stable.value,1,
+  'a valid appended event must survive the strict restore projection');
+console.log('WorkPass364 event-fabric append ingress: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
