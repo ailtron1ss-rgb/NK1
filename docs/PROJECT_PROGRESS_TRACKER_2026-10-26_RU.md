@@ -1,3 +1,12 @@
+## WorkPass400 — guard Hexis endpoints от не-объектного JSON (2026-10-26)
+
+- **Код сервера:** `416c8df040e778c431ac999242d0d339a0a5940f`; **smoke regression:** `6132b9112a398d37d1dc975fe08bff0b48a9d6f5`.
+- Learning-review decision, retention propose, HMX stage и HMX decision теперь требуют JSON object. Литеральный `null`, массив или primitive возвращает HTTP 400 `hexis-invalid-request-body` до чтения route-specific полей и до mutation.
+- Smoke отправляет `null` во все 4 endpoint и проверяет идентичный 400-контракт; тесты неверных decision/action сохранены.
+- **Валидация:** PENDING exact-head typecheck, HMX adaptation, server smoke и Unified integration. PASS не заявляется; Actions не предоставляют пригодные логи. Оценки неизменны; `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass398 — неизвестные Hexis decisions отклоняются на HTTP-границе (2026-10-26)
 
 - **Серверный код:** `7df90658a7633fcaee746a69197f9522818cc452`; **server-smoke regression:** `86edc9df9a802ce8aa6965c8091454eb779429d5`.
