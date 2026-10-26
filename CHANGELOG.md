@@ -3,7 +3,8 @@
 - [DIAGNOSTIC] The first full-stack clean-checkout run [#40292398129](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292398129) exposed app-layer errors not covered by runtime-only CI: implicit types and deletion of a required `globalThis.window` member in `safeLocalStorage.test.mjs`, plus TypeScript module resolution failing to expose the already-locked `@types/pg` package to `app/tsconfig.json`.
 - [FIX] Typed the fake window and localStorage test callbacks, replaced illegal `delete globalThis.window` operations with `Reflect.deleteProperty`, and constrained the in-memory fixture to `Map<string, string>`.
 - [FIX] Added `pg` to the explicit TypeScript `types` list; `@types/pg` was already a locked dev dependency, so no dependency/version or lockfile drift was introduced.
-- [VALIDATION] Re-run [#40292575724](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292575724) covers the test fixture correction; latest head [#40292593216](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292593216) includes the explicit `pg` type-package fix and is pending. Do not mark app build complete until the full latest workflow passes through production build, schema and asset audits.
+- [DIAGNOSTIC] [#40292593216](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292593216) caught a second mistake: TypeScript type annotations were temporarily placed in an executable `.mjs` test. Replaced them with JSDoc types and a context-typed fake storage object; `.mjs` remains valid JavaScript.
+- [VALIDATION] Latest full workflow [#40292700286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40292700286) is running on head `0cf2361cf9aff9226608737b2869a6eb3a98a839`; app dependency/script contracts passed and combined app/runtime typecheck is in progress. Do not mark app build complete until production build, UI/API linkage, schema and asset audits finish.
  
 # WorkPass362 — clean production UI build + migration/schema contracts (2026-10-26)
 
