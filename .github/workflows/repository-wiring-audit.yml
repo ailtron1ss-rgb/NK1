@@ -34,6 +34,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/CognitiveRoutingPolicy.ts"
       - "tools/verify-repository-wiring.mjs"
       - "tools/verify-repository-wiring.test.mjs"
+      - "tools/verify-integration.mjs"
+      - "research/requirements-integration.txt"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-graph-workpass320.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-interrupt-episode-workpass324.mjs"
@@ -69,6 +71,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/CognitiveRoutingPolicy.ts"
       - "tools/verify-repository-wiring.mjs"
       - "tools/verify-repository-wiring.test.mjs"
+      - "tools/verify-integration.mjs"
+      - "research/requirements-integration.txt"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-graph-workpass320.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-interrupt-episode-workpass324.mjs"
@@ -154,6 +158,15 @@ jobs:
 
       - name: Run app test suite
         run: npm run test:ui
+
+      - name: Install isolated CPU-only research probe dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          research_venv="$RUNNER_TEMP/nk1-research-ci-venv"
+          python3 -m venv "$research_venv"
+          "$research_venv/bin/python" -m pip install --disable-pip-version-check --no-cache-dir --index-url https://download.pytorch.org/whl/cpu -r research/requirements-integration.txt
+          echo "RESEARCH_PYTHON=$research_venv/bin/python" >> "$GITHUB_ENV"
 
       - name: Run cross-layer integration verifier
         run: npm run test:integration
