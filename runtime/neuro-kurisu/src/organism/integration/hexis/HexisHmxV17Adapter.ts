@@ -8,37 +8,109 @@ export interface HmxValidationIssue {
   detail: string;
 }
 
+export type HmxDocumentSnapshotResult =
+  | { ok: true; value: unknown }
+  | { ok: false; issue: HmxValidationIssue };
+
+export interface Nk1HmxMemoryProjection {
+  ref: string;
+  content: string;
+  kind: 'sensory' | 'working' | 'episodic' | 'semantic' | 'procedural' | 'social' | 'dream';
+  confidence: number;
+  salience: number;
+  sourceAuthority01: number;
+  epistemicStatus: 'fact' | 'belief' | 'hypothesis' | 'unknown' | 'quarantined';
+  createdAt?: number;
+  observedAt?: number;
+  validFromAt?: number;
+  validUntilAt?: number | null;
+  tags: string[];
+  context: Record<string, string>;
+  entities: string[];
+  independenceKey: string;
+  evidenceFreshnessAt: number;
+}
+
 const KNOWN_SECTIONS = new Set([
   'memories', 'episodes', 'relationships', 'narrative', 'identity', 'worldview',
   'goals', 'drives', 'emotional_triggers', 'clusters', 'in_flight_work',
   'audit_records', 'raw_units', 'config',
-]);
-const MEMORY_IMPORT_SECTIONS = new Set(['memories']);
-const PROTECTED_MEMORY_KINDS = new Set([
-  'identity', 'autobiographical', 'self-model', 'self_model', 'personality',
-  'worldview', 'goal', 'drive', 'emotional_trigger', 'emotional-trigger',
-  'narrative', 'core-value', 'protected',
-]);
-const PROTECTED_SECTIONS = new Set([
-  'identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals',
 ]);
 const ARRAY_SECTIONS = new Set([
   'memories', 'episodes', 'relationships', 'identity', 'worldview', 'goals',
   'drives', 'emotional_triggers', 'clusters', 'raw_units',
 ]);
 const OBJECT_SECTIONS = new Set(['narrative', 'in_flight_work', 'audit_records', 'config']);
-const MAX_DOCUMENT_BYTES = 2 * 1024 * 1024;
-const MAX_STAGED_MEMORIES = 256;
+const PROTECTED_SECTIONS = new Set([
+  'identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals',
+]);
+const PROTECTED_MEMORY_KINDS = new Set([
+  'identity', 'autobiographical', 'self-model', 'self_model', 'personality',
+  'worldview', 'goal', 'drive', 'emotional_trigger', 'emotional-trigger',
+  'narrative', 'core-value', 'protected',
+]);
 const EXPORT_ID_PATTERN = /^exp_[0-9a-f]{16}$/;
 const REF_PATTERN = /^exp_[0-9a-f]{16}:.+$/;
-const MAX_HMX_SNAPSHOT_NODES = 50_000;
-const MAX_HMX_SNAPSHOT_DEPTH = 32;
+const MAX_DOCUMENT_BYTES = 2 * 1024 * 1024;
+const MAX_SNAPSHOT_NODES = 50_000;
+const MAX_SNAPSHOT_DEPTH = 32;
+const MAX_STAGED_MEMORIES = 256;
+const MAX_MEMORY_CHARS = 12_000;
+const MAX_EXPORT_MEMORY_CHARS = 5_000;
 
-export type HmxDocumentSnapshotResult =
-  | { ok: true; value: unknown }
-  | { ok: false; issue: HmxValidationIssue };
+function record(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
 
-/** Capture a bounded plain-JSON tree without reading caller properties directly. */
+function nonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isDateTime(value: unknown): boolean {
+  return typeof value === 'string'
+    && /^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:\d{2})$/.test(value)
+    && Number.isFinite(Date.parse(value));
+}
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+function clamp01(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
+}
+
+function dateMs(value: unknown): number | undefined {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return undefined;
+  return Date.parse(value);
+}
+
+function safeContext(value: unknown): Record<string, string> {
+  const input = record(value);
+  const output: Record<string, string> = Object.create(null) as Record<string, string>;
+  if (!input) return output;
+  for (const [key, item] of Object.entries(input).slice(0, 12)) {
+    if (!(typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')) continue;
+    const safeKey = key.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80);
+    if (!safeKey || safeKey === '__proto__' || safeKey === 'constructor' || safeKey === 'prototype') continue;
+    output[safeKey] = String(item).normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 300);
+  }
+  return output;
+}
+
+function safeIso(value: unknown, fallback: number): string {
+  const ms = typeof value === 'number' && Number.isFinite(value) ? value : dateMs(value);
+  return new Date(ms ?? fallback).toISOString();
+}
+
+/**
+ * Copies untrusted caller data into a bounded plain-JSON tree before validation.
+ * Property accessors, custom prototypes, cycles, non-finite numbers and oversized
+ * trees are rejected rather than executed, coerced, or partially staged.
+ */
 export function snapshotHmxV17Document(raw: unknown): HmxDocumentSnapshotResult {
   const active = new WeakSet<object>();
   const encoder = new TextEncoder();
@@ -46,7 +118,7 @@ export function snapshotHmxV17Document(raw: unknown): HmxDocumentSnapshotResult 
 
   const capture = (value: unknown, path: string, depth: number): unknown => {
     state.nodes += 1;
-    if (state.nodes > MAX_HMX_SNAPSHOT_NODES || depth > MAX_HMX_SNAPSHOT_DEPTH) {
+    if (state.nodes > MAX_SNAPSHOT_NODES || depth > MAX_SNAPSHOT_DEPTH) {
       throw new Error('HMX snapshot resource bound exceeded');
     }
     if (value === null || typeof value === 'boolean') return value;
@@ -69,7 +141,7 @@ export function snapshotHmxV17Document(raw: unknown): HmxDocumentSnapshotResult 
         if (Object.getPrototypeOf(value) !== Array.prototype) throw new Error('HMX array prototype is unsupported');
         const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
         const length = lengthDescriptor && 'value' in lengthDescriptor ? lengthDescriptor.value : undefined;
-        if (!Number.isSafeInteger(length) || Number(length) < 0 || Number(length) > MAX_HMX_SNAPSHOT_NODES) {
+        if (!Number.isSafeInteger(length) || Number(length) < 0 || Number(length) > MAX_SNAPSHOT_NODES) {
           throw new Error('HMX array length is invalid');
         }
         const keys = Reflect.ownKeys(value);
@@ -90,10 +162,10 @@ export function snapshotHmxV17Document(raw: unknown): HmxDocumentSnapshotResult 
       const prototype = Object.getPrototypeOf(value);
       if (prototype !== Object.prototype && prototype !== null) throw new Error('HMX object prototype is unsupported');
       const keys = Reflect.ownKeys(value);
-      if (keys.length > MAX_HMX_SNAPSHOT_NODES || keys.some((key) => typeof key !== 'string')) {
+      if (keys.length > MAX_SNAPSHOT_NODES || keys.some((key) => typeof key !== 'string')) {
         throw new Error('HMX object keys are invalid or exceed bounds');
       }
-      const out: Record<string, unknown> = Object.create(null);
+      const out: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
       for (const key of keys as string[]) {
         state.textBytes += encoder.encode(key).byteLength;
         if (state.textBytes > MAX_DOCUMENT_BYTES) throw new Error('HMX text bound exceeded');
@@ -115,19 +187,17 @@ export function snapshotHmxV17Document(raw: unknown): HmxDocumentSnapshotResult 
   };
 
   try {
-    return { ok: true, value: capture(raw, 'function record(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
-}
-
-function nonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-function isDateTime(value: unknown): boolean {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return false;
-  return Number.isFinite(Date.parse(value));
+    return { ok: true, value: capture(raw, '$', 0) };
+  } catch (error) {
+    return {
+      ok: false,
+      issue: {
+        path: '$',
+        kind: 'unsafe-input',
+        detail: error instanceof Error ? error.message.slice(0, 200) : 'HMX input could not be captured safely.',
+      },
+    };
+  }
 }
 
 function describeSection(section: string, value: unknown, exportId: string, issues: HmxValidationIssue[]): void {
@@ -144,12 +214,13 @@ function describeSection(section: string, value: unknown, exportId: string, issu
     issues.push({ path, kind: 'schema', detail: 'This HMX 1.7 section must be an object.' });
     return;
   }
+
   if (Array.isArray(value)) {
     if (value.length > MAX_STAGED_MEMORIES) {
       issues.push({ path, kind: 'staging-capacity', detail: 'Section exceeds the 256-record bounded staging capacity.' });
     }
-    value.slice(0, MAX_STAGED_MEMORIES).forEach((raw, index) => {
-      const row = record(raw);
+    value.slice(0, MAX_STAGED_MEMORIES).forEach((rawRow, index) => {
+      const row = record(rawRow);
       if (!row) {
         issues.push({ path: path + '[' + index + ']', kind: 'schema', detail: 'Section entries must be objects.' });
         return;
@@ -162,8 +233,12 @@ function describeSection(section: string, value: unknown, exportId: string, issu
           issues.push({ path: path + '[' + index + '].type', kind: 'schema', detail: 'Memory records require a type string.' });
         }
         if (typeof row.content !== 'string' || !row.content.trim()) {
-          issues.push({ path: path + '[' + index + '].content', kind: 'schema', detail: 'Memory records require non-empty content to be imported.' });
+          issues.push({ path: path + '[' + index + '].content', kind: 'schema', detail: 'Memory records require non-empty content.' });
         }
+        if (typeof row.content === 'string' && row.content.length > MAX_MEMORY_CHARS) {
+          issues.push({ path: path + '[' + index + '].content', kind: 'record-too-large', detail: 'NK1 imports at most 12000 characters per memory record.' });
+        }
+
         const metadata = record(row.metadata) ?? {};
         const declaredKind = String(metadata.nk1_kind ?? row.type ?? '').trim().toLowerCase();
         if (PROTECTED_MEMORY_KINDS.has(declaredKind) ||
@@ -172,13 +247,16 @@ function describeSection(section: string, value: unknown, exportId: string, issu
             metadata.protected_belief === true) {
           issues.push({ path: path + '[' + index + ']', kind: 'protected-memory-record', detail: 'Protected identity/personality/worldview/drive records cannot be imported through the memory-only exchange.' });
         }
-        for (const dateField of ['created_at', 'updated_at', 'valid_from', 'last_accessed']) {
+
+        for (const dateField of ['created_at', 'updated_at']) {
           if (row[dateField] != null && !isDateTime(row[dateField])) {
             issues.push({ path: path + '[' + index + '].' + dateField, kind: 'schema', detail: 'Optional memory timestamps must be valid ISO date-times.' });
           }
         }
-        if (row.valid_until != null && !isDateTime(row.valid_until)) {
-          issues.push({ path: path + '[' + index + '].valid_until', kind: 'schema', detail: 'valid_until must be null or a valid ISO date-time.' });
+        for (const dateField of ['valid_from', 'valid_until', 'last_accessed']) {
+          if (row[dateField] != null && !isDateTime(row[dateField])) {
+            issues.push({ path: path + '[' + index + '].' + dateField, kind: 'schema', detail: 'Memory date fields must be null or valid ISO date-times.' });
+          }
         }
         if (row.content_hash_v1 != null) {
           if (typeof row.content_hash_v1 !== 'string' || !/^[0-9a-f]{64}$/.test(row.content_hash_v1)) {
@@ -190,41 +268,39 @@ function describeSection(section: string, value: unknown, exportId: string, issu
         if (row.access_count != null && (!Number.isSafeInteger(row.access_count) || Number(row.access_count) < 0)) {
           issues.push({ path: path + '[' + index + '].access_count', kind: 'schema', detail: 'access_count must be a non-negative integer.' });
         }
-      }
-      if (!MEMORY_IMPORT_SECTIONS.has(section)) {
+      } else {
         issues.push({
           path: path + '[' + index + ']',
-          kind: 'unsupported-import-section',
-          detail: 'This section is recognized by HMX 1.7 but is not yet mapped to canonical NK1 memory; import is blocked rather than silently dropping it.',
+          kind: PROTECTED_SECTIONS.has(section) ? 'protected-section' : 'unsupported-import-section',
+          detail: 'This section is not mapped to canonical NK1 memory; import is blocked rather than silently dropping it.',
         });
       }
     });
   } else {
     const objectValue = record(value);
-    if (objectValue && Object.keys(objectValue).length > 0 && !MEMORY_IMPORT_SECTIONS.has(section)) {
+    if (objectValue && Object.keys(objectValue).length > 0) {
       issues.push({
         path,
-        kind: 'unsupported-import-section',
-        detail: 'This section is recognized by HMX 1.7 but is not yet mapped to canonical NK1 memory; import is blocked rather than silently dropping it.',
+        kind: PROTECTED_SECTIONS.has(section) ? 'protected-section' : 'unsupported-import-section',
+        detail: 'This section is not mapped to canonical NK1 memory; import is blocked rather than silently dropping it.',
       });
     }
   }
 }
 
-export function validateHmxV17Document(
-  raw: unknown,
-  requestedIntent?: CanonicalHmxIntent,
-): HmxValidationIssue[] {
-  const issues: HmxValidationIssue[] = [];
+/**
+ * The adapter intentionally implements the memory-only subset used by NK1.
+ * The envelope/source and memory fields are checked against the upstream HMX 1.7
+ * schema. Recognized but unmapped sections are rejected rather than discarded.
+ */
+export function validateHmxV17Document(raw: unknown, requestedIntent?: CanonicalHmxIntent): HmxValidationIssue[] {
   const captured = snapshotHmxV17Document(raw);
   if (!captured.ok) return [captured.issue];
+
   let serialized: string;
   try {
     serialized = JSON.stringify(captured.value);
   } catch {
-    return [{ path: '$', kind: 'schema', detail: 'HMX document must be serializable JSON.' }];
-  }
-  if (typeof serialized !== 'string') {
     return [{ path: '$', kind: 'schema', detail: 'HMX document must be serializable JSON.' }];
   }
   if (new TextEncoder().encode(serialized).byteLength > MAX_DOCUMENT_BYTES) {
@@ -256,12 +332,37 @@ export function validateHmxV17Document(
     issues.push({ path: 'source', kind: 'schema', detail: 'HMX 1.7 requires a source metadata object.' });
   } else {
     for (const key of ['instance_id', 'schema_version', 'embedding_model', 'hexis_lineage_id']) {
-      if (!nonEmptyString(source[key])) {
-        issues.push({ path: 'source.' + key, kind: 'schema', detail: 'Required source metadata must be a non-empty string.' });
-      }
+      if (!nonEmptyString(source[key])) issues.push({ path: 'source.' + key, kind: 'schema', detail: 'Required source metadata must be a non-empty string.' });
     }
     if (!Number.isSafeInteger(source.embedding_dimension) || Number(source.embedding_dimension) < 1) {
       issues.push({ path: 'source.embedding_dimension', kind: 'schema', detail: 'HMX source embedding_dimension must be a positive integer.' });
+    }
+  }
+
+  const capabilities = record(document.capabilities);
+  if (document.capabilities != null) {
+    if (!capabilities) {
+      issues.push({ path: 'capabilities', kind: 'schema', detail: 'capabilities must be an object when present.' });
+    } else {
+      for (const key of ['formats', 'sections', 'hash_algorithms', 'relationship_edge_types', 'optional_features']) {
+        if (!Array.isArray(capabilities[key])) issues.push({ path: 'capabilities.' + key, kind: 'schema', detail: 'Capability fields must be arrays.' });
+      }
+    }
+  }
+  const privacy = record(document.privacy);
+  if (document.privacy != null) {
+    if (!privacy) {
+      issues.push({ path: 'privacy', kind: 'schema', detail: 'privacy must be an object when present.' });
+    } else {
+      if (!['none', 'basic', 'strict', 'custom'].includes(String(privacy.redaction_policy))) {
+        issues.push({ path: 'privacy.redaction_policy', kind: 'schema', detail: 'Unknown HMX redaction policy.' });
+      }
+      if (typeof privacy.contains_sensitive_content !== 'boolean') {
+        issues.push({ path: 'privacy.contains_sensitive_content', kind: 'schema', detail: 'contains_sensitive_content must be boolean.' });
+      }
+      if (!['backup', 'migration', 'third_party_transfer', 'unspecified'].includes(String(privacy.consent_scope))) {
+        issues.push({ path: 'privacy.consent_scope', kind: 'schema', detail: 'Unknown HMX consent scope.' });
+      }
     }
   }
 
@@ -270,42 +371,21 @@ export function validateHmxV17Document(
     issues.push({ path: 'sections', kind: 'schema', detail: 'HMX sections must be a non-empty object.' });
     return issues;
   }
-
   for (const [name, value] of Object.entries(sections)) describeSection(name, value, exportId, issues);
 
-  const intent = String(documentIntent);
-  const presentProtected = Object.keys(sections).filter(name => PROTECTED_SECTIONS.has(name) &&
-    (Array.isArray(sections[name]) ? (sections[name] as unknown[]).length > 0 :
-      Boolean(record(sections[name]) && Object.keys(record(sections[name])!).length)));
-  if (presentProtected.length && ['telepathy', 'analysis', 'port'].includes(intent)) {
-    issues.push({
-      path: 'sections',
-      kind: 'protected-by-intent',
-      detail: 'Protected identity/worldview/drive/narrative sections cannot enter NK1 through the memory-only import path: ' + presentProtected.join(', '),
-    });
+  if (!Array.isArray(sections.memories)) {
+    issues.push({ path: 'sections.memories', kind: 'schema', detail: 'NK1 memory-only import requires a memories array.' });
+    return issues;
   }
-
-  const memories = sections.memories;
-  if (!Array.isArray(memories)) {
-    issues.push({ path: 'sections.memories', kind: 'schema', detail: 'This NK1 import path requires a memories array.' });
-  }
-
   const refs = new Set<string>();
-  if (Array.isArray(memories)) {
-    memories.forEach((rawMemory, index) => {
-      const row = record(rawMemory);
-      if (!row || typeof row.ref !== 'string') return;
-      if (refs.has(row.ref)) issues.push({ path: 'sections.memories[' + index + '].ref', kind: 'duplicate-ref', detail: 'Memory refs must be unique within an HMX document.' });
-      refs.add(row.ref);
-      if (typeof row.content === 'string' && row.content.length > 12000) {
-        issues.push({ path: 'sections.memories[' + index + '].content', kind: 'record-too-large', detail: 'NK1 imports at most 12000 characters per memory record.' });
-      }
-    });
-    if (memories.length > MAX_STAGED_MEMORIES && !issues.some(issue => issue.path === 'sections.memories' && issue.kind === 'staging-capacity')) {
-      issues.push({ path: 'sections.memories', kind: 'staging-capacity', detail: 'More than 256 memory records require a narrower export.' });
+  for (const [index, rawMemory] of sections.memories.entries()) {
+    const row = record(rawMemory);
+    if (!row || typeof row.ref !== 'string') continue;
+    if (refs.has(row.ref)) {
+      issues.push({ path: 'sections.memories[' + index + '].ref', kind: 'duplicate-ref', detail: 'Memory refs must be unique within an HMX document.' });
     }
+    refs.add(row.ref);
   }
-
   return issues;
 }
 
@@ -323,59 +403,15 @@ export function createNk1HmxExportId(randomHex: string): string {
   return 'exp_' + suffix;
 }
 
-
-export interface Nk1HmxMemoryProjection {
-  ref: string;
-  content: string;
-  kind: 'sensory' | 'working' | 'episodic' | 'semantic' | 'procedural' | 'social' | 'dream';
-  confidence: number;
-  salience: number;
-  sourceAuthority01: number;
-  epistemicStatus: 'fact' | 'belief' | 'hypothesis' | 'unknown' | 'quarantined';
-  createdAt?: number;
-  observedAt?: number;
-  validFromAt?: number;
-  validUntilAt?: number | null;
-  tags: string[];
-  context: Record<string, string>;
-  entities: string[];
-  independenceKey: string;
-  evidenceFreshnessAt: number;
+function isProtectedMemory(row: Record<string, unknown>): boolean {
+  const metadata = record(row.metadata) ?? {};
+  const kind = String(row.kind ?? row.type ?? metadata.nk1_kind ?? '').trim().toLowerCase();
+  return PROTECTED_MEMORY_KINDS.has(kind)
+    || row.protected === true || row.protectedBelief === true
+    || metadata.protected === true || metadata.nk1_protected === true || metadata.protected_belief === true;
 }
 
-function clamp01(value: unknown, fallback: number): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
-}
-
-function dateMs(value: unknown): number | undefined {
-  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return undefined;
-  return Date.parse(value);
-}
-
-function safeContext(value: unknown): Record<string, string> {
-  const input = record(value);
-  const output: Record<string, string> = {};
-  if (!input) return output;
-  for (const [key, item] of Object.entries(input).slice(0, 12)) {
-    if (!(typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')) continue;
-    const safeKey = key.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80);
-    if (!safeKey) continue;
-    output[safeKey] = String(item).normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 300);
-  }
-  return output;
-}
-
-function safeIso(value: unknown, fallback: number): string {
-  const ms = typeof value === 'number' && Number.isFinite(value) ? value : dateMs(value);
-  return new Date(ms ?? fallback).toISOString();
-}
-
-function sha256(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
-}
-
-/** Builds a schema-compatible, memory-only HMX 1.7 exchange. Protected sections and vectors are intentionally omitted. */
+/** Builds a valid, bounded HMX 1.7 memory-only exchange; embeddings and protected data are not exported. */
 export function buildNk1HmxV17Document(input: {
   subjectId: string;
   memories: unknown[];
@@ -387,15 +423,17 @@ export function buildNk1HmxV17Document(input: {
   const candidates = input.memories
     .map(record)
     .filter((row): row is Record<string, unknown> => Boolean(row))
-    .filter(row => typeof row.content === 'string' && Boolean(String(row.content).trim()) && !row.dormant && row.epistemicStatus !== 'quarantined' && row.protected !== true && row.protectedBelief !== true && !PROTECTED_MEMORY_KINDS.has(String(row.kind ?? '').trim().toLowerCase()) && record(row.metadata)?.protected !== true && record(row.metadata)?.nk1_protected !== true && record(row.metadata)?.protected_belief !== true)
-    .sort((a, b) => Number(b.observedAt ?? b.lastAccessAt ?? b.createdAt ?? 0) - Number(a.observedAt ?? a.lastAccessAt ?? a.createdAt ?? 0));
+    .filter((row) => typeof row.content === 'string' && Boolean(String(row.content).trim())
+      && !row.dormant && row.epistemicStatus !== 'quarantined' && !isProtectedMemory(row))
+    .sort((a, b) => Number(b.observedAt ?? b.lastAccessAt ?? b.createdAt ?? 0)
+      - Number(a.observedAt ?? a.lastAccessAt ?? a.createdAt ?? 0));
   const selected = candidates.slice(0, MAX_STAGED_MEMORIES);
   let truncatedCount = 0;
   const memories = selected.map((row, index) => {
     const id = String(row.id ?? 'row-' + index).slice(0, 240);
     const kind = nonEmptyString(row.kind) ? row.kind : 'semantic';
     const rawBody = String(row.content);
-    const body = rawBody.slice(0, 5000);
+    const body = rawBody.slice(0, MAX_EXPORT_MEMORY_CHARS);
     if (body.length !== rawBody.length) truncatedCount += 1;
     const meta: Record<string, unknown> = {
       nk1_kind: kind,
@@ -411,6 +449,7 @@ export function buildNk1HmxV17Document(input: {
       causal_links: Array.isArray(row.causalLinks) ? row.causalLinks.map(String).slice(0, 32) : [],
       provenance_class: String(row.provenanceClass ?? 'native'),
     };
+    const acquisition = String(row.source ?? '').startsWith('hexis-hmx-import') ? 'imported_and_accepted' : 'experienced';
     return {
       ref: exportId + ':memory:' + encodeURIComponent(id),
       type: kind,
@@ -434,7 +473,7 @@ export function buildNk1HmxV17Document(input: {
       },
       metadata: meta,
       provenance: {
-        acquisition_mode: String(row.source ?? '').startsWith('hexis-hmx-import') ? 'imported_and_accepted' : 'experienced',
+        acquisition_mode: acquisition,
         origin_instance: sourceSubject,
         origin_id: id,
         import_chain: [],
@@ -478,13 +517,14 @@ export function buildNk1HmxV17Document(input: {
     sections: { memories },
     statistics: { total_memories: memories.length },
     export_warnings: [
-      ...(candidates.length > memories.length ? ['Export is bounded to the newest ' + String(MAX_STAGED_MEMORIES) + ' eligible memories; ' + String(candidates.length - memories.length) + ' records were not included.'] : []),
-      ...(truncatedCount > 0 ? [String(truncatedCount) + ' memory records were truncated to 5000 characters to keep the exchange bounded.'] : []),
+      ...(candidates.length > memories.length
+        ? ['Export is bounded to the newest ' + String(MAX_STAGED_MEMORIES) + ' eligible memories; ' + String(candidates.length - memories.length) + ' records were not included.'] : []),
+      ...(truncatedCount > 0 ? [String(truncatedCount) + ' memory records were truncated to ' + String(MAX_EXPORT_MEMORY_CHARS) + ' characters to keep the exchange bounded.'] : []),
     ],
   };
 }
 
-/** Normalizes one validated HMX memory without trusting upstream metadata to set NK1 identity or confidence above bounds. */
+/** Maps one HMX row to NK1 while treating all source-reported trust/status as unverified metadata. */
 export function normalizeHmxV17Memory(
   raw: unknown,
   input: { exportId: string; sourceSubjectId?: string; exportedAt?: string },
@@ -499,11 +539,9 @@ export function normalizeHmxV17Memory(
   const validStatus = new Set(['fact', 'belief', 'hypothesis', 'unknown', 'quarantined']);
   const rawStatus = String(metadata.nk1_epistemic_status ?? 'belief').trim().toLowerCase();
   const proposedStatus = validStatus.has(rawStatus) ? rawStatus : 'belief';
-  // An external export cannot promote its own rows to verified fact by setting NK1-specific metadata.
   const epistemicStatus = (proposedStatus === 'quarantined' ? 'quarantined'
     : proposedStatus === 'unknown' ? 'unknown'
       : proposedStatus === 'hypothesis' ? 'hypothesis' : 'belief') as Nk1HmxMemoryProjection['epistemicStatus'];
-  // Self-reported HMX trust is metadata, not independent evidence. Imported records stay low-authority.
   const trust = Math.min(0.55, clamp01(row.trust_level ?? source.source_authority_01, 0.55));
   const confidence = Math.min(0.55, clamp01(metadata.nk1_confidence ?? row.trust_level, 0.55));
   const salience = clamp01(metadata.nk1_salience ?? row.importance, 0.55);
@@ -511,881 +549,13 @@ export function normalizeHmxV17Memory(
   const observedAt = dateMs(row.updated_at) ?? createdAt ?? dateMs(input.exportedAt) ?? Date.now();
   const validFromAt = dateMs(row.valid_from) ?? createdAt ?? observedAt;
   const validUntilAt = row.valid_until == null ? null : dateMs(row.valid_until) ?? null;
-  const tags = Array.isArray(metadata.tags) ? metadata.tags.map(String).map(x => x.slice(0, 80)).slice(0, 24) : ['hexis', 'hmx'];
-  const contextRecord = record(metadata.context);
-  const context: Record<string, string> = {};
-  if (contextRecord) {
-    for (const [key, value] of Object.entries(contextRecord).slice(0, 12)) {
-      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        context[String(key).slice(0, 80)] = String(value).slice(0, 300);
-      }
-    }
-  }
-  const entities = Array.isArray(metadata.entities) ? metadata.entities.map(String).map(x => x.slice(0, 120)).slice(0, 12) : [];
+  const tags = Array.isArray(metadata.tags) ? metadata.tags.map(String).map((x) => x.slice(0, 80)).slice(0, 24) : ['hexis', 'hmx'];
+  const context = safeContext(metadata.context);
+  const entities = Array.isArray(metadata.entities) ? metadata.entities.map(String).map((x) => x.slice(0, 120)).slice(0, 12) : [];
+
   return {
     ref: row.ref,
-    content: row.content.slice(0, 12000),
-    kind,
-    confidence,
-    salience,
-    sourceAuthority01: trust,
-    epistemicStatus,
-    ...(createdAt !== undefined ? { createdAt } : {}),
-    observedAt,
-    validFromAt,
-    validUntilAt,
-    tags,
-    context,
-    entities,
-    independenceKey: 'hexis:' + String(input.sourceSubjectId ?? input.exportId).slice(0, 180),
-    evidenceFreshnessAt: observedAt,
-  };
-}
-, 0) };
-  } catch {
-    return {
-      ok: false,
-      issue: {
-        path: 'function record(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
-}
-
-function nonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-function isDateTime(value: unknown): boolean {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return false;
-  return Number.isFinite(Date.parse(value));
-}
-
-function describeSection(section: string, value: unknown, exportId: string, issues: HmxValidationIssue[]): void {
-  const path = 'sections.' + section;
-  if (!KNOWN_SECTIONS.has(section)) {
-    issues.push({ path, kind: 'unsupported-section', detail: 'NK1 does not recognize this HMX section; refusing a lossy import.' });
-    return;
-  }
-  if (ARRAY_SECTIONS.has(section) && !Array.isArray(value)) {
-    issues.push({ path, kind: 'schema', detail: 'This HMX 1.7 section must be an array.' });
-    return;
-  }
-  if (OBJECT_SECTIONS.has(section) && !record(value)) {
-    issues.push({ path, kind: 'schema', detail: 'This HMX 1.7 section must be an object.' });
-    return;
-  }
-  if (Array.isArray(value)) {
-    if (value.length > MAX_STAGED_MEMORIES) {
-      issues.push({ path, kind: 'staging-capacity', detail: 'Section exceeds the 256-record bounded staging capacity.' });
-    }
-    value.slice(0, MAX_STAGED_MEMORIES).forEach((raw, index) => {
-      const row = record(raw);
-      if (!row) {
-        issues.push({ path: path + '[' + index + ']', kind: 'schema', detail: 'Section entries must be objects.' });
-        return;
-      }
-      if (section === 'memories') {
-        if (!nonEmptyString(row.ref) || !REF_PATTERN.test(row.ref) || !row.ref.startsWith(exportId + ':')) {
-          issues.push({ path: path + '[' + index + '].ref', kind: 'schema', detail: 'Memory refs must be unique export-scoped HMX references for this document.' });
-        }
-        if (!nonEmptyString(row.type)) {
-          issues.push({ path: path + '[' + index + '].type', kind: 'schema', detail: 'Memory records require a type string.' });
-        }
-        if (typeof row.content !== 'string' || !row.content.trim()) {
-          issues.push({ path: path + '[' + index + '].content', kind: 'schema', detail: 'Memory records require non-empty content to be imported.' });
-        }
-        const metadata = record(row.metadata) ?? {};
-        const declaredKind = String(metadata.nk1_kind ?? row.type ?? '').trim().toLowerCase();
-        if (PROTECTED_MEMORY_KINDS.has(declaredKind) ||
-            row.protected === true || row.protectedBelief === true ||
-            metadata.protected === true || metadata.nk1_protected === true ||
-            metadata.protected_belief === true) {
-          issues.push({ path: path + '[' + index + ']', kind: 'protected-memory-record', detail: 'Protected identity/personality/worldview/drive records cannot be imported through the memory-only exchange.' });
-        }
-        for (const dateField of ['created_at', 'updated_at', 'valid_from', 'last_accessed']) {
-          if (row[dateField] != null && !isDateTime(row[dateField])) {
-            issues.push({ path: path + '[' + index + '].' + dateField, kind: 'schema', detail: 'Optional memory timestamps must be valid ISO date-times.' });
-          }
-        }
-        if (row.valid_until != null && !isDateTime(row.valid_until)) {
-          issues.push({ path: path + '[' + index + '].valid_until', kind: 'schema', detail: 'valid_until must be null or a valid ISO date-time.' });
-        }
-        if (row.content_hash_v1 != null) {
-          if (typeof row.content_hash_v1 !== 'string' || !/^[0-9a-f]{64}$/.test(row.content_hash_v1)) {
-            issues.push({ path: path + '[' + index + '].content_hash_v1', kind: 'schema', detail: 'content_hash_v1 must be a lowercase SHA-256 hash when supplied.' });
-          } else if (typeof row.content === 'string' && sha256(row.content) !== row.content_hash_v1) {
-            issues.push({ path: path + '[' + index + '].content_hash_v1', kind: 'integrity', detail: 'Memory content does not match its supplied SHA-256 hash.' });
-          }
-        }
-        if (row.access_count != null && (!Number.isSafeInteger(row.access_count) || Number(row.access_count) < 0)) {
-          issues.push({ path: path + '[' + index + '].access_count', kind: 'schema', detail: 'access_count must be a non-negative integer.' });
-        }
-      }
-      if (!MEMORY_IMPORT_SECTIONS.has(section)) {
-        issues.push({
-          path: path + '[' + index + ']',
-          kind: 'unsupported-import-section',
-          detail: 'This section is recognized by HMX 1.7 but is not yet mapped to canonical NK1 memory; import is blocked rather than silently dropping it.',
-        });
-      }
-    });
-  } else {
-    const objectValue = record(value);
-    if (objectValue && Object.keys(objectValue).length > 0 && !MEMORY_IMPORT_SECTIONS.has(section)) {
-      issues.push({
-        path,
-        kind: 'unsupported-import-section',
-        detail: 'This section is recognized by HMX 1.7 but is not yet mapped to canonical NK1 memory; import is blocked rather than silently dropping it.',
-      });
-    }
-  }
-}
-
-export function validateHmxV17Document(
-  raw: unknown,
-  requestedIntent?: CanonicalHmxIntent,
-): HmxValidationIssue[] {
-  const issues: HmxValidationIssue[] = [];
-  let serialized: string;
-  try {
-    serialized = JSON.stringify(raw);
-  } catch {
-    return [{ path: '$', kind: 'schema', detail: 'HMX document must be serializable JSON.' }];
-  }
-  if (typeof serialized !== 'string') {
-    return [{ path: '$', kind: 'schema', detail: 'HMX document must be serializable JSON.' }];
-  }
-  if (new TextEncoder().encode(serialized).byteLength > MAX_DOCUMENT_BYTES) {
-    return [{ path: '$', kind: 'document-too-large', detail: 'HMX document exceeds NK1’s 2 MiB staging limit.' }];
-  }
-
-  const document = record(raw);
-  if (!document) return [{ path: '$', kind: 'schema', detail: 'HMX document must be a JSON object.' }];
-
-  if (document.hmx_version !== '1.7') {
-    issues.push({ path: 'hmx_version', kind: 'unsupported-version', detail: 'NK1 validates the upstream HMX 1.7 contract only.' });
-  }
-  const exportId = typeof document.export_id === 'string' ? document.export_id : '';
-  if (!EXPORT_ID_PATTERN.test(exportId)) {
-    issues.push({ path: 'export_id', kind: 'schema', detail: 'HMX export_id must match exp_ followed by 16 lowercase hex characters.' });
-  }
-  const documentIntent = document.export_intent;
-  if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(String(documentIntent))) {
-    issues.push({ path: 'export_intent', kind: 'schema', detail: 'HMX 1.7 requires an explicit valid export_intent.' });
-  } else if (requestedIntent && documentIntent !== requestedIntent) {
-    issues.push({ path: 'export_intent', kind: 'intent-mismatch', detail: 'The chosen NK1 import intent must match the source document intent; reclassification is not allowed.' });
-  }
-  if (!isDateTime(document.exported_at)) {
-    issues.push({ path: 'exported_at', kind: 'schema', detail: 'HMX exported_at must be a valid ISO date-time.' });
-  }
-
-  const source = record(document.source);
-  if (!source) {
-    issues.push({ path: 'source', kind: 'schema', detail: 'HMX 1.7 requires a source metadata object.' });
-  } else {
-    for (const key of ['instance_id', 'schema_version', 'embedding_model', 'hexis_lineage_id']) {
-      if (!nonEmptyString(source[key])) {
-        issues.push({ path: 'source.' + key, kind: 'schema', detail: 'Required source metadata must be a non-empty string.' });
-      }
-    }
-    if (!Number.isSafeInteger(source.embedding_dimension) || Number(source.embedding_dimension) < 1) {
-      issues.push({ path: 'source.embedding_dimension', kind: 'schema', detail: 'HMX source embedding_dimension must be a positive integer.' });
-    }
-  }
-
-  const sections = record(document.sections);
-  if (!sections || Object.keys(sections).length === 0) {
-    issues.push({ path: 'sections', kind: 'schema', detail: 'HMX sections must be a non-empty object.' });
-    return issues;
-  }
-
-  for (const [name, value] of Object.entries(sections)) describeSection(name, value, exportId, issues);
-
-  const intent = String(documentIntent);
-  const presentProtected = Object.keys(sections).filter(name => PROTECTED_SECTIONS.has(name) &&
-    (Array.isArray(sections[name]) ? (sections[name] as unknown[]).length > 0 :
-      Boolean(record(sections[name]) && Object.keys(record(sections[name])!).length)));
-  if (presentProtected.length && ['telepathy', 'analysis', 'port'].includes(intent)) {
-    issues.push({
-      path: 'sections',
-      kind: 'protected-by-intent',
-      detail: 'Protected identity/worldview/drive/narrative sections cannot enter NK1 through the memory-only import path: ' + presentProtected.join(', '),
-    });
-  }
-
-  const memories = sections.memories;
-  if (!Array.isArray(memories)) {
-    issues.push({ path: 'sections.memories', kind: 'schema', detail: 'This NK1 import path requires a memories array.' });
-  }
-
-  const refs = new Set<string>();
-  if (Array.isArray(memories)) {
-    memories.forEach((rawMemory, index) => {
-      const row = record(rawMemory);
-      if (!row || typeof row.ref !== 'string') return;
-      if (refs.has(row.ref)) issues.push({ path: 'sections.memories[' + index + '].ref', kind: 'duplicate-ref', detail: 'Memory refs must be unique within an HMX document.' });
-      refs.add(row.ref);
-      if (typeof row.content === 'string' && row.content.length > 12000) {
-        issues.push({ path: 'sections.memories[' + index + '].content', kind: 'record-too-large', detail: 'NK1 imports at most 12000 characters per memory record.' });
-      }
-    });
-    if (memories.length > MAX_STAGED_MEMORIES && !issues.some(issue => issue.path === 'sections.memories' && issue.kind === 'staging-capacity')) {
-      issues.push({ path: 'sections.memories', kind: 'staging-capacity', detail: 'More than 256 memory records require a narrower export.' });
-    }
-  }
-
-  return issues;
-}
-
-export function isHmxV17Intent(value: unknown): value is CanonicalHmxIntent {
-  return value === 'port' || value === 'duplicate' || value === 'telepathy' || value === 'analysis';
-}
-
-export function isSafeHmxV17ExportId(value: string): boolean {
-  return EXPORT_ID_PATTERN.test(value);
-}
-
-export function createNk1HmxExportId(randomHex: string): string {
-  const suffix = String(randomHex).toLowerCase().replace(/[^0-9a-f]/g, '').slice(0, 16);
-  if (suffix.length !== 16) throw new Error('hmx-export-id-requires-16-hex-digits');
-  return 'exp_' + suffix;
-}
-
-
-export interface Nk1HmxMemoryProjection {
-  ref: string;
-  content: string;
-  kind: 'sensory' | 'working' | 'episodic' | 'semantic' | 'procedural' | 'social' | 'dream';
-  confidence: number;
-  salience: number;
-  sourceAuthority01: number;
-  epistemicStatus: 'fact' | 'belief' | 'hypothesis' | 'unknown' | 'quarantined';
-  createdAt?: number;
-  observedAt?: number;
-  validFromAt?: number;
-  validUntilAt?: number | null;
-  tags: string[];
-  context: Record<string, string>;
-  entities: string[];
-  independenceKey: string;
-  evidenceFreshnessAt: number;
-}
-
-function clamp01(value: unknown, fallback: number): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
-}
-
-function dateMs(value: unknown): number | undefined {
-  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return undefined;
-  return Date.parse(value);
-}
-
-function safeContext(value: unknown): Record<string, string> {
-  const input = record(value);
-  const output: Record<string, string> = {};
-  if (!input) return output;
-  for (const [key, item] of Object.entries(input).slice(0, 12)) {
-    if (!(typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')) continue;
-    const safeKey = key.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80);
-    if (!safeKey) continue;
-    output[safeKey] = String(item).normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 300);
-  }
-  return output;
-}
-
-function safeIso(value: unknown, fallback: number): string {
-  const ms = typeof value === 'number' && Number.isFinite(value) ? value : dateMs(value);
-  return new Date(ms ?? fallback).toISOString();
-}
-
-function sha256(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
-}
-
-/** Builds a schema-compatible, memory-only HMX 1.7 exchange. Protected sections and vectors are intentionally omitted. */
-export function buildNk1HmxV17Document(input: {
-  subjectId: string;
-  memories: unknown[];
-  exportedAt?: number;
-}): Record<string, unknown> {
-  const exportedAt = Number.isFinite(input.exportedAt) ? Number(input.exportedAt) : Date.now();
-  const exportId = createNk1HmxExportId(randomUUID());
-  const sourceSubject = String(input.subjectId || 'nk1-local').slice(0, 180);
-  const candidates = input.memories
-    .map(record)
-    .filter((row): row is Record<string, unknown> => Boolean(row))
-    .filter(row => typeof row.content === 'string' && Boolean(String(row.content).trim()) && !row.dormant && row.epistemicStatus !== 'quarantined' && row.protected !== true && row.protectedBelief !== true && !PROTECTED_MEMORY_KINDS.has(String(row.kind ?? '').trim().toLowerCase()) && record(row.metadata)?.protected !== true && record(row.metadata)?.nk1_protected !== true && record(row.metadata)?.protected_belief !== true)
-    .sort((a, b) => Number(b.observedAt ?? b.lastAccessAt ?? b.createdAt ?? 0) - Number(a.observedAt ?? a.lastAccessAt ?? a.createdAt ?? 0));
-  const selected = candidates.slice(0, MAX_STAGED_MEMORIES);
-  let truncatedCount = 0;
-  const memories = selected.map((row, index) => {
-    const id = String(row.id ?? 'row-' + index).slice(0, 240);
-    const kind = nonEmptyString(row.kind) ? row.kind : 'semantic';
-    const rawBody = String(row.content);
-    const body = rawBody.slice(0, 5000);
-    if (body.length !== rawBody.length) truncatedCount += 1;
-    const meta: Record<string, unknown> = {
-      nk1_kind: kind,
-      nk1_confidence: clamp01(row.confidence, 0.55),
-      nk1_salience: clamp01(row.salience, 0.55),
-      nk1_epistemic_status: ['fact', 'belief', 'hypothesis', 'unknown', 'quarantined'].includes(String(row.epistemicStatus))
-        ? String(row.epistemicStatus) : 'belief',
-      entities: Array.isArray(row.entities) ? row.entities.map(String).slice(0, 16) : [],
-      tags: Array.isArray(row.tags) ? row.tags.map(String).slice(0, 32) : [],
-      context: safeContext(row.context),
-      semantic_links: Array.isArray(row.semanticLinks) ? row.semanticLinks.map(String).slice(0, 32) : [],
-      temporal_links: Array.isArray(row.temporalLinks) ? row.temporalLinks.map(String).slice(0, 32) : [],
-      causal_links: Array.isArray(row.causalLinks) ? row.causalLinks.map(String).slice(0, 32) : [],
-      provenance_class: String(row.provenanceClass ?? 'native'),
-    };
-    return {
-      ref: exportId + ':memory:' + encodeURIComponent(id),
-      type: kind,
-      status: String(row.epistemicStatus ?? 'belief'),
-      content: body,
-      content_hash_v1: sha256(body),
-      importance: clamp01(row.salience, 0.55),
-      trust_level: clamp01(row.sourceAuthority01 ?? row.confidence, 0.55),
-      decay_rate: 0,
-      created_at: safeIso(row.createdAt, exportedAt),
-      updated_at: safeIso(row.observedAt ?? row.lastAccessAt ?? row.createdAt, exportedAt),
-      valid_from: row.validFromAt == null ? safeIso(row.createdAt, exportedAt) : safeIso(row.validFromAt, exportedAt),
-      valid_until: row.validUntilAt == null ? null : safeIso(row.validUntilAt, exportedAt),
-      access_count: Math.max(0, Math.floor(Number(row.retrievalCount ?? 0) || 0)),
-      last_accessed: row.lastAccessAt == null ? null : safeIso(row.lastAccessAt, exportedAt),
-      source_attribution: {
-        source: String(row.source ?? 'nk1-memoryos2').slice(0, 240),
-        nk1_memory_id: id,
-        source_authority_01: clamp01(row.sourceAuthority01, 0.55),
-        epistemic_status: String(row.epistemicStatus ?? 'belief'),
-      },
-      metadata: meta,
-      provenance: {
-        acquisition_mode: String(row.source ?? '').startsWith('hexis-hmx-import') ? 'imported_and_accepted' : 'experienced',
-        origin_instance: sourceSubject,
-        origin_id: id,
-        import_chain: [],
-        modification_chain: [],
-      },
-    };
-  });
-  return {
-    hmx_version: '1.7',
-    export_id: exportId,
-    export_intent: 'telepathy',
-    exported_at: new Date(exportedAt).toISOString(),
-    source: {
-      instance_id: 'nk1:' + sourceSubject,
-      schema_version: 'NK1-MemoryOS2-v1',
-      embedding_model: 'NK1-metadata-only-vectors-not-exported',
-      embedding_dimension: 1,
-      hexis_lineage_id: sourceSubject,
-    },
-    capabilities: {
-      formats: ['json'],
-      sections: ['memories'],
-      hash_algorithms: ['sha256'],
-      relationship_edge_types: [],
-      optional_features: [],
-    },
-    privacy: {
-      redaction_policy: 'none',
-      contains_sensitive_content: true,
-      consent_scope: 'unspecified',
-    },
-    export_scope: {
-      types: ['memory'],
-      include_protected: [],
-      include_raw_units: false,
-      include_config: false,
-      include_in_flight_work: false,
-      include_audit_records: false,
-      filter: 'NK1 metadata-only memory exchange; embeddings, protected sections, raw units and active configuration are not exported.',
-    },
-    sections: { memories },
-    statistics: { total_memories: memories.length },
-    export_warnings: [
-      ...(candidates.length > memories.length ? ['Export is bounded to the newest ' + String(MAX_STAGED_MEMORIES) + ' eligible memories; ' + String(candidates.length - memories.length) + ' records were not included.'] : []),
-      ...(truncatedCount > 0 ? [String(truncatedCount) + ' memory records were truncated to 5000 characters to keep the exchange bounded.'] : []),
-    ],
-  };
-}
-
-/** Normalizes one validated HMX memory without trusting upstream metadata to set NK1 identity or confidence above bounds. */
-export function normalizeHmxV17Memory(
-  raw: unknown,
-  input: { exportId: string; sourceSubjectId?: string; exportedAt?: string },
-): Nk1HmxMemoryProjection | null {
-  const row = record(raw);
-  if (!row || typeof row.content !== 'string' || !row.content.trim() || typeof row.ref !== 'string') return null;
-  const metadata = record(row.metadata) ?? {};
-  const source = record(row.source_attribution) ?? {};
-  const validKinds = new Set(['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream']);
-  const rawKind = String(metadata.nk1_kind ?? row.type ?? 'semantic').trim().toLowerCase();
-  const kind = (validKinds.has(rawKind) ? rawKind : 'semantic') as Nk1HmxMemoryProjection['kind'];
-  const validStatus = new Set(['fact', 'belief', 'hypothesis', 'unknown', 'quarantined']);
-  const rawStatus = String(metadata.nk1_epistemic_status ?? 'belief').trim().toLowerCase();
-  const proposedStatus = validStatus.has(rawStatus) ? rawStatus : 'belief';
-  // An external export cannot promote its own rows to verified fact by setting NK1-specific metadata.
-  const epistemicStatus = (proposedStatus === 'quarantined' ? 'quarantined'
-    : proposedStatus === 'unknown' ? 'unknown'
-      : proposedStatus === 'hypothesis' ? 'hypothesis' : 'belief') as Nk1HmxMemoryProjection['epistemicStatus'];
-  // Self-reported HMX trust is metadata, not independent evidence. Imported records stay low-authority.
-  const trust = Math.min(0.55, clamp01(row.trust_level ?? source.source_authority_01, 0.55));
-  const confidence = Math.min(0.55, clamp01(metadata.nk1_confidence ?? row.trust_level, 0.55));
-  const salience = clamp01(metadata.nk1_salience ?? row.importance, 0.55);
-  const createdAt = dateMs(row.created_at);
-  const observedAt = dateMs(row.updated_at) ?? createdAt ?? dateMs(input.exportedAt) ?? Date.now();
-  const validFromAt = dateMs(row.valid_from) ?? createdAt ?? observedAt;
-  const validUntilAt = row.valid_until == null ? null : dateMs(row.valid_until) ?? null;
-  const tags = Array.isArray(metadata.tags) ? metadata.tags.map(String).map(x => x.slice(0, 80)).slice(0, 24) : ['hexis', 'hmx'];
-  const contextRecord = record(metadata.context);
-  const context: Record<string, string> = {};
-  if (contextRecord) {
-    for (const [key, value] of Object.entries(contextRecord).slice(0, 12)) {
-      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        context[String(key).slice(0, 80)] = String(value).slice(0, 300);
-      }
-    }
-  }
-  const entities = Array.isArray(metadata.entities) ? metadata.entities.map(String).map(x => x.slice(0, 120)).slice(0, 12) : [];
-  return {
-    ref: row.ref,
-    content: row.content.slice(0, 12000),
-    kind,
-    confidence,
-    salience,
-    sourceAuthority01: trust,
-    epistemicStatus,
-    ...(createdAt !== undefined ? { createdAt } : {}),
-    observedAt,
-    validFromAt,
-    validUntilAt,
-    tags,
-    context,
-    entities,
-    independenceKey: 'hexis:' + String(input.sourceSubjectId ?? input.exportId).slice(0, 180),
-    evidenceFreshnessAt: observedAt,
-  };
-}
-,
-        kind: 'unsafe-input',
-        detail: 'HMX input must be a bounded plain JSON tree with own data properties only.',
-      },
-    };
-  }
-}
-
-function record(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
-}
-
-function nonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-function isDateTime(value: unknown): boolean {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return false;
-  return Number.isFinite(Date.parse(value));
-}
-
-function describeSection(section: string, value: unknown, exportId: string, issues: HmxValidationIssue[]): void {
-  const path = 'sections.' + section;
-  if (!KNOWN_SECTIONS.has(section)) {
-    issues.push({ path, kind: 'unsupported-section', detail: 'NK1 does not recognize this HMX section; refusing a lossy import.' });
-    return;
-  }
-  if (ARRAY_SECTIONS.has(section) && !Array.isArray(value)) {
-    issues.push({ path, kind: 'schema', detail: 'This HMX 1.7 section must be an array.' });
-    return;
-  }
-  if (OBJECT_SECTIONS.has(section) && !record(value)) {
-    issues.push({ path, kind: 'schema', detail: 'This HMX 1.7 section must be an object.' });
-    return;
-  }
-  if (Array.isArray(value)) {
-    if (value.length > MAX_STAGED_MEMORIES) {
-      issues.push({ path, kind: 'staging-capacity', detail: 'Section exceeds the 256-record bounded staging capacity.' });
-    }
-    value.slice(0, MAX_STAGED_MEMORIES).forEach((raw, index) => {
-      const row = record(raw);
-      if (!row) {
-        issues.push({ path: path + '[' + index + ']', kind: 'schema', detail: 'Section entries must be objects.' });
-        return;
-      }
-      if (section === 'memories') {
-        if (!nonEmptyString(row.ref) || !REF_PATTERN.test(row.ref) || !row.ref.startsWith(exportId + ':')) {
-          issues.push({ path: path + '[' + index + '].ref', kind: 'schema', detail: 'Memory refs must be unique export-scoped HMX references for this document.' });
-        }
-        if (!nonEmptyString(row.type)) {
-          issues.push({ path: path + '[' + index + '].type', kind: 'schema', detail: 'Memory records require a type string.' });
-        }
-        if (typeof row.content !== 'string' || !row.content.trim()) {
-          issues.push({ path: path + '[' + index + '].content', kind: 'schema', detail: 'Memory records require non-empty content to be imported.' });
-        }
-        const metadata = record(row.metadata) ?? {};
-        const declaredKind = String(metadata.nk1_kind ?? row.type ?? '').trim().toLowerCase();
-        if (PROTECTED_MEMORY_KINDS.has(declaredKind) ||
-            row.protected === true || row.protectedBelief === true ||
-            metadata.protected === true || metadata.nk1_protected === true ||
-            metadata.protected_belief === true) {
-          issues.push({ path: path + '[' + index + ']', kind: 'protected-memory-record', detail: 'Protected identity/personality/worldview/drive records cannot be imported through the memory-only exchange.' });
-        }
-        for (const dateField of ['created_at', 'updated_at', 'valid_from', 'last_accessed']) {
-          if (row[dateField] != null && !isDateTime(row[dateField])) {
-            issues.push({ path: path + '[' + index + '].' + dateField, kind: 'schema', detail: 'Optional memory timestamps must be valid ISO date-times.' });
-          }
-        }
-        if (row.valid_until != null && !isDateTime(row.valid_until)) {
-          issues.push({ path: path + '[' + index + '].valid_until', kind: 'schema', detail: 'valid_until must be null or a valid ISO date-time.' });
-        }
-        if (row.content_hash_v1 != null) {
-          if (typeof row.content_hash_v1 !== 'string' || !/^[0-9a-f]{64}$/.test(row.content_hash_v1)) {
-            issues.push({ path: path + '[' + index + '].content_hash_v1', kind: 'schema', detail: 'content_hash_v1 must be a lowercase SHA-256 hash when supplied.' });
-          } else if (typeof row.content === 'string' && sha256(row.content) !== row.content_hash_v1) {
-            issues.push({ path: path + '[' + index + '].content_hash_v1', kind: 'integrity', detail: 'Memory content does not match its supplied SHA-256 hash.' });
-          }
-        }
-        if (row.access_count != null && (!Number.isSafeInteger(row.access_count) || Number(row.access_count) < 0)) {
-          issues.push({ path: path + '[' + index + '].access_count', kind: 'schema', detail: 'access_count must be a non-negative integer.' });
-        }
-      }
-      if (!MEMORY_IMPORT_SECTIONS.has(section)) {
-        issues.push({
-          path: path + '[' + index + ']',
-          kind: 'unsupported-import-section',
-          detail: 'This section is recognized by HMX 1.7 but is not yet mapped to canonical NK1 memory; import is blocked rather than silently dropping it.',
-        });
-      }
-    });
-  } else {
-    const objectValue = record(value);
-    if (objectValue && Object.keys(objectValue).length > 0 && !MEMORY_IMPORT_SECTIONS.has(section)) {
-      issues.push({
-        path,
-        kind: 'unsupported-import-section',
-        detail: 'This section is recognized by HMX 1.7 but is not yet mapped to canonical NK1 memory; import is blocked rather than silently dropping it.',
-      });
-    }
-  }
-}
-
-export function validateHmxV17Document(
-  raw: unknown,
-  requestedIntent?: CanonicalHmxIntent,
-): HmxValidationIssue[] {
-  const issues: HmxValidationIssue[] = [];
-  let serialized: string;
-  try {
-    serialized = JSON.stringify(raw);
-  } catch {
-    return [{ path: '$', kind: 'schema', detail: 'HMX document must be serializable JSON.' }];
-  }
-  if (typeof serialized !== 'string') {
-    return [{ path: '$', kind: 'schema', detail: 'HMX document must be serializable JSON.' }];
-  }
-  if (new TextEncoder().encode(serialized).byteLength > MAX_DOCUMENT_BYTES) {
-    return [{ path: '$', kind: 'document-too-large', detail: 'HMX document exceeds NK1’s 2 MiB staging limit.' }];
-  }
-
-  const document = record(raw);
-  if (!document) return [{ path: '$', kind: 'schema', detail: 'HMX document must be a JSON object.' }];
-
-  if (document.hmx_version !== '1.7') {
-    issues.push({ path: 'hmx_version', kind: 'unsupported-version', detail: 'NK1 validates the upstream HMX 1.7 contract only.' });
-  }
-  const exportId = typeof document.export_id === 'string' ? document.export_id : '';
-  if (!EXPORT_ID_PATTERN.test(exportId)) {
-    issues.push({ path: 'export_id', kind: 'schema', detail: 'HMX export_id must match exp_ followed by 16 lowercase hex characters.' });
-  }
-  const documentIntent = document.export_intent;
-  if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(String(documentIntent))) {
-    issues.push({ path: 'export_intent', kind: 'schema', detail: 'HMX 1.7 requires an explicit valid export_intent.' });
-  } else if (requestedIntent && documentIntent !== requestedIntent) {
-    issues.push({ path: 'export_intent', kind: 'intent-mismatch', detail: 'The chosen NK1 import intent must match the source document intent; reclassification is not allowed.' });
-  }
-  if (!isDateTime(document.exported_at)) {
-    issues.push({ path: 'exported_at', kind: 'schema', detail: 'HMX exported_at must be a valid ISO date-time.' });
-  }
-
-  const source = record(document.source);
-  if (!source) {
-    issues.push({ path: 'source', kind: 'schema', detail: 'HMX 1.7 requires a source metadata object.' });
-  } else {
-    for (const key of ['instance_id', 'schema_version', 'embedding_model', 'hexis_lineage_id']) {
-      if (!nonEmptyString(source[key])) {
-        issues.push({ path: 'source.' + key, kind: 'schema', detail: 'Required source metadata must be a non-empty string.' });
-      }
-    }
-    if (!Number.isSafeInteger(source.embedding_dimension) || Number(source.embedding_dimension) < 1) {
-      issues.push({ path: 'source.embedding_dimension', kind: 'schema', detail: 'HMX source embedding_dimension must be a positive integer.' });
-    }
-  }
-
-  const sections = record(document.sections);
-  if (!sections || Object.keys(sections).length === 0) {
-    issues.push({ path: 'sections', kind: 'schema', detail: 'HMX sections must be a non-empty object.' });
-    return issues;
-  }
-
-  for (const [name, value] of Object.entries(sections)) describeSection(name, value, exportId, issues);
-
-  const intent = String(documentIntent);
-  const presentProtected = Object.keys(sections).filter(name => PROTECTED_SECTIONS.has(name) &&
-    (Array.isArray(sections[name]) ? (sections[name] as unknown[]).length > 0 :
-      Boolean(record(sections[name]) && Object.keys(record(sections[name])!).length)));
-  if (presentProtected.length && ['telepathy', 'analysis', 'port'].includes(intent)) {
-    issues.push({
-      path: 'sections',
-      kind: 'protected-by-intent',
-      detail: 'Protected identity/worldview/drive/narrative sections cannot enter NK1 through the memory-only import path: ' + presentProtected.join(', '),
-    });
-  }
-
-  const memories = sections.memories;
-  if (!Array.isArray(memories)) {
-    issues.push({ path: 'sections.memories', kind: 'schema', detail: 'This NK1 import path requires a memories array.' });
-  }
-
-  const refs = new Set<string>();
-  if (Array.isArray(memories)) {
-    memories.forEach((rawMemory, index) => {
-      const row = record(rawMemory);
-      if (!row || typeof row.ref !== 'string') return;
-      if (refs.has(row.ref)) issues.push({ path: 'sections.memories[' + index + '].ref', kind: 'duplicate-ref', detail: 'Memory refs must be unique within an HMX document.' });
-      refs.add(row.ref);
-      if (typeof row.content === 'string' && row.content.length > 12000) {
-        issues.push({ path: 'sections.memories[' + index + '].content', kind: 'record-too-large', detail: 'NK1 imports at most 12000 characters per memory record.' });
-      }
-    });
-    if (memories.length > MAX_STAGED_MEMORIES && !issues.some(issue => issue.path === 'sections.memories' && issue.kind === 'staging-capacity')) {
-      issues.push({ path: 'sections.memories', kind: 'staging-capacity', detail: 'More than 256 memory records require a narrower export.' });
-    }
-  }
-
-  return issues;
-}
-
-export function isHmxV17Intent(value: unknown): value is CanonicalHmxIntent {
-  return value === 'port' || value === 'duplicate' || value === 'telepathy' || value === 'analysis';
-}
-
-export function isSafeHmxV17ExportId(value: string): boolean {
-  return EXPORT_ID_PATTERN.test(value);
-}
-
-export function createNk1HmxExportId(randomHex: string): string {
-  const suffix = String(randomHex).toLowerCase().replace(/[^0-9a-f]/g, '').slice(0, 16);
-  if (suffix.length !== 16) throw new Error('hmx-export-id-requires-16-hex-digits');
-  return 'exp_' + suffix;
-}
-
-
-export interface Nk1HmxMemoryProjection {
-  ref: string;
-  content: string;
-  kind: 'sensory' | 'working' | 'episodic' | 'semantic' | 'procedural' | 'social' | 'dream';
-  confidence: number;
-  salience: number;
-  sourceAuthority01: number;
-  epistemicStatus: 'fact' | 'belief' | 'hypothesis' | 'unknown' | 'quarantined';
-  createdAt?: number;
-  observedAt?: number;
-  validFromAt?: number;
-  validUntilAt?: number | null;
-  tags: string[];
-  context: Record<string, string>;
-  entities: string[];
-  independenceKey: string;
-  evidenceFreshnessAt: number;
-}
-
-function clamp01(value: unknown, fallback: number): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
-}
-
-function dateMs(value: unknown): number | undefined {
-  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return undefined;
-  return Date.parse(value);
-}
-
-function safeContext(value: unknown): Record<string, string> {
-  const input = record(value);
-  const output: Record<string, string> = {};
-  if (!input) return output;
-  for (const [key, item] of Object.entries(input).slice(0, 12)) {
-    if (!(typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')) continue;
-    const safeKey = key.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80);
-    if (!safeKey) continue;
-    output[safeKey] = String(item).normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 300);
-  }
-  return output;
-}
-
-function safeIso(value: unknown, fallback: number): string {
-  const ms = typeof value === 'number' && Number.isFinite(value) ? value : dateMs(value);
-  return new Date(ms ?? fallback).toISOString();
-}
-
-function sha256(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
-}
-
-/** Builds a schema-compatible, memory-only HMX 1.7 exchange. Protected sections and vectors are intentionally omitted. */
-export function buildNk1HmxV17Document(input: {
-  subjectId: string;
-  memories: unknown[];
-  exportedAt?: number;
-}): Record<string, unknown> {
-  const exportedAt = Number.isFinite(input.exportedAt) ? Number(input.exportedAt) : Date.now();
-  const exportId = createNk1HmxExportId(randomUUID());
-  const sourceSubject = String(input.subjectId || 'nk1-local').slice(0, 180);
-  const candidates = input.memories
-    .map(record)
-    .filter((row): row is Record<string, unknown> => Boolean(row))
-    .filter(row => typeof row.content === 'string' && Boolean(String(row.content).trim()) && !row.dormant && row.epistemicStatus !== 'quarantined' && row.protected !== true && row.protectedBelief !== true && !PROTECTED_MEMORY_KINDS.has(String(row.kind ?? '').trim().toLowerCase()) && record(row.metadata)?.protected !== true && record(row.metadata)?.nk1_protected !== true && record(row.metadata)?.protected_belief !== true)
-    .sort((a, b) => Number(b.observedAt ?? b.lastAccessAt ?? b.createdAt ?? 0) - Number(a.observedAt ?? a.lastAccessAt ?? a.createdAt ?? 0));
-  const selected = candidates.slice(0, MAX_STAGED_MEMORIES);
-  let truncatedCount = 0;
-  const memories = selected.map((row, index) => {
-    const id = String(row.id ?? 'row-' + index).slice(0, 240);
-    const kind = nonEmptyString(row.kind) ? row.kind : 'semantic';
-    const rawBody = String(row.content);
-    const body = rawBody.slice(0, 5000);
-    if (body.length !== rawBody.length) truncatedCount += 1;
-    const meta: Record<string, unknown> = {
-      nk1_kind: kind,
-      nk1_confidence: clamp01(row.confidence, 0.55),
-      nk1_salience: clamp01(row.salience, 0.55),
-      nk1_epistemic_status: ['fact', 'belief', 'hypothesis', 'unknown', 'quarantined'].includes(String(row.epistemicStatus))
-        ? String(row.epistemicStatus) : 'belief',
-      entities: Array.isArray(row.entities) ? row.entities.map(String).slice(0, 16) : [],
-      tags: Array.isArray(row.tags) ? row.tags.map(String).slice(0, 32) : [],
-      context: safeContext(row.context),
-      semantic_links: Array.isArray(row.semanticLinks) ? row.semanticLinks.map(String).slice(0, 32) : [],
-      temporal_links: Array.isArray(row.temporalLinks) ? row.temporalLinks.map(String).slice(0, 32) : [],
-      causal_links: Array.isArray(row.causalLinks) ? row.causalLinks.map(String).slice(0, 32) : [],
-      provenance_class: String(row.provenanceClass ?? 'native'),
-    };
-    return {
-      ref: exportId + ':memory:' + encodeURIComponent(id),
-      type: kind,
-      status: String(row.epistemicStatus ?? 'belief'),
-      content: body,
-      content_hash_v1: sha256(body),
-      importance: clamp01(row.salience, 0.55),
-      trust_level: clamp01(row.sourceAuthority01 ?? row.confidence, 0.55),
-      decay_rate: 0,
-      created_at: safeIso(row.createdAt, exportedAt),
-      updated_at: safeIso(row.observedAt ?? row.lastAccessAt ?? row.createdAt, exportedAt),
-      valid_from: row.validFromAt == null ? safeIso(row.createdAt, exportedAt) : safeIso(row.validFromAt, exportedAt),
-      valid_until: row.validUntilAt == null ? null : safeIso(row.validUntilAt, exportedAt),
-      access_count: Math.max(0, Math.floor(Number(row.retrievalCount ?? 0) || 0)),
-      last_accessed: row.lastAccessAt == null ? null : safeIso(row.lastAccessAt, exportedAt),
-      source_attribution: {
-        source: String(row.source ?? 'nk1-memoryos2').slice(0, 240),
-        nk1_memory_id: id,
-        source_authority_01: clamp01(row.sourceAuthority01, 0.55),
-        epistemic_status: String(row.epistemicStatus ?? 'belief'),
-      },
-      metadata: meta,
-      provenance: {
-        acquisition_mode: String(row.source ?? '').startsWith('hexis-hmx-import') ? 'imported_and_accepted' : 'experienced',
-        origin_instance: sourceSubject,
-        origin_id: id,
-        import_chain: [],
-        modification_chain: [],
-      },
-    };
-  });
-  return {
-    hmx_version: '1.7',
-    export_id: exportId,
-    export_intent: 'telepathy',
-    exported_at: new Date(exportedAt).toISOString(),
-    source: {
-      instance_id: 'nk1:' + sourceSubject,
-      schema_version: 'NK1-MemoryOS2-v1',
-      embedding_model: 'NK1-metadata-only-vectors-not-exported',
-      embedding_dimension: 1,
-      hexis_lineage_id: sourceSubject,
-    },
-    capabilities: {
-      formats: ['json'],
-      sections: ['memories'],
-      hash_algorithms: ['sha256'],
-      relationship_edge_types: [],
-      optional_features: [],
-    },
-    privacy: {
-      redaction_policy: 'none',
-      contains_sensitive_content: true,
-      consent_scope: 'unspecified',
-    },
-    export_scope: {
-      types: ['memory'],
-      include_protected: [],
-      include_raw_units: false,
-      include_config: false,
-      include_in_flight_work: false,
-      include_audit_records: false,
-      filter: 'NK1 metadata-only memory exchange; embeddings, protected sections, raw units and active configuration are not exported.',
-    },
-    sections: { memories },
-    statistics: { total_memories: memories.length },
-    export_warnings: [
-      ...(candidates.length > memories.length ? ['Export is bounded to the newest ' + String(MAX_STAGED_MEMORIES) + ' eligible memories; ' + String(candidates.length - memories.length) + ' records were not included.'] : []),
-      ...(truncatedCount > 0 ? [String(truncatedCount) + ' memory records were truncated to 5000 characters to keep the exchange bounded.'] : []),
-    ],
-  };
-}
-
-/** Normalizes one validated HMX memory without trusting upstream metadata to set NK1 identity or confidence above bounds. */
-export function normalizeHmxV17Memory(
-  raw: unknown,
-  input: { exportId: string; sourceSubjectId?: string; exportedAt?: string },
-): Nk1HmxMemoryProjection | null {
-  const row = record(raw);
-  if (!row || typeof row.content !== 'string' || !row.content.trim() || typeof row.ref !== 'string') return null;
-  const metadata = record(row.metadata) ?? {};
-  const source = record(row.source_attribution) ?? {};
-  const validKinds = new Set(['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream']);
-  const rawKind = String(metadata.nk1_kind ?? row.type ?? 'semantic').trim().toLowerCase();
-  const kind = (validKinds.has(rawKind) ? rawKind : 'semantic') as Nk1HmxMemoryProjection['kind'];
-  const validStatus = new Set(['fact', 'belief', 'hypothesis', 'unknown', 'quarantined']);
-  const rawStatus = String(metadata.nk1_epistemic_status ?? 'belief').trim().toLowerCase();
-  const proposedStatus = validStatus.has(rawStatus) ? rawStatus : 'belief';
-  // An external export cannot promote its own rows to verified fact by setting NK1-specific metadata.
-  const epistemicStatus = (proposedStatus === 'quarantined' ? 'quarantined'
-    : proposedStatus === 'unknown' ? 'unknown'
-      : proposedStatus === 'hypothesis' ? 'hypothesis' : 'belief') as Nk1HmxMemoryProjection['epistemicStatus'];
-  // Self-reported HMX trust is metadata, not independent evidence. Imported records stay low-authority.
-  const trust = Math.min(0.55, clamp01(row.trust_level ?? source.source_authority_01, 0.55));
-  const confidence = Math.min(0.55, clamp01(metadata.nk1_confidence ?? row.trust_level, 0.55));
-  const salience = clamp01(metadata.nk1_salience ?? row.importance, 0.55);
-  const createdAt = dateMs(row.created_at);
-  const observedAt = dateMs(row.updated_at) ?? createdAt ?? dateMs(input.exportedAt) ?? Date.now();
-  const validFromAt = dateMs(row.valid_from) ?? createdAt ?? observedAt;
-  const validUntilAt = row.valid_until == null ? null : dateMs(row.valid_until) ?? null;
-  const tags = Array.isArray(metadata.tags) ? metadata.tags.map(String).map(x => x.slice(0, 80)).slice(0, 24) : ['hexis', 'hmx'];
-  const contextRecord = record(metadata.context);
-  const context: Record<string, string> = {};
-  if (contextRecord) {
-    for (const [key, value] of Object.entries(contextRecord).slice(0, 12)) {
-      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        context[String(key).slice(0, 80)] = String(value).slice(0, 300);
-      }
-    }
-  }
-  const entities = Array.isArray(metadata.entities) ? metadata.entities.map(String).map(x => x.slice(0, 120)).slice(0, 12) : [];
-  return {
-    ref: row.ref,
-    content: row.content.slice(0, 12000),
+    content: row.content.slice(0, MAX_MEMORY_CHARS),
     kind,
     confidence,
     salience,
