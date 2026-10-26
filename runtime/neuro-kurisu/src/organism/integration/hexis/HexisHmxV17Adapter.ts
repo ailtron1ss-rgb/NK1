@@ -99,12 +99,15 @@ function describeSection(section: string, value: unknown, exportId: string, issu
         });
       }
     });
-  } else if (record(value) && Object.keys(value).length > 0 && !MEMORY_IMPORT_SECTIONS.has(section)) {
-    issues.push({
-      path,
-      kind: 'unsupported-import-section',
-      detail: 'This section is recognized by HMX 1.7 but is not yet mapped to canonical NK1 memory; import is blocked rather than silently dropping it.',
-    });
+  } else {
+    const objectValue = record(value);
+    if (objectValue && Object.keys(objectValue).length > 0 && !MEMORY_IMPORT_SECTIONS.has(section)) {
+      issues.push({
+        path,
+        kind: 'unsupported-import-section',
+        detail: 'This section is recognized by HMX 1.7 but is not yet mapped to canonical NK1 memory; import is blocked rather than silently dropping it.',
+      });
+    }
   }
 }
 
