@@ -4,7 +4,7 @@
 - **FIXED:** receipt replay compares both hashes against the submitted receipt even when the bounded projection index is absent or has been lost during restore.
 - **REGRESSION:** added an indexless restore scenario proving a changed-but-nonempty postcondition conflicts before new events are appended, while an exact receipt replay remains idempotent.
 - **CI finding and fix:** the first exact-head integration run exposed a double-escaped event-ID control-character regex that rejected ordinary IDs containing digits. The guard now uses the actual control-character range, with a direct regression for control characters.
-- **Additional validation:** invalid tick/timestamp, non-finite capacity, array-index getter, overridden Date method, depth/array/key limits and recovery past malformed persisted payload are covered by regressions.
+- **Additional validation:** invalid tick/timestamp, non-finite capacity, array-index getter, overridden Date method, depth/array/key/node limits and recovery from a malformed row followed by a valid row with the same ID are covered by regressions.
 - **VALIDATION:** fresh exact-head CI is required after these fixes; earlier failures are retained as regression evidence, not hidden.
 
 ---
