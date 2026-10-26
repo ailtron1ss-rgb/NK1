@@ -90,21 +90,24 @@ for (let i=0;i<2;i++) for (const [method,passed] of [['baseline',false],['candid
   tinyObservations.push({taskId:'tiny-'+i,family:'memory',split:'holdout',method,seed:1,attempt:1,passed,
     authority:'independent-verifier',verifierId:'v',expectedVerifierId:'v',evidenceRef:'e-'+i+'-'+method});
 }
-const nanThreshold = evaluateSkillRevision(tinyObservations,'baseline','candidate',{minPairedTasks:Number.NaN});
-assert.equal(nanThreshold.accepted,false);
-assert.equal(nanThreshold.reason,'insufficient-independent-heldout-pairs');
+assert.throws(
+  () => evaluateSkillRevision(tinyObservations,'baseline','candidate',{minPairedTasks:Number.NaN}),
+  /minPairedTasks must be an integer from 2 to 10000/,
+  'non-finite minimum pair count is rejected explicitly rather than silently defaulted',
+);
 
 const smallGainObservations = [];
 for (let i=0;i<100;i++) for (const [method,passed] of [['baseline',false],['candidate',i===0]]) {
   smallGainObservations.push({taskId:'fraction-'+i,family:'general',split:'holdout',method,seed:1,attempt:1,passed,
     authority:'independent-verifier',verifierId:'v',expectedVerifierId:'v',evidenceRef:'fraction-'+i+'-'+method});
 }
-const nanGainThreshold = evaluateSkillRevision(smallGainObservations,'baseline','candidate',{
-  minPairedTasks:8,minAbsoluteGain:Number.NaN,
-});
-assert.equal(nanGainThreshold.accepted,false);
-assert.equal(nanGainThreshold.reason,'no-material-heldout-improvement',
-  'NaN must use the conservative 0.02 default, not silently reduce the minimum gain to zero');
+assert.throws(
+  () => evaluateSkillRevision(smallGainObservations,'baseline','candidate',{
+    minPairedTasks:8,minAbsoluteGain:Number.NaN,
+  }),
+  /minAbsoluteGain must be a finite number from 0 to 1/,
+  'non-finite gain threshold is rejected explicitly and cannot change the effective gate',
+);
 
 // Authenticated but incomplete paired-seed coverage remains blocked for coverage, not provenance.
 const incomplete = new VerifiedOutcomeLedger(manifest);
