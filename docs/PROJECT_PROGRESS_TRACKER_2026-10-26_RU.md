@@ -1,3 +1,21 @@
+## WorkPass354b — future-proof evidence-head regression (2026-10-26)
+
+- Regression coverage changes `sourceHeadAtSnapshot` to a different valid SHA and confirms historical CI rows remain valid when they match `ciSnapshot.evidenceHead`; the test no longer assumes the fixture always has different source/evidence values.
+- Previous PR head `e2c0b9464ccf46c9bc31c36602e24d05bab7e5df` passed its ledger, WorkPass110 and Unified integration workflows, but that was before the base gained additional strict CognitiveEventFabric append-ingress validation.
+- Current code/test checkpoint `bbe37bc81c86fb71ed4516020d7f1116f11ba773` is rebased on the new runtime baseline; fresh exact-head CI is required before claiming validation. Scores unchanged.
+
+---
+
+## WorkPass354 — separate source and validated CI evidence heads (2026-10-26)
+
+- **Working PR:** [#182 — separate source and validated CI evidence heads](https://github.com/ailtron1ss-rgb/NK1/pull/182).
+- **Root cause:** Unified integration suite [#40282049399](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282049399) stopped at `test:progress-ledger`: 13 historical successful CI rows all pointed to `621864d0d7f2676245383adab86f1dcc6d0f741f`, but validation required every row to match the newer source checkpoint.
+- **Fix:** `ciSnapshot.evidenceHead` records the exact SHA represented by the historical CI rows. The validator compares each row against this explicit evidence head instead of `sourceHeadAtSnapshot`. Historical tested SHAs/outcomes are preserved and not relabeled as current-head passes.
+- **Regression coverage:** current source checkpoint independent of evidence head, invalid evidence head, per-row tested SHA mismatch and invalid run URL.
+- **Current base:** payload-envelope hardening and strict append-ingress validation at `18afd253dcd7413c02136537ea1acc10b7764768` are preserved. The combined code/test checkpoint `bbe37bc81c86fb71ed4516020d7f1116f11ba773` requires fresh exact-head CI; no readiness percentages were increased.
+
+---
+
 # NK1 — общая панель инженерного прогресса (2026-10-26)
 
 **Источник:** `ailtron1ss-rgb/NK1`, combined source branch `fix/mega-cognitive-progress-tracking-2026-10-26-r3`. Точный проверенный code/test head: `621864d0d7f2676245383adab86f1dcc6d0f741f`, merged into the source branch as `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. На HEAD 621864d0d7f2676245383adab86f1dcc6d0f741f успешно прошли Unified project integration suite [#40257525157](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525157), WorkPass110 [#40257525071](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525071), WorkPass108 [#40257525093](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525093), P26 Learning Validation [#40257525095](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525095), progress-ledger integrity [#40257525008](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525008), plus outcome-ledger, replay, cognitive-contract, verified-experience, reflection and postcondition suites.
