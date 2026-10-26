@@ -830,11 +830,13 @@ async function route(req, res) {
                     trust01: input.evidence?.trust01 === undefined ? undefined : Number(input.evidence.trust01),
                     note: input.evidence?.note ? String(input.evidence.note) : undefined,
                 };
+                const stance = String(input.stance ?? '');
+                if (!['supports', 'contradicts'].includes(stance)) return json(res, 400, { ok: false, error: 'invalid-hexis-belief-stance' });
                 const result = runtime.core.hexisReviseBelief({
                     memoryId: String(input.memoryId || ''),
                     confidence01: Number(input.confidence01),
                     trust01: input.trust01 === undefined ? undefined : Number(input.trust01),
-                    stance: input.stance === 'contradicts' ? 'contradicts' : 'supports',
+                    stance,
                     evidence,
                     context: input.context ? String(input.context) : undefined,
                     protectedBelief: Boolean(input.protectedBelief),
