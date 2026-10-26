@@ -1,3 +1,10 @@
+## WorkPass372 — update feedback attribution test boundary for canonical B273 routing (2026-10-26)
+
+- The exact-head CI run failed before B273 execution because the B272 attribution test still used the old `b273Current = ...current()` line as its section delimiter. WorkPass369 intentionally replaced that presentation read with `b273Learner` plus a canonical snapshot; the old delimiter no longer exists.
+- Updated only the test boundary marker to the new canonical learner declaration. The regression still checks that B272 reserves the correct feedback path before its first mutation, and the separate B273 assertions check snapshot/tick/plan authority. No runtime validation was weakened.
+
+---
+
 ## WorkPass371 — verify installer and cognitive runtime on the same exact HEAD (2026-10-26)
 
 - **CI wiring:** the unified substrate workflow now also triggers for changes to the root Node pin, installer contract, installer test and root manifest. Its first regression step runs `npm run test:super-install` under Node 24 before the cognitive-cycle suite.
