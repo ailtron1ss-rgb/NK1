@@ -1,3 +1,13 @@
+## [NK1][Hexis] WorkPass398 — connect learning review decisions to canonical memory lifecycle (2026-10-26)
+
+- [INTEGRATION] Added `OrganismSystemFabric.decideHexisLearningReview()` as the explicit adapter between Hexis review decisions and NK1 MemoryOS2/MemoryFabric.
+- [APPROVE] Existing memories receive review provenance only; confidence is not increased merely because a proposal was approved.
+- [CORRECT] Existing memories use the revision-chain API with preserved confidence/source; new proposals become semantic/procedural hypotheses with conservative confidence 0.42 and are not activated as skills.
+- [FORGET] Existing content is reversibly quarantined, while identity/autobiographical/quarantined memories are protected from this path. No hard deletion is performed.
+- [REPLAY/ATOMICITY] Canonical memory command IDs are stable per review item/decision; snapshots of MemoryOS2, MemoryFabric receipts, EventLog and Hexis review state are restored on failure. The review item records the resulting canonical memory/revision ID.
+- [TEST] Added integration coverage for approve/no-confidence-boost, revision correction, conservative procedure candidate, quarantine/protected memory, idempotent replay, and cross-store rollback.
+- [VALIDATION] Source and integration tests committed to the draft PR branch; hosted Actions currently do not provide executable test steps/logs, so execution remains unverified.
+
 ## [NK1][Hexis] WorkPass397 — keep agency guardrail regression within initialized fixture scope (2026-10-26)
 
 - [TEST FIX] Moved the direct control-character rejection assertion after the goal-pipeline fixture is initialized, removing a temporal-dead-zone ReferenceError in the test itself.
