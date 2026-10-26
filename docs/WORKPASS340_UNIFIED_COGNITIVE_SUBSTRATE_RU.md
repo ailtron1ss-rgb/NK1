@@ -54,4 +54,7 @@ The first attempt on the older branch found two TypeScript contract issues. Both
 **No progress-score uplift:** tracked lane scores and historical CI rows remain anchored to their prior tested code SHA. WorkPass340 itself is marked pending until exact-head typecheck and the wired regression/smoke suite pass.
 
 
-**Fresh-base code/test checkpoint:** `70063d80d20133afde4e09c7e971e55a6e71f736`. Exact-head CI remains pending.
+**Fresh-base code/test checkpoint:** `5cf4b900be66b2daa9146da074c89096cdcd00ce`. Exact-head CI remains pending.
+
+
+Periodic sidecar writes are wired on meaningful substrate changes and every 16 Core ticks, while the orderly-stop path performs a final flush. The latest runtime wiring commit is `5cf4b900be66b2daa9146da074c89096cdcd00ce`.
