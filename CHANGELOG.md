@@ -1,3 +1,9 @@
+## NK1 WorkPass110 external outcome restore expectation (2026-10-26)
+
+- [FIX] Align the causal-stream restore regression with the trust boundary: restoring external-only evidence must not count it as trusted runtime outcomes.
+- [VALIDATION] This corrects a stale assertion observed before the workflow's later checks; exact-head rerun is still required.
+- [SCOPE] No production learning behavior is relaxed; main and the canonical Release ZIP remain unchanged.
+
 - [BLOCKER FIX] Correct the over-escaped control-character regex in `OutcomeVerificationService`; it prevented the organism core from loading in Node 24 before the Hexis path could execute.
 ## NK1 Hexis canonical HMX apply (2026-10-26)
 
