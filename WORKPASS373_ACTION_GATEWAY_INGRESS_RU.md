@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** workpass373-action-gateway-ingress  
 **База:** WorkPass372 head `83645a237e47e95668c9bab44c6743b9e9411345`  
-**Статус:** код и регрессии добавлены; exact-head CI ожидает проверки.
+**Статус:** код и регрессии добавлены; исправлено связывание awaited result в detached-input test. Exact-head CI ожидается.
 
 ## Найденный пробел
 
