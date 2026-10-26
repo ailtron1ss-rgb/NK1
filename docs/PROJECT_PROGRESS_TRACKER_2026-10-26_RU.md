@@ -1,3 +1,13 @@
+## WorkPass421 — отклонять некорректный HMX source_attribution вместо молчаливого удаления (2026-10-26)
+
+- **Код адаптера:** `77c57d9283f2805711a1c5e3db11c38af8b826f2`; **регрессия:** `d7be9e5da89bb8523e42d422533112e9a0304461`.
+- Schema теперь требует, чтобы `source_attribution` был объектом, если поле присутствует. Normalizer возвращает `null` для scalar/array вместо превращения записи в якобы не имеющую источника.
+- Это дополняет проверку числового диапазона `source_authority_01`: malformed attribution создаёт schema conflict, поэтому полная секция memories не может попасть в canonical merge.
+- Регрессия проверяет отсутствие исключения, path-specific schema issue и null projection для строкового `source_attribution`.
+- **Валидация:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass420 — валидация HMX поверх уже созданного bounded snapshot (2026-10-26)
 
 - **Рефакторинг адаптера:** `86ec7974749de51ef1a78375e0da45d4772c34c7`; **связка fabric:** `619535a9cf23e3463ca4a8b1809a07811e512f00`; **регрессия:** `b801a6eb2b67a6270f4f2a4dc745a3bf32433100`.
