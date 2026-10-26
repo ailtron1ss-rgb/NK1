@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The current combined source code/test snapshot is 621864d0d7f2676245383adab86f1dcc6d0f741f, merged into fix/mega-cognitive-progress-tracking-2026-10-26-r3 as source merge commit 39af7eb67c9ab05efd45d01cbd4b4d1d44751454. Unified integration, strict cognitive substrate plus 30-cycle restart smoke, application/runtime typechecks, supervised launch, owner-approved Research Bridge probes, continual-learning/P23 gates and ledger integrity all passed on the tested code/test head. The prior scoring snapshot head was b8bc8316e996700a5562b93f38fd354f1ea5d69b; all lane scores are intentionally unchanged because these tests validate integration and safety, not greater external learning/transfer. Physical Android/Termux audio/sensors, browser/Live2D hardware E2E, extended soak, licensing review and reproducible release-archive replacement remain open.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The last validated combined source head is 621864d0d7f2676245383adab86f1dcc6d0f741f; its listed CI runs are all PASS and all testedHead fields match that SHA. WorkPass343 is a new candidate release-gate change on work/nk1-final-release-gate-2026-10-26-r1, code-bearing checkpoint 4db623c6168f58277009c6f3dd12d060619b8f1b; it is not yet validated. Scores and prior PASS evidence are unchanged, and must not be interpreted as validation of WorkPass343. Release ZIP replacement, physical Android/Termux tests, browser/Live2D hardware E2E, extended soak and license/provenance review remain open.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -449,10 +449,19 @@
       "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
       "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454",
       "progressPercentagesChanged": false
+    },
+    {
+      "id": "WorkPass343",
+      "date": "2026-10-26",
+      "branch": "work/nk1-final-release-gate-2026-10-26-r1",
+      "codeCommit": "4db623c6168f58277009c6f3dd12d060619b8f1b",
+      "summary": "Make final release verification fail closed unless release metadata validation passes; add regression tests and wire into CI.",
+      "validationStatus": "PENDING exact-head release verifier regression, metadata audit, typecheck/integration CI.",
+      "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": null,
-  "branchHeadBeforeTrackerCommit": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454",
+  "latestUnverifiedCodeTestHead": "4db623c6168f58277009c6f3dd12d060619b8f1b",
+  "branchHeadBeforeTrackerCommit": "4db623c6168f58277009c6f3dd12d060619b8f1b",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
