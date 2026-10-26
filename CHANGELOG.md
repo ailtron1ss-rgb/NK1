@@ -1,3 +1,16 @@
+## P23 verified skill learning boundary hardening — 2026-10-26
+
+- Require promotion and rollback Ed25519 signatures to use canonical standard Base64 for exactly 64 bytes; round-trip validation rejects whitespace, trailing junk, truncation, and other alternate encodings before cryptographic verification.
+- Harden the holdout revision gate against malformed rows and top-level inputs. Invalid task/family/method/verifier/evidence types are rejected safely instead of causing string-method exceptions.
+- Validate evaluation configuration strictly: paired-task minimum must be an integer from 2 through 10,000, and gain/regression thresholds must be finite values in `[0, 1]`. Invalid values raise an explicit configuration error instead of being silently clamped.
+- Count a baseline/candidate pair with mismatched task families as one rejected pair and exclude it from the holdout denominator.
+- Add regression cases for valid and malformed Ed25519 signatures, malformed holdout rows, invalid gate thresholds, exact threshold boundaries, and mismatched-family pair accounting. Align the promotion-proposal regression with the new fail-closed contract for `NaN`.
+- Keep live skill activation behind the existing independent evidence, shadow-evaluation and explicit approval gates.
+
+Validation: CI is required to pass the current versioned-skill-store, verified revision-gate, promotion-proposal and runtime typecheck checks before the change can be considered validated. Local runtime execution was not available during this pass.
+
+---
+
 ## P23 shadow-evidence end-to-end identity fixture — 2026-10-26
 
 - Updated the real child-process signed-shadow end-to-end fixture to compute the current five-element candidate identity (including explicit `null` when revision provenance is absent).
