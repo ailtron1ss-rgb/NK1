@@ -4,6 +4,7 @@ import { FeedbackDeliveryGuard } from '../src/organism/core/FeedbackDeliveryGuar
 
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const b272 = await readFile(new URL('../src/organism/cognition/B272EndogenousGoalGenesis.ts', import.meta.url), 'utf8');
+const stateMigrations = await readFile(new URL('../src/organism/persistence/StateMigrations.ts', import.meta.url), 'utf8');
 
 function requireFeedbackGate(label, startMarker, endMarker, learnerName) {
   const start = core.indexOf(startMarker);
@@ -45,6 +46,11 @@ assert.match(unselectedMethod, /lastOutcomeTick/);
 assert.ok(unselectedMethod.includes('this.state.rejectedGoals++'));
 assert.doesNotMatch(unselectedMethod, /actionPrototypeWeights|goalWeights|goalOutcomeMemory|outcomeHistory/,
   'an unselected proposal must not train action prototypes or pollute executed-action outcome memory');
+
+assert.match(stateMigrations, /feedbackDeliveryReceipt\\?: unknown;/,
+  'PersistedOrganism must type the receipt as an untrusted migration boundary');
+assert.match(stateMigrations, /feedbackDeliveryReceipt: raw\\.system\\?\\.feedbackDeliveryReceipt/,
+  'state migration must preserve the receipt so restart cannot silently reopen feedback replay');
 
 assert.ok(core.includes("private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard()"),
   'Core must own a feedback delivery guard');
@@ -94,6 +100,16 @@ assert.throws(
   () => guard.begin({ ...input, previousReceipt: { version: 7, tick: 17, decisionId: 'forged', action: 'wait', status: 'completed' } }),
   /malformed/,
   'a malformed current-tick receipt must not disable the replay guard',
+);
+assert.throws(
+  () => guard.begin({ ...input, previousReceipt: { decisionId: 'missing-tick', action: 'wait', status: 'completed', version: 1 } }),
+  /malformed/,
+  'a malformed receipt without a tick must fail closed rather than being ignored',
+);
+assert.throws(
+  () => guard.begin({ ...input, tick: 16, previousReceipt: receipt }),
+  /future tick/,
+  'feedback cannot regress behind a future persisted receipt',
 );
 const nextTick = guard.begin({ ...input, tick: 18, previousReceipt: receipt });
 assert.equal(guard.complete(nextTick).tick, 18, 'the next organism tick must accept a new outcome');
