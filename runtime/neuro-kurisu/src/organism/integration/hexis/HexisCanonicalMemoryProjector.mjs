@@ -621,29 +621,6 @@ export class HexisCanonicalMemoryProjector {
       } catch (verifyError) {
         rollbackErrors.push('canonical-verify:' + String(verifyError?.message ?? verifyError).slice(0, 220));
       }
-      // Authority-cap reconciliation can mutate an existing duplicate before a later
-      // row/projection fails. Restore the exact pre-transaction signals and invalidate
-      // only the signal mutation receipts that were compensated.
-      for (const revision of [...revisedSignals].reverse()) {
-        try {
-          const commandId = 'hexis-signals-rollback:' + hash(String(stage.stagingId) + ':' + revision.id + ':' + attempt).slice(0, 48);
-          const restored = this.memoryFabric.restoreSignalsForCompensation(
-            revision.id,
-            revision.token,
-            'hexis-hmx-apply-rollback',
-            { commandId },
-          );
-          if (restored !== true) {
-            rollbackErrors.push('signals-restore-failed:' + revision.id);
-            continue;
-          }
-          // MemoryFabric validates the opaque, one-use capture token against the exact
-          // restored signal fields before returning true. The projector never receives
-          // the saved snapshot and therefore cannot accidentally widen restoration authority.
-        } catch (signalRollbackError) {
-          rollbackErrors.push('signals-restore:' + String(signalRollbackError?.message ?? signalRollbackError).slice(0, 220));
-        }
-      }
       // Status reconciliation may touch an existing canonical memory before a later
       // projection/ledger operation fails. Restore those prior statuses as well as
       // deleting newly-created rows; never leave a failed import half-applied.
@@ -668,6 +645,29 @@ export class HexisCanonicalMemoryProjector {
           }
         } catch (statusRollbackError) {
           rollbackErrors.push('status-restore:' + String(statusRollbackError?.message ?? statusRollbackError).slice(0, 220));
+        }
+      }
+      // Authority-cap reconciliation can mutate an existing duplicate before a later
+      // row/projection fails. Restore the exact pre-transaction signals and invalidate
+      // only the signal mutation receipts that were compensated.
+      for (const revision of [...revisedSignals].reverse()) {
+        try {
+          const commandId = 'hexis-signals-rollback:' + hash(String(stage.stagingId) + ':' + revision.id + ':' + attempt).slice(0, 48);
+          const restored = this.memoryFabric.restoreSignalsForCompensation(
+            revision.id,
+            revision.token,
+            'hexis-hmx-apply-rollback',
+            { commandId },
+          );
+          if (restored !== true) {
+            rollbackErrors.push('signals-restore-failed:' + revision.id);
+            continue;
+          }
+          // MemoryFabric validates the opaque, one-use capture token against the exact
+          // restored signal fields before returning true. The projector never receives
+          // the saved snapshot and therefore cannot accidentally widen restoration authority.
+        } catch (signalRollbackError) {
+          rollbackErrors.push('signals-restore:' + String(signalRollbackError?.message ?? signalRollbackError).slice(0, 220));
         }
       }
       if (this.semanticGraph && semanticGraphBefore) {
