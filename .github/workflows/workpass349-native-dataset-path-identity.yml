@@ -5,7 +5,9 @@ on:
     branches: [workpass349-native-dataset-path-identity-2026-10-26]
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
+      - "runtime/neuro-kurisu/tests/workpass356-memoryos-restore-boundary.mjs"
       - "runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs"
       - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts"
@@ -55,5 +57,7 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:workpass243:host-owned-independent-evaluation-services
       - name: Test evaluator-config authority identity and state isolation
         run: node --test runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs
+      - name: Test durable MemoryOS restore integrity
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass356-memoryos-restore-boundary.mjs
       - name: Type-check the runtime
         run: npm --prefix runtime/neuro-kurisu run typecheck
