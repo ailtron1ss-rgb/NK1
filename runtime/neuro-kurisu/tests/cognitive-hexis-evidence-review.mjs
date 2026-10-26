@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { MemoryOS2 } from "../src/organism/developmental/MemoryOS2.ts";
+import { sha256Stable } from "../src/organism/core/StableSerialization.ts";
+import { adaptHexisEvidence } from "../src/organism/memory/HexisEvidenceAdapter.ts";
 import { HexisAdaptationFabric } from "../src/organism/integration/hexis/HexisAdaptationFabric.ts";
 import {
   ingestHexisEvidenceForReview,
@@ -280,8 +282,26 @@ const serverStampEvidence = evidence(
 const serverStampPending = ingestHexisEvidenceForReview(serverStampMemoryOS, serverStampFabric, serverStampEvidence);
 assert.equal(serverStampPending.status, "review-pending");
 if (serverStampPending.status === "review-pending") {
-  const serverStampPayload = serverStampFabric.getLearningReview(serverStampPending.reviewId)?.items[0]?.evidence;
-  assert.equal(serverStampPayload?.observedAtOrigin, "server-receipt");
+  const serverStampSnapshot = serverStampFabric.snapshot();
+  const serverStampReview = serverStampSnapshot.learningReviews.find((row) => row.id === serverStampPending.reviewId);
+  const serverStampItem = serverStampReview?.items.find((row) => row.id === serverStampPending.reviewItemId);
+  assert.ok(serverStampItem);
+  assert.equal(serverStampItem.evidence.observedAtOrigin, "server-receipt");
+
+  // Older snapshots stored the raw receipt timestamp in the digest. It is safe
+  // to accept that legacy digest only when every field still matches the canonical
+  // MemoryOS2 receipt and the server-generated marker is present.
+  const adaptedServerStamp = adaptHexisEvidence(serverStampEvidence);
+  assert.equal(adaptedServerStamp.accepted, true);
+  if (adaptedServerStamp.accepted) {
+    const legacyRawDigest = sha256Stable(adaptedServerStamp.evidence, "legacy").toLowerCase();
+    const canonicalReceipt = serverStampMemoryOS.get(serverStampMemory.id).evidenceRecords
+      .find((row) => row.evidenceId === serverStampEvidence.evidenceId);
+    assert.ok(canonicalReceipt);
+    assert.notEqual(legacyRawDigest, canonicalReceipt.digest, "test must represent a pre-normalization review snapshot");
+    serverStampItem.evidence = { ...serverStampItem.evidence, digest: legacyRawDigest };
+    serverStampFabric.restore(serverStampSnapshot);
+  }
   const approvedServerStamp = decideHexisEvidenceReview(
     serverStampMemoryOS,
     serverStampFabric,
@@ -289,7 +309,7 @@ if (serverStampPending.status === "review-pending") {
     serverStampPending.reviewItemId,
     "approve",
   );
-  assert.equal(approvedServerStamp.status, "decided", "server-receipt digest normalization must survive review");
+  assert.equal(approvedServerStamp.status, "decided", "server-receipt digest normalization and legacy review recovery must survive review");
 }
 
 console.log("Hexis evidence → canonical MemoryOS2 → gated Hexis review: PASS", JSON.stringify({
