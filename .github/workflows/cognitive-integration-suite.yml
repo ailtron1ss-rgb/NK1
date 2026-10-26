@@ -28,6 +28,15 @@ on:
       - "tools/super-install.mjs"
       - "tools/super-doctor.mjs"
       - "tools/verify-integration.mjs"
+      - "tools/verify-final-release.mjs"
+      - "tools/verify-final-release.test.mjs"
+      - "tools/verify-release-metadata.mjs"
+      - "tools/verify-release-metadata.test.mjs"
+      - "SUPER_VERSION.json"
+      - "CHANGELOG.md"
+      - "Список дел.md"
+      - "README.md"
+      - "docs/RUNBOOK.md"
       - "tools/supervised-service-specs.mjs"
       - "tools/supervised-service-specs.test.mjs"
       - "tools/supervisor-exit-policy.mjs"
@@ -84,6 +93,15 @@ on:
       - "tools/super-install.mjs"
       - "tools/super-doctor.mjs"
       - "tools/verify-integration.mjs"
+      - "tools/verify-final-release.mjs"
+      - "tools/verify-final-release.test.mjs"
+      - "tools/verify-release-metadata.mjs"
+      - "tools/verify-release-metadata.test.mjs"
+      - "SUPER_VERSION.json"
+      - "CHANGELOG.md"
+      - "Список дел.md"
+      - "README.md"
+      - "docs/RUNBOOK.md"
       - "tools/supervised-service-specs.mjs"
       - "tools/supervised-service-specs.test.mjs"
       - "tools/supervisor-exit-policy.mjs"
@@ -167,3 +185,7 @@ jobs:
         run: npm run test:supervisor-start-smoke
       - name: Run unified runtime and research bridge smoke
         run: npm run test:integration
+      - name: Verify final release gates (without publishing an archive)
+        run: |
+          npm run test:final-release-verifier
+          npm run release:verify
