@@ -167,7 +167,7 @@ assert.throws(() => new VersionedSkillCandidateStore(signedApprovalPersistence, 
   /persisted active skill approval failed signature\/context verification/,
   'restoration with an unconfigured approval authority fails closed instead of trusting persisted JSON');
 const tamperedActiveSnapshot = JSON.parse(JSON.stringify(signedApprovalPersistence.read()));
-tamperedActiveSnapshot.candidates[0].baseVersion = 41; // Not part of candidateId; restore must still bind CAS metadata to the signed approval.
+tamperedActiveSnapshot.candidates[0].approval.expectedActiveVersion = 41; // Preserve the rollback chain while tampering with the signed CAS claim.
 const tamperedPersistence = {
   read: () => JSON.parse(JSON.stringify(tamperedActiveSnapshot)),
   compareAndSwap: () => false,
@@ -240,6 +240,28 @@ try {
   const afterRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
   assert.equal(afterRestart.snapshot().candidates[0].candidateId, durableCandidate.candidateId,
     'atomic file adapter restores candidate state across store reconstruction');
+
+
+  const durableProvenance = {
+    schemaVersion: 1,
+    evaluationFingerprint: 'a'.repeat(64),
+    sourceCandidateId: null,
+    planFingerprint: 'b'.repeat(64),
+    datasetFingerprint: 'c'.repeat(64),
+    sourceEvidenceFingerprint: 'd'.repeat(64),
+    dimensions: ['task-success', 'holdout-generalization'],
+    createdAt: Date.now(),
+  };
+  const provenanceCandidate = durableStore.stageCandidate(
+    proposal('g-provenance'), 'file-backed-provenance-skill',
+    { instruction: 'persisted with evaluation lineage' }, durableProvenance,
+  );
+  const afterProvenanceRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
+  const restoredProvenanceCandidate = afterProvenanceRestart.snapshot().candidates.find(
+    item => item.candidateId === provenanceCandidate.candidateId,
+  );
+  assert.deepEqual(restoredProvenanceCandidate?.revisionProvenance, durableProvenance,
+    'durable candidate identity and provenance survive reconstruction');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
 } finally {
