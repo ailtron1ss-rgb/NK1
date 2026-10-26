@@ -2247,3 +2247,13 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **[RESTORE]** Sanitizes claim rows, deduplicates IDs, preserves newest-first order, validates supported kinds/statuses, and normalizes recent replay IDs without reversing a newest-first array.
 - **[REGRESSION]** Extends the focused test to over 1,000 pending predictions, non-prediction history churn, cap rejection, restore sanitization, and repeated persistence. Wired into npm run audit:hexis.
 - **[VALIDATION]** Source and test are committed; exact-head CI must complete successfully before this is counted as validated. This change protects memory lifecycle correctness; it does not assert measured retrieval uplift or full-system readiness.
+
+
+## Hexis H1 follow-up — durable outbox idempotency (2026-10-26)
+
+- **[FIX]** Added an exact idempotency receipt ledger independent of the 512-row terminal outbox cache. Once an old terminal payload rotates out, its key and request digest remain available to prevent a second logical delivery.
+- **[FIX]** Replayed retired keys are rejected with an explicit history-expired result; reuse of the same key for a different action remains a conflict. A saturated or corrupt restored ledger fails closed instead of silently accepting unseen keys.
+- **[FIX]** Outbox rotation now preserves pending and publishing entries as active delivery obligations, while only terminal rows are subject to the 512-row history window. New active deliveries are capped at 1,024.
+- **[BOUNDS]** Idempotency keys are limited to 256 characters; action kind and channel identifiers are bounded before request hashing.
+- **[REGRESSION]** Hexis adapter integration test now covers 520 pending deliveries, terminal rotation past 512, exact replay and changed-payload conflict after retirement, restart restoration, and overlong-key rejection.
+- **[VALIDATION]** CI is the source of truth for execution. No successful exact-head run is claimed until the updated Hexis integration workflow completes.
