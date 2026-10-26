@@ -51,10 +51,11 @@ test('ledger rejects duplicate domains and invalid current-check statuses', asyn
 });
 
 
-test('ledger binds historical CI evidence to its exact tested head, not the newer source snapshot', async () => {
+test('ledger binds historical CI evidence to its tested head, independently of the source snapshot', async () => {
   const ledger = await loadLedger();
-  assert.notEqual(ledger.sourceHeadAtSnapshot, ledger.ciSnapshot.evidenceHead,
-    'newer source may exist while the most recently validated evidence remains historical');
+  ledger.sourceHeadAtSnapshot = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  assert.deepEqual(validateProjectProgressLedger(ledger), [],
+    'historical evidence remains valid even when the current source snapshot changes');
   assert.ok(ledger.ciSnapshot.statuses.every((check) => check.testedHead === ledger.ciSnapshot.evidenceHead),
     'all CI assertions in one evidence snapshot must identify the same tested commit');
 
