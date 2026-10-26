@@ -38,3 +38,8 @@
 ## Additional runtime smoke added in this pass
 
 The runtime now exposes `unifiedCognitiveSubstrateSnapshot()` as a cloned diagnostic read. `tests/organism-smoke.mjs` runs the existing 30-cycle mobile smoke, then asserts that the substrate cycle/tick advanced and coupling metrics are finite. It stops the runtime, reconstructs it against the same state-file path and checks that the substrate sidecar restores at least the prior cycle count/tick. The integration script now runs both `unified-substrate-runtime-wiring.mjs` and `organism-smoke.mjs`. This is authored coverage; it remains pending until the exact-head Actions result completes.
+
+
+## CI-driven correction after first integration run
+
+The first PR integration job successfully completed Node.js 24 setup, workspace dependency installation, environment doctor, project progress validation, app typecheck/build, and then failed in `typecheck-runtime.mjs` on two substrate wiring errors: `PredictionDebtState` was cast directly to `Record<string, unknown>`, and the typed cycle observation was read as if it contained a `vision` member. Both source issues were corrected in e4348fd8999d4cba03a7f29a10b98c063f8b1e76. The debt cast now uses an explicit `unknown` bridge; vision relation count is set to zero until the separate P41 pipeline exposes typed relation evidence. The corrected HEAD needs a fresh CI run; the earlier failure is not treated as a pass.
