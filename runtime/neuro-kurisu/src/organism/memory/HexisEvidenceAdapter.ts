@@ -133,7 +133,7 @@ export function adaptHexisEvidence(
     confidence: row.confidence,
     ...(note ? { note } : {}),
     protectedMemory: row.protectedMemory === true,
-    idempotencyKey: `${row.memoryId}:${row.evidenceId}`,
+    idempotencyKey: `${row.memoryId.length}:${row.memoryId}${row.evidenceId.length}:${row.evidenceId}`,
   });
   if (knownEvidenceIds.has(evidence.idempotencyKey) || knownEvidenceIds.has(row.evidenceId)) {
     return { accepted: true, duplicate: true, evidence };
