@@ -1,3 +1,15 @@
+## WorkPass358 — integrate strict CEF receipt ingress and proxy-safe parent restore on latest base (2026-10-26)
+
+- **Base:** newest target checkpoint observed when this branch was created: `f38d3189777649da490f8b0dbb3a8d19c7444811`. Preserves the latest WorkPass370 cross-ledger cognitive-cycle integrity and WorkPass372 strict unified-cycle input/restore checks.
+- **Receipt trace ingress:** `appendToolReceiptTrace()` reads only own data descriptors before replay lookup, requires canonical execution/tool/decision/observation identifiers, and rejects confidence outside `[0,1]`.
+- **Authoritative receipt revisions:** `appendToolReceiptRevision()` rejects accessor-backed fields, padded/overlong identifiers, non-string hashes, invalid ticks/revision numbers/statuses, non-boolean outcomes, confidence outside `[0,1]`, and wrong-typed text rather than coercing/truncating/clamping it.
+- **External observations:** `appendToolExternalObservation()` uses descriptor-only input reads, validates identity/clock/boolean/confidence/text types, and avoids string-coercion of evidence values or stored tool identifiers.
+- **Restore lineage:** `restore()` validates nested `parentIds` arrays through a bounded native-array inspector using own data descriptors, so proxy `get` traps cannot falsify the length or parent slots.
+- **Regressions:** add `cognitive-tool-receipt-input-boundary.mjs` and `cognitive-event-parent-proxy-restore.mjs`, wired into `test:cognitive-integration-suite`. Tests cover getter suppression, non-coercion, unchanged ledger/replay state on rejection, exact revision replay idempotency, true parent preservation, and recovery after an uninspectable parent proxy.
+- **Current code/test checkpoint:** `813fdde7361ae1a690cbd690e4e7f4337fa38a4e`. Exact-head typecheck and CI pending; no pass is inferred from earlier stacked PRs. Progress scores remain unchanged.
+
+---
+
 ## WorkPass372 — strict unified cognitive-cycle input and restore integrity (2026-10-26)
 
 - **Defect:** `UnifiedCognitiveCycle.evaluate()` and `restore()` read external object fields/arrays directly. Accessor properties could execute during validation, proxy traps were not consistently converted to closed rejection, and sparse or malformed `lastMissingStages` could distort whether a restored cycle appeared complete.
