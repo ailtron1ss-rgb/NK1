@@ -373,6 +373,18 @@ export class HexisCanonicalMemoryProjector {
           rollbackErrors.push(String(rollbackError?.message ?? rollbackError).slice(0, 240));
         }
       }
+      // A non-throwing compensator can still fail to remove a committed item.
+      // Verify the postcondition rather than assuming that a return means rollback.
+      try {
+        const remainingItems = this.memoryFabric.canonicalSnapshot().items ?? [];
+        const uncompensated = remainingItems
+          .filter(item => rollbackIds.has(item.id))
+          .map(item => String(item.id))
+          .slice(0, 8);
+        if (uncompensated.length) rollbackErrors.push('canonical-uncompensated:' + uncompensated.join(','));
+      } catch (verifyError) {
+        rollbackErrors.push('canonical-verify:' + String(verifyError?.message ?? verifyError).slice(0, 220));
+      }
       if (this.semanticGraph && semanticGraphBefore) {
         try {
           this.semanticGraph.restore(semanticGraphBefore);
