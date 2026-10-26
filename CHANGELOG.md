@@ -1,3 +1,12 @@
+## WorkPass384 — make Hexis rollback tests semantic and complete (2026-10-26)
+
+- **Code/test head:** `d5db1a4f5d509cfe8d122290f1c9e6a8108d479f` on `work/hexis-evidence-adapter-2026-10-26`.
+- Fixed a second optional-field assertion in `cognitive-hexis-evidence-review.mjs`: an absent `evidenceRecords` property is normalized to boolean before asserting the failed receipt is absent.
+- Strengthened `cognitive-hexis-memory-fabric-ingress.mjs`: rollback now compares stable canonical memory semantics (IDs, content, confidence and evidence identities), explicitly checks replay-ID cleanup and rejected-source provenance cleanup, while existing exact assertions still cover the MemoryFabric mutation-receipt journal, EventLog and Hexis review queue. This avoids confusing MemoryOS2's recomputed `estimatedBytes` and empty optional fields with leaked evidence.
+- **Validation:** the previous Unified run `40305954846` passed runtime typecheck but failed at the pre-fix optional-field assertion. Fresh exact-head focused tests and Unified integration remain pending; no PASS/readiness/retrieval uplift claimed.
+- `main` and the canonical Release ZIP remain unchanged.
+
+---
 ## WorkPass383 — keep Hexis lifecycle events on logical organism ticks (2026-10-26)
 
 - **Code/test head:** `7c62bebea1564b067f31343914c40004dc87d28e` on `work/hexis-evidence-adapter-2026-10-26`; bridge implementation commit `26837c72cece9145bbcce864949e2922b4d42f21`.
