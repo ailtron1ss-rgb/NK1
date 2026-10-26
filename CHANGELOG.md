@@ -1,3 +1,11 @@
+## P26 sequential learning — restore bounded interleaved replay (2026-10-26)
+
+- Implemented the `P26TrueLearningEngine.trainInterleaved` contract used by the sequential-learning benchmark. Current outcomes now train the policy while bounded replay attempts are interspersed at a configurable cadence.
+- Added bounded energy/novelty context buckets to compare prior examples against current feedback. Near-identical state/action cases with conflicting targets are held out from replay; distinct contexts stay eligible so the learner can retain older skills without blindly overwriting current-task learning.
+- The replay candidate comparison budget is capped at 8–128 checks per historical row. Both current and replay batches are validated before the first model update. Synthetic benchmark results are diagnostics only and are not treated as independent holdout evidence.
+
+---
+
 ## Research-probe integration dependency isolation — 2026-10-26
 
 - Added a dedicated `research/requirements-integration.txt` containing the PyTorch dependency needed by the NeuroCore V143 and DeepCode v21 smoke probes.
