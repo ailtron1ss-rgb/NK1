@@ -598,6 +598,24 @@ export class CognitiveEventFabric {
     return structuredClone(event);
   }
 
+  /**
+   * Run a synchronous operation against this ledger as one transaction.
+   * If any append or post-append verification throws, event nodes, the total
+   * counter and receipt replay index return to their exact previous state.
+   * Promise/thenable callbacks are rejected because rollback cannot span awaits.
+   */
+  withAtomicLedgerTransaction<T>(operation:()=>T):T {
+    if(typeof operation!=='function')throw new TypeError('cognitive-event-ledger-transaction-operation-required');
+    return this.withAtomicLedgerMutation(()=>{
+      const result=operation();
+      if(result!==null&&(typeof result==='object'||typeof result==='function')) {
+        const then=(result as unknown as {then?:unknown}).then;
+        if(typeof then==='function')throw new TypeError('cognitive-event-ledger-transaction-must-be-synchronous');
+      }
+      return result;
+    });
+  }
+
   private withAtomicLedgerMutation<T>(operation:()=>T):T {
     const previousEvents=this.events.slice();
     const previousTotal=this.total;
