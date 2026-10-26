@@ -1,5 +1,6 @@
 import { actionCost } from './ActionCostPolicy.ts';
 import { sha256Stable } from './StableSerialization.ts';
+import { canonicalizeMemoryContent } from '../developmental/MemoInspiredMemoryPrimitives.ts';
 import { memoRuntimeContext } from '../developmental/MemoRuntimeContext.ts';
 import { randomUUID, createHash } from 'node:crypto';
 import { WillIntegrationBridge, defaultWillIntegrationState, type WillIntegrationState } from '../integration/will/WillIntegrationBridge.ts';
@@ -3063,7 +3064,7 @@ export class OrganismCore {
                 memory.supersedesId === requestedMemory.id &&
                 (memory.revisionGroupId ?? memory.id) === (expectedRevisionGroupId || requestedMemory.revisionGroupId || requestedMemory.id) &&
                 memory.source === 'hexis-learning-review' &&
-                memory.content === String(correction ?? '').trim()
+                memory.content === canonicalizeMemoryContent(String(correction ?? ''))
             );
             if (requestedMemory && memory && requestedMemory.id !== memory.id && !recoveredCorrection) {
                 return { ok: false, error: 'review-source-memory-superseded', memoryId: sourceMemoryId, currentMemoryId: memory.id };
