@@ -1,3 +1,13 @@
+## WorkPass366 — integrate exactly-once feedback delivery into the unified runtime line (2026-10-26)
+
+- **Cross-branch integration:** ported `FeedbackDeliveryGuard` from the repository-wiring audit line without replacing the evolved `OrganismCore.ts` from the cognitive-substrate branch. Only the guard import/state owner and the two feedback entry/exit boundaries were added.
+- **Integrity contract:** both spine-only and full feedback reserve a tick before learner mutation, reject concurrent/same-tick replay and malformed/future receipts, then persist a completed receipt after all learner updates. If a learner path throws midway, its in-flight reservation remains fail-closed for that process rather than risking a second partial training pass.
+- **Persistence/restart:** completed receipt lives in the existing persisted system snapshot and is committed with the core's normal checkpoint. Added wiring tests for ordering, duplicate delivery, malformed receipts, clock regression and next-tick acceptance.
+- **CI integration:** the focused unified-substrate workflow now watches and executes the feedback-delivery regression and the resource-economy telemetry regression.
+- **Validation boundary:** the new exact HEAD must pass both focused workflow and learning/runtime suites before the integration is considered verified; the PR remains draft while cross-branch conflicts are resolved.
+
+---
+
 ## WorkPass365 — fail closed on malformed live resource telemetry (2026-10-26)
 
 - **Runtime fix:** `CognitiveResourceEconomy.allocate()` now distinguishes an omitted optional value from an explicitly invalid one. Missing inputs retain documented defaults; malformed/out-of-range energy, load, uncertainty, novelty, prediction-debt, thermal, RAM and performance fields use risk-aware fallbacks. In particular NaN RAM/thermal/debt/load no longer collapses to zero pressure.

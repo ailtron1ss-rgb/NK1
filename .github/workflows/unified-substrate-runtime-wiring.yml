@@ -8,6 +8,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/FeedbackDeliveryGuard.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-feedback-attribution-wiring.mjs'
       - 'runtime/neuro-kurisu/src/organism/system/CognitiveResourceEconomy.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-resource-economy-workpass322.mjs'
       - 'runtime/neuro-kurisu/tests/big-pass-338-endogenous-goal-plasticity-core.mjs'
@@ -19,6 +21,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/FeedbackDeliveryGuard.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-feedback-attribution-wiring.mjs'
       - 'runtime/neuro-kurisu/src/organism/system/CognitiveResourceEconomy.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-resource-economy-workpass322.mjs'
       - 'runtime/neuro-kurisu/tests/big-pass-338-endogenous-goal-plasticity-core.mjs'
@@ -45,6 +49,8 @@ jobs:
         run: npm run test:unified-substrate-runtime-wiring --prefix runtime/neuro-kurisu
       - name: Validate conservative live cognitive resource allocation
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-resource-economy-workpass322.mjs
+      - name: Verify exactly-once cognitive feedback delivery
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-feedback-attribution-wiring.mjs
       - name: Run B272 goal-credit attribution and embodied outcome regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-338-endogenous-goal-plasticity-core.mjs
       - name: Existing unified-cycle contract
