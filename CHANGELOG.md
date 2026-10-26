@@ -1,3 +1,7 @@
+## [NK1][Hexis] WorkPass409 — propagate belief-write failures to HTTP callers (2026-10-26)
+
+- [API FIX] The belief-revision route now preserves the Core result status instead of wrapping `{ok:false}` as an HTTP 200 success. Missing memory targets return 404; other guarded/rejected belief writes return 409.
+
 ## [NK1][Hexis] WorkPass408 — correct the server smoke URL template literal (2026-10-26)
 
 - [TEST FIX] Removed literal escape backslashes retained by the source-generation string around the new goal-list URL. The smoke fixture now contains a normal JavaScript template literal for its dynamic server URL.
