@@ -470,7 +470,7 @@ const collisionMemoryRef = collisionExportId + ':memory-1';
 const collisionMemoryContent = 'A memory with this text belongs to the Hexis import.';
 const contentHashForCollision = createHash('sha256').update(collisionMemoryContent).digest('hex');
 const expectedHexisMemoryId = 'hexis-memory:' + createHash('sha256')
-  .update('hexis-test-lineage\\0memory-1\\0' + contentHashForCollision)
+  .update('hexis-test-lineage\0memory-1\0' + contentHashForCollision)
   .digest('hex').slice(0, 48);
 const unrelatedCollision = collisionIdRuntime.fabric.encode({
   id: expectedHexisMemoryId,
