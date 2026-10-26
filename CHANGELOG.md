@@ -1,3 +1,11 @@
+## CognitiveEventFabric append-ingress contract — 2026-10-26
+
+- **Defect:** confidence outside `[0, 1]` was silently clamped; append could execute top-level getters while reading event fields; duplicate parent IDs could inflate causal lineage; restore could clamp invalid stored confidence.
+- **Fix:** validate a snapshot of own data descriptors before reading event fields, reject accessor-backed input envelopes, require confidence in `[0, 1]`, reject duplicate causal parents, and align append/restore control-character and confidence rules.
+- **Regression:** tests cover top-level accessors for every known input field (getter count remains zero), descriptor-trap failure, invalid confidence without ledger mutation, valid boundary confidences, duplicate parents, C1 control characters and restore recovery after malformed confidence rows.
+- **Validation:** branch `work/nk1-event-append-ingress-contract-2026-10-26-r1` is based on release-candidate checkpoint `0e538f76a843e5ad440d8994f5adb9b669499553`; exact-head CI is required before merge.
+
+---
 ## Release metadata lineage contract — 2026-10-26
 
 - **Static-review correction:** fixed the escaped digit matcher and the negative-test regex so the contract test parses the baseline WorkPass number and matches multi-line verifier output as intended.

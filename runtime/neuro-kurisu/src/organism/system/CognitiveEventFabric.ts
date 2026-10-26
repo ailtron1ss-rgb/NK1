@@ -71,8 +71,20 @@ export interface CognitiveEventFabricSnapshot {
 }
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
-const isPlainRecord=(value:unknown):value is Record<string,unknown>=>isRecord(value)&&(()=>{const prototype=Object.getPrototypeOf(value);return prototype===Object.prototype||prototype===null;})();
+const isRecord=(value:unknown):value is Record<string,unknown>=>{
+  if(value===null||typeof value!=='object')return false;
+  try{return !Array.isArray(value);}catch{return false;}
+};
+const isPlainRecord=(value:unknown):value is Record<string,unknown>=>{
+  if(!isRecord(value))return false;
+  try {
+    const prototype=Object.getPrototypeOf(value);
+    return prototype===Object.prototype||prototype===null;
+  } catch {
+    // Refuse proxy objects whose prototype cannot be inspected safely.
+    return false;
+  }
+};
 const OMIT_PAYLOAD_VALUE=Symbol('omit-cognitive-payload-value');
 const MAX_COGNITIVE_PAYLOAD_DEPTH=32;
 const MAX_COGNITIVE_PAYLOAD_NODES=16384;
@@ -205,13 +217,15 @@ export class CognitiveEventFabric {
       const stage=typeof value.stage==='string'?value.stage as CognitiveStage:undefined;
       // Restore strictly typed identity and clocks; do not coerce malformed values into valid events.
       const tick=value.tick;
-      if(!id||id!==id.trim()||id.length>180||/[\u0000-\u001f\u007f]/.test(id)||
+      if(!id||id!==id.trim()||id.length>180||/[\u0000-\u001f\u007f-\u009f]/.test(id)||
         !COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0||seen.has(id))continue;
       const rawAt=value.at;
       if(rawAt!==undefined&&(typeof rawAt!=='number'||!Number.isFinite(rawAt)||rawAt<0))continue;
-      if(value.source!==undefined&&(typeof value.source!=='string'||!value.source.trim()||value.source!==value.source.trim()||value.source.length>120||/[\u0000-\u001f\u007f]/.test(value.source)))continue;
+      if(value.source!==undefined&&(typeof value.source!=='string'||!value.source.trim()||value.source!==value.source.trim()||value.source.length>120||/[\u0000-\u001f\u007f-\u009f]/.test(value.source)))continue;
       if(value.external!==undefined&&typeof value.external!=='boolean')continue;
-      if(value.confidence01!==undefined&&(typeof value.confidence01!=='number'||!Number.isFinite(value.confidence01)))continue;
+      if(value.confidence01!==undefined&&(
+        typeof value.confidence01!=='number'||!Number.isFinite(value.confidence01)||value.confidence01<0||value.confidence01>1
+      ))continue;
       const rawParentIds=value.parentIds;
       if(rawParentIds!==undefined&&!Array.isArray(rawParentIds))continue;
       const parentInput=Array.isArray(rawParentIds)?rawParentIds:[];
@@ -225,13 +239,13 @@ export class CognitiveEventFabric {
           break;
         }
         const parent=descriptor.value;
-        if(typeof parent!=='string'||!parent.trim()||parent!==parent.trim()||parent.length>180||/[\u0000-\u001f\u007f]/.test(parent)) {
+        if(typeof parent!=='string'||!parent.trim()||parent!==parent.trim()||parent.length>180||/[\u0000-\u001f\u007f-\u009f]/.test(parent)) {
           invalidParentLineage=true;
           break;
         }
         parentIds.push(parent);
       }
-      if(invalidParentLineage)continue;
+      if(invalidParentLineage||new Set(parentIds).size!==parentIds.length)continue;
       const at=rawAt===undefined?0:rawAt;
       let payload:Record<string,unknown>;
       try { payload=cleanPayload(value.payload); }
@@ -243,7 +257,7 @@ export class CognitiveEventFabric {
         at,
         source:typeof value.source==='string'?value.source:'restored-unknown',
         parentIds, external:typeof value.external==='boolean'?value.external:false,
-        confidence01:clamp01(typeof value.confidence01==='number'?value.confidence01:.5),
+        confidence01:typeof value.confidence01==='number'?value.confidence01:.5,
         payload,
       });
       if(restored.length>=this.capacity)break;
@@ -324,68 +338,134 @@ export class CognitiveEventFabric {
   }
 
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
-    const suppliedId=typeof input.id==='string'?input.id:'';
-    if(input.id!==undefined&&(
-      !suppliedId||suppliedId!==suppliedId.trim()||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId)
+    if(!isPlainRecord(input))throw new TypeError('invalid-cognitive-event-input');
+
+    // Snapshot only own data properties. Top-level getters must not run while
+    // a causal event is being validated or its replay identity is being computed.
+    const inputFieldNames=['id','tick','at','stage','source','parentIds','external','confidence01','payload'] as const;
+    const inputValues:Record<string,unknown>=Object.create(null) as Record<string,unknown>;
+    for(const field of inputFieldNames){
+      let descriptor:PropertyDescriptor|undefined;
+      try {
+        descriptor=Object.getOwnPropertyDescriptor(input,field);
+      } catch {
+        throw new TypeError('invalid-cognitive-event-input-field:'+field);
+      }
+      if(!descriptor)continue;
+      if(!Object.hasOwn(descriptor,'value')) {
+        throw new TypeError('cognitive-event-input-field-accessor:'+field);
+      }
+      inputValues[field]=descriptor.value;
+    }
+
+    const idValue=inputValues.id;
+    const suppliedId=typeof idValue==='string'?idValue:'';
+    if(idValue!==undefined&&(
+      !suppliedId||suppliedId!==suppliedId.trim()||suppliedId.length>180||/[\u0000-\u001f\u007f-\u009f]/u.test(suppliedId)
     )) {
       throw new Error('invalid-cognitive-event-id');
     }
-    if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick<0) {
+
+    const tick=inputValues.tick;
+    if(typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0) {
       throw new RangeError('invalid-cognitive-event-tick');
     }
-    if(input.at!==undefined&&(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0)) {
+    const atInput=inputValues.at;
+    if(atInput!==undefined&&(typeof atInput!=='number'||!Number.isFinite(atInput)||atInput<0)) {
       throw new RangeError('invalid-cognitive-event-timestamp');
     }
-    if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
-    if(typeof input.source!=='string') throw new TypeError('invalid-cognitive-event-source');
-    // Identity-bearing fields must be rejected when oversized/non-canonical, never
-    // truncated: normalization can alias distinct causal envelopes into one fingerprint.
-    if(!input.source.trim()||input.source!==input.source.trim()||input.source.length>120||/[\u0000-\u001f\u007f]/.test(input.source)) {
+    const stageInput=inputValues.stage;
+    if(typeof stageInput!=='string'||!COGNITIVE_STAGES.has(stageInput as CognitiveStage)) {
+      throw new TypeError('invalid-cognitive-event-stage');
+    }
+    const sourceInput=inputValues.source;
+    if(typeof sourceInput!=='string')throw new TypeError('invalid-cognitive-event-source');
+    // Identity-bearing strings must be canonical; truncation/normalization could alias events.
+    if(!sourceInput.trim()||sourceInput!==sourceInput.trim()||sourceInput.length>120||/[\u0000-\u001f\u007f-\u009f]/u.test(sourceInput)) {
       throw new RangeError('invalid-cognitive-event-source');
     }
-    const rawParentIds=input.parentIds;
-    if(rawParentIds!==undefined&&!Array.isArray(rawParentIds)) throw new TypeError('invalid-cognitive-event-parents');
-    if((rawParentIds?.length??0)>12) throw new RangeError('invalid-cognitive-event-parent-count');
-    const parentIds:string[]=[];
-    if(Array.isArray(rawParentIds)){
-      for(let index=0;index<rawParentIds.length;index+=1){
-        const descriptor=Object.getOwnPropertyDescriptor(rawParentIds,String(index));
-        // Do not execute array getters or silently accept holes in causal lineage.
-        if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value')) {
-          throw new TypeError('invalid-cognitive-event-parent-id');
-        }
-        const parent=descriptor.value;
-        if(typeof parent!=='string'||!parent.trim()||parent!==parent.trim()) {
-          throw new TypeError('invalid-cognitive-event-parent-id');
-        }
-        if(parent.length>180||/[\u0000-\u001f\u007f]/.test(parent)) {
-          throw new RangeError('invalid-cognitive-event-parent-id');
-        }
-        parentIds.push(parent);
-      }
+
+    const rawParentIds=inputValues.parentIds;
+    if(rawParentIds!==undefined&&!Array.isArray(rawParentIds)) {
+      throw new TypeError('invalid-cognitive-event-parents');
     }
-    if(input.external!==undefined&&typeof input.external!=='boolean') throw new TypeError('invalid-cognitive-event-external-flag');
-    if(input.confidence01!==undefined&&(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01))) {
-      throw new TypeError('invalid-cognitive-event-confidence');
+    const parentInput=Array.isArray(rawParentIds)?rawParentIds:[];
+    let parentLength=0;
+    if(Array.isArray(rawParentIds)){
+      let lengthDescriptor:PropertyDescriptor|undefined;
+      try {
+        lengthDescriptor=Object.getOwnPropertyDescriptor(rawParentIds,'length');
+      } catch {
+        throw new TypeError('invalid-cognitive-event-parents');
+      }
+      if(!lengthDescriptor||!Object.hasOwn(lengthDescriptor,'value')||
+        typeof lengthDescriptor.value!=='number'||!Number.isSafeInteger(lengthDescriptor.value)||lengthDescriptor.value<0) {
+        throw new TypeError('invalid-cognitive-event-parents');
+      }
+      parentLength=lengthDescriptor.value;
+    }
+    if(parentLength>12)throw new RangeError('invalid-cognitive-event-parent-count');
+    const parentIds:string[]=[];
+    for(let index=0;index<parentLength;index+=1){
+      let descriptor:PropertyDescriptor|undefined;
+      try {
+        descriptor=Object.getOwnPropertyDescriptor(parentInput,String(index));
+      } catch {
+        throw new TypeError('invalid-cognitive-event-parent-id');
+      }
+      // Do not execute array getters or silently accept holes in causal lineage.
+      if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value')) {
+        throw new TypeError('invalid-cognitive-event-parent-id');
+      }
+      const parent=descriptor.value;
+      if(typeof parent!=='string'||!parent.trim()||parent!==parent.trim()) {
+        throw new TypeError('invalid-cognitive-event-parent-id');
+      }
+      if(parent.length>180||/[\u0000-\u001f\u007f-\u009f]/u.test(parent)) {
+        throw new RangeError('invalid-cognitive-event-parent-id');
+      }
+      parentIds.push(parent);
+    }
+    if(new Set(parentIds).size!==parentIds.length) {
+      throw new TypeError('invalid-cognitive-event-duplicate-parent-id');
     }
 
-    const normalizedTick=input.tick;
-    const normalizedSource=input.source;
-    const external=input.external??false;
-    const confidence01=clamp01(input.confidence01??0.5);
-    // Deep clone and canonicalize before lookup/mutation: invalid evidence cannot
-    // partially mutate the event journal or escape into a later snapshot.
-    // Malformed explicitly supplied root payloads must not collapse into a valid empty-payload event.
-    if(input.payload!==undefined&&!isPlainRecord(input.payload)) {
+    const externalInput=inputValues.external;
+    if(externalInput!==undefined&&typeof externalInput!=='boolean') {
+      throw new TypeError('invalid-cognitive-event-external-flag');
+    }
+    const external=externalInput===undefined?false:externalInput;
+    const confidenceInput=inputValues.confidence01;
+    if(confidenceInput!==undefined&&typeof confidenceInput!=='number') {
+      throw new TypeError('invalid-cognitive-event-confidence');
+    }
+    if(confidenceInput!==undefined&&(
+      !Number.isFinite(confidenceInput)||confidenceInput<0||confidenceInput>1
+    )) {
+      throw new RangeError('invalid-cognitive-event-confidence');
+    }
+    const confidence01=confidenceInput===undefined?0.5:confidenceInput;
+
+    // Explicit payload roots must be plain data records, not primitives that collapse to {}.
+    const payloadInput=inputValues.payload;
+    if(payloadInput!==undefined&&!isPlainRecord(payloadInput)) {
       throw new TypeError('invalid-cognitive-event-payload');
     }
-    const payload=cleanPayload(input.payload);
+    const payload=cleanPayload(payloadInput);
+    // Canonicalize and validate everything before stable-ID lookup or any journal mutation.
+    sha256Stable(payload);
     const prior=suppliedId?this.events.find(event=>event.id===suppliedId):undefined;
-    const at=input.at!==undefined?input.at:(prior?.at??Date.now());
+    const at=atInput!==undefined?atInput:(prior?.at??Date.now());
     const event:CognitiveEventNode={
-      id:suppliedId||`cef:${at}:${normalizedTick}:${Math.random().toString(16).slice(2)}`,
-      tick:normalizedTick,at,stage:input.stage,source:normalizedSource,parentIds,
-      external,confidence01,payload,
+      id:suppliedId||('cef:'+at+':'+tick+':'+Math.random().toString(16).slice(2)),
+      tick,
+      at,
+      stage:stageInput as CognitiveStage,
+      source:sourceInput,
+      parentIds,
+      external,
+      confidence01,
+      payload,
     };
 
     if(prior) {
@@ -401,7 +481,6 @@ export class CognitiveEventFabric {
     this.pruneReceiptProjectionIndex();
     return cloneCognitiveEvent(event);
   }
-
   /** Read-only lookup by stable event ID. Returned payloads are detached. */
   getById(id:string):CognitiveEventNode|null {
     const normalized=typeof id==='string'?id.trim():'';
