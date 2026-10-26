@@ -3,7 +3,7 @@
 
 - [FIX] Register each deterministic canonical memory ID as a rollback candidate before invoking the writer. If the writer commits a row and then throws before returning the inserted item, the compensation path still knows which ID to remove.
 - [SAFETY] Detect deterministic memory-ID collisions with existing unrelated canonical records before attempting an import write.
-- [TEST] Added fault injection where MemoryFabric successfully commits a row and the adapter then throws. The regression requires full canonical/semantic/temporal compensation and a successful same-stage retry on attempt 2.
+- [TEST] Added fault injection where MemoryFabric successfully commits a row and the adapter then throws, plus a collision fixture with an unrelated canonical row occupying the planned ID. The regressions require preserved unrelated data, canonical/semantic/temporal compensation, and a successful same-stage retry on attempt 2.
 - [VALIDATION] Code and regression are committed; hosted execution remains blocked because GitHub Actions jobs on the current stack have been failing before runner allocation. No passing test is claimed.
 
 
