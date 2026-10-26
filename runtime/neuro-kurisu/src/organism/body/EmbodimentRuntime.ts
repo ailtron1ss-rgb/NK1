@@ -138,7 +138,9 @@ export class EmbodimentRuntime {
       for(const key of ['action','mode','speechEventId'] as const){
         const value=context[key];
         const maxLength=key==='speechEventId'?140:96;
-        if(value!==undefined&&value!==null&&(typeof value!=='string'||value.length>maxLength)){
+        const invalidSpeechId=key==='speechEventId'&&typeof value==='string'&&value.length>0
+          &&(value.trim()!==value||/[\u0000-\u001f\u007f-\u009f]/u.test(value));
+        if(value!==undefined&&value!==null&&(typeof value!=='string'||value.length>maxLength||invalidSpeechId)){
           this.voice.lastError='tts-invalid-context';this.voice.lastAt=Date.now();return false;
         }
       }
