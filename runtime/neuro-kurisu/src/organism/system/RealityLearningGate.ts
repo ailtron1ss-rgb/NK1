@@ -35,6 +35,51 @@ export interface RealityLearningGateState {
   history:RealityLearningDecision[];
 }
 
+
+const nonNegativeSafeInteger=(value:unknown,fallback:number):number=>
+  typeof value==='number' && Number.isSafeInteger(value) && value>=0 ? value : fallback;
+const finiteScoreOr=(value:unknown,fallback:number):number=>
+  typeof value==='number' && Number.isFinite(value) ? clamp(value) : fallback;
+
+const DECISION_SCORE_FIELDS=[
+  'evidence01','verified01','independent01','consequence01','learningScale01',
+  'neuralUpdateScale01','worldModelUpdateScale01','memoryPromotionScale01',
+  'identityUpdateScale01','reward01','surprise01','success01',
+] as const;
+
+function normalizeDecision(value:unknown):RealityLearningDecision|null {
+  if(!value || typeof value!=='object' || Array.isArray(value)) return null;
+  const row=value as Record<string,unknown>;
+  if(row.source!=='external' && row.source!=='simulation') return null;
+  if(typeof row.reason!=='string') return null;
+  const normalized:Record<string,number>={};
+  for(const key of DECISION_SCORE_FIELDS){
+    const score=row[key];
+    if(typeof score!=='number' || !Number.isFinite(score)) return null;
+    normalized[key]=clamp(score);
+  }
+  return {
+    source:row.source,
+    evidence01:normalized.evidence01!,
+    verified01:normalized.verified01!,
+    independent01:normalized.independent01!,
+    consequence01:normalized.consequence01!,
+    learningScale01:normalized.learningScale01!,
+    neuralUpdateScale01:normalized.neuralUpdateScale01!,
+    worldModelUpdateScale01:normalized.worldModelUpdateScale01!,
+    memoryPromotionScale01:normalized.memoryPromotionScale01!,
+    identityUpdateScale01:normalized.identityUpdateScale01!,
+    reward01:normalized.reward01!,
+    surprise01:normalized.surprise01!,
+    success01:normalized.success01!,
+    reason:row.reason.slice(0,400),
+  };
+}
+function sameDecision(a:RealityLearningDecision,b:RealityLearningDecision):boolean {
+  return a.source===b.source && a.reason===b.reason &&
+    DECISION_SCORE_FIELDS.every(key=>a[key]===b[key]);
+}
+
 export const defaultRealityLearningGateState=():RealityLearningGateState=>({
   version:1,decisions:0,externalDecisions:0,simulationDecisions:0,attenuatedDecisions:0,strongDecisions:0,
   meanLearningScale01:.42,meanNeuralUpdateScale01:.42,meanWorldModelUpdateScale01:.35,
@@ -54,8 +99,37 @@ export class RealityLearningGate {
   private state=defaultRealityLearningGateState();
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<RealityLearningGateState>|null){
-    const d=defaultRealityLearningGateState(),r:any=raw??{};
-    this.state={...d,...structuredClone(r),version:1,last:r.last?structuredClone(r.last):null,history:Array.isArray(r.history)?r.history.slice(-256):[]};
+    const d=defaultRealityLearningGateState();
+    const r:any=raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    const externalDecisions=nonNegativeSafeInteger(r.externalDecisions,d.externalDecisions);
+    const simulationDecisions=nonNegativeSafeInteger(r.simulationDecisions,d.simulationDecisions);
+    const minimumDecisionTotal=Math.min(Number.MAX_SAFE_INTEGER,externalDecisions+simulationDecisions);
+    const decisions=Math.max(nonNegativeSafeInteger(r.decisions,d.decisions),minimumDecisionTotal);
+    const validHistory=Array.isArray(r.history)
+      ? r.history.map(normalizeDecision).filter((row):row is RealityLearningDecision=>row!==null).slice(0,256)
+      : [];
+    const normalizedLast=normalizeDecision(r.last);
+    const last=normalizedLast??validHistory[0]??null;
+    const history=last
+      ? validHistory.length && sameDecision(validHistory[0]!,last)
+        ? validHistory
+        : [last,...validHistory.filter(row=>!sameDecision(row,last))].slice(0,256)
+      : validHistory;
+    this.state={
+      version:1,
+      decisions,
+      externalDecisions,
+      simulationDecisions,
+      attenuatedDecisions:Math.min(decisions,nonNegativeSafeInteger(r.attenuatedDecisions,d.attenuatedDecisions)),
+      strongDecisions:Math.min(decisions,nonNegativeSafeInteger(r.strongDecisions,d.strongDecisions)),
+      meanLearningScale01:finiteScoreOr(r.meanLearningScale01,d.meanLearningScale01),
+      meanNeuralUpdateScale01:finiteScoreOr(r.meanNeuralUpdateScale01,d.meanNeuralUpdateScale01),
+      meanWorldModelUpdateScale01:finiteScoreOr(r.meanWorldModelUpdateScale01,d.meanWorldModelUpdateScale01),
+      meanMemoryPromotionScale01:finiteScoreOr(r.meanMemoryPromotionScale01,d.meanMemoryPromotionScale01),
+      meanIdentityUpdateScale01:finiteScoreOr(r.meanIdentityUpdateScale01,d.meanIdentityUpdateScale01),
+      last,
+      history,
+    };
   }
   refineLatest(patch:{memoryPromotionScale01?:number;identityUpdateScale01?:number;learningScale01?:number;reason?:string}){
     const last=this.state.last;
