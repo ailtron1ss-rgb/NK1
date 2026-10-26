@@ -1,0 +1,37 @@
+services:
+  neuro-kurisu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: neuro-kurisu:nk1
+    init: true
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 127.0.0.1
+      PORT: "3310"
+      SUPER_GATEWAY_HOST: 0.0.0.0
+      SUPER_GATEWAY_PORT: "8080"
+      SUPER_UI_PORT: "8081"
+      SUPER_RUNTIME_PORT: "3310"
+      SUPER_RESEARCH_PORT: "8765"
+      SUPER_STATE_DIR: /data
+    ports:
+      - "${NK1_BIND_HOST:-127.0.0.1}:${NK1_PORT:-8080}:8080"
+    volumes:
+      - nk1-state:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - --input-type=module
+        - -e
+        - "fetch('http://127.0.0.1:8080/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 180s
+    stop_grace_period: 15s
+
+volumes:
+  nk1-state:

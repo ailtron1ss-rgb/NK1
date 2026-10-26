@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const stateDir = resolve(ROOT, '.super-state');
+const stateDir = resolve(ROOT, process.env.SUPER_STATE_DIR || '.super-state');
 mkdirSync(stateDir, { recursive: true });
 
 const children = [];

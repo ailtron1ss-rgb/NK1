@@ -1,0 +1,16 @@
+.git
+.github
+legacy
+**/node_modules
+**/dist
+**/coverage
+**/.cache
+**/.super-state
+.super-state
+**/playwright-report
+**/test-results
+.env
+.env.*
+!.env.example
+**/*.log
+npm-debug.log*

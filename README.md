@@ -332,6 +332,18 @@ npm run start
 
 Gateway: `http://127.0.0.1:8080`.
 
+### Docker Compose (single-command launch)
+
+Build the image and start the full production-style stack with one command:
+
+```bash
+docker compose up --build -d
+```
+
+Open `http://127.0.0.1:8080`. The container combines the canonical Neuro Kurisu runtime, research bridge, production UI and gateway. Organism state persists in the named `nk1-state` volume; check readiness at `/health`, follow logs with `docker compose logs -f`, and stop with `docker compose down`.
+
+The host port is bound to loopback by default so the API is not exposed on the network unintentionally. Set `NK1_PORT` for a different host port. Keep `NK1_BIND_HOST=127.0.0.1` unless you have deliberately configured authentication and network controls before exposing the gateway to other machines.
+
 ## Verification
 
 Fast structural/runtime-source audit:

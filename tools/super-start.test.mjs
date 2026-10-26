@@ -8,6 +8,11 @@ const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const start = await readFile(path.join(root, 'tools', 'super-start.mjs'), 'utf8');
 const dev = await readFile(path.join(root, 'tools', 'super-dev.mjs'), 'utf8');
 
+test('launchers support a mounted persistent state directory', () => {
+  assert.ok(start.includes("resolve(ROOT, process.env.SUPER_STATE_DIR || '.super-state')"));
+  assert.ok(dev.includes("resolve(ROOT, process.env.SUPER_STATE_DIR || '.super-state')"));
+});
+
 test('production launcher imports filesystem operations from node:fs', () => {
   assert.match(start, /import \{ mkdirSync \} from 'node:fs';/);
   assert.match(start, /import \{ resolve \} from 'node:path';/);

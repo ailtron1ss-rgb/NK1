@@ -1,3 +1,12 @@
+## WorkPass378 — package the complete local stack with persistent Docker Compose state (2026-10-26)
+
+- **One-command deployment:** added a multi-stage `Dockerfile`, `compose.yaml` and `.dockerignore`. The runtime image uses Node 24 and Python 3.11, carries the built production UI and locked app/runtime dependencies, runs as the non-root `node` user, and exposes only the gateway on the container network.
+- **Persistent identity/state:** `SUPER_STATE_DIR` is now configurable in both start modes; Compose mounts `/data` as the named `nk1-state` volume so organism/runtime continuity survives container recreation. The host port binds to 127.0.0.1 by default; external/LAN exposure is not the default.
+- **Readiness and CI:** clean-install workflow now validates Compose config, builds the image, boots the packaged container and checks gateway readiness plus live UI/runtime/research endpoints. The local clean-install/start test remains a separate gate.
+- **Verification:** local clean install, production UI build and three-service startup passed on WorkPass377. Container image build and Compose boot remain pending until the new exact-head Docker CI steps finish.
+
+---
+
 ## WorkPass377 — fix production launcher filesystem import (2026-10-26)
 
 - **Clean-start CI finding:** `npm run install:all` and `npm --prefix app run build` passed. The stack-start step failed immediately because `tools/super-start.mjs` imported `mkdirSync` from `node:path`; Node reports that this module has no such export.
