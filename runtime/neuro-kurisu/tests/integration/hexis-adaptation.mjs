@@ -702,6 +702,23 @@ assert.equal(failingBeliefProjection.snapshot().metrics.beliefRevisions, 0,
   'failed canonical projection must not advance revision metrics');
 
 
+// Direct guardrail test: the agency bridge must reject control characters even
+// when its materialization method is called outside the upstream HMX parser.
+assert.throws(
+  () => goalPipelineSystems.agency.selfProjects.materializeApprovedHexisGoal({
+    proposalId: 'hexgoal:' + 'a'.repeat(32),
+    sourceLineageId: 'test-lineage',
+    sourceRef: 'exp_8888888888888888:bad-title',
+    title: 'unsafe\\nproject title',
+    description: 'description',
+    importance: 0.5,
+    urgency: 0.4,
+    confidence: 0.5,
+  }),
+  /hexis-project-title-invalid/,
+);
+
+
 // End-to-end Hexis goal path: approval creates a paused NK1 agency project, and
 // only the separate activation call may make it active. Goal links are resolved
 // to the imported memory's persisted graph-source key, with honest receipts.
