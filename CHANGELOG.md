@@ -1,3 +1,213 @@
+## NK1 P26 learner — keep training-control validation atomic (2026-10-26)
+
+- Preserved the existing strict input-integrity contract: `learningRate01` and any supplied `sampleWeight01` must be finite; malformed controls are rejected before any model mutation. This matches `p26-learning-input-integrity.mjs` and prevents invalid caller data from silently becoming a learning update.
+- Removed the unreachable non-finite fallback branches inside `train()` and `trainFeatures()` while retaining finite-rate/weight clamping for valid inputs. Updated the true-learning regression to assert rejection and snapshot immutability for NaN/Infinity controls, without reducing the real held-out training workload.
+
+---
+
+## NK1 P23 regression fix — preserve persisted row schema helpers (2026-10-26)
+
+- Restored the field-level persistence helpers used by P23 row parsers and checksum/metrics normalization after extracting the shared bounded object-graph validator. These helpers remain distinct from graph validation: one validates structural trust, the others validate persisted domain values and bounds.
+- The latest CI surfaced this integration regression through TypeScript errors and `ReferenceError: persistedTime is not defined`; this commit addresses the missing helper definitions rather than suppressing those checks.
+
+---
+
+## NK1 B272 corruption fixture — represent `__proto__` as untrusted JSON data (2026-10-26)
+
+- Changed the goal-outcome-memory corruption fixture to define an own enumerable `__proto__` data property on an ordinary object instead of using object-literal prototype mutation. The test now models a JSON-parsed hostile key that the B272 sanitizer must quarantine, while the separate shared validator continues to reject genuinely exotic prototypes.
+
+---
+
+## NK1 P26 persistence — guard ADWIN snapshot restoration (2026-10-26)
+
+- Routed `AdaptiveWindowDriftDetector.restore()` through the shared bounded plain-data validator before accessing snapshot fields. Accessors, custom prototypes, cycles/aliases, sparse arrays, and over-budget inputs now fail with `adwin-snapshot-invalid` before live state is touched.
+- Added accessor and cycle regressions, including assertions that the prior detector snapshot is preserved on rejection. The statistical detector algorithm and its drift thresholds are unchanged.
+
+---
+
+## NK1 B272 validation follow-up — keep malformed-state fixture JSON-tree shaped (2026-10-26)
+
+- Changed the invalid-goal-ID fixture to copy its vector instead of aliasing the snapshot's `currentGoal` array. That case is intended to exercise control-character ID quarantine, not the separate rejection rule for non-JSON object graphs.
+- The shared validator remains strict about aliases/cycles; dedicated P23 regressions cover that contract. B272 still sanitizes the malformed ID and continues the rest of the restore path for ordinary data-tree snapshots.
+
+---
+
+## NK1 endogenous-goal persistence — enforce shared bounded data boundary (2026-10-26)
+
+- Connected `B272EndogenousGoalGenesis.restore()` to the shared core data-tree validator. Goal state no longer reads accessor-backed, custom-prototype, cyclic, aliased, sparse, or over-budget snapshots before validation.
+- A 300,000 combined node/key budget preserves the existing large-matrix quarantine regression while still applying the canonical fixed-size matrix restore; the validator imposes a hard 500,000 budget cap and depth cap.
+- Added accessor and cycle tests that prove rejection leaves goal-genesis state unchanged. Goal scoring and outcome-credit logic are unchanged.
+
+---
+
+## NK1 core persistence architecture — share bounded data-tree validation (2026-10-26)
+
+- Extracted the bounded plain-data validator into `organism/core/BoundedPlainData.ts` and reused it in P23 learning restore, unified cognitive-cycle restore, and intrinsic-motivation restore. These state boundaries now reject accessors, custom prototypes, sparse/custom arrays, symbols, cycles/aliases, and over-budget/deep structures before trusting persisted state.
+- Updated cycle and motivation contracts to assert strict rejection and prove that invalid snapshots leave live internal state unchanged. Existing finite/range sanitization remains responsible for ordinary numeric fields, so this change does not convert NaN handling into an unbounded or permissive path.
+
+---
+
+## NK1 P26 verification — stabilize ADWIN mean assertion (2026-10-26)
+
+- Replaced the exact comparison for the adaptive-window detector's stationary mean with an absolute `1e-12` tolerance. Repeated online updates accumulate normal IEEE-754 rounding, so a constant 0.2 stream may produce `0.19999999999999962`.
+- Detection thresholds, window pruning, and the measured mean calculation are unchanged; the test still checks zero false detections on the stationary stream and successful detection after the step change.
+
+---
+
+## NK1 P23 restore boundary — cover cyclic, aliased, and sparse snapshots (2026-10-26)
+
+- Extended WorkPass310 with explicit rejection tests for cyclic objects, shared-object aliases, and sparse arrays. Each regression also verifies that a rejected restore leaves the current learner snapshot unchanged.
+- This closes coverage gaps for the bounded plain-data validator; it does not alter training or replay algorithms.
+
+---
+
+## NK1 P23 persistence hardening — reject accessor-backed learning snapshots (2026-10-26)
+
+- Added a bounded recursive data-tree validation step before `P23LearningEngine.restore()` reads persisted state. It rejects getters/setters, exotic prototypes, cyclic/aliased object graphs, sparse/custom arrays, symbols, and over-budget/deep structures before assigning learner state.
+- Added top-level and nested accessor regressions that assert restore rejects the input and leaves the current learner snapshot unchanged. Ordinary persisted JSON data remains the intended input; no dependency was added.
+- This is defensive integrity hardening, not a claim of better learned performance. Focused and broader CI need to validate the exact latest commit.
+
+---
+
+## NK1 P26 verification — compare transfer metrics with numeric tolerance (2026-10-26)
+
+- Fixed a brittle regression assertion in `p26-continual-transfer-tracker.mjs`: the computed `0.35 - 0.2` can be represented as `0.14999999999999997`, so the test now uses a strict `1e-12` absolute tolerance like the neighboring transfer-metric assertions.
+- The metric formula, transfer direction, signed regression behavior, and baseline logic are unchanged. Exact-head P26 CI must be rerun to verify the suite beyond this first failing assertion.
+
+---
+
+## NK1 P26 Node TypeScript execution — make transform mode consistent across replay tests
+
+- Replaced strip-only mode with `--experimental-transform-types` for all direct TypeScript-based P26 regressions, not just the first replay-buffer test.
+- Updated P26 package scripts likewise, since replay and continual-learning components use TypeScript parameter properties that strip-only mode explicitly rejects.
+- Node 24.21 remains pinned by the project; this is a test-launcher compatibility fix, not a source transpilation workaround.
+
+---
+
+## NK1 Node 24 TypeScript runtime — enable transformation for replay-buffer test
+
+- Switched the P26 continual replay test to Node's `--experimental-transform-types` mode, which supports TypeScript parameter properties used by `ContinualReplayBuffer`; strip-only mode rejected this syntax before the test could run.
+- The pinned Node 24 runtime supports the transform flag; the algorithm and replay assertions are unchanged.
+
+---
+
+## NK1 learning compatibility — preserve bounded legacy feature vectors
+
+- Relaxed the learner's shape check from exact-size to non-empty, finite and bounded vectors so older 15-feature callers still receive the established zero-padding behavior.
+- Non-finite values are still rejected across the entire supplied vector, including entries that would otherwise be truncated; vectors larger than 256 entries are rejected to bound input work.
+
+---
+
+## NK1 CI coverage — gate durable skill provenance and accurate P26 integrity reporting (2026-10-25)
+
+- Added atomic skill-store persistence, candidate-store lifecycle code and its regression to the P26 pull-request path filter so provenance validation cannot change without CI.
+- Corrected the input-integrity test's summary count after expanding negative scalar/state/vector cases.
+
+---
+
+## NK1 durable skill-store restore — validate revision provenance schema
+
+- Brought the provenance checks from the learning candidate contract into the unified runtime’s atomic JSON persistence validator, rather than validating only the hash.
+- Added a durable round-trip regression for provenance-bearing candidates and rejection of a persisted provenance mutation under compare-and-swap.
+- Candidate IDs remain bound to the same provenance digest; malformed lineage cannot enter the runtime state just because its hash was recomputed.
+
+---
+
+## NK1 P26 snapshot restore — sanitize persisted learning diagnostics (2026-10-25)
+
+- Extended `ParametricPolicyLearner.restore()` to repair non-finite/out-of-range diagnostics, reject invalid/negative update counters and reset invalid training timestamps.
+- Only an actual boolean `true` now restores a frozen state; malformed truthy strings cannot unexpectedly freeze or alter the learner.
+- This closes the P26 regression exposed after input validation passed: corrupted training telemetry can no longer re-enter runtime state through restore.
+
+---
+
+## NK1 P26 test fixture — remove duplicate shared-feature declaration (2026-10-25)
+
+- Removed the now-redundant second declaration after moving the feature vector above the negative training assertions; the test uses one immutable shared fixture throughout.
+
+---
+
+## NK1 P26 input-integrity fixture — initialize shared features before negative cases (2026-10-25)
+
+- Moved the valid feature-vector fixture before negative trainFeatures assertions so the regression exercises numeric validation rather than hitting a JavaScript temporal-dead-zone ReferenceError.
+- No runtime behavior changed; the test now reaches the intended target/rate/weight rejection paths.
+
+---
+
+## NK1 P26 learner integrity — reject malformed training feedback before mutation (2026-10-25)
+
+- Added preflight validation for action identity, finite/ranged TD targets, finite learning rates/sample weights, required state features, and numeric extras before either online or feature-vector training.
+- Hardened feature-vector training against non-finite values and malformed vector length rather than silently clamping them into legitimate data.
+- Made batch training validate every sample before the first update, preserving atomic rejection when later feedback is malformed.
+- Expanded the P26 integrity regression for NaN/infinite scalar inputs, invalid actions and malformed states while retaining snapshot checks proving rejected data does not mutate the policy.
+
+---
+
+## NK1 cognitive architecture smoke — validate dynamic contract counts and bounded context keys (2026-10-25)
+
+- Updated the server smoke to compare subsystem/flow array lengths with the architecture validator's own counts, keeping minimum architecture coverage without freezing the test to the old 22-flow map after it grew to 25.
+- Added a runtime regression asserting that feedback-created autonomous-life decision context keys stay non-empty, trimmed and within the ledger's 180-character boundary.
+- Improved future smoke-failure diagnostics with HTTP status, architecture validation, actual subsystem/flow counts and runtime snapshot health.
+
+---
+
+## NK1 P26 workflow contract — restore missing package test scripts (2026-10-25)
+
+- Registered the three existing P26 integrity/recovery/curriculum-matrix tests as explicit runtime package scripts referenced by the validation workflow.
+- The workflow no longer fails before tests execute due to script-name drift; every script invokes its real test file under the repository's pinned Node.js type-stripping runtime.
+
+---
+
+## NK1 integrated-runtime stabilization — action causality, context bounds and reproducible typecheck (2026-10-25)
+
+- Connected B272 real-world outcome learning to the actual selected action: only matching endogenous actions receive credit; mismatches create a bounded audit event instead of crashing the core or teaching the wrong action.
+- Normalized causal context keys once at the autonomous-life integration boundary to satisfy both learning ledgers' 180-character contract while preserving the full key for other consumers.
+- Fixed CI setup to install the app lockfile's canonical TypeScript/Node type toolchain before runtime typecheck, use the pinned `.nvmrc` Node version and fail closed rather than accepting a global `tsc`.
+- Corrected strict-JavaScript annotations in the avatar storage test so application typecheck reports real source errors instead of implicit-any/delete-operator noise.
+- Expanded P26 path filters so core/action-attribution, autonomous-life context and server smoke changes cannot bypass regression validation.
+
+---
+
+## NK1 integration follow-up — align restore and postcondition regression contracts (2026-10-25)
+
+- Updated the P23 restore test to match the existing canonical policy: durable newest-first experience and replay rows lead their bounded dedupe caches, while recent cache-only IDs remain after durable rows within the 2,048-entry cap. The implementation still prioritizes persisted outcomes so cache omission cannot reopen already-processed traces.
+- Updated the WorkPass294 source contract to recognize the current explicit conditional spread of `decisionId` alongside the exact `executionId` when calling the verifier. Runtime behavior is unchanged; the regression now checks the code the gateway actually uses instead of an obsolete formatting pattern.
+- These are contract-alignment fixes, not an outcome-learning uplift claim. Exact-head CI must confirm both workflows.
+
+---
+
+## NK1 host-owned evaluator test — isolate permission and identity guards (2026-10-25)
+
+- Restored executable permissions after the negative world-writable-mode test so the subsequent replacement and run-root identity tests actually reach their intended guards.
+- Production validation is unchanged: the executable remains rejected while writable, and dispatch-time identity checks are still exercised separately.
+
+---
+
+## NK1 integration follow-up — repair two CI contract gaps (2026-10-25)
+
+- Corrected the Hermes signed-shadow tamper regression so it changes a signed payload field and recomputes only the unsigned transport fingerprint. The test now reaches the cryptographic verifier rather than failing earlier on a binary-outcome mismatch, and still requires rejection of the tampered signature.
+- Registered `test:workpass294:correlated-postcondition` in the runtime package scripts to match the existing WorkPass294 workflow and its actual test file. This closes a CI wiring gap; it does not weaken the postcondition verification logic.
+- The previous exact-head WorkPass294 job had already passed runtime typecheck before failing solely because the script was absent. New exact-head runs are required to validate both fixes.
+
+---
+
+## NK1 cognition follow-up — harden cognitive restore boundaries (2026-10-25)
+
+- `IntrinsicMotivationEngine.restore()` and `UnifiedCognitiveCycle.restore()` now read only own data properties from persisted state. Prototype-inherited values can no longer forge internal drive urgency or a completed cognitive-cycle record, and accessor properties are ignored without being executed.
+- Extended WorkPass288 and WorkPass287 contract tests with inherited-state forgery and throwing-accessor regressions. No dependency was added; no learning-uplift or consciousness claim is made.
+- Verification status: changes are committed to the active cognitive-cycle PR branch. Exact-head focused tests and runtime typecheck must pass before this gate can be considered closed.
+
+---
+
+## WorkPass319 — unified cognitive-cycle and motivation integration closure (2026-10-25)
+
+- Made `UnifiedCognitiveCycle.restore()` fail closed on invalid/missing/contradictory persisted cycle counters and corrected mixed malformed-stage normalization.
+- Replaced the unnormalized B272 goal-value dot product with bounded alignment/reward/evidence signals so score saturation cannot hide confidence-weighted intrinsic motivation.
+- Corrected B272 needs validation to use literal keys. Focused cycle, motivation and B272 integration tests passed in [run 40189992050](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189992050).
+- The wider runtime `npm run typecheck` failed in [run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) with multiple diagnostics across the codebase. That debt remains unresolved; this entry does not claim project-wide typecheck or production readiness.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

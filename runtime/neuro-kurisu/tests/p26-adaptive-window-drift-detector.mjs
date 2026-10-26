@@ -11,7 +11,8 @@ const detector = new AdaptiveWindowDriftDetector({
 
 for (let i = 0; i < 100; i++) detector.update(0.2);
 assert.equal(detector.nDetections, 0, 'stationary stream should not trigger on constant values');
-assert.equal(detector.estimation, 0.2);
+assert.ok(Math.abs(detector.estimation - 0.2) < 1e-12,
+  'stationary mean should match the constant stream within floating-point tolerance');
 assert.equal(detector.width, 100);
 
 let detectedAt = -1;
@@ -42,6 +43,23 @@ assert.throws(() => detector.update(1.1), /adwin-value-must-be-finite-0-to-1/);
 assert.throws(() => new AdaptiveWindowDriftDetector({ delta: 1 }), /adwin-delta-out-of-range/);
 assert.throws(() => new AdaptiveWindowDriftDetector({ clock: 0 }), /adwin-clock-invalid/);
 assert.throws(() => restored.restore({ version: 1, values: [0.2] }), /adwin-snapshot-invalid/);
+
+const beforeRejectedRestore = restored.snapshot();
+const accessorSnapshot = { ...snapshot };
+Object.defineProperty(accessorSnapshot, 'values', { enumerable: true, get() {
+  throw new Error('ADWIN restore must not execute persisted getters');
+} });
+assert.throws(() => restored.restore(accessorSnapshot), /adwin-snapshot-invalid/,
+  'accessor-backed snapshots must be rejected before fields are read');
+assert.deepEqual(restored.snapshot(), beforeRejectedRestore,
+  'rejected accessor snapshot must not partially mutate detector state');
+
+const cyclicSnapshot = { ...snapshot };
+cyclicSnapshot.self = cyclicSnapshot;
+assert.throws(() => restored.restore(cyclicSnapshot), /adwin-snapshot-invalid/,
+  'cyclic snapshots must not cross the restore boundary');
+assert.deepEqual(restored.snapshot(), beforeRejectedRestore,
+  'rejected cyclic snapshot must not partially mutate detector state');
 
 detector.reset();
 assert.equal(detector.width, 0);

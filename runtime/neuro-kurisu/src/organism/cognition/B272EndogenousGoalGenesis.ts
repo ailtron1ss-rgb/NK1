@@ -1,5 +1,6 @@
 import { cosineSimilarity } from '../core/NumericPrimitives.ts';
 import type { ActionKind } from '../core/types.ts';
+import { isBoundedPlainDataTree } from '../core/BoundedPlainData.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const GOAL_DIMS = ['curiosity','truth','coherence','competence','connection','continuity','autonomy','energy'] as const;
@@ -108,6 +109,10 @@ export class B272EndogenousGoalGenesis {
   private state=defaultB272State();
   restore(raw?:Partial<B272State>|null){
     const d=defaultB272State();
+    if(raw!==undefined&&raw!==null&&!isRecord(raw))throw new TypeError('B272 persisted state must be a plain object');
+    // The weight-matrix sanitizer intentionally accepts oversized legacy matrices
+    // up to this budget and then bounds them to canonical dimensions.
+    if(raw!==undefined&&raw!==null&&!isBoundedPlainDataTree(raw,{maxNodes:300_000}))throw new TypeError('B272 persisted state must contain only bounded plain data properties');
     const r:Record<string,unknown>=isRecord(raw)?raw:{};
     if(r.version!==undefined&&r.version!==1)throw new RangeError('unsupported B272 state version');
 
@@ -262,7 +267,12 @@ export class B272EndogenousGoalGenesis {
       const actionScores=this.state.actionPrototypeWeights.map(row=>clamp11(dot(row,v)/Math.max(1,norm(row)*norm(v))));
 const learned=this.learnedGoalValue(v,input.tick);
       const learnedClosure=(learned.reward01-.5)*.20 + (learned.evidence01*(.52-learned.predictionError01))*.10;
-      const predictedFutureValue=clamp01(.5+.32*dot(v,base)+.18*intrinsic+.16*(1-conflict)+.08*k+learnedClosure);
+      // Score only bounded signals. The previous raw dot(v, base) could be
+      // much larger than 1 and saturate the result at 1.0, hiding changes in
+      // the confidence-weighted intrinsic drive from the goal-value signal.
+      const worldAlignment01=clamp01((cosine(v,base)+1)*.5);
+      const learnedValue01=clamp01(.5+(learned.reward01-.5)*.4+learned.evidence01*(.52-learned.predictionError01)*.2);
+      const predictedFutureValue=clamp01(.16+.16*worldAlignment01+.22*intrinsic+.16*(1-conflict)+.10*(k/3)+.20*learnedValue01+learnedClosure*.1);
       const coherence=clamp01(.5+.25*cosine(v,base)+.25*(1-conflict));
       const novelty01=clamp01(.25+.45*(1-Math.abs(cosine(v,this.state.currentGoal)))+.30*(k/3));
       const internalNeed=clamp01(.5+.35*Math.abs(dot(v,base))+.15*conflict);
@@ -277,7 +287,7 @@ const learned=this.learnedGoalValue(v,input.tick);
     if(tick<0)throw new RangeError('B272 tick must be a non-negative safe integer');
     if((this.state.steps>0||this.state.tick>0)&&tick<=this.state.tick)throw new RangeError('B272 ticks must strictly increase');
     if(!isRecord(input.needs))throw new TypeError('B272 needs must be an object');
-    for(const key of ['energy01','uncertainty01','novelty01','goalPressure01','socialNeed01'])if(!isUnit(input.needs[key]))throw new RangeError(`B272 needs.${key} must be in [0,1]`);
+    for(const key of ['energy01','uncertainty01','novelty01','goalPressure01','socialNeed01'] as const)if(!isUnit(input.needs[key]))throw new RangeError(`B272 needs.${key} must be in [0,1]`);
     if(!isRecord(input.traits)||!Object.values(input.traits).every(isUnit))throw new RangeError('B272 traits must contain only finite values in [0,1]');
     for(const [name,vector] of [['selfLatent',input.selfLatent],['worldLatent',input.worldLatent]] as const){
       if(!Array.isArray(vector)||vector.length<1||vector.length>256||vector.some(v=>typeof v!=='number'||!Number.isFinite(v)||Math.abs(v)>1_000_000))throw new RangeError(`B272 ${name} must be a bounded finite vector`);

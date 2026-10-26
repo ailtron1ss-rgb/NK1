@@ -72,7 +72,7 @@ const badIdentifierSnapshot=net.snapshot();
 badIdentifierSnapshot.goalHistory=[{
   tick:badIdentifierSnapshot.tick,
   id:String.fromCharCode(1),
-  vector:badIdentifierSnapshot.currentGoal,
+  vector:badIdentifierSnapshot.currentGoal.slice(),
   action:badIdentifierSnapshot.currentAction,
   reward01:0.5,
   predictionError01:0.5,
@@ -96,7 +96,9 @@ corrupt.currentGoal=[Number.NaN,1];
 corrupt.actionPrototypeWeights=Array.from({length:500},()=>new Array(500).fill(Number.POSITIVE_INFINITY));
 corrupt.goalHistory=[{tick:Number.NaN,id:'forged',vector:[Number.NaN],action:'execute-shell',reward01:2,predictionError01:-1,accepted:true}];
 corrupt.outcomeHistory=[{tick:999999,goalId:'bad-id',action:'execute-shell',reward01:2,predictionError01:Number.NaN}];
-corrupt.goalOutcomeMemory={'__proto__':{vector:[1],meanReward01:2,meanPredictionError01:Number.NaN,updates:Number.POSITIVE_INFINITY,lastTick:999999}};
+corrupt.goalOutcomeMemory={};
+Object.defineProperty(corrupt.goalOutcomeMemory,'__proto__',{enumerable:true,configurable:true,writable:true,
+  value:{vector:[1],meanReward01:2,meanPredictionError01:Number.NaN,updates:Number.POSITIVE_INFINITY,lastTick:999999}});
 tampered.restore(corrupt);
 const sanitized=tampered.snapshot();
 assert.equal(sanitized.version,1);
@@ -116,6 +118,18 @@ assert.equal(Object.keys(sanitized.goalOutcomeMemory).length,0);
 const beforeUnsupported=tampered.snapshot();
 assert.throws(()=>tampered.restore({version:2}),/version/);
 assert.deepEqual(tampered.snapshot(),beforeUnsupported,'unsupported restore must not partially mutate state');
+
+const accessorState={...beforeUnsupported};
+Object.defineProperty(accessorState,'tick',{enumerable:true,get(){throw new Error('B272 restore getter must not execute');}});
+assert.throws(()=>tampered.restore(accessorState),/bounded plain data properties/,
+  'accessor-backed state must be rejected before goal-genesis fields are read');
+assert.deepEqual(tampered.snapshot(),beforeUnsupported,'rejected accessor state must not mutate goal genesis');
+
+const cyclicState={...beforeUnsupported};
+cyclicState.self=cyclicState;
+assert.throws(()=>tampered.restore(cyclicState),/bounded plain data properties/,
+  'cyclic snapshots must be rejected before state restoration');
+assert.deepEqual(tampered.snapshot(),beforeUnsupported,'rejected cyclic state must not mutate goal genesis');
 
 const invalidTickNet=new B272EndogenousGoalGenesis();
 assert.throws(()=>invalidTickNet.step({...comparisonInput,tick:Number.NaN}),/tick/);

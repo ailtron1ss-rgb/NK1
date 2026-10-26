@@ -5,6 +5,8 @@
  * cycle as complete only when required stages have bounded identities and the
  * causal parent chain is credible. Restored counters are untrusted persistence.
  */
+import { isBoundedPlainDataTree } from '../core/BoundedPlainData.ts';
+
 export type UnifiedCycleStage='observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update';
 
 export interface UnifiedCognitiveCycleState {
@@ -31,8 +33,14 @@ export interface UnifiedCognitiveCycleResult {
 const REQUIRED:UnifiedCycleStage[]=['observation','prediction','action','outcome','learning','self-update'];
 const ALL_STAGES=new Set<UnifiedCycleStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update']);
 const clamp01=(x:number)=>Math.max(0,Math.min(1,x));
-const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+const isSafeCounter=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+const safeCounter=(value:unknown):number=>isSafeCounter(value)?value:0;
 const safeMetric=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):0;
+const ownDataValue=(source:object,key:string):unknown=>{
+  const descriptor=Object.getOwnPropertyDescriptor(source,key);
+  // Snapshot state is untrusted: never trust inherited claims or execute getters.
+  return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;
+};
 const validStageId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim().length>0&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 
 export const defaultUnifiedCognitiveCycle=():UnifiedCognitiveCycleState=>({version:1,cycles:0,completeCycles:0,incompleteCycles:0,brokenLineages:0,meanStageCoverage01:0,meanCausalContinuity01:0,lastTick:-1,lastComplete:false,lastMissingStages:[...REQUIRED]});
@@ -41,35 +49,51 @@ export class UnifiedCognitiveCycle {
   private state=defaultUnifiedCognitiveCycle();
 
   restore(raw?:Partial<UnifiedCognitiveCycleState>|null):void {
-    const source=raw??{};
-    const cycles=safeCounter(source.cycles);
+    if(raw!==undefined&&raw!==null&&!isBoundedPlainDataTree(raw))throw new TypeError('cognitive-cycle state must contain only bounded plain data properties');
+    const source:object=raw!==undefined&&raw!==null&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+    const persistedCycles=ownDataValue(source,'cycles');
+    const cycles=safeCounter(persistedCycles);
     // Restored counters must describe one coherent history: complete and
     // incomplete are disjoint subsets of cycles, and broken lineages are a
     // subset of incomplete cycles. Independent clamping can otherwise make
     // aggregate counts exceed the number of observations.
-    if(source.version!==undefined&&source.version!==1)throw new RangeError('unsupported cognitive-cycle state version');
-    const completeCycles=Math.min(cycles,safeCounter(source.completeCycles));
+    const restoredVersion=ownDataValue(source,'version');
+    if(restoredVersion!==undefined&&restoredVersion!==1)throw new RangeError('unsupported cognitive-cycle state version');
+    const persistedCompleteCycles=ownDataValue(source,'completeCycles');
+    const completeCycles=Math.min(cycles,safeCounter(persistedCompleteCycles));
     // Partition every recorded cycle. Any count not proven complete is
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
-    const hasMissingArray=Array.isArray(source.lastMissingStages);
-    const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...REQUIRED];
+    const restoredMissing=ownDataValue(source,'lastMissingStages');
+    const hasMissingArray=Array.isArray(restoredMissing);
+    const rawMissing=hasMissingArray?restoredMissing as unknown[]:[...REQUIRED];
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
-    const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
-    const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
+    const normalizedMissing=malformedMissing&&filteredMissing.length===0?[...REQUIRED]:filteredMissing;
+    const persistedLastTick=ownDataValue(source,'lastTick');
+    const lastTick=typeof persistedLastTick==='number'&&Number.isSafeInteger(persistedLastTick)&&persistedLastTick>=-1?persistedLastTick:-1;
+    const persistedIncompleteCycles=ownDataValue(source,'incompleteCycles');
+    const persistedBrokenLineages=ownDataValue(source,'brokenLineages');
     const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
+    // Preserve a restored `lastComplete` flag only when persisted counters form
+    // the same disjoint partition as the canonical history. Missing, invalid,
+    // over-counted, or contradictory counters make the last-cycle claim untrusted.
+    const restoredCountsConsistent=
+      isSafeCounter(persistedCycles)&&persistedCycles===cycles&&
+      isSafeCounter(persistedCompleteCycles)&&persistedCompleteCycles===completeCycles&&
+      isSafeCounter(persistedIncompleteCycles)&&persistedIncompleteCycles===incompleteCycles&&
+      isSafeCounter(persistedBrokenLineages)&&persistedBrokenLineages<=incompleteCycles;
     this.state={
       version:1,
       cycles,
       completeCycles,
       incompleteCycles,
-      brokenLineages:Math.min(incompleteCycles,safeCounter(source.brokenLineages)),
-      meanStageCoverage01:safeMetric(source.meanStageCoverage01),
-      meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
+      brokenLineages:Math.min(incompleteCycles,safeCounter(persistedBrokenLineages)),
+      meanStageCoverage01:safeMetric(ownDataValue(source,'meanStageCoverage01')),
+      meanCausalContinuity01:safeMetric(ownDataValue(source,'meanCausalContinuity01')),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:restoredCountsConsistent&&cycles>0&&completeCycles>0&&lastTick>=0&&ownDataValue(source,'lastComplete')===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }

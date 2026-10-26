@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -30,6 +31,26 @@ try {
   assert.match(result.stdout, /TYPECHECK=PASS mode=tsc compiler=app-lock/);
   assert.deepEqual(JSON.parse(await readFile(log, 'utf8')), ['-p', 'tsconfig.clean.json', '--noEmit']);
   console.log('TYPECHECK_RUNTIME_COMPILER_SELECTION=PASS source=app-lock pinned compiler selected ahead of global PATH');
+
+  // A global tsc is not reproducible: it may have a different version and no
+  // access to the app lockfile's @types/node. Prove that it is never accepted.
+  await rm(log, { force: true });
+  await rm(fixtureAppCompiler, { force: true });
+  const globalBin = path.join(root, 'global-bin');
+  const fakeGlobalTsc = path.join(globalBin, 'tsc');
+  await mkdir(globalBin, { recursive: true });
+  await writeFile(fakeGlobalTsc, '#!/bin/sh\nprintf "GLOBAL_TSC_WAS_USED" > "$NK_TSC_SELECTION_LOG"\nexit 0\n');
+  await chmod(fakeGlobalTsc, 0o755);
+  const blocked = spawnSync(process.execPath, [typecheckScript], {
+    cwd: fixtureRuntime,
+    encoding: 'utf8',
+    env: { ...process.env, NK_TSC_SELECTION_LOG: log, PATH: `${globalBin}${path.delimiter}${process.env.PATH ?? ''}` },
+    timeout: 15000,
+  });
+  assert.equal(blocked.status, 2, `global compiler fallback should be rejected: ${blocked.stdout}\n${blocked.stderr}`);
+  assert.match(`${blocked.stdout}\n${blocked.stderr}`, /TYPECHECK=BLOCKED reason=pinned-compiler-not-installed/);
+  assert.equal(existsSync(log), false, 'unlocked global tsc must never execute');
+  console.log('TYPECHECK_RUNTIME_GLOBAL_FALLBACK=BLOCKED');
 } finally {
   await rm(root, { recursive: true, force: true });
 }

@@ -11,14 +11,20 @@ const state = {
 const learner = new ParametricPolicyLearner();
 const initial = learner.snapshot();
 const valid = { state, action: 'respond', target01: .9, learningRate01: .06 };
+const features = learner.features(state, undefined, 'respond');
 
 assert.throws(() => learner.train({ ...valid, target01: Number.NaN }), /target-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, learningRate01: Number.POSITIVE_INFINITY }), /rate-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, sampleWeight01: Number.NaN }), /sample-weight-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, action: 'not-an-action' }), /invalid-action/);
+assert.throws(() => learner.train({ ...valid, state: { needs: null } }), /state-must-have-needs/);
+assert.throws(() => learner.trainFeatures({ features, action: 'respond', target01: Number.NaN, learningRate01: .06 }), /target-must-be-finite/);
+assert.throws(() => learner.trainFeatures({ features, action: 'respond', target01: .9, learningRate01: Number.POSITIVE_INFINITY }), /rate-must-be-finite/);
+assert.throws(() => learner.trainFeatures({ features, action: 'respond', target01: .9, learningRate01: .06, sampleWeight01: Number.NaN }), /sample-weight-must-be-finite/);
+assert.throws(() => learner.trainFeatures({ features: [...features, Number.NaN], action: 'respond', target01: .9, learningRate01: .06 }), /features-must-be-finite/);
 assert.deepEqual(learner.snapshot(), initial, 'rejected samples must not mutate policy weights or learning diagnostics');
 
-const features = learner.features(state, undefined, 'respond');
+
 assert.throws(() => learner.trainFeatures({ features: features.map((v, i) => i === 2 ? Number.NaN : v), action: 'respond', target01: .9, learningRate01: .06 }), /features-must-be-finite/);
 assert.deepEqual(learner.snapshot(), initial, 'invalid feature vectors must be rejected atomically');
 
@@ -66,4 +72,4 @@ const result = learner.train(valid);
 assert.equal(learner.snapshot().updates, 1, 'valid feedback must still update the learner');
 assert.ok(Number.isFinite(result.predictionAfter));
 assert.ok(learner.snapshot().weights.respond.every(Number.isFinite));
-console.log('P26_LEARNING_INPUT_INTEGRITY=PASS invalidSamples=5 corruptSnapshotFieldsRepaired=9 atomicBatchReject=2 stateMutationOnReject=0 validUpdates=1');
+console.log('P26_LEARNING_INPUT_INTEGRITY=PASS invalidSamples=10 corruptSnapshotFieldsRepaired=9 atomicBatchReject=2 stateMutationOnReject=0 validUpdates=1');

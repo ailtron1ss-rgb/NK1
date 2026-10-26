@@ -1,3 +1,16 @@
+## Latest durable checkpoint — WorkPass319 (2026-10-25)
+
+- **Target:** focused unified cognitive-cycle / intrinsic motivation / B272 integration gate.
+- **Changes:** restored cycle completion claims require coherent counters; malformed missing-stage snapshots preserve recognized stage IDs; B272 goal values use bounded normalized components so confidence-weighted internal drive remains observable; B272 need validation uses literal keys.
+- **Behavior validation:** all three tests passed in [run 40189992050](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189992050).
+- **Repository-wide typecheck:** [run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) failed with 88 diagnostic lines in the wider runtime. One B272 issue was fixed afterward, but the broad typecheck remains unresolved. Keep the PR draft and do not describe the runtime as typecheck-clean.
+- **Work branch:** `nk1-ready-unified-cycle-restore-integrity-20261025`.
+- **Scope boundary:** focused contract tests do not prove general learning uplift, full organism E2E, production readiness, or consciousness.
+
+See [WorkPass319 checkpoint](docs/WORKPASS319_UNIFIED_COGNITIVE_CYCLE_RESTORE_INTEGRITY_2026-10-25.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.

@@ -1,3 +1,15 @@
+## Current source-stack checkpoint — WorkPass319 (2026-10-25)
+
+- **Scope:** closes three functional defects in the unified cycle/motivation integration: contradictory restored counters, malformed missing-stage normalization, and B272 goal-value saturation that hid trusted intrinsic drive. The B272 literal-key validation error was also fixed.
+- **Behavior CI:** all three focused tests passed in [run 40189992050](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189992050).
+- **Typecheck blocker:** [run 40189874617](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40189874617) failed on 88 repository-wide TypeScript diagnostic lines, mostly in unchanged modules; one B272 issue from that run has since been fixed. The wider typecheck is still unresolved, so the PR remains draft.
+- **Work branch:** `nk1-ready-unified-cycle-restore-integrity-20261025`, based on source line `workpass206-runtime-evaluator-wiring`.
+- **Scope boundary:** no claim of learning uplift or full release readiness.
+
+See [WorkPass319 checkpoint](docs/WORKPASS319_UNIFIED_COGNITIVE_CYCLE_RESTORE_INTEGRITY_2026-10-25.md).
+
+---
+
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.

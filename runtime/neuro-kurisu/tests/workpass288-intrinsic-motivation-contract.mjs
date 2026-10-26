@@ -48,4 +48,22 @@ assert.equal(engine.snapshot().novelty,0.8);
 engine.restore({overall:1,dominant:'made-up'});
 assert.equal(engine.snapshot().overall,0);
 assert.equal(engine.proposeGoal(),null);
+const inheritedState=Object.create({
+  epistemic:1,novelty:1,competence:1,coherence:1,social:1,homeostatic:1,
+  dominant:'homeostatic',updatedAt:1,
+});
+const beforeInherited=engine.snapshot();
+assert.throws(()=>engine.restore(inheritedState),/bounded plain data properties/,
+  'prototype-injected drive values must be rejected before restore');
+assert.deepEqual(engine.snapshot(),beforeInherited,'rejected prototype state must not mutate motivation');
+assert.equal(engine.proposeGoal(),null,'untrusted inherited drive values must not create autonomous goals');
+
+const accessorState={};
+Object.defineProperty(accessorState,'novelty',{enumerable:true,get(){throw new Error('restore must not execute snapshot getters');}});
+const beforeAccessor=engine.snapshot();
+assert.throws(()=>engine.restore(accessorState),/bounded plain data properties/,
+  'accessor-backed drive state must be rejected without executing the getter');
+assert.deepEqual(engine.snapshot(),beforeAccessor,'rejected accessor state must not mutate motivation');
+assert.equal(engine.snapshot().novelty,0);
+
 console.log('WorkPass288 intrinsic motivation contract: PASS');

@@ -1,3 +1,5 @@
+import { isBoundedPlainDataTree } from '../core/BoundedPlainData.ts';
+
 export interface IntrinsicDriveState {
   epistemic: number;
   novelty: number;
@@ -16,6 +18,12 @@ const isDriveName=(value:unknown):value is DriveName=>typeof value==='string'&&D
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 const finiteInput=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
 const safeTimestamp=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:fallback;
+const ownDataValue=(source:object,key:string):unknown=>{
+  const descriptor=Object.getOwnPropertyDescriptor(source,key);
+  // Persisted snapshots are untrusted data: do not invoke getters or read
+  // inherited values that could forge drive state during restoration.
+  return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;
+};
 
 export function defaultIntrinsicDriveState(): IntrinsicDriveState {
   return { epistemic:0, novelty:0, competence:0, coherence:0, social:0, homeostatic:0, overall:0, dominant:'epistemic', updatedAt:Date.now() };
@@ -26,25 +34,27 @@ export class IntrinsicMotivationEngine {
 
   snapshot(){ return structuredClone(this.state); }
 
-  restore(value:Partial<IntrinsicDriveState>|undefined):void {
-    const source=value??{};
+  restore(value:Partial<IntrinsicDriveState>|null|undefined):void {
+    if(value!==undefined&&value!==null&&!isBoundedPlainDataTree(value))throw new TypeError('intrinsic drive state must contain only bounded plain data properties');
+    const source:object=value!==null&&value!==undefined&&typeof value==='object'&&!Array.isArray(value)?value:{};
+    const restoredDominant=ownDataValue(source,'dominant');
     const drives:Record<DriveName,number>={
-      epistemic:finiteInput(source.epistemic),
-      novelty:finiteInput(source.novelty),
-      competence:finiteInput(source.competence),
-      coherence:finiteInput(source.coherence),
-      social:finiteInput(source.social),
-      homeostatic:finiteInput(source.homeostatic),
+      epistemic:finiteInput(ownDataValue(source,'epistemic')),
+      novelty:finiteInput(ownDataValue(source,'novelty')),
+      competence:finiteInput(ownDataValue(source,'competence')),
+      coherence:finiteInput(ownDataValue(source,'coherence')),
+      social:finiteInput(ownDataValue(source,'social')),
+      homeostatic:finiteInput(ownDataValue(source,'homeostatic')),
     };
     const maximum=Math.max(...Object.values(drives));
-    const dominant=isDriveName(source.dominant)&&drives[source.dominant]===maximum
-      ? source.dominant
+    const dominant=isDriveName(restoredDominant)&&drives[restoredDominant]===maximum
+      ? restoredDominant
       : (DRIVE_NAMES.find(name=>drives[name]===maximum)??'epistemic');
     this.state={
       ...drives,
       overall:maximum,
       dominant,
-      updatedAt:safeTimestamp(source.updatedAt,Date.now()),
+      updatedAt:safeTimestamp(ownDataValue(source,'updatedAt'),Date.now()),
     };
   }
 

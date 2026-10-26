@@ -55,8 +55,12 @@ assert.equal(restored.skills.length,1);
 assert.equal(restored.ablations.length,1);
 assert.equal(restored.evidenceDebt.length,1);
 assert.equal(restored.processedTraceIds.length,2048);
-assert.equal(restored.processedTraceIds[0],'trace-newest','retain newest trace IDs');
-assert.deepEqual(restored.replayedTraceIds,['replay-newest']);
+assert.equal(restored.processedTraceIds[0],'trace-127','durable experience identities must lead the reconciled dedupe cache');
+const newestCacheOnlyTraceIndex=restored.processedTraceIds.indexOf('trace-newest');
+assert.ok(newestCacheOnlyTraceIndex>0&&newestCacheOnlyTraceIndex<2048,
+  'recent cache-only trace IDs must remain after the durable experience identities');
+assert.deepEqual(restored.replayedTraceIds,['replay-1','replay-newest'],
+  'durable replay rows must lead the cache while cache-only replay IDs remain deduplicated');
 assert.equal(restored.checksum.digest,'');
 assert.equal(restored.checksum.verificationFailures,0);
 assert.equal(restored.metrics.outcomes,128,'outcome counter cannot be lower than persisted experience rows');
@@ -89,5 +93,36 @@ assert.throws(()=>engine.restore({...beforeUnsupported,version:2}),/version/);
 assert.deepEqual(engine.snapshot(),beforeUnsupported,'unsupported version must not mutate the live learner');
 assert.throws(()=>engine.restore([]),/plain object/);
 assert.deepEqual(engine.snapshot(),beforeUnsupported,'non-object state must be rejected before mutation');
+
+const topLevelAccessor={...beforeUnsupported};
+Object.defineProperty(topLevelAccessor,'experiences',{enumerable:true,get(){throw new Error('restore must not read persisted getters');}});
+assert.throws(()=>engine.restore(topLevelAccessor),/plain data properties/,
+  'top-level accessors must be rejected before the learner reads restored fields');
+assert.deepEqual(engine.snapshot(),beforeUnsupported,'accessor-backed state must not partially mutate the learner');
+
+const nestedAccessor={...beforeUnsupported,experiences:[{...beforeUnsupported.experiences[0]}]};
+Object.defineProperty(nestedAccessor.experiences[0],'success',{enumerable:true,get(){throw new Error('restore must not read nested getters');}});
+assert.throws(()=>engine.restore(nestedAccessor),/plain data properties/,
+  'accessors nested in a durable row must be rejected before row parsing');
+assert.deepEqual(engine.snapshot(),beforeUnsupported,'nested accessor state must not partially mutate the learner');
+
+const cyclicSnapshot={...beforeUnsupported};
+cyclicSnapshot.self=cyclicSnapshot;
+assert.throws(()=>engine.restore(cyclicSnapshot),/plain data properties/,
+  'cyclic snapshots must be rejected before any learner state is replaced');
+assert.deepEqual(engine.snapshot(),beforeUnsupported,'cyclic state must not partially mutate the learner');
+
+const aliasedCache={marker:'shared'};
+const aliasedSnapshot={...beforeUnsupported,extraOne:aliasedCache,extraTwo:aliasedCache};
+assert.throws(()=>engine.restore(aliasedSnapshot),/plain data properties/,
+  'non-tree object graphs must be rejected rather than interpreted as persisted JSON');
+assert.deepEqual(engine.snapshot(),beforeUnsupported,'aliased object graph must not partially mutate the learner');
+
+const sparseSnapshot={...beforeUnsupported,processedTraceIds:[]};
+sparseSnapshot.processedTraceIds.length=2;
+sparseSnapshot.processedTraceIds[1]='trace-sparse';
+assert.throws(()=>engine.restore(sparseSnapshot),/plain data properties/,
+  'sparse arrays must be rejected before iteration can silently skip missing entries');
+assert.deepEqual(engine.snapshot(),beforeUnsupported,'sparse cache must not partially mutate the learner');
 
 console.log('WORKPASS310_P23_RESTORE_INTEGRITY=PASS');

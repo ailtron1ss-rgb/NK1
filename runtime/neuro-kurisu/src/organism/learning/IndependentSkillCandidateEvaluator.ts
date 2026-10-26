@@ -371,7 +371,7 @@ export function createIndependentSkillCandidateEvaluator(
         plannedRunId: plannedRun?.runId ?? null,
         seed: task.seed,
         split: task.split,
-        executable: executable && bindingVerified,
+        executable,
         observedStepIds: bindingVerified ? execution?.observedStepIds ?? [] : [],
         bindingVerified,
         verifierPassed: executable && bindingVerified && verifierPassed,
@@ -388,7 +388,9 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          // Executability measures whether the executor ran the candidate at all;
+          // verification/binding remains a separate gate for task success and evidence.
+          executable,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {

@@ -12,6 +12,7 @@ import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReport
 import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidateEvaluator.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
+import { isBoundedPlainDataTree } from '../core/BoundedPlainData.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
@@ -165,6 +166,7 @@ const isPlainRecord=(value:unknown):value is Record<string,unknown>=>{
   const prototype=Object.getPrototypeOf(value);
   return prototype===Object.prototype||prototype===null;
 };
+
 const isPersistedText=(value:unknown,max=512):value is string=>
   typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&
   !Array.from(value).some(character=>{
@@ -181,6 +183,7 @@ const persistedTime=(value:unknown,fallback:number):number=>
   isPersistedCounter(value)?value:fallback;
 const isPersistedAction=(value:unknown):value is ActionKind=>
   typeof value==='string'&&ACTIONS.includes(value as ActionKind);
+
 
 function sanitizeIdList(value:unknown,limit:number):string[]{
   if(!Array.isArray(value))return [];
@@ -411,6 +414,7 @@ export class P23LearningEngine {
   restore(raw?:Partial<P23LearningState>|null):void {
     const d=defaultP23Learning();
     if(raw!==undefined&&raw!==null&&!isPlainRecord(raw))throw new TypeError('P23 persisted learning state must be a plain object');
+    if(raw!==undefined&&raw!==null&&!isBoundedPlainDataTree(raw))throw new TypeError('P23 persisted learning state must contain only bounded plain data properties');
     const source=(raw??{}) as Partial<P23LearningState>;
     if(source.version!==undefined&&source.version!==1)throw new RangeError('unsupported P23 learning state version');
     // Parse untrusted persistence into fresh rows; newest-first histories retain their valid prefix.
@@ -1001,7 +1005,7 @@ export class P23LearningEngine {
       // Skills are durable but not immortal: stale evidence gradually loses
       // influence, reaching zero after 180 days without fresh validation.
       const ageMs=Math.max(0,now()-exact.updatedAt);
-      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,usageGapMs:ageMs});
+      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,gapMs:ageMs});
       if(exact.status==='promoted') return clamp(exact.confidence01*.05*retention);
       if(exact.status==='rejected') return retention===0?0:-clamp(exact.confidence01*.03*retention);
       return 0;
