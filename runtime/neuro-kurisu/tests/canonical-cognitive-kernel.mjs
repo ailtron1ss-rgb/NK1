@@ -920,9 +920,9 @@ assert.ok(brokenRevisionChainNode);
 brokenRevisionChainNode.payload.previousRevisionEventId='receipt-test:fake-prior-revision';
 const brokenRevisionChainRestored=new CognitiveEventFabric(128);
 brokenRevisionChainRestored.restore(brokenRevisionChainSnapshot);
-const brokenRevisionChainReplay=brokenRevisionChainRestored.appendToolReceiptRevision(revisionInput);
-assert.equal(brokenRevisionChainReplay.resolved,false,
-  'restore must not index a provider revision whose previous-revision link cannot be proven');
+assert.throws(()=>brokenRevisionChainRestored.appendToolReceiptRevision(revisionInput),
+  /tool-receipt-revision-conflict/,
+  'restore must not replay a provider revision whose previous-revision link cannot be proven');
 
 const brokenBaseReceiptSnapshot=receiptFabric.snapshot();
 const brokenBaseOutcome=brokenBaseReceiptSnapshot.recent.find(event=>event.id===receiptTrace.outcomeEventId);
