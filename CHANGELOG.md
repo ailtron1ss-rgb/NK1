@@ -1,10 +1,23 @@
+# WorkPass354 — validate retained completion anchor provenance (2026-10-26)
+
+- [FIXED] Before writing completion events, `CanonicalCognitiveKernel.completeCycle()` now checks every supplied, still-retained decision anchor against the expected logical tick and stage. A stale/cross-tick or wrong-stage anchor is rejected with `canonical-cognitive-kernel-anchor-provenance-conflict` before mutation.
+- [HARDENED] Reusing the same supplied event ID across multiple canonical stages is rejected as ambiguous causal identity.
+- [HARDENED] Anchor IDs must be normalized strings within the event-ID size/control-character contract. This prevents lookup trimming from accepting one ID while the stored parent reference keeps a different string.
+- [REGRESSION] Added zero-write tests for duplicated unknown anchor IDs and whitespace-altered anchor IDs.
+- [COMPATIBILITY] Missing event records are still allowed for delayed feedback after retention eviction; those cases continue through the normal lineage verifier and cannot be reported as a complete cycle without required evidence.
+- [REGRESSION] Added a wrong-tick observation-anchor case requiring zero completion writes/counter changes, plus a control case proving missing anchors produce incomplete (not fabricated-complete) outcome evidence.
+- [CI PASS] On code/test HEAD `e3c1ee6797dfd846353fc09e63c636193ddb340c`, [WorkPass331 #40279861063](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279861063) and [WorkPass110 #40279861088](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279861088) both completed successfully, including runtime typecheck, canonical causal loop, live wiring, smoke/autonomy/dialogue/initiative/restart and continual-learning metrics. These results validate that tested snapshot; they do not claim empirical field learning uplift.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass353 — make completion retries idempotent and preflight cycle finalization (2026-10-26)
 
 - [FIXED] `CanonicalCognitiveKernel.completeCycle()` reuses the stored outcome event timestamp when a replay omits `at`. A valid retry no longer generates a fresh wall-clock time and falsely conflicts with the same stable event IDs; explicit timestamps remain part of the identity.
 - [FIXED] Added `UnifiedCognitiveCycle.assertCanAdvance()` and call it before completion event writes. Strict tick monotonicity and safe-integer counter capacity are checked before outcome, learning, or self-update can be appended.
 - [REGRESSION] Added cases proving an omitted-timestamp completion replay is read-only and a restored counter at `Number.MAX_SAFE_INTEGER` fails without appending any of the three completion records or mutating cycle state.
 - [INTEGRATION] Exposed `npm run test:canonical-cognitive-kernel` for the existing canonical-kernel regression suite. The unified WorkPass331 CI workflow already includes the modified kernel, cycle ledger and regression file.
-- [VALIDATION] Exact-head GitHub Actions validation is required and will be reported only after its actual result is checked.
+- [VALIDATION PASS] On WorkPass353 HEAD `d10cbf496f4b484728f3f4a828caa6d894dfc183`, [WorkPass331 #40278678806](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40278678806), [WorkPass110 #40278678252](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40278678252), and ten additional cognitive/learning evidence workflows all completed successfully. See PR #170 for the run matrix and scope boundaries; this validates the named snapshot, not production readiness or measured field learning uplift.
 - [RELEASE] `main` and the published Release ZIP are unchanged.
 
 ---

@@ -416,5 +416,108 @@ assert.deepEqual(exhaustedCycle.snapshot(), cycleStateBeforeExhaustedCompletion,
   'failed cycle advancement must leave restored counters untouched');
 
 console.log('WorkPass352 canonical cognitive kernel: PASS');
+// Completion must not attach a current tick to a retained anchor from another tick.
+const anchorProvenanceFabric = new CognitiveEventFabric(256);
+const anchorProvenanceCycle = new UnifiedCognitiveCycle();
+const anchorProvenanceKernel = new CanonicalCognitiveKernel(anchorProvenanceFabric, anchorProvenanceCycle);
+const earlierAnchors = anchorProvenanceKernel.beginDecisionCycle({
+  ...decisionInput(), tick: 41, at: 4100,
+});
+const currentAnchors = anchorProvenanceKernel.beginDecisionCycle({
+  ...decisionInput(), tick: 42, at: 4200,
+});
+const anchorProvenanceBefore = anchorProvenanceFabric.snapshot().total;
+assert.throws(() => anchorProvenanceKernel.completeCycle({
+  anchors: {
+    ...currentAnchors.anchors,
+    observation: earlierAnchors.anchors.observation,
+  },
+  fallbackTick: 42,
+  at: 4201,
+  outcome: stage('outcome.verifier', { success01: 0.6, verified: true }),
+  learning: stage('learning.update', { updated: true }),
+  selfUpdate: stage('self-model.update', { continuity01: 0.7 }),
+}), /anchor-provenance-conflict/,
+'completion must reject a retained observation anchor belonging to another tick');
+assert.equal(anchorProvenanceFabric.snapshot().total, anchorProvenanceBefore,
+  'cross-tick anchor rejection must not append completion events');
+assert.equal(anchorProvenanceFabric.getById('cef:kernel:42:outcome'), null);
+assert.equal(anchorProvenanceFabric.getById('cef:kernel:42:learning'), null);
+assert.equal(anchorProvenanceFabric.getById('cef:kernel:42:self-update'), null);
+assert.equal(anchorProvenanceCycle.snapshot().cycles, 0,
+  'cross-tick anchor rejection must not advance the cycle ledger');
+
+// Duplicate unknown IDs and non-canonical whitespace IDs must not enter causal parent lists.
+const ambiguousAnchorFabric = new CognitiveEventFabric(256);
+const ambiguousAnchorCycle = new UnifiedCognitiveCycle();
+const ambiguousAnchorKernel = new CanonicalCognitiveKernel(ambiguousAnchorFabric, ambiguousAnchorCycle);
+const ambiguousAnchors = ambiguousAnchorKernel.beginDecisionCycle({
+  ...decisionInput(), tick: 44, at: 4400,
+});
+const ambiguousBefore = ambiguousAnchorFabric.snapshot().total;
+const duplicateUnknownId = 'retention-missing-anchor';
+assert.throws(() => ambiguousAnchorKernel.completeCycle({
+  anchors: {
+    ...ambiguousAnchors.anchors,
+    observation: duplicateUnknownId,
+    prediction: duplicateUnknownId,
+  },
+  fallbackTick: 44,
+  at: 4401,
+  outcome: stage('outcome.verifier', { success01: 0.5 }),
+  learning: stage('learning.update'),
+  selfUpdate: stage('self-model.update'),
+}), /anchor-provenance-conflict/,
+'one missing event ID cannot stand for two distinct cognitive stages');
+assert.equal(ambiguousAnchorFabric.snapshot().total, ambiguousBefore,
+  'duplicate anchor IDs must be rejected before any completion write');
+
+assert.throws(() => ambiguousAnchorKernel.completeCycle({
+  anchors: {
+    ...ambiguousAnchors.anchors,
+    observation: ` ${ambiguousAnchors.anchors.observation}`,
+  },
+  fallbackTick: 44,
+  at: 4402,
+  outcome: stage('outcome.verifier', { success01: 0.5 }),
+  learning: stage('learning.update'),
+  selfUpdate: stage('self-model.update'),
+}), /anchor-provenance-conflict/,
+'event lookup normalization must not allow a whitespace-altered causal parent ID');
+assert.equal(ambiguousAnchorFabric.snapshot().total, ambiguousBefore,
+  'non-canonical anchor IDs must be rejected before any completion write');
+
+assert.throws(() => ambiguousAnchorKernel.completeCycle({
+  anchors: {
+    ...ambiguousAnchors.anchors,
+    observation: 'invalid\u0001anchor-id',
+  },
+  fallbackTick: 44,
+  at: 4403,
+  outcome: stage('outcome.verifier', { success01: 0.5 }),
+  learning: stage('learning.update'),
+  selfUpdate: stage('self-model.update'),
+}), /anchor-provenance-conflict/,
+'control-character anchor IDs must fail the canonical ID contract');
+assert.equal(ambiguousAnchorFabric.snapshot().total, ambiguousBefore,
+  'control-character anchor IDs must be rejected before any completion write');
+
+// Missing retained records remain allowed so late outcomes can be recorded as incomplete evidence.
+const missingAnchorFabric = new CognitiveEventFabric(256);
+const missingAnchorCycle = new UnifiedCognitiveCycle();
+const missingAnchorKernel = new CanonicalCognitiveKernel(missingAnchorFabric, missingAnchorCycle);
+const missingAnchorCompletion = missingAnchorKernel.completeCycle({
+  anchors: {},
+  fallbackTick: 43,
+  at: 4300,
+  outcome: stage('late.outcome', { success01: 0.3 }),
+  learning: stage('learning.update', { updated: false }),
+  selfUpdate: stage('self-model.update', { continuity01: 0.4 }),
+});
+assert.equal(missingAnchorCompletion.completionRecorded, false,
+  'missing anchors may be retained as incomplete outcome evidence rather than blocking late feedback');
+assert.equal(missingAnchorFabric.getById('cef:kernel:43:outcome')?.stage, 'outcome');
+
+console.log('WorkPass354 completion anchor provenance: PASS');
 console.log('WorkPass353 canonical completion replay/preflight: PASS');
 
