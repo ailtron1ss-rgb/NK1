@@ -15,6 +15,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/cognition/evolution/SelfProjectEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/cognition/evolution/AgencyDeliberationEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/integration/hexis/**'
+      - 'runtime/neuro-kurisu/scripts/audit-ui-function-wiring.mjs'
+      - 'runtime/neuro-kurisu/scripts/audit-ui-api-linkage.mjs'
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
@@ -53,6 +55,9 @@ jobs:
       - name: Typecheck the Hexis console and API contracts
         working-directory: app
         run: npm run typecheck
+      - name: Audit frontend action wiring and UI/API/runtime links
+        working-directory: runtime/neuro-kurisu
+        run: npm run audit:ui-wiring && npm run audit:ui-api-linkage
       - name: Typecheck the Hexis-to-NK1 runtime contracts
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
