@@ -112,10 +112,52 @@ assert.equal(fabric.ackOutbox(out.id,true)?.status,'published');
 // An identical logical action stays deduplicated even if the previous attempt reached a terminal state.
 assert.equal(fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'x',meta:{a:1,b:2}}}).id,out.id);
 assert.equal(fabric.snapshot().metrics.outboxIdempotencyConflicts,1);
-const failedOut=fabric.enqueueOutbox({idempotencyKey:'k-failed',kind:'notify',channel:'telegram',payload:{text:'may have escaped before timeout'}});
-for(let attempt=0;attempt<3;attempt++){assert.equal(fabric.claimOutbox(failedOut.id)?.status,'publishing');fabric.ackOutbox(failedOut.id,false,'synthetic-ambiguous-failure');}
-assert.equal(fabric.snapshot().outbox.find(x=>x.id===failedOut.id)?.status,'failed');
-assert.equal(fabric.enqueueOutbox({idempotencyKey:'k-failed',kind:'notify',channel:'telegram',payload:{text:'may have escaped before timeout'}}).id,failedOut.id,'failed terminal attempt must not create a second logical delivery');
+const uncertainOut=fabric.enqueueOutbox({idempotencyKey:'k-uncertain',kind:'notify',channel:'telegram',payload:{text:'may have escaped before timeout'}});
+assert.equal(fabric.claimOutbox(uncertainOut.id)?.status,'publishing');
+assert.equal(fabric.ackOutbox(uncertainOut.id,false,'synthetic-ambiguous-failure')?.status,'uncertain',
+  'a negative ACK without authoritative no-effect evidence must not make the item automatically retryable');
+assert.equal(fabric.claimOutbox(uncertainOut.id),null,
+  'uncertain remote outcomes must not be automatically republished');
+assert.equal(fabric.enqueueOutbox({idempotencyKey:'k-uncertain',kind:'notify',channel:'telegram',payload:{text:'may have escaped before timeout'}}).id,uncertainOut.id,
+  're-enqueueing an uncertain logical action must return its original receipt');
+
+assert.throws(
+  () => fabric.resolveOutbox(uncertainOut.id,'not-published',''),
+  /outbox-resolution-evidence-required/,
+);
+const safeRetry = fabric.resolveOutbox(uncertainOut.id,'not-published','provider-lookup:message-absent-after-acceptance-window');
+assert.equal(safeRetry?.status,'pending',
+  'retry is admitted only after explicit evidence that the remote side effect did not occur');
+assert.equal(fabric.resolveOutbox(uncertainOut.id,'not-published','provider-lookup:message-absent-after-acceptance-window')?.status,'pending',
+  'the same resolution evidence replays idempotently');
+assert.equal(fabric.claimOutbox(uncertainOut.id)?.attempts,2);
+assert.equal(fabric.ackOutbox(uncertainOut.id,false,'second ambiguous outcome')?.status,'uncertain');
+assert.equal(fabric.claimOutbox(uncertainOut.id),null);
+
+const staleOut=fabric.enqueueOutbox({idempotencyKey:'k-stale-publishing',kind:'notify',channel:'telegram',payload:{text:'worker may have sent before process death'}});
+assert.equal(fabric.claimOutbox(staleOut.id)?.status,'publishing');
+const staleSnapshot=fabric.snapshot();
+staleSnapshot.outbox.find(x=>x.id===staleOut.id).updatedAt=0;
+const restoredStaleOut=new HexisAdaptationFabric();
+restoredStaleOut.restore(staleSnapshot);
+assert.equal(restoredStaleOut.reclaimOutbox(1000),1);
+assert.equal(restoredStaleOut.snapshot().outbox.find(x=>x.id===staleOut.id)?.status,'uncertain',
+  'an expired publishing claim must not silently return to the retry queue');
+assert.equal(restoredStaleOut.claimOutbox(staleOut.id),null);
+assert.equal(restoredStaleOut.resolveOutbox(staleOut.id,'published','provider-receipt:telegram:123')?.status,'published',
+  'an authoritative positive receipt closes the uncertain outbox item');
+assert.equal(restoredStaleOut.resolveOutbox(staleOut.id,'published','provider-receipt:telegram:123')?.status,'published',
+  'authoritative positive resolution is idempotent');
+
+const failedOut=fabric.enqueueOutbox({idempotencyKey:'k-failed',kind:'notify',channel:'telegram',payload:{text:'confirmed absent on three tries'}});
+for(let attempt=0;attempt<3;attempt++){
+  assert.equal(fabric.claimOutbox(failedOut.id)?.status,'publishing');
+  assert.equal(fabric.ackOutbox(failedOut.id,false,'synthetic-ambiguous-failure')?.status,'uncertain');
+  const resolution=fabric.resolveOutbox(failedOut.id,'not-published',`provider-query:confirmed-absent:${attempt+1}`);
+  assert.equal(resolution?.status,attempt===2?'failed':'pending');
+}
+assert.equal(fabric.enqueueOutbox({idempotencyKey:'k-failed',kind:'notify',channel:'telegram',payload:{text:'confirmed absent on three tries'}}).id,failedOut.id,
+  'failed terminal attempt must retain its idempotency tombstone');
 const legacySnapshot=fabric.snapshot(); delete legacySnapshot.metrics.outboxIdempotencyConflicts;
 const restoredLegacy=new HexisAdaptationFabric(); restoredLegacy.restore(legacySnapshot);
 assert.equal(restoredLegacy.snapshot().metrics.outboxIdempotencyConflicts,0,'legacy snapshots receive the new metric default');
