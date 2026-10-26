@@ -1,3 +1,13 @@
+## WorkPass356 — strict CEF tool receipt ingress (2026-10-26)
+
+- **Code/test checkpoint:** `c6845a5258a2c3bcdccce1089615cfabbfd4b750`; stacked on WorkPass355 branch head `fce603ecc674887d20ebb2da187103ddce43171a`.
+- **Defect:** public CEF receipt methods read caller input directly; revision/external-observation ingress could stringify values, trim/truncate IDs, coerce booleans and clamp confidence, allowing invalid evidence to alias valid idempotency keys.
+- **Fix:** descriptor-only reads on `appendToolReceiptTrace()`, `appendToolReceiptRevision()` and `appendToolExternalObservation()`; canonical IDs; strict booleans, numeric clocks/counters, valid confidence range and hash/text types; rejected inputs do not enter replay lookup or mutate the event/replay ledgers.
+- **Regression:** `runtime/neuro-kurisu/tests/cognitive-tool-receipt-input-boundary.mjs` covers accessor getters, padding/truncation collisions, invalid flags/confidence/counters, non-string hash and evidence text objects with hostile `toString()`, state preservation and valid revision idempotency. Wired into `test:cognitive-integration-suite`.
+- **Validation:** exact-head typecheck and CI pending. The prior WorkPass355 exact-head CI result remains recorded separately; this new receipt-ingress change is not yet claimed as passing. Scores unchanged; historical `ciSnapshot` rows and tested SHAs remain unchanged.
+
+---
+
 ## WorkPass355 — safe and transactional CognitiveEventFabric snapshot restore (2026-10-26)
 
 - **Code/test checkpoint:** `38b17bf610c06de1a23ba5e54d21cb4a1b7ac905`; based on target checkpoint `18afd253dcd7413c02136537ea1acc10b7764768`.
