@@ -1450,7 +1450,7 @@ export class MemoryOS2{
   if(typeof sourceValue!=='string')return {ok:false as const,added:false as const,reason:'invalid-evidence-source' as const,memoryId:item.id,independentSources:previous.length};
   const source=sourceValue.trim();
   if(!source||source.length>240)return {ok:false as const,added:false as const,reason:'invalid-evidence-source' as const,memoryId:item.id,independentSources:previous.length};
-  if(row.provenanceClass!==undefined&&(typeof row.provenanceClass!=='string'||!['device','external','user','agent','derived','simulation','unknown'].includes(row.provenanceClass))) {
+  if(row.provenanceClass!==undefined&&(typeof row.provenanceClass!=='string'||!(['device','external','user','agent','derived','simulation','unknown'] as string[]).includes(row.provenanceClass))) {
    return {ok:false as const,added:false as const,reason:'invalid-evidence-provenance-class' as const,memoryId:item.id,independentSources:previous.length};
   }
   const provenanceClass=this.provenanceClassFor(source,row.provenanceClass as MemoryProvenanceClass|undefined);
