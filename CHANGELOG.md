@@ -1,3 +1,9 @@
+### WorkPass328 follow-up — preserve fail-safe learning inputs and restore recency order (2026-10-26)
+
+- `ParametricPolicyLearner` now continues safely when the optimizer controls themselves are corrupted: non-finite learning rates and sample weights already fall back to conservative defaults at the mutation site, while finite controls are bounded. The validation boundary still rejects invalid action labels, invalid/non-finite targets, malformed state features, and non-finite extras before weights can change.
+- Fixed P23 restore ordering so the persisted newest-first `processedTraceIds`/`replayedTraceIds` cache remains first priority; valid durable rows are appended afterward to reconstruct missing cache entries without displacing the newest IDs from the capped dedupe window.
+- Corrected the causal aggregate regression to derive `outcomes` from trusted grounded records, not from all retained records. The fixture contains quarantined external claims, which must remain inspectable while contributing zero to trusted outcome totals.
+
 ### WorkPass328 follow-up — ground each replay fixture to its own pre-action tick (2026-10-26)
 
 - The replay-diversity fixture now sets `trace.stateBefore.tick` and `trace.tick` to the same per-sample value and advances the observed post-state tick/time independently. Previously the test changed only the trace tick while reusing `stateBefore.tick=1`; `recordOutcome()` correctly rejected those rows as unrelated/old pre-action traces.

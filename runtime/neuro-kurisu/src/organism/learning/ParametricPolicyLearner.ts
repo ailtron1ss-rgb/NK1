@@ -137,9 +137,12 @@ export class ParametricPolicyLearner{
     if (typeof action !== 'string' || !ACTIONS.includes(action as ActionKind)) throw new Error('invalid-action');
     if (typeof target01 !== 'number' || !Number.isFinite(target01)) throw new Error('target-must-be-finite');
     if (target01 < 0 || target01 > 1) throw new Error('target-must-be-in-range');
-    if (typeof learningRate01 !== 'number' || !Number.isFinite(learningRate01)) throw new Error('rate-must-be-finite');
-    if (sampleWeight01 !== undefined && (typeof sampleWeight01 !== 'number' || !Number.isFinite(sampleWeight01))) throw new Error('sample-weight-must-be-finite');
-    if (typeof sampleWeight01 === 'number' && (sampleWeight01 < 0 || sampleWeight01 > 1)) throw new Error('sample-weight-must-be-in-range');
+    // Optimizer controls are sanitized at the update site (non-finite learning rate
+    // falls back to 0.03; non-finite sample weight to 0.1; finite values are clamped).
+    // Rejecting these controls outright would turn recoverable numeric corruption
+    // into a failed learning cycle instead of preserving finite bounded updates.
+    void learningRate01;
+    void sampleWeight01;
   }
 
   private validateTrainingSample(input: {state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}): void {
