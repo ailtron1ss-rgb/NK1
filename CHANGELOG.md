@@ -1,3 +1,11 @@
+## WorkPass353 — B272 tick-bound credit assignment получил runtime regression (2026-10-26)
+
+- Расширен реальный runtime test B338: кроме проверки обучения эндогенной цели на воплощённых исходах он теперь защищает invariant `snapshot.tick === state.tick && generatedAction === selectedAction`.
+- Тест запускается в ветке unified-substrate workflow и реагирует на изменения `OrganismCore.ts` и самой регрессии.
+- Это объединяет поведенческую проверку нескольких реальных шагов организма с узкой защитой от повторного/чужого reward credit.
+
+---
+
 ## WorkPass352 — endogenous-goal learning привязан к точному tick/action (2026-10-26)
 
 - Исправлена граница credit assignment в world-transition ветке B272: reward передаётся в генератор эндогенной цели только если snapshot создан на текущем `state.tick` и сгенерированное действие совпадает с фактически выбранным действием.

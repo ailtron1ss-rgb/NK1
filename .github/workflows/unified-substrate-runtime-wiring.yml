@@ -7,6 +7,8 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-338-endogenous-goal-plasticity-core.mjs'
       - 'runtime/neuro-kurisu/tests/unified-substrate-runtime-wiring.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/unified-substrate-runtime-wiring.yml'
@@ -14,6 +16,8 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-338-endogenous-goal-plasticity-core.mjs'
       - 'runtime/neuro-kurisu/tests/unified-substrate-runtime-wiring.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/unified-substrate-runtime-wiring.yml'
@@ -35,6 +39,8 @@ jobs:
           package-manager-cache: false
       - name: Restore and runtime-wiring regression
         run: npm run test:unified-substrate-runtime-wiring --prefix runtime/neuro-kurisu
+      - name: Run B272 goal-credit attribution and embodied outcome regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-338-endogenous-goal-plasticity-core.mjs
       - name: Existing unified-cycle contract
         run: npm run test:workpass287:cognitive-cycle --prefix runtime/neuro-kurisu
       - name: Existing cognitive-boundary runtime wiring
