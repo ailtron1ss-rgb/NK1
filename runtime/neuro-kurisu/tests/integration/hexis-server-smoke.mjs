@@ -45,13 +45,24 @@ try {
 
     // The existing generic review endpoint must dispatch evidence proposals
     // through the canonical compare-before-write gate, not direct Hexis mutation.
+    const confidenceBeforeDecision = memoryIndex.memoryIndex[0].confidence;
     const reviewed = await (await post('/api/organism/integration/hexis/reviews/decide', {
       reviewId: belief.result.reviewId,
       itemId: belief.result.reviewItemId,
       decision: 'approve',
     })).json();
-    if (!reviewed.ok || reviewed.result?.status !== 'decided' || reviewed.result?.confidenceChanged !== true)
+    // A valid approval can have no numeric delta at the policy ceiling. Require
+    // the canonical audit result and reconcile it with actual persisted memory.
+    if (!reviewed.ok || reviewed.result?.status !== 'decided' ||
+        typeof reviewed.result?.confidenceChanged !== 'boolean' ||
+        typeof reviewed.result?.auditId !== 'string' || !reviewed.result.auditId)
       throw new Error('hexis-generic-review-must-use-canonical-gate:' + JSON.stringify(reviewed));
+    const afterDecisionIndex = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=128`)).json();
+    const canonicalAfterDecision = afterDecisionIndex.memoryIndex?.find(memory => memory.id === belief.result.memoryId);
+    if (!canonicalAfterDecision ||
+        Math.abs(canonicalAfterDecision.confidence - reviewed.result.confidence01) > 1e-9 ||
+        reviewed.result.confidenceChanged !== (Math.abs(canonicalAfterDecision.confidence - confidenceBeforeDecision) > 1e-12))
+      throw new Error('hexis-generic-review-canonical-confidence-mismatch:' + JSON.stringify({ reviewed: reviewed.result, canonicalAfterDecision }));
 
     // Malformed/null bodies must reach schema validation rather than throwing in the route guard.
     const emptyEnvelopeResponse = await post('/api/organism/integration/hexis/evidence/review', null);
