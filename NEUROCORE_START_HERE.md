@@ -1,3 +1,14 @@
+## Latest checkpoint — WorkPass344 final release gate (pending fresh CI)
+
+- **Branch:** `work/nk1-final-release-gate-2026-10-26-r3`; WorkPass343 substrate tick reconciliation remains preserved.
+- **Gate:** metadata, UI wiring and architecture checks are mandatory; file/tree errors are included in summary failure counts.
+- **Strict/CI distinction:** operator `release:verify` rejects Python bytecode. Post-smoke CI `release:verify:ci` allows only *untracked* `.pyc` under `__pycache__`; tracked bytecode, stray `.pyc` and other cache-directory files still fail.
+- **Regression:** eight cases cover metadata, CLI, strict/CI cache behavior and attempts to bypass the scope. The runtime import assertion was token-built to avoid the architecture scanner's prior false positive.
+- **Current code/test checkpoint:** `064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6`. Broader integration and release verify passed on an earlier implementation; a fresh run is needed for the tracked-bytecode guard and eight tests.
+- **Scores/release:** unchanged. Large release ZIP remains stale; physical Android/Termux, browser/Live2D hardware, long soak and license/provenance remain open.
+
+---
+
 ## Latest checkpoint — WorkPass344 final release gate (pending current-head CI)
 
 - **Branch:** `work/nk1-final-release-gate-2026-10-26-r3`, preserving the latest WorkPass343 substrate-tick reconciliation.
