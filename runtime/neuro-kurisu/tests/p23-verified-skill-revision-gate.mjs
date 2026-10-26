@@ -36,6 +36,30 @@ const replayed = [...rows,
 result = evaluateSkillRevision(replayed, 'baseline', 'candidate', {minPairedTasks:8,minAbsoluteGain:.1});
 assert.equal(result.pairedN, 10, 'reused verifier receipts must not create an eleventh independent pair');
 assert.ok(result.rejectedRows >= 2, 'both replayed method receipts should be rejected');
+
+// Malformed persisted/runtime fields are rejected as rows instead of crashing string/normalization calls.
+const malformedRows = [
+  { ...rows[0], taskId: 17 },
+  { ...rows[1], family: {} },
+  { ...rows[2], method: ['candidate'] },
+  { ...rows[3], verifierId: 9 },
+  { ...rows[4], evidenceRef: null },
+  { ...rows[5], seed: '1' },
+  { ...rows[6], split: 1 },
+];
+result = evaluateSkillRevision([...rows, ...malformedRows], 'baseline', 'candidate', {
+  minPairedTasks: 8, minAbsoluteGain: .1,
+});
+assert.equal(result.pairedN, 10, 'malformed rows must not disturb valid matched task pairs');
+assert.ok(result.rejectedRows >= malformedRows.length,
+  'every malformed row must be rejected before string/normalization methods are called');
+assert.throws(() => evaluateSkillRevision(null, 'baseline', 'candidate'),
+  /revision observations must be an array/);
+assert.throws(() => evaluateSkillRevision(rows, 7, 'candidate'),
+  /two distinct method names are required/);
+assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', null),
+  /skill revision gate options must be an object/);
+
 // Validation/train observations are deliberately excluded.
 result = evaluateSkillRevision(rows.map(x=>({...x,split:'train'})),'baseline','candidate');
 assert.equal(result.pairedN,0);
