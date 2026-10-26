@@ -1,6 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
+export interface HexisBeliefRevisionInput {
+    memoryId: string;
+    confidence01: number;
+    trust01?: number;
+    evidence: HexisEvidenceSource;
+    stance: HexisEvidenceStance;
+    context?: string;
+    at?: number;
+    protectedBelief?: boolean;
+    /** Set only when the canonical evidence ledger confirms a duplicate receipt. */
+    canonicalDuplicate?: boolean;
+}
+export type HexisBeliefRevisionPreview = Omit<HexisBeliefRevisionAudit, 'id' | 'digest'>;
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
 export type HexisHmxStrategy = 'additive' | 'authoritative' | 'deliberative' | 'analysis_only';
@@ -257,41 +270,122 @@ export class HexisAdaptationFabric {
         confidence01: number;
         trust01?: number;
         at?: number;
-    }): HexisBeliefState { const id = String(input.memoryId); const existing = this.state.beliefs.find((x) => x.memoryId === id); if (existing)
-        return structuredClone(existing); const created: HexisBeliefState = { memoryId: id, confidence01: clamp(input.confidence01), trust01: clamp(input.trust01 ?? 0.5), sourceKeys: [], contradictingSourceKeys: [], updatedAt: Number.isFinite(input.at) ? Number(input.at) : nowMs() }; this.state.beliefs.push(created); this.state.beliefs = this.state.beliefs.slice(-1024); return structuredClone(created); }
-    reviseBelief(input: {
-        memoryId: string;
-        confidence01: number;
-        trust01?: number;
-        evidence: HexisEvidenceSource;
-        stance: HexisEvidenceStance;
-        context?: string;
-        at?: number;
-        protectedBelief?: boolean;
-    }): HexisBeliefRevisionAudit { const at = Number.isFinite(input.at) ? Number(input.at) : nowMs(); let stored = this.state.beliefs.find((x) => x.memoryId === String(input.memoryId)); if (!stored) {
-        this.registerOrUpdateBelief({ memoryId: input.memoryId, confidence01: input.confidence01, trust01: input.trust01, at });
-        stored = this.state.beliefs.find((x) => x.memoryId === String(input.memoryId));
-    } if (!stored)
-        throw new Error('belief_registration_failed'); const belief = stored; const key = sourceKey(input.evidence); const independent = !belief.sourceKeys.includes(key) && !belief.contradictingSourceKeys.includes(key); const evidenceTrust = clamp(input.evidence.trust01 ?? 0.5); const priorConfidence01 = clamp(belief.confidence01); const priorTrust01 = clamp(belief.trust01); let posteriorConfidence01 = priorConfidence01; let applied = false; let reason = 'applied'; if (!independent) {
-        reason = 'duplicate_source';
-        this.state.metrics.duplicateEvidence += 1;
+    }): HexisBeliefState {
+        const id = String(input.memoryId);
+        const existing = this.state.beliefs.find((x) => x.memoryId === id);
+        if (existing) {
+            // MemoryOS2 owns confidence. This row is only a projection and must
+            // rebase against the canonical value before any new evidence review.
+            existing.confidence01 = clamp(input.confidence01);
+            return structuredClone(existing);
+        }
+        const created: HexisBeliefState = {
+            memoryId: id,
+            confidence01: clamp(input.confidence01),
+            trust01: clamp(input.trust01 ?? 0.5),
+            sourceKeys: [],
+            contradictingSourceKeys: [],
+            updatedAt: Number.isFinite(input.at) ? Number(input.at) : nowMs(),
+        };
+        this.state.beliefs.push(created);
+        this.state.beliefs = this.state.beliefs.slice(-1024);
+        return structuredClone(created);
     }
-    else if (input.protectedBelief && input.stance === 'contradicts')
-        reason = 'protected';
-    else if (input.stance === 'supports') {
-        posteriorConfidence01 = Math.min(0.99, priorConfidence01 + (1 - priorConfidence01) * 0.35 * evidenceTrust);
-        applied = true;
+
+    private calculateBeliefRevision(
+        input: HexisBeliefRevisionInput,
+        stored: HexisBeliefState | undefined,
+    ): HexisBeliefRevisionPreview {
+        const at = Number.isFinite(input.at) ? Number(input.at) : nowMs();
+        const belief = stored
+            ? { ...stored, confidence01: clamp(input.confidence01) }
+            : {
+                memoryId: String(input.memoryId),
+                confidence01: clamp(input.confidence01),
+                trust01: clamp(input.trust01 ?? 0.5),
+                sourceKeys: [] as string[],
+                contradictingSourceKeys: [] as string[],
+                updatedAt: at,
+            };
+        const key = sourceKey(input.evidence);
+        const independent = input.canonicalDuplicate !== true &&
+            !belief.sourceKeys.includes(key) &&
+            !belief.contradictingSourceKeys.includes(key);
+        const evidenceTrust = clamp(input.evidence.trust01 ?? 0.5);
+        const priorConfidence01 = clamp(belief.confidence01);
+        const priorTrust01 = clamp(belief.trust01);
+        let posteriorConfidence01 = priorConfidence01;
+        let applied = false;
+        let reason = 'applied';
+        if (!independent) {
+            reason = input.canonicalDuplicate ? 'duplicate_source_canonical' : 'duplicate_source';
+        } else if (input.protectedBelief && input.stance === 'contradicts') {
+            reason = 'protected';
+        } else if (input.stance === 'supports') {
+            posteriorConfidence01 = Math.min(0.99, priorConfidence01 + (1 - priorConfidence01) * 0.35 * evidenceTrust);
+            applied = true;
+        } else {
+            posteriorConfidence01 = Math.max(0.05, priorConfidence01 * (1 - 0.35 * evidenceTrust));
+            applied = true;
+        }
+        const posteriorTrust01 = applied ? clamp(Math.max(priorTrust01, evidenceTrust * 0.5)) : priorTrust01;
+        return {
+            memoryId: String(input.memoryId),
+            stance: input.stance,
+            evidence: structuredClone(input.evidence),
+            priorConfidence01,
+            posteriorConfidence01,
+            priorTrust01,
+            posteriorTrust01,
+            independent,
+            applied,
+            reason,
+            policy: 'residual_v1',
+            context: input.context,
+            at,
+        };
     }
-    else {
-        posteriorConfidence01 = Math.max(0.05, priorConfidence01 * (1 - 0.35 * evidenceTrust));
-        applied = true;
-    } if (independent) {
-        if (input.stance === 'supports')
-            belief.sourceKeys = [...new Set([...belief.sourceKeys, key])].slice(-256);
-        else
-            belief.contradictingSourceKeys = [...new Set([...belief.contradictingSourceKeys, key])].slice(-256);
-    } if (applied)
-        belief.confidence01 = posteriorConfidence01; belief.trust01 = clamp(Math.max(priorTrust01, evidenceTrust * 0.5)); belief.updatedAt = at; const base = { id: randomUUID(), memoryId: input.memoryId, stance: input.stance, evidence: structuredClone(input.evidence), priorConfidence01, posteriorConfidence01, priorTrust01, posteriorTrust01: belief.trust01, independent, applied, reason, policy: 'residual_v1' as const, context: input.context, at }; const audit: HexisBeliefRevisionAudit = { ...base, digest: digest(base) }; this.state.beliefAudit.push(audit); this.state.beliefAudit = this.state.beliefAudit.slice(-2048); this.state.metrics.beliefRevisions += 1; return structuredClone(audit); }
+
+    previewBeliefRevision(input: HexisBeliefRevisionInput): HexisBeliefRevisionPreview {
+        const stored = this.state.beliefs.find((x) => x.memoryId === String(input.memoryId));
+        return structuredClone(this.calculateBeliefRevision(input, stored));
+    }
+
+    reviseBelief(input: HexisBeliefRevisionInput): HexisBeliefRevisionAudit {
+        let stored = this.state.beliefs.find((x) => x.memoryId === String(input.memoryId));
+        if (!stored) {
+            this.registerOrUpdateBelief({
+                memoryId: input.memoryId,
+                confidence01: input.confidence01,
+                trust01: input.trust01,
+                at: input.at,
+            });
+            stored = this.state.beliefs.find((x) => x.memoryId === String(input.memoryId));
+        }
+        if (!stored) throw new Error('belief_registration_failed');
+        const preview = this.calculateBeliefRevision(input, stored);
+        if (!preview.independent) {
+            this.state.metrics.duplicateEvidence += 1;
+        }
+        if (preview.applied) {
+            const key = sourceKey(input.evidence);
+            if (input.stance === 'supports') {
+                stored.sourceKeys = [...new Set([...stored.sourceKeys, key])].slice(-256);
+            } else {
+                stored.contradictingSourceKeys = [...new Set([...stored.contradictingSourceKeys, key])].slice(-256);
+            }
+            stored.confidence01 = preview.posteriorConfidence01;
+            stored.trust01 = preview.posteriorTrust01;
+            stored.updatedAt = preview.at;
+        }
+        const base = { id: randomUUID(), ...preview };
+        const audit: HexisBeliefRevisionAudit = { ...base, digest: digest(base) };
+        this.state.beliefAudit.push(audit);
+        this.state.beliefAudit = this.state.beliefAudit.slice(-2048);
+        this.state.metrics.beliefRevisions += 1;
+        return structuredClone(audit);
+    }
+
     recordTemporalAssertion(input: {
         memoryId: string;
         summary: string;
