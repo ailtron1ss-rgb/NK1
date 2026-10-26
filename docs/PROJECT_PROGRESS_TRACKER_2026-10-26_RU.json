@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and historical CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass339 itself passed the current PR merge result (4a41db0): runtime typecheck, unified integration suite, P23_VERSIONED_SKILL_CANDIDATE_STORE and progress-ledger integrity. No score uplift is inferred from a security hardening patch.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all four named workflows passed on that exact head. Newer WorkPass335 code/test head ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745 adds fail-closed validation before ledger writes but exact-head CI evidence has not yet been returned; therefore this snapshot intentionally does not raise scores for WorkPass335. Branch documentation head at this update is d43846db3451caae5062cb4b5c92533765b60f21.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -135,9 +135,10 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "Family-aware evaluation and whole-run time-budget enforcement are implemented, but do not prove improved generalization on external held-out tasks",
-        "Task-family labels must continue to be bound to the trusted manifest and verified execution evidence, not inferred from task IDs or candidate reports",
-        "Need independently measured tool-use/transfer improvement and regression resistance before raising learning-effectiveness scores"
+        "WorkPass335 adds runtime preflight for all persisted run bindings, but its newer code/test head has not yet received exact-head CI confirmation",
+        "Family-aware evaluation and bounded deadlines improve evidence integrity, not measured generalization on external held-out tasks",
+        "Task-family labels must stay bound to the trusted manifest and verified execution evidence",
+        "Need independently measured tool-use/transfer uplift and regression resistance before raising learning-effectiveness scores"
       ],
       "evidence": [
         "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts",
@@ -313,5 +314,7 @@
       "codeCommit": "02372e4949c2094b5cd1a3c4420aeda86a2fdfa1",
       "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending."
     }
-  ]
+  ],
+  "latestBranchHeadAtUpdate": "d43846db3451caae5062cb4b5c92533765b60f21",
+  "latestUnverifiedCodeTestHead": "ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745"
 }
