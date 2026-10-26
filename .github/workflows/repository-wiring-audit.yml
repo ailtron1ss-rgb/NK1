@@ -9,6 +9,10 @@ on:
       - ".github/workflows/repository-wiring-audit.yml"
       - ".github/workflows/**"
       - "package.json"
+      - ".nvmrc"
+      - "tools/super-install.mjs"
+      - "tools/node-runtime-contract.mjs"
+      - "tools/super-install.test.mjs"
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
@@ -41,6 +45,10 @@ on:
     paths:
       - ".github/workflows/**"
       - "package.json"
+      - ".nvmrc"
+      - "tools/super-install.mjs"
+      - "tools/node-runtime-contract.mjs"
+      - "tools/super-install.test.mjs"
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
@@ -96,6 +104,9 @@ jobs:
             *.*.*) test "$actual" = "$expected" ;;
             *) case "$actual" in "$expected"|"$expected".*) ;; *) exit 1 ;; esac ;;
           esac
+
+      - name: Test installer uses the repository Node runtime pin
+        run: npm run test:super-install
 
       - name: Test repository wiring audit fixtures
         run: npm run test:repo-wiring

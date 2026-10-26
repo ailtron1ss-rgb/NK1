@@ -3,13 +3,23 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveNodeRuntimeContract } from './node-runtime-contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const nodeMajor = Number(process.versions.node.split('.')[0]);
-if (nodeMajor !== 22) {
-  console.error(`SUPER_INSTALL=FAIL reason=node-major-required expected=22 actual=${process.version}`);
+let nodeContract;
+try {
+  // Use the same repository pin as CI and developer setup; never hardcode a
+  // stale Node major inside the installer.
+  nodeContract = resolveNodeRuntimeContract(root, process.version);
+} catch (error) {
+  console.error(`SUPER_INSTALL=FAIL reason=node-runtime-contract-invalid message=${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
 }
+if (!nodeContract.compatible) {
+  console.error(`SUPER_INSTALL=FAIL reason=node-major-required expected=${nodeContract.expectedMajor} actual=${process.version}`);
+  process.exit(1);
+}
+console.log(`SUPER_INSTALL=NODE_RUNTIME_PASS expectedMajor=${nodeContract.expectedMajor} actual=${process.version}`);
 
 const workspaces = [
   { name: 'app', dir: 'app' },

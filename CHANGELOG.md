@@ -1,3 +1,12 @@
+## WorkPass370 — align clean-install Node validation with .nvmrc (2026-10-26)
+
+- **Startup/install defect:** the canonical `.nvmrc` pins Node 24, but `tools/super-install.mjs` rejected every runtime except Node 22 before reading either workspace lockfile. This made the documented `npm run install:all` path fail on the version selected by CI and developer setup.
+- **Runtime contract:** added `tools/node-runtime-contract.mjs` to parse the repository pin and compare major versions. The installer now reads `.nvmrc` as the single source of truth, emits a deterministic compatibility verdict, and fails closed on missing/malformed pins or a different Node major rather than carrying a stale hard-coded version.
+- **Regression/CI:** added `tools/super-install.test.mjs` for matching Node 24 versions, incompatible Node 22, malformed pins, and missing configuration; exposed it as `npm run test:super-install`, included it in `audit:quick`, and wired it plus its source paths into repository wiring CI.
+- **Scope:** this removes a known pre-install blocker. Registry/network availability, platform-specific optional dependencies, first-run service readiness, and complete Docker/Compose packaging still require separate verification.
+
+---
+
 ## WorkPass369 — route B273 feedback through the canonical generated decision (2026-10-26)
 
 - **CI-discovered integration mismatch:** the live B272/Core regression exposed `B273 outcome action must be present in generated plan`. `B273.current()` can present a synthesized plan that does not satisfy the lifecycle's strict `lastActionPlan` contract. Credit must follow the canonical generated-decision snapshot, not a UI/presentation projection.
