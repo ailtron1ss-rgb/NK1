@@ -1,3 +1,10 @@
+## [NK1][Hexis] Require explicit confirmation before goal materialization (2026-10-26)
+
+- The goal-materialization HTTP endpoint now requires `confirmed: true`; an unconfirmed request returns 403 before project or proposal mutation.
+- Validate proposal ID type at the boundary and add a regression proving the approved proposal remains approved after a rejected materialization attempt.
+- Confirmed materialization still creates a paused candidate; activation remains a separate explicit action.
+- Validation status: committed with server-smoke coverage; exact-head workflow execution remains unverified due unavailable job step logs.
+
 ## [NK1][Hexis] Keep risk-based approval mandatory (2026-10-26)
 
 - High-risk execution plans (`risk01 >= 0.6`) now require approval even when an API caller explicitly passes `requiresApproval: false`; low-risk explicit approvals and permitted opt-outs remain intact.
