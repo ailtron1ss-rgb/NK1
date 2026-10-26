@@ -1,10 +1,11 @@
 ## NK1 WorkPass328 — validate restored outcome projection indexes (2026-10-26)
 
-- [FIX] A restored OutcomeCognition projection index is accepted only when its executionId agrees with the embedded record and its fingerprint recomputes from the immutable outcome fields. The derived external-verification flag is rebuilt from the record, not trusted independently.
-- [RECOVERY] Conflicting duplicate index entries are discarded and reconstructed from retained canonical outcome records, preventing an altered snapshot from returning another execution's receipt or permanently poisoning same-key replay.
-- [BOUNDS] Reject malformed restored confidence, tick, external-observation and execution-ID fields; confidence outside [0,1] cannot be restored from an index even when the stored hash looks well-formed.
-- [TEST] Extended the existing Pass 63 outcome-fabric regression with execution identity substitution, stale fingerprint, out-of-range confidence and conflicting mutable-evidence metadata cases. Core CI now invokes this regression explicitly after runtime typecheck.
-- [VALIDATION] Source and regression assertions were statically checked. GitHub Actions jobs still terminate before a runner starts, so full runtime execution is not confirmed for this branch.
+- [FIX] A restored OutcomeCognition projection index is accepted only when its executionId agrees with the embedded record and its fingerprint recomputes from immutable outcome fields. The derived external-verification flag is rebuilt from the record, not trusted independently.
+- [RECOVERY] Conflicting or stale index entries are reconstructed from retained canonical outcome records; the index is treated as a cache rather than authority for mutable evidence.
+- [INTEGRITY] Added a complete-record cache digest for new snapshots. Legacy snapshots remain readable, while malformed confidence, tick, execution ID, and external-observation rows fail closed.
+- [TEST] The Pass 63 regression now covers identity substitution, stale fingerprints, out-of-range confidence, conflicting duplicate metadata, and a self-consistent stale cache attempting to inject fake external evidence.
+- [CI] The targeted Pass 63 regression is wired into WorkPass71 core validation after runtime typecheck.
+- [VALIDATION] Source and fixture assertions were statically inspected. GitHub Actions still terminates before a runner starts, so full runtime execution is not yet confirmed.
 
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 

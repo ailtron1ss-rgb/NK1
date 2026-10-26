@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
+import { sha256Stable } from '../src/organism/core/StableSerialization.ts';
 
 const f=new OutcomeCognitionFabric();
 const v={verified:true,basis:'external-postcondition',confidence01:.93,externalObservation:true,observationId:'obs-fabric-1',expectedPostcondition:'door=open',observedPostcondition:'door=open'};
@@ -73,5 +74,17 @@ const conflictReplay=conflictRestored.project(indexIntegrityInput);
 assert.equal(conflictReplay.verificationRecord.executionId,indexIntegrityInput.executionId,'conflicting duplicate index entries must recover from retained canonical records');
 assert.equal(conflictReplay.verificationRecord.tool,indexIntegrityInput.tool);
 assert.equal(conflictRestored.snapshot().projectionIndex.length,1,'conflicting duplicate index entries must collapse to one canonical execution');
+// The projection index is a cache, not an alternate authority for mutable external evidence.
+const mutableEvidenceTamperSnapshot=structuredClone(originalIndexSnapshot);
+mutableEvidenceTamperSnapshot.projectionIndex[0].record.externalObservations=[{observationId:'forged-observation',verified:true,confidence01:1,at:1,assessment:'match',sourceId:'fake-sensor',sourceClass:'device',independenceKey:'fake-bus'}];
+mutableEvidenceTamperSnapshot.projectionIndex[0].record.externalEvidenceStatus='corroborated';
+// Recompute the cache-row digest to model a self-consistent stale cache; retained canonical data still wins.
+mutableEvidenceTamperSnapshot.projectionIndex[0].recordDigest=sha256Stable(mutableEvidenceTamperSnapshot.projectionIndex[0].record);
+const mutableEvidenceRestored=new OutcomeCognitionFabric();
+mutableEvidenceRestored.restore(mutableEvidenceTamperSnapshot);
+const restoredMutableEvidence=mutableEvidenceRestored.snapshot();
+assert.deepEqual(restoredMutableEvidence.records[0].externalObservations,originalIndexSnapshot.records[0].externalObservations,'cached index data must not add unobserved external evidence to the canonical record');
+assert.equal(restoredMutableEvidence.records[0].externalEvidenceStatus,originalIndexSnapshot.records[0].externalEvidenceStatus,'cached index data must not upgrade external evidence status');
+assert.deepEqual(restoredMutableEvidence.projectionIndex[0].record.externalObservations,originalIndexSnapshot.records[0].externalObservations,'index cache must be rebuilt from the canonical record when both exist');
 
 console.log('BIG_PASS_63_OUTCOME_COGNITION_FABRIC=PASS records='+f.summary().records+' nodes='+f.summary().causal.nodes+' edges='+f.summary().causal.edges+' external-evidence-contract=fail-closed learning=provenance-gated');
