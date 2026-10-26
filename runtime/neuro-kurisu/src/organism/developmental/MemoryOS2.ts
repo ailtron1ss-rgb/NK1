@@ -266,6 +266,7 @@ export interface SemanticIndexMaintenanceResult {
 }
 export class MemoryOS2{
  private state=defaultMemoryOS2();
+ private readonly signalCompensationSnapshots=new WeakMap<object,{memoryId:string;snapshot:MemoryItem2}>();
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
@@ -1042,6 +1043,61 @@ export class MemoryOS2{
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    this.state.reconsolidations++;
    return structuredClone(m);
+ }
+ /**
+  * Exact restoration for a failed higher-level transaction. Unlike updateSignals,
+  * this compensation may restore a previously higher authority/confidence value:
+  * it is not new evidence, it returns the row to its captured pre-transaction state.
+  */
+ /**
+  * Capture an opaque, one-use token for exact compensation of a higher-level transaction.
+  * Callers never supply the snapshot themselves, so this API cannot be used to forge
+  * a trust upgrade by passing an arbitrary MemoryItem2.
+  */
+ captureSignalCompensation(id:string):object|null{
+  const key=String(id);
+  const current=this.itemIndex.get(key);
+  if(!current)return null;
+  const token=Object.freeze({});
+  this.signalCompensationSnapshots.set(token,{memoryId:key,snapshot:structuredClone(current)});
+  return token;
+ }
+ /**
+  * Restore the signal fields captured by a valid token and consume the token.
+  * This is compensation for a failed transaction, not new evidence.
+  */
+ hasSignalCompensation(token:object):boolean{
+  return Boolean(token&&typeof token==='object'&&this.signalCompensationSnapshots.has(token));
+ }
+ discardSignalCompensation(token:object):boolean{
+  if(!this.hasSignalCompensation(token))return false;
+  return this.signalCompensationSnapshots.delete(token);
+ }
+ restoreSignalsForCompensation(id:string,token:object):boolean{
+  const key=String(id);
+  if(!token||typeof token!=='object')return false;
+  const captured=this.signalCompensationSnapshots.get(token);
+  if(!captured||captured.memoryId!==key)return false;
+  const current=this.itemIndex.get(key);
+  if(!current)return false;
+  const before=estimateMemoryBytes(current);
+  const target=current as unknown as Record<string,unknown>;
+  const source=captured.snapshot as unknown as Record<string,unknown>;
+  const fields=[
+   'salience','emotionalWeight','identityRelevance','goalRelevance','socialRelevance',
+   'predictionError','temperature01','confidence','sourceAuthority01','evidenceSources',
+   'evidenceLineageKeys','dormant','lastAccessAt','revisionHistory',
+  ];
+  for(const field of fields){
+   const value=source[field];
+   if(value===undefined)delete target[field];
+   else target[field]=structuredClone(value);
+  }
+  const restoredExactly=fields.every(field=>JSON.stringify(target[field])===JSON.stringify(source[field]));
+  this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(current));
+  if(!restoredExactly)return false;
+  this.signalCompensationSnapshots.delete(token);
+  return true;
  }
  get(id:string){const m=this.state.items.find(x=>x.id===id); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
  markDormant(id:string,dormant=true,reason='memory-economy'){return this.updateSignals(id,{dormant},reason);}

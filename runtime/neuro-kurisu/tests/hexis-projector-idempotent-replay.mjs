@@ -1,9 +1,92 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { HexisCanonicalMemoryProjector, isValidHmxApplyReceipt } from '../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
 import { computeHmxStageDigest, refreshHmxStageLifecycleDigest, isSafeJsonTree } from '../src/organism/integration/hexis/HexisStageIntegrity.mjs';
 
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
+
+const compensationMemoryOS = new MemoryOS2({ embeddingProvider: null });
+const compensationState = compensationMemoryOS.snapshot();
+compensationState.items = [{
+  id: 'signal-rollback-fixture',
+  content: 'pre-transaction confidence and provenance',
+  kind: 'semantic',
+  source: 'hexis:signal-rollback-source',
+  epistemicStatus: 'belief',
+  createdAt: 1000,
+  lastAccessAt: 1000,
+  salience: 0.8,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.2,
+  goalRelevance: 0.2,
+  socialRelevance: 0.2,
+  predictionError: 0,
+  temperature01: 0.3,
+  confidence: 0.95,
+  sourceAuthority01: 0.95,
+  tags: ['hexis-import'],
+  context: { hexisSourceLineageId: 'signal-test-lineage' },
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  revisionHistory: [{ at: 1000, from: 'belief', to: 'belief', reason: 'fixture-baseline' }],
+  validFromAt: 1000,
+  validUntilAt: null,
+  observedAt: 1000,
+  supersedesId: null,
+  supersededById: null,
+  revisionGroupId: 'signal-rollback-fixture',
+  revisionSequence: 1,
+  provenanceClass: 'external',
+  independenceKey: 'signal-test-source',
+  evidenceFreshnessAt: 1000,
+  evidenceSources: [{
+    source: 'hexis:signal-rollback-source',
+    provenanceClass: 'external',
+    sourceAuthority01: 0.95,
+    independenceKey: 'signal-test-source',
+    observedAt: 1000,
+    evidenceFreshnessAt: 1000,
+  }],
+  evidenceLineageKeys: ['hexis:signal-rollback-source'],
+  dormant: false,
+  retrievalCount: 0,
+  semanticVector: [],
+}];
+compensationMemoryOS.restore(compensationState);
+const preSignalMutation = compensationMemoryOS.snapshot().items.find(item => item.id === 'signal-rollback-fixture');
+assert.ok(preSignalMutation);
+const signalCompensationToken = compensationMemoryOS.captureSignalCompensation('signal-rollback-fixture');
+assert.ok(signalCompensationToken);
+compensationMemoryOS.updateSignals('signal-rollback-fixture', {
+  confidence: 0.2,
+  sourceAuthority01: 0.2,
+  salience: 0.1,
+  evidenceSources: [{
+    source: 'hexis:signal-rollback-source',
+    provenanceClass: 'external',
+    sourceAuthority01: 0.2,
+    independenceKey: 'signal-test-source',
+    observedAt: 1000,
+    evidenceFreshnessAt: 1000,
+  }],
+}, 'simulated-hmx-authority-cap');
+const signalMutation = compensationMemoryOS.snapshot().items.find(item => item.id === 'signal-rollback-fixture');
+assert.equal(signalMutation.confidence, 0.2);
+assert.equal(signalMutation.sourceAuthority01, 0.2);
+assert.notDeepEqual(signalMutation.revisionHistory, preSignalMutation.revisionHistory);
+assert.equal(compensationMemoryOS.restoreSignalsForCompensation('signal-rollback-fixture', preSignalMutation), false,
+  'a caller-supplied snapshot must not authorize signal restoration');
+assert.equal(compensationMemoryOS.restoreSignalsForCompensation('signal-rollback-fixture', signalCompensationToken), true);
+assert.deepEqual(
+  compensationMemoryOS.snapshot().items.find(item => item.id === 'signal-rollback-fixture'),
+  preSignalMutation,
+  'HMX compensation must restore authority, confidence, evidence lineage, timestamps and revision history exactly',
+);
+
 const stage = {
   status: 'applied',
   exportId: 'exp_0123456789abcdef',
@@ -390,6 +473,20 @@ const priorRollbackMemory = {
   epistemicStatus: 'belief',
   kind: 'semantic',
   tags: ['hexis-import'],
+  confidence: 0.7,
+  sourceAuthority01: 0.7,
+  evidenceSources: [],
+  evidenceLineageKeys: [],
+  salience: 0.5,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.05,
+  goalRelevance: 0.05,
+  socialRelevance: 0.05,
+  predictionError: 0,
+  dormant: false,
+  lastAccessAt: 1000,
+  temperature01: 0.2,
+  revisionHistory: [],
   context: {
     hexisExportId: 'exp_aaaaaaaaaaaaaaaa',
     hexisSourceLineageId: stage.sourceLineageId,
@@ -398,8 +495,51 @@ const priorRollbackMemory = {
     hexisGraphSourceKey: 'hexis:prior-graph-key',
   },
 };
-const rollbackCanonicalItems = [structuredClone(priorRollbackMemory)];
+const priorRollbackDuplicate = {
+  id: 'hexis-memory:duplicate-baseline',
+  content: 'Existing duplicate content',
+  source: 'hexis:duplicate-source-key',
+  epistemicStatus: 'unknown',
+  kind: 'semantic',
+  tags: ['hexis-import'],
+  confidence: 0.95,
+  sourceAuthority01: 0.95,
+  evidenceSources: [{
+    source: 'hexis:duplicate-source-key',
+    provenanceClass: 'external',
+    sourceAuthority01: 0.95,
+    independenceKey: 'duplicate-source',
+    observedAt: 1000,
+    evidenceFreshnessAt: 1000,
+  }],
+  evidenceLineageKeys: ['hexis:duplicate-source-key'],
+  salience: 0.65,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.05,
+  goalRelevance: 0.05,
+  socialRelevance: 0.05,
+  predictionError: 0,
+  dormant: false,
+  lastAccessAt: 1000,
+  temperature01: 0.4,
+  revisionHistory: [{ at: 1000, from: 'unknown', to: 'unknown', reason: 'pre-import' }],
+  context: {
+    hexisExportId: 'exp_aaaaaaaaaaaaaaaa',
+    hexisSourceLineageId: stage.sourceLineageId,
+    hexisMemoryRef: 'exp_aaaaaaaaaaaaaaaa:rollback-duplicate',
+    hexisOriginalType: 'semantic',
+    hexisGraphSourceKey: 'hexis:duplicate-graph-key',
+  },
+};
+const rollbackCanonicalItems = [structuredClone(priorRollbackMemory), structuredClone(priorRollbackDuplicate)];
 const rollbackMemoryBaseline = structuredClone(rollbackCanonicalItems);
+const rollbackSignalReceipts = new Map();
+const rollbackSignalCompensations = new WeakMap();
+const signalFields = [
+  'salience', 'emotionalWeight', 'identityRelevance', 'goalRelevance', 'socialRelevance',
+  'predictionError', 'confidence', 'sourceAuthority01', 'evidenceSources', 'evidenceLineageKeys',
+  'dormant', 'lastAccessAt', 'temperature01', 'revisionHistory',
+];
 const rollbackMemoryFabric = {
   canonicalSnapshot() { return { items: structuredClone(rollbackCanonicalItems) }; },
   encode(input) {
@@ -416,6 +556,82 @@ const rollbackMemoryFabric = {
     const item = rollbackCanonicalItems.find(candidate => candidate.id === id);
     if (item) item.epistemicStatus = epistemicStatus;
     return item ?? null;
+  },
+  captureSignalCompensation(id) {
+    const item = rollbackCanonicalItems.find(candidate => candidate.id === id);
+    if (!item) return null;
+    const token = Object.freeze({});
+    rollbackSignalCompensations.set(token, { id, snapshot: structuredClone(item), sourceCommandIds: [] });
+    return token;
+  },
+  updateSignals(id, patch, reason, context = {}) {
+    const item = rollbackCanonicalItems.find(candidate => candidate.id === id);
+    if (!item) return null;
+    const compensation = context.compensationToken === undefined
+      ? undefined
+      : rollbackSignalCompensations.get(context.compensationToken);
+    if (context.compensationToken !== undefined && (!compensation || compensation.id !== id || !context.commandId)) {
+      throw new Error('test-signal-compensation-token-invalid');
+    }
+    for (const [key, value] of Object.entries(patch)) {
+      if (key === 'sourceAuthority01') item.sourceAuthority01 = Math.min(item.sourceAuthority01 ?? 0.45, value);
+      else if (key === 'evidenceSources') {
+        item.evidenceSources = value.map(evidence => ({
+          ...evidence,
+          sourceAuthority01: Math.min(evidence.sourceAuthority01 ?? 0.45, patch.sourceAuthority01 ?? 1),
+        }));
+      } else item[key] = structuredClone(value);
+    }
+    item.lastAccessAt = 2000;
+    item.temperature01 = 0.9;
+    item.revisionHistory = [...(item.revisionHistory ?? []), {
+      at: 2000, from: item.epistemicStatus, to: item.epistemicStatus, reason,
+    }];
+    if (context.commandId) {
+      rollbackSignalReceipts.set(context.commandId, { action: 'update-signals', id });
+      if (compensation && !compensation.sourceCommandIds.includes(context.commandId)) {
+        compensation.sourceCommandIds.push(context.commandId);
+      }
+    }
+    return structuredClone(item);
+  },
+  restoreSignalsForCompensation(id, token, reason) {
+    assert.equal(reason, 'hexis-hmx-apply-rollback');
+    const compensation = rollbackSignalCompensations.get(token);
+    if (!compensation || compensation.id !== id || !compensation.sourceCommandIds.length) return false;
+    for (const sourceCommandId of compensation.sourceCommandIds) {
+      const receipt = rollbackSignalReceipts.get(sourceCommandId);
+      if (!receipt || receipt.action !== 'update-signals' || receipt.id !== id) return false;
+    }
+    const item = rollbackCanonicalItems.find(candidate => candidate.id === id);
+    if (!item) return false;
+    for (const key of signalFields) {
+      if (compensation.snapshot[key] === undefined) delete item[key];
+      else item[key] = structuredClone(compensation.snapshot[key]);
+    }
+    for (const sourceCommandId of compensation.sourceCommandIds) rollbackSignalReceipts.delete(sourceCommandId);
+    rollbackSignalCompensations.delete(token);
+    assert.deepEqual(
+      Object.fromEntries(signalFields.map(field => [field, item[field]])),
+      Object.fromEntries(signalFields.map(field => [field, compensation.snapshot[field]])),
+      'the rollback adapter must prove exact restoration from its opaque capture',
+    );
+    return true;
+  },
+  commitSignalCompensations(tokens) {
+    const transactions = tokens.map(token => {
+      const compensation = rollbackSignalCompensations.get(token);
+      if (!compensation) throw new Error('test-signal-compensation-token-invalid');
+      for (const sourceCommandId of compensation.sourceCommandIds) {
+        const receipt = rollbackSignalReceipts.get(sourceCommandId);
+        if (!receipt || receipt.action !== 'update-signals' || receipt.id !== compensation.id) {
+          throw new Error('test-signal-compensation-source-receipt-invalid');
+        }
+      }
+      return { token, compensation };
+    });
+    for (const { token } of transactions) rollbackSignalCompensations.delete(token);
+    return true;
   },
 };
 const rollbackGraphState = {
@@ -483,14 +699,23 @@ const rollbackStage = {
   lifecycleDigest: '',
   applicationAttempts: 0,
   application: undefined,
-  sectionCounts: { memories: 1 },
+  sectionCounts: { memories: 2 },
   stagedSections: {
-    memories: [{
-      ref: stage.exportId + ':rollback-memory',
-      type: 'semantic',
-      content: 'Atomic HMX rollback fixture',
-      status: 'belief',
-    }],
+    memories: [
+      {
+        ref: stage.exportId + ':rollback-memory',
+        type: 'semantic',
+        content: 'Atomic HMX rollback fixture',
+        status: 'belief',
+      },
+      {
+        ref: stage.exportId + ':rollback-duplicate',
+        type: 'semantic',
+        content: 'Existing duplicate content',
+        status: 'unknown',
+        trust_level: 0.2,
+      },
+    ],
   },
 };
 rollbackStage.digest = computeHmxStageDigest(rollbackStage);
@@ -513,14 +738,21 @@ const rollbackRetryReceipt = rollbackProjector.apply(rollbackStage);
 assert.equal(rollbackRetryReceipt.status, 'applied',
   'the same staged HMX import must be retryable after a successful compensation');
 const rollbackAfterRetry = rollbackMemoryFabric.canonicalSnapshot().items;
-assert.equal(rollbackAfterRetry.length, 2,
-  'the retry must keep the prior historical memory and create exactly one new canonical memory');
-const newRollbackMemory = rollbackAfterRetry.find(item => item.id !== priorRollbackMemory.id);
+assert.equal(rollbackAfterRetry.length, 3,
+  'the retry must preserve both pre-existing rows and create exactly one new canonical memory');
+const rollbackOriginalIds = new Set(rollbackMemoryBaseline.map(item => item.id));
+const newRollbackMemory = rollbackAfterRetry.find(item => !rollbackOriginalIds.has(item.id));
 const supersededRollbackMemory = rollbackAfterRetry.find(item => item.id === priorRollbackMemory.id);
+const reconciledRollbackDuplicate = rollbackAfterRetry.find(item => item.id === priorRollbackDuplicate.id);
 assert.ok(newRollbackMemory);
 assert.equal(newRollbackMemory.epistemicStatus, 'belief');
 assert.equal(supersededRollbackMemory.epistemicStatus, 'quarantined',
   'successful retry must supersede the old belief without erasing historical memory');
+assert.ok(reconciledRollbackDuplicate);
+assert.equal(reconciledRollbackDuplicate.confidence, 0.2,
+  'a successful retry still applies the incoming confidence cap to a duplicate');
+assert.equal(reconciledRollbackDuplicate.sourceAuthority01, 0.2,
+  'a successful retry still applies the incoming authority cap to a duplicate');
 assert.equal(rollbackSemanticGraph.snapshot().nodes.length, 1,
   'the retry must leave exactly one active semantic projection after removing the prior version');
 assert.notEqual(rollbackSemanticGraph.snapshot().nodes[0].sourceKey, 'hexis:prior-graph-key');
