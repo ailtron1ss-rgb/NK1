@@ -195,6 +195,7 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
     throw new RangeError('NK1 native HMX source export exceeds ' + MAX_SOURCE_EXPORT_BYTES + ' bytes');
   }
   const root = JSON.parse(serialized);
+  const hasMalformedRootSections = Object.hasOwn(root, 'sections') && !isRecord(root.sections);
   const nativeSections = isRecord(root.sections) ? root.sections : {};
   const exportId = 'exp_' + createHash('sha256').update(serialized).digest('hex').slice(0, 16);
   const warnings = [];
@@ -206,6 +207,9 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
   const rawIdentity = Array.isArray(nativeSections.identity) ? asArray(nativeSections.identity) : isRecord(nativeSections.identity) ? [nativeSections.identity] : [];
   const rawRelationships = asArray(nativeSections.relationships);
   const malformedNativeSections = {};
+  if (hasMalformedRootSections) {
+    malformedNativeSections.sections_invalid_root = cloneJson(root.sections);
+  }
   for (const name of ['memories', 'skills', 'goals', 'identity', 'relationships', 'episodes']) {
     const nativeValue = nativeSections[name];
     if (Array.isArray(nativeValue)) {
