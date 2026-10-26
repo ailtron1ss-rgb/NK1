@@ -2,7 +2,7 @@
 
 **Дата:** 2026-10-26  
 **Ветка:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`  
-**Коммиты:** `c180e9afbfb54c4ee5ec5566d74e54b990b78cf6`, `a7e0c0f9d16b52065c1c1d57f6a90a9d8f9b0aee`
+**Коммиты:** source `c180e9afbfb54c4ee5ec5566d74e54b990b78cf6`, first regression `a7e0c0f9d16b52065c1c1d57f6a90a9d8f9b0aee`, validation-task coverage `ac82342216ad7e36aa1795271b69b4741a935b76`, coverage regression `9dc92673637fa86a0216f980a9c796a354f3f1f8`, Node 24 CI `551cdf361a95d3e85a2f8409838d1679741cad6c`
 
 ## Дефект
 
