@@ -58,13 +58,21 @@ export function HexisControlConsole() {
     setBusy(true);
     setMessage("");
     try {
+      // Preserve the operation result independently from best-effort follow-up refreshes.
+      // A refresh failure must never make a committed import/apply/materialization look failed.
       const result = await operation();
       setPanel(fmt(result));
       setMessage(`${label}: OK`);
-      const next = await neuroApi.hexis();
-      setState(next);
-      const memoryResult = await neuroApi.hexisMemories(64);
-      setMemories(Array.isArray((memoryResult as any)?.memoryIndex) ? (memoryResult as any).memoryIndex : []);
+      try {
+        const next = label === "Refresh" && result && typeof result === "object"
+          ? result as Record<string, unknown>
+          : await neuroApi.hexis();
+        setState(next);
+        const memoryResult = await neuroApi.hexisMemories(64);
+        setMemories(Array.isArray((memoryResult as any)?.memoryIndex) ? (memoryResult as any).memoryIndex : []);
+      } catch (refreshError) {
+        setMessage(`${label}: OK; panel refresh failed: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
+      }
       return result;
     } catch (error) {
       setMessage(`${label}: ${error instanceof Error ? error.message : String(error)}`);
