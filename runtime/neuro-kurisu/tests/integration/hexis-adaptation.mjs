@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
+import { refreshHmxStageLifecycleDigest } from '../../src/organism/integration/hexis/HexisStageIntegrity.mjs';
 
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
@@ -425,6 +426,38 @@ const restoredLegacyLifecycleFabric = new HexisAdaptationFabric();
 restoredLegacyLifecycleFabric.restore(legacyLifecycleState);
 assert.equal(restoredLegacyLifecycleFabric.decideHmx(legacyLifecycleStage.stagingId, 'accept')?.status, 'accepted');
 assert.match(restoredLegacyLifecycleFabric.getHmxStage(legacyLifecycleStage.stagingId)?.lifecycleDigest ?? '', /^[a-f0-9]{64}$/);
+
+// A saturated apply-attempt counter must be rejected before the canonical writer
+// is entered. Otherwise an overflow attempt could poison an otherwise valid stage.
+const saturatedLifecycleFabric = new HexisAdaptationFabric();
+const saturatedExportId = 'exp_8686868686868686';
+const saturatedStage = saturatedLifecycleFabric.stageHmx({
+  document: makeHmxDocument(saturatedExportId, {
+    memories: [{ ref: saturatedExportId + ':memory-1', type: 'semantic', content: 'Attempt ceiling fixture.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(saturatedLifecycleFabric.decideHmx(saturatedStage.stagingId, 'accept')?.status, 'accepted');
+const saturatedState = saturatedLifecycleFabric.snapshot();
+const storedSaturatedStage = saturatedState.hmxStages.find(candidate => candidate.stagingId === saturatedStage.stagingId);
+assert(storedSaturatedStage);
+storedSaturatedStage.applicationAttempts = 10000;
+refreshHmxStageLifecycleDigest(storedSaturatedStage);
+const restoredSaturatedFabric = new HexisAdaptationFabric();
+restoredSaturatedFabric.restore(saturatedState);
+let saturatedApplyCalls = 0;
+restoredSaturatedFabric.bindCanonicalMemoryApply(() => {
+  saturatedApplyCalls += 1;
+  return {};
+});
+assert.throws(
+  () => restoredSaturatedFabric.decideHmx(saturatedStage.stagingId, 'apply'),
+  /hmx-apply-attempt-limit/,
+);
+assert.equal(saturatedApplyCalls, 0, 'attempt limit must be enforced before canonical writes');
+assert.equal(restoredSaturatedFabric.getHmxStage(saturatedStage.stagingId)?.applicationAttempts, 10000);
+assert.equal(restoredSaturatedFabric.getHmxStage(saturatedStage.stagingId)?.status, 'accepted');
 
 
 // Goal proposal preparation also consumes restored staged content, so it must
