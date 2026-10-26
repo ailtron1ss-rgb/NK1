@@ -252,33 +252,30 @@ export class P26TrueLearningEngine{
 
     for(let index=0;index<currentExperiences.length;index+=1) {
       const current=currentExperiences[index];
-
-      // Admit one eligible historical update before the current update. Keeping
-      // fresh experience last prevents dense replay from immediately undoing the
-      // very new-task update that triggered the rehearsal step.
-      if(replayExperiences.length && (index+1)%replayEveryNCurrent===0 &&
-         replayUpdates<maxReplayUpdates) {
-        const historical=replayExperiences[replayCursor%replayExperiences.length];
-        replayCursor+=1;
-        if(conflictsWithCurrent(historical)) {
-          blockedReplayRows+=1;
-        } else {
-          eligibleReplayRows+=1;
-          const replayResult=this.learner.train({
-            state:historical.state,action:historical.action,target01:targetFor(historical),
-            learningRate01:effectiveReplayLearningRate01,extras,
-          });
-          replayUpdates+=1;
-          replayLoss+=replayResult.loss01;
-        }
-      }
-
       const trained=this.learner.train({
         state:current.state,action:current.action,target01:targetFor(current),
         learningRate01:currentLearningRate01,extras,
       });
       onlineUpdates+=1;
       onlineLoss+=trained.loss01;
+
+      // maxReplayUpdates counts successful historical optimizer steps only.
+      // A rejected conflict cannot spend the budget or starve later valid rows.
+      if(!replayExperiences.length || (index+1)%replayEveryNCurrent!==0 ||
+         replayUpdates>=maxReplayUpdates) continue;
+      const historical=replayExperiences[replayCursor%replayExperiences.length];
+      replayCursor+=1;
+      if(conflictsWithCurrent(historical)) {
+        blockedReplayRows+=1;
+        continue;
+      }
+      eligibleReplayRows+=1;
+      const replayResult=this.learner.train({
+        state:historical.state,action:historical.action,target01:targetFor(historical),
+        learningRate01:effectiveReplayLearningRate01,extras,
+      });
+      replayUpdates+=1;
+      replayLoss+=replayResult.loss01;
     }
 
     this.state.metrics.outcomeSamples+=onlineUpdates;
