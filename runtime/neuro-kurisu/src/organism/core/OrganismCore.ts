@@ -2932,6 +2932,31 @@ export class OrganismCore {
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return stage;
     }
+    /** Convert accepted HMX goals into pending review proposals; never materialize or activate them implicitly. */
+    hexisPrepareGoalProposals(stagingId: string) {
+        try {
+            const result = this.hexisAdaptation.prepareGoalProposals(String(stagingId));
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            return result;
+        } catch (error) {
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            throw error;
+        }
+    }
+    hexisGoalProposals(input: Parameters<import('../integration/hexis/HexisAdaptationFabric.ts').HexisAdaptationFabric['listGoalProposals']>[0] = {}) {
+        return this.hexisAdaptation.listGoalProposals(input);
+    }
+    /** Only changes the proposal's review status; canonical goal creation remains a separate explicit step. */
+    hexisDecideGoalProposal(id: string, decision: 'approve' | 'reject') {
+        try {
+            const proposal = this.hexisAdaptation.decideGoalProposal(String(id), decision);
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            return proposal;
+        } catch (error) {
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            throw error;
+        }
+    }
     hexisEnqueueOutbox(input: {
         idempotencyKey: string;
         kind: string;
