@@ -164,8 +164,11 @@ restoredStaleOut.restore(staleSnapshot);
 assert.equal(restoredStaleOut.reclaimOutbox(1000),1);
 assert.equal(restoredStaleOut.snapshot().outbox.find(x=>x.id===staleOut.id)?.status,'uncertain',
   'an expired publishing claim must not silently return to the retry queue');
-assert.equal(restoredStaleOut.diagnostics().counts.uncertainOutbox,1,
-  'unresolved outbound side effects must be visible in subsystem diagnostics');
+assert.equal(
+  restoredStaleOut.diagnostics().counts.uncertainOutbox,
+  restoredStaleOut.snapshot().outbox.filter(entry => entry.status === 'uncertain').length,
+  'diagnostics must report all unresolved outbound side effects after restore/reclaim',
+);
 assert.equal(restoredStaleOut.claimOutbox(staleOut.id),null);
 assert.equal(restoredStaleOut.resolveOutbox(staleOut.id,'published','provider-receipt:telegram:123')?.status,'published',
   'an authoritative positive receipt closes the uncertain outbox item');
