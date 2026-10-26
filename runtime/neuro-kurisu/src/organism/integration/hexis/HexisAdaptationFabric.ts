@@ -657,6 +657,11 @@ export class HexisAdaptationFabric {
                         if (!isHmxText(content, 250000)) {
                             conflicts.push({ path: `sections.memories[${index}].content`, kind: 'schema', detail: 'memory content must be a non-empty string within the per-record limit' });
                         }
+                        if (record.status !== undefined && record.status !== null &&
+                            (typeof record.status !== 'string' || record.status.length > 64 ||
+                             /[\\u0000-\\u001f\\u007f-\\u009f]/u.test(record.status))) {
+                            conflicts.push({ path: `sections.memories[${index}].status`, kind: 'schema', detail: 'memory status, when supplied, must be a bounded string without control characters' });
+                        }
                         if (record.metadata !== undefined && !isHmxRecord(record.metadata)) {
                             conflicts.push({ path: `sections.memories[${index}].metadata`, kind: 'schema', detail: 'memory metadata, when supplied, must be an object' });
                         }
