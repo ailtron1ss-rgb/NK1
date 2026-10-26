@@ -9,6 +9,8 @@
 - The UI never treats the typed ID as proof of status: the server still checks the stage lifecycle seal/status and conflicts, while acceptance and canonical apply remain separately confirmed. This allows recovery without weakening server-side invariants.
 
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
+- [SECURITY] Bound safe JSON-tree validation by depth, node count, per-object own-key count, key length, per-string length and aggregate string/key characters; public callers cannot override traversal budgets.
+- [REGRESSION] Exercise over-depth trees, caller-supplied fake budgets, oversized strings and oversized own-key collections.
 - [FAIL-CLOSED] Reject present non-array `memories`/`relationships` sections before canonical storage reads; unknown future scalar sections remain explicitly deferred instead of disappearing.
 - [REGRESSION] Fault-inject a downstream temporal failure after memory and semantic-node writes, prove all stores roll back, retry once, and assert no duplicates; also verify malformed known sections fail before touching storage.
 - [SECURITY] Keep safe-tree recursion depth/node budgets inside the public validator; JavaScript callers cannot pass negative depth or forged counters to weaken bounds.
