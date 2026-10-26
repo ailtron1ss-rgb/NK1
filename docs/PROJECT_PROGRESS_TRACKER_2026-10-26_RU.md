@@ -1,3 +1,13 @@
+## WorkPass424 — ограничить строки options до date parsing (2026-10-26)
+
+- **Код нормализатора:** `27dc3f6e37377346ba317f8d9349af98ac5091bc`; **регрессия:** `3bfbd2a2345e69479cc11d81e1851ab37ecdcd3e`.
+- `sourceSubjectId` при наличии теперь должен быть непустой строкой длиной не больше 180 символов, а `exportedAt` — корректным bounded ISO date-time не длиннее 64 символов до передачи в `Date.parse`.
+- Это закрывает bypass по размеру/форме прямого вызова нормализатора вне обычного snapshot лимита HMX-документа. Контракт canonical export ID и допустимых optional fields сохранён.
+- Регрессии проверяют отказ для слишком длинного source ID, слишком длинного `exportedAt` и неверной даты.
+- **Валидация:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass423 — привязать memory projection к проверенному export options (2026-10-26)
 
 - **Код нормализатора:** `49a5a2e90a2d98980572f44152afaf20921a08a7`; **регрессия:** `bfb55498ff8e258caa52aec95f365bac7fc0f94b`.
