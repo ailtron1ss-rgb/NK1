@@ -1,3 +1,13 @@
+## Latest checkpoint — WorkPass342 (2026-10-26)
+
+- **Scope:** fixed the integration smoke's false timeout for CPU-heavy research probes. `fetchJson` now has an explicit finite deadline; health/status/approval calls keep 8 seconds, NeuroCore/NOMEGA use 60 seconds, and DeepCode CPU smoke uses 200 seconds to cover its 180-second subprocess limit plus cold-start overhead.
+- **Cognitive integration:** WorkPass340 strict `UnifiedCognitiveSubstrate` is live in `OrganismRuntime`, persists a sidecar and passes the 30-cycle stop/re-init test. The canonical action owner remains `OrganismCore`.
+- **Learning safety:** WorkPass341 requires distinct paired holdout tasks per configured family. Insufficient measurements, insufficient task breadth and insufficient family gain fail separately; signed candidate staging still never activates a skill automatically.
+- **Exact-head validation PASS:** `b8bc8316e996700a5562b93f38fd354f1ea5d69b`. Unified project integration [#40256159897](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159897), WorkPass110 [#40256159892](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159892), WorkPass108 [#40256159870](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159870), P26 [#40256159877](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159877), and progress-ledger integrity [#40256159868](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159868) all passed. The unified smoke reports `CLEAN_ORGANISM_SMOKE=PASS`, all three Research Bridge probes pass after explicit owner approval, and UI/runtime typechecks passed.
+- **Scores:** intentionally unchanged. The new checks validate integration/safety, not improved external learning/transfer. Android/Termux audio/sensor E2E, browser/Live2D hardware E2E, long soak, licensing and release ZIP replacement remain open.
+
+---
+
 ## Latest checkpoint — WorkPass341 (2026-10-26)
 
 - **Scope:** adds a separate minimum number of distinct paired holdout tasks for every skill family where trusted promotion policy demands a gain. Repeated seeds cannot inflate the unique-task coverage.

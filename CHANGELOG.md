@@ -1,9 +1,10 @@
-## [NK1][integration] Give CPU research probes an explicit execution deadline (2026-10-26)
+## WorkPass342 — bound CPU research probe deadlines (2026-10-26)
 
-- Kept the 8-second default for fast health/status/approval API calls, but made the integration smoke's post-approval probe deadline configurable per research task.
-- NeuroCore/NOMEGA probes now have a 60-second bound; the CPU-only DeepCode probe has a 200-second bound consistent with its 180-second Python subprocess timeout and cold-start overhead. All bounds remain finite and invalid timeout values fail closed.
-- This fixes a CI flake where the valid DeepCode CPU smoke crossed the integration client's generic 8-second fetch timeout after all approval checks passed.
-- Exact-head CI is being rerun; do not count this timeout fix as validated until the unified smoke succeeds.
+- Made the smoke runner's HTTP request deadline configurable, validated as a finite safe integer no greater than 240 seconds.
+- Fast health/status/approval calls retain the 8-second timeout; NeuroCore and NOMEGA get 60 seconds; DeepCode CPU smoke gets 200 seconds, consistent with the 180-second subprocess deadline plus interpreter/model cold-start overhead.
+- Fixed the CI-only failure where DeepCode's valid probe was aborted by the generic 8-second fetch timeout after owner approval succeeded.
+- **Validation PASS** on exact code/test head `b8bc8316e996700a5562b93f38fd354f1ea5d69b`: [Unified project integration suite #40256159897](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159897). The final smoke JSON is `ok: true`, `CLEAN_ORGANISM_SMOKE=PASS`, all NeuroCore/NOMEGA/DeepCode probes pass, and UI/runtime typechecks pass.
+- Scores remain unchanged; this is a timeout correctness/verification fix, not a claim of higher learning or field performance.
 
 ---
 

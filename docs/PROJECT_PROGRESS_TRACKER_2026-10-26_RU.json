@@ -4,9 +4,9 @@
   "project": "Neuro Kurisu / NK1",
   "sourceOfTruth": "https://github.com/ailtron1ss-rgb/NK1",
   "sourceBranchAtSnapshot": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
-  "sourceHeadAtSnapshot": "b81ec539a1e2d442141e13929b376d2b549c9e64",
+  "sourceHeadAtSnapshot": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The current implementation/validation snapshot is anchored to exact code/test head b81ec539a1e2d442141e13929b376d2b549c9e64; Unified project integration suite, WorkPass110 continual-learning metrics, WorkPass108 paired evidence/promotion gate, and P26 Learning Validation all passed on this exact head. The runtime Node 24 + Python 3.12 setup, locked app/runtime installation, UI typecheck/build, runtime TypeScript, cognitive integration suite, governed approval E2E, 30-cycle substrate restore smoke, research bridge approval flow (NeuroCore/NOMEGA/DeepCode), and per-family distinct holdout task-coverage regressions passed. Learning-effectiveness and field-evidence scores remain unchanged because these changes strengthen integration/security gates rather than demonstrating higher real-world task success. Device/browser/Live2D/voice E2E, long soak, license review and reproducible release archive replacement remain open.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The current implementation/validation snapshot is anchored to exact PR code/test head b8bc8316e996700a5562b93f38fd354f1ea5d69b. On that head, the unified project integration suite, WorkPass110 continual-learning metrics, WorkPass108 verified promotion gate, P26 learning validation, progress-ledger integrity, and the listed WorkPass99/102/105/287-288/291-294 regressions passed. Clean locked app/runtime installation under Node.js 24, Python 3.12 CPU research setup, UI development build/typecheck, runtime typecheck, strict cognitive substrate and 30-cycle restart smoke, explicit-owner approval flow, NeuroCore/NOMEGA/DeepCode CPU research probes, and the per-family distinct holdout task gate passed. Learning-effectiveness, transfer and field-evidence scores remain unchanged because these results validate integration/security gates and do not establish higher real-world task success. Physical Android/Termux audio and sensors, browser/Live2D device E2E, extended soak, licensing review and reproducible release-archive replacement remain open.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -244,31 +244,107 @@
     "statuses": [
       {
         "name": "Unified project integration suite",
+        "id": 40256159897,
+        "scopeNote": "PASS on exact PR code/test head. Node 24 + Python 3.12 CPU PyTorch, runtime pin and canonical installer tests, doctor, progress report, locked app/runtime installation, supervisor tests, app build/typecheck, strict cognitive substrate contracts, governed approval E2E, 30-cycle substrate restart smoke, and runtime/research bridge smoke all passed. NeuroCore, NOMEGA and DeepCode returned PASS after explicit owner approval; UI and runtime typechecks passed.",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622845",
-        "testedHead": "b81ec539a1e2d442141e13929b376d2b549c9e64",
-        "scopeNote": "PASS on exact combined code/test head. Node 24 + Python 3.12 CPU research setup, runtime-pin and canonical installer contracts, doctor, weighted ledger report, locked app/runtime install, supervisor tests, app typecheck/development build, cognitive typecheck and integration suite, approval gateway E2E, 30-cycle substrate/restart smoke, Research Bridge approval/probes (NeuroCore, NOMEGA, DeepCode), and final UI/runtime typechecks all passed."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159897",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
       },
       {
         "name": "WorkPass110 continual learning metrics",
+        "id": 40256159892,
+        "scopeNote": "PASS on exact PR code/test head, 48 successful steps. P23/Hermes verified evidence binding, trusted shadow lifecycle, independent candidate evaluation, signed promotion/restart-replay, candidate staging, reset-retention/replay/evaluator regressions, and runtime typecheck passed.",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622606",
-        "testedHead": "b81ec539a1e2d442141e13929b376d2b549c9e64",
-        "scopeNote": "PASS on exact combined code/test head (48 successful job steps). P23/Hermes verified evidence binding, trusted shadow lifecycle, durable signed promotion, candidate staging and proposal gates, reset-retention/replay/evaluator regressions, and runtime typecheck passed."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159892",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
       },
       {
         "name": "WorkPass108 paired evidence identity and verified promotion gate",
+        "id": 40256159870,
+        "scopeNote": "PASS on exact PR code/test head, 22 successful steps. Paired verified outcome identity, ledger durability/corruption rejection, and promotion authorization regressions passed.",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622678",
-        "testedHead": "b81ec539a1e2d442141e13929b376d2b549c9e64",
-        "scopeNote": "PASS on exact combined code/test head. Paired verified outcome identity, durable ledger roundtrip/corruption rejection, and promotion authorization regressions passed."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159870",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
       },
       {
         "name": "P26 Learning Validation",
+        "id": 40256159877,
+        "scopeNote": "PASS on exact PR code/test head, 25 successful steps; runtime typecheck, P26 learning input integrity and validation regressions passed.",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622511",
-        "testedHead": "b81ec539a1e2d442141e13929b376d2b549c9e64",
-        "scopeNote": "PASS on exact combined code/test head. Runtime typecheck, P26 learning input integrity and validation regressions passed."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159877",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
+      },
+      {
+        "name": "Project progress ledger integrity",
+        "id": 40256159868,
+        "scopeNote": "PASS on exact PR code/test head; tracker schema/weight/evidence binding validation and weighted progress report passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159868",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
+      },
+      {
+        "name": "WorkPass287-288 cognitive contracts",
+        "id": 40256159885,
+        "scopeNote": "PASS on exact PR code/test head, all cognitive-contract regression steps passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159885",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
+      },
+      {
+        "name": "WorkPass105 verified outcome ledger",
+        "id": 40256159948,
+        "scopeNote": "PASS on exact PR code/test head; verified external outcome ledger regressions passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159948",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
+      },
+      {
+        "name": "WorkPass292 verified experience lanes",
+        "id": 40256159919,
+        "scopeNote": "PASS on exact PR code/test head, all verified-experience-lane regression steps passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159919",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
+      },
+      {
+        "name": "WorkPass291 reflective payload budget",
+        "id": 40256159923,
+        "scopeNote": "PASS on exact PR code/test head; bounded reflection payload regression passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159923",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
+      },
+      {
+        "name": "WorkPass99 replay strategy benchmark",
+        "id": 40256159917,
+        "scopeNote": "PASS on exact PR code/test head; replay strategy benchmark passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159917",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
+      },
+      {
+        "name": "WorkPass102 reservoir replay baseline",
+        "id": 40256159833,
+        "scopeNote": "PASS on exact PR code/test head; reservoir replay baseline passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159833",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
+      },
+      {
+        "name": "WorkPass294 correlated external postconditions",
+        "id": 40256159883,
+        "scopeNote": "PASS on exact PR code/test head; correlated external postcondition checks passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159883",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
+      },
+      {
+        "name": "WorkPass293 autonomous P23 repair revision",
+        "id": 40256159867,
+        "scopeNote": "PASS on exact PR code/test head; autonomous P23 repair/revision tests passed.",
+        "status": "success",
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159867",
+        "testedHead": "b8bc8316e996700a5562b93f38fd354f1ea5d69b"
       }
     ]
   },
@@ -282,43 +358,70 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass341",
+    "id": "WorkPass342",
     "date": "2026-10-26",
     "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
-    "codeCommit": "b81ec539a1e2d442141e13929b376d2b549c9e64",
-    "summary": "Bind minimum distinct paired holdout-task coverage per required skill family into the authenticated verified-skill promotion proposal and production staging gate; merge with the strict Unified Cognitive Substrate runtime wiring while preserving WorkPass335/336 ledger/evaluator changes.",
+    "codeCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
+    "summary": "Bound the integration client deadline to each CPU research probe: quick control/approval requests retain 8 seconds; NeuroCore/NOMEGA have 60 seconds; DeepCode CPU smoke has 200 seconds, safely above its 180-second subprocess limit. Revalidated the complete suite with WorkPass340 substrate and WorkPass341 task-family promotion coverage present.",
     "testsAdded": [
-      "promotion policy parser validates operator-owned family gain/task-floor policy",
-      "family task coverage counts distinct attempt-1 paired baseline/candidate task IDs per family",
-      "under-covered families fail before gain-threshold assessment",
-      "family task policy and coverage bind into proposal identity",
-      "candidate staging remains durable and never activates skills automatically",
-      "30-cycle cognitive substrate runtime/restart smoke"
+      "bounded, per-probe timeout config rejects invalid bounds",
+      "full runtime/research bridge smoke completes all post-approval probes within their appropriate finite deadlines",
+      "NeuroCore, NOMEGA and DeepCode approval-denial and explicit-owner-approval paths pass on the same smoke",
+      "UI and runtime typechecks pass after the full integration run"
     ],
-    "validationStatus": "PASS on exact code/test head b81ec539a1e2d442141e13929b376d2b549c9e64; Unified project integration suite, WorkPass110, WorkPass108 and P26 all succeeded.",
+    "validationStatus": "PASS on exact code/test head b8bc8316e996700a5562b93f38fd354f1ea5d69b; Unified project integration, WorkPass110, WorkPass108, P26 and progress-ledger integrity all succeeded.",
     "progressPercentagesChanged": false,
-    "testedHeadSha": "b81ec539a1e2d442141e13929b376d2b549c9e64",
+    "testedHeadSha": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
     "workflowRuns": [
-      40255622845,
-      40255622606,
-      40255622678,
-      40255622511
+      40256159897,
+      40256159892,
+      40256159870,
+      40256159877,
+      40256159868
     ]
   },
   "recentEngineeringPasses": [
     {
-      "id": "WorkPass341",
+      "id": "WorkPass342",
       "date": "2026-10-26",
       "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
-      "codeCommit": "b81ec539a1e2d442141e13929b376d2b549c9e64",
-      "summary": "Per-family distinct paired holdout-task coverage gate integrated with the live Unified Cognitive Substrate.",
+      "codeCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
+      "summary": "Research smoke uses per-probe finite deadlines; the DeepCode CPU probe no longer inherits the generic 8-second HTTP timeout. Full smoke passes with all three research probes.",
       "validationStatus": "PASS exact-head CI",
       "progressPercentagesChanged": false,
       "workflowRuns": [
-        40255622845,
-        40255622606,
-        40255622678,
-        40255622511
+        40256159897,
+        40256159892,
+        40256159870,
+        40256159877,
+        40256159868
+      ]
+    },
+    {
+      "id": "WorkPass341",
+      "date": "2026-10-26",
+      "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
+      "codeCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
+      "summary": "Per-family distinct paired holdout-task coverage gate, integrated with the live Unified Cognitive Substrate; insufficient evidence, insufficient unique-task coverage and insufficient family gain have separate fail-closed reasons.",
+      "validationStatus": "PASS exact-head CI; staging/proposal coverage gate and all surrounding P23/Hermes regressions passed.",
+      "progressPercentagesChanged": false,
+      "workflowRuns": [
+        40256159897,
+        40256159892,
+        40256159870,
+        40256159877
+      ]
+    },
+    {
+      "id": "WorkPass340",
+      "date": "2026-10-26",
+      "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
+      "codeCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
+      "summary": "Strict Unified Cognitive Substrate wired into the live OrganismRuntime with a durable sidecar, bounded optional work routing, and 30-cycle stop/re-init continuity smoke.",
+      "validationStatus": "PASS exact-head CI; strict substrate/runtime wiring, restart smoke, app/runtime build/typecheck and unified service integration all passed.",
+      "progressPercentagesChanged": false,
+      "workflowRuns": [
+        40256159897
       ]
     },
     {
@@ -330,15 +433,14 @@
     }
   ],
   "latestUnverifiedCodeTestHead": null,
-  "branchHeadBeforeTrackerCommit": "b81ec539a1e2d442141e13929b376d2b549c9e64",
+  "branchHeadBeforeTrackerCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
       "name": "Strict canonical Base64 encoding for Ed25519 skill-promotion and rollback approval signatures",
       "status": "present-and-verified-on-combined-head",
       "exactCombinedHeadCiStatus": "success",
-      "separateNarrowCiEvidence": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40253553153",
-      "note": "Also included in the combined exact-head integration and P23 checks; the earlier narrow workflow is supplemental."
+      "note": "Included in the combined exact-head integration and P23 checks."
     },
     {
       "id": "WorkPass340",
@@ -352,7 +454,14 @@
       "name": "Per-family distinct holdout task coverage for verified skill promotion",
       "status": "present-and-verified-on-combined-head",
       "exactCombinedHeadCiStatus": "success",
-      "note": "Minimum task coverage is checked before interpreting gain; family-policy and coverage are bound into the proposal identity; no automatic activation."
+      "note": "Minimum task coverage is checked before interpreting gain; family policy and coverage are bound into proposal identity; no automatic activation."
+    },
+    {
+      "id": "WorkPass342",
+      "name": "Task-specific research smoke deadlines",
+      "status": "present-and-verified-on-combined-head",
+      "exactCombinedHeadCiStatus": "success",
+      "note": "DeepCode CPU probe completed under bounded 200-second HTTP deadline; all research probes and final smoke JSON passed."
     }
   ]
 }
