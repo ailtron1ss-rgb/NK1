@@ -1,3 +1,11 @@
+## WorkPass358 — distinguish inherited fields from explicitly malformed telemetry (2026-10-26)
+
+- **CI regression repair:** the WorkPass356 fixture uses an inherited `agency01` property. The substrate correctly ignores inherited properties and uses the documented default for an absent own property; the assertion was incorrectly expecting the conservative fallback used for an explicitly present but invalid value.
+- **Correction:** expect `0.5` for inherited-only agency while retaining the separate live-input regression that expects non-finite, explicitly supplied agency to fail closed to `0`.
+- **Validation:** prior WorkPass356 exact-head CI exposed this test expectation mismatch. The focused wiring workflow is rerun on the corrected HEAD; no passing status is claimed until that run completes.
+
+---
+
 ## WorkPass357 — resource-aware policy gates for optional cognition (2026-10-26)
 
 - **Follow-on defect:** the unified policy validated RAM/thermal/scarcity but omitted battery, compute capacity, and efficiency from its required-metric contract. Even after WorkPass356 normalized corrupted sensors conservatively, low battery alone could still leave the requested counterfactual branch budget open.

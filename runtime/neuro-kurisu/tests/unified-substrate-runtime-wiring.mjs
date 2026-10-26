@@ -45,7 +45,7 @@ assert.equal(restoredState.cycles, 0);
 assert.equal(restoredState.lastTick, 0);
 assert.equal(restoredState.self.continuity01, 0.7);
 assert.equal(restoredState.self.coherence01, 0, 'out-of-range coherence is not treated as positive evidence');
-assert.equal(restoredState.self.agency01, 0, 'malformed explicit agency is fail-closed');
+assert.equal(restoredState.self.agency01, 0.5, 'inherited agency is ignored and the documented default remains');
 assert.equal(restoredState.self.realityAlignment01, 0);
 assert.equal(restoredState.self.mode, 'explore spoof');
 assert.equal(restoredState.self.lastAction, 'wait');
