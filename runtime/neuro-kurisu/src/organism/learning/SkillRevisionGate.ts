@@ -34,18 +34,21 @@ export interface SkillRevisionGateResult {
   familyGains: Array<{ family: string; pairedN: number; gain: number }>;
   rejectedRows: number;
 }
-const clamp = (x: number, fallback: number) => Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
-const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
-  Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
-const valid = (x: RevisionObservation) => Boolean(
-  x && x.taskId?.trim() && x.family?.trim() && x.method?.trim() &&
-  Number.isSafeInteger(x.seed) && x.seed >= 0 &&
-  Number.isSafeInteger(x.attempt) && x.attempt === 1 &&
-  x.split === 'holdout' && typeof x.passed === 'boolean' &&
-  (x.authority === 'independent-verifier' || x.authority === 'human-review') &&
-  x.verifierId?.trim() && x.evidenceRef?.trim() &&
-  (x.authority !== 'independent-verifier' || x.verifierId === x.expectedVerifierId)
-);
+const nonEmptyText = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+/** Treat runtime/persisted rows as untrusted values; malformed fields are rejected, never invoked. */
+const valid = (value: unknown): value is RevisionObservation => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const x = value as Record<string, unknown>;
+  if (!nonEmptyText(x.taskId) || !nonEmptyText(x.family) || !nonEmptyText(x.method) ||
+      !Number.isSafeInteger(x.seed) || Number(x.seed) < 0 ||
+      !Number.isSafeInteger(x.attempt) || x.attempt !== 1 ||
+      x.split !== 'holdout' || typeof x.passed !== 'boolean' ||
+      (x.authority !== 'independent-verifier' && x.authority !== 'human-review') ||
+      !nonEmptyText(x.verifierId) || !nonEmptyText(x.evidenceRef)) return false;
+  return x.authority !== 'independent-verifier' || x.verifierId === x.expectedVerifierId;
+};
 
 /** Pair on exact task/version identity (taskId), seed and first attempt; retries and replayed evidence receipts are not independent samples. */
 export function evaluateSkillRevision(
@@ -54,12 +57,29 @@ export function evaluateSkillRevision(
   candidateMethod: string,
   options: SkillRevisionGateOptions = {},
 ): SkillRevisionGateResult {
-  if (!baselineMethod?.trim() || !candidateMethod?.trim() || baselineMethod === candidateMethod) {
+  if (typeof baselineMethod !== 'string' || baselineMethod.trim().length === 0 ||
+      typeof candidateMethod !== 'string' || candidateMethod.trim().length === 0 ||
+      baselineMethod === candidateMethod) {
     throw new Error('two distinct method names are required');
   }
-  const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
-  const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02, .02);
-  const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10, .10);
+  if (!Array.isArray(observations)) throw new Error('revision observations must be an array');
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    throw new Error('skill revision gate options must be an object');
+  }
+  const minPairedTasks = options.minPairedTasks === undefined ? 8 : options.minPairedTasks;
+  const minAbsoluteGain = options.minAbsoluteGain === undefined ? .02 : options.minAbsoluteGain;
+  const maxFamilyRegression = options.maxFamilyRegression === undefined ? .10 : options.maxFamilyRegression;
+  if (!Number.isSafeInteger(minPairedTasks) || minPairedTasks < 2 || minPairedTasks > 10000) {
+    throw new Error('skill revision minPairedTasks must be an integer from 2 to 10000');
+  }
+  if (typeof minAbsoluteGain !== 'number' || !Number.isFinite(minAbsoluteGain) ||
+      minAbsoluteGain < 0 || minAbsoluteGain > 1) {
+    throw new Error('skill revision minAbsoluteGain must be a finite number from 0 to 1');
+  }
+  if (typeof maxFamilyRegression !== 'number' || !Number.isFinite(maxFamilyRegression) ||
+      maxFamilyRegression < 0 || maxFamilyRegression > 1) {
+    throw new Error('skill revision maxFamilyRegression must be a finite number from 0 to 1');
+  }
   const byPair = new Map<string, Map<string, RevisionObservation>>();
   // A single verifier receipt cannot be replayed under multiple task IDs to manufacture sample size.
   const seenEvidenceReceipts = new Set<string>();
@@ -78,10 +98,18 @@ export function evaluateSkillRevision(
     pair.set(row.method, row);
     byPair.set(key, pair);
   }
-  const paired = [...byPair.values()].filter(pair => {
-    if (!pair.has(baselineMethod) || !pair.has(candidateMethod)) return false;
-    return pair.get(baselineMethod)!.family === pair.get(candidateMethod)!.family;
-  });
+  const paired: Map<string, RevisionObservation>[] = [];
+  for (const pair of byPair.values()) {
+    const baseline = pair.get(baselineMethod);
+    const candidate = pair.get(candidateMethod);
+    if (!baseline || !candidate) continue;
+    if (baseline.family !== candidate.family) {
+      // Count a rejected cross-family pair once; it is not a valid comparison.
+      rejectedRows++;
+      continue;
+    }
+    paired.push(pair);
+  }
   const n = paired.length;
   const baselinePassRate = n ? paired.reduce((s, p) => s + Number(p.get(baselineMethod)!.passed), 0) / n : 0;
   const candidatePassRate = n ? paired.reduce((s, p) => s + Number(p.get(candidateMethod)!.passed), 0) / n : 0;
@@ -90,7 +118,6 @@ export function evaluateSkillRevision(
   for (const pair of paired) {
     const a = pair.get(baselineMethod)!;
     const b = pair.get(candidateMethod)!;
-    if (a.family !== b.family) { rejectedRows++; continue; }
     const rows = families.get(a.family) ?? [];
     rows.push({ baseline: Number(a.passed), candidate: Number(b.passed) });
     families.set(a.family, rows);
