@@ -14,6 +14,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/integration/hexis/**'
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/EventSourcing.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
@@ -36,12 +37,69 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - name: Install the pinned runtime dependency graph
+
+      - name: Capture dependency installation output
         working-directory: runtime/neuro-kurisu
-        run: npm ci --no-audit --no-fund
-      - name: Typecheck the integrated runtime
+        run: |
+          mkdir -p "$RUNNER_TEMP/nk1-validation-evidence"
+          set +e
+          npm ci --no-audit --no-fund > "$RUNNER_TEMP/nk1-validation-evidence/npm-ci.log" 2>&1
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > "$RUNNER_TEMP/nk1-validation-evidence/npm-ci.exit"
+          {
+            echo "## npm ci (exit $rc)"
+            tail -n 100 "$RUNNER_TEMP/nk1-validation-evidence/npm-ci.log"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: Capture runtime typecheck output
         working-directory: runtime/neuro-kurisu
-        run: npm run typecheck
-      - name: Test Hexis adaptation, canonical HMX projection and server apply/replay
+        run: |
+          mkdir -p "$RUNNER_TEMP/nk1-validation-evidence"
+          set +e
+          npm run typecheck > "$RUNNER_TEMP/nk1-validation-evidence/typecheck.log" 2>&1
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > "$RUNNER_TEMP/nk1-validation-evidence/typecheck.exit"
+          {
+            echo "## Runtime typecheck (exit $rc)"
+            tail -n 160 "$RUNNER_TEMP/nk1-validation-evidence/typecheck.log"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: Capture Hexis canonical apply test output
         working-directory: runtime/neuro-kurisu
-        run: npm run test:hexis-canonical-apply
+        run: |
+          mkdir -p "$RUNNER_TEMP/nk1-validation-evidence"
+          set +e
+          npm run test:hexis-canonical-apply > "$RUNNER_TEMP/nk1-validation-evidence/hexis-tests.log" 2>&1
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > "$RUNNER_TEMP/nk1-validation-evidence/hexis-tests.exit"
+          {
+            echo "## Hexis canonical apply tests (exit $rc)"
+            tail -n 200 "$RUNNER_TEMP/nk1-validation-evidence/hexis-tests.log"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: Upload reproducible validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nk1-hexis-validation-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/nk1-validation-evidence/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Enforce validation gates
+        if: always()
+        working-directory: runtime/neuro-kurisu
+        run: |
+          failed=0
+          for check in npm-ci typecheck hexis-tests; do
+            rc="$(cat "$RUNNER_TEMP/nk1-validation-evidence/$check.exit" 2>/dev/null || echo 99)"
+            echo "$check exit code: $rc"
+            if [ "$rc" != "0" ]; then failed=1; fi
+          done
+          exit "$failed"
