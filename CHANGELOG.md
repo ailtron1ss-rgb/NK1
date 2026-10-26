@@ -1,3 +1,14 @@
+# WorkPass369 — atomic operational cognitive-cycle writes (2026-10-26)
+
+- [FIXED] Make `recordOperationalCycle()` a transaction: any later-phase append failure restores the prior event array, total counter and receipt replay index.
+- [HARDENED] Snapshot root cycle and phase inputs through own data descriptors; getters cannot execute while constructing a causal trace.
+- [PREFLIGHT] Validate tick/timestamp, phase source/flags/confidence and clone all phase payloads before the first event is written.
+- [REGRESSION] Test invalid later-phase input, outer/phase getters, nested payload getters, injected third-write failure and a complete linked observation→prediction→plan→action→outcome→learning→self-update cycle.
+- [VALIDATION] Exact-head CI is required; this entry records implementation, not a test PASS.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass368 — fail-closed base receipt replay and legacy fingerprint policy (2026-10-26)
 
 - [FIXED] A present but broken receipt replay-index entry (even when every referenced event is missing) now fails for reconciliation instead of creating a second trace under fresh generated IDs.
