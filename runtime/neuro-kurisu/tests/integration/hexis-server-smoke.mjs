@@ -86,6 +86,21 @@ try {
       exportRes.document?.export_intent !== 'telepathy' || !exportRes.document?.exported_at ||
       !exportRes.document?.source?.hexis_lineage_id || !Array.isArray(exportRes.document?.sections?.memories) ||
       Object.keys(exportRes.document?.sections ?? {}).some(key => key !== 'memories')) throw new Error('hexis-hmx-v17-export-contract');
+  const invalidHmxIntentResponse = await post('/api/organism/integration/hexis/hmx/stage', {
+    document: exportRes.document, intent: 'telepahy', strategy: 'additive',
+  });
+  const invalidHmxIntent = await invalidHmxIntentResponse.json();
+  if (invalidHmxIntentResponse.status !== 400 || invalidHmxIntent.error !== 'hmx-invalid-intent') {
+    throw new Error('hexis-hmx-invalid-intent-must-fail-before-staging');
+  }
+  const invalidHmxStrategyResponse = await post('/api/organism/integration/hexis/hmx/stage', {
+    document: exportRes.document, intent: 'telepathy', strategy: 'unrestricted',
+  });
+  const invalidHmxStrategy = await invalidHmxStrategyResponse.json();
+  if (invalidHmxStrategyResponse.status !== 400 || invalidHmxStrategy.error !== 'hmx-invalid-strategy') {
+    throw new Error('hexis-hmx-invalid-strategy-must-fail-before-staging');
+  }
+
   const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: exportRes.document, intent: 'telepathy', strategy: 'additive' })).json();
   if (!stageRes.ok || stageRes.stage?.status !== 'staged' || stageRes.stage?.applicationMode !== 'memory-merge' || stageRes.stage?.conflicts?.length !== 0) throw new Error('hexis-hmx-stage');
   const invalidHmxDecisionResponse = await post('/api/organism/integration/hexis/hmx/decide', {
