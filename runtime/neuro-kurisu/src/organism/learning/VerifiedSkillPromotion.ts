@@ -147,8 +147,6 @@ function snapshotPromotionOptions(value: unknown): VerifiedSkillPromotionOptions
     if (error instanceof TypeError && /verified-skill-promotion-options/.test(error.message)) throw error;
     throw new TypeError('verified-skill-promotion-options-must-be-a-plain-data-object');
   }
-} : fallback;
-
 /** Normalize family requirements as explicit, auditable policy rather than hidden global assumptions. */
 function normalizeMinimumFamilyGainByFamily(value: unknown): Record<string, number> {
   if (value === undefined) return {};
