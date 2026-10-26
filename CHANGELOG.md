@@ -15,6 +15,7 @@
 - **FIXED:** accepted payloads are deeply detached; caller/reader mutation cannot rewrite the causal ledger. Circular, unsupported, excessive-depth and oversized structures fail before append; accessors are skipped without invoking getters.
 - **HARDENED:** exact replay without a supplied finite timestamp reuses the stored event timestamp, preserving idempotency across retries.
 - **HARDENED:** added a detached read-only `getById()` lookup and skip malformed persisted payload rows during restore rather than aborting recovery of healthy events.
+- **INPUT CONTRACT:** invalid supplied source types, non-string causal parents, and non-object top-level payloads (except absent/null payload) fail closed before event-ledger mutation; regressions prove caller-defined string coercion is not invoked.
 - **REGRESSION:** event-fabric test now covers equivalent key order, conflicting payload/parents/timestamp/source/stage/tick, nested mutation, omitted timestamps, cyclic payloads and side-effecting getters.
 - **WIRING:** `test:cognitive-integration-suite` now runs the event-fabric regression as a required step.
 - **VALIDATION:** exact-head CI must pass on the resulting commit; no device/field or learning-uplift claim is made.
