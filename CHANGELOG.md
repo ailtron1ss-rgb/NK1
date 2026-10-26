@@ -5,6 +5,9 @@
 - Hardened causal-stream restore validation by checking that persisted `policyFeatures01` is actually an array before reading its length or iterating it. Malformed persisted data is rejected safely rather than throwing.
 - This fix is isolated from the avatar work and is based on the current `feature/visual-embodiment` base, which previously failed the WorkPass110 test at `assert.ok(record)`.
 
+- Registered the existing WorkPass292 evidence-lane contract test in `runtime/neuro-kurisu/package.json`, restoring the script referenced by CI instead of bypassing the workflow.
+- Corrected the seed-clustered verification fixture to use its declared verifier identity (`v1`), so independently verified holdout rows are admitted under the same identity contract as the rest of the test.
+
 ---
 
 ## NK1 WorkPass105 — align runtime viseme labels with normalized speech text (2026-10-25)
