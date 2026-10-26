@@ -98,6 +98,7 @@ export function HexisControlConsole() {
 
   const stageCurrentHmx = async () => {
     setHmxConfirmed(false);
+    setStageId("");
     const exported = await neuroApi.hexisHmxExport();
     const staged = await run("Stage HMX", () => neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy }));
     const nextId = (staged as any)?.stage?.stagingId;
@@ -106,6 +107,7 @@ export function HexisControlConsole() {
 
   const stageImportedHmx = async () => {
     setHmxConfirmed(false);
+    setStageId("");
     let hmxDocument: unknown;
     try {
       hmxDocument = JSON.parse(hmxImportText);
@@ -236,8 +238,8 @@ export function HexisControlConsole() {
             NK1 exports a bounded memory-only HMX 1.7 document. It is not redacted: inspect content and consent before sharing it. For ordinary memory import, use telepathy + additive. Unknown or protected populated sections are rejected instead of silently dropped; other intent/strategy pairs stage as preview-only.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            <select value={hmxIntent} onChange={e => { setHmxIntent(e.target.value as typeof hmxIntent); setHmxConfirmed(false); }} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="port">port</option><option value="duplicate">duplicate</option><option value="telepathy">telepathy</option><option value="analysis">analysis</option></select>
-            <select value={hmxStrategy} onChange={e => { setHmxStrategy(e.target.value as typeof hmxStrategy); setHmxConfirmed(false); }} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="additive">additive</option><option value="authoritative">authoritative</option><option value="deliberative">deliberative</option><option value="analysis_only">analysis_only</option></select>
+            <select value={hmxIntent} onChange={e => { setHmxIntent(e.target.value as typeof hmxIntent); setHmxConfirmed(false); setStageId(""); }} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="port">port</option><option value="duplicate">duplicate</option><option value="telepathy">telepathy</option><option value="analysis">analysis</option></select>
+            <select value={hmxStrategy} onChange={e => { setHmxStrategy(e.target.value as typeof hmxStrategy); setHmxConfirmed(false); setStageId(""); }} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="additive">additive</option><option value="authoritative">authoritative</option><option value="deliberative">deliberative</option><option value="analysis_only">analysis_only</option></select>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button disabled={busy} onClick={() => void exportHmx()}>Export HMX</Button>
@@ -255,6 +257,8 @@ export function HexisControlConsole() {
               disabled={busy}
               onChange={async e => {
                 const file = e.target.files?.[0];
+                setHmxConfirmed(false);
+                setStageId("");
                 if (!file) return;
                 if (file.size > 2 * 1024 * 1024) {
                   setMessage("Import HMX: file exceeds 2 MiB");
@@ -275,7 +279,7 @@ export function HexisControlConsole() {
             {hmxImportName ? <p className="mt-1 text-[10px] text-subtle">Loaded: {hmxImportName}</p> : null}
             <textarea
               value={hmxImportText}
-              onChange={e => { setHmxImportText(e.target.value); setHmxImportName(""); }}
+              onChange={e => { setHmxImportText(e.target.value); setHmxImportName(""); setHmxConfirmed(false); setStageId(""); }}
               rows={4}
               maxLength={2 * 1024 * 1024}
               placeholder="Paste an HMX 1.7 JSON document…"
