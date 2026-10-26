@@ -168,6 +168,22 @@ const nativeNk1Export = {
     nk1_private_extension: { revision: 3, note: 'must not be silently discarded' },
   },
 };
+const malformedIdentityExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'malformed-identity-preservation',
+  sections: { identity: 'legacy identity payload must be preserved' },
+});
+assert.deepEqual(malformedIdentityExport.sections.identity, [],
+  'unsupported scalar identity payloads must not be coerced into active identity records');
+assert.equal(
+  malformedIdentityExport.sections.config.nk1NativeSections.identity_invalid_section,
+  'legacy identity payload must be preserved',
+  'invalid native identity data must survive in the explicit lossless extension bucket',
+);
+assert(
+  malformedIdentityExport.export_warnings.some(warning => warning.includes('identity_invalid_section')),
+  'the export must disclose that the identity section was malformed and preserved as native-only data',
+);
+
 const normalizedNk1Export = normalizeNk1HmxExport(nativeNk1Export);
 assert.match(normalizedNk1Export.export_id, /^exp_[a-f0-9]{16}$/);
 assert.equal(normalizedNk1Export.hmx_version, '1.7');
