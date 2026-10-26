@@ -317,6 +317,7 @@ export class OrganismSystemFabric {
 
     const memoryOSBefore=this.memory.memoryOS.snapshot();
     const memoryFabricBefore=this.memory.fabric.snapshot();
+    const memoriesBefore=this.memory.memories.snapshot();
     const eventsBefore=this.memory.events.list();
     const hexisBefore=this.hexisAdaptation.snapshot();
     const stableKey=sha256Stable({reviewId:reviewKey,itemId:itemKey},'legacy').slice(0,40);
@@ -409,12 +410,14 @@ export class OrganismSystemFabric {
         disposition='materialized-candidate';
       }
 
+      this.memory.fabric.consolidateCompatibility(this.memory.memories.snapshot({clone:false}),96,this.memory.memoryLifecycleAuthority.snapshot().lastTick >= 0 ? this.memory.memoryLifecycleAuthority.snapshot().lastTick : 0);
       const decided=this.hexisAdaptation.decideLearningReview(reviewKey,itemKey,decision,decision==='correct'?correctedText:undefined,memory?.id);
       if(!decided) throw new Error('hexis-learning-review-decision-not-committed');
       return {item:decided,memory,disposition};
     }catch(error){
       this.memory.memoryOS.restore(memoryOSBefore);
       this.memory.fabric.restore(memoryFabricBefore);
+      this.memory.memories.restore(memoriesBefore);
       this.memory.events.restore(eventsBefore);
       this.hexisAdaptation.restore(hexisBefore);
       throw error;
