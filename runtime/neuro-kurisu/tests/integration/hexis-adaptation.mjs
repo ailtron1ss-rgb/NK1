@@ -163,8 +163,13 @@ assert.equal(fabric.evaluateConnectorAction({connectorId:'telegram',actionKind:'
 assert.equal(fabric.evaluateConnectorAction({connectorId:'telegram',actionKind:'send',context:'chat',target:'999',confirmed:true}).allowed,false);
 assert.equal(fabric.revokeConnectorPolicy(policy.id),true);
 
-const exec = fabric.planExecution({actionKind:'code.execute',requestedPlacement:'local',risk01:.9});
+const exec = fabric.planExecution({actionKind:'code.execute',requestedPlacement:'local',risk01:.9,requiresApproval:false});
 assert.equal(exec.resolvedPlacement,'sandbox');
+assert.equal(exec.requiresApproval,true,'high-risk execution always requires approval even if a caller passes false');
+const manualApproval = fabric.planExecution({actionKind:'safe.read',requestedPlacement:'local',risk01:.1,requiresApproval:true});
+assert.equal(manualApproval.requiresApproval,true,'explicit approval remains enabled for lower-risk actions');
+const noApprovalLowRisk = fabric.planExecution({actionKind:'safe.read',requestedPlacement:'local',risk01:.1,requiresApproval:false});
+assert.equal(noApprovalLowRisk.requiresApproval,false,'low-risk explicit opt-out remains available when risk policy permits it');
 
 
 
