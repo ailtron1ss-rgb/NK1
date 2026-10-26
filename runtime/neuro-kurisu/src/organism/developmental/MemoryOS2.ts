@@ -242,9 +242,24 @@ function bm25Score(queryTokens:string[],content:string,docCount:number,documentF
   return Math.max(0,score);
 }
 type MemoryEncodeInput=Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'|'residencyTier'> & {id?:string};
-export const defaultMemoryOS2=():MemoryOSState2=>({items:[],forgetCount:0,reconsolidations:0,quarantined:0,lastMaintenanceAt:0,semanticQueries:0,semanticHits:0,linkUpdates:0,version:7,implicitConflictCandidates:0,implicitConflictsResolved:0,staleRetrievalsAvoided:0,lastConflictScanAt:0,implicitConflictsDeferred:0,provenanceProtected:0,estimatedBytes:0,byteBudget:524288,budgetEvictions:0,budgetMisses:0,meanEvictionRegret01:0,evictionWitnesses:[]});
+export const defaultMemoryOS2=():MemoryOSState2=>({items:[],forgetCount:0,reconsolidations:0,quarantined:0,lastMaintenanceAt:0,semanticQueries:0,semanticHits:0,linkUpdates:0,version:MEMORY_OS_STATE_VERSION,implicitConflictCandidates:0,implicitConflictsResolved:0,staleRetrievalsAvoided:0,lastConflictScanAt:0,implicitConflictsDeferred:0,provenanceProtected:0,estimatedBytes:0,byteBudget:524288,budgetEvictions:0,budgetMisses:0,meanEvictionRegret01:0,evictionWitnesses:[]});
+const MEMORY_OS_STATE_VERSION = 7;
+const MAX_RESTORED_MEMORY_ITEMS = 1600;
+const MAX_RESTORED_MEMORY_CONTENT_CHARS = 65536;
 const MAX_MEMORY_REVISION_HISTORY=64;
 const EPISTEMIC_STATUSES=new Set<EpistemicStatus>(['fact','belief','hypothesis','unknown','quarantined']);
+const MEMORY_KINDS = new Set<MemoryItem2['kind']>([
+ 'sensory','working','episodic','semantic','autobiographical','procedural','social','identity','dream',
+]);
+function isPlainRecord(value: unknown): value is Record<string, any> {
+ if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+ const prototype = Object.getPrototypeOf(value);
+ return prototype === Object.prototype || prototype === null;
+}
+function isSafeMemoryId(value: unknown): value is string {
+ return typeof value === 'string' && value.length > 0 && value.length <= 256 &&
+  value.trim() === value && !/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
+}
 function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
  if(!Array.isArray(value))return [];
  return value.slice(0,MAX_MEMORY_REVISION_HISTORY).flatMap((row:any)=>{
@@ -493,13 +508,35 @@ export class MemoryOS2{
    }
  }
  restore(s:MemoryOSState2|undefined){
-  const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
+  // Reject future/invalid schemas before mutating the live memory graph. Older
+  // versions remain migratable through the normalizer below; absent state resets
+  // to defaults for first boot and legacy callers.
+  if (s !== undefined && s !== null) {
+   if (!isPlainRecord(s)) throw new TypeError('memory-os-restore-state-must-be-a-plain-object');
+   const savedVersion = (s as any).version;
+   if (savedVersion !== undefined && savedVersion !== null &&
+       (!Number.isSafeInteger(savedVersion) || savedVersion < 0 || savedVersion > MEMORY_OS_STATE_VERSION)) {
+    throw new Error('memory-os-restore-version-unsupported');
+   }
+  }
+  const candidateRows=Array.isArray(s?.items)?s!.items.slice(0,MAX_RESTORED_MEMORY_ITEMS):[];
+  const structurallyValidRows=candidateRows.filter((m:any)=>
+   isPlainRecord(m) && isSafeMemoryId(m.id) &&
+   typeof m.content==='string' && m.content.length>0 && m.content.length<=MAX_RESTORED_MEMORY_CONTENT_CHARS &&
+   MEMORY_KINDS.has(m.kind),
+  );
+  const rowIdCounts=new Map<string,number>();
+  for (const m of structurallyValidRows) rowIdCounts.set(m.id,(rowIdCounts.get(m.id)??0)+1);
+  // Duplicate IDs make persisted references ambiguous. Drop every row with a
+  // colliding identity rather than allowing itemIndex to overwrite one row while
+  // the state array still contains both.
+  const rawItems=structurallyValidRows.filter((m:any)=>rowIdCounts.get(m.id)===1);
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
-    semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
-    temporalLinks:Array.isArray(m?.temporalLinks)?m.temporalLinks:[],
-    causalLinks:Array.isArray(m?.causalLinks)?m.causalLinks:[],
-    contradictionLinks:Array.isArray(m?.contradictionLinks)?m.contradictionLinks:[],
+    semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks.filter((x:any)=>typeof x==='string'&&x.length>0).slice(0,128):[],
+    temporalLinks:Array.isArray(m?.temporalLinks)?m.temporalLinks.filter((x:any)=>typeof x==='string'&&x.length>0).slice(0,128):[],
+    causalLinks:Array.isArray(m?.causalLinks)?m.causalLinks.filter((x:any)=>typeof x==='string'&&x.length>0).slice(0,128):[],
+    contradictionLinks:Array.isArray(m?.contradictionLinks)?m.contradictionLinks.filter((x:any)=>typeof x==='string'&&x.length>0).slice(0,128):[],
   }),0);
   const savedEstimate=Math.max(0,Math.floor(Number((s as any)?.estimatedBytes??legacyEstimate)));
   this.state={
@@ -518,12 +555,27 @@ export class MemoryOS2{
    evictionWitnesses:Array.isArray((s as any)?.evictionWitnesses)?(s as any).evictionWitnesses.slice(-256):[],
    items:rawItems.map((m:any)=>({
     ...m,
+    source:typeof m.source==='string'&&m.source.trim()?m.source.slice(0,240):'unknown',
+    createdAt:Number.isFinite(Number(m.createdAt))?Number(m.createdAt):Date.now(),
+    lastAccessAt:Number.isFinite(Number(m.lastAccessAt))?Number(m.lastAccessAt):Number.isFinite(Number(m.createdAt))?Number(m.createdAt):Date.now(),
+    salience:clamp(Number(m.salience??0)),
+    emotionalWeight:clamp(Number(m.emotionalWeight??0)),
+    identityRelevance:clamp(Number(m.identityRelevance??0)),
+    goalRelevance:clamp(Number(m.goalRelevance??0)),
+    socialRelevance:clamp(Number(m.socialRelevance??0)),
+    predictionError:clamp(Number(m.predictionError??0)),
+    confidence:clamp(Number(m.confidence??0.5)),
+    epistemicStatus:EPISTEMIC_STATUSES.has(m.epistemicStatus)?m.epistemicStatus:'unknown',
+    dormant:m.dormant===true,
+    retrievalCount:Number.isSafeInteger(m.retrievalCount)&&m.retrievalCount>=0?m.retrievalCount:0,
     // P2697: cold residency is allowed to remain truly cold across restore.
     // Re-materialize vectors lazily only for candidates that actually reach
     // semantic scoring; this avoids rebuilding up to 1600 vectors on startup.
-    semanticVector:Array.isArray(m?.semanticVector)&&m.semanticVector.length?m.semanticVector:[],
-    entities:Array.isArray(m?.entities)?m.entities:extractEntities(String(m?.content??'')),
-    contentHash:String(m?.contentHash||memoContentHash(String(m?.content??''))),
+    semanticVector:Array.isArray(m?.semanticVector)&&m.semanticVector.length<=4096&&m.semanticVector.every((x:any)=>typeof x==='number'&&Number.isFinite(x))?m.semanticVector:[],
+    entities:Array.isArray(m?.entities)?m.entities.filter((x:any)=>typeof x==='string'&&x.length>0).slice(0,64):extractEntities(String(m?.content??'')),
+    // Treat persisted content hashes as derived data. Recomputing prevents a
+    // forged/stale hash from entering dedup and revision indexes after restore.
+    contentHash:memoContentHash(String(m?.content??'')),
     tags:Array.isArray(m?.tags)?[...new Set(m.tags.map((x:any)=>String(x)).filter(Boolean))].slice(0,24):[],
     context:m?.context&&typeof m.context==='object'?Object.fromEntries(Object.entries(m.context).filter(([k,v])=>typeof k==='string'&&typeof v==='string').slice(0,24)):undefined,
     semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
