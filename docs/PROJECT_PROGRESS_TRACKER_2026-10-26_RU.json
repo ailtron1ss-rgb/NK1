@@ -359,24 +359,42 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass415",
+    "id": "WorkPass416",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "9f9601df7a72d9d0f6c46e24030052c554087237",
-    "testCommit": "bd2f036238b7b3582c6e9a17ee49991a66e0df54",
-    "codeTestHead": "bd2f036238b7b3582c6e9a17ee49991a66e0df54",
-    "summary": "Validate HMX import intent and strategy against explicit allowlists at the HTTP staging boundary so malformed types or unknown strings cannot create a misleading stage or fall through to permissive runtime handling.",
+    "codeCommit": "d82d5f9c77a303322b6a379e9b664111917f9bf0",
+    "testCommit": "b1595b492f0424b754e50e600aadebd2d379f7ae",
+    "codeTestHead": "b1595b492f0424b754e50e600aadebd2d379f7ae",
+    "summary": "Enforce allowed HMX intent and strategy values inside HexisAdaptationFabric.stageHmx in addition to the HTTP boundary. Direct/internal callers cannot create malformed stages or mutate staging state with unknown mode values.",
     "testsAdded": [
-      "invalid HMX intent returns HTTP 400 hmx-invalid-intent before staging",
-      "invalid HMX strategy returns HTTP 400 hmx-invalid-strategy before staging",
-      "valid telepathy/additive staging still passes the server-smoke contract"
+      "direct fabric call with unknown intent throws hmx-invalid-intent",
+      "direct fabric call with unknown strategy throws hmx-invalid-strategy",
+      "invalid mode inputs leave hmx stage ledger empty"
     ],
-    "validationStatus": "PENDING exact-head test:hexis-server-smoke, runtime typecheck, test:hexis-adaptation and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head test:hexis-adaptation, test:hexis-server-smoke, runtime typecheck and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass416",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "d82d5f9c77a303322b6a379e9b664111917f9bf0",
+      "testCommit": "b1595b492f0424b754e50e600aadebd2d379f7ae",
+      "codeTestHead": "b1595b492f0424b754e50e600aadebd2d379f7ae",
+      "summary": "Enforce allowed HMX intent and strategy values inside HexisAdaptationFabric.stageHmx in addition to the HTTP boundary. Direct/internal callers cannot create malformed stages or mutate staging state with unknown mode values.",
+      "testsAdded": [
+        "direct fabric call with unknown intent throws hmx-invalid-intent",
+        "direct fabric call with unknown strategy throws hmx-invalid-strategy",
+        "invalid mode inputs leave hmx stage ledger empty"
+      ],
+      "validationStatus": "PENDING exact-head test:hexis-adaptation, test:hexis-server-smoke, runtime typecheck and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass415",
       "date": "2026-10-26",
@@ -391,25 +409,6 @@
         "valid telepathy/additive staging still passes the server-smoke contract"
       ],
       "validationStatus": "PENDING exact-head test:hexis-server-smoke, runtime typecheck, test:hexis-adaptation and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
-    {
-      "id": "WorkPass414",
-      "date": "2026-10-26",
-      "branch": "hexis-remote-bridge-20261026",
-      "codeCommit": "0fc2a3880ef1276106e78dbcd4ab15ce53feb1d2",
-      "testCommit": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
-      "codeTestHead": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
-      "summary": "Close the remaining HMX replay window: a second accept or late reject against an already accepted memory-merge stage with pending receipt now converts it to terminal uncertain before core can run its state-based apply gate.",
-      "testsAdded": [
-        "duplicate accept after initial stage acceptance turns pending receipt into uncertain",
-        "duplicate accept records repeat-accept-after-accept-before-import-receipt",
-        "further accepts remain terminal and cannot replay",
-        "existing late-reject path remains protected with distinct reason"
-      ],
-      "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
@@ -582,8 +581,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "bd2f036238b7b3582c6e9a17ee49991a66e0df54",
-  "branchHeadBeforeTrackerCommit": "bd2f036238b7b3582c6e9a17ee49991a66e0df54",
+  "latestUnverifiedCodeTestHead": "b1595b492f0424b754e50e600aadebd2d379f7ae",
+  "branchHeadBeforeTrackerCommit": "b1595b492f0424b754e50e600aadebd2d379f7ae",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -623,39 +622,38 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass414",
+    "id": "WorkPass415",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "0fc2a3880ef1276106e78dbcd4ab15ce53feb1d2",
-    "testCommit": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
-    "codeTestHead": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
-    "summary": "Close the remaining HMX replay window: a second accept or late reject against an already accepted memory-merge stage with pending receipt now converts it to terminal uncertain before core can run its state-based apply gate.",
+    "codeCommit": "9f9601df7a72d9d0f6c46e24030052c554087237",
+    "testCommit": "bd2f036238b7b3582c6e9a17ee49991a66e0df54",
+    "codeTestHead": "bd2f036238b7b3582c6e9a17ee49991a66e0df54",
+    "summary": "Validate HMX import intent and strategy against explicit allowlists at the HTTP staging boundary so malformed types or unknown strings cannot create a misleading stage or fall through to permissive runtime handling.",
     "testsAdded": [
-      "duplicate accept after initial stage acceptance turns pending receipt into uncertain",
-      "duplicate accept records repeat-accept-after-accept-before-import-receipt",
-      "further accepts remain terminal and cannot replay",
-      "existing late-reject path remains protected with distinct reason"
+      "invalid HMX intent returns HTTP 400 hmx-invalid-intent before staging",
+      "invalid HMX strategy returns HTTP 400 hmx-invalid-strategy before staging",
+      "valid telepathy/additive staging still passes the server-smoke contract"
     ],
-    "validationStatus": "PENDING exact-head test:hexis-adaptation, runtime typecheck, test:hexis-server-smoke and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head test:hexis-server-smoke, runtime typecheck, test:hexis-adaptation and Unified integration. Regression is authored; no usable exact-head PASS evidence or readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass416",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "b1595b492f0424b754e50e600aadebd2d379f7ae",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Add defense-in-depth enum validation inside the HMX adaptation fabric so direct callers cannot bypass the HTTP intent/strategy allowlist. Invalid mode values fail before HMX snapshotting or stage mutation. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass415",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "bd2f036238b7b3582c6e9a17ee49991a66e0df54",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Reject invalid HMX intent/strategy at the server boundary before creating any stage; retain default preview-only behavior only for omitted fields. Scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass414",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "daa458f2abd935f136b249d1cb3ae6b9ccccf0c5",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Block both duplicate accept and late reject from returning accepted+pending HMX memory-merge stages to core's state-based import gate. The first accept remains unaffected; all subsequent decisions with an unresolved receipt are terminal uncertain. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
