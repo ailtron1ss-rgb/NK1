@@ -1,3 +1,11 @@
+## WorkPass371 — verify installer and cognitive runtime on the same exact HEAD (2026-10-26)
+
+- **CI wiring:** the unified substrate workflow now also triggers for changes to the root Node pin, installer contract, installer test and root manifest. Its first regression step runs `npm run test:super-install` under Node 24 before the cognitive-cycle suite.
+- **Reason:** the WorkPass369 failure was only reproducibly observable when the full live Core/B272 path followed the B273/B274 unit gates; the workflow should also continuously check the clean-install Node contract rather than relying on a separate branch-filtered workflow.
+- **Validation target:** this change is expected to schedule the focused cognitive, B273/B274 attribution, restart, resource-economy, exactly-once feedback and installer tests on the same commit. Only the resulting exact-head statuses determine whether the pass is clean.
+
+---
+
 ## WorkPass370 — align clean-install Node validation with .nvmrc (2026-10-26)
 
 - **Startup/install defect:** the canonical `.nvmrc` pins Node 24, but `tools/super-install.mjs` rejected every runtime except Node 22 before reading either workspace lockfile. This made the documented `npm run install:all` path fail on the version selected by CI and developer setup.

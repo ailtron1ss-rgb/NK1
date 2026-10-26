@@ -5,6 +5,11 @@ on:
     branches:
       - fix/unified-substrate-runtime-wiring-rebased-2026-10-25
     paths:
+      - '.nvmrc'
+      - 'package.json'
+      - 'tools/node-runtime-contract.mjs'
+      - 'tools/super-install.mjs'
+      - 'tools/super-install.test.mjs'
       - 'runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
@@ -25,6 +30,11 @@ on:
       - '.github/workflows/unified-substrate-runtime-wiring.yml'
   pull_request:
     paths:
+      - '.nvmrc'
+      - 'package.json'
+      - 'tools/node-runtime-contract.mjs'
+      - 'tools/super-install.mjs'
+      - 'tools/super-install.test.mjs'
       - 'runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
@@ -59,6 +69,8 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Verify installer follows the pinned Node runtime
+        run: npm run test:super-install
       - name: Restore and runtime-wiring regression
         run: npm run test:unified-substrate-runtime-wiring --prefix runtime/neuro-kurisu
       - name: Validate conservative live cognitive resource allocation
