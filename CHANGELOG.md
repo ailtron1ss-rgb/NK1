@@ -1,3 +1,9 @@
+## WorkPass379 — Make Hexis evidence-to-review ingress atomic (2026-10-26)
+
+- Snapshot canonical MemoryOS2 and Hexis review state before evidence append; if pending-review construction fails, restore both owners and return a stable rejection so retries cannot become stranded behind a duplicate evidence ID.
+- Added integration regressions for explicit approve-only confidence change, failure-injected cross-ledger rollback, and stale-review rejection after canonical confidence changes.
+- Validation is pending exact-head focused tests, runtime typecheck, unified cognitive integration and release verification. No learning/retrieval uplift or production readiness claim.
+
 ## WorkPass378 — Enforce C1 control rejection in canonical MemoryOS2 (2026-10-26)
 
 - Extended the canonical evidence text boundary to reject C1 controls (U+0080–U+009F) in source kind/reference, label, author and note fields, even when callers bypass the Hexis adapter.
