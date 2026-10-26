@@ -1,3 +1,13 @@
+# WorkPass365 — live PostgreSQL migration apply, idempotence and rollback (2026-10-26)
+
+- [TEST] Added `app/scripts/migrate-postgres.integration.mjs`, using the real app migrator and a PostgreSQL 17 service.
+- [APPLY] A temporary SQL migration creates a uniquely named table and row; the test checks the table exists and exactly one `_migrations` row records the migration.
+- [IDEMPOTENCE] The migrator runs a second time; existing data and the ledger entry must remain unchanged.
+- [ROLLBACK] The test writes another temporary migration that creates a table, then runs invalid SQL. The actual migrator must fail; the created table must be gone, the failed migration must not be recorded, and the earlier successful table/migration must remain intact.
+- [CLEANUP] All temporary migration files, ledger entries and test tables are removed. No product schema or dependency/lockfile was changed.
+- [CI] Added a disposable PostgreSQL 17 service to `.github/workflows/workpass362-clean-app-build.yml` and a step-scoped `DATABASE_URL` for the migration integration test. Production UI build remains separate from live database verification.
+- [VALIDATION] Latest run [#40293681029](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293681029) is pending on exact head `53aa78d0a9c04c87db1cff63a0ec35ec9ebd716c`. Do not mark WP365 green until service health, test cleanup, migration apply/rerun/rollback and the rest of the clean app-build job pass.
+
 # WorkPass365 — live PostgreSQL migration apply/rerun/rollback test (2026-10-26)
 
 - [TEST] Added `app/scripts/migrate-postgres.integration.mjs`, which runs the actual `app/scripts/migrate.mjs` against a disposable PostgreSQL service. It creates a temporary migration file and verifies the first apply creates a table and a single `_migrations` ledger row.
