@@ -343,4 +343,77 @@ assert.throws(() => kernel.beginDecisionCycle({
    'a rejected stale decision replay must not resurrect evicted stages');
  assert.equal(retentionFabric.getById('cef:kernel:21:observation'),null);
 
-console.log('WorkPass352 canonical cognitive kernel: PASS');
+// Completion retries that omit 'at' must reuse the original timestamp and remain read-only.
+const completionReplayFabric = new CognitiveEventFabric(256);
+const completionReplayCycle = new UnifiedCognitiveCycle();
+const completionReplayKernel = new CanonicalCognitiveKernel(completionReplayFabric, completionReplayCycle);
+const completionReplayDecision = completionReplayKernel.beginDecisionCycle({
+  ...decisionInput(),
+  tick: 31,
+  at: 3100,
+});
+const noAtCompletionInput = {
+  anchors: completionReplayDecision.anchors,
+  fallbackTick: 31,
+  outcome: stage('outcome.verifier', { success01: 0.84, verified: true }),
+  learning: stage('learning.update', { updated: true }),
+  selfUpdate: stage('self-model.update', { continuity01: 0.81 }),
+};
+const firstNoAtCompletion = completionReplayKernel.completeCycle(noAtCompletionInput);
+const totalAfterNoAtCompletion = completionReplayFabric.snapshot().total;
+const cycleStateAfterNoAtCompletion = completionReplayCycle.snapshot();
+const replayNoAtCompletion = completionReplayKernel.completeCycle(noAtCompletionInput);
+assert.equal(replayNoAtCompletion.replayed, true,
+  'retrying an existing completion without at must be recognized as an idempotent replay');
+assert.equal(replayNoAtCompletion.outcomeEvent.at, firstNoAtCompletion.outcomeEvent.at,
+  'completion replay must retain the original outcome timestamp');
+assert.equal(replayNoAtCompletion.learningEvent.id, firstNoAtCompletion.learningEvent.id);
+assert.equal(replayNoAtCompletion.selfUpdateEvent.id, firstNoAtCompletion.selfUpdateEvent.id);
+assert.equal(completionReplayFabric.snapshot().total, totalAfterNoAtCompletion,
+  'timestamp-omitted completion replay must not append duplicate events');
+assert.deepEqual(completionReplayCycle.snapshot(), cycleStateAfterNoAtCompletion,
+  'completion replay must not mutate the monotonic cycle ledger');
+
+// A valid restored counter at the safe-integer ceiling must be rejected before
+// completion events are appended, not after outcome/learning writes have occurred.
+const exhaustedFabric = new CognitiveEventFabric(256);
+const exhaustedCycle = new UnifiedCognitiveCycle();
+exhaustedCycle.restore({
+  version: 1,
+  cycles: Number.MAX_SAFE_INTEGER,
+  completeCycles: 0,
+  incompleteCycles: Number.MAX_SAFE_INTEGER,
+  brokenLineages: 0,
+  meanStageCoverage01: 0,
+  meanCausalContinuity01: 0,
+  lastTick: -1,
+  lastComplete: false,
+  lastMissingStages: ['observation', 'prediction', 'action', 'outcome', 'learning', 'self-update'],
+});
+const exhaustedKernel = new CanonicalCognitiveKernel(exhaustedFabric, exhaustedCycle);
+const exhaustedDecision = exhaustedKernel.beginDecisionCycle({
+  ...decisionInput(),
+  tick: 32,
+  at: 3200,
+});
+const eventCountBeforeExhaustedCompletion = exhaustedFabric.snapshot().total;
+const cycleStateBeforeExhaustedCompletion = exhaustedCycle.snapshot();
+assert.throws(() => exhaustedKernel.completeCycle({
+  anchors: exhaustedDecision.anchors,
+  fallbackTick: 32,
+  at: 3201,
+  outcome: stage('outcome.verifier', { success01: 0.7, verified: true }),
+  learning: stage('learning.update', { updated: true }),
+  selfUpdate: stage('self-model.update', { continuity01: 0.75 }),
+}), /safe integer limit/,
+'cycle-counter exhaustion must fail before completion mutation');
+assert.equal(exhaustedFabric.snapshot().total, eventCountBeforeExhaustedCompletion,
+  'cycle-counter exhaustion must not append outcome, learning, or self-update events');
+assert.equal(exhaustedFabric.getById('cef:kernel:32:outcome'), null);
+assert.equal(exhaustedFabric.getById('cef:kernel:32:learning'), null);
+assert.equal(exhaustedFabric.getById('cef:kernel:32:self-update'), null);
+assert.deepEqual(exhaustedCycle.snapshot(), cycleStateBeforeExhaustedCompletion,
+  'failed cycle advancement must leave restored counters untouched');
+
+console.log('WorkPass353 canonical completion replay/preflight: PASS');
+
