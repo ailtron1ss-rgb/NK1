@@ -84,7 +84,7 @@ if (rootPkg && superVersion) {
     `releaseDate=${statusDateCandidate || '(missing)'}; sourceBaselineDate=${sourceBaselineDate || '(missing/invalid)'}`);
   check('not-marked-release-ready', /implementation-workpass/i.test(superVersion.releaseStatus || '') && !/release.ready/i.test(superVersion.releaseStatus || ''),
     `releaseStatus=${superVersion.releaseStatus}`);
-  const sourceBaselinePassMatch = String(superVersion.sourceBaseline ?? '').match(/WORKPASS(\\d+)/i);
+  const sourceBaselinePassMatch = String(superVersion.sourceBaseline ?? '').match(/WORKPASS(\d+)/i);
   const sourceBaselinePass = sourceBaselinePassMatch ? Number(sourceBaselinePassMatch[1]) : 0;
   check('workpass-build-lineage',
     currentPass >= 1 &&
