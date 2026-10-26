@@ -234,12 +234,20 @@ try {
      materializedGoal.project?.pauseReason!=='hexis-approved-awaiting-explicit-activation') {
     throw new Error('hexis-goal-paused-materialization:'+JSON.stringify(materializedGoal));
   }
-  const activatedGoal=await (await post('/api/organism/integration/hexis/goals/activate',{proposalId})).json();
+  const unconfirmedActivation = await post('/api/organism/integration/hexis/goals/activate', { proposalId, confirmed: false });
+  if (unconfirmedActivation.status !== 403) {
+    throw new Error('hexis-goal-activation-requires-explicit-confirmation:' + unconfirmedActivation.status);
+  }
+  const stillMaterializedGoals = await (await fetch(`${base}/api/organism/integration/hexis/goals?status=materialized&limit=8`)).json();
+  if (!stillMaterializedGoals.ok || !stillMaterializedGoals.proposals?.some(proposal => proposal.id === proposalId && !proposal.goalRelationshipReceipt)) {
+    throw new Error('hexis-unconfirmed-activation-must-not-change-proposal');
+  }
+  const activatedGoal=await (await post('/api/organism/integration/hexis/goals/activate',{proposalId,confirmed:true})).json();
   if(!activatedGoal.ok||activatedGoal.project?.status!=='active'||activatedGoal.receipt?.projected!==1||
      activatedGoal.receipt?.deferred!==0||activatedGoal.receipt?.semanticEdgeIds?.length!==1) {
     throw new Error('hexis-goal-explicit-activation:'+JSON.stringify(activatedGoal));
   }
-  const activatedGoalReplay=await (await post('/api/organism/integration/hexis/goals/activate',{proposalId})).json();
+  const activatedGoalReplay=await (await post('/api/organism/integration/hexis/goals/activate',{proposalId,confirmed:true})).json();
   if(!activatedGoalReplay.ok||activatedGoalReplay.receipt?.semanticEdgeIds?.[0]!==activatedGoal.receipt.semanticEdgeIds[0]) {
     throw new Error('hexis-goal-activation-replay');
   }
