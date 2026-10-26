@@ -1,3 +1,14 @@
+## WorkPass334 — общий deadline независимой оценки навыка (2026-10-26)
+
+- **Runtime:** `IndependentSkillCandidateEvaluator` теперь ограничивает не только каждый вызов sandbox/verifier/safety scanner, но и весь прогон validation + holdout одним wall-clock budget. Настройка `evaluationTimeoutMs`: default 300000 ms, допустимо 10–1800000 ms; существующий `serviceTimeoutMs` остаётся отдельным локальным пределом.
+- **Fail-closed semantics:** если истёк общий budget, оценка прерывается с `independent-candidate-evaluator-total-timeout`; этот случай не превращается в обычный failed trial, а оставшиеся задачи не запускаются. Budget считает монотонные часы (`performance.now`), не календарное время.
+- **Cancellation contract:** активный сервис получает abort через существующий per-service AbortSignal. Реальная остановка стороннего процесса по-прежнему зависит от того, что sandbox/host-owned service уважает сигнал и завершает работу; произвольный Promise нельзя принудительно уничтожить из вызывающего процесса.
+- **Regression:** расширен WorkPass227 тест: сервис, игнорирующий abort и задерживающийся дольше общего budget, должен приводить к отказу всей оценки, сигнал при этом отмечается aborted, повторный task не стартует. Добавлена проверка недопустимого `evaluationTimeoutMs=0`.
+- **Validation:** код и regressions committed; новый exact-HEAD CI ещё ожидается. До завершения CI не считаем тест доказанно прошедшим.
+- **Evidence/release boundary:** это ограничение длительности и целостности evaluator, не доказательство роста качества обучения. Внешние held-out tool-use/transfer/retrieval benchmark, target-device E2E, licensing review и rebuild/publish главного release ZIP остаются открытыми.
+
+---
+
 ## WorkPass333 — bind learning families to the canonical manifest (2026-10-26)
 
 - **Runtime path:** the independent candidate evaluator now derives `taskFamily` only from the validated canonical `TaskManifestEntry.family`; the family is included in the immutable evaluation-plan fingerprint and copied to each SkillLearnBench report and run binding.
