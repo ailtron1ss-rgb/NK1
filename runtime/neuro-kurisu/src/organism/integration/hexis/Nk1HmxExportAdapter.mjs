@@ -287,7 +287,7 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
     .reduce((sum, key) => sum + (Array.isArray(narrative[key]) ? narrative[key].length : 0), 0);
   const edgeTypes = [...new Set(sections.relationships.map(row => row.edge_type))];
   const sectionNames = Object.keys(sections);
-  return {
+  const normalized = {
     hmx_version: HMX_VERSION,
     export_id: exportId,
     export_intent: intent,
@@ -335,4 +335,9 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
       nativeSkillRecordsMapped: rawSkills.length,
     },
   };
+  const normalizedBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+  if (normalizedBytes > MAX_SOURCE_EXPORT_BYTES) {
+    throw new RangeError('NK1 normalized HMX export exceeds the ' + MAX_SOURCE_EXPORT_BYTES + '-byte import staging limit');
+  }
+  return normalized;
 }
