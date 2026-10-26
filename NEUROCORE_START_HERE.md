@@ -1,3 +1,17 @@
+## Latest checkpoint — WorkPass352 host executable parent integrity (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code/workflow SHA:** `b9e0e90710e1380cac0ee57e1a0deaf74e214cf1`.
+
+- Host-owned executor, verifier and safety-scanner preparation now rejects group/world-writable executable parent directories on POSIX and pins parent device/inode for dispatch-time revalidation.
+- Regressions prove writable-parent rejection and failure when the executable's parent directory is replaced after service construction.
+- Dedicated CI run #40285352614 passed: native P23 provider 10/10, supervisor failure-cleanup regression, host-owned evaluator executable path regressions, runtime `TYPECHECK=PASS` — [run details](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40285352614).
+- The latest change protects host authority path integrity; it does not replace an OS/container sandbox. Do not launch untrusted candidate code without a real deployment-owned sandbox launcher.
+- PR #192 is still a draft against the source-stack branch, not `main`; main remains untouched.
+- Remaining: review latest aggregate CI, real deployment-owned executor/verifier/scanner integration, independent paired-seed learning uplift, durable recall/restart proof, organism smoke, production UI/database build, browser/Live2D E2E, Android/Termux audio E2E, soak and licensing review.
+
+---
+
 ## Latest checkpoint — WorkPass351 learning-process cleanup (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
