@@ -185,7 +185,7 @@ export class MemoryFabric {
     let commandId='';
     if(rawCommandId!==undefined){
       if(typeof rawCommandId!=='string'||rawCommandId.length===0||rawCommandId.length>128||
-        rawCommandId!==rawCommandId.trim()||/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(rawCommandId)){
+        rawCommandId!==rawCommandId.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(rawCommandId)){
         throw new TypeError('memory-lifecycle-command-id-invalid');
       }
       commandId=rawCommandId;
