@@ -23,6 +23,7 @@ assert.equal(ledger.record({
   confidence01: 0.8,
   source: 'organism',
 }), '', 'new predictions must fail closed when the bounded pending queue is full');
+assert.equal(ledger.summary().rejectedPredictionAdds, 1, 'rejected additions must be visible in P65 diagnostics');
 
 // Recent observations may rotate, but must not displace unresolved predictions.
 for (let tick = 1; tick <= 200; tick += 1) {
