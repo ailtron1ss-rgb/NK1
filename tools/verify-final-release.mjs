@@ -65,9 +65,16 @@ try {
 }
 for (const file of files) {
   const relative = path.relative(root, file);
-  if (/(^|[\\\\/])__pycache__([\\\\/]|$)/.test(relative) || relative.endsWith('.pyc')) {
-    if (allowGeneratedPythonCache) warnings.push(`generated-python-cache-ignored:${relative}`);
-    else errors.push(`generated-python-artifact:${relative}`);
+  const insidePythonCache = /(^|[\\\\/])__pycache__([\\\\/]|$)/.test(relative);
+  const isPythonBytecode = relative.endsWith('.pyc');
+  if (insidePythonCache || isPythonBytecode) {
+    // The CI override accepts only actual bytecode beneath __pycache__. It
+    // must not hide source/data files placed there or a stray .pyc elsewhere.
+    if (allowGeneratedPythonCache && insidePythonCache && isPythonBytecode) {
+      warnings.push(`generated-python-cache-ignored:${relative}`);
+    } else {
+      errors.push(`generated-python-artifact:${relative}`);
+    }
   }
   if (relative.startsWith('backups' + path.sep)) continue;
   try {
