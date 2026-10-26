@@ -1,3 +1,16 @@
+# WorkPass369 — restore P26 interleaved runtime contract and holdout provenance (2026-10-26)
+
+- [FIXED] Restore the missing `trainInterleaved()` path consumed by sequential/contextual replay benchmarks, with full-batch preflight, bounded conflict screening, reward/TD target modes and rollback of model weights plus metrics on mid-batch failure.
+- [FIXED] Add `recordVerifiedHoldout()` with strict own-data schema checks, mandatory verified/independent flags, bounded score/timestamp validation and duplicate-evidence protection across restore.
+- [METRICS] Separate training exposure from independent generalization evidence. Online/replay updates and within-batch diagnostics no longer inflate `generalizationEvidence01`.
+- [RESTORE] Sanitize learning metrics and evidence/trace identifiers instead of trusting persisted scalar confidence or counters.
+- [REGRESSION] Add P26 runtime-contract tests for provenance-gated evidence, duplicate protection, restore, full-batch preflight and rollback; include the test in `test:learning-replay`.
+- [CI] Add dedicated WorkPass369 workflow to run the full learning-replay suite and input/recovery/continual matrix, which the prior canonical smoke workflow did not execute as a single required chain.
+- [VALIDATION] Exact-head Node 24/typecheck/learning replay CI is pending; no PASS is claimed until GitHub Actions completes.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass368 — bind replay references to causal parents (2026-10-26)
 
 - [RESTORE] External-observation replay refs are accepted only when the event is marked external, links to the indexed action/outcome and has the outcome as a parent.
