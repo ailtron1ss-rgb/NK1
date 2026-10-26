@@ -36,7 +36,9 @@ export function calculateHmxStageDigest(stageValue: unknown): string | null {
 }
 
 export function hasValidHmxStageDigest(stageValue: unknown): boolean {
-    if (!isRecord(stageValue) || stageValue.status === 'applied') return false;
+    if (!isRecord(stageValue) ||
+        stageValue.status === 'applied' ||
+        stageValue.application !== undefined) return false;
     const computed = calculateHmxStageDigest(stageValue);
     return typeof stageValue.digest === 'string' && computed !== null && computed === stageValue.digest;
 }
