@@ -1,3 +1,15 @@
+## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity on the current integration line (2026-10-26)
+
+- [INTEGRATION] Preserve the current independent HMX lifecycleDigest seal while integrating attempt-counter binding and semantic receipt checks.
+- [INTEGRITY] Export a safe JSON-tree validator; validate the applied stage identity/lifecycle and receipt independently, including counter arithmetic and canonical IDs.
+- [INTEGRITY] Require deferred-section metadata to match staged sections exactly and relationship projected/deferred counters to account for the full staged array.
+- [FIX] Use a null-prototype deferred-section map so external section names such as __proto__ remain ordinary own properties.
+- [REGRESSION] Cover re-hashed impossible receipts, accessor-safe validation, attempt mismatch, deferred relationship semantics and special section-key round trips.
+- [CI] Include the active consolidation branch in the canonical HMX apply workflow pull-request filter.
+- [VALIDATION] Exact-head typechecks, canonical HMX integration tests and WorkPass71 remain pending; PASS is not claimed ahead of hosted results.
+- [RELEASE] main and published WorkPass70 Release ZIP remain unchanged.
+
+---
 ## [NK1][Hexis] Reject mistyped HMX confirmation flags (2026-10-26)
 
 - Extend the server smoke matrix so `confirmed: "true"` is rejected as a type error rather than being treated as an approval signal.
