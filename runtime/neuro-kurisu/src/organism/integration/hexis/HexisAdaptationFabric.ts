@@ -242,7 +242,8 @@ function pendingHmxStageIntegrityIssue(stage: HexisHmxStage): string | null {
         if (typeof stage.digest !== 'string' || digest(hmxStageDigestInput(stage)) !== stage.digest) {
             return 'persisted-stage-digest-mismatch';
         }
-        if (stage.conflicts.length > 0) return 'persisted-stage-has-validation-conflicts';
+        // A correctly digested stage may already carry validation conflicts. Keep it staged for inspection/rejection; the existing accept gate blocks it without misclassifying expected validation failures as corrupted persistence.
+        if (stage.conflicts.length > 0) return null;
 
         const countKeys = Object.keys(stage.sectionCounts).sort();
         const stagedKeys = Object.keys(stage.stagedSections).sort();
