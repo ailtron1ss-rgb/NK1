@@ -1,3 +1,18 @@
+## WorkPass350 — host-evaluator module identity and parent-directory integrity (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Validated code SHA:** `5484b3567965870a4596336503a6b22985dbb17f`.
+
+- [x] Require the canonical evaluator config's parent to be a directory and reject group/world write permissions on POSIX.
+- [x] Reject evaluator/provider modules that share one device/inode even if `realpath` returns distinct hard-link pathnames.
+- [x] Add regressions for hard-link authority aliasing and a writable parent directory.
+- [x] WorkPass335 host-owned evaluator workflow: 15/15 evaluator wiring tests; runtime `TYPECHECK=PASS` (run #40284703984).
+- [x] WorkPass349 native signed-dataset workflow: 10/10 provider tests; runtime `TYPECHECK=PASS` (run #40284698566).
+- [ ] Finish the remaining broad P23 evidence/replay/learning-metric runs and restart/retrieval plus organism-smoke gates; browser/Live2D and Android/Termux E2E remain manual/device release gates.
+- **Status:** the two filesystem-boundary defects are fixed and their focused workflows pass. This records code/security verification, not production approval or measured learning uplift.
+
+---
+
 ## WorkPass349 — signed-evidence dataset path identity and race closure (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`, based on source-stack commit `71e9286f9fe11c6afec851359a96f9e9b0011259`.
@@ -6,10 +21,10 @@
 - [x] Open the configured path itself with `O_NOFOLLOW` on POSIX, rather than opening only a resolved path that might no longer refer to the inspected directory entry.
 - [x] Require the opened descriptor to match both the original inspected identity and the canonical target, then retain the existing pre-/post-read mutation checks.
 - [x] Add device/inode identity tests and a source-contract regression for configured-path opening and the three-way identity binding.
-- [ ] Run `npm run test:workpass346:native-repair-provider` on the exact branch head.
-- [ ] Run runtime typecheck and the WorkPass335 Hermes host-evaluator workflow on the exact PR head; record actionable CI evidence.
+- [x] Run `npm run test:workpass346:native-repair-provider` on code SHA `5484b3567965870a4596336503a6b22985dbb17f`: 10/10 tests pass.
+- [x] Run runtime typecheck and the WorkPass335 Hermes host-evaluator workflow on the same code SHA; evaluator wiring 15/15 and `TYPECHECK=PASS`.
 - [ ] Re-run the broader P23 evidence, promotion-gate, restart/retrieval, and organism smoke gates; keep physical browser/Live2D and Android/Termux E2E as separately unverified release gates.
-- **Status:** code and regression are committed; CI pending. No dependency was added and no production readiness or learning-quality gain is claimed.
+- **Status:** focused provider and host-evaluator workflows passed on code SHA `5484b3567965870a4596336503a6b22985dbb17f`. Wider aggregate validation and release gates remain open. No dependency was added and no production readiness or learning-quality gain is claimed.
 
 ---
 
