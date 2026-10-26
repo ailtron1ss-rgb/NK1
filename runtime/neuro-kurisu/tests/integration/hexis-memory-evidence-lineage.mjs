@@ -302,6 +302,8 @@ assert.equal(journalFirst.added, true);
 const eventRowsAfterFirst = journalEvents.list().filter(event => event.type === 'memory-lifecycle' && event.payload?.action === 'record-evidence');
 assert.equal(eventRowsAfterFirst.length, 1, 'new source evidence emits one lifecycle event');
 assert.ok(/^[a-f0-9]{64}$/.test(String(eventRowsAfterFirst[0].payload.independenceKeyDigest)), 'event records only the one-way source digest');
+assert.ok(/^[a-f0-9]{64}$/.test(String(eventRowsAfterFirst[0].payload.sourceDigest)), 'event records a digest instead of the raw source label');
+assert.equal('source' in eventRowsAfterFirst[0].payload, false, 'raw source reference stays out of the lifecycle event payload');
 assert.equal('independenceKey' in eventRowsAfterFirst[0].payload, false, 'raw source-lineage key stays out of the event payload');
 assert.equal('content' in eventRowsAfterFirst[0].payload, false, 'memory content stays out of the evidence event payload');
 assert.throws(() => journalFabric.recordEvidence(journalMemory.id, {
