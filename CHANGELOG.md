@@ -1,3 +1,12 @@
+## WorkPass376 — strict Hexis evidence envelope and dedupe boundary (2026-10-26)
+
+- **Defect:** the first adapter revision ignored unknown/symbol fields and trusted the supplied deduplication index's `has()` method; schema-smuggling could be silently normalized and a hostile index could throw out of ingress.
+- **Fix:** reject unknown or symbol own keys and all accessor properties in both evidence and source envelopes; catch failures from the caller-provided deduplication index and return a typed rejection instead of propagating an exception.
+- **Regression:** cover unknown top-level/source keys, symbol-keyed envelopes, throwing proxy traps, accessor non-execution, and a dedupe index whose `has()` throws.
+- **Validation:** fresh exact-head workflow validation is pending. This hardens input integrity only; it does not establish memory retrieval uplift, belief accuracy, or production readiness. No `main` or Release ZIP change.
+
+---
+
 ## WorkPass374 — Hexis evidence/provenance adapter (2026-10-26)
 
 - **Source mapping:** adapts the QuixiAI Hexis evidence/provenance and belief-revision concepts into NK1's existing memory/learning boundaries; it does not import Hexis as a second runtime or database.
