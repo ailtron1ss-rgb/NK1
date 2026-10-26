@@ -153,7 +153,7 @@ function resultFromCanonicalMemory(
         id: evidence.memoryId,
         input: recordInput,
         commandId,
-        tick: Math.max(0, Math.floor(observedAt)),
+        tick: 0,
       });
       if (!commandResult || typeof commandResult !== "object" || !("ok" in commandResult) || !("added" in commandResult)) {
         return { status: "rejected", memoryId: evidence.memoryId, evidenceId: evidence.evidenceId, reason: "memory-fabric-evidence-result-invalid" };
@@ -472,6 +472,8 @@ export function decideHexisEvidenceReview(
   if (stance === "contextualizes") {
     const memoryBefore = memorySnapshot;
     const fabricBefore = fabric.snapshot();
+    const memoryFabricBefore = writer?.fabric.snapshot();
+    const eventLogBefore = writer?.events.list();
     try {
       const decided = fabric.decideLearningReview(reviewId, reviewItemId, "approve");
       if (!decided) return reject("review-decision-rejected");
