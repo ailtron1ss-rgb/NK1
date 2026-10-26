@@ -2797,8 +2797,14 @@ export class OrganismCore {
 
         const sourceKeyFor = (evidence: { ref?: string; label?: string; contentHash?: string }) =>
             String(evidence.ref || evidence.label || evidence.contentHash || sha256Stable(evidence, 'legacy'))
-                .trim().normalize('NFKC').slice(0, 96).toLocaleLowerCase();
+                .trim().normalize('NFKC').toLowerCase().slice(0, 96);
+        const legacyEvidenceSourceKey = String(input.evidence.ref || input.evidence.label || input.evidence.contentHash || sha256Stable(input.evidence, 'legacy'))
+            .trim().normalize('NFKC').slice(0, 96);
         const evidenceSourceKey = sourceKeyFor(input.evidence);
+        // Existing canonical evidence keys were case-sensitive; accept the exact legacy spelling during migration.
+        const hasCanonicalEvidence = () =>
+            this.memorySubsystem.memoryOS.hasEvidenceLineage(memory.id, evidenceSourceKey) ||
+            this.memorySubsystem.memoryOS.hasEvidenceLineage(memory.id, legacyEvidenceSourceKey);
         const evidenceCommandId = `hexis-evidence:${createHash('sha256').update(`${memory.id}|${evidenceSourceKey}`).digest('hex')}`;
         const confidenceCommandId = `hexis-belief-confidence:${createHash('sha256').update(`${memory.id}|${evidenceSourceKey}`).digest('hex')}`;
         const audits = this.hexisAdaptation.snapshot().beliefAudit
@@ -2840,7 +2846,7 @@ export class OrganismCore {
         // Recovery path: an adapter audit can exist before its matching evidence/reciprocal confidence update.
         // Finish the missing canonical effect from that audit rather than consume the same evidence a second time.
         if (priorAudit) {
-            const known = this.memorySubsystem.memoryOS.hasEvidenceLineage(memory.id, evidenceSourceKey);
+            const known = hasCanonicalEvidence();
             let evidence: ReturnType<typeof this.memorySubsystem.fabric.recordEvidence>;
             if (known) {
                 evidence = duplicateReceipt();
@@ -2915,7 +2921,7 @@ export class OrganismCore {
             };
         }
 
-        const canonicalDuplicate = this.memorySubsystem.memoryOS.hasEvidenceLineage(memory.id, evidenceSourceKey);
+        const canonicalDuplicate = hasCanonicalEvidence();
         this.hexisAdaptation.registerOrUpdateBelief({
             memoryId: memory.id, confidence01: memory.confidence,
             trust01: Number(memory.sourceAuthority01 ?? 0.5), at: memory.lastAccessAt,
