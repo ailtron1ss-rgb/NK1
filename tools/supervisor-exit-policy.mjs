@@ -9,7 +9,7 @@ export function decideSupervisedChildExit({ label, code, signal, shuttingDown })
   }
 
   const service = typeof label === 'string' && label.trim()
-    ? label.trim().slice(0, 80)
+    ? label.trim().replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80)
     : 'unknown-service';
 
   if (typeof signal === 'string' && signal.trim()) {
