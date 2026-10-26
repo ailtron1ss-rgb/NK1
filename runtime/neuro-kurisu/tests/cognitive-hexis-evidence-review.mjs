@@ -352,6 +352,20 @@ assert.match(legacyRevisionMethod, /invalid-evidence-stance/);
 assert.match(legacyRevisionMethod, /canonical-evidence-source-reference-required/);
 assert.match(legacyRevisionMethod, /invalid-evidence-confidence/);
 assert.match(legacyRevisionMethod, /invalid-legacy-evidence-text/);
+const legacyIdentityStart = legacyRevisionMethod.indexOf("const identity = JSON.stringify([");
+const legacyIdentityEnd = legacyRevisionMethod.indexOf("]);", legacyIdentityStart);
+assert.ok(legacyIdentityStart >= 0 && legacyIdentityEnd > legacyIdentityStart, "legacy evidence ID identity block must be explicit");
+const legacyIdentityBlock = legacyRevisionMethod.slice(legacyIdentityStart, legacyIdentityEnd);
+assert.match(
+  legacyIdentityBlock,
+  /memory\.id,[\s\S]*'legacy-hexis-belief-revise',[\s\S]*sourceRef,[\s\S]*contentHash \?\? null/,
+  "legacy evidence ID must derive from stable source identity",
+);
+assert.doesNotMatch(
+  legacyIdentityBlock,
+  /input\.stance|label|evidenceConfidence|note/,
+  "mutable payload metadata must not mint a new independent evidence ID",
+);
 
 
 console.log("Hexis evidence → canonical MemoryOS2 → gated Hexis review: PASS", JSON.stringify({
