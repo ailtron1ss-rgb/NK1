@@ -71,7 +71,7 @@ export class P23CompoundRepairRevisionCoordinator {
    */
   reviseFromObservedRepairs(skillId: string) {
     if (typeof skillId !== 'string' || skillId.trim().length === 0) {
-      throw new Error('compound skill id is required');
+      return Promise.reject(new Error('compound skill id is required'));
     }
     const normalizedSkillId = skillId.normalize('NFKC').trim();
     if (normalizedSkillId.length > 180 || Array.from(normalizedSkillId).some(character => {

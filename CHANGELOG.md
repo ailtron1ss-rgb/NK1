@@ -1,3 +1,8 @@
+### WorkPass328 follow-up — keep Promise rejection and external-outcome accounting consistent (2026-10-26)
+
+- `P23CompoundRepairRevisionCoordinator.reviseFromObservedRepairs()` now returns a rejected Promise for an invalid skill ID instead of throwing synchronously from a Promise-returning API. This matches the established `assert.rejects`/caller contract and prevents a synchronous exception from bypassing the coordinator boundary.
+- Completed the causal-stream regression migration: all quarantined imported rows, including restored or conflicted normalized IDs, remain available for inspection and deduplication but never increase trusted `summary().outcomes`. The tests still assert that exactly one retained row survives exact duplicates and conflicts.
+
 ### WorkPass328 follow-up — finish Node 22/24 replay-buffer loading (2026-10-26)
 
 - Converted `ContinualReplayBuffer`'s constructor parameter-property `readonly capacity` into an explicit class field and assignment. This removes the next strip-only TypeScript syntax blocker in P26's continual replay regression; all three constructor inputs remain runtime-validated/injectable as before.
