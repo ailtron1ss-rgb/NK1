@@ -499,6 +499,53 @@ assert.equal(rollbackMemoryRuntime.semanticMemory.snapshot().edges.length, 1,
 assert.equal(rollbackHexisFabric.snapshot().temporal.length, 2,
   'successful retry must materialize temporal assertions once');
 
+// Fault injection: the canonical MemoryFabric commits a row, then the adapter call
+// throws before returning the inserted ID. Compensation must still remove that row.
+const postCommitRuntime = new MemorySubsystemRuntime();
+let throwAfterFirstCommit = true;
+const postCommitFabric = {
+  canonicalSnapshot: () => postCommitRuntime.fabric.canonicalSnapshot(),
+  encode: (input, options) => {
+    const inserted = postCommitRuntime.fabric.encode(input, options);
+    if (throwAfterFirstCommit && input.content === normalizedNk1Export.sections.memories[0].content) {
+      throwAfterFirstCommit = false;
+      throw new Error('injected-hmx-post-commit-write-failure');
+    }
+    return inserted;
+  },
+  forgetById: (...args) => postCommitRuntime.fabric.forgetById(...args),
+};
+const postCommitHexis = new HexisAdaptationFabric();
+const postCommitProjector = new HexisCanonicalMemoryProjector(
+  postCommitFabric, postCommitRuntime.semanticMemory, postCommitHexis,
+);
+postCommitHexis.bindCanonicalMemoryApply(candidate => postCommitProjector.apply(candidate));
+const postCommitStage = postCommitHexis.stageHmx({
+  document: normalizedNk1Export, intent: 'port', strategy: 'additive',
+});
+postCommitHexis.decideHmx(postCommitStage.stagingId, 'accept');
+assert.throws(
+  () => postCommitHexis.decideHmx(postCommitStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed/,
+);
+assert.equal(
+  postCommitRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length,
+  0,
+  'a writer that commits and then throws must not leave an unreceipted HMX memory behind',
+);
+assert.equal(postCommitRuntime.semanticMemory.snapshot().nodes.length, 0,
+  'semantic nodes from a post-commit failure must be compensated too');
+assert.equal(postCommitHexis.snapshot().temporal.length, 0,
+  'temporal writes must remain absent after post-commit compensation');
+const postCommitRetry = postCommitHexis.decideHmx(postCommitStage.stagingId, 'apply');
+assert.equal(postCommitRetry?.status, 'applied',
+  'the exact stage must remain retryable after a post-commit writer failure');
+assert.equal(postCommitRetry?.application?.attempt, 2);
+assert.equal(
+  postCommitRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length,
+  2,
+  'retry after post-commit compensation must create each canonical memory exactly once',
+);
 
 console.log('HEXIS_ADAPTATION_PASS');
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
