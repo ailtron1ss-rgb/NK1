@@ -216,9 +216,12 @@ export class P26TrueLearningEngine{
     const effectiveReplayLearningRate01 = replayLearningRate01 < currentLearningRate01
       ? Math.min(replayLearningRate01, currentLearningRate01 * 0.1 * replayEveryNCurrent)
       : replayLearningRate01;
+    // Context separation allows distinct outcomes to coexist, but alone is
+    // not enough evidence to override the conservative cadence cap. A stronger
+    // retention rate must be an explicit caller choice (replay >= current rate).
     const contextSeparatedReplayLearningRate01 = replayLearningRate01 >= currentLearningRate01
       ? replayLearningRate01
-      : Math.min(currentLearningRate01 * 0.35, effectiveReplayLearningRate01 + currentLearningRate01 * 0.1);
+      : effectiveReplayLearningRate01;
 
     const candidatesByActionAndEnergy=new Map<string,P26InterleavedExperience[]>();
     const energyBucket=(state:OrganismState)=>Math.round(readStateNeed(state,'energy')*20);
