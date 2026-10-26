@@ -127,6 +127,12 @@ export interface HexisOutboxEntry {
     publishedAt?: number;
     lastError?: string;
 }
+export interface HexisOutboxIdempotencyReceipt {
+    idempotencyKey: string;
+    requestDigest: string;
+    entryId: string;
+    createdAt: number;
+}
 export interface HexisConnectorPolicy {
     id: string;
     connectorId: string;
@@ -169,6 +175,10 @@ export interface HexisAdaptationState {
     fidelityReceipts: HexisFidelityReceipt[];
     hmxStages: HexisHmxStage[];
     outbox: HexisOutboxEntry[];
+    /** Durable exact-key journal survives terminal outbox row rotation. */
+    outboxIdempotencyLedger: HexisOutboxIdempotencyReceipt[];
+    /** Fail-closed marker when restored idempotency history is corrupt or capacity-limited. */
+    outboxIdempotencyLedgerSaturated: boolean;
     connectorPolicies: HexisConnectorPolicy[];
     executions: HexisExecutionPlan[];
     metrics: {
@@ -183,6 +193,9 @@ export interface HexisAdaptationState {
         outboxQueued: number;
         outboxPublished: number;
         outboxIdempotencyConflicts: number;
+        outboxRetiredKeyReplays: number;
+        outboxQueueCapacityRejections: number;
+        outboxLedgerSaturationRejections: number;
         policyAllows: number;
         policyDenials: number;
         executionPlans: number;
@@ -192,6 +205,74 @@ const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, N
 const digest = (value: unknown) => sha256Stable(value, 'legacy');
 const sourceKey = (source: HexisEvidenceSource) => String(source.ref || source.label || source.contentHash || digest(source));
 const nowMs = () => Date.now();
+const MAX_OUTBOX_TERMINAL_ROWS = 512;
+const MAX_OUTBOX_ACTIVE_ROWS = 1024;
+const MAX_OUTBOX_IDEMPOTENCY_RECEIPTS = 65_536;
+function retainHexisOutboxRows(rows: HexisOutboxEntry[]): HexisOutboxEntry[] {
+    const terminal = rows.filter((row) => row.status !== 'pending' && row.status !== 'publishing');
+    const keepTerminal = new Set(terminal.slice(-MAX_OUTBOX_TERMINAL_ROWS).map((row) => row.id));
+    // Active deliveries are obligations, not cache entries: rotate only old terminal rows.
+    return rows.filter((row) => row.status === 'pending' || row.status === 'publishing' || keepTerminal.has(row.id));
+}
+function normalizeHexisOutboxLedger(
+    raw: unknown,
+    outbox: HexisOutboxEntry[],
+): { receipts: HexisOutboxIdempotencyReceipt[]; saturated: boolean } {
+    const receipts: HexisOutboxIdempotencyReceipt[] = [];
+    const byKey = new Map<string, HexisOutboxIdempotencyReceipt>();
+    let saturated = false;
+    if (raw !== undefined && raw !== null && !Array.isArray(raw)) saturated = true;
+    const rows = Array.isArray(raw)
+        ? raw.slice(-MAX_OUTBOX_IDEMPOTENCY_RECEIPTS)
+        : [];
+    if (Array.isArray(raw) && raw.length > MAX_OUTBOX_IDEMPOTENCY_RECEIPTS) saturated = true;
+    for (const candidate of rows) {
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+            saturated = true;
+            continue;
+        }
+        const row = candidate as Record<string, unknown>;
+        if (typeof row.idempotencyKey !== 'string' || !row.idempotencyKey.trim() ||
+            row.idempotencyKey.length > 256 || typeof row.requestDigest !== 'string' ||
+            !row.requestDigest || row.requestDigest.length > 128 ||
+            typeof row.entryId !== 'string' || !row.entryId || row.entryId.length > 256 ||
+            typeof row.createdAt !== 'number' || !Number.isFinite(row.createdAt) || row.createdAt < 0) {
+            saturated = true;
+            continue;
+        }
+        const receipt: HexisOutboxIdempotencyReceipt = {
+            idempotencyKey: row.idempotencyKey,
+            requestDigest: row.requestDigest,
+            entryId: row.entryId,
+            createdAt: row.createdAt,
+        };
+        const prior = byKey.get(receipt.idempotencyKey);
+        if (prior) {
+            if (prior.requestDigest !== receipt.requestDigest || prior.entryId !== receipt.entryId) saturated = true;
+            continue;
+        }
+        byKey.set(receipt.idempotencyKey, receipt);
+        receipts.push(receipt);
+    }
+    // Legacy snapshots had no journal; seed exact receipts from rows that still exist.
+    for (const row of outbox) {
+        const key = String(row?.idempotencyKey ?? '').trim();
+        if (!key || key.length > 256 || byKey.has(key)) continue;
+        if (receipts.length >= MAX_OUTBOX_IDEMPOTENCY_RECEIPTS) {
+            saturated = true;
+            break;
+        }
+        const receipt: HexisOutboxIdempotencyReceipt = {
+            idempotencyKey: key,
+            requestDigest: digest({ kind: row.kind, channel: row.channel, payload: row.payload }),
+            entryId: String(row.id),
+            createdAt: Number.isFinite(row.createdAt) ? Math.max(0, row.createdAt) : 0,
+        };
+        byKey.set(key, receipt);
+        receipts.push(receipt);
+    }
+    return { receipts, saturated };
+}
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
 function normalizeHexisStringKeys(value: unknown, limit = 256): string[] {
     if (!Array.isArray(value)) return [];
@@ -273,7 +354,7 @@ function normalizeHexisMetrics(
     return result as HexisAdaptationState['metrics'];
 }
 export function defaultHexisAdaptationState(): HexisAdaptationState {
-    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
+    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], outboxIdempotencyLedger: [], outboxIdempotencyLedgerSaturated: false, connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, outboxRetiredKeyReplays: 0, outboxQueueCapacityRejections: 0, outboxLedgerSaturationRejections: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
@@ -287,6 +368,9 @@ export class HexisAdaptationFabric {
                 windowCount: Math.max(0, Math.floor(Number(policy?.windowCount ?? 0))),
               }))
             : [];
+        const normalizedOutbox = retainHexisOutboxRows(Array.isArray(value.outbox) ? value.outbox : []);
+        const normalizedLedger = normalizeHexisOutboxLedger(value.outboxIdempotencyLedger, normalizedOutbox);
+        const ledgerSaturated = normalizedLedger.saturated || value.outboxIdempotencyLedgerSaturated === true;
         this.state = {
             ...defaults, ...value,
             source: { ...defaults.source, ...(value.source ?? {}) },
@@ -302,7 +386,9 @@ export class HexisAdaptationFabric {
                     stagedSections: stage?.stagedSections && typeof stage.stagedSections === 'object' ? stage.stagedSections : {},
                   }))
                 : [],
-            outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
+            outbox: normalizedOutbox,
+            outboxIdempotencyLedger: normalizedLedger.receipts,
+            outboxIdempotencyLedgerSaturated: ledgerSaturated,
             connectorPolicies: normalizedPolicies,
             executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
             metrics: normalizeHexisMetrics(value.metrics, defaults.metrics),
@@ -470,13 +556,13 @@ export class HexisAdaptationFabric {
         kind: string;
         channel: string;
         payload: unknown;
-    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict'; idempotencyKey: string; existingId?: string } {
+    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict' | 'idempotency-key-history-expired' | 'idempotency-ledger-saturated' | 'outbox-capacity-exceeded'; idempotencyKey: string; existingId?: string } {
         const idempotencyKey = String(input.idempotencyKey ?? '').trim();
         if (!idempotencyKey) return { ok: false, error: 'idempotency-key-required', idempotencyKey };
         const kind = String(input.kind), channel = String(input.channel);
         const requestDigest = digest({ kind, channel, payload: input.payload });
-        // Include failed rows too: a timeout/failure may have happened after the remote
-        // side effect, so silently creating a new row with the same key can duplicate it.
+        if (idempotencyKey.length > 256) return { ok: false, error: 'idempotency-key-required', idempotencyKey: idempotencyKey.slice(0, 256) };
+        // Check visible rows first so a recent exact replay returns its original receipt.
         const existing = this.state.outbox.find((x) => x.idempotencyKey === idempotencyKey);
         if (existing) {
             const existingDigest = digest({ kind: existing.kind, channel: existing.channel, payload: existing.payload });
@@ -484,7 +570,33 @@ export class HexisAdaptationFabric {
             this.state.metrics.outboxIdempotencyConflicts += 1;
             return { ok: false, error: 'idempotency-key-conflict', idempotencyKey, existingId: existing.id };
         }
-        const at = nowMs(); const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload: structuredClone(input.payload), status: 'pending', attempts: 0, createdAt: at, updatedAt: at }; this.state.outbox.push(entry); this.state.outbox = this.state.outbox.slice(-512); this.state.metrics.outboxQueued += 1; return structuredClone(entry);
+        const priorReceipt = this.state.outboxIdempotencyLedger.find((x) => x.idempotencyKey === idempotencyKey);
+        if (priorReceipt) {
+            if (priorReceipt.requestDigest !== requestDigest) {
+                this.state.metrics.outboxIdempotencyConflicts += 1;
+                return { ok: false, error: 'idempotency-key-conflict', idempotencyKey, existingId: priorReceipt.entryId };
+            }
+            // The original terminal row was rotated out. Do not re-enqueue a side effect we cannot safely replay.
+            this.state.metrics.outboxRetiredKeyReplays += 1;
+            return { ok: false, error: 'idempotency-key-history-expired', idempotencyKey, existingId: priorReceipt.entryId };
+        }
+        if (this.state.outboxIdempotencyLedgerSaturated || this.state.outboxIdempotencyLedger.length >= MAX_OUTBOX_IDEMPOTENCY_RECEIPTS) {
+            this.state.outboxIdempotencyLedgerSaturated = true;
+            this.state.metrics.outboxLedgerSaturationRejections += 1;
+            return { ok: false, error: 'idempotency-ledger-saturated', idempotencyKey };
+        }
+        const active = this.state.outbox.filter((x) => x.status === 'pending' || x.status === 'publishing').length;
+        if (active >= MAX_OUTBOX_ACTIVE_ROWS) {
+            this.state.metrics.outboxQueueCapacityRejections += 1;
+            return { ok: false, error: 'outbox-capacity-exceeded', idempotencyKey };
+        }
+        const at = nowMs();
+        const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload: structuredClone(input.payload), status: 'pending', attempts: 0, createdAt: at, updatedAt: at };
+        this.state.outbox.push(entry);
+        this.state.outbox = retainHexisOutboxRows(this.state.outbox);
+        this.state.outboxIdempotencyLedger.push({ idempotencyKey, requestDigest, entryId: entry.id, createdAt: at });
+        this.state.metrics.outboxQueued += 1;
+        return structuredClone(entry);
     }
     claimOutbox(id: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id && x.status === 'pending'); if (!entry)
         return null; entry.status = 'publishing'; entry.attempts += 1; entry.updatedAt = nowMs(); return structuredClone(entry); }
@@ -493,7 +605,7 @@ export class HexisAdaptationFabric {
         entry.publishedAt = entry.updatedAt;
         this.state.metrics.outboxPublished += 1;
     } if (error)
-        entry.lastError = String(error).slice(0, 500); return structuredClone(entry); }
+        entry.lastError = String(error).slice(0, 500); this.state.outbox = retainHexisOutboxRows(this.state.outbox); return structuredClone(entry); }
     reclaimOutbox(maxAgeMs = 60000): number { const cutoff = nowMs() - Math.max(1000, maxAgeMs); let count = 0; for (const entry of this.state.outbox)
         if (entry.status === 'publishing' && entry.updatedAt < cutoff) {
             entry.status = entry.attempts >= 3 ? 'failed' : 'pending';
