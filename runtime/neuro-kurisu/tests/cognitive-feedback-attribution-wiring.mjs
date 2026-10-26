@@ -6,7 +6,10 @@ import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 import { FeedbackDeliveryGuard } from '../src/organism/core/FeedbackDeliveryGuard.ts';
 
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
+const persistenceRuntime = await readFile(new URL('../src/organism/core/PersistenceRuntime.ts', import.meta.url), 'utf8');
 const b272 = await readFile(new URL('../src/organism/cognition/B272EndogenousGoalGenesis.ts', import.meta.url), 'utf8');
+const b273 = await readFile(new URL('../src/organism/cognition/B273AutonomousGoalLifecycle.ts', import.meta.url), 'utf8');
+const b274 = await readFile(new URL('../src/organism/cognition/B274AutonomousSkillLaboratory.ts', import.meta.url), 'utf8');
 const stateMigrations = await readFile(new URL('../src/organism/persistence/StateMigrations.ts', import.meta.url), 'utf8');
 
 function requireFeedbackGate(label, startMarker, endMarker, learnerName) {
@@ -55,8 +58,12 @@ assert.ok(stateMigrations.includes('feedbackDeliveryReceipt?: unknown;'),
 assert.ok(stateMigrations.includes('feedbackDeliveryReceipt: raw.system?.feedbackDeliveryReceipt'),
   'state migration must preserve the receipt so restart cannot silently reopen feedback replay');
 
-assert.ok(core.includes("private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard()"),
-  'Core must own a feedback delivery guard');
+assert.ok(core.includes('private get feedbackDeliveryGuard() { return this.persistence.feedbackDeliveryGuard; }'),
+  'Core must route feedback replay checks through its persistence-owned guard');
+assert.doesNotMatch(core, /private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard\(\)/,
+  'Core must not construct a second private feedback guard');
+assert.ok(persistenceRuntime.includes('readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard()'),
+  'PersistenceRuntime must own the in-memory guard paired with the durable receipt sidecar');
 
 const spineStart = core.indexOf('private async feedbackSpineOnly');
 const spineEnd = core.indexOf('private expectedClosureDomains', spineStart);
@@ -193,4 +200,39 @@ try {
   await rm(receiptDirectory, { recursive: true, force: true });
 }
 
-console.log('Cognitive/B272 feedback attribution and durable exactly-once delivery: PASS');
+const b273LearnGuard = b273.slice(b273.indexOf('private assertGeneratedDecision'), b273.indexOf('  learnFromOutcome('));
+assert.ok(b273LearnGuard.includes('!this.state.lastActionPlan.includes(input.action)'),
+  'B273 learning must validate that the rewarded action belongs to the generated plan');
+assert.ok(b273.includes('recordUnselectedAction(input:'),
+  'B273 must retain bounded evidence for an unselected proposal without reward credit');
+
+const b273PathStart = core.indexOf('const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();');
+const b273PathEnd = core.indexOf('const b274Diag', b273PathStart);
+const b273Path = core.slice(b273PathStart, b273PathEnd);
+assert.ok(b273Path.includes('b273Current.plan.includes(trace.selected.action)'),
+  'normal feedback must restrict B273 learning to actions offered by the generated plan');
+assert.ok(b273Path.includes('b273Learner.recordUnselectedAction('),
+  'normal feedback must not reward a B273 action that lost arbitration');
+
+const b338PathStart = core.indexOf('const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();');
+const b338PathEnd = core.indexOf('this.persisted.system.autonomousGoalLifecycleB273 = this.developmentalNeural.autonomousGoalLifecycleB273.snapshot();', b338PathStart);
+const b338Path = core.slice(b338PathStart, b338PathEnd);
+assert.ok(b338Path.includes('b338Lifecycle.plan.includes(trace.selected.action)'),
+  'world-transition feedback must restrict B273 learning to actions offered by the generated plan');
+assert.ok(b338Path.includes('b273Learner.recordUnselectedAction('),
+  'world-transition feedback must record rejected B273 proposals without credit');
+
+assert.ok(b274.includes('selectedAction:ActionKind'),
+  'B274 trial contract must require evidence of the action actually selected');
+const b274TrialGuard = b274.slice(b274.indexOf('observeTrial(input:'), b274.indexOf('promoteTransferred(input:'));
+assert.ok(b274TrialGuard.includes('input.selectedAction!==expectedAction'),
+  'B274 must reject a candidate trial whose first action was not executed');
+assert.ok(b274TrialGuard.indexOf('input.selectedAction!==expectedAction') < b274TrialGuard.indexOf('this.state.realTrials++'),
+  'B274 must reject attribution before counting a trial or mutating candidate quality');
+assert.ok(b274TrialGuard.includes('this.state.unmatchedOutcomeCount'),
+  'B274 must retain observability for outcomes not attributable to the active skill');
+const b274CoreCall = core.slice(core.indexOf('const b274Trial = this.developmentalNeural.autonomousSkillLaboratoryB274.observeTrial('), core.indexOf('if (b274Trial.promoted', core.indexOf('const b274Trial = this.developmentalNeural.autonomousSkillLaboratoryB274.observeTrial(')));
+assert.ok(b274CoreCall.includes('selectedAction: trace.selected.action'),
+  'Core must pass the canonical selected action into B274 trial evaluation');
+
+console.log('Cognitive/B272/B273/B274 feedback attribution and durable exactly-once delivery: PASS');
