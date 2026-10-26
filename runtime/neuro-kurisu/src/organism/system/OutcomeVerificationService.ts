@@ -123,6 +123,14 @@ const boundedCorrelationId = (value: unknown, max: number): string | undefined =
   return trimmed;
 };
 
+/** Evidence text is validated, never truncated: truncation can make distinct postconditions collide. */
+const boundedEvidenceText = (value: unknown, max: number): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.normalize('NFKC').trim();
+  if (!normalized || normalized.length > max || /[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
+  return normalized;
+};
+
 function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
   if (value === null || typeof value !== 'object') return value;
   const object = value as unknown as object;
@@ -211,8 +219,8 @@ export class OutcomeVerificationService {
       if (checked.verified === true && basis === 'none') {
         notes = 'verification basis is missing or unsupported';
       }
-      const expectedPostcondition = boundedText(checked.expectedPostcondition, 1024);
-      const observedPostcondition = boundedText(checked.observedPostcondition, 1024);
+      const expectedPostcondition = boundedEvidenceText(checked.expectedPostcondition, 1024);
+      const observedPostcondition = boundedEvidenceText(checked.observedPostcondition, 1024);
       const externalEvidenceShapeValid = external && Boolean(observationId) &&
         Boolean(expectedPostcondition) && Boolean(observedPostcondition) &&
         !/[\u0000-\u001f\u007f]/.test(expectedPostcondition ?? '') &&
