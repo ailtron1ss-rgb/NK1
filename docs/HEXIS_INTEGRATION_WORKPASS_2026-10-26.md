@@ -24,5 +24,6 @@ The GitHub Actions wrappers report failed runs but expose no job steps and retur
 - The server, not merely the UI, requires `confirmed: true` for both HMX acceptance and canonical apply. Smoke now verifies unconfirmed acceptance/application is rejected without preventing the later confirmed transition.
 - A mistyped confirmation such as `confirmed: "true"` is rejected with HTTP 400; local checkout/test execution is blocked because this container cannot resolve `github.com`, and Actions job logs currently return `BlobNotFound`.
 - GET memory/goal lists now enforce bounded integer limits and allowlisted goal status filters; temporal GET routes require real, safe-integer timestamp arguments instead of treating missing query values as zero.
+- A final route scan removed the remaining coercive materialization ID conversion; missing, blank and non-string proposal IDs now return 400 before core dispatch.
 - The operator console now shows the sealed apply receipt (status, imported/deduplicated counts, projected/deferred relationships, completeness and warnings) and per-section stage counts.
 - After a console reload, manually re-entering a stage ID enables server-validated accept/reject/apply actions; local cached stage status is not trusted, and apply still requires the explicit confirmation checkbox.
