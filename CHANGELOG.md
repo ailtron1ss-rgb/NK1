@@ -1,3 +1,12 @@
+## [NK1][Hexis-H1] Canonical evidence lineage and belief projection — 2026-10-26
+
+- Connected Hexis evidence revisions to MemoryOS2's existing independent-source lineage. Each source is recorded once in the canonical memory record; replay already present in canonical lineage becomes a non-applied audit event before confidence or trust can change.
+- Made Hexis belief state a projection of canonical NK1 memory before each revision. Rejected duplicates and protected belief conflicts no longer mutate trust, timestamps, or the set of evidence that actually contributed to the belief.
+- Kept source provenance distinct from acceptance: evidence may be retained for audit when a protected identity/autobiographical belief is not revised. Confidence changes only when evidence is independent and the revision policy applies it.
+- Added `test:hexis-memory-evidence-lineage` and wired it into `audit:hexis`; regression covers duplicate replay, snapshot/restore lineage, confidence/trust/timestamp immutability on rejected duplicates, and the live Core wiring contract.
+- **Validation status:** source and tests are authored, but Node tests have not yet run in this connector session. CI must run on the exact commit before claiming green validation.
+- **Scope:** adapter-level evidence integration only. No second memory store, database schema, or new dependency introduced.
+
 ## B274 executed-action attribution — 2026-10-26
 
 - B274 now receives the canonical selected action with every real-trial outcome. It updates a skill candidate only when the executed action matches the candidate plan's first action; otherwise the reward is rejected before trial/evaluation counters or candidate quality and promotion state change.
