@@ -1,3 +1,10 @@
+## [NK1][Hexis] Guard all Hexis POST request-body boundaries (2026-10-26)
+
+- Add a shared fail-closed record check immediately after JSON parsing on all 20 Hexis POST routes, before route-specific reads, dispatches, or writes.
+- Extend server smoke to send JSON `null` to every Hexis POST route and require HTTP 400, alongside the connector-policy boolean-coercion regressions.
+- The policy grant endpoint additionally checks boolean, bounded list, and numeric field types without coercion.
+- Validation status: source and regression tests are committed; execution is not claimed while current Actions runs expose no steps or logs.
+
 ## [NK1][Hexis] Validate connector-policy input before coercion (2026-10-26)
 
 - The HTTP policy-grant route now rejects non-record payloads, non-boolean permission flags, malformed/broad context and target lists, and non-numeric limits before calling the canonical core.
