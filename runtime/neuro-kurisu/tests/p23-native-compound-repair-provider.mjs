@@ -152,15 +152,14 @@ test('dataset path identity comparison detects inode and device substitutions', 
 });
 
 test('native dataset read binds lstat, canonical target, and opened descriptor to one file', () => {
-  assert.match(providerSource,
-    /!actualInfo\\.isFile\\(\\) \\|\\| !hasSameFileIdentity\\(linkInfo, actualInfo\\)/,
+  assert.ok(providerSource.includes('!actualInfo.isFile() || !hasSameFileIdentity(linkInfo, actualInfo)'),
     'the canonical target must match the original non-symlink lstat identity');
-  assert.match(providerSource, /await open\\(configured, flags\\)/,
+  assert.ok(providerSource.includes('await open(configured, flags)'),
     'O_NOFOLLOW must protect the configured path component that was inspected');
-  assert.match(providerSource,
-    /!hasSameFileIdentity\\(openedInfo, linkInfo\\)[\\s\\S]*?!hasSameFileIdentity\\(openedInfo, actualInfo\\)/,
+  assert.ok(providerSource.includes('!hasSameFileIdentity(openedInfo, linkInfo)') &&
+    providerSource.includes('!hasSameFileIdentity(openedInfo, actualInfo)'),
     'the opened descriptor must match both checked identities');
-  assert.doesNotMatch(providerSource, /open\\(actualPath,\\s*flags\\)/,
+  assert.ok(!providerSource.includes('open(actualPath, flags)'),
     'opening only a previously resolved target leaves the configured path race unguarded');
 });
 
