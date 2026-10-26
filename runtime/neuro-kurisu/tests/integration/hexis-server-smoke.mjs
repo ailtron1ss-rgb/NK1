@@ -71,6 +71,58 @@ try {
   });
   if (invalidDecision.status !== 400) throw new Error('hexis-hmx-decision-validation:' + invalidDecision.status);
 
+  const invalidReviewDecisionResponse = await post('/api/organism/integration/hexis/reviews/decide', {
+    reviewId:'invalid-review',itemId:'invalid-item',decision:'approve-everything',
+  });
+  if (invalidReviewDecisionResponse.status !== 400) throw new Error('hexis-review-decision-validation:' + invalidReviewDecisionResponse.status);
+
+  const reviewCreateResponse = await post('/api/organism/integration/hexis/reviews/create', {});
+  const reviewCreate = await reviewCreateResponse.json();
+  if (!reviewCreate.ok || !reviewCreate.review?.id || !Array.isArray(reviewCreate.review.items) || reviewCreate.review.items.length < 1) {
+    throw new Error('hexis-learning-review-create');
+  }
+  const approvalItem = reviewCreate.review.items.find(item => item.sourceMemoryId && !/^(identity|autobiographical) memory$/i.test(String(item.title)));
+  if (!approvalItem) throw new Error('hexis-learning-review-source-memory');
+  const approvalResponse = await post('/api/organism/integration/hexis/reviews/decide', {
+    reviewId:reviewCreate.review.id,itemId:approvalItem.id,decision:'approve',
+  });
+  const approval = await approvalResponse.json();
+  if (approvalResponse.status !== 200 || !approval.ok || !approval.result?.ok ||
+      approval.result.result?.status !== 'approved' || !approval.result.result.canonicalMemoryId ||
+      approval.result.memory?.context?.hexisLearningDecision !== 'approved') {
+    throw new Error('hexis-learning-review-canonical-approval:' + JSON.stringify(approval));
+  }
+  if (Number.isFinite(Number(approvalItem.evidence?.confidence)) &&
+      approval.result.memory?.confidence !== Number(approvalItem.evidence.confidence)) {
+    throw new Error('hexis-learning-review-approval-confidence-drift');
+  }
+  const approvalReplayResponse = await post('/api/organism/integration/hexis/reviews/decide', {
+    reviewId:reviewCreate.review.id,itemId:approvalItem.id,decision:'approve',
+  });
+  const approvalReplay = await approvalReplayResponse.json();
+  if (!approvalReplay.ok || approvalReplay.result?.disposition !== 'replayed' ||
+      approvalReplay.result?.result?.canonicalMemoryId !== approval.result.result.canonicalMemoryId) {
+    throw new Error('hexis-learning-review-replay');
+  }
+
+  const correctionReviewResponse = await post('/api/organism/integration/hexis/reviews/create', {});
+  const correctionReview = await correctionReviewResponse.json();
+  const correctionItem = correctionReview.review?.items?.find(item =>
+    item.sourceMemoryId && item.sourceMemoryId !== approvalItem.sourceMemoryId &&
+    !/^(identity|autobiographical) memory$/i.test(String(item.title)));
+  if (!correctionItem) throw new Error('hexis-learning-review-correction-source');
+  const correctedContent = 'Corrected by NK1 Hexis runtime integration smoke.';
+  const correctionResponse = await post('/api/organism/integration/hexis/reviews/decide', {
+    reviewId:correctionReview.review.id,itemId:correctionItem.id,decision:'correct',correction:correctedContent,
+  });
+  const correctionResult = await correctionResponse.json();
+  if (correctionResponse.status !== 200 || !correctionResult.ok ||
+      correctionResult.result?.result?.status !== 'corrected' ||
+      correctionResult.result?.memory?.content !== correctedContent ||
+      correctionResult.result?.memory?.id !== correctionResult.result?.result?.canonicalMemoryId) {
+    throw new Error('hexis-learning-review-runtime-correction:' + JSON.stringify(correctionResult));
+  }
+
   if (memoryIndex.memoryIndex[0]?.id) {
     const proposal = await (await post('/api/organism/integration/hexis/retention/propose', { memoryId: memoryIndex.memoryIndex[0].id, action: 'archive', reason: 'server-smoke' })).json();
     if (!proposal.ok || !proposal.proposal?.id) throw new Error('hexis-retention-propose');
