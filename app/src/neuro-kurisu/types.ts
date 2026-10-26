@@ -199,3 +199,64 @@ export interface HexisGoalActivationResponse {
   receipt?: HexisGoalRelationshipReceipt;
   error?: string;
 }
+
+export type HexisHmxIntent = "port" | "duplicate" | "telepathy" | "analysis";
+export type HexisHmxStrategy = "additive" | "authoritative" | "deliberative" | "analysis_only";
+export type HexisHmxDecision = "accept" | "reject" | "apply";
+export type HexisHmxStageStatus = "staged" | "accepted" | "rejected" | "applied";
+
+export interface HexisHmxConflict {
+  path: string;
+  kind: string;
+  detail: string;
+}
+
+export interface HexisHmxApplicationReceipt {
+  version?: number;
+  exportId?: string;
+  sourceLineageId?: string;
+  stageId?: string;
+  status: "applied" | "partial" | "noop" | string;
+  importedCount?: number;
+  deduplicatedCount?: number;
+  memoryIds?: string[];
+  createdMemoryIds?: string[];
+  semanticEdgeIds?: string[];
+  projectedRelationships?: number;
+  deferredRelationships?: number;
+  deferredSections?: Record<string, number>;
+  warnings?: string[];
+  digest?: string;
+  at?: number;
+}
+
+export interface HexisHmxStage {
+  stagingId: string;
+  exportId: string;
+  intent: HexisHmxIntent;
+  strategy: HexisHmxStrategy;
+  status: HexisHmxStageStatus;
+  conflicts: HexisHmxConflict[];
+  sectionCounts?: Record<string, number>;
+  applicationAttempts?: number;
+  application?: HexisHmxApplicationReceipt;
+}
+
+export interface HexisHmxExportResponse {
+  ok: boolean;
+  document?: Record<string, unknown>;
+  error?: string;
+}
+
+export interface HexisHmxStageResponse {
+  ok: boolean;
+  stage?: HexisHmxStage | null;
+  error?: string;
+}
+
+export interface HexisHmxStageInput {
+  document: Record<string, unknown>;
+  intent: HexisHmxIntent;
+  strategy: HexisHmxStrategy;
+}
+
