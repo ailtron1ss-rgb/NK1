@@ -1,3 +1,12 @@
+## WorkPass375 — make startup failures observable and gateway readiness truthful (2026-10-26)
+
+- **Gateway readiness:** added `/health` and `/healthz` aggregate probes for the runtime, research bridge and UI. A booting runtime (`ready:false`) or unavailable upstream returns HTTP 503 instead of falsely declaring the whole application healthy. The host binding is configurable through `SUPER_GATEWAY_HOST`, remaining loopback-only by default.
+- **Process supervision:** `super-start` now treats any critical child spawn/exit as a fatal startup failure and exits nonzero, instead of logging a missing Python/Node service and potentially reporting a successful shutdown. Root resolution in `super-start` and `super-dev` now uses `fileURLToPath()` for Windows/space-safe paths.
+- **Integration regression:** added `tools/super-gateway.test.mjs` with mock runtime/research/UI servers; it validates aggregate ready/unready health plus all three proxy routes. The test is available as `npm run test:super-gateway`, included in `audit:quick`, and wired into both unified-runtime and repository-audit CI path filters and jobs.
+- **Scope:** this strengthens local startup diagnosis and makes the gateway suitable for a container healthcheck when explicitly bound to `0.0.0.0`; it does not yet claim the full production image or clean-room install/build is verified.
+
+---
+
 ## WorkPass374 — align two-branch attribution test boundaries with shared helper (2026-10-26)
 
 - Updated the two existing B272 feedback-wiring assertions to delimit their branches at the new shared B273 outcome helper rather than the removed per-branch variables (`b273Learner` / `b338Lifecycle`). This preserves coverage of both the no-transition and world-transition routes after WorkPass373 centralised attribution logic.

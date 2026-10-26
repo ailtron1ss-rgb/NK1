@@ -1,19 +1,38 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(new URL('..', import.meta.url).pathname);
+const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const stateDir = resolve(ROOT, '.super-state');
 mkdirSync(stateDir, { recursive: true });
 
 const children = [];
 let shuttingDown = false;
+let finalExitCode = 0;
+const shutdown = (reason, exitCode = 0) => {
+  if (shuttingDown) {
+    if (exitCode !== 0) finalExitCode = exitCode;
+    return;
+  }
+  shuttingDown = true;
+  finalExitCode = exitCode;
+  console.log(`[super] shutting down (${reason}); exitCode=${finalExitCode}`);
+  for (const child of children) {
+    try { child.kill('SIGTERM'); } catch { /* child already exited */ }
+  }
+  setTimeout(() => process.exit(finalExitCode), 1200).unref();
+};
 const launch = (label, command, args, env = {}) => {
   const child = spawn(command, args, { cwd: ROOT, env: { ...process.env, ...env }, stdio: 'inherit' });
-  child.on('error', (error) => console.error(`[super] ${label} spawn error: ${error.message}`));
+  child.on('error', (error) => {
+    console.error(`[super] ${label} spawn error: ${error.message}`);
+    void shutdown(`spawn-error:${label}`, 1);
+  });
   child.on('exit', (code, signal) => {
     if (shuttingDown) return;
-    if (signal) console.log(`[super] ${label} exited via ${signal}`);
-    else if (code !== 0) { console.error(`[super] ${label} exited with ${code}`); void shutdown(`child:${label}`); }
+    const detail = signal ? `via ${signal}` : `with exit code ${code}`;
+    console.error(`[super] critical service ${label} exited unexpectedly ${detail}`);
+    void shutdown(`child-exit:${label}`, 1);
   });
   children.push(child);
   return child;
@@ -26,12 +45,5 @@ launch('research-bridge', 'python3', ['research/research_bridge.py'], { RESEARCH
 launch('ui-preview', 'npm', ['--prefix', 'app', 'run', 'preview']);
 launch('gateway', 'node', ['tools/super-gateway.mjs'], { SUPER_GATEWAY_PORT: '8080', SUPER_UI_PORT: '8081', SUPER_RUNTIME_PORT: '3310', SUPER_RESEARCH_PORT: '8765' });
 
-const shutdown = (signal) => {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  console.log(`[super] shutting down (${signal})`);
-  for (const child of children) child.kill('SIGTERM');
-  setTimeout(() => process.exit(0), 800).unref();
-};
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));

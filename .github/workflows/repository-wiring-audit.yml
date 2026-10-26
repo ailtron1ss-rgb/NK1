@@ -13,6 +13,10 @@ on:
       - "tools/super-install.mjs"
       - "tools/node-runtime-contract.mjs"
       - "tools/super-install.test.mjs"
+      - "tools/super-gateway.mjs"
+      - "tools/super-gateway.test.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-dev.mjs"
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
@@ -49,6 +53,10 @@ on:
       - "tools/super-install.mjs"
       - "tools/node-runtime-contract.mjs"
       - "tools/super-install.test.mjs"
+      - "tools/super-gateway.mjs"
+      - "tools/super-gateway.test.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-dev.mjs"
       - "app/package.json"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/tests/cognitive-dependency-runtime-wiring.mjs"
@@ -107,6 +115,9 @@ jobs:
 
       - name: Test installer uses the repository Node runtime pin
         run: npm run test:super-install
+
+      - name: Test gateway readiness and service routing
+        run: npm run test:super-gateway
 
       - name: Test repository wiring audit fixtures
         run: npm run test:repo-wiring

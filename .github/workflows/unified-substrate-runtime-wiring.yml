@@ -10,6 +10,10 @@ on:
       - 'tools/node-runtime-contract.mjs'
       - 'tools/super-install.mjs'
       - 'tools/super-install.test.mjs'
+      - 'tools/super-gateway.mjs'
+      - 'tools/super-gateway.test.mjs'
+      - 'tools/super-start.mjs'
+      - 'tools/super-dev.mjs'
       - 'runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
@@ -35,6 +39,10 @@ on:
       - 'tools/node-runtime-contract.mjs'
       - 'tools/super-install.mjs'
       - 'tools/super-install.test.mjs'
+      - 'tools/super-gateway.mjs'
+      - 'tools/super-gateway.test.mjs'
+      - 'tools/super-start.mjs'
+      - 'tools/super-dev.mjs'
       - 'runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
@@ -71,6 +79,8 @@ jobs:
           package-manager-cache: false
       - name: Verify installer follows the pinned Node runtime
         run: npm run test:super-install
+      - name: Verify gateway readiness and service routing
+        run: npm run test:super-gateway
       - name: Restore and runtime-wiring regression
         run: npm run test:unified-substrate-runtime-wiring --prefix runtime/neuro-kurisu
       - name: Validate conservative live cognitive resource allocation
