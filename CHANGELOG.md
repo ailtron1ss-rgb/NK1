@@ -1,3 +1,10 @@
+## [NK1][Hexis-H8] Surface domain-level rejection in the operator console — 2026-10-26
+
+- The Hexis console now inspects both direct API `ok: false` responses and Core's nested `result.ok: false` domain result before displaying an operation as successful.
+- Failed corrections, stale-review rejections, or lifecycle mutation conflicts now show their real error text instead of a misleading `OK` status when an endpoint returns HTTP 200.
+- Added an integration regression to the existing Hexis learning-review gate that asserts the error decoder and success-message ordering remain wired in the UI.
+- **Validation status:** registered source-level regression; UI build/test execution is still blocked by the current GitHub Actions runner initialization failures.
+
 ## [NK1][Hexis-H7] Recover interrupted learning-review corrections — 2026-10-26
 
 - Learning-review correction now uses a stable MemoryFabric command ID. If the content revision was committed but the process stopped before recording review provenance or closing the review item, the next attempt recognizes the exact generated revision by reviewed revision group, parent ID, source `hexis-learning-review`, and exact correction text.
