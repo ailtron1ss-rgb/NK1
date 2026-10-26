@@ -285,6 +285,37 @@ Object.defineProperty(accessorStage, 'exportId', {
 assert.equal(isValidHmxApplyReceipt(accessorStage, receipt), false);
 assert.equal(stageGetterExecuted, false, 'stage validation must not execute accessors');
 
+// Padded identity fields must fail even when an attacker recomputes both digests.
+for (const field of ['sourceLineageId', 'stagingId']) {
+  const paddedIdentityStage = structuredClone(coherentAppliedStage);
+  paddedIdentityStage[field] = ' ' + paddedIdentityStage[field] + ' ';
+  paddedIdentityStage.digest = computeHmxStageDigest(paddedIdentityStage);
+  paddedIdentityStage.lifecycleDigest = '';
+  paddedIdentityStage.application = undefined;
+  const paddedIdentityReceipt = makeReceipt({
+    exportId: paddedIdentityStage.exportId,
+    sourceLineageId: paddedIdentityStage.sourceLineageId,
+    stageId: paddedIdentityStage.stagingId,
+    stageDigest: paddedIdentityStage.digest,
+    status: 'applied',
+    complete: true,
+    candidateMemoryRecords: 1,
+    uniqueMemoryRecords: 1,
+    importedCount: 1,
+    deduplicatedCount: 0,
+    projectedRelationships: 0,
+    deferredRelationships: 0,
+    memoryIds: ['memory-1'],
+    createdMemoryIds: ['memory-1'],
+    semanticEdgeIds: [],
+    deferredSections: {},
+  });
+  paddedIdentityStage.application = paddedIdentityReceipt;
+  refreshHmxStageLifecycleDigest(paddedIdentityStage);
+  assert.equal(isValidHmxApplyReceipt(paddedIdentityStage, paddedIdentityReceipt), false,
+    field + ' must be canonical even when stage and receipt digests are recomputed');
+}
+
 // Section names are external input. "__proto__" must survive as an ordinary deferred key.
 const prototypeSectionStage = {
   status: 'accepted',
