@@ -1,3 +1,14 @@
+## Compound skill execution finalizer and architecture smoke contract — 2026-10-26
+
+- Routed compound skill step dispatch through `OrganismCore.executeTool` instead of calling `ActionGateway` directly, preserving one canonical alias-normalization/finalization path.
+- Extended the wrapper with bounded finalization context keys and passed `Object.keys(runtimeInput)`; removed the separate compound-step finalizer call to avoid two competing finalization owners.
+- Kept the idempotency boundary: keyed receipts are finalized by `ActionGateway`; unkeyed/non-replay actions finalize through the core wrapper and checkpoint path.
+- Updated the server smoke test to validate that the cognitive architecture's subsystem/flow arrays agree with their own validation counts. This avoids a stale hard-coded flow count blocking the test when the canonical map adds valid edges, while still requiring 14+ subsystems, 22+ flows, successful validation and a finite runtime snapshot.
+
+Validation: fresh CI runs for `test:workpass97:planner-route`, `test:workpass69:server-smoke`, recovered runtime regressions, and typecheck are pending on the new head.
+
+---
+
 ## Compose workflow filter repair — 2026-10-26
 
 - Removed the root `package-lock.json` path from both path-filter lists in `.github/workflows/nk1-compose-smoke.yml`: the repository does not contain that file, and the repository wiring audit correctly rejected the dangling workflow reference.
