@@ -171,7 +171,10 @@ export function HexisControlConsole() {
       neuroApi.hexisHmxGoalDecide(goalProposalId, decision));
     const proposal = (result as any)?.proposal;
     if (proposal?.id) {
-      setGoalProposals(current => current.map(row => row.id === proposal.id ? proposal : row));
+      // The current queue is filtered by its requested status; reviewed rows leave the pending queue.
+      const remaining = goalProposals.filter(row => row.id !== proposal.id);
+      setGoalProposals(remaining);
+      setGoalProposalId(String(remaining[0]?.id ?? ""));
     }
   };
 
@@ -181,9 +184,16 @@ export function HexisControlConsole() {
       neuroApi.hexisHmxGoalMaterialize(goalProposalId, true));
     const proposal = (result as any)?.proposal;
     if (proposal?.id) {
-      setGoalProposals(current => current.map(row => row.id === proposal.id ? proposal : row));
       setGoalProposalStatus("materialized");
       setGoalMaterializeConfirmed(false);
+      try {
+        const refreshed = await neuroApi.hexisHmxGoalProposals("materialized", 64);
+        const rows = Array.isArray((refreshed as any)?.proposals) ? (refreshed as any).proposals : [];
+        setGoalProposals(rows);
+        setGoalProposalId(String(rows.find((row: any) => row.id === proposal.id)?.id ?? rows[0]?.id ?? ""));
+      } catch (error) {
+        setMessage(`Goal was materialized, but the materialized queue could not refresh: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
   };
 
