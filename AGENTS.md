@@ -23,6 +23,8 @@
 >
 > Never treat filesystem checks as a substitute for an OS sandbox. Keep the source stack out of `main` until separately verified release synchronization is authorized and complete.
 
+> **WorkPass366:** root `super-start`/`super-dev` now use the shared absolute `RUNTIME_SERVER_PATH` from `tools/super-paths.mjs`; root `package-lock.json` and `test:super-launch` are wired into WorkPass362 clean-build CI. Exact-head root `npm ci`/launcher contract and full build must pass before this pass is marked green.
+
 ## Project objective
 
 Build **NeuroCore** as one cohesive, memory-rich, learning and adaptive system. The repository retains the historical `Neuro-Kurisu` name in paths and older documents; that name is implementation lineage, not a reason to fork the architecture.
