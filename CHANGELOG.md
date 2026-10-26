@@ -1,3 +1,12 @@
+## Memory doctor future-timestamp regression fixture — 2026-10-26
+
+- Corrected the P318 CLI fixture to place the damaged observation timestamp ten minutes in the future. The memory doctor intentionally flags timestamps more than five minutes ahead; the previous one-minute fixture did not cross that contract threshold.
+- The runtime check and its five-minute boundary remain unchanged. The fixture still asserts capped issue output, detection of hash mismatch/dangling revision/dangling links, read-only behavior and a future-evidence count.
+
+Validation: rerun P318 CLI, core regression validation and the full repository contract on the updated head.
+
+---
+
 ## Compound skill execution finalizer and architecture smoke contract — 2026-10-26
 
 - Routed compound skill step dispatch through `OrganismCore.executeTool` instead of calling `ActionGateway` directly, preserving one canonical alias-normalization/finalization path.
