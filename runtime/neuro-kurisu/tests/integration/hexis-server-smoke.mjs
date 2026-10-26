@@ -31,6 +31,14 @@ try {
     if (!belief.ok || !belief.result?.audit) throw new Error('hexis-belief-revise');
     const duplicate = await (await post('/api/organism/integration/hexis/belief/revise', { memoryId: memoryIndex.memoryIndex[0].id, stance: 'supports', context: 'server-smoke', evidence: { ref: 'server-smoke-evidence', trust01: .8 } })).json();
     if (!duplicate.ok || duplicate.result?.audit?.applied !== false) throw new Error('hexis-belief-dedupe');
+    const invalidBeliefStanceResponse = await post('/api/organism/integration/hexis/belief/revise', {
+      memoryId:memoryIndex.memoryIndex[0].id,stance:'support-ish',evidence:{ref:'invalid-stance',trust01:.8},
+    });
+    if (invalidBeliefStanceResponse.status !== 400) throw new Error('hexis-belief-stance-validation:' + invalidBeliefStanceResponse.status);
+    const missingBeliefTargetResponse = await post('/api/organism/integration/hexis/belief/revise', {
+      memoryId:'missing-canonical-memory',stance:'supports',evidence:{ref:'missing-target',trust01:.8},
+    });
+    if (missingBeliefTargetResponse.status !== 404) throw new Error('hexis-belief-missing-target-status:' + missingBeliefTargetResponse.status);
   }
   const exportRes = await (await fetch(`${base}/api/organism/integration/hexis/hmx/export`)).json();
   if (!exportRes.ok || exportRes.document?.hmx_version !== '1.7' || !Array.isArray(exportRes.document?.sections?.memories)) throw new Error('hexis-hmx-export');
