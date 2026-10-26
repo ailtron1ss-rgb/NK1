@@ -162,6 +162,8 @@ export function HexisControlConsole() {
     const result = await run("Accept staged HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"));
     const stage = (result as any)?.stage;
     setHmxAccepted(stage?.status === "accepted");
+    // A preselected apply checkbox must not carry across the acceptance boundary.
+    setHmxApplyConfirmed(false);
   };
 
   const rejectHmx = async () => {
