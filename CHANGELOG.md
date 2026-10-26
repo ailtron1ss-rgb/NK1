@@ -1,3 +1,9 @@
+## P26 CI replay quality gates — 2026-10-26
+
+- Added the sequential continual-learning benchmark and deterministic multi-seed replay-policy sweep as explicit steps in the P26 Learning Validation workflow, alongside the new bounded interleaved replay contract.
+- This closes a coverage gap: the interleaved API contract alone could pass while the deeper sweep still failed new-task retention under dense replay.
+- The current code trains each newly observed experience after an admitted replay update, preserving the new-task update's priority. The sweep must pass on the exact workflow head before any replay-quality improvement is claimed.
+
 ## P26 replay ordering and signed-shadow candidate identity — 2026-10-26
 
 - Reordered admitted interleaved rehearsal so each current experience is trained after its historical sample. This protects new-task plasticity when replay is dense without bypassing contradiction screening or the replay-update budget.
