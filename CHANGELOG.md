@@ -1,3 +1,9 @@
+## WorkPass383 — Make Hexis server smoke assert the canonical review contract (2026-10-26)
+
+- Fixed a brittle integration assertion that required every approved supporting-evidence review to change confidence. A belief already at the policy ceiling can be validly approved with no numerical delta.
+- The smoke now requires the canonical decision result and audit ID, then checks that its reported confidence and `confidenceChanged` flag exactly match persisted MemoryOS2 state. This still fails if the generic route bypasses the canonical review gate.
+- Validation is pending on the new exact head; no PASS is inferred from an earlier test run.
+
 ## WorkPass382 — Bind Hexis review decisions to canonical evidence digest (2026-10-26)
 
 - Re-run the strict Hexis evidence adapter at review-decision time, recalculate the canonical SHA-256 digest, and compare source identity, stance, source reference, label, author, note, confidence and observation time with the exact MemoryOS2 evidence receipt before approval.
