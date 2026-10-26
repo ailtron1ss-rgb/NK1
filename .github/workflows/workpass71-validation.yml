@@ -110,6 +110,12 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Hexis HMX applied-receipt integrity regression
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-projector-idempotent-replay
+      - name: Hexis HMX import bounds, atomic staging, and canonical-memory integration
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-adaptation
+      - name: Hexis HMX import API and persistence smoke
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
       - name: Recovered rebuild, causal replay, avatar storage, and Live2D regressions
         run: npm run test:rebuild-recovered
       - name: P23 persisted learning restore integrity
