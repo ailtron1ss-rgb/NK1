@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** fix/outcome-projection-index-restore-2026-10-26  
 **База:** current consolidated PR #236 branch; updated through WorkPass428 commits  
-**Статус:** код и регрессии опубликованы; подтверждённого PASS на последнем head нет. На предыдущем видимом head `51d47591fc5391885389621885005457a6172804` пять доступных WorkPass71/core regression workflow завершились `failure` (runs `40349232624`, `40349232786`, `40349232574`, `40349232670`, `40349232563`), но job steps пусты, а log requests возвращают `BlobNotFound`. Для новейшего head отдельный HMX run не виден в доступном списке; exact cause остаётся неподтверждённой. Ранее найденный test-fixture mismatch исправлен; после него добавлены semantic-edge uniqueness, bounded IDs/warnings, scalar deferred-section, deep-tree bypass и cross-store rollback/retry регрессии.
+**Статус:** код и регрессии опубликованы; подтверждённого PASS на последнем head `fa50eba0b1055d4de12e67ad65b63e34aa0fe8fc` нет. Последний полностью видимый run set на head `fa2d0fbd13c437a2ba224d3fabf758b8310dce6f` дал `failure` по 14 workflow: HMX `40349924802`, Core `40349924811`, P26 `40349924459`, metrics `40349924789` и смежные WorkPass-гейты. У четырёх перечисленных jobs шаги пусты, log requests возвращают `BlobNotFound`; точную причину кода/тестов установить нельзя. Позднейшие изменения включают ограничение полного JSON-tree бюджета, preflight типа известных HMX-секций, scalar deferred handling и cross-store rollback/retry; новый head требует диагностируемого прогона.
 
 ## Почему потребовался отдельный проход
 
