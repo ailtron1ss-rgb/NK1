@@ -93,6 +93,8 @@ test('final release verifier rejects generated Python cache by default', async t
   assert.equal(result.status, 1, result.stdout + result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.generatedPythonCachePolicy, 'strict');
+  assert.ok(report.summary.treeFailures >= 1, 'tree hygiene failures must appear in the summary');
+  assert.ok(report.summary.failed >= 1, 'a failed final verifier must not report zero failures');
   assert.ok(report.errors.some(error => error.includes('generated-python-artifact:research/__pycache__/fixture.cpython-312.pyc')));
 });
 
@@ -103,6 +105,8 @@ test('CI can ignore only transient Python caches after research smoke', async t 
   const report = JSON.parse(result.stdout);
   assert.equal(report.ok, true);
   assert.equal(report.generatedPythonCachePolicy, 'allow-transient-caches');
+  assert.equal(report.summary.treeFailures, 0);
+  assert.equal(report.summary.failed, 0);
   assert.ok(report.warnings.some(warning => warning.includes('generated-python-cache-ignored:research/__pycache__/fixture.cpython-312.pyc')));
   assert.equal(report.checks.find(check => check.id === 'release-metadata')?.pass, true);
 });
