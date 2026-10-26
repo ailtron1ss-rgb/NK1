@@ -1,9 +1,11 @@
 ## Latest integration checkpoint — WorkPass336 signed outcome boundary (2026-10-26)
 
-- **Integration branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`, with current base `d43846db3451caae5062cb4b5c92533765b60f21` incorporated as a merge parent at `d43846db3451caae5062cb4b5c92533765b60f21` HEAD `d43846db3451caae5062cb4b5c92533765b60f21`. `main` and the release ZIP remain unchanged.
+- **Latest synchronized base:** `e13255a52dbbac5f5dd5b300f1767fc5c748e707`; the branch includes both this base's evaluator-origin attestation work and the signed-outcome artifact hardening below.
+
+- **Integration branch:** `work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1`, with current base `e13255a52dbbac5f5dd5b300f1767fc5c748e707` incorporated as a merge parent at `e13255a52dbbac5f5dd5b300f1767fc5c748e707` HEAD `e13255a52dbbac5f5dd5b300f1767fc5c748e707`. `main` and the release ZIP remain unchanged.
 - **Code/test commits:** signed outcome trust-boundary runtime fix `4c817208c27d623474e08b6db1dbf2e81cc82991`; regression additions `05fad9f67960af1d1cb9f7ed535aba3e49b2973f`. The current combined tree preserves base WorkPass335 ledger preflight and WorkPass339 approval-signature hardening as well as this branch's strict revision gate and proposal producer.
 - **Runtime change:** `VerifiedOutcomeArtifact.ts` requires exact plain-data artifact/payload records, snapshots property descriptors without invoking getters, rejects extra fields from signed schema v1, and verifies only canonical Base64 encoding for 64-byte Ed25519 signatures.
-- **Regressions:** junk-prefixed, truncated and malformed-padding signatures; payload and envelope getters; unknown payload keys.
+- **Regressions:** junk-prefixed, truncated and malformed-padding signatures; payload and envelope getters; unknown payload keys. The synchronized base also retains the independent-evaluator-origin capability and its regression in `docs/WORKPASS336_EVALUATOR_ORIGIN_ATTESTATION_RU.md`.
 - **Validation:** the new combined checkpoint awaits exact-HEAD Actions. Earlier WorkPass335 and WorkPass339 successes are historical evidence only, not a replacement for current WorkPass336 checks.
 - **Progress evidence:** scores remain unchanged. No measured learning/transfer uplift or production readiness is claimed; external holdout, device/voice/Live2D, soak, licensing and reproducible release-archive gates remain open.
 

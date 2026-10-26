@@ -22,6 +22,17 @@ Validation PASS on exact tested HEAD `2aa76acb545ac1a485962f4016c6586766424a0a`:
 
 ---
 
+## WorkPass336 — evaluator-origin attestation before ledger commit (2026-10-26)
+
+- **Gap:** the evaluator fingerprint is a public SHA-256 integrity digest, not proof of origin. A caller that copied the result could alter a syntactically valid execution ID and recompute the digest while retaining plausible manifest/plan labels.
+- **Runtime:** the evaluator now registers each exact returned result envelope in a module-private `WeakMap` with its original fingerprint. The ledger commit boundary requires this in-process capability after schema, manifest, plan and existing-row preflight checks but before the first mutation.
+- **Regression:** copy a genuine result, substitute `forged-execution-run`, recompute the digest, and attempt to write it. The commit rejects with `independent-evaluation-ledger-evaluator-attestation-missing`; no outcome row is written. The original evaluator result still follows the valid two-row path.
+- **Trust boundary:** the capability survives only in the same process and only on the registered result object. It is not a digital signature and does not authenticate serialized/cross-process reports; those must use a separate trusted signed-evidence verifier.
+- **Validation:** code and regression are committed. Current exact-head CI remains pending because the GitHub Actions connector has not returned runs for the newer WorkPass335/336 commits; the older passing snapshot b6f4335 does not cover this addition.
+- **Checkpoint:** `docs/WORKPASS336_EVALUATOR_ORIGIN_ATTESTATION_RU.md`.
+
+---
+
 ## WorkPass335 — full preflight for outcome-ledger writes (2026-10-26)
 
 - **Defect:** `recordIndependentEvaluationOutcomes` previously checked some execution-binding fields only for truthiness. A malformed but truthy non-string `runId` could get as far as `VerifiedOutcomeLedger.record`, where its evidence reference was rejected. If malformed data arrived in a later row, an earlier row could already have been committed.

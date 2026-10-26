@@ -116,6 +116,11 @@ function canonical(value: unknown, ancestors = new Set<object>()): string {
   }
 }
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+// Capability-style in-process provenance: a plain digest is public and can be
+// recomputed by callers after forging fields. Only result envelopes returned by
+// this evaluator instance may cross the ledger commit boundary. Persisted or
+// cross-process reports require a separate trusted signed-evidence verifier.
+const independentEvaluationAttestations = new WeakMap<object, string>();
 async function runWithServiceDeadline<T>(
   label: string,
   timeoutMs: number,
@@ -480,7 +485,9 @@ export function createIndependentSkillCandidateEvaluator(
     };
     remainingEvaluationMs();
     const evaluationFingerprint = sha256(canonical(evaluation));
-    return { payloadFingerprint, evaluationFingerprint, evaluation };
+    const result = { payloadFingerprint, evaluationFingerprint, evaluation };
+    independentEvaluationAttestations.set(result, evaluationFingerprint);
+    return result;
   };
 }
 
@@ -524,8 +531,9 @@ export function recordIndependentEvaluationOutcomes(
   observedAt = Date.now(),
 ): { accepted: number } {
   const evaluation = result?.evaluation;
-  if (!evaluation?.provenance || !(authority?.ledger instanceof VerifiedOutcomeLedger) ||
-      !isDigest(result?.payloadFingerprint) || !isDigest(result?.evaluationFingerprint) ||
+  if (!result || typeof result !== 'object' || !evaluation?.provenance ||
+      !(authority?.ledger instanceof VerifiedOutcomeLedger) ||
+      !isDigest(result.payloadFingerprint) || !isDigest(result.evaluationFingerprint) ||
       !Array.isArray(evaluation.provenance.runBindings) || !Number.isFinite(observedAt) || observedAt <= 0) {
     throw new Error('independent-evaluation-ledger-commit-invalid');
   }
@@ -646,6 +654,13 @@ export function recordIndependentEvaluationOutcomes(
     if (existing.some(row => row.taskId === run.taskId && row.method === run.method && row.seed === run.seed)) {
       throw new Error('independent-evaluation-ledger-cell-already-recorded');
     }
+  }
+  // Schema, manifest and run-plan checks above intentionally run first to retain
+  // diagnostic specificity. Before any writes, still require an unforgeable
+  // in-process capability from this module; recomputing SHA-256 must not turn a
+  // copied or caller-manufactured JSON envelope into trusted evaluator output.
+  if (independentEvaluationAttestations.get(result) !== result.evaluationFingerprint) {
+    throw new Error('independent-evaluation-ledger-evaluator-attestation-missing');
   }
   for (const item of pending) {
     const result = recordPlannedLearningOutcome(authority.ledger, item.plan, item.runId, {

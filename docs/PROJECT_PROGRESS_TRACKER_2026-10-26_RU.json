@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and historical CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass339 itself passed the current PR merge result (4a41db0): runtime typecheck, unified integration suite, P23_VERSIONED_SKILL_CANDIDATE_STORE and progress-ledger integrity. No score uplift is inferred from a security hardening patch. WorkPass336 combines the signed outcome artifact trust-boundary patch with the current base; exact combined-head CI is pending. Scores remain unchanged and no empirical learning uplift is inferred from security hardening.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Historical WorkPass335 and WorkPass339 test evidence remains recorded in CHANGELOG. WorkPass336 synchronizes the signed-outcome artifact trust-boundary patch with newer base changes for evaluator-origin attestation; exact-combined-HEAD CI is pending, so previous run IDs and tested-head fields are not reused as current evidence. Scores remain unchanged; no empirical learning uplift is claimed.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -135,9 +135,10 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "Family-aware evaluation and whole-run time-budget enforcement are implemented, but do not prove improved generalization on external held-out tasks",
-        "Task-family labels must continue to be bound to the trusted manifest and verified execution evidence, not inferred from task IDs or candidate reports",
-        "Need independently measured tool-use/transfer improvement and regression resistance before raising learning-effectiveness scores"
+        "WorkPass335/336 added runtime preflight and in-process evaluator-origin capability, but the newer code/test head still requires exact-head CI confirmation",
+        "Family-aware evaluation and bounded deadlines improve evidence integrity, not measured generalization on external held-out tasks",
+        "Serialized or cross-process evidence still requires separate trusted signed-receipt verification",
+        "Need independently measured tool-use/transfer uplift and regression resistance before raising learning-effectiveness scores"
       ],
       "evidence": [
         "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts",
@@ -285,24 +286,22 @@
     "date": "2026-10-26",
     "branch": "work/nk1-workpass335-learning-gate-rebased-2026-10-26-r1",
     "codeCommit": "4c817208c27d623474e08b6db1dbf2e81cc82991",
-    "summary": "Merged the signed-outcome evidence hardening onto the latest cognitive-progress base while preserving WorkPass339 approval-signature and WorkPass335 ledger-preflight changes. Exact plain-data schema snapshots prevent getters; signed outcome signatures require canonical Ed25519 Base64.",
+    "regressionCommit": "05fad9f67960af1d1cb9f7ed535aba3e49b2973f",
+    "summary": "Synchronize the signed-outcome evidence trust-boundary hardening onto the latest cognitive-progress base, preserving evaluator-origin attestation, ledger preflight, and canonical skill promotion/rollback signatures. Exact plain-data schema snapshots prevent getters; v1 payloads reject extra fields and Ed25519 signatures require canonical Base64.",
     "testsAdded": [
-      "junk-prefixed, truncated and malformed-padding signed-outcome signatures rejected",
-      "payload accessors rejected without executing getter bodies",
-      "artifact-envelope accessors rejected without executing getter bodies",
-      "unknown fields rejected from the schemaVersion 1 signed payload",
-      "valid signed outcome fixture continues to ingest after rejected malformed artifacts"
+      "signed outcome signatures with leading junk, truncated padding, or malformed padding rejected",
+      "payload accessors rejected without invoking getter bodies",
+      "artifact-envelope accessors rejected without invoking getter bodies",
+      "unknown fields rejected from schemaVersion 1 payloads",
+      "valid signed outcome fixture remains ingestible after malformed artifacts are denied",
+      "upstream in-process evaluator-origin and ledger preflight regressions preserved in merged tree"
     ],
-    "validationStatus": "PENDING exact combined HEAD CI. WorkPass335 and WorkPass339 historical PASS evidence is retained in CHANGELOG; it does not validate this combined WorkPass336 tree.",
+    "validationStatus": "PENDING exact combined HEAD CI. Historical WorkPass335/WorkPass339 PASS evidence is not validation of the combined WorkPass336 tree.",
     "progressPercentagesChanged": false,
-    "testedMergeCommit": "4a41db0",
-    "testedBaseSha": "3e22a06c000337f10d15d8583eb8448882c1b063",
-    "testedHeadSha": "0a0f987f9035b99012b36b304029ff625dda1d7f",
-    "workflowRuns": [
-      40253553153,
-      40253553155,
-      40253553224
-    ]
+    "testedMergeCommit": null,
+    "testedBaseSha": null,
+    "testedHeadSha": null,
+    "workflowRuns": []
   },
   "recentEngineeringPasses": [
     {
@@ -312,5 +311,7 @@
       "codeCommit": "02372e4949c2094b5cd1a3c4420aeda86a2fdfa1",
       "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending."
     }
-  ]
+  ],
+  "latestUnverifiedCodeTestHead": "bb7a76c55d83ff36358ded56e966b880b38cc7d9",
+  "branchHeadBeforeTrackerCommit": "5e05c44f2a605c5e33309f47946cf335eedd3729"
 }
