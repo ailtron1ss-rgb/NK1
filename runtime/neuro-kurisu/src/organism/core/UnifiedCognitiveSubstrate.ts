@@ -98,6 +98,77 @@ export const defaultUnifiedCognitiveSubstrate = (): UnifiedCognitiveSubstrateSta
   lastReason:'initial',
 });
 
+
+export interface UnifiedCognitiveWorkPolicy {
+  maxCounterfactualBranches:number;
+  allowMatchedCounterfactual:boolean;
+  reason:string;
+}
+
+/** Governs optional simulations only; OrganismCore remains the action arbiter. */
+export function resolveUnifiedCognitiveWorkPolicy(
+  state:UnifiedCognitiveSubstrateState,
+  requestedMaxBranches:number,
+):UnifiedCognitiveWorkPolicy {
+  const rejected = (reason:string):UnifiedCognitiveWorkPolicy => ({
+    maxCounterfactualBranches:0, allowMatchedCounterfactual:false, reason,
+  });
+  if (!Number.isSafeInteger(requestedMaxBranches) || requestedMaxBranches < 0) {
+    return rejected('invalid-resource-budget');
+  }
+  if (requestedMaxBranches === 0) return rejected('upstream-budget-zero');
+  if (!isRecord(state)) return rejected('invalid-substrate-state');
+  const root = state as unknown as UnknownRecord;
+  const nested = ['coupling','provenance','resources','world','prediction'];
+  const sections = nested.map(key => own(root, key));
+  if (own(root, 'version') !== 1 || sections.some(value => !isRecord(value))) {
+    return rejected('invalid-substrate-state');
+  }
+  const coupling=section(root,'coupling'), provenance=section(root,'provenance');
+  const resources=section(root,'resources'), world=section(root,'world');
+  const prediction=section(root,'prediction');
+  const m = {
+    readiness:own(coupling,'actionReadiness01'),
+    grounding:own(coupling,'predictionGrounding01'),
+    unknown:own(provenance,'unknown01'),
+    evidence:own(provenance,'evidenceCoverage01'),
+    battery:own(resources,'battery01'),
+    compute:own(resources,'computeCapacity01'),
+    efficiency:own(resources,'efficiency01'),
+    scarcity:own(resources,'scarcity01'),
+    ram:own(resources,'ramPressure01'),
+    thermal:own(resources,'thermal01'),
+    conflict:own(world,'conflict01'),
+    error:own(prediction,'error01'),
+    priority:own(prediction,'priority01'),
+  };
+  if (Object.values(m).some(value =>
+        typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) ||
+      !['openCount','agingCount','expiredCount'].every(key => {
+        const value=own(prediction,key);
+        return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+      })) return rejected('invalid-substrate-state');
+
+  if (m.readiness < .25 || m.conflict > .9 || m.scarcity > .94 || m.thermal > .98 ||
+      m.battery < .05 || m.compute < .1 || m.efficiency < .1 || m.error > .98 || m.priority > .98) {
+    return rejected('substrate-critical-pressure');
+  }
+  const constrained = m.readiness < .55 || m.grounding < .45 || m.error > .75 ||
+    m.priority > .8 || m.unknown > .75 || m.battery < .25 || m.compute < .35 ||
+    m.efficiency < .35 || m.scarcity > .75 || m.ram > .85 || m.thermal > .9;
+  const maxCounterfactualBranches = constrained ? Math.min(1, requestedMaxBranches) : requestedMaxBranches;
+  const allowMatchedCounterfactual = maxCounterfactualBranches > 0 &&
+    m.readiness >= .45 && m.grounding >= .5 && m.error <= .65 && m.priority <= .7 &&
+    m.evidence >= .3 && m.unknown <= .7 && m.battery >= .2 && m.compute >= .5 &&
+    m.efficiency >= .4 && m.scarcity <= .8 && m.conflict <= .5;
+  return {
+    maxCounterfactualBranches,
+    allowMatchedCounterfactual,
+    reason: (constrained ? 'substrate-budget-constrained' : 'substrate-budget-open') + ';' +
+      (allowMatchedCounterfactual ? 'matched-counterfactual-grounded' : 'matched-counterfactual-withheld'),
+  };
+}
+
 /** Bounded cross-system projection. It never owns canonical domain state. */
 export class UnifiedCognitiveSubstrate {
   private state = defaultUnifiedCognitiveSubstrate();

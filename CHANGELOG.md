@@ -1,3 +1,16 @@
+# WorkPass356 — wire the unified substrate into the live organism runtime (2026-10-26)
+
+- [INTEGRATED] Connect the cross-system substrate to the actual OrganismRuntime cycle using Core state, world snapshot, prediction debt, device telemetry and cognitive resource allocation.
+- [PERSISTENCE] Load the versioned sidecar at startup, persist material substrate updates and flush the final snapshot during shutdown; corrupt restore is recoverable and journaled.
+- [GOVERNANCE] Use evidence/resource state only to constrain optional counterfactual branches and matched projections. Core action selection remains authoritative.
+- [SAFETY] Validate prediction debt before resource allocation; rejected substrate input does not abort the canonical runtime cycle and disables optimistic optional work.
+- [REGRESSION] Add runtime wiring/policy contracts and extend restart-persistence to verify sidecar flush plus restore.
+- [CI] Add the runtime wiring test to WorkPass331 and isolate push versus pull_request concurrency groups to prevent cross-event cancellation.
+- [VALIDATION] The previous SHA passed substrate/typecheck/smoke/autonomy/dialogue/background-clock/restart steps but its workflow conclusion was cancelled by concurrent events; this WorkPass356 SHA needs a fresh exact-head run.
+- [RELEASE] main and the published release ZIP remain unchanged pending the stacked PR sequence.
+
+---
+
 # WorkPass355 — harden unified cognitive substrate state boundaries (2026-10-26)
 
 - [FIXED] Replace broad persisted-state spreading with an allow-listed restore path; ignore prototype/accessor properties, normalize text, guard schema versions and sanitize counters/metrics.

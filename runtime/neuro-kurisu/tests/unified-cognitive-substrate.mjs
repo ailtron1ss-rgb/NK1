@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { OrganismResourceAllocator, defaultOrganismResourceAllocation } from '../src/organism/system/OrganismResourceAllocator.ts';
-import { UnifiedCognitiveSubstrate, defaultUnifiedCognitiveSubstrate } from '../src/organism/core/UnifiedCognitiveSubstrate.ts';
+import { UnifiedCognitiveSubstrate, defaultUnifiedCognitiveSubstrate, resolveUnifiedCognitiveWorkPolicy } from '../src/organism/core/UnifiedCognitiveSubstrate.ts';
 const alloc=new OrganismResourceAllocator(); alloc.restore(defaultOrganismResourceAllocation());
 const a=alloc.decide({battery01:.85,thermal01:.15,ramPressure01:.18,uncertainty01:.7,predictionError01:.65,goalPressure01:.5,novelty01:.8,socialNeed01:.25,grounding01:.55,learningOpportunity01:.75,languageDemand01:0,externalInput:false});
 assert.ok(a.computeCapacity01>0.5);
@@ -130,5 +130,23 @@ assert.deepEqual(boundaryGuard.snapshot(), beforeRejectedInputs);
 const invalidInputTick = makeValidInput(Number.MAX_SAFE_INTEGER + 1);
 assert.throws(() => boundaryGuard.integrate(invalidInputTick), /tick/);
 assert.deepEqual(boundaryGuard.snapshot(), beforeRejectedInputs);
+
+
+const groundedPolicy = resolveUnifiedCognitiveWorkPolicy(out, 3);
+assert.equal(groundedPolicy.maxCounterfactualBranches, 3);
+assert.equal(groundedPolicy.allowMatchedCounterfactual, true);
+assert.match(groundedPolicy.reason, /substrate-budget-open/);
+const fallbackPolicy = resolveUnifiedCognitiveWorkPolicy(defaultUnifiedCognitiveSubstrate(), 3);
+assert.equal(fallbackPolicy.maxCounterfactualBranches, 1);
+assert.equal(fallbackPolicy.allowMatchedCounterfactual, false);
+const criticalPolicyState = structuredClone(out);
+criticalPolicyState.coupling.actionReadiness01 = 0.2;
+const criticalPolicy = resolveUnifiedCognitiveWorkPolicy(criticalPolicyState, 3);
+assert.equal(criticalPolicy.maxCounterfactualBranches, 0);
+assert.equal(criticalPolicy.allowMatchedCounterfactual, false);
+assert.match(criticalPolicy.reason, /critical-pressure/);
+const invalidBudgetPolicy = resolveUnifiedCognitiveWorkPolicy(out, Number.NaN);
+assert.equal(invalidBudgetPolicy.maxCounterfactualBranches, 0);
+assert.equal(invalidBudgetPolicy.reason, 'invalid-resource-budget');
 
 console.log('UNIFIED_SUBSTRATE=PASS',JSON.stringify({capacity:a.computeCapacity01,hotCapacity:hot.computeCapacity01,selfWorld:out.coupling.selfWorld01,predictionGrounding:out.coupling.predictionGrounding01}));

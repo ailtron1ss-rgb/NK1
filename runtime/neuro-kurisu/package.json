@@ -569,6 +569,7 @@
     "audit:learning-investment": "node --experimental-strip-types tools/learning-investment-audit.mjs",
     "audit:pass112": "npm run typecheck && npm run test:big-pass-112 && npm run test:big-pass-112:migration && npm run audit:learning-investment && npm run test:big-pass-111 && npm run test:big-pass-111:migration && npm run audit:self-directed-learning",
     "test:substrate": "node --experimental-strip-types tests/unified-cognitive-substrate.mjs",
+    "test:substrate-runtime-wiring": "node --experimental-strip-types tests/unified-substrate-runtime-wiring.mjs",
     "test:anti-decoration": "node --experimental-strip-types tests/anti-decoration-gates.mjs",
     "audit:substrate": "node scripts/audit-substrate.mjs",
     "test:big-pass-113": "node --experimental-strip-types tests/big-pass-113-system.mjs",

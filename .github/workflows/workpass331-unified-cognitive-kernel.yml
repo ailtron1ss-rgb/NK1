@@ -27,6 +27,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - "runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts"
       - "runtime/neuro-kurisu/tests/unified-cognitive-substrate.mjs"
+      - "runtime/neuro-kurisu/tests/unified-substrate-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
       - ".nvmrc"
       - "package.json"
@@ -62,6 +63,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - "runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts"
       - "runtime/neuro-kurisu/tests/unified-cognitive-substrate.mjs"
+      - "runtime/neuro-kurisu/tests/unified-substrate-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
       - ".nvmrc"
       - "package.json"
@@ -76,7 +78,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nk1-workpass331-${{ github.head_ref || github.ref_name }}
+  group: nk1-workpass331-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -100,7 +102,7 @@ jobs:
         run: npm run typecheck
       - name: Verify unified substrate restore and input boundaries
         working-directory: runtime/neuro-kurisu
-        run: npm run test:substrate
+        run: npm run test:substrate && npm run test:substrate-runtime-wiring
       - name: Verify canonical decision-to-learning causal loop
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/canonical-cognitive-kernel.mjs
