@@ -51,13 +51,25 @@ test('ledger rejects duplicate domains and invalid current-check statuses', asyn
 });
 
 
-test('ledger binds every CI assertion to the exact code snapshot and canonical repository run URL', async () => {
+test('ledger binds historical CI evidence to its tested head, independently of the source snapshot', async () => {
   const ledger = await loadLedger();
+  ledger.sourceHeadAtSnapshot = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  assert.deepEqual(validateProjectProgressLedger(ledger), [],
+    'historical evidence remains valid even when the current source snapshot changes');
+  assert.ok(ledger.ciSnapshot.statuses.every((check) => check.testedHead === ledger.ciSnapshot.evidenceHead),
+    'all CI assertions in one evidence snapshot must identify the same tested commit');
+
   ledger.ciSnapshot.statuses[0].testedHead = '0'.repeat(40);
   ledger.ciSnapshot.statuses[1].runUrl = 'https://github.com/example/other/actions/runs/123';
   const issues = validateProjectProgressLedger(ledger);
   assert.ok(issues.includes('ci-check-0-tested-head-mismatch'));
   assert.ok(issues.includes('ci-check-1-run-url-invalid'));
+});
+
+test('ledger requires an explicit valid last-validated evidence head', async () => {
+  const ledger = await loadLedger();
+  ledger.ciSnapshot.evidenceHead = 'not-a-commit';
+  assert.ok(validateProjectProgressLedger(ledger).includes('ci-snapshot-evidence-head-must-be-40-hex'));
 });
 
 test('ledger rejects invalid calendar dates and missing snapshot identity', async () => {
