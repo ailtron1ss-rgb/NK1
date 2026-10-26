@@ -234,7 +234,7 @@ assert.ok(runtime.includes('agingCount: debtCount(predictionDebt.agingCount)'));
 assert.ok(runtime.includes('expiredCount: debtCount(predictionDebt.expiredCount)'));
 assert.ok(runtime.includes('predictionDebtCountsValid'));
 assert.ok(runtime.includes('predictionDebt.meanPriority01 <= 1'));
-assert.ok(runtime.includes(':\n        1;'), 'malformed prediction debt must normalize to high priority');
+assert.match(runtime, /predictionDebt\\.meanPriority01\\s*:\\s*1;/, 'malformed prediction debt must normalize to high priority');
 assert.ok(runtime.includes('relationCount: this.core.p41PerceptionSnapshot().relations.length'));
 assert.ok(!runtime.includes('cycleObservation.vision?.relations'));
 const observeAt = runtime.indexOf('const cycle = await this.core.observe(cycleObservation);');

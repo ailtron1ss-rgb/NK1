@@ -1,3 +1,10 @@
+## WorkPass361 — make prediction-priority source assertion whitespace-independent (2026-10-26)
+
+- Corrected the static runtime wiring regression to match the actual multiline conditional expression used to assign priority `1` on invalid debt input. The previous assertion depended on a colon/newline sequence that did not exist in the source formatting; runtime behavior was not changed.
+- CI on the exact HEAD will verify the source contract plus focused cognitive substrate integration. No verification claim is carried over from a prior commit.
+
+---
+
 ## WorkPass360 — make prediction-debt pressure part of the shared cognitive work policy (2026-10-26)
 
 - **Cross-layer defect:** `OrganismRuntime` previously mapped non-finite/out-of-range prediction priority to `0`, which means no urgency. The substrate's optional-work policy also trusted the already-derived coupling score and did not validate the underlying prediction error/priority or debt counters.
