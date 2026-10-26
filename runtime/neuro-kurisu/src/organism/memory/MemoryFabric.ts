@@ -510,8 +510,11 @@ export class MemoryFabric {
     this.policyOutcomeLedger.restore(raw.policyOutcomeLedger);
     this.mutationReceipts.clear();
     this.retiredMutationReceiptBloom=new Uint8Array(RETIRED_RECEIPT_BLOOM_BYTES);
-    this.retiredMutationReceiptCount=Math.max(0,Math.floor(Number(raw.retiredMutationReceiptCount??0)));
-    this.retiredMutationReceiptBloomCorrupt=raw.retiredMutationReceiptBloomCorrupt===true;
+    const rawReceiptCount=raw.retiredMutationReceiptCount;
+    const validReceiptCount=rawReceiptCount===undefined||(typeof rawReceiptCount==='number'&&Number.isSafeInteger(rawReceiptCount)&&rawReceiptCount>=0);
+    this.retiredMutationReceiptCount=validReceiptCount?(rawReceiptCount??0):0;
+    this.retiredMutationReceiptBloomCorrupt=raw.retiredMutationReceiptBloomCorrupt===true||!validReceiptCount;
+    if(raw.retiredMutationReceiptBloom!==undefined&&typeof raw.retiredMutationReceiptBloom!=='string')this.retiredMutationReceiptBloomCorrupt=true;
     if(typeof raw.retiredMutationReceiptBloom==='string'){
       try{
         const decoded=decodeBase64Bytes(raw.retiredMutationReceiptBloom);
@@ -519,12 +522,36 @@ export class MemoryFabric {
         this.retiredMutationReceiptBloom.set(decoded);
       }catch{this.retiredMutationReceiptBloomCorrupt=true;}
     }else if(this.retiredMutationReceiptCount>0){
-      // Missing tombstones with a non-zero count is corrupt state. Fail closed on keyed writes.
       this.retiredMutationReceiptBloomCorrupt=true;
     }
-    for(const row of (raw.mutationReceipts??[]).slice(-this.maxMutationReceipts)){
-      if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||!['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
-      this.mutationReceipts.set(row.commandId.slice(0,128),{...row,commandId:row.commandId.trim().slice(0,128),fingerprint:row.fingerprint.slice(0,64).toLowerCase(),at:Math.floor(Number(row.at))});
+    const rawReceipts=raw.mutationReceipts;
+    if(rawReceipts!==undefined&&!Array.isArray(rawReceipts))this.retiredMutationReceiptBloomCorrupt=true;
+    if(Array.isArray(rawReceipts)&&rawReceipts.length>this.maxMutationReceipts)this.retiredMutationReceiptBloomCorrupt=true;
+    const validReceipt=(row:any):boolean=>{
+      if(!row||typeof row.commandId!=='string'||row.commandId.length===0||row.commandId.length>128||
+        row.commandId!==row.commandId.trim()||/[\\u0000-\\u001f\\u007f]/.test(row.commandId)||
+        typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||
+        !['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||
+        !['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||
+        typeof row.at!=='number'||!Number.isFinite(row.at)||row.at<0||
+        (row.memoryId!==undefined&&(typeof row.memoryId!=='string'||!row.memoryId||row.memoryId.length>256||/[\\u0000-\\u001f\\u007f]/.test(row.memoryId)))||
+        (row.booleanValue!==undefined&&typeof row.booleanValue!=='boolean'))return false;
+      if((row.resultKind==='memory'||row.resultKind==='context')&&(typeof row.memoryId!=='string'||!row.memoryId))return false;
+      if(row.resultKind==='boolean'&&typeof row.booleanValue!=='boolean')return false;
+      if(row.resultKind!=='boolean'&&row.booleanValue!==undefined)return false;
+      return true;
+    };
+    for(const row of (Array.isArray(rawReceipts)?rawReceipts:[]).slice(-this.maxMutationReceipts)){
+      if(!validReceipt(row)){this.retiredMutationReceiptBloomCorrupt=true;continue;}
+      const commandId=row.commandId;
+      const normalized={...row,commandId,fingerprint:row.fingerprint.toLowerCase(),at:Math.floor(row.at)};
+      const prior=this.mutationReceipts.get(commandId);
+      if(prior&&(prior.fingerprint!==normalized.fingerprint||prior.action!==normalized.action)){
+        this.mutationReceipts.delete(commandId);
+        this.retiredMutationReceiptBloomCorrupt=true;
+        continue;
+      }
+      this.mutationReceipts.set(commandId,normalized);
     }
   }
 
