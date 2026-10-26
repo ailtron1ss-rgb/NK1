@@ -1,3 +1,23 @@
+## Bounded P26 interleaved replay and exact-head regression — 2026-10-26
+
+- Implemented the missing `P26TrueLearningEngine.trainInterleaved()` API used by the sequential continual-learning benchmark. Current-experience updates and historical rehearsal are separately counted; contradictory same-action feedback from a nearby state is screened with a bounded candidate budget, while sufficiently distinct novelty/world contexts can preserve separate task outcomes.
+- Input rows, reward ranges and option caps are validated; a zero replay budget still permits current learning without historical replay.
+- Added `p26-interleaved-training-contract.mjs` to cover conflict rejection, contextual admission, an explicit zero replay budget, bounded comparisons and malformed-input rejection. Wired it into P26 CI.
+- Updated the P26 workflow to use the repository `.nvmrc` instead of hard-coded Node 22.12.0.
+- This implementation is a synthetic benchmark contract, not evidence of general learning improvement on external tasks. Exact-head P26 CI remains required.
+
+## Core feedback-guard ownership — 2026-10-26
+
+- Moved construction of `FeedbackDeliveryGuard` from `OrganismCore` into `PersistenceRuntime`, where the replay barrier belongs with durable feedback-receipt continuity. Core retains a getter and existing call sites, so this is an ownership relocation, not a change to receipt semantics.
+- This brings Core's direct-constructor count back within the existing strict ownership ceiling rather than weakening the audit policy.
+- Exact-head WorkPass79 and NeuroCore validation are required to confirm the extraction and runtime behavior.
+
+## Durable skill-store provenance identity — 2026-10-26
+
+- Aligned atomic-file persistence validation with provenance-bound candidate IDs while preserving compatibility with legacy four-field IDs when no revision provenance is present.
+- Optional `evaluationFingerprint` remains optional and is validated only when supplied. A structurally invalid or mismatched candidate ID remains fail-closed.
+- Updated the durable lifecycle fixture to use the current rollback approval API and added default-deny rollback cases. Exact-head WorkPass110 remains the authority for the final durable-store verdict.
+
 ## B274 executed-action attribution — 2026-10-26
 
 - B274 now receives the canonical selected action with every real-trial outcome. It updates a skill candidate only when the executed action matches the candidate plan's first action; otherwise the reward is rejected before trial/evaluation counters or candidate quality and promotion state change.
