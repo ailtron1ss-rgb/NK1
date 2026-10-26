@@ -353,7 +353,24 @@ export class HexisAdaptationFabric {
                   }))
                 : [],
             goalProposals: Array.isArray((value as any).goalProposals) ? (value as any).goalProposals.slice(-256) : [],
-            outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
+            outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512).map((entry: any) => {
+                const normalized = { ...entry };
+                const attempts = Math.max(0, Math.floor(Number(normalized.attempts ?? 0)));
+                const ambiguousLegacyState =
+                    normalized.status === 'publishing' ||
+                    (normalized.status === 'pending' && attempts > 0 && normalized.resolution !== 'not-published') ||
+                    (normalized.status === 'failed' && normalized.resolution !== 'not-published');
+                // Pre-hardening snapshots used "pending"/"failed" for negative ACKs
+                // without recording whether the remote side effect had happened.
+                // Quarantine those rows on restore instead of retrying them blindly.
+                if (ambiguousLegacyState) {
+                    normalized.status = 'uncertain';
+                    const updatedAt = Number(normalized.updatedAt ?? normalized.createdAt ?? nowMs());
+                    normalized.reconciliationRequiredAt = Number.isFinite(updatedAt) ? Math.max(0, updatedAt) : nowMs();
+                    normalized.lastError = String(normalized.lastError ?? 'legacy-outbox-side-effect-status-unknown').slice(0, 500);
+                }
+                return normalized;
+            }) : [],
             connectorPolicies: normalizedPolicies,
             executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
             metrics: { ...defaults.metrics, ...(value.metrics ?? {}) },
