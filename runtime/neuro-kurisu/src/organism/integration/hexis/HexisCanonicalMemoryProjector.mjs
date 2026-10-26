@@ -349,11 +349,13 @@ export class HexisCanonicalMemoryProjector {
           const sourceRef = ref.startsWith(exportId + ':') ? ref.slice(exportId.length + 1) : ref;
           const inputRow = sourceRowsByRef.get(ref);
           const validFrom = dateMs(memory.validFromAt) ?? dateMs(memory.observedAt) ?? appliedAt;
+          const validUntil = dateMs(memory.validUntilAt);
           this.temporalLedger.recordTemporalAssertion({
             memoryId: id,
             summary: String(memory.content ?? '').slice(0, 2000),
             confidence01: clamp01(memory.confidence),
             validFrom,
+            validUntil,
             source: 'hexis:' + lineageId + ':' + sourceRef,
             value: {
               sourceLineageId: lineageId,
