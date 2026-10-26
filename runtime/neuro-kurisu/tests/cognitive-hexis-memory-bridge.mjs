@@ -283,7 +283,7 @@ if (failedReview.status === "rejected") assert.equal(failedReview.reason, "hexis
 const rolledBackMemory = rollbackMemoryOS.get(rollbackMemory.id);
 assert.ok(rolledBackMemory, "rollback must preserve the original canonical memory");
 assert.equal(
-  rolledBackMemory.evidenceRecords?.some((row) => row.evidenceId === "hexis:evidence:review-rollback"),
+  Boolean(rolledBackMemory.evidenceRecords?.some((row) => row.evidenceId === "hexis:evidence:review-rollback")),
   false,
   "failed review creation must remove the newly appended canonical evidence receipt",
 );
@@ -293,7 +293,7 @@ assert.equal(
   "failed review creation must remove the evidence replay identity",
 );
 assert.equal(
-  rollbackMemoryOS.evidenceTrail(rollbackMemory.id)?.sources.some((source) => source.source.includes("sha256:review-rollback-source")),
+  Boolean(rollbackMemoryOS.evidenceTrail(rollbackMemory.id)?.sources.some((source) => source.source.includes("sha256:review-rollback-source"))),
   false,
   "failed review creation must not leave the rejected source in canonical provenance",
 );
