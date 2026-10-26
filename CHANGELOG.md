@@ -1,3 +1,10 @@
+## WorkPass382 — Bind Hexis review decisions to canonical evidence digest (2026-10-26)
+
+- Re-run the strict Hexis evidence adapter at review-decision time, recalculate the canonical SHA-256 digest, and compare source identity, stance, source reference, label, author, note, confidence and observation time with the exact MemoryOS2 evidence receipt before approval.
+- Preserve the `server-receipt` timestamp-origin marker in review payloads and apply the same normalized digest policy used on ingress, avoiding false conflicts for server-stamped evidence.
+- Added six tampering regressions (source reference, source label, note, observation time, stance, confidence); each requires rejection without changing memory or review state. Added a positive server-stamped review regression.
+- Validation status: code and regression sources are committed; exact-head typecheck, focused review test, full cognitive integration suite and release gates are pending. No retrieval/learning uplift or production-readiness claim.
+
 ## WorkPass387 — durable idempotency for server-generated Hexis receipt time (2026-10-26)
 
 - Code/test commits: 
