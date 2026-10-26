@@ -1067,11 +1067,14 @@ export class MemoryOS2{
   * Unlike user-requested forgetting, rollback must also undo imported quarantined
   * or identity records. The export scope prevents this path from deleting native data.
   */
- rollbackCreatedHmxImport(id:string,expectedExportId:string):boolean{
+ rollbackCreatedHmxImport(id:string,expectedExportId:string,expectedStageId:string,expectedAttempt:number):boolean{
    const i=this.state.items.findIndex(x=>x.id===id);
    if(i<0)return false;
    const m=this.state.items[i]!;
-   if(!String(m.source??'').startsWith('hexis:')||m.context?.hexisExportId!==expectedExportId)return false;
+   if(!String(m.source??'').startsWith('hexis:')||
+     m.context?.hexisExportId!==expectedExportId||
+     m.context?.hexisImportStageId!==expectedStageId||
+     m.context?.hexisImportAttempt!==String(expectedAttempt))return false;
    this.removeCanonicalRecordAt(i,id,m,false);
    return true;
  }
