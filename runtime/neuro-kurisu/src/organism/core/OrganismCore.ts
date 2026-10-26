@@ -2961,10 +2961,13 @@ export class OrganismCore {
     hexisMaterializeGoalProposal(id: string) {
         const proposal = this.hexisAdaptation.getGoalProposal(String(id));
         if (!proposal) throw new Error('hmx-goal-proposal-not-found');
+        const lineageHash = createHash('sha256').update(proposal.sourceLineageId).digest('hex').slice(0, 12);
+        const provenanceReason = ('hexis-import:' + lineageHash + ':' + proposal.sourceRef).slice(0, 2000);
         if (proposal.status === 'materialized' && proposal.canonicalGoalId) {
             const existing = this.persisted.goals.find(goal => goal.id === proposal.canonicalGoalId);
             if (!existing) throw new Error('hmx-goal-materialized-record-missing');
-            return { goal: structuredClone(existing), proposal, replayed: true, relationships: proposal.goalRelationshipReceipt ?? null };
+            const reusedExistingGoal = !(existing.source === 'external' && existing.reason === provenanceReason);
+            return { goal: structuredClone(existing), proposal, replayed: true, reusedExistingGoal, relationships: proposal.goalRelationshipReceipt ?? null };
         }
         if (proposal.status !== 'approved') throw new Error('hmx-goal-proposal-must-be-approved-before-materialization');
 
@@ -2972,8 +2975,9 @@ export class OrganismCore {
         const graphBefore = this.memorySubsystem.semanticMemory.snapshot();
         const hexisBefore = this.hexisAdaptation.snapshot();
         try {
-            const lineageHash = createHash('sha256').update(proposal.sourceLineageId).digest('hex').slice(0, 12);
-            const provenanceReason = ('hexis-import:' + lineageHash + ':' + proposal.sourceRef).slice(0, 2000);
+            // addGoal would trim the oldest row at capacity; imported data may not silently evict an unrelated canonical goal.
+            const reusableGoal = goalsBefore.find(goal => goal.title === proposal.title && goal.status !== 'completed' && goal.status !== 'abandoned');
+            if (!reusableGoal && goalsBefore.length >= 100) throw new Error('hmx-goal-canonical-capacity-reached');
             // addGoal is the existing canonical goal gate: an identical live title is reused rather than duplicated.
             const goal = this.addGoal({
                 title: proposal.title,
@@ -3060,7 +3064,7 @@ export class OrganismCore {
                 relationshipReceipt: receipt,
             } as any));
             this.persisted.facets.memory.eventLog = this.memorySubsystem.events.recent(64);
-            return { goal: structuredClone(goal), proposal: recorded ?? materialized, replayed: false, relationships: receipt };
+            return { goal: structuredClone(goal), proposal: recorded ?? materialized, replayed: false, reusedExistingGoal: !isNewImportedGoal, relationships: receipt };
         } catch (error) {
             this.persisted.goals = goalsBefore;
             this.memorySubsystem.semanticMemory.restore(graphBefore);
