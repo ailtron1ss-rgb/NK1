@@ -1,3 +1,13 @@
+## [NK1][WorkPass430] Restore existing-memory trust signals when HMX apply rolls back (2026-10-26)
+
+- HMX canonical apply now captures opaque, one-use signal compensation tokens before lowering authority/confidence on existing duplicate memories. The projector cannot provide a caller-forged snapshot to authorize trust restoration.
+- If a downstream memory/semantic/temporal/belief operation fails, the projector restores captured signal state (including confidence, source authority, external evidence trail, lineage keys and revision metadata) and verifies the restore before reporting rollback success.
+- Signal-mutation receipts are pinned while their compensation token is active, preventing a large HMX batch from evicting the evidence required to roll back. Successful HMX apply consumes the tokens only after all projections succeed; failed apply consumes them during compensation.
+- Added direct MemoryOS compensation coverage plus an HMX failure-injection regression where a duplicate's trust is lowered before a later temporal write fails. The failed transaction must return both pre-existing memory records/signals, semantic graph and temporal/belief ledgers to baseline; successful retry may then apply the trust cap exactly once.
+- Added a second failure-injection through the real `MemoryFabric`/`MemoryOS2` path: a late belief-ledger failure after an existing duplicate's trust cap must restore the exact confidence, source authority, evidence lineage and revision metadata before the same accepted HMX stage retries.
+- Updated `test:hexis-canonical-apply` to run the TypeScript-importing regression with Node's type stripping flag.
+- Validation status: source/regression edits are committed, but the full local/hosted test and typecheck result is still unconfirmed. Previous Actions jobs on this integration head failed before providing any steps/logs; no PASS is claimed. `main` and the published Release ZIP remain unchanged.
+
 ## [NK1][WorkPass429] Reject malformed canonical-memory command IDs (2026-10-26)
 
 - `MemoryFabric.applyLifecycleCommand` now treats command IDs as exact idempotency keys: non-string, blank, padded, control-bearing and overlong IDs are rejected before fingerprinting or mutation, rather than coerced, trimmed or truncated.
