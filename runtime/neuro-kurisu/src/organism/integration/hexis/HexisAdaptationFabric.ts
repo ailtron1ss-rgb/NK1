@@ -271,6 +271,12 @@ const isHmxRecord = (value: unknown): value is Record<string, unknown> =>
 const isHmxText = (value: unknown, max = 256): value is string =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max &&
     !/[\u0000-\u001f\u007f]/.test(value);
+const hmxTimestampMs = (value: unknown): number | null => {
+    if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : null;
+    if (typeof value !== 'string' || !value.trim()) return null;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+};
 const hasValidHmxApplicationReceipt = (stage: HexisHmxStage): boolean => {
     const receipt: unknown = stage.application;
     if (!isHmxRecord(receipt)) return false;
@@ -621,6 +627,30 @@ export class HexisAdaptationFabric {
                         if (!isHmxText(content, 250000)) conflicts.push({ path: 'sections.memories[' + index + '].content', kind: 'schema', detail: 'memory content must be a non-empty string within the per-record limit' });
                         if (record.metadata !== undefined && !isHmxRecord(record.metadata)) conflicts.push({ path: 'sections.memories[' + index + '].metadata', kind: 'schema', detail: 'memory metadata, when supplied, must be an object' });
                         if (record.provenance !== undefined && record.provenance !== null && !isHmxRecord(record.provenance)) conflicts.push({ path: 'sections.memories[' + index + '].provenance', kind: 'schema', detail: 'memory provenance, when supplied, must be an object or null' });
+                        for (const [field, alias] of [
+                            ['created_at', 'createdAt'],
+                            ['updated_at', 'updatedAt'],
+                            ['valid_from', 'validFrom'],
+                            ['valid_until', 'validUntil'],
+                        ] as const) {
+                            const timestamp = record[field] ?? record[alias];
+                            if (timestamp !== undefined && timestamp !== null && hmxTimestampMs(timestamp) === null) {
+                                conflicts.push({
+                                    path: 'sections.memories[' + index + '].' + field,
+                                    kind: 'schema',
+                                    detail: field + ' must be a non-negative epoch-millisecond number or parseable date-time string',
+                                });
+                            }
+                        }
+                        const validFrom = hmxTimestampMs(record.valid_from ?? record.validFrom);
+                        const validUntil = hmxTimestampMs(record.valid_until ?? record.validUntil);
+                        if (validFrom !== null && validUntil !== null && validUntil < validFrom) {
+                            conflicts.push({
+                                path: 'sections.memories[' + index + '].valid_until',
+                                kind: 'schema',
+                                detail: 'valid_until must not precede valid_from',
+                            });
+                        }
                     });
                 } else if (name === 'relationships') {
                     safeRows.forEach((record, index) => {
