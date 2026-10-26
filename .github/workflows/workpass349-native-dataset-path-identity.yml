@@ -5,6 +5,7 @@ on:
     branches: [workpass349-native-dataset-path-identity-2026-10-26]
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
       - "runtime/neuro-kurisu/tests/workpass356-memoryos-restore-boundary.mjs"
@@ -21,6 +22,7 @@ on:
     branches: [workpass334-inner-imperative-homeostasis-2026-10-24]
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
       - "runtime/neuro-kurisu/tests/workpass356-memoryos-restore-boundary.mjs"
