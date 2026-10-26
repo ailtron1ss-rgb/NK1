@@ -74,6 +74,16 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
           });
           assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, envelopeWithGetter, trustedKeys).rejection,
             'invalid-artifact-schema', 'artifact envelope accessors must be rejected');
+
+          let subclassFindCalls = 0;
+          class ManifestWithOverriddenFind extends Array {
+            find(...args) { subclassFindCalls++; return super.find(...args); }
+          }
+          const subclassManifest = new ManifestWithOverriddenFind(...manifest);
+          assert.equal(ingestSignedOutcomeArtifact(ledger, subclassManifest, artifact, trustedKeys).rejection,
+            'invalid-supplied-manifest', 'manifest array subclasses must be rejected rather than calling overridden methods');
+          assert.equal(subclassFindCalls, 0,
+            'signed-outcome ingestion must not invoke caller-controlled manifest lookup methods');
         }
         assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifact, trustedKeys).accepted, true);
       }
