@@ -1,3 +1,11 @@
+## Supervised service failure closure — 2026-10-26
+
+- Extracted the child-exit decision into a small pure policy and added regression tests for graceful shutdown, exit code 0, non-zero exits, signals, unknown exit codes and sanitized labels.
+- The supervisor now coordinates shutdown after any unexpected exit from a required long-lived process; it no longer leaves the gateway/UI running with the runtime or research bridge missing.
+- Sanitized service labels and signal text before they enter shutdown reasons and logs.
+- Connected the regression to the root test/quick-audit scripts and the focused toolchain CI workflow.
+- Focused policy tests pass locally under Node 22.16; the exact-head Node 24 workflow is responsible for validating the committed source. Full end-to-end startup/restart validation remains pending.
+
 ## Node 24 toolchain alignment — 2026-10-25
 
 - Aligned the root, app and runtime package engine declarations with the repository's `.nvmrc` Node 24 pin; synchronized app/runtime lockfile engine metadata.
