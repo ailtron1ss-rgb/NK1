@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head CI PASS on PR head 0ad66d5519aedbadc317684504ed0e5a8e79412c: Unified project integration (#40289492932), progress-ledger integrity (#40289492966), WorkPass110 (#40289492891), P26 validation (#40289492875) and nine additional focused workflows all passed. Historical 13-row ciSnapshot remains pinned to 621864d0d7f2676245383adab86f1dcc6d0f741f; new validationRuns are recorded separately. No readiness scores were increased. WorkPass356 adds strict descriptor-only input ingress and non-coercive validation for CEF tool receipt trace, authoritative receipt revision and external observation APIs. Current code/test checkpoint c6845a5258a2c3bcdccce1089615cfabbfd4b750 on branch fix/workpass356-strict-tool-receipt-ingress-2026-10-26 is pending exact-head CI. The prior WorkPass355 exact-head validation record is preserved, as are all historical ciSnapshot SHAs and the existing progress scores. WorkPass356 exact PR-head CI PASS on d4ddbbe2495ca6523d4b2c4f04129bf487ab189b: Unified project integration (#40290594913), project progress-ledger integrity (#40290595259), WorkPass110 (#40290594892), P26 (#40290594766), and nine additional focused workflows all succeeded. The unified workflow passed cognitive integration contracts, governed approval E2E, public service startup, runtime/research bridge smoke and final release gates without publishing an archive. The legacy ciSnapshot remains pinned to its original tested SHA; these new exact-head results are listed separately. Readiness scores unchanged. WorkPass375 connects Hexis evidence to canonical MemoryOS2 using evidence digests, stance/provenance records and a bounded replay filter; exact-head validation is pending, scores remain unchanged, and no Release ZIP was changed. WorkPass380 repairs the Hexis review rollback regression: it tests absence of the canonical evidence receipt, replay identity and source trail, and verifies the same evidence ID can retry after the injected review-store failure is removed. Exact-head CI is pending for code/test commit 90f8b111d3e1d5b6b6e7b82f187eaf9ddb365e28; previous failing run is historical and not a PASS for this head. Readiness/progress scores are unchanged; main and canonical Release ZIP remain untouched. WorkPass381 updates the Hexis rollback regression to normalize missing optional fields to boolean checks; the fresh prior unified run 40304978396 failed only at the earlier assertion on the then-current head 1bc3f644ead3eb46c2eeddf10b9852d256ed98bc. The replacement code/test head is d6fbf28a61024f6739bcf4dfe1be58627cdf0da6 and needs fresh exact-head validation; no pass or readiness/retrieval uplift is claimed. Main and canonical Release ZIP remain unchanged. WorkPass383 fixes Hexis event-clock semantics at the canonical MemoryFabric boundary. Logical event tick now follows the latest valid event counter, not Date.parse(observedAt); integration assertions seed tick 27 and require evidence and approval events to retain it. Code/test head 7c62bebea1564b067f31343914c40004dc87d28e awaits fresh exact-head validation. Progress/readiness scores remain unchanged; main and the canonical Release ZIP are untouched.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass355 introduces safe, bounded and transactional CognitiveEventFabric snapshot restore. Its exact code/test checkpoint is 38b17bf610c06de1a23ba5e54d21cb4a1b7ac905 on branch fix/workpass355-safe-snapshot-restore-2026-10-26, based on 18afd253dcd7413c02136537ea1acc10b7764768. Exact-head CI PASS on PR head 0ad66d5519aedbadc317684504ed0e5a8e79412c: Unified project integration (#40289492932), progress-ledger integrity (#40289492966), WorkPass110 (#40289492891), P26 validation (#40289492875) and nine additional focused workflows all passed. Historical 13-row ciSnapshot remains pinned to 621864d0d7f2676245383adab86f1dcc6d0f741f; new validationRuns are recorded separately. No readiness scores were increased. WorkPass356 adds strict descriptor-only input ingress and non-coercive validation for CEF tool receipt trace, authoritative receipt revision and external observation APIs. Current code/test checkpoint c6845a5258a2c3bcdccce1089615cfabbfd4b750 on branch fix/workpass356-strict-tool-receipt-ingress-2026-10-26 is pending exact-head CI. The prior WorkPass355 exact-head validation record is preserved, as are all historical ciSnapshot SHAs and the existing progress scores. WorkPass356 exact PR-head CI PASS on d4ddbbe2495ca6523d4b2c4f04129bf487ab189b: Unified project integration (#40290594913), project progress-ledger integrity (#40290595259), WorkPass110 (#40290594892), P26 (#40290594766), and nine additional focused workflows all succeeded. The unified workflow passed cognitive integration contracts, governed approval E2E, public service startup, runtime/research bridge smoke and final release gates without publishing an archive. The legacy ciSnapshot remains pinned to its original tested SHA; these new exact-head results are listed separately. Readiness scores unchanged. WorkPass375 connects Hexis evidence to canonical MemoryOS2 using evidence digests, stance/provenance records and a bounded replay filter; exact-head validation is pending, scores remain unchanged, and no Release ZIP was changed. WorkPass380 repairs the Hexis review rollback regression: it tests absence of the canonical evidence receipt, replay identity and source trail, and verifies the same evidence ID can retry after the injected review-store failure is removed. Exact-head CI is pending for code/test commit 90f8b111d3e1d5b6b6e7b82f187eaf9ddb365e28; previous failing run is historical and not a PASS for this head. Readiness/progress scores are unchanged; main and canonical Release ZIP remain untouched. WorkPass381 updates the Hexis rollback regression to normalize missing optional fields to boolean checks; the fresh prior unified run 40304978396 failed only at the earlier assertion on the then-current head 1bc3f644ead3eb46c2eeddf10b9852d256ed98bc. The replacement code/test head is d6fbf28a61024f6739bcf4dfe1be58627cdf0da6 and needs fresh exact-head validation; no pass or readiness/retrieval uplift is claimed. Main and canonical Release ZIP remain unchanged. WorkPass383 fixes Hexis event-clock semantics at the canonical MemoryFabric boundary. Logical event tick now follows the latest valid event counter, not Date.parse(observedAt); integration assertions seed tick 27 and require evidence and approval events to retain it. Code/test head 7c62bebea1564b067f31343914c40004dc87d28e awaits fresh exact-head validation. Progress/readiness scores remain unchanged; main and the canonical Release ZIP are untouched. WorkPass385 waits for the Hexis server to exit before smoke-test temporary-state cleanup. Exact-head validation pending at a9f741deb4cece36459f121f9064cf6cf99069d0; no readiness or retrieval uplift claimed.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -359,19 +359,17 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass383",
+    "id": "WorkPass385",
     "date": "2026-10-26",
     "branch": "work/hexis-evidence-adapter-2026-10-26",
-    "codeCommit": "7c62bebea1564b067f31343914c40004dc87d28e",
-    "summary": "Fixed logical event-time scale at the production Hexis bridge: MemoryFabric ingress and reviewed confidence updates use the latest valid logical organism tick instead of treating evidence observation epoch milliseconds as cycle ticks. Added root-API integration assertions for event tick continuity.",
+    "codeCommit": "a9f741deb4cece36459f121f9064cf6cf99069d0",
+    "summary": "Updated Hexis server smoke teardown to wait for the spawned server process to exit before removing temporary test state; the previous fixed sleep could race with asynchronous state writes and fail with ENOTEMPTY.",
     "testsAdded": [
-      "production entry through OrganismSystemFabric ingest/review methods",
-      "evidence lifecycle event retains seeded logical tick 27",
-      "approved confidence lifecycle event retains logical tick 27",
-      "epoch-millisecond timestamps cannot become event ticks",
-      "canonical event receipt and replay ledger remain idempotent"
+      "HTTP smoke keeps its route assertions",
+      "server exit is awaited before temporary state cleanup",
+      "cleanup retries transient filesystem contention"
     ],
-    "validationStatus": "PENDING fresh exact-head typecheck, focused Hexis tests, Unified project integration and release gate. No PASS is claimed for this code/test head.",
+    "validationStatus": "Exact-head typecheck and unified integration are pending after this test fix. Previous run passed typecheck and the four focused Hexis tests before failing during smoke teardown.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
@@ -546,10 +544,26 @@
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
+    },
+    {
+      "id": "WorkPass385",
+      "date": "2026-10-26",
+      "branch": "work/hexis-evidence-adapter-2026-10-26",
+      "codeCommit": "a9f741deb4cece36459f121f9064cf6cf99069d0",
+      "summary": "Updated Hexis server smoke teardown to wait for the spawned server process to exit before removing temporary test state; the previous fixed sleep could race with asynchronous state writes and fail with ENOTEMPTY.",
+      "testsAdded": [
+        "HTTP smoke keeps its route assertions",
+        "server exit is awaited before temporary state cleanup",
+        "cleanup retries transient filesystem contention"
+      ],
+      "validationStatus": "Exact-head typecheck and unified integration are pending after this test fix. Previous run passed typecheck and the four focused Hexis tests before failing during smoke teardown.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
     }
   ],
-  "latestUnverifiedCodeTestHead": "7c62bebea1564b067f31343914c40004dc87d28e",
-  "branchHeadBeforeTrackerCommit": "7c62bebea1564b067f31343914c40004dc87d28e",
+  "latestUnverifiedCodeTestHead": "a9f741deb4cece36459f121f9064cf6cf99069d0",
+  "branchHeadBeforeTrackerCommit": "a9f741deb4cece36459f121f9064cf6cf99069d0",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -589,12 +603,11 @@
     }
   ],
   "latestEngineeringCheckpoint": {
-    "workpass": "WorkPass383",
+    "workpass": "WorkPass385",
     "sourceBranch": "work/hexis-evidence-adapter-2026-10-26",
-    "codeTestHead": "7c62bebea1564b067f31343914c40004dc87d28e",
-    "baseHead": "aca6c8308841dde4f4ebb8d0ae4663d606ae6de6",
+    "codeTestHead": "a9f741deb4cece36459f121f9064cf6cf99069d0",
     "validationStatus": "pending-exact-head-ci",
-    "summary": "Fixed logical event-time scale at the production Hexis bridge: MemoryFabric ingress and reviewed confidence updates use the latest valid logical organism tick instead of treating evidence observation epoch milliseconds as cycle ticks. Added root-API integration assertions for event tick continuity. Scores unchanged; main and canonical Release ZIP were not modified.",
+    "summary": "Hexis smoke teardown race fixed; readiness scores unchanged; main and release asset untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   },
