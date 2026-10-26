@@ -131,3 +131,71 @@ export interface ChatBackendResponse {
   explanation?: string;
   voice?: { spoken?: boolean };
 }
+
+
+/** Hexis-imported goals remain proposals until reviewed, materialized and activated. */
+export type HexisGoalProposalStatus = "pending" | "approved" | "rejected" | "materialized";
+
+export interface HexisGoalRelationshipReceipt {
+  sourceStageFound: boolean;
+  candidateRelationships: number;
+  projected: number;
+  deferred: number;
+  semanticEdgeIds: string[];
+  at: number;
+}
+
+export interface HexisGoalProposal {
+  id: string;
+  stageId: string;
+  exportId: string;
+  sourceLineageId: string;
+  sourceRef: string;
+  title: string;
+  description: string;
+  importance: number;
+  urgency: number;
+  confidence: number;
+  status: HexisGoalProposalStatus;
+  canonicalGoalId?: string;
+  goalRelationshipReceipt?: HexisGoalRelationshipReceipt;
+  createdAt: number;
+  decidedAt?: number;
+  decisionReason?: string;
+}
+
+export interface HexisGoalProposalPrepareResponse {
+  ok: boolean;
+  stageId?: string;
+  created?: number;
+  duplicates?: number;
+  proposals?: HexisGoalProposal[];
+  error?: string;
+}
+
+export interface HexisGoalProposalListResponse {
+  ok: boolean;
+  proposals?: HexisGoalProposal[];
+  error?: string;
+}
+
+export interface HexisGoalProposalDecisionResponse {
+  ok: boolean;
+  proposal?: HexisGoalProposal | null;
+  error?: string;
+}
+
+export interface HexisGoalMaterializeResponse {
+  ok: boolean;
+  proposal?: HexisGoalProposal;
+  project?: { id?: string; status?: string; pauseReason?: string; title?: string };
+  error?: string;
+}
+
+export interface HexisGoalActivationResponse {
+  ok: boolean;
+  proposal?: HexisGoalProposal;
+  project?: { id?: string; status?: string; pauseReason?: string; title?: string };
+  receipt?: HexisGoalRelationshipReceipt;
+  error?: string;
+}
