@@ -1,3 +1,11 @@
+## Container build hardening follow-up (2026-10-26)
+
+- Ensured the image build does not set `NODE_ENV=production` before `npm run install:all`; otherwise npm may omit dev dependencies needed by Vite's first-start build.
+- Created `/opt/neuro-kurisu/.super-state` and assigned ownership to the non-root `node` user before the Compose volume is mounted, keeping persistence writable.
+- Added `.github/workflows/nk1-compose-smoke.yml` to its own path filters so edits to the Docker smoke workflow itself run validation.
+
+---
+
 ## Container startup path — Docker Compose and explicit gateway binding (2026-10-26)
 
 - Added a Node.js 24 slim `Dockerfile`, `docker-compose.yml`, `.dockerignore`, and Russian container quick-start guide. The stack persists `.super-state`, exposes the UI gateway only on host loopback by default, and includes a health check.
