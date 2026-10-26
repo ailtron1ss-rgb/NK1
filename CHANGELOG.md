@@ -1,3 +1,10 @@
+## NK1 P23 regression fix — preserve persisted row schema helpers (2026-10-26)
+
+- Restored the field-level persistence helpers used by P23 row parsers and checksum/metrics normalization after extracting the shared bounded object-graph validator. These helpers remain distinct from graph validation: one validates structural trust, the others validate persisted domain values and bounds.
+- The latest CI surfaced this integration regression through TypeScript errors and `ReferenceError: persistedTime is not defined`; this commit addresses the missing helper definitions rather than suppressing those checks.
+
+---
+
 ## NK1 B272 corruption fixture — represent `__proto__` as untrusted JSON data (2026-10-26)
 
 - Changed the goal-outcome-memory corruption fixture to define an own enumerable `__proto__` data property on an ordinary object instead of using object-literal prototype mutation. The test now models a JSON-parsed hostile key that the B272 sanitizer must quarantine, while the separate shared validator continues to reject genuinely exotic prototypes.
