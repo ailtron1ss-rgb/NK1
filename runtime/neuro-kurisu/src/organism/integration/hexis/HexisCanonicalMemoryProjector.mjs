@@ -244,6 +244,13 @@ export class HexisCanonicalMemoryProjector {
     if (!isRecord(stage) || stage.status !== 'accepted') throw new Error('hmx-stage-must-be-accepted-before-apply');
     if (stage.intent !== 'port' || stage.strategy !== 'additive') throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
     const sections = isRecord(stage.stagedSections) ? stage.stagedSections : {};
+    // Known HMX contracts are arrays. Reject malformed present sections before even reading
+    // canonical storage, instead of silently treating bad memories as an empty import.
+    for (const field of ['memories', 'relationships']) {
+      if (Object.hasOwn(sections, field) && !Array.isArray(sections[field])) {
+        throw new Error('hmx-apply-known-section-must-be-array:' + field);
+      }
+    }
     const records = Array.isArray(sections.memories) ? sections.memories : [];
     const exportId = asText(stage.exportId, 128);
     const lineageId = asText(stage.sourceLineageId, 512);
