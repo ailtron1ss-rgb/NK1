@@ -1,3 +1,10 @@
+## P23 independent evaluator quality-signal correction — 2026-10-26
+
+- Fixed a metrics contract bug in `IndependentSkillCandidateEvaluator`: a valid sandbox execution was marked non-executable whenever the independent verifier failed, despite a separate task-success gate.
+- Execution quality (`executable`) is now separate from evidence authenticity (`bindingVerified`). Verifier outages still fail task success, earn no trusted run ID/trajectory attribution, and cannot make a candidate pass.
+- Expanded the regression to require all three outcomes: valid execution remains measurable, binding remains false, and unverified run identity remains null.
+- Exact-head WorkPass110 validation is pending.
+
 ## Supervised runtime working-directory fix — 2026-10-26
 
 - The top-level supervisor previously launched `src/server/server.mjs` with the repository root as its working directory, even though that path is relative to `runtime/neuro-kurisu`. This prevented the mandatory runtime child from resolving its entry point during `npm start`.
