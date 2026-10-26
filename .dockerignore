@@ -1,0 +1,16 @@
+.git
+**/node_modules
+**/dist
+.super-state
+.verify-state
+**/.cache
+**/__pycache__
+**/*.pyc
+**/*.log
+npm-debug.log*
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
