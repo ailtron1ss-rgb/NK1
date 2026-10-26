@@ -1,3 +1,15 @@
+## Latest checkpoint — WorkPass340 (2026-10-26)
+
+- **Branch:** `work/nk1-unified-substrate-runtime-integration-2026-10-26-r3`, freshly based on current WorkPass334 source line after WorkPass339 security PR merge. No direct changes to `main` or release ZIP.
+- **Implementation:** `UnifiedCognitiveSubstrate.ts` is now used from `OrganismRuntime` after each canonical Core cycle; guarded persisted sidecar `*.cognitive-substrate.json`, periodic save and final stop flush are wired. The substrate can only constrain optional counterfactuals; Core remains action owner.
+- **Code/test checkpoint:** `70063d80d20133afde4e09c7e971e55a6e71f736`; includes strict schema/restore, live cycle integration, read-only diagnostic snapshot, wiring regression and 30-cycle smoke/restart persistence check.
+- **Type correctness:** the earlier divergent branch’s CI exposed two TypeScript issues. Both are corrected here: explicit `unknown` bridge for prediction-debt aggregation, and no read from nonexistent `cycleObservation.vision`; P41 relation count is zero until typed relation evidence exists.
+- **Validation:** branch was 5 commits ahead / 0 behind at last comparison. Exact-head Actions typecheck, `test:unified-substrate-runtime-wiring`, and smoke/restart are pending. The old branch’s failed test is recorded and is not treated as a pass.
+- **Progress accounting:** WorkPass339 remains recorded as CI-validated; historical progress/status rows still use their original tested baseline SHA. WorkPass340 does not increase scores before new CI results.
+- **Release gates:** rebuild and verify the large release ZIP, Android/Termux resource soak, voice/Live2D/device E2E, independent learning/transfer holdout and external postcondition E2E remain outstanding.
+
+---
+
 ## Latest checkpoint — WorkPass339 (2026-10-26)
 
 - **Branch:** `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5`, based on the current WorkPass334 source branch. No direct changes to `main` or release ZIP.
