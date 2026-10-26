@@ -173,4 +173,53 @@ await assert.rejects(
 );
 assert.equal(remoteCalls.length, countBeforeDisabled, 'disabled consultation must not make a network call');
 
+
+const localOnlyConfig = parseHexisRemoteApiConfig({
+  NK1_HEXIS_REMOTE_BASE_URL: 'http://127.0.0.1:43817',
+});
+assert.equal(localOnlyConfig.enabled, true, 'loopback development peer may use plaintext HTTP');
+assert.equal(localOnlyConfig.consultEnabled, false, 'configuring the URL alone does not enable consultations');
+
+const unauthorizedPeer = new HexisRemoteApiBridge({
+  NK1_HEXIS_REMOTE_BASE_URL: 'https://hexis.example',
+  NK1_HEXIS_REMOTE_API_KEY: 'key',
+}, { fetchImpl: async () => new Response('upstream auth denied as plain text', { status: 401 }) });
+assert.equal((await unauthorizedPeer.status()).reason, 'hexis-remote-auth-failed', 'auth errors must be classified from status, not response JSON');
+
+const unhealthyPeer = new HexisRemoteApiBridge({
+  NK1_HEXIS_REMOTE_BASE_URL: 'https://hexis.example',
+  NK1_HEXIS_REMOTE_API_KEY: 'key',
+}, { fetchImpl: async () => new Response(JSON.stringify({ status: 'ok', checks: { db: 'unknown' } }), { status: 200 }) });
+assert.equal((await unhealthyPeer.status()).reachable, false, 'a non-boolean database health result cannot pass the health gate');
+
+const boundedPeer = new HexisRemoteApiBridge({
+  NK1_HEXIS_REMOTE_BASE_URL: 'https://hexis.example',
+  NK1_HEXIS_REMOTE_API_KEY: 'key',
+  NK1_HEXIS_REMOTE_CONSULT_ENABLED: 'true',
+}, { fetchImpl: async () => { throw new Error('request should have been rejected before network'); } });
+await assert.rejects(
+  () => boundedPeer.consult({ question: 'x'.repeat(6001), confirmExternalConsult: true }),
+  (error) => error instanceof HexisRemoteBridgeError && error.code === 'hexis-remote-question-too-long',
+);
+await assert.rejects(
+  () => boundedPeer.consult({
+    question: 'Summarize the candidate set.',
+    confirmExternalConsult: true,
+    context: {
+      memoryCandidates: Array.from({ length: 8 }, (_, index) => ({
+        id: 'memory-' + index + '-'.repeat(100),
+        summary: 's'.repeat(500),
+        sourceRef: 'source-' + 'r'.repeat(190),
+      })),
+    },
+  }),
+  (error) => error instanceof HexisRemoteBridgeError && error.code === 'hexis-remote-context-too-large',
+);
+
+const oversizedPeer = new HexisRemoteApiBridge({
+  NK1_HEXIS_REMOTE_BASE_URL: 'https://hexis.example',
+  NK1_HEXIS_REMOTE_API_KEY: 'key',
+}, { fetchImpl: async () => new Response('x'.repeat(260 * 1024), { status: 200 }) });
+assert.equal((await oversizedPeer.status()).reason, 'hexis-remote-response-too-large', 'oversized peer responses must be rejected');
+
 console.log('HEXIS_REMOTE_API_BRIDGE_PASS');
