@@ -1,3 +1,12 @@
+## [NK1][Hexis] WorkPass429 — compact terminal outbox receipts without losing idempotency (2026-10-26)
+
+- [CAPACITY] The live outbox can now free slots by moving only confirmed `published` or evidence-confirmed `failed/not-published` rows into a 4,096-entry tombstone index. The tombstone retains the original ID, action key, request digest and terminal receipt fields; same-payload retries return the archived receipt, while changed payloads still conflict.
+- [FAIL-CLOSED] `pending`, `publishing` and `uncertain` rows are never compacted. If all live rows are unresolved, or the tombstone index itself is full, enqueue rejects the new action rather than evicting unresolved identities.
+- [INPUT BOUNDS] Outbox payloads must be cloneable JSON and at most 64 KiB serialized; circular/non-JSON and oversized direct-call payloads are rejected before state mutation.
+- [REPLAY] Repeating a resolution request already present in bounded reconciliation history returns current state without re-queuing the action or rewriting a later attempt.
+- [REGRESSION] Added full-capacity tests that prove terminal compaction frees a slot, preserves replay identity across restore, retains conflict detection, blocks compaction of unresolved rows, and rejects oversized/circular payloads.
+- [VALIDATION] Source and regression commits are present; tests/typecheck are not claimed as executed because GitHub Actions jobs continue to fail before exposing step records.
+
 ## [NK1][Hexis] WorkPass428 — fail-safe migration of legacy outbox state (2026-10-26)
 
 - [MIGRATION SAFETY] Restored legacy `publishing`, `pending` rows with prior attempts, and `failed` rows without a persisted `not-published` resolution are normalized to `uncertain`. Earlier versions did not distinguish an ambiguous timeout from a confirmed no-effect result, so auto-retrying them could duplicate an external side effect.
