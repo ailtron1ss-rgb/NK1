@@ -128,6 +128,32 @@ export function HexisControlConsole() {
     if (nextId) setStageId(String(nextId));
   };
 
+  const acceptHmxStage = async () => {
+    const accepted = await run("Accept HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"));
+    const stage = (accepted as any)?.stage;
+    const receipt = stage?.importResult;
+    if (!receipt || typeof receipt !== "object" || typeof receipt.status !== "string") return;
+
+    // All import-result statuses are terminal. Clear the local accept controls
+    // and explain the outcome so a pending/uncertain receipt is never presented
+    // as a clean success or accidentally retried from this UI surface.
+    setHmxConfirmed(false);
+    setStageId("");
+    const created = Number.isSafeInteger(receipt.created) ? receipt.created : 0;
+    const reused = Number.isSafeInteger(receipt.reused) ? receipt.reused : 0;
+    const skipped = Number.isSafeInteger(receipt.skipped) ? receipt.skipped : 0;
+    if (receipt.status === "uncertain") {
+      setMessage(`Accept HMX: UNCERTAIN — rollback was incomplete; memory changes may have survived. Do not retry this stage. Created ${created}, reused ${reused}, unconfirmed/skipped ${skipped}. Inspect canonical memories and the import receipt.`);
+      return;
+    }
+    if (receipt.status === "pending") {
+      setMessage("Accept HMX: RECEIPT PENDING — canonical import outcome is not confirmed. Do not retry this stage; inspect the canonical memory state and receipt.");
+      return;
+    }
+    const reason = typeof receipt.reason === "string" && receipt.reason ? ` (${receipt.reason})` : "";
+    setMessage(`Accept HMX: ${receipt.status.toUpperCase()} — created ${created}, reused ${reused}, skipped ${skipped}${reason}`);
+  };
+
   const checkRemotePeer = async () => {
     const result = await run("Remote Hexis status", () => neuroApi.hexisRemotePeerStatus());
     if (result && typeof result === "object") setRemotePeerStatus((result as any).peer ?? result);
@@ -245,7 +271,7 @@ export function HexisControlConsole() {
             <Button disabled={busy} onClick={() => void exportHmx()}>Export HMX</Button>
             <Button variant="outline" disabled={busy} onClick={() => void stageCurrentHmx()}>Stage current HMX</Button>
             <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
-            <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void run("Accept HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"))}>Accept staged</Button>
+            <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void acceptHmxStage()}>Accept staged</Button>
             <Button variant="outline" disabled={busy || !stageId} onClick={() => void run("Reject HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"))}>Reject</Button>
           </div>
           <div className="mt-3 rounded-md border border-border p-3">
