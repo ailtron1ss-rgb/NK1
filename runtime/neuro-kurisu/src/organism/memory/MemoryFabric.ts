@@ -218,6 +218,8 @@ export class MemoryFabric {
     // crossing into MemoryOS2. If a downstream operation throws after partial mutation,
     // the transaction still knows exactly which command may need compensation.
     if(signalCompensation&&!signalCompensation.sourceCommandIds.includes(commandId)){
+      if(signalCompensation.sourceCommandIds.length>=256)
+        throw new Error('memory-signals-compensation-command-limit');
       signalCompensation.sourceCommandIds.push(commandId);
       this.protectedSignalReceiptIds.add(commandId);
     }
@@ -667,8 +669,8 @@ export class MemoryFabric {
   /**
    * Restore only the signal fields changed by an HMX apply that later failed.
    * This is compensation, not new evidence: authority and evidence lineage may
-   * return to their captured pre-transaction state. Only the HMX rollback caller
-   * can supply the strict source/rollback command-ID pair.
+   * return to their captured pre-transaction state. Only the opaque token captured
+   * by MemoryFabric and its recorded HMX command receipts authorize restoration.
    */
   restoreSignalsForCompensation(
     id:string,
