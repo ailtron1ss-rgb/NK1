@@ -1,3 +1,16 @@
+## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
+
+- [INTEGRATION] Preserve the current independent HMX lifecycleDigest contract while integrating attempt-counter binding and semantic apply-receipt checks into the consolidated Hexis/restore branch.
+- [INTEGRITY] Export the safe JSON-tree validator and declaration; the standalone receipt validator checks applied stage identity/lifecycle, safe receipt structure, counter arithmetic, canonical IDs and receipt digest.
+- [INTEGRITY] Require created-memory IDs to be a subset of unique memory IDs, and reject empty/whitespace IDs and impossible re-hashed receipts.
+- [INTEGRITY] Require deferred-section metadata to match staged sections exactly. Projected + deferred relationship counts must account for the complete staged relationship array.
+- [FIX] Use a null-prototype deferred-section map so external HMX section names such as __proto__ remain ordinary own properties.
+- [REGRESSION] Cover invalid attempts/receipts, accessor-safe validation, valid and invalid deferred relationship receipts, and a real projector apply for the special __proto__ key.
+- [CI] Extend the canonical HMX workflow branch filter so PRs against this integration branch run the canonical apply suite.
+- [VALIDATION] Exact-head runtime/typecheck, canonical HMX integration checks and WorkPass71 remain pending; no PASS is claimed yet.
+- [RELEASE] main and the published WorkPass70 Release ZIP remain unchanged.
+
+---
 ## [NK1][Hexis] Validate query limits and temporal requirements (2026-10-26)
 
 - Read-only memory and goal list endpoints now reject invalid/non-integer/out-of-range limits and unknown goal status filters instead of passing `NaN` into core methods.
