@@ -189,6 +189,37 @@ export class HexisCanonicalMemoryProjector {
     const appliedAt = Date.now();
     const attempt = Math.max(1, Math.floor(Number(stage.applicationAttempts ?? 1)));
 
+    // MemoryOS2 keeps at most 1,600 canonical items and evicts the tail on insert.
+    // An HMX batch must not trigger that unrelated eviction as a side effect, because
+    // compensation can remove imported rows but cannot restore an evicted old memory.
+    const canonicalMemoryCapacity = 1600;
+    const plannedNewItems = normalized.filter(item => {
+      const stableRefKey = item.ref.replace(/^exp_[a-f0-9]{16}:/, '');
+      const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' +
+        hash(stableRefKey + '\\0' + item.contentHash).slice(0, 24);
+      return !existingImportKeys.has(source + '\\0' + stableRecordContent(item.content));
+    });
+    if (existingItems.length + plannedNewItems.length > canonicalMemoryCapacity) {
+      throw new Error(
+        'hmx-apply-canonical-memory-capacity-exceeded:' +
+        (existingItems.length + plannedNewItems.length) + '/' + canonicalMemoryCapacity,
+      );
+    }
+    // Detect all deterministic ID collisions before the first canonical write. The
+    // in-loop check below remains as defense-in-depth against unexpected mutations.
+    for (const item of plannedNewItems) {
+      const stableRefKey = item.ref.replace(/^exp_[a-f0-9]{16}:/, '');
+      const plannedId = 'hexis-memory:' +
+        hash(lineageId + '\\0' + stableRefKey + '\\0' + item.contentHash).slice(0, 48);
+      const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' +
+        hash(stableRefKey + '\\0' + item.contentHash).slice(0, 24);
+      const collision = existingItems.find(candidate => candidate.id === plannedId);
+      if (collision && !(collision.source === source &&
+          stableRecordContent(collision.content) === stableRecordContent(item.content))) {
+        throw new Error('hmx-apply-canonical-id-conflict:' + plannedId);
+      }
+    }
+
     try {
       for (const item of normalized) {
         const { row, ref, type, content: memoryText, contentHash } = item;
