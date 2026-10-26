@@ -22,7 +22,7 @@ import { CanonicalCognitiveKernel } from './CanonicalCognitiveKernel.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
-import { UnifiedCognitiveSubstrate, type UnifiedCognitiveSubstrateState, resolveUnifiedCognitiveWorkPolicy } from './UnifiedCognitiveSubstrate.ts';
+import { UnifiedCognitiveSubstrate, type UnifiedCognitiveSubstrateState, resolveUnifiedCognitiveWorkPolicy, resolveUnifiedCognitiveResourceSignals } from './UnifiedCognitiveSubstrate.ts';
 import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
 import { CausalDomainClosureLedger, type CausalDomainEvidence } from '../system/CausalDomainClosureLedger.ts';
@@ -48,6 +48,21 @@ import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndepe
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+
+type PredictionDebtLike = {
+  openCount:unknown;
+  agingCount:unknown;
+  expiredCount:unknown;
+  meanPriority01:unknown;
+};
+function safePredictionDebtPriority(debt:PredictionDebtLike):number {
+  const countsValid=[debt.openCount,debt.agingCount,debt.expiredCount]
+    .every(value=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0);
+  const priority=debt.meanPriority01;
+  return countsValid&&typeof priority==='number'&&Number.isFinite(priority)&&priority>=0&&priority<=1
+    ? priority : 1;
+}
+
 // External repair hints are advisory only and must be fresh; stale/future timestamps cannot bias autonomous revision order.
 const EXTERNAL_REPAIR_HINT_TTL_MS=7*24*60*60*1000;
 const EXTERNAL_REPAIR_HINT_MAX_FUTURE_SKEW_MS=5*60*1000;
@@ -555,21 +570,24 @@ export class OrganismRuntime {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
     if (externalText) this.embodiment.userActivity();
     let body = await this.embodiment.sample();
+    const resourceStatus=this.core.operationalStatusSnapshot();
+    const previousSubstrateForResources=this.unifiedCognitiveSubstrate.snapshot();
+    const currentPredictionDebt=this.core.predictionDebtSnapshot();
+    const currentPredictionDebtPriority=safePredictionDebtPriority(currentPredictionDebt);
+    const resourceSignals=resolveUnifiedCognitiveResourceSignals({
+      operationalPredictionError01:resourceStatus.predictionError,
+      operationalAutonomy01:resourceStatus.autonomyScore,
+      predictionDebtPriority01:currentPredictionDebtPriority,
+      priorSubstrate:previousSubstrateForResources,
+    });
     const resourceAllocation = this.resourceEconomy.allocate({
-      tick: this.core.operationalStatusSnapshot().tick,
+      tick: resourceStatus.tick,
       at: Date.now(),
       energy01: body.bodyEnergy01,
       cognitiveLoad01: body.cognitiveCapacity01 <= 0 ? 1 : 1 - body.cognitiveCapacity01,
-      uncertainty01: this.core.operationalStatusSnapshot().predictionError,
-      novelty01: this.core.operationalStatusSnapshot().autonomyScore,
-      predictionDebt01: (() => {
-        const debt = this.core.predictionDebtSnapshot();
-        const countsValid = [debt.openCount, debt.agingCount, debt.expiredCount]
-          .every(value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
-        const priority = debt.meanPriority01;
-        return countsValid && typeof priority === 'number' &&
-          Number.isFinite(priority) && priority >= 0 && priority <= 1 ? priority : 1;
-      })(),
+      uncertainty01: resourceSignals.uncertainty01,
+      novelty01: resourceSignals.novelty01,
+      predictionDebt01: resourceSignals.predictionDebt01,
       thermalStrain01: body.thermalStrain01,
       ramPressure01: clamp01((1-body.cognitiveCapacity01)*.65 + (1-body.cognitiveCapacity01)*.35),
       performancePressure01: 0,
@@ -632,14 +650,7 @@ export class OrganismRuntime {
     const predictionDebtCountsValid = [
       predictionDebt.openCount, predictionDebt.agingCount, predictionDebt.expiredCount,
     ].every(value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
-    const predictionPriority =
-      predictionDebtCountsValid &&
-      typeof predictionDebt.meanPriority01 === 'number' &&
-      Number.isFinite(predictionDebt.meanPriority01) &&
-      predictionDebt.meanPriority01 >= 0 &&
-      predictionDebt.meanPriority01 <= 1
-        ? predictionDebt.meanPriority01
-        : 1;
+    const predictionPriority = safePredictionDebtPriority(predictionDebt);
     const unit = (value:unknown, fallback:number):number =>
       typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
     const directObservation = body.telemetry.source === 'android-termux' && body.telemetry.staleMs === 0;
@@ -1355,7 +1366,7 @@ export class OrganismRuntime {
       cognitiveLoad01: body.cognitiveCapacity01 <= 0 ? 1 : 1 - body.cognitiveCapacity01,
       uncertainty01: this.core.operationalStatusSnapshot().predictionError,
       novelty01: this.core.operationalStatusSnapshot().autonomyScore,
-      predictionDebt01: Number((this.core.predictionDebtSnapshot() as any)?.meanPriority01 ?? 0),
+      predictionDebt01: safePredictionDebtPriority(this.core.predictionDebtSnapshot()),
       thermalStrain01: body.thermalStrain01,
       ramPressure01: body.telemetry.ramPressure01,
       performancePressure01: this.runtimePerformance.decision().performancePressure01,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { OrganismResourceAllocator, defaultOrganismResourceAllocation } from '../src/organism/system/OrganismResourceAllocator.ts';
-import { UnifiedCognitiveSubstrate, defaultUnifiedCognitiveSubstrate, resolveUnifiedCognitiveWorkPolicy } from '../src/organism/core/UnifiedCognitiveSubstrate.ts';
+import { UnifiedCognitiveSubstrate, defaultUnifiedCognitiveSubstrate, resolveUnifiedCognitiveWorkPolicy, resolveUnifiedCognitiveResourceSignals } from '../src/organism/core/UnifiedCognitiveSubstrate.ts';
 const alloc=new OrganismResourceAllocator(); alloc.restore(defaultOrganismResourceAllocation());
 const a=alloc.decide({battery01:.85,thermal01:.15,ramPressure01:.18,uncertainty01:.7,predictionError01:.65,goalPressure01:.5,novelty01:.8,socialNeed01:.25,grounding01:.55,learningOpportunity01:.75,languageDemand01:0,externalInput:false});
 assert.ok(a.computeCapacity01>0.5);
@@ -152,5 +152,30 @@ assert.equal(oversizedBudgetPolicy.maxCounterfactualBranches, 3);
 const invalidBudgetPolicy = resolveUnifiedCognitiveWorkPolicy(out, Number.NaN);
 assert.equal(invalidBudgetPolicy.maxCounterfactualBranches, 0);
 assert.equal(invalidBudgetPolicy.reason, 'invalid-resource-budget');
+
+
+const feedbackPrior = defaultUnifiedCognitiveSubstrate();
+feedbackPrior.world.uncertainty01 = 0.9;
+feedbackPrior.world.newEntityRate01 = 0.8;
+feedbackPrior.prediction.error01 = 0.7;
+feedbackPrior.prediction.priority01 = 0.8;
+const feedbackSignals = resolveUnifiedCognitiveResourceSignals({
+  operationalPredictionError01: 0.2,
+  operationalAutonomy01: 0.1,
+  predictionDebtPriority01: 0.2,
+  priorSubstrate: feedbackPrior,
+});
+assert.ok(Math.abs(feedbackSignals.uncertainty01 - 0.39) < 1e-12);
+assert.ok(Math.abs(feedbackSignals.novelty01 - 0.48) < 1e-12);
+assert.ok(Math.abs(feedbackSignals.predictionDebt01 - 0.4) < 1e-12);
+const damagedFeedback = resolveUnifiedCognitiveResourceSignals({
+  operationalPredictionError01: Number.NaN,
+  operationalAutonomy01: 0.1,
+  predictionDebtPriority01: -2,
+  priorSubstrate: { world: { uncertainty01: Number.NaN, newEntityRate01: 2 }, prediction: { error01: Infinity, priority01: -1 } },
+});
+assert.equal(damagedFeedback.uncertainty01, 1);
+assert.ok(Math.abs(damagedFeedback.novelty01 - 0.6) < 1e-12);
+assert.ok(Math.abs(damagedFeedback.predictionDebt01 - 1) < 1e-12);
 
 console.log('UNIFIED_SUBSTRATE=PASS',JSON.stringify({capacity:a.computeCapacity01,hotCapacity:hot.computeCapacity01,selfWorld:out.coupling.selfWorld01,predictionGrounding:out.coupling.predictionGrounding01}));

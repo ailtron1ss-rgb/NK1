@@ -4,6 +4,7 @@ import {
   UnifiedCognitiveSubstrate,
   defaultUnifiedCognitiveSubstrate,
   resolveUnifiedCognitiveWorkPolicy,
+  resolveUnifiedCognitiveResourceSignals,
 } from '../src/organism/core/UnifiedCognitiveSubstrate.ts';
 
 const runtime = await readFile(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
@@ -20,7 +21,12 @@ assert.match(runtime, /substrateWorkPolicy\.maxCounterfactualBranches/);
 assert.match(runtime, /substrateWorkPolicy\.allowMatchedCounterfactual/);
 assert.match(runtime, /unifiedCognitiveSubstrateSnapshot\(\)/);
 assert.ok(!runtime.includes('substrateWorkPolicy.maxCounterfactualBranches, internalAction'));
+assert.match(runtime, /resolveUnifiedCognitiveResourceSignals\(/);
+assert.match(runtime, /safePredictionDebtPriority\(this\.core\.predictionDebtSnapshot\(\)\)/);
+assert.ok(!runtime.includes('predictionDebtSnapshot() as any'));
 
+const feedbackContract = resolveUnifiedCognitiveResourceSignals({ operationalPredictionError01: .4, operationalAutonomy01: .3, predictionDebtPriority01: .2, priorSubstrate: defaultUnifiedCognitiveSubstrate() });
+assert.ok(feedbackContract.uncertainty01 >= 0 && feedbackContract.uncertainty01 <= 1);
 const fallback = resolveUnifiedCognitiveWorkPolicy(defaultUnifiedCognitiveSubstrate(), 3);
 assert.ok(fallback.maxCounterfactualBranches <= 1);
 assert.equal(fallback.allowMatchedCounterfactual, false);

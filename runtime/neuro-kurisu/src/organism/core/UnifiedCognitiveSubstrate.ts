@@ -167,6 +167,48 @@ export function resolveUnifiedCognitiveWorkPolicy(
   };
 }
 
+
+export interface UnifiedCognitiveResourceSignals {
+  uncertainty01:number;
+  novelty01:number;
+  predictionDebt01:number;
+}
+
+/**
+ * Close a small, auditable feedback loop between the previous substrate frame
+ * and the next resource allocation. It does not pick an action: it only feeds
+ * bounded uncertainty, novelty and prediction-pressure signals to the budgeter.
+ * Invalid signals are handled conservatively so damaged derived state cannot
+ * manufacture confidence or unlock extra optional work.
+ */
+export function resolveUnifiedCognitiveResourceSignals(input:{
+  operationalPredictionError01:unknown;
+  operationalAutonomy01:unknown;
+  predictionDebtPriority01:unknown;
+  priorSubstrate:unknown;
+}):UnifiedCognitiveResourceSignals {
+  const defaults=defaultUnifiedCognitiveSubstrate();
+  const predictionError=trustedMetric(input.operationalPredictionError01,1,1);
+  const autonomy=trustedMetric(input.operationalAutonomy01,0,0);
+  const debtPriority=trustedMetric(input.predictionDebtPriority01,1,1);
+  const prior=isRecord(input.priorSubstrate)?input.priorSubstrate:{};
+  const rawWorld=own(prior,'world');
+  const rawPrediction=own(prior,'prediction');
+  const worldMalformed=rawWorld!==undefined&&!isRecord(rawWorld);
+  const predictionMalformed=rawPrediction!==undefined&&!isRecord(rawPrediction);
+  const world=section(prior,'world');
+  const prediction=section(prior,'prediction');
+  const worldUncertainty=trustedMetric(worldMalformed?null:own(world,'uncertainty01'),defaults.world.uncertainty01,1);
+  const newEntityRate=trustedMetric(worldMalformed?null:own(world,'newEntityRate01'),defaults.world.newEntityRate01,1);
+  const priorPredictionError=trustedMetric(predictionMalformed?null:own(prediction,'error01'),defaults.prediction.error01,1);
+  const priorPriority=trustedMetric(predictionMalformed?null:own(prediction,'priority01'),defaults.prediction.priority01,1);
+  return {
+    uncertainty01:clamp(predictionError*.7+worldUncertainty*.2+priorPredictionError*.1),
+    novelty01:clamp(Math.max(autonomy,newEntityRate*.6,priorPredictionError*.15)),
+    predictionDebt01:clamp(Math.max(debtPriority,priorPriority*.5)),
+  };
+}
+
 /** Bounded cross-system projection. It never owns canonical domain state. */
 export class UnifiedCognitiveSubstrate {
   private state = defaultUnifiedCognitiveSubstrate();

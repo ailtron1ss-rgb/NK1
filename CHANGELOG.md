@@ -1,3 +1,13 @@
+# WorkPass359 — close substrate-to-resource feedback (2026-10-26)
+
+- [INTEGRATED] Feed the previous unified substrate frame into the next CognitiveResourceEconomy allocation through a bounded pure projection of uncertainty, novelty and unresolved prediction pressure.
+- [VALIDATED] Add deterministic unit regressions for the feedback math and conservative fallback behavior when inputs/previous state are invalid.
+- [FIXED] Remove the remaining unchecked predictionDebtSnapshot() as any read from sampleEmbodiment(); use one shared validator in stepInternal, sampleEmbodiment and substrate integration.
+- [REGRESSION] Assert runtime wiring uses the feedback projection and no longer casts prediction debt to any.
+- [VALIDATION] WorkPass358's exact-head WorkPass331 workflow passed. This commit requires fresh exact-head validation.
+
+---
+
 # WorkPass358 — conservative persisted identity and bounded optional work (2026-10-26)
 
 - [FIXED] Stop clamping corrupt persisted self-continuity values into potentially optimistic high confidence; malformed or out-of-range continuity now falls back conservatively to zero (or the default only when absent).
