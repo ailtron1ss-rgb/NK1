@@ -1,3 +1,10 @@
+## Supervised runtime working-directory fix — 2026-10-26
+
+- The top-level supervisor previously launched `src/server/server.mjs` with the repository root as its working directory, even though that path is relative to `runtime/neuro-kurisu`. This prevented the mandatory runtime child from resolving its entry point during `npm start`.
+- Extracted service launch specifications into `tools/supervised-service-specs.mjs`; the runtime now starts from its own workspace while the research bridge, UI preview and gateway remain rooted at the repository.
+- Added focused unit coverage for all four service working directories and required launch inputs; connected it to `audit:quick` and the Node 24 toolchain workflow.
+- Exact-head CI validation is pending.
+
 ## P23 shadow-evidence end-to-end identity fixture — 2026-10-26
 
 - Updated the real child-process signed-shadow end-to-end fixture to compute the current five-element candidate identity (including explicit `null` when revision provenance is absent).
