@@ -1,3 +1,13 @@
+## WorkPass420 — валидация HMX поверх уже созданного bounded snapshot (2026-10-26)
+
+- **Рефакторинг адаптера:** `86ec7974749de51ef1a78375e0da45d4772c34c7`; **связка fabric:** `619535a9cf23e3463ca4a8b1809a07811e512f00`; **регрессия:** `b801a6eb2b67a6270f4f2a4dc745a3bf32433100`.
+- Добавлена `snapshotAndValidateHmxV17Document`: она единожды захватывает недоверенный input, валидирует отделённое plain-JSON дерево и возвращает snapshot вместе с issues. Публичная `validateHmxV17Document` по-прежнему безопасно захватывает произвольный raw input, а `stageHmx` использует combined result без второго полного deep copy/serialization прохода.
+- Restore-time validation по-прежнему вызывает публичную safe API, потому что проверяет сохранённое состояние. Первичный staging уже имеет отделённый snapshot, поэтому его дополнительное копирование не нужно; прочие callers не менялись.
+- Регрессия проверяет отделённый объект результата, отсутствие schema issues у валидного документа и отказ от accessor-backed input без выполнения getter. В focused suite сохранены изоляция stage snapshot и fail-closed проверки malformed metadata.
+- **Валидация:** PENDING exact-head HMX adaptation, runtime typecheck, server smoke и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
+
+---
+
 ## WorkPass419 — строгая проверка типов HMX metadata до coercion (2026-10-26)
 
 - **Код адаптера:** `718478b8fb815909c4b2c31098921b2a0cac23bf`, `3bc3bee2f68a0c3f99920e1cc1d898cc9797afa3`, `c39fd277fc2e5c79495a92df1d215171502539c0`; **регрессии:** `f6f3ee592273430e787dc2d60f865d0abca0128b`, `693567b8100b83ab0d8ff1ffad8c31fcf3bca8cb`, `f6ff13bb81276752e1500181ea83f9f75f57a657`, `19afcc0376e55b26511713776a09438bcc4a7e79`.
