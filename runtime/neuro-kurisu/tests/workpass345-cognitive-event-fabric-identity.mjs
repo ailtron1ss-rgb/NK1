@@ -74,6 +74,28 @@ assert.equal(getterCalls, 0);
 assert.equal(Object.hasOwn(accessorNode.payload, 'secret'), false);
 assert.equal(accessorNode.payload.safe, 'kept');
 
+const nestedAccessor={safe:'nested-kept'};
+Object.defineProperty(nestedAccessor,'secret',{enumerable:true,get(){
+  getterCalls+=1;
+  throw new Error('nested getter must never execute');
+}});
+const nestedAccessorNode=fabric.append(makeEvent({
+  id:'cef:test:identity:nested-accessor',
+  payload:{nested:nestedAccessor},
+}));
+assert.equal(getterCalls,0);
+assert.equal(nestedAccessorNode.payload.nested.secret,undefined);
+
+const beforeDeepPayload=fabric.snapshot().total;
+const deepPayload={};
+let deepCursor=deepPayload;
+for(let i=0;i<40;i+=1){deepCursor.next={};deepCursor=deepCursor.next;}
+assert.throws(()=>fabric.append(makeEvent({
+  id:'cef:test:identity:too-deep',
+  payload:deepPayload,
+})),/cognitive-event-payload-depth-limit/);
+assert.equal(fabric.snapshot().total,beforeDeepPayload,'oversized-depth payloads fail before ledger mutation');
+
 // Unserializable/cyclic payloads must fail before the event is inserted.
 const beforeInvalidPayload = fabric.snapshot().total;
 const cyclic = {};
@@ -117,12 +139,12 @@ assert.equal(fabric.snapshot().recent.some(event => event.id === 'cef:test:ident
    version:1,capacity:128,total:2,buffered:2,linkedParentEvents:0,danglingParentLinks:0,
    lineageIntegrity01:1,cycleCoverage01:0,causalDensity01:0,recentTicks:0,
    recent:[
-     {...validRestoreEvent,at:700},
-     {...makeEvent({id:'cef:test:restore-invalid',payload:{}}),payload:malformedPayload,at:701},
+     {...validRestoreEvent,payload:malformedPayload,at:701},
+     {...validRestoreEvent,at:702},
    ],
  });
- assert.equal(restoreTarget.getById('cef:test:restore-valid')?.payload.safe,true);
- assert.equal(restoreTarget.getById('cef:test:restore-invalid'),null);
+ assert.equal(restoreTarget.getById('cef:test:restore-valid')?.payload.safe,true,
+   'a malformed row must not reserve an ID and prevent a later valid recovery row');
 
  // Receipt replay must preserve exact postcondition hashes after restore without its index.
  const receiptFabric=new CognitiveEventFabric(128);
