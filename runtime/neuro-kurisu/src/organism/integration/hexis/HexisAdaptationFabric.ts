@@ -281,6 +281,10 @@ const jsonUtf8Bytes = (value: unknown): number => {
 };
 const isHmxRecord = (value: unknown): value is Record<string, unknown> =>
     value !== null && typeof value === 'object' && !Array.isArray(value);
+const stagedPayloadBytes = (value: unknown): number =>
+    value !== null && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0
+        ? 0
+        : jsonUtf8Bytes(value);
 const isHmxText = (value: unknown, max = 256): value is string =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max &&
     !/[\u0000-\u001f\u007f]/.test(value);
@@ -320,9 +324,9 @@ export class HexisAdaptationFabric {
                     ? value.hmxStages.slice(-HMX_MAX_RETAINED_STAGES)
                     : [];
                 let retainedBytes = 0;
-                // Prefer the newest staged work if old persisted state already exceeds
-                // the bound. Applied stages can drop their source payload because the
-                // validated application receipt is sufficient for idempotent replay.
+                // Prefer recent work when legacy/corrupted snapshots exceed the limit.
+                // Applied stages can drop their source payload because the verified receipt
+                // remains sufficient for idempotent replay.
                 return sourceStages.slice().reverse().map((rawStage: any) => {
                     const stage: HexisHmxStage = {
                         ...rawStage,
@@ -331,16 +335,31 @@ export class HexisAdaptationFabric {
                             : {},
                         conflicts: Array.isArray(rawStage?.conflicts) ? [...rawStage.conflicts] : [],
                     };
-                    const bytes = jsonUtf8Bytes(stage.stagedSections);
+                    const bytes = stagedPayloadBytes(stage.stagedSections);
                     if (bytes <= HMX_MAX_RETAINED_STAGE_BYTES - retainedBytes) {
                         retainedBytes += bytes;
                         return { ...stage, stagedBytes: bytes };
                     }
                     if (hasValidHmxApplicationReceipt(stage)) {
-                        return { ...stage, stagedSections: {}, stagedBytes: 2 };
+                        return { ...stage, stagedSections: {}, stagedBytes: 0 };
                     }
-                    const conflicts = [...stage.conflicts, {
-                        path: '
+                    const conflicts = [...stage.conflicts];
+                    if (!conflicts.some((conflict) => conflict.kind === 'retained-stage-budget')) {
+                        conflicts.push({
+                            path: '$',
+                            kind: 'retained-stage-budget',
+                            detail: 'persisted HMX staged sections were omitted because retained payload exceeded the configured memory budget; re-export and stage again',
+                        });
+                    }
+                    return {
+                        ...stage,
+                        status: stage.status === 'accepted' ? 'staged' as const : stage.status,
+                        conflicts,
+                        stagedSections: {},
+                        stagedBytes: 0,
+                    };
+                }).reverse();
+            })(),
             goalProposals: Array.isArray((value as any).goalProposals) ? (value as any).goalProposals.slice(-256) : [],
             outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
             connectorPolicies: normalizedPolicies,
@@ -754,10 +773,10 @@ export class HexisAdaptationFabric {
         const retainedStageBytes = retainedStages.reduce(
             (sum, priorStage) => sum + (Number.isSafeInteger(priorStage.stagedBytes)
                 ? Number(priorStage.stagedBytes)
-                : jsonUtf8Bytes(priorStage.stagedSections)),
+                : stagedPayloadBytes(priorStage.stagedSections)),
             0,
         );
-        const incomingStageBytes = jsonUtf8Bytes(stagedSections);
+        const incomingStageBytes = stagedPayloadBytes(stagedSections);
         if (incomingStageBytes > HMX_MAX_RETAINED_STAGE_BYTES - retainedStageBytes) {
             conflicts.push({
                 path: '$',
@@ -785,7 +804,7 @@ export class HexisAdaptationFabric {
             status: 'staged',
             createdAt: nowMs(),
             digest: digest(base),
-            stagedBytes: jsonUtf8Bytes(stagedSections),
+            stagedBytes: stagedPayloadBytes(stagedSections),
         };
         this.state.hmxStages.push(stage);
         this.state.hmxStages = this.state.hmxStages.slice(-HMX_MAX_RETAINED_STAGES);
