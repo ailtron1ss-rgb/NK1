@@ -1028,6 +1028,12 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
+            if (input.confirmed !== true) {
+                return json(res, 403, { ok: false, error: 'hexis-goal-materialization-confirmation-required' });
+            }
+            if (input.proposalId !== undefined && typeof input.proposalId !== 'string') {
+                return json(res, 400, { ok: false, error: 'hexis-goal-proposal-id-invalid' });
+            }
             try {
                 const result=runtime.core.hexisMaterializeGoalProposal(String(input.proposalId || ''));
                 await runtime.core.flush();
