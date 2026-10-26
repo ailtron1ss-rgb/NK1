@@ -9,6 +9,7 @@
 > **WorkPass351:** learning supervisor validates environment before scratch allocation and cleans pre-spawn scratch directories when trusted registration fails or cancellation is observed.
 >
 > **WorkPass352:** host executor/verifier/scanner executable parent permissions and device/inode identity are validated at setup and each dispatch; regressions guard writable parents and replaced directories.
+> **WorkPass353:** evaluator host-config state boundaries are checked against a canonicalized state path; a symlink alias cannot relocate trusted evaluator configuration into mutable organism state without detection. A new regression and focused CI step are committed; exact-head CI is pending.
 >
 > **Validation:** dedicated WorkPass349 workflow #40285352614 passed native dataset tests 10/10, supervisor cleanup, host-owned executable path regressions and runtime `TYPECHECK=PASS` on SHA `b9e0e90710e1380cac0ee57e1a0deaf74e214cf1`. Older broad workflow results apply to their stated code SHAs. Full production readiness, independent learning uplift and real device E2E remain unproven.
 >
