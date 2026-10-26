@@ -226,6 +226,8 @@ export interface HexisGoalProposal {
     status: 'pending' | 'approved' | 'rejected' | 'materialized';
     canonicalGoalId?: string;
     goalRelationshipReceipt?: HexisGoalRelationshipReceipt;
+    /** Digest of the exact goal payload an explicit reviewer approved. */
+    approvalDigest?: string;
     createdAt: number;
     decidedAt?: number;
     decisionReason?: string;
@@ -272,6 +274,23 @@ export interface HexisAdaptationState {
 }
 const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
 const digest = (value: unknown) => sha256Stable(value, 'legacy');
+const goalApprovalPayload = (proposal: HexisGoalProposal) => ({
+    id: proposal.id,
+    stageId: proposal.stageId,
+    exportId: proposal.exportId,
+    sourceLineageId: proposal.sourceLineageId,
+    sourceRef: proposal.sourceRef,
+    title: proposal.title,
+    description: proposal.description,
+    importance: proposal.importance,
+    urgency: proposal.urgency,
+    confidence: proposal.confidence,
+});
+const computeGoalApprovalDigest = (proposal: HexisGoalProposal) => digest(goalApprovalPayload(proposal));
+const hasValidGoalApprovalDigest = (proposal: HexisGoalProposal) =>
+    typeof proposal.approvalDigest === 'string' &&
+    /^[a-f0-9]{64}$/.test(proposal.approvalDigest) &&
+    computeGoalApprovalDigest(proposal) === proposal.approvalDigest;
 const sourceKey = (source: HexisEvidenceSource) => String(source.ref || source.label || source.contentHash || digest(source));
 const nowMs = () => Date.now();
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
@@ -842,6 +861,16 @@ export class HexisAdaptationFabric {
         const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
         return proposal ? structuredClone(proposal) : null;
     }
+    /** Revalidate the exact content bound to an explicit approval before use. */
+    validateGoalProposalApproval(id: string): HexisGoalProposal {
+        const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
+        if (!proposal) throw new Error('hexis-goal-proposal-not-found');
+        if (proposal.status !== 'approved' && proposal.status !== 'materialized') {
+            throw new Error('hmx-goal-must-be-approved-before-materialization');
+        }
+        if (!hasValidGoalApprovalDigest(proposal)) throw new Error('hmx-goal-approval-digest-invalid');
+        return structuredClone(proposal);
+    }
     decideGoalProposal(id: string, decision: 'approve' | 'reject') {
         const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
         if (!proposal) return null;
@@ -849,9 +878,13 @@ export class HexisAdaptationFabric {
         if (proposal.status !== 'pending') {
             const sameDecisionReplay = (decision === 'approve' && (proposal.status === 'approved' || proposal.status === 'materialized')) ||
                 (decision === 'reject' && proposal.status === 'rejected');
-            if (sameDecisionReplay) return structuredClone(proposal);
+            if (sameDecisionReplay) {
+                if (decision === 'approve' && !hasValidGoalApprovalDigest(proposal)) throw new Error('hmx-goal-approval-digest-invalid');
+                return structuredClone(proposal);
+            }
             throw new Error('hmx-goal-proposal-already-reviewed');
         }
+        if (decision === 'approve') proposal.approvalDigest = computeGoalApprovalDigest(proposal);
         proposal.status = decision === 'approve' ? 'approved' : 'rejected';
         proposal.decidedAt = nowMs();
         proposal.decisionReason = decision === 'approve' ? 'explicit-review-approval' : 'explicit-review-rejection';
@@ -864,8 +897,12 @@ export class HexisAdaptationFabric {
         if (!proposal) return null;
         const target = String(canonicalGoalId ?? '').trim();
         if (!target) throw new Error('canonical-goal-id-required');
-        if (proposal.status === 'materialized' && proposal.canonicalGoalId === target) return structuredClone(proposal);
+        if (proposal.status === 'materialized' && proposal.canonicalGoalId === target) {
+            if (!hasValidGoalApprovalDigest(proposal)) throw new Error('hmx-goal-approval-digest-invalid');
+            return structuredClone(proposal);
+        }
         if (proposal.status !== 'approved') throw new Error('hmx-goal-must-be-approved-before-materialization');
+        if (!hasValidGoalApprovalDigest(proposal)) throw new Error('hmx-goal-approval-digest-invalid');
         proposal.status = 'materialized';
         proposal.canonicalGoalId = target;
         proposal.decidedAt = nowMs();
@@ -875,6 +912,7 @@ export class HexisAdaptationFabric {
         const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
         if (!proposal) return null;
         if (proposal.status !== 'materialized' || proposal.canonicalGoalId !== String(canonicalGoalId)) throw new Error('hmx-goal-must-be-materialized-before-activation');
+        if (!hasValidGoalApprovalDigest(proposal)) throw new Error('hmx-goal-approval-digest-invalid');
         if (proposal.goalRelationshipReceipt) return structuredClone(proposal);
         proposal.goalRelationshipReceipt = structuredClone(receipt ?? {
             sourceStageFound: false, candidateRelationships: 0, projected: 0, deferred: 0, semanticEdgeIds: [], at: nowMs(),
