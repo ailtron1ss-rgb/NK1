@@ -214,6 +214,78 @@ function retainHexisOutboxRows(rows: HexisOutboxEntry[]): HexisOutboxEntry[] {
     // Active deliveries are obligations, not cache entries: rotate only old terminal rows.
     return rows.filter((row) => row.status === 'pending' || row.status === 'publishing' || keepTerminal.has(row.id));
 }
+function normalizeHexisOutboxRows(raw: unknown): { rows: HexisOutboxEntry[]; corrupt: boolean } {
+    let corrupt = false;
+    if (raw !== undefined && raw !== null && !Array.isArray(raw)) return { rows: [], corrupt: true };
+    if (!Array.isArray(raw)) return { rows: [], corrupt: false };
+    const validStatuses = new Set<HexisOutboxStatus>(['pending', 'publishing', 'published', 'failed']);
+    const rows: HexisOutboxEntry[] = [];
+    const seenIds = new Map<string, HexisOutboxEntry>();
+    const seenKeys = new Map<string, HexisOutboxEntry>();
+    const priority: Record<HexisOutboxStatus, number> = {
+        pending: 1, publishing: 2, failed: 3, published: 4,
+    };
+    for (const candidate of raw) {
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+            corrupt = true;
+            continue;
+        }
+        const row = candidate as Record<string, unknown>;
+        const status = row.status;
+        if (typeof row.id !== 'string' || !row.id.trim() || row.id.length > 256 ||
+            typeof row.idempotencyKey !== 'string' || !row.idempotencyKey.trim() || row.idempotencyKey.length > 256 ||
+            typeof row.kind !== 'string' || !row.kind.trim() || row.kind.length > 128 ||
+            typeof row.channel !== 'string' || !row.channel.trim() || row.channel.length > 128 ||
+            typeof status !== 'string' || !validStatuses.has(status as HexisOutboxStatus) ||
+            !Number.isSafeInteger(row.attempts) || Number(row.attempts) < 0 || Number(row.attempts) > 1_000_000 ||
+            typeof row.createdAt !== 'number' || !Number.isFinite(row.createdAt) || row.createdAt < 0 ||
+            typeof row.updatedAt !== 'number' || !Number.isFinite(row.updatedAt) || row.updatedAt < 0 ||
+            (row.publishedAt !== undefined && (typeof row.publishedAt !== 'number' || !Number.isFinite(row.publishedAt) || row.publishedAt < 0)) ||
+            (row.lastError !== undefined && typeof row.lastError !== 'string')) {
+            corrupt = true;
+            continue;
+        }
+        const normalized: HexisOutboxEntry = {
+            id: row.id,
+            idempotencyKey: row.idempotencyKey,
+            kind: row.kind,
+            channel: row.channel,
+            payload: row.payload,
+            status: status as HexisOutboxStatus,
+            attempts: Number(row.attempts),
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+            ...(typeof row.publishedAt === 'number' ? { publishedAt: row.publishedAt } : {}),
+            ...(typeof row.lastError === 'string' ? { lastError: row.lastError.slice(0, 500) } : {}),
+        };
+        const sameId = seenIds.get(normalized.id);
+        const sameKey = seenKeys.get(normalized.idempotencyKey);
+        if (sameId || sameKey) {
+            corrupt = true;
+            const prior = sameKey ?? sameId!;
+            const sameRequest = digest({kind:prior.kind,channel:prior.channel,payload:prior.payload}) ===
+                digest({kind:normalized.kind,channel:normalized.channel,payload:normalized.payload});
+            if (!sameRequest || sameId && sameId.idempotencyKey !== normalized.idempotencyKey) {
+                // Keep the most conservative visible result if duplicate keys disagree.
+                const existingPriority = priority[prior.status];
+                const incomingPriority = priority[normalized.status];
+                if (incomingPriority > existingPriority) {
+                    const index = rows.findIndex(x => x.idempotencyKey === prior.idempotencyKey || x.id === prior.id);
+                    if (index >= 0) rows[index] = normalized;
+                    seenIds.delete(prior.id);
+                    seenIds.set(normalized.id, normalized);
+                    seenKeys.set(normalized.idempotencyKey, normalized);
+                }
+            }
+            continue;
+        }
+        seenIds.set(normalized.id, normalized);
+        seenKeys.set(normalized.idempotencyKey, normalized);
+        rows.push(normalized);
+    }
+    return { rows: retainHexisOutboxRows(rows), corrupt };
+}
+
 function normalizeHexisOutboxLedger(
     raw: unknown,
     outbox: HexisOutboxEntry[],
@@ -368,9 +440,10 @@ export class HexisAdaptationFabric {
                 windowCount: Math.max(0, Math.floor(Number(policy?.windowCount ?? 0))),
               }))
             : [];
-        const normalizedOutbox = retainHexisOutboxRows(Array.isArray(value.outbox) ? value.outbox : []);
+        const outboxRestore = normalizeHexisOutboxRows(value.outbox);
+        const normalizedOutbox = outboxRestore.rows;
         const normalizedLedger = normalizeHexisOutboxLedger(value.outboxIdempotencyLedger, normalizedOutbox);
-        const ledgerSaturated = normalizedLedger.saturated || value.outboxIdempotencyLedgerSaturated === true;
+        const ledgerSaturated = normalizedLedger.saturated || outboxRestore.corrupt || value.outboxIdempotencyLedgerSaturated === true;
         this.state = {
             ...defaults, ...value,
             source: { ...defaults.source, ...(value.source ?? {}) },
