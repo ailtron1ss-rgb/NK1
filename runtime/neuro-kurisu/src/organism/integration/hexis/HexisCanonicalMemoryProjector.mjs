@@ -62,7 +62,8 @@ export const isValidHmxApplyReceipt = (stage, receipt) => {
       new Set(receipt.memoryIds).size !== receipt.memoryIds.length ||
       new Set(receipt.createdMemoryIds).size !== receipt.createdMemoryIds.length ||
       receipt.createdMemoryIds.some(id => !receipt.memoryIds.includes(id)) ||
-      receipt.semanticEdgeIds.length > receipt.projectedRelationships) return false;
+      receipt.semanticEdgeIds.length > receipt.projectedRelationships ||
+      new Set(receipt.semanticEdgeIds).size !== receipt.semanticEdgeIds.length) return false;
 
   const stagedRelationships = stage.stagedSections.relationships;
   if (Array.isArray(stagedRelationships)) {
