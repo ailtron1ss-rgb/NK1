@@ -37,6 +37,27 @@ const executionResult = await executionTimeout({ payload, payloadFingerprint });
 assert.equal(executionResult.evaluation.provenance.runBindings.length, 2);
 assert.ok(executionResult.evaluation.provenance.runBindings.every(binding => !binding.executable && !binding.bindingVerified));
 
+// One overall evaluation budget caps the entire validation+holdout run, not just
+// one service call. A timed-out first trial must terminate the experiment rather
+// than being counted as a failed trial while later tasks continue to run.
+let totalTimeoutCalls = 0;
+let totalTimeoutSignal;
+const totalTimeout = createIndependentSkillCandidateEvaluator({
+  ...base,
+  serviceTimeoutMs: 1_000,
+  evaluationTimeoutMs: 30,
+  executor: { async execute({ signal }) {
+    totalTimeoutCalls += 1;
+    totalTimeoutSignal = signal;
+    await new Promise(resolve => setTimeout(resolve, 100));
+    return { runId: 'late-total-run', observedStepIds: ['read'] };
+  } },
+});
+await assert.rejects(() => totalTimeout({ payload, payloadFingerprint }),
+  /independent-candidate-evaluator-total-timeout/);
+assert.equal(totalTimeoutCalls, 1, 'the whole-run deadline must stop before the next task starts');
+assert.equal(totalTimeoutSignal?.aborted, true, 'the active service must receive cancellation at the total deadline');
+
 const verificationTimeout = createIndependentSkillCandidateEvaluator({
   ...base,
   verifier: { async verify({ signal }) {
@@ -61,6 +82,7 @@ const safetyTimeout = createIndependentSkillCandidateEvaluator({
 await assert.rejects(() => safetyTimeout({ payload, payloadFingerprint }), /independent-candidate-safety-scan-timeout/);
 
 assert.throws(() => createIndependentSkillCandidateEvaluator({ ...base, serviceTimeoutMs: 0 }), /config-invalid/);
+assert.throws(() => createIndependentSkillCandidateEvaluator({ ...base, evaluationTimeoutMs: 0 }), /config-invalid/);
 // Interface-shaped names alone do not establish independent trust. A single
 // self-attesting service, or one dispatch function aliased across all roles,
 // must be rejected before any candidate execution occurs.
