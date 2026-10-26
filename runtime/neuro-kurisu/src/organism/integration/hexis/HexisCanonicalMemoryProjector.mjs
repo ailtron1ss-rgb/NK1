@@ -399,10 +399,11 @@ export class HexisCanonicalMemoryProjector {
               const signalCommandId = 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48);
               let signalRevision = revisedSignals.find(entry => entry.id === duplicate.id);
               if (!signalRevision) {
-                signalRevision = { id: duplicate.id, snapshot: structuredClone(duplicate), sourceCommandIds: [] };
+                const compensationToken = this.memoryFabric.captureSignalCompensation(duplicate.id);
+                if (!compensationToken) throw new Error('hmx-signal-compensation-capture-failed:' + duplicate.id);
+                signalRevision = { id: duplicate.id, token: compensationToken };
                 revisedSignals.push(signalRevision);
               }
-              if (!signalRevision.sourceCommandIds.includes(signalCommandId)) signalRevision.sourceCommandIds.push(signalCommandId);
               this.memoryFabric.updateSignals(
                 duplicate.id,
                 {
@@ -413,7 +414,7 @@ export class HexisCanonicalMemoryProjector {
                     : [],
                 },
                 'hexis-import-authority-cap',
-                { commandId: signalCommandId },
+                { commandId: signalCommandId, compensationToken: signalRevision.token },
               );
             }
           }
@@ -621,9 +622,9 @@ export class HexisCanonicalMemoryProjector {
           const commandId = 'hexis-signals-rollback:' + hash(String(stage.stagingId) + ':' + revision.id + ':' + attempt).slice(0, 48);
           const restored = this.memoryFabric.restoreSignalsForCompensation(
             revision.id,
-            revision.snapshot,
+            revision.token,
             'hexis-hmx-apply-rollback',
-            { commandId, sourceCommandIds: revision.sourceCommandIds },
+            { commandId },
           );
           if (restored !== true) {
             rollbackErrors.push('signals-restore-failed:' + revision.id);
