@@ -1451,6 +1451,8 @@ export class OrganismRuntime {
     });
   }
   cognitiveDependencySnapshot(): CognitiveDependencyState { return this.cognitiveDependencyGraph.snapshot(); }
+  /** Read-only bounded cross-system state for health and continuity diagnostics. */
+  unifiedCognitiveSubstrateSnapshot(): UnifiedCognitiveSubstrateState { return this.unifiedCognitiveSubstrate.snapshot(); }
   adaptiveDevelopmentSnapshot(){ return this.core.adaptiveDevelopmentSnapshot(); }
   cameraCaptureToolInput(cameraId=0, retain=false) {
     const backendNeedsPath=Boolean(this.config.visionBackend);
