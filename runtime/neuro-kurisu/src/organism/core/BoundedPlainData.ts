@@ -9,10 +9,19 @@
  * Non-finite numbers are intentionally permitted here because individual
  * schema parsers own the policy for rejecting or normalizing those values.
  */
-export function isBoundedPlainDataTree(value: unknown): boolean {
+export interface BoundedPlainDataLimits {
+  /** Combined object/key budget. The validator always applies a hard cap. */
+  maxNodes?: number;
+  maxDepth?: number;
+}
+
+export function isBoundedPlainDataTree(value: unknown, limits: BoundedPlainDataLimits = {}): boolean {
+  const maxNodes = Number.isSafeInteger(limits.maxNodes) && (limits.maxNodes as number) > 0
+    ? Math.min(limits.maxNodes as number, 500_000) : 100_000;
+  const maxDepth = Number.isSafeInteger(limits.maxDepth) && (limits.maxDepth as number) >= 0
+    ? Math.min(limits.maxDepth as number, 64) : 32;
   const seen = new WeakSet<object>();
-  const budget = { remaining: 100_000 };
-  const maxDepth = 32;
+  const budget = { remaining: maxNodes };
 
   const visit = (current: unknown, depth: number): boolean => {
     if (current === null || current === undefined ||
