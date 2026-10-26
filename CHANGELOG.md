@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass406 — expose the reviewed-goal lifecycle through the live runtime/API (2026-10-26)
+
+- [RUNTIME] Added Core wrappers for bounded proposal preparation/listing, explicit approve/reject, paused agency materialization, and separate activation. Successful materialization/activation synchronizes self-project, deliberation, semantic graph and Hexis state into persisted facets.
+- [API] Exposed GET `/api/organism/integration/hexis/goals` plus POST `goals/prepare`, `goals/decide`, `goals/materialize`, and `goals/activate`; invalid decision inputs fail with 400, state conflicts with 409 and missing proposals/stages with 404.
+- [SAFETY] The HTTP surface preserves the staged decision sequence; it does not bypass review to activate imported goals.
+- [VALIDATION] Route wiring committed to the draft branch; the expanded server smoke still requires an Actions run with executable logs.
+
 ## [NK1][Hexis] WorkPass405 — keep Core as an orchestration boundary for canonical review/evidence writes (2026-10-26)
 
 - [ARCHITECTURE] Removed the duplicated review-decision and belief-projection implementations from `OrganismCore`. It now delegates review decisions to `OrganismSystemFabric.decideHexisLearningReview` and belief revisions to the already-bound `HexisAdaptationFabric` projector.
