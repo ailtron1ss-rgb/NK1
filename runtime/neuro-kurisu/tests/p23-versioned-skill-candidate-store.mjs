@@ -8,7 +8,14 @@ import { VersionedSkillCandidateStore, InMemorySkillStorePersistence } from '../
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
-import { createAuthenticatedSkillPromotionApprovalVerifier, canonicalSkillPromotionApprovalPayload, createSkillPromotionApprovalPayload } from '../src/organism/learning/AuthenticatedSkillPromotionApproval.ts';
+import {
+  createAuthenticatedSkillPromotionApprovalVerifier,
+  createAuthenticatedSkillRollbackApprovalVerifier,
+  canonicalSkillPromotionApprovalPayload,
+  canonicalSkillRollbackApprovalPayload,
+  createSkillPromotionApprovalPayload,
+  createSkillRollbackApprovalPayload,
+} from '../src/organism/learning/AuthenticatedSkillPromotionApproval.ts';
 import { createContextBoundSkillShadowEvidenceVerifier, signSkillShadowArtifactForFixture, skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 
 function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticatedEvidenceRows=0) {
@@ -164,9 +171,50 @@ assert.equal(signedApprovalStore.snapshot().active.length, 0, 'tampered signatur
 const validApproval = {
   approvedBy: 'operator-key-1', approvedAt: approverTime, expectedActiveVersion: null, artifact: signedArtifact,
 };
+const prePromotionCandidate = signedApprovalStore.snapshot().candidates[0];
+assert.equal(authenticatedApprovalVerifier(validApproval, prePromotionCandidate, 3, 'promotion'), true,
+  'a canonical Ed25519 Base64 signature remains accepted');
+for (const malformedSignature of [
+  signedArtifact.signature + '!!!',
+  ' ' + signedArtifact.signature,
+  signedArtifact.signature.slice(0, -2),
+]) {
+  assert.equal(authenticatedApprovalVerifier({
+    ...validApproval,
+    artifact: { ...signedArtifact, signature: malformedSignature },
+  }, prePromotionCandidate, 3, 'promotion'), false,
+  'non-canonical Base64 encodings must fail closed rather than be permissively decoded');
+}
 const signedActive = signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3);
 assert.equal(signedActive.version, 1);
 assert.equal(signedApprovalStore.snapshot().candidates[0].approval.artifact.payload.candidateId, approvalCandidate.candidateId);
+
+// Rollback approval signatures use the same strict canonical encoding contract.
+let rollbackClock = Date.now();
+const rollbackVerifier = createAuthenticatedSkillRollbackApprovalVerifier(
+  new Map([['operator-key-1', approvalPublicPem]]),
+  { now: () => rollbackClock },
+);
+const activeCandidateForRollback = signedApprovalStore.snapshot().candidates[0];
+rollbackClock = Date.now();
+const rollbackPayload = createSkillRollbackApprovalPayload(
+  activeCandidateForRollback, 'operator-key-1', 'rollback-request-unique-1', rollbackClock,
+);
+const rollbackArtifact = {
+  payload: rollbackPayload,
+  signature: sign(null, Buffer.from(canonicalSkillRollbackApprovalPayload(rollbackPayload), 'utf8'), approvalPrivatePem).toString('base64'),
+};
+const validRollback = {
+  approvedBy: 'operator-key-1', approvedAt: rollbackClock,
+  expectedActiveVersion: activeCandidateForRollback.version, artifact: rollbackArtifact,
+};
+assert.equal(rollbackVerifier(validRollback, activeCandidateForRollback, activeCandidateForRollback.previousActive, 'rollback'), true,
+  'a canonical rollback signature remains accepted');
+assert.equal(rollbackVerifier({
+  ...validRollback, artifact: { ...rollbackArtifact, signature: rollbackArtifact.signature + '!!!' },
+}, activeCandidateForRollback, activeCandidateForRollback.previousActive, 'rollback'), false,
+'non-canonical rollback signature encodings must be rejected');
+
 assert.throws(() => signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3),
   /must complete shadow staging/,
   'the same signed approval cannot activate the same candidate twice');
