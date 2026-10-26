@@ -104,6 +104,8 @@ jobs:
         run: npm --prefix app run test:embodiment-timeline
       - name: Run app script regression suite
         run: npm --prefix app run test:scripts
+      - name: Run avatar preference storage regression
+        run: npm --prefix app run test:avatar-storage
       - name: App typecheck
         run: npm --prefix app run typecheck
       - name: App development bundle build

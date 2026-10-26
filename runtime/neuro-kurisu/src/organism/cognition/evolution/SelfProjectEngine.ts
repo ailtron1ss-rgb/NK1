@@ -9,6 +9,8 @@ const evidenceRank=(value:ProjectEvidenceClass)=>value==='replicated'?2:value===
 export interface SelfProject {
   id: string;
   title: string;
+  /** Source description/reason supplied when a reviewed imported project is materialized. */
+  reason?: string;
   origin: ProjectOrigin;
   status: ProjectStatus;
   commitment: number;
@@ -33,6 +35,10 @@ export interface SelfProject {
   pauseReason?: string;
   completionReason?: string;
   planRevision: number;
+  /** Stable origin binding for an explicitly reviewed Hexis goal import. */
+  hexisProposalId?: string;
+  hexisSourceLineageId?: string;
+  hexisSourceRef?: string;
 }
 
 export interface SelfProjectState {
@@ -87,6 +93,84 @@ export class SelfProjectEngine {
     this.state = { ...defaultState, ...(value ?? {}), version:2, lastOutcomeAt:Number((value as any)?.lastOutcomeAt ?? 0), projectEvents:Math.max(0, Math.floor(Number((value as any)?.projectEvents ?? 0))), projects, authorshipScore:clamp(Number((value as any)?.authorshipScore ?? defaultState.authorshipScore)) };
   }
   snapshot(): SelfProjectState { return structuredClone(this.state); }
+
+  /**
+   * Materialize an explicitly approved Hexis proposal as a quarantined/paused
+   * NK1 project. It is deliberately not 'proposed': ensureActiveProject() may
+   * auto-promote proposed projects, so that status would bypass the second gate.
+   */
+  materializeApprovedHexisGoal(input:{
+    proposalId:string;
+    sourceLineageId:string;
+    sourceRef:string;
+    title:string;
+    description:string;
+    importance:number;
+    urgency:number;
+    confidence:number;
+    approvedAt?:number;
+  }):SelfProject {
+    const proposalId=String(input.proposalId??'').trim();
+    const sourceLineageId=String(input.sourceLineageId??'').trim();
+    const sourceRef=String(input.sourceRef??'').trim();
+    const title=String(input.title??'').trim();
+    const description=String(input.description??'').trim();
+    if(!/^hexgoal:[a-f0-9]{32}$/.test(proposalId)) throw new Error('hexis-project-proposal-id-invalid');
+    if(!sourceLineageId || sourceLineageId.length>512) throw new Error('hexis-project-lineage-invalid');
+    if(!sourceRef || sourceRef.length>512) throw new Error('hexis-project-source-ref-invalid');
+    if(!title || title.length>300 || /[\x00-\x1f\x7f]/.test(title)) throw new Error('hexis-project-title-invalid');
+    if(description.length>2000 || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(description)) throw new Error('hexis-project-description-invalid');
+    const id='hexis-project:'+proposalId.slice('hexgoal:'.length);
+    const existing=this.state.projects.find(project=>project.hexisProposalId===proposalId || project.id===id);
+    if(existing){
+      if(existing.hexisProposalId!==proposalId || existing.hexisSourceLineageId!==sourceLineageId || existing.hexisSourceRef!==sourceRef) {
+        throw new Error('hexis-project-stable-id-collision');
+      }
+      return structuredClone(existing);
+    }
+    if(this.state.projects.length>=24) throw new Error('hexis-project-capacity-reached');
+    const now=stamp();
+    const project:SelfProject={
+      id,title,reason:description || 'Reviewed goal imported from Hexis; independent execution evidence required.',origin:'learned',status:'paused',
+      commitment:clamp(.34+clamp(input.confidence)*.3),
+      priority:clamp(input.importance),identityRelevance:.24,
+      progress:0,setbacks:0,successes:0,evidenceCount:0,validatedEvidenceCount:0,
+      replicatedEvidenceCount:0,skillGain01:0,
+      milestones:[
+        {id:'m1',title:'Разложить импортированную цель на проверяемые шаги',targetProgress:.30,evidenceRequired:1,requiredEvidenceClass:'internal',completed:false,completedAt:0},
+        {id:'m2',title:'Проверить результат независимым наблюдением',targetProgress:.62,evidenceRequired:2,requiredEvidenceClass:'external',completed:false,completedAt:0},
+        {id:'m3',title:'Повторить улучшение на независимой попытке',targetProgress:.94,evidenceRequired:4,requiredEvidenceClass:'replicated',completed:false,completedAt:0},
+      ],
+      nextMilestone:'Разложить импортированную цель на проверяемые шаги',
+      linkedGoalId:proposalId,createdAt:Number.isFinite(input.approvedAt)?Number(input.approvedAt):now,
+      lastWorkedAt:0,updatedAt:now,planRevision:1,
+      hexisProposalId:proposalId,hexisSourceLineageId:sourceLineageId,hexisSourceRef:sourceRef,
+      pausedAt:now,pauseReason:'hexis-approved-awaiting-explicit-activation',
+    };
+    this.state.projects=[project,...this.state.projects];
+    this.state.projectEvents++;
+    this.recomputeAuthorship();
+    return structuredClone(project);
+  }
+
+  /** Second, explicit gate: only the reviewed Hexis project may leave its paused state. */
+  activateApprovedHexisGoal(projectId:string,proposalId:string):SelfProject|null {
+    const project=this.state.projects.find(item=>item.id===String(projectId));
+    if(!project) return null;
+    if(project.hexisProposalId!==String(proposalId) || project.origin!=='learned') throw new Error('hexis-project-origin-binding-mismatch');
+    if(project.status==='active') return structuredClone(project);
+    if(project.status!=='paused' || project.pauseReason!=='hexis-approved-awaiting-explicit-activation') {
+      throw new Error('hexis-project-must-be-materialized-and-paused');
+    }
+    const activeLoad=this.state.projects.filter(item=>item.status==='active'||item.status==='proposed').length;
+    if(activeLoad>=4) throw new Error('hexis-project-active-capacity-reached');
+    project.status='active';project.pauseReason=undefined;project.pausedAt=undefined;
+    project.lastWorkedAt=0;project.updatedAt=stamp();project.planRevision++;
+    this.state.selectedProjectId=project.id;
+    this.touchProject(project);
+    this.recomputeAuthorship();
+    return structuredClone(project);
+  }
 
   private recomputeAuthorship(): void {
     const owned = this.state.projects.filter(p => p.origin === 'intrinsic' || p.origin === 'identity' || p.origin === 'unresolved');

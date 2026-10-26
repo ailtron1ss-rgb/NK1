@@ -830,16 +830,22 @@ async function route(req, res) {
                     trust01: input.evidence?.trust01 === undefined ? undefined : Number(input.evidence.trust01),
                     note: input.evidence?.note ? String(input.evidence.note) : undefined,
                 };
+                const stance = String(input.stance ?? '');
+                if (!['supports', 'contradicts'].includes(stance)) return json(res, 400, { ok: false, error: 'invalid-hexis-belief-stance' });
                 const result = runtime.core.hexisReviseBelief({
                     memoryId: String(input.memoryId || ''),
                     confidence01: Number(input.confidence01),
                     trust01: input.trust01 === undefined ? undefined : Number(input.trust01),
-                    stance: input.stance === 'contradicts' ? 'contradicts' : 'supports',
+                    stance,
                     evidence,
                     context: input.context ? String(input.context) : undefined,
                     protectedBelief: Boolean(input.protectedBelief),
                 });
                 await runtime.core.flush();
+                if (result?.ok === false) {
+                    const status = /not-found|missing/.test(String(result.error ?? '')) ? 404 : 409;
+                    return json(res, status, { ok: false, result });
+                }
                 return json(res, 200, { ok: true, result });
             }
             catch (error) {
@@ -872,10 +878,22 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/decide') {
             const input = await body(req);
-            const decision = ['approve', 'correct', 'forget'].includes(String(input.decision)) ? String(input.decision) : 'approve';
-            const result = runtime.core.hexisDecideLearningReview(String(input.reviewId || ''), String(input.itemId || ''), decision, input.correction ? String(input.correction) : undefined);
-            await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), result });
+            const decision = String(input.decision ?? '');
+            if (!['approve', 'correct', 'forget'].includes(decision)) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-review-decision' });
+            }
+            try {
+                const result = runtime.core.hexisDecideLearningReview(String(input.reviewId || ''), String(input.itemId || ''), decision, input.correction ? String(input.correction) : undefined);
+                await runtime.core.flush();
+                if (result?.ok === false) {
+                    const status = /not-found|missing/.test(String(result.error ?? '')) ? 404 : 409;
+                    return json(res, status, { ok: false, result });
+                }
+                return json(res, 200, { ok: true, result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                return json(res, 409, { ok: false, error: String(error?.message ?? error) });
+            }
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/retention/propose') {
             const input = await body(req);
@@ -922,10 +940,79 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/decide') {
             const input = await body(req);
-            const decision = input.decision === 'accept' ? 'accept' : 'reject';
-            const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
-            await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), stage: result });
+            const decision = String(input.decision ?? '');
+            if (!['accept', 'reject', 'apply'].includes(decision)) {
+                return json(res, 400, { ok: false, error: 'invalid-hmx-decision' });
+            }
+            try {
+                const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
+                await runtime.core.flush();
+                if (!result) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
+                return json(res, 200, { ok: true, stage: result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                return json(res, 409, { ok: false, error: String(error?.message ?? error) });
+            }
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/goals') {
+            try {
+                const status=url.searchParams.get('status') || undefined;
+                const limit=Math.max(1,Math.min(128,Number(url.searchParams.get('limit') || 64)));
+                return json(res,200,{ok:true,proposals:runtime.core.hexisListGoalProposals(status,limit)});
+            } catch(error) {
+                return json(res,400,{ok:false,error:String(error?.message ?? error)});
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/goals/prepare') {
+            const input=await body(req);
+            try {
+                if(!String(input.stagingId ?? '').trim()) return json(res,400,{ok:false,error:'stagingId-required'});
+                const result=runtime.core.hexisPrepareGoalProposals(String(input.stagingId));
+                await runtime.core.flush();
+                return json(res,200,{ok:true,...result});
+            } catch(error) {
+                await runtime.core.flush().catch(()=>{});
+                const message=String(error?.message ?? error);
+                return json(res,/not-found/.test(message)?404:409,{ok:false,error:message});
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/goals/decide') {
+            const input=await body(req);
+            const decision=String(input.decision ?? '');
+            if(!['approve','reject'].includes(decision)) return json(res,400,{ok:false,error:'invalid-hexis-goal-decision'});
+            try {
+                const proposal=runtime.core.hexisDecideGoalProposal(String(input.proposalId || ''),decision);
+                await runtime.core.flush();
+                if(!proposal) return json(res,404,{ok:false,error:'hexis-goal-proposal-not-found'});
+                return json(res,200,{ok:true,proposal});
+            } catch(error) {
+                await runtime.core.flush().catch(()=>{});
+                return json(res,409,{ok:false,error:String(error?.message ?? error)});
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/goals/materialize') {
+            const input=await body(req);
+            try {
+                const result=runtime.core.hexisMaterializeGoalProposal(String(input.proposalId || ''));
+                await runtime.core.flush();
+                return json(res,200,{ok:true,...result});
+            } catch(error) {
+                await runtime.core.flush().catch(()=>{});
+                const message=String(error?.message ?? error);
+                return json(res,/not-found/.test(message)?404:409,{ok:false,error:message});
+            }
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/goals/activate') {
+            const input=await body(req);
+            try {
+                const result=runtime.core.hexisActivateGoalProposal(String(input.proposalId || ''));
+                await runtime.core.flush();
+                return json(res,200,{ok:true,...result});
+            } catch(error) {
+                await runtime.core.flush().catch(()=>{});
+                const message=String(error?.message ?? error);
+                return json(res,/not-found/.test(message)?404:409,{ok:false,error:message});
+            }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
@@ -935,7 +1022,10 @@ async function route(req, res) {
             try {
                 const result = runtime.core.hexisEnqueueOutbox({ idempotencyKey: String(input.idempotencyKey || ''), kind: String(input.kind || 'notify'), channel: String(input.channel || 'generic'), payload: input.payload });
                 await runtime.core.flush();
-                if (result && result.ok === false && result.error) return json(res, result.error === 'idempotency-key-conflict' ? 409 : 400, result);
+                if (result && result.ok === false && result.error) {
+                    const status = result.error === 'idempotency-key-conflict' ? 409 : result.error === 'outbox-capacity-reached' ? 503 : 400;
+                    return json(res, status, result);
+                }
                 return json(res, 200, { ok: true, result });
             }
             catch (error) {
@@ -953,6 +1043,21 @@ async function route(req, res) {
             const result = runtime.core.hexisAckOutbox(String(input.id || ''), input.published === true, input.error ? String(input.error) : undefined);
             await runtime.core.flush();
             return json(res, 200, { ok: Boolean(result), result });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/reconcile') {
+            const input = await body(req);
+            const resolution = input.resolution === 'published' || input.resolution === 'not-published' ? input.resolution : '';
+            if (!resolution) return json(res, 400, { ok: false, error: 'invalid-outbox-resolution' });
+            try {
+                const result = runtime.core.hexisResolveOutbox(String(input.id || ''), resolution, String(input.evidenceRef || ''));
+                if (!result) return json(res, 404, { ok: false, error: 'outbox-entry-not-found' });
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, result });
+            } catch (error) {
+                await runtime.core.flush().catch(() => {});
+                const message = String(error?.message ?? error);
+                return json(res, /evidence-required/.test(message) || /invalid/.test(message) ? 400 : 409, { ok: false, error: message });
+            }
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/outbox/reclaim') {
             const input = await body(req);

@@ -1,3 +1,327 @@
+## [NK1][Hexis] WorkPass429 — compact terminal outbox receipts without losing idempotency (2026-10-26)
+
+- [CAPACITY] The live outbox can now free slots by moving only confirmed `published` or evidence-confirmed `failed/not-published` rows into a 4,096-entry tombstone index. The tombstone retains the original ID, action key, request digest and terminal receipt fields; same-payload retries return the archived receipt, while changed payloads still conflict.
+- [FAIL-CLOSED] `pending`, `publishing` and `uncertain` rows are never compacted. If all live rows are unresolved, or the tombstone index itself is full, enqueue rejects the new action rather than evicting unresolved identities.
+- [INPUT BOUNDS] Outbox payloads must be cloneable JSON and at most 64 KiB serialized; circular/non-JSON and oversized direct-call payloads are rejected before state mutation.
+- [REPLAY] Repeating a resolution request already present in bounded reconciliation history returns current state without re-queuing the action or rewriting a later attempt.
+- [REGRESSION] Added full-capacity tests that prove terminal compaction frees a slot, preserves replay identity across restore, retains conflict detection, blocks compaction of unresolved rows, and rejects oversized/circular payloads.
+- [VALIDATION] Source and regression commits are present; tests/typecheck are not claimed as executed because GitHub Actions jobs continue to fail before exposing step records.
+
+## [NK1][Hexis] WorkPass428 — fail-safe migration of legacy outbox state (2026-10-26)
+
+- [MIGRATION SAFETY] Restored legacy `publishing`, `pending` rows with prior attempts, and `failed` rows without a persisted `not-published` resolution are normalized to `uncertain`. Earlier versions did not distinguish an ambiguous timeout from a confirmed no-effect result, so auto-retrying them could duplicate an external side effect.
+- [COMPATIBILITY] Rows carrying an explicit stored `not-published` resolution remain retryable; brand-new pending items (zero attempts) remain claimable.
+- [REGRESSION] Added restore-migration fixtures covering each legacy status class.
+- [VALIDATION] Regression code is committed; runtime execution remains unverified because the GitHub Actions jobs do not expose step records.
+
+## [NK1][Hexis] WorkPass427 — distinguish HMX envelope from native extensions (2026-10-26)
+
+- [DATA FIDELITY] The native export bridge now treats standard HMX root fields (`hmx_version`, `record_type`, `created_at`, `intent`, `strategy`, `source` and aliases) as consumed envelope metadata instead of misclassifying them as unknown-extension data.
+- [REGRESSION] Extended the unknown-root fixture to include a complete HMX envelope and assert that only the genuinely unknown `legacyExporterState` is placed in the lossless extension bucket.
+- [VALIDATION] Static source checks only; the Actions runner still provides no step logs for executable validation.
+
+## [NK1][Hexis] WorkPass426 — make outbound delivery retries evidence-gated (2026-10-26)
+
+- [DELIVERY SAFETY] A negative outbox ACK and an expired `publishing` lease now transition to `uncertain`; neither can be claimed for another send until a reconciliation endpoint records an evidence reference and confirms `published` or `not-published`.
+- [IDEMPOTENCY] Capacity pressure no longer evicts old outbox keys. After 512 retained rows, new logical actions fail closed instead of creating a path for an old key to trigger a duplicate side effect.
+- [INTEGRATION] Added `OrganismCore.hexisResolveOutbox`, the server reconciliation route, retained resolution history, and an explicit count of uncertain deliveries in Hexis diagnostics.
+- [REGRESSION] Expanded adapter and server smoke tests for ambiguous ACKs, stale claims, evidence-gated retries, persistent idempotency keys and full-capacity rejection.
+- [VALIDATION] Tests and route wiring are committed but not claimed as executed; the current GitHub Actions jobs still fail without accessible step logs.
+
+## [NK1][Hexis] WorkPass425 — bind approved goals to reviewed content (2026-10-26)
+
+- [APPROVAL INTEGRITY] Goal approval now stores a digest over the reviewed proposal identity, source lineage/ref, title, description, importance, urgency and confidence. The adapter validates it on repeated approval, materialization and activation; system-level materialize/activate entrypoints revalidate before mutating canonical state.
+- [REGRESSION] Added two restored-state tampering cases: changing a title after approval must not create an agency project, and changing source reference after materialization must not activate the project, mutate graph state or mint an activation receipt.
+- [VALIDATION] Regression source is committed; execution/typecheck still await usable Actions runner diagnostics.
+
+## [NK1][Hexis] WorkPass424 — reject stale apply receipts on lifecycle downgrade (2026-10-26)
+
+- [REPLAY SAFETY] The shared HMX stage validator now rejects unknown lifecycle states and rejects any non-applied stage that still carries an application receipt. A stale persisted `applied → accepted` status mutation can no longer re-enter the canonical write path while keeping the old receipt.
+- [REGRESSION] Added a no-write test for a downgraded completed stage and aligned the invalid lifecycle-state assertion with the shared validator.
+- [VALIDATION] Committed, not executed in a working runtime; Actions status is being tracked separately.
+
+## [NK1][Hexis] WorkPass423 — revalidate HMX provenance before goal activation (2026-10-26)
+
+- [TRUST BOUNDARY] `OrganismSystemFabric.activateHexisGoalProposal` now validates the source HMX stage digest and, for an applied stage, its canonical apply receipt before activating the agency project or reading staged relationships.
+- [REGRESSION] Added a post-approval tampering case that edits the persisted relationship weight while keeping the old digest. Activation must fail closed with the project still paused, no graph edge changes, and no success receipt.
+- [VALIDATION] Code and regression are committed. They have not been executed in a working test runtime; GitHub Actions currently exposes failed checks without runner step logs.
+
+## [NK1][Hexis] WorkPass424 — share stage integrity with the canonical projector (2026-10-26)
+
+- [INTEGRITY] Move HMX staged-payload digest calculation/validation into one legacy-compatible module used by the adapter and the canonical projector. Direct projector calls now reject modified payloads before storage access.
+- [REGRESSION] Use a real payload digest in the projector replay fixture and cover modified payload, malformed receipt, and non-accepted stage behavior.
+- [BOUNDS] Validate the restored stage as bounded JSON data before hashing; invalid accessor/cyclic/non-plain payloads fail closed.
+- [VALIDATION] GitHub Actions run #40321327115 for the new commit failed before runner steps/logs were available. Code is committed but runtime tests are not claimed as passed.
+
+## [NK1][Hexis] Sanitize authority on re-import of persisted HMX memories (2026-10-26)
+
+- [FIX] Re-import reconciles legacy canonical HMX rows written before the 0.65 external authority cap, monotonically reducing stored confidence/authority rather than only protecting newly inserted rows.
+- [PROVENANCE] A narrowly-scoped signal update can reduce existing Hexis external evidence authority while never raising any authority; native and non-Hexis evidence remains untouched.
+- [TEST] Added a persisted-state fixture that intentionally restores an over-trusted HMX memory and proves that a repeated export caps the canonical row and every matching external HMX evidence record.
+- [VALIDATION] New code/test changes are present on PR #233's head branch. Exact-head runtime/typecheck execution remains blocked by Actions runner allocation; scores and release readiness are not increased.
+
+## [NK1][Hexis] Roll back status demotions after failed canonical apply (2026-10-26)
+
+- [INTEGRITY] Captures the prior status of existing canonical memories before HMX status reconciliation and restores it if any later graph/temporal/belief projection fails.
+- [IDEMPOTENCY] Status-mutation command IDs include the persisted apply-attempt number, so a compensated retry receives a fresh key rather than replaying the original demotion receipt.
+- [TEST] Added fault injection that fails the belief-mirror cleanup after demotion, checks canonical status/graph/mirror restoration, then retries the same stage and expects the archive to apply successfully.
+- [VALIDATION] Current Actions runs fail before runner allocation (runner_id=0, no steps/logs); all new regressions remain pending actual execution.
+
+## [NK1][Hexis] WorkPass422 — verify staged payload integrity after restore (2026-10-26)
+
+- [TRUST BOUNDARY] The duplicate trailing HMX implementation block was removed from `HexisAdaptationFabric.ts`; it began in the middle of a method after the class had already closed. This restores one syntactically coherent implementation of the adapter.
+- [INTEGRITY] HMX stage digests are now recomputed from the stored payload before stage decisions and goal-proposal preparation. Altered memory records cannot reach the canonical writer, and altered goal records cannot create agency proposals with a stale digest.
+- [RECEIPTS] First-apply receipt validation remains in the active implementation; goal preparation also requires a valid receipt when consuming a stage already marked applied.
+- [REGRESSION] Added restored-state tampering cases for memory import and goal proposal preparation. Runtime/typecheck still need a functioning CI runner; this commit is not marked tested.
+
+## [NK1][Hexis] Prevent imported-memory resurrection and cap external authority (2026-10-26)
+
+- [FIX] HMX status is now mapped explicitly: missing/future statuses remain `unknown`; archived, quarantined, deleted, rejected, superseded and inactive records remain quarantined; external `fact` labels do not become NK1-verified facts.
+- [INTEGRITY] Re-exports can demote canonical memory status but cannot promote an existing hypothesis/unknown/quarantined record back to belief. A demoted source is removed from the active semantic graph and Hexis belief mirror, while canonical history is retained.
+- [TRUST] Claimed upstream confidence/authority is capped at 0.65; the raw claim and applied cap are retained as inspectable provenance metadata.
+- [VALIDATION] Added integration cases for the status matrix, invalid status payloads, trust cap, graph/belief mirror consistency, and active → archived → active replay. These tests are authored but remain pending exact-head runtime/typecheck/CI execution. No readiness score or release status is promoted.
+
+## [NK1][Hexis] WorkPass421 — preserve unconsumed native root metadata (2026-10-26)
+
+- [DATA FIDELITY] The export bridge now preserves top-level native fields it does not consume in `sections.config.nk1NativeExport.extraRootFields`. The adapter emits a warning listing the preserved keys, avoiding silent loss during NK1→HMX mapping.
+- [REGRESSION] Added a structured nested root-extension fixture and assertion that its value survives normalization unchanged.
+- [VALIDATION] Change committed; tests have not been executed in a working runtime because all Actions jobs continue to terminate without step records.
+
+## [NK1][Hexis] WorkPass420 — validate apply receipts before stage promotion (2026-10-26)
+
+- [CONTRACT] `decideHmx(..., 'apply')` now validates the handler receipt against the same export, lineage, stage ID and digest contract used on restored replay before setting `status='applied'`.
+- [REGRESSION] A malformed receipt must leave the HMX stage accepted, leave its application unset, and not increment the applied metric.
+- [VALIDATION] Changes are committed; runtime/typecheck remain unverified because GitHub Actions jobs return failure with no steps/logs.
+
+## [NK1][Hexis] WorkPass419 — fail visibly when canonical compensation is incomplete (2026-10-26)
+
+- [ATOMICITY] After issuing compensating forget commands, the HMX projector now re-reads canonical memory and reports any imported record that remains. A non-throwing no-op compensator can no longer be mistaken for successful rollback.
+- [REGRESSION] Added a fault-injected case where memory insertion commits and the compensator returns `false`; the apply must surface `canonical-uncompensated`, restore the graph, and never report a clean rollback.
+- [VALIDATION] Committed but not executed locally; GitHub Actions runner logs are not being exposed for this PR.
+
+## [NK1][Hexis] WorkPass418 — preserve malformed native root sections (2026-10-26)
+
+- [DATA FIDELITY] If a native export explicitly supplies a non-object `sections` value, the HMX adapter retains the original payload in `sections.config.nk1NativeSections.sections_invalid_root` rather than normalizing it away.
+- [REGRESSION] Added a test for an invalid scalar root section and an explicit warning, complementing the identity/config preservation checks.
+- [VALIDATION] Regression is committed; runtime execution remains unconfirmed because current Actions jobs fail before exposing usable steps.
+
+## [NK1][CI] WorkPass418 — close strict avatar-storage typecheck gap (2026-10-26)
+
+- [FIX] Annotate avatar-storage test helper, Map state and callback parameters for strict checkJs; use Reflect.deleteProperty to remove the temporary window global without violating TypeScript delete-operand rules.
+- [CI] Execute the existing test:avatar-storage regression in the primary WorkPass71 gate before app typecheck.
+- [EVIDENCE] Source-baseline CI run #40061272363 passed all 232 app script tests and then reported six type errors in this test file. Current exact-head Actions jobs fail without executed step details, so this fix is not marked validated until those checks execute.
+
+## [NK1][Hexis] WorkPass417 — reconcile HMX rollback after post-write exceptions (2026-10-26)
+
+- [ATOMICITY] The canonical HMX projector now compares post-failure canonical memory with the pre-apply ID set and compensates newly inserted records belonging to the same export. This covers a writer/adapter that throws after MemoryFabric has committed but before the projector receives the new ID.
+- [REGRESSION] Added fault injection for that exact window; it asserts no imported memory/graph/temporal residue remains and that a second attempt succeeds exactly once.
+- [VALIDATION] Source and regression are committed; execution is not yet confirmed. The PR's Actions checks have previously failed before usable step logs were available.
+
+## [NK1][Hexis] WorkPass417 — reject ambiguous native-reference aliases in HMX export (2026-10-26)
+
+- [INTEGRATION] Reference indexing no longer uses last-write-wins for colliding `id/ref/key/name/title` aliases; unresolved references cannot silently attach relationships, episode references or parent links to another record.
+- [DIAGNOSTICS] The exporter emits a summary warning with the ambiguous-alias count without echoing the conflicting alias values.
+- [TEST] Added a regression for ambiguous versus unique relationship references and wired it into Hexis adaptation, canonical-apply, integration-idempotency and release checks.
+- [VALIDATION] Source changes are committed to the draft Hexis PR branch. Runtime execution remains unverified because the existing Actions records fail without usable step logs; no PASS is claimed.
+
+## [NK1][Hexis] WorkPass416 — wire canonical replay regression into CI (2026-10-26)
+
+- [INTEGRATION] Added `tests/hexis-projector-idempotent-replay.mjs` to `test:hexis-canonical-apply`; the workflow now executes the idempotent replay/receipt-tamper contract instead of leaving that test unreferenced.
+- [CI ROUTING] Added the standalone test path to the workflow filters so future changes to that test trigger the Hexis gate.
+- [VALIDATION] Wiring is committed, but its runtime result remains unverified because the current Actions run exposes failed checks without usable step logs.
+
+## [NK1][Hexis] WorkPass415 — preserve malformed native config (2026-10-26)
+
+- [DATA FIDELITY] A scalar or array in the native `config` field is no longer silently replaced by an empty object; the original value is kept under `sections.config.nk1NativeSections.config_invalid_section`.
+- [REGRESSION] The Hexis adaptation suite now checks that malformed config survives normalization and emits a warning for reviewers.
+- [VALIDATION] The test is committed but not claimed as executed; PR checks currently fail without usable runner-step logs.
+
+## [NK1][Hexis] WorkPass414 — preserve malformed native identity sections (2026-10-26)
+
+- [DATA FIDELITY] The NK1→HMX exporter now preserves a non-object/non-array native `identity` section in `config.nk1NativeSections.identity_invalid_section` instead of silently dropping it. Valid identity objects and arrays keep their existing behavior.
+- [REGRESSION] Extended the Hexis adaptation integration suite to check the preserved payload, absence of accidental active identity records, and an explicit export warning.
+- [VALIDATION] The regression is committed but not claimed as executed: the current GitHub Actions checks on this PR fail without usable step logs, so runtime/typecheck status remains unverified.
+
+## [NK1][Hexis] WorkPass413 — make TypeScript validation part of the Hexis gate (2026-10-26)
+
+- [CI] Added `npm run typecheck` before the Hexis adaptation + live-server smoke tests in `hexis-canonical-apply.yml`.
+- [CI] Expanded path filters to cover the agency runtime, temporal/memory subsystem and self-project/deliberation contracts touched by the Hexis bridge.
+- [VALIDATION] CI configuration change committed; the current Actions connector still reports the job as failed with no executed step details, so no typecheck result is inferred.
+
+## [NK1][Hexis] WorkPass412 — regression-test full activation rollback after deliberation failure (2026-10-26)
+
+- [TEST] Injects a failure after goal project activation and relationship projection, at the agency deliberation write. Verifies the project returns to paused, no success receipt remains, graph state is restored, and no phantom deliberation decision survives; the normal activation test then retries successfully.
+
+## [NK1][Hexis] WorkPass411 — include deliberation in activation rollback (2026-10-26)
+
+- [ATOMICITY] The explicit goal-activation transaction now snapshots and restores the agency deliberation ledger alongside graph, self-project and Hexis state. A failed receipt/decision write can no longer leave a partial “activation occurred” record behind.
+
+## [NK1][Hexis] WorkPass410 — reject malformed belief stances at the HTTP boundary (2026-10-26)
+
+- [API GUARD] The belief-revision endpoint no longer silently maps an unknown stance to `supports`; only `supports` and `contradicts` are accepted.
+- [SMOKE] Added status checks for invalid stance (400) and missing canonical memory target (404).
+
+## [NK1][Hexis] WorkPass409 — propagate belief-write failures to HTTP callers (2026-10-26)
+
+- [API FIX] The belief-revision route now preserves the Core result status instead of wrapping `{ok:false}` as an HTTP 200 success. Missing memory targets return 404; other guarded/rejected belief writes return 409.
+
+## [NK1][Hexis] WorkPass408 — correct the server smoke URL template literal (2026-10-26)
+
+- [TEST FIX] Removed literal escape backslashes retained by the source-generation string around the new goal-list URL. The smoke fixture now contains a normal JavaScript template literal for its dynamic server URL.
+
+## [NK1][Hexis] WorkPass407 — exercise goal proposal→approval→activation through the live HTTP server (2026-10-26)
+
+- [SMOKE] Added a second HMX fixture with one imported memory, one goal and one `supports` relationship; stages, accepts and applies it through the running server.
+- [SMOKE] Verifies pending proposals cannot materialize, invalid decisions are rejected, explicit approval materializes only a paused project, explicit activation creates one resolvable graph edge, and activation replay returns the same edge receipt.
+- [VALIDATION] Server integration test source is committed; it has not been run locally or in a usable CI job yet.
+
+## [NK1][Hexis] WorkPass406 — expose the reviewed-goal lifecycle through the live runtime/API (2026-10-26)
+
+- [RUNTIME] Added Core wrappers for bounded proposal preparation/listing, explicit approve/reject, paused agency materialization, and separate activation. Successful materialization/activation synchronizes self-project, deliberation, semantic graph and Hexis state into persisted facets.
+- [API] Exposed GET `/api/organism/integration/hexis/goals` plus POST `goals/prepare`, `goals/decide`, `goals/materialize`, and `goals/activate`; invalid decision inputs fail with 400, state conflicts with 409 and missing proposals/stages with 404.
+- [SAFETY] The HTTP surface preserves the staged decision sequence; it does not bypass review to activate imported goals.
+- [VALIDATION] Route wiring committed to the draft branch; the expanded server smoke still requires an Actions run with executable logs.
+
+## [NK1][Hexis] WorkPass405 — keep Core as an orchestration boundary for canonical review/evidence writes (2026-10-26)
+
+- [ARCHITECTURE] Removed the duplicated review-decision and belief-projection implementations from `OrganismCore`. It now delegates review decisions to `OrganismSystemFabric.decideHexisLearningReview` and belief revisions to the already-bound `HexisAdaptationFabric` projector.
+- [PERSISTENCE] Core synchronizes canonical MemoryOS2, MemoryFabric, compatibility-memory projections, event log and Hexis state after the shared adapter completes; failures restore the captured runtime state and return an explicit failure result.
+- [VALIDATION] Production-core delegation committed to the existing draft PR. Automated execution is still not confirmed because the Actions endpoint has repeatedly returned failed workflow records without actionable step logs.
+
+## [NK1][Hexis] WorkPass403 — expose safe learning-review semantics through the live server route (2026-10-26)
+
+- [API] The review decision route rejects unknown decisions with HTTP 400 instead of silently defaulting them to approval.
+- [API] Maps missing review/source items to 404 and protected/conflicting decisions to 409; flushes successful and error paths without claiming a rejected action succeeded.
+- [SMOKE] Extends `hexis-server-smoke.mjs` to cover invalid-decision rejection, canonical approval without confidence drift, idempotent approval replay, and an actual correction revision through `OrganismCore` and the HTTP API.
+- [VALIDATION] Source/tests updated on the draft branch; execution awaits an Actions job that exposes real steps/logs or a local checkout.
+
+## [NK1][Hexis] WorkPass402 — fail closed when canonical belief projection is unavailable (2026-10-26)
+
+- [GUARD] A belief revision now throws before committing local Hexis belief/audit state if its bound canonical projector cannot resolve the memory. This prevents orphan belief records in both composition roots.
+- [TEST] Added regression for unavailable canonical targets, asserting no belief or audit is committed.
+
+## [NK1][Hexis] WorkPass399 — tighten review replay typing and candidate idempotency checks (2026-10-26)
+
+- [FIX] Made canonical-memory lookup map tuple types explicit and only forwards correction text for a correction decision; approval/forget cannot accidentally attach an unrelated correction string.
+- [TEST] Added repeat-decision assertions for corrected revisions and newly materialized procedure candidates, checking stable canonical IDs and no duplicate item creation.
+
+## [NK1][Hexis] WorkPass398 — connect learning review decisions to canonical memory lifecycle (2026-10-26)
+
+- [INTEGRATION] Added `OrganismSystemFabric.decideHexisLearningReview()` as the explicit adapter between Hexis review decisions and NK1 MemoryOS2/MemoryFabric.
+- [APPROVE] Existing memories receive review provenance only; confidence is not increased merely because a proposal was approved.
+- [CORRECT] Existing memories use the revision-chain API with preserved confidence/source; new proposals become semantic/procedural hypotheses with conservative confidence 0.42 and are not activated as skills.
+- [FORGET] Existing content is reversibly quarantined, while identity/autobiographical/quarantined memories are protected from this path. No hard deletion is performed.
+- [REPLAY/ATOMICITY] Canonical memory command IDs are stable per review item/decision; snapshots of MemoryOS2, MemoryFabric receipts, EventLog and Hexis review state are restored on failure. The review item records the resulting canonical memory/revision ID.
+- [TEST] Added integration coverage for approve/no-confidence-boost, revision correction, conservative procedure candidate, quarantine/protected memory, idempotent replay, and cross-store rollback.
+- [VALIDATION] Source and integration tests committed to the draft PR branch; hosted Actions currently do not provide executable test steps/logs, so execution remains unverified.
+
+## [NK1][Hexis] WorkPass397 — keep agency guardrail regression within initialized fixture scope (2026-10-26)
+
+- [TEST FIX] Moved the direct control-character rejection assertion after the goal-pipeline fixture is initialized, removing a temporal-dead-zone ReferenceError in the test itself.
+
+## [NK1][Hexis] WorkPass396 — exercise an actual newline in the input guard regression (2026-10-26)
+
+- [TEST] Ensure the invalid-title fixture contains a real newline at runtime, so the control-character regression tests the intended boundary rather than a literal backslash sequence.
+
+## [NK1][Hexis] WorkPass395 — enforce literal control-character checks on agency goal input (2026-10-26)
+
+- [FIX] Corrected escaped control-character regexes in the SelfProjectEngine import boundary so they match actual C0/DEL characters instead of backslash-plus-letter sequences.
+- [TEST] Added a direct agency-layer negative test for a title containing a newline, independent of upstream HMX validation.
+
+## [NK1][Hexis] WorkPass394 — deduplicate deferred goal relationships and tighten relation typing (2026-10-26)
+
+- [FIX] Use explicit relation narrowing for the SemanticMemoryGraph edge union rather than returning an un-narrowed string.
+- [FIX] Deduplicate HMX goal-related relationship rows by source ref, target ref and normalized relation before graph projection. Duplicate export rows no longer reinforce the same semantic edge or inflate the receipt.
+- [FIX] Make `sourceStageFound` report whether the source stage exists, while projection remains gated on actual canonical apply.
+- [TEST] Added a duplicate HMX relationship row and asserted one candidate/projected edge with unchanged weight.
+
+## [NK1][Hexis] WorkPass393 — retain goal rationale in agency materialization (2026-10-26)
+
+- [INTEGRATION] Preserve the reviewed HMX goal description as the NK1 self-project rationale instead of dropping explanatory content during materialization.
+- [TEST] Assert that the source rationale survives the Hexis proposal → agency project boundary.
+
+## [NK1][Hexis] WorkPass392 — connect reviewed Hexis goals to NK1 agency without implicit activation (2026-10-26)
+
+- [INTEGRATION] Added an explicit approved-goal materialization bridge from `HexisAdaptationFabric` into `AgencySubsystemRuntime.selfProjects`, preserving proposal ID, source lineage and HMX source ref.
+- [SAFETY] Materialized projects start in a dedicated paused state, never `proposed`, because NK1's project engine can auto-promote proposed projects. A second explicit call is required to activate an approved project.
+- [GRAPH] Imported canonical memory now stores its exact `hexisGraphSourceKey` in context. Activation creates a source-isolated goal node and projects only relationship edges whose imported canonical-memory endpoint can be resolved; all other edges are counted as deferred.
+- [REPLAY] Activation is receipt-backed and idempotent; graph/project/Hexis snapshots roll back together if activation fails. Deliberation records the explicit non-autonomous activation decision.
+- [TEST] Added end-to-end coverage for pending/approved/materialized/active transitions, one resolved `supports` edge, idempotent activation replay, and rejected-goal denial.
+- [VALIDATION] Changes committed to PR #233's draft branch. Hosted Actions currently report failures without readable steps/logs; runtime test pass is not claimed.
+
+## [NK1][Hexis] WorkPass391 — prepare evidence audit before canonical mutation (2026-10-26)
+
+- [SAFETY] Clone caller-supplied evidence before projecting any posterior into canonical memory, so an invalid/uncloneable payload cannot mutate canonical confidence and then fail before the local Hexis audit is committed.
+- [VALIDATION] Source change committed on the open draft PR branch; the project CI runner remains unable to provide executed test steps/logs.
+
+## [NK1][Hexis] WorkPass390 — persist belief evidence lineage atomically with canonical confidence (2026-10-26)
+
+- [INTEGRATION] Extended the canonical memory signal update to merge independent evidence through existing MemoryOS2 lineage normalization, preserving its bounded eight-source trail and 32-key replay tombstone.
+- [INTEGRATION] Hexis belief revisions now project the posterior and a hashed, privacy-safe source identity in one `MemoryFabric.updateSignals` command; the evidence key is never copied raw into canonical context.
+- [REPLAY SAFETY] The composition root checks canonical lineage before applying a belief revision. If the Hexis ledger was reset/restored independently, an already-known canonical source is treated as duplicate rather than increasing confidence twice.
+- [ATOMICITY] Canonical projection occurs before the local Hexis belief/audit/metric state is committed; injected write failure leaves no partial Hexis revision.
+- [TEST] Added assertions for canonical evidence trails, support/duplicate/contradiction behavior, cross-ledger replay after state reset, and projection-failure atomicity.
+- [VALIDATION] Source and regression updates are committed to the draft PR branch; GitHub's current failed jobs still expose zero executed steps/log output, so their failure cannot yet be attributed to these code changes.
+
+## [NK1][Hexis] WorkPass389 — project evidence-based belief revisions into canonical recall confidence (2026-10-26)
+
+- [INTEGRATION] Added a typed Hexis→NK1 belief-projection contract and bound it at `OrganismSystemFabric`, using the existing `MemoryFabric.updateSignals` write path rather than creating a parallel memory store.
+- [BEHAVIOR] Independent supporting evidence raises the shared canonical confidence; independent contradictory evidence lowers it. Replayed evidence is audited as duplicate but cannot mutate canonical confidence a second time. Protected contradictions also remain non-applying.
+- [ATOMICITY] `reviseBelief` now computes the candidate state/audit before projecting. If the canonical write fails, it does not commit the new Hexis belief, evidence keys, audit entry or revision metrics.
+- [TEST] Added a composition-root integration regression for support→duplicate replay→contradiction, comparing each posterior to the canonical memory item that retrieval actually uses.
+- [VALIDATION] Code, integration wiring and regressions committed to the non-main PR branch; tests remain subject to actionable GitHub Actions execution.
+
+## [NK1][Hexis] WorkPass388 — verify memory, graph, temporal and belief rollback together (2026-10-26)
+
+- [ATOMICITY] Added fault injection that fails the second Hexis belief registration after canonical memory/semantic graph/temporal writes have begun.
+- [REGRESSION] Verifies compensation removes newly created canonical memories, restores the semantic graph and temporal/belief state, keeps the HMX stage retryable, and allows a clean second attempt with two beliefs and two temporal assertions.
+- [VALIDATION] Test and changelog changes are committed on PR #233's non-main branch; actual runtime execution still requires actionable GitHub Actions logs.
+
+## [NK1][Hexis] WorkPass387 — unify receipt validation and connect canonical memories to belief state (2026-10-26)
+
+- [INTEGRATION] Reuse the projector's single HMX application-receipt validator from `HexisAdaptationFabric`; removed the duplicate TypeScript validator so replay and projection cannot drift into separate integrity rules.
+- [INTEGRATION] After canonical memory projection, seed Hexis belief state for each imported canonical memory using its existing confidence/trust and timestamp. Imported content is not treated as independent corroborating evidence and does not create a belief-revision audit or confidence boost.
+- [ATOMICITY] Belief registration remains inside the canonical-apply transaction and shares the existing adaptation-state snapshot/restore rollback path.
+- [TEST] Added checks for memory↔belief ID continuity, baseline confidence preservation, no fabricated corroboration, and no duplicate belief state on same-stage replay/re-export. Removed a duplicate replay regression block.
+- [VALIDATION] Changes committed on the existing draft PR branch. Runtime/type tests and release ZIP rebuild are not yet verified.
+
+## [NK1][Hexis] WorkPass386 — enforce receipt integrity across restored-stage replay (2026-10-26)
+
+- [FIX] Exported one shared HMX apply-receipt validator from the canonical projector and reused it in the adaptation layer, avoiding separate receipt-integrity rules.
+- [FIX] `decideHmx(..., 'apply')` now validates every already-applied stage before returning it; missing, stale, cross-stage, or tampered receipts fail closed after restore.
+- [TEST] Added regressions for tampered and missing receipts on restored stages, including a guard that the canonical apply handler is never called for a corrupt replay.
+- [VALIDATION] Changes are committed to a dedicated non-main branch. Runtime tests and the release ZIP have not been run/rebuilt in this tool pass.
+
+## [NK1][Hexis] WorkPass385 — align HMX bounds, validate relationships, bind replay receipts (2026-10-26)
+
+- [FIX] Aligned HMX import staging with the export adapter's 8 MiB UTF-8 document budget; normalized exports that expand beyond the same budget now fail explicitly instead of producing an artifact that the importer cannot stage.
+- [FIX] HMX memory/relationship arrays with record-level schema errors are omitted atomically. Relationship endpoints must be valid refs in the same export namespace, and optional properties must be objects.
+- [FIX] Idempotent replay now requires a well-formed, digest-valid application receipt bound to the exact stage ID, export ID, lineage, and stage digest. Cross-stage or tampered receipts fail closed without touching canonical storage.
+- [TEST] Added round-trip coverage for a normalized export above 1 MiB, atomic malformed-memory/relationship rejection, and forged/stale/tampered replay receipts.
+- [VALIDATION] Source and tests are committed; this pass could not run Node/TypeScript locally because the container cannot resolve GitHub. Hosted Actions must still provide actionable exact-head results. Main and the canonical Release ZIP remain unchanged.
+
+## NK1 WorkPass110 external outcome restore expectation (2026-10-26)
+
+- [FIX] Align the causal-stream restore regression with the trust boundary: restoring external-only evidence must not count it as trusted runtime outcomes.
+- [VALIDATION] This corrects a stale assertion observed before the workflow's later checks; exact-head rerun is still required.
+- [SCOPE] No production learning behavior is relaxed; main and the canonical Release ZIP remain unchanged.
+
+## NK1 Hexis HMX atomic section staging (2026-10-26)
+
+- [FIX] Oversized or malformed HMX array sections are omitted atomically instead of retaining a truncated/filtered prefix alongside the original source count.
+- [TEST] Added a 257-record regression: the source count remains visible, no partial `memories` payload is staged, and the conflicted stage cannot be accepted.
+- [BOUNDARY] This hardens staging diagnostics; it does not claim the HMX import is production-ready or that CI passed. Release ZIP unchanged.
+
+- [BLOCKER FIX] Correct the over-escaped control-character regex in `OutcomeVerificationService`; it prevented the organism core from loading in Node 24 before the Hexis path could execute.
+## NK1 Hexis canonical HMX apply (2026-10-26)
+
+- [IMPLEMENTED] Split HMX import into staging, explicit acceptance, and explicit canonical application. Acceptance alone no longer mutates canonical memory.
+- [IMPLEMENTED] Normalize NK1-native exports to HMX 1.7 with stable source lineage and canonical references.
+- [IMPLEMENTED] Project accepted memories through the canonical MemoryFabric/MemoryOS2 write path, preserve source provenance and temporal bounds, and project relationships only when both endpoints are imported records.
+- [SAFETY] Defer structural identity, goals, narrative, policy and other non-memory sections; reject conflicting duplicate refs before writes; compensate failed writes; record a digest-bearing application receipt.
+- [WIRING] Bind the projector from OrganismSystemFabric, persist touched memory/semantic graph/event-log owners, and validate the `decision: "apply"` API transition.
+- [TESTS] Added canonical import and server apply/replay/invalid-decision regressions. Execution status remains pending CI; this entry does not claim a passing run.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2120,3 +2444,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+
+## [NK1][Hexis] WorkPass383 — idempotent canonical HMX replay (2026-10-26)
+
+- [FIX] Moved the persisted applied-stage receipt check before the accepted-stage guard in HexisCanonicalMemoryProjector.apply(). Previously, the guard rejected an already-applied stage before the idempotency branch could run.
+- [SAFETY] A retry with a persisted application receipt now returns a defensive clone without reading or writing canonical memory, graph, or temporal state.
+- [TEST] Added runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs covering zero storage calls, receipt cloning, nested-data isolation, and fail-closed handling of pending stages.
+- [VALIDATION] The regression test has been added but has not yet been executed in a runtime; CI/typecheck status remains unverified until GitHub Actions runs on the resulting branch head.

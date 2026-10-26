@@ -1,0 +1,50 @@
+name: NK1 Hexis canonical HMX apply
+
+on:
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - '.github/workflows/hexis-canonical-apply.yml'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/AgencySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/evolution/SelfProjectEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/evolution/AgencyDeliberationEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/**'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
+      - 'runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-hexis-canonical-apply-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  canonical-hmx-apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install the pinned runtime dependency graph
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck the Hexis-to-NK1 runtime contracts
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Test Hexis adaptation, canonical HMX projection and server apply/replay
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:hexis-canonical-apply
