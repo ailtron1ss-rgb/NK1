@@ -1066,6 +1066,10 @@ export class MemoryOS2{
   * Restore the signal fields captured by a valid token and consume the token.
   * This is compensation for a failed transaction, not new evidence.
   */
+ discardSignalCompensation(token:object):boolean{
+  if(!token||typeof token!=='object'||!this.signalCompensationSnapshots.has(token))return false;
+  return this.signalCompensationSnapshots.delete(token);
+ }
  restoreSignalsForCompensation(id:string,token:object):boolean{
   const key=String(id);
   if(!token||typeof token!=='object')return false;
