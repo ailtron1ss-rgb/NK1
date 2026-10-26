@@ -216,7 +216,7 @@ export interface HexisHmxApplicationReceipt {
   exportId?: string;
   sourceLineageId?: string;
   stageId?: string;
-  status: "applied" | "partial" | "noop" | string;
+  status: "applied" | "partial" | "noop";
   importedCount?: number;
   deduplicatedCount?: number;
   memoryIds?: string[];
