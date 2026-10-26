@@ -3,6 +3,7 @@ import { CausalExperienceStream } from '../src/organism/learning/CausalExperienc
 
 const mkState=(overrides={})=>({
   tick:1,at:1000,predictionError:.6,attentionBudget:.8,selfPredictionError:.2,autonomyScore:.6,
+  lastAction:'explore',lastActionSuccess:.8,
   needs:{energy:.7,cognitiveLoad:.3,uncertainty:.65,novelty:.7,goalPressure:.6,socialNeed:.4,identityCoherence:.82},
   ...overrides,
 });

@@ -1,3 +1,9 @@
+### WorkPass328 follow-up — repair CI entry points and Node 24 runtime compatibility (2026-10-26)
+
+- Restored missing npm aliases for the WorkPass291/292/293/294 regressions and three existing P26 learning tests. Each alias now points at an actual test file or the existing compound-revision test chain, instead of letting the workflow fail before exercising code.
+- Updated the basic causal-outcome fixture to explicitly represent the observed completed action and its success value. The runtime correctly rejects causal credit unless the post-state attributes the selected action and a bounded success signal; the old fixture omitted both fields and was no longer a valid transition.
+- Replaced TypeScript constructor parameter properties in `VersionedSkillCandidateStore` with explicit class fields and assignments. Node 24's built-in strip-only TypeScript loader cannot execute parameter properties, which was breaking both replay strategy and signed promotion tests before they reached their assertions.
+
 ### WorkPass328 follow-up — preserve intrinsic-drive influence under saturation (2026-10-26)
 
 - CI exposed a saturation bug in `B272EndogenousGoalGenesis`: intrinsic drive was added before clipping the future-value score, so already-high model values could erase the difference between a calibrated drive and a baseline drive. Changed the score to a bounded convex blend of the evidence-based model value and trusted intrinsic drive. This preserves the confidence gate and guarantees that increasing a trusted drive has a proportional effect until the output's legal bounds.
