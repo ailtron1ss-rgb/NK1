@@ -137,6 +137,15 @@ export function HexisControlConsole() {
       setMessage("Stage imported HMX: the document root must be a JSON object.");
       return;
     }
+    const serializedDocument = JSON.stringify(document);
+    if (serializedDocument.length > 1_000_000) {
+      setMessage("Stage imported HMX: the normalized document exceeds the server's 1,000,000-character staging limit.");
+      return;
+    }
+    if (new TextEncoder().encode(serializedDocument).byteLength > 8 * 1024 * 1024) {
+      setMessage("Stage imported HMX: the normalized document exceeds the bounded server request size.");
+      return;
+    }
     const result = await run("Stage imported HMX", () => neuroApi.hexisHmxStage({
       document: document as Record<string, unknown>, intent: hmxIntent, strategy: hmxStrategy,
     }));
