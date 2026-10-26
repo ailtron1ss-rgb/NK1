@@ -230,7 +230,7 @@ export function HexisControlConsole() {
 
         <Panel title="Portable HMX 1.7" icon={<Download className="size-4" />}>
           <p className="mb-2 text-[11px] leading-relaxed text-muted">
-            NK1 currently exports a bounded memory-only HMX 1.7 document. To import regular memories, use telepathy + additive. Unknown or protected populated sections are rejected instead of silently dropped; other intent/strategy pairs stage as preview-only.
+            NK1 exports a bounded memory-only HMX 1.7 document. It is not redacted: inspect content and consent before sharing it. For ordinary memory import, use telepathy + additive. Unknown or protected populated sections are rejected instead of silently dropped; other intent/strategy pairs stage as preview-only.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <select value={hmxIntent} onChange={e => setHmxIntent(e.target.value as typeof hmxIntent)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="port">port</option><option value="duplicate">duplicate</option><option value="telepathy">telepathy</option><option value="analysis">analysis</option></select>
