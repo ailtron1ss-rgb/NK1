@@ -65,7 +65,11 @@ assert.throws(() => createIndependentSkillCandidateEvaluator({
 // Evaluator configuration is an authority snapshot: post-construction changes must
 // not relabel the environment under which a candidate was executed.
 const mutableTasks = structuredClone(tasks);
-const expectedSnapshotPlanFingerprint = digest(mutableTasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) => ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds })));
+// The canonical task-family identity is part of the immutable evaluation plan. This
+// fixture intentionally has no experiment manifest, so every family is explicitly null.
+const expectedSnapshotPlanFingerprint = digest(mutableTasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) => ({
+  taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds, taskFamily: null,
+})));
 const mutableConfig = {
   tasks: mutableTasks,
   environmentFingerprint: 'b'.repeat(64),
