@@ -621,10 +621,9 @@ export class ActionGateway {
     const versionField=actionLedgerOwnField(snapshot,'version');
     if(versionField.present && versionField.value!==1) throw new Error('action-ledger-snapshot-version-unsupported');
     const recordsField=actionLedgerOwnField(snapshot,'records');
-    if(recordsField.present && !Array.isArray(recordsField.value)) throw new Error('action-ledger-snapshot-records-invalid');
-    const rows=recordsField.present
-      ? actionLedgerReadArray(recordsField.value,'action-ledger-snapshot-records',4096)
-      : [];
+    if(!recordsField.present) throw new Error('action-ledger-snapshot-records-missing');
+    if(!Array.isArray(recordsField.value)) throw new Error('action-ledger-snapshot-records-invalid');
+    const rows=actionLedgerReadArray(recordsField.value,'action-ledger-snapshot-records',4096);
     const restored=new Map<string,ActionExecutionLedgerEntry>();
     for(const value of rows) {
       actionLedgerAssertDataRecord(value,'action-ledger-record');
