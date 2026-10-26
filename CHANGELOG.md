@@ -1,3 +1,9 @@
+## P26 replay policy sweep — identify failing policy precisely (2026-10-26)
+
+- Expanded the sequential replay sweep's failing assertion message to report strategy, random seed, new-task accuracy, and prior-task accuracy. The score floor and test semantics are unchanged; this makes CI identify which replay cadence violates the plasticity contract.
+
+---
+
 ## P26 sequential learning — restore bounded interleaved replay (2026-10-26)
 
 - Implemented the `P26TrueLearningEngine.trainInterleaved` contract used by the sequential-learning benchmark. Current outcomes now train the policy while bounded replay attempts are interspersed at a configurable cadence.
