@@ -1,3 +1,13 @@
+## [NK1][WorkPass381] Balance fresh-task plasticity against actual replay pressure — 2026-10-26
+
+- **Previous exact-head outcome:** WorkPass380 failed the context-aware sequential benchmark at `contextAware.taskBFinal`. The coprime permutation broke useful counterfactual pairing between equal-energy states in old/new contexts, so that algorithm is not kept.
+- **Correction:** restore context-aligned row selection. For each fresh row, increase its effective learning rate by the replay learning rate multiplied by the actually applied replay/current update ratio so an extra replay gradient does not silently dominate the fresh task. Cap the effective rate at the learner's supported maximum (0.30); skipped/blocked replay does not produce a boost.
+- **Regression:** interleaved contract verifies replay still runs first, the fresh gradient remains last, and a single replay at rates 0.06 / 0.18 yields effective fresh rate 0.24.
+- **Validation:** this is a new algorithm delta, not yet validated. P26 full sequential/interleaved + replay policy sweep and WorkPass71 runtime/rebuild must pass on one exact SHA.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][WorkPass380] Dephase interleaved replay and current-example ordering — 2026-10-26
 
 - **Observed failure:** the multi-seed replay sweep isolated one violating case: `interleave-1`, seed 17 retained the old task at 0.93 but learned the new task at 0.52 after 5,040 replay updates; no replay candidate was blocked. The same current/replay arrays were paired by `i % replay.length`, causing persistent same-index old/new gradient contests.
