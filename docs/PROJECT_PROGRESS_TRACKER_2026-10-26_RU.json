@@ -362,13 +362,13 @@
     "id": "WorkPass396",
     "date": "2026-10-26",
     "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
-    "codeCommit": "f30d889e15192cf05eaf540614cc1479912314d6",
-    "testCommit": "621b774d8721dffaa42c010241644924a9a8b0bb",
-    "summary": "Removed the remaining legacy in-process Hexis confidence mutation path. OrganismCore.hexisReviseBelief now adapts the old evidence envelope into an idempotent server-receipt evidence event and stages it through the canonical transactional evidence-to-review path; no direct reviseBelief/updateSignals mutation remains in that compatibility method.",
+    "codeCommit": "bb38a516fe2b3671dad929a9c756c339428c0ded",
+    "testCommit": "282462422fedb7202f3c35be95541a3cbaff6bd5",
+    "summary": "Removed the legacy in-process Hexis confidence mutation path. OrganismCore.hexisReviseBelief now validates its legacy evidence envelope, creates a stable server-receipt evidence ID and stages it through the canonical transactional evidence-to-review path; no direct reviseBelief/updateSignals mutation remains in that method.",
     "testsAdded": [
-      "static source contract checks hexisReviseBelief delegates to ingestHexisEvidenceForReview",
-      "static source contract rejects direct hexisAdaptation.reviseBelief and MemoryFabric.updateSignals from the legacy compatibility method",
-      "legacy input rejects missing evidence source references, invalid stance and invalid confidence before staging"
+      "static source contract checks legacy hexisReviseBelief delegates to ingestHexisEvidenceForReview",
+      "static source contract forbids direct hexisAdaptation.reviseBelief and MemoryFabric.updateSignals calls in the legacy method",
+      "static source contract checks guards for malformed evidence, invalid stance, invalid legacy text, missing source reference and invalid confidence"
     ],
     "validationStatus": "PENDING exact-head runtime typecheck, cognitive-hexis-evidence-review.mjs, Hexis server smoke and Unified project integration. Recent GitHub Actions runs are marked failed but return no step details or downloadable logs, so no pass/failure attribution is possible.",
     "progressPercentagesChanged": false,
@@ -692,8 +692,8 @@
       "workflowRuns": []
     }
   ],
-  "latestUnverifiedCodeTestHead": "621b774d8721dffaa42c010241644924a9a8b0bb",
-  "branchHeadBeforeTrackerCommit": "621b774d8721dffaa42c010241644924a9a8b0bb",
+  "latestUnverifiedCodeTestHead": "282462422fedb7202f3c35be95541a3cbaff6bd5",
+  "branchHeadBeforeTrackerCommit": "282462422fedb7202f3c35be95541a3cbaff6bd5",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -735,9 +735,9 @@
   "latestEngineeringCheckpoint": {
     "workpass": "WorkPass396",
     "sourceBranch": "fix/hexis-review-digest-binding-live-2026-10-26",
-    "codeTestHead": "621b774d8721dffaa42c010241644924a9a8b0bb",
+    "codeTestHead": "282462422fedb7202f3c35be95541a3cbaff6bd5",
     "validationStatus": "pending-exact-head-ci",
-    "summary": "Removed the remaining legacy in-process Hexis confidence mutation path. OrganismCore.hexisReviseBelief now adapts the old evidence envelope into an idempotent server-receipt evidence event and stages it through the canonical transactional evidence-to-review path; no direct reviseBelief/updateSignals mutation remains in that compatibility method. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
+    "summary": "Removed the legacy in-process Hexis confidence mutation path. OrganismCore.hexisReviseBelief now validates its legacy evidence envelope, creates a stable server-receipt evidence ID and stages it through the canonical transactional evidence-to-review path; no direct reviseBelief/updateSignals mutation remains in that method. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   },
