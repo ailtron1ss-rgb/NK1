@@ -71,7 +71,7 @@ for (const source of ['Ку́рису 🙂', 'а🙂‍↔️б\\n', 'а🙂‍�
   const actual = buildAvatarSpeechTimeline(source, 0.96, 'ru-RU');
   assert.deepEqual(
     actual.map(({ startMs, endMs, pose, grapheme }) => ({ startMs, endMs, pose, grapheme })),
-    expected.map(frame => ({ startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose, grapheme: normalizedSource.slice(frame.charIndex, frame.endCharIndex) })),
+    expected.map(frame => ({ startMs: frame.startMs, endMs: frame.endMs, pose: frame.pose, grapheme: source.slice(frame.charIndex, frame.endCharIndex) })),
     'combining marks, joined emoji, flags and real/control-character newlines must retain canonical UTF-16 grapheme windows',
   );
 }
