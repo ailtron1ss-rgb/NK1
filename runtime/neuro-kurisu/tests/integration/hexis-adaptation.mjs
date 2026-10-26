@@ -440,6 +440,103 @@ for (let index = 0; index < statusCases.length; index++) {
   );
 }
 
+// A changed upstream memory with the same lineage/ref is a new version of one
+// external record, not an unrelated fact. Old canonical rows remain as history,
+// but their belief and source-scoped semantic projections must be withdrawn.
+const supersessionRuntime = new MemorySubsystemRuntime();
+const supersessionLedger = new HexisAdaptationFabric();
+const supersessionProjector = new HexisCanonicalMemoryProjector(
+  supersessionRuntime.fabric,
+  supersessionRuntime.semanticMemory,
+  supersessionLedger,
+);
+supersessionLedger.bindCanonicalMemoryApply(stage => supersessionProjector.apply(stage));
+const applySupersessionVersion = (exportId, content) => {
+  const stage = supersessionLedger.stageHmx({
+    document: makeHmxDocument(exportId, {
+      memories: [{
+        ref: exportId + ':stable-memory-ref',
+        type: 'semantic',
+        content,
+        status: 'active',
+        trust_level: 0.99,
+      }],
+    }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert.deepEqual(stage.conflicts, []);
+  assert.equal(supersessionLedger.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
+  const applied = supersessionLedger.decideHmx(stage.stagingId, 'apply');
+  assert.equal(applied?.status, 'applied');
+  return {
+    applied,
+    memory: supersessionRuntime.fabric.canonicalSnapshot().items.find(item => item.content === content),
+  };
+};
+const sourceVersionA = applySupersessionVersion(
+  'exp_0000000000012345',
+  'Source claim before correction.',
+);
+assert(sourceVersionA.memory);
+assert.equal(sourceVersionA.memory.epistemicStatus, 'belief');
+assert(supersessionLedger.snapshot().beliefs.some(belief => belief.memoryId === sourceVersionA.memory.id));
+assert(supersessionRuntime.semanticMemory.snapshot().nodes.some(
+  node => node.sourceKey === sourceVersionA.memory.context?.hexisGraphSourceKey,
+));
+
+const sourceVersionB = applySupersessionVersion(
+  'exp_0000000000012346',
+  'Corrected source claim after correction.',
+);
+assert(sourceVersionB.memory);
+assert.notEqual(sourceVersionB.memory.id, sourceVersionA.memory.id);
+const canonicalAfterCorrection = supersessionRuntime.fabric.canonicalSnapshot().items;
+assert(canonicalAfterCorrection.some(item => item.id === sourceVersionA.memory.id),
+  'superseded canonical content must remain available for history and temporal inspection');
+assert.equal(canonicalAfterCorrection.find(item => item.id === sourceVersionA.memory.id)?.epistemicStatus, 'quarantined');
+assert.equal(sourceVersionB.memory.epistemicStatus, 'belief');
+assert.equal(supersessionLedger.snapshot().beliefs.some(belief => belief.memoryId === sourceVersionA.memory.id), false,
+  'superseded content must leave the active Hexis belief mirror');
+assert(supersessionLedger.snapshot().beliefs.some(belief => belief.memoryId === sourceVersionB.memory.id));
+const graphAfterCorrection = supersessionRuntime.semanticMemory.snapshot();
+assert.equal(graphAfterCorrection.nodes.some(node => node.sourceKey === sourceVersionA.memory.context?.hexisGraphSourceKey), false,
+  'superseded content must leave the active source-scoped semantic graph');
+assert(graphAfterCorrection.nodes.some(node => node.sourceKey === sourceVersionB.memory.context?.hexisGraphSourceKey));
+assert(sourceVersionB.applied.application.warnings.some(warning => warning.includes('superseded') && warning.includes('historical')),
+  'the apply receipt must disclose that a previous canonical version was retired but retained');
+
+const repeatedVersionB = applySupersessionVersion(
+  'exp_0000000000012347',
+  'Corrected source claim after correction.',
+);
+assert.equal(repeatedVersionB.applied.application.importedCount, 0,
+  'same-content re-export remains idempotent');
+assert.equal(repeatedVersionB.applied.application.deduplicatedCount, 1);
+assert.equal(supersessionRuntime.fabric.canonicalSnapshot().items.length, 2,
+  'same-content re-export must not create a third canonical record');
+assert.equal(supersessionLedger.snapshot().beliefs.some(belief => belief.memoryId === sourceVersionA.memory.id), false);
+
+const revertedVersionA = applySupersessionVersion(
+  'exp_0000000000012348',
+  'Source claim before correction.',
+);
+assert.equal(revertedVersionA.applied.application.importedCount, 0);
+assert.equal(revertedVersionA.memory?.epistemicStatus, 'quarantined',
+  'a later upstream reversion must not reactivate an old quarantined canonical record');
+assert.equal(
+  supersessionRuntime.fabric.canonicalSnapshot().items.find(item => item.id === sourceVersionB.memory.id)?.epistemicStatus,
+  'quarantined',
+  'a source reversion must also withdraw the more recent version rather than leaving it active',
+);
+assert.equal(supersessionLedger.snapshot().beliefs.some(
+  belief => belief.memoryId === sourceVersionA.memory.id || belief.memoryId === sourceVersionB.memory.id,
+), false, 'the source reversion must not resurrect either superseded claim as an active belief');
+assert.equal(supersessionRuntime.semanticMemory.snapshot().nodes.some(
+  node => node.sourceKey === sourceVersionA.memory.context?.hexisGraphSourceKey ||
+    node.sourceKey === sourceVersionB.memory.context?.hexisGraphSourceKey,
+), false, 'neither historical version may retain an active semantic projection after a reversion');
+
 // Migration regression: a pre-existing persisted HMX row can carry values written by
 // the older permissive importer. A replay under the new policy must cap both the
 // canonical signal and its external evidence trail, not just new inserts.
