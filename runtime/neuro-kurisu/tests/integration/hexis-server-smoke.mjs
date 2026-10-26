@@ -51,7 +51,7 @@ try {
       decision: 'approve',
     })).json();
     if (!reviewed.ok || reviewed.result?.status !== 'decided' || reviewed.result?.confidenceChanged !== true)
-      throw new Error('hexis-generic-review-must-use-canonical-gate');
+      throw new Error('hexis-generic-review-must-use-canonical-gate:' + JSON.stringify(reviewed));
 
     // Exercise the canonical envelope endpoint too, including the separate decide route.
     const canonicalEnvelope = {
