@@ -1,3 +1,11 @@
+## [NK1][Hexis-H3] Commit learning-review decisions with canonical memory effects — 2026-10-26
+
+- Reordered Core learning review so correction/forget operations are preflighted and applied through the canonical memory owner before the Hexis review item is finalized. Failed or rejected memory mutations leave the review pending instead of creating a false completed decision.
+- Rejects edits/deletions of identity, autobiographical, and quarantined memories through the general learning-review path; those require their own explicit protected-memory workflow.
+- Records a conservative, idempotent provenance receipt for a review-driven correction, preserves temporal revision lineage, and returns an explicit memory-mutation outcome. Forget retries safely close when the target is already absent; they do not target a different row.
+- Added `test:hexis-learning-review-canonical-memory` and wired it into the repository wiring audit alongside evidence lineage, HMX integrity, Operation Omega provenance/review tests, P65 persistence, and live server smoke.
+- **Validation status:** workflow reruns for the exact latest head are required; code is not marked production-ready on the basis of the prior green runs.
+
 ## [NK1][Hexis-H1 follow-up] Normalize evidence-lineage replay identities — 2026-10-26
 
 - Extended the canonical MemoryOS2/Hexis evidence-lineage regression with a replay attempt using full-width Unicode characters and surrounding whitespace that normalize to an already-recorded lineage key.
