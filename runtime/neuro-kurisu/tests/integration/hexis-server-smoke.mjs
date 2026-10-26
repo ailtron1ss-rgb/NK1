@@ -128,8 +128,10 @@ try {
     const reviewsAfterRestart = await (await fetch(`${base}/api/organism/integration/hexis/reviews`)).json();
     const restoredReview = reviewsAfterRestart.reviews?.find(review => review.id === staged.result.reviewId);
     const restoredItem = restoredReview?.items?.find(item => item.id === staged.result.reviewItemId);
-    if (!reviewsAfterRestart.ok || !restoredItem || restoredItem.status !== 'pending' ||
-        restoredItem.evidence?.pipeline !== 'nk1.hexis-evidence-review.v1')
+    // The public review list is a projection and intentionally omits the
+    // internal evidence payload. The exact pending IDs are checked here; the
+    // subsequent canonical approval proves the persisted payload was restored.
+    if (!reviewsAfterRestart.ok || !restoredItem || restoredItem.status !== 'pending')
       throw new Error('hexis-pending-review-not-restored-after-restart:' + JSON.stringify({ reviewsAfterRestart, restoredItem }));
 
     const decidedResponse = await post('/api/organism/integration/hexis/evidence/decide', {
