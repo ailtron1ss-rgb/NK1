@@ -27,6 +27,24 @@ const stagePayload = stage => ({
 export const computeHmxStageDigest = stage =>
   createHash('sha256').update(stableLegacyJson(stagePayload(stage))).digest('hex');
 
+// Lifecycle transitions are intentionally sealed separately from the reviewed payload
+// digest. This detects a persisted status-only rewrite (for example rejected -> accepted)
+// without changing the payload identity as the stage moves through its normal states.
+const stageLifecyclePayload = stage => ({
+  stagingId: stage.stagingId,
+  status: stage.status,
+  applicationAttempts: stage.applicationAttempts ?? 0,
+  applicationDigest: isRecord(stage.application) ? (stage.application.digest ?? null) : null,
+});
+
+export const computeHmxStageLifecycleDigest = stage =>
+  createHash('sha256').update(stableLegacyJson(stageLifecyclePayload(stage))).digest('hex');
+
+export const refreshHmxStageLifecycleDigest = stage => {
+  stage.lifecycleDigest = computeHmxStageLifecycleDigest(stage);
+  return stage.lifecycleDigest;
+};
+
 function isSafeJsonTree(value, ancestors = new Set(), depth = 0, budget = { nodes: 0 }) {
   if (value === null || value === undefined || typeof value === 'string' || typeof value === 'boolean') return true;
   if (typeof value === 'number') return Number.isFinite(value);
@@ -65,13 +83,24 @@ export const isValidHmxStageDigest = stage => {
     if (typeof stage.exportId !== 'string' || !['port', 'duplicate', 'telepathy', 'analysis'].includes(stage.intent) ||
         !['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(stage.strategy) ||
         !['staged', 'accepted', 'rejected', 'applied'].includes(stage.status)) return false;
-    // The content digest intentionally excludes lifecycle fields so an accepted
-    // stage can transition to applied without changing the reviewed payload hash.
-    // But a persisted success receipt may never coexist with a non-applied status:
-    // otherwise changing only status could re-enter the write path on replay.
+    // The content digest intentionally excludes lifecycle fields so accepted/applied
+    // transitions do not change the reviewed payload hash. Seal lifecycle separately.
+    // Only never-reviewed legacy stages may be migrated without a seal; an old
+    // accepted/rejected/applied stage cannot prove its prior lifecycle and must fail closed.
     if (stage.status !== 'applied' && Object.hasOwn(stage, 'application') && stage.application !== undefined) return false;
     if (!isRecord(stage.sectionCounts) || !Array.isArray(stage.protectedSections) ||
         !Array.isArray(stage.conflicts) || !isRecord(stage.stagedSections)) return false;
+    if (Object.hasOwn(stage, 'lifecycleDigest')) {
+      if (typeof stage.lifecycleDigest !== 'string' || !/^[a-f0-9]{64}$/.test(stage.lifecycleDigest) ||
+          !Number.isSafeInteger(stage.applicationAttempts) || stage.applicationAttempts < 0 ||
+          stage.applicationAttempts > 10000 ||
+          computeHmxStageLifecycleDigest(stage) !== stage.lifecycleDigest) return false;
+    } else {
+      const legacyAttempts = stage.applicationAttempts;
+      if (stage.status !== 'staged' ||
+          (Object.hasOwn(stage, 'application') && stage.application !== undefined) ||
+          (legacyAttempts !== undefined && legacyAttempts !== 0)) return false;
+    }
     return computeHmxStageDigest(stage) === stage.digest;
   } catch {
     return false;
