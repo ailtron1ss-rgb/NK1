@@ -1,3 +1,20 @@
+## WorkPass354b — future-proof the CI evidence-head regression (2026-10-26)
+
+- **Test improvement:** the regression changes `sourceHeadAtSnapshot` to a different valid SHA and verifies that historical CI rows remain valid when they match `ciSnapshot.evidenceHead`. The test no longer relies on the default fixture always having distinct source/evidence values.
+- **Rebase note:** the prior PR head `e2c0b9464ccf46c9bc31c36602e24d05bab7e5df` passed the ledger, learning-metrics and Unified integration workflows, but the base subsequently advanced with new strict CognitiveEventFabric append-ingress checks at `18afd253dcd7413c02136537ea1acc10b7764768`.
+- **Current code/test checkpoint:** `bbe37bc81c86fb71ed4516020d7f1116f11ba773`, rebased on the newer base. Fresh exact-head CI is required; no inherited PASS is claimed for the new runtime commit. Scores unchanged.
+
+---
+
+## WorkPass354 — separate source snapshot from validated CI evidence (2026-10-26)
+
+- **Observed failure:** Unified integration run [#40282049399](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282049399) stopped at the progress-ledger validation step because 13 historical successful CI rows pointed to `621864d0d7f2676245383adab86f1dcc6d0f741f`, while the validator compared them to the newer source checkpoint. Runtime tests were skipped.
+- **Fix:** `ciSnapshot.evidenceHead` identifies the exact commit represented by the historical CI rows. Each row is validated against that SHA, not `sourceHeadAtSnapshot`; historic results are preserved rather than relabeled as current-head evidence.
+- **Regression coverage:** independent source/evidence SHA validation, malformed evidence-head rejection, individual row SHA mismatch and invalid run URL.
+- **Current base preservation:** the PR retains the already-landed payload-envelope validation and the newer strict append-ingress contract at `18afd253dcd7413c02136537ea1acc10b7764768`. Current code/test checkpoint `bbe37bc81c86fb71ed4516020d7f1116f11ba773` requires fresh exact-head CI before validation is claimed. Scores unchanged.
+
+---
+
 ## CognitiveEventFabric append-ingress contract — 2026-10-26
 
 - **Defect:** confidence outside `[0, 1]` was silently clamped; append could execute top-level getters while reading event fields; duplicate parent IDs could inflate causal lineage; restore could clamp invalid stored confidence.
