@@ -6,6 +6,8 @@
 
 - Updated the expression-cache workflow harness to supply the actual profile catalog to its isolated VM, and extended it to assert idle/active budgets for all three rendering profiles. This prevents the test harness from evaluating the new selector function without one of its required inputs.
 
+- Tightened the profile budget regression to execute the production `visualStateIsActive()` implementation in the isolated VM instead of a test mock, so active/idle FPS assertions follow the same state classifier as the viewer.
+
 ---
 
 ## NK1 WorkPass108 — truthful Live2D performance profiles (2026-10-26)

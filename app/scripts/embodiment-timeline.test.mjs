@@ -323,10 +323,12 @@ test("Live2D profile presets have enforceable frame budgets in both shipped view
   for (const viewer of viewers) {
     const html = await readFile(viewer.path, "utf8");
     const policy = html.match(/const PROFILE_POLICY=Object\.freeze\([\s\S]*?\);/u)?.[0];
+    const activeState = html.match(/function visualStateIsActive\(signal=bodySignal\)\{[^\n]*\}/u)?.[0];
     const chooseProfile = html.match(/function chooseProfile\(\)\{[\s\S]*?\n  \}/u)?.[0];
     const modelForProfile = html.match(/function modelForProfile\(profile\)\{[\s\S]*?\n  \}/u)?.[0];
     const tickerBudget = html.match(/function updateTickerBudget\(\)\{[^\n]*\}/u)?.[0];
     assert.ok(policy, `${viewer.name}: profile policy catalog must exist`);
+    assert.ok(activeState, `${viewer.name}: active-state classifier must exist`);
     assert.ok(chooseProfile, `${viewer.name}: profile selector must exist`);
     assert.ok(modelForProfile, `${viewer.name}: model selection must use the catalog`);
     assert.ok(tickerBudget, `${viewer.name}: frame budget must use the selected profile`);
@@ -341,12 +343,9 @@ test("Live2D profile presets have enforceable frame budgets in both shipped view
       assetProfile: "quality",
       bodySignal: { speaking: true },
       app: { ticker: { maxFPS: 0 } },
-      visualStateIsActive(signal = {}) {
-        return Boolean(signal?.speaking || signal?.gesture || signal?.expressionIntensity > 0.5);
-      },
     };
     const api = vm.runInNewContext(
-      [policy, chooseProfile, modelForProfile, tickerBudget,
+      [policy, activeState, chooseProfile, modelForProfile, tickerBudget,
         "({ PROFILE_POLICY, chooseProfile, modelForProfile, updateTickerBudget })"].join("\n"),
       sandbox,
       { filename: `${viewer.name}-live2d-profile-policy.js`, timeout: 1000 },
