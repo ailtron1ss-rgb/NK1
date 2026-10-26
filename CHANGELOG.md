@@ -2,6 +2,8 @@
 
 - **Input integrity:** malformed holdout observations with non-string task, family, method, verifier or evidence fields are safely rejected as rows; invalid top-level arrays/options return explicit errors rather than crashing on string methods.
 - **Threshold integrity:** `minPairedTasks` must be an integer from 2 to 10,000; gain and family-regression thresholds must be finite numbers in `[0, 1]`. Invalid values are rejected rather than silently clamped or defaulted.
+- The production proposal producer (`VerifiedSkillPromotion.ts`) now enforces the same strict contract before building an authenticated proposal: invalid paired-task minimum, gain/regression thresholds and complete-seed minimum raise explicit errors, and non-object options are rejected.
+- Add producer-level regressions for NaN, out-of-range thresholds, invalid complete-seed counts and null options, so malformed runtime configuration cannot be silently softened before reaching the lower-level gate.
 - **Evidence accounting:** baseline/candidate observations with mismatched task families are excluded from the paired denominator and increment `rejectedRows` exactly once per invalid pair.
 - **Regression coverage:** adds malformed-row and cross-family cases, invalid and exact-boundary threshold cases, and updates the proposal test to expect explicit failure for `NaN` configuration.
 - **Activation boundary:** candidate generation remains advisory; independent evaluation, trusted shadow evidence and explicit signed approval remain required before a skill can become active.
