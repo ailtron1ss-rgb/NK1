@@ -228,7 +228,50 @@ assert.doesNotThrow(() => normalizeHmxV17Memory(malformedProjectionRow, {
 assert.equal(normalizeHmxV17Memory(malformedProjectionRow, {
   exportId: validHmx.export_id,
   sourceSubjectId: validHmx.source.hexis_lineage_id,
+}), null);assert.equal(normalizeHmxV17Memory(malformedProjectionRow, {
+  exportId: validHmx.export_id,
+  sourceSubjectId: validHmx.source.hexis_lineage_id,
 }), null);
+
+let normalizerRootGetterCalls = 0;
+const accessorNormalizerRow = { ...validHmx.sections.memories[0] };
+Object.defineProperty(accessorNormalizerRow, 'content', {
+  enumerable: true,
+  configurable: true,
+  get() { normalizerRootGetterCalls += 1; return 'must-not-read'; },
+});
+assert.equal(normalizeHmxV17Memory(accessorNormalizerRow, {
+  exportId: validHmx.export_id,
+  sourceSubjectId: validHmx.source.hexis_lineage_id,
+}), null);
+assert.equal(normalizerRootGetterCalls, 0,
+  'normalizeHmxV17Memory must reject root accessors without executing them');
+
+let normalizerNestedGetterCalls = 0;
+const accessorMetadata = { ...validHmx.sections.memories[0].metadata };
+Object.defineProperty(accessorMetadata, 'nk1_confidence', {
+  enumerable: true,
+  configurable: true,
+  get() { normalizerNestedGetterCalls += 1; return 1; },
+});
+const accessorMetadataRow = { ...validHmx.sections.memories[0], metadata: accessorMetadata };
+assert.equal(normalizeHmxV17Memory(accessorMetadataRow, {
+  exportId: validHmx.export_id,
+  sourceSubjectId: validHmx.source.hexis_lineage_id,
+}), null);
+assert.equal(normalizerNestedGetterCalls, 0,
+  'normalizeHmxV17Memory must reject nested metadata accessors without executing them');
+
+const customPrototypeNormalizerRow = Object.assign(
+  Object.create({ inheritedSecret: 'must-not-cross-boundary' }),
+  validHmx.sections.memories[0],
+);
+assert.equal(normalizeHmxV17Memory(customPrototypeNormalizerRow, {
+  exportId: validHmx.export_id,
+  sourceSubjectId: validHmx.source.hexis_lineage_id,
+}), null,
+  'normalizeHmxV17Memory must reject custom-prototype rows');
+
 
 const malformedAuthorityHmx = {
   ...validHmx,
