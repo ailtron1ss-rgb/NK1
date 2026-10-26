@@ -1,3 +1,10 @@
+## NK1 P23 restore boundary — cover cyclic, aliased, and sparse snapshots (2026-10-26)
+
+- Extended WorkPass310 with explicit rejection tests for cyclic objects, shared-object aliases, and sparse arrays. Each regression also verifies that a rejected restore leaves the current learner snapshot unchanged.
+- This closes coverage gaps for the bounded plain-data validator; it does not alter training or replay algorithms.
+
+---
+
 ## NK1 P23 persistence hardening — reject accessor-backed learning snapshots (2026-10-26)
 
 - Added a bounded recursive data-tree validation step before `P23LearningEngine.restore()` reads persisted state. It rejects getters/setters, exotic prototypes, cyclic/aliased object graphs, sparse/custom arrays, symbols, and over-budget/deep structures before assigning learner state.
