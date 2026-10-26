@@ -21,6 +21,8 @@
 
 ## Регрессии
 
+- Cross-store rollback now begins with a pre-existing HMX belief: injected failure must restore its original epistemic status, graph node and temporal belief; retry then quarantines the old record as history and activates exactly one new memory/node/belief.
+
 - Проверяется `__proto__` в deferredSections после реального JSON stringify/parse — ключ обязан сохраниться own property и пройти receipt validator.
 - Warning-строки отклоняются при любом управляющем символе C0/C1, включая `\t`, `\n` и `\r`, и ограничены 2048 символами.
 
