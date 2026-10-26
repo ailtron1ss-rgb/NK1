@@ -223,6 +223,11 @@ try {
     item.candidateId === noEvaluationDigestCandidate.candidateId &&
     item.revisionProvenance?.evaluationFingerprint === undefined), true,
     'optional evaluationFingerprint remains optional across durable restart');
+  assert.throws(() => durableStore.stageCandidate(
+    proposal('j'), 'file-backed-provenance-invalid-digest', { instruction: 'invalid digest is rejected' },
+    { ...provenanceWithoutEvaluationDigest, evaluationFingerprint: 'not-a-sha256-digest' },
+  ), /invalid reflective skill revision provenance/,
+  'evaluationFingerprint remains optional, but a supplied malformed digest is rejected');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
 } finally {
