@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass392 — enforce integrity at the canonical projector boundary (2026-10-26)
+
+- [SAFETY] The projector now independently requires an accepted stage with a non-empty stage ID/digest and zero staging conflicts; direct callers can no longer bypass the review/staging conflict gate.
+- [FIX] Duplicate memory refs are rejected by the canonical projector too, not merely by the front-door staging adapter.
+- [TEST] Added direct-call regressions for missing stage identity, a conflict-bearing accepted stage, and duplicate refs bypassing `stageHmx`. The fake canonical storage confirms these cases fail before a read/write attempt.
+- [VALIDATION] Tests are wired through `audit:hexis` and WorkPass71, but remain unexecuted while Actions runner allocation is failing.
+
 ## [NK1][Hexis] WorkPass391 — reject HMX reference collisions (2026-10-26)
 
 - [SAFETY] HMX memory sections now fail atomically when a reference is repeated, even when the repeated rows share identical text but differ in type or other metadata.
