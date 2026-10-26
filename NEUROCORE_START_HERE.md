@@ -1,3 +1,16 @@
+## Latest checkpoint — WorkPass354 learning-process storage isolation (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Status:** code/tests committed; exact-head validation pending.
+
+- The generic `LearningProcessSupervisor` now independently protects its output and persistent-state roots rather than relying solely on host-owned evaluator prechecks.
+- Run/survive roots are created owner-only, and existing directories fail closed if public/group-accessible, symlinked at the final component, or not stable across filesystem identity checks. Equal/nested/aliased run and survive roots are rejected before a child runs.
+- The process command fingerprint now binds canonical storage paths and device/inode identities. POSIX roots whose parent can be replaced by group/other users are rejected unless a sticky bit protects entries.
+- Added regressions for world-writable roots, overlapping roots and symlink roots. Focused CI and runtime typecheck must be rerun on this new code head; WorkPass353's green run does not cover WorkPass354.
+- These filesystem checks complement but do not create an OS/container sandbox. Untrusted candidate code still requires deployment-owned executor isolation; full restart/retrieval, independent learning uplift, production UI/database, browser/Live2D, Android/Termux audio, soak and license gates remain open.
+
+---
+
 ## Latest checkpoint — WorkPass353 evaluator state-path canonicalization (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
