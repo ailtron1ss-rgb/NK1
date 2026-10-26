@@ -38,6 +38,10 @@ const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: proc
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
+const configuredHmxBodyBytes = Number(process.env.NEURO_HMX_MAX_BODY_BYTES || 8 * 1024 * 1024);
+const MAX_HMX_BODY_BYTES = Number.isFinite(configuredHmxBodyBytes)
+    ? Math.max(MAX_BODY_BYTES, Math.min(8 * 1024 * 1024, Math.floor(configuredHmxBodyBytes)))
+    : 8 * 1024 * 1024;
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
@@ -265,17 +269,23 @@ function embodimentAssetStatus() {
         provenance
     };
 }
-async function body(req) {
+async function body(req, maximumBytes = MAX_BODY_BYTES) {
+    const limit = Number.isFinite(Number(maximumBytes)) && Number(maximumBytes) >= 4096
+        ? Math.floor(Number(maximumBytes))
+        : MAX_BODY_BYTES;
+    const failTooLarge = () => {
+        throw Object.assign(new Error('request-too-large'), { maxBodyBytes: limit });
+    };
     const declared = Number(req.headers['content-length'] || 0);
-    if (Number.isFinite(declared) && declared > MAX_BODY_BYTES)
-        throw new Error('request-too-large');
+    if (Number.isFinite(declared) && declared > limit)
+        failTooLarge();
     const chunks = [];
     let bytes = 0;
     for await (const chunk of req) {
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         bytes += buffer.byteLength;
-        if (bytes > MAX_BODY_BYTES)
-            throw new Error('request-too-large');
+        if (bytes > limit)
+            failTooLarge();
         chunks.push(buffer);
     }
     const source = Buffer.concat(chunks).toString('utf8');
@@ -914,7 +924,7 @@ async function route(req, res) {
             }
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/stage') {
-            const input = await body(req);
+            const input = await body(req, MAX_HMX_BODY_BYTES);
             try {
                 const result = runtime.core.hexisStageHmx(input.document, input.intent || 'analysis', input.strategy || 'analysis_only');
                 await runtime.core.flush();
@@ -2324,8 +2334,10 @@ async function route(req, res) {
     catch (error) {
         const message = String(error?.message || error);
         const code = String(error?.code || '');
-        if (message === 'request-too-large')
-            return json(res, 413, { ok: false, error: 'request-too-large', maxBodyBytes: MAX_BODY_BYTES });
+        if (message === 'request-too-large') {
+            const actualLimit = Number(error?.maxBodyBytes);
+            return json(res, 413, { ok: false, error: 'request-too-large', maxBodyBytes: Number.isFinite(actualLimit) && actualLimit >= 4096 ? actualLimit : MAX_BODY_BYTES });
+        }
         if (/JSON|Unexpected token|Expected property name|Unexpected end of JSON input/i.test(message))
             return json(res, 400, { ok: false, error: 'invalid-json-request' });
         if (code === 'transport-envelope-id-conflict' || code === 'transport-envelope-history-unknown')
