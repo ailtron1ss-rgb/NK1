@@ -749,12 +749,23 @@ export class MemoryOS2{
    // A point-in-time hint must not rewind ordinary/current retrieval. Only the
    // explicit `at` mode opts into historical time; `all` remains an archive view.
    const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:wallClockNow;
+   const queryIntentMode=detectMemoryQueryIntent(query);
+   // A query without any searchable token is not an invitation to return the recent-memory fallback.
+   // In particular, String.includes('') is always true, so empty queries must exit before exact-match scoring.
+   if(qTokens.length===0){
+     this.lastCandidateCount=0;
+     this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,
+       identifierBias:false,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:0,
+       candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,
+       fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',
+       rrfSignals:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']};
+     return [];
+   }
    const isValidAt=(m:MemoryItem2,at:number)=>{const from=Number(m.validFromAt??m.createdAt),until=m.validUntilAt==null?Number.POSITIVE_INFINITY:Number(m.validUntilAt);return from<=at&&at<until;};
    const contextCausal=/\b(why|cause|causal|because|reason|effect|причин|почему|следств)/iu.test(query)?1:clamp(this.state.linkUpdates/100);
   const contextTemporal=/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query)?1:clamp(this.state.semanticQueries/100);
   this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
    const queryLower=query.toLocaleLowerCase();
-   const queryIntentMode=detectMemoryQueryIntent(query);
    if(this.linkSupportCacheVersion!==this.state.linkUpdates||!this.linkSupportCache){
      const support=new Map<string,number>();
      for(const source of this.state.items){
