@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir=await mkdtemp(path.join(tmpdir(),'nk-server-')); const port=32000 + Math.floor(Math.random()*3000);
 const env={...process.env,HOST:'127.0.0.1',PORT:String(port),STATE_DIR:dir};
+delete env.NEURO_P26_HOLDOUT_VERIFIERS_JSON;
 const rawFetch=globalThis.fetch;
 const totalTimeoutCandidate = Number(process.env.NK_SERVER_SMOKE_TOTAL_TIMEOUT_MS);
 const totalTimeoutMs = Number.isFinite(totalTimeoutCandidate)
@@ -85,6 +86,13 @@ try {
   if(!h.actionLedger || h.actionLedger.durablePersisterConfigured!==true || !h.actionLedger.archive?.loaded || !Number.isInteger(h.actionLedger.hotRecords) || !Number.isInteger(h.actionLedger.archive.entries) || !Number.isFinite(h.actionLedger.archive.bytes)) throw new Error('server action-ledger durability diagnostics contract mismatch');
   const brainResponse=await fetch(`http://127.0.0.1:${port}/api/organism/cognitive-architecture`); const brain=await brainResponse.json();
   if(!brainResponse.ok || brain.ok!==true || brain.readOnly!==true || brain.architecture?.validation?.ok!==true || brain.architecture?.subsystems?.length!==14 || brain.architecture?.flows?.length!==25 || !Array.isArray(brain.architecture?.runtimeSnapshot?.systems) || !Number.isFinite(brain.architecture?.runtimeSnapshot?.tick)) throw new Error('cognitive architecture endpoint/runtime health contract mismatch');
+  const unauthenticatedEvidence=await fetch(`http://127.0.0.1:${port}/api/organism/true-learning/holdout-evidence`,{
+    method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({evidenceId:'smoke-self-asserted',taskId:'task-a',protocolId:'frozen-v1',verifierId:'fake',sampleSetHash:'sha256:fake',baseline01:.1,learned01:.9,verified:true,independent:true,signature:'definitely-not-a-signature'}),
+  });
+  const rejectedEvidence=await unauthenticatedEvidence.json();
+  if(unauthenticatedEvidence.status!==422||rejectedEvidence.reason!=='trusted-holdout-verifier-not-configured')
+    throw new Error(`P26 must not accept caller-asserted holdout flags without a configured trusted verifier: HTTP ${unauthenticatedEvidence.status} ${JSON.stringify(rejectedEvidence)}`);
   // Exercise the real language-completion path: telemetry is best-effort and must
   // not turn a generated answer into an HTTP 500.
   const chatResponse=await fetch(`http://127.0.0.1:${port}/api/organism/chat`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'Reply briefly with a greeting for the server smoke test.'})});
