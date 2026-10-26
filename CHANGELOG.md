@@ -1,3 +1,11 @@
+## [NK1][Hexis] WorkPass398 — bound retained HMX staging payloads (2026-10-26)
+
+- [SAFETY] Added a 16 MiB aggregate limit for staged HMX section payloads, in addition to the per-document size limit and 32-stage history cap. If the incoming stage would exceed the budget, its entire staged payload is omitted, original section counts remain visible, and a blocking conflict prevents acceptance.
+- [SAFETY] Persisted legacy snapshots are remeasured instead of trusting stored byte counters. Restore preserves the newest reviewable payloads within the bound; older non-applied stages that cannot fit have payloads omitted and receive a blocking `retained-stage-budget` conflict. Verified applied receipts remain replayable without carrying the original source payload.
+- [TEST] Added an aggregate-budget regression with nine large stages, plus an over-budget legacy restore fixture proving counters are recomputed and older stages are failed closed.
+- [WIRING] Added the new test to `audit:hexis` and WorkPass71 primary CI.
+- [VALIDATION] The code and regression are committed; runtime execution remains unverified while hosted Actions jobs fail before runner steps initialize.
+
 ## [NK1][Hexis] WorkPass397 — report the normalized HMX byte size (2026-10-26)
 
 - [FIX] `statistics.estimated_uncompressed_bytes` now reports the normalized HMX envelope size, not the size of the NK1-native source that was converted into it.
