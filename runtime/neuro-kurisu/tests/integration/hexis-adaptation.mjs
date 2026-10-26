@@ -207,6 +207,20 @@ assert(
   malformedRootSectionsExport.export_warnings.some(warning => warning.includes('sections_invalid_root')),
   'root section preservation must be visible to reviewers',
 );
+const extraRootMetadataExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'unconsumed-root-metadata-preservation',
+  legacyExporterState: { version: 3, flags: ['archive', 'signed'], active: false },
+  sections: { memories: [] },
+});
+assert.deepEqual(
+  extraRootMetadataExport.sections.config.nk1NativeExport.extraRootFields.legacyExporterState,
+  { version: 3, flags: ['archive', 'signed'], active: false },
+  'unconsumed top-level source metadata must survive the NK1-to-HMX mapping',
+);
+assert(
+  extraRootMetadataExport.export_warnings.some(warning => warning.includes('legacyExporterState')),
+  'the exporter must disclose preserved unconsumed root fields to reviewers',
+);
 
 const normalizedNk1Export = normalizeNk1HmxExport(nativeNk1Export);
 assert.match(normalizedNk1Export.export_id, /^exp_[a-f0-9]{16}$/);
