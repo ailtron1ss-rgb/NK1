@@ -2483,3 +2483,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [REGRESSION] Cover string, fractional, negative, non-finite and unsafe attempt counters, asserting rejection before canonical storage access; also reject applied receipts bound to another attempt.
 - [VALIDATION] Source and regression committed; exact-head Actions are required before PASS can be claimed.
 - [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+
+## [NK1][Hexis] WorkPass427 — enforce semantic HMX apply-receipt invariants (2026-10-26)
+
+- [INTEGRITY] Validate receipt counters against the staged memory/relationship arrays instead of accepting any shape with a self-consistent SHA-256 digest.
+- [INTEGRITY] Require imported + deduplicated rows to equal the unique record count, memory IDs and created IDs to match their counters, IDs to be unique, created IDs to be a subset of memory IDs, and edge IDs not to exceed projected-edge count.
+- [STATE MACHINE] Require `noop` for zero unique memories, `partial` when unique memories have deferred sections, and `applied`/`complete=true` only when no sections are deferred.
+- [REGRESSION] Rehash impossible receipts and prove they are rejected, then replay a coherent non-noop receipt without storage access.
+- [VALIDATION] Exact-head runtime/typecheck and Hexis canonical-apply checks remain required; no PASS is claimed until GitHub Actions reports it.
