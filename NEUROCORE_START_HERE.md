@@ -1,7 +1,7 @@
 ## Latest checkpoint — WorkPass361 broad runtime/persistence gates (2026-10-26)
 
 **Working branch:** workpass349-native-dataset-path-identity-2026-10-26  
-**CI:** [WorkPass361 run #40291631075](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291631075) is running on head ee360dba4503011157fc2780f0f5b0fd7accb33c.
+**CI:** [WorkPass361 run #40291631075 — success](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291631075) on head ee360dba4503011157fc2780f0f5b0fd7accb33c.
 
 - Added a dedicated broad workflow with Node 24, pinned runtime dependencies, runtime typecheck, standard organism smoke, legacy restart persistence, canonical persistence/restore continuity, persistent-continuity organism integration, and verified autonomous-life restart regression.
 - This sits alongside the narrower WorkPass349 regression stack (signed P23 provider, environment filtering, safe MemoryOS restore, file-backed separate-process memory retrieval, and full OrganismRuntime restart with canonical MemoryOS2 ID).
