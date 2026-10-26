@@ -253,7 +253,18 @@ export const neuroApi = {
   hexisRetentionApply: (proposalId: string, confirmed=false) => request<Record<string, unknown>>("/api/organism/integration/hexis/retention/apply", { method: "POST", body: JSON.stringify({ proposalId, confirmed }) }),
   hexisHmxExport: () => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/export"),
   hexisHmxStage: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/stage", { method: "POST", body: JSON.stringify(payload) }),
-  hexisHmxDecide: (stagingId: string, decision: "accept"|"reject") => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/decide", { method: "POST", body: JSON.stringify({ stagingId, decision }) }),
+  hexisHmxDecide: (stagingId: string, decision: "accept"|"reject"|"apply") => request<Record<string, unknown>>("/api/organism/integration/hexis/hmx/decide", { method: "POST", body: JSON.stringify({ stagingId, decision }) }),
+  hexisGoalPrepare: (stagingId: string) => request<HexisGoalProposalPrepareResponse>("/api/organism/integration/hexis/goals/prepare", { method: "POST", body: JSON.stringify({ stagingId }) }),
+  hexisGoalProposals: (status?: HexisGoalProposalStatus, limit=64) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (Number.isFinite(limit)) params.set("limit", String(Math.max(1, Math.min(128, Math.floor(limit)))));
+    const query = params.toString();
+    return request<HexisGoalProposalListResponse>("/api/organism/integration/hexis/goals" + (query ? "?" + query : ""));
+  },
+  hexisGoalDecide: (proposalId: string, decision: "approve"|"reject") => request<HexisGoalProposalDecisionResponse>("/api/organism/integration/hexis/goals/decide", { method: "POST", body: JSON.stringify({ proposalId, decision }) }),
+  hexisGoalMaterialize: (proposalId: string, confirmed=false) => request<HexisGoalMaterializeResponse>("/api/organism/integration/hexis/goals/materialize", { method: "POST", body: JSON.stringify({ proposalId, confirmed }) }),
+  hexisGoalActivate: (proposalId: string, confirmed=false) => request<HexisGoalActivationResponse>("/api/organism/integration/hexis/goals/activate", { method: "POST", body: JSON.stringify({ proposalId, confirmed }) }),
   hexisOutbox: () => request<Record<string, unknown>>("/api/organism/integration/hexis/outbox"),
   hexisOutboxEnqueue: (payload: Record<string, unknown>) => request<Record<string, unknown>>("/api/organism/integration/hexis/outbox/enqueue", { method: "POST", body: JSON.stringify(payload) }),
   hexisOutboxClaim: (id: string) => request<Record<string, unknown>>("/api/organism/integration/hexis/outbox/claim", { method: "POST", body: JSON.stringify({ id }) }),
