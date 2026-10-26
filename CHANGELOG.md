@@ -1,3 +1,10 @@
+## WorkPass399 — reject unknown Hexis retention actions (2026-10-26)
+
+- **Server code:** `06f21b03255da079f93ec59e87f35c27e423d2e7`; **smoke regression:** `f27003b53e336ffeca4df1f540691de865701e0f`.
+- The retention proposal endpoint no longer silently maps an unknown action to `compress`. It validates the exact `compress | archive | forget` allowlist and returns HTTP 400 before creating a proposal for an unintended operation.
+- Server smoke attempts `forgett` against an imported-memory fixture and requires `hexis-retention-invalid-action`.
+- **Validation:** PENDING exact-head runtime typecheck, focused HMX tests, server smoke and Unified integration. No PASS claimed; recent exact-head Actions still provide no usable steps/logs. Readiness/progress scores unchanged; `main` and canonical Release ZIP untouched.
+
 ## WorkPass398 — fail closed on unknown Hexis decisions (2026-10-26)
 
 - **Server code:** `7df90658a7633fcaee746a69197f9522818cc452`; **server-smoke regression:** `86edc9df9a802ce8aa6965c8091454eb779429d5`.
