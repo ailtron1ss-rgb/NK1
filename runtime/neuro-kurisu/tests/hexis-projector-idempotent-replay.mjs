@@ -158,6 +158,8 @@ for (const item of [
   { overrides: { status: 'noop' }, label: 'nonempty unique memory count cannot be noop' },
   { overrides: { memoryIds: [''] }, label: 'empty memory identities are invalid' },
   { overrides: { memoryIds: ['   '], createdMemoryIds: ['   '] }, label: 'whitespace-only memory identities are invalid' },
+  { overrides: { memoryIds: ['x'.repeat(513)] }, label: 'receipt memory IDs have a bounded size' },
+  { overrides: { warnings: ['x'.repeat(2049)] }, label: 'receipt warning text has a bounded size' },
   { overrides: { createdMemoryIds: ['another-memory'] }, label: 'created IDs must be a subset of memory IDs' },
   { overrides: { deduplicatedCount: 1 }, label: 'imported and deduplicated counts must account for unique rows' },
   { overrides: { semanticEdgeIds: [''] }, label: 'empty semantic edge identities are invalid' },
