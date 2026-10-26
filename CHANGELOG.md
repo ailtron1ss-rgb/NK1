@@ -1,3 +1,13 @@
+## [NK1][WorkPass380] Dephase interleaved replay and current-example ordering — 2026-10-26
+
+- **Observed failure:** the multi-seed replay sweep isolated one violating case: `interleave-1`, seed 17 retained the old task at 0.93 but learned the new task at 0.52 after 5,040 replay updates; no replay candidate was blocked. The same current/replay arrays were paired by `i % replay.length`, causing persistent same-index old/new gradient contests.
+- **Fix:** use a deterministic coprime-stride permutation over replay rows, and rotate its starting offset between batches using the canonical online-update count. Sampling remains bounded; replay isn't disabled and no metric/benchmark threshold changes.
+- **Regression:** P26 interleaved contract now asserts replay/current rows are not permanently paired by index, current examples remain the final update in each slot, and the permutation rotates across consecutive batches.
+- **Validation:** exact-head P26 full sweep and WorkPass71 rebuild must pass before this algorithm change is considered validated. Previous WorkPass369 workflow failed on this exact seed/strategy; that failure is retained as baseline evidence.
+- **Release:** `main` and the published Release ZIP remain unchanged.
+
+---
+
 ## [NK1][WorkPass379] Preserve full P26 replay-policy failure evidence — 2026-10-26
 
 - **Observed:** the new interleaved engine contract and sequential benchmark passed, but the policy-sweep stopped at its first per-strategy `newAfter > 0.60` assertion and hid remaining seed/strategy metrics.
