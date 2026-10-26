@@ -3,6 +3,7 @@
 - **Defect:** `verify-release-metadata.mjs` silently substituted the historical date `2026-10-10` when `SUPER_VERSION.date` was missing or malformed. That fallback could make an incomplete release manifest resolve an old status report instead of failing on the missing date.
 - **Fix:** validate that `SUPER_VERSION.date` is a real ISO calendar date and emit the explicit `release-date-is-valid-iso-calendar-date` gate. Invalid dates no longer select a historical status-report filename.
 - **Regression coverage:** added tests for a missing release date and an impossible calendar date (`2026-02-30`); aligned the contract fixture with an explicit date.
+- **Lineage consistency:** also require the date embedded in `releaseRoot` to match `SUPER_VERSION.date`, and reject a source baseline dated after the release. Added regressions for both drift cases.
 - **Validation:** pending exact-head CI for branch `work/nk1-release-date-contract-2026-10-26-r1`. Existing green runs from parent SHA `d795bd5513f0a99176c79f10d18c8cb4e69ced23` are not considered proof for this change.
 
 ---
