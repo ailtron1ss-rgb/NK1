@@ -1,3 +1,18 @@
+## WorkPass349 — signed-evidence dataset path identity and race closure (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`, based on source-stack commit `71e9286f9fe11c6afec851359a96f9e9b0011259).
+
+- [x] Compare the original non-symlink `lstat` identity with the canonical `realpath/stat` target; reject a path that changes identity during resolution.
+- [x] Open the configured path itself with `O_NOFOLLOW` on POSIX, rather than opening only a resolved path that might no longer refer to the inspected directory entry.
+- [x] Require the opened descriptor to match both the original inspected identity and the canonical target, then retain the existing pre-/post-read mutation checks.
+- [x] Add device/inode identity tests and a source-contract regression for configured-path opening and the three-way identity binding.
+- [ ] Run `npm run test:workpass346:native-repair-provider` on the exact branch head.
+- [ ] Run runtime typecheck and the WorkPass335 Hermes host-evaluator workflow on the exact PR head; record actionable CI evidence.
+- [ ] Re-run the broader P23 evidence, promotion-gate, restart/retrieval, and organism smoke gates; keep physical browser/Live2D and Android/Termux E2E as separately unverified release gates.
+- **Status:** code and regression are committed; CI pending. No dependency was added and no production readiness or learning-quality gain is claimed.
+
+---
+
 ## WorkPass285 — independent evaluator capability scope
 
 - [x] Reject verifier coverage IDs outside each task's declared required-capability set.
