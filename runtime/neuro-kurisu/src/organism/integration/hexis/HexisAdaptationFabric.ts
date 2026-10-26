@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
 import { isValidHmxApplyReceipt } from './HexisCanonicalMemoryProjector.mjs';
+const hasHmxControlCharacters = (value: string): boolean => {
+    for (let index = 0; index < value.length; index++) {
+        const code = value.charCodeAt(index);
+        if (code <= 31 || (code >= 127 && code <= 159)) return true;
+    }
+    return false;
+};
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
@@ -360,6 +367,12 @@ export class HexisAdaptationFabric {
             metrics: this.state.metrics,
         };
     }
+    removeBeliefProjection(memoryId: string): boolean {
+        const id = String(memoryId);
+        const before = this.state.beliefs.length;
+        this.state.beliefs = this.state.beliefs.filter(belief => belief.memoryId !== id);
+        return this.state.beliefs.length !== before;
+    }
     registerOrUpdateBelief(input: {
         memoryId: string;
         confidence01: number;
@@ -656,6 +669,11 @@ export class HexisAdaptationFabric {
                         }
                         if (!isHmxText(content, 250000)) {
                             conflicts.push({ path: `sections.memories[${index}].content`, kind: 'schema', detail: 'memory content must be a non-empty string within the per-record limit' });
+                        }
+                        if (record.status !== undefined && record.status !== null &&
+                            (typeof record.status !== 'string' || record.status.length > 64 ||
+                             (typeof record.status === 'string' && hasHmxControlCharacters(record.status)))) {
+                            conflicts.push({ path: `sections.memories[${index}].status`, kind: 'schema', detail: 'memory status, when supplied, must be a bounded string without control characters' });
                         }
                         if (record.metadata !== undefined && !isHmxRecord(record.metadata)) {
                             conflicts.push({ path: `sections.memories[${index}].metadata`, kind: 'schema', detail: 'memory metadata, when supplied, must be an object' });
