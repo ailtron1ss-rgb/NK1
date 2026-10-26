@@ -5,6 +5,7 @@
 - **Regression:** `p29-hermes-reflective-candidate-gate.mjs` constructs a candidate with 50% verified task success but enough trajectory/skill quality to improve the composite score; it must be rejected at the default floor and may only pass when a caller explicitly configures a 0.50 floor and other gates pass.
 - **Safety invariants preserved:** the gate still only recommends eligibility; it does not activate candidates or replace authenticated approval, independent evaluation, untouched holdout, or hard safety checks.
 - **Validation status:** code and regression are committed; this editing environment did not execute the repository test process. Require exact-head P26 Learning Validation/CI results before reporting a pass.
+- **CI reproducibility:** P26 Learning Validation now uses Node 24 to match root `.nvmrc`, runs `npm run doctor` on the real runner before installation, and triggers when `.nvmrc`/runtime-pin checks change.
 - **Release remains blocked:** real external task-transfer/tool-use uplift, live UI/Live2D/TTS, Android/Termux audio, long soak, license review and reproducible release archive remain outstanding.
 
 ## WorkPass329 — сводка learning/skill-evolution evidence (2026-10-25)
