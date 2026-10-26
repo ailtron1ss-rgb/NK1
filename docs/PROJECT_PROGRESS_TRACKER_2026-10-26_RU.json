@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass339 is a separate, unscored security patch on work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5; exact-head P23 regression, typecheck and CI remain pending. Previous PASS rows do not validate this patch.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Existing lane scores and historical CI snapshot remain anchored to b6f4335b9bdb4bf150d86fc9db1a830fe3041626 on fix/mega-cognitive-progress-tracking-2026-10-26-r3. WorkPass339 itself passed the current PR merge result (4a41db0): runtime typecheck, unified integration suite, P23_VERSIONED_SKILL_CANDIDATE_STORE and progress-ledger integrity. No score uplift is inferred from a security hardening patch.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -294,8 +294,16 @@
       "canonical rollback signature accepted",
       "rollback signature with trailing junk rejected"
     ],
-    "validationStatus": "pending exact-head P23 regression, runtime typecheck, and Actions CI",
-    "progressPercentagesChanged": false
+    "validationStatus": "PASS on PR merge commit 4a41db0: Unified project integration suite #119 and runtime typecheck passed; WorkPass110 continual-learning metrics #4641 includes P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS; progress-ledger integrity #20 passed.",
+    "progressPercentagesChanged": false,
+    "testedMergeCommit": "4a41db0",
+    "testedBaseSha": "3e22a06c000337f10d15d8583eb8448882c1b063",
+    "testedHeadSha": "0a0f987f9035b99012b36b304029ff625dda1d7f",
+    "workflowRuns": [
+      40253553153,
+      40253553155,
+      40253553224
+    ]
   },
   "recentEngineeringPasses": [
     {
