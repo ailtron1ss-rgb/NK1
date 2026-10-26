@@ -390,12 +390,17 @@ export function normalizeHmxV17Memory(
   const source = record(row.source_attribution) ?? {};
   const validKinds = new Set(['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream']);
   const rawKind = String(metadata.nk1_kind ?? row.type ?? 'semantic').trim().toLowerCase();
-  const kind = validKinds.has(rawKind) ? rawKind : 'semantic';
+  const kind = (validKinds.has(rawKind) ? rawKind : 'semantic') as Nk1HmxMemoryProjection['kind'];
   const validStatus = new Set(['fact', 'belief', 'hypothesis', 'unknown', 'quarantined']);
   const rawStatus = String(metadata.nk1_epistemic_status ?? 'belief').trim().toLowerCase();
-  const epistemicStatus = (validStatus.has(rawStatus) ? rawStatus : 'belief') as Nk1HmxMemoryProjection['epistemicStatus'];
-  const trust = clamp01(row.trust_level ?? source.source_authority_01, 0.55);
-  const confidence = clamp01(metadata.nk1_confidence ?? row.trust_level, 0.55);
+  const proposedStatus = validStatus.has(rawStatus) ? rawStatus : 'belief';
+  // An external export cannot promote its own rows to verified fact by setting NK1-specific metadata.
+  const epistemicStatus = (proposedStatus === 'quarantined' ? 'quarantined'
+    : proposedStatus === 'unknown' ? 'unknown'
+      : proposedStatus === 'hypothesis' ? 'hypothesis' : 'belief') as Nk1HmxMemoryProjection['epistemicStatus'];
+  // Self-reported HMX trust is metadata, not independent evidence. Imported records stay low-authority.
+  const trust = Math.min(0.55, clamp01(row.trust_level ?? source.source_authority_01, 0.55));
+  const confidence = Math.min(0.55, clamp01(metadata.nk1_confidence ?? row.trust_level, 0.55));
   const salience = clamp01(metadata.nk1_salience ?? row.importance, 0.55);
   const createdAt = dateMs(row.created_at);
   const observedAt = dateMs(row.updated_at) ?? createdAt ?? dateMs(input.exportedAt) ?? Date.now();
