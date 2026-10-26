@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -78,4 +79,151 @@ try {
   child.kill('SIGTERM');
   await new Promise(r => setTimeout(r, 300));
   await rm(stateDir, { recursive: true, force: true });
+}
+
+
+// End-to-end configured-peer path against a local fake implementing the public
+// Hexis API contract. This exercises the real NK1 HTTP routes, opt-in gates,
+// discovery, body projection and advisory response labels without using a live
+// external service or sending user data off-device.
+const mockPaths = [];
+let forwardedQuestion = null;
+let forwardedContext = null;
+const mockPeer = createServer((req, res) => {
+  const chunks = [];
+  req.on('data', chunk => chunks.push(Buffer.from(chunk)));
+  req.on('end', () => {
+    const raw = Buffer.concat(chunks).toString('utf8');
+    let body = {};
+    try { body = raw ? JSON.parse(raw) : {}; } catch {}
+    mockPaths.push(req.method + ' ' + req.url);
+    res.setHeader('content-type', 'application/json');
+    if (req.method === 'GET' && req.url === '/health') {
+      res.statusCode = 200;
+      res.end(JSON.stringify({ status: 'ok', checks: { db: true } }));
+      return;
+    }
+    if (req.method === 'GET' && req.url === '/v1/models') {
+      res.statusCode = 200;
+      res.end(JSON.stringify({ data: [{ id: 'hexis-e2e-model' }] }));
+      return;
+    }
+    if (req.method === 'POST' && req.url === '/v1/chat/completions') {
+      const userMessage = Array.isArray(body.messages) ? body.messages.find(item => item.role === 'user') : null;
+      try {
+        const forwarded = JSON.parse(String(userMessage?.content ?? '{}'));
+        forwardedQuestion = forwarded.question;
+        forwardedContext = forwarded.nk1_context;
+      } catch {}
+      res.statusCode = 200;
+      res.end(JSON.stringify({
+        model: String(body.model || 'hexis-e2e-model'),
+        choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: 'E2E peer response: candidate A needs independent evidence.' } }],
+        usage: { prompt_tokens: 21, completion_tokens: 11, total_tokens: 32 },
+      }));
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: 'not-found' }));
+  });
+});
+await new Promise((resolve, reject) => {
+  mockPeer.once('error', reject);
+  mockPeer.listen(0, '127.0.0.1', resolve);
+});
+const mockAddress = mockPeer.address();
+if (!mockAddress || typeof mockAddress === 'string') throw new Error('mock-peer-address');
+const remoteStateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-remote-'));
+const remotePort = 36410 + Math.floor(Math.random() * 700);
+const remoteEnv = {
+  ...process.env,
+  HOST: '127.0.0.1',
+  PORT: String(remotePort),
+  STATE_DIR: remoteStateDir,
+  NK1_HEXIS_REMOTE_BASE_URL: 'http://127.0.0.1:' + String(mockAddress.port),
+  NK1_HEXIS_REMOTE_API_KEY: '',
+  NK1_HEXIS_REMOTE_MODEL: '',
+  NK1_HEXIS_REMOTE_TIMEOUT_MS: '2000',
+  NK1_HEXIS_REMOTE_CONSULT_ENABLED: 'true',
+};
+const remoteChild = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], {
+  cwd: root,
+  env: remoteEnv,
+  stdio: ['ignore', 'pipe', 'pipe'],
+});
+let remoteOutput = '';
+remoteChild.stdout.on('data', d => remoteOutput += d);
+remoteChild.stderr.on('data', d => remoteOutput += d);
+const remoteBase = 'http://127.0.0.1:' + String(remotePort);
+const remotePost = async (route, payload) => fetch(remoteBase + route, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify(payload),
+});
+try {
+  let remoteReady = false;
+  for (let i = 0; i < 180; i++) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    try {
+      const response = await fetch(remoteBase + '/api/health');
+      const data = await response.json();
+      if (response.ok && data.ready === true) { remoteReady = true; break; }
+    } catch {}
+  }
+  if (!remoteReady) throw new Error('remote-peer-server-not-ready:' + remoteOutput.slice(-1200));
+
+  const configuredStatusResponse = await fetch(remoteBase + '/api/organism/integration/hexis/peer/status');
+  const configuredStatus = await configuredStatusResponse.json();
+  if (!configuredStatusResponse.ok || configuredStatus.peer?.configured !== true ||
+      configuredStatus.peer?.reachable !== true || configuredStatus.peer?.consultEnabled !== true) {
+    throw new Error('remote-peer-status-contract');
+  }
+
+  const priorChatCalls = mockPaths.filter(item => item === 'POST /v1/chat/completions').length;
+  const unconfirmedResponse = await remotePost('/api/organism/integration/hexis/peer/consult', {
+    question: 'This should remain local until explicitly confirmed.',
+    context: {},
+  });
+  const unconfirmed = await unconfirmedResponse.json();
+  if (unconfirmedResponse.status !== 400 || unconfirmed.error !== 'hexis-remote-confirmation-required') {
+    throw new Error('remote-peer-confirmation-gate');
+  }
+  if (mockPaths.filter(item => item === 'POST /v1/chat/completions').length !== priorChatCalls) {
+    throw new Error('unconfirmed-question-reached-peer');
+  }
+
+  const consultResponse = await remotePost('/api/organism/integration/hexis/peer/consult', {
+    question: 'Evaluate this recall hypothesis.',
+    confirmExternalConsult: true,
+    context: {
+      tick: 51,
+      currentGoal: 'Improve retrieval',
+      recentObservations: ['Recall delta remains flat'],
+      privateNotes: 'must never be forwarded',
+      accessToken: 'must never be forwarded',
+    },
+  });
+  const consult = await consultResponse.json();
+  if (!consultResponse.ok || consult.result?.response !== 'E2E peer response: candidate A needs independent evidence.') {
+    throw new Error('remote-peer-consult-contract');
+  }
+  if (consult.result?.advisoryOnly !== true || consult.result?.nk1StateChanged !== false ||
+      consult.result?.eligibleAsVerifiedEvidence !== false || consult.result?.externalAgentToolsMayRun !== true) {
+    throw new Error('remote-peer-trust-contract');
+  }
+  if (forwardedQuestion !== 'Evaluate this recall hypothesis.') throw new Error('remote-peer-question-projection');
+  if (forwardedContext?.currentGoal !== 'Improve retrieval' || forwardedContext?.privateNotes !== undefined ||
+      forwardedContext?.accessToken !== undefined) throw new Error('remote-peer-context-allowlist');
+  if (!mockPaths.includes('GET /v1/models') || !mockPaths.includes('POST /v1/chat/completions')) {
+    throw new Error('remote-peer-api-discovery-path');
+  }
+  console.log('HEXIS_REMOTE_PEER_SERVER_E2E=PASS');
+} finally {
+  remoteChild.kill('SIGTERM');
+  await new Promise(resolve => {
+    if (remoteChild.exitCode !== null) return resolve();
+    remoteChild.once('exit', resolve);
+  });
+  await new Promise(resolve => mockPeer.close(resolve));
+  await rm(remoteStateDir, { recursive: true, force: true });
 }
