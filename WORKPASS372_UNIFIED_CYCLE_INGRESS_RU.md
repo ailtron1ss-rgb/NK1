@@ -3,7 +3,7 @@
 **Дата:** 2026-10-26  
 **Ветка:** workpass372-unified-cycle-ingress  
 **База:** WorkPass371 head `1fe10507407559b9edb14f3d96e2ce0f1a6b449c`  
-**Статус:** код и регрессии добавлены; exact-head CI ожидает проверки.
+**Статус:** первый contract CI выявил изменение прежнего error text для null/array evaluation input; восстановлен исходный guard в 1db6758619cc71b2728ea84d5c76fb02c3d55822. Exact-head CI перепроверяется.
 
 ## Найденные проблемы
 
