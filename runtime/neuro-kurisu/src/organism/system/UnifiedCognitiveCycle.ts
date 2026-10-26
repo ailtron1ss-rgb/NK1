@@ -145,6 +145,9 @@ export class UnifiedCognitiveCycle {
   }
 
   evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
+    if(input===null||typeof input!=='object'||Array.isArray(input)) {
+      throw new TypeError('cognitive cycle input must be an object');
+    }
     const root=snapshotOwnDataFields(input,['tick','stageIds','parentIntegrity01'],'cognitive-cycle-evaluation-input');
     const tick=root.tick;
     if(typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
