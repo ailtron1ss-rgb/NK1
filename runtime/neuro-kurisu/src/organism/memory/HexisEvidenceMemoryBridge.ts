@@ -321,9 +321,24 @@ export function decideHexisEvidenceReview(
   const payload = item.evidence as Partial<HexisEvidenceReviewPayload>;
   if (payload.pipeline !== "nk1.hexis-evidence-review.v1" || typeof payload.memoryId !== "string" ||
       item.sourceMemoryId !== payload.memoryId || typeof payload.evidenceId !== "string" ||
-      !/^[a-f0-9]{64}$/i.test(String(payload.digest ?? "")) ||
-      !["supports", "contradicts", "contextualizes"].includes(String(payload.stance))) {
+      !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,191}$/.test(payload.evidenceId) ||
+      !/^[a-f0-9]{64}$/i.test(String(payload.digest ?? ""))) {
     return reject("not-a-valid-hexis-evidence-review");
+  }
+  if (payload.stance !== "supports" && payload.stance !== "contradicts" && payload.stance !== "contextualizes") {
+    return reject("invalid-review-stance");
+  }
+  if (typeof payload.baselineConfidence01 !== "number" || !Number.isFinite(payload.baselineConfidence01) ||
+      typeof payload.proposedConfidence01 !== "number" || !Number.isFinite(payload.proposedConfidence01) ||
+      typeof payload.previewApplied !== "boolean" || typeof payload.previewReason !== "string" ||
+      typeof payload.evidenceConfidence01 !== "number" || !Number.isFinite(payload.evidenceConfidence01) ||
+      payload.evidenceConfidence01 < 0 || payload.evidenceConfidence01 > 1 ||
+      typeof payload.observedAt !== "string" || !Number.isFinite(Date.parse(payload.observedAt)) ||
+      typeof payload.source !== "object" || payload.source === null ||
+      typeof payload.source.kind !== "string" || typeof payload.source.ref !== "string" ||
+      !payload.source.kind.trim() || payload.source.kind.length > 96 ||
+      !payload.source.ref.trim() || payload.source.ref.length > 512) {
+    return reject("invalid-review-evidence-metadata");
   }
 
   if (decision !== "approve") {
@@ -378,11 +393,6 @@ export function decideHexisEvidenceReview(
     }
   }
 
-  if (typeof payload.source !== "object" || payload.source === null ||
-      typeof payload.source.ref !== "string" ||
-      typeof payload.evidenceConfidence01 !== "number" || !Number.isFinite(payload.evidenceConfidence01) ||
-      typeof payload.observedAt !== "string") return reject("invalid-review-evidence-metadata");
-  const source = payload.source;
   const revisionInput = reviewInputFromPayload(payload as HexisEvidenceReviewPayload, memory.confidence, memory.sourceAuthority01 ?? 0.5,
     memory.kind === "identity" || memory.kind === "autobiographical");
   if (!revisionInput) return reject("review-stance-does-not-revise-belief");
