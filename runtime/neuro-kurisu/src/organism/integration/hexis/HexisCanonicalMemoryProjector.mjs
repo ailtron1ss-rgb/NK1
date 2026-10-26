@@ -5,7 +5,7 @@ const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) 
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const asText = (value, max = 2048) => typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : '';
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
-const isCanonicalReceiptId = value => typeof value === 'string' && value.length > 0 &&
+const isCanonicalReceiptId = value => typeof value === 'string' && value.length > 0 && value.length <= 512 &&
   value === value.trim() && !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 export const isValidHmxApplyReceipt = (stage, receipt) => {
   // This validator is exported and can be called independently of apply(); reject
@@ -14,9 +14,9 @@ export const isValidHmxApplyReceipt = (stage, receipt) => {
       !isSafeJsonTree(receipt) || !isRecord(stage.stagedSections) ||
       stage.status !== 'applied' || stage.intent !== 'port' || stage.strategy !== 'additive' ||
       typeof stage.exportId !== 'string' || !/^exp_[a-f0-9]{16}$/.test(stage.exportId) ||
-      typeof stage.sourceLineageId !== 'string' || !stage.sourceLineageId.trim() || stage.sourceLineageId.length > 512 ||
+      typeof stage.sourceLineageId !== 'string' || !stage.sourceLineageId.trim() || stage.sourceLineageId !== stage.sourceLineageId.trim() || stage.sourceLineageId.length > 512 ||
       /[\u0000-\u001f\u007f-\u009f]/u.test(stage.sourceLineageId) ||
-      typeof stage.stagingId !== 'string' || !stage.stagingId.trim() || stage.stagingId.length > 512 ||
+      typeof stage.stagingId !== 'string' || !stage.stagingId.trim() || stage.stagingId !== stage.stagingId.trim() || stage.stagingId.length > 512 ||
       /[\u0000-\u001f\u007f-\u009f]/u.test(stage.stagingId)) return false;
   const keys = [
     'version', 'exportId', 'sourceLineageId', 'stageId', 'stageDigest', 'attempt',
@@ -45,6 +45,7 @@ export const isValidHmxApplyReceipt = (stage, receipt) => {
   for (const field of ['semanticEdgeIds', 'memoryIds', 'createdMemoryIds', 'warnings']) {
     if (!Array.isArray(receipt[field]) || !receipt[field].every(item => typeof item === 'string')) return false;
   }
+  if (receipt.warnings.some(message => message.length > 2048 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/u.test(message))) return false;
   for (const field of ['semanticEdgeIds', 'memoryIds', 'createdMemoryIds']) {
     if (receipt[field].some(id => !isCanonicalReceiptId(id))) return false;
   }
