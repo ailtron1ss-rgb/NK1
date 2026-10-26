@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import { hasValidHmxApplicationReceipt, hasValidHmxStageDigest } from './HexisHmxReceiptGuard.ts';
+import { sha256Stable } from '../../core/StableSerialization.ts';
+import { CANONICAL_MEMORY_CAPACITY } from '../../memory/CanonicalMemoryCapacity.ts';
 
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -96,10 +99,16 @@ export class HexisCanonicalMemoryProjector {
     // Idempotent replay must be checked before the accepted-stage guard: persisted
     // stages transition out of `accepted` after application, but their receipt remains
     // the authoritative answer for retries. This branch performs no writes.
-    if (isRecord(stage) && stage.status === 'applied' && isRecord(stage.application)) {
+    if (isRecord(stage) && stage.status === 'applied') {
+      if (!hasValidHmxApplicationReceipt(stage)) {
+        throw new Error('hmx-applied-receipt-invalid');
+      }
       return structuredClone(stage.application);
     }
     if (!isRecord(stage) || stage.status !== 'accepted') throw new Error('hmx-stage-must-be-accepted-before-apply');
+    if (!asText(stage.stagingId, 128) || !asText(stage.digest, 128)) throw new Error('hmx-stage-identity-required');
+    if (!Array.isArray(stage.conflicts) || stage.conflicts.length > 0) throw new Error('hmx-stage-has-conflicts');
+    if (!hasValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
     if (stage.intent !== 'port' || stage.strategy !== 'additive') throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
     const sections = isRecord(stage.stagedSections) ? stage.stagedSections : {};
     const records = Array.isArray(sections.memories) ? sections.memories : [];
@@ -123,8 +132,7 @@ export class HexisCanonicalMemoryProjector {
       if (!content) throw new Error('hmx-apply-memory-content-required:' + index);
       const prior = seenRefs.get(ref);
       const contentHash = hash(content);
-      if (prior && prior !== contentHash) throw new Error('hmx-apply-duplicate-ref-conflict:' + ref);
-      if (prior) continue;
+      if (prior) throw new Error('hmx-apply-duplicate-ref-conflict:' + ref);
       seenRefs.set(ref, contentHash);
       normalized.push({ row, ref, type, content, contentHash });
     }
@@ -138,6 +146,10 @@ export class HexisCanonicalMemoryProjector {
       .filter(item => String(item.source ?? '').startsWith('hexis:'))
       .map(item => String(item.source) + '\0' + stableRecordContent(item.content)));
     const createdIds = [];
+    // Track deterministic IDs before invoking the canonical writer. A writer may
+    // commit a row and then throw (for example during receipt/event work), so waiting
+    // for encode() to return an ID is not enough to compensate a partial write.
+    const rollbackCandidateIds = [];
     const warnings = [];
     const importedIds = [];
     const semanticEdgeIds = [];
@@ -147,6 +159,37 @@ export class HexisCanonicalMemoryProjector {
     let deferredRelationships = 0;
     const appliedAt = Date.now();
     const attempt = Math.max(1, Math.floor(Number(stage.applicationAttempts ?? 1)));
+
+    // MemoryOS2 keeps at most 1,600 canonical items and evicts the tail on insert.
+    // An HMX batch must not trigger that unrelated eviction as a side effect, because
+    // compensation can remove imported rows but cannot restore an evicted old memory.
+    const canonicalMemoryCapacity = CANONICAL_MEMORY_CAPACITY;
+    const plannedNewItems = normalized.filter(item => {
+      const stableRefKey = item.ref.replace(/^exp_[a-f0-9]{16}:/, '');
+      const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' +
+        hash(stableRefKey + '\0' + item.contentHash).slice(0, 24);
+      return !existingImportKeys.has(source + '\0' + stableRecordContent(item.content));
+    });
+    if (existingItems.length + plannedNewItems.length > canonicalMemoryCapacity) {
+      throw new Error(
+        'hmx-apply-canonical-memory-capacity-exceeded:' +
+        (existingItems.length + plannedNewItems.length) + '/' + canonicalMemoryCapacity,
+      );
+    }
+    // Detect all deterministic ID collisions before the first canonical write. The
+    // in-loop check below remains as defense-in-depth against unexpected mutations.
+    for (const item of plannedNewItems) {
+      const stableRefKey = item.ref.replace(/^exp_[a-f0-9]{16}:/, '');
+      const plannedId = 'hexis-memory:' +
+        hash(lineageId + '\0' + stableRefKey + '\0' + item.contentHash).slice(0, 48);
+      const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' +
+        hash(stableRefKey + '\0' + item.contentHash).slice(0, 24);
+      const collision = existingItems.find(candidate => candidate.id === plannedId);
+      if (collision && !(collision.source === source &&
+          stableRecordContent(collision.content) === stableRecordContent(item.content))) {
+        throw new Error('hmx-apply-canonical-id-conflict:' + plannedId);
+      }
+    }
 
     try {
       for (const item of normalized) {
@@ -228,6 +271,14 @@ export class HexisCanonicalMemoryProjector {
             evidenceFreshnessAt: dateMs(row.updated_at ?? row.updatedAt) ?? observedAt,
           }],
         };
+        const plannedMemoryId = memoryInput.id;
+        const conflictingExisting = existingItems.find(candidate => candidate.id === plannedMemoryId);
+        if (conflictingExisting &&
+            !(conflictingExisting.source === source &&
+              stableRecordContent(conflictingExisting.content) === stableRecordContent(memoryText))) {
+          throw new Error('hmx-apply-canonical-id-conflict:' + plannedMemoryId);
+        }
+        if (!beforeIds.has(plannedMemoryId)) rollbackCandidateIds.push(plannedMemoryId);
         const inserted = this.memoryFabric.encode(memoryInput, { commandId, syncCompatibility: false, forceDistinct: true });
         if (!inserted?.id) throw new Error('hmx-apply-canonical-write-returned-no-id:' + ref);
         importedIds.push(inserted.id);
@@ -258,23 +309,52 @@ export class HexisCanonicalMemoryProjector {
         semanticEdgeIds.push(edge.id);
         projectedRelationships++;
       }
-      if (this.temporalLedger && createdIds.length) {
+      if (this.temporalLedger && importedIds.length) {
+        // Reconcile temporal indexing for every memory represented in the application
+        // receipt, not only IDs created by this attempt. If a prior writer committed
+        // before throwing and compensation failed, its retry is a dedupe and must still
+        // repair the missing temporal index.
+        const importedIdSet = new Set(importedIds);
         const canonicalItems = this.memoryFabric.canonicalSnapshot().items ?? [];
-        const canonicalById = new Map(canonicalItems.filter(item => createdIds.includes(item.id)).map(item => [item.id, item]));
+        const canonicalById = new Map(canonicalItems.filter(item => importedIdSet.has(item.id)).map(item => [item.id, item]));
         const sourceRowsByRef = new Map(normalized.map(item => [item.ref, item.row]));
-        for (const id of createdIds) {
+        const temporalSnapshot = this.temporalLedger.snapshot();
+        const temporalRows = Array.isArray(temporalSnapshot?.temporal) ? temporalSnapshot.temporal : [];
+        for (const id of importedIdSet) {
           const memory = canonicalById.get(id);
           if (!memory) throw new Error('hmx-temporal-canonical-memory-missing:' + id);
           const ref = asText(memory.context?.hexisMemoryRef, 512);
-          const sourceRef = ref.startsWith(exportId + ':') ? ref.slice(exportId.length + 1) : ref;
+          const sourceRef = ref.replace(/^exp_[a-f0-9]{16}:/, '');
+          const temporalSource = 'hexis:' + lineageId + ':' + sourceRef;
           const inputRow = sourceRowsByRef.get(ref);
           const validFrom = dateMs(memory.validFromAt) ?? dateMs(memory.observedAt) ?? appliedAt;
-          this.temporalLedger.recordTemporalAssertion({
+          const validUntil = dateMs(memory.validUntilAt);
+          const summary = String(memory.content ?? '').slice(0, 2000);
+          const confidence01 = clamp01(memory.confidence);
+          const nextTemporalStart = temporalRows
+            .filter(row => row.memoryId === id && row.validFrom > validFrom)
+            .reduce((next, row) => next === null || row.validFrom < next ? row.validFrom : next, null);
+          const effectiveValidUntil = nextTemporalStart !== null &&
+            (validUntil === null || nextTemporalStart < validUntil)
+            ? nextTemporalStart
+            : validUntil;
+          // Idempotency includes the interval itself: an expired assertion is still
+          // an already-indexed result, while a changed interval creates a new revision.
+          if (temporalRows.some(row =>
+            row.memoryId === id &&
+            row.source === temporalSource &&
+            row.validFrom === validFrom &&
+            row.validUntil === effectiveValidUntil &&
+            row.summary === summary &&
+            row.confidence01 === confidence01
+          )) continue;
+          const receipt = this.temporalLedger.recordTemporalAssertion({
             memoryId: id,
-            summary: String(memory.content ?? '').slice(0, 2000),
-            confidence01: clamp01(memory.confidence),
+            summary,
+            confidence01,
             validFrom,
-            source: 'hexis:' + lineageId + ':' + sourceRef,
+            validUntil,
+            source: temporalSource,
             value: {
               sourceLineageId: lineageId,
               sourceRef,
@@ -282,11 +362,14 @@ export class HexisCanonicalMemoryProjector {
               provenance: inputRow?.provenance ?? inputRow?.source_attribution ?? null,
             },
           });
+          temporalRows.push(receipt);
         }
       }
     } catch (error) {
       const rollbackErrors = [];
-      for (const id of [...createdIds].reverse()) {
+      // Include writes whose call threw before returning, plus the ordinary completed
+      // writes. IDs known to predate this import are never included in compensation.
+      for (const id of [...new Set([...rollbackCandidateIds, ...createdIds])].reverse()) {
         try {
           this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
             commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
@@ -294,6 +377,15 @@ export class HexisCanonicalMemoryProjector {
         } catch (rollbackError) {
           rollbackErrors.push(String(rollbackError?.message ?? rollbackError).slice(0, 240));
         }
+      }
+      try {
+        const afterRollbackItems = this.memoryFabric.canonicalSnapshot().items ?? [];
+        const remainingIds = new Set(afterRollbackItems.filter(item => !beforeIds.has(item.id)).map(item => item.id));
+        for (const id of new Set([...rollbackCandidateIds, ...createdIds])) {
+          if (remainingIds.has(id)) rollbackErrors.push('canonical-memory-remains:' + id);
+        }
+      } catch (verificationError) {
+        rollbackErrors.push('canonical-rollback-verification:' + String(verificationError?.message ?? verificationError).slice(0, 220));
       }
       if (this.semanticGraph && semanticGraphBefore) {
         try {
@@ -345,6 +437,6 @@ export class HexisCanonicalMemoryProjector {
       deferredSections,
       warnings,
     };
-    return { ...base, digest: hash(JSON.stringify(base)) };
+    return { ...base, digest: sha256Stable(base, 'legacy') };
   }
 }

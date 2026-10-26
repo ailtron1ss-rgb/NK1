@@ -33,13 +33,27 @@ const rowIdentity = (row, index, fallback) =>
 const memoryContent = row =>
   textValue(row.content, row.text, row.summary, row.description, row.instructions, row.instruction, row.identityAssertion, row.identity_assertion, row.originStatement, row.origin_statement);
 
-function indexNativeReferences(sections, exportId) {
+function indexNativeReferences(sections, exportId, warnings = []) {
   const index = new Map();
+  const ambiguous = new Set();
+  const register = (key, ref) => {
+    if (!key || ambiguous.has(key)) return;
+    const existing = index.get(key);
+    if (existing && existing !== ref) {
+      index.delete(key);
+      ambiguous.add(key);
+      warnings.push('Ambiguous native reference "' + key.slice(0, 120) +
+        '" maps to multiple HMX records; dependent references are left unresolved for review.');
+      return;
+    }
+    index.set(key, ref);
+  };
   const add = (value, ref) => {
     if (typeof value === 'string' && value.trim()) {
-      index.set(value.trim(), ref);
-      const suffix = value.includes(':') ? value.slice(value.lastIndexOf(':') + 1) : value;
-      if (suffix.trim()) index.set(suffix.trim(), ref);
+      const normalized = value.trim();
+      register(normalized, ref);
+      const suffix = normalized.includes(':') ? normalized.slice(normalized.lastIndexOf(':') + 1) : normalized;
+      if (suffix.trim()) register(suffix.trim(), ref);
     }
   };
   for (const [sectionName, kind] of [['memories', 'memory'], ['skills', 'skill'], ['goals', 'goal']]) {
@@ -49,7 +63,7 @@ function indexNativeReferences(sections, exportId) {
       for (const key of ['id', 'ref', 'key', 'name', 'title']) add(row[key], ref);
     }
   }
-  return index;
+  return { index, ambiguous };
 }
 
 function toHmxMemory(row, index, exportId, kind = 'memory') {
@@ -113,7 +127,7 @@ function toHmxIdentity(row, index) {
   return { key, content: content || JSON.stringify(row), ...(facets.length ? { facets } : {}), metadata };
 }
 
-function toHmxGoal(row, index, exportId, refIndex) {
+function toHmxGoal(row, index, exportId, refIndex, ambiguousNativeRefs) {
   const identity = rowIdentity(row, index, 'goal');
   const result = {
     ref: canonicalRef(exportId, 'goal', identity),
@@ -126,16 +140,20 @@ function toHmxGoal(row, index, exportId, refIndex) {
   const due = parseDate(row.due_at ?? row.dueAt ?? row.deadline);
   if (hasDue) result.due_at = due;
   const parent = textValue(row.parent_ref, row.parentRef, row.parentId, row.parent_id);
-  result.parent_ref = parent ? (refIndex.get(parent) || canonicalRef(exportId, 'goal', parent)) : null;
+  result.parent_ref = parent
+    ? (ambiguousNativeRefs.has(parent) ? null : (refIndex.get(parent) || canonicalRef(exportId, 'goal', parent)))
+    : null;
   return result;
 }
 
-function toHmxRelationship(row, index, exportId, refIndex) {
+function toHmxRelationship(row, index, exportId, refIndex, ambiguousNativeRefs) {
   const source = textValue(row.source_ref, row.sourceRef, row.source, row.sourceId, row.source_id, row.from, row.fromId);
   const target = textValue(row.target_ref, row.targetRef, row.target, row.targetId, row.target_id, row.to, row.toId);
   const edgeType = textValue(row.edge_type, row.edgeType, row.type, row.relation, row.kind);
   if (!source || !target || !edgeType) return null;
-  const asRef = value => refIndex.get(value) || canonicalRef(exportId, 'ref', value);
+  const asRef = value => ambiguousNativeRefs.has(value)
+    ? canonicalRef(exportId, 'ref', value)
+    : (refIndex.get(value) || canonicalRef(exportId, 'ref', value));
   return {
     source_ref: asRef(source),
     target_ref: asRef(target),
@@ -171,7 +189,8 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
   const exportId = 'exp_' + createHash('sha256').update(serialized).digest('hex').slice(0, 16);
   const warnings = [];
   const sourceSubjectId = textValue(root.source_subject_id, root.sourceSubjectId, root.subject_id, root.subjectId);
-  const refIndex = indexNativeReferences(nativeSections, exportId);
+  const { index: refIndex, ambiguous: ambiguousNativeRefs } =
+    indexNativeReferences(nativeSections, exportId, warnings);
   const rawMemories = asArray(nativeSections.memories);
   const rawSkills = asArray(nativeSections.skills);
   const rawGoals = asArray(nativeSections.goals);
@@ -223,7 +242,9 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
       const episode = {
         ref,
         ...(summary ? { summary } : {}),
-        memory_refs: memoryRefs.map(value => refIndex.get(String(value)) || canonicalRef(exportId, 'memory', value)),
+        memory_refs: memoryRefs.map(value => ambiguousNativeRefs.has(String(value))
+          ? canonicalRef(exportId, 'ref', value)
+          : (refIndex.get(String(value)) || canonicalRef(exportId, 'memory', value))),
         metadata: { ...objectOrEmpty(row.metadata), nk1NativeEpisode: cloneJson(row) },
       };
       const startedAt = parseDate(row.started_at ?? row.startedAt ?? row.createdAt);
@@ -232,9 +253,10 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
       if (row.ended_at === null || row.endedAt === null || endedAt) episode.ended_at = endedAt;
       return [episode];
     }),
-    relationships: rawRelationships.map((row, index) => toHmxRelationship(row, index, exportId, refIndex)).filter(Boolean),
+    relationships: rawRelationships.map((row, index) =>
+      toHmxRelationship(row, index, exportId, refIndex, ambiguousNativeRefs)).filter(Boolean),
     identity: rawIdentity.map(toHmxIdentity),
-    goals: rawGoals.map((row, index) => toHmxGoal(row, index, exportId, refIndex)),
+    goals: rawGoals.map((row, index) => toHmxGoal(row, index, exportId, refIndex, ambiguousNativeRefs)),
     in_flight_work: objectSection(nativeSections.in_flight_work ?? nativeSections.inFlightWork, 'in_flight_work', warnings),
     audit_records: objectSection(nativeSections.audit_records ?? nativeSections.auditRecords, 'audit_records', warnings),
     config: objectOrEmpty(nativeSections.config),
@@ -287,7 +309,7 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
     .reduce((sum, key) => sum + (Array.isArray(narrative[key]) ? narrative[key].length : 0), 0);
   const edgeTypes = [...new Set(sections.relationships.map(row => row.edge_type))];
   const sectionNames = Object.keys(sections);
-  return {
+  const normalized = {
     hmx_version: HMX_VERSION,
     export_id: exportId,
     export_intent: intent,
@@ -331,8 +353,29 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
       estimated_embedding_items: 0,
       estimated_embedding_tokens: 0,
       estimated_embedding_cost_units: null,
-      estimated_uncompressed_bytes: Buffer.byteLength(serialized, 'utf8'),
+      estimated_uncompressed_bytes: 0,
       nativeSkillRecordsMapped: rawSkills.length,
     },
   };
+  // The output envelope, not the native input, defines this statistic. Stabilize the
+  // byte count because updating the numeric field can itself change the serialized size.
+  let normalizedBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+  for (let attempt = 0; attempt < 8; attempt++) {
+    normalized.statistics.estimated_uncompressed_bytes = normalizedBytes;
+    const measuredBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+    if (measuredBytes === normalizedBytes) break;
+    normalizedBytes = measuredBytes;
+  }
+  normalizedBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+  if (normalized.statistics.estimated_uncompressed_bytes !== normalizedBytes) {
+    normalized.statistics.estimated_uncompressed_bytes = normalizedBytes;
+    normalizedBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+  }
+  if (normalized.statistics.estimated_uncompressed_bytes !== normalizedBytes) {
+    throw new Error('NK1 normalized HMX export byte count did not stabilize');
+  }
+  if (normalizedBytes > MAX_SOURCE_EXPORT_BYTES) {
+    throw new RangeError('NK1 normalized HMX export exceeds the ' + MAX_SOURCE_EXPORT_BYTES + '-byte import staging limit');
+  }
+  return normalized;
 }

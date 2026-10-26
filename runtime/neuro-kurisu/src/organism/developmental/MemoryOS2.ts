@@ -1,4 +1,5 @@
 import { MemoryResidencyGovernor, type MemoryResidencyTier } from './MemoryResidencyGovernor.ts';
+import { CANONICAL_MEMORY_CAPACITY } from '../memory/CanonicalMemoryCapacity.ts';
 import { MemorySignalFusion, type MemoryFusionProfile } from './MemorySignalFusion.ts';
 import { AdaptiveMemoryPolicy, type MemoryPolicyName } from './AdaptiveMemoryPolicy.ts';
 import { canonicalizeMemoryContent, deriveMemoryIdentity, mergeMemoContext, mergeMemoTags, memoContentHash, stableMemoryId } from './MemoInspiredMemoryPrimitives.ts';
@@ -389,7 +390,7 @@ export class MemoryOS2{
     this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(current.content),providerId:provider.providerId,vector:clean.map(value=>value/norm),lastUsedAt:now});
     this.semanticEmbeddingRetry.delete(item.id);indexed++;
    }
-   while(this.semanticEmbeddingIndex.size>1600){
+   while(this.semanticEmbeddingIndex.size>CANONICAL_MEMORY_CAPACITY){
     let oldestId:string|undefined,oldestAt=Number.POSITIVE_INFINITY;
     for(const [id,row] of this.semanticEmbeddingIndex)if(row.lastUsedAt<oldestAt){oldestAt=row.lastUsedAt;oldestId=id;}
     if(!oldestId)break;this.semanticEmbeddingIndex.delete(oldestId);
@@ -462,7 +463,7 @@ export class MemoryOS2{
        this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(item.content),providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
      }
      // Keep one compact index for the canonical memory's maximum 1600 rows.
-     while(this.semanticEmbeddingIndex.size>1600){
+     while(this.semanticEmbeddingIndex.size>CANONICAL_MEMORY_CAPACITY){
        let oldestId:string|undefined,oldestAt=Number.POSITIVE_INFINITY;
        for(const [id,row] of this.semanticEmbeddingIndex)if(row.lastUsedAt<oldestAt){oldestAt=row.lastUsedAt;oldestId=id;}
        if(!oldestId)break;this.semanticEmbeddingIndex.delete(oldestId);
@@ -493,7 +494,7 @@ export class MemoryOS2{
    }
  }
  restore(s:MemoryOSState2|undefined){
-  const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
+  const rawItems=Array.isArray(s?.items)?s!.items.slice(0,CANONICAL_MEMORY_CAPACITY):[];
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
     semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
@@ -732,7 +733,7 @@ export class MemoryOS2{
    }).slice(0,6).map(x=>x.id);
    item.causalLinks=this.state.items.slice(0,256).filter(x=>x.causalLinks.includes(item.id)).slice(0,3).map(x=>x.id);
    item.contradictionLinks=best.filter(x=>x.sim>=.64&&sharedEntityCount(entities,x.x.entities)>=2&&hasNegationPolarityDifference(item.content,x.x.content)).map(x=>x.x.id).slice(0,4);
-   this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;if(this.state.items.length>1600){const removed=this.state.items.pop();if(removed){this.removeIndexedId(removed.id);this.itemIndex.delete(removed.id);this.rebuildDedupIndexesFor(removed);}}this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
+   this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;if(this.state.items.length>CANONICAL_MEMORY_CAPACITY){const removed=this.state.items.pop();if(removed){this.removeIndexedId(removed.id);this.itemIndex.delete(removed.id);this.rebuildDedupIndexesFor(removed);}}this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
    this.contentIndex.set(`${item.kind}|${canonicalizeMemoryContent(item.content)}`,item.id);this.indexItem(item);this.lowerContentCache.delete(item.id);
    for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.linkUpdates++;}}
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
@@ -752,7 +753,7 @@ export class MemoryOS2{
    const isValidAt=(m:MemoryItem2,at:number)=>{const from=Number(m.validFromAt??m.createdAt),until=m.validUntilAt==null?Number.POSITIVE_INFINITY:Number(m.validUntilAt);return from<=at&&at<until;};
    const contextCausal=/\b(why|cause|causal|because|reason|effect|причин|почему|следств)/iu.test(query)?1:clamp(this.state.linkUpdates/100);
   const contextTemporal=/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query)?1:clamp(this.state.semanticQueries/100);
-  this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
+  this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/CANONICAL_MEMORY_CAPACITY),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
    const queryLower=query.toLocaleLowerCase();
    const queryIntentMode=detectMemoryQueryIntent(query);
    if(this.linkSupportCacheVersion!==this.state.linkUpdates||!this.linkSupportCache){
@@ -1085,7 +1086,7 @@ export class MemoryOS2{
      if(ageDays<7&&m.dormant&&durability>.42&&!invalidHistorical)m.dormant=false;
    }
    if(now-this.state.lastConflictScanAt>=1000) this.adjudicateImplicitConflicts({at:now,limit:32,pairBudget:192});
-   const hardCap=Math.max(128,Math.min(1600,Math.floor(options.maxItems??1600)));
+   const hardCap=Math.max(128,Math.min(CANONICAL_MEMORY_CAPACITY,Math.floor(options.maxItems??CANONICAL_MEMORY_CAPACITY)));
    if(this.state.items.length>hardCap){
      const score=(m:MemoryItem2)=>m.salience*.5+m.confidence*.2+m.goalRelevance*.12+m.identityRelevance*.1+Math.min(.08,m.retrievalCount*.01);
      const removable=this.state.items.filter(m=>m.epistemicStatus!=='quarantined'&&m.kind!=='identity'&&m.kind!=='autobiographical').sort((a,b)=>score(a)-score(b));
@@ -1097,7 +1098,7 @@ export class MemoryOS2{
      const removeCount=Math.min(pressureCandidates.length,Math.max(0,Math.floor(this.state.items.length*.12)));
      for(const m of pressureCandidates.slice(0,removeCount))this.forgetById(m.id,'pressure');
    }
-   this.state.items=this.state.items.slice(0,1600);
+   this.state.items=this.state.items.slice(0,CANONICAL_MEMORY_CAPACITY);
    this.state.lastMaintenanceAt=now;
  }
 

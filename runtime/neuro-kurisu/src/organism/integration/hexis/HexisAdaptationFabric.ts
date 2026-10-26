@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
+import { calculateHmxStageDigest, hasValidHmxApplicationReceipt, hasValidHmxStageDigest } from './HexisHmxReceiptGuard.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
@@ -138,6 +139,8 @@ export interface HexisHmxStage {
     createdAt: number;
     digest: string;
     stagedSections: Record<string, unknown>;
+    /** Cached UTF-8 size of retained stagedSections; recomputed when restoring state. */
+    stagedBytes?: number;
     applicationAttempts?: number;
     application?: HexisHmxApplyReceipt;
 }
@@ -263,14 +266,34 @@ const HMX_ARRAY_SECTIONS = new Set([
     'emotional_triggers', 'clusters', 'raw_units',
 ]);
 const HMX_OBJECT_SECTIONS = new Set(['narrative', 'in_flight_work', 'audit_records', 'config']);
-const HMX_MAX_DOCUMENT_CHARS = 1_000_000;
+const HMX_MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
+const HMX_MAX_RETAINED_STAGE_BYTES = 16 * 1024 * 1024;
+const HMX_MAX_RETAINED_STAGES = 32;
 const HMX_MAX_SECTION_RECORDS = 256;
 const HMX_MAX_TOTAL_RECORDS = 1_024;
+const jsonUtf8Bytes = (value: unknown): number => {
+    try {
+        const encoded = JSON.stringify(value);
+        return typeof encoded === 'string' ? new TextEncoder().encode(encoded).byteLength : Number.MAX_SAFE_INTEGER;
+    } catch {
+        return Number.MAX_SAFE_INTEGER;
+    }
+};
 const isHmxRecord = (value: unknown): value is Record<string, unknown> =>
     value !== null && typeof value === 'object' && !Array.isArray(value);
+const stagedPayloadBytes = (value: unknown): number =>
+    value !== null && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0
+        ? 0
+        : jsonUtf8Bytes(value);
 const isHmxText = (value: unknown, max = 256): value is string =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max &&
     !/[\u0000-\u001f\u007f]/.test(value);
+const hmxTimestampMs = (value: unknown): number | null => {
+    if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : null;
+    if (typeof value !== 'string' || !value.trim()) return null;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+};
 export function defaultHexisAdaptationState(): HexisAdaptationState {
     return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], goalProposals: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, hmxApplied: 0, hmxGoalProposalsCreated: 0, hmxGoalProposalsApproved: 0, hmxGoalProposalsRejected: 0, hmxGoalProposalsActivated: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
@@ -296,12 +319,50 @@ export class HexisAdaptationFabric {
             learningReviews: Array.isArray(value.learningReviews) ? value.learningReviews.slice(-96) : [],
             retentionProposals: Array.isArray(value.retentionProposals) ? value.retentionProposals.slice(-512) : [],
             fidelityReceipts: Array.isArray(value.fidelityReceipts) ? value.fidelityReceipts.slice(-512) : [],
-            hmxStages: Array.isArray(value.hmxStages)
-                ? value.hmxStages.slice(-32).map((stage: any) => ({
-                    ...stage,
-                    stagedSections: stage?.stagedSections && typeof stage.stagedSections === 'object' ? stage.stagedSections : {},
-                  }))
-                : [],
+            hmxStages: (() => {
+                const sourceStages = Array.isArray(value.hmxStages)
+                    ? value.hmxStages.slice(-HMX_MAX_RETAINED_STAGES)
+                    : [];
+                let retainedBytes = 0;
+                // Prefer recent work when legacy/corrupted snapshots exceed the limit.
+                // Applied stages can drop their source payload because the verified receipt
+                // remains sufficient for idempotent replay.
+                return sourceStages.slice().reverse().map((rawStage: any) => {
+                    const stage: HexisHmxStage = {
+                        ...rawStage,
+                        stagedSections: rawStage?.stagedSections && typeof rawStage.stagedSections === 'object'
+                            ? rawStage.stagedSections
+                            : {},
+                        conflicts: Array.isArray(rawStage?.conflicts) ? [...rawStage.conflicts] : [],
+                    };
+                    const bytes = stagedPayloadBytes(stage.stagedSections);
+                    if (bytes <= HMX_MAX_RETAINED_STAGE_BYTES - retainedBytes) {
+                        retainedBytes += bytes;
+                        return { ...stage, stagedBytes: bytes };
+                    }
+                    if (hasValidHmxApplicationReceipt(stage)) {
+                        return { ...stage, stagedSections: {}, stagedBytes: 0 };
+                    }
+                    const conflicts = [...stage.conflicts];
+                    if (!conflicts.some((conflict) => conflict.kind === 'retained-stage-budget')) {
+                        conflicts.push({
+                            path: '$',
+                            kind: 'retained-stage-budget',
+                            detail: 'persisted HMX staged sections were omitted because retained payload exceeded the configured memory budget; re-export and stage again',
+                        });
+                    }
+                    const restoredStage: HexisHmxStage = {
+                        ...stage,
+                        status: stage.status === 'accepted' ? 'staged' as const : stage.status,
+                        conflicts,
+                        stagedSections: {},
+                        stagedBytes: 0,
+                    };
+                    const repairedDigest = calculateHmxStageDigest(restoredStage);
+                    if (repairedDigest) restoredStage.digest = repairedDigest;
+                    return restoredStage;
+                }).reverse();
+            })(),
             goalProposals: Array.isArray((value as any).goalProposals) ? (value as any).goalProposals.slice(-256) : [],
             outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
             connectorPolicies: normalizedPolicies,
@@ -385,10 +446,54 @@ export class HexisAdaptationFabric {
         summary: string;
         confidence01: number;
         validFrom: number;
+        validUntil?: number | null;
         source?: string;
         value?: unknown;
-    }): HexisTemporalAssertion { const existing = this.state.temporal.find((x) => x.memoryId === input.memoryId && x.validUntil === null); const at = nowMs(); if (existing)
-        existing.validUntil = Math.max(existing.validFrom, Number(input.validFrom)); const created: HexisTemporalAssertion = { id: randomUUID(), memoryId: String(input.memoryId), valueHash: digest(input.value ?? input.summary), summary: String(input.summary).slice(0, 2000), confidence01: clamp(input.confidence01), validFrom: Number(input.validFrom), validUntil: null, supersedesId: existing?.id, source: String(input.source ?? 'canonical-memory'), at }; this.state.temporal.push(created); this.state.temporal = this.state.temporal.slice(-4096); return structuredClone(created); }
+    }): HexisTemporalAssertion {
+        const memoryId = String(input.memoryId ?? '').trim();
+        const validFrom = Number(input.validFrom);
+        const validUntil = input.validUntil === undefined || input.validUntil === null ? null : Number(input.validUntil);
+        if (!memoryId) throw new Error('temporal-memory-id-required');
+        if (!Number.isFinite(validFrom) || validFrom < 0) throw new Error('temporal-valid-from-invalid');
+        if (validUntil !== null && (!Number.isFinite(validUntil) || validUntil < validFrom)) {
+            throw new Error('temporal-valid-until-invalid');
+        }
+        const at = nowMs();
+        const history = this.state.temporal.filter((row) => row.memoryId === memoryId);
+        const prior = history
+            .filter((row) => row.validFrom <= validFrom && (row.validUntil === null || validFrom < row.validUntil))
+            .sort((a, b) => b.validFrom - a.validFrom || b.at - a.at)[0];
+        const next = history
+            .filter((row) => row.validFrom > validFrom)
+            .sort((a, b) => a.validFrom - b.validFrom || a.at - b.at)[0];
+        // Insertions can arrive out of chronological order. Close every earlier
+        // interval that currently covers this point, then cap the new interval at
+        // the next known assertion so history never overlaps or erases future facts.
+        for (const row of history) {
+            if (row.validFrom <= validFrom && (row.validUntil === null || validFrom < row.validUntil)) {
+                row.validUntil = Math.max(row.validFrom, validFrom);
+            }
+        }
+        let effectiveValidUntil = validUntil;
+        if (next && (effectiveValidUntil === null || next.validFrom < effectiveValidUntil)) {
+            effectiveValidUntil = next.validFrom;
+        }
+        const created: HexisTemporalAssertion = {
+            id: randomUUID(),
+            memoryId,
+            valueHash: digest(input.value ?? input.summary),
+            summary: String(input.summary).slice(0, 2000),
+            confidence01: clamp(input.confidence01),
+            validFrom,
+            validUntil: effectiveValidUntil,
+            supersedesId: prior?.id,
+            source: String(input.source ?? 'canonical-memory'),
+            at,
+        };
+        this.state.temporal.push(created);
+        this.state.temporal = this.state.temporal.slice(-4096);
+        return structuredClone(created);
+    }
     temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null { this.state.metrics.temporalQueries += 1; const rows = this.state.temporal.filter((x) => x.memoryId === memoryId && x.validFrom <= at && (x.validUntil === null || at < x.validUntil)).sort((a, b) => b.validFrom - a.validFrom); return rows[0] ? structuredClone(rows[0]) : null; }
     temporalDiff(memoryId: string, fromAt: number, toAt: number) { this.state.metrics.temporalQueries += 1; const from = this.temporalAt(memoryId, fromAt); const to = this.temporalAt(memoryId, toAt); return { memoryId, from, to, changed: (from?.valueHash ?? null) !== (to?.valueHash ?? null) }; }
     createLearningReview(input: {
@@ -434,11 +539,11 @@ export class HexisAdaptationFabric {
         try {
             const encoded = JSON.stringify(input?.document);
             if (typeof encoded !== 'string') throw new Error('document is not JSON-serializable');
-            if (encoded.length > HMX_MAX_DOCUMENT_CHARS) {
+            if (new TextEncoder().encode(encoded).byteLength > HMX_MAX_DOCUMENT_BYTES) {
                 conflicts.push({
                     path: '$',
                     kind: 'size-limit',
-                    detail: `HMX document exceeds the ${HMX_MAX_DOCUMENT_CHARS}-character staging limit`,
+                    detail: 'HMX document exceeds the ' + HMX_MAX_DOCUMENT_BYTES + '-byte staging limit',
                 });
             } else {
                 const parsed: unknown = JSON.parse(encoded);
@@ -501,6 +606,8 @@ export class HexisAdaptationFabric {
         const names = Object.keys(sections);
         const stagedSections: Record<string, unknown> = {};
         const sectionCounts: Record<string, number> = {};
+        // HMX entity refs are export-global identifiers, not merely unique per section.
+        const firstHmxEntityIndexByRef = new Map<string, { sectionName: string; index: number }>();
         let totalRecords = 0;
 
         for (const [name, value] of Object.entries(sections)) {
@@ -540,29 +647,104 @@ export class HexisAdaptationFabric {
                     continue;
                 }
                 const safeRows = value;
+                const sectionConflictStart = conflicts.length;
                 if (name === 'memories') {
                     safeRows.forEach((record, index) => {
-                        const ref = record.ref;
-                        const type = record.type;
-                        const content = record.content;
+                        const ref = record.ref, type = record.type, content = record.content;
                         if (typeof ref !== 'string' || !/^exp_[a-f0-9]{16}:.+$/.test(ref)) {
-                            conflicts.push({ path: `sections.memories[${index}].ref`, kind: 'schema', detail: 'memory ref must use the HMX exp_<16 lowercase hex>:<record> namespace' });
+                            conflicts.push({ path: 'sections.memories[' + index + '].ref', kind: 'schema', detail: 'memory ref must use the HMX exp_<16 lowercase hex>:<record> namespace' });
                         } else if (typeof exportId === 'string' && /^exp_[a-f0-9]{16}$/.test(exportId) && !ref.startsWith(exportId + ':')) {
-                            conflicts.push({ path: `sections.memories[${index}].ref`, kind: 'reference-export-mismatch', detail: 'memory ref belongs to a different HMX export namespace' });
+                            conflicts.push({ path: 'sections.memories[' + index + '].ref', kind: 'reference-export-mismatch', detail: 'memory ref belongs to a different HMX export namespace' });
                         }
-                        if (!isHmxText(type, 128)) {
-                            conflicts.push({ path: `sections.memories[${index}].type`, kind: 'schema', detail: 'memory type must be a non-empty string' });
+                        if (typeof ref === 'string' && /^exp_[a-f0-9]{16}:.+$/.test(ref)) {
+                            const previous = firstHmxEntityIndexByRef.get(ref);
+                            if (previous) {
+                                conflicts.push({
+                                    path: 'sections.memories[' + index + '].ref',
+                                    kind: 'duplicate-reference',
+                                    detail: 'memory ref duplicates sections.' + previous.sectionName + '[' + previous.index + ']; HMX entity refs must be unique across sections',
+                                });
+                            } else {
+                                firstHmxEntityIndexByRef.set(ref, { sectionName: name, index });
+                            }
                         }
-                        if (!isHmxText(content, 250000)) {
-                            conflicts.push({ path: `sections.memories[${index}].content`, kind: 'schema', detail: 'memory content must be a non-empty string within the per-record limit' });
+                        if (!isHmxText(type, 128)) conflicts.push({ path: 'sections.memories[' + index + '].type', kind: 'schema', detail: 'memory type must be a non-empty string' });
+                        if (!isHmxText(content, 250000)) conflicts.push({ path: 'sections.memories[' + index + '].content', kind: 'schema', detail: 'memory content must be a non-empty string within the per-record limit' });
+                        if (record.metadata !== undefined && !isHmxRecord(record.metadata)) conflicts.push({ path: 'sections.memories[' + index + '].metadata', kind: 'schema', detail: 'memory metadata, when supplied, must be an object' });
+                        if (record.provenance !== undefined && record.provenance !== null && !isHmxRecord(record.provenance)) conflicts.push({ path: 'sections.memories[' + index + '].provenance', kind: 'schema', detail: 'memory provenance, when supplied, must be an object or null' });
+                        for (const [field, alias] of [
+                            ['created_at', 'createdAt'],
+                            ['updated_at', 'updatedAt'],
+                            ['valid_from', 'validFrom'],
+                            ['valid_until', 'validUntil'],
+                        ] as const) {
+                            const timestamp = record[field] ?? record[alias];
+                            if (timestamp !== undefined && timestamp !== null && hmxTimestampMs(timestamp) === null) {
+                                conflicts.push({
+                                    path: 'sections.memories[' + index + '].' + field,
+                                    kind: 'schema',
+                                    detail: field + ' must be a non-negative epoch-millisecond number or parseable date-time string',
+                                });
+                            }
                         }
-                        if (record.metadata !== undefined && !isHmxRecord(record.metadata)) {
-                            conflicts.push({ path: `sections.memories[${index}].metadata`, kind: 'schema', detail: 'memory metadata, when supplied, must be an object' });
-                        }
-                        if (record.provenance !== undefined && record.provenance !== null && !isHmxRecord(record.provenance)) {
-                            conflicts.push({ path: `sections.memories[${index}].provenance`, kind: 'schema', detail: 'memory provenance, when supplied, must be an object or null' });
+                        const validFrom = hmxTimestampMs(record.valid_from ?? record.validFrom);
+                        const validUntil = hmxTimestampMs(record.valid_until ?? record.validUntil);
+                        if (validFrom !== null && validUntil !== null && validUntil < validFrom) {
+                            conflicts.push({
+                                path: 'sections.memories[' + index + '].valid_until',
+                                kind: 'schema',
+                                detail: 'valid_until must not precede valid_from',
+                            });
                         }
                     });
+                } else if (name === 'episodes' || name === 'goals') {
+                    safeRows.forEach((record, index) => {
+                        const ref = record.ref;
+                        if (typeof ref !== 'string' || !/^exp_[a-f0-9]{16}:.+$/.test(ref)) {
+                            conflicts.push({
+                                path: 'sections.' + name + '[' + index + '].ref',
+                                kind: 'schema',
+                                detail: name + ' records must carry an export-scoped HMX ref',
+                            });
+                            return;
+                        }
+                        if (typeof exportId === 'string' && /^exp_[a-f0-9]{16}$/.test(exportId) && !ref.startsWith(exportId + ':')) {
+                            conflicts.push({
+                                path: 'sections.' + name + '[' + index + '].ref',
+                                kind: 'reference-export-mismatch',
+                                detail: name + ' ref belongs to a different HMX export namespace',
+                            });
+                        }
+                        const previous = firstHmxEntityIndexByRef.get(ref);
+                        if (previous) {
+                            conflicts.push({
+                                path: 'sections.' + name + '[' + index + '].ref',
+                                kind: 'duplicate-reference',
+                                detail: name + ' ref duplicates sections.' + previous.sectionName + '[' + previous.index + ']; HMX entity refs must be unique across sections',
+                            });
+                        } else {
+                            firstHmxEntityIndexByRef.set(ref, { sectionName: name, index });
+                        }
+                    });
+                } else if (name === 'relationships') {
+                    safeRows.forEach((record, index) => {
+                        const sourceRef = record.source_ref, targetRef = record.target_ref, edgeType = record.edge_type;
+                        const validExportId = typeof exportId === 'string' && /^exp_[a-f0-9]{16}$/.test(exportId);
+                        for (const [field, candidate] of [['source_ref', sourceRef], ['target_ref', targetRef]]) {
+                            if (!isHmxText(candidate, 512) || !/^exp_[a-f0-9]{16}:.+$/.test(candidate)) {
+                                conflicts.push({ path: 'sections.relationships[' + index + '].' + field, kind: 'schema', detail: 'relationship ' + field + ' must be an export-scoped HMX reference' });
+                            } else if (validExportId && !candidate.startsWith(exportId + ':')) {
+                                conflicts.push({ path: 'sections.relationships[' + index + '].' + field, kind: 'reference-export-mismatch', detail: 'relationship ' + field + ' belongs to a different HMX export namespace' });
+                            }
+                        }
+                        if (!isHmxText(edgeType, 128)) conflicts.push({ path: 'sections.relationships[' + index + '].edge_type', kind: 'schema', detail: 'relationship edge_type must be a non-empty string' });
+                        if (record.properties !== undefined && !isHmxRecord(record.properties)) conflicts.push({ path: 'sections.relationships[' + index + '].properties', kind: 'schema', detail: 'relationship properties, when supplied, must be an object' });
+                    });
+                }
+                // A schema-invalid row poisons its entire section, never leaving a valid prefix.
+                if (conflicts.length > sectionConflictStart) {
+                    sectionCounts[name] = value.length;
+                    continue;
                 }
                 totalRecords += safeRows.length;
                 sectionCounts[name] = value.length;
@@ -590,6 +772,24 @@ export class HexisAdaptationFabric {
             });
         }
 
+        const retainedStages = this.state.hmxStages.slice(-(HMX_MAX_RETAINED_STAGES - 1));
+        const retainedStageBytes = retainedStages.reduce(
+            (sum, priorStage) => sum + (Number.isSafeInteger(priorStage.stagedBytes)
+                ? Number(priorStage.stagedBytes)
+                : stagedPayloadBytes(priorStage.stagedSections)),
+            0,
+        );
+        const incomingStageBytes = stagedPayloadBytes(stagedSections);
+        if (incomingStageBytes > HMX_MAX_RETAINED_STAGE_BYTES - retainedStageBytes) {
+            conflicts.push({
+                path: '$',
+                kind: 'retained-stage-budget',
+                detail: 'retained HMX staged payload would exceed the ' + HMX_MAX_RETAINED_STAGE_BYTES +
+                    '-byte limit; all sections for this stage were omitted and acceptance is blocked',
+            });
+            for (const name of Object.keys(stagedSections)) delete stagedSections[name];
+        }
+
         const base = {
             exportId: typeof exportId === 'string' ? exportId : 'invalid-export-id',
             intent,
@@ -607,9 +807,10 @@ export class HexisAdaptationFabric {
             status: 'staged',
             createdAt: nowMs(),
             digest: digest(base),
+            stagedBytes: stagedPayloadBytes(stagedSections),
         };
         this.state.hmxStages.push(stage);
-        this.state.hmxStages = this.state.hmxStages.slice(-32);
+        this.state.hmxStages = this.state.hmxStages.slice(-HMX_MAX_RETAINED_STAGES);
         this.state.metrics.hmxStaged += 1;
         return structuredClone(stage);
     }
@@ -721,7 +922,11 @@ export class HexisAdaptationFabric {
         const stage = this.state.hmxStages.find((candidate) => candidate.stagingId === stagingId);
         if (!stage) return null;
         if (decision === 'apply') {
-            if (stage.status === 'applied' && stage.application) return structuredClone(stage);
+            if (stage.status === 'applied') {
+                if (!hasValidHmxApplicationReceipt(stage)) throw new Error('hmx-applied-receipt-invalid');
+                return structuredClone(stage);
+            }
+            if (!hasValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
             if (stage.status !== 'accepted' || stage.conflicts.length) return structuredClone(stage);
             if (stage.intent !== 'port' || stage.strategy !== 'additive') {
                 throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
@@ -736,6 +941,7 @@ export class HexisAdaptationFabric {
             return structuredClone(stage);
         }
         if (decision !== 'accept' && decision !== 'reject') return structuredClone(stage);
+        if (decision === 'accept' && !hasValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
         if (stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length)) return structuredClone(stage);
         stage.status = decision === 'accept' ? 'accepted' : 'rejected';
         if (decision === 'accept') this.state.metrics.hmxAccepted += 1;

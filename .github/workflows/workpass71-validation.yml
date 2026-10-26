@@ -34,7 +34,7 @@ on:
       - '.nvmrc'
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   pull_request:
-    branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22, rebuild]
+    branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22, rebuild, hexis-canonical-memory-apply-2026-10-26, fix/hexis-projector-idempotent-replay-2026-10-26, fix/hexis-hmx-atomic-staging-on-idempotent-2026-10-26]
     paths:
       - "app/**"
       - "runtime/neuro-kurisu/src/**"
@@ -110,6 +110,18 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Hexis HMX applied-receipt integrity regression
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-projector-idempotent-replay
+      - name: Hexis HMX canonical-memory capacity preflight
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/hexis-hmx-capacity-preflight.mjs
+      - name: Hexis HMX aggregate retained staging budget
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/hexis-hmx-retained-stage-budget.mjs
+      - name: Hexis HMX temporal validity boundaries
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/hexis-hmx-validity-boundaries.mjs
+      - name: Hexis HMX import bounds, atomic staging, and canonical-memory integration
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-adaptation
+      - name: Hexis HMX import API and persistence smoke
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
       - name: Recovered rebuild, causal replay, avatar storage, and Live2D regressions
         run: npm run test:rebuild-recovered
       - name: P23 persisted learning restore integrity

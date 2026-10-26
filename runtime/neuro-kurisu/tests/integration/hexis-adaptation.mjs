@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 
 const fabric = new HexisAdaptationFabric();
@@ -51,6 +52,61 @@ assert.equal(oversizedStage.stagedSections.memories, undefined,
   'an oversized section must not leave a truncated prefix available to downstream consumers');
 assert.equal(fabric.decideHmx(oversizedStage.stagingId, 'accept')?.status, 'staged',
   'a size-conflicted stage must remain ineligible for acceptance');
+
+// Record-level schema errors poison the whole section, not just the bad row.
+const malformedMemoryExportId = 'exp_5555555555555555';
+const malformedMemoryStage = fabric.stageHmx({
+  document: makeHmxDocument(malformedMemoryExportId, {
+    memories: [
+      { ref: malformedMemoryExportId + ':valid-memory', type: 'semantic', content: 'Valid row must not be staged alone.' },
+      { ref: malformedMemoryExportId + ':invalid-memory', type: 'semantic', content: '' },
+    ],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(malformedMemoryStage.conflicts.some(conflict => conflict.path === 'sections.memories[1].content'));
+assert.equal(malformedMemoryStage.sectionCounts.memories, 2);
+assert.equal(malformedMemoryStage.stagedSections.memories, undefined,
+  'a schema-invalid memory array must be omitted atomically');
+assert.equal(fabric.decideHmx(malformedMemoryStage.stagingId, 'accept')?.status, 'staged');
+
+// Even byte-identical contents with different metadata cannot share a canonical ref.
+const duplicateMemoryRefExportId = 'exp_5555555555555556';
+const duplicateMemoryRefStage = fabric.stageHmx({
+  document: makeHmxDocument(duplicateMemoryRefExportId, {
+    memories: [
+      { ref: duplicateMemoryRefExportId + ':same-ref', type: 'semantic', content: 'Same statement.' },
+      { ref: duplicateMemoryRefExportId + ':same-ref', type: 'procedural', content: 'Same statement.' },
+    ],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(duplicateMemoryRefStage.conflicts.some(conflict => conflict.kind === 'duplicate-reference'));
+assert.equal(duplicateMemoryRefStage.sectionCounts.memories, 2);
+assert.equal(duplicateMemoryRefStage.stagedSections.memories, undefined,
+  'duplicate memory refs must poison the entire section rather than silently selecting its first row');
+assert.equal(fabric.decideHmx(duplicateMemoryRefStage.stagingId, 'accept')?.status, 'staged');
+
+// Relationship refs must remain in the export namespace; malformed edges cannot be silently deferred.
+const malformedRelationshipExportId = 'exp_6666666666666666';
+const malformedRelationshipStage = fabric.stageHmx({
+  document: makeHmxDocument(malformedRelationshipExportId, {
+    relationships: [{
+      source_ref: 'exp_7777777777777777:memory-1',
+      target_ref: malformedRelationshipExportId + ':goal-1',
+      edge_type: 'supports',
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(malformedRelationshipStage.conflicts.some(conflict => conflict.kind === 'reference-export-mismatch'));
+assert.equal(malformedRelationshipStage.sectionCounts.relationships, 1);
+assert.equal(malformedRelationshipStage.stagedSections.relationships, undefined,
+  'one invalid edge must prevent partial relationship staging');
+assert.equal(fabric.decideHmx(malformedRelationshipStage.stagingId, 'accept')?.status, 'staged');
 
 const protectedStage = fabric.stageHmx({
   document: makeHmxDocument('exp_2222222222222222', {
@@ -163,6 +219,134 @@ const normalizedStage = importedNormalizedExport.stageHmx({
 assert.deepEqual(normalizedStage.conflicts, [], 'NK1 native export adapter must emit a conflict-free HMX 1.7 envelope');
 assert.equal(importedNormalizedExport.decideHmx(normalizedStage.stagingId, 'accept')?.status, 'accepted');
 
+// The producer and consumer must agree on the document budget. This normalized HMX
+// document deliberately exceeds the old 1 MB cap while remaining below the 8 MiB contract.
+const largeNativeExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'large-export-roundtrip',
+  sections: {
+    memories: Array.from({ length: 6 }, (_, index) => ({
+      id: 'large-memory-' + index,
+      type: 'semantic',
+      content: 'L'.repeat(180_000),
+    })),
+  },
+});
+const largeExportBytes = Buffer.byteLength(JSON.stringify(largeNativeExport), 'utf8');
+assert.equal(largeNativeExport.statistics.estimated_uncompressed_bytes, largeExportBytes,
+  'HMX size statistics must describe the normalized HMX output rather than the source-native JSON');
+assert(largeExportBytes > 1_000_000 && largeExportBytes < 8 * 1024 * 1024,
+  'fixture must exercise the formerly incompatible export/import size boundary');
+const largeRoundTripFabric = new HexisAdaptationFabric();
+const largeRoundTripStage = largeRoundTripFabric.stageHmx({
+  document: largeNativeExport,
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(largeRoundTripStage.conflicts, [],
+  'a normalized export within the shared byte budget must be accepted for staging');
+assert.equal(largeRoundTripStage.stagedSections.memories.length, 6);
+
+// Two distinct native IDs can normalize to the same slug/ref. The staged importer
+// must reject that ambiguity instead of silently importing only the first row.
+const slugCollisionExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'slug-collision',
+  sections: {
+    memories: [
+      { id: 'Foo Bar', type: 'semantic', content: 'First slug-collision memory.' },
+      { id: 'foo-bar', type: 'semantic', content: 'Second slug-collision memory.' },
+    ],
+  },
+});
+assert.equal(slugCollisionExport.sections.memories[0].ref, slugCollisionExport.sections.memories[1].ref,
+  'fixture should expose the existing safeSlug collision');
+const slugCollisionStage = new HexisAdaptationFabric().stageHmx({
+  document: slugCollisionExport,
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(slugCollisionStage.conflicts.some(conflict => conflict.kind === 'duplicate-reference'));
+assert.equal(slugCollisionStage.stagedSections.memories, undefined,
+  'normalized exports with colliding references must fail atomically before canonical writes');
+
+// A raw native ID reused across memories and skills is ambiguous. The exporter must not
+// point a relationship at whichever section happened to be indexed last.
+const ambiguousNativeReferenceExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'ambiguous-native-reference',
+  sourceLineageId: 'ambiguous-native-reference-lineage',
+  sections: {
+    memories: [{ id: 'shared-id', type: 'semantic', content: 'Native memory endpoint.' }],
+    skills: [{ id: 'shared-id', name: 'Shared skill', instructions: 'Native procedure endpoint.' }],
+    relationships: [{ source: 'shared-id', target: 'shared-id', edge_type: 'supports' }],
+  },
+});
+assert(ambiguousNativeReferenceExport.export_warnings.some(warning => warning.includes('Ambiguous native reference')));
+const ambiguousRelationship = ambiguousNativeReferenceExport.sections.relationships[0];
+const exportedMemoryRefs = new Set(ambiguousNativeReferenceExport.sections.memories.map(memory => memory.ref));
+assert.equal(ambiguousRelationship.source_ref, ambiguousRelationship.target_ref);
+assert.equal(exportedMemoryRefs.has(ambiguousRelationship.source_ref), false,
+  'an ambiguous native ID must not be bound to either the memory or skill record');
+const ambiguousReferenceRuntime = new MemorySubsystemRuntime();
+const ambiguousReferenceOwner = new HexisAdaptationFabric();
+const ambiguousReferenceProjector = new HexisCanonicalMemoryProjector(
+  ambiguousReferenceRuntime.fabric,
+  ambiguousReferenceRuntime.semanticMemory,
+  ambiguousReferenceOwner,
+);
+ambiguousReferenceOwner.bindCanonicalMemoryApply(candidate => ambiguousReferenceProjector.apply(candidate));
+const ambiguousReferenceStage = ambiguousReferenceOwner.stageHmx({
+  document: ambiguousNativeReferenceExport,
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(ambiguousReferenceStage.conflicts, [],
+  'an unresolved but structurally valid native relation should be staged for review rather than miswired');
+assert.equal(ambiguousReferenceStage.stagedSections.relationships.length, 1);
+assert.equal(ambiguousReferenceStage.stagedSections.relationships[0].source_ref, ambiguousRelationship.source_ref);
+assert.equal(ambiguousReferenceOwner.decideHmx(ambiguousReferenceStage.stagingId, 'accept')?.status, 'accepted');
+const ambiguousReferenceApplied = ambiguousReferenceOwner.decideHmx(ambiguousReferenceStage.stagingId, 'apply');
+assert.equal(ambiguousReferenceApplied?.application?.projectedRelationships, 0);
+assert.equal(ambiguousReferenceApplied?.application?.deferredRelationships, 1,
+  'an ambiguous native endpoint must be deferred instead of wired to an arbitrary canonical memory');
+assert.equal(ambiguousReferenceRuntime.semanticMemory.snapshot().edges.length, 0);
+
+// Goal IDs are export-global refs too. A slug collision must not collapse two goal
+// proposals into one apparently valid target.
+const goalSlugCollisionExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'goal-slug-collision',
+  sections: {
+    goals: [
+      { id: 'Road Map', title: 'First goal with a colliding slug.' },
+      { id: 'road-map', title: 'Second goal with the same normalized slug.' },
+    ],
+  },
+});
+assert.equal(goalSlugCollisionExport.sections.goals[0].ref, goalSlugCollisionExport.sections.goals[1].ref);
+const goalSlugCollisionStage = new HexisAdaptationFabric().stageHmx({
+  document: goalSlugCollisionExport,
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(goalSlugCollisionStage.conflicts.some(conflict => conflict.kind === 'duplicate-reference'));
+assert.equal(goalSlugCollisionStage.sectionCounts.goals, 2);
+assert.equal(goalSlugCollisionStage.stagedSections.goals, undefined,
+  'a goal-ref collision must exclude the whole goals section before proposal generation');
+
+const crossSectionRefExportId = 'exp_5555555555555557';
+const crossSectionRefOwner = new HexisAdaptationFabric();
+const crossSectionRefStage = crossSectionRefOwner.stageHmx({
+  document: makeHmxDocument(crossSectionRefExportId, {
+    memories: [{ ref: crossSectionRefExportId + ':shared-entity', type: 'semantic', content: 'Memory with a shared entity ref.' }],
+    goals: [{ ref: crossSectionRefExportId + ':shared-entity', title: 'Goal with the same entity ref.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(crossSectionRefStage.conflicts.some(conflict => conflict.kind === 'duplicate-reference'));
+assert.equal(crossSectionRefStage.stagedSections.goals, undefined,
+  'entity refs must be unique across memories and goals, not only within one section');
+assert.equal(crossSectionRefStage.stagedSections.memories.length, 1);
+assert.equal(crossSectionRefOwner.decideHmx(crossSectionRefStage.stagingId, 'accept')?.status, 'staged',
+  'a conflict-bearing cross-section collision must remain ineligible for acceptance');
 
 function makeHmxDocument(exportId, sections) {
   return ({
@@ -344,6 +528,65 @@ assert.equal(applyFabric.decideHmx(applyStage.stagingId, 'apply')?.application?.
 assert.equal(applyFabric.snapshot().temporal.length, importedTemporal.length,
   'replaying an HMX apply must not duplicate temporal assertions');
 
+// The normal decideHmx replay path must also validate persisted receipts (not only the projector).
+const corruptedAppliedSnapshot = applyFabric.snapshot();
+const persistedAppliedStage = corruptedAppliedSnapshot.hmxStages.find(stage => stage.stagingId === applyStage.stagingId);
+assert(persistedAppliedStage?.application);
+persistedAppliedStage.application.importedCount += 1;
+const corruptedRestoreFabric = new HexisAdaptationFabric();
+corruptedRestoreFabric.restore(corruptedAppliedSnapshot);
+corruptedRestoreFabric.bindCanonicalMemoryApply(() => {
+  throw new Error('corrupted applied receipt must never trigger a second canonical apply');
+});
+assert.throws(
+  () => corruptedRestoreFabric.decideHmx(applyStage.stagingId, 'apply'),
+  /hmx-applied-receipt-invalid/,
+  'persisted receipt corruption must fail closed before any replay shortcut',
+);
+
+// A stage snapshot whose staged payload changes after review must not be applied with
+// the old digest, even if the stage status still says accepted and has no conflicts.
+const tamperDigestOwner = new HexisAdaptationFabric();
+const tamperDigestStage = tamperDigestOwner.stageHmx({
+  document: makeHmxDocument('exp_8888888888888888', {
+    memories: [{ ref: 'exp_8888888888888888:memory-one', type: 'semantic', content: 'Original approved payload.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(tamperDigestOwner.decideHmx(tamperDigestStage.stagingId, 'accept')?.status, 'accepted');
+const tamperedStageSnapshot = tamperDigestOwner.snapshot();
+const tamperedPersistedStage = tamperedStageSnapshot.hmxStages.find(stage => stage.stagingId === tamperDigestStage.stagingId);
+assert(tamperedPersistedStage);
+tamperedPersistedStage.stagedSections.memories[0].content = 'Altered payload after review.';
+const restoredTamperedOwner = new HexisAdaptationFabric();
+restoredTamperedOwner.restore(tamperedStageSnapshot);
+restoredTamperedOwner.bindCanonicalMemoryApply(() => {
+  throw new Error('tampered HMX payload must never reach canonical memory');
+});
+assert.throws(
+  () => restoredTamperedOwner.decideHmx(tamperDigestStage.stagingId, 'apply'),
+  /hmx-stage-digest-invalid/,
+  'restored stage payload tampering must fail before canonical application',
+);
+
+// An applied stage cannot be downgraded to accepted while retaining its application
+// receipt: that contradictory persisted state must never cause another canonical apply.
+const downgradedAppliedSnapshot = applyFabric.snapshot();
+const downgradedAppliedStage = downgradedAppliedSnapshot.hmxStages.find(stage => stage.stagingId === applyStage.stagingId);
+assert(downgradedAppliedStage?.application);
+downgradedAppliedStage.status = 'accepted';
+const downgradedAppliedOwner = new HexisAdaptationFabric();
+downgradedAppliedOwner.restore(downgradedAppliedSnapshot);
+downgradedAppliedOwner.bindCanonicalMemoryApply(() => {
+  throw new Error('downgraded applied stage must never be applied a second time');
+});
+assert.throws(
+  () => downgradedAppliedOwner.decideHmx(applyStage.stagingId, 'apply'),
+  /hmx-stage-digest-invalid/,
+  'a non-applied stage carrying an applied receipt must fail closed',
+);
+
 // Re-exporting the same source lineage with a different export ID keeps stable memory identity.
 const laterNormalizedNk1Export = normalizeNk1HmxExport({
   ...nativeNk1Export,
@@ -362,7 +605,10 @@ const duplicateGoalPreparation = applyFabric.prepareGoalProposals(duplicateStage
 assert.equal(duplicateGoalPreparation.created, 0, 'same lineage/reference/content goal proposals must deduplicate across re-exports');
 assert.equal(duplicateGoalPreparation.duplicates, preparedGoals.proposals.length);
 
+const temporalCountBeforeDuplicateApply = applyFabric.snapshot().temporal.length;
 const duplicateApply = applyFabric.decideHmx(duplicateStage.stagingId, 'apply');
+assert.equal(applyFabric.snapshot().temporal.length, temporalCountBeforeDuplicateApply,
+  're-exporting the same source lineage must not duplicate temporal assertions for an already-indexed memory');
 assert.equal(duplicateApply?.application?.importedCount, 0);
 assert.equal(duplicateApply?.application?.deduplicatedCount, 2);
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
@@ -383,6 +629,79 @@ assert.equal(noOpApplied?.status, 'applied');
 assert.equal(noOpApplied?.application?.status, 'noop');
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.length, beforeNoopApply,
   'an empty memory section must not claim or cause a canonical memory mutation');
+
+// Deterministic import IDs must not overwrite an unrelated canonical record that
+// happens to occupy the same ID (e.g. a restored/corrupt snapshot or ID collision).
+const collisionIdRuntime = new MemorySubsystemRuntime();
+const collisionExportId = 'exp_8888888888888888';
+const collisionMemoryRef = collisionExportId + ':memory-1';
+const collisionMemoryContent = 'A memory with this text belongs to the Hexis import.';
+const contentHashForCollision = createHash('sha256').update(collisionMemoryContent).digest('hex');
+const expectedHexisMemoryId = 'hexis-memory:' + createHash('sha256')
+  .update('hexis-test-lineage\0memory-1\0' + contentHashForCollision)
+  .digest('hex').slice(0, 48);
+const unrelatedCollision = collisionIdRuntime.fabric.encode({
+  id: expectedHexisMemoryId,
+  content: 'Unrelated canonical content that must be preserved.',
+  tags: ['do-not-overwrite'],
+  context: { sentinel: 'collision-preserve' },
+  kind: 'semantic',
+  salience: 0.7,
+  emotionalWeight: 0.1,
+  identityRelevance: 0.1,
+  goalRelevance: 0.1,
+  socialRelevance: 0.1,
+  predictionError: 0,
+  confidence: 0.9,
+  epistemicStatus: 'fact',
+  source: 'user',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  provenanceClass: 'user',
+  sourceAuthority01: 0.9,
+  independenceKey: 'collision-preservation-test',
+}, { forceDistinct: true });
+const unrelatedSnapshot = {
+  id: unrelatedCollision.id,
+  content: unrelatedCollision.content,
+  source: unrelatedCollision.source,
+  tags: [...unrelatedCollision.tags],
+  context: { ...unrelatedCollision.context },
+};
+const collisionImportOwner = new HexisAdaptationFabric();
+const collisionImportProjector = new HexisCanonicalMemoryProjector(
+  collisionIdRuntime.fabric, collisionIdRuntime.semanticMemory, collisionImportOwner,
+);
+collisionImportOwner.bindCanonicalMemoryApply(candidate => collisionImportProjector.apply(candidate));
+const collisionImportStage = collisionImportOwner.stageHmx({
+  document: makeHmxDocument(collisionExportId, {
+    memories: [{
+      ref: collisionMemoryRef,
+      type: 'semantic',
+      content: collisionMemoryContent,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(collisionImportStage.conflicts, []);
+collisionImportOwner.decideHmx(collisionImportStage.stagingId, 'accept');
+assert.throws(
+  () => collisionImportOwner.decideHmx(collisionImportStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:hmx-apply-canonical-id-conflict/,
+  'a deterministic ID occupied by unrelated canonical memory must fail before writing',
+);
+assert.deepEqual(
+  (() => {
+    const after = collisionIdRuntime.fabric.canonicalSnapshot().items.find(item => item.id === unrelatedSnapshot.id);
+    return { id: after?.id, content: after?.content, source: after?.source, tags: [...(after?.tags ?? [])], context: { ...(after?.context ?? {}) } };
+  })(),
+  unrelatedSnapshot,
+  'import preflight must preserve an unrelated row that collides with a deterministic HMX ID',
+);
+assert.equal(collisionIdRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 0);
 
 // Fault injection: if a batch write fails halfway, newly created memories are compensated
 // through MemoryFabric's canonical forget command and the accepted stage remains retryable.
@@ -422,6 +741,101 @@ assert.equal(rollbackMemoryRuntime.semanticMemory.snapshot().edges.length, 1,
 assert.equal(rollbackHexisFabric.snapshot().temporal.length, 2,
   'successful retry must materialize temporal assertions once');
 
+// Fault injection: the canonical MemoryFabric commits a row, then the adapter call
+// throws before returning the inserted ID. Compensation must still remove that row.
+const postCommitRuntime = new MemorySubsystemRuntime();
+let throwAfterFirstCommit = true;
+const postCommitFabric = {
+  canonicalSnapshot: () => postCommitRuntime.fabric.canonicalSnapshot(),
+  encode: (input, options) => {
+    const inserted = postCommitRuntime.fabric.encode(input, options);
+    if (throwAfterFirstCommit && input.content === normalizedNk1Export.sections.memories[0].content) {
+      throwAfterFirstCommit = false;
+      throw new Error('injected-hmx-post-commit-write-failure');
+    }
+    return inserted;
+  },
+  forgetById: (...args) => postCommitRuntime.fabric.forgetById(...args),
+};
+const postCommitHexis = new HexisAdaptationFabric();
+const postCommitProjector = new HexisCanonicalMemoryProjector(
+  postCommitFabric, postCommitRuntime.semanticMemory, postCommitHexis,
+);
+postCommitHexis.bindCanonicalMemoryApply(candidate => postCommitProjector.apply(candidate));
+const postCommitStage = postCommitHexis.stageHmx({
+  document: normalizedNk1Export, intent: 'port', strategy: 'additive',
+});
+postCommitHexis.decideHmx(postCommitStage.stagingId, 'accept');
+assert.throws(
+  () => postCommitHexis.decideHmx(postCommitStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed/,
+);
+assert.equal(
+  postCommitRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length,
+  0,
+  'a writer that commits and then throws must not leave an unreceipted HMX memory behind',
+);
+assert.equal(postCommitRuntime.semanticMemory.snapshot().nodes.length, 0,
+  'semantic nodes from a post-commit failure must be compensated too');
+assert.equal(postCommitHexis.snapshot().temporal.length, 0,
+  'temporal writes must remain absent after post-commit compensation');
+const postCommitRetry = postCommitHexis.decideHmx(postCommitStage.stagingId, 'apply');
+assert.equal(postCommitRetry?.status, 'applied',
+  'the exact stage must remain retryable after a post-commit writer failure');
+assert.equal(postCommitRetry?.application?.attempt, 2);
+assert.equal(
+  postCommitRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length,
+  2,
+  'retry after post-commit compensation must create each canonical memory exactly once',
+);
+
+// If compensation itself reports failure without throwing, detect the surviving
+// canonical row and let the next attempt reconcile its missing graph/temporal projections.
+const orphanRuntime = new MemorySubsystemRuntime();
+let throwOnceAfterOrphanCommit = true;
+const orphanFabric = {
+  canonicalSnapshot: () => orphanRuntime.fabric.canonicalSnapshot(),
+  encode: (input, options) => {
+    const inserted = orphanRuntime.fabric.encode(input, options);
+    if (throwOnceAfterOrphanCommit && input.content === normalizedNk1Export.sections.memories[0].content) {
+      throwOnceAfterOrphanCommit = false;
+      throw new Error('injected-hmx-orphan-post-commit-failure');
+    }
+    return inserted;
+  },
+  // Deliberately simulate a compensation adapter that reports "not removed".
+  forgetById: () => false,
+};
+const orphanHexis = new HexisAdaptationFabric();
+const orphanProjector = new HexisCanonicalMemoryProjector(orphanFabric, orphanRuntime.semanticMemory, orphanHexis);
+orphanHexis.bindCanonicalMemoryApply(candidate => orphanProjector.apply(candidate));
+const orphanStage = orphanHexis.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
+orphanHexis.decideHmx(orphanStage.stagingId, 'accept');
+let orphanFailure;
+try {
+  orphanHexis.decideHmx(orphanStage.stagingId, 'apply');
+} catch (error) {
+  orphanFailure = error;
+}
+assert.match(String(orphanFailure?.message), /canonical-memory-remains:/,
+  'failed compensation must surface the exact surviving canonical memory');
+assert.equal(orphanHexis.getHmxStage(orphanStage.stagingId)?.status, 'accepted');
+assert.equal(orphanRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 1);
+assert.equal(orphanRuntime.semanticMemory.snapshot().nodes.length, 0,
+  'graph changes must still roll back when canonical compensation is incomplete');
+assert.equal(orphanHexis.snapshot().temporal.length, 0);
+
+// Retry must adopt the surviving canonical row, complete its temporal/graph projections,
+// and import the remaining row without duplicating the already-committed memory.
+const orphanRetry = orphanHexis.decideHmx(orphanStage.stagingId, 'apply');
+assert.equal(orphanRetry?.status, 'applied');
+assert.equal(orphanRetry?.application?.memoryIds.length, 2);
+assert.equal(orphanRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
+assert.equal(orphanRuntime.semanticMemory.snapshot().edges.length, 1);
+assert.equal(orphanHexis.snapshot().temporal.length, 2,
+  'retry must restore temporal indexing for a retained row created by the failed attempt');
+assert.equal(orphanRetry?.application?.deduplicatedCount, 1,
+  'the retry receipt must disclose the row recovered from the failed attempt');
 
 console.log('HEXIS_ADAPTATION_PASS');
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));

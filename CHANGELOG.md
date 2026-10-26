@@ -1,3 +1,128 @@
+## [NK1][Hexis] WorkPass401 — canonicalize application receipt digests (2026-10-26)
+
+- [FIX] New HMX application receipts use the shared stable legacy serializer for digest computation, so their integrity digest is independent of JSON object-key insertion order after persistence/reload.
+- [COMPAT] The shared receipt validator continues to accept legacy receipts whose digest was computed from the original ordered `JSON.stringify(base)` representation, avoiding unnecessary invalidation of existing applied-stage receipts.
+- [TEST] Added a receipt round-trip regression that reverses all receipt payload keys and confirms the canonical digest still validates, alongside the legacy ordered-format fixture.
+- [VALIDATION] Test wiring exists in `audit:hexis` and WorkPass71; exact-head execution still awaits a GitHub Actions runner that reaches the test steps.
+
+## [NK1][Hexis] WorkPass400 — reject inconsistent applied-stage transitions (2026-10-26)
+
+- [SAFETY] The shared stage integrity guard now rejects non-applied stages that still carry an application receipt. A persisted `applied → accepted` downgrade can no longer re-enter canonical apply while preserving an old receipt.
+- [TEST] Added direct-projector and restored-state regressions for downgraded stages with application receipts; both must fail closed before canonical writes.
+- [VALIDATION] The regressions are wired through the existing Hexis replay and integration suites. Exact-head execution is still blocked because GitHub Actions jobs are failing before runner allocation.
+
+## [NK1][Hexis] WorkPass399 — bind accepted HMX stages to their payload digest (2026-10-26)
+
+- [SAFETY] Added a shared stage-digest reconstruction helper using the same legacy stable serializer as `stageHmx`. The stage digest covers the export/intent/strategy, source lineage, record counts, protected sections, conflicts, and the actual staged payload.
+- [FIX] Both `decideHmx('accept'/'apply')` and the canonical projector now reject an altered stage payload with `hmx-stage-digest-invalid`; an accepted snapshot can no longer swap memory contents while retaining the prior review digest.
+- [FIX] When restore must omit an over-budget un-applied stage payload, it adds a blocking conflict and recalculates the digest for the new, explicitly incomplete staged representation. Valid applied stages retain their receipt-bound original digest for replay.
+- [TEST] Added direct-projector checks for stale stage payloads and an integration regression for a tampered accepted snapshot; normal duplicate-reference validation is updated to use a valid stage digest.
+- [VALIDATION] Source and regressions are wired into `audit:hexis`/WorkPass71; no runtime PASS is claimed while Actions jobs terminate before runner allocation.
+
+## [NK1][Hexis] WorkPass398 — bound retained HMX staging payloads (2026-10-26)
+
+- [SAFETY] Added a 16 MiB aggregate limit for staged HMX section payloads, in addition to the per-document size limit and 32-stage history cap. If the incoming stage would exceed the budget, its entire staged payload is omitted, original section counts remain visible, and a blocking conflict prevents acceptance.
+- [SAFETY] Persisted legacy snapshots are remeasured instead of trusting stored byte counters. Restore preserves the newest reviewable payloads within the bound; older non-applied stages that cannot fit have payloads omitted and receive a blocking `retained-stage-budget` conflict. Verified applied receipts remain replayable without carrying the original source payload.
+- [TEST] Added an aggregate-budget regression with nine large stages, plus an over-budget legacy restore fixture proving counters are recomputed and older stages are failed closed.
+- [WIRING] Added the new test to `audit:hexis` and WorkPass71 primary CI.
+- [VALIDATION] The code and regression are committed; runtime execution remains unverified while hosted Actions jobs fail before runner steps initialize.
+
+## [NK1][Hexis] WorkPass397 — report the normalized HMX byte size (2026-10-26)
+
+- [FIX] `statistics.estimated_uncompressed_bytes` now reports the normalized HMX envelope size, not the size of the NK1-native source that was converted into it.
+- [FIX] Stabilize the output byte count after updating the statistic itself, and enforce the 8 MiB staging limit against the same serialized payload whose size is reported.
+- [TEST] Added an assertion that the reported statistic exactly matches the UTF-8 byte length of the normalized export.
+- [VALIDATION] Regression is part of the HMX integration suite; runtime execution remains unverified while GitHub Actions is failing before test steps start.
+
+## [NK1][Memory][Hexis] WorkPass396 — share canonical-memory capacity contract (2026-10-26)
+
+- [FIX] Added `CANONICAL_MEMORY_CAPACITY` as the single capacity contract shared by MemoryOS2 and the HMX projector's capacity preflight. The preflight can no longer silently drift from the store limit and allow an import to evict pre-existing canonical memory.
+- [WIRING] MemoryOS2 insertion/restore/compaction limits and its bounded embedding index now use the shared constant; HMX preflight imports the same constant.
+- [TEST] Made the preflight regression derive its expected boundary from the shared contract rather than hard-coding `1600`.
+- [VALIDATION] Tests and typecheck are wired; exact-head execution remains unconfirmed while GitHub Actions runner allocation is unreliable.
+
+## [NK1][Hexis] WorkPass395 — enforce export-global entity refs (2026-10-26)
+
+- [SAFETY] HMX staging now tracks entity refs across `memories`, `episodes`, and `goals`, not just duplicates within a single memory array. Duplicate refs across entity sections poison the affected section before review/acceptance.
+- [FIX] Episode and goal records must carry an export-scoped ref. This prevents goal proposals or episode references from silently collapsing because two source identifiers normalize to the same slug.
+- [TEST] Added a goal-slug collision regression alongside the existing memory-slug collision case; conflicting goals are omitted atomically and cannot enter proposal generation.
+- [VALIDATION] Source and regression are wired into the existing HMX integration suite; exact-head execution still requires a functioning GitHub Actions runner.
+
+## [NK1][Hexis] WorkPass394 — centralize HMX application receipt integrity (2026-10-26)
+
+- [WIRING] Moved applied-receipt structural, stage/export/lineage binding, and SHA-256 integrity checks into one shared `HexisHmxReceiptGuard.ts` used by both `HexisAdaptationFabric` and `HexisCanonicalMemoryProjector`.
+- [FIX] Both replay paths now apply the same fail-closed rules, including safe handling of non-serializable/tampered receipt data; removing duplicate validators prevents implementation drift.
+- [TEST] The existing projector receipt regression now executes with Node's TypeScript strip mode enabled so it exercises the shared guard through the real import path.
+- [VALIDATION] The change is wired into `audit:hexis` and WorkPass71, but exact-head runtime/typecheck results remain unavailable while GitHub Actions jobs fail before runner allocation.
+
+## [NK1][Hexis] WorkPass393 — refuse ambiguous native reference wiring (2026-10-26)
+
+- [FIX] The NK1 → HMX reference index now records collisions instead of overwriting earlier entries when a native ID/name/ref maps to multiple records across memories, skills, or goals.
+- [SAFETY] Relationships and episode links involving an ambiguous native reference are emitted as unresolved HMX references, so the canonical projector defers them instead of wiring them to whichever record was visited last. Ambiguous goal-parent links remain null for review.
+- [TEST] Added an exporter regression for an ID shared by a memory and skill; its relationship endpoint must not match either canonical memory ref, and the adapter must emit a clear warning.
+- [VALIDATION] Source and tests are wired, but test execution remains blocked by GitHub Actions runner allocation failures.
+
+## [NK1][Hexis] WorkPass392 — enforce integrity at the canonical projector boundary (2026-10-26)
+
+- [SAFETY] The projector now independently requires an accepted stage with a non-empty stage ID/digest and zero staging conflicts; direct callers can no longer bypass the review/staging conflict gate.
+- [FIX] Duplicate memory refs are rejected by the canonical projector too, not merely by the front-door staging adapter.
+- [TEST] Added direct-call regressions for missing stage identity, a conflict-bearing accepted stage, and duplicate refs bypassing `stageHmx`. The fake canonical storage confirms these cases fail before a read/write attempt.
+- [VALIDATION] Tests are wired through `audit:hexis` and WorkPass71, but remain unexecuted while Actions runner allocation is failing.
+
+## [NK1][Hexis] WorkPass391 — reject HMX reference collisions (2026-10-26)
+
+- [SAFETY] HMX memory sections now fail atomically when a reference is repeated, even when the repeated rows share identical text but differ in type or other metadata.
+- [FIX] This also catches collisions produced by native-ID slug normalization (for example, `Foo Bar` and `foo-bar`) before the adapter can select the first row and silently discard the second.
+- [TEST] Added direct duplicate-reference and exporter-generated slug-collision regressions. The whole memory section remains omitted and the stage is not eligible for acceptance.
+- [VALIDATION] The regression is wired into the existing HMX integration suite; execution remains unconfirmed while Actions jobs fail before runner allocation.
+
+## [NK1][Hexis] WorkPass390 — recover partial canonical writes and keep temporal replays idempotent (2026-10-26)
+
+- [FIX] The HMX projector now verifies that candidate canonical memory IDs were actually removed during compensation. A writer that commits then throws, followed by a failed/non-effective forget, is reported as an incomplete rollback instead of silently presenting a clean failure.
+- [FIX] Retries now repair temporal indexing for every memory in the application receipt, including a canonical row retained by a failed compensation. This lets a later idempotent adoption finish graph and temporal projections without duplicating the memory.
+- [FIX] Temporal replay identity is stable across export IDs and respects both finite and open-ended intervals, including assertions whose validity already expired. Re-importing an identical expired assertion no longer appends a duplicate timeline row.
+- [TEST] Added fault injection for post-commit writer exceptions, failed compensation, retained-row recovery, and repeat import of an expired HMX assertion.
+- [VALIDATION] Code and regressions are committed; no runtime test or TypeScript pass is claimed because Actions jobs continue failing before runner allocation. No release ZIP was changed.
+
+## [NK1][Hexis] WorkPass389 — preserve chronology for out-of-order temporal imports (2026-10-26)
+
+- [FIX] Temporal assertions now close only earlier intervals that cover the inserted timestamp; historical assertions received after newer ones are capped at the next known start instead of wiping out future history.
+- [SAFETY] Preserve legitimate gaps between validity intervals, and prefer the active correction when assertions share the same start time.
+- [TEST] Extended the Hexis temporal-boundary regression with reverse-order insertion, interval-gap, and future-assertion preservation cases.
+- [VALIDATION] Code and regressions are committed; execution remains unverified while GitHub Actions fails before step initialization.
+
+## [NK1][Hexis] WorkPass388 — preserve temporal validity through HMX import (2026-10-26)
+
+- [FIX] Extended the Hexis temporal assertion contract with an explicit optional `validUntil`. Imported canonical memory expiry now carries through to the temporal ledger; an expired assertion is no longer returned as current.
+- [FIX] Reject invalid or negative temporal timestamps and intervals whose `valid_until` precedes `valid_from`. The staging adapter excludes the entire invalid memory section instead of silently converting a malformed expiry to an open-ended assertion.
+- [TEST] Added direct interval-end and invalid-bound regressions plus an end-to-end HMX import case that checks canonical and temporal validity agree at the expiry boundary.
+- [WIRING] Added the validity test to `audit:hexis` and WorkPass71 primary CI.
+- [VALIDATION] Changes are committed; hosted checks still must execute the tests before this pass can be marked validated.
+
+## [NK1][Hexis] WorkPass387 — preflight canonical memory capacity (2026-10-26)
+
+- [FIX] Detect HMX batches that would exceed MemoryOS2's 1,600-item canonical bound and reject them before the first write. This avoids an import causing the memory store to evict an unrelated older record that rollback cannot restore.
+- [FIX] Preflight the batch's deterministic IDs against existing unrelated canonical records before any write, while retaining an in-loop collision guard.
+- [TEST] Added a small capacity boundary regression using a read-only near-capacity store; it asserts rejection at 1,601 planned items, zero writer calls, zero rollback calls, and an accepted/retryable stage.
+- [WIRING] Added the capacity test to `audit:hexis` and the WorkPass71 primary regression workflow.
+- [VALIDATION] Changes are committed; exact-head test execution remains blocked by hosted runner allocation. No pass is claimed.
+
+## [NK1][Hexis] WorkPass386 — compensate post-commit import failures (2026-10-26)
+
+- [FIX] Register each deterministic canonical memory ID as a rollback candidate before invoking the writer. If the writer commits a row and then throws before returning the inserted item, the compensation path still knows which ID to remove.
+- [SAFETY] Detect deterministic memory-ID collisions with existing unrelated canonical records before attempting an import write.
+- [TEST] Added fault injection where MemoryFabric successfully commits a row and the adapter then throws, plus a collision fixture with an unrelated canonical row occupying the planned ID. The regressions require preserved unrelated data, canonical/semantic/temporal compensation, and a successful same-stage retry on attempt 2.
+- [VALIDATION] Code and regression are committed; hosted execution remains blocked because GitHub Actions jobs on the current stack have been failing before runner allocation. No passing test is claimed.
+
+## [NK1][Hexis] WorkPass385 — align HMX bounds, validate relationships, bind replay receipts (2026-10-26)
+
+- [FIX] Aligned HMX import staging with the export adapter's 8 MiB UTF-8 document budget; normalized exports that expand beyond the same budget now fail explicitly instead of producing an artifact that the importer cannot stage.
+- [FIX] HMX memory/relationship arrays with record-level schema errors are omitted atomically. Relationship endpoints must be valid refs in the same export namespace, and optional properties must be objects.
+- [FIX] Idempotent replay now requires a well-formed, digest-valid application receipt bound to the exact stage ID, export ID, lineage, and stage digest at both projector and normal `decideHmx('apply')` entry points. Cross-stage or tampered receipts fail closed without touching canonical storage.
+- [WIRING] Added the direct receipt regression to `audit:hexis` and added the receipt, HMX integration, and server-smoke regressions to WorkPass71 primary CI.
+- [TEST] Added round-trip coverage for a normalized export above 1 MiB, atomic malformed-memory/relationship rejection, and forged/stale/tampered replay receipts.
+- [VALIDATION] Source and tests are committed; hosted Actions must still provide actionable exact-head results. Main and the canonical Release ZIP remain unchanged.
+
 ## NK1 WorkPass110 external outcome restore expectation (2026-10-26)
 
 - [FIX] Align the causal-stream restore regression with the trust boundary: restoring external-only evidence must not count it as trusted runtime outcomes.
