@@ -1,4 +1,11 @@
 import assert from 'node:assert/strict';
+import { MemoryFabric } from '../../src/organism/memory/MemoryFabric.ts';
+import { EventLog } from '../../src/organism/memory/EventSourcing.ts';
+import { MultiTimescaleMemory } from '../../src/organism/memory/MultiTimescaleMemory.ts';
+import { MemorySubstrateCoordinator } from '../../src/organism/developmental/MemorySubstrateCoordinator.ts';
+import { UnifiedMemorySystem } from '../../src/organism/developmental/UnifiedMemorySystem.ts';
+import { P62MemoryFabric } from '../../src/organism/memory/P62MemoryFabric.ts';
+import { SemanticMemoryGraph } from '../../src/organism/memory/SemanticMemoryGraph.ts';
 import { readFile } from 'node:fs/promises';
 import { MemoryOS2 } from '../../src/organism/developmental/MemoryOS2.ts';
 import { HexisAdaptationFabric } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
@@ -178,7 +185,7 @@ const revisionEnd = coreSource.indexOf('Temporal views delegate to MemoryOS2', r
 assert.ok(revisionStart >= 0 && revisionEnd > revisionStart, 'Hexis belief revision must remain in Core');
 const revisionBody = coreSource.slice(revisionStart, revisionEnd);
 assert.ok(revisionBody.includes('memoryOS.hasEvidenceLineage'), 'Core must consult canonical lineage before revision');
-assert.ok(revisionBody.includes('memoryOS.recordEvidence'), 'Core must write evidence through canonical MemoryOS2');
+assert.ok(revisionBody.includes('fabric.recordEvidence'), 'Core must write evidence through the MemoryFabric lifecycle journal');
 assert.ok(revisionBody.includes('canonicalDuplicate: duplicateEvidence'), 'Core must pass canonical duplicate status to the belief policy');
 assert.ok(revisionBody.includes('audit.applied && evidenceReceipt?.added === true'), 'confidence updates require both an applied revision and a new canonical evidence receipt');
 
@@ -220,6 +227,81 @@ const postRestoreRevision = recoveredProjection.reviseBelief({
   at: 5000,
 });
 assert.equal(postRestoreRevision.applied, true, 'valid belief updates remain usable after a damaged sidecar is restored');
+// Production evidence writes pass through MemoryFabric's journal and durable replay receipts.
+const journalMemoryOS = new MemoryOS2({ signalFusionProfile: 'balanced' });
+const journalEvents = new EventLog(64);
+const journalFabric = new MemoryFabric(
+  journalMemoryOS,
+  journalEvents,
+  new MultiTimescaleMemory(),
+  new MemorySubstrateCoordinator(),
+  new UnifiedMemorySystem(),
+  new P62MemoryFabric(),
+  new SemanticMemoryGraph(),
+);
+const journalMemory = journalFabric.encode({
+  content: 'A memory item whose evidence mutation must be journaled.',
+  kind: 'semantic',
+  source: 'hexis-fabric-evidence-regression',
+  tags: ['hexis', 'lifecycle'],
+  context: {},
+  salience: .5,
+  emotionalWeight: .1,
+  identityRelevance: .1,
+  goalRelevance: .2,
+  socialRelevance: .1,
+  predictionError: .1,
+  confidence: .6,
+  epistemicStatus: 'belief',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+}, { commandId: 'hexis-fabric-evidence:seed', tick: 17 });
+const journalEvidence = {
+  source: 'https://evidence.example/lifecycle-receipt',
+  provenanceClass: 'external',
+  sourceAuthority01: .82,
+  independenceKey: 'hexis-lifecycle-receipt-fixture',
+  observedAt: 1800000000700,
+  evidenceFreshnessAt: 1800000000700,
+};
+const journalCommandId = 'hexis-fabric-evidence:' + journalEvidence.independenceKey;
+const journalFirst = journalFabric.recordEvidence(journalMemory.id, journalEvidence, { commandId: journalCommandId, tick: 18 });
+assert.equal(journalFirst.added, true);
+const eventRowsAfterFirst = journalEvents.list().filter(event => event.type === 'memory-lifecycle' && event.payload?.action === 'record-evidence');
+assert.equal(eventRowsAfterFirst.length, 1, 'new source evidence emits one lifecycle event');
+const journalReplay = journalFabric.recordEvidence(journalMemory.id, journalEvidence, { commandId: journalCommandId, tick: 19 });
+assert.equal(journalReplay.added, false, 'same command ID is replay-safe without a second evidence vote');
+assert.equal(journalEvents.list().filter(event => event.type === 'memory-lifecycle' && event.payload?.action === 'record-evidence').length, 1,
+  'replaying an evidence command must not emit another lifecycle event');
+assert.ok(journalFabric.snapshot().mutationReceipts.some(receipt => receipt.commandId === journalCommandId),
+  'the evidence mutation receipt must be persisted in MemoryFabric state');
+
+const journalRestoredOS = new MemoryOS2({ signalFusionProfile: 'balanced' });
+journalRestoredOS.restore(journalMemoryOS.snapshot());
+const restoredJournalEvents = new EventLog(64);
+const restoredJournalFabric = new MemoryFabric(
+  journalRestoredOS,
+  restoredJournalEvents,
+  new MultiTimescaleMemory(),
+  new MemorySubstrateCoordinator(),
+  new UnifiedMemorySystem(),
+  new P62MemoryFabric(),
+  new SemanticMemoryGraph(),
+);
+restoredJournalFabric.restore(journalFabric.snapshot());
+const journalReplayAfterRestore = restoredJournalFabric.recordEvidence(journalMemory.id, journalEvidence, {
+  commandId: journalCommandId,
+  tick: 20,
+});
+assert.equal(journalReplayAfterRestore.added, false, 'receipt restore prevents a second mutation');
+assert.equal(restoredJournalEvents.list().filter(event => event.type === 'memory-lifecycle' && event.payload?.action === 'record-evidence').length, 0,
+  'replaying a restored receipt must not synthesize a new event');
+assert.equal(journalRestoredOS.evidenceTrail(journalMemory.id).independentSources, 2);
+assert.equal(journalRestoredOS.indexDiagnostics().pass, true);
+
 console.log('HEXIS_MEMORY_EVIDENCE_LINEAGE=PASS', JSON.stringify({
   priorConfidence,
   posteriorConfidence: firstAudit.posteriorConfidence01,
