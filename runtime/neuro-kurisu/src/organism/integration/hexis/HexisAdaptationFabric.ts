@@ -303,9 +303,11 @@ const hasValidHmxApplicationReceipt = (stage: HexisHmxStage): boolean => {
         Object.values(receipt.deferredSections).some((count: unknown) => !Number.isSafeInteger(count) || Number(count) < 0)) return false;
     try {
         const { digest: receiptDigest, ...base } = receipt;
+        const serialized = JSON.stringify(base);
         return typeof receiptDigest === 'string' &&
             /^[a-f0-9]{64}$/.test(receiptDigest) &&
-            createHash('sha256').update(JSON.stringify(base)).digest('hex') === receiptDigest;
+            typeof serialized === 'string' &&
+            createHash('sha256').update(serialized).digest('hex') === receiptDigest;
     } catch {
         return false;
     }
