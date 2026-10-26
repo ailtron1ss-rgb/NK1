@@ -16,7 +16,7 @@ assert.equal(first.accepted, true);
 if (!first.accepted) throw new Error("valid evidence was rejected");
 assert.equal(first.duplicate, false);
 assert.equal(first.evidence.schema, "nk1.hexis-evidence.v1");
-assert.equal(first.evidence.idempotencyKey, "belief:kurisu-identity:source:paper-17");
+assert.equal(first.evidence.idempotencyKey, "23:belief:kurisu-identity17:source:paper-17");
 assert.equal(first.evidence.observedAt, "2026-10-26T09:30:00.000Z");
 assert.equal(Object.isFrozen(first.evidence), true);
 assert.equal(Object.isFrozen(first.evidence.source), true);
