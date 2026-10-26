@@ -1,3 +1,13 @@
+## WorkPass361 — broad runtime smoke and persistence continuity CI (2026-10-26)
+
+- [x] Add a focused Node 24 workflow for runtime typecheck, organism smoke, legacy restart-persistence, canonical persistence/restore continuity, persistent continuity organism integration, and verified autonomous-life restart.
+- [x] Keep these suites separate from the focused signed-dataset/MemoryOS regression so runtime failure locations remain actionable.
+- [ ] Require workflow [#40291631075](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40291631075) to finish and record each step's exact conclusion on head ee360dba4503011157fc2780f0f5b0fd7accb33c.
+- [ ] Any failure on an old persistence/continuity test must be triaged against the current Core/MemoryOS changes and fixed or clearly isolated before release claims.
+- **Status:** CI workflow committed and running. Production runtime readiness remains unproven until this run and other startup/UI/device/release gates close.
+
+---
+
 ## WorkPass360 — whole-organism restart must prove canonical MemoryOS2 identity (2026-10-26)
 
 - [x] Remove the recursive search over arbitrary snapshot descendants from the WorkPass358 runtime-restart test.
