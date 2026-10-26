@@ -47,7 +47,7 @@ export class P65EpistemicLedger{
   if(Array.isArray(r.quarantinedEventIds))for(const eventId of r.quarantinedEventIds.slice(-512)){
    if(validEventId(eventId))this.quarantinedEventIds.add(eventId);
   }
-  const claimsData:Array<P65Claim>=Array.isArray(r.claimsData)?r.claimsData.slice(-256).map((c:any)=>{
+  const claimsData:Array<P65Claim>=Array.isArray(r.claimsData)?r.claimsData.slice(0,256).map((c:any)=>{
    const eventId=validEventId(c?.eventId)?c.eventId:undefined;
    const claim:any={...c,predicted01:c.predicted01 ?? (c.kind==='prediction'?c.confidence01:undefined),lastSupportedAt:Number(c.lastSupportedAt??c.at??Date.now()),supportCount:Number(c.supportCount??1),status:c.status??(c.resolved?'resolved':'active')};
    if(eventId)claim.eventId=eventId;else delete claim.eventId;
@@ -58,16 +58,32 @@ export class P65EpistemicLedger{
    if(!entry||!validEventId(entry.eventId)||typeof entry.claimId!=='string'||!entry.claimId.trim()||entry.claimId.length>256||!/^[a-f0-9]{64}$/.test(String(entry.fingerprint??'')))continue;
    indexCandidates.push({eventId:entry.eventId,claimId:entry.claimId,fingerprint:entry.fingerprint});
   }
-  const conflicted=new Set<string>();
-  const claimGroups=new Map<string,P65Claim[]>();
+  const conflictedEventIds=new Set<string>();
+  const conflictedClaimIds=new Set<string>();
+  const claimIdGroups=new Map<string,P65Claim[]>();
+  const eventClaimGroups=new Map<string,P65Claim[]>();
   for(const claim of claimsData){
-   if(!claim.eventId)continue;
-   const group=claimGroups.get(claim.eventId)??[];
-   group.push(claim);claimGroups.set(claim.eventId,group);
+   if(typeof claim.id!=='string'||!claim.id)continue;
+   const idGroup=claimIdGroups.get(claim.id)??[];
+   idGroup.push(claim);claimIdGroups.set(claim.id,idGroup);
+   if(claim.eventId){
+    const eventGroup=eventClaimGroups.get(claim.eventId)??[];
+    eventGroup.push(claim);eventClaimGroups.set(claim.eventId,eventGroup);
+   }
   }
-  for(const [eventId,group] of claimGroups){
+  // One stable claim ID cannot be rebound to a different semantic payload.
+  for(const [claimId,group] of claimIdGroups){
+   const identities=new Set(group.map(claim=>eventFingerprint(claimIdentityPayload(claim))));
+   if(identities.size>1){
+    conflictedClaimIds.add(claimId);
+    for(const claim of group)if(claim.eventId)conflictedEventIds.add(claim.eventId);
+   }
+  }
+  // An event ID must not identify two different claims, but aliases may share
+  // one claim ID when the semantic payload is exactly the same.
+  for(const [eventId,group] of eventClaimGroups){
    const identities=new Set(group.map(claim=>JSON.stringify({claimId:claim.id,fingerprint:eventFingerprint(claimIdentityPayload(claim))})));
-   if(identities.size>1)conflicted.add(eventId);
+   if(identities.size>1)conflictedEventIds.add(eventId);
   }
   const indexGroups=new Map<string,P65EventIdentityIndexEntry[]>();
   for(const entry of indexCandidates){
@@ -76,7 +92,7 @@ export class P65EpistemicLedger{
   }
   for(const [eventId,group] of indexGroups){
    const identities=new Set(group.map(entry=>JSON.stringify({claimId:entry.claimId,fingerprint:entry.fingerprint})));
-   if(identities.size>1)conflicted.add(eventId);
+   if(identities.size>1)conflictedEventIds.add(eventId);
   }
   const claimsById=new Map<string,P65Claim[]>();
   for(const claim of claimsData){
@@ -85,19 +101,39 @@ export class P65EpistemicLedger{
   }
   for(const entry of indexCandidates){
    for(const claim of claimsById.get(entry.claimId)??[]){
-    if(claim.eventId!==entry.eventId||eventFingerprint(claimIdentityPayload(claim))!==entry.fingerprint){
-     conflicted.add(entry.eventId);
-     if(claim.eventId)conflicted.add(claim.eventId);
+    // An event identity may legitimately alias the same semantic claim ID.
+    // Only its content fingerprint needs to agree; the claim's primary eventId
+    // is not required to equal every upstream eventId that references it.
+    if(eventFingerprint(claimIdentityPayload(claim))!==entry.fingerprint){
+     conflictedEventIds.add(entry.eventId);
+     if(claim.eventId===entry.eventId)conflictedEventIds.add(claim.eventId);
     }
    }
   }
-  for(const eventId of conflicted)this.quarantinedEventIds.add(eventId);
+  for(const eventId of conflictedEventIds)this.quarantinedEventIds.add(eventId);
   while(this.quarantinedEventIds.size>512){
    const oldest=this.quarantinedEventIds.values().next().value;
    if(typeof oldest!=='string')break;
    this.quarantinedEventIds.delete(oldest);
   }
-  const acceptedClaims=claimsData.filter(claim=>!claim.eventId||!this.quarantinedEventIds.has(claim.eventId));
+  const acceptedClaims=claimsData.filter(claim=>
+   !conflictedClaimIds.has(claim.id)&&(!claim.eventId||!this.quarantinedEventIds.has(claim.eventId))
+  );
+  // Compact exact duplicate claim IDs deterministically while retaining the most
+  // recently supported state. A conflicting payload was excluded above.
+  const uniqueClaims=new Map<string,P65Claim>();
+  const rank=(claim:P65Claim)=>({
+   at:Number(claim.lastSupportedAt??claim.at??0),
+   support:Number(claim.supportCount??0),
+   stable:JSON.stringify(claim),
+  });
+  for(const claim of acceptedClaims){
+   const prior=uniqueClaims.get(claim.id);
+   if(!prior){uniqueClaims.set(claim.id,claim);continue;}
+   const a=rank(claim),b=rank(prior);
+   if(a.at>b.at||(a.at===b.at&&(a.support>b.support||(a.support===b.support&&a.stable>b.stable))))uniqueClaims.set(claim.id,claim);
+  }
+  const restoredClaims=[...uniqueClaims.values()];
   const eventIdentityIndex:P65EventIdentityIndexEntry[]=[];
   const seenEvents=new Set<string>();
   for(const entry of indexCandidates){
@@ -107,12 +143,12 @@ export class P65EpistemicLedger{
   }
   // Backward-compatible seeding for retained claims in snapshots created before the
   // event index. Do not allow a quarantined ID to be reintroduced through this path.
-  for(const claim of acceptedClaims){
+  for(const claim of restoredClaims){
    if(!claim.eventId||this.quarantinedEventIds.has(claim.eventId)||seenEvents.has(claim.eventId))continue;
    eventIdentityIndex.unshift({eventId:claim.eventId,claimId:claim.id,fingerprint:eventFingerprint(claimIdentityPayload(claim))});
    seenEvents.add(claim.eventId);
   }
-  const next:any={...d,...r,version:2,claimsData:acceptedClaims,recentIds:Array.isArray(r.recentIds)?r.recentIds.slice(-512):[],quarantinedEventIds:[...this.quarantinedEventIds]};
+  const next:any={...d,...r,version:2,claimsData:restoredClaims,recentIds:Array.isArray(r.recentIds)?r.recentIds.slice(0,512):[],quarantinedEventIds:[...this.quarantinedEventIds]};
   if(eventIdentityIndex.length)next.eventIdentityIndex=eventIdentityIndex.slice(0,512);else delete next.eventIdentityIndex;
   this.state=next;
  }

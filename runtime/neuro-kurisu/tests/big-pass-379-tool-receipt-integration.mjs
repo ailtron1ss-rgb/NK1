@@ -268,6 +268,33 @@ test('P65 event identity survives restore and ignores processing time', () => {
   assert.throws(() => ledger.record({ ...input, eventId: 'bad\nid' }), /p65-event-identity-invalid/);
 });
 
+test('P65 restores event-ID aliases and deduplicates claim IDs deterministically', () => {
+  const ledger = new P65EpistemicLedger();
+  const firstInput = {
+    tick: 19, at: 1900000000000, kind: 'inference', content: 'same semantic P65 claim',
+    confidence01: 0.57, source: 'organism', eventId: 'upstream:event:first',
+  };
+  const first = ledger.record(firstInput);
+  const aliasInput = { ...firstInput, at: firstInput.at + 5000, eventId: 'upstream:event:alias' };
+  assert.equal(ledger.record(aliasInput), first, 'a second upstream ID may alias the same stable P65 claim');
+  const snapshot = ledger.snapshot();
+  assert.equal(snapshot.eventIdentityIndex.filter(entry => entry.claimId === first).length, 2);
+
+  const restored = new P65EpistemicLedger();
+  restored.restore(snapshot);
+  assert.equal(restored.record({ ...firstInput, at: firstInput.at + 6000 }), first);
+  assert.equal(restored.record({ ...aliasInput, at: aliasInput.at + 6000 }), first);
+  assert.deepEqual(restored.snapshot().quarantinedEventIds, [],
+    'legitimate upstream aliases must not be mistaken for identity corruption');
+
+  const duplicateSnapshot = ledger.snapshot();
+  duplicateSnapshot.claimsData.push({ ...duplicateSnapshot.claimsData[0], at: firstInput.at - 1000 });
+  const deduplicated = new P65EpistemicLedger();
+  deduplicated.restore(duplicateSnapshot);
+  assert.equal(deduplicated.snapshot().claimsData.filter(claim => claim.id === first).length, 1,
+    'exact duplicate claim IDs are collapsed during restore');
+});
+
 test('P65 fails closed when an event identity is reused with conflicting evidence', () => {
   const eventId = realityEvidenceEventId('exec-p65-quarantine-518', 'tool-outcome', 'canonical');
   const input = {

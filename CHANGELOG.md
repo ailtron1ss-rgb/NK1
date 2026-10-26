@@ -1,3 +1,11 @@
+## NK1 [evidence] — preserve P65 aliases and deduplicate restored claim IDs (2026-10-26)
+
+- P65 restore now allows multiple upstream event IDs to reference the same stable semantic claim when their fingerprints agree; it quarantines only mismatched content rather than treating every eventId mismatch as corruption.
+- Restore now retains the newest bounded claim/ID windows, drops conflicting payloads sharing one stable claim ID, and deterministically collapses exact duplicates by latest support metadata.
+- Added regression coverage for event-ID aliases, deterministic deduplication, and continued fail-closed behavior on true conflicts.
+
+---
+
 ## NK1 [evidence] — quarantine conflicting P65 event identities (2026-10-26)
 
 - P65 now quarantines an upstream event ID when its semantic payload is rebound, removes that event's claim from active retained claims, and persists the quarantine across restore/restart.
