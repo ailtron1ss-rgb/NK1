@@ -207,6 +207,7 @@ export class HexisCanonicalMemoryProjector {
       .filter(item => String(item.source ?? '').startsWith('hexis:'))
       .map(item => String(item.source) + '\0' + stableRecordContent(item.content)));
     const createdIds = [];
+    const revisedStatuses = [];
     const warnings = [];
     const importedIds = [];
     const semanticEdgeIds = [];
@@ -235,6 +236,7 @@ export class HexisCanonicalMemoryProjector {
             const currentStatus = normalizeHmxMemoryStatus(duplicate.epistemicStatus);
             const targetStatus = epistemicStatusRank(currentStatus) >= epistemicStatusRank(epistemicStatus) ? currentStatus : epistemicStatus;
             if (String(duplicate.epistemicStatus) !== targetStatus) {
+              revisedStatuses.push({ id: duplicate.id, previousStatus: duplicate.epistemicStatus });
               this.memoryFabric.revise(
                 duplicate.id,
                 targetStatus,
@@ -440,6 +442,32 @@ export class HexisCanonicalMemoryProjector {
         if (uncompensated.length) rollbackErrors.push('canonical-uncompensated:' + uncompensated.join(','));
       } catch (verifyError) {
         rollbackErrors.push('canonical-verify:' + String(verifyError?.message ?? verifyError).slice(0, 220));
+      }
+      // Status reconciliation may touch an existing canonical memory before a later
+      // projection/ledger operation fails. Restore those prior statuses as well as
+      // deleting newly-created rows; never leave a failed import half-applied.
+      for (const revision of [...revisedStatuses].reverse()) {
+        try {
+          const current = (this.memoryFabric.canonicalSnapshot().items ?? []).find(item => item.id === revision.id);
+          if (!current) {
+            rollbackErrors.push('status-restore-memory-missing:' + revision.id);
+            continue;
+          }
+          if (current.epistemicStatus !== revision.previousStatus) {
+            this.memoryFabric.revise(
+              revision.id,
+              revision.previousStatus,
+              'hexis-hmx-apply-status-rollback',
+              { commandId: 'hexis-status-rollback:' + hash(String(stage.stagingId) + ':' + revision.id + ':' + String(revision.previousStatus) + ':' + attempt).slice(0, 48) },
+            );
+          }
+          const restored = (this.memoryFabric.canonicalSnapshot().items ?? []).find(item => item.id === revision.id);
+          if (restored?.epistemicStatus !== revision.previousStatus) {
+            rollbackErrors.push('status-restore-unconfirmed:' + revision.id);
+          }
+        } catch (statusRollbackError) {
+          rollbackErrors.push('status-restore:' + String(statusRollbackError?.message ?? statusRollbackError).slice(0, 220));
+        }
       }
       if (this.semanticGraph && semanticGraphBefore) {
         try {
