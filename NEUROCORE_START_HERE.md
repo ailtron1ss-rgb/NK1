@@ -1,3 +1,16 @@
+## Latest checkpoint — WorkPass355 canonical learner environment filtering (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Status:** code and tests committed; exact-head CI pending.
+
+- The generic process supervisor now applies the shared `isForbiddenLearningEnvironmentKey` policy to inherited and explicit environment variables. The host-owned evaluator adapter imports the same predicate; policy drift between the two layers is removed.
+- Sensitive variables and runtime-injection keys (including API-key suffixes, `NODE_OPTIONS`, loader paths and credential/config variables) are rejected before scratch-root allocation.
+- Regressions cover both inherited and explicit `OPENAI_API_KEY` and assert no run-root is created on rejection.
+- Next evidence required: run the focused WorkPass349 workflow on the new code/test head, including process-supervisor regression, evaluator path boundary suite and runtime typecheck.
+- Security boundary remains explicit: these guards prevent accidental credential forwarding; only deployment-owned sandboxing and authority separation can safely execute untrusted candidate code.
+
+---
+
 ## Latest checkpoint — WorkPass354 learning-process storage isolation (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
