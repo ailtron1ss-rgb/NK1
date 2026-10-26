@@ -2207,3 +2207,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **[FIX]** Restore diagnostic counters only from finite non-negative safe integers so a malformed persisted sidecar cannot turn counters into `NaN` or string concatenation.
 - **[REGRESSION]** Extended `test:hexis-memory-evidence-lineage` with corrupt snapshot fixtures and a post-restore belief revision, covering both fail-safe filtering and continued adapter operation. The existing package script already wires this integration test.
 - **[VALIDATION]** Code and regression committed; exact-head Actions/typecheck result is not yet confirmed. This hardens restart reliability but does not claim retrieval uplift, better learning outcomes, or production readiness.
+
+### Hexis H1 restore follow-up — reject ambiguous belief identities (2026-10-26)
+
+- Normalize memory IDs with NFKC and discard duplicate projection IDs on restore rather than choosing an arbitrary/conflicting confidence value.
+- Extended the malformed-snapshot regression with conflicting duplicate IDs to prove that ambiguous sidecar rows are dropped while the valid projection and subsequent revision survive.
+- Validation still depends on the exact current PR-head workflow; do not infer a passing test from earlier code/test runs.
