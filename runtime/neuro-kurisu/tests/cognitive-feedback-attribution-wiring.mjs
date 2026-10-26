@@ -8,6 +8,7 @@ import { FeedbackDeliveryGuard } from '../src/organism/core/FeedbackDeliveryGuar
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const b272 = await readFile(new URL('../src/organism/cognition/B272EndogenousGoalGenesis.ts', import.meta.url), 'utf8');
 const b273 = await readFile(new URL('../src/organism/cognition/B273AutonomousGoalLifecycle.ts', import.meta.url), 'utf8');
+const b274 = await readFile(new URL('../src/organism/cognition/B274AutonomousSkillLaboratory.ts', import.meta.url), 'utf8');
 const stateMigrations = await readFile(new URL('../src/organism/persistence/StateMigrations.ts', import.meta.url), 'utf8');
 
 function requireFeedbackGate(label, startMarker, endMarker, learnerName) {
@@ -216,4 +217,17 @@ assert.ok(b338Path.includes('b338Lifecycle.plan.includes(trace.selected.action)'
 assert.ok(b338Path.includes('b273Learner.recordUnselectedAction('),
   'world-transition feedback must record rejected B273 proposals without credit');
 
-console.log('Cognitive/B272/B273 feedback attribution and durable exactly-once delivery: PASS');
+assert.ok(b274.includes('selectedAction:ActionKind'),
+  'B274 trial contract must require evidence of the action actually selected');
+const b274TrialGuard = b274.slice(b274.indexOf('observeTrial(input:'), b274.indexOf('promoteTransferred(input:'));
+assert.ok(b274TrialGuard.includes('input.selectedAction!==expectedAction'),
+  'B274 must reject a candidate trial whose first action was not executed');
+assert.ok(b274TrialGuard.indexOf('input.selectedAction!==expectedAction') < b274TrialGuard.indexOf('this.state.realTrials++'),
+  'B274 must reject attribution before counting a trial or mutating candidate quality');
+assert.ok(b274TrialGuard.includes('this.state.unmatchedOutcomeCount'),
+  'B274 must retain observability for outcomes not attributable to the active skill');
+const b274CoreCall = core.slice(core.indexOf('const b274Trial = this.developmentalNeural.autonomousSkillLaboratoryB274.observeTrial('), core.indexOf('if (b274Trial.promoted', core.indexOf('const b274Trial = this.developmentalNeural.autonomousSkillLaboratoryB274.observeTrial(')));
+assert.ok(b274CoreCall.includes('selectedAction: trace.selected.action'),
+  'Core must pass the canonical selected action into B274 trial evaluation');
+
+console.log('Cognitive/B272/B273/B274 feedback attribution and durable exactly-once delivery: PASS');

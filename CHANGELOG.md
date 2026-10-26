@@ -1,3 +1,8 @@
+## B274 executed-action attribution — 2026-10-26
+
+- B274 now receives the canonical selected action with each real-trial result. A candidate is evaluated only when the executed action matches its first planned action; otherwise the reward is rejected before candidate quality, attempts, real-trial count or promotion state changes.
+- Unmatched outcomes are recorded in a bounded diagnostic history for review. Focused CI validation is pending.
+
 ## B273 outcome attribution — 2026-10-26
 
 - Both Core feedback paths now pass B273 reward only when the canonical selected action belongs to the exact B273-generated plan. The B273 learning API validates tick, action membership and exact plan identity, including for direct wrapper calls.
