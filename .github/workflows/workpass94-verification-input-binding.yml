@@ -2,9 +2,9 @@ name: WorkPass94 verification input binding
 
 on:
   push:
-    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring]
+    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring, fix/outcome-projection-index-restore-2026-10-26]
   pull_request:
-    branches: [main, workpass203-independent-candidate-evaluator]
+    branches: [main, workpass203-independent-candidate-evaluator, fix/outcome-projection-index-restore-2026-10-26]
     paths:
       - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/tests/workpass94-verification-input-binding.mjs'
