@@ -22,3 +22,8 @@ The substrate is derived state, so it must not override the canonical organism c
 The unified-substrate wiring test restores a sidecar at `Number.MAX_SAFE_INTEGER`, reconciles it to Core tick 7, checks that the other saved fields survive, verifies invalid canonical tick input is non-mutating, then integrates tick 8 successfully. The runtime contract also checks that the startup path calls reconciliation and emits the warning event.
 
 Regression coverage now has two layers: (1) `tests/unified-substrate-runtime-wiring.mjs` checks `Number.MAX_SAFE_INTEGER` → canonical tick 7 → successful tick 8; (2) `tests/organism-smoke.mjs` corrupts the durable substrate sidecar's `lastTick` to `Number.MAX_SAFE_INTEGER`, restarts a real `OrganismRuntime`, verifies reconciliation, and runs another autonomous step to prove integration resumes. Both tests are in `npm run test:cognitive-integration-suite` via `test:unified-substrate-runtime-wiring`. The workflow's pull-request and branch-push path filters now explicitly include the wiring test. The current code/test head is `8b38a354e7a32ea8822e4cd44866c73f00ce0d1c`; a fresh exact-head CI result is still required.
+
+
+## Verification update — 2026-10-26
+
+The future-tick recovery has passed the full Unified project integration suite on exact checkout `a5aafc5274f44974aadf52e155213e12200cc4da`: [run #40279636593](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279636593). That checkout includes this WorkPass343 implementation and WorkPass344's dependency-graph clock reconciliation. The later WorkPass345 invalid-schema recovery was validated separately on `216d79086bfac2dd5f25e2c995fe6b5a44b61476` in [run #40279847281](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40279847281).

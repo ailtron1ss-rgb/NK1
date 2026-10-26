@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; thirteen named workflows passed on that exact head. WorkPass343–344 future-tick reconciliation has now passed the full Unified project integration suite on exact checkout a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593). WorkPass345 extends the recovery boundary so unsupported/corrupt dependency sidecars do not abort organism startup; code/test head 216d79086bfac2dd5f25e2c995fe6b5a44b61476 has Unified project integration run #40279847281 in progress. Scores remain unchanged until this latest regression is validated.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores and the historical 13-row CI snapshot remain anchored to code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. Later exact-head Unified integration suites passed on a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593), validating WorkPass343–344, and on 216d79086bfac2dd5f25e2c995fe6b5a44b61476 (run #40279847281), validating WorkPass345's invalid-sidecar startup recovery. These changes improve restart safety but provide no independent task-success/transfer/retention uplift, so weighted engineering estimates and the 57/100 learning engineering score remain unchanged.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -26,7 +26,7 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "WorkPass345 adds fail-open recovery for invalid dependency-graph sidecar schema; exact-head CI for 216d79086bfac2dd5f25e2c995fe6b5a44b61476 is in progress (run #40279847281). WorkPass343–344 future-tick recovery passed Unified project integration on a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593).",
+        "Long-duration process-kill/restart soak and real device/browser/voice/avatar integration remain open; independent external task benchmarks are required before raising field-evidence and learning-effectiveness scores.",
         "Long-duration process-kill/restart soak tests and real device/browser/voice/avatar integration remain open",
         "Independent external task benchmarks are required before raising field evidence or learning-effectiveness scores"
       ],
@@ -369,11 +369,10 @@
       "restart smoke corrupts the dependency sidecar schema and verifies init succeeds",
       "post-recovery autonomous cycle advances dependency graph on the canonical Core tick"
     ],
-    "validationStatus": "PENDING: Unified project integration suite run #40279847281 is in_progress on exact code/test head 216d79086bfac2dd5f25e2c995fe6b5a44b61476; no pass claimed.",
+    "validationStatus": "PASS on exact code/test head 216d79086bfac2dd5f25e2c995fe6b5a44b61476; Unified project integration suite run #40279847281 completed successfully. The full suite includes WorkPass344 dual-sidecar MAX_SAFE_INTEGER recovery and the WorkPass345 unsupported-schema restart regression.",
     "progressPercentagesChanged": false,
-    "testedHeadSha": null,
-    "workflowRuns": [],
-    "activeWorkflowRuns": [
+    "testedHeadSha": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
+    "workflowRuns": [
       40279847281
     ]
   },
@@ -389,11 +388,10 @@
         "restart smoke corrupts the dependency sidecar schema and verifies init succeeds",
         "post-recovery autonomous cycle advances dependency graph on the canonical Core tick"
       ],
-      "validationStatus": "PENDING: Unified project integration suite run #40279847281 is in_progress on exact code/test head 216d79086bfac2dd5f25e2c995fe6b5a44b61476; no pass claimed.",
+      "validationStatus": "PASS on exact code/test head 216d79086bfac2dd5f25e2c995fe6b5a44b61476; Unified project integration suite run #40279847281 completed successfully. The full suite includes WorkPass344 dual-sidecar MAX_SAFE_INTEGER recovery and the WorkPass345 unsupported-schema restart regression.",
       "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": [],
-      "activeWorkflowRuns": [
+      "testedHeadSha": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
+      "workflowRuns": [
         40279847281
       ]
     },
@@ -409,7 +407,24 @@
         "restart smoke corrupts both cognitive sidecars and verifies a new autonomous cycle resumes on the canonical Core tick",
         "workflow path filters include organism-smoke.mjs for pull_request and push"
       ],
-      "validationStatus": "PASS on exact combined checkout a5aafc5274f44974aadf52e155213e12200cc4da; Unified project integration suite run #40279636593 completed successfully and includes WorkPass343–344 recovery plus CI trigger correction. Later WorkPass345 code is not included in this tested SHA.",
+      "validationStatus": "PASS on exact combined checkout a5aafc5274f44974aadf52e155213e12200cc4da; Unified project integration suite run #40279636593 completed successfully and includes WorkPass343–344 recovery plus CI trigger correction.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": "a5aafc5274f44974aadf52e155213e12200cc4da",
+      "workflowRuns": [
+        40279636593
+      ]
+    },
+    {
+      "id": "WorkPass343",
+      "date": "2026-10-26",
+      "branch": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
+      "codeCommit": "8b38a354e7a32ea8822e4cd44866c73f00ce0d1c",
+      "summary": "Reconcile a future persisted UnifiedCognitiveSubstrate tick to canonical Core startup time while preserving derived cognitive metrics.",
+      "testsAdded": [
+        "unit regression restores Number.MAX_SAFE_INTEGER, preserves projection metrics and accepts the next canonical tick",
+        "runtime restart smoke verifies substrate integration resumes after future-sidecar recovery"
+      ],
+      "validationStatus": "PASS in the combined Unified project integration suite on exact checkout a5aafc5274f44974aadf52e155213e12200cc4da, run #40279636593; the checked-out tree includes WorkPass343 and WorkPass344.",
       "progressPercentagesChanged": false,
       "testedHeadSha": "a5aafc5274f44974aadf52e155213e12200cc4da",
       "workflowRuns": [
@@ -477,7 +492,7 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
+  "latestUnverifiedCodeTestHead": null,
   "branchHeadBeforeTrackerCommit": "216d79086bfac2dd5f25e2c995fe6b5a44b61476",
   "additionalChangesInCombinedHead": [
     {
