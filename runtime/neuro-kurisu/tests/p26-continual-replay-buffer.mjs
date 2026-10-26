@@ -3,7 +3,7 @@ import { ParametricPolicyLearner } from '../src/organism/learning/ParametricPoli
 import { ContinualReplayBuffer, trainWithExperienceReplay } from '../src/organism/learning/ContinualReplayBuffer.ts';
 
 const exp = (taskId, feature, target01 = .9) => ({
-  taskId, features: [feature, 0, 0], action: 'respond', target01, learningRate01: .12,
+  taskId, features: [feature, ...new Array(17).fill(0)], action: 'respond', target01, learningRate01: .12,
 });
 let randomCall = 0;
 const rng = () => ((randomCall++ * 17) % 97) / 97;
