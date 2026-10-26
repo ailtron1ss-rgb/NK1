@@ -552,6 +552,8 @@ export class HexisAdaptationFabric {
         const names = Object.keys(sections);
         const stagedSections: Record<string, unknown> = {};
         const sectionCounts: Record<string, number> = {};
+        // HMX entity refs are export-global identifiers, not merely unique per section.
+        const firstHmxEntityIndexByRef = new Map<string, { sectionName: string; index: number }>();
         let totalRecords = 0;
 
         for (const [name, value] of Object.entries(sections)) {
@@ -593,7 +595,6 @@ export class HexisAdaptationFabric {
                 const safeRows = value;
                 const sectionConflictStart = conflicts.length;
                 if (name === 'memories') {
-                    const firstMemoryIndexByRef = new Map<string, number>();
                     safeRows.forEach((record, index) => {
                         const ref = record.ref, type = record.type, content = record.content;
                         if (typeof ref !== 'string' || !/^exp_[a-f0-9]{16}:.+$/.test(ref)) {
@@ -602,15 +603,15 @@ export class HexisAdaptationFabric {
                             conflicts.push({ path: 'sections.memories[' + index + '].ref', kind: 'reference-export-mismatch', detail: 'memory ref belongs to a different HMX export namespace' });
                         }
                         if (typeof ref === 'string' && /^exp_[a-f0-9]{16}:.+$/.test(ref)) {
-                            const firstIndex = firstMemoryIndexByRef.get(ref);
-                            if (firstIndex !== undefined) {
+                            const previous = firstHmxEntityIndexByRef.get(ref);
+                            if (previous) {
                                 conflicts.push({
                                     path: 'sections.memories[' + index + '].ref',
                                     kind: 'duplicate-reference',
-                                    detail: 'memory ref duplicates sections.memories[' + firstIndex + ']; memory refs must be unique within an HMX export',
+                                    detail: 'memory ref duplicates sections.' + previous.sectionName + '[' + previous.index + ']; HMX entity refs must be unique across sections',
                                 });
                             } else {
-                                firstMemoryIndexByRef.set(ref, index);
+                                firstHmxEntityIndexByRef.set(ref, { sectionName: name, index });
                             }
                         }
                         if (!isHmxText(type, 128)) conflicts.push({ path: 'sections.memories[' + index + '].type', kind: 'schema', detail: 'memory type must be a non-empty string' });
@@ -640,6 +641,35 @@ export class HexisAdaptationFabric {
                                 kind: 'schema',
                                 detail: 'valid_until must not precede valid_from',
                             });
+                        }
+                    });
+                } else if (name === 'episodes' || name === 'goals') {
+                    safeRows.forEach((record, index) => {
+                        const ref = record.ref;
+                        if (typeof ref !== 'string' || !/^exp_[a-f0-9]{16}:.+$/.test(ref)) {
+                            conflicts.push({
+                                path: 'sections.' + name + '[' + index + '].ref',
+                                kind: 'schema',
+                                detail: name + ' records must carry an export-scoped HMX ref',
+                            });
+                            return;
+                        }
+                        if (typeof exportId === 'string' && /^exp_[a-f0-9]{16}$/.test(exportId) && !ref.startsWith(exportId + ':')) {
+                            conflicts.push({
+                                path: 'sections.' + name + '[' + index + '].ref',
+                                kind: 'reference-export-mismatch',
+                                detail: name + ' ref belongs to a different HMX export namespace',
+                            });
+                        }
+                        const previous = firstHmxEntityIndexByRef.get(ref);
+                        if (previous) {
+                            conflicts.push({
+                                path: 'sections.' + name + '[' + index + '].ref',
+                                kind: 'duplicate-reference',
+                                detail: name + ' ref duplicates sections.' + previous.sectionName + '[' + previous.index + ']; HMX entity refs must be unique across sections',
+                            });
+                        } else {
+                            firstHmxEntityIndexByRef.set(ref, { sectionName: name, index });
                         }
                     });
                 } else if (name === 'relationships') {
