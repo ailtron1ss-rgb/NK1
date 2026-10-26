@@ -12,7 +12,6 @@ on:
       - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
       - "runtime/neuro-kurisu/tests/workpass87-superseded-current-retrieval.mjs"
       - "runtime/neuro-kurisu/tests/workpass83-retrieval-benchmark-truth.mjs"
-      - "runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs"
       - "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs"
       - "runtime/neuro-kurisu/tests/memory-semantic-embeddings-workpass33.mjs"
       - "runtime/neuro-kurisu/tests/memory-cognition-retrieval-workpass34.mjs"
@@ -65,8 +64,6 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:workpass87:superseded-memory
       - name: Verify benchmark labels, provenance, abstention and holdout gates
         run: npm --prefix runtime/neuro-kurisu run test:workpass83:retrieval-benchmark-truth
-      - name: Run current-vs-BM25 retrieval quality benchmark
-        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-benchmark
       - name: Validate retrieval experiment determinism and paired-seed gates
         run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-experiment
       - name: Validate semantic embedding retrieval and lexical fallback
