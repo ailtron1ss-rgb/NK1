@@ -1,3 +1,10 @@
+## [NK1][Hexis] Validate connector-policy input before coercion (2026-10-26)
+
+- The HTTP policy-grant route now rejects non-record payloads, non-boolean permission flags, malformed/broad context and target lists, and non-numeric limits before calling the canonical core.
+- Removed truthiness coercion from `allowAutonomous`: the string `"false"` can no longer be interpreted as permission to run autonomously.
+- Added server smoke coverage for rejected string booleans, absence of a resulting policy, and preservation of an explicitly false autonomy permission.
+- Validation status: committed with regression coverage; exact-head execution still depends on a usable GitHub Actions runner.
+
 ## [NK1][Hexis] Fail closed on restored connector-policy counters (2026-10-26)
 
 - Reject malformed persisted connector policies instead of coercing invalid counters to `NaN`/infinity; duplicate policy IDs are quarantined by omission so revocation and matching remain unambiguous.
