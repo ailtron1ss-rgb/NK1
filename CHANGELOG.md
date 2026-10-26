@@ -1,3 +1,10 @@
+## [NK1][Hexis] Sanitize authority on re-import of persisted HMX memories (2026-10-26)
+
+- [FIX] Re-import reconciles legacy canonical HMX rows written before the 0.65 external authority cap, monotonically reducing stored confidence/authority rather than only protecting newly inserted rows.
+- [PROVENANCE] A narrowly-scoped signal update can reduce existing Hexis external evidence authority while never raising any authority; native and non-Hexis evidence remains untouched.
+- [TEST] Added a persisted-state fixture that intentionally restores an over-trusted HMX memory and proves that a repeated export caps the canonical row and every matching external HMX evidence record.
+- [VALIDATION] New code/test changes are present on PR #233's head branch. Exact-head runtime/typecheck execution remains blocked by Actions runner allocation; scores and release readiness are not increased.
+
 ## [NK1][Hexis] Roll back status demotions after failed canonical apply (2026-10-26)
 
 - [INTEGRITY] Captures the prior status of existing canonical memories before HMX status reconciliation and restores it if any later graph/temporal/belief projection fails.
