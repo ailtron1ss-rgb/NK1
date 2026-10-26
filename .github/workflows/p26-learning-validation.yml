@@ -50,6 +50,9 @@ jobs:
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
+      - name: Run bounded interleaved replay admission contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:interleaved-training-contract
       - name: Validate learning input integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:learning-input-integrity
