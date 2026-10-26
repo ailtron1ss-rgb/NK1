@@ -23,6 +23,43 @@ assert.ok(d.autonomy01>.2,'B273 autonomy stayed inert');
 assert.ok(d.skillCreations>0,'B273 did not create a behavioral skill');
 assert.ok(d.skillUses>0,'B273 did not reuse a learned behavioral skill');
 assert.ok(new Set(diagnosticsActions(net)).size>=2,'B273 plan/action diversity collapsed');
+const beforeMismatch = net.snapshot();
+const currentDecision = net.current();
+const alternateAction = actions.find(action => action !== currentDecision.action);
+assert.ok(alternateAction, 'test requires an alternate selected action');
+assert.throws(() => net.learnFromOutcome({
+  tick: beforeMismatch.tick,
+  action: alternateAction,
+  plan: currentDecision.plan,
+  reward01: .99,
+  predictionError01: .01,
+  independentGain01: .8,
+  personalityAlignment01: .9,
+  externalEvidence01: 1,
+}), /B273 outcome action must match generated action/,
+'B273 must reject credit for an action that did not win its own plan');
+assert.deepEqual(net.snapshot(), beforeMismatch,
+  'rejected attribution must not mutate goals, skills, weights or outcome history');
+
+const unselected = net.recordUnselectedAction({
+  tick: beforeMismatch.tick,
+  generatedAction: currentDecision.action,
+  selectedAction: alternateAction,
+  plan: currentDecision.plan,
+});
+assert.equal(unselected.recorded, true, 'unselected proposal must leave bounded attribution evidence');
+const afterUnselected = net.snapshot();
+assert.equal(afterUnselected.unselectedActionCount, beforeMismatch.unselectedActionCount + 1);
+assert.equal(afterUnselected.unselectedActionHistory.length, beforeMismatch.unselectedActionHistory.length + 1);
+assert.equal(afterUnselected.learningUpdates, beforeMismatch.learningUpdates,
+  'unselected proposal must not count as a learning update');
+assert.deepEqual(afterUnselected.goals, beforeMismatch.goals,
+  'unselected proposal must not advance or revise the active goal');
+assert.deepEqual(afterUnselected.skills, beforeMismatch.skills,
+  'unselected proposal must not create or train action skills');
+assert.deepEqual(afterUnselected.outcomeHistory, beforeMismatch.outcomeHistory,
+  'unselected proposal must not enter rewarded outcome history');
+
 const snap=net.snapshot(); const restored=new B273AutonomousGoalLifecycle(); restored.restore(snap); assert.deepEqual(restored.snapshot(),snap,'B273 snapshot round-trip failed');
 console.log(JSON.stringify({pass:true,diagnostics:d,completed,revised,skills,current:net.current(),actionDiversity:new Set(diagnosticsActions(net)).size},null,2));
 function diagnosticsActions(n){return n.snapshot().outcomeHistory.map(x=>x.action).concat(n.current().plan);}
