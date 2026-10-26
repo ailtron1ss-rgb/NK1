@@ -1,3 +1,12 @@
+## WorkPass345 — проверена линия происхождения skill-кандидатов при durable restore (2026-10-26)
+
+- Адаптер атомарного файла теперь валидирует поля `revisionProvenance` (evaluation, source candidate/evidence, plan/dataset fingerprints, измерения и время) вместо принятия только внешнего массива кандидатов.
+- Идентификатор нового кандидата использует историческую 4-полевую форму, когда provenance отсутствует, и добавляет digest происхождения только если оно присутствует. Это устраняет рассогласование между producer и persistence validator.
+- Связанный regression из WorkPass344 покрывает рестарт и идентичность кандидата с provenance; неподписанные поля происхождения не дают полномочий на promotion.
+- `main` и ZIP-релиз не менялись.
+
+---
+
 ## WorkPass344 — исправлен CAS regression и добавлен durable provenance test (2026-10-26)
 
 - Исправлен false-negative в тесте: подмена выполняется в подписанном `approval.expectedActiveVersion`, не ломая раньше времени связь исторического rollback target.
