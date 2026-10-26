@@ -1043,6 +1043,32 @@ export class MemoryOS2{
    this.state.reconsolidations++;
    return structuredClone(m);
  }
+ /**
+  * Exact restoration for a failed higher-level transaction. Unlike updateSignals,
+  * this compensation may restore a previously higher authority/confidence value:
+  * it is not new evidence, it returns the row to its captured pre-transaction state.
+  */
+ restoreSignalsForCompensation(id:string,snapshot:MemoryItem2):boolean{
+  const key=String(id);
+  if(!snapshot||typeof snapshot!=='object'||snapshot.id!==key)return false;
+  const current=this.itemIndex.get(key);
+  if(!current)return false;
+  const before=estimateMemoryBytes(current);
+  const target=current as unknown as Record<string,unknown>;
+  const source=snapshot as unknown as Record<string,unknown>;
+  const fields=[
+   'salience','emotionalWeight','identityRelevance','goalRelevance','socialRelevance',
+   'predictionError','temperature01','confidence','sourceAuthority01','evidenceSources',
+   'evidenceLineageKeys','dormant','lastAccessAt','revisionHistory',
+  ];
+  for(const field of fields){
+   const value=source[field];
+   if(value===undefined)delete target[field];
+   else target[field]=structuredClone(value);
+  }
+  this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(current));
+  return true;
+ }
  get(id:string){const m=this.state.items.find(x=>x.id===id); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
  markDormant(id:string,dormant=true,reason='memory-economy'){return this.updateSignals(id,{dormant},reason);}
  forgetById(id:string,reason='memory-knockout'){
