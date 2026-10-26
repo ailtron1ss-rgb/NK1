@@ -4,9 +4,9 @@
   "project": "Neuro Kurisu / NK1",
   "sourceOfTruth": "https://github.com/ailtron1ss-rgb/NK1",
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
-  "sourceHeadAtSnapshot": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
+  "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Percentages describe each lane against the repository's stated goals; automated-validation percentages describe coverage and do not imply a pass on the current HEAD. This snapshot is anchored to source head 1755f129afc9e3eb953bdd96461e0a684b42f1a3; subsequent documentation-only commits do not change the scored code.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Percentages describe each lane against the repository's stated goals; automated-validation percentages describe coverage and do not imply a pass on the current HEAD. Scores in this snapshot are anchored to code/test head b6f4335b9bdb4bf150d86fc9db1a830fe3041626. All four named GitHub Actions suites passed on that exact head; subsequent progress/changelog documentation commits do not change the scored runtime/test code.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -130,12 +130,12 @@
       "id": "skill-evolution",
       "name": "Hermes-style рефлексия, кандидаты навыков и защищённое продвижение",
       "weightPercent": 10,
-      "implementationPercent": 81,
-      "automatedValidationPercent": 91,
+      "implementationPercent": 82,
+      "automatedValidationPercent": 92,
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "Family-aware evaluation and signed family promotion policy are now wired, but do not yet prove improved generalization on external held-out tasks",
+        "Family-aware evaluation and whole-run time-budget enforcement are implemented, but do not prove improved generalization on external held-out tasks",
         "Task-family labels must continue to be bound to the trusted manifest and verified execution evidence, not inferred from task IDs or candidate reports",
         "Need independently measured tool-use/transfer improvement and regression resistance before raising learning-effectiveness scores"
       ],
@@ -244,30 +244,30 @@
       {
         "name": "P26 Learning Validation",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935755",
-        "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
-        "scopeNote": "PASS on exact code head 1755f129afc9e3eb953bdd96461e0a684b42f1a3; TypeScript typecheck, learning input integrity, and the extended Hermes/SkillLearnBench familywise candidate gate passed."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251761024",
+        "testedHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
+        "scopeNote": "PASS on exact code head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; runtime TypeScript typecheck, learning input integrity and P26 learning regressions completed successfully."
       },
       {
         "name": "WorkPass108 paired evidence identity and verified promotion gate",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935759",
-        "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
-        "scopeNote": "PASS on exact code head 1755f129afc9e3eb953bdd96461e0a684b42f1a3; signed evidence identity/promotion contract passed with the family consistency check."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251761163",
+        "testedHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
+        "scopeNote": "PASS on exact code head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; authenticated paired-evidence identity and verified-promotion checks passed."
       },
       {
         "name": "WorkPass110 continual learning metrics",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935746",
-        "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
-        "scopeNote": "PASS on exact code head 1755f129afc9e3eb953bdd96461e0a684b42f1a3, including TypeScript runtime typecheck and the manifest-family report/run-binding tamper checks before VerifiedOutcomeLedger mutation."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251760828",
+        "testedHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
+        "scopeNote": "PASS on exact code head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; all 48 CI steps passed, including bounded independent evaluation timeout/cancellation regression, learning and promotion contracts, and runtime typecheck."
       },
       {
         "name": "Unified project integration suite",
         "status": "success",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40250935805",
-        "testedHead": "1755f129afc9e3eb953bdd96461e0a684b42f1a3",
-        "scopeNote": "PASS on exact code head 1755f129afc9e3eb953bdd96461e0a684b42f1a3. The progress-ledger step, pinned workspace install, app typecheck/build/tests, cognitive integration contracts, governed approval gateway E2E and unified runtime/research bridge smoke passed."
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40251760885",
+        "testedHead": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
+        "scopeNote": "PASS on exact code head b6f4335b9bdb4bf150d86fc9db1a830fe3041626; clean locked-workspace install, progress-ledger validation, app typecheck/build/tests, cognitive integration contracts, governed approval gateway E2E and unified runtime/research bridge smoke passed."
       }
     ]
   },
