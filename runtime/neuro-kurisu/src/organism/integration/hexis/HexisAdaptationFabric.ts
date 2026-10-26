@@ -117,7 +117,7 @@ export interface HexisHmxStage {
     /** Explicitly states whether operator acceptance can mutate canonical NK1 memory. */
     applicationMode: 'memory-merge' | 'preview-only';
     importResult?: {
-        status: 'pending' | 'applied' | 'partial' | 'skipped';
+        status: 'pending' | 'applied' | 'partial' | 'skipped' | 'uncertain';
         created: number;
         reused: number;
         skipped?: number;
@@ -613,17 +613,31 @@ export class HexisAdaptationFabric {
             (result.reason !== undefined && (typeof result.reason !== 'string' || result.reason.length > 240))) {
             return structuredClone(stage);
         }
-        const skipped = result.skipped ?? 0;
         const expectedSourceCount = stage.sectionCounts?.memories;
+        // A failed rollback is not a normal partial success: the canonical store
+        // may contain effects that the failed encoder did not return. In that
+        // case, retain only positively returned created/reused counts, derive
+        // the unaccounted source count, and persist a terminal 'uncertain'
+        // receipt. This prevents a second accept from replaying a batch whose
+        // first attempt may already have left side effects behind.
+        const uncertainRollback = result.status === 'partial' &&
+            result.reason === 'memory-encode-failed-rollback-incomplete';
+        const skipped = uncertainRollback &&
+            Number.isSafeInteger(expectedSourceCount) && expectedSourceCount >= 0
+            ? expectedSourceCount - result.created - result.reused
+            : result.skipped ?? 0;
+        const storedStatus = uncertainRollback ? 'uncertain' : result.status;
         if (!Number.isSafeInteger(expectedSourceCount) || expectedSourceCount < 0 ||
+            !Number.isSafeInteger(skipped) || skipped < 0 ||
             result.created + result.reused + skipped !== expectedSourceCount ||
-            (result.status === 'applied' && skipped !== 0) ||
-            (result.status === 'skipped' && (result.created !== 0 || result.reused !== 0)) ||
-            (result.status === 'partial' && (skipped === 0 || result.created + result.reused === 0))) {
+            (storedStatus === 'applied' && skipped !== 0) ||
+            (storedStatus === 'skipped' && (result.created !== 0 || result.reused !== 0)) ||
+            (storedStatus === 'partial' && (skipped === 0 || result.created + result.reused === 0)) ||
+            (storedStatus === 'uncertain' && (result.reason !== 'memory-encode-failed-rollback-incomplete' || expectedSourceCount === 0))) {
             return structuredClone(stage);
         }
         stage.importResult = {
-            status: result.status,
+            status: storedStatus,
             created: result.created,
             reused: result.reused,
             skipped,
