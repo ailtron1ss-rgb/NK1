@@ -202,4 +202,51 @@ assert.throws(() => kernel.beginDecisionCycle({
   plan: stage('pl'), action: stage('act'),
 }), /tick/);
 
-console.log('WorkPass349 canonical cognitive kernel: PASS');
+
+ // The shared event fabric must enforce the full stable-ID envelope, not only tick/stage/source.
+ const idempotencyFabric = new CognitiveEventFabric(256);
+ const canonicalEvent = {
+   id: 'cef:external:stable-1',
+   tick: 12,
+   at: 1200,
+   stage: 'tool-outcome',
+   source: 'action-gateway',
+   parentIds: ['decision-12', 'execution-12'],
+   external: true,
+   confidence01: 0.85,
+   payload: { ok: true, outcome: { status: 'executed' } },
+ };
+ const appendedEvent = idempotencyFabric.append(canonicalEvent);
+ const firstEnvelopeTotal = idempotencyFabric.snapshot().total;
+ const replayEvent = idempotencyFabric.append({
+   ...canonicalEvent,
+   payload: { outcome: { status: 'executed' }, ok: true },
+ });
+ assert.equal(replayEvent.id, appendedEvent.id, 'key-order-equivalent JSON is an idempotent replay');
+ assert.equal(idempotencyFabric.snapshot().total, firstEnvelopeTotal);
+
+ const conflictingEnvelopes = [
+   { ...canonicalEvent, payload: { ok: false, outcome: { status: 'executed' } } },
+   { ...canonicalEvent, parentIds: ['execution-12', 'decision-12'] },
+   { ...canonicalEvent, parentIds: ['decision-12'] },
+   { ...canonicalEvent, external: false },
+   { ...canonicalEvent, confidence01: 0.2 },
+   { ...canonicalEvent, at: 1201 },
+   { ...canonicalEvent, stage: 'tool-action' },
+   { ...canonicalEvent, source: 'different-source' },
+   { ...canonicalEvent, tick: 13 },
+ ];
+ for (const conflicting of conflictingEnvelopes) {
+   assert.throws(
+     () => idempotencyFabric.append(conflicting),
+     /cognitive-event-id-conflict/,
+     'reusing an event ID with different evidence or causal parents must fail closed',
+   );
+   assert.equal(idempotencyFabric.snapshot().total, firstEnvelopeTotal,
+     'conflicting event-ID replay must not mutate the shared ledger');
+ }
+ const originalEnvelope = idempotencyFabric.getById(canonicalEvent.id);
+ assert.deepEqual(originalEnvelope?.payload, canonicalEvent.payload);
+ assert.deepEqual(originalEnvelope?.parentIds, canonicalEvent.parentIds);
+
+console.log('WorkPass351 canonical cognitive kernel: PASS');
