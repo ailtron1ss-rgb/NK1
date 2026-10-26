@@ -1230,6 +1230,33 @@ assert(materializedGoal.project.reason?.includes('independent observations'),
   'materialized agency project must retain the reviewed Hexis goal description');
 assert.equal(goalPipelineSystems.agency.selfProjects.activeProjects().some(project => project.hexisProposalId === goalProposal.id), false,
   'a materialized proposal must not be auto-selected by ensureActiveProject');
+
+// Staged relationship content can be restored or edited after the goal proposal
+// has been reviewed. Activation must revalidate its source stage before changing
+// agency state or writing any semantic graph edge.
+const pristineGoalPipelineState = goalPipelineSystems.hexisAdaptation.snapshot();
+const tamperedGoalPipelineState = structuredClone(pristineGoalPipelineState);
+const tamperedRelationshipStage = tamperedGoalPipelineState.hmxStages.find(stage => stage.stagingId === goalProposal.stageId);
+assert(tamperedRelationshipStage);
+tamperedRelationshipStage.stagedSections.relationships[0].properties.weight = 0.99;
+goalPipelineSystems.hexisAdaptation.restore(tamperedGoalPipelineState);
+const graphBeforeTamperedActivation = goalPipelineSystems.memory.semanticMemory.snapshot();
+assert.throws(
+  () => goalPipelineSystems.activateHexisGoalProposal(goalProposal.id),
+  /hmx-stage-digest-invalid/,
+  'changed relationship payload must not be trusted merely because the goal was previously approved',
+);
+assert.equal(
+  goalPipelineSystems.agency.selfProjects.snapshot().projects.find(project => project.hexisProposalId === goalProposal.id)?.status,
+  'paused',
+  'invalid restored relationship data must be rejected before activating the project',
+);
+assert.deepEqual(goalPipelineSystems.memory.semanticMemory.snapshot(), graphBeforeTamperedActivation,
+  'invalid staged relationships must not create or reinforce graph edges');
+assert.equal(goalPipelineSystems.hexisAdaptation.getGoalProposal(goalProposal.id)?.goalRelationshipReceipt, undefined,
+  'invalid staged relationships must not yield an activation receipt');
+goalPipelineSystems.hexisAdaptation.restore(pristineGoalPipelineState);
+
 const goalGraphBeforeFault = goalPipelineSystems.memory.semanticMemory.snapshot();
 const originalGoalDecisionRecord = goalPipelineSystems.agency.deliberation.record.bind(goalPipelineSystems.agency.deliberation);
 goalPipelineSystems.agency.deliberation.record = () => { throw new Error('injected-goal-deliberation-failure'); };
