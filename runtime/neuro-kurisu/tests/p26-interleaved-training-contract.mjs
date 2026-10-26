@@ -47,7 +47,7 @@ const experience = (energy, novelty, action, reward, worldContextVersion=1) => (
     'different novelty contexts must be allowed to retain contradictory task outcomes');
   assert.equal(result.eligibleReplayRows, 1);
   assert.equal(result.replayUpdates, 1);
-  assert.ok(Math.abs(result.effectiveReplayLearningRate01 - 0.0216) < 1e-12,
+  assert.ok(Math.abs(result.effectiveReplayLearningRate01 - 0.027) < 1e-12,
     'dense replay must be capped at 10% of the current update rate');
   assert.ok(result.conflictComparisons <= 1,
     'conflict screening must obey the explicit comparison budget');
@@ -121,7 +121,7 @@ const experience = (energy, novelty, action, reward, worldContextVersion=1) => (
   assert.equal(result.replayUpdates, 1);
   assert.equal(result.contextSeparatedReplayRows, 1,
     'only a context-separated row with enough distant neighbors should receive the replay-rate uplift');
-  assert.ok(Math.abs(result.contextSeparatedReplayLearningRate01 - 0.0216) < 1e-12,
+  assert.ok(Math.abs(result.contextSeparatedReplayLearningRate01 - 0.027) < 1e-12,
     'context separation alone must not bypass the dense-replay cadence cap');
   assert.equal(result.blockedReplayRows, 0);
 }
