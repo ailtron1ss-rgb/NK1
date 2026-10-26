@@ -1014,6 +1014,7 @@ signalRollbackRuntime.fabric.updateSignals(
 );
 const signalSnapshot = memory => ({
   confidence: memory.confidence,
+  epistemicStatus: memory.epistemicStatus,
   sourceAuthority01: memory.sourceAuthority01,
   evidenceSources: memory.evidenceSources === undefined ? undefined : structuredClone(memory.evidenceSources),
   evidenceLineageKeys: memory.evidenceLineageKeys === undefined ? undefined : [...memory.evidenceLineageKeys],
@@ -1033,7 +1034,7 @@ const failedSignalStage = signalRollbackHexis.stageHmx({
         ref: failedSignalExportId + ':memory-existing',
         type: 'semantic',
         content: signalRollbackContent,
-        status: 'active',
+        status: 'archived',
         trust_level: 0.45,
       },
       {
@@ -1059,7 +1060,9 @@ const restoredSignalMemory = signalRollbackRuntime.fabric.canonicalSnapshot().it
 );
 assert(restoredSignalMemory, 'the previously persisted memory must remain present after compensation');
 assert.deepEqual(signalSnapshot(restoredSignalMemory), beforeSignalRollback,
-  'failed downstream projection must restore confidence, authority, evidence trail, access state, and revision history');
+  'failed downstream projection must restore status, confidence, authority, evidence trail, access state, and revision history');
+assert.equal(restoredSignalMemory.epistemicStatus, beforeSignalRollback.epistemicStatus,
+  'combined status demotion and authority capping must roll back in one operation');
 assert.equal(
   signalRollbackRuntime.fabric.canonicalSnapshot().items.some(item => item.content === 'This second row forces temporal projection after trust reconciliation.'),
   false,

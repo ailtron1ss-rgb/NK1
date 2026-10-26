@@ -61,7 +61,7 @@ residencyTier?: MemoryResidencyTier;
 }
 export type MemorySignalRollbackSnapshot = Pick<MemoryItem2,
   'confidence' | 'sourceAuthority01' | 'evidenceSources' | 'evidenceLineageKeys' |
-  'lastAccessAt' | 'temperature01' | 'revisionHistory'
+  'epistemicStatus' | 'lastAccessAt' | 'temperature01' | 'revisionHistory'
 >;
 
 export type MemoryQueryIntent='episodic'|'procedural'|'identity'|'goal'|'causal'|'factual'|'general';
@@ -1026,12 +1026,20 @@ export class MemoryOS2{
    sourceAuthority01:m.sourceAuthority01,
    evidenceSources:m.evidenceSources,
    evidenceLineageKeys:m.evidenceLineageKeys,
+   epistemicStatus:m.epistemicStatus,
+   lastAccessAt:m.lastAccessAt,
+   temperature01:m.temperature01,
+   revisionHistory:m.revisionHistory,
   };
   const expectedCore={
    confidence:expectedCurrent.confidence,
    sourceAuthority01:expectedCurrent.sourceAuthority01,
    evidenceSources:expectedCurrent.evidenceSources,
    evidenceLineageKeys:expectedCurrent.evidenceLineageKeys,
+   epistemicStatus:expectedCurrent.epistemicStatus,
+   lastAccessAt:expectedCurrent.lastAccessAt,
+   temperature01:expectedCurrent.temperature01,
+   revisionHistory:expectedCurrent.revisionHistory,
   };
   if(JSON.stringify(currentCore)!==JSON.stringify(expectedCore)) {
    throw new Error('memory-signal-compensation-conflict');
@@ -1039,6 +1047,7 @@ export class MemoryOS2{
 
   const before=estimateMemoryBytes(m);
   m.confidence=snapshot.confidence;
+  m.epistemicStatus=snapshot.epistemicStatus;
   if(snapshot.sourceAuthority01===undefined)delete m.sourceAuthority01;
   else m.sourceAuthority01=snapshot.sourceAuthority01;
   if(snapshot.evidenceSources===undefined)delete m.evidenceSources;

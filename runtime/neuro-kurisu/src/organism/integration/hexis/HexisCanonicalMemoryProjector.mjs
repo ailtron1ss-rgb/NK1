@@ -138,6 +138,7 @@ const normalizeHmxMemoryStatus = value => {
 const epistemicStatusRank = status => ({ belief: 0, hypothesis: 1, unknown: 2, quarantined: 3 }[status] ?? 2);
 const signalRollbackSnapshot = memory => ({
   confidence: memory.confidence,
+  epistemicStatus: memory.epistemicStatus,
   sourceAuthority01: memory.sourceAuthority01,
   evidenceSources: memory.evidenceSources === undefined ? undefined : structuredClone(memory.evidenceSources),
   evidenceLineageKeys: memory.evidenceLineageKeys === undefined ? undefined : [...memory.evidenceLineageKeys],
@@ -382,7 +383,31 @@ export class HexisCanonicalMemoryProjector {
             importedIds.push(duplicate.id);
             const currentStatus = normalizeHmxMemoryStatus(duplicate.epistemicStatus);
             const targetStatus = epistemicStatusRank(currentStatus) >= epistemicStatusRank(epistemicStatus) ? currentStatus : epistemicStatus;
-            if (String(duplicate.epistemicStatus) !== targetStatus) {
+            const changesStatus = String(duplicate.epistemicStatus) !== targetStatus;
+
+            // Compute all trust predicates before the first mutation. A shared token
+            // will restore the complete transaction-start status + signals snapshot.
+            const trustValue = row.trust_level ?? row.trustLevel ?? row.provenance?.confidence;
+            const sourceTrustClaim = Number.isFinite(Number(trustValue)) ? clamp01(Number(trustValue)) : 0.45;
+            const incomingAuthorityCap = Math.min(sourceTrustClaim, MAX_IMPORTED_EXTERNAL_CONFIDENCE);
+            const priorConfidence = clamp01(duplicate.confidence ?? 0.45);
+            const priorAuthority = clamp01(duplicate.sourceAuthority01 ?? duplicate.confidence ?? 0.45);
+            const hasOverCapHmxEvidence = Array.isArray(duplicate.evidenceSources) && duplicate.evidenceSources.some(
+              evidence => evidence.provenanceClass === 'external' &&
+                String(evidence.source ?? '').startsWith('hexis:') &&
+                clamp01(evidence.sourceAuthority01) > incomingAuthorityCap,
+            );
+            const changesTrustSignals = priorConfidence > incomingAuthorityCap ||
+              priorAuthority > incomingAuthorityCap || hasOverCapHmxEvidence;
+            const compensationToken = changesStatus || changesTrustSignals
+              ? this.memoryFabric.beginSignalCompensation(duplicate.id)
+              : null;
+            const previousSignals = signalRollbackSnapshot(duplicate);
+            if ((changesStatus || changesTrustSignals) && !compensationToken) {
+              throw new Error('hmx-signal-compensation-target-missing:' + duplicate.id);
+            }
+
+            if (changesStatus) {
               revisedStatuses.push({ id: duplicate.id, previousStatus: duplicate.epistemicStatus });
               this.memoryFabric.revise(
                 duplicate.id,
@@ -394,22 +419,8 @@ export class HexisCanonicalMemoryProjector {
             if (targetStatus === 'quarantined' || targetStatus === 'unknown') this.removeSemanticProjection(graphSourceKey);
             else this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
 
-            // Existing state may predate this importer's confidence cap. Reconcile it
-            // downward on replay, including its external HMX evidence trail; never raise
-            // canonical trust from an upstream claim.
-            const trustValue = row.trust_level ?? row.trustLevel ?? row.provenance?.confidence;
-            const sourceTrustClaim = Number.isFinite(Number(trustValue)) ? clamp01(Number(trustValue)) : 0.45;
-            const incomingAuthorityCap = Math.min(sourceTrustClaim, MAX_IMPORTED_EXTERNAL_CONFIDENCE);
-            const priorConfidence = clamp01(duplicate.confidence ?? 0.45);
-            const priorAuthority = clamp01(duplicate.sourceAuthority01 ?? duplicate.confidence ?? 0.45);
-            const hasOverCapHmxEvidence = Array.isArray(duplicate.evidenceSources) && duplicate.evidenceSources.some(
-              evidence => evidence.provenanceClass === 'external' &&
-                String(evidence.source ?? '').startsWith('hexis:') &&
-                clamp01(evidence.sourceAuthority01) > incomingAuthorityCap,
-            );
-            if (priorConfidence > incomingAuthorityCap || priorAuthority > incomingAuthorityCap || hasOverCapHmxEvidence) {
-              const previousSignals = signalRollbackSnapshot(duplicate);
-              const compensation = this.memoryFabric.updateSignalsWithCompensation(
+            if (changesTrustSignals) {
+              const cappedMemory = this.memoryFabric.updateSignals(
                 duplicate.id,
                 {
                   confidence: Math.min(priorConfidence, incomingAuthorityCap),
@@ -421,13 +432,17 @@ export class HexisCanonicalMemoryProjector {
                 'hexis-import-authority-cap',
                 { commandId: 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48) },
               );
-              if (!compensation?.item || !compensation.compensationToken) {
-                throw new Error('hmx-import-authority-cap-memory-missing:' + duplicate.id);
+              if (!cappedMemory) throw new Error('hmx-import-authority-cap-memory-missing:' + duplicate.id);
+            }
+
+            if (compensationToken) {
+              if (!this.memoryFabric.refreshSignalCompensation(compensationToken)) {
+                throw new Error('hmx-signal-compensation-refresh-failed:' + duplicate.id);
               }
               revisedSignals.push({
                 id: duplicate.id,
                 previous: previousSignals,
-                compensationToken: compensation.compensationToken,
+                compensationToken,
               });
             }
           }
@@ -630,6 +645,25 @@ export class HexisCanonicalMemoryProjector {
       // Status reconciliation may touch an existing canonical memory before a later
       // projection/ledger operation fails. Restore those prior statuses as well as
       // deleting newly-created rows; never leave a failed import half-applied.
+      for (const revision of [...revisedSignals].reverse()) {
+        try {
+          this.memoryFabric.restoreSignalsForCompensation(
+            revision.compensationToken,
+            'hexis-hmx-apply-signal-rollback',
+            {
+              commandId: 'hexis-signal-rollback:' + hash(
+                String(stage.stagingId) + ':' + revision.id + ':' + attempt,
+              ).slice(0, 48),
+            },
+          );
+          const restored = (this.memoryFabric.canonicalSnapshot().items ?? []).find(item => item.id === revision.id);
+          if (!sameSignalRollbackSnapshot(restored, revision.previous)) {
+            rollbackErrors.push('signal-restore-unconfirmed:' + revision.id);
+          }
+        } catch (signalRollbackError) {
+          rollbackErrors.push('signal-restore:' + String(signalRollbackError?.message ?? signalRollbackError).slice(0, 220));
+        }
+      }
       for (const revision of [...revisedStatuses].reverse()) {
         try {
           const current = (this.memoryFabric.canonicalSnapshot().items ?? []).find(item => item.id === revision.id);
@@ -655,25 +689,6 @@ export class HexisCanonicalMemoryProjector {
       }
       // Restore trust/certainty metadata changed on pre-existing duplicate rows.
       // The expected-current guard fails closed rather than overwriting later changes.
-      for (const revision of [...revisedSignals].reverse()) {
-        try {
-          this.memoryFabric.restoreSignalsForCompensation(
-            revision.compensationToken,
-            'hexis-hmx-apply-signal-rollback',
-            {
-              commandId: 'hexis-signal-rollback:' + hash(
-                String(stage.stagingId) + ':' + revision.id + ':' + attempt,
-              ).slice(0, 48),
-            },
-          );
-          const restored = (this.memoryFabric.canonicalSnapshot().items ?? []).find(item => item.id === revision.id);
-          if (!sameSignalRollbackSnapshot(restored, revision.previous)) {
-            rollbackErrors.push('signal-restore-unconfirmed:' + revision.id);
-          }
-        } catch (signalRollbackError) {
-          rollbackErrors.push('signal-restore:' + String(signalRollbackError?.message ?? signalRollbackError).slice(0, 220));
-        }
-      }
       if (this.semanticGraph && semanticGraphBefore) {
         try {
           this.semanticGraph.restore(semanticGraphBefore);

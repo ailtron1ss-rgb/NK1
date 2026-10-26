@@ -51,6 +51,7 @@ export class MemoryLifecycleCommandRecoveryRequiredError extends Error {
 function memorySignalRollbackSnapshot(item:MemoryItem2):MemorySignalRollbackSnapshot {
   return {
     confidence:item.confidence,
+    epistemicStatus:item.epistemicStatus,
     sourceAuthority01:item.sourceAuthority01,
     evidenceSources:item.evidenceSources===undefined?undefined:structuredClone(item.evidenceSources),
     evidenceLineageKeys:item.evidenceLineageKeys===undefined?undefined:[...item.evidenceLineageKeys],
@@ -640,33 +641,51 @@ export class MemoryFabric {
     return this.applyLifecycleCommand({action:'revise-content',id,newContent,options,...context}) as MemoryItem2|null;
   }
 
-  /**
-   * Apply a signal update while capturing an internal, one-time rollback capability.
-   * The caller receives no prior snapshot, only a token that can undo this update.
-   */
+  /** Begin a one-time rollback capability before the first mutation of a memory. */
+  beginSignalCompensation(id:string):string|null {
+    const before=this.findCanonical(id);
+    if(!before)return null;
+    const token=randomUUID();
+    const snapshot=memorySignalRollbackSnapshot(before);
+    this.signalCompensations.set(token,{memoryId:id,snapshot,expectedCurrent:snapshot});
+    while(this.signalCompensations.size>512){
+      const oldest=this.signalCompensations.keys().next().value as string|undefined;
+      if(oldest===undefined)break;
+      this.signalCompensations.delete(oldest);
+    }
+    return token;
+  }
+
+  /** Refresh the sealed post-state after all mutations in the surrounding transaction. */
+  refreshSignalCompensation(compensationToken:string):boolean {
+    const compensation=this.signalCompensations.get(compensationToken);
+    if(!compensation)return false;
+    const current=this.findCanonical(compensation.memoryId);
+    if(!current)return false;
+    compensation.expectedCurrent=memorySignalRollbackSnapshot(current);
+    return true;
+  }
+
+  /** Convenience wrapper for one signal mutation with a bounded rollback capability. */
   updateSignalsWithCompensation(
     id:string,
     patch:Parameters<MemoryOS2['updateSignals']>[1],
     reason:string,
     context:{tick?:number;commandId?:string}={},
   ) {
-    const before=this.findCanonical(id);
-    if(!before)return null;
-    const snapshot=memorySignalRollbackSnapshot(before);
-    const item=this.updateSignals(id,patch,reason,context);
-    if(!item)return null;
-    const compensationToken=randomUUID();
-    this.signalCompensations.set(compensationToken,{
-      memoryId:id,
-      snapshot,
-      expectedCurrent:memorySignalRollbackSnapshot(item),
-    });
-    while(this.signalCompensations.size>512){
-      const oldest=this.signalCompensations.keys().next().value as string|undefined;
-      if(oldest===undefined)break;
-      this.signalCompensations.delete(oldest);
+    const compensationToken=this.beginSignalCompensation(id);
+    if(!compensationToken)return null;
+    try {
+      const item=this.updateSignals(id,patch,reason,context);
+      if(!item || !this.refreshSignalCompensation(compensationToken)) {
+        this.commitSignalCompensation(compensationToken);
+        return null;
+      }
+      return {item,compensationToken};
+    } catch(error) {
+      this.commitSignalCompensation(compensationToken);
+      throw error;
     }
-    return {item,compensationToken};
   }
 
   /** Consume a one-time capability issued by updateSignalsWithCompensation(). */

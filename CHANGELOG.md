@@ -2620,3 +2620,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DIAGNOSTICS] Expose only the count of outstanding signal-compensation tokens in MemoryFabric inspection, not their snapshots or identifiers.
 - [REGRESSION] Assert both failed-import compensation and successful trust reconciliation leave zero pending rollback tokens.
 - [VALIDATION] Source-level contract checks pass; runtime/typecheck remains unvalidated because GitHub Actions jobs still exit before runner assignment and execute zero steps.
+
+## [NK1][Hexis] WorkPass433 — capture full HMX rollback state before status changes (2026-10-26)
+
+- [FIX] Capture a duplicate-memory rollback capability before either status reconciliation or trust capping. Refresh its expected-current seal only after both updates, so a single compensation restores the transaction-start status and signal snapshot.
+- [ROLLBACK] Restore the combined token before the legacy status-only compensation loop; this preserves the original revision history rather than recording an incomplete rollback sequence.
+- [REGRESSION] The temporal-ledger failure fixture now archives an existing memory while lowering its trust and inserting another row; assert exact restoration including epistemic status and revision history.
+- [VALIDATION] Source-level assertions only. Runtime/typecheck is still unverified because current GitHub Actions jobs terminate before runner assignment with `runner_id=0` and `steps=[]`.
