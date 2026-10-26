@@ -1,3 +1,10 @@
+## [NK1][Hexis-H2] Authenticate staged HMX imports and execute Hexis CI gates — 2026-10-26
+
+- Recompute the HMX staging digest immediately before accepting an import. If protected sections, conflict records, section counts, or staged payload content changed since validation, the stage is irreversibly rejected with an auditable `digest-mismatch` conflict.
+- Added a regression that mutates a staged snapshot after its digest is recorded, restores the snapshot, and verifies that acceptance fails closed.
+- Wired the Hexis evidence-lineage test, adaptation regression, and live API smoke test into `repository-wiring-audit.yml`; added the audit branch to workflow filters so this PR's checks are eligible to run.
+- **Validation status:** focused workflows on the previous PR head reported successes, but those runs did not execute the new Hexis-specific test step. The current head must be checked after the workflow change; WorkPass110 remains a separate known failure in signed rollback approval.
+
 ## [NK1][Hexis-H1] Canonical evidence lineage and belief projection — 2026-10-26
 
 - Connected Hexis evidence revisions to MemoryOS2's existing independent-source lineage. Each source is recorded once in the canonical memory record; replay already present in canonical lineage becomes a non-applied audit event before confidence or trust can change.
