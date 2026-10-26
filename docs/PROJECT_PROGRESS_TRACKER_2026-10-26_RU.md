@@ -1,6 +1,6 @@
 ## WorkPass393 — каноническая привязка Hexis review и восстановление после рестарта (2026-10-26)
 
-- **Код/тесты до tracker-коммита:** `1d0b208d2d74e27d51997d8f53a7b191873eb0f3` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`, поверх актуального на тот момент integration head `b25b6b572f4f0366fd3b23f795763e921bf84f7f`.
+- **Код/тесты до tracker-коммита:** `1d173f20975e2832517d4eebc5ff382f89d144f7` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`, поверх актуального на тот момент integration head `b25b6b572f4f0366fd3b23f795763e921bf84f7f`.
 - В каноническом bridge общий digest используется при ingress, создании review и проверке решения. Перед одобрением payload повторно проходит strict adapter и сверяется с точной записью MemoryOS2 по evidence ID, digest, stance, source kind/reference, label, author, note, confidence, timestamp и protected-memory flag.
 - Для старых pending reviews с `observedAtOrigin=server-receipt` сохранена ограниченная совместимость со старым raw digest. Она разрешена только при совпадении полной канонической записи и служебной метки; изменение любого evidence-поля по-прежнему отклоняется.
 - Регрессии: шесть tampering-сценариев; старый receipt-time digest; smoke сверяет результат с сохранённой confidence без предположения, что значение обязано расти у policy ceiling; отдельный процессный restart smoke проверяет восстановление точного pending review из прежнего `STATE_DIR` перед одобрением.
