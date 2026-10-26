@@ -127,7 +127,11 @@ export class CognitiveEventFabric {
   private total=0;
   private readonly receiptProjectionIndex=new Map<string,ToolReceiptProjectionIndexEntry>();
 
-  constructor(capacity=512){this.capacity=Math.max(128,Math.min(4096,Math.floor(capacity)));}
+  constructor(capacity=512){
+    // A non-finite config must not disable eviction by making capacity NaN.
+    const requestedCapacity=Number.isFinite(capacity)?Math.floor(capacity):512;
+    this.capacity=Math.max(128,Math.min(4096,requestedCapacity));
+  }
 
   restore(raw?:Partial<CognitiveEventFabricSnapshot>|null):void{
     const recentRows=Array.isArray(raw?.recent)?raw!.recent:[];
@@ -193,7 +197,9 @@ export class CognitiveEventFabric {
     if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
     if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
 
-    const normalizedTick=Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0));
+    if(!Number.isSafeInteger(input.tick)||input.tick<0) throw new RangeError('cognitive-event-tick-must-be-a-non-negative-safe-integer');
+    if(input.at!==undefined&&(!Number.isFinite(input.at)||input.at<0)) throw new RangeError('cognitive-event-timestamp-must-be-a-finite-non-negative-number');
+    const normalizedTick=input.tick;
     const normalizedSource=typeof input.source==='string'&&input.source.trim()?input.source.trim().slice(0,120):'unknown';
     if(input.parentIds!==undefined&&!Array.isArray(input.parentIds)) throw new TypeError('cognitive-event-parent-ids-must-be-array');
     if(Array.isArray(input.parentIds)&&input.parentIds.some(parent=>typeof parent!=='string')) throw new TypeError('cognitive-event-parent-ids-must-be-strings');
