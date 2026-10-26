@@ -1,3 +1,12 @@
+## WorkPass386 — preserve idempotency for legacy Hexis evidence retries (2026-10-26)
+
+- Code commit: `287f312aa982863f10f60cfd6a42db69dd8d97d1`.
+- The HTTP smoke exposed a real legacy-route defect: when `observedAt` was omitted, every retry synthesized a new timestamp while reusing the same evidence ID, causing an unchanged request to conflict.
+- The route now resolves the already stored canonical evidence timestamp for that memory/evidence ID and reuses it on retry; first ingress still receives the server receipt time, and explicitly supplied timestamps remain unchanged.
+- Exact-head typecheck and integration validation pending. `main` and canonical Release ZIP untouched.
+
+---
+
 ## WorkPass385 — deterministic Hexis smoke cleanup (2026-10-26)
 
 - Test commit: `a9f741deb4cece36459f121f9064cf6cf99069d0`.
