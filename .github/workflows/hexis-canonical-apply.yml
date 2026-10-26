@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - workpass70-source
+      - work/nk1-big-pass-373-cross-ledger-rollback-2026-10-26
     paths:
       - '.github/workflows/hexis-canonical-apply.yml'
       - 'runtime/neuro-kurisu/package.json'
