@@ -445,8 +445,8 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
   return [{at,from:row.from as EpistemicStatus,to:row.to as EpistemicStatus,reason:String(row.reason??'').slice(0,240)}];
  });
 }
-type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'> & Partial<Pick<MemoryItem2,'revisionHistory'>>;
-const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
+type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'> & Partial<Pick<MemoryItem2,'revisionHistory'|'evidenceRecords'|'evidenceLineageFilter'>>;
+const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,er:m.evidenceRecords,ef:m.evidenceLineageFilter,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
 export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
