@@ -167,6 +167,24 @@ const isPlainRecord=(value:unknown):value is Record<string,unknown>=>{
   return prototype===Object.prototype||prototype===null;
 };
 
+const isPersistedText=(value:unknown,max=512):value is string=>
+  typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&
+  !Array.from(value).some(character=>{
+    const code=character.charCodeAt(0);
+    return code<=0x1f||code===0x7f||(code>=0x80&&code<=0x9f);
+  });
+const isPersistedCounter=(value:unknown):value is number=>
+  typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+const isPersistedUnit=(value:unknown):value is number=>
+  typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const persistedCounter=(value:unknown,fallback:number):number=>
+  isPersistedCounter(value)?value:fallback;
+const persistedTime=(value:unknown,fallback:number):number=>
+  isPersistedCounter(value)?value:fallback;
+const isPersistedAction=(value:unknown):value is ActionKind=>
+  typeof value==='string'&&ACTIONS.includes(value as ActionKind);
+
+
 function sanitizeIdList(value:unknown,limit:number):string[]{
   if(!Array.isArray(value))return [];
   const result:string[]=[],seen=new Set<string>();
