@@ -442,6 +442,38 @@ export class CanonicalCognitiveKernel {
     // Check monotonicity and counter capacity before adding any completion event.
     // An exhausted persisted counter must not leave outcome/learning events behind.
     this.unifiedCycle.assertCanAdvance(tick);
+
+    // A supplied anchor is a claim about the causal parent of this completion.
+    // If that event is still retained, its tick and stage must agree with the
+    // claim. Missing events are allowed for late feedback after retention eviction;
+    // the lineage verifier will mark that completion incomplete rather than invent
+    // evidence. Reusing one ID for multiple stages is always ambiguous.
+    const anchorStages=[
+      ['observation',input.anchors.observation],
+      ['prediction',input.anchors.prediction],
+      ['appraisal',input.anchors.appraisal],
+      ['attention',input.anchors.attention],
+      ['memory',input.anchors.memory],
+      ['goal',input.anchors.goal],
+      ['plan',input.anchors.plan],
+      ['action',input.anchors.action],
+    ] as const;
+    const seenAnchorIds=new Set<string>();
+    for(const [stage,anchorId] of anchorStages) {
+      if(anchorId===undefined)continue;
+      if(typeof anchorId!=='string'||!anchorId.trim()) {
+        throw new TypeError(`canonical-cognitive-kernel-anchor-${stage}-must-be-a-non-empty-string`);
+      }
+      if(seenAnchorIds.has(anchorId)) {
+        throw new Error('canonical-cognitive-kernel-anchor-provenance-conflict');
+      }
+      seenAnchorIds.add(anchorId);
+      const retained=this.eventFabric.getById(anchorId);
+      if(retained && (retained.tick!==tick||retained.stage!==stage)) {
+        throw new Error('canonical-cognitive-kernel-anchor-provenance-conflict');
+      }
+    }
+
     const outcomeEvent=this.appendPreparedStage(tick,prepared[0]!.stage,prepared[0]!.eventInput);
     const learningEvent=this.appendPreparedStage(tick,prepared[1]!.stage,prepared[1]!.eventInput);
     const selfUpdateEvent=this.appendPreparedStage(tick,prepared[2]!.stage,prepared[2]!.eventInput);
