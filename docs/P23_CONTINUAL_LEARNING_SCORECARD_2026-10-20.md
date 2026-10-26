@@ -1,3 +1,14 @@
+## WorkPass335 pre-validation note (2026-10-26)
+
+- **Scores intentionally unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
+- **Runtime change:** the exported independent-evaluation ledger commit boundary now validates every run binding at runtime before the first ledger mutation. Malformed run IDs and invalid safety counters must be rejected before any rows can be written.
+- **Regression added:** the second binding uses numeric `runId: 42` with a recomputed plain JSON fingerprint; the commit must reject with `independent-evaluation-ledger-unbound-run` and leave `acceptedOutcomes` at zero.
+- **Validation status:** latest code/test head `ed7ea06eb9d6b66c5d71dbf2fbe1f01c9cf1f745` is newer than the last verified CI snapshot `b6f4335b9bdb4bf150d86fc9db1a830fe3041626`. The GitHub Actions connector has not returned new exact-head runs for WorkPass335, so this change is implemented but validation-pending. Do not interpret the older four passing workflow runs as testing this new commit.
+- **Why no uplift:** stronger commit-boundary validation prevents malformed evidence from partially entering the ledger; it does not measure better task performance, transfer, retention, or independent self-development.
+- Details: [WorkPass335 checkpoint](WORKPASS335_LEDGER_PREFLIGHT_ATOMICITY_RU.md) and [weighted project tracker](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.md).
+
+---
+
 ## WorkPass334 score update (2026-10-26)
 
 - **Learning-effectiveness scores intentionally unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**. The new wall-clock budget improves boundedness, not measured task performance.
