@@ -173,7 +173,7 @@ export function HexisControlConsole() {
   };
 
   const acceptHmx = async () => {
-    const result = await run("Accept staged HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"));
+    const result = await run("Accept staged HMX", () => neuroApi.hexisHmxDecide(stageId, "accept", true));
     const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
     if (stage) {
       setHmxStage(stage);
@@ -193,7 +193,7 @@ export function HexisControlConsole() {
   };
 
   const applyHmx = async () => {
-    const result = await run("Apply canonical HMX", () => neuroApi.hexisHmxDecide(stageId, "apply"));
+    const result = await run("Apply canonical HMX", () => neuroApi.hexisHmxDecide(stageId, "apply", true));
     const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
     if (stage) {
       setHmxStage(stage);
