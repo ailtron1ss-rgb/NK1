@@ -37,6 +37,58 @@ export const defaultP26TrueLearning=():P26TrueLearningState=>({
 
 export interface BodyExtras { external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number; }
 
+export interface P26InterleavedExperience {
+  state: OrganismState;
+  action: ActionKind;
+  reward: number;
+  nextState: OrganismState;
+  surprise?: number;
+}
+
+export interface P26InterleavedOptions {
+  /** Run one rehearsal attempt after each N newly observed samples. */
+  replayEveryNCurrent?: number;
+  /** Maximum number of historical rows considered in one call, including rejected conflicts. */
+  maxReplayUpdates?: number;
+  /** Use raw task feedback for controlled diagnostics or a one-step TD target for live-style learning. */
+  targetMode?: 'reward' | 'td';
+  currentLearningRate01?: number;
+  replayLearningRate01?: number;
+  /** Upper bound on old/current context comparisons for one historical row. */
+  conflictCandidateCap?: number;
+}
+
+export interface P26InterleavedReport {
+  onlineUpdates: number;
+  replayUpdates: number;
+  blockedReplayRows: number;
+  eligibleReplayRows: number;
+  conflictComparisons: number;
+  conflictCandidateCap: number;
+  meanOnlineLoss01: number;
+  meanReplayLoss01: number;
+}
+
+function assertFiniteExperienceState(state: OrganismState, label: string): void {
+  if (!state || typeof state !== 'object' || !state.needs || typeof state.needs !== 'object') {
+    throw new TypeError(`${label}-state-must-have-needs`);
+  }
+  const needs = state.needs as unknown as Record<string, unknown>;
+  for (const key of ['energy', 'cognitiveLoad', 'uncertainty', 'novelty', 'goalPressure', 'socialNeed', 'identityCoherence']) {
+    if (typeof needs[key] !== 'number' || !Number.isFinite(needs[key] as number)) {
+      throw new TypeError(`${label}-state-need-${key}-must-be-finite`);
+    }
+  }
+  for (const [key, value] of [
+    ['predictionError', state.predictionError],
+    ['attentionBudget', state.attentionBudget],
+  ] as const) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new TypeError(`${label}-state-${key}-must-be-finite`);
+    }
+  }
+}
+
 export class P26TrueLearningEngine{
   readonly learner=new ParametricPolicyLearner();
   private state=defaultP26TrueLearning();
@@ -115,6 +167,171 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
+  /**
+   * Interleave current learning with bounded replay from prior tasks.
+   *
+   * Replay is screened against the current batch in a coarse state-context grid:
+   * same-action examples that have near-identical energy/novelty but contradictory
+   * targets are withheld, preserving plasticity when the same observable context
+   * receives a different label. Distinct contexts remain eligible for rehearsal.
+   * The comparison budget is hard-bounded per replay candidate.
+   */
+  trainInterleaved(
+    current: P26InterleavedExperience[],
+    replayRows: P26InterleavedExperience[],
+    options: P26InterleavedOptions = {},
+    extras?: BodyExtras,
+  ): P26InterleavedReport {
+    if (!Array.isArray(current) || !Array.isArray(replayRows)) {
+      throw new TypeError('interleaved-batches-must-be-arrays');
+    }
+    const replayEveryNCurrent = options.replayEveryNCurrent ?? 16;
+    const maxReplayUpdates = options.maxReplayUpdates ?? Math.min(64, replayRows.length);
+    const conflictCandidateCap = options.conflictCandidateCap ?? 64;
+    const targetMode = options.targetMode ?? 'td';
+    const currentLearningRate01 = options.currentLearningRate01 ?? .06;
+    const replayLearningRate01 = options.replayLearningRate01 ?? .035;
+    if (!Number.isSafeInteger(replayEveryNCurrent) || replayEveryNCurrent < 1 || replayEveryNCurrent > 100000) {
+      throw new RangeError('interleaved-replay-interval-invalid');
+    }
+    if (!Number.isSafeInteger(maxReplayUpdates) || maxReplayUpdates < 0 || maxReplayUpdates > 100000) {
+      throw new RangeError('interleaved-replay-budget-invalid');
+    }
+    if (!Number.isSafeInteger(conflictCandidateCap) || conflictCandidateCap < 8 || conflictCandidateCap > 128) {
+      throw new RangeError('interleaved-conflict-candidate-cap-invalid');
+    }
+    if (targetMode !== 'reward' && targetMode !== 'td') {
+      throw new TypeError('interleaved-target-mode-invalid');
+    }
+    for (const [label, rate] of [['current', currentLearningRate01], ['replay', replayLearningRate01]] as const) {
+      if (typeof rate !== 'number' || !Number.isFinite(rate) || rate < 0 || rate > 1) {
+        throw new RangeError(`interleaved-${label}-learning-rate-invalid`);
+      }
+    }
+
+    // Preflight both streams before mutation. A malformed historical sample must
+    // not cause a partial current-task update, and vice versa.
+    const validateRows = (rows: P26InterleavedExperience[], label: string) => rows.map((row, index) => {
+      if (!row || typeof row !== 'object' || !ACTIONS.includes(row.action)) {
+        throw new TypeError(`${label}-row-${index}-invalid-action`);
+      }
+      if (typeof row.reward !== 'number' || !Number.isFinite(row.reward) ||
+          (row.surprise !== undefined && (typeof row.surprise !== 'number' || !Number.isFinite(row.surprise)))) {
+        throw new TypeError(`${label}-row-${index}-feedback-must-be-finite`);
+      }
+      assertFiniteExperienceState(row.state, `${label}-row-${index}-current`);
+      assertFiniteExperienceState(row.nextState, `${label}-row-${index}-next`);
+      return { ...row };
+    });
+    const fresh = validateRows(current, 'current');
+    const historical = validateRows(replayRows, 'replay');
+
+    const targetFor = (row: P26InterleavedExperience): number => {
+      if (targetMode === 'reward') return clamp(row.reward);
+      const next = Math.max(...this.learner.predict(row.nextState, extras).map(value => value.value), .5);
+      return clamp(row.reward + .78 * next);
+    };
+    // Fix target labels before changing weights. This keeps conflict detection
+    // independent of the order in which online updates happen.
+    const currentTargets = fresh.map(targetFor);
+    const replayTargets = historical.map(targetFor);
+
+    const energyWidth = .125;
+    const noveltyWidth = .25;
+    const energyBin = (row: P26InterleavedExperience) =>
+      Math.floor(clamp(row.state.needs.energy) / energyWidth);
+    const noveltyBin = (row: P26InterleavedExperience) =>
+      Math.floor(clamp(row.state.needs.novelty) / noveltyWidth);
+    const bucketKey = (row: P26InterleavedExperience) =>
+      `${row.action}|${energyBin(row)}|${noveltyBin(row)}`;
+    const currentBuckets = new Map<string, Array<{ row: P26InterleavedExperience; target: number }>>();
+    fresh.forEach((row, index) => {
+      const key = bucketKey(row);
+      const bucket = currentBuckets.get(key) ?? [];
+      // Keep the index bounded even if a producer supplies a highly repetitive batch.
+      if (bucket.length < conflictCandidateCap) bucket.push({ row, target: currentTargets[index] });
+      else {
+        const replacementIndex = index % conflictCandidateCap;
+        bucket[replacementIndex] = { row, target: currentTargets[index] };
+      }
+      currentBuckets.set(key, bucket);
+    });
+
+    const isContradictoryContext = (
+      replayRow: P26InterleavedExperience,
+      replayTarget: number,
+    ): { conflict: boolean; comparisons: number } => {
+      const e = energyBin(replayRow);
+      const n = noveltyBin(replayRow);
+      let comparisons = 0;
+      for (let de = -1; de <= 1; de++) {
+        for (let dn = -1; dn <= 1; dn++) {
+          const bucket = currentBuckets.get(`${replayRow.action}|${e + de}|${n + dn}`) ?? [];
+          for (const candidate of bucket) {
+            if (comparisons >= conflictCandidateCap) return { conflict: false, comparisons };
+            comparisons++;
+            const sameContext =
+              Math.abs(clamp(candidate.row.state.needs.energy) - clamp(replayRow.state.needs.energy)) <= .14 &&
+              Math.abs(clamp(candidate.row.state.needs.novelty) - clamp(replayRow.state.needs.novelty)) <= .28;
+            const conflictingTarget = Math.abs(candidate.target - replayTarget) >= .30;
+            if (sameContext && conflictingTarget) return { conflict: true, comparisons };
+          }
+        }
+      }
+      return { conflict: false, comparisons };
+    };
+
+    let onlineUpdates = 0, replayUpdates = 0, blockedReplayRows = 0, eligibleReplayRows = 0;
+    let conflictComparisons = 0, onlineLoss = 0, replayLoss = 0, replayAttempts = 0, replayCursor = 0;
+    const replayBudget = Math.min(maxReplayUpdates, historical.length);
+    for (let index = 0; index < fresh.length; index++) {
+      const row = fresh[index];
+      const online = this.learner.train({
+        state: row.state, action: row.action, target01: currentTargets[index],
+        learningRate01: currentLearningRate01, extras,
+      });
+      onlineUpdates++;
+      onlineLoss += online.loss01;
+
+      if (!historical.length || replayAttempts >= replayBudget ||
+          (index + 1) % replayEveryNCurrent !== 0) continue;
+
+      const replayIndex = replayCursor % historical.length;
+      replayCursor++;
+      replayAttempts++;
+      const replayRow = historical[replayIndex];
+      const decision = isContradictoryContext(replayRow, replayTargets[replayIndex]);
+      conflictComparisons += decision.comparisons;
+      if (decision.conflict) {
+        blockedReplayRows++;
+        continue;
+      }
+      eligibleReplayRows++;
+      const rehearsed = this.learner.train({
+        state: replayRow.state, action: replayRow.action, target01: replayTargets[replayIndex],
+        learningRate01: replayLearningRate01, sampleWeight01: .75,
+        extras,
+      });
+      replayUpdates++;
+      replayLoss += rehearsed.loss01;
+    }
+
+    this.state.metrics.outcomeSamples += onlineUpdates;
+    this.state.metrics.onlineUpdates += onlineUpdates;
+    this.state.metrics.replayUpdates += replayUpdates;
+    const totalLoss = onlineUpdates + replayUpdates;
+    this.state.metrics.recentLoss01 = clamp(totalLoss ? (onlineLoss + replayLoss) / totalLoss : 0);
+    this.state.metrics.trainingExposure01 = clamp(Math.min(1, this.learner.snapshot().updates / 160));
+    if (totalLoss > 0) this.state.metrics.lastUpdatedAt = Date.now();
+    this.sync();
+    return {
+      onlineUpdates, replayUpdates, blockedReplayRows, eligibleReplayRows,
+      conflictComparisons, conflictCandidateCap,
+      meanOnlineLoss01: onlineUpdates ? onlineLoss / onlineUpdates : 0,
+      meanReplayLoss01: replayUpdates ? replayLoss / replayUpdates : 0,
+    };
+  }
+
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
     if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};
