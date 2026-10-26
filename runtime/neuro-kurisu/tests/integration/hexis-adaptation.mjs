@@ -574,6 +574,58 @@ assert.equal(rollbackHexisFabric.snapshot().temporal.length, 2,
   'successful retry must materialize temporal assertions once');
 
 
+// Fault injection after MemoryFabric has committed a canonical memory but before
+// the projector receives its ID. This catches a partial-write window that a pre-write
+// failure does not exercise: rollback must reconcile against the baseline snapshot.
+const postWriteRollbackRuntime = new MemorySubsystemRuntime();
+const realPostWriteEncode = postWriteRollbackRuntime.fabric.encode.bind(postWriteRollbackRuntime.fabric);
+let injectAfterCanonicalWrite = true;
+const postWriteRollbackFabric = {
+  canonicalSnapshot: (...args) => postWriteRollbackRuntime.fabric.canonicalSnapshot(...args),
+  encode: (input, options) => {
+    const inserted = realPostWriteEncode(input, options);
+    if (injectAfterCanonicalWrite) {
+      injectAfterCanonicalWrite = false;
+      throw new Error('injected-hmx-after-canonical-write');
+    }
+    return inserted;
+  },
+  forgetById: (...args) => postWriteRollbackRuntime.fabric.forgetById(...args),
+};
+const postWriteRollbackHexis = new HexisAdaptationFabric();
+const postWriteRollbackProjector = new HexisCanonicalMemoryProjector(
+  postWriteRollbackFabric,
+  postWriteRollbackRuntime.semanticMemory,
+  postWriteRollbackHexis,
+);
+postWriteRollbackHexis.bindCanonicalMemoryApply(candidate => postWriteRollbackProjector.apply(candidate));
+const postWriteRollbackStage = postWriteRollbackHexis.stageHmx({
+  document: normalizedNk1Export, intent: 'port', strategy: 'additive',
+});
+assert.deepEqual(postWriteRollbackStage.conflicts, []);
+assert.equal(postWriteRollbackHexis.decideHmx(postWriteRollbackStage.stagingId, 'accept')?.status, 'accepted');
+assert.throws(
+  () => postWriteRollbackHexis.decideHmx(postWriteRollbackStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed/,
+);
+assert.equal(postWriteRollbackHexis.getHmxStage(postWriteRollbackStage.stagingId)?.status, 'accepted');
+assert.equal(
+  postWriteRollbackRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length,
+  0,
+  'a write committed just before an adapter exception must be discovered and compensated',
+);
+assert.equal(postWriteRollbackRuntime.semanticMemory.snapshot().nodes.length, 0);
+assert.equal(postWriteRollbackHexis.snapshot().temporal.length, 0);
+const postWriteRetry = postWriteRollbackHexis.decideHmx(postWriteRollbackStage.stagingId, 'apply');
+assert.equal(postWriteRetry?.status, 'applied', 'a reconciled failure must remain safely retryable');
+assert.equal(postWriteRetry?.application?.attempt, 2);
+assert.equal(
+  postWriteRollbackRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length,
+  2,
+  'retry must commit exactly the intended imported memory set',
+);
+assert.equal(postWriteRollbackHexis.snapshot().temporal.length, 2);
+
 // Fault injection after canonical writes: belief-state failure must roll back both
 // memory/graph writes and the temporal + belief ledgers as one HMX apply transaction.
 const beliefRollbackRuntime = new MemorySubsystemRuntime();
