@@ -150,6 +150,7 @@ function isSpeechActive(now) {
 function publishIntent(now, sampledPose = null) {
   const body = latestPresentation?.body ?? {
     gazeX: 0, gazeY: 0, gazeDriven: false, headTilt: 0,
+    headAngleX: 0, headAngleY: 0, bodyAngleX: 0, bodyAngleY: 0, bodyAngleZ: 0, breathIntensity: 0.35,
     expressionIntensity: 0.35, gesture: false, motionGroup: 'Idle', motionIndex: 0, voiceEmphasis: 0,
   };
   const phase = currentSpeechPhase(now);
@@ -188,6 +189,12 @@ function publishIntent(now, sampledPose = null) {
     },
     body: {
       headTilt: Math.max(-0.15, Math.min(0.15, Number(body.headTilt) || 0)),
+      headAngleX: Math.max(-1, Math.min(1, Number(body.headAngleX) || 0)),
+      headAngleY: Math.max(-1, Math.min(1, Number(body.headAngleY) || 0)),
+      bodyAngleX: Math.max(-1, Math.min(1, Number(body.bodyAngleX) || 0)),
+      bodyAngleY: Math.max(-1, Math.min(1, Number(body.bodyAngleY) || 0)),
+      bodyAngleZ: Math.max(-1, Math.min(1, Number(body.bodyAngleZ) || 0)),
+      breathIntensity: Math.max(0, Math.min(1, Number(body.breathIntensity ?? 0.35) || 0)),
       gesture: active || Boolean(body.gesture),
       motionGroup,
       motionIndex,
