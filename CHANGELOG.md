@@ -1,6 +1,7 @@
 # WorkPass368 — atomic, non-coercive ActionGateway ledger restore (2026-10-26)
 
 - [FIXED] Validate root schema and own data descriptors before reading persisted execution receipts or approval state; present unsupported versions and malformed present fields now fail before mutation.
+- [FIXED] Require the durable `records` array even for legacy snapshots without an explicit version; a truncated `{}`/`{version:1}` snapshot can no longer clear the in-memory idempotency ledger.
 - [FIXED] Reject malformed execution identity rows rather than silently dropping an idempotency key that may correspond to a side effect already accepted by a provider.
 - [HARDENED] Clone completed response data with bounded depth/node/array budgets, plain-object/data-descriptor checks, cycle rejection and no getter invocation. Opaque response data becomes a durable completed tombstone, not a replayable success.
 - [ATOMICITY] Build the next receipt map and sanitized approval state locally; commit both only after validation and expiration processing succeeds.
