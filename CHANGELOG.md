@@ -1,3 +1,14 @@
+## NK1 WorkPass106 — independent head/body pose channels for the 2.5D body (2026-10-26)
+
+- Added shared `runtime/neuro-kurisu/public/embodiment-pose.mjs`: bounded action/emotion/arousal → head orientation, torso orientation and breathing intensity. Both React and standalone runtime use the same semantic mapping.
+- Extended `EmbodimentIntent v1` additively with optional `headAngleX/Y`, `bodyAngleX/Y/Z` and `breathIntensity`; old v1 payloads still have a fallback.
+- Wired both Live2D viewers to separate eye gaze from head rotation and apply `ParamBodyAngleX/Y/Z` plus animated `ParamBreath`. These IDs are present in the current Kurisu model's CDI3 parameter catalog.
+- Added pose-policy, bounds, protocol-schema and dual-viewer integrity assertions. Expanded the full production specification at [NEURO_KURISU_2P5D_BODY_PRODUCTION_SPEC_RU.md](docs/NEURO_KURISU_2P5D_BODY_PRODUCTION_SPEC_RU.md).
+- Validation status: source and regression changes are committed, but exact branch-head execution has not yet been confirmed in this entry; no new CI pass or device-level result is claimed.
+- Scope boundary: this pass improves the existing Live2D full-body rig. A newly authored layered PSD/Cubism project and true 3D `.blend/.glb` model remain production gates, as do visual calibration, licence/provenance review, physical audio and Android/Termux testing.
+
+---
+
 ## NK1 WorkPass105 — align runtime viseme labels with normalized speech text (2026-10-25)
 
 - Fixed a UTF-16 offset mismatch in the standalone avatar speech timeline: its frame times were built after CR/LF/tab normalization, while the displayed grapheme labels were sliced from the unnormalized source. Real line breaks could therefore label a viseme with the wrong character.
