@@ -2838,28 +2838,41 @@ export class OrganismCore {
         };
         context?: string;
     }) {
+        if (!input || typeof input !== 'object' || !input.evidence ||
+            typeof input.evidence !== 'object' || Array.isArray(input.evidence))
+            return { ok: false, error: 'canonical-evidence-envelope-required', memoryId: String(input?.memoryId ?? '') };
         const memory = this.memorySubsystem.memoryOS.get(String(input.memoryId));
         if (!memory)
             return { ok: false, error: 'memory-not-found', memoryId: String(input.memoryId) };
         if (input.stance !== 'supports' && input.stance !== 'contradicts')
             return { ok: false, error: 'invalid-evidence-stance', memoryId: memory.id };
-        const sourceRef = typeof input.evidence.ref === 'string' && input.evidence.ref.trim()
-            ? input.evidence.ref
-            : input.evidence.contentHash;
+
+        const rawRef = input.evidence.ref;
+        const contentHash = input.evidence.contentHash;
+        const label = input.evidence.label;
+        const rawNote = input.evidence.note;
+        if ((rawRef !== undefined && typeof rawRef !== 'string') ||
+            (contentHash !== undefined && typeof contentHash !== 'string') ||
+            (label !== undefined && typeof label !== 'string') ||
+            (rawNote !== undefined && typeof rawNote !== 'string') ||
+            (input.context !== undefined && typeof input.context !== 'string'))
+            return { ok: false, error: 'invalid-legacy-evidence-text', memoryId: memory.id };
+        const sourceRef = typeof rawRef === 'string' && rawRef.trim() ? rawRef : contentHash;
         if (typeof sourceRef !== 'string' || !sourceRef.trim())
             return { ok: false, error: 'canonical-evidence-source-reference-required', memoryId: memory.id };
+
         const evidenceConfidence = input.evidence.trust01 ?? 0.5;
         if (typeof evidenceConfidence !== 'number' || !Number.isFinite(evidenceConfidence) ||
             evidenceConfidence < 0 || evidenceConfidence > 1)
             return { ok: false, error: 'invalid-evidence-confidence', memoryId: memory.id };
 
-        const note = input.evidence.note ?? input.context;
+        const note = rawNote ?? input.context;
         const identity = JSON.stringify([
             memory.id,
             input.stance,
-            input.evidence.ref ?? null,
-            input.evidence.contentHash ?? null,
-            input.evidence.label ?? null,
+            rawRef ?? null,
+            contentHash ?? null,
+            label ?? null,
             evidenceConfidence,
             note ?? null,
         ]);
@@ -2871,7 +2884,7 @@ export class OrganismCore {
             source: {
                 kind: 'legacy-hexis-belief-revise',
                 ref: sourceRef,
-                ...(input.evidence.label === undefined ? {} : { label: input.evidence.label }),
+                ...(label === undefined ? {} : { label }),
             },
             observedAt: new Date().toISOString(),
             observedAtOrigin: 'server-receipt',
@@ -2887,7 +2900,6 @@ export class OrganismCore {
             memory: this.memorySubsystem.memoryOS.get(memory.id),
         };
     }
-
     /** Temporal views delegate to MemoryOS2; Hexis temporal rows remain audit/export projections only. */
     hexisTemporalAt(memoryId: string, at: number) {
         const memory = this.memorySubsystem.memoryOS.temporalAt(String(memoryId), Number(at));
