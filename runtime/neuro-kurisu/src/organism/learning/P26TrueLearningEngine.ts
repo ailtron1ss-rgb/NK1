@@ -93,26 +93,6 @@ const boundedText=(value:unknown,maxLength:number):value is string=>
     return code<32||(code>=127&&code<=159);
   });
 
-const greatestCommonDivisor=(left:number,right:number):number=>{
-  let a=Math.abs(Math.trunc(left)),b=Math.abs(Math.trunc(right));
-  while(b!==0){const remainder=a%b;a=b;b=remainder;}
-  return a;
-};
-
-/**
- * Pick a deterministic full-cycle stride so replay does not stay paired with
- * the same current-row index when both batches have the same ordering/length.
- */
-const interleavedReplayStride=(length:number):number=>{
-  if(length<=1)return 1;
-  let stride=Math.max(1,Math.floor(length*0.61803398875));
-  while(greatestCommonDivisor(stride,length)!==1){
-    stride+=1;
-    if(stride>=length)stride=1;
-  }
-  return stride;
-};
-
 export class P26TrueLearningEngine{
   readonly learner=new ParametricPolicyLearner();
   private state=defaultP26TrueLearning();
@@ -353,13 +333,7 @@ export class P26TrueLearningEngine{
     const conflictCandidateCap=Math.max(8,Math.min(128,rawCap));
     const current=this.prepareInterleavedRows(currentRows,'current');
     const replay=this.prepareInterleavedRows(replayRows,'replay');
-    if(current.length===0)return {onlineUpdates:0,replayUpdates:0,blockedReplayRows:0,eligibleReplayRows:0,conflictComparisons:0,conflictCandidateCap,meanLoss01:0};
-    const replayStride=interleavedReplayStride(replay.length);
-    // Rotate the permutation between successful batches. Metrics are already
-    // canonical and persisted, so no second scheduler state is required.
-    const replayOffset=Math.floor(this.state.metrics.onlineUpdates/current.length)%Math.max(1,replay.length);
-
-    // Both sets are fully validated before the model is touched. A runtime failure
+    if(current.length===0)return {onlineUpdates:0,replayUpdates:0,blockedReplayRows:0,eligibleReplayRows:0,conflictComparisons:0,conflictCandidateCap,meanLoss01:0};    // Both sets are fully validated before the model is touched. A runtime failure
     // still rolls back learner weights/counters and learning metrics as one operation.
     this.sync();
     const modelBefore=this.learner.snapshot();
@@ -379,7 +353,7 @@ export class P26TrueLearningEngine{
         // final gradient in each scheduled slot. This prevents stride=1 replay from
         // systematically overwriting the just-processed current-task update.
         if(replay.length&&maxReplay>0&&(i+1)%replayEvery===0&&replayUpdates<maxReplay){
-          const candidateIndex=(replayOffset+i*replayStride)%replay.length;
+          const candidateIndex=i%replay.length;
           const candidate=replay[candidateIndex];
           const startIndex=candidateIndex%current.length;
           let conflict=false;
@@ -405,7 +379,12 @@ export class P26TrueLearningEngine{
             if(!frozen)replayUpdates++;
           }
         }
-        trainOne(current[i],currentRate);
+        // Replay adds extra SGD steps between fresh observations. Compensate
+        // the current-example rate by the replay updates actually applied per
+        // current row so high replay pressure does not starve new-task plasticity.
+        const replayPressure=replayUpdates/Math.max(1,i+1);
+        const effectiveCurrentRate=Math.min(.30,currentRate+replayRate*replayPressure);
+        trainOne(current[i],effectiveCurrentRate);
         if(!frozen)onlineUpdates++;
       }
       this.state.metrics.onlineUpdates+=onlineUpdates;
