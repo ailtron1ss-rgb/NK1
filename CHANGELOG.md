@@ -1,3 +1,13 @@
+## WorkPass357 — prevent getter execution in restored parent lineage arrays (2026-10-26)
+
+- **Defect:** snapshot restore validated parent-array elements with property descriptors but read `parentIds.length` directly twice. A proxy `get` trap could execute and report a forged length, silently dropping causal parent links or running attacker-controlled code during restore.
+- **Fix:** add a bounded `readNestedDataArray()` that verifies the native array prototype, reads length through its own data descriptor, checks dense canonical slots and extra-key shape, and returns descriptor values. Parent lineage validation consumes only the resulting safe array.
+- **Regression:** `runtime/neuro-kurisu/tests/cognitive-event-parent-proxy-restore.mjs` supplies a proxy that reports length zero and throws on direct slot reads; restore must not invoke either get trap and must preserve the true parent. An uninspectable proxy is skipped without reserving its event ID, allowing a later valid duplicate to recover.
+- **Integration:** new test is wired into `test:cognitive-integration-suite`.
+- **Validation:** code/test checkpoint `810f60f2227db466dd1f96b1e3edf39741951f9d`; exact-head CI pending. Scores unchanged.
+
+---
+
 ## WorkPass356 — strict tool receipt ingress (2026-10-26)
 
 - **Defect:** the public CEF receipt/revision/observation methods read caller fields directly and could execute getters. Revision/external-observation ingress also coerced values to strings/booleans, truncated identifiers and clamped confidence, allowing malformed evidence to alias a valid identity.
