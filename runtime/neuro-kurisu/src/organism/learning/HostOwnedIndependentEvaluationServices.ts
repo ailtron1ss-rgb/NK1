@@ -11,7 +11,7 @@ import type {
   IndependentCandidateTask,
   IndependentCandidateEvaluationConfig,
 } from './IndependentSkillCandidateEvaluator.ts';
-import { runLearningProcess } from './LearningProcessSupervisor.ts';
+import { isForbiddenLearningEnvironmentKey, runLearningProcess } from './LearningProcessSupervisor.ts';
 
 export interface HostOwnedAuthorityCommand {
   /** Absolute path to a host-owned executable. No shell is ever used. */
@@ -50,10 +50,6 @@ export interface HostOwnedIndependentEvaluationServices {
 
 const nonEmpty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 const digest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
-const forbiddenInheritedEnvironmentKey = (key: string): boolean =>
-  /^(?:NODE_OPTIONS|NODE_PATH|LD_PRELOAD|LD_LIBRARY_PATH|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH|PYTHONPATH|PYTHONHOME|RUBYOPT|PERL5OPT|BASH_ENV|ENV|AWS_PROFILE|AWS_SHARED_CREDENTIALS_FILE|AWS_CONFIG_FILE|GIT_CONFIG_GLOBAL|NPM_CONFIG_USERCONFIG)$/i.test(key) ||
-  /(?:TOKEN|SECRET|PASSWORD|PASSWD|PRIVATE_KEY|API_KEY|ACCESS_KEY|CREDENTIAL|AUTH|COOKIE|SESSION|DATABASE_URL|USERCONFIG)$/i.test(key);
-
 export interface HostOwnedStorageRootIdentity {
   path: string;
   identity: string;
@@ -91,6 +87,9 @@ function validateCommand(command: HostOwnedAuthorityCommand, name: string): void
     if (!/^[A-Z_][A-Z0-9_]*$/i.test(key) || typeof value !== 'string') {
       throw new Error('host-owned-' + name + '-environment-invalid');
     }
+    if (isForbiddenLearningEnvironmentKey(key)) {
+      throw new Error('host-owned-' + name + '-environment-not-allowed');
+    }
   }
   const inherited = command.inheritEnv ?? [];
   if (new Set(inherited).size !== inherited.length) {
@@ -98,7 +97,7 @@ function validateCommand(command: HostOwnedAuthorityCommand, name: string): void
   }
   for (const key of inherited) {
     if (!/^[A-Z_][A-Z0-9_]*$/i.test(key)) throw new Error('host-owned-' + name + '-inherited-environment-invalid');
-    if (forbiddenInheritedEnvironmentKey(key)) {
+    if (isForbiddenLearningEnvironmentKey(key)) {
       throw new Error('host-owned-' + name + '-inherited-environment-not-allowed');
     }
   }
