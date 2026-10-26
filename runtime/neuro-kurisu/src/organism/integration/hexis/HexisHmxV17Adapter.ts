@@ -282,7 +282,7 @@ function describeSection(section: string, value: unknown, exportId: string, issu
         }
         const declaredKind = typeof metadata.nk1_kind === 'string'
           ? metadata.nk1_kind.trim().toLowerCase()
-          : row.type.trim().toLowerCase();
+          : typeof row.type === 'string' ? row.type.trim().toLowerCase() : '';
         if (PROTECTED_MEMORY_KINDS.has(declaredKind) ||
             row.protected === true || row.protectedBelief === true ||
             metadata.protected === true || metadata.nk1_protected === true ||
