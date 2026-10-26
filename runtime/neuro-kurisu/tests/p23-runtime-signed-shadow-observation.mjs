@@ -77,8 +77,10 @@ try {
     return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
   };
   const payloadFingerprint = createHash('sha256').update(canonical(skill)).digest('hex');
+  // Candidate identity includes revision provenance; this fixture stages without a revision,
+  // so the canonical identity tuple must include an explicit null for that slot.
   const expectedCandidateId = createHash('sha256')
-    .update(JSON.stringify([skill.id, 1, proposal.proposalId, payloadFingerprint]))
+    .update(JSON.stringify([skill.id, 1, proposal.proposalId, payloadFingerprint, null]))
     .digest('hex');
   const runtimeVersion = 'nk1-e2e-runtime-145';
   const stateFile = path.join(root, 'organism.json');
