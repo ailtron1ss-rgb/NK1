@@ -1,3 +1,10 @@
+## [NK1][Hexis] Fail closed on restored connector-policy counters (2026-10-26)
+
+- Reject malformed persisted connector policies instead of coercing invalid counters to `NaN`/infinity; duplicate policy IDs are quarantined by omission so revocation and matching remain unambiguous.
+- Validate live policy grants for bounded identifiers, contexts, targets, rate limits, windows and expiries before adding any policy to the active state.
+- Add regressions proving a `NaN` rate counter cannot bypass limits after restore, invalid live limits are rejected, and valid restored limits still work.
+- Validation status: source and regression committed; exact-head runtime/typecheck execution is not yet confirmed.
+
 ## [NK1][Hexis] WorkPass425 — retire stale projections on source-content correction (2026-10-26)
 
 - [CONSISTENCY] A changed HMX record with the same source lineage and stable reference now quarantines prior canonical versions without deleting history, and removes their stale semantic-graph and belief-mirror projections before accepting the correction.
