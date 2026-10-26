@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "hexis-h1-memory-evidence-lineage-2026-10-26",
   "sourceHeadAtSnapshot": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores and the historical 13-row CI snapshot remain anchored to code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. WorkPass343–344 passed exact-head Unified integration on a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593), WorkPass345 passed on 216d79086bfac2dd5f25e2c995fe6b5a44b61476 (run #40279847281), and WorkPass346 passed on exact code/test head 63137b842d8954436526106756fb39f3b2f8c150 (run #40280885928). The initial WP346 attempt on 330dc7632839822225cfff0620fe9cdd390acdc4 failed only at a static source-contract regex that did not allow explanatory comments inside catch; that matcher was corrected before the passing run. These recovery changes do not establish independent task-success, transfer or retention uplift, so weighted estimates and the 57/100 learning engineering score remain unchanged. New Hexis H1 evidence-lineage pass: source/test head 56d204e9941f549784ee29ec454d88ee1c5f83e7; repository wiring plus Hexis/HMX/live-API regression passed in run #40293320723; WorkPass110 and P26 were still pending/in progress at the time of the snapshot. The learning score and lane estimates were deliberately not raised because no independent task-success/retention/transfer uplift was measured.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores and the historical 13-row CI snapshot remain anchored to code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f. WorkPass343–344 passed exact-head Unified integration on a5aafc5274f44974aadf52e155213e12200cc4da (run #40279636593), WorkPass345 passed on 216d79086bfac2dd5f25e2c995fe6b5a44b61476 (run #40279847281), and WorkPass346 passed on exact code/test head 63137b842d8954436526106756fb39f3b2f8c150 (run #40280885928). The initial WP346 attempt on 330dc7632839822225cfff0620fe9cdd390acdc4 failed only at a static source-contract regex that did not allow explanatory comments inside catch; that matcher was corrected before the passing run. These recovery changes do not establish independent task-success, transfer or retention uplift, so weighted estimates and the 57/100 learning engineering score remain unchanged. New Hexis H1 evidence-lineage pass: source/test head 56d204e9941f549784ee29ec454d88ee1c5f83e7; repository wiring plus Hexis/HMX/live-API regression passed in run #40293320723; the P26 runtime typecheck subsequently passed on the same exact head; WorkPass110 remained pending/queued at the latest status refresh. The learning score and lane estimates were deliberately not raised because no independent task-success/retention/transfer uplift was measured.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -373,7 +373,7 @@
       "runtime/neuro-kurisu/tests/integration/hexis-memory-evidence-lineage.mjs — malformed/duplicate belief restore, 140 lineage rollover, replay after restore, lazy filter allocation, corrupt-filter fail-closed",
       "runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs — current rollback(candidateId, approval) signature; test-only rollback verifier explicitly injected"
     ],
-    "validationStatus": "PARTIAL: Repository wiring audit and its Hexis evidence-lineage/HMX/live-API step PASS on exact code/test head 56d204e9941f549784ee29ec454d88ee1c5f83e7 (run #40293320723). WorkPass108, WorkPass105, WorkPass102, WorkPass99, WorkPass291, WorkPass292, WorkPass293 and WorkPass294 also PASS on the same exact head. P26 runtime typecheck and WorkPass110 continual-learning validation are pending/in progress at snapshot time; do not call the full PR green yet.",
+    "validationStatus": "PARTIAL: Repository wiring audit and its Hexis evidence-lineage/HMX/live-API regression PASS on exact code/test head 56d204e9941f549784ee29ec454d88ee1c5f83e7 (run #40293320723); runtime TypeScript typecheck PASS on the same head (P26 run #40293320991); WorkPass108, WorkPass105, WorkPass102, WorkPass99, WorkPass291, WorkPass292, WorkPass293 and WorkPass294 also PASS on that exact head. WorkPass110 continual-learning validation remains pending/queued, so do not call the full PR green yet.",
     "testedHeadSha": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
     "workflowRuns": [
       40293320723,
@@ -499,7 +499,7 @@
     }
   ],
   "currentPassCiSnapshot": {
-    "observedAt": "2026-10-26T08:35:28Z",
+    "observedAt": "2026-10-26",
     "sourceBranch": "hexis-h1-memory-evidence-lineage-2026-10-26",
     "sourceHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
     "statusSemantics": "Only runs whose head_sha equals sourceHead are listed here. Historical ciSnapshot above remains anchored to its own older tested head.",
@@ -570,17 +570,20 @@
       {
         "name": "P26 Learning Validation (runtime typecheck)",
         "runId": 40293320991,
-        "status": "in_progress",
+        "status": "success",
         "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320991"
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320991",
+        "scopeNote": "P26 Learning Validation completed successfully on the exact code/test head; runtime TypeScript typecheck passed."
       },
       {
         "name": "WorkPass110 continual learning metrics",
         "runId": 40293320948,
         "status": "pending",
         "testedHead": "56d204e9941f549784ee29ec454d88ee1c5f83e7",
-        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320948"
+        "runUrl": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293320948",
+        "scopeNote": "Workflow was still pending/queued on the exact code/test head at this status refresh; no success claimed."
       }
-    ]
+    ],
+    "statusCheckedAt": "2026-10-26T08:37:22.045Z"
   }
 }
