@@ -713,7 +713,10 @@ const goalPipelineStage = goalPipelineSystems.hexisAdaptation.stageHmx({
   document: makeHmxDocument(goalExportId, {
     memories: [{ ref: goalMemoryRef, type: 'semantic', content: 'Imported evidence for the reviewed NK1 goal.', importance: 0.72 }],
     goals: [{ ref: goalRef, title: 'Validate a reviewed Hexis goal', description: 'Use imported evidence, then confirm progress with independent observations.' }],
-    relationships: [{ source_ref: goalMemoryRef, target_ref: goalRef, edge_type: 'supports', properties: { weight: 0.78 } }],
+    relationships: [
+      { source_ref: goalMemoryRef, target_ref: goalRef, edge_type: 'supports', properties: { weight: 0.78 } },
+      { source_ref: goalMemoryRef, target_ref: goalRef, edge_type: 'supports', properties: { weight: 0.78 } },
+    ],
   }),
   intent: 'port',
   strategy: 'additive',
@@ -744,7 +747,8 @@ const activatedGoal = goalPipelineSystems.activateHexisGoalProposal(goalProposal
 assert.equal(activatedGoal.proposal.status, 'materialized');
 assert.equal(activatedGoal.project.status, 'active');
 assert.equal(activatedGoal.receipt.sourceStageFound, true);
-assert.equal(activatedGoal.receipt.candidateRelationships, 1);
+assert.equal(activatedGoal.receipt.candidateRelationships, 1,
+  'identical duplicate source relationships collapse into one candidate edge');
 assert.equal(activatedGoal.receipt.projected, 1);
 assert.equal(activatedGoal.receipt.deferred, 0);
 assert.equal(activatedGoal.receipt.semanticEdgeIds.length, 1);
@@ -756,6 +760,8 @@ const replayedActivation = goalPipelineSystems.activateHexisGoalProposal(goalPro
 assert.equal(replayedActivation.receipt.semanticEdgeIds[0], activatedGoal.receipt.semanticEdgeIds[0]);
 assert.equal(goalPipelineSystems.memory.semanticMemory.snapshot().edges.length, goalEdgeCountAfterActivation,
   'goal activation replay must not re-project or reinforce its relationship edges');
+assert.equal(goalPipelineSystems.memory.semanticMemory.snapshot().edges.find(edge => edge.id === activatedGoal.receipt.semanticEdgeIds[0])?.weight, 0.78,
+  'a duplicate HMX relationship row must not raise the projected edge weight');
 const rejectedGoalExportId = 'exp_9999999999999998';
 const rejectedGoalStage = goalPipelineSystems.hexisAdaptation.stageHmx({
   document: makeHmxDocument(rejectedGoalExportId, { goals: [{ ref: rejectedGoalExportId + ':rejected', title: 'Never activate this rejected goal' }] }),
