@@ -13,18 +13,18 @@
 
 ## Что исправлено
 
-1. **Полная предварительная подготовка этапов.** Kernel нормализует все этапы в отдельные записи и до первой мутации сверяет каждый стабильный ID с уже существующей записью. Конфликт на любом этапе отклоняется до добавления новых событий.
+1. **Полная предварительная подготовка этапов.** Kernel сначала нормализует payload каждого этапа в отсоединённый JSON-совместимый объект, затем вычисляет fingerprints и сверяет все стабильные ID до первой мутации. Циклические/non-serializable payloads и конфликты любого этапа отклоняются до добавления новых событий.
 2. **Упорядоченное завершение.** Если `tick < UnifiedCognitiveCycle.lastTick`, код больше не добавляет свежую обратную связь без возможности учесть её в монотонном реестре. Запоздавшее завершение принимается как replay только если все три события уже существуют и совпадают с ожидаемыми по каноническому fingerprint.
 3. **Идемпотентность прошлых завершений.** Повтор точно завершённого более раннего тика возвращает уже записанные события и вычисляемое по сохранённой причинной линии состояние завершения; новые события и счётчики не добавляются.
 4. **Чёткая граница восстановления.** В `CognitiveEventFabric` добавлен `getById()`, возвращающий отсоединённую копию события. Kernel использует его для read-only preflight; поиск ограничен текущим retention window event fabric.
-5. **Регрессии в существующем тесте.** Добавлены сценарии: точный replay tick 1 после закрытия более позднего tick 3; отклонение незавершённого старого tick 2 без создания любых трёх completion-событий; конфликт позднего этапа `plan` без частичной записи observation/prediction и других ранних этапов.
+5. **Регрессии в существующем тесте.** Добавлены сценарии: точный replay tick 1 после закрытия более позднего tick 3; отклонение незавершённого старого tick 2 без создания любых трёх completion-событий; конфликт позднего этапа `plan` без частичной записи observation/prediction и других ранних этапов; циклический payload, который должен завершить preflight ошибкой до записи первого события.
 
 ## Изменённые файлы
 
-- `runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts` — [8fb73f7](https://github.com/ailtron1ss-rgb/NK1/commit/8fb73f7f5b5b773d3b7a36986d3fa4a74e929432) и последующее уточнение [5416cb3](https://github.com/ailtron1ss-rgb/NK1/commit/5416cb3d187d19abd544d9051cddbca363bcee92): preflight этапов и защита от позднего завершения.
+- `runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts` — [8fb73f7](https://github.com/ailtron1ss-rgb/NK1/commit/8fb73f7f5b5b773d3b7a36986d3fa4a74e929432), [5416cb3](https://github.com/ailtron1ss-rgb/NK1/commit/5416cb3d187d19abd544d9051cddbca363bcee92) и [4c25463](https://github.com/ailtron1ss-rgb/NK1/commit/4c254635d31a09f1b44a245f3243490041809753): preflight этапов, защита от позднего завершения и JSON-нормализация payloads.
 - `runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts` — [597327a](https://github.com/ailtron1ss-rgb/NK1/commit/597327abacbc07139bae98b1a704f9b0c1d6bde5) и [521ecb9](https://github.com/ailtron1ss-rgb/NK1/commit/521ecb97e32fd2f83f9f7087b33de2c36375366a): lookup стабильного ID и detached copy.
-- `runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs` — [31f6abf](https://github.com/ailtron1ss-rgb/NK1/commit/31f6abfec622498afc9f469e2beae7be8936ce5c): интеграционные регрессии.
-- `CHANGELOG.md` — запись WorkPass350.
+- `runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs` — [31f6abf](https://github.com/ailtron1ss-rgb/NK1/commit/31f6abfec622498afc9f469e2beae7be8936ce5c) и [16e479a](https://github.com/ailtron1ss-rgb/NK1/commit/16e479a8ea0749e79a3c7a96201fdb4edf9a135f): интеграционные регрессии, включая circular payload.
+- `CHANGELOG.md` — запись WorkPass350 и уточнение JSON preflight на [858c64a](https://github.com/ailtron1ss-rgb/NK1/commit/858c64a975b7bbc90321175ea1417c7d3b913635).
 
 ## CI и команды проверки
 
