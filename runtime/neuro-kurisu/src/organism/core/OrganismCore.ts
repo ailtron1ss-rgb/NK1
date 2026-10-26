@@ -2883,6 +2883,28 @@ export class OrganismCore {
                 trust01: Number(current.sourceAuthority01 ?? 0.5),
                 at: current.lastAccessAt,
             });
+            if (known && priorAppliedAudit && confidenceReconciled) {
+                // Fully committed duplicate: preserve the established API contract and return a fresh non-applied audit.
+                const duplicateAudit = this.hexisAdaptation.reviseBelief({
+                    memoryId: memory.id,
+                    confidence01: current.confidence,
+                    trust01: Number(current.sourceAuthority01 ?? 0.5),
+                    evidence: input.evidence,
+                    stance: input.stance,
+                    context: input.context,
+                    protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical',
+                    canonicalDuplicate: true,
+                    at: Date.now(),
+                });
+                this.hexisAdaptation.registerOrUpdateBelief({
+                    memoryId: memory.id,
+                    confidence01: current.confidence,
+                    trust01: Number(current.sourceAuthority01 ?? 0.5),
+                    at: current.lastAccessAt,
+                });
+                persistProjection();
+                return { ok: true, audit: duplicateAudit, evidence, memory: current, duplicate: true, recovered: false };
+            }
             persistProjection();
             return {
                 ok: true, audit: priorAudit, evidence, memory: current, recovered: true,
