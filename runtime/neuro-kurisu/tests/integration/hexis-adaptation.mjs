@@ -138,6 +138,16 @@ assert.equal(safeRetryClaim?.resolutionHistory?.length,1,
   'starting a new attempt must not erase the prior reconciliation evidence');
 assert.equal(fabric.ackOutbox(uncertainOut.id,false,'second ambiguous outcome')?.status,'uncertain');
 assert.equal(fabric.claimOutbox(uncertainOut.id),null);
+assert.equal(
+  fabric.resolveOutbox(uncertainOut.id,'not-published','provider-lookup:message-absent-after-acceptance-window')?.status,
+  'uncertain',
+  'replaying historical evidence after a later ambiguous attempt must return current state without re-queueing or rewriting history',
+);
+assert.equal(
+  fabric.snapshot().outbox.find(row=>row.id===uncertainOut.id)?.resolutionHistory?.length,
+  1,
+  'historical reconciliation replay must not append duplicate evidence or resolve a later attempt',
+);
 
 // A delayed positive acknowledgement can supersede a previous absence check, but
 // it must not leave the receipt's current fields claiming both outcomes at once.
