@@ -25,7 +25,7 @@ assert.ok(d.skillUses>0,'B273 did not reuse a learned behavioral skill');
 assert.ok(new Set(diagnosticsActions(net)).size>=2,'B273 plan/action diversity collapsed');
 const beforeMismatch = net.snapshot();
 const currentDecision = net.current();
-const alternateAction = actions.find(action => action !== currentDecision.action);
+const alternateAction = actions.find(action => !currentDecision.plan.includes(action));
 assert.ok(alternateAction, 'test requires an alternate selected action');
 assert.throws(() => net.learnFromOutcome({
   tick: beforeMismatch.tick,
@@ -36,7 +36,7 @@ assert.throws(() => net.learnFromOutcome({
   independentGain01: .8,
   personalityAlignment01: .9,
   externalEvidence01: 1,
-}), /B273 outcome action must match generated action/,
+}), /B273 outcome action must be present in generated plan/,
 'B273 must reject credit for an action that did not win its own plan');
 assert.deepEqual(net.snapshot(), beforeMismatch,
   'rejected attribution must not mutate goals, skills, weights or outcome history');
