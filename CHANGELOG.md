@@ -1,3 +1,12 @@
+## [NK1][Hexis] WorkPass392 — connect reviewed Hexis goals to NK1 agency without implicit activation (2026-10-26)
+
+- [INTEGRATION] Added an explicit approved-goal materialization bridge from `HexisAdaptationFabric` into `AgencySubsystemRuntime.selfProjects`, preserving proposal ID, source lineage and HMX source ref.
+- [SAFETY] Materialized projects start in a dedicated paused state, never `proposed`, because NK1's project engine can auto-promote proposed projects. A second explicit call is required to activate an approved project.
+- [GRAPH] Imported canonical memory now stores its exact `hexisGraphSourceKey` in context. Activation creates a source-isolated goal node and projects only relationship edges whose imported canonical-memory endpoint can be resolved; all other edges are counted as deferred.
+- [REPLAY] Activation is receipt-backed and idempotent; graph/project/Hexis snapshots roll back together if activation fails. Deliberation records the explicit non-autonomous activation decision.
+- [TEST] Added end-to-end coverage for pending/approved/materialized/active transitions, one resolved `supports` edge, idempotent activation replay, and rejected-goal denial.
+- [VALIDATION] Changes committed to PR #233's draft branch. Hosted Actions currently report failures without readable steps/logs; runtime test pass is not claimed.
+
 ## [NK1][Hexis] WorkPass391 — prepare evidence audit before canonical mutation (2026-10-26)
 
 - [SAFETY] Clone caller-supplied evidence before projecting any posterior into canonical memory, so an invalid/uncloneable payload cannot mutate canonical confidence and then fail before the local Hexis audit is committed.
