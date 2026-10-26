@@ -1,3 +1,13 @@
+## WorkPass408 — quarantine accepted HMX imports interrupted before receipt persistence (2026-10-26)
+
+- **Code commit:** `f12ad52ed62a852df476c88150a16abab8e56288`; **regression commit:** `7456ba64763ec253cb86ec33619a23c0e3210a15`.
+- Found a restart replay window not covered by pending-stage integrity checks: a process could stop after an HMX stage became `accepted` but before the canonical import receipt was persisted. Restore previously left that stage as `accepted + pending`, allowing a repeated accept to invoke the import path again.
+- Restore now turns accepted, memory-merge stages with pending receipts into terminal `uncertain`. It preserves the operator's acceptance state, conservatively accounts for source rows without claiming they were applied/skipped in reality, and records a reason. If the persisted stage digest is invalid, it also retains a `persisted-stage-integrity-failure` conflict.
+- Regressions cover an ordinary interrupted accepted stage, repeated accept after restore, source-row accounting and an interrupted stage whose saved payload was tampered with.
+- **Validation:** PENDING exact-head `test:hexis-adaptation`, server smoke, runtime typecheck and Unified integration. No PASS/readiness uplift claimed. `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass407 — exercise non-record JSON body types across every Hexis POST route (2026-10-26)
 
 - **Server-smoke regression:** `1e0bdf8ad632c0bf37a356aba08c7d28b7712eb3`.
