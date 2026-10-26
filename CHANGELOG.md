@@ -1,3 +1,12 @@
+## WorkPass359 — validate operational-cycle phase envelopes before recording (2026-10-26)
+
+- **Defect:** `recordOperationalCycle()` treated every falsy phase value as omitted and passed explicit phase payloads through `cleanPayload()`, allowing malformed roots such as arrays, primitives and `null` to normalize into empty payloads. Confidence and source validation could be deferred to append after preparation.
+- **Fix:** snapshot known cycle-root and phase fields through own-data descriptors; skip only absent (`undefined`) phases; reject malformed/falsy phase envelopes, non-record payload roots, non-canonical source IDs and confidence outside `[0,1]` during preflight. Every phase is validated before the first ledger mutation.
+- **Regression:** `runtime/neuro-kurisu/tests/cognitive-operational-cycle-envelope.mjs` covers malformed payloads in a late learning phase, falsy phases, root/phase getters that must not execute, padded source, out-of-range confidence, unchanged ledger state, and normal record/omitted-payload compatibility. Wired into `test:cognitive-integration-suite`.
+- **Validation:** exact-head CI pending for the expanded combined WorkPass358/359 branch. WorkPass358’s prior code/test snapshot passed all 13 workflows; the new operational-cycle boundary changes require a fresh run. Readiness scores unchanged.
+
+---
+
 ## WorkPass358 — integrate strict CEF receipt ingress and proxy-safe parent restore on latest base (2026-10-26)
 
 - **Base:** newest target checkpoint observed when this branch was created: `f38d3189777649da490f8b0dbb3a8d19c7444811`. Preserves the latest WorkPass370 cross-ledger cognitive-cycle integrity and WorkPass372 strict unified-cycle input/restore checks.
