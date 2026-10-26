@@ -124,6 +124,77 @@ assert.equal(cycleLedger.snapshot().cycles, 2);
 assert.equal(cycleLedger.snapshot().completeCycles, 1);
 assert.equal(cycleLedger.snapshot().incompleteCycles, 1);
 
+ // Old duplicate completion is a replay only when all three canonical records match.
+ const totalAfterTickThree=eventFabric.snapshot().total;
+ const historicalReplay=kernel.completeCycle({
+   anchors:decision.anchors,fallbackTick:99,at:200,
+   outcome:stage('outcome.verifier',{success01:0.9,verified:true}),
+   learning:stage('learning.update',{updated:true}),
+   selfUpdate:stage('self-model.update',{continuity01:0.92}),
+ });
+ assert.equal(historicalReplay.replayed,true,'a duplicate older completion remains idempotent after later ticks close');
+ assert.equal(historicalReplay.completionRecorded,true);
+ assert.equal(historicalReplay.outcomeEvent.id,completion.outcomeEvent.id);
+ assert.equal(eventFabric.snapshot().total,totalAfterTickThree,'historical replay must not append events');
+ assert.equal(cycleLedger.snapshot().cycles,2,'historical replay must not mutate monotonic cycle counters');
+
+ // A previously unfinished old tick must fail before writing outcome/learning/self-update.
+ assert.equal(eventFabric.getById('cef:kernel:2:outcome'),null);
+ const beforeStaleCompletion=eventFabric.snapshot().total;
+ assert.throws(()=>kernel.completeCycle({
+   anchors:second.anchors,fallbackTick:2,at:350,
+   outcome:stage('outcome.verifier',{success01:0.7,verified:true}),
+   learning:stage('learning.update',{updated:true}),
+   selfUpdate:stage('self-model.update',{continuity01:0.8}),
+ }),/stale-completion/,'late feedback for an already superseded, unfinished tick must fail closed');
+ assert.equal(eventFabric.snapshot().total,beforeStaleCompletion,'rejected stale feedback must not leave partial completion events');
+ assert.equal(eventFabric.getById('cef:kernel:2:outcome'),null);
+ assert.equal(eventFabric.getById('cef:kernel:2:learning'),null);
+ assert.equal(eventFabric.getById('cef:kernel:2:self-update'),null);
+
+ // Preflight all decision-stage IDs before writes: a later-stage collision cannot leave a partial cycle.
+ const collisionFabric=new CognitiveEventFabric(256);
+ const collisionLedger=new UnifiedCognitiveCycle();
+ const collisionKernel=new CanonicalCognitiveKernel(collisionFabric,collisionLedger);
+ collisionFabric.append({
+   id:'cef:kernel:7:plan',tick:7,stage:'plan',source:'planner.plan',
+   parentIds:['cef:kernel:7:goal','cef:kernel:7:prediction'],external:false,
+   confidence01:0.8,payload:{candidateCount:99},at:700,
+ });
+ const beforePlanCollision=collisionFabric.snapshot().total;
+ assert.throws(()=>collisionKernel.beginDecisionCycle({
+   tick:7,at:700,
+   observation:stage('sensor.observation',{sourceKind:'user'}),
+   prediction:stage('world.predict',{selectedAction:'explore'}),
+   appraisal:stage('homeostasis.appraise',{stress01:0.2}),
+   attention:stage('workspace.attention',{selectedItems:['curiosity']}),
+   memory:stage('memory.retrieve',{memoryIds:['m-1']}),
+   goal:stage('motivation.goal',{goalId:'g-1'}),
+   plan:stage('planner.plan',{candidateCount:3}),
+   action:stage('policy.action',{action:'explore'}),
+ }),/conflict/,'a collision on a later decision stage must be found before earlier writes');
+ assert.equal(collisionFabric.snapshot().total,beforePlanCollision,'conflicting staged input must be rejected atomically');
+ assert.equal(collisionFabric.getById('cef:kernel:7:observation'),null);
+
+ // Non-JSON payloads are rejected while preparing the batch, before the first event is written.
+ const circularFabric=new CognitiveEventFabric(256);
+ const circularLedger=new UnifiedCognitiveCycle();
+ const circularKernel=new CanonicalCognitiveKernel(circularFabric,circularLedger);
+ const cyclicPayload={};
+ cyclicPayload.self=cyclicPayload;
+ assert.throws(()=>circularKernel.beginDecisionCycle({
+   tick:8,at:800,
+   observation:stage('sensor.observation',cyclicPayload),
+   prediction:stage('world.predict',{selectedAction:'explore'}),
+   appraisal:stage('homeostasis.appraise',{stress01:0.2}),
+   attention:stage('workspace.attention',{selectedItems:['curiosity']}),
+   memory:stage('memory.retrieve',{memoryIds:['m-1']}),
+   goal:stage('motivation.goal',{goalId:'g-1'}),
+   plan:stage('planner.plan',{candidateCount:3}),
+   action:stage('policy.action',{action:'explore'}),
+ }),/circular/,'non-serializable stage data must fail during preflight');
+ assert.equal(circularFabric.snapshot().total,0,'a cyclic later-stage payload must not leave partial decision events');
+
 assert.throws(() => kernel.beginDecisionCycle({
   tick: -1, at: 500,
   observation: stage('o'), prediction: stage('p'), appraisal: stage('a'),
@@ -131,4 +202,4 @@ assert.throws(() => kernel.beginDecisionCycle({
   plan: stage('pl'), action: stage('act'),
 }), /tick/);
 
-console.log('WorkPass331 canonical cognitive kernel: PASS');
+console.log('WorkPass349 canonical cognitive kernel: PASS');

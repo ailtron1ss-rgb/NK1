@@ -1,3 +1,17 @@
+# WorkPass350 — prevent partial writes in the canonical cognitive kernel (2026-10-26)
+
+- [FIXED] `CanonicalCognitiveKernel.beginDecisionCycle()` now prepares all eight stage payloads and checks all stable event IDs before adding any stage, preventing a collision on a later stage from leaving earlier stages newly written.
+- [FIXED] `completeCycle()` preflights outcome/learning/self-update records before writing. Feedback arriving for a tick older than the monotonic cycle ledger is rejected before mutation unless the exact same completion already exists.
+- [FIXED] Exact replay of a prior completed tick remains idempotent after newer ticks have completed; it returns the previously recorded event records and does not inflate `UnifiedCognitiveCycle` counters.
+- [HARDENED] `CognitiveEventFabric.getById()` provides a detached read-only lookup used by preflight checks, bounded by the event fabric's existing retention window.
+- [HARDENED] Prepared stage payloads are deep-detached through canonical JSON serialization, and every expected event fingerprint is computed before the first write. Circular/non-serializable payloads now fail in preflight instead of leaving a partial event trace.
+- [REGRESSION] Extended `tests/canonical-cognitive-kernel.mjs` with historical replay after later ticks, rejection of stale feedback without partial events, a later-stage collision, and a cyclic payload proving JSON-serialization failure causes zero decision-stage writes.
+- [CI] The existing `workpass331-unified-cognitive-kernel.yml` already includes both modified runtime source files and the test in push/PR path filters and runs the canonical kernel test plus full runtime typecheck. Exact-head Actions execution is still required.
+- [VALIDATION] Runtime tests and typecheck have not been executed from this environment. No passing test or production-readiness claim is made.
+- [RELEASE] Changes are on `workpass350-kernel-completion-integrity`; `main` and the published release ZIP remain unchanged.
+
+---
+
 ## WorkPass349 — ground the Core skill-reuse regression in an accepted evidence source (2026-10-25)
 
 - Corrected the long-cycle fixture's unsupported `evidenceSource: 'external'` value to the runtime's recognized `external-api` evidence class.
