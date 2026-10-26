@@ -239,6 +239,20 @@ try {
     /invalid persisted versioned skill store snapshot/,
     'tampered provenance cannot be restored under the original candidate identity',
   );
+
+  const malformedProvenancePath = join(tempRoot, 'state', 'malformed-provenance.json');
+  const malformedProvenanceSnapshot = JSON.parse(readFileSync(filePath, 'utf8'));
+  const noDigestPersistedCandidate = malformedProvenanceSnapshot.candidates.find(
+    item => item.candidateId === noEvaluationDigestCandidate.candidateId,
+  );
+  assert.ok(noDigestPersistedCandidate, 'lineage-only candidate is present in durable state');
+  noDigestPersistedCandidate.revisionProvenance.evaluationFingerprint = 'not-a-sha256-digest';
+  writeFileSync(malformedProvenancePath, JSON.stringify(malformedProvenanceSnapshot));
+  assert.throws(
+    () => new AtomicFileSkillStorePersistence(malformedProvenancePath).read(),
+    /invalid persisted versioned skill store snapshot/,
+    'a malformed optional digest is rejected when injected directly into persisted JSON',
+  );
   assert.throws(() => durableStore.stageCandidate(
     proposal('j'), 'file-backed-provenance-invalid-digest', { instruction: 'invalid digest is rejected' },
     { ...provenanceWithoutEvaluationDigest, evaluationFingerprint: 'not-a-sha256-digest' },
