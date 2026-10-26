@@ -36,7 +36,7 @@ export interface OperationalCycleLineageCheck {
 }
 
 export interface ExternalObservationProjectionRef { observationId:string; eventId:string; projectionHash:string; projectedAt:number; }
-export interface ToolReceiptRevisionProjectionRef { revisionId:string; eventId:string; projectionHash:string; projectedAt:number; }
+export interface ToolReceiptRevisionProjectionRef { revisionId:string; eventId:string; projectionHash:string; projectedAt:number; revisionNumber?:number; }
 
 export interface ToolReceiptProjectionIndexEntry {
   executionId: string;
@@ -304,7 +304,7 @@ export class CognitiveEventFabric {
     const receiptRows=ownArrayValues(ownDataValue(root,'receiptProjectionIndex'),512);
     const sanitizeReceiptRef=(value:unknown,kind:'observation'|'revision',executionId:string):ExternalObservationProjectionRef|ToolReceiptRevisionProjectionRef|null=>{
       if(!isRecord(value))return null;
-      if(['observationId','revisionId','eventId','projectionHash','projectedAt'].some(key=>hasOwnAccessorField(value,key)))return null;
+      if(['observationId','revisionId','eventId','projectionHash','projectedAt','revisionNumber'].some(key=>hasOwnAccessorField(value,key)))return null;
       const idKey=kind==='observation'?'observationId':'revisionId';
       const refId=ownDataValue(value,idKey);
       const eventId=ownDataValue(value,'eventId');
@@ -325,7 +325,13 @@ export class CognitiveEventFabric {
         ownDataValue(event.payload,'executionId')!==executionId||
         ownDataValue(event.payload,'revisionId')!==refId||
         ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase())return null;
-      return {revisionId:refId,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt};
+      const eventRevisionNumber=ownDataValue(event.payload,'revisionNumber');
+      const storedRevisionNumber=ownDataValue(value,'revisionNumber');
+      const hasStoredRevisionNumber=hasOwnField(value,'revisionNumber');
+      if((hasStoredRevisionNumber&&(typeof storedRevisionNumber!=='number'||!Number.isSafeInteger(storedRevisionNumber)||storedRevisionNumber<1))||
+        (typeof eventRevisionNumber!=='number'||!Number.isSafeInteger(eventRevisionNumber)||eventRevisionNumber<1)||
+        (hasStoredRevisionNumber&&storedRevisionNumber!==eventRevisionNumber))return null;
+      return {revisionId:refId,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt,revisionNumber:eventRevisionNumber};
     };
 
     for(const value of receiptRows){
@@ -384,13 +390,37 @@ export class CognitiveEventFabric {
         .map(ref=>sanitizeReceiptRef(ref,'observation',executionId))
         .filter((ref):ref is ExternalObservationProjectionRef=>ref!==null);
       const revisionsRaw=ownDataValue(value,'receiptRevisions');
-      const revisions=ownArrayValues(revisionsRaw,32)
+      const revisionCandidates=ownArrayValues(revisionsRaw,32)
         .map(ref=>sanitizeReceiptRef(ref,'revision',executionId))
         .filter((ref):ref is ToolReceiptRevisionProjectionRef=>ref!==null);
+      const seenRevisionIds=new Set<string>();
+      const seenRevisionEventIds=new Set<string>();
+      let previousRevisionNumber=0;
+      let revisionSequenceValid=true;
+      for(const revision of revisionCandidates){
+        if(seenRevisionIds.has(revision.revisionId)||seenRevisionEventIds.has(revision.eventId)||
+          !Number.isSafeInteger(revision.revisionNumber)||revision.revisionNumber!<=previousRevisionNumber) {
+          revisionSequenceValid=false;
+          break;
+        }
+        seenRevisionIds.add(revision.revisionId);
+        seenRevisionEventIds.add(revision.eventId);
+        previousRevisionNumber=revision.revisionNumber!;
+      }
+      const revisions=revisionSequenceValid?revisionCandidates:[];
+      const seenObservationIds=new Set<string>();
+      const seenObservationEventIds=new Set<string>();
+      const observationsUnique=observations.every(observation=>{
+        if(seenObservationIds.has(observation.observationId)||seenObservationEventIds.has(observation.eventId))return false;
+        seenObservationIds.add(observation.observationId);
+        seenObservationEventIds.add(observation.eventId);
+        return true;
+      });
+      const acceptedObservations=observationsUnique?observations:[];
       const accepted:ToolReceiptProjectionIndexEntry={
         executionId,actionEventId,outcomeEventId,evidenceEventId,projectedAt,
         ...(acceptedProjectionHash?{projectionHash:acceptedProjectionHash}:{}),
-        ...(observations.length?{externalObservations:observations}:{}),
+        ...(acceptedObservations.length?{externalObservations:acceptedObservations}:{}),
         ...(revisions.length?{receiptRevisions:revisions}:{}),
       };
       restoredIndex.set(executionId,accepted);
@@ -718,88 +748,210 @@ export class CognitiveEventFabric {
     revisionFingerprint:string;outcomeClass:string;ok:boolean;verified:boolean;verificationBasis:string;confidence01:number;
     observationId?:string;status:'verified'|'contradicted'|'unverified';reason?:string;at?:number;
   }):{resolved:boolean;replayed:boolean;reason?:string;eventId?:string;projectionHash?:string}{
-    const executionId=String(input.executionId??'').trim().slice(0,180);
-    const revisionId=String(input.revisionId??'').trim().slice(0,180);
-    const toolId=String(input.toolId??'').trim().slice(0,64);
-    if(!executionId)return {resolved:false,replayed:false,reason:'execution-id-required'};
-    if(!revisionId)return {resolved:false,replayed:false,reason:'revision-id-required'};
-    if(!toolId)return {resolved:false,replayed:false,reason:'tool-id-required'};
-    if(!/^[a-f0-9]{64}$/i.test(String(input.providerReceiptHash??''))||!/^[a-f0-9]{64}$/i.test(String(input.revisionFingerprint??'')))return {resolved:false,replayed:false,reason:'revision-hash-invalid'};
+    const invalid=(reason:string)=>({resolved:false,replayed:false,reason});
+    let data:Record<string,unknown>;
+    try {
+      data=snapshotOwnDataFields(input,[
+        'tick','executionId','toolId','revisionId','revisionNumber','providerReceiptHash','revisionFingerprint',
+        'outcomeClass','ok','verified','verificationBasis','confidence01','observationId','status','reason','at',
+      ],'receipt-revision-input');
+    } catch {
+      return invalid('revision-input-accessor-or-shape-invalid');
+    }
+
+    const tick=data.tick;
+    if(typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0)return invalid('revision-tick-invalid');
+    const executionId=data.executionId;
+    const revisionId=data.revisionId;
+    const toolId=data.toolId;
+    if(!hasOnlyCanonicalEventId(executionId))return invalid('execution-id-invalid');
+    if(!hasOnlyCanonicalEventId(revisionId))return invalid('revision-id-invalid');
+    if(!hasCanonicalBoundedText(toolId,64))return invalid('tool-id-invalid');
+    const revisionNumber=data.revisionNumber;
+    if(typeof revisionNumber!=='number'||!Number.isSafeInteger(revisionNumber)||revisionNumber<1)return invalid('revision-number-invalid');
+
+    const providerReceiptHash=data.providerReceiptHash;
+    const revisionFingerprint=data.revisionFingerprint;
+    if(!isSha256Hex(providerReceiptHash)||!isSha256Hex(revisionFingerprint))return invalid('revision-hash-invalid');
+    const outcomeClass=data.outcomeClass===undefined?'unknown':data.outcomeClass;
+    if(!hasCanonicalBoundedText(outcomeClass,64))return invalid('revision-outcome-class-invalid');
+    const ok=data.ok;
+    const verified=data.verified;
+    if(typeof ok!=='boolean')return invalid('revision-ok-must-be-boolean');
+    if(typeof verified!=='boolean')return invalid('revision-verified-must-be-boolean');
+    const verificationBasis=data.verificationBasis===undefined?'none':data.verificationBasis;
+    if(!hasCanonicalBoundedText(verificationBasis,48))return invalid('revision-verification-basis-invalid');
+    const confidence01=data.confidence01;
+    if(typeof confidence01!=='number'||!Number.isFinite(confidence01)||confidence01<0||confidence01>1)return invalid('revision-confidence-invalid');
+    const status=data.status;
+    if(status!=='verified'&&status!=='contradicted'&&status!=='unverified')return invalid('revision-status-invalid');
+
+    let observationId:string|null=null;
+    const observationIdValue=data.observationId;
+    if(observationIdValue!==undefined&&observationIdValue!=='') {
+      if(!hasOnlyCanonicalEventId(observationIdValue))return invalid('revision-observation-id-invalid');
+      observationId=observationIdValue;
+    }
+    const reasonValue=data.reason===undefined?'':data.reason;
+    if(typeof reasonValue!=='string'||reasonValue.length>512)return invalid('revision-reason-invalid');
+    const reason=reasonValue.replace(/[\r\n\t]+/g,' ').trim();
+    if(!hasCanonicalBoundedText(reason,160,true))return invalid('revision-reason-invalid');
+
+    const atValue=data.at;
+    const at=atValue===undefined?Date.now():atValue;
+    if(typeof at!=='number'||!Number.isFinite(at)||at<0)return invalid('revision-timestamp-invalid');
+    const normalized={
+      executionId,toolId,revisionId,revisionNumber,
+      providerReceiptHash:providerReceiptHash.toLowerCase(),
+      revisionFingerprint:revisionFingerprint.toLowerCase(),
+      outcomeClass,ok,verified,verificationBasis,confidence01,observationId,status,reason,
+    };
+    const projectionHash=sha256Stable(normalized);
     const entry=this.receiptProjectionIndex.get(executionId);
-    if(!entry||!this.hasToolReceiptTrace(executionId))return {resolved:false,replayed:false,reason:'no-canonical-tool-receipt'};
+    if(!entry||!this.hasToolReceiptTrace(executionId))return invalid('no-canonical-tool-receipt');
     const receiptAction=this.events.find(event=>event.id===entry.actionEventId);
     const receiptOutcome=this.events.find(event=>event.id===entry.outcomeEventId);
-    if(receiptAction?.payload.tool!==toolId||receiptOutcome?.payload.tool!==toolId)return {resolved:false,replayed:false,reason:'execution-tool-mismatch'};
-    const normalized={executionId,toolId,revisionId,revisionNumber:Math.max(1,Math.floor(input.revisionNumber)),providerReceiptHash:String(input.providerReceiptHash).toLowerCase(),revisionFingerprint:String(input.revisionFingerprint).toLowerCase(),outcomeClass:String(input.outcomeClass??'unknown').slice(0,64),ok:Boolean(input.ok),verified:Boolean(input.verified),verificationBasis:String(input.verificationBasis??'none').slice(0,48),confidence01:clamp01(input.confidence01),observationId:String(input.observationId??'').slice(0,180)||null,status:input.status,reason:String(input.reason??'').replace(/[\r\n\t]+/g,' ').slice(0,160)};
-    const projectionHash=sha256Stable(normalized);
+    if(receiptAction?.payload.tool!==toolId||receiptOutcome?.payload.tool!==toolId)return invalid('execution-tool-mismatch');
     const refs=entry.receiptRevisions??[];
     const prior=refs.find(ref=>ref.revisionId===revisionId);
     if(prior){
       if(prior.projectionHash!==projectionHash)throw new Error('tool-receipt-revision-conflict');
       return {resolved:true,replayed:true,eventId:prior.eventId,projectionHash};
     }
-    // Never drop an idempotency reference and later accept the same revision again.
-    // A bounded receipt ledger fails closed when its reference budget is exhausted.
-    if(refs.length>=32)return {resolved:false,replayed:false,reason:'tool-receipt-revision-ledger-full'};
-    const eventId=`cef:tool-receipt-revision:${sha256Stable({executionId,revisionId}).slice(0,48)}`;
+    if(refs.length>=32)return invalid('tool-receipt-revision-ledger-full');
+
+    const eventId='cef:tool-receipt-revision:'+sha256Stable({executionId,revisionId}).slice(0,48);
     const byId=new Map(this.events.map(event=>[event.id,event] as const));
     const existing=byId.get(eventId);
     if(existing){
-      if(existing.stage!=='tool-reconciliation'||existing.payload.executionId!==executionId||existing.payload.revisionId!==revisionId||existing.payload.projectionHash!==projectionHash)throw new Error('tool-receipt-revision-conflict');
-      const ref={revisionId,eventId,projectionHash,projectedAt:existing.at};
+      if(existing.stage!=='tool-reconciliation'||existing.payload.executionId!==executionId||
+        existing.payload.revisionId!==revisionId||existing.payload.projectionHash!==projectionHash) {
+        throw new Error('tool-receipt-revision-conflict');
+      }
+      const ref:ToolReceiptRevisionProjectionRef={revisionId,eventId,projectionHash,projectedAt:existing.at,revisionNumber};
       this.receiptProjectionIndex.set(executionId,{...entry,receiptRevisions:[...refs,ref]});
       return {resolved:true,replayed:true,eventId,projectionHash};
     }
+
     const latestRevision=refs.at(-1);
-    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+    const latestRevisionNode=latestRevision?this.events.find(event=>event.id===latestRevision.eventId):undefined;
+    const latestRevisionNumber=latestRevision?.revisionNumber??latestRevisionNode?.payload.revisionNumber;
+    if(typeof latestRevisionNumber==='number'&&Number.isSafeInteger(latestRevisionNumber)&&revisionNumber<=latestRevisionNumber) {
+      return invalid('revision-number-not-increasing');
+    }
     const parents=[entry.outcomeEventId,...(latestRevision?[latestRevision.eventId]:[])].slice(0,12);
-    const event=this.append({id:eventId,tick:input.tick,stage:'tool-reconciliation',source:'authoritative-provider-receipt',parentIds:parents,external:false,confidence01:clamp01(input.confidence01),at,payload:{...normalized,projectionHash,baseOutcomeEventId:entry.outcomeEventId,previousRevisionEventId:latestRevision?.eventId??null}});
-    const ref={revisionId,eventId:event.id,projectionHash,projectedAt:at};
-    this.receiptProjectionIndex.set(executionId,{...entry,receiptRevisions:[...refs,ref]});
-    return {resolved:true,replayed:false,eventId:event.id,projectionHash};
+    return this.withAtomicLedgerMutation(()=>{
+      const event=this.append({
+        id:eventId,tick,stage:'tool-reconciliation',source:'authoritative-provider-receipt',
+        parentIds:parents,external:false,confidence01,at,
+        payload:{...normalized,projectionHash,baseOutcomeEventId:entry.outcomeEventId,previousRevisionEventId:latestRevision?.eventId??null},
+      });
+      const ref:ToolReceiptRevisionProjectionRef={revisionId,eventId:event.id,projectionHash,projectedAt:at,revisionNumber};
+      this.receiptProjectionIndex.set(executionId,{...entry,receiptRevisions:[...refs,ref]});
+      return {resolved:true,replayed:false,eventId:event.id,projectionHash};
+    });
   }
 
-  /**
-   * Append independently sourced post-action evidence to the exact ActionGateway receipt.
-   * The event uses a separate stage so late evidence cannot distort operational-cycle coverage.
-   * Raw postcondition text is not copied into CEF; only canonical hashes/presence flags are retained.
-   */
-  appendToolExternalObservation(input:{tick:number;executionId:string;toolId:string;observationId:string;verified:boolean;confidence01:number;sourceId?:string;sourceClass?:string;channel?:string;independenceKey?:string;expectedPostcondition?:string;observedPostcondition?:string;reason?:string;at?:number}):{resolved:boolean;reason?:string;replayed?:boolean;eventId?:string;archived?:boolean}{
-    const executionId=String(input.executionId??'').trim().slice(0,180);
-    const observationId=String(input.observationId??'').trim().slice(0,180);
-    const toolId=String(input.toolId??'').trim().slice(0,64);
-    if(!executionId)return {resolved:false,reason:'execution-id-required'};
-    if(!observationId)return {resolved:false,reason:'observation-id-required'};
-    if(!toolId)return {resolved:false,reason:'tool-id-required'};
+  appendToolExternalObservation(input:{
+    tick:number;executionId:string;toolId:string;observationId:string;verified:boolean;confidence01:number;
+    sourceId?:string;sourceClass?:string;channel?:string;independenceKey?:string;
+    expectedPostcondition?:string;observedPostcondition?:string;reason?:string;at?:number;
+  }):{resolved:boolean;reason?:string;replayed?:boolean;eventId?:string;archived?:boolean}{
+    const invalid=(reason:string)=>({resolved:false,replayed:false,reason});
+    let data:Record<string,unknown>;
+    try {
+      data=snapshotOwnDataFields(input,[
+        'tick','executionId','toolId','observationId','verified','confidence01','sourceId','sourceClass',
+        'channel','independenceKey','expectedPostcondition','observedPostcondition','reason','at',
+      ],'external-observation-input');
+    } catch {
+      return invalid('observation-input-accessor-or-shape-invalid');
+    }
+
+    const tick=data.tick;
+    if(typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0)return invalid('observation-tick-invalid');
+    const executionId=data.executionId;
+    const observationId=data.observationId;
+    const toolId=data.toolId;
+    if(!hasOnlyCanonicalEventId(executionId))return invalid('execution-id-invalid');
+    if(!hasOnlyCanonicalEventId(observationId))return invalid('observation-id-invalid');
+    if(!hasCanonicalBoundedText(toolId,64))return invalid('tool-id-invalid');
+    const verified=data.verified;
+    if(typeof verified!=='boolean')return invalid('observation-verified-must-be-boolean');
+    const confidence01=data.confidence01;
+    if(typeof confidence01!=='number'||!Number.isFinite(confidence01)||confidence01<0||confidence01>1)return invalid('observation-confidence-invalid');
+
+    const sourceId=data.sourceId===undefined?'unknown':data.sourceId;
+    const sourceClass=data.sourceClass===undefined?'unknown':data.sourceClass;
+    const channel=data.channel===undefined?'unknown':data.channel;
+    const independenceKey=data.independenceKey===undefined?'':data.independenceKey;
+    if(!hasCanonicalBoundedText(sourceId,80,true))return invalid('observation-source-id-invalid');
+    if(!hasCanonicalBoundedText(sourceClass,32,true))return invalid('observation-source-class-invalid');
+    if(!hasCanonicalBoundedText(channel,32,true))return invalid('observation-channel-invalid');
+    if(!hasCanonicalBoundedText(independenceKey,120,true))return invalid('observation-independence-key-invalid');
+
+    const expectedRaw=data.expectedPostcondition===undefined?'':data.expectedPostcondition;
+    const observedRaw=data.observedPostcondition===undefined?'':data.observedPostcondition;
+    if(typeof expectedRaw!=='string'||expectedRaw.length>8192)return invalid('observation-expected-postcondition-invalid');
+    if(typeof observedRaw!=='string'||observedRaw.length>8192)return invalid('observation-observed-postcondition-invalid');
+    const expected=expectedRaw.normalize('NFKC').trim().toLowerCase();
+    const observed=observedRaw.normalize('NFKC').trim().toLowerCase();
+    const reasonValue=data.reason===undefined?'':data.reason;
+    if(typeof reasonValue!=='string'||reasonValue.length>512)return invalid('observation-reason-invalid');
+    const reason=reasonValue.replace(/[\r\n\t]+/g,' ').trim();
+    if(!hasCanonicalBoundedText(reason,160,true))return invalid('observation-reason-invalid');
+    const atValue=data.at;
+    const at=atValue===undefined?Date.now():atValue;
+    if(typeof at!=='number'||!Number.isFinite(at)||at<0)return invalid('observation-timestamp-invalid');
+
+    const safePayload={
+      executionId,toolId,observationId,verified,confidence01,sourceId,sourceClass,channel,independenceKey,
+      expectedPostconditionHash:expected?sha256Stable(expected):null,
+      observedPostconditionHash:observed?sha256Stable(observed):null,
+      expectedPostconditionPresent:Boolean(expected),
+      observedPostconditionPresent:Boolean(observed),reason,
+    };
+    const projectionHash=sha256Stable(safePayload);
     const entry=this.receiptProjectionIndex.get(executionId);
     const byId=new Map(this.events.map(event=>[event.id,event] as const));
     const action=entry?byId.get(entry.actionEventId):this.events.find(event=>event.stage==='tool-action'&&event.payload.executionId===executionId);
     const outcome=entry?byId.get(entry.outcomeEventId):this.events.find(event=>event.stage==='tool-outcome'&&event.payload.executionId===executionId);
-    if(!action||!outcome||action.stage!=='tool-action'||outcome.stage!=='tool-outcome'||!outcome.parentIds.includes(action.id))return {resolved:false,reason:'no-canonical-tool-receipt'};
-    if(String(action.payload.tool??'')!==toolId||String(outcome.payload.tool??'')!==toolId)return {resolved:false,reason:'execution-tool-mismatch'};
-    const expected=String(input.expectedPostcondition??'').normalize('NFKC').trim().toLocaleLowerCase();
-    const observed=String(input.observedPostcondition??'').normalize('NFKC').trim().toLocaleLowerCase();
-    const safePayload={executionId,toolId,observationId,verified:Boolean(input.verified),confidence01:clamp01(input.confidence01),sourceId:String(input.sourceId??'unknown').slice(0,80),sourceClass:String(input.sourceClass??'unknown').slice(0,32),channel:String(input.channel??'unknown').slice(0,32),independenceKey:String(input.independenceKey??'').slice(0,120),expectedPostconditionHash:expected?sha256Stable(expected):null,observedPostconditionHash:observed?sha256Stable(observed):null,expectedPostconditionPresent:Boolean(expected),observedPostconditionPresent:Boolean(observed),reason:String(input.reason??'').slice(0,160)};
-    const projectionHash=sha256Stable(safePayload);
+    if(!action||!outcome||action.stage!=='tool-action'||outcome.stage!=='tool-outcome'||
+      !outcome.parentIds.includes(action.id))return invalid('no-canonical-tool-receipt');
+    if(action.payload.tool!==toolId||outcome.payload.tool!==toolId)return invalid('execution-tool-mismatch');
+
     const refs=entry?.externalObservations??[];
     const prior=refs.find(ref=>ref.observationId===observationId);
     if(prior){
       if(prior.projectionHash!==projectionHash)throw new Error('external-observation-projection-conflict');
       return {resolved:true,replayed:true,eventId:prior.eventId,archived:!byId.has(prior.eventId)};
     }
-    const eventId=`cef:tool-external-observation:${sha256Stable({executionId,observationId}).slice(0,48)}`;
+    const eventId='cef:tool-external-observation:'+sha256Stable({executionId,observationId}).slice(0,48);
     const existing=byId.get(eventId);
     if(existing){
-      if(existing.stage!=='external-evidence'||existing.payload.projectionHash!==projectionHash||existing.payload.executionId!==executionId||existing.payload.observationId!==observationId)throw new Error('external-observation-projection-conflict');
-      const ref={observationId,eventId,projectionHash,projectedAt:existing.at};
+      if(existing.stage!=='external-evidence'||existing.payload.projectionHash!==projectionHash||
+        existing.payload.executionId!==executionId||existing.payload.observationId!==observationId) {
+        throw new Error('external-observation-projection-conflict');
+      }
+      const ref:ExternalObservationProjectionRef={observationId,eventId,projectionHash,projectedAt:existing.at};
       if(entry)this.receiptProjectionIndex.set(executionId,{...entry,externalObservations:[...refs,ref].slice(-32)});
       return {resolved:true,replayed:true,eventId};
     }
-    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
-    const evidence=this.append({id:eventId,tick:input.tick,stage:'external-evidence',source:'external-observer-fabric',parentIds:[outcome.id],external:true,confidence01:clamp01(input.confidence01),at,payload:{...safePayload,projectionHash,receiptActionEventId:action.id,receiptOutcomeEventId:outcome.id,evidenceStatus:input.verified?'corroborated':expected&&observed&&expected!==observed?'contradicted':'unresolved'}});
-    const ref={observationId,eventId:evidence.id,projectionHash,projectedAt:at};
-    if(entry)this.receiptProjectionIndex.set(executionId,{...entry,externalObservations:[...refs,ref].slice(-32)});
-    return {resolved:true,replayed:false,eventId:evidence.id};
+
+    const evidenceStatus=verified?'corroborated':expected&&observed&&expected!==observed?'contradicted':'unresolved';
+    return this.withAtomicLedgerMutation(()=>{
+      const evidence=this.append({
+        id:eventId,tick,stage:'external-evidence',source:'external-observer-fabric',
+        parentIds:[outcome.id],external:true,confidence01,at,
+        payload:{
+          ...safePayload,projectionHash,receiptActionEventId:action.id,
+          receiptOutcomeEventId:outcome.id,evidenceStatus,
+        },
+      });
+      const ref:ExternalObservationProjectionRef={observationId,eventId:evidence.id,projectionHash,projectedAt:at};
+      if(entry)this.receiptProjectionIndex.set(executionId,{...entry,externalObservations:[...refs,ref].slice(-32)});
+      return {resolved:true,replayed:false,eventId:evidence.id};
+    });
   }
 
   recordOperationalCycle(input:{
@@ -953,6 +1105,14 @@ export class CognitiveEventFabric {
     // sanitized receipt nodes that still have live replay guards so restart restore
     // can retain exact causal links even when a receipt falls outside that window.
     const receiptEvents=this.events.filter(event=>receiptIds.has(event.id)&&!recentIds.has(event.id)).map(event=>({...event,parentIds:[...event.parentIds],payload:{...event.payload}}));
-    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
+    // Snapshot output is an untrusted diagnostic/persistence boundary: never expose live replay-index objects.
+    const receiptProjectionIndex=[...this.receiptProjectionIndex.values()].map(entry=>({
+      executionId:entry.executionId,actionEventId:entry.actionEventId,outcomeEventId:entry.outcomeEventId,
+      evidenceEventId:entry.evidenceEventId,projectedAt:entry.projectedAt,
+      ...(entry.projectionHash?{projectionHash:entry.projectionHash}:{}),
+      ...(entry.externalObservations?{externalObservations:entry.externalObservations.map(ref=>({...ref}))}:{}),
+      ...(entry.receiptRevisions?{receiptRevisions:entry.receiptRevisions.map(ref=>({...ref}))}:{}),
+    }));
+    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex};
   }
 }

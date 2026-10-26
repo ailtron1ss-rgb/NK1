@@ -711,6 +711,8 @@ assert.equal(restoredReceiptReplay.evidenceEventId,receiptTrace.evidenceEventId)
 
 const tamperedReceiptSnapshot = receiptFabric.snapshot();
 tamperedReceiptSnapshot.receiptProjectionIndex[0].projectionHash='f'.repeat(64);
+assert.equal(receiptFabric.appendToolReceiptTrace(receiptInput).replayed,true,
+  'mutating the exported snapshot must not mutate the live receipt replay index');
 const tamperedReceiptRestore = new CognitiveEventFabric(128);
 tamperedReceiptRestore.restore(tamperedReceiptSnapshot);
 assert.equal(tamperedReceiptRestore.hasToolReceiptTrace(receiptInput.executionId),false,
@@ -763,5 +765,122 @@ atomicReceiptFabric.append=originalAtomicAppend;
 assert.deepEqual(atomicReceiptFabric.snapshot(),atomicReceiptBefore,
   'if a receipt trace fails mid-write, events, total and replay index must roll back atomically');
 console.log('WorkPass365 receipt projection fingerprint and atomicity: PASS');
+
+// WorkPass366: provider revisions and external observations use the same strict evidence boundary.
+const revisionInput = {
+  tick:12,executionId:receiptInput.executionId,toolId:receiptInput.toolId,
+  revisionId:'receipt-test:revision-1',revisionNumber:1,
+  providerReceiptHash:'a'.repeat(64),revisionFingerprint:'b'.repeat(64),
+  outcomeClass:'success',ok:true,verified:true,verificationBasis:'provider-attestation',
+  confidence01:0.9,observationId:'receipt-test:observation-1',status:'verified',
+  reason:'provider confirms success',at:1200,
+};
+const revisionResult=receiptFabric.appendToolReceiptRevision(revisionInput);
+assert.equal(revisionResult.resolved,true);
+assert.equal(revisionResult.replayed,false);
+const revisionEvent=receiptFabric.getById(revisionResult.eventId);
+assert.equal(revisionEvent?.payload.revisionNumber,1);
+assert.match(revisionResult.projectionHash,/^[a-f0-9]{64}$/);
+assert.equal(receiptFabric.appendToolReceiptRevision(revisionInput).replayed,true,
+  'provider revision replay must be idempotent');
+const revisionReplaySnapshot=receiptFabric.snapshot();
+const expandedRevisionSnapshot=receiptFabric.snapshot();
+const revisionRestored=new CognitiveEventFabric(128);
+revisionRestored.restore(expandedRevisionSnapshot);
+const restoredRevisionReplay=revisionRestored.appendToolReceiptRevision(revisionInput);
+assert.equal(restoredRevisionReplay.resolved,true);
+assert.equal(restoredRevisionReplay.replayed,true,'revision IDs/hashes must survive restore');
+assert.equal(restoredRevisionReplay.eventId,revisionResult.eventId);
+
+const externalObservationInput = {
+  tick:13,executionId:receiptInput.executionId,toolId:receiptInput.toolId,
+  observationId:'receipt-test:independent-observation-1',verified:true,confidence01:0.92,
+  sourceId:'independent-validator',sourceClass:'independent',channel:'test-harness',
+  independenceKey:'sensor-2',expectedPostcondition:'Value = 2',observedPostcondition:'value = 2',
+  reason:'independent confirmation',at:1300,
+};
+const externalObservationResult=receiptFabric.appendToolExternalObservation(externalObservationInput);
+assert.equal(externalObservationResult.resolved,true);
+assert.equal(externalObservationResult.replayed,false);
+const externalObservationEvent=receiptFabric.getById(externalObservationResult.eventId);
+assert.equal(externalObservationEvent?.stage,'external-evidence');
+assert.equal(externalObservationEvent?.external,true);
+assert.equal(externalObservationEvent?.payload.evidenceStatus,'corroborated');
+assert.equal(externalObservationEvent?.payload.expectedPostconditionHash,externalObservationEvent?.payload.observedPostconditionHash);
+assert.equal(Object.hasOwn(externalObservationEvent?.payload??{},'expectedPostcondition'),false,
+  'raw external postcondition text must not be persisted');
+assert.equal(receiptFabric.appendToolExternalObservation(externalObservationInput).replayed,true,
+  'external observation replay must be idempotent');
+const detachedNestedIndexSnapshot=receiptFabric.snapshot();
+const detachedNestedIndex=detachedNestedIndexSnapshot.receiptProjectionIndex[0];
+assert.ok(detachedNestedIndex?.receiptRevisions?.length);
+assert.ok(detachedNestedIndex?.externalObservations?.length);
+detachedNestedIndex.receiptRevisions[0].projectionHash='d'.repeat(64);
+detachedNestedIndex.externalObservations[0].projectionHash='c'.repeat(64);
+assert.equal(receiptFabric.appendToolReceiptRevision(revisionInput).replayed,true,
+  'mutating nested exported revision refs must not poison live revision replay guards');
+assert.equal(receiptFabric.appendToolExternalObservation(externalObservationInput).replayed,true,
+  'mutating nested exported observation refs must not poison live observation replay guards');
+const expandedEvidenceSnapshot=receiptFabric.snapshot();
+const expandedEvidenceRestored=new CognitiveEventFabric(128);
+expandedEvidenceRestored.restore(expandedEvidenceSnapshot);
+assert.equal(expandedEvidenceRestored.appendToolReceiptRevision(revisionInput).replayed,true);
+assert.equal(expandedEvidenceRestored.appendToolExternalObservation(externalObservationInput).replayed,true,
+  'receipt revision and observation idempotency references must survive restart');
+
+const invalidRevisionCases = [
+  {patch:{tick:12.5},reason:'revision-tick-invalid'},
+  {patch:{revisionNumber:0},reason:'revision-number-invalid'},
+  {patch:{providerReceiptHash:17},reason:'revision-hash-invalid'},
+  {patch:{ok:'false'},reason:'revision-ok-must-be-boolean'},
+  {patch:{verified:'false'},reason:'revision-verified-must-be-boolean'},
+  {patch:{status:'untrusted'},reason:'revision-status-invalid'},
+  {patch:{confidence01:1.01},reason:'revision-confidence-invalid'},
+  {patch:{at:-1},reason:'revision-timestamp-invalid'},
+  {patch:{executionId:' '+receiptInput.executionId+' '},reason:'execution-id-invalid'},
+  {patch:{observationId:' receipt-test:observation-1 '},reason:'revision-observation-id-invalid'},
+  {patch:{reason:'too-long'.repeat(30)},reason:'revision-reason-invalid'},
+  {patch:{revisionId:'receipt-test:revision-duplicate-number',revisionNumber:1},reason:'revision-number-not-increasing'},
+];
+const beforeInvalidRevision=receiptFabric.snapshot();
+for(const item of invalidRevisionCases){
+  const result=receiptFabric.appendToolReceiptRevision({...revisionInput,...item.patch});
+  assert.equal(result.resolved,false,item.reason);
+  assert.equal(result.reason,item.reason);
+  assert.deepEqual(receiptFabric.snapshot(),beforeInvalidRevision,
+    item.reason+'; rejected provider revision must not mutate the journal');
+}
+const accessorRevisionInput={...revisionInput,revisionId:'receipt-test:revision-accessor'};
+let revisionGetterExecuted=false;
+Object.defineProperty(accessorRevisionInput,'verified',{enumerable:true,get(){revisionGetterExecuted=true;throw new Error('revision getter must not run');}});
+assert.equal(receiptFabric.appendToolReceiptRevision(accessorRevisionInput).resolved,false);
+assert.equal(revisionGetterExecuted,false,'revision input accessors must not execute');
+
+const invalidExternalObservationCases = [
+  {patch:{tick:13.25},reason:'observation-tick-invalid'},
+  {patch:{verified:'false'},reason:'observation-verified-must-be-boolean'},
+  {patch:{confidence01:NaN},reason:'observation-confidence-invalid'},
+  {patch:{executionId:' '+receiptInput.executionId+' '},reason:'execution-id-invalid'},
+  {patch:{observationId:' invalid observation '},reason:'observation-id-invalid'},
+  {patch:{toolId:'test-tool '},reason:'tool-id-invalid'},
+  {patch:{expectedPostcondition:23},reason:'observation-expected-postcondition-invalid'},
+  {patch:{at:'1300'},reason:'observation-timestamp-invalid'},
+  {patch:{reason:'too-long'.repeat(30)},reason:'observation-reason-invalid'},
+];
+const beforeInvalidObservation=receiptFabric.snapshot();
+for(const item of invalidExternalObservationCases){
+  const result=receiptFabric.appendToolExternalObservation({...externalObservationInput,...item.patch});
+  assert.equal(result.resolved,false,item.reason);
+  assert.equal(result.reason,item.reason);
+  assert.deepEqual(receiptFabric.snapshot(),beforeInvalidObservation,
+    item.reason+'; rejected external observation must not mutate the journal');
+}
+const accessorExternalObservation={...externalObservationInput,observationId:'receipt-test:observation-accessor'};
+let observationGetterExecuted=false;
+Object.defineProperty(accessorExternalObservation,'verified',{enumerable:true,get(){observationGetterExecuted=true;throw new Error('observation getter must not run');}});
+assert.equal(receiptFabric.appendToolExternalObservation(accessorExternalObservation).resolved,false);
+assert.equal(observationGetterExecuted,false,'external observation accessors must not execute');
+
+console.log('WorkPass366 provider revision and external observation ingress: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
