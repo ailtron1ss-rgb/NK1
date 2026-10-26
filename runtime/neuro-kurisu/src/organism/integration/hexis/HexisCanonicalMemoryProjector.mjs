@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { hasValidHmxApplicationReceipt, hasValidHmxStageDigest } from './HexisHmxReceiptGuard.ts';
+import { sha256Stable } from '../../core/StableSerialization.ts';
 import { CANONICAL_MEMORY_CAPACITY } from '../../memory/CanonicalMemoryCapacity.ts';
 
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
@@ -436,6 +437,6 @@ export class HexisCanonicalMemoryProjector {
       deferredSections,
       warnings,
     };
-    return { ...base, digest: hash(JSON.stringify(base)) };
+    return { ...base, digest: sha256Stable(base, 'legacy') };
   }
 }
