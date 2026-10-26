@@ -1,3 +1,8 @@
+## [NK1][Hexis] Validate memory, outbox and policy ingress (2026-10-26)
+
+- Reject non-numeric memory sync limits, malformed belief confidence/trust/protection values, coercible outbox identifiers/status flags and invalid policy evaluation fields before adapter calls.
+- Add server-smoke regressions for the malformed values; successful runtime/typecheck results remain unverified while hosted jobs expose no steps/logs.
+
 ## [NK1][Hexis] Typecheck the Hexis frontend in CI (2026-10-26)
 
 - The canonical HMX workflow now triggers for the Hexis UI/API/type contract files and runs pinned frontend install plus `npm run typecheck` before runtime typecheck and HMX integration tests.
