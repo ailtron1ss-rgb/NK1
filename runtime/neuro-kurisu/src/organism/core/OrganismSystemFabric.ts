@@ -26,7 +26,11 @@ export interface OrganismSystemFabricSnapshot {
 
 const hmxGraphRelation=(value:unknown):'supports'|'contradicts'|'causes'|'associated'|'about'|'located' => {
   const relation=String(value??'').toLowerCase();
-  if(relation==='supports'||relation==='contradicts'||relation==='causes'||relation==='about'||relation==='located'||relation==='associated') return relation;
+  if(relation==='supports') return 'supports';
+  if(relation==='contradicts') return 'contradicts';
+  if(relation==='causes') return 'causes';
+  if(relation==='about') return 'about';
+  if(relation==='located') return 'located';
   return 'associated';
 };
 
@@ -193,9 +197,18 @@ export class OrganismSystemFabric {
 
       const stage=this.hexisAdaptation.getHmxStage(proposal.stageId);
       const stageIsApplied=Boolean(stage?.status==='applied');
-      const relationshipRows=stage && Array.isArray(stage.stagedSections?.relationships)
+      const rawRelationshipRows=stage && Array.isArray(stage.stagedSections?.relationships)
         ? stage.stagedSections.relationships.filter((row:any)=>String(row?.source_ref??'')===proposal.sourceRef||String(row?.target_ref??'')===proposal.sourceRef)
         : [];
+      // A malformed/repeated export must not cause SemanticMemoryGraph.connect()
+      // to reinforce the same edge more than once during one activation.
+      const relationshipKeys=new Set<string>();
+      const relationshipRows=rawRelationshipRows.filter((row:any)=>{
+        const key=[String(row?.source_ref??''),String(row?.target_ref??''),hmxGraphRelation(row?.edge_type)].join('\\0');
+        if(relationshipKeys.has(key)) return false;
+        relationshipKeys.add(key);
+        return true;
+      });
       const graphSourceKey='hexis:'+sha256Stable(proposal.sourceLineageId,'legacy').slice(0,12)+':goal:'+sha256Stable(proposal.sourceRef,'legacy').slice(0,24);
       const goalNode=this.memory.semanticMemory.upsertNode(proposal.title,'goal',proposal.importance,graphSourceKey);
       const semanticEdgeIds:string[]=[];
@@ -225,7 +238,7 @@ export class OrganismSystemFabric {
         semanticEdgeIds.push(edge.id);
       }
       const receipt={
-        sourceStageFound:stageIsApplied,
+        sourceStageFound:Boolean(stage),
         candidateRelationships:relationshipRows.length,
         projected:semanticEdgeIds.length,
         deferred,
