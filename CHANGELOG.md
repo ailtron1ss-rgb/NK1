@@ -1,3 +1,13 @@
+## WorkPass331 — bind task-family floors to verified skill proposals (2026-10-26)
+
+- **Gap:** authenticated proposal generation blocked significant regressions by family, but an aggregate positive result could still pass if an important family had zero gain. The family results were reported, yet callers could not require improvement on the task families a particular skill is meant to serve.
+- **Code:** `VerifiedSkillPromotionOptions.minimumFamilyGainByFamily` now lets the caller declare per-family minimum gains. Every configured family must have at least `minCompleteSeeds` paired seeds and reach its own floor; missing family evidence or insufficient coverage fails closed with an explicit reason.
+- **Policy binding:** the normalized policy (`minPairedTasks`, minimum aggregate gain, maximum family regression, complete-seed floor, and per-family minimum gains) is included in the proposal and the proposal identity digest. Changing a floor changes `proposalId` even if the candidate still passes, so an approval cannot silently be reused under different criteria.
+- **Regression:** the existing ledger-bound signed-outcome test now checks that overall gain from memory cannot mask a zero-gain required memory family, that an adequately improved required tool-use family can pass, that required but unmeasured transfer evidence is rejected, malformed policy is rejected, and policy changes alter proposal IDs.
+- **Integration:** the existing WorkPass110 learning workflow already triggers on the source/test paths and invokes `npm run test:p23:verified-skill-promotion-proposal`; no duplicate test script was added.
+- **Validation status:** implementation and regressions are committed. This pass did not execute the test suite; exact-head CI status could not be retrieved, so this must remain IMPLEMENTED / CI NOT VERIFIED until a runner executes the test and runtime typecheck.
+- **Scope:** per-family gates are explicit per skill/task-family purpose; no global requirement is imposed on a specialized memory skill to improve unrelated transfer. Proposal generation never activates a skill; authenticated approval, shadow evidence, and rollback protections remain required.
+
 ## WorkPass330 — hard gate for independently verified task success (2026-10-26)
 
 - **Defect:** the SkillLearnBench-compatible candidate gate treated validation task-success below 0.80 as feedback only. Since the composite also includes trajectory/skill quality, a candidate with low verified task success could still be marked eligible when those other metrics increased.
