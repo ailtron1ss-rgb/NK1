@@ -63,7 +63,11 @@ function isSafeJsonTreeNode(value, ancestors, depth, budget) {
     const arrayValue = Array.isArray(value);
     const ownKeys = Reflect.ownKeys(value);
     if (ownKeys.length > (arrayValue ? 4097 : 4096)) return false;
-    if (!arrayValue && ownKeys.some(key => typeof key !== 'string')) return false;
+    if (ownKeys.some(key => typeof key !== 'string' || key.length > 4096)) return false;
+    for (const key of ownKeys) {
+      budget.stringChars += key.length;
+      if (budget.stringChars > 80_000_000) return false;
+    }
     const descriptors = Object.getOwnPropertyDescriptors(value);
     if (arrayValue) {
       const lengthDescriptor = descriptors.length;
