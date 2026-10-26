@@ -1,3 +1,98 @@
+### WorkPass328 follow-up — reconcile learning recovery contracts (2026-10-26)
+
+- Split the P26 input-integrity test into non-recoverable inputs (invalid action labels and non-finite targets throw before mutation) versus recoverable optimizer controls (NaN/Infinity learning rate or sample weight use conservative bounded defaults and still produce finite weights).
+- Kept P23 `replayedTraceIds` as the persisted newest-first dedup cache instead of appending older `replayUpdates` IDs that could evict newer entries from the bounded cache.
+- Changed causal-stream restore to sanitize rolling metrics independently: valid normalized diagnostics survive, while non-finite or out-of-range fields reset to zero. Trusted outcome/consolidation/behavioral totals continue to be recomputed only from grounded runtime records; quarantined imports cannot manufacture outcome evidence.
+
+### WorkPass328 follow-up — preserve fail-safe learning inputs and restore recency order (2026-10-26)
+
+- `ParametricPolicyLearner` now continues safely when the optimizer controls themselves are corrupted: non-finite learning rates and sample weights already fall back to conservative defaults at the mutation site, while finite controls are bounded. The validation boundary still rejects invalid action labels, invalid/non-finite targets, malformed state features, and non-finite extras before weights can change.
+- Fixed P23 restore ordering so the persisted newest-first `processedTraceIds`/`replayedTraceIds` cache remains first priority; valid durable rows are appended afterward to reconstruct missing cache entries without displacing the newest IDs from the capped dedupe window.
+- Corrected the causal aggregate regression to derive `outcomes` from trusted grounded records, not from all retained records. The fixture contains quarantined external claims, which must remain inspectable while contributing zero to trusted outcome totals.
+
+### WorkPass328 follow-up — ground each replay fixture to its own pre-action tick (2026-10-26)
+
+- The replay-diversity fixture now sets `trace.stateBefore.tick` and `trace.tick` to the same per-sample value and advances the observed post-state tick/time independently. Previously the test changed only the trace tick while reusing `stateBefore.tick=1`; `recordOutcome()` correctly rejected those rows as unrelated/old pre-action traces.
+
+### WorkPass328 follow-up — authenticate Hermes receipts before payload use (2026-10-26)
+
+- Reordered `bindReflectiveReportsToVerifiedShadowEvidence()` so signed shadow receipts are cryptographically verified before their payload identity, manifest, or binary outcome is used for matching. Previously a tampered `passed` field could enter the outcome-mismatch branch before signature validation, obscuring the required `signed-shadow-evidence-not-trusted` diagnosis. Duplicate run/artifact IDs now fail without replacing the first authenticated entry.
+- Adjusted the P26 adaptive-window fixture to compare the running mean with numerical tolerance rather than exact equality; the estimate differed from `0.2` only by normal IEEE-754 rounding.
+
+### WorkPass328 follow-up — use truly later snapshots in replay-diversity regression (2026-10-26)
+
+- Updated the causal replay-diversity fixture to advance both tick and observation timestamp after the source trace. The runtime correctly requires evidence of a later observed state; increasing only the tick while leaving the timestamp equal to the trace's `createdAt` did not constitute a valid transition. Grounding checks are unchanged.
+
+### WorkPass328 follow-up — stabilize float assertions and Promise-based trusted-run validation (2026-10-26)
+
+- Replaced one exact floating-point equality in the P26 transfer tracker fixture with a strict numerical tolerance. The derived delta `0.35 - 0.2` is valid but represented as `0.14999999999999997`; other transfer metrics already use tolerance-based comparisons.
+- Made `runTrustedShadowLearningProcess()` an async API so invalid candidate/shadow run descriptors reject its returned Promise consistently. Baseline/control runs remain rejected before registry mutation or child-process launch, satisfying the existing security regression without letting a synchronous throw escape an `assert.rejects` boundary.
+
+### WorkPass328 follow-up — keep Promise rejection and external-outcome accounting consistent (2026-10-26)
+
+- `P23CompoundRepairRevisionCoordinator.reviseFromObservedRepairs()` now returns a rejected Promise for an invalid skill ID instead of throwing synchronously from a Promise-returning API. This matches the established `assert.rejects`/caller contract and prevents a synchronous exception from bypassing the coordinator boundary.
+- Completed the causal-stream regression migration: all quarantined imported rows, including restored or conflicted normalized IDs, remain available for inspection and deduplication but never increase trusted `summary().outcomes`. The tests still assert that exactly one retained row survives exact duplicates and conflicts.
+
+### WorkPass328 follow-up — finish Node 22/24 replay-buffer loading (2026-10-26)
+
+- Converted `ContinualReplayBuffer`'s constructor parameter-property `readonly capacity` into an explicit class field and assignment. This removes the next strip-only TypeScript syntax blocker in P26's continual replay regression; all three constructor inputs remain runtime-validated/injectable as before.
+- Updated the restored external-event case to use the same trustworthy accounting contract as initial ingestion: one retained event after replay, zero grounded runtime outcomes, and no mutation for a conflicting duplicate.
+
+### WorkPass328 follow-up — remove remaining Node 24 strip-only constructor syntax (2026-10-26)
+
+- Replaced TypeScript parameter properties in `AtomicFileTrustedSkillShadowRunRegistry` and `P23TrustedShadowLearningScheduler` with explicit fields and assignments. These classes are part of signed skill-evidence and supervised-learning paths imported by the P23/P26 Actions tests; avoiding compile-only syntax keeps the runtime usable without a transpiler.
+
+### WorkPass328 follow-up — finish Node 24 storage compatibility and clarify quarantined event counters (2026-10-26)
+
+- Converted `AtomicFileSkillStorePersistence` away from a TypeScript constructor parameter property so Node 24 strip-only imports can execute the durable candidate/approval store in the P23 and P26 workflows.
+- Corrected a causal-stream regression expectation: imported external records are deliberately retained as quarantined records and deduplicated by normalized trace ID, but they do not increment `summary().outcomes`, which counts trusted grounded runtime outcomes. The test now asserts one retained record, zero trusted outcomes, and no count change after a conflicting duplicate.
+
+### WorkPass328 follow-up — deterministic replay and Node 24 compatibility (2026-10-26)
+
+- Removed Node 24 strip-only TypeScript-incompatible parameter properties from `P23CompoundRepairRevisionCoordinator`.
+- Explicit `P23LearningEngine.configureReplaySelection()` settings now provide a deterministic bounded replay ablation; health-adaptive batch sizing remains active on the default path. The configured recent quota stays paired with its explicit batch ceiling.
+- Corrected the payload-budget test to count JSON string quotes in the canonical serialized byte budget, and updated the correlated-postcondition source contract to assert the exact execution/decision-ticket join implemented by `ActionGateway`.
+
+### WorkPass328 follow-up — repair CI entry points and Node 24 runtime compatibility (2026-10-26)
+
+- Restored missing npm aliases for the WorkPass291/292/293/294 regressions and three existing P26 learning tests. Each alias now points at an actual test file or the existing compound-revision test chain, instead of letting the workflow fail before exercising code.
+- Updated the basic causal-outcome fixture to explicitly represent the observed completed action and its success value. The runtime correctly rejects causal credit unless the post-state attributes the selected action and a bounded success signal; the old fixture omitted both fields and was no longer a valid transition.
+- Replaced TypeScript constructor parameter properties in `VersionedSkillCandidateStore` with explicit class fields and assignments. Node 24's built-in strip-only TypeScript loader cannot execute parameter properties, which was breaking both replay strategy and signed promotion tests before they reached their assertions.
+
+### WorkPass328 follow-up — preserve intrinsic-drive influence under saturation (2026-10-26)
+
+- CI exposed a saturation bug in `B272EndogenousGoalGenesis`: intrinsic drive was added before clipping the future-value score, so already-high model values could erase the difference between a calibrated drive and a baseline drive. Changed the score to a bounded convex blend of the evidence-based model value and trusted intrinsic drive. This preserves the confidence gate and guarantees that increasing a trusted drive has a proportional effect until the output's legal bounds.
+- The existing B272 regression compares identical states with calibrated drive 0 and 0.9, and verifies that confidence 0 does not bypass the drive gate.
+
+### WorkPass328 follow-up — make signed artifact replay contract consistent (2026-10-26)
+
+- Updated the P23 signed-outcome regression that still expected `duplicate-attempt` on exact signed-artifact replay. The ingestion implementation deliberately allows the identical cryptographically valid artifact to re-establish its in-memory authenticated-evidence receipt after restart, while preserving a single ledger outcome and rejecting conflicting outcomes. The test now verifies that intended idempotent behavior.
+
+### WorkPass328 build-hardening follow-up (2026-10-25)
+
+- Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation; retained the version that validates same-tick required stages, optional appraisal/attention/memory/goal/plan edges, and required causal parents.
+- Corrected invalid control-character regex syntax in outcome correlation IDs, repaired learning type mismatches (replay options import, forgetting-risk option, optional retrieval parameters, compound-skill counters, literal dataset schema tags, and optional causal policy vectors), and added the missing compound-repair runtime-clock kind.
+- Expanded local Node.js compatibility declarations for file APIs, filesystem promises, public-key parsing, path resolution/separators, process platform metadata, Buffer allocation/byte counts, and standard error shapes. Explicitly typed child-process error/close callbacks to remain strict-mode safe.
+- These are compile-oriented fixes found from actual CI. No claim that the full runtime typecheck is yet green; more errors may be exposed by the next run.
+
+## NK1 WorkPass328 — normalize operational sensor boundary (2026-10-25)
+
+- Added one shared, own-property-only sensor normalizer for the operational micro-cycle. Body energy, cognitive capacity, thermal strain, battery, sensory freshness, CPU load, and RAM pressure now all become finite values in `[0, 1]` before any downstream subsystem sees them.
+- The life-continuity engine now receives the same normalized `awake`, battery and thermal values as the cognitive and neural paths. This closes a gap where raw `NaN`/Infinity/invalid truthy values could bypass the micro-cycle's existing safety normalization.
+- Malformed top-level observations are rejected before the host context is acquired or organism state/tick counters are changed. Inherited sensor fields, array-shaped bodies, and throwing getters are ignored rather than treated as trustworthy sensor readings.
+- Expanded the finite-input regression from source-string checks to direct behavior cases for invalid numeric inputs, fallbacks, range clipping, inherited properties, getter exceptions, and normalization wiring. Added a named WorkPass328 npm command and wired the rebuild regression aggregate to it.
+- No runtime dependency was added. This is a targeted input-integrity improvement; hosted Actions and full runtime/typecheck evidence remain pending and are not claimed here.
+- Wired the new sensor regression directly into the existing WorkPass296 pull-request workflow and its path filters, so this check runs alongside action-attribution regression on relevant PR changes.
+
+### WorkPass328 follow-up — reconcile unified-cycle restore contract (2026-10-25)
+- A second exact-head run exposed a deeper implementation gap: `lastComplete=true` survived restore even when `incompleteCycles` contradicted `cycles - completeCycles`. `UnifiedCognitiveCycle.restore()` now requires a valid partition counter, a non-negative broken-lineage counter bounded by incomplete cycles, and a well-formed missing-stage list before it restores a positive completion flag.
+- Added negative tests for contradictory and omitted counters plus a positive control for a coherent completed snapshot. This preserves fail-closed behavior without rejecting internally consistent history.
+
+
+- Fixed a pre-existing regression-test contradiction exposed by the branch's first Actions run. `UnifiedCognitiveCycle.restore()` deliberately treats a malformed persisted `lastMissingStages` collection as untrusted and restores the complete required-stage list; the test expected only the one valid item and failed before later workflow steps could run.
+- Kept the conservative runtime behavior and updated the assertion to expect all six required stages. This aligns the test with the implementation's fail-closed contract rather than weakening restore validation.
+- The failed run on the earlier WorkPass328 commit was an actual test failure, not a runner-allocation failure. A new run on the updated branch is needed to establish whether this fix and the new sensor-boundary tests pass.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

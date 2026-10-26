@@ -4,6 +4,7 @@ import { actionCost } from '../core/ActionCostPolicy.ts';
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const tanh=(x:number)=>Math.tanh(Number.isFinite(x)?x:0);
+const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const now=()=>Date.now();
 
 /**
@@ -81,6 +82,19 @@ export class ParametricPolicyLearner{
     const d=defaultParametricPolicy();
     const savedNames=Array.isArray(raw?.featureNames)?raw!.featureNames:[];
     this.state={...d,...(raw??{}),featureNames:[...featureNames],weights:{...d.weights,...(raw?.weights??{})},bias:{...d.bias,...(raw?.bias??{})}};
+    // Restored diagnostics are persisted model data too. Never let NaN, Infinity,
+    // negative counters, or truthy strings re-enter the live learning controller.
+    const finiteUnit = (value: unknown, fallback: number): number =>
+      typeof value === 'number' && Number.isFinite(value) ? clamp(value) : fallback;
+    const safeCounter = (value: unknown): number =>
+      typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? Math.min(value, Number.MAX_SAFE_INTEGER) : 0;
+    this.state.updates = safeCounter(raw?.updates);
+    this.state.tdAbsMean01 = finiteUnit(raw?.tdAbsMean01, d.tdAbsMean01);
+    this.state.trainRewardMean01 = finiteUnit(raw?.trainRewardMean01, d.trainRewardMean01);
+    this.state.explorationRate01 = finiteUnit(raw?.explorationRate01, d.explorationRate01);
+    this.state.lastLoss01 = finiteUnit(raw?.lastLoss01, d.lastLoss01);
+    this.state.lastTrainedAt = typeof raw?.lastTrainedAt === 'number' && Number.isFinite(raw.lastTrainedAt) && raw.lastTrainedAt >= 0 ? raw.lastTrainedAt : 0;
+    this.state.frozen = raw?.frozen === true;
     for(const a of ACTIONS){
       const savedWeights=Array.isArray(raw?.weights?.[a])?raw!.weights![a]:[];
       this.state.weights[a]=featureNames.map((name,index)=>{
@@ -119,7 +133,29 @@ export class ParametricPolicyLearner{
     return this.predict(state,extras).find(p=>p.action===action)!;
   }
 
+  private validateTargetAndOptimizer(action: unknown, target01: unknown, learningRate01: unknown, sampleWeight01?: unknown): void {
+    if (typeof action !== 'string' || !ACTIONS.includes(action as ActionKind)) throw new Error('invalid-action');
+    if (typeof target01 !== 'number' || !Number.isFinite(target01)) throw new Error('target-must-be-finite');
+    if (target01 < 0 || target01 > 1) throw new Error('target-must-be-in-range');
+    // Optimizer controls are sanitized at the update site (non-finite learning rate
+    // falls back to 0.03; non-finite sample weight to 0.1; finite values are clamped).
+    // Rejecting these controls outright would turn recoverable numeric corruption
+    // into a failed learning cycle instead of preserving finite bounded updates.
+    void learningRate01;
+    void sampleWeight01;
+  }
+
+  private validateTrainingSample(input: {state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}): void {
+    if (!isRecord(input.state) || !isRecord(input.state.needs)) throw new Error('state-must-have-needs');
+    this.validateTargetAndOptimizer(input.action, input.target01, input.learningRate01, input.sampleWeight01);
+    const needs = input.state.needs as unknown as Record<string, unknown>;
+    const values: unknown[] = [needs.energy,needs.cognitiveLoad,needs.uncertainty,needs.novelty,needs.goalPressure,needs.socialNeed,needs.identityCoherence,input.state.predictionError,input.state.attentionBudget,input.state.autonomyScore,input.state.selfPredictionError,input.state.lastPredictionConfidence];
+    if (!values.every(value => typeof value === 'number' && Number.isFinite(value))) throw new Error('state-features-must-be-finite');
+    for (const [name, value] of Object.entries(input.extras ?? {})) if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) throw new Error('extra-' + name + '-must-be-finite');
+  }
+
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    this.validateTrainingSample(input);
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
@@ -146,6 +182,8 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    this.validateTargetAndOptimizer(input.action, input.target01, input.learningRate01, input.sampleWeight01);
+    if(!Array.isArray(input.features) || !input.features.every(value => typeof value === 'number' && Number.isFinite(value))) throw new Error('features-must-be-finite');
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
@@ -169,6 +207,9 @@ export class ParametricPolicyLearner{
   }
 
   trainBatch(samples:Array<Parameters<ParametricPolicyLearner['train']>[0]>){
+    if (!Array.isArray(samples)) throw new Error('training-batch-must-be-array');
+    // Preflight every row so a malformed later sample cannot partially update weights.
+    for (const sample of samples) this.validateTrainingSample(sample);
     let loss=0; let n=0;
     for(const sample of samples){const r=this.train(sample);loss+=r.loss01;n++;}
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};

@@ -124,7 +124,7 @@ export class CausalExperienceStream {
             typeof record?.id==='string'&&record.id.length>0&&record.id.length<=256;
           if(!traceId||!taskId||!validActions||!boundedMetrics||!validCounters)return [];
           const hasRuntimePolicyFeatures=hasBoundedRuntimePolicyVector(record)&&
-            record.policyFeatures01.length<=128&&record.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
+            record.policyFeatures01!==undefined&&record.policyFeatures01.length<=128&&record.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
           const validReplayMetadata=record.replayEligible===undefined||typeof record.replayEligible==='boolean';
           const validOptionalMetrics=[record.learningQuality01,record.replayPriority01].every(value=>
             value===undefined||(typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1));
@@ -168,6 +168,8 @@ export class CausalExperienceStream {
     const records=uniqueRows.filter(record=>!conflictingTraceIds.has(record.traceId));
     const safeCounter=(value:unknown,fallback=0):number=>
       typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+    const safeUnit=(value:unknown):number=>
+      typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:0;
     const normalizedRecordedIds=Array.isArray(r.recordedTraceIds)
       ? [...new Set(r.recordedTraceIds.map(normalizeTraceId).filter(Boolean))].slice(-this.maxRecordedTraceIds)
       : [];
@@ -181,14 +183,12 @@ export class CausalExperienceStream {
       outcomes:records.filter(isGroundedRuntimeOutcome).length,
       consolidated:records.filter(record=>isGroundedRuntimeOutcome(record)&&record.consolidated).length,
       records,
-      rolling:records.filter(isGroundedRuntimeOutcome).reduce((acc,record)=>({
-        surprise01:clamp01(acc.surprise01*.92+record.surprise01*.08),
-        predictionError01:clamp01(acc.predictionError01*.92+record.predictionError01*.08),
-        causalStrength01:clamp01(acc.causalStrength01*.9+record.causalStrength01*.1),
-        learningOpportunity01:clamp01(acc.learningOpportunity01*.9+(
-          record.causalStrength01*.58+record.surprise01*.18+record.predictionError01*.14+record.novelty01*.10
-        )*.1),
-      }),{...d.rolling}),
+      rolling:{
+        surprise01:safeUnit(r.rolling?.surprise01),
+        predictionError01:safeUnit(r.rolling?.predictionError01),
+        causalStrength01:safeUnit(r.rolling?.causalStrength01),
+        learningOpportunity01:safeUnit(r.rolling?.learningOpportunity01),
+      },
       lastConsolidatedAt:typeof r.lastConsolidatedAt==='number'&&Number.isFinite(r.lastConsolidatedAt)&&r.lastConsolidatedAt>=0?r.lastConsolidatedAt:0,
       recordedTraceIds:normalizedRecordedIds,
       behavioralImpact01:0,

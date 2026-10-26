@@ -28,7 +28,7 @@ export interface TrustedShadowLearningRunInput {
  * version outside the child process. Registration is awaited before spawn;
  * failures reject and the learner process is never started.
  */
-export function runTrustedShadowLearningProcess(
+export async function runTrustedShadowLearningProcess(
   input: TrustedShadowLearningRunInput,
 ): Promise<LearningProcessResult> {
   if (!input || !input.core ||

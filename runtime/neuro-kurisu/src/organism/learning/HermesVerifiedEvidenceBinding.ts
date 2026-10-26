@@ -71,13 +71,27 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
   if (reasons.length) return { accepted: false, reasons, boundTrials: 0, manifestFingerprint: null, boundEvidenceScope: 'identity-and-binary-outcome-only', qualityMetricsAuthenticated: false };
 
   for (const observation of observations) {
+    // Authenticate the whole receipt before inspecting payload identity/outcome fields.
+    // A tampered payload must be diagnosed as untrusted before its values can steer matching.
+    let verified = false;
+    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
+    if (!verified) {
+      reasons.push('signed-shadow-evidence-not-trusted');
+      continue;
+    }
     const payload = observation?.artifact?.payload;
     if (!payload || typeof observation.runId !== 'string' || !observation.runId.trim()) {
       reasons.push('observation-receipt-missing');
       continue;
     }
-    if (byRun.has(observation.runId)) reasons.push('duplicate-observation-run-id');
-    if (artifactIds.has(payload.artifactId)) reasons.push('duplicate-artifact-id');
+    if (byRun.has(observation.runId)) {
+      reasons.push('duplicate-observation-run-id');
+      continue;
+    }
+    if (artifactIds.has(payload.artifactId)) {
+      reasons.push('duplicate-artifact-id');
+      continue;
+    }
     byRun.set(observation.runId, observation);
     artifactIds.add(payload.artifactId);
     if (manifestFingerprint === null) manifestFingerprint = payload.manifestFingerprint;
@@ -113,12 +127,6 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
     if (payload.passed !== report.taskSuccess?.passed ||
         report.taskSuccess?.passRate !== (payload.passed ? 1 : 0)) {
       reasons.push('reflective-trial-outcome-mismatch');
-      continue;
-    }
-    let verified = false;
-    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
-    if (!verified) {
-      reasons.push('signed-shadow-evidence-not-trusted');
       continue;
     }
     boundTrials += 1;

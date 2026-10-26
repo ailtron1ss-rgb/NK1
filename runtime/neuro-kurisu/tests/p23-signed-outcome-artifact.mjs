@@ -30,7 +30,9 @@ const accepted = ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(valid
 assert.equal(accepted.accepted, true);
 assert.match(accepted.artifactFingerprint, /^[a-f0-9]{64}$/);
 assert.equal(ledger.snapshot().acceptedOutcomes, 1);
-assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(validPayload), keys).rejection, 'duplicate-attempt');
+const replayedExactArtifact = ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(validPayload), keys);
+assert.equal(replayedExactArtifact.accepted, true, 're-ingesting the identical signed artifact restores its authenticated-evidence receipt idempotently');
+assert.equal(ledger.snapshot().acceptedOutcomes, 1, 'idempotent artifact replay must not duplicate the ledger outcome');
 
 const changed = makePayload({ artifactId: 'artifact-002', passed: false });
 const forged = artifactFor(changed);

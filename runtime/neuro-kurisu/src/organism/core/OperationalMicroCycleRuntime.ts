@@ -6,6 +6,7 @@ import type { OrganismSystemFabric } from './OrganismSystemFabric.ts';
 import type { PersistenceRuntime } from './PersistenceRuntime.ts';
 import type { WorldSubsystemRuntime } from './WorldSubsystemRuntime.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
+import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 
 export function finiteOr(value: unknown, fallback: number): number {
   // Keep the safety boundary total: neither input nor fallback may leak NaN/Infinity.
@@ -15,6 +16,63 @@ export function finiteOr(value: unknown, fallback: number): number {
   if (typeof value === 'string' && value.trim().length === 0) return safeFallback;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : safeFallback;
+}
+
+export interface OperationalMicroCycleSensorFallbacks {
+  energy: number;
+  cognitiveLoad: number;
+  ramPressure: number;
+}
+
+export interface NormalizedOperationalMicroCycleSensors {
+  awake: boolean;
+  bodyEnergy01: number;
+  cognitiveCapacity01: number;
+  thermalStrain01: number;
+  battery01: number;
+  sensoryFreshness01: number;
+  cpuLoad01: number;
+  ramPressure01: number;
+}
+
+/** Read only own data properties; malformed, inherited, or throwing sensors fail closed. */
+function ownSensorValue(value: unknown, key: string): unknown {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  try {
+    if (!Object.hasOwn(value, key)) return undefined;
+    return (value as Record<string, unknown>)[key];
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Normalize every embodiment sensor once at the micro-cycle boundary. The
+ * same bounded values are shared by homeostasis, life-continuity accounting,
+ * and the neural feature vector so one subsystem cannot see raw NaN/Infinity
+ * while another sees a clamped approximation.
+ */
+export function normalizeOperationalMicroCycleSensors(
+  body: unknown,
+  fallback: OperationalMicroCycleSensorFallbacks,
+): NormalizedOperationalMicroCycleSensors {
+  const energy = clamp(finiteOr(ownSensorValue(fallback, 'energy'), 0));
+  const cognitiveLoad = clamp(finiteOr(ownSensorValue(fallback, 'cognitiveLoad'), 0));
+  const ramPressure = clamp(finiteOr(ownSensorValue(fallback, 'ramPressure'), 0));
+  const unit = (key: string, safeFallback: number): number =>
+    clamp(finiteOr(ownSensorValue(body, key), safeFallback));
+  const awakeValue = ownSensorValue(body, 'awake');
+
+  return {
+    awake: typeof awakeValue === 'boolean' ? awakeValue : true,
+    bodyEnergy01: unit('bodyEnergy01', energy),
+    cognitiveCapacity01: unit('cognitiveCapacity01', 1 - cognitiveLoad),
+    thermalStrain01: unit('thermalStrain01', cognitiveLoad),
+    battery01: unit('battery01', energy),
+    sensoryFreshness01: unit('sensoryFreshness01', 0.8),
+    cpuLoad01: unit('cpuLoad01', cognitiveLoad),
+    ramPressure01: unit('ramPressure01', ramPressure),
+  };
 }
 
 /**
@@ -42,17 +100,24 @@ export class OperationalMicroCycleRuntime {
   }
 
   async run(observation: OrganismObservation): Promise<OrganismCycleResult> {
+    // Reject malformed top-level observations before acquiring host state or ticking clocks.
+    assertCognitiveCycleBoundaryInput(observation, 'operational');
     const host = this.contextProvider();
     const { persisted: persistedState, cognitiveRuntime, organismSystems, developmentalNeural, worldSubsystem, persistence } = host;
     const state = persistedState.state;
+    const microResource = developmentalNeural.resourceAllocator.snapshot();
+    const sensors = normalizeOperationalMicroCycleSensors(ownSensorValue(observation, 'embodiment'), {
+      energy: state.needs.energy,
+      cognitiveLoad: state.needs.cognitiveLoad,
+      ramPressure: microResource.ramPressure01,
+    });
     const before = { ...state, needs: { ...state.needs } };
     const at = Date.now();
     state.at = at;
     state.tick += 1;
-    const body = observation.embodiment;
-    const targetEnergy = clamp(finiteOr(body?.bodyEnergy01, state.needs.energy));
-    const targetCapacity = clamp(finiteOr(body?.cognitiveCapacity01, 1 - state.needs.cognitiveLoad));
-    const thermal = clamp(finiteOr(body?.thermalStrain01, state.needs.cognitiveLoad));
+    const targetEnergy = sensors.bodyEnergy01;
+    const targetCapacity = sensors.cognitiveCapacity01;
+    const thermal = sensors.thermalStrain01;
     state.needs.energy = clamp(state.needs.energy * 0.94 + targetEnergy * 0.06);
     state.needs.cognitiveLoad = clamp(state.needs.cognitiveLoad * 0.90 + (1 - targetCapacity) * 0.10 + (thermal > 0.72 ? 0.02 : 0));
     state.needs.uncertainty = clamp(state.needs.uncertainty * 0.985);
@@ -68,11 +133,11 @@ export class OperationalMicroCycleRuntime {
     organismSystems.self.p39Life.beginCycle({
       at,
       host: process.env.NEURO_HOST_ID || 'phone-host',
-      awake: body?.awake ?? true,
+      awake: sensors.awake,
       energy01: state.needs.energy,
       cognitiveLoad01: state.needs.cognitiveLoad,
-      battery01: body?.battery01,
-      thermal01: body?.thermalStrain01,
+      battery01: sensors.battery01,
+      thermal01: sensors.thermalStrain01,
       storagePressure01: 0,
     });
     persistedState.facets.learning.p39 = organismSystems.self.p39Life.snapshot();
@@ -88,10 +153,9 @@ export class OperationalMicroCycleRuntime {
       identity01: microIdentity01,
       grounding01: microP51.groundingQuality01,
       causalAlignment01: microP50.selfWorldAlignment01,
-      stress01: 1 - clamp(finiteOr(body?.cognitiveCapacity01, 0.8)),
+      stress01: 1 - targetCapacity,
     });
     persistedState.system.temporalResolution = cognitiveRuntime.temporalResolutionGovernor.snapshot();
-    const microResource = developmentalNeural.resourceAllocator.snapshot();
     developmentalNeural.longHorizonDevelopmentB302.recordMicro(state.tick, microResource.scarcity01);
 
     // This reduced-resolution heartbeat does not execute a new action. Reusing the
@@ -120,10 +184,10 @@ export class OperationalMicroCycleRuntime {
       0.5,
       thermal,
       targetCapacity,
-      finiteOr(body?.battery01, state.needs.energy),
-      finiteOr(body?.sensoryFreshness01, 0.8),
-      finiteOr(body?.cpuLoad01, state.needs.cognitiveLoad),
-      finiteOr(body?.ramPressure01, microResource.ramPressure01),
+      sensors.battery01,
+      sensors.sensoryFreshness01,
+      sensors.cpuLoad01,
+      sensors.ramPressure01,
       state.attentionBudget,
       persistedState.facets.consciousness.identityContinuity.goalContinuity,
       Math.sin(state.tick * 0.071) * 0.5 + 0.5,
@@ -145,7 +209,7 @@ export class OperationalMicroCycleRuntime {
       goalPressure01: state.needs.goalPressure,
       identityGap01: clamp(1 - persistedState.facets.consciousness.identityContinuity.continuity),
       identityVector: developmentalNeural.neuralAutobiographicalIdentityB284.identityLatent(),
-      sensorFreshness01: clamp(finiteOr(body?.sensoryFreshness01, 0.8)),
+      sensorFreshness01: sensors.sensoryFreshness01,
       worldConfidence01: clamp(0.35 + (1 - state.needs.uncertainty) * 0.25),
       selfContinuity01: clamp(persistedState.facets.consciousness.identityContinuity.continuity),
     });
