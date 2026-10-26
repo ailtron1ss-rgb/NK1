@@ -1063,20 +1063,64 @@ export class CognitiveEventFabric {
     selfUpdate?:OperationalCyclePhaseInput;
     at?:number;
   }){
-    const ids:Partial<Record<'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'selfUpdate',string>>={};
-    const parents=(...eventIds:(string|undefined)[])=>eventIds.filter((id):id is string=>Boolean(id));
-    if(input.observation){const e=this.append({tick:input.tick,stage:'observation',source:input.observation.source??'runtime',external:input.observation.external,confidence01:input.observation.confidence01,payload:input.observation.payload,at:input.at});ids.observation=e.id;}
-    if(input.prediction){const e=this.append({tick:input.tick,stage:'prediction',source:input.prediction.source??'prediction',parentIds:parents(ids.observation),confidence01:input.prediction.confidence01,payload:input.prediction.payload,at:input.at});ids.prediction=e.id;}
-    if(input.appraisal){const e=this.append({tick:input.tick,stage:'appraisal',source:input.appraisal.source??'appraisal',parentIds:parents(ids.observation,ids.prediction),confidence01:input.appraisal.confidence01,payload:input.appraisal.payload,at:input.at});ids.appraisal=e.id;}
-    if(input.attention){const e=this.append({tick:input.tick,stage:'attention',source:input.attention.source??'attention',parentIds:parents(ids.appraisal,ids.prediction),confidence01:input.attention.confidence01,payload:input.attention.payload,at:input.at});ids.attention=e.id;}
-    if(input.memory){const e=this.append({tick:input.tick,stage:'memory',source:input.memory.source??'memory',parentIds:parents(ids.attention,ids.observation),confidence01:input.memory.confidence01,payload:input.memory.payload,at:input.at});ids.memory=e.id;}
-    if(input.goal){const e=this.append({tick:input.tick,stage:'goal',source:input.goal.source??'goal',parentIds:parents(ids.appraisal,ids.memory,ids.prediction),confidence01:input.goal.confidence01,payload:input.goal.payload,at:input.at});ids.goal=e.id;}
-    if(input.plan){const e=this.append({tick:input.tick,stage:'plan',source:input.plan.source??'plan',parentIds:parents(ids.goal,ids.prediction),confidence01:input.plan.confidence01,payload:input.plan.payload,at:input.at});ids.plan=e.id;}
-    if(input.action){const e=this.append({tick:input.tick,stage:'action',source:input.action.source??'action',parentIds:parents(ids.plan,ids.prediction,ids.observation),confidence01:input.action.confidence01,payload:input.action.payload,at:input.at});ids.action=e.id;}
-    if(input.outcome){const e=this.append({tick:input.tick,stage:'outcome',source:input.outcome.source??'outcome',parentIds:parents(ids.action,ids.prediction),external:input.outcome.external,confidence01:input.outcome.confidence01,payload:input.outcome.payload,at:input.at});ids.outcome=e.id;}
-    if(input.learning){const e=this.append({tick:input.tick,stage:'learning',source:input.learning.source??'learning',parentIds:parents(ids.outcome,ids.action),confidence01:input.learning.confidence01,payload:input.learning.payload,at:input.at});ids.learning=e.id;}
-    if(input.selfUpdate){const e=this.append({tick:input.tick,stage:'self-update',source:input.selfUpdate.source??'self-update',parentIds:parents(ids.learning,ids.outcome),confidence01:input.selfUpdate.confidence01,payload:input.selfUpdate.payload,at:input.at});ids.selfUpdate=e.id;}
-    return ids;
+    // Snapshot every phase before the first write. Accessor-backed cycle/phase fields
+    // must not execute during causal event construction.
+    const cycle=snapshotOwnDataFields(input,[
+      'tick','observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','selfUpdate','at',
+    ],'operational-cycle-input');
+    const tick=cycle.tick;
+    if(typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0)throw new RangeError('invalid-cognitive-event-tick');
+    const at=cycle.at;
+    if(at!==undefined&&(typeof at!=='number'||!Number.isFinite(at)||at<0)) {
+      throw new RangeError('invalid-cognitive-event-timestamp');
+    }
+
+    const phaseKeys=[
+      'observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','selfUpdate',
+    ] as const;
+    const prepared:Partial<Record<(typeof phaseKeys)[number],OperationalCyclePhaseInput>>={};
+    for(const key of phaseKeys){
+      const phaseValue=cycle[key];
+      if(phaseValue===undefined)continue;
+      const phase=snapshotOwnDataFields(phaseValue,['source','external','confidence01','payload'],'operational-cycle-phase-input');
+      const source=phase.source;
+      const external=phase.external;
+      const confidence01=phase.confidence01;
+      if(source!==undefined&&typeof source!=='string')throw new TypeError('invalid-cognitive-event-source');
+      if(external!==undefined&&typeof external!=='boolean')throw new TypeError('invalid-cognitive-event-external-flag');
+      if(confidence01!==undefined&&(
+        typeof confidence01!=='number'||!Number.isFinite(confidence01)||confidence01<0||confidence01>1
+      ))throw new RangeError('invalid-cognitive-event-confidence');
+      let payload:Record<string,unknown>|undefined;
+      if(phase.payload!==undefined){
+        if(!isRecord(phase.payload))throw new TypeError('cognitive-event-payload-must-be-a-record');
+        payload=clonePlainJsonData(cleanPayload(phase.payload)) as Record<string,unknown>;
+        if(!isRecord(payload))throw new TypeError('cognitive-event-payload-must-be-a-record');
+      }
+      const normalizedPhase:OperationalCyclePhaseInput={};
+      if(source!==undefined)normalizedPhase.source=source;
+      if(external!==undefined)normalizedPhase.external=external;
+      if(confidence01!==undefined)normalizedPhase.confidence01=confidence01;
+      if(payload!==undefined)normalizedPhase.payload=payload;
+      prepared[key]=normalizedPhase;
+    }
+
+    return this.withAtomicLedgerMutation(()=>{
+      const ids:Partial<Record<'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'selfUpdate',string>>={};
+      const parents=(...eventIds:(string|undefined)[])=>eventIds.filter((id):id is string=>Boolean(id));
+      if(prepared.observation){const phase=prepared.observation;const e=this.append({tick,stage:'observation',source:phase.source??'runtime',external:phase.external,confidence01:phase.confidence01,payload:phase.payload,at});ids.observation=e.id;}
+      if(prepared.prediction){const phase=prepared.prediction;const e=this.append({tick,stage:'prediction',source:phase.source??'prediction',parentIds:parents(ids.observation),confidence01:phase.confidence01,payload:phase.payload,at});ids.prediction=e.id;}
+      if(prepared.appraisal){const phase=prepared.appraisal;const e=this.append({tick,stage:'appraisal',source:phase.source??'appraisal',parentIds:parents(ids.observation,ids.prediction),confidence01:phase.confidence01,payload:phase.payload,at});ids.appraisal=e.id;}
+      if(prepared.attention){const phase=prepared.attention;const e=this.append({tick,stage:'attention',source:phase.source??'attention',parentIds:parents(ids.appraisal,ids.prediction),confidence01:phase.confidence01,payload:phase.payload,at});ids.attention=e.id;}
+      if(prepared.memory){const phase=prepared.memory;const e=this.append({tick,stage:'memory',source:phase.source??'memory',parentIds:parents(ids.attention,ids.observation),confidence01:phase.confidence01,payload:phase.payload,at});ids.memory=e.id;}
+      if(prepared.goal){const phase=prepared.goal;const e=this.append({tick,stage:'goal',source:phase.source??'goal',parentIds:parents(ids.appraisal,ids.memory,ids.prediction),confidence01:phase.confidence01,payload:phase.payload,at});ids.goal=e.id;}
+      if(prepared.plan){const phase=prepared.plan;const e=this.append({tick,stage:'plan',source:phase.source??'plan',parentIds:parents(ids.goal,ids.prediction),confidence01:phase.confidence01,payload:phase.payload,at});ids.plan=e.id;}
+      if(prepared.action){const phase=prepared.action;const e=this.append({tick,stage:'action',source:phase.source??'action',parentIds:parents(ids.plan,ids.prediction,ids.observation),confidence01:phase.confidence01,payload:phase.payload,at});ids.action=e.id;}
+      if(prepared.outcome){const phase=prepared.outcome;const e=this.append({tick,stage:'outcome',source:phase.source??'outcome',parentIds:parents(ids.action,ids.prediction),external:phase.external,confidence01:phase.confidence01,payload:phase.payload,at});ids.outcome=e.id;}
+      if(prepared.learning){const phase=prepared.learning;const e=this.append({tick,stage:'learning',source:phase.source??'learning',parentIds:parents(ids.outcome,ids.action),confidence01:phase.confidence01,payload:phase.payload,at});ids.learning=e.id;}
+      if(prepared.selfUpdate){const phase=prepared.selfUpdate;const e=this.append({tick,stage:'self-update',source:phase.source??'self-update',parentIds:parents(ids.learning,ids.outcome),confidence01:phase.confidence01,payload:phase.payload,at});ids.selfUpdate=e.id;}
+      return ids;
+    });
   }
 
   verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
