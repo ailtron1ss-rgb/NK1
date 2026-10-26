@@ -3021,7 +3021,7 @@ export class OrganismCore {
                     const stableRefKey = otherRef.replace(/^exp_[a-f0-9]{16}:/, '');
                     const contentHash = createHash('sha256').update(String(memory.content ?? '')).digest('hex');
                     const graphSourceKey = 'hexis:' + lineageHash + ':' +
-                        createHash('sha256').update(stableRefKey + '\\0' + contentHash).digest('hex').slice(0, 24);
+                        createHash('sha256').update(stableRefKey + '\0' + contentHash).digest('hex').slice(0, 24);
                     const nodeType = graphType(memory.context?.hexisOriginalType ?? memory.kind);
                     const priorNode = this.memorySubsystem.semanticMemory.snapshot().nodes.find((node: any) => node.sourceKey === graphSourceKey);
                     const memoryNode = priorNode
