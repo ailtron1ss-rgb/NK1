@@ -4,6 +4,12 @@
 - Prevented a discarded outcome from being attached to the next selected action. Invalid receipts also suppress unsafe learning without freezing the spine-only cycle.
 - Verified by focused Repository wiring contract audit [#40255940523](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255940523): all workflow steps succeeded. PR [#157](https://github.com/ailtron1ss-rgb/NK1/pull/157) squash-merged into the audit branch (merge commit `a3e8119113be6493507b31a0ac49afeab59c150b`).
 
+## Vercel/Nitro UI output-path preflight fix — 2026-10-26
+
+- The new clean-install workflow proved that the production build succeeds but emits the client UI to `app/.vercel/output/static/` under the configured Vercel/Nitro preset, not `app/dist/`.
+- Updated the supervisor's required UI entrypoint to `app/.vercel/output/static/index.html` and centralized the relative path as `PRODUCTION_UI_BUILD_ENTRYPOINT`; service prerequisite tests and startup diagnostics now use the same source of truth.
+- The prior clean-install run is a useful partial result: both lockfile installs, production build, app/runtime typecheck, 30-tick organism smoke and all eight service-spec tests passed; the real multi-service startup correctly failed closed on the stale `app/dist/index.html` preflight. Rerun of the full gateway/runtime/research/UI smoke is pending.
+
 ## Clean-install production startup smoke — 2026-10-26
 
 - Added an isolated four-service startup smoke runner: it starts the production supervisor with a temporary state directory and waits for UI HTML, runtime snapshot/version and research status through the public gateway.

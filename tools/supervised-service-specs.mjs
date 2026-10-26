@@ -1,5 +1,7 @@
 import { resolve } from 'node:path';
 
+export const PRODUCTION_UI_BUILD_ENTRYPOINT = 'app/.vercel/output/static/index.html';
+
 /**
  * Canonical launch contracts for the services owned by the top-level supervisor.
  * Commands and relative script paths are evaluated from each spec's cwd.
@@ -55,7 +57,7 @@ export function buildSupervisedServiceSpecs(input) {
       command: 'npm',
       args: ['--prefix', 'app', 'run', 'preview'],
       cwd: projectRoot,
-      preflightPaths: ['app/package.json', 'app/node_modules/vite/bin/vite.js', 'app/dist/index.html'],
+      preflightPaths: ['app/package.json', 'app/node_modules/vite/bin/vite.js', PRODUCTION_UI_BUILD_ENTRYPOINT],
       env: {},
     },
     {

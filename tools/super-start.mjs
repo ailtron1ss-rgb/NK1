@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatSupervisorToolchainFailure, inspectSupervisorToolchain } from './supervisor-preflight.mjs';
 import { decideSupervisedChildExit, decideSupervisedChildSpawnError } from './supervisor-exit-policy.mjs';
-import { buildSupervisedServiceSpecs, missingServiceRequirements, resolveSupervisorStateDir } from './supervised-service-specs.mjs';
+import { buildSupervisedServiceSpecs, missingServiceRequirements, PRODUCTION_UI_BUILD_ENTRYPOINT, resolveSupervisorStateDir } from './supervised-service-specs.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 function commandAvailable(bin, args = ['--version']) {
@@ -35,8 +35,8 @@ const missingRequirements = missingServiceRequirements(serviceSpecs, existsSync)
 if (missingRequirements.length) {
   const details = missingRequirements.map(item => `${item.label}:${item.path}`).join('; ');
   console.error(`SUPER_START=FAIL reason=service-prerequisite-missing details=[${details}]`);
-  if (missingRequirements.some(item => item.label === 'ui-preview' && item.path === resolve(ROOT, 'app/dist/index.html'))) {
-    console.error('Build the UI before production-style start: npm --prefix app run build');
+  if (missingRequirements.some(item => item.label === 'ui-preview' && item.path === resolve(ROOT, PRODUCTION_UI_BUILD_ENTRYPOINT))) {
+    console.error('Build the UI before production-style start: npm run build (expected app/.vercel/output/static/index.html)');
   }
   process.exit(1);
 }

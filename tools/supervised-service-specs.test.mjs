@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSupervisedDevelopmentServiceSpecs, buildSupervisedServiceSpecs, missingServiceRequirements, resolveSupervisorStateDir } from './supervised-service-specs.mjs';
+import { buildSupervisedDevelopmentServiceSpecs, buildSupervisedServiceSpecs, missingServiceRequirements, PRODUCTION_UI_BUILD_ENTRYPOINT, resolveSupervisorStateDir } from './supervised-service-specs.mjs';
 
 const root = '/opt/neuro-kurisu';
 const stateDir = '/opt/neuro-kurisu/.super-state';
@@ -95,7 +95,7 @@ test('required service prerequisites are checked before local state is created',
   const specs = buildSupervisedServiceSpecs({ root, stateDir, nodeExecutable });
   assert.deepEqual(missingServiceRequirements(specs, () => true), []);
 
-  const uiBuildOutput = resolve(root, 'app/dist/index.html');
+  const uiBuildOutput = resolve(root, PRODUCTION_UI_BUILD_ENTRYPOINT);
   const missingUi = missingServiceRequirements(specs, candidate => candidate !== uiBuildOutput);
   assert.deepEqual(missingUi, [{ label: 'ui-preview', path: uiBuildOutput }],
     'an unbuilt UI preview must be reported before the supervisor launches any child');
