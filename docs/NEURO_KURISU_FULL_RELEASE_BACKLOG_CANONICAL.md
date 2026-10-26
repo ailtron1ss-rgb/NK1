@@ -6,8 +6,8 @@
 - [x] Preserve behavior when a state path does not yet exist by resolving the nearest existing ancestor and appending the missing suffix.
 - [x] Add a POSIX regression where the passed state path is a symlink alias to the actual directory containing the evaluator module; the loader must reject it.
 - [x] Add the evaluator-config wiring regression to the focused WorkPass349 CI workflow.
-- [ ] Obtain a green exact-head workflow run including native signed-dataset checks, supervisor cleanup, host-owned executable integrity, evaluator-config identity/state-boundary regression, and runtime typecheck.
-- **Status:** source and regression commits exist; current exact-head validation pending. This closes a configuration-path boundary bypass; it does not substitute for deployment sandboxing or production release gates.
+- [x] Dedicated workflow run [#40289015403](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289015403) passed on code SHA `6cd2776acc9094d73031c29a9f069687b97e05b9`: native signed-dataset tests, supervisor cleanup, host-owned executable integrity, evaluator-config identity/state-boundary regression, and runtime typecheck all passed. Commits after this SHA in the checkpoint block are documentation-only.
+- **Status:** source and regression are committed and CI-validated on code SHA `6cd2776acc9094d73031c29a9f069687b97e05b9`; broader release/deployment gates remain open. This closes a configuration-path boundary bypass; it does not substitute for deployment sandboxing or production release gates.
 
 ---
 
