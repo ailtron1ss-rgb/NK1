@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import test from 'node:test';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildSupervisedServiceSpecs } from './supervised-service-specs.mjs';
 
 const root = '/opt/neuro-kurisu';
@@ -27,6 +30,28 @@ test('project-level bridge, preview and gateway run from repository root', () =>
   assert.deepEqual(specs.find(spec => spec.label === 'research-bridge').args, ['research/research_bridge.py']);
   assert.deepEqual(specs.find(spec => spec.label === 'ui-preview').args, ['--prefix', 'app', 'run', 'preview']);
   assert.deepEqual(specs.find(spec => spec.label === 'gateway').args, ['tools/super-gateway.mjs']);
+});
+
+test('all configured service entrypoints exist relative to their declared working directories', () => {
+  const actualRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
+  const specs = buildSupervisedServiceSpecs({
+    root: actualRoot,
+    stateDir: resolve(actualRoot, '.super-state'),
+    nodeExecutable: process.execPath,
+  });
+  const entrypointByService = new Map([
+    ['neuro-kurisu', 'src/server/server.mjs'],
+    ['research-bridge', 'research/research_bridge.py'],
+    ['ui-preview', 'app/package.json'],
+    ['gateway', 'tools/super-gateway.mjs'],
+  ]);
+  for (const spec of specs) {
+    assert.equal(
+      existsSync(resolve(spec.cwd, entrypointByService.get(spec.label))),
+      true,
+      `${spec.label} entrypoint must exist from cwd ${spec.cwd}`,
+    );
+  }
 });
 
 test('service specs reject missing launch inputs instead of constructing unusable paths', () => {
