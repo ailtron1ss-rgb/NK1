@@ -702,5 +702,75 @@ assert.equal(failingBeliefProjection.snapshot().metrics.beliefRevisions, 0,
   'failed canonical projection must not advance revision metrics');
 
 
+// End-to-end Hexis goal path: approval creates a paused NK1 agency project, and
+// only the separate activation call may make it active. Goal links are resolved
+// to the imported memory's persisted graph-source key, with honest receipts.
+const goalPipelineSystems = new OrganismSystemFabric();
+const goalExportId = 'exp_8888888888888888';
+const goalMemoryRef = goalExportId + ':memory-anchor';
+const goalRef = goalExportId + ':goal-bridge';
+const goalPipelineStage = goalPipelineSystems.hexisAdaptation.stageHmx({
+  document: makeHmxDocument(goalExportId, {
+    memories: [{ ref: goalMemoryRef, type: 'semantic', content: 'Imported evidence for the reviewed NK1 goal.', importance: 0.72 }],
+    goals: [{ ref: goalRef, title: 'Validate a reviewed Hexis goal', description: 'Use imported evidence, then confirm progress with independent observations.' }],
+    relationships: [{ source_ref: goalMemoryRef, target_ref: goalRef, edge_type: 'supports', properties: { weight: 0.78 } }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(goalPipelineStage.conflicts, []);
+assert.equal(goalPipelineSystems.hexisAdaptation.decideHmx(goalPipelineStage.stagingId, 'accept')?.status, 'accepted');
+assert.equal(goalPipelineSystems.hexisAdaptation.decideHmx(goalPipelineStage.stagingId, 'apply')?.status, 'applied');
+const goalPreparation = goalPipelineSystems.hexisAdaptation.prepareGoalProposals(goalPipelineStage.stagingId);
+assert.equal(goalPreparation.created, 1);
+const goalProposal = goalPreparation.proposals[0];
+assert.equal(goalProposal.status, 'pending');
+assert.throws(
+  () => goalPipelineSystems.materializeApprovedHexisGoalProposal(goalProposal.id),
+  /hmx-goal-must-be-approved-before-materialization/,
+  'pending Hexis goal must not enter agency project ownership',
+);
+const reviewedGoal = goalPipelineSystems.hexisAdaptation.decideGoalProposal(goalProposal.id, 'approve');
+assert.equal(reviewedGoal?.status, 'approved');
+const materializedGoal = goalPipelineSystems.materializeApprovedHexisGoalProposal(goalProposal.id);
+assert.equal(materializedGoal.proposal.status, 'materialized');
+assert.equal(materializedGoal.project.status, 'paused');
+assert.equal(materializedGoal.project.pauseReason, 'hexis-approved-awaiting-explicit-activation');
+assert.equal(goalPipelineSystems.agency.selfProjects.activeProjects().some(project => project.hexisProposalId === goalProposal.id), false,
+  'a materialized proposal must not be auto-selected by ensureActiveProject');
+const activatedGoal = goalPipelineSystems.activateHexisGoalProposal(goalProposal.id);
+assert.equal(activatedGoal.proposal.status, 'materialized');
+assert.equal(activatedGoal.project.status, 'active');
+assert.equal(activatedGoal.receipt.sourceStageFound, true);
+assert.equal(activatedGoal.receipt.candidateRelationships, 1);
+assert.equal(activatedGoal.receipt.projected, 1);
+assert.equal(activatedGoal.receipt.deferred, 0);
+assert.equal(activatedGoal.receipt.semanticEdgeIds.length, 1);
+const goalGraph = goalPipelineSystems.memory.semanticMemory.snapshot();
+assert(goalGraph.nodes.some(node => node.type === 'goal' && node.sourceKey?.startsWith('hexis:')));
+assert(goalGraph.edges.some(edge => edge.id === activatedGoal.receipt.semanticEdgeIds[0] && edge.relation === 'supports'));
+const goalEdgeCountAfterActivation = goalGraph.edges.length;
+const replayedActivation = goalPipelineSystems.activateHexisGoalProposal(goalProposal.id);
+assert.equal(replayedActivation.receipt.semanticEdgeIds[0], activatedGoal.receipt.semanticEdgeIds[0]);
+assert.equal(goalPipelineSystems.memory.semanticMemory.snapshot().edges.length, goalEdgeCountAfterActivation,
+  'goal activation replay must not re-project or reinforce its relationship edges');
+const rejectedGoalExportId = 'exp_9999999999999998';
+const rejectedGoalStage = goalPipelineSystems.hexisAdaptation.stageHmx({
+  document: makeHmxDocument(rejectedGoalExportId, { goals: [{ ref: rejectedGoalExportId + ':rejected', title: 'Never activate this rejected goal' }] }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(rejectedGoalStage.conflicts, []);
+goalPipelineSystems.hexisAdaptation.decideHmx(rejectedGoalStage.stagingId, 'accept');
+const rejectedPreparation = goalPipelineSystems.hexisAdaptation.prepareGoalProposals(rejectedGoalStage.stagingId);
+assert.equal(rejectedPreparation.created, 1);
+goalPipelineSystems.hexisAdaptation.decideGoalProposal(rejectedPreparation.proposals[0].id, 'reject');
+assert.throws(
+  () => goalPipelineSystems.materializeApprovedHexisGoalProposal(rejectedPreparation.proposals[0].id),
+  /hmx-goal-must-be-approved-before-materialization/,
+  'rejected Hexis goals must never become NK1 agency projects',
+);
+
+
 console.log('HEXIS_ADAPTATION_PASS');
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
