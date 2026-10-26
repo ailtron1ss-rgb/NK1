@@ -1,3 +1,12 @@
+## WorkPass359 — fail closed on missing live telemetry (2026-10-26)
+
+- **Follow-on defect:** WorkPass356's conservative fallback applied to invalid values, but a missing live field still selected the historical default (for example, battery `0.82`). A runtime sensor omission could therefore masquerade as a healthy reading.
+- **Runtime fix:** the live `integrate()` path now uses conservative defaults for missing or invalid control/resource/provenance metrics. Legacy-state restore remains backward compatible for absent fields; explicitly malformed persisted sections remain fail-closed.
+- **Regression:** added a high-agency, otherwise well-grounded frame with a missing battery sample. The substrate must record battery as exhausted and the unified work policy must disable all optional branches.
+- **Validation:** this change is committed independently; check the focused substrate/runtime regression and TypeScript check on the exact new HEAD before treating it as verified.
+
+---
+
 ## WorkPass358 — distinguish inherited fields from explicitly malformed telemetry (2026-10-26)
 
 - **CI regression repair:** the WorkPass356 fixture uses an inherited `agency01` property. The substrate correctly ignores inherited properties and uses the documented default for an absent own property; the assertion was incorrectly expecting the conservative fallback used for an explicitly present but invalid value.

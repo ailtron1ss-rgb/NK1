@@ -252,40 +252,40 @@ export class UnifiedCognitiveSubstrate {
     const rawResources = input.resources as unknown as Record<string, unknown>;
     const self = {
       continuity01: metric(own(rawSelf, 'continuity01'), d.self.continuity01),
-      coherence01: trustedMetric(own(rawSelf, 'coherence01'), d.self.coherence01, 0),
-      agency01: trustedMetric(own(rawSelf, 'agency01'), d.self.agency01, 0),
-      realityAlignment01: trustedMetric(own(rawSelf, 'realityAlignment01'), d.self.realityAlignment01, 0),
+      coherence01: trustedMetric(own(rawSelf, 'coherence01'), 0, 0),
+      agency01: trustedMetric(own(rawSelf, 'agency01'), 0, 0),
+      realityAlignment01: trustedMetric(own(rawSelf, 'realityAlignment01'), 0, 0),
       mode: cleanText(own(rawSelf, 'mode'), d.self.mode, 64),
       lastAction: cleanText(own(rawSelf, 'lastAction'), d.self.lastAction, 64),
     };
     const world = {
-      confidence01: trustedMetric(own(rawWorld, 'confidence01'), d.world.confidence01, 0),
-      uncertainty01: trustedMetric(own(rawWorld, 'uncertainty01'), d.world.uncertainty01, 1),
+      confidence01: trustedMetric(own(rawWorld, 'confidence01'), 0, 0),
+      uncertainty01: trustedMetric(own(rawWorld, 'uncertainty01'), 1, 1),
       entityCount: counter(own(rawWorld, 'entityCount')),
       eventCount: counter(own(rawWorld, 'eventCount')),
       relationCount: counter(own(rawWorld, 'relationCount')),
-      conflict01: trustedMetric(own(rawWorld, 'conflict01'), d.world.conflict01, 1),
-      newEntityRate01: trustedMetric(own(rawWorld, 'newEntityRate01'), d.world.newEntityRate01, 1),
+      conflict01: trustedMetric(own(rawWorld, 'conflict01'), 1, 1),
+      newEntityRate01: trustedMetric(own(rawWorld, 'newEntityRate01'), 1, 1),
     };
     const prediction = {
-      error01: trustedMetric(own(rawPrediction, 'error01'), d.prediction.error01, 1),
+      error01: trustedMetric(own(rawPrediction, 'error01'), 1, 1),
       openCount: counter(own(rawPrediction, 'openCount')),
       agingCount: counter(own(rawPrediction, 'agingCount')),
       expiredCount: counter(own(rawPrediction, 'expiredCount')),
-      priority01: trustedMetric(own(rawPrediction, 'priority01'), d.prediction.priority01, 1),
+      priority01: trustedMetric(own(rawPrediction, 'priority01'), 1, 1),
     };
     const resources = {
-      battery01: trustedMetric(own(rawResources, 'battery01'), d.resources.battery01, 0),
-      thermal01: trustedMetric(own(rawResources, 'thermal01'), d.resources.thermal01, 1),
-      ramPressure01: trustedMetric(own(rawResources, 'ramPressure01'), d.resources.ramPressure01, 1),
-      computeCapacity01: trustedMetric(own(rawResources, 'computeCapacity01'), d.resources.computeCapacity01, 0),
-      scarcity01: trustedMetric(own(rawResources, 'scarcity01'), d.resources.scarcity01, 1),
-      efficiency01: trustedMetric(own(rawResources, 'efficiency01'), d.resources.efficiency01, 0),
+      battery01: trustedMetric(own(rawResources, 'battery01'), 0, 0),
+      thermal01: trustedMetric(own(rawResources, 'thermal01'), 1, 1),
+      ramPressure01: trustedMetric(own(rawResources, 'ramPressure01'), 1, 1),
+      computeCapacity01: trustedMetric(own(rawResources, 'computeCapacity01'), 0, 0),
+      scarcity01: trustedMetric(own(rawResources, 'scarcity01'), 1, 1),
+      efficiency01: trustedMetric(own(rawResources, 'efficiency01'), 0, 0),
     };
-    const memoryPressure01 = trustedMetric(input.memoryPressure01, d.coupling.memoryPressure01, 1);
-    const evidenceCoverage01 = trustedMetric(input.evidenceCoverage01, d.provenance.evidenceCoverage01, 0);
-    const realObservationCoverage01 = trustedMetric(input.realObservationCoverage01, d.provenance.realObservationCoverage01, 0);
-    const unknown01 = trustedMetric(input.unknown01, d.provenance.unknown01, 1);
+    const memoryPressure01 = trustedMetric(input.memoryPressure01, 1, 1);
+    const evidenceCoverage01 = trustedMetric(input.evidenceCoverage01, 0, 0);
+    const realObservationCoverage01 = trustedMetric(input.realObservationCoverage01, 0, 0);
+    const unknown01 = trustedMetric(input.unknown01, 1, 1);
 
     // All math below consumes normalized values only. A NaN in a restored or
     // live field therefore cannot poison every derived coupling metric.

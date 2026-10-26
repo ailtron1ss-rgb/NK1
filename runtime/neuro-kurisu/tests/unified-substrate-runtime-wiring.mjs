@@ -293,3 +293,19 @@ invalidBattery.resources.battery01 = Number.NaN;
 const invalidBatteryPolicy = resolveUnifiedCognitiveWorkPolicy(invalidBattery, 4);
 assert.equal(invalidBatteryPolicy.maxCounterfactualBranches, 0);
 assert.equal(invalidBatteryPolicy.reason, 'invalid-substrate-state', 'non-finite battery evidence must fail closed');
+
+// A missing live battery sample is not equivalent to the healthy default used
+// for a clean boot or a legacy persisted snapshot. Live sensor gaps fail closed.
+const missingBatterySensor = new UnifiedCognitiveSubstrate();
+const missingBatteryFrame = missingBatterySensor.integrate({
+  tick: 1,
+  self: { continuity01: 0.9, coherence01: 0.9, agency01: 0.9, realityAlignment01: 0.9, mode: 'plan', lastAction: 'explore' },
+  world: { confidence01: 0.9, uncertainty01: 0.1, entityCount: 6, eventCount: 8, relationCount: 4, conflict01: 0.1, newEntityRate01: 0.2 },
+  prediction: { error01: 0.1, openCount: 1, agingCount: 0, expiredCount: 0, priority01: 0.1 },
+  resources: { thermal01: 0.2, ramPressure01: 0.2, computeCapacity01: 0.9, scarcity01: 0.1, efficiency01: 0.9 },
+  memoryPressure01: 0.1, evidenceCoverage01: 0.9, realObservationCoverage01: 0.9, unknown01: 0.1,
+});
+assert.equal(missingBatteryFrame.resources.battery01, 0, 'missing live battery data uses the exhausted fallback');
+const missingBatteryPolicy = resolveUnifiedCognitiveWorkPolicy(missingBatteryFrame, 4);
+assert.equal(missingBatteryPolicy.maxCounterfactualBranches, 0, 'missing live battery telemetry disables optional cognition');
+assert.equal(missingBatteryPolicy.allowMatchedCounterfactual, false);
