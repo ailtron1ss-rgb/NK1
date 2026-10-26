@@ -1,3 +1,15 @@
+## Research-probe integration dependency isolation — 2026-10-26
+
+- Added a dedicated `research/requirements-integration.txt` containing the PyTorch dependency needed by the NeuroCore V143 and DeepCode v21 smoke probes.
+- The contract workflow installs it from the official CPU-only PyTorch index into a disposable virtual environment under `$RUNNER_TEMP`, then supplies that interpreter to `research_bridge.py` through `RESEARCH_PYTHON`. Research dependencies remain outside the canonical app/runtime package graph.
+- Updated `tools/verify-integration.mjs` to support the interpreter override and to print the actual error from failed approved probes instead of an unhelpful dash-only metric.
+- Added the dependency manifest and verifier to the contract workflow path filters.
+- The existing NLI-only requirements file remains scoped to the optional NLI service; the new file is narrowly scoped to cross-layer smoke coverage.
+
+Validation: the contract workflow must pass the approved NeuroCore, NOMEGA-registry and DeepCode probes using the isolated interpreter on the new exact head.
+
+---
+
 ## Unified CI dependency boundary correction — 2026-10-25
 
 - Removed a newly-added CI step pointing to `research/requirements-ci.txt`, which is not present in the repository.
