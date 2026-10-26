@@ -6,7 +6,7 @@
 - [ROLLBACK] The test writes another temporary migration that creates a table, then runs invalid SQL. The actual migrator must fail; the created table must be gone, the failed migration must not be recorded, and the earlier successful table/migration must remain intact.
 - [CLEANUP] All temporary migration files, ledger entries and test tables are removed. No product schema or dependency/lockfile was changed.
 - [CI] Added a disposable PostgreSQL 17 service to `.github/workflows/workpass362-clean-app-build.yml` and a step-scoped `DATABASE_URL` for the migration integration test. Production UI build remains separate from live database verification.
-- [VALIDATION] Latest run [#40293681029](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293681029) is pending on exact head `53aa78d0a9c04c87db1cff63a0ec35ec9ebd716c`. Do not mark WP365 green until service health, test cleanup, migration apply/rerun/rollback and the rest of the clean app-build job pass.
+- [VALIDATION] Workflow [#40293681029](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293681029) passed on code/test SHA `53aa78d0a9c04c87db1cff63a0ec35ec9ebd716c`: service health, clean-checkout doctor, app/runtime locked installs, 232 app regressions, combined app/runtime `TYPECHECK=PASS`, production Vite client/SSR/Nitro build, `WORKPASS365_POSTGRES_MIGRATION=PASS apply=1 rerun=idempotent rollback=atomic`, UI/API linkage (`routes=131`, `runtimeAtlas=50`, `requiredSeams=5`), `SCHEMA_CHECK=PASS`, assets and container shutdown all passed. Later commits in the checkpoint block are documentation-only.
 
 # WorkPass365 — live PostgreSQL migration apply/rerun/rollback test (2026-10-26)
 
