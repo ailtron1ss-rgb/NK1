@@ -370,6 +370,15 @@ assert.equal(stage.applicationMode, 'memory-merge');
 assert.equal(stage.importResult?.status, 'pending');
 assert.equal(fabric.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
 assert.equal(fabric.getHmxStage(stage.stagingId)?.importResult?.status, 'pending', 'fabric acceptance alone is not evidence that the canonical-memory import has been applied');
+const invalidNanReceipt = fabric.recordHmxImportResult(stage.stagingId, { status: 'applied', created: Number.NaN, reused: 0, skipped: 0 });
+assert.equal(invalidNanReceipt?.importResult?.status, 'pending',
+  'non-finite import counts must not complete a receipt');
+const invalidCountReceipt = fabric.recordHmxImportResult(stage.stagingId, { status: 'applied', created: 0, reused: 0, skipped: 0 });
+assert.equal(invalidCountReceipt?.importResult?.status, 'pending',
+  'receipt counts must account for every source memory record');
+const invalidPartialReceipt = fabric.recordHmxImportResult(stage.stagingId, { status: 'partial', created: 1, reused: 0, skipped: 0 });
+assert.equal(invalidPartialReceipt?.importResult?.status, 'pending',
+  'partial status must describe a receipt that actually skipped source records');
 const importRecorded = fabric.recordHmxImportResult(stage.stagingId, { status: 'applied', created: 1, reused: 0, skipped: 0 });
 assert.equal(importRecorded?.importResult?.status, 'applied');
 assert.equal(importRecorded?.importResult?.created, 1);
