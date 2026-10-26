@@ -229,12 +229,13 @@ export class MemoryFabric {
           this.touchHot(item.id);
           if(receipt.added){
             this.statsData.reconsolidations++;
+            const authority=Number(command.input.sourceAuthority01??.5);
             eventPayload={
               action,
               memoryId:item.id,
-              source:String(command.input.source??'unknown').slice(0,160),
+              sourceDigest:createHash('sha256').update(String(command.input.source??'unknown')).digest('hex'),
               provenanceClass:command.input.provenanceClass??'unknown',
-              sourceAuthority01:Math.max(0,Math.min(1,Number(command.input.sourceAuthority01??.5))),
+              sourceAuthority01:Number.isFinite(authority)?Math.max(0,Math.min(1,authority)):.5,
               independenceKeyDigest:createHash('sha256').update(String(command.input.independenceKey)).digest('hex'),
               commandId:commandId||undefined,
             };
