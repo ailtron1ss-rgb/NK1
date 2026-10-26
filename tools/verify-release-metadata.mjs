@@ -74,8 +74,8 @@ if (rootPkg && superVersion) {
     `SUPER_VERSION.json=${superVersion.canonicalRuntime}; runtime package=${runtimePkg?.version}`);
   check('schema-is-valid', Number.isInteger(superVersion.schema) && superVersion.schema > 0,
     `schema=${superVersion.schema}`);
-  const releaseRootDate = String(superVersion.releaseRoot ?? '').match(/_(\\d{4}-\\d{2}-\\d{2})$/)?.[1] ?? '';
-  const sourceBaselineDate = String(superVersion.sourceBaseline ?? '').match(/_(\\d{4}-\\d{2}-\\d{2})\\.zip$/)?.[1] ?? '';
+  const releaseRootDate = String(superVersion.releaseRoot ?? '').match(/_(\d{4}-\d{2}-\d{2})$/)?.[1] ?? '';
+  const sourceBaselineDate = String(superVersion.sourceBaseline ?? '').match(/_(\d{4}-\d{2}-\d{2})\.zip$/)?.[1] ?? '';
   check('release-root-date-aligned',
     statusDateValid && isIsoCalendarDate(releaseRootDate) && releaseRootDate === statusDateCandidate,
     `releaseDate=${statusDateCandidate || '(missing)'}; releaseRootDate=${releaseRootDate || '(missing/invalid)'}`);
