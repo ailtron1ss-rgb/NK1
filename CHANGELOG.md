@@ -1,3 +1,9 @@
+## Spine-only feedback crash recovery — 2026-10-26
+
+- The spine-only observation loop now detects a durable receipt at the current/ahead tick before retrying feedback, records a `feedback-recovery` decision event, discards the ambiguous reward, and continues advancing the cognitive tick.
+- Prevented a discarded outcome from being attached to the next selected action. Invalid receipts also suppress unsafe learning without freezing the spine-only cycle.
+- Verified by focused Repository wiring contract audit [#40255940523](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255940523): all workflow steps succeeded. PR [#157](https://github.com/ailtron1ss-rgb/NK1/pull/157) squash-merged into the audit branch (merge commit `a3e8119113be6493507b31a0ac49afeab59c150b`).
+
 ## Gateway TLS-terminator protocol preservation — 2026-10-26
 
 - The gateway previously passed a hard-coded `http` value into upstream header construction, which overwrote `x-forwarded-proto: https` from the trusted local TLS terminator. That could make authentication redirects use HTTP even when the public service was HTTPS.
