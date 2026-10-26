@@ -1,3 +1,9 @@
+## [NK1][Hexis] WorkPass407 — exercise goal proposal→approval→activation through the live HTTP server (2026-10-26)
+
+- [SMOKE] Added a second HMX fixture with one imported memory, one goal and one `supports` relationship; stages, accepts and applies it through the running server.
+- [SMOKE] Verifies pending proposals cannot materialize, invalid decisions are rejected, explicit approval materializes only a paused project, explicit activation creates one resolvable graph edge, and activation replay returns the same edge receipt.
+- [VALIDATION] Server integration test source is committed; it has not been run locally or in a usable CI job yet.
+
 ## [NK1][Hexis] WorkPass406 — expose the reviewed-goal lifecycle through the live runtime/API (2026-10-26)
 
 - [RUNTIME] Added Core wrappers for bounded proposal preparation/listing, explicit approve/reject, paused agency materialization, and separate activation. Successful materialization/activation synchronizes self-project, deliberation, semantic graph and Hexis state into persisted facets.
