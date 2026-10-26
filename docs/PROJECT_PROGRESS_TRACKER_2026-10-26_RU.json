@@ -359,48 +359,23 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass395",
+    "id": "WorkPass396",
     "date": "2026-10-26",
     "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
-    "codeCommit": "c43d05d2e6be965e4c16bcc0d803d5ee48e30f85",
-    "testCommit": "98421af0dfc17fe6c5855490554ae77116c74755",
-    "summary": "Require canonical MemoryOS2 evidence-receipt binding before any terminal Hexis review decision, including review-only correct/forget. Add 18 tampering regressions across six metadata variants and approve/correct/forget.",
+    "codeCommit": "f30d889e15192cf05eaf540614cc1479912314d6",
+    "testCommit": "621b774d8721dffaa42c010241644924a9a8b0bb",
+    "summary": "Removed the remaining legacy in-process Hexis confidence mutation path. OrganismCore.hexisReviseBelief now adapts the old evidence envelope into an idempotent server-receipt evidence event and stages it through the canonical transactional evidence-to-review path; no direct reviseBelief/updateSignals mutation remains in that compatibility method.",
     "testsAdded": [
-      "changed source reference is rejected for approve, correct and forget",
-      "changed source label is rejected for approve, correct and forget",
-      "changed note is rejected for approve, correct and forget",
-      "changed observed-at timestamp is rejected for approve, correct and forget",
-      "changed stance is rejected for approve, correct and forget",
-      "changed evidence confidence is rejected for approve, correct and forget",
-      "rejected decisions preserve canonical memory and leave the review pending"
+      "static source contract checks hexisReviseBelief delegates to ingestHexisEvidenceForReview",
+      "static source contract rejects direct hexisAdaptation.reviseBelief and MemoryFabric.updateSignals from the legacy compatibility method",
+      "legacy input rejects missing evidence source references, invalid stance and invalid confidence before staging"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, focused Hexis evidence-review test, Hexis server smoke and Unified project integration. New tests have been authored but not executed in this session. No PASS, recall uplift or production readiness is claimed.",
+    "validationStatus": "PENDING exact-head runtime typecheck, cognitive-hexis-evidence-review.mjs, Hexis server smoke and Unified project integration. Recent GitHub Actions runs are marked failed but return no step details or downloadable logs, so no pass/failure attribution is possible.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
-    {
-      "id": "WorkPass395",
-      "date": "2026-10-26",
-      "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
-      "codeCommit": "c43d05d2e6be965e4c16bcc0d803d5ee48e30f85",
-      "testCommit": "98421af0dfc17fe6c5855490554ae77116c74755",
-      "summary": "Require canonical MemoryOS2 evidence-receipt binding before any terminal Hexis review decision, including review-only correct/forget. Add 18 tampering regressions across six metadata variants and approve/correct/forget.",
-      "testsAdded": [
-        "changed source reference is rejected for approve, correct and forget",
-        "changed source label is rejected for approve, correct and forget",
-        "changed note is rejected for approve, correct and forget",
-        "changed observed-at timestamp is rejected for approve, correct and forget",
-        "changed stance is rejected for approve, correct and forget",
-        "changed evidence confidence is rejected for approve, correct and forget",
-        "rejected decisions preserve canonical memory and leave the review pending"
-      ],
-      "validationStatus": "PENDING exact-head runtime typecheck, focused Hexis evidence-review test, Hexis server smoke and Unified project integration. New tests have been authored but not executed in this session. No PASS, recall uplift or production readiness is claimed.",
-      "progressPercentagesChanged": false,
-      "testedHeadSha": null,
-      "workflowRuns": []
-    },
     {
       "id": "WorkPass394",
       "date": "2026-10-26",
@@ -698,10 +673,27 @@
       "progressPercentagesChanged": false,
       "testedHeadSha": null,
       "workflowRuns": []
+    },
+    {
+      "id": "WorkPass396",
+      "date": "2026-10-26",
+      "branch": "fix/hexis-review-digest-binding-live-2026-10-26",
+      "codeCommit": "f30d889e15192cf05eaf540614cc1479912314d6",
+      "testCommit": "621b774d8721dffaa42c010241644924a9a8b0bb",
+      "summary": "Removed the remaining legacy in-process Hexis confidence mutation path. OrganismCore.hexisReviseBelief now adapts the old evidence envelope into an idempotent server-receipt evidence event and stages it through the canonical transactional evidence-to-review path; no direct reviseBelief/updateSignals mutation remains in that compatibility method.",
+      "testsAdded": [
+        "static source contract checks hexisReviseBelief delegates to ingestHexisEvidenceForReview",
+        "static source contract rejects direct hexisAdaptation.reviseBelief and MemoryFabric.updateSignals from the legacy compatibility method",
+        "legacy input rejects missing evidence source references, invalid stance and invalid confidence before staging"
+      ],
+      "validationStatus": "PENDING exact-head runtime typecheck, cognitive-hexis-evidence-review.mjs, Hexis server smoke and Unified project integration. Recent GitHub Actions runs are marked failed but return no step details or downloadable logs, so no pass/failure attribution is possible.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
     }
   ],
-  "latestUnverifiedCodeTestHead": "98421af0dfc17fe6c5855490554ae77116c74755",
-  "branchHeadBeforeTrackerCommit": "98421af0dfc17fe6c5855490554ae77116c74755",
+  "latestUnverifiedCodeTestHead": "621b774d8721dffaa42c010241644924a9a8b0bb",
+  "branchHeadBeforeTrackerCommit": "621b774d8721dffaa42c010241644924a9a8b0bb",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -741,11 +733,11 @@
     }
   ],
   "latestEngineeringCheckpoint": {
-    "workpass": "WorkPass395",
+    "workpass": "WorkPass396",
     "sourceBranch": "fix/hexis-review-digest-binding-live-2026-10-26",
-    "codeTestHead": "98421af0dfc17fe6c5855490554ae77116c74755",
+    "codeTestHead": "621b774d8721dffaa42c010241644924a9a8b0bb",
     "validationStatus": "pending-exact-head-ci",
-    "summary": "Require canonical MemoryOS2 evidence-receipt binding before any terminal Hexis review decision, including review-only correct/forget. Add 18 tampering regressions across six metadata variants and approve/correct/forget. Progress/readiness/recall scores unchanged; main and canonical Release ZIP untouched.",
+    "summary": "Removed the remaining legacy in-process Hexis confidence mutation path. OrganismCore.hexisReviseBelief now adapts the old evidence envelope into an idempotent server-receipt evidence event and stages it through the canonical transactional evidence-to-review path; no direct reviseBelief/updateSignals mutation remains in that compatibility method. Progress/readiness/recall scores remain unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   },
