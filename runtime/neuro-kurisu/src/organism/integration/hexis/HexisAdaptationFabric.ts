@@ -492,6 +492,14 @@ export class HexisAdaptationFabric {
         intent: HexisHmxIntent;
         strategy: HexisHmxStrategy;
     }): HexisHmxStage {
+        // Keep the fabric's public mutation boundary strict as well as the HTTP
+        // route: internal callers and tests must not stage unknown runtime enum values.
+        if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(input.intent)) {
+            throw new TypeError('hmx-invalid-intent');
+        }
+        if (!['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(input.strategy)) {
+            throw new TypeError('hmx-invalid-strategy');
+        }
         const captured = snapshotHmxV17Document(input.document);
         const capturedDocument = captured.ok ? captured.value : undefined;
         const document = capturedDocument && typeof capturedDocument === 'object' && !Array.isArray(capturedDocument)
