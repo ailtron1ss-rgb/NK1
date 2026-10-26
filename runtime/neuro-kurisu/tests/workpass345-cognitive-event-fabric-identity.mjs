@@ -502,7 +502,7 @@ const invalidRootCases=[
   ['array-root',[]],
 ];
 for(const [label,invalidRoot] of invalidRootCases){
-  assert.throws(()=>atomicRestore.restore(invalidRoot),undefined,'invalid root must be rejected: '+label);
+  assert.throws(()=>atomicRestore.restore(invalidRoot),error=>error instanceof Error,'invalid root must be rejected: '+label);
   assert.deepEqual(atomicRestore.snapshot(),stableBeforeRejectedRestore,'invalid root must preserve the live ledger: '+label);
 }
 assert.equal(rootGetterCalls,0,'root accessors must never be invoked');
@@ -534,7 +534,6 @@ atomicRecovered.restore({
 assert.equal(eventIdGetterCalls,0);
 assert.equal(payloadGetterCalls,0);
 assert.equal(atomicRecovered.getById('cef:test:restore:row-accessor')?.payload.recovered,true);
-assert.equal(atomicRecovered.getById('cef:test:restore:payload-accessor')?.payload.recovered,true);
 assert.equal(atomicRecovered.getById('cef:test:restore:payload-accessor')?.payload.recovered,true);
 
 console.log('WorkPass345 CognitiveEventFabric identity: PASS');
