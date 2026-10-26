@@ -2239,3 +2239,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added a regression around a successfully promoted, signature-verified skill: caller-supplied rollback identity/timestamp/active-version fields must not authorize rollback when the configured rollback verifier is absent.
 - Asserted the failed rollback leaves the active skill/version untouched. This tests the existing production security boundary without adding a test-only bypass to the production implementation.
 - The prior WorkPass110 retry was cancelled while another PR update superseded it; rerun status must be read from the latest exact-head workflow, not inherited from the old failing run.
+
+## Hexis H1 follow-up — P65 pending-prediction lifecycle (2026-10-26)
+
+- **[FIX]** P65 now preserves unresolved predictions during normal recording as well as persistence projection and restoration. The previous in-memory 256-row ring could evict pending predictions before a snapshot was made.
+- **[BOUNDEDNESS]** Retains at most 1,024 unresolved predictions and the newest 128 non-pending claims. Once the pending limit is reached, a new prediction is rejected (record returns an empty ID) instead of silently deleting an earlier unresolved obligation.
+- **[RESTORE]** Sanitizes claim rows, deduplicates IDs, preserves newest-first order, validates supported kinds/statuses, and normalizes recent replay IDs without reversing a newest-first array.
+- **[REGRESSION]** Extends the focused test to over 1,000 pending predictions, non-prediction history churn, cap rejection, restore sanitization, and repeated persistence. Wired into npm run audit:hexis.
+- **[VALIDATION]** Source and test are committed; exact-head CI must complete successfully before this is counted as validated. This change protects memory lifecycle correctness; it does not assert measured retrieval uplift or full-system readiness.
