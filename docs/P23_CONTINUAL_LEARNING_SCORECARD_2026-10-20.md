@@ -1,3 +1,14 @@
+## WorkPass343 engineering note — validation pending (2026-10-26)
+
+- **Learning-effectiveness scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
+- **Runtime defect corrected:** a persisted derived cognitive-substrate sidecar can contain a valid but future `lastTick`, including `Number.MAX_SAFE_INTEGER`. Runtime now reconciles it with the canonical Core tick on startup, preserving cognitive metrics while preventing the sidecar clock from advancing indefinitely beyond durable state.
+- **Regression added:** the substrate is restored at `Number.MAX_SAFE_INTEGER`, re-anchored to Core tick 7, and successfully integrates tick 8; invalid reconciliation input is verified non-mutating.
+- **Exact-head evidence boundary:** last combined verified head remains `621864d0d7f2676245383adab86f1dcc6d0f741f`, with 13 successful workflow suites recorded in the progress tracker. WorkPass343's new code/test head `6ec9d696f965bcd7ee46f6560a16a0dd0c15acc1` has no exact-head run/check status returned yet. Previous CI does not certify this newest change, so mark it implemented / validation pending.
+- **Why no uplift:** this is recovery robustness for derived runtime continuity, not an empirical measure of task success, generalization, transfer, or autonomous self-development.
+- Details: [WorkPass343 checkpoint](WORKPASS343_SUBSTRATE_TICK_RECONCILIATION_RU.md) and [current weighted tracker](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.md).
+
+---
+
 ## Combined-head validation boundary — WorkPass335/336 plus WorkPass339 (2026-10-26)
 
 - The combined code/test head `bb7a76c55d83ff36358ded56e966b880b38cc7d9` includes WorkPass335 ledger preflight, WorkPass336 evaluator-origin capability, and the strict Ed25519 approval-encoding patch WorkPass339 already present in this PR diff.
