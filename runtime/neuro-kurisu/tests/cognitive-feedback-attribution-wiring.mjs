@@ -26,13 +26,13 @@ function requireFeedbackGate(label, startMarker, endMarker, learnerName) {
 requireFeedbackGate(
   'no-world-transition feedback',
   'const b272Learning = trace.selected.action === b272GoalState.action',
-  'const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;',
+  'this.recordB273OutcomeForExecutedAction({',
   'b272',
 );
 requireFeedbackGate(
   'world-transition feedback',
   'const b338Learning = b338GoalSnapshot.tick === state.tick && trace.selected.action === b338GoalState.action',
-  'const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();',
+  'this.recordB273OutcomeForExecutedAction({',
   'b338',
 );
 

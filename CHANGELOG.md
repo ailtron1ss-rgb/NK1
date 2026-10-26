@@ -1,3 +1,10 @@
+## WorkPass374 — align two-branch attribution test boundaries with shared helper (2026-10-26)
+
+- Updated the two existing B272 feedback-wiring assertions to delimit their branches at the new shared B273 outcome helper rather than the removed per-branch variables (`b273Learner` / `b338Lifecycle`). This preserves coverage of both the no-transition and world-transition routes after WorkPass373 centralised attribution logic.
+- No runtime logic changed in this pass. The new exact-head workflow will execute the test and the full B272/B273/B274 Core regression chain.
+
+---
+
 ## WorkPass373 — unify B273 attribution guard across both feedback branches (2026-10-26)\n\n- **Root cause:** CI's B272/Core regression still failed at the world-transition branch. The first WorkPass369 edit fixed the no-transition B273 route, but the older B338 branch retained a direct `learnFromOutcome()` call with `current().plan`; that second route was the actual throwing callsite.\n- **Unified fix:** both feedback paths now call one `recordB273OutcomeForExecutedAction()` helper. It reads the canonical B273 snapshot, validates decision tick/action/plan shape once, credits only an action in that exact plan, records an out-of-plan action without reward credit, and skips stale/corrupt decisions without throwing. Both paths use the correct independent-gain signal.\n- **Regression:** feedback-attribution wiring now asserts both callsites use the shared helper and that the live-world path cannot call B273 learning directly. The B273 learner's strict validation remains intact.\n- **Validation:** the next exact-head unified workflow is required; this change specifically addresses the second callsite shown by the failed CI stack.\n\n---\n\n## WorkPass372 — update feedback attribution test boundary for canonical B273 routing (2026-10-26)
 
 - The exact-head CI run failed before B273 execution because the B272 attribution test still used the old `b273Current = ...current()` line as its section delimiter. WorkPass369 intentionally replaced that presentation read with `b273Learner` plus a canonical snapshot; the old delimiter no longer exists.
