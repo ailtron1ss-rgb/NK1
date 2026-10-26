@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass403 — expose safe learning-review semantics through the live server route (2026-10-26)
+
+- [API] The review decision route rejects unknown decisions with HTTP 400 instead of silently defaulting them to approval.
+- [API] Maps missing review/source items to 404 and protected/conflicting decisions to 409; flushes successful and error paths without claiming a rejected action succeeded.
+- [SMOKE] Extends `hexis-server-smoke.mjs` to cover invalid-decision rejection, canonical approval without confidence drift, idempotent approval replay, and an actual correction revision through `OrganismCore` and the HTTP API.
+- [VALIDATION] Source/tests updated on the draft branch; execution awaits an Actions job that exposes real steps/logs or a local checkout.
+
 ## [NK1][Hexis] WorkPass402 — fail closed when canonical belief projection is unavailable (2026-10-26)
 
 - [GUARD] A belief revision now throws before committing local Hexis belief/audit state if its bound canonical projector cannot resolve the memory. This prevents orphan belief records in both composition roots.
