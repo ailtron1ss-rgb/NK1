@@ -1,3 +1,9 @@
+## NK1 WorkPass110 external outcome restore expectation (2026-10-26)
+
+- [FIX] Align the causal-stream restore regression with the trust boundary: restoring external-only evidence must not count it as trusted runtime outcomes.
+- [VALIDATION] This corrects a stale assertion observed before the workflow's later checks; exact-head rerun is still required.
+- [SCOPE] No production learning behavior is relaxed; main and the canonical Release ZIP remain unchanged.
+
 - [BLOCKER FIX] Correct the over-escaped control-character regex in `OutcomeVerificationService`; it prevented the organism core from loading in Node 24 before the Hexis path could execute.
 ## NK1 Hexis canonical HMX apply (2026-10-26)
 
@@ -2130,3 +2136,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+
+## [NK1][Hexis] WorkPass383 — idempotent canonical HMX replay (2026-10-26)
+
+- [FIX] Moved the persisted applied-stage receipt check before the accepted-stage guard in HexisCanonicalMemoryProjector.apply(). Previously, the guard rejected an already-applied stage before the idempotency branch could run.
+- [SAFETY] A retry with a persisted application receipt now returns a defensive clone without reading or writing canonical memory, graph, or temporal state.
+- [TEST] Added runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs covering zero storage calls, receipt cloning, nested-data isolation, and fail-closed handling of pending stages.
+- [VALIDATION] The regression test has been added but has not yet been executed in a runtime; CI/typecheck status remains unverified until GitHub Actions runs on the resulting branch head.
