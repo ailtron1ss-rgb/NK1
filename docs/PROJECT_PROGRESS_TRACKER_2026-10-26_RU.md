@@ -1,3 +1,12 @@
+## WorkPass395 — привязка всех Hexis review decisions к каноническому evidence (2026-10-26)
+
+- **Код:** `c43d05d2e6be965e4c16bcc0d803d5ee48e30f85`; **регрессии:** `98421af0dfc17fe6c5855490554ae77116c74755`; ветка `fix/hexis-review-digest-binding-live-2026-10-26`.
+- Исправлен пробел в границе решений: теперь `correct` и `forget`, как и `approve`, перед изменением review-state сверяют сохранённый payload с каноническим evidence receipt в MemoryOS2. Тамpered source/note/stance/timestamp/confidence не может превратиться в завершённое решение только потому, что путь не пишет confidence напрямую.
+- Тесты расширены до 18 комбинаций: 6 видов подмены метаданных × `approve`/`correct`/`forget`. При отказе должны сохраняться MemoryOS2 и pending review.
+- **Валидация:** PENDING exact-head runtime typecheck, focused Hexis evidence-review, server smoke и Unified integration. Тесты добавлены, но ещё не выполнялись в этой сессии; PASS, recall-uplift и production readiness не заявляются. Оценки прогресса не изменены; `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass394 — crash-recovery Hexis review после SIGKILL (2026-10-26)
 
 - **Код/тест:** `c8ad7c0327edf63a03ce9152577d9397097fdf1a` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`.
