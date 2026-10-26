@@ -18,6 +18,34 @@ assert.equal(finite.validUntil, 200);
 assert.equal(ledger.temporalAt('expiring-assertion', 150)?.id, finite.id);
 assert.equal(ledger.temporalAt('expiring-assertion', 200), null,
   'the end of a validity interval is exclusive');
+
+// Historical rows may be imported after more recent rows. They must not close or
+// erase the future interval just because insertion order differs from event time.
+const outOfOrderLedger = new HexisAdaptationFabric();
+const recentAssertion = outOfOrderLedger.recordTemporalAssertion({
+  memoryId: 'out-of-order-history',
+  summary: 'later observation',
+  confidence01: 0.8,
+  validFrom: 2000,
+  source: 'import-late-first',
+  value: 'later',
+});
+const olderAssertion = outOfOrderLedger.recordTemporalAssertion({
+  memoryId: 'out-of-order-history',
+  summary: 'historical observation',
+  confidence01: 0.6,
+  validFrom: 1000,
+  validUntil: 1500,
+  source: 'import-history-second',
+  value: 'earlier',
+});
+assert.equal(olderAssertion.validUntil, 1500);
+assert.equal(outOfOrderLedger.temporalAt('out-of-order-history', 1250)?.id, olderAssertion.id);
+assert.equal(outOfOrderLedger.temporalAt('out-of-order-history', 1750), null,
+  'a known gap between assertions must remain a gap');
+assert.equal(outOfOrderLedger.temporalAt('out-of-order-history', 2500)?.id, recentAssertion.id,
+  'late insertion of historical data must preserve the newer assertion');
+
 assert.throws(
   () => ledger.recordTemporalAssertion({
     memoryId: 'invalid-interval',
