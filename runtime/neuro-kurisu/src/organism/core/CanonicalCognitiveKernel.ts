@@ -348,12 +348,17 @@ export class CanonicalCognitiveKernel {
     // Feedback events retain the original logical action tick while 'at' records
     // the event-arrival time. Stable IDs make replays inspectable across later ticks.
     const tick=anchorTick??input.fallbackTick;
-    const at=this.resolveAt(input.at);
-    const parents=(...ids:Array<string|undefined>):string[]=>
+    const parents=(...ids:Array<string|undefined>):string[] =>
       ids.filter((id):id is string=>typeof id==='string'&&id.length>0);
     const outcomeId=this.stageEventId(tick,'outcome');
     const learningId=this.stageEventId(tick,'learning');
     const selfUpdateId=this.stageEventId(tick,'self-update');
+    // Omitted time on a retry means replay the original completion timestamp.
+    // Otherwise a fresh Date.now() value makes a valid retry conflict with its own IDs.
+    const priorOutcome=this.eventFabric.getById(outcomeId);
+    const at=input.at===undefined&&priorOutcome
+      ? priorOutcome.at
+      : this.resolveAt(input.at);
     const stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>={
       observation:input.anchors.observation,
       prediction:input.anchors.prediction,
@@ -434,6 +439,9 @@ export class CanonicalCognitiveKernel {
       };
     }
 
+    // Check monotonicity and counter capacity before adding any completion event.
+    // An exhausted persisted counter must not leave outcome/learning events behind.
+    this.unifiedCycle.assertCanAdvance(tick);
     const outcomeEvent=this.appendPreparedStage(tick,prepared[0]!.stage,prepared[0]!.eventInput);
     const learningEvent=this.appendPreparedStage(tick,prepared[1]!.stage,prepared[1]!.eventInput);
     const selfUpdateEvent=this.appendPreparedStage(tick,prepared[2]!.stage,prepared[2]!.eventInput);
