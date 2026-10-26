@@ -5,6 +5,8 @@
  * cycle as complete only when required stages have bounded identities and the
  * causal parent chain is credible. Restored counters are untrusted persistence.
  */
+import { isBoundedPlainDataTree } from '../core/BoundedPlainData.ts';
+
 export type UnifiedCycleStage='observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update';
 
 export interface UnifiedCognitiveCycleState {
@@ -47,6 +49,7 @@ export class UnifiedCognitiveCycle {
   private state=defaultUnifiedCognitiveCycle();
 
   restore(raw?:Partial<UnifiedCognitiveCycleState>|null):void {
+    if(raw!==undefined&&raw!==null&&!isBoundedPlainDataTree(raw))throw new TypeError('cognitive-cycle state must contain only bounded plain data properties');
     const source:object=raw!==undefined&&raw!==null&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
     const persistedCycles=ownDataValue(source,'cycles');
     const cycles=safeCounter(persistedCycles);
