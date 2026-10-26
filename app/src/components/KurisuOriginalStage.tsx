@@ -8,6 +8,7 @@ type EyeTone = "ice" | "violet" | "teal";
 type HairTone = "copper" | "wine";
 type AccentTone = "cyan" | "rose" | "lime";
 type MotionStyle = "soft" | "expressive";
+type PoseOverride = "auto" | "crossed" | "thinking" | "explain";
 
 const OUTFITS: ReadonlyArray<{ id: Outfit; label: string }> = [
   { id: "lab", label: "Лаборатория" },
@@ -31,6 +32,12 @@ const ACCENTS: ReadonlyArray<{ id: AccentTone; label: string; color: string }> =
 const MOTIONS: ReadonlyArray<{ id: MotionStyle; label: string }> = [
   { id: "soft", label: "Плавное" },
   { id: "expressive", label: "Выразительное" },
+];
+const POSES: ReadonlyArray<{ id: PoseOverride; label: string }> = [
+  { id: "auto", label: "Авто" },
+  { id: "crossed", label: "Скрестить руки" },
+  { id: "thinking", label: "Думать" },
+  { id: "explain", label: "Объяснять" },
 ];
 
 function stored<T extends string>(key: string, choices: ReadonlyArray<{ id: T }>, fallback: T): T {
@@ -90,6 +97,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
   const [hairTone, setHairTone] = useState<HairTone>(() => stored("kurisu-original-hair", HAIR, "copper"));
   const [accentTone, setAccentTone] = useState<AccentTone>(() => stored("kurisu-original-accent", ACCENTS, "cyan"));
   const [motion, setMotion] = useState<MotionStyle>(() => stored("kurisu-original-motion", MOTIONS, "soft"));
+  const [poseOverride, setPoseOverride] = useState<PoseOverride>(() => stored("kurisu-original-pose", POSES, "auto"));
   const [scale, setScale] = useState(() => {
     const saved = Number(readAvatarPreference("kurisu-original-scale"));
     return Number.isFinite(saved) && saved >= 0.85 && saved <= 1.15 ? saved : 1;
@@ -112,8 +120,9 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
     writeAvatarPreference("kurisu-original-hair", hairTone);
     writeAvatarPreference("kurisu-original-accent", accentTone);
     writeAvatarPreference("kurisu-original-motion", motion);
+    writeAvatarPreference("kurisu-original-pose", poseOverride);
     writeAvatarPreference("kurisu-original-scale", String(scale));
-  }, [outfit, eyeTone, hairTone, accentTone, motion, scale]);
+  }, [outfit, eyeTone, hairTone, accentTone, motion, poseOverride, scale]);
 
   const isLab = outfit === "lab";
   const isNight = outfit === "night";
@@ -156,7 +165,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
         </g>
         <path className="nk-scanner" d="M20 80H400" stroke={accent.color} strokeOpacity=".42" strokeWidth="1"/>
         <ellipse cx="210" cy="505" rx="78" ry="9" fill={accent.color} opacity=".12" filter="url(#nk-glow)"/>
-        <g className="nk-float" style={{ transform: `rotate(${pose.body}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
+        <g className="nk-float" style={{ transform: `rotate(${poseOverride === "auto" ? pose.body : 0}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
           {/* Rear hair silhouette and long, independently swinging locks. */}
           <g className="nk-hair">
             <path d="M150 79 Q145 38 192 29 Q246 24 273 67 Q289 104 272 180 L292 311 Q265 348 249 317 L241 205 L179 208 L170 321 Q147 348 131 308 L143 173 Q130 122 150 79Z" fill="url(#nk-hair)" stroke={hair.shade} strokeWidth="2"/>
@@ -184,12 +193,33 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
             <path d="M246 194 L231 205 L237 337 L252 353 L267 341Z" fill={coatShadow} opacity=".46"/>
           </g>}
           <g className="nk-breath">
-            {/* Arms and hands remain independent silhouettes over the torso. */}
-            <path d="M164 196 Q148 194 144 216 L129 288 Q126 303 136 307 Q145 307 150 291 L170 232Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
-            <path d="M257 196 Q273 195 278 216 L291 287 Q294 302 284 307 Q276 307 270 290 L251 232Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
-            <path d="M132 275 L151 280 L145 298 Q139 309 131 303 Q126 294 132 275Z" fill={coat}/>
-            <path d="M270 280 L289 274 L294 296 Q289 310 281 303Z" fill={coat}/>
-            <path d="M137 302 L141 319 L147 314 L148 304 M284 303 L280 320 L274 314 L274 304" fill="none" stroke="#dca59c" strokeWidth="2" strokeLinecap="round"/>
+            {/* Pose presets change the limb silhouettes; Auto follows organism action/emotion. */}
+            {poseOverride === "crossed" ? <g>
+              <path d="M164 196 Q148 194 149 216 L177 252 Q198 269 218 253 L209 234 Q198 246 185 234 L174 210Z" fill={coat} stroke={coatShadow} strokeWidth="2"/>
+              <path d="M257 196 Q273 195 272 216 L242 252 Q221 269 201 253 L211 234 Q224 246 236 234 L247 210Z" fill={coat} stroke={coatShadow} strokeWidth="2"/>
+              <path d="M176 250 Q195 263 210 251 Q224 263 241 247" fill="none" stroke="url(#nk-skin)" strokeWidth="10" strokeLinecap="round"/>
+              <path d="M189 246 Q208 252 226 244" fill="none" stroke="#bd8283" strokeWidth="1.8" strokeLinecap="round"/>
+            </g> : poseOverride === "thinking" ? <g>
+              <path d="M164 196 Q148 194 144 216 L129 288 Q126 303 136 307 Q145 307 150 291 L170 232Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
+              <path d="M132 275 L151 280 L145 298 Q139 309 131 303 Q126 294 132 275Z" fill={coat}/>
+              <path d="M137 302 L141 319 L147 314 L148 304" fill="none" stroke="#dca59c" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M257 196 Q273 195 278 216 L267 239 L250 232 L250 214Z" fill={coat} stroke={coatShadow} strokeWidth="1.5"/>
+              <path d="M262 228 L246 203 Q241 195 247 190 Q254 187 260 198 L275 220Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
+              <path d="M248 202 L239 181 Q235 172 230 168 Q224 162 229 157 Q235 153 241 162 L257 182 L266 214Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
+              <path d="M225 166 Q233 158 240 166 L244 174 Q237 180 230 175Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.2"/>
+            </g> : poseOverride === "explain" ? <g>
+              <path d="M164 196 Q148 194 144 216 L129 242 Q121 253 112 246 Q104 240 113 231 L141 204 Q151 190 170 197Z" fill={coat} stroke={coatShadow} strokeWidth="1.5"/>
+              <path d="M125 239 L110 232 Q102 228 99 221 Q97 214 104 212 Q111 211 117 218 L138 224Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
+              <path d="M257 196 Q273 195 278 216 L291 287 Q294 302 284 307 Q276 307 270 290 L251 232Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
+              <path d="M270 280 L289 274 L294 296 Q289 310 281 303Z" fill={coat}/>
+              <path d="M284 303 L280 320 L274 314 L274 304" fill="none" stroke="#dca59c" strokeWidth="2" strokeLinecap="round"/>
+            </g> : <g>
+              <path d="M164 196 Q148 194 144 216 L129 288 Q126 303 136 307 Q145 307 150 291 L170 232Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
+              <path d="M257 196 Q273 195 278 216 L291 287 Q294 302 284 307 Q276 307 270 290 L251 232Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
+              <path d="M132 275 L151 280 L145 298 Q139 309 131 303 Q126 294 132 275Z" fill={coat}/>
+              <path d="M270 280 L289 274 L294 296 Q289 310 281 303Z" fill={coat}/>
+              <path d="M137 302 L141 319 L147 314 L148 304 M284 303 L280 320 L274 314 L274 304" fill="none" stroke="#dca59c" strokeWidth="2" strokeLinecap="round"/>
+            </g>}
             {isLab ? <path d="M179 191 L196 207 L209 244 L224 207 L241 191 L229 255 L210 281 L190 255Z" fill="#f7f9f9" stroke="#b9c7cc" strokeWidth="1.5"/> : <path d="M184 191 L199 208 L210 244 L224 207 L238 191 L229 250 L210 275 L190 250Z" fill={shirt} stroke={coatShadow} strokeWidth="1.5"/>}
             <path d="M198 205 L221 205 L216 226 L211 241 L205 226Z" fill={tie}/>
             <path d="M205 239 L211 243 L217 239 L226 295 L210 315 L194 295Z" fill={tie} stroke="#572b3b" strokeWidth="1.2"/>
@@ -246,7 +276,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
       {settingsOpen ? <div className="absolute inset-x-3 top-20 z-30 max-h-[62%] overflow-y-auto rounded-lg border border-white/15 bg-[#07131b]/95 p-3 text-white shadow-xl backdrop-blur-md md:top-12 md:max-h-[68%]">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div><p className="text-xs font-semibold text-white">Вариант NK1 Original</p><p className="mt-0.5 text-[10px] text-white/55">Настройки сохраняются на этом устройстве.</p></div>
-          <button type="button" onClick={() => { setOutfit("lab"); setEyeTone("ice"); setHairTone("copper"); setAccentTone("cyan"); setMotion("soft"); setScale(1); }} className="text-[10px] text-white/60 underline">Сбросить</button>
+          <button type="button" onClick={() => { setOutfit("lab"); setEyeTone("ice"); setHairTone("copper"); setAccentTone("cyan"); setMotion("soft"); setPoseOverride("auto"); setScale(1); }} className="text-[10px] text-white/60 underline">Сбросить</button>
         </div>
         <div className="space-y-3">
           <section><p className="mb-1.5 text-[10px] uppercase tracking-wider text-white/45">Одежда</p><div className="flex flex-wrap gap-1.5">{OUTFITS.map((item) => <button key={item.id} type="button" aria-pressed={outfit === item.id} onClick={() => setOutfit(item.id)} className={`rounded-md border px-2 py-1.5 text-[10px] ${outfit === item.id ? "border-cyan-200/70 bg-cyan-200/15 text-white" : "border-white/10 text-white/65"}`}>{item.label}</button>)}</div></section>
@@ -254,6 +284,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
           <section><p className="mb-1.5 text-[10px] uppercase tracking-wider text-white/45">Волосы</p><div className="flex flex-wrap gap-1.5">{HAIR.map((item) => <button key={item.id} type="button" aria-pressed={hairTone === item.id} onClick={() => setHairTone(item.id)} className={`flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[10px] ${hairTone === item.id ? "border-cyan-200/70 bg-cyan-200/15 text-white" : "border-white/10 text-white/65"}`}><span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.main }}/>{item.label}</button>)}</div></section>
           <section><p className="mb-1.5 text-[10px] uppercase tracking-wider text-white/45">Акцент NK1</p><div className="flex flex-wrap gap-1.5">{ACCENTS.map((item) => <button key={item.id} type="button" aria-pressed={accentTone === item.id} onClick={() => setAccentTone(item.id)} className={`flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[10px] ${accentTone === item.id ? "border-cyan-200/70 bg-cyan-200/15 text-white" : "border-white/10 text-white/65"}`}><span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }}/>{item.label}</button>)}</div></section>
           <section><p className="mb-1.5 text-[10px] uppercase tracking-wider text-white/45">Движение</p><div className="flex gap-1.5"><button type="button" aria-pressed={motion === "soft"} onClick={() => setMotion("soft")} className={`rounded-md border px-2 py-1.5 text-[10px] ${motion === "soft" ? "border-cyan-200/70 bg-cyan-200/15" : "border-white/10 text-white/65"}`}>Плавное</button><button type="button" aria-pressed={motion === "expressive"} onClick={() => setMotion("expressive")} className={`rounded-md border px-2 py-1.5 text-[10px] ${motion === "expressive" ? "border-cyan-200/70 bg-cyan-200/15" : "border-white/10 text-white/65"}`}>Выразительное</button></div></section>
+          <section><p className="mb-1.5 text-[10px] uppercase tracking-wider text-white/45">Поза</p><div className="flex flex-wrap gap-1.5">{POSES.map((item) => <button key={item.id} type="button" aria-pressed={poseOverride === item.id} onClick={() => setPoseOverride(item.id)} className={`rounded-md border px-2 py-1.5 text-[10px] ${poseOverride === item.id ? "border-cyan-200/70 bg-cyan-200/15" : "border-white/10 text-white/65"}`}>{item.label}</button>)}</div></section>
           <section><label htmlFor="nk-original-scale" className="mb-1.5 flex justify-between text-[10px] uppercase tracking-wider text-white/45"><span>Масштаб персонажа</span><span>{Math.round(scale * 100)}%</span></label><input id="nk-original-scale" type="range" min="0.85" max="1.15" step="0.05" value={scale} onChange={(event) => setScale(Number(event.target.value))} className="w-full accent-cyan-200"/></section>
         </div>
       </div> : null}
