@@ -1,8 +1,7 @@
 FROM node:24-bookworm-slim
 
 ARG INSTALL_RESEARCH_TORCH=false
-ENV NODE_ENV=production \
-    PYTHONDONTWRITEBYTECODE=1 \
+ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     SUPER_GATEWAY_HOST=0.0.0.0 \
     PATH="/opt/nk1-research-venv/bin:${PATH}"
@@ -25,6 +24,9 @@ RUN if [ "${INSTALL_RESEARCH_TORCH}" = "true" ]; then \
         --index-url https://download.pytorch.org/whl/cpu \
         -r research/requirements-integration.txt; \
     fi
+
+# The named Compose volume inherits this owner and remains writable by the non-root runtime user.
+RUN mkdir -p /opt/neuro-kurisu/.super-state && chown node:node /opt/neuro-kurisu/.super-state
 
 EXPOSE 8080
 USER node
