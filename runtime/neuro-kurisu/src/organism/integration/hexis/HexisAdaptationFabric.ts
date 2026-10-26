@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
-import { snapshotHmxV17Document, validateHmxV17Document } from './HexisHmxV17Adapter.ts';
+import { snapshotAndValidateHmxV17Document, validateHmxV17Document } from './HexisHmxV17Adapter.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
@@ -529,7 +529,10 @@ export class HexisAdaptationFabric {
         if (!['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(strategy as HexisHmxStrategy)) {
             throw new TypeError('hmx-invalid-strategy');
         }
-        const captured = snapshotHmxV17Document(sourceDocument);
+        // Snapshot and validate the same detached payload in one pass. The
+        // public validator remains safe for arbitrary callers, while this staging
+        // path avoids serializing and deep-copying the bounded tree a second time.
+        const captured = snapshotAndValidateHmxV17Document(sourceDocument, intent as HexisHmxIntent);
         const capturedDocument = captured.ok ? captured.value : undefined;
         const document = capturedDocument && typeof capturedDocument === 'object' && !Array.isArray(capturedDocument)
             ? capturedDocument as Record<string, unknown>
@@ -538,8 +541,7 @@ export class HexisAdaptationFabric {
             ? document.sections as Record<string, unknown>
             : {};
         const conflicts: HexisHmxStage['conflicts'] = captured.ok
-            ? validateHmxV17Document(captured.value, intent as HexisHmxIntent)
-                .map((issue) => ({ path: issue.path, kind: issue.kind, detail: issue.detail }))
+            ? captured.issues.map((issue) => ({ path: issue.path, kind: issue.kind, detail: issue.detail }))
             : [{ path: captured.issue.path, kind: captured.issue.kind, detail: captured.issue.detail }];
         const names = Object.keys(sections);
         // Section names originate in untrusted HMX. Null-prototype dictionaries
