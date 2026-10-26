@@ -568,6 +568,92 @@ assert.equal(supersessionRuntime.semanticMemory.snapshot().nodes.some(
     node.sourceKey === sourceVersionB.memory.context?.hexisGraphSourceKey,
 ), false, 'neither historical version may retain an active semantic projection after a reversion');
 
+// Content correction must be one compensating transaction across canonical
+// status, graph and belief mirror. Fault after demotion must restore the prior
+// active version, and a retry of the same accepted stage must then complete once.
+const correctionRollbackRuntime = new MemorySubsystemRuntime();
+const correctionRollbackLedger = new HexisAdaptationFabric();
+const correctionRollbackProjector = new HexisCanonicalMemoryProjector(
+  correctionRollbackRuntime.fabric,
+  correctionRollbackRuntime.semanticMemory,
+  correctionRollbackLedger,
+);
+correctionRollbackLedger.bindCanonicalMemoryApply(stage => correctionRollbackProjector.apply(stage));
+const correctionRollbackContentA = 'Claim before an injected correction failure.';
+const applyCorrectionRollbackStage = (exportId, content) => {
+  const stage = correctionRollbackLedger.stageHmx({
+    document: makeHmxDocument(exportId, {
+      memories: [{
+        ref: exportId + ':correction-rollback-ref',
+        type: 'semantic',
+        content,
+        status: 'active',
+      }],
+    }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert.deepEqual(stage.conflicts, []);
+  assert.equal(correctionRollbackLedger.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
+  return stage;
+};
+const seedCorrectionRollback = applyCorrectionRollbackStage(
+  'exp_0000000000012351', correctionRollbackContentA,
+);
+assert.equal(correctionRollbackLedger.decideHmx(seedCorrectionRollback.stagingId, 'apply')?.status, 'applied');
+const priorCorrectionMemory = correctionRollbackRuntime.fabric.canonicalSnapshot().items.find(
+  item => item.content === correctionRollbackContentA,
+);
+assert.equal(priorCorrectionMemory?.epistemicStatus, 'belief');
+const correctedCorrectionStage = applyCorrectionRollbackStage(
+  'exp_0000000000012352', 'Corrected claim after an injected failure.',
+);
+const realRemoveCorrectionBelief = correctionRollbackLedger.removeBeliefProjection.bind(correctionRollbackLedger);
+correctionRollbackLedger.removeBeliefProjection = () => {
+  throw new Error('injected-source-correction-ledger-failure');
+};
+assert.throws(
+  () => correctionRollbackLedger.decideHmx(correctedCorrectionStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-source-correction-ledger-failure/,
+  'a downstream projection failure during source correction must be surfaced',
+);
+assert.equal(correctionRollbackLedger.getHmxStage(correctedCorrectionStage.stagingId)?.status, 'accepted');
+assert.equal(correctionRollbackLedger.getHmxStage(correctedCorrectionStage.stagingId)?.applicationAttempts, 1);
+const priorAfterCorrectionFailure = correctionRollbackRuntime.fabric.canonicalSnapshot().items.find(
+  item => item.id === priorCorrectionMemory.id,
+);
+assert.equal(priorAfterCorrectionFailure?.epistemicStatus, 'belief',
+  'failed source correction must restore the old canonical status');
+assert(correctionRollbackRuntime.semanticMemory.snapshot().nodes.some(
+  node => node.sourceKey === priorCorrectionMemory.context?.hexisGraphSourceKey,
+), 'failed source correction must restore the old semantic node');
+assert(correctionRollbackLedger.snapshot().beliefs.some(
+  belief => belief.memoryId === priorCorrectionMemory.id,
+), 'failed source correction must restore the old belief projection');
+assert.equal(
+  correctionRollbackRuntime.fabric.canonicalSnapshot().items.filter(item => String(item.source ?? '').startsWith('hexis:')).length,
+  1,
+  'failed source correction must not leave a half-inserted new version',
+);
+correctionRollbackLedger.removeBeliefProjection = realRemoveCorrectionBelief;
+assert.equal(correctionRollbackLedger.decideHmx(correctedCorrectionStage.stagingId, 'apply')?.status, 'applied',
+  'the accepted correction stage must be retryable after complete compensation');
+assert.equal(correctionRollbackLedger.getHmxStage(correctedCorrectionStage.stagingId)?.applicationAttempts, 2);
+const correctedCorrectionMemory = correctionRollbackRuntime.fabric.canonicalSnapshot().items.find(
+  item => item.content === 'Corrected claim after an injected failure.',
+);
+assert(correctedCorrectionMemory);
+assert.equal(correctedCorrectionMemory.epistemicStatus, 'belief');
+assert.equal(
+  correctionRollbackRuntime.fabric.canonicalSnapshot().items.find(item => item.id === priorCorrectionMemory.id)?.epistemicStatus,
+  'quarantined',
+);
+assert.equal(
+  correctionRollbackRuntime.fabric.canonicalSnapshot().items.filter(item => String(item.source ?? '').startsWith('hexis:')).length,
+  2,
+  'successful retry must contain exactly the previous history row and its replacement',
+);
+
 // Migration regression: a pre-existing persisted HMX row can carry values written by
 // the older permissive importer. A replay under the new policy must cap both the
 // canonical signal and its external evidence trail, not just new inserts.
