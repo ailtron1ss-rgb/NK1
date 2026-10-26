@@ -1,3 +1,11 @@
+## WorkPass404 — uniform non-object body rejection across Hexis API (2026-10-26)
+
+- **Server code:** `9e67b36842b28042de4b82ad049452e5b01ad747`; **server-smoke regression:** `0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a`.
+- Applied the shared JSON-object guard to all 17 Hexis POST routes, covering remote consult, sync-memory, belief revision, review creation/decision, retention proposal/application, HMX stage/decision, outbox queue/claim/ack/reclaim, connector-policy grant/evaluation/revoke and execution planning.
+- Literal JSON `null`, arrays and primitives now receive HTTP 400 `hexis-invalid-request-body` before they can silently create a review, grant/revoke policy, claim/ack an outbox item or enter another mutation path.
+- Server smoke sends JSON `null` to all 17 routes and requires the same refusal contract. Existing malformed decision/action and HMX integrity tests remain enabled.
+- **Validation:** PENDING exact-head runtime typecheck, HMX adaptation test, server smoke and Unified integration. No PASS or readiness increase claimed; recent Actions still fail without step/log evidence. `main` and canonical Release ZIP unchanged.
+
 ## WorkPass403 — validate HMX import receipts before completion (2026-10-26)
 
 - **Code commit:** `ed92b4abf74395cc3d6946eadd0482eca2f839d2`; **regression commit:** `8969a6401719d9105162e50d00a35c79f4e98b51`.
