@@ -690,6 +690,22 @@ export class OrganismRuntime {
       unknown01: 1 - clamp01(body.sensoryFreshness01),
       reason: `runtime-cycle:${cycle.state.tick};action:${cycle.decision.selected?.action ?? 'wait'}`,
     });
+    const substrateSignalChanged =
+      previousSubstrateState.self.mode !== substrateState.self.mode ||
+      previousSubstrateState.self.lastAction !== substrateState.self.lastAction ||
+      Math.abs(previousSubstrateState.coupling.actionReadiness01 - substrateState.coupling.actionReadiness01) >= 0.15 ||
+      Math.abs(previousSubstrateState.world.uncertainty01 - substrateState.world.uncertainty01) >= 0.15 ||
+      Math.abs(previousSubstrateState.resources.battery01 - substrateState.resources.battery01) >= 0.15 ||
+      Math.abs(previousSubstrateState.provenance.unknown01 - substrateState.provenance.unknown01) >= 0.15;
+    // Avoid fsync on every mobile cycle, but make important changes and bounded checkpoints durable.
+    if (substrateSignalChanged || cycle.state.tick % 16 === 0) {
+      await this.unifiedCognitiveSubstrateStore.save(substrateState).catch(async error => {
+        await this.journal.write('warn', 'runtime.unified-cognitive-substrate.persist-failed', {
+          tick: cycle.state.tick,
+          message: String((error as any)?.message ?? error).slice(0, 200),
+        }).catch(() => {});
+      });
+    }
 
     const dependencyStateChanged =
       previousDependencyState.wakeMask !== dependencyState.wakeMask ||
