@@ -1,3 +1,10 @@
+## [NK1][Hexis] WorkPass386 — enforce receipt integrity across restored-stage replay (2026-10-26)
+
+- [FIX] Exported one shared HMX apply-receipt validator from the canonical projector and reused it in the adaptation layer, avoiding separate receipt-integrity rules.
+- [FIX] `decideHmx(..., 'apply')` now validates every already-applied stage before returning it; missing, stale, cross-stage, or tampered receipts fail closed after restore.
+- [TEST] Added regressions for tampered and missing receipts on restored stages, including a guard that the canonical apply handler is never called for a corrupt replay.
+- [VALIDATION] Changes are committed to a dedicated non-main branch. Runtime tests and the release ZIP have not been run/rebuilt in this tool pass.
+
 ## [NK1][Hexis] WorkPass385 — align HMX bounds, validate relationships, bind replay receipts (2026-10-26)
 
 - [FIX] Aligned HMX import staging with the export adapter's 8 MiB UTF-8 document budget; normalized exports that expand beyond the same budget now fail explicitly instead of producing an artifact that the importer cannot stage.
