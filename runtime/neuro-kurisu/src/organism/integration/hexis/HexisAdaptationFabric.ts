@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { sha256Stable } from '../../core/StableSerialization.ts';
-import { hasValidHmxApplicationReceipt } from './HexisHmxReceiptGuard.ts';
+import { calculateHmxStageDigest, hasValidHmxApplicationReceipt, hasValidHmxStageDigest } from './HexisHmxReceiptGuard.ts';
 export type HexisEvidenceStance = 'supports' | 'contradicts';
 export type HexisReviewDecision = 'approve' | 'correct' | 'forget';
 export type HexisHmxIntent = 'port' | 'duplicate' | 'telepathy' | 'analysis';
@@ -351,13 +351,16 @@ export class HexisAdaptationFabric {
                             detail: 'persisted HMX staged sections were omitted because retained payload exceeded the configured memory budget; re-export and stage again',
                         });
                     }
-                    return {
+                    const restoredStage: HexisHmxStage = {
                         ...stage,
                         status: stage.status === 'accepted' ? 'staged' as const : stage.status,
                         conflicts,
                         stagedSections: {},
                         stagedBytes: 0,
                     };
+                    const repairedDigest = calculateHmxStageDigest(restoredStage);
+                    if (repairedDigest) restoredStage.digest = repairedDigest;
+                    return restoredStage;
                 }).reverse();
             })(),
             goalProposals: Array.isArray((value as any).goalProposals) ? (value as any).goalProposals.slice(-256) : [],
@@ -920,9 +923,10 @@ export class HexisAdaptationFabric {
         if (!stage) return null;
         if (decision === 'apply') {
             if (stage.status === 'applied') {
-            if (!hasValidHmxApplicationReceipt(stage)) throw new Error('hmx-applied-receipt-invalid');
-            return structuredClone(stage);
-        }
+                if (!hasValidHmxApplicationReceipt(stage)) throw new Error('hmx-applied-receipt-invalid');
+                return structuredClone(stage);
+            }
+            if (!hasValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
             if (stage.status !== 'accepted' || stage.conflicts.length) return structuredClone(stage);
             if (stage.intent !== 'port' || stage.strategy !== 'additive') {
                 throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
@@ -937,6 +941,7 @@ export class HexisAdaptationFabric {
             return structuredClone(stage);
         }
         if (decision !== 'accept' && decision !== 'reject') return structuredClone(stage);
+        if (decision === 'accept' && !hasValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
         if (stage.status !== 'staged' || (decision === 'accept' && stage.conflicts.length)) return structuredClone(stage);
         stage.status = decision === 'accept' ? 'accepted' : 'rejected';
         if (decision === 'accept') this.state.metrics.hmxAccepted += 1;
