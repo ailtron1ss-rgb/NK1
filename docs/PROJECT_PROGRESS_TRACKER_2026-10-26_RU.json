@@ -359,29 +359,65 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass404",
+    "id": "WorkPass405",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "9e67b36842b28042de4b82ad049452e5b01ad747",
-    "testCommit": "0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a",
-    "codeTestHead": "0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a",
-    "summary": "Apply the shared JSON-record guard to every Hexis POST endpoint so null/array/primitive request bodies cannot reach route-specific property access, policy mutation, outbox transitions or other actions.",
+    "codeCommit": "7c50f4a34dfc1198b9ec1347b1938d38fd7e73cc",
+    "testCommit": "637429b82ae8913760b89b9544cd21a00457c3bd",
+    "codeTestHead": "637429b82ae8913760b89b9544cd21a00457c3bd",
+    "summary": "Make HMX import receipts terminally uncertain when the canonical-memory rollback is incomplete. Derive exact remaining source-row accounting from confirmed created/reused counts so an accepted stage cannot remain pending and replay after an ambiguous mutation.",
     "testsAdded": [
-      "JSON null returns HTTP 400 on peer consult",
-      "JSON null returns HTTP 400 on sync-memory and belief revision",
-      "JSON null returns HTTP 400 on review creation and decision",
-      "JSON null returns HTTP 400 on retention proposal and apply",
-      "JSON null returns HTTP 400 on HMX stage and decision",
-      "JSON null returns HTTP 400 on outbox enqueue/claim/ack/reclaim",
-      "JSON null returns HTTP 400 on policy grant/evaluate/revoke",
-      "JSON null returns HTTP 400 on execution planning"
+      "incomplete rollback records a terminal uncertain receipt",
+      "uncertain receipt counters account for the complete source-memory count",
+      "a later applied receipt cannot overwrite a terminal uncertain result"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Tests are authored but not confirmed on a usable exact-head CI run; no PASS/readiness/progress uplift claimed.",
+    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regression is authored; no usable exact-head PASS evidence yet and no readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass405",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "7c50f4a34dfc1198b9ec1347b1938d38fd7e73cc",
+      "testCommit": "637429b82ae8913760b89b9544cd21a00457c3bd",
+      "codeTestHead": "637429b82ae8913760b89b9544cd21a00457c3bd",
+      "summary": "Make HMX import receipts terminally uncertain when the canonical-memory rollback is incomplete. Derive exact remaining source-row accounting from confirmed created/reused counts so an accepted stage cannot remain pending and replay after an ambiguous mutation.",
+      "testsAdded": [
+        "incomplete rollback records a terminal uncertain receipt",
+        "uncertain receipt counters account for the complete source-memory count",
+        "a later applied receipt cannot overwrite a terminal uncertain result"
+      ],
+      "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regression is authored; no usable exact-head PASS evidence yet and no readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
+    {
+      "id": "WorkPass404",
+      "date": "2026-10-26",
+      "branch": "hexis-remote-bridge-20261026",
+      "codeCommit": "9e67b36842b28042de4b82ad049452e5b01ad747",
+      "testCommit": "0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a",
+      "codeTestHead": "0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a",
+      "summary": "Apply the shared JSON-record guard to every Hexis POST endpoint so null/array/primitive request bodies cannot reach route-specific property access, policy mutation, outbox transitions or other actions.",
+      "testsAdded": [
+        "JSON null returns HTTP 400 on peer consult",
+        "JSON null returns HTTP 400 on sync-memory and belief revision",
+        "JSON null returns HTTP 400 on review creation and decision",
+        "JSON null returns HTTP 400 on retention proposal and apply",
+        "JSON null returns HTTP 400 on HMX stage and decision",
+        "JSON null returns HTTP 400 on outbox enqueue/claim/ack/reclaim",
+        "JSON null returns HTTP 400 on policy grant/evaluate/revoke",
+        "JSON null returns HTTP 400 on execution planning"
+      ],
+      "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Tests are authored but not confirmed on a usable exact-head CI run; no PASS/readiness/progress uplift claimed.",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass357",
       "date": "2026-10-26",
@@ -550,8 +586,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a",
-  "branchHeadBeforeTrackerCommit": "0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a",
+  "latestUnverifiedCodeTestHead": "637429b82ae8913760b89b9544cd21a00457c3bd",
+  "branchHeadBeforeTrackerCommit": "637429b82ae8913760b89b9544cd21a00457c3bd",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -591,39 +627,43 @@
     }
   ],
   "previousEngineeringPass": {
-    "id": "WorkPass403",
+    "id": "WorkPass404",
     "date": "2026-10-26",
     "branch": "hexis-remote-bridge-20261026",
-    "codeCommit": "ed92b4abf74395cc3d6946eadd0482eca2f839d2",
-    "testCommit": "8969a6401719d9105162e50d00a35c79f4e98b51",
-    "codeTestHead": "8969a6401719d9105162e50d00a35c79f4e98b51",
-    "summary": "Validate HMX import-receipt status, integer counters, reason size and exact source-record accounting before moving a pending receipt to applied/partial/skipped.",
+    "codeCommit": "9e67b36842b28042de4b82ad049452e5b01ad747",
+    "testCommit": "0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a",
+    "codeTestHead": "0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a",
+    "summary": "Apply the shared JSON-record guard to every Hexis POST endpoint so null/array/primitive request bodies cannot reach route-specific property access, policy mutation, outbox transitions or other actions.",
     "testsAdded": [
-      "non-finite count leaves import receipt pending",
-      "completed count totals must account for every source memory",
-      "partial status requires consistent skipped/retained accounting",
-      "valid receipt still completes and replay cannot rewrite completed counts"
+      "JSON null returns HTTP 400 on peer consult",
+      "JSON null returns HTTP 400 on sync-memory and belief revision",
+      "JSON null returns HTTP 400 on review creation and decision",
+      "JSON null returns HTTP 400 on retention proposal and apply",
+      "JSON null returns HTTP 400 on HMX stage and decision",
+      "JSON null returns HTTP 400 on outbox enqueue/claim/ack/reclaim",
+      "JSON null returns HTTP 400 on policy grant/evaluate/revoke",
+      "JSON null returns HTTP 400 on execution planning"
     ],
-    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Regressions are authored but have no usable exact-head PASS evidence; no readiness/progress/recall uplift claimed.",
+    "validationStatus": "PENDING exact-head runtime typecheck, test:hexis-adaptation, test:hexis-server-smoke and Unified project integration. Tests are authored but not confirmed on a usable exact-head CI run; no PASS/readiness/progress uplift claimed.",
     "progressPercentagesChanged": false,
     "testedHeadSha": null,
     "workflowRuns": []
   },
   "latestEngineeringCheckpoint": {
+    "workpass": "WorkPass405",
+    "sourceBranch": "hexis-remote-bridge-20261026",
+    "codeTestHead": "637429b82ae8913760b89b9544cd21a00457c3bd",
+    "validationStatus": "pending-exact-head-ci",
+    "summary": "Quarantine HMX imports with incomplete rollback under terminal status uncertain; preserve strict exact source count accounting and prevent retry/replay of a potentially partially mutated batch. Scores unchanged; main and canonical Release ZIP untouched.",
+    "progressPercentagesChanged": false,
+    "validationRuns": []
+  },
+  "previousEngineeringCheckpoint": {
     "workpass": "WorkPass404",
     "sourceBranch": "hexis-remote-bridge-20261026",
     "codeTestHead": "0e72a6d377e3e19f7181372de0b9c0a9b8e0af2a",
     "validationStatus": "pending-exact-head-ci",
     "summary": "Apply the shared JSON-record guard to every Hexis POST endpoint so null/array/primitive request bodies cannot reach route-specific property access, policy mutation, outbox transitions or other actions. WorkPass396–403 also implement atomic HMX staging, safe snapshots, strict decision allowlists, prototype-free stage maps, restore-time integrity checks and import receipt accounting. Scores unchanged; main and canonical Release ZIP untouched.",
-    "progressPercentagesChanged": false,
-    "validationRuns": []
-  },
-  "previousEngineeringCheckpoint": {
-    "workpass": "WorkPass403",
-    "sourceBranch": "hexis-remote-bridge-20261026",
-    "codeTestHead": "8969a6401719d9105162e50d00a35c79f4e98b51",
-    "validationStatus": "pending-exact-head-ci",
-    "summary": "Validate HMX import-receipt status, integer counters, reason size and exact source-record accounting before moving a pending receipt to applied/partial/skipped. WorkPass396–402 cover atomic staging, strict snapshot ingress, action/body allowlists, prototype-free maps and restore-time stage integrity. Scores unchanged; main and canonical Release ZIP untouched.",
     "progressPercentagesChanged": false,
     "validationRuns": []
   }
