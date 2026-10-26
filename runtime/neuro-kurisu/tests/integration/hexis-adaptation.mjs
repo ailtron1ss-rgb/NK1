@@ -851,6 +851,10 @@ assert.equal(correctionResult.memory?.confidence,originalReviewConfidence,
   'correction must preserve confidence unless separate evidence is evaluated');
 assert.equal(correctionResult.memory?.supersedesId,reviewedSource.id);
 assert.equal(correctionResult.memory?.context?.hexisLearningDecision,'corrected');
+const correctionReplayResult = reviewSystems.decideHexisLearningReview(correctionReview.id,correctionItem.id,'correct','The corrected learning-review claim.');
+assert.equal(correctionReplayResult.disposition,'replayed');
+assert.equal(correctionReplayResult.memory?.id,correctionResult.memory?.id,
+  'replaying the same correction decision must return the same canonical revision');
 
 const procedureReview = reviewSystems.hexisAdaptation.createLearningReview({
   periodStart:1700000000000,periodEnd:1700000003000,summary:'Review a newly proposed procedure.',
@@ -864,6 +868,11 @@ assert.equal(procedureResult.memory?.epistemicStatus,'hypothesis');
 assert.equal(procedureResult.memory?.confidence,0.42,
   'reviewed but untested procedures remain low-confidence hypotheses and are not auto-promoted to skills');
 assert.equal(procedureResult.item.canonicalMemoryId,procedureResult.memory?.id);
+const procedureMemoryCountAfterFirstDecision=reviewSystems.memory.fabric.canonicalSnapshot().items.length;
+const procedureReplayResult=reviewSystems.decideHexisLearningReview(procedureReview.id,procedureItem.id,'approve');
+assert.equal(procedureReplayResult.disposition,'replayed');
+assert.equal(reviewSystems.memory.fabric.canonicalSnapshot().items.length,procedureMemoryCountAfterFirstDecision,
+  'approving the same proposal after restore must not create another candidate memory');
 
 const forgetReview = reviewSystems.hexisAdaptation.createLearningReview({
   periodStart:1700000000000,periodEnd:1700000004000,summary:'Quarantine stale knowledge.',
