@@ -33,6 +33,22 @@ assert.equal(comparison.environmentFingerprint, 'a'.repeat(64));
 assert.equal(comparison.planFingerprint, baseline.evaluation.provenance.planFingerprint);
 assert.ok(comparison.validationGain01 > 0, 'matched scoring should preserve the measured validation improvement');
 assert.ok(comparison.reasons.includes('holdout-task-coverage-insufficient'), 'one holdout task must not satisfy the existing minimum holdout gate');
+// No manifest-backed family label means no family can be inferred from task IDs.
+// The evaluation remains diagnostic, but cannot be considered promotion-eligible.
+assert.ok(comparison.reasons.includes('task-family-evidence-missing'),
+  'missing trusted task-family provenance must fail closed for promotion');
+const relabeledReport = structuredClone(candidate);
+relabeledReport.evaluation.validation[0].taskFamily = 'memory';
+relabeledReport.evaluationFingerprint = digest(relabeledReport.evaluation);
+assert.throws(() => compareMatchedIndependentEvaluations(baseline, relabeledReport),
+  /matched-independent-evaluation-candidate-task-family-mismatch/,
+  'a caller cannot relabel one scored task without a matching manifest-bound execution identity');
+const relabeledBinding = structuredClone(candidate);
+relabeledBinding.evaluation.provenance.runBindings[0].taskFamily = 'transfer';
+relabeledBinding.evaluationFingerprint = digest(relabeledBinding.evaluation);
+assert.throws(() => compareMatchedIndependentEvaluations(baseline, relabeledBinding),
+  /matched-independent-evaluation-candidate-task-family-mismatch/,
+  'a run binding cannot claim a family different from its evaluation report');
 
 const differentEnvironment = await makeEvaluation({ skill: 'candidate', version: 2 }, 'b'.repeat(64), { runPrefix: 'different-env-' });
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, differentEnvironment), /environment-mismatch/);
