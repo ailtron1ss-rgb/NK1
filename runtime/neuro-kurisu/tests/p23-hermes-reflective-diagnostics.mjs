@@ -9,7 +9,7 @@ function report(taskId, trialId, passed, safe = true) {
   const trajectory = Number(((order + order + completeness) / 3).toFixed(6));
   const skill = Number(((coverage + 1 + (safe ? 1 : 0)) / 3).toFixed(6));
   return {
-    taskId, trialId,
+    taskId, trialId, taskFamily: 'general',
     taskSuccess: { passed, passRate: passed ? 1 : 0 },
     skillQuality: {
       functionalCoverage: coverage, executability: 1, safety: safe ? 1 : 0,

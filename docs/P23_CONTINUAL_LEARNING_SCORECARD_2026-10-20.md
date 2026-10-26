@@ -1,3 +1,14 @@
+## WorkPass333 score update (2026-10-26)
+
+- **Scores intentionally unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
+- **What changed:** SkillLearnBench candidate eligibility now reports per-family task success/composite/holdout metrics; the independent evaluator derives family from the canonical manifest, includes it in the plan fingerprint, carries it through run bindings and verified-outcome ledger preflight, and the Hermes evidence-binding join checks report/binding consistency.
+- **Current CI evidence on 1755f129afc9e3eb953bdd96461e0a684b42f1a3:** P26 Learning Validation PASS; WorkPass108 verified-promotion gate PASS; WorkPass110 continual-learning metrics PASS; the unified project integration suite PASS, including pinned workspace installation, app typecheck/build/tests, cognitive integration contracts, governed approval gateway E2E, and runtime/research bridge smoke. Run links and scope notes are recorded in `docs/PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json`.
+- **Why no uplift:** these improvements reduce false promotion from aggregate scores and make family identity auditable, but do not themselves demonstrate higher task success, transfer, retention, retrieval or autonomous self-development. The earlier proxy still shows tool-use and transfer gain at zero. The new ledger-tampering test blocks changed family labels before writing outcomes.
+- **Release note:** main and the published WorkPass70 ZIP remain unchanged. No release archive rebuilt or published.
+- Details: [WorkPass333 family provenance](WORKPASS333_MANIFEST_BOUND_TASK_FAMILY_PROVENANCE_RU.md) and [weighted project tracker](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.md).
+
+---
+
 ## WorkPass285 score update (2026-10-22)
 
 - **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.

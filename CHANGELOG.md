@@ -1,3 +1,48 @@
+## WorkPass334 — общий deadline независимой оценки навыка (2026-10-26)
+
+- **Runtime:** `IndependentSkillCandidateEvaluator` теперь ограничивает не только каждый вызов sandbox/verifier/safety scanner, но и весь прогон validation + holdout одним wall-clock budget. Настройка `evaluationTimeoutMs`: default 300000 ms, допустимо 10–1800000 ms; существующий `serviceTimeoutMs` остаётся отдельным локальным пределом.
+- **Fail-closed semantics:** если истёк общий budget, оценка прерывается с `independent-candidate-evaluator-total-timeout`; этот случай не превращается в обычный failed trial, а оставшиеся задачи не запускаются. Budget считает монотонные часы (`performance.now`), не календарное время.
+- **Cancellation contract:** активный сервис получает abort через существующий per-service AbortSignal. Реальная остановка стороннего процесса по-прежнему зависит от того, что sandbox/host-owned service уважает сигнал и завершает работу; произвольный Promise нельзя принудительно уничтожить из вызывающего процесса.
+- **Regression:** расширен WorkPass227 тест: сервис, игнорирующий abort и задерживающийся дольше общего budget, должен приводить к отказу всей оценки, сигнал при этом отмечается aborted, повторный task не стартует. Добавлена проверка недопустимого `evaluationTimeoutMs=0`.
+- **Validation:** код и regressions committed; новый exact-HEAD CI ещё ожидается. До завершения CI не считаем тест доказанно прошедшим.
+- **Evidence/release boundary:** это ограничение длительности и целостности evaluator, не доказательство роста качества обучения. Внешние held-out tool-use/transfer/retrieval benchmark, target-device E2E, licensing review и rebuild/publish главного release ZIP остаются открытыми.
+
+---
+
+## WorkPass333 — bind learning families to the canonical manifest (2026-10-26)
+
+- **Runtime path:** the independent candidate evaluator now derives `taskFamily` only from the validated canonical `TaskManifestEntry.family`; the family is included in the immutable evaluation-plan fingerprint and copied to each SkillLearnBench report and run binding.
+- **Evidence commit boundary:** `recordIndependentEvaluationOutcomes` now refuses to commit reports unless both report and run binding match the canonical manifest family for the scheduled task. This prevents an unlabelled or caller-relabelled report from being written to the verified outcome ledger.
+- **Matched evaluation:** baseline and candidate envelopes must agree on family per exact task/trial key; the binding family must also match its report.
+- **Hermes signed evidence binding:** the evidence join rejects a family mismatch between the independent-evaluation report and the execution binding. This checks internal consistency; the report family alone is not treated as a cryptographic signature. The canonical manifest fingerprint and existing signed P23 outcome/promotion gate remain authoritative.
+- **Regression:** the matched-evaluator test verifies missing manifest family evidence blocks eligibility and that relabelling either the report or run binding is rejected. The WorkPass203 integration test now constructs a real manifest-backed evaluator, checks family propagation into reports/bindings, recomputes the envelope digest after tampering, and proves both mutations are blocked before any outcome row is written. The immutable-plan test includes explicit `taskFamily: null` when no manifest authority was supplied.
+- **CI root cause closed locally by code:** WorkPass110 previously failed because the new family field changed the canonical plan fingerprint while the snapshot test still computed the old fields. The test expectation now includes the family field; a new exact-head run is required to confirm closure.
+- **Evidence boundary:** WorkPass108 and P26 passed on intermediate head `c3179f878a80dff9b01907e549d6f37488d0f5ee`; WorkPass110 failed there on the stale expected fingerprint. These do not substitute for validation of the newer head after family binding and test repair.
+- **Release boundary:** main and the published ZIP are unchanged; no field-learning gain or production-ready claim is made.
+
+---
+
+## WorkPass108 — align Hermes diagnostic fixture with family-aware evaluation (2026-10-26)
+
+- Fixed the Hermes reflective-diagnostics fixture to attach the canonical `general` task-family label to its synthetic validation and holdout reports. The current SkillLearnBench gate correctly fails closed when task-family metadata is absent; the fixture was stale after that contract was added.
+- No promotion threshold or production gate was weakened. The fixture continues to assert improvement, holdout coverage and a hard rejection when a candidate has safety violations.
+
+---
+
+## WorkPass332 — per-family SkillLearnBench gate and weighted progress ledger (2026-10-26)
+
+- **Learning-evaluation code:** added optional task-family labels to SkillLearnBench trial input/report; aggregate output now preserves family metadata and rejects a single task changing family between trials.
+- **Candidate gate:** adds separately reported validation success, baseline/candidate composite, validation gain, holdout success and holdout delta per family. Missing family labels, incomplete paired validation/holdout coverage, low independently verified family success, family-local validation regressions, and family-local holdout regression now block eligibility.
+- **Test:** added a counterexample where nine memory tasks improve and pass, while tool-use and transfer tasks gain trajectory/skill score but fail the independent verifier. Aggregate task success clears the global floor; the family-specific floors still reject the candidate. Added missing metadata, family identity mismatch and duplicate required-family regressions.
+- **Progress tracking:** created a 12-domain JSON ledger with weights summing to 100% and distinct implementation, automated-validation, external-evidence and release-readiness dimensions. Added a built-in-Node reporter/unit test and exposed `npm run test:progress-ledger` / `npm run progress:report`.
+- **CI:** the unified integration workflow now runs the progress-ledger assertions/reporter and watches the learning gate/test paths. The P26 workflow already watches SkillLearnBench adapter and Hermes gate test paths.
+- **Evidence boundary:** these are engineering and contract changes, not proof of generalization or a measured improvement in intelligence. The task-family label must come from the canonical manifest/evaluator; this adapter enforces presence/consistency but does not cryptographically authenticate the label. Signed P23 evidence/promotion remains a separate gate.
+- **Validation status:** exact-head P26 typecheck/regression and unified clean-install/build CI are pending a runner on this draft PR. No local test pass is claimed.
+- **Release status:** main and the release ZIP are unchanged. The published main archive has not been rebuilt from this branch; full release readiness, real tool-use/transfer evidence, Live2D/voice E2E, soak tests and license/provenance closure remain open.
+- **Detailed checkpoint:** `docs/WORKPASS332_FAMILYWISE_LEARNING_AND_PROGRESS_LEDGER_RU.md`.
+
+---
+
 ## WorkPass331 — bind task-family floors to verified skill proposals (2026-10-26)
 
 - **Gap:** authenticated proposal generation blocked significant regressions by family, but an aggregate positive result could still pass if an important family had zero gain. The family results were reported, yet callers could not require improvement on the task families a particular skill is meant to serve.

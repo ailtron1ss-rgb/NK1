@@ -65,7 +65,11 @@ assert.throws(() => createIndependentSkillCandidateEvaluator({
 // Evaluator configuration is an authority snapshot: post-construction changes must
 // not relabel the environment under which a candidate was executed.
 const mutableTasks = structuredClone(tasks);
-const expectedSnapshotPlanFingerprint = digest(mutableTasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) => ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds })));
+// The canonical task-family identity is part of the immutable evaluation plan. This
+// fixture intentionally has no experiment manifest, so every family is explicitly null.
+const expectedSnapshotPlanFingerprint = digest(mutableTasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) => ({
+  taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds, taskFamily: null,
+})));
 const mutableConfig = {
   tasks: mutableTasks,
   environmentFingerprint: 'b'.repeat(64),
@@ -329,6 +333,27 @@ const authorityEvaluation = await authorityEvaluator({
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
+assert.equal(authorityEvaluation.evaluation.validation[0].taskFamily, 'summarization');
+assert.equal(authorityEvaluation.evaluation.holdout[0].taskFamily, 'summarization');
+assert.ok(authorityEvaluation.evaluation.provenance.runBindings.every(binding => binding.taskFamily === 'summarization'),
+  'report and run binding family labels must come from the same validated task manifest');
+
+// A caller cannot relabel a report or execution binding and then recompute the
+// outer JSON fingerprint to manufacture a new family. The canonical manifest
+// check must reject both edits before the outcome ledger can be changed.
+const relabeledAuthorityReport = structuredClone(authorityEvaluation);
+relabeledAuthorityReport.evaluation.validation[0].taskFamily = 'tool-use';
+relabeledAuthorityReport.evaluationFingerprint = digest(relabeledAuthorityReport.evaluation);
+assert.throws(() => recordIndependentEvaluationOutcomes(relabeledAuthorityReport, experimentAuthority, 1700000000000),
+  /independent-evaluation-ledger-report-family-mismatch/);
+const relabeledAuthorityBinding = structuredClone(authorityEvaluation);
+relabeledAuthorityBinding.evaluation.provenance.runBindings[0].taskFamily = 'transfer';
+relabeledAuthorityBinding.evaluationFingerprint = digest(relabeledAuthorityBinding.evaluation);
+assert.throws(() => recordIndependentEvaluationOutcomes(relabeledAuthorityBinding, experimentAuthority, 1700000000000),
+  /independent-evaluation-ledger-family-binding-mismatch/);
+assert.equal(authorityLedger.snapshot().acceptedOutcomes, 0,
+  'family identity failures must leave the canonical outcome ledger untouched');
+
 // WorkPass215: validated verifier/scanner function references cannot be swapped
 // through the caller-owned service objects after evaluator construction.
 const mutableVerifierService = {

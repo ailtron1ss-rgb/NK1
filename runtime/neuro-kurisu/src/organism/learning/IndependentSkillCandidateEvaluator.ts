@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import { evaluateSkillLearnBenchCandidate, evaluateSkillLearnBenchTrial, type SkillLearnBenchCandidateGateReport, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { RevisedCandidateEvaluator } from './P23LearningEngine.ts';
 import {
@@ -76,6 +77,8 @@ export interface IndependentCandidateEvaluationConfig {
   environmentFingerprint: string;
   /** Per-service deadline; timeout aborts the service signal and fails closed. Defaults to 30s. */
   serviceTimeoutMs?: number;
+  /** Hard wall-clock budget for the complete candidate evaluation, across all tasks/services. Defaults to 5m. */
+  evaluationTimeoutMs?: number;
 }
 const isDigest = (x: unknown): x is string => typeof x === 'string' && /^[a-f0-9]{64}$/i.test(x);
 const isSafeRunId = (value: unknown): value is string =>
@@ -138,7 +141,10 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
       !config.verifier || typeof config.verifier.verify !== 'function' ||
       !config.safetyScanner || typeof config.safetyScanner.scan !== 'function' ||
       !isDigest(config.environmentFingerprint) ||
-      (config.serviceTimeoutMs !== undefined && (!Number.isSafeInteger(config.serviceTimeoutMs) || config.serviceTimeoutMs < 10 || config.serviceTimeoutMs > 300_000))) throw new Error('independent-candidate-evaluator-config-invalid');
+      (config.serviceTimeoutMs !== undefined && (!Number.isSafeInteger(config.serviceTimeoutMs) || config.serviceTimeoutMs < 10 || config.serviceTimeoutMs > 300_000)) ||
+      (config.evaluationTimeoutMs !== undefined && (!Number.isSafeInteger(config.evaluationTimeoutMs) || config.evaluationTimeoutMs < 10 || config.evaluationTimeoutMs > 1_800_000))) {
+    throw new Error('independent-candidate-evaluator-config-invalid');
+  }
   // Different interface names are not independent authorities if they resolve to
   // the same object or dispatch function. Reject self-attesting configurations
   // before any candidate code can execute. Actual trust still depends on the host
@@ -244,6 +250,7 @@ export function createIndependentSkillCandidateEvaluator(
   // an evaluation with a different runtime/tool-policy fingerprint.
   const environmentFingerprint = config.environmentFingerprint;
   const serviceTimeoutMs = config.serviceTimeoutMs ?? 30_000;
+  const evaluationTimeoutMs = config.evaluationTimeoutMs ?? 300_000;
   // Capture trusted service entry points too: replacing a method on the caller-owned
   // object after construction must not replace the verifier or safety authority.
   const executeCandidate = config.executor.execute.bind(config.executor);
@@ -260,8 +267,21 @@ export function createIndependentSkillCandidateEvaluator(
     method: config.experimentAuthority.method,
     ...(config.experimentAuthority.attempt === undefined ? {} : { attempt: config.experimentAuthority.attempt }),
   } : undefined;
-  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) =>
-    ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }))));
+  // Task-family identity is selected from the canonical manifest, never from
+  // caller task payload or candidate output. Include it in the plan fingerprint.
+  const taskFamilyById = new Map<string, string>(
+    authority ? authority.manifest.map(entry => [entry.taskId, entry.family] as const) : [],
+  );
+  const planFingerprint = sha256(canonical(tasks.map(task => ({
+    taskId: task.taskId,
+    trialId: task.trialId,
+    seed: task.seed,
+    split: task.split,
+    input: task.input,
+    requiredCapabilityIds: task.requiredCapabilityIds,
+    expectedStepIds: task.expectedStepIds,
+    taskFamily: taskFamilyById.get(task.taskId) ?? null,
+  }))));
   return async ({ payload, payloadFingerprint }) => {
     // Snapshot the candidate once, before the first asynchronous boundary. Re-cloning
     // the caller-owned object per trial would allow a retained reference to change
@@ -279,9 +299,36 @@ export function createIndependentSkillCandidateEvaluator(
     const reports: Record<'validation' | 'holdout', SkillLearnBenchTrialReport[]> = {
       validation: [], holdout: [],
     };
-    const runBindings: Array<{ taskId: string; trialId: string; runId: string | null; plannedRunId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
+    const runBindings: Array<{ taskId: string; trialId: string; taskFamily: string | null; runId: string | null; plannedRunId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
     const seenRunIds = new Set<string>();
+    const evaluationDeadlineAt = performance.now() + evaluationTimeoutMs;
+    const remainingEvaluationMs = (): number => {
+      const remaining = evaluationDeadlineAt - performance.now();
+      if (remaining <= 0) throw new Error('independent-candidate-evaluator-total-timeout');
+      return remaining;
+    };
+    const runBoundedEvaluationService = async <T>(
+      label: string,
+      operation: (signal: AbortSignal) => Promise<T>,
+    ): Promise<T> => {
+      const remaining = remainingEvaluationMs();
+      const wholeRunIsLimiting = remaining <= serviceTimeoutMs;
+      try {
+        const result = await runWithServiceDeadline(label, Math.min(serviceTimeoutMs, remaining), operation);
+        remainingEvaluationMs();
+        return result;
+      } catch (error) {
+        // The service timer may fire a fraction before the monotonic deadline.
+        // Use which budget set the timer—not only remaining wall time—to classify it.
+        if (wholeRunIsLimiting && error instanceof Error && error.message === `${label}-timeout`) {
+          throw new Error('independent-candidate-evaluator-total-timeout');
+        }
+        remainingEvaluationMs();
+        throw error;
+      }
+    };
     for (const task of tasks) {
+      remainingEvaluationMs();
       const experimentPlan = authority
         ? (task.split === 'validation' ? authority.validationPlan : authority.holdoutPlan)
         : undefined;
@@ -305,7 +352,7 @@ export function createIndependentSkillCandidateEvaluator(
         // The executor is outside this trust boundary. Detach its returned object
         // immediately so later mutation of a retained reference cannot rewrite the
         // trace while verification or safety scanning is awaiting other services.
-        execution = structuredClone(await runWithServiceDeadline('candidate-sandbox-execution', serviceTimeoutMs, signal => executeCandidate({
+        execution = structuredClone(await runBoundedEvaluationService('candidate-sandbox-execution', signal => executeCandidate({
           payload: structuredClone(candidatePayload),
           task: structuredClone(task),
           context: structuredClone(executionContext),
@@ -319,14 +366,18 @@ export function createIndependentSkillCandidateEvaluator(
         }
         if (seenRunIds.has(execution.runId)) throw new Error('candidate-sandbox-reused-run-id');
         seenRunIds.add(execution.runId);
-      } catch {
+      } catch (error) {
+        // A total-budget timeout aborts the entire experiment rather than being
+        // downgraded to one ordinary failed task, even if the timer fired early.
+        if (error instanceof Error && error.message === 'independent-candidate-evaluator-total-timeout') throw error;
+        remainingEvaluationMs();
         // Execution failure or reused run identity is never treated as executable.
         executable = false;
         execution = undefined;
       }
       if (execution) {
         try {
-          const verified = await runWithServiceDeadline('independent-task-verification', serviceTimeoutMs, signal => verifyCandidate({
+          const verified = await runBoundedEvaluationService('independent-task-verification', signal => verifyCandidate({
             task: structuredClone(task),
             execution: structuredClone(execution),
             context: structuredClone(executionContext),
@@ -348,12 +399,14 @@ export function createIndependentSkillCandidateEvaluator(
           bindingVerified = verified.bindingVerified;
           verifierPassed = verified.passed && bindingVerified;
           coveredCapabilityIds = bindingVerified ? verified.coveredCapabilityIds : [];
-        } catch {
+        } catch (error) {
+          if (error instanceof Error && error.message === 'independent-candidate-evaluator-total-timeout') throw error;
+          remainingEvaluationMs();
           // A verifier failure fails task success but does not rewrite execution as non-executable.
           verifierPassed = false;
         }
       }
-      const safety = await runWithServiceDeadline('independent-candidate-safety-scan', serviceTimeoutMs, signal => scanCandidateSafety({
+      const safety = await runBoundedEvaluationService('independent-candidate-safety-scan', signal => scanCandidateSafety({
         payload: structuredClone(candidatePayload), task: structuredClone(task),
         ...(execution ? { execution: structuredClone(execution) } : {}),
         context: structuredClone(executionContext),
@@ -362,9 +415,11 @@ export function createIndependentSkillCandidateEvaluator(
       if (!safety || !Number.isSafeInteger(safety.violationCount) || safety.violationCount < 0) {
         throw new Error('independent-candidate-safety-result-invalid');
       }
+      const taskFamily = taskFamilyById.get(task.taskId) ?? null;
       runBindings.push({
         taskId: task.taskId,
         trialId: task.trialId,
+        taskFamily,
         // A run ID and trace are evidence only after the independent verifier binds
         // them to the exact candidate/task/environment/plan context.
         runId: bindingVerified ? execution?.runId ?? null : null,
@@ -386,6 +441,7 @@ export function createIndependentSkillCandidateEvaluator(
       const report = evaluateSkillLearnBenchTrial({
         taskId: task.taskId,
         trialId: task.trialId,
+        ...(taskFamily === null ? {} : { taskFamily }),
         verifierPassed: taskPassed,
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
@@ -422,6 +478,7 @@ export function createIndependentSkillCandidateEvaluator(
         runBindings,
       },
     };
+    remainingEvaluationMs();
     const evaluationFingerprint = sha256(canonical(evaluation));
     return { payloadFingerprint, evaluationFingerprint, evaluation };
   };
@@ -450,7 +507,7 @@ export function recordIndependentEvaluationOutcomes(
           attempt: number;
         } | null;
         runBindings: Array<{
-          taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
+          taskId: string; trialId: string; taskFamily?: string | null; runId: string | null; plannedRunId: string | null;
           seed: number; split: string; bindingVerified: boolean; safetyViolationCount: number;
         }>;
       };
@@ -498,9 +555,14 @@ export function recordIndependentEvaluationOutcomes(
   if (bindings.length !== reports.length || !bindings.length) {
     throw new Error('independent-evaluation-ledger-incomplete-reports');
   }
+  const manifestByTask = new Map(authority.manifest.map(entry => [entry.taskId, entry] as const));
   const reportByTrial = new Map<string, SkillLearnBenchTrialReport>();
   for (const report of reports) {
     if (reportByTrial.has(report.trialId)) throw new Error('independent-evaluation-ledger-duplicate-trial');
+    const manifestEntry = manifestByTask.get(report.taskId);
+    if (!manifestEntry || report.taskFamily !== manifestEntry.family) {
+      throw new Error('independent-evaluation-ledger-report-family-mismatch');
+    }
     reportByTrial.set(report.trialId, report);
   }
   const seenPlannedRuns = new Set<string>();
@@ -545,9 +607,14 @@ export function recordIndependentEvaluationOutcomes(
     }
     seenPlannedRuns.add(scheduled.runId);
     const report = reportByTrial.get(binding.trialId);
+    const manifestEntry = manifestByTask.get(binding.taskId);
     if (!report || report.taskId !== binding.taskId ||
         reportSplitByTrial.get(binding.trialId) !== binding.split) {
       throw new Error('independent-evaluation-ledger-report-binding-mismatch');
+    }
+    if (!manifestEntry || report.taskFamily !== manifestEntry.family ||
+        binding.taskFamily !== manifestEntry.family) {
+      throw new Error('independent-evaluation-ledger-family-binding-mismatch');
     }
     pending.push({
       plan,
@@ -611,7 +678,7 @@ export function compareMatchedIndependentEvaluations(
           attempt: number;
         } | null;
         runBindings: Array<{
-          taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
+          taskId: string; trialId: string; taskFamily?: string | null; runId: string | null; plannedRunId: string | null;
           seed: number; split: string; bindingVerified: boolean; verifierPassed: boolean;
           safetyViolationCount: number;
         }>;
@@ -636,7 +703,7 @@ export function compareMatchedIndependentEvaluations(
           attempt: number;
         } | null;
         runBindings: Array<{
-          taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
+          taskId: string; trialId: string; taskFamily?: string | null; runId: string | null; plannedRunId: string | null;
           seed: number; split: string; bindingVerified: boolean; verifierPassed: boolean;
           safetyViolationCount: number;
         }>;
@@ -684,6 +751,7 @@ export function compareMatchedIndependentEvaluations(
   const bindingsByKey = (value: typeof baseline, label: string) => {
     const map = new Map<string, (typeof value.evaluation.provenance.runBindings)[number]>();
     const reportSplitByKey = new Map<string, 'validation' | 'holdout'>();
+    const reportFamilyByKey = new Map<string, string | null>();
     const reports = [
       ...value.evaluation.validation.map(report => ({ report, split: 'validation' as const })),
       ...value.evaluation.holdout.map(report => ({ report, split: 'holdout' as const })),
@@ -698,6 +766,7 @@ export function compareMatchedIndependentEvaluations(
         throw new Error(`matched-independent-evaluation-${label}-duplicate-report`);
       }
       reportSplitByKey.set(key, split);
+      reportFamilyByKey.set(key, report.taskFamily ?? null);
     }
     if (reportSplitByKey.size !== value.evaluation.provenance.runBindings.length) {
       throw new Error(`matched-independent-evaluation-${label}-coverage-mismatch`);
@@ -719,6 +788,9 @@ export function compareMatchedIndependentEvaluations(
       if (reportSplitByKey.get(key) !== binding.split) {
         throw new Error(`matched-independent-evaluation-${label}-report-split-mismatch`);
       }
+      if ((binding.taskFamily ?? null) !== reportFamilyByKey.get(key)) {
+        throw new Error(`matched-independent-evaluation-${label}-task-family-mismatch`);
+      }
       map.set(key, binding);
     }
     return map;
@@ -731,6 +803,7 @@ export function compareMatchedIndependentEvaluations(
   for (const [key, left] of baselineBindings) {
     const right = candidateBindings.get(key);
     if (!right || left.taskId !== right.taskId || left.trialId !== right.trialId ||
+        (left.taskFamily ?? null) !== (right.taskFamily ?? null) ||
         left.seed !== right.seed || left.split !== right.split) {
       throw new Error('matched-independent-evaluation-task-seed-split-mismatch');
     }
