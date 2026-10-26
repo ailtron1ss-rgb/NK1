@@ -466,7 +466,7 @@ export function recordIndependentEvaluationOutcomes(
           attempt: number;
         } | null;
         runBindings: Array<{
-          taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
+          taskId: string; trialId: string; taskFamily?: string | null; runId: string | null; plannedRunId: string | null;
           seed: number; split: string; bindingVerified: boolean; safetyViolationCount: number;
         }>;
       };
@@ -514,9 +514,14 @@ export function recordIndependentEvaluationOutcomes(
   if (bindings.length !== reports.length || !bindings.length) {
     throw new Error('independent-evaluation-ledger-incomplete-reports');
   }
+  const manifestByTask = new Map(authority.manifest.map(entry => [entry.taskId, entry] as const));
   const reportByTrial = new Map<string, SkillLearnBenchTrialReport>();
   for (const report of reports) {
     if (reportByTrial.has(report.trialId)) throw new Error('independent-evaluation-ledger-duplicate-trial');
+    const manifestEntry = manifestByTask.get(report.taskId);
+    if (!manifestEntry || report.taskFamily !== manifestEntry.family) {
+      throw new Error('independent-evaluation-ledger-report-family-mismatch');
+    }
     reportByTrial.set(report.trialId, report);
   }
   const seenPlannedRuns = new Set<string>();
@@ -561,9 +566,14 @@ export function recordIndependentEvaluationOutcomes(
     }
     seenPlannedRuns.add(scheduled.runId);
     const report = reportByTrial.get(binding.trialId);
+    const manifestEntry = manifestByTask.get(binding.taskId);
     if (!report || report.taskId !== binding.taskId ||
         reportSplitByTrial.get(binding.trialId) !== binding.split) {
       throw new Error('independent-evaluation-ledger-report-binding-mismatch');
+    }
+    if (!manifestEntry || report.taskFamily !== manifestEntry.family ||
+        binding.taskFamily !== manifestEntry.family) {
+      throw new Error('independent-evaluation-ledger-family-binding-mismatch');
     }
     pending.push({
       plan,
@@ -627,7 +637,7 @@ export function compareMatchedIndependentEvaluations(
           attempt: number;
         } | null;
         runBindings: Array<{
-          taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
+          taskId: string; trialId: string; taskFamily?: string | null; runId: string | null; plannedRunId: string | null;
           seed: number; split: string; bindingVerified: boolean; verifierPassed: boolean;
           safetyViolationCount: number;
         }>;
@@ -652,7 +662,7 @@ export function compareMatchedIndependentEvaluations(
           attempt: number;
         } | null;
         runBindings: Array<{
-          taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
+          taskId: string; trialId: string; taskFamily?: string | null; runId: string | null; plannedRunId: string | null;
           seed: number; split: string; bindingVerified: boolean; verifierPassed: boolean;
           safetyViolationCount: number;
         }>;
@@ -700,6 +710,7 @@ export function compareMatchedIndependentEvaluations(
   const bindingsByKey = (value: typeof baseline, label: string) => {
     const map = new Map<string, (typeof value.evaluation.provenance.runBindings)[number]>();
     const reportSplitByKey = new Map<string, 'validation' | 'holdout'>();
+    const reportFamilyByKey = new Map<string, string | null>();
     const reports = [
       ...value.evaluation.validation.map(report => ({ report, split: 'validation' as const })),
       ...value.evaluation.holdout.map(report => ({ report, split: 'holdout' as const })),
@@ -714,6 +725,7 @@ export function compareMatchedIndependentEvaluations(
         throw new Error(`matched-independent-evaluation-${label}-duplicate-report`);
       }
       reportSplitByKey.set(key, split);
+      reportFamilyByKey.set(key, report.taskFamily ?? null);
     }
     if (reportSplitByKey.size !== value.evaluation.provenance.runBindings.length) {
       throw new Error(`matched-independent-evaluation-${label}-coverage-mismatch`);
@@ -735,6 +747,9 @@ export function compareMatchedIndependentEvaluations(
       if (reportSplitByKey.get(key) !== binding.split) {
         throw new Error(`matched-independent-evaluation-${label}-report-split-mismatch`);
       }
+      if ((binding.taskFamily ?? null) !== reportFamilyByKey.get(key)) {
+        throw new Error(`matched-independent-evaluation-${label}-task-family-mismatch`);
+      }
       map.set(key, binding);
     }
     return map;
@@ -747,6 +762,7 @@ export function compareMatchedIndependentEvaluations(
   for (const [key, left] of baselineBindings) {
     const right = candidateBindings.get(key);
     if (!right || left.taskId !== right.taskId || left.trialId !== right.trialId ||
+        (left.taskFamily ?? null) !== (right.taskFamily ?? null) ||
         left.seed !== right.seed || left.split !== right.split) {
       throw new Error('matched-independent-evaluation-task-seed-split-mismatch');
     }
