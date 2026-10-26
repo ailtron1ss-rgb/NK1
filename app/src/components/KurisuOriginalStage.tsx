@@ -165,7 +165,8 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
         </g>
         <path className="nk-scanner" d="M20 80H400" stroke={accent.color} strokeOpacity=".42" strokeWidth="1"/>
         <ellipse cx="210" cy="505" rx="78" ry="9" fill={accent.color} opacity=".12" filter="url(#nk-glow)"/>
-        <g className="nk-float" style={{ transform: `rotate(${poseOverride === "auto" ? pose.body : 0}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
+        <g className="nk-float">
+          <g style={{ transform: `rotate(${poseOverride === "auto" ? pose.body : 0}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
           {/* Rear hair silhouette and long, independently swinging locks. */}
           <g className="nk-hair">
             <path d="M150 79 Q145 38 192 29 Q246 24 273 67 Q289 104 272 180 L292 311 Q265 348 249 317 L241 205 L179 208 L170 321 Q147 348 131 308 L143 173 Q130 122 150 79Z" fill="url(#nk-hair)" stroke={hair.shade} strokeWidth="2"/>
@@ -263,6 +264,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, speaking, mouthP
             <path d="M256 66 L266 51 L278 68 L265 80Z" fill={accent.color} stroke="#eaffff" strokeWidth="1.3"/>
             <path d="M263 66 L272 66" stroke="#124456" strokeWidth="2"/>
           </g>
+        </g>
         </g>
         <g opacity=".75" stroke={accent.color} strokeOpacity=".42" fill="none">
           <path d="M38 120 V100 H55 M382 120 V100 H365"/><path d="M38 435 V455 H55 M382 435 V455 H365"/>
