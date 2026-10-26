@@ -1,3 +1,10 @@
+## WorkPass354 — independent evaluator различает исполнение и trust binding в regression suite (2026-10-26)
+
+- В тест кандидата добавлены два независимых ожидания после сбоя verifier: execution capability остаётся `true`, но `bindingVerified` становится `false`.
+- Это не разрешает продвижение по недоверенной трассе: evaluator production logic продолжает считать task success только после verifier и trusted binding. Так тест фиксирует семантику WorkPass346 и не позволяет возвратить прежнее смешение сигналов.
+
+---
+
 ## WorkPass353 — B272 tick-bound credit assignment получил runtime regression (2026-10-26)
 
 - Расширен реальный runtime test B338: кроме проверки обучения эндогенной цели на воплощённых исходах он теперь защищает invariant `snapshot.tick === state.tick && generatedAction === selectedAction`.
