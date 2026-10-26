@@ -250,8 +250,8 @@ export class B273AutonomousGoalLifecycle{
     if(!Number.isSafeInteger(input.tick)||input.tick<0||input.tick!==this.state.tick){
       throw new RangeError('B273 outcome tick must match generated decision');
     }
-    if(!ACTIONS.includes(input.action)||input.action!==this.state.lastAction){
-      throw new RangeError('B273 outcome action must match generated action');
+    if(!ACTIONS.includes(input.action)||!this.state.lastActionPlan.includes(input.action)){
+      throw new RangeError('B273 outcome action must be present in generated plan');
     }
     if(!Array.isArray(input.plan)||input.plan.length<1||input.plan.length>6
       ||input.plan.length!==this.state.lastActionPlan.length
@@ -264,8 +264,8 @@ export class B273AutonomousGoalLifecycle{
     accepted:boolean;revised:boolean;completed:boolean;abandoned:boolean;skillCreated:boolean;goalId:string|null;gain01:number;recorded:boolean
   }{
     this.assertGeneratedDecision({tick:input.tick,action:input.generatedAction,plan:input.plan});
-    if(!ACTIONS.includes(input.selectedAction)||input.selectedAction===input.generatedAction){
-      throw new RangeError('B273 unselected action must differ from generated action');
+    if(!ACTIONS.includes(input.selectedAction)||input.selectedAction===input.generatedAction||input.plan.includes(input.selectedAction)){
+      throw new RangeError('B273 unselected action must be outside generated plan');
     }
     const record={tick:input.tick,goalId:this.state.activeGoalId,generatedAction:input.generatedAction,selectedAction:input.selectedAction,plan:input.plan.slice(0,6)};
     this.state.unselectedActionHistory=[...this.state.unselectedActionHistory.slice(-127),record];
@@ -321,7 +321,7 @@ export class B273AutonomousGoalLifecycle{
         this.state.goalCreations++;
       }
     }
-    const goodSkill=accepted && input.plan.length>=2 && input.plan.length<=5 && input.predictionError01<.72;
+    const goodSkill=accepted && input.action===input.plan[0] && input.plan.length>=2 && input.plan.length<=5 && input.predictionError01<.72;
     let skillCreated=false;
     if(goodSkill){
       const sid=`skill273-${hashVector(goal.vector)}-${input.plan.join('-')}`;let skill=this.state.skills.find(s=>s.id===sid);
