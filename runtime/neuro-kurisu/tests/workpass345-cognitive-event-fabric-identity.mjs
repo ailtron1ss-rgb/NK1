@@ -160,6 +160,11 @@ assert.equal(fabric.snapshot().recent.some(event => event.id === 'cef:test:ident
  assert.equal(firstReceipt.replayed,false);
  const receiptSnapshot=receiptFabric.snapshot();
  const evidenceEvent=receiptSnapshot.recent.find(event=>event.id===firstReceipt.evidenceEventId);
+ const receiptActionEvent=receiptSnapshot.recent.find(event=>event.id===firstReceipt.actionEventId);
+ assert.ok(receiptActionEvent);
+ assert.equal(receiptActionEvent.payload.decisionId,null,'an unresolved decision must not be forged into a causal parent');
+ assert.equal(receiptActionEvent.payload.requestedDecisionId,'decision-12','preserve the supplied decision identity for exact replay');
+ assert.equal(receiptActionEvent.payload.decisionLinked,false);
  assert.ok(evidenceEvent);
  assert.equal(evidenceEvent.payload.expectedPostconditionHash?.length,64);
  assert.equal(evidenceEvent.payload.observedPostconditionHash?.length,64);
@@ -174,6 +179,8 @@ assert.equal(fabric.snapshot().recent.some(event => event.id === 'cef:test:ident
  assert.throws(()=>indexless.appendToolReceiptTrace({
    ...receiptInput,expectedPostcondition:'a different expected state that is still nonempty',
  }),/tool-receipt-execution-id-conflict/);
+ assert.equal(indexless.snapshot().total,beforeReceiptConflict);
+ assert.throws(()=>indexless.appendToolReceiptTrace({...receiptInput,decisionId:'decision-other'}),/tool-receipt-execution-id-conflict/,'an unlinked decision ID is still part of the supplied receipt identity');
  assert.equal(indexless.snapshot().total,beforeReceiptConflict);
  assert.equal(indexless.appendToolReceiptTrace(receiptInput).replayed,true);
  assert.equal(indexless.snapshot().total,beforeReceiptConflict);

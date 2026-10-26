@@ -1,3 +1,11 @@
+## WorkPass347 — preserve unlinked decision IDs in receipt replay — 2026-10-26
+
+- **Defect:** `appendToolReceiptTrace()` fingerprints a supplied `decisionId`, but the action event stored `decisionId: null` when that event was not present in the bounded CEF window. Exact replay without the projection index then failed with `tool-receipt-execution-id-conflict`.
+- **Fix:** store the supplied decision identifier separately as `requestedDecisionId`; retain `decisionId` and `decisionLinked` as the actual resolved causal relationship. Replay matching uses the requested ID when present and falls back to the legacy field for older snapshots.
+- **Regression:** the indexless receipt test now asserts that unresolved decisions are not forged into parent links, exact replay succeeds, and changing the requested decision ID is rejected without ledger mutation.
+- **Validation:** exact-head integration suite must complete successfully on the resulting commit; previous failed runs do not count.
+
+---
 ## WorkPass349 — correct control-character validation in event IDs (2026-10-26)
 
 - **CI finding:** the first exact-head runtime integration run failed in the new event identity regression because the control-character regex was over-escaped and rejected ordinary IDs containing characters such as `f`.

@@ -350,7 +350,9 @@ export class CognitiveEventFabric {
         if(candidateNodes.some(Boolean))throw new Error('tool-receipt-trace-incomplete-reconciliation-required');
       } else {
         const storedMatches=action!.payload.tool===normalized.toolId&&
-          action!.payload.decisionId===(normalized.decisionId??null)&&
+          // Preserve the requested decision identity separately from a resolved causal edge.
+          // A supplied ID may be absent from this bounded event window; that must not turn an exact replay into a conflict.
+          (action!.payload.requestedDecisionId??action!.payload.decisionId)===(normalized.decisionId??null)&&
           outcome!.tick===normalized.tick&&outcome!.payload.tool===normalized.toolId&&outcome!.payload.ok===normalized.ok&&
           outcome!.payload.verified===normalized.verified&&outcome!.payload.outcomeClass===normalized.outcomeClass&&
           Math.abs(clamp01(Number(outcome!.confidence01))-normalized.confidence01)<1e-9&&
@@ -373,7 +375,7 @@ export class CognitiveEventFabric {
     const action=this.append({
       tick:input.tick,stage:'tool-action',source:'action-gateway',
       parentIds:decision?[decision.id]:[],external:false,confidence01:input.verified?Math.max(.5,clamp01(input.confidence01)):.5,at,
-      payload:{executionId,tool:safeTool,decisionId:decision?.id??null,decisionLinked:Boolean(decision)},
+      payload:{executionId,tool:safeTool,decisionId:decision?.id??null,requestedDecisionId:normalized.decisionId??null,decisionLinked:Boolean(decision)},
     });
     const outcome=this.append({
       tick:input.tick,stage:'tool-outcome',source:'action-gateway-outcome',
