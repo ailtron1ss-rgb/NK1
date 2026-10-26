@@ -78,6 +78,28 @@ assert.throws(
 );
 assert.equal(writes, 0, 'lifecycle tampering must be rejected before canonical storage is touched');
 
+// applicationAttempts is lifecycle metadata, not part of the reviewed HMX content digest;
+// malformed values must fail before the projector reads or writes canonical state.
+for (const invalidAttempts of ['bad', '2', 1.5, -1, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+  const malformedAttemptStage = structuredClone(stage);
+  malformedAttemptStage.status = 'accepted';
+  delete malformedAttemptStage.application;
+  malformedAttemptStage.applicationAttempts = invalidAttempts;
+  assert.throws(
+    () => projector.apply(malformedAttemptStage),
+    /hmx-stage-digest-invalid/,
+    `invalid applicationAttempts ${String(invalidAttempts)} must be rejected before apply`,
+  );
+}
+assert.equal(writes, 0, 'invalid applicationAttempts must be rejected before canonical storage is touched');
+
+// A valid content digest cannot authorize a receipt whose attempt mismatches lifecycle state.
+const attemptMismatchStage = structuredClone(stage);
+attemptMismatchStage.applicationAttempts = 2;
+attemptMismatchStage.application = makeReceipt({ attempt: 1 });
+assert.throws(() => projector.apply(attemptMismatchStage), /hmx-applied-receipt-invalid/);
+assert.equal(writes, 0, 'attempt mismatch must not re-enter canonical storage');
+
 // A receipt copied from another stage must not be accepted as the result of this stage.
 assert.throws(
   () => projector.apply({ ...stage, application: makeReceipt({ stageId: 'some-other-stage' }) }),
