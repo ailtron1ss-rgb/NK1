@@ -5,7 +5,7 @@
 - **Compatibility:** ordinary JSON snapshots and omitted legacy fields remain supported. Missing/null snapshot retains reset semantics. A snapshot with accessor-backed top-level fields is rejected without mutating the live ledger.
 - **Regression:** new `runtime/neuro-kurisu/tests/cognitive-event-restore-envelope.mjs` checks zero getter execution for the envelope, event rows, array slots, parent IDs and receipt-index entries, preserves existing state when the envelope is rejected, and verifies malformed duplicate rows do not reserve IDs.
 - **Integration:** regression is wired into `test:cognitive-integration-suite` and matches the workflow's `tests/cognitive-*.mjs` path filter.
-- **Validation:** current code/test checkpoint `38b17bf610c06de1a23ba5e54d21cb4a1b7ac905`; exact-head typecheck and integration CI pending. No readiness scores increased.
+- **Exact-head validation PASS:** PR head `0ad66d5519aedbadc317684504ed0e5a8e79412c` passed Unified project integration [#40289492932](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492932), project progress-ledger integrity [#40289492966](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492966), WorkPass110 [#40289492891](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492891), P26 validation [#40289492875](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289492875), and nine additional focused workflows. Unified runtime/research smoke and final release gates passed without publishing an archive. The current code/test checkpoint `38b17bf610c06de1a23ba5e54d21cb4a1b7ac905` is included on that validated PR head; later documentation-only checkpoint changes are tracked separately. No readiness scores increased.
 
 ---
 
