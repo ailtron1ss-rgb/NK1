@@ -228,36 +228,57 @@ const tamperingCases = [
   { name: "confidence", patch: () => ({ evidenceConfidence01: 0.99 }) },
 ];
 for (const tampering of tamperingCases) {
-  const tamperMemoryOS = new MemoryOS2({ signalFusionProfile: "balanced" });
-  const tamperFabric = new HexisAdaptationFabric();
-  const tamperMemory = createMemory(tamperMemoryOS, `Memory for ${tampering.name} digest-binding tampering.`, 0.62);
-  const tamperEvidence = evidence(
-    tamperMemory.id,
-    `hexis:review:tamper-${tampering.name}`,
-    "supports",
-    `source:tamper-${tampering.name}`,
-  );
-  const tamperPending = ingestHexisEvidenceForReview(tamperMemoryOS, tamperFabric, tamperEvidence);
-  assert.equal(tamperPending.status, "review-pending");
-  if (tamperPending.status !== "review-pending") continue;
+  // Evidence integrity is a prerequisite for every terminal decision, not only
+  // confidence-changing approval. Review-only decisions must not bless tampered
+  // source metadata into the durable decision/audit history either.
+  for (const attemptedDecision of ["approve", "correct", "forget"]) {
+    const tamperMemoryOS = new MemoryOS2({ signalFusionProfile: "balanced" });
+    const tamperFabric = new HexisAdaptationFabric();
+    const tamperMemory = createMemory(tamperMemoryOS, `Memory for ${tampering.name} tampering with ${attemptedDecision}.`, 0.62);
+    const tamperEvidence = evidence(
+      tamperMemory.id,
+      `hexis:review:tamper-${tampering.name}-${attemptedDecision}`,
+      "supports",
+      `source:tamper-${tampering.name}`,
+    );
+    const tamperPending = ingestHexisEvidenceForReview(tamperMemoryOS, tamperFabric, tamperEvidence);
+    assert.equal(tamperPending.status, "review-pending");
+    if (tamperPending.status !== "review-pending") continue;
 
-  const tamperedSnapshot = tamperFabric.snapshot();
-  const tamperedReview = tamperedSnapshot.learningReviews.find((row) => row.id === tamperPending.reviewId);
-  const tamperedItem = tamperedReview?.items.find((row) => row.id === tamperPending.reviewItemId);
-  assert.ok(tamperedItem, `expected pending review for ${tampering.name}`);
-  tamperedItem.evidence = { ...tamperedItem.evidence, ...tampering.patch(tamperedItem.evidence) };
-  tamperFabric.restore(tamperedSnapshot);
+    const tamperedSnapshot = tamperFabric.snapshot();
+    const tamperedReview = tamperedSnapshot.learningReviews.find((row) => row.id === tamperPending.reviewId);
+    const tamperedItem = tamperedReview?.items.find((row) => row.id === tamperPending.reviewItemId);
+    assert.ok(tamperedItem, `expected pending review for ${tampering.name}/${attemptedDecision}`);
+    tamperedItem.evidence = { ...tamperedItem.evidence, ...tampering.patch(tamperedItem.evidence) };
+    tamperFabric.restore(tamperedSnapshot);
 
-  const memoryBeforeDecision = tamperMemoryOS.snapshot();
-  const reviewBeforeDecision = tamperFabric.snapshot();
-  const decision = decideHexisEvidenceReview(
-    tamperMemoryOS, tamperFabric, tamperPending.reviewId, tamperPending.reviewItemId, "approve",
-  );
-  assert.equal(decision.status, "rejected", `${tampering.name} tampering must be rejected`);
-  if (decision.status === "rejected") assert.equal(decision.reason, "canonical-review-evidence-binding-mismatch");
-  assert.deepEqual(tamperMemoryOS.snapshot(), memoryBeforeDecision, `${tampering.name} tampering must not mutate canonical memory`);
-  assert.deepEqual(tamperFabric.snapshot(), reviewBeforeDecision, `${tampering.name} tampering must leave review state unchanged`);
-  assert.equal(tamperMemoryOS.get(tamperMemory.id).confidence, 0.62);
+    const memoryBeforeDecision = tamperMemoryOS.snapshot();
+    const reviewBeforeDecision = tamperFabric.snapshot();
+    const decision = decideHexisEvidenceReview(
+      tamperMemoryOS,
+      tamperFabric,
+      tamperPending.reviewId,
+      tamperPending.reviewItemId,
+      attemptedDecision,
+      attemptedDecision === "correct" ? "Forged correction must not be accepted." : undefined,
+    );
+    assert.equal(
+      decision.status,
+      "rejected",
+      `${tampering.name} tampering must be rejected for ${attemptedDecision}`,
+    );
+    if (decision.status === "rejected") {
+      assert.equal(decision.reason, "canonical-review-evidence-binding-mismatch");
+    }
+    assert.deepEqual(tamperMemoryOS.snapshot(), memoryBeforeDecision, `${tampering.name}/${attemptedDecision} must not mutate canonical memory`);
+    assert.deepEqual(tamperFabric.snapshot(), reviewBeforeDecision, `${tampering.name}/${attemptedDecision} must leave review state unchanged`);
+    assert.equal(tamperMemoryOS.get(tamperMemory.id).confidence, 0.62);
+    assert.equal(
+      tamperFabric.getLearningReview(tamperPending.reviewId)?.items[0]?.status,
+      "pending",
+      `${tampering.name}/${attemptedDecision} must leave the review pending for repair`,
+    );
+  }
 }
 
 // Also preserve approvals for pending reviews produced by an older server build,
