@@ -3,6 +3,6 @@ import type { MemoryFabric } from '../../memory/MemoryFabric.ts';
 import type { SemanticMemoryGraph } from '../../memory/SemanticMemoryGraph.ts';
 
 export declare class HexisCanonicalMemoryProjector {
-  constructor(memoryFabric: MemoryFabric, semanticGraph?: SemanticMemoryGraph);
+  constructor(memoryFabric: MemoryFabric, semanticGraph?: SemanticMemoryGraph, temporalLedger?: { snapshot(): unknown; restore(state: any): void; recordTemporalAssertion(input: { memoryId: string; summary: string; confidence01: number; validFrom: number; source?: string; value?: unknown }): unknown });
   apply(stage: HexisHmxStage): HexisHmxApplyReceipt;
 }

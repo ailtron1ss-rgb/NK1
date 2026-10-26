@@ -250,8 +250,8 @@ assert(matchingGraphNodes.some(node => node.id !== nativeGraphNode.id && node.so
 // Approved HMX memories enter the canonical MemoryFabric -> MemoryOS2 path only
 // through the explicit apply decision. The identity and goals sections remain deferred.
 const canonicalMemoryRuntime = new MemorySubsystemRuntime();
-const canonicalProjector = new HexisCanonicalMemoryProjector(canonicalMemoryRuntime.fabric, canonicalMemoryRuntime.semanticMemory);
 const applyFabric = new HexisAdaptationFabric();
+const canonicalProjector = new HexisCanonicalMemoryProjector(canonicalMemoryRuntime.fabric, canonicalMemoryRuntime.semanticMemory, applyFabric);
 applyFabric.bindCanonicalMemoryApply(candidate => canonicalProjector.apply(candidate));
 const applyStage = applyFabric.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
 assert.deepEqual(applyStage.conflicts, []);
@@ -308,12 +308,21 @@ assert.equal(canonicalMemoryRuntime.semanticMemory.snapshot().edges.length, 1);
 assert(appliedStage?.application?.semanticEdgeIds.length === 1);
 assert.equal(appliedStage?.application?.status, 'partial', 'unmapped identity/goals/relationship/config sections must be disclosed, not claimed as imported');
 assert(appliedStage?.application?.deferredSections.identity > 0);
+const importedTemporal = applyFabric.snapshot().temporal.filter(row => appliedStage?.application?.createdMemoryIds.includes(row.memoryId));
+assert.equal(importedTemporal.length, 2, 'each newly created HMX memory must be indexed in the Hexis temporal ledger');
+assert(importedTemporal.every(row => row.source.startsWith('hexis:' + applyStage.sourceLineageId + ':')));
+for (const temporalRow of importedTemporal) {
+  assert.equal(applyFabric.temporalAt(temporalRow.memoryId, Number.MAX_SAFE_INTEGER)?.id, temporalRow.id,
+    'the imported temporal assertion must be queryable by canonical memory ID');
+}
 const canonicalImported = canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:'));
 assert.equal(canonicalImported.length, 2);
 assert(canonicalImported.every(item => item.epistemicStatus !== 'fact'), 'foreign memory does not become an NK1 fact merely because it was imported');
 assert(canonicalImported.some(item => item.kind === 'procedural'), 'Hexis skills mapped to procedural memories must be retrievable through canonical memory');
 assert.equal(applyFabric.decideHmx(applyStage.stagingId, 'apply')?.application?.digest, appliedStage?.application?.digest,
   'replaying an applied stage returns the same application receipt without another mutation');
+assert.equal(applyFabric.snapshot().temporal.length, importedTemporal.length,
+  'replaying an HMX apply must not duplicate temporal assertions');
 
 // Re-exporting the same source lineage with a different export ID keeps stable memory identity.
 const laterNormalizedNk1Export = normalizeNk1HmxExport({
@@ -368,8 +377,8 @@ const rollbackFabric = {
   },
   forgetById: (...args) => rollbackMemoryRuntime.fabric.forgetById(...args),
 };
-const rollbackProjector = new HexisCanonicalMemoryProjector(rollbackFabric, rollbackMemoryRuntime.semanticMemory);
 const rollbackHexisFabric = new HexisAdaptationFabric();
+const rollbackProjector = new HexisCanonicalMemoryProjector(rollbackFabric, rollbackMemoryRuntime.semanticMemory, rollbackHexisFabric);
 rollbackHexisFabric.bindCanonicalMemoryApply(candidate => rollbackProjector.apply(candidate));
 const rollbackStage = rollbackHexisFabric.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
 rollbackHexisFabric.decideHmx(rollbackStage.stagingId, 'accept');
@@ -382,12 +391,16 @@ assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item 
   'partially inserted HMX memories must be rolled back');
 assert.equal(rollbackMemoryRuntime.semanticMemory.snapshot().nodes.length, 0,
   'partially projected semantic graph nodes must also roll back with failed canonical-memory application');
+assert.equal(rollbackHexisFabric.snapshot().temporal.length, 0,
+  'temporal assertions must roll back with a compensated canonical import failure');
 const retryAfterRollback = rollbackHexisFabric.decideHmx(rollbackStage.stagingId, 'apply');
 assert.equal(retryAfterRollback?.status, 'applied', 'the same approved stage must remain safely retryable after compensation');
 assert.equal(retryAfterRollback?.application?.attempt, 2, 'a compensated retry uses a distinct durable attempt ID');
 assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
 assert.equal(rollbackMemoryRuntime.semanticMemory.snapshot().edges.length, 1,
   'retry must commit graph relations after all canonical memory rows succeed');
+assert.equal(rollbackHexisFabric.snapshot().temporal.length, 2,
+  'successful retry must materialize temporal assertions once');
 
 
 console.log('HEXIS_ADAPTATION_PASS');

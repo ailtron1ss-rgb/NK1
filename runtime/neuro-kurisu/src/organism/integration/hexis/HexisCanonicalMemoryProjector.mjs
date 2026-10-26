@@ -65,15 +65,19 @@ function semanticLabel(value) {
 }
 
 export class HexisCanonicalMemoryProjector {
-  constructor(memoryFabric, semanticGraph) {
+  constructor(memoryFabric, semanticGraph, temporalLedger) {
     if (!memoryFabric || typeof memoryFabric.encode !== 'function' || typeof memoryFabric.canonicalSnapshot !== 'function' || typeof memoryFabric.forgetById !== 'function') {
       throw new TypeError('canonical-memory-fabric-required');
     }
     if (semanticGraph !== undefined && (!semanticGraph || typeof semanticGraph.snapshot !== 'function' || typeof semanticGraph.restore !== 'function' || typeof semanticGraph.upsertNode !== 'function' || typeof semanticGraph.connect !== 'function')) {
       throw new TypeError('semantic-memory-graph-required');
     }
+    if (temporalLedger !== undefined && (!temporalLedger || typeof temporalLedger.snapshot !== 'function' || typeof temporalLedger.restore !== 'function' || typeof temporalLedger.recordTemporalAssertion !== 'function')) {
+      throw new TypeError('hexis-temporal-ledger-required');
+    }
     this.memoryFabric = memoryFabric;
     this.semanticGraph = semanticGraph;
+    this.temporalLedger = temporalLedger;
   }
 
   ensureSemanticNode(ref, content, nativeType, salience, nodeIdsByRef, sourceKey = '') {
@@ -122,6 +126,7 @@ export class HexisCanonicalMemoryProjector {
 
     const existingItems = this.memoryFabric.canonicalSnapshot().items ?? [];
     const semanticGraphBefore = this.semanticGraph?.snapshot();
+    const temporalLedgerBefore = this.temporalLedger?.snapshot();
     const semanticNodeIdsByRef = new Map();
     const beforeIds = new Set(existingItems.map(item => item.id));
     const existingImportKeys = new Set(existingItems
@@ -248,6 +253,32 @@ export class HexisCanonicalMemoryProjector {
         semanticEdgeIds.push(edge.id);
         projectedRelationships++;
       }
+      if (this.temporalLedger && createdIds.length) {
+        const canonicalItems = this.memoryFabric.canonicalSnapshot().items ?? [];
+        const canonicalById = new Map(canonicalItems.filter(item => createdIds.includes(item.id)).map(item => [item.id, item]));
+        const sourceRowsByRef = new Map(normalized.map(item => [item.ref, item.row]));
+        for (const id of createdIds) {
+          const memory = canonicalById.get(id);
+          if (!memory) throw new Error('hmx-temporal-canonical-memory-missing:' + id);
+          const ref = asText(memory.context?.hexisMemoryRef, 512);
+          const sourceRef = ref.startsWith(exportId + ':') ? ref.slice(exportId.length + 1) : ref;
+          const inputRow = sourceRowsByRef.get(ref);
+          const validFrom = dateMs(memory.validFromAt) ?? dateMs(memory.observedAt) ?? appliedAt;
+          this.temporalLedger.recordTemporalAssertion({
+            memoryId: id,
+            summary: String(memory.content ?? '').slice(0, 2000),
+            confidence01: clamp01(memory.confidence),
+            validFrom,
+            source: 'hexis:' + lineageId + ':' + sourceRef,
+            value: {
+              sourceLineageId: lineageId,
+              sourceRef,
+              contentHash: hash(memory.content),
+              provenance: inputRow?.provenance ?? inputRow?.source_attribution ?? null,
+            },
+          });
+        }
+      }
     } catch (error) {
       const rollbackErrors = [];
       for (const id of [...createdIds].reverse()) {
@@ -264,6 +295,13 @@ export class HexisCanonicalMemoryProjector {
           this.semanticGraph.restore(semanticGraphBefore);
         } catch (graphRollbackError) {
           rollbackErrors.push('semantic-graph:' + String(graphRollbackError?.message ?? graphRollbackError).slice(0, 220));
+        }
+      }
+      if (this.temporalLedger && temporalLedgerBefore) {
+        try {
+          this.temporalLedger.restore(temporalLedgerBefore);
+        } catch (temporalRollbackError) {
+          rollbackErrors.push('temporal-ledger:' + String(temporalRollbackError?.message ?? temporalRollbackError).slice(0, 220));
         }
       }
       const reason = String(error?.message ?? error).slice(0, 500);
