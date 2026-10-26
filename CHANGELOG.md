@@ -1,3 +1,10 @@
+## WorkPass354d — narrow the validated receipt record in restore closures (2026-10-26)
+
+- **CI finding:** after the first restore typing fix, TypeScript correctly flagged that a nested decoder closure captured a nullable `entry` record; narrowing outside the closure was not preserved.
+- **Fix:** pass the already validated record explicitly into the decoder, keeping validation and typed decoding local and eliminating nullable closure access.
+- **Validation:** the prior CI stopped at TypeScript; a fresh exact-head integration run is required to validate the updated code.
+
+---
 ## WorkPass354c — keep strict snapshot restoration type-safe (2026-10-26)
 
 - **CI finding:** WorkPass354 snapshot restore failed the runtime TypeScript check before integration tests ran: raw receipt-reference fields were typed `unknown`, and decoded reference arrays lost their domain-specific types.
