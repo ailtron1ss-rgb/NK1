@@ -1,3 +1,36 @@
+## WorkPass342 — bound CPU research probe deadlines (2026-10-26)
+
+- Made the smoke runner's HTTP request deadline configurable, validated as a finite safe integer no greater than 240 seconds.
+- Fast health/status/approval calls retain the 8-second timeout; NeuroCore and NOMEGA get 60 seconds; DeepCode CPU smoke gets 200 seconds, consistent with the 180-second subprocess deadline plus interpreter/model cold-start overhead.
+- Fixed the CI-only failure where DeepCode's valid probe was aborted by the generic 8-second fetch timeout after owner approval succeeded.
+- **Validation PASS** on exact code/test head `b8bc8316e996700a5562b93f38fd354f1ea5d69b`: [Unified project integration suite #40256159897](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159897). The final smoke JSON is `ok: true`, `CLEAN_ORGANISM_SMOKE=PASS`, all NeuroCore/NOMEGA/DeepCode probes pass, and UI/runtime typechecks pass.
+- Scores remain unchanged; this is a timeout correctness/verification fix, not a claim of higher learning or field performance.
+
+---
+
+## WorkPass341 — per-family distinct holdout coverage for verified skill promotion (2026-10-26)
+
+- Added an explicit trusted `minimumFamilyTasksByFamily` floor alongside per-family gain thresholds for verified skill-promotion proposals.
+- The promotion proposal now counts distinct attempt-1 tasks with paired baseline/candidate outcomes inside each family; repeating the same small task set across more seeds cannot satisfy family breadth. Both coverage and the exact threshold policy are bound into the proposal identity.
+- The production staging script requires operator-owned `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`, checks that every configured family exists in the holdout manifest, validates task floors (2–10,000), and only stages candidates after both the family-gain and task-coverage gates pass.
+- Candidate activation remains disabled; this change tightens evaluation evidence and does not auto-promote a skill.
+- **Validation PASS:** exact code/test head `b81ec539a1e2d442141e13929b376d2b549c9e64` passed [Unified project integration suite #40255622845](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622845), [WorkPass110 continual-learning metrics #40255622606](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622606), [WorkPass108 verified promotion gate #40255622678](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622678) and [P26 Learning Validation #40255622511](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622511). CI confirms task-family staging/proposal tests, runtime/app typechecks, 30-cycle substrate restore smoke, approval E2E and Research Bridge probes all passed.
+- Scores and external-learning estimates remain unchanged. Device/browser/voice E2E, long soak, licensing and release archive replacement are still open.
+
+---
+
+---
+
+## WorkPass340 — интеграция Unified Cognitive Substrate (2026-10-26)
+
+- Подключён строгий версионный `UnifiedCognitiveSubstrate` к реальному циклу `OrganismRuntime` после канонического `OrganismCore.observe`.
+- Добавлен отдельный persisted sidecar `*.cognitive-substrate.json`: безопасное восстановление, периодическая запись значимых изменений и final flush при остановке.
+- Substrate агрегирует continuity/self-model, world uncertainty/conflict, prediction debt, ресурсы устройства, memory pressure и provenance наблюдений. Он может только уменьшать необязательные counterfactual-расходы; действие по-прежнему выбирает Core.
+- Добавлены wiring/restore регрессии и 30-цикловый smoke с проверкой сохранения состояния после перезапуска. Полный Unified project integration suite прошёл на исходном WorkPass340 head; новый WorkPass341 проходит отдельную повторную проверку.
+
+
+---
+
 ## WorkPass336 — evaluator-origin attestation before ledger commit (2026-10-26)
 
 - **Gap:** the evaluator fingerprint is a public SHA-256 integrity digest, not proof of origin. A caller that copied the result could alter a syntactically valid execution ID and recompute the digest while retaining plausible manifest/plan labels.

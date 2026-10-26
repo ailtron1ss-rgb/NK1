@@ -1,3 +1,37 @@
+## Latest checkpoint — WorkPass342 (2026-10-26)
+
+- **Scope:** fixed the integration smoke's false timeout for CPU-heavy research probes. `fetchJson` now has an explicit finite deadline; health/status/approval calls keep 8 seconds, NeuroCore/NOMEGA use 60 seconds, and DeepCode CPU smoke uses 200 seconds to cover its 180-second subprocess limit plus cold-start overhead.
+- **Cognitive integration:** WorkPass340 strict `UnifiedCognitiveSubstrate` is live in `OrganismRuntime`, persists a sidecar and passes the 30-cycle stop/re-init test. The canonical action owner remains `OrganismCore`.
+- **Learning safety:** WorkPass341 requires distinct paired holdout tasks per configured family. Insufficient measurements, insufficient task breadth and insufficient family gain fail separately; signed candidate staging still never activates a skill automatically.
+- **Exact-head validation PASS:** `b8bc8316e996700a5562b93f38fd354f1ea5d69b`. Unified project integration [#40256159897](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159897), WorkPass110 [#40256159892](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159892), WorkPass108 [#40256159870](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159870), P26 [#40256159877](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159877), and progress-ledger integrity [#40256159868](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159868) all passed. The unified smoke reports `CLEAN_ORGANISM_SMOKE=PASS`, all three Research Bridge probes pass after explicit owner approval, and UI/runtime typechecks passed.
+- **Scores:** intentionally unchanged. The new checks validate integration/safety, not improved external learning/transfer. Android/Termux audio/sensor E2E, browser/Live2D hardware E2E, long soak, licensing and release ZIP replacement remain open.
+
+---
+
+## Latest checkpoint — WorkPass341 (2026-10-26)
+
+- **Scope:** adds a separate minimum number of distinct paired holdout tasks for every skill family where trusted promotion policy demands a gain. Repeated seeds cannot inflate the unique-task coverage.
+- **Security:** thresholds are read from operator-owned `NEURO_SKILL_PROMOTION_FAMILY_POLICY_JSON`, not candidate bundle fields; family floors and per-family task coverage participate in the authenticated proposal identity.
+- **Activation:** this is still proposal/staging only. Verified candidates cannot activate automatically; owner/authority approval and canary/shadow evidence remain separate.
+- **Validation:** exact code/test head `b81ec539a1e2d442141e13929b376d2b549c9e64` passed the Unified project integration suite [#40255622845](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622845), WorkPass110 [#40255622606](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622606), WorkPass108 [#40255622678](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255622678) and P26 Learning Validation [#40255622511]. The logs show `CLEAN_ORGANISM_SMOKE=PASS`, `P23_STAGE_VERIFIED_SKILL_CANDIDATE=PASS`, `P23_VERIFIED_SKILL_PROMOTION_PROPOSAL=PASS`, UI/runtime typecheck PASS, and all three governed Research Bridge probes pass after explicit owner approval.
+- **Scores:** unchanged; this validates implementation integrity and gates, not improved external learning/transfer. Android/Termux audio, physical-sensor calibration, hardware/browser Live2D E2E, extended soak, license review and release ZIP replacement remain open.
+
+---
+
+## Latest checkpoint — WorkPass340 (2026-10-26)
+
+- **Branch:** `work/nk1-unified-substrate-runtime-integration-2026-10-26-r4`, freshly based on current WorkPass334 source line after WorkPass339 security PR merge. No direct changes to `main` or release ZIP.
+- **Implementation:** `UnifiedCognitiveSubstrate.ts` is now used from `OrganismRuntime` after each canonical Core cycle; guarded persisted sidecar `*.cognitive-substrate.json`, periodic save and final stop flush are wired. The substrate can only constrain optional counterfactuals; Core remains action owner.
+- **Code/test checkpoint:** `9dfa27fe823ed14cd54ca34758821772e4756795`; includes strict schema/restore, live cycle integration, read-only diagnostic snapshot, wiring regression and 30-cycle smoke/restart persistence check.
+- **Type correctness:** the earlier divergent branch’s CI exposed two TypeScript issues. Both are corrected here: explicit `unknown` bridge for prediction-debt aggregation, and no read from nonexistent `cycleObservation.vision`; P41 relation count is zero until typed relation evidence exists.
+- **Validation:** branch was 11 commits ahead / 0 behind at last comparison. Exact-head Actions typecheck, `test:unified-substrate-runtime-wiring`, and smoke/restart are pending. The old branch’s failed test is recorded and is not treated as a pass.
+- **Progress accounting:** WorkPass339 remains recorded as CI-validated; historical progress/status rows still use their original tested baseline SHA. WorkPass340 does not increase scores before new CI results.
+- **Release gates:** rebuild and verify the large release ZIP, Android/Termux resource soak, voice/Live2D/device E2E, independent learning/transfer holdout and external postcondition E2E remain outstanding.
+
+---
+
+---
+
 ## Latest checkpoint — WorkPass339 (2026-10-26)
 
 - **Branch:** `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r5`, based on the current WorkPass334 source branch. No direct changes to `main` or release ZIP.

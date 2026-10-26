@@ -1,6 +1,11 @@
 # NK1 — общая панель инженерного прогресса (2026-10-26)
 
-**Источник:** `ailtron1ss-rgb/NK1`, линия WorkPass332–336 плюс WorkPass339, уже присутствующий в combined diff. Последний подтверждённый CI snapshot — code/test head `b6f4335b9bdb4bf150d86fc9db1a830fe3041626`. Новый combined code/test head `bb7a76c55d83ff36358ded56e966b880b38cc7d9` добавляет ledger preflight/evaluator-origin checks и включает strict Ed25519 approval encoding; combined-head CI пока не подтверждён, поэтому проценты не повышены.  
+**Источник:** `ailtron1ss-rgb/NK1`, combined source branch `work/nk1-unified-substrate-runtime-integration-2026-10-26-r4`. Последний проверенный код/тестовый head: `b8bc8316e996700a5562b93f38fd354f1ea5d69b`. На этом exact head прошли Unified project integration suite [#40256159897](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159897), WorkPass110 [#40256159892](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159892), WorkPass108 [#40256159870](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159870), P26 Learning Validation [#40256159877](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159877) и ledger integrity [#40256159868](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40256159868). Также успешно завершились WorkPass99/102/105/287–288/291–294.
+
+**Что реально проверено:** чистая установка app/runtime с Node.js 24; Python 3.12 + CPU PyTorch для research probes; doctor и installer lockfile contracts; UI build/typecheck; runtime typecheck; strict Unified Cognitive Substrate и 30-цикловое restore/restart; owner-approval E2E; NeuroCore/NOMEGA/DeepCode после явного одобрения; per-family distinct holdout-task gate; полный финальный smoke после устранения 8-секундного таймаута клиента.
+
+**Оценки не повышены:** это подтверждает интеграцию и корректность защитных ворот, но не доказывает увеличение внешней успешности обучения или переноса навыков. Открыты реальные Android/Termux audio и датчики, browser/Live2D hardware E2E, длительный soak, license review и воспроизводимая замена большого GitHub Release ZIP.
+
 **Машиночитаемый источник процентов:** [PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json).  
 **Проверка таблицы:** `npm run test:progress-ledger`; **сводный отчёт:** `npm run progress:report`.
 

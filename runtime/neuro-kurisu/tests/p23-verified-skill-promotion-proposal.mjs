@@ -61,9 +61,38 @@ const memoryFloorBlocked = proposeVerifiedSkillPromotion(ledger, 'baseline', 'ca
 assert.equal(memoryFloorBlocked.gate.accepted, false);
 assert.equal(memoryFloorBlocked.gate.reason, 'required-family-gain-below-threshold:memory');
 assert.deepEqual(memoryFloorBlocked.evaluationPolicy.minimumFamilyGainByFamily, { memory: .01, 'tool-use': .3 });
+assert.deepEqual(memoryFloorBlocked.evaluationPolicy.minimumFamilyTasksByFamily, { memory: 2, 'tool-use': 2 });
 assert.equal(memoryFloorBlocked.evaluationPolicy.minCompleteSeeds, 3);
 assert.equal(isAuthenticVerifiedSkillPromotionProposal(memoryFloorBlocked), true,
   'the family floor and its failed decision must be covered by the proposal authenticity digest');
+
+const memoryTaskCoverageBlocked = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+  minPairedTasks: 8,
+  minAbsoluteGain: .1,
+  minCompleteSeeds: 3,
+  minimumFamilyGainByFamily: { memory: .01 },
+  minimumFamilyTasksByFamily: { memory: 6 },
+});
+assert.equal(memoryTaskCoverageBlocked.gate.accepted, false);
+assert.equal(memoryTaskCoverageBlocked.gate.reason, 'required-family-task-coverage-insufficient:memory');
+assert.equal(memoryTaskCoverageBlocked.familyTaskCoverage.memory, 5,
+  'paired seed repetitions must not be misreported as additional distinct tasks');
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(memoryTaskCoverageBlocked), true);
+
+assert.throws(
+  () => proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+    minimumFamilyGainByFamily: { memory: .01 },
+    minimumFamilyTasksByFamily: { memory: 1 },
+  }),
+  /minimum-family-task-policy-threshold-invalid:memory/,
+);
+assert.throws(
+  () => proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+    minimumFamilyGainByFamily: { memory: .01 },
+    minimumFamilyTasksByFamily: { transfer: 3 },
+  }),
+  /minimum-family-task-policy-without-family-gain-floor:transfer/,
+);
 
 const toolUseFloorMet = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
   minPairedTasks: 8,

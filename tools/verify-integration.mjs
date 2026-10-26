@@ -49,10 +49,13 @@ function childDiagnostics(item) {
   return `child=${item.label} spawnError=${item.spawnError?.message ?? 'none'} output=${output || '(no output)'}`;
 }
 
-async function fetchJson(url, init = {}) {
+async function fetchJson(url, init = {}, timeoutMs = 8_000) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 240_000) {
+    throw new RangeError('fetchJson timeoutMs must be a safe integer in 1..240000');
+  }
   const response = await fetch(url, {
     ...init,
-    signal: init.signal ?? AbortSignal.timeout(8_000),
+    signal: init.signal ?? AbortSignal.timeout(timeoutMs),
   });
   const body = await response.text();
   let data;
@@ -120,7 +123,7 @@ try {
   record('research:status', bridgeStatus.res.ok && bridgeStatus.data?.ok === true,
     `neurocore=${bridgeStatus.data?.neurocore?.version ?? '—'} nomega=${bridgeStatus.data?.nomega?.version ?? '—'}`);
 
-  const runApprovedProbe = async kind => {
+  const runApprovedProbe = async (kind, executionTimeoutMs = 8_000) => {
     const base = `${bridgeUrl}/api/research/probe/${kind}`;
     const blocked = await fetchJson(base, {
       method: 'POST',
@@ -144,20 +147,21 @@ try {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ approvalId: blocked.data.approvalRequest.id }),
-    });
+    }, executionTimeoutMs);
   };
 
-  const nc = await runApprovedProbe('neurocore');
+  const nc = await runApprovedProbe('neurocore', 60_000);
   record('research:neurocore-probe-after-approval',
     nc.res.ok && Boolean(nc.data?.ok) && nc.data?.status === 'pass',
     `delta=${nc.data?.delta ?? '—'} error=${nc.data?.error ?? '—'}`);
 
-  const nm = await runApprovedProbe('nomega-registry');
+  const nm = await runApprovedProbe('nomega-registry', 60_000);
   record('research:nomega-registry-after-approval',
     nm.res.ok && Boolean(nm.data?.ok) && nm.data?.status === 'pass',
     `modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'} error=${nm.data?.error ?? '—'}`);
 
-  const dc = await runApprovedProbe('deepcode');
+  // DeepCode's CPU smoke can legitimately approach its 180-second subprocess limit.
+  const dc = await runApprovedProbe('deepcode', 200_000);
   record('research:deepcode-probe-after-approval',
     dc.res.ok && Boolean(dc.data?.ok) && dc.data?.status === 'pass',
     `smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'} error=${dc.data?.error ?? '—'}`);
