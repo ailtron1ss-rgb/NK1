@@ -1,3 +1,11 @@
+## WorkPass350 — ActionGateway receipt restore regression включён в CI (2026-10-26)
+
+- Добавлен end-to-end regression с четырьмя повреждёнными receipt (execution ID mismatch, противоречивое verification, несогласованный audit outcome, oversized payload) и валидным idempotent replay.
+- Подтверждённое поведение: повреждённый receipt должен стать `idempotency-recovery-required` tombstone; исходный executor не запускается повторно. Валидная запись остаётся replayable без повторного побочного эффекта.
+- Новая проверка включена в WorkPass110, расширены PR path filters и direct push ветки, чтобы последующие изменения ActionGateway не обходили regression.
+
+---
+
 ## WorkPass349 — fail-closed restore для completed action receipts (2026-10-26)
 
 - При восстановлении action ledger из persistence завершённый receipt теперь принимается только если его execution/tool ID совпадает с enclosing row, audit/outcome поля внутренне согласованы и verification claim допустим по основанию.
