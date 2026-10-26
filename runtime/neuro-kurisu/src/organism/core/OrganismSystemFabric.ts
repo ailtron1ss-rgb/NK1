@@ -80,6 +80,18 @@ export class OrganismSystemFabric {
     this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
     const canonicalMemoryProjector = new HexisCanonicalMemoryProjector(this.memory.fabric, this.memory.semanticMemory, this.hexisAdaptation);
     this.hexisAdaptation.bindCanonicalMemoryApply(stage => canonicalMemoryProjector.apply(stage));
+    this.hexisAdaptation.bindCanonicalBeliefProjection(projection => {
+      const canonical = this.memory.fabric.canonicalSnapshot(false).items.find(item => item.id === projection.memoryId);
+      if (!canonical) return false;
+      const updated = this.memory.fabric.updateSignals(
+        projection.memoryId,
+        { confidence: projection.posteriorConfidence01 },
+        'hexis-belief-revision:' + projection.stance + ':' + projection.evidenceKey.slice(0, 24),
+        { commandId: 'hexis-belief-revision:' + projection.auditId },
+      );
+      if (!updated) throw new Error('hexis-canonical-belief-projection-failed');
+      return true;
+    });
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
     this.conscioAdaptation=input.conscioAdaptation ?? new ConscioAdaptationFabric();
     this.resolvedContracts = organismSystemContracts().map(contract => {
