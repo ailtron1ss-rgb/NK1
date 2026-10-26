@@ -1,3 +1,10 @@
+## WorkPass382 — Bind Hexis review decisions to full canonical evidence digest (2026-10-26)
+
+- Re-canonicalize pending-review evidence through the strict Hexis adapter at decision time, recompute SHA-256, and compare the resulting evidence against the exact canonical MemoryOS2 receipt before approval.
+- Reject changed source reference/label, note, timestamp, stance, confidence, or other canonical evidence changes even when a persisted review snapshot retains the original digest string.
+- Added four tampering regressions. Each requires rejection without canonical-memory mutation or review-state mutation.
+- Validation status: implementation and tests are committed; exact-head runtime typecheck, focused review test, unified integration and release gates remain pending. No memory-retrieval or learning uplift is claimed.
+
 ## WorkPass381 — make Hexis rollback assertions schema-safe (2026-10-26)
 
 - **Code/test commit:** `d6fbf28a61024f6739bcf4dfe1be58627cdf0da6`; branch `work/hexis-evidence-adapter-2026-10-26`.
