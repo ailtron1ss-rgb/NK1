@@ -1,3 +1,10 @@
+## WorkPass394 — Prove pending Hexis review recovery after SIGKILL (2026-10-26)
+
+- Strengthened the server smoke from graceful SIGTERM restart to an abrupt SIGKILL after the canonical evidence-review endpoint has already returned its pending-review response.
+- The test restarts the server with the same temporary `STATE_DIR`, requires that the exact review/item is still pending, and then exercises canonical approval. It no longer allows a graceful shutdown flush to satisfy the crash-recovery gate.
+- The smoke also fails explicitly if no canonical memory fixture is available; it cannot silently skip the review/restart scenario.
+- **Validation:** PENDING exact-head focused tests and Unified integration. GitHub Actions job logs for recent heads remain unavailable via the API; no PASS is claimed.
+
 ## WorkPass393 — Canonical Hexis review binding, compatibility and restart recovery (2026-10-26)
 
 - Look up the authoritative evidence receipt by evidence ID, then re-canonicalize pending review evidence before approval and recompute the digest with the same shared policy used at ingress. This keeps valid legacy server-receipt review payloads from being rejected by a pre-filter on their old raw digest. Compare evidence ID, stance, source kind/reference, label, author, note, confidence, timestamp and protected-memory flag with the canonical MemoryOS2 receipt.
