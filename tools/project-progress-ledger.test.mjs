@@ -49,3 +49,34 @@ test('ledger rejects duplicate domains and invalid current-check statuses', asyn
   assert.ok(issues.includes('duplicate-lane-id:' + ledger.lanes[0].id));
   assert.ok(issues.includes('ci-check-0-status-invalid'));
 });
+
+
+test('ledger binds every CI assertion to the exact code snapshot and canonical repository run URL', async () => {
+  const ledger = await loadLedger();
+  ledger.ciSnapshot.statuses[0].testedHead = '0'.repeat(40);
+  ledger.ciSnapshot.statuses[1].runUrl = 'https://github.com/example/other/actions/runs/123';
+  const issues = validateProjectProgressLedger(ledger);
+  assert.ok(issues.includes('ci-check-0-tested-head-mismatch'));
+  assert.ok(issues.includes('ci-check-1-run-url-invalid'));
+});
+
+test('ledger rejects invalid calendar dates and missing snapshot identity', async () => {
+  const ledger = await loadLedger();
+  ledger.snapshotDate = '2026-02-31';
+  ledger.sourceBranchAtSnapshot = ' ';
+  ledger.sourceHeadAtSnapshot = 'not-a-commit';
+  const issues = validateProjectProgressLedger(ledger);
+  assert.ok(issues.includes('snapshot-date-must-be-iso-date'));
+  assert.ok(issues.includes('source-branch-at-snapshot-required'));
+  assert.ok(issues.includes('source-head-at-snapshot-must-be-40-hex'));
+});
+
+test('ledger rejects empty CI evidence lists and duplicated CI records', async () => {
+  const ledger = await loadLedger();
+  ledger.ciSnapshot.statuses = [];
+  assert.ok(validateProjectProgressLedger(ledger).includes('ci-snapshot-statuses-required'));
+
+  const duplicated = await loadLedger();
+  duplicated.ciSnapshot.statuses[1].runUrl = duplicated.ciSnapshot.statuses[0].runUrl;
+  assert.ok(validateProjectProgressLedger(duplicated).some((issue) => issue.startsWith('duplicate-ci-run-url:')));
+});

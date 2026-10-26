@@ -11,17 +11,32 @@ const DIMENSIONS = [
 ];
 const ALLOWED_CI_STATUS = new Set(['queued', 'pending', 'in_progress', 'success', 'failure', 'cancelled', 'unknown']);
 
+const ACTION_RUN_URL = /^https:\/\/github\.com\/ailtron1ss-rgb\/NK1\/actions\/runs\/[1-9]\d*(?:\/job\/[1-9]\d*)?$/;
+const SHA1 = /^[a-f0-9]{40}$/i;
+
+function isIsoCalendarDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(value + 'T00:00:00.000Z');
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
 export function validateProjectProgressLedger(value) {
   const issues = [];
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return ['ledger-must-be-an-object'];
   }
   if (value.schemaVersion !== 1) issues.push('schema-version-must-be-1');
-  if (typeof value.snapshotDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.snapshotDate)) {
+  if (!isIsoCalendarDate(value.snapshotDate)) {
     issues.push('snapshot-date-must-be-iso-date');
   }
   if (!value.methodology || typeof value.methodology.note !== 'string' ||
       !value.methodology.note.trim()) issues.push('methodology-note-required');
+  if (typeof value.sourceBranchAtSnapshot !== 'string' || !value.sourceBranchAtSnapshot.trim() || /[\s\0]/.test(value.sourceBranchAtSnapshot)) {
+    issues.push('source-branch-at-snapshot-required');
+  }
+  if (typeof value.sourceHeadAtSnapshot !== 'string' || !SHA1.test(value.sourceHeadAtSnapshot)) {
+    issues.push('source-head-at-snapshot-must-be-40-hex');
+  }
   if (!Array.isArray(value.lanes) || value.lanes.length === 0) {
     issues.push('lanes-must-be-a-non-empty-array');
     return issues;
@@ -64,21 +79,41 @@ export function validateProjectProgressLedger(value) {
   }
 
   if (!value.ciSnapshot || typeof value.ciSnapshot !== 'object' ||
-      !Array.isArray(value.ciSnapshot.statuses)) {
+      !Array.isArray(value.ciSnapshot.statuses) || value.ciSnapshot.statuses.length === 0) {
     issues.push('ci-snapshot-statuses-required');
   } else {
     if (typeof value.ciSnapshot.currentBaseHead !== 'string' ||
-        !/^[a-f0-9]{40}$/i.test(value.ciSnapshot.currentBaseHead)) {
+        !SHA1.test(value.ciSnapshot.currentBaseHead)) {
       issues.push('ci-snapshot-base-head-must-be-40-hex');
     }
+    if (value.ciSnapshot.observedAt !== undefined && !isIsoCalendarDate(value.ciSnapshot.observedAt)) {
+      issues.push('ci-snapshot-observed-at-must-be-iso-date');
+    }
+    const seenCheckNames = new Set();
+    const seenRunUrls = new Set();
     for (const [index, check] of value.ciSnapshot.statuses.entries()) {
       if (!check || typeof check.name !== 'string' || !check.name.trim()) {
         issues.push('ci-check-' + index + '-name-required');
         continue;
       }
+      if (seenCheckNames.has(check.name)) issues.push('duplicate-ci-check-name:' + check.name);
+      seenCheckNames.add(check.name);
       if (!ALLOWED_CI_STATUS.has(check.status)) issues.push('ci-check-' + index + '-status-invalid');
-      if (typeof check.runUrl !== 'string' || !/^https:\/\/github\.com\//.test(check.runUrl)) {
+      if (typeof check.runUrl !== 'string' || !ACTION_RUN_URL.test(check.runUrl)) {
         issues.push('ci-check-' + index + '-run-url-invalid');
+      } else {
+        if (seenRunUrls.has(check.runUrl)) issues.push('duplicate-ci-run-url:' + check.runUrl);
+        seenRunUrls.add(check.runUrl);
+      }
+      if (typeof check.testedHead !== 'string' || !SHA1.test(check.testedHead)) {
+        issues.push('ci-check-' + index + '-tested-head-must-be-40-hex');
+      } else if (typeof value.sourceHeadAtSnapshot === 'string' &&
+          SHA1.test(value.sourceHeadAtSnapshot) &&
+          check.testedHead.toLowerCase() !== value.sourceHeadAtSnapshot.toLowerCase()) {
+        issues.push('ci-check-' + index + '-tested-head-mismatch');
+      }
+      if (typeof check.scopeNote !== 'string' || !check.scopeNote.trim()) {
+        issues.push('ci-check-' + index + '-scope-note-required');
       }
     }
   }
