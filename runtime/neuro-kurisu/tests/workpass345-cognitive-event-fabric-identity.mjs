@@ -247,6 +247,29 @@ assert.equal(nonCanonicalRestore.getById(canonicalSourceId)?.payload.recovered,t
 assert.equal(nonCanonicalRestore.getById('cef:test:restore:empty-source')?.payload.recovered,true);
 assert.equal(nonCanonicalRestore.getById('cef:test:restore:padded-source')?.payload.recovered,true);
 
+// Snapshot restore also ignores holes/accessors in the parent list without executing
+// caller code or reserving the event ID before a later valid recovery row.
+const restoreParentGetter=[];
+let restoreParentGetterCalls=0;
+Object.defineProperty(restoreParentGetter,'0',{enumerable:true,configurable:true,get(){restoreParentGetterCalls+=1;throw new Error('restore parent getter must not run');}});
+restoreParentGetter.length=1;
+const restoreParentAccessorId='cef:test:restore:parent-accessor';
+const restoreSparseId='cef:test:restore:parent-hole';
+const restoreAccessorFabric=new CognitiveEventFabric(128);
+restoreAccessorFabric.restore({
+  version:1,capacity:128,total:4,buffered:4,linkedParentEvents:0,danglingParentLinks:0,
+  lineageIntegrity01:1,cycleCoverage01:0,causalDensity01:0,recentTicks:0,
+  recent:[
+    {...makeEvent({id:restoreParentAccessorId,parentIds:restoreParentGetter}),payload:{recovered:false}},
+    {...makeEvent({id:restoreParentAccessorId,parentIds:['parent:valid']}),payload:{recovered:true}},
+    {...makeEvent({id:restoreSparseId,parentIds:Array(1)}),payload:{recovered:false}},
+    {...makeEvent({id:restoreSparseId,parentIds:['parent:valid']}),payload:{recovered:true}},
+  ],
+});
+assert.equal(restoreParentGetterCalls,0);
+assert.equal(restoreAccessorFabric.getById(restoreParentAccessorId)?.payload.recovered,true);
+assert.equal(restoreAccessorFabric.getById(restoreSparseId)?.payload.recovered,true);
+
 // Restore must skip malformed clock/evidence types instead of flooring/coercing them.
 // Invalid rows must not reserve their IDs, so a following valid copy can be recovered.
 const strictRestore=new CognitiveEventFabric(128);
