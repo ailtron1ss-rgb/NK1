@@ -5,6 +5,8 @@
 
 ## [NK1][Hexis] WorkPass428 — semantic apply-receipt integrity (2026-10-26)
 
+- [CI WIRING] Add path-filtered push execution of the canonical HMX apply workflow on the integration branch and include the branch in WorkPass71 validation, so checks execute before the consolidation PR is merged.
+
 - [INTEGRATION] Preserve the current independent HMX lifecycleDigest contract while integrating attempt-counter binding and semantic apply-receipt checks into the consolidated Hexis/restore branch.
 - [INTEGRITY] Export the safe JSON-tree validator and declaration; the standalone receipt validator checks applied stage identity/lifecycle, safe receipt structure, counter arithmetic, canonical IDs and receipt digest.
 - [INTEGRITY] Require created-memory IDs to be a subset of unique memory IDs, and reject empty/whitespace IDs and impossible re-hashed receipts.
