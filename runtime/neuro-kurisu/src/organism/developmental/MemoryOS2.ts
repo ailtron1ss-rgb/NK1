@@ -1086,7 +1086,9 @@ export class MemoryOS2{
    if(value===undefined)delete target[field];
    else target[field]=structuredClone(value);
   }
+  const restoredExactly=fields.every(field=>JSON.stringify(target[field])===JSON.stringify(source[field]));
   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(current));
+  if(!restoredExactly)return false;
   this.signalCompensationSnapshots.delete(token);
   return true;
  }
