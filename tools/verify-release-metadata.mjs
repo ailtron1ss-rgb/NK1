@@ -62,12 +62,26 @@ const statusDateCandidate = String(superVersion?.date ?? '');
 const statusDateValid = isIsoCalendarDate(statusDateCandidate);
 check('release-date-is-valid-iso-calendar-date', statusDateValid,
   statusDateCandidate ? `date=${statusDateCandidate}` : 'SUPER_VERSION.date is missing');
+
 const statusDate = statusDateValid ? statusDateCandidate : 'invalid-date';
+// Parse the current entry, not arbitrary historical references in the changelog.
+// The first dated heading is the current entry; WorkPass lineage comes from the
+// first WorkPass heading. Historical archive references must not advance lineage.
+const firstChangelogHeading = changelog.split(/\r?\n/).find(line => /^\s*#{1,6}\s+\S/.test(line)) || '';
+const firstWorkpassHeading = changelog.split(/\r?\n/).find(line => /^\s*#{1,6}\s*WorkPass\s*\d+\b/i.test(line)) || '';
+const latestChangelogPass = Number(firstWorkpassHeading.match(/\bWorkPass\s*(\d+)\b/i)?.[1] ?? 0);
+const firstChangelogDate = firstChangelogHeading.match(/\b(\d{4}-\d{2}-\d{2})\b/)?.[1] || '';
 const statusReport = await text(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${currentPassTag}.md`);
 const statusInventory = await json(`docs/PROJECT_CURRENT_STATUS_${statusDate}_${currentPassTag}.json`);
 const scorecard = await json(`docs/PROJECT_PROGRESS_SCORECARD_${statusDate}_${currentPassTag}.json`);
 
 if (rootPkg && superVersion) {
+  check('release-manifest-not-behind-changelog-workpass',
+    currentPass > 0 && (latestChangelogPass === 0 || currentPass >= latestChangelogPass),
+    `manifestPass=${currentPass || '(missing/invalid)'}; latestChangelogPass=${latestChangelogPass || '(none found)'}`);
+  check('release-date-not-before-current-changelog-entry',
+    !firstChangelogDate || (statusDateValid && isIsoCalendarDate(firstChangelogDate) && statusDateCandidate >= firstChangelogDate),
+    `releaseDate=${statusDateCandidate || '(missing/invalid)'}; currentChangelogDate=${firstChangelogDate || '(not dated)'}`);
   check('root-version-aligned', rootPkg.version === superVersion.version,
     `package.json=${rootPkg.version}; SUPER_VERSION.json=${superVersion.version}`);
   check('runtime-version-aligned', superVersion.canonicalRuntime === `Neuro-Kurisu ${runtimePkg?.version}`,
@@ -115,8 +129,8 @@ check('root-workpass12-alias-delegates-runtime', /runtime\/neuro-kurisu.*audit:w
 check('root-current-workpass-alias-runs-gates', /audit:release-metadata/.test(scripts[`audit:workpass${currentPass}`] || '') && /test:app:scripts/.test(scripts[`audit:workpass${currentPass}`] || '') && /test:browser-smoke-verdict/.test(scripts[`audit:workpass${currentPass}`] || '') && /test:memory-retrieval-benchmark/.test(scripts[`audit:workpass${currentPass}`] || '') && /audit:server-imports/.test(scripts[`audit:workpass${currentPass}`] || ''), scripts[`audit:workpass${currentPass}`] || 'missing');
 check('root-memory-experiment-runs-standalone', currentPass < 16 || (typeof scripts['test:memory-retrieval-experiment'] === 'string' && typeof scripts['audit:workpass16:memory-experiment'] === 'string' && /test:memory-retrieval-experiment/.test(scripts['audit:workpass16:memory-experiment'])), `${scripts['test:memory-retrieval-experiment'] || 'missing'}; ${scripts['audit:workpass16:memory-experiment'] || 'separate alias not required before WorkPass16'}`);
 check('app-script-test-alias-exists', typeof appPkg?.scripts?.['test:scripts'] === 'string', appPkg?.scripts?.['test:scripts'] || 'missing');
-check('changelog-has-current-workpass', new RegExp(`WorkPass ${currentPass}`).test(changelog), `CHANGELOG.md includes WorkPass ${currentPass}`);
-check('tasklist-has-current-workpass', new RegExp(`WorkPass ${currentPass}`).test(taskList), `Список дел.md includes WorkPass ${currentPass}`);
+check('changelog-has-current-workpass', new RegExp(`WorkPass\\s*${currentPass}\\b`, 'i').test(changelog), `CHANGELOG.md includes WorkPass ${currentPass}`);
+check('tasklist-has-current-workpass', new RegExp(`WorkPass\\s*${currentPass}\\b`, 'i').test(taskList), `Список дел.md includes WorkPass ${currentPass}`);
 check('install-docs-use-project-installer', readme.includes('npm run install:all') && runbook.includes('npm run install:all') && !/npm --prefix app ci/.test(readme + '\n' + runbook), 'README and runbook use the canonical installer for both app/runtime lockfiles');
 check('current-status-report-present', new RegExp(`WorkPass ${currentPass}`).test(statusReport), `current status report exists and identifies WorkPass ${currentPass}`);
 if (statusInventory && scorecard) {
