@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to the verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; all thirteen named workflows passed on that exact head. A newer WorkPass343 code/test head 6ec9d696f965bcd7ee46f6560a16a0dd0c15acc1 reconciles the derived cognitive-substrate clock to canonical Core state, but exact-head CI evidence has not yet been returned; therefore this snapshot intentionally does not raise scores for WorkPass343. WorkPass335/336 and WorkPass339 are included in the validated code/test snapshot 621864d0d7f2676245383adab86f1dcc6d0f741f according to the current branch's CI handover. The branch head immediately before this tracker update was 23b530560e258667a61bbc1c45ef3a19a9c4c60f.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; thirteen named workflows passed on that exact head. The newer WorkPass343 code/test head 8b38a354e7a32ea8822e4cd44866c73f00ce0d1c adds canonical Core/derived-sidecar tick reconciliation, a MAX_SAFE_INTEGER restore regression, a real runtime restart smoke with a corrupted future sidecar, and explicit workflow path filters. Exact-head CI evidence has not yet been returned; scores remain unchanged until validation. WorkPass335/336 and WorkPass339 are included in the validated code/test snapshot 621864d0d7f2676245383adab86f1dcc6d0f741f. Branch head before this tracker update: ba629fde5976dfea07d1658d6c3e6078353dbd9f.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -26,7 +26,7 @@
       "fieldEvidencePercent": 20,
       "releaseReadinessPercent": 42,
       "blockers": [
-        "WorkPass343 reconciles a future-derived substrate lastTick against the canonical Core clock; exact-head CI confirmation for that newer code/test head is pending",
+        "WorkPass343 now includes a real runtime restart regression for a future sidecar tick; exact-head CI confirmation for code/test head 8b38a354e7a32ea8822e4cd44866c73f00ce0d1c is pending",
         "Long-duration process-kill/restart soak tests and real device/browser/voice/avatar integration remain open",
         "Independent external task benchmarks are required before raising field evidence or learning-effectiveness scores"
       ],
@@ -452,8 +452,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "6ec9d696f965bcd7ee46f6560a16a0dd0c15acc1",
-  "branchHeadBeforeTrackerCommit": "23b530560e258667a61bbc1c45ef3a19a9c4c60f",
+  "latestUnverifiedCodeTestHead": "8b38a354e7a32ea8822e4cd44866c73f00ce0d1c",
+  "branchHeadBeforeTrackerCommit": "ba629fde5976dfea07d1658d6c3e6078353dbd9f",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
