@@ -1,3 +1,11 @@
+# WorkPass354 — enforce private, disjoint learning-process storage roots (2026-10-26)
+
+- [SECURITY] The generic `LearningProcessSupervisor` now creates run/survive roots with owner-only permissions, validates existing directories instead of silently trusting their permissions, rejects final-component symlinks, and binds each inspected directory to its canonical filesystem identity.
+- [BOUNDARY] Rejects equal/nested run and survive roots before filesystem allocation; after canonicalization it also rejects aliased roots sharing the same path or filesystem identity. The execution fingerprint now records canonical storage roots and their identities.
+- [REPLACEMENT] On POSIX, a root's immediate parent must not be group/world writable unless the sticky bit protects directory entries. This prevents a private-looking child path from being trivially replaced by another account.
+- [TEST] Added direct-supervisor regressions for writable run roots, overlapping storage roots and symlinked run roots. Invalid run-root setup is validated before the survive root is created.
+- [VALIDATION] Code and regression commits are present on the WorkPass349 source branch; focused workflow and runtime typecheck are pending for this new pass. The WorkPass353 run (#40289015403) predates these code changes and does not validate them. No dependency added; this is not a sandbox or a production-readiness claim.
+
 # WorkPass353 — canonicalize the mutable-state boundary for evaluator config (2026-10-26)
 
 - [SECURITY] The independent evaluator-config loader now canonicalizes the configured mutable state directory before checking whether the executable host config lives inside it. A symlink alias can no longer make a file physically within mutable organism state appear external.
