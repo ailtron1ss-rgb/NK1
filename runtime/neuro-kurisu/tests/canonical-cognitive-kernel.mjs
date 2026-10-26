@@ -1008,5 +1008,82 @@ assert.throws(()=>legacyPostconditionRestored.appendToolReceiptTrace(legacyPostc
   /tool-receipt-execution-id-conflict/,
   'legacy evidence without postcondition hashes cannot prove replay identity for nonempty postconditions');
 console.log('WorkPass368 base receipt replay fail-closed: PASS');
+
+// WorkPass369: multi-phase operational cycle validation and writes are atomic.
+const atomicCycleFabric=new CognitiveEventFabric(128);
+const atomicCycleBefore=atomicCycleFabric.snapshot();
+assert.throws(()=>atomicCycleFabric.recordOperationalCycle({
+  tick:41,at:4100,
+  observation:{source:'atomic-cycle.observation',confidence01:0.8,payload:{value:'first-phase'}},
+  prediction:{source:'atomic-cycle.prediction',confidence01:1.2,payload:{value:'invalid-late-phase'}},
+  action:{source:'atomic-cycle.action',payload:{neverWritten:true}},
+}),/invalid-cognitive-event-confidence/,'invalid late-phase input must be rejected before any cycle event is appended');
+assert.deepEqual(atomicCycleFabric.snapshot(),atomicCycleBefore,
+  'invalid phase input cannot leave a partial observation/prediction/action cycle');
+
+let cycleRootGetterExecuted=false;
+const accessorCycleInput={tick:41,at:4100,observation:{source:'safe'}};
+Object.defineProperty(accessorCycleInput,'tick',{enumerable:true,get(){cycleRootGetterExecuted=true;throw new Error('cycle tick getter must not run');}});
+assert.throws(()=>atomicCycleFabric.recordOperationalCycle(accessorCycleInput),/operational-cycle-input-field-accessor:tick/);
+assert.equal(cycleRootGetterExecuted,false,'outer operational-cycle accessors must never execute');
+assert.deepEqual(atomicCycleFabric.snapshot(),atomicCycleBefore);
+
+let cyclePhaseGetterExecuted=false;
+const accessorCyclePhase={source:'safe'};
+Object.defineProperty(accessorCyclePhase,'confidence01',{enumerable:true,get(){cyclePhaseGetterExecuted=true;throw new Error('phase confidence getter must not run');}});
+assert.throws(()=>atomicCycleFabric.recordOperationalCycle({tick:42,observation:accessorCyclePhase}),/operational-cycle-phase-field-accessor:confidence01/);
+assert.equal(cyclePhaseGetterExecuted,false,'phase accessors must never execute');
+assert.deepEqual(atomicCycleFabric.snapshot(),atomicCycleBefore);
+
+let cycleNestedPayloadGetterExecuted=false;
+const cycleNestedAccessor={};
+Object.defineProperty(cycleNestedAccessor,'unsafe',{enumerable:true,get(){cycleNestedPayloadGetterExecuted=true;throw new Error('nested payload getter must not run');}});
+assert.throws(()=>atomicCycleFabric.recordOperationalCycle({
+  tick:43,
+  observation:{source:'atomic-cycle.observation',payload:{nested:cycleNestedAccessor}},
+  action:{source:'atomic-cycle.action',payload:{later:true}},
+}),/event-payload-accessor/);
+assert.equal(cycleNestedPayloadGetterExecuted,false,'nested payload accessors must not execute during phase preflight');
+assert.deepEqual(atomicCycleFabric.snapshot(),atomicCycleBefore);
+
+const injectedCycleFailureFabric=new CognitiveEventFabric(128);
+const injectedCycleBefore=injectedCycleFailureFabric.snapshot();
+const originalCycleAppend=injectedCycleFailureFabric.append.bind(injectedCycleFailureFabric);
+let injectedCycleAppendCalls=0;
+injectedCycleFailureFabric.append=(eventInput)=>{
+  injectedCycleAppendCalls+=1;
+  if(injectedCycleAppendCalls===3)throw new Error('injected-operational-cycle-third-write-failure');
+  return originalCycleAppend(eventInput);
+};
+assert.throws(()=>injectedCycleFailureFabric.recordOperationalCycle({
+  tick:44,at:4400,
+  observation:{source:'atomic-cycle.observation',payload:{phase:1}},
+  prediction:{source:'atomic-cycle.prediction',payload:{phase:2}},
+  action:{source:'atomic-cycle.action',payload:{phase:3}},
+  outcome:{source:'atomic-cycle.outcome',payload:{phase:4}},
+}),/injected-operational-cycle-third-write-failure/);
+injectedCycleFailureFabric.append=originalCycleAppend;
+assert.deepEqual(injectedCycleFailureFabric.snapshot(),injectedCycleBefore,
+  'a runtime append failure midway through a cycle must roll back all earlier phase events and counters');
+
+const completedAtomicCycle=atomicCycleFabric.recordOperationalCycle({
+  tick:45,at:4500,
+  observation:{source:'atomic-cycle.observation',payload:{sensor:'ok'}},
+  prediction:{source:'atomic-cycle.prediction',payload:{forecast:'ok'},confidence01:0.7},
+  goal:{source:'atomic-cycle.goal',payload:{goal:'test'}},
+  plan:{source:'atomic-cycle.plan',payload:{steps:1}},
+  action:{source:'atomic-cycle.action',payload:{action:'test'}},
+  outcome:{source:'atomic-cycle.outcome',external:true,payload:{success:true}},
+  learning:{source:'atomic-cycle.learning',payload:{updated:true}},
+  selfUpdate:{source:'atomic-cycle.self-update',payload:{integrated:true}},
+});
+assert.ok(completedAtomicCycle.observation&&completedAtomicCycle.prediction&&completedAtomicCycle.action&&
+  completedAtomicCycle.outcome&&completedAtomicCycle.learning&&completedAtomicCycle.selfUpdate);
+assert.ok(atomicCycleFabric.getById(completedAtomicCycle.prediction)?.parentIds.includes(completedAtomicCycle.observation));
+assert.ok(atomicCycleFabric.getById(completedAtomicCycle.action)?.parentIds.includes(completedAtomicCycle.plan));
+assert.ok(atomicCycleFabric.getById(completedAtomicCycle.outcome)?.parentIds.includes(completedAtomicCycle.action));
+assert.ok(atomicCycleFabric.getById(completedAtomicCycle.learning)?.parentIds.includes(completedAtomicCycle.outcome));
+assert.ok(atomicCycleFabric.getById(completedAtomicCycle.selfUpdate)?.parentIds.includes(completedAtomicCycle.learning));
+console.log('WorkPass369 atomic operational cycle: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 
