@@ -42,7 +42,7 @@ function isDateTime(value: unknown): boolean {
   return Number.isFinite(Date.parse(value));
 }
 
-function describeSection(section: string, value: unknown, exportId: string, issues: HmxValidationIssue[]): void {
+function describeSection(section: string, value: unknown, issues: HmxValidationIssue[]): void {
   const path = 'sections.' + section;
   if (!KNOWN_SECTIONS.has(section)) {
     issues.push({ path, kind: 'unsupported-section', detail: 'NK1 does not recognize this HMX section; refusing a lossy import.' });
@@ -152,7 +152,7 @@ export function validateHmxV17Document(
     return issues;
   }
 
-  for (const [name, value] of Object.entries(sections)) describeSection(name, value, exportId, issues);
+  for (const [name, value] of Object.entries(sections)) describeSection(name, value, issues);
 
   const intent = String(documentIntent);
   const presentProtected = Object.keys(sections).filter(name => PROTECTED_SECTIONS.has(name) &&
@@ -167,8 +167,8 @@ export function validateHmxV17Document(
   }
 
   const memories = sections.memories;
-  if (!Array.isArray(memories) || memories.length === 0) {
-    issues.push({ path: 'sections.memories', kind: 'no-importable-memories', detail: 'This NK1 import path requires at least one memory record.' });
+  if (!Array.isArray(memories)) {
+    issues.push({ path: 'sections.memories', kind: 'schema', detail: 'This NK1 import path requires a memories array.' });
   }
 
   const refs = new Set<string>();
@@ -234,6 +234,19 @@ function dateMs(value: unknown): number | undefined {
   return Date.parse(value);
 }
 
+function safeContext(value: unknown): Record<string, string> {
+  const input = record(value);
+  const output: Record<string, string> = {};
+  if (!input) return output;
+  for (const [key, item] of Object.entries(input).slice(0, 12)) {
+    if (!(typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')) continue;
+    const safeKey = key.normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f]/g, '').trim().slice(0, 80);
+    if (!safeKey) continue;
+    output[safeKey] = String(item).normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f]/g, ' ').slice(0, 300);
+  }
+  return output;
+}
+
 function safeIso(value: unknown, fallback: number): string {
   const ms = typeof value === 'number' && Number.isFinite(value) ? value : dateMs(value);
   return new Date(ms ?? fallback).toISOString();
@@ -258,10 +271,13 @@ export function buildNk1HmxV17Document(input: {
     .filter(row => typeof row.content === 'string' && Boolean(String(row.content).trim()) && !row.dormant && row.epistemicStatus !== 'quarantined')
     .sort((a, b) => Number(b.observedAt ?? b.lastAccessAt ?? b.createdAt ?? 0) - Number(a.observedAt ?? a.lastAccessAt ?? a.createdAt ?? 0));
   const selected = candidates.slice(0, MAX_STAGED_MEMORIES);
+  let truncatedCount = 0;
   const memories = selected.map((row, index) => {
     const id = String(row.id ?? 'row-' + index).slice(0, 240);
     const kind = nonEmptyString(row.kind) ? row.kind : 'semantic';
-    const body = String(row.content).slice(0, 12000);
+    const rawBody = String(row.content);
+    const body = rawBody.slice(0, 5000);
+    if (body.length !== rawBody.length) truncatedCount += 1;
     const meta: Record<string, unknown> = {
       nk1_kind: kind,
       nk1_confidence: clamp01(row.confidence, 0.55),
@@ -270,7 +286,7 @@ export function buildNk1HmxV17Document(input: {
         ? String(row.epistemicStatus) : 'belief',
       entities: Array.isArray(row.entities) ? row.entities.map(String).slice(0, 16) : [],
       tags: Array.isArray(row.tags) ? row.tags.map(String).slice(0, 32) : [],
-      context: record(row.context) ?? {},
+      context: safeContext(row.context),
       semantic_links: Array.isArray(row.semanticLinks) ? row.semanticLinks.map(String).slice(0, 32) : [],
       temporal_links: Array.isArray(row.temporalLinks) ? row.temporalLinks.map(String).slice(0, 32) : [],
       causal_links: Array.isArray(row.causalLinks) ? row.causalLinks.map(String).slice(0, 32) : [],
@@ -342,9 +358,10 @@ export function buildNk1HmxV17Document(input: {
     },
     sections: { memories },
     statistics: { total_memories: memories.length },
-    export_warnings: candidates.length > memories.length
-      ? ['Export is bounded to the newest ' + String(MAX_STAGED_MEMORIES) + ' eligible memories; ' + String(candidates.length - memories.length) + ' records were not included.']
-      : [],
+    export_warnings: [
+      ...(candidates.length > memories.length ? ['Export is bounded to the newest ' + String(MAX_STAGED_MEMORIES) + ' eligible memories; ' + String(candidates.length - memories.length) + ' records were not included.'] : []),
+      ...(truncatedCount > 0 ? [String(truncatedCount) + ' memory records were truncated to 5000 characters to keep the exchange bounded.'] : []),
+    ],
   };
 }
 
