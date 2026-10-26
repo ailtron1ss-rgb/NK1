@@ -133,6 +133,20 @@ export class ParametricPolicyLearner{
       const bias=Number(this.state.bias[a]??0);
       this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+    // Weights are only one part of persisted state. Normalize diagnostics too:
+    // NaN counters/metrics can poison policy maturity and dashboard telemetry.
+    const safeCounter=(value:unknown):number=>
+      typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,Number.MAX_SAFE_INTEGER):0;
+    const safeUnit=(value:unknown,fallback:number):number=>
+      typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
+    const savedTime=raw?.lastTrainedAt;
+    this.state.updates=safeCounter(raw?.updates);
+    this.state.tdAbsMean01=safeUnit(raw?.tdAbsMean01,d.tdAbsMean01);
+    this.state.trainRewardMean01=safeUnit(raw?.trainRewardMean01,d.trainRewardMean01);
+    this.state.explorationRate01=safeUnit(raw?.explorationRate01,d.explorationRate01);
+    this.state.lastLoss01=safeUnit(raw?.lastLoss01,d.lastLoss01);
+    this.state.lastTrainedAt=typeof savedTime==='number'&&Number.isFinite(savedTime)&&savedTime>=0?savedTime:0;
+    this.state.frozen=raw?.frozen===true;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
