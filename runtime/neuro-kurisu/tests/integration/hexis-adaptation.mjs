@@ -266,7 +266,8 @@ assert.equal(interruptedFabric.decideHmx(interruptedStage.stagingId, 'accept')?.
 assert.equal(interruptedFabric.getHmxStage(interruptedStage.stagingId)?.importResult?.status, 'pending');
 const interruptedSnapshot = interruptedFabric.snapshot();
 const restoredInterruptedFabric = new HexisAdaptationFabric();
-restoredInterruptedFabric.restore(interruptedSnapshot);
+// Use the same JSON encoding boundary as persisted runtime state, not only an in-memory clone.
+restoredInterruptedFabric.restore(JSON.parse(JSON.stringify(interruptedSnapshot)));
 const restoredInterruptedStage = restoredInterruptedFabric.getHmxStage(interruptedStage.stagingId);
 assert.equal(restoredInterruptedStage?.status, 'accepted',
   'the operator acceptance decision remains recorded');
@@ -285,7 +286,7 @@ const interruptedTampered = interruptedTamperedSnapshot.hmxStages.find(row => ro
 assert.ok(interruptedTampered);
 interruptedTampered.stagedSections.memories[0].content = 'Mutated during an interrupted HMX import.';
 const restoredTamperedInterruptedFabric = new HexisAdaptationFabric();
-restoredTamperedInterruptedFabric.restore(interruptedTamperedSnapshot);
+restoredTamperedInterruptedFabric.restore(JSON.parse(JSON.stringify(interruptedTamperedSnapshot)));
 const restoredTamperedInterrupted = restoredTamperedInterruptedFabric.getHmxStage(interruptedStage.stagingId);
 assert.equal(restoredTamperedInterrupted?.importResult?.status, 'uncertain');
 assert(restoredTamperedInterrupted?.conflicts.some(issue =>
