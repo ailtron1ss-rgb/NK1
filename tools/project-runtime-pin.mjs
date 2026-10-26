@@ -74,7 +74,7 @@ export function matchesVersionPin(actual, pin) {
 }
 
 export function meetsMinimumVersion(actual, requirement) {
-  const match = String(requirement ?? '').trim().match(/^>=\\s*(v?(?:0|[1-9]\\d*)(?:\\.(?:0|[1-9]\\d*)){0,2})$/);
+  const match = String(requirement ?? '').trim().match(/^>=\s*(v?(?:0|[1-9]\d*)(?:\.(?:0|[1-9]\d*)){0,2})$/);
   return Boolean(match && versionMeetsMinimum(actual, match[1]));
 }
 
