@@ -1,3 +1,13 @@
+## WorkPass402 — повторная проверка integrity pending HMX stage (2026-10-26)
+
+- **Код:** `307b1317100bd9d4e3d62094f552a074fb1f663c` и `66927b5571704895f78f7c02897cd42e12fce8ea`; **регрессии:** `6f40c41ec9ff705561c1389fb8760956d41cfee1` и `388156d09c62dc736b5dcbe44a43fce303dedc0a`.
+- При восстановлении и решении pending-stage повторно проверяется digest исходного staging-снимка и HMX схема. Изменённая после проверки стадия становится `rejected` с `persisted-stage-integrity-failure`; import receipt не считается применённым.
+- Корректная стадия с исходными schema-конфликтами остаётся `staged` для просмотра/отклонения; явное принятие по-прежнему блокируется.
+- Тест изменяет сохранённое содержимое pending evidence до восстановления и требует quarantine; отдельный тест сохраняет поведение ожидаемых validation-конфликтов.
+- **Валидация:** PENDING exact-head typecheck, `test:hexis-adaptation`, server smoke и Unified integration. PASS не заявляется. Прогресс/готовность/recall не повышались; `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass401 — защита staging-словарей от `__proto__` (2026-10-26)
 
 - **Код:** `47d88fcc1a8b5737cca6c542a51e3d0011f8281a`; **регрессия:** `76830a380ab2cdbd825994062de793c2a1a0c2f0`.
