@@ -200,11 +200,11 @@ export class CognitiveEventFabric {
     const restored:CognitiveEventNode[]=[];
     for(const value of rows){
       if(!isRecord(value))continue;
-      const id=typeof value.id==='string'?value.id.trim():'';
+      const id=typeof value.id==='string'?value.id:'';
       const stage=typeof value.stage==='string'?value.stage as CognitiveStage:undefined;
       // Restore strictly typed identity and clocks; do not coerce malformed values into valid events.
       const tick=value.tick;
-      if(!id||id.length>180||/[\u0000-\u001f\u007f]/.test(id)||
+      if(!id||id!==id.trim()||id.length>180||/[\u0000-\u001f\u007f]/.test(id)||
         !COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0||seen.has(id))continue;
       const rawAt=value.at;
       if(rawAt!==undefined&&(typeof rawAt!=='number'||!Number.isFinite(rawAt)||rawAt<0))continue;
@@ -215,7 +215,7 @@ export class CognitiveEventFabric {
       if(rawParentIds!==undefined&&!Array.isArray(rawParentIds))continue;
       const parentInput=Array.isArray(rawParentIds)?rawParentIds:[];
       if(parentInput.length>12||parentInput.some(parent=>
-        typeof parent!=='string'||!parent.trim()||parent.length>180||/[\u0000-\u001f\u007f]/.test(parent)
+        typeof parent!=='string'||!parent.trim()||parent!==parent.trim()||parent.length>180||/[\u0000-\u001f\u007f]/.test(parent)
       ))continue;
       const at=rawAt===undefined?0:rawAt;
       const parentIds=parentInput as string[];
@@ -310,8 +310,10 @@ export class CognitiveEventFabric {
   }
 
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
-    const suppliedId=typeof input.id==='string'?input.id.trim():'';
-    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) {
+    const suppliedId=typeof input.id==='string'?input.id:'';
+    if(input.id!==undefined&&(
+      !suppliedId||suppliedId!==suppliedId.trim()||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId)
+    )) {
       throw new Error('invalid-cognitive-event-id');
     }
     if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick<0) {
@@ -322,12 +324,14 @@ export class CognitiveEventFabric {
     }
     if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
     if(typeof input.source!=='string') throw new TypeError('invalid-cognitive-event-source');
-    // Identity-bearing fields must be rejected when oversized, never truncated:
-    // truncation can alias distinct causal envelopes into one replay fingerprint.
-    if(input.source.length>120) throw new RangeError('invalid-cognitive-event-source');
+    // Identity-bearing fields must be rejected when oversized/non-canonical, never
+    // truncated: normalization can alias distinct causal envelopes into one fingerprint.
+    if(input.source.length>120||/[\u0000-\u001f\u007f]/.test(input.source)) {
+      throw new RangeError('invalid-cognitive-event-source');
+    }
     if(input.parentIds!==undefined&&!Array.isArray(input.parentIds)) throw new TypeError('invalid-cognitive-event-parents');
     if((input.parentIds?.length??0)>12) throw new RangeError('invalid-cognitive-event-parent-count');
-    if(input.parentIds?.some(parent=>typeof parent!=='string'||!parent.trim())) {
+    if(input.parentIds?.some(parent=>typeof parent!=='string'||!parent.trim()||parent!==parent.trim())) {
       throw new TypeError('invalid-cognitive-event-parent-id');
     }
     if(input.parentIds?.some(parent=>parent.length>180||/[\u0000-\u001f\u007f]/.test(parent))) {
