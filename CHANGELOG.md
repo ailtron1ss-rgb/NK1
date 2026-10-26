@@ -1,3 +1,11 @@
+## NK1 [evidence] — quarantine aliases when a primary P65 claim is removed
+
+- Runtime quarantine of a primary event ID now removes the associated claim, recent-ID dedupe entry, and all index aliases to that claim, quarantining the aliases as well.
+- Restore now closes the same gap when a persisted primary ID is quarantined but a stale alias-index row still points to the removed claim.
+- Added runtime and restore regressions so no alias can return a claim ID after its canonical claim has been removed.
+
+---
+
 ## NK1 [evidence] — reject inconsistent P65 claim aliases
 
 - A new upstream event ID can now alias an existing stable P65 claim only if the retained claim fingerprint exactly matches the candidate semantic payload.

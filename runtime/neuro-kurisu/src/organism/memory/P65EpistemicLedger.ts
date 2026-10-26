@@ -32,14 +32,31 @@ export class P65EpistemicLedger{
  private state=defaultP65();
  private readonly quarantinedEventIds=new Set<string>();
  private quarantineEventId(eventId:string){
+  const primaryClaim=this.state.claimsData.find(claim=>claim.eventId===eventId);
+  const removedClaimId=primaryClaim?.id;
+  // If the primary event owns this claim, every event-ID alias pointing to that
+  // same claim must be quarantined too. Otherwise an alias could still replay to
+  // an ID whose active claim was removed.
+  if(removedClaimId){
+   for(const alias of (this.state.eventIdentityIndex??[])
+    .filter(entry=>entry.claimId===removedClaimId&&entry.eventId!==eventId)
+    .map(entry=>entry.eventId).slice(0,511)){
+     this.quarantinedEventIds.add(alias);
+   }
+  }
   this.quarantinedEventIds.add(eventId);
   while(this.quarantinedEventIds.size>512){
    const oldest=this.quarantinedEventIds.values().next().value;
    if(typeof oldest!=='string')break;
    this.quarantinedEventIds.delete(oldest);
   }
-  this.state.claimsData=this.state.claimsData.filter(claim=>claim.eventId!==eventId);
-  this.state.eventIdentityIndex=(this.state.eventIdentityIndex??[]).filter(entry=>entry.eventId!==eventId);
+  if(removedClaimId){
+   this.state.claimsData=this.state.claimsData.filter(claim=>claim.id!==removedClaimId);
+   this.state.recentIds=this.state.recentIds.filter(id=>id!==removedClaimId);
+   this.state.eventIdentityIndex=(this.state.eventIdentityIndex??[]).filter(entry=>entry.claimId!==removedClaimId);
+  }else{
+   this.state.eventIdentityIndex=(this.state.eventIdentityIndex??[]).filter(entry=>entry.eventId!==eventId);
+  }
   this.state.quarantinedEventIds=[...this.quarantinedEventIds];
  }
  restore(raw?:Partial<P65State>|null){
@@ -134,6 +151,20 @@ export class P65EpistemicLedger{
   const acceptedClaims=claimsData.filter(claim=>
    !conflictedClaimIds.has(claim.id)&&(!claim.eventId||!this.quarantinedEventIds.has(claim.eventId))
   );
+  const acceptedClaimIds=new Set(acceptedClaims.map(claim=>claim.id));
+  // A persisted quarantine of a claim's primary event removes that claim. Any
+  // surviving alias-index entry to the now-absent retained claim must be quarantined
+  // too, rather than leaving an event ID that resolves to no active claim.
+  for(const entry of indexCandidates){
+   if(claimIdGroups.has(entry.claimId)&&!acceptedClaimIds.has(entry.claimId)){
+    this.quarantinedEventIds.add(entry.eventId);
+   }
+  }
+  while(this.quarantinedEventIds.size>512){
+   const oldest=this.quarantinedEventIds.values().next().value;
+   if(typeof oldest!=='string')break;
+   this.quarantinedEventIds.delete(oldest);
+  }
   // Compact exact duplicate claim IDs deterministically while retaining the most
   // recently supported state. A conflicting payload was excluded above.
   const uniqueClaims=new Map<string,P65Claim>();

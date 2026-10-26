@@ -375,6 +375,44 @@ test('P65 does not bind a new event alias to a claim with a different fingerprin
   assert.throws(() => ledger.record(conflictingAlias), /p65-event-identity-quarantined/);
 });
 
+test('P65 primary-event quarantine also disables aliases to the removed claim', () => {
+  const ledger = new P65EpistemicLedger();
+  const primary = {
+    tick: 24, at: 2400000000000, kind: 'inference', content: 'claim with two upstream identities',
+    confidence01: 0.53, source: 'organism', eventId: 'upstream:event:primary-24',
+  };
+  const claimId = ledger.record(primary);
+  const alias = { ...primary, at: primary.at + 1000, eventId: 'upstream:event:alias-24' };
+  assert.equal(ledger.record(alias), claimId);
+  assert.equal(ledger.snapshot().eventIdentityIndex.filter(entry => entry.claimId === claimId).length, 2);
+
+  assert.throws(() => ledger.record({ ...primary, content: primary.content + ':conflict' }),
+    /p65-event-identity-conflict/);
+  const quarantined = ledger.snapshot();
+  assert.ok(quarantined.quarantinedEventIds.includes(primary.eventId));
+  assert.ok(quarantined.quarantinedEventIds.includes(alias.eventId));
+  assert.equal(quarantined.claimsData.some(claim => claim.id === claimId), false);
+  assert.equal(quarantined.eventIdentityIndex.some(entry => entry.claimId === claimId), false);
+  assert.throws(() => ledger.record(alias), /p65-event-identity-quarantined/);
+
+  // Also cover a restored state where the primary ID is quarantined but an alias
+  // entry was left behind in the serialized index.
+  const restoredFromPartialQuarantine = new P65EpistemicLedger();
+  const partialSnapshot = {
+    ...ledger.snapshot(),
+    claimsData: [{ id: claimId, ...primary, resolved: false, parentIds: [], lastSupportedAt: primary.at, supportCount: 1, status: 'active' }],
+    recentIds: [claimId],
+    eventIdentityIndex: [
+      { eventId: primary.eventId, claimId, fingerprint: '0'.repeat(64) },
+      { eventId: alias.eventId, claimId, fingerprint: '0'.repeat(64) },
+    ],
+    quarantinedEventIds: [primary.eventId],
+  };
+  restoredFromPartialQuarantine.restore(partialSnapshot);
+  assert.ok(restoredFromPartialQuarantine.snapshot().quarantinedEventIds.includes(alias.eventId));
+  assert.throws(() => restoredFromPartialQuarantine.record(alias), /p65-event-identity-quarantined/);
+});
+
 test('P65 fails closed when an event identity is reused with conflicting evidence', () => {
   const eventId = realityEvidenceEventId('exec-p65-quarantine-518', 'tool-outcome', 'canonical');
   const input = {
