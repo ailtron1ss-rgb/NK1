@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { adaptHexisEvidence } from '../memory/HexisEvidenceAdapter.ts';
 import { MemoryResidencyGovernor, type MemoryResidencyTier } from './MemoryResidencyGovernor.ts';
 import { MemorySignalFusion, type MemoryFusionProfile } from './MemorySignalFusion.ts';
 import { AdaptiveMemoryPolicy, type MemoryPolicyName } from './AdaptiveMemoryPolicy.ts';
@@ -153,6 +155,28 @@ function normalizeEvidenceLineageFilter(raw: unknown, seedKeys: string[] = []): 
   if (typeof key === 'string' && key) filter = addEvidenceLineageBloomKey(filter, key);
  }
  return filter;
+}
+
+
+function snapshotMemoryEvidenceInput(value:unknown):Record<string,unknown>|null {
+ try {
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  const prototype=Object.getPrototypeOf(value);
+  if(prototype!==Object.prototype&&prototype!==null)return null;
+  if(Object.getOwnPropertySymbols(value).length)return null;
+  const descriptors=Object.getOwnPropertyDescriptors(value);
+  const output:Record<string,unknown>=Object.create(null);
+  for(const key of ['source','provenanceClass','sourceAuthority01','independenceKey','observedAt','evidenceFreshnessAt']) {
+   const descriptor=descriptors[key];
+   if(!descriptor)continue;
+   if(!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true)return null;
+   output[key]=descriptor.value;
+  }
+  return output;
+ } catch {
+  // The evidence argument may be a hostile proxy. It is untrusted ingress.
+  return null;
+ }
 }
 
 export type MemoryQueryIntent='episodic'|'procedural'|'identity'|'goal'|'causal'|'factual'|'general';
@@ -1409,25 +1433,75 @@ export class MemoryOS2{
   return this.hasEvidenceKey(item,key);
  }
  recordEvidence(id:string,input:{source:string;provenanceClass?:MemoryProvenanceClass;sourceAuthority01?:number;independenceKey:string;observedAt?:number;evidenceFreshnessAt?:number}){
-  const item=this.itemIndex.get(String(id));
-  if(!item)return {ok:false as const,added:false as const,reason:'memory-not-found' as const,memoryId:String(id),independentSources:0};
-  const independenceKey=String(input.independenceKey??'').trim().normalize('NFKC').slice(0,96);
+  const memoryId=typeof id==='string'?id:'';
+  const item=this.itemIndex.get(memoryId);
+  if(!item)return {ok:false as const,added:false as const,reason:'memory-not-found' as const,memoryId,independentSources:0};
+  const row=snapshotMemoryEvidenceInput(input);
+  if(!row)return {ok:false as const,added:false as const,reason:'invalid-evidence-envelope' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  if(typeof row.independenceKey!=='string')return {ok:false as const,added:false as const,reason:'independence-key-required' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  const independenceKey=row.independenceKey.trim().normalize('NFKC');
   if(!independenceKey)return {ok:false as const,added:false as const,reason:'independence-key-required' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  // Never truncate independent identity: truncation would let two distinct sources alias.
+  if(independenceKey.length>96)return {ok:false as const,added:false as const,reason:'invalid-evidence-independence-key' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
   const previous=this.normalizeEvidenceSources(item);
   if(this.hasEvidenceLineage(item.id,independenceKey))return {ok:true as const,added:false as const,reason:'duplicate-source' as const,memoryId:item.id,independentSources:previous.length};
+
+  const sourceValue=row.source;
+  if(typeof sourceValue!=='string')return {ok:false as const,added:false as const,reason:'invalid-evidence-source' as const,memoryId:item.id,independentSources:previous.length};
+  const source=sourceValue.trim();
+  if(!source||source.length>240)return {ok:false as const,added:false as const,reason:'invalid-evidence-source' as const,memoryId:item.id,independentSources:previous.length};
+  if(row.provenanceClass!==undefined&&(typeof row.provenanceClass!=='string'||!['device','external','user','agent','derived','simulation','unknown'].includes(row.provenanceClass))) {
+   return {ok:false as const,added:false as const,reason:'invalid-evidence-provenance-class' as const,memoryId:item.id,independentSources:previous.length};
+  }
+  const provenanceClass=this.provenanceClassFor(source,row.provenanceClass as MemoryProvenanceClass|undefined);
+  let sourceAuthority01:number;
+  if(row.sourceAuthority01===undefined)sourceAuthority01=this.sourceAuthorityDefault(provenanceClass);
+  else {
+   if(typeof row.sourceAuthority01!=='number'||!Number.isFinite(row.sourceAuthority01)||row.sourceAuthority01<0||row.sourceAuthority01>1) {
+    return {ok:false as const,added:false as const,reason:'invalid-evidence-confidence' as const,memoryId:item.id,independentSources:previous.length};
+   }
+   sourceAuthority01=row.sourceAuthority01;
+  }
   const now=Date.now();
-  const source=String(input.source??'unknown').trim().slice(0,240)||'unknown';
-  const provenanceClass=this.provenanceClassFor(source,input.provenanceClass);
-  const observedAt=Number.isFinite(Number(input.observedAt))?Number(input.observedAt):now;
-  const evidenceFreshnessAt=Number.isFinite(Number(input.evidenceFreshnessAt))?Number(input.evidenceFreshnessAt):observedAt;
-  const incoming:MemoryEvidenceSource={source,provenanceClass,sourceAuthority01:clamp(Number(input.sourceAuthority01??this.sourceAuthorityDefault(provenanceClass))),independenceKey,observedAt,evidenceFreshnessAt};
+  const rawObservedAt=row.observedAt===undefined?now:row.observedAt;
+  if(typeof rawObservedAt!=='number'||!Number.isSafeInteger(rawObservedAt)||rawObservedAt<0||rawObservedAt>8_640_000_000_000_000) {
+   return {ok:false as const,added:false as const,reason:'invalid-evidence-timestamp' as const,memoryId:item.id,independentSources:previous.length};
+  }
+  const rawFreshnessAt=row.evidenceFreshnessAt===undefined?rawObservedAt:row.evidenceFreshnessAt;
+  if(typeof rawFreshnessAt!=='number'||!Number.isSafeInteger(rawFreshnessAt)||rawFreshnessAt<0||rawFreshnessAt>8_640_000_000_000_000) {
+   return {ok:false as const,added:false as const,reason:'invalid-evidence-freshness' as const,memoryId:item.id,independentSources:previous.length};
+  }
+  const observedAt=rawObservedAt;
+  const evidenceFreshnessAt=rawFreshnessAt;
+  const evidenceId='evidence:'+createHash('sha256').update(item.id+'\u0000'+independenceKey).digest('hex');
+  const adapted=adaptHexisEvidence({
+   memoryId:item.id,
+   evidenceId,
+   stance:'contextualizes',
+   source:{kind:provenanceClass,ref:source},
+   observedAt:new Date(observedAt).toISOString(),
+   confidence:sourceAuthority01,
+   protectedMemory:item.kind==='identity'||item.kind==='autobiographical'||item.epistemicStatus==='quarantined',
+  });
+  if(!adapted.accepted) {
+   return {ok:false as const,added:false as const,reason:adapted.reason,memoryId:item.id,independentSources:previous.length};
+  }
+  const canonical=adapted.evidence;
+  const incoming:MemoryEvidenceSource={
+   source:canonical.source.ref,
+   provenanceClass:canonical.source.kind as MemoryProvenanceClass,
+   sourceAuthority01:canonical.confidence,
+   independenceKey,
+   observedAt:Date.parse(canonical.observedAt),
+   evidenceFreshnessAt,
+  };
   const before=estimateMemoryBytes(item);
   const combined=this.normalizeEvidenceSources({...item,evidenceSources:[...previous,incoming]});
   item.evidenceSources=combined;
   const key=this.evidenceKey(incoming);
   for(const row of previous)this.rememberEvidenceKey(item,this.evidenceKey(row));
   this.rememberEvidenceKey(item,key);
-  item.lastAccessAt=Math.max(Number(item.lastAccessAt??0),observedAt);
+  item.lastAccessAt=Math.max(Number(item.lastAccessAt??0),incoming.observedAt);
   item.temperature01=memoryTemperature(item,now);
   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(item));
   this.state.reconsolidations++;
