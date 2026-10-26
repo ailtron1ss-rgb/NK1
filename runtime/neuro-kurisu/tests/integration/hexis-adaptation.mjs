@@ -71,6 +71,24 @@ assert.equal(malformedMemoryStage.stagedSections.memories, undefined,
   'a schema-invalid memory array must be omitted atomically');
 assert.equal(fabric.decideHmx(malformedMemoryStage.stagingId, 'accept')?.status, 'staged');
 
+// Even byte-identical contents with different metadata cannot share a canonical ref.
+const duplicateMemoryRefExportId = 'exp_5555555555555556';
+const duplicateMemoryRefStage = fabric.stageHmx({
+  document: makeHmxDocument(duplicateMemoryRefExportId, {
+    memories: [
+      { ref: duplicateMemoryRefExportId + ':same-ref', type: 'semantic', content: 'Same statement.' },
+      { ref: duplicateMemoryRefExportId + ':same-ref', type: 'procedural', content: 'Same statement.' },
+    ],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(duplicateMemoryRefStage.conflicts.some(conflict => conflict.kind === 'duplicate-reference'));
+assert.equal(duplicateMemoryRefStage.sectionCounts.memories, 2);
+assert.equal(duplicateMemoryRefStage.stagedSections.memories, undefined,
+  'duplicate memory refs must poison the entire section rather than silently selecting its first row');
+assert.equal(fabric.decideHmx(duplicateMemoryRefStage.stagingId, 'accept')?.status, 'staged');
+
 // Relationship refs must remain in the export namespace; malformed edges cannot be silently deferred.
 const malformedRelationshipExportId = 'exp_6666666666666666';
 const malformedRelationshipStage = fabric.stageHmx({
@@ -225,6 +243,28 @@ const largeRoundTripStage = largeRoundTripFabric.stageHmx({
 assert.deepEqual(largeRoundTripStage.conflicts, [],
   'a normalized export within the shared byte budget must be accepted for staging');
 assert.equal(largeRoundTripStage.stagedSections.memories.length, 6);
+
+// Two distinct native IDs can normalize to the same slug/ref. The staged importer
+// must reject that ambiguity instead of silently importing only the first row.
+const slugCollisionExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'slug-collision',
+  sections: {
+    memories: [
+      { id: 'Foo Bar', type: 'semantic', content: 'First slug-collision memory.' },
+      { id: 'foo-bar', type: 'semantic', content: 'Second slug-collision memory.' },
+    ],
+  },
+});
+assert.equal(slugCollisionExport.sections.memories[0].ref, slugCollisionExport.sections.memories[1].ref,
+  'fixture should expose the existing safeSlug collision');
+const slugCollisionStage = new HexisAdaptationFabric().stageHmx({
+  document: slugCollisionExport,
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(slugCollisionStage.conflicts.some(conflict => conflict.kind === 'duplicate-reference'));
+assert.equal(slugCollisionStage.stagedSections.memories, undefined,
+  'normalized exports with colliding references must fail atomically before canonical writes');
 
 function makeHmxDocument(exportId, sections) {
   return ({
