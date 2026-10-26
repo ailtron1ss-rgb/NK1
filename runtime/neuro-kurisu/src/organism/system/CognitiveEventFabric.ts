@@ -482,7 +482,7 @@ export class CognitiveEventFabric {
     const normalized=typeof id==='string'?id.trim():'';
     if(!normalized)return null;
     const event=this.events.find(row=>row.id===normalized);
-    return event?{...event,parentIds:[...event.parentIds],payload:{...event.payload}}:null;
+    return event?structuredClone(event):null;
   }
 
   recent(limit=64):CognitiveEventNode[]{return structuredClone(this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
