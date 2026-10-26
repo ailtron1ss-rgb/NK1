@@ -20,7 +20,48 @@ assert.throws(() => new VerifiedOutcomeLedger([
 ]), /cross-split prompt leakage/);
 assert.throws(() => new VerifiedOutcomeLedger([manifest[0], manifest[0]]), /duplicate task id/);
 
+let manifestGetterCalls = 0;
+const accessorManifestEntry = { ...manifest[0] };
+Object.defineProperty(accessorManifestEntry, 'taskId', {
+  enumerable: true, configurable: true,
+  get() { manifestGetterCalls++; return 'task-a'; },
+});
+assert.throws(() => new VerifiedOutcomeLedger([accessorManifestEntry]), /invalid task manifest entry/);
+assert.equal(manifestGetterCalls, 0, 'manifest validation must not invoke accessors');
+
+let ignoredManifestGetterCalls = 0;
+const manifestWithExtraGetter = { ...manifest[0] };
+Object.defineProperty(manifestWithExtraGetter, 'externalMetadata', {
+  enumerable: true, configurable: true,
+  get() { ignoredManifestGetterCalls++; return 'unbound'; },
+});
+const safeManifestLedger = new VerifiedOutcomeLedger([manifestWithExtraGetter]);
+assert.equal(safeManifestLedger.snapshot().manifest[0].taskId, 'task-a');
+assert.equal(ignoredManifestGetterCalls, 0, 'unknown manifest properties must not be copied by reading them');
+assert.throws(() => new VerifiedOutcomeLedger(new Array(1)), /dense array of data entries/,
+  'sparse manifest arrays must be rejected without reading missing elements');
+
 assert.equal(ledger.record(outcome()).accepted, true);
+
+let outcomeGetterCalls = 0;
+const accessorOutcome = { ...outcome({ method: 'accessor-outcome' }) };
+Object.defineProperty(accessorOutcome, 'taskId', {
+  enumerable: true, configurable: true,
+  get() { outcomeGetterCalls++; return 'task-b'; },
+});
+assert.equal(ledger.record(accessorOutcome).rejection.code, 'invalid-outcome');
+assert.equal(outcomeGetterCalls, 0, 'outcome validation must not invoke accessors');
+
+let ignoredOutcomeGetterCalls = 0;
+const outcomeWithExtraGetter = { ...outcome({ method: 'extra-field-outcome', seed: 777 }) };
+Object.defineProperty(outcomeWithExtraGetter, 'callerMetadata', {
+  enumerable: true, configurable: true,
+  get() { ignoredOutcomeGetterCalls++; return 'untrusted'; },
+});
+assert.equal(ledger.record(outcomeWithExtraGetter).accepted, true);
+assert.equal(ignoredOutcomeGetterCalls, 0, 'extra outcome getters must not run during storage');
+assert.equal(Object.hasOwn(ledger.snapshot().outcomes.find(row => row.method === 'extra-field-outcome'), 'callerMetadata'), false,
+  'ledger stores only declared outcome schema fields');
 assert.equal(ledger.record(outcome()).rejection.code, 'duplicate-attempt');
 assert.equal(ledger.record(outcome({ method:'self-judge', authority:'self-report' })).rejection.code, 'self-report-not-authoritative');
 assert.equal(ledger.record(outcome({ method:'wrong-version', taskVersion:'2' })).rejection.code, 'version-mismatch');
@@ -54,8 +95,32 @@ assert.equal(ledger.comparePairedByFamily('baseline', 'candidate', 'train')[0].p
 const snapshot = ledger.snapshot();
 assert.equal(snapshot.manifestCount, 3);
 assert.equal(snapshot.rejectionCounts['self-report-not-authoritative'], 1);
-assert.equal(snapshot.acceptedOutcomes, 41);
-assert.equal(snapshot.rejectedOutcomes, 8);
+assert.equal(snapshot.rejectionCounts['invalid-outcome'], 1);
+assert.equal(snapshot.acceptedOutcomes, 42);
+assert.equal(snapshot.rejectedOutcomes, 9);
+
+const restored = VerifiedOutcomeLedger.restoreSnapshot(snapshot);
+assert.equal(restored.snapshot().acceptedOutcomes, snapshot.acceptedOutcomes);
+assert.equal(restored.snapshot().rejectedOutcomes, snapshot.rejectedOutcomes);
+
+let snapshotGetterCalls = 0;
+const snapshotWithAccessor = ledger.snapshot();
+Object.defineProperty(snapshotWithAccessor, 'schemaVersion', {
+  enumerable: true, configurable: true,
+  get() { snapshotGetterCalls++; return 2; },
+});
+assert.throws(() => VerifiedOutcomeLedger.restoreSnapshot(snapshotWithAccessor), /unsupported or malformed ledger snapshot/);
+assert.equal(snapshotGetterCalls, 0, 'snapshot restore must not invoke top-level accessors');
+
+let arrayGetterCalls = 0;
+const snapshotWithAccessorRow = ledger.snapshot();
+Object.defineProperty(snapshotWithAccessorRow.outcomes, '0', {
+  enumerable: true, configurable: true,
+  get() { arrayGetterCalls++; return snapshot.outcomes[0]; },
+});
+assert.throws(() => VerifiedOutcomeLedger.restoreSnapshot(snapshotWithAccessorRow), /unsupported or malformed ledger snapshot arrays/);
+assert.equal(arrayGetterCalls, 0, 'snapshot restore must reject array accessors without invoking them');
+
 snapshot.outcomes[0].passed = !snapshot.outcomes[0].passed;
 assert.notEqual(snapshot.outcomes[0].passed, ledger.snapshot().outcomes[0].passed, 'snapshot must not mutate ledger state');
 console.log('P23_VERIFIED_OUTCOME_LEDGER=PASS');
