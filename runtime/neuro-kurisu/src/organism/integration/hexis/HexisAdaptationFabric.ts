@@ -492,15 +492,44 @@ export class HexisAdaptationFabric {
         intent: HexisHmxIntent;
         strategy: HexisHmxStrategy;
     }): HexisHmxStage {
+        // Capture the request envelope through own data descriptors before reading
+        // any field. This prevents accessor-backed intent/strategy/document values
+        // from running code or changing between validation and staging.
+        let requestDescriptors: PropertyDescriptorMap;
+        try {
+            const prototype = Object.getPrototypeOf(input);
+            const keys = Reflect.ownKeys(input);
+            if ((prototype !== Object.prototype && prototype !== null) ||
+                keys.length !== 3 ||
+                keys.some((key) => typeof key !== 'string' ||
+                    !['document', 'intent', 'strategy'].includes(key))) {
+                throw new Error('invalid-stage-request-shape');
+            }
+            requestDescriptors = Object.getOwnPropertyDescriptors(input);
+        } catch {
+            throw new TypeError('hmx-unsafe-stage-request');
+        }
+        const documentDescriptor = requestDescriptors.document;
+        const intentDescriptor = requestDescriptors.intent;
+        const strategyDescriptor = requestDescriptors.strategy;
+        if (!documentDescriptor || !documentDescriptor.enumerable || !('value' in documentDescriptor) ||
+            !intentDescriptor || !intentDescriptor.enumerable || !('value' in intentDescriptor) ||
+            !strategyDescriptor || !strategyDescriptor.enumerable || !('value' in strategyDescriptor)) {
+            throw new TypeError('hmx-unsafe-stage-request');
+        }
+        const sourceDocument = documentDescriptor.value;
+        const intent = intentDescriptor.value;
+        const strategy = strategyDescriptor.value;
+
         // Keep the fabric's public mutation boundary strict as well as the HTTP
         // route: internal callers and tests must not stage unknown runtime enum values.
-        if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(input.intent)) {
+        if (!['port', 'duplicate', 'telepathy', 'analysis'].includes(intent as HexisHmxIntent)) {
             throw new TypeError('hmx-invalid-intent');
         }
-        if (!['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(input.strategy)) {
+        if (!['additive', 'authoritative', 'deliberative', 'analysis_only'].includes(strategy as HexisHmxStrategy)) {
             throw new TypeError('hmx-invalid-strategy');
         }
-        const captured = snapshotHmxV17Document(input.document);
+        const captured = snapshotHmxV17Document(sourceDocument);
         const capturedDocument = captured.ok ? captured.value : undefined;
         const document = capturedDocument && typeof capturedDocument === 'object' && !Array.isArray(capturedDocument)
             ? capturedDocument as Record<string, unknown>
@@ -509,7 +538,7 @@ export class HexisAdaptationFabric {
             ? document.sections as Record<string, unknown>
             : {};
         const conflicts: HexisHmxStage['conflicts'] = captured.ok
-            ? validateHmxV17Document(captured.value, input.intent)
+            ? validateHmxV17Document(captured.value, intent as HexisHmxIntent)
                 .map((issue) => ({ path: issue.path, kind: issue.kind, detail: issue.detail }))
             : [{ path: captured.issue.path, kind: captured.issue.kind, detail: captured.issue.detail }];
         const names = Object.keys(sections);
@@ -549,14 +578,14 @@ export class HexisAdaptationFabric {
             : {};
         const base = {
             exportId: String(document.export_id ?? randomUUID()),
-            intent: input.intent,
-            strategy: input.strategy,
+            intent: intent as HexisHmxIntent,
+            strategy: strategy as HexisHmxStrategy,
             sourceSubjectId: String(source.hexis_lineage_id ?? source.instance_id ?? document.source_subject_id ?? '').slice(0, 180) || undefined,
             sectionCounts,
             protectedSections: names.filter((name) => protectedSections.has(name)),
             conflicts,
             stagedSections,
-            applicationMode: input.intent === 'telepathy' && input.strategy === 'additive'
+            applicationMode: intent === 'telepathy' && strategy === 'additive'
                 ? 'memory-merge' as const
                 : 'preview-only' as const,
         };
