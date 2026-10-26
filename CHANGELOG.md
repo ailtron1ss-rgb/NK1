@@ -1,9 +1,16 @@
+# WorkPass350 — close host-evaluator module identity and writable-parent gaps (2026-10-26)
+
+- [SECURITY] The host-owned independent-evaluator loader now rejects a canonical evaluator-module parent directory that is group/world writable on POSIX. Restricting the module file mode alone was insufficient because a writable parent allows an attacker to replace the configured policy file by rename.
+- [SECURITY] The loader now compares provider/evaluator `dev` + `ino` after resolving both files, rejecting hard links that expose one executable module under two different pathnames and therefore defeat the intended authority separation.
+- [TEST] Added regressions for provider/evaluator hard-link aliasing and a group/world-writable evaluator parent. The host-evaluator regression bundle covers the existing same-path, state-directory, writable-module, method-separation and host-authority cases as well.
+- [VALIDATION] On SHA `5484b3567965870a4596336503a6b22985dbb17f`, WorkPass335 host-owned evaluator run #40284703984 passed (15/15 evaluator wiring tests; `TYPECHECK=PASS`) and WorkPass349 focused run #40284698566 passed (10/10 native-provider tests; `TYPECHECK=PASS`). Wider aggregate CI and physical production/device gates remain tracked separately.
+
 # WorkPass349 — close the signed-dataset path identity race (2026-10-26)
 
 - [SECURITY] The native Hermes/P23 provider now requires the file discovered by `lstat(configured)`, the canonical target from `realpath/stat`, and the opened descriptor to share the same device/inode identity. A path substitution between inspection and resolution fails closed.
 - [SECURITY] The provider opens the original configured path with `O_NOFOLLOW` on POSIX instead of opening only the already-resolved target; descriptor checks bind both the originally inspected object and canonical target to the bytes read.
 - [TEST] Added device/inode comparison cases and a source-contract regression guarding the three-way identity binding and configured-path open. Existing signed-artifact, symlink, writable-file, mutation and payload-fingerprint tests remain in the same native-provider suite.
-- [VALIDATION] Source and regression commits are present on `workpass349-native-dataset-path-identity-2026-10-26`; exact-head native-provider suite, runtime typecheck, and broader CI are **pending**. This is a file-path integrity fix, not production approval or a learning-uplift claim.
+- [VALIDATION] On code SHA `5484b3567965870a4596336503a6b22985dbb17f`, the dedicated WorkPass349 Actions run completed successfully: native-provider suite 10/10 and runtime typecheck passed. The WorkPass335 host-owned evaluator workflow also completed successfully on the same SHA, with its evaluator wiring suite 15/15 and runtime typecheck passed. Broader aggregate/release gates remain separate; this is not production approval or a learning-uplift claim.
 
 # WorkPass348 — bind signed outcomes to exact skill payloads (2026-10-24)
 
