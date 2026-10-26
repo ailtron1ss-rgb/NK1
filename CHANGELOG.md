@@ -1,3 +1,10 @@
+## Release metadata freshness contract — 2026-10-26
+
+- **Defect:** the manifest and its historical status files could remain self-consistent while the changelog had advanced to newer implementation passes.
+- **Fix:** the metadata verifier now rejects a manifest whose declared WorkPass trails the highest WorkPass recorded in the changelog or whose release date predates the current dated changelog entry.
+- **Regression:** added tests for stale pass, stale release date, and a valid newer candidate with an older published baseline.
+- **Scope:** this is a metadata integrity gate; it does not claim that every feature branch is integrated or that a new release ZIP has been published.
+
 ## CognitiveEventFabric append-ingress contract — 2026-10-26
 
 - **Defect:** confidence outside `[0, 1]` was silently clamped; append could execute top-level getters while reading event fields; duplicate parent IDs could inflate causal lineage; restore could clamp invalid stored confidence.
