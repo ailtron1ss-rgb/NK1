@@ -171,6 +171,11 @@ export class UnifiedCognitiveSubstrate {
     const resourcesRaw = own(source, 'resources');
     const couplingRaw = own(source, 'coupling');
     const provenanceRaw = own(source, 'provenance');
+    const rawPredictionRecord = section(source, 'prediction');
+    const predictionCountersInvalid = ['openCount', 'agingCount', 'expiredCount'].some(key => {
+      const value = own(rawPredictionRecord, key);
+      return value !== undefined && !(typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
+    });
     const selfMalformed = selfRaw !== undefined && !isRecord(selfRaw);
     const worldMalformed = worldRaw !== undefined && !isRecord(worldRaw);
     const predictionMalformed = predictionRaw !== undefined && !isRecord(predictionRaw);
@@ -206,11 +211,13 @@ export class UnifiedCognitiveSubstrate {
         newEntityRate01: sectionMetric(world, worldMalformed, 'newEntityRate01', d.world.newEntityRate01, 1),
       },
       prediction: {
-        error01: sectionMetric(prediction, predictionMalformed, 'error01', d.prediction.error01, 1),
+        error01: predictionMalformed || predictionCountersInvalid
+          ? 1 : sectionMetric(prediction, false, 'error01', d.prediction.error01, 1),
         openCount: counter(own(prediction, 'openCount'), d.prediction.openCount),
         agingCount: counter(own(prediction, 'agingCount'), d.prediction.agingCount),
         expiredCount: counter(own(prediction, 'expiredCount'), d.prediction.expiredCount),
-        priority01: sectionMetric(prediction, predictionMalformed, 'priority01', d.prediction.priority01, 1),
+        priority01: predictionMalformed || predictionCountersInvalid
+          ? 1 : sectionMetric(prediction, false, 'priority01', d.prediction.priority01, 1),
       },
       resources: {
         battery01: sectionMetric(resources, resourcesMalformed, 'battery01', d.resources.battery01, 0),
@@ -261,6 +268,10 @@ export class UnifiedCognitiveSubstrate {
     const rawWorld = input.world as unknown as Record<string, unknown>;
     const rawPrediction = input.prediction as unknown as Record<string, unknown>;
     const rawResources = input.resources as unknown as Record<string, unknown>;
+    const predictionCountersValid = ['openCount', 'agingCount', 'expiredCount'].every(key => {
+      const value = own(rawPrediction, key);
+      return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+    });
     const self = {
       continuity01: metric(own(rawSelf, 'continuity01'), d.self.continuity01),
       coherence01: trustedMetric(own(rawSelf, 'coherence01'), 0, 0),
@@ -279,11 +290,11 @@ export class UnifiedCognitiveSubstrate {
       newEntityRate01: trustedMetric(own(rawWorld, 'newEntityRate01'), 1, 1),
     };
     const prediction = {
-      error01: trustedMetric(own(rawPrediction, 'error01'), 1, 1),
+      error01: predictionCountersValid ? trustedMetric(own(rawPrediction, 'error01'), 1, 1) : 1,
       openCount: counter(own(rawPrediction, 'openCount')),
       agingCount: counter(own(rawPrediction, 'agingCount')),
       expiredCount: counter(own(rawPrediction, 'expiredCount')),
-      priority01: trustedMetric(own(rawPrediction, 'priority01'), 1, 1),
+      priority01: predictionCountersValid ? trustedMetric(own(rawPrediction, 'priority01'), 1, 1) : 1,
     };
     const resources = {
       battery01: trustedMetric(own(rawResources, 'battery01'), 0, 0),

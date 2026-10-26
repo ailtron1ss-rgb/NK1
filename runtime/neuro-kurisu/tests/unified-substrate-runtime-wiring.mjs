@@ -335,3 +335,28 @@ const missingDebtSection = structuredClone(groundedFrame);
 delete missingDebtSection.prediction;
 assert.equal(resolveUnifiedCognitiveWorkPolicy(missingDebtSection, 4).reason, 'invalid-substrate-state');
 
+// A corrupted prediction-debt counter must not become a harmless zero after
+// normalization while its explicitly low priority is retained.
+const restoredBadDebt = new UnifiedCognitiveSubstrate();
+restoredBadDebt.restore({
+  version: 1,
+  prediction: { error01: 0.05, openCount: -1, agingCount: 0, expiredCount: 0, priority01: 0 },
+});
+assert.equal(restoredBadDebt.snapshot().prediction.openCount, 0, 'counter remains normalized to a safe integer');
+assert.equal(restoredBadDebt.snapshot().prediction.error01, 1, 'invalid persisted counter raises prediction error');
+assert.equal(restoredBadDebt.snapshot().prediction.priority01, 1, 'invalid persisted counter raises debt priority');
+assert.equal(resolveUnifiedCognitiveWorkPolicy(restoredBadDebt.snapshot(), 4).maxCounterfactualBranches, 0, 'corrupt persisted debt disables optional work');
+
+const liveBadDebt = new UnifiedCognitiveSubstrate();
+const liveBadDebtFrame = liveBadDebt.integrate({
+  tick: 1,
+  self: { continuity01: 0.9, coherence01: 0.9, agency01: 0.9, realityAlignment01: 0.9, mode: 'plan', lastAction: 'verify' },
+  world: { confidence01: 0.9, uncertainty01: 0.1, entityCount: 6, eventCount: 8, relationCount: 4, conflict01: 0.1, newEntityRate01: 0.2 },
+  prediction: { error01: 0.05, openCount: -1, agingCount: 0, expiredCount: 0, priority01: 0 },
+  resources: { battery01: 0.9, thermal01: 0.2, ramPressure01: 0.2, computeCapacity01: 0.9, scarcity01: 0.1, efficiency01: 0.9 },
+  memoryPressure01: 0.1, evidenceCoverage01: 0.9, realObservationCoverage01: 0.9, unknown01: 0.1,
+});
+assert.equal(liveBadDebtFrame.prediction.error01, 1, 'invalid live debt counter raises prediction error');
+assert.equal(liveBadDebtFrame.prediction.priority01, 1, 'invalid live debt counter raises priority');
+assert.equal(resolveUnifiedCognitiveWorkPolicy(liveBadDebtFrame, 4).maxCounterfactualBranches, 0);
+

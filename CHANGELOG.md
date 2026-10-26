@@ -1,3 +1,12 @@
+## WorkPass364 — preserve prediction-debt corruption signals across normalization (2026-10-26)
+
+- **Defect:** `counter()` safely coerces an invalid negative debt count to `0`; if the same frame carried an apparently low priority, the normalized state could lose evidence that debt metadata was corrupt.
+- **Restore/live fix:** explicitly invalid persisted counters now force prediction error and priority to `1`; live integration requires all three debt counters to be present safe nonnegative integers, otherwise the derived prediction frame is treated as maximally uncertain/urgent. Counts remain bounded and safe to persist.
+- **Regression:** new tests cover a negative `openCount` alongside low `error01`/`priority01` for both restored and live frames, and verify the shared optional-work policy disables counterfactual work.
+- **Validation:** the new HEAD must pass focused substrate regression and runtime typecheck; no field-level learning uplift or production readiness is inferred.
+
+---
+
 ## WorkPass363 — type-safe prediction-debt input to resource allocation (2026-10-26)
 
 - **Early-path fix:** both runtime resource-allocation paths no longer use `predictionDebtSnapshot() as any` or convert a missing/invalid mean priority to zero. They validate all three debt counters and finite [0,1] priority before passing a value into `CognitiveResourceEconomy`; invalid debt uses priority `1`.
