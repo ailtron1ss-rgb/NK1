@@ -1,3 +1,9 @@
+## Clean-startup trigger contract — 2026-10-26
+
+- Expanded both pull-request and work-branch push path filters so the full clean-install/build/live-stack smoke reruns when gateway routing/forwarded-origin logic, supervisor preflight/exit policy, the Node/npm toolchain contract, the runtime compiler wrapper, or their critical regressions change.
+- Added `tools/clean-startup-workflow-contract.test.mjs` to require those critical paths in both event filters and to preserve manual dispatch. Wired it into `audit:quick` and the Node 24 toolchain workflow.
+- Baseline validation immediately before this trigger-only change passed on `df05dc79a74f1ac65789d9169cf3b0d0bbad6ec5`: WorkPass110, P26 learning validation, host-owned independent evaluation, and clean install/build/typecheck/organism smoke/full supervised stack endpoint smoke all completed successfully. The new trigger-contract workflow run is still required for this follow-on commit.
+
 ## Spine-only feedback crash recovery — 2026-10-26
 
 - The spine-only observation loop now detects a durable receipt at the current/ahead tick before retrying feedback, records a `feedback-recovery` decision event, discards the ambiguous reward, and continues advancing the cognitive tick.
