@@ -37,13 +37,18 @@ const experience = (energy, novelty, action, reward, worldContextVersion=1) => (
   const result = engine.trainInterleaved(
     [experience(0.3, 0.9, 'rest', 0.1)],
     [experience(0.3, 0.1, 'rest', 0.9)],
-    { replayEveryNCurrent: 1, maxReplayUpdates: 1, conflictCandidateCap: 1, targetMode: 'reward' },
+    {
+      replayEveryNCurrent: 1, maxReplayUpdates: 1, conflictCandidateCap: 1, targetMode: 'reward',
+      currentLearningRate01: 0.18, replayLearningRate01: 0.06,
+    },
   );
   assert.equal(result.onlineUpdates, 1);
   assert.equal(result.blockedReplayRows, 0,
     'different novelty contexts must be allowed to retain contradictory task outcomes');
   assert.equal(result.eligibleReplayRows, 1);
   assert.equal(result.replayUpdates, 1);
+  assert.ok(Math.abs(result.effectiveReplayLearningRate01 - 0.018) < 1e-12,
+    'dense replay must be capped at 10% of the current update rate');
   assert.ok(result.conflictComparisons <= 1,
     'conflict screening must obey the explicit comparison budget');
   assert.equal(engine.metrics().onlineUpdates, 1);
