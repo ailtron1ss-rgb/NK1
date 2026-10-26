@@ -34,9 +34,6 @@ export interface SkillRevisionGateResult {
   familyGains: Array<{ family: string; pairedN: number; gain: number }>;
   rejectedRows: number;
 }
-const clamp = (x: number, fallback: number) => Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
-const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
-  Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
 const nonEmptyText = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
@@ -69,9 +66,20 @@ export function evaluateSkillRevision(
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     throw new Error('skill revision gate options must be an object');
   }
-  const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
-  const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02, .02);
-  const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10, .10);
+  const minPairedTasks = options.minPairedTasks === undefined ? 8 : options.minPairedTasks;
+  const minAbsoluteGain = options.minAbsoluteGain === undefined ? .02 : options.minAbsoluteGain;
+  const maxFamilyRegression = options.maxFamilyRegression === undefined ? .10 : options.maxFamilyRegression;
+  if (!Number.isSafeInteger(minPairedTasks) || minPairedTasks < 2 || minPairedTasks > 10000) {
+    throw new Error('skill revision minPairedTasks must be an integer from 2 to 10000');
+  }
+  if (typeof minAbsoluteGain !== 'number' || !Number.isFinite(minAbsoluteGain) ||
+      minAbsoluteGain < 0 || minAbsoluteGain > 1) {
+    throw new Error('skill revision minAbsoluteGain must be a finite number from 0 to 1');
+  }
+  if (typeof maxFamilyRegression !== 'number' || !Number.isFinite(maxFamilyRegression) ||
+      maxFamilyRegression < 0 || maxFamilyRegression > 1) {
+    throw new Error('skill revision maxFamilyRegression must be a finite number from 0 to 1');
+  }
   const byPair = new Map<string, Map<string, RevisionObservation>>();
   // A single verifier receipt cannot be replayed under multiple task IDs to manufacture sample size.
   const seenEvidenceReceipts = new Set<string>();
