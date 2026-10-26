@@ -21,11 +21,24 @@ const review = fabric.createLearningReview({periodStart:0,periodEnd:1,summary:'t
 const decided = fabric.decideLearningReview(review.id,review.items[0].id,'approve');
 assert.equal(decided?.status,'approved');
 
-const stage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e1',sections:{memories:[{id:'m'}],goals:[{id:'g'}]}},intent:'port',strategy:'additive'});
+const stage = fabric.stageHmx({
+  document: makeHmxDocument('exp_1111111111111111', {
+    memories: [{ ref: 'exp_1111111111111111:mem-1', type: 'semantic', content: 'Valid fixture memory.' }],
+    goals: [{ ref: 'exp_1111111111111111:goal-1', title: 'Valid fixture goal.' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
 assert.equal(stage.status,'staged');
 assert.equal(fabric.decideHmx(stage.stagingId,'accept')?.status,'accepted');
 
-const protectedStage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e2',sections:{identity:[{id:'self'}]}},intent:'telepathy',strategy:'analysis_only'});
+const protectedStage = fabric.stageHmx({
+  document: makeHmxDocument('exp_2222222222222222', {
+    identity: [{ key: 'self', content: 'External identity must remain protected.' }],
+  }),
+  intent: 'telepathy',
+  strategy: 'analysis_only',
+});
 assert.equal(fabric.decideHmx(protectedStage.stagingId,'accept')?.status,'staged');
 
 const out = fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'x',meta:{b:2,a:1}}});
