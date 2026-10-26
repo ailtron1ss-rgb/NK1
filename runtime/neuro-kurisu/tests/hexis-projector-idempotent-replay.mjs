@@ -534,6 +534,7 @@ const priorRollbackDuplicate = {
 const rollbackCanonicalItems = [structuredClone(priorRollbackMemory), structuredClone(priorRollbackDuplicate)];
 const rollbackMemoryBaseline = structuredClone(rollbackCanonicalItems);
 const rollbackSignalReceipts = new Map();
+const rollbackSignalCompensations = new WeakMap();
 const signalFields = [
   'salience', 'emotionalWeight', 'identityRelevance', 'goalRelevance', 'socialRelevance',
   'predictionError', 'confidence', 'sourceAuthority01', 'evidenceSources', 'evidenceLineageKeys',
@@ -556,9 +557,22 @@ const rollbackMemoryFabric = {
     if (item) item.epistemicStatus = epistemicStatus;
     return item ?? null;
   },
+  captureSignalCompensation(id) {
+    const item = rollbackCanonicalItems.find(candidate => candidate.id === id);
+    if (!item) return null;
+    const token = Object.freeze({});
+    rollbackSignalCompensations.set(token, { id, snapshot: structuredClone(item), sourceCommandIds: [] });
+    return token;
+  },
   updateSignals(id, patch, reason, context = {}) {
     const item = rollbackCanonicalItems.find(candidate => candidate.id === id);
     if (!item) return null;
+    const compensation = context.compensationToken === undefined
+      ? undefined
+      : rollbackSignalCompensations.get(context.compensationToken);
+    if (context.compensationToken !== undefined && (!compensation || compensation.id !== id || !context.commandId)) {
+      throw new Error('test-signal-compensation-token-invalid');
+    }
     for (const [key, value] of Object.entries(patch)) {
       if (key === 'sourceAuthority01') item.sourceAuthority01 = Math.min(item.sourceAuthority01 ?? 0.45, value);
       else if (key === 'evidenceSources') {
@@ -573,18 +587,35 @@ const rollbackMemoryFabric = {
     item.revisionHistory = [...(item.revisionHistory ?? []), {
       at: 2000, from: item.epistemicStatus, to: item.epistemicStatus, reason,
     }];
-    if (context.commandId) rollbackSignalReceipts.set(context.commandId, { action: 'update-signals', id });
+    if (context.commandId) {
+      rollbackSignalReceipts.set(context.commandId, { action: 'update-signals', id });
+      if (compensation && !compensation.sourceCommandIds.includes(context.commandId)) {
+        compensation.sourceCommandIds.push(context.commandId);
+      }
+    }
     return structuredClone(item);
   },
-  restoreSignalsForCompensation(id, snapshot, reason, context = {}) {
+  restoreSignalsForCompensation(id, token, reason) {
     assert.equal(reason, 'hexis-hmx-apply-rollback');
+    const compensation = rollbackSignalCompensations.get(token);
+    if (!compensation || compensation.id !== id || !compensation.sourceCommandIds.length) return false;
+    for (const sourceCommandId of compensation.sourceCommandIds) {
+      const receipt = rollbackSignalReceipts.get(sourceCommandId);
+      if (!receipt || receipt.action !== 'update-signals' || receipt.id !== id) return false;
+    }
     const item = rollbackCanonicalItems.find(candidate => candidate.id === id);
     if (!item) return false;
     for (const key of signalFields) {
-      if (snapshot[key] === undefined) delete item[key];
-      else item[key] = structuredClone(snapshot[key]);
+      if (compensation.snapshot[key] === undefined) delete item[key];
+      else item[key] = structuredClone(compensation.snapshot[key]);
     }
-    for (const sourceCommandId of context.sourceCommandIds ?? []) rollbackSignalReceipts.delete(sourceCommandId);
+    for (const sourceCommandId of compensation.sourceCommandIds) rollbackSignalReceipts.delete(sourceCommandId);
+    rollbackSignalCompensations.delete(token);
+    assert.deepEqual(
+      Object.fromEntries(signalFields.map(field => [field, item[field]])),
+      Object.fromEntries(signalFields.map(field => [field, compensation.snapshot[field]])),
+      'the rollback adapter must prove exact restoration from its opaque capture',
+    );
     return true;
   },
 };
