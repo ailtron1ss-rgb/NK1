@@ -4,7 +4,7 @@
 - [SECURITY] The generic supervisor now rejects both inherited and explicitly supplied sensitive environment keys and runtime injection variables before storage allocation. This closes the bypass where direct callers could pass API keys or alter a child runtime via `NODE_OPTIONS`/loader environment.
 - [INTEGRATION] Host-owned evaluator configuration applies the same policy to inherited and explicit child environment variables; error reporting remains specific to the owning authority.
 - [TEST] Added direct-supervisor negative regressions for inherited `OPENAI_API_KEY` and explicit `OPENAI_API_KEY`, including proof that rejected requests create no run-root state.
-- [VALIDATION] Code and regression are committed; WorkPass349 focused workflow and runtime typecheck are pending on the new exact head. WorkPass354 run #40289252511 predates these changes. No dependency added; do not pass credentials to candidate execution as a substitute for host-owned authority isolation.
+- [VALIDATION] Focused workflow [#40289516633](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289516633) passed on code/test SHA `295e11f3e9795375f81bbad1b493e2bac842317a`: native provider 10/10, evaluator-config suite 16/16, direct supervisor regression completed successfully, and runtime `TYPECHECK=PASS`. Later checkpoint commits are documentation-only. No dependency added; do not pass credentials to candidate execution as a substitute for host-owned authority isolation.
 
 # WorkPass354 — enforce private, disjoint learning-process storage roots (2026-10-26)
 
