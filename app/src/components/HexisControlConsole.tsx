@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Archive, Brain, CheckCircle2, Clock3, Download, History, RefreshCw, Send, ShieldCheck, Workflow } from "lucide-react";
+import { Archive, Brain, CheckCircle2, Clock3, Download, History, Radio, RefreshCw, Send, ShieldCheck, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { neuroApi } from "@/neuro-kurisu/api";
 
