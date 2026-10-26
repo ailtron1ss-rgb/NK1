@@ -1,9 +1,9 @@
-## P23 skill-store trust-boundary fixture alignment — 2026-10-26
+## P23 durable skill-store identity and trust-boundary regression — 2026-10-26
 
-- Updated the versioned skill-store lifecycle regression to use the current object-shaped rollback approval contract instead of the retired positional signature.
-- The fixture injects an explicit test-only rollback verifier; production's default rollback verifier remains deny-by-default. No production authorization gate was weakened.
-- Corrected the persisted-state tampering case to change only the unsigned `approval.expectedActiveVersion` wrapper while preserving the signed artifact and valid prior-version linkage. This now isolates the intended CAS-to-signed-approval guard instead of tripping the earlier rollback-target invariant.
-- The preceding WorkPass110 run passed the rollback cases but exposed this stale tamper fixture assertion. Exact-head revalidation after this adjustment is pending.
+- Updated the versioned skill-store lifecycle regression to use the current object-shaped rollback approval contract; the fixture injects a test-only rollback verifier while production's default rollback verifier remains deny-by-default.
+- Corrected the persisted-state tampering case to change only the unsigned `approval.expectedActiveVersion` wrapper, preserving the signed artifact and valid prior-version linkage. This isolates the intended CAS-to-signed-approval guard.
+- Fixed a production persistence mismatch: `VersionedSkillCandidateStore` includes the revision-provenance fingerprint (or `null`) in each new candidate ID, but `AtomicFileSkillStorePersistence` validated only the old four-field formula and rejected valid durable writes. The file adapter now verifies provenance and the matching five-field identity while accepting legacy four-field IDs only when provenance is absent.
+- Added file-backed restart coverage for both ordinary candidates and provenance-bearing candidates. Exact-head WorkPass110 validation is pending.
 
 ## Supervised service failure closure — 2026-10-26
 
