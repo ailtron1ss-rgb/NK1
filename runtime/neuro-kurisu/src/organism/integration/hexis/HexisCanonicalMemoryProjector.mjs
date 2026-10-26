@@ -355,14 +355,32 @@ export class HexisCanonicalMemoryProjector {
           const ref = asText(memory.context?.hexisMemoryRef, 512);
           const sourceRef = ref.replace(/^exp_[a-f0-9]{16}:/, '');
           const temporalSource = 'hexis:' + lineageId + ':' + sourceRef;
-          if (temporalRows.some(row => row.memoryId === id && row.validUntil === null && row.source === temporalSource)) continue;
           const inputRow = sourceRowsByRef.get(ref);
           const validFrom = dateMs(memory.validFromAt) ?? dateMs(memory.observedAt) ?? appliedAt;
           const validUntil = dateMs(memory.validUntilAt);
+          const summary = String(memory.content ?? '').slice(0, 2000);
+          const confidence01 = clamp01(memory.confidence);
+          const nextTemporalStart = temporalRows
+            .filter(row => row.memoryId === id && row.validFrom > validFrom)
+            .reduce((next, row) => next === null || row.validFrom < next ? row.validFrom : next, null);
+          const effectiveValidUntil = nextTemporalStart !== null &&
+            (validUntil === null || nextTemporalStart < validUntil)
+            ? nextTemporalStart
+            : validUntil;
+          // Idempotency includes the interval itself: an expired assertion is still
+          // an already-indexed result, while a changed interval creates a new revision.
+          if (temporalRows.some(row =>
+            row.memoryId === id &&
+            row.source === temporalSource &&
+            row.validFrom === validFrom &&
+            row.validUntil === effectiveValidUntil &&
+            row.summary === summary &&
+            row.confidence01 === confidence01
+          )) continue;
           const receipt = this.temporalLedger.recordTemporalAssertion({
             memoryId: id,
-            summary: String(memory.content ?? '').slice(0, 2000),
-            confidence01: clamp01(memory.confidence),
+            summary,
+            confidence01,
             validFrom,
             validUntil,
             source: temporalSource,
