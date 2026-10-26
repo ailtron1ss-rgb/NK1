@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Scores remain anchored to the verified code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; all thirteen named workflows passed on that exact head. A newer WorkPass343 code/test head 6ec9d696f965bcd7ee46f6560a16a0dd0c15acc1 reconciles the derived cognitive-substrate clock to canonical Core state, but exact-head CI evidence has not yet been returned; therefore this snapshot intentionally does not raise scores for WorkPass343. WorkPass335/336 and WorkPass339 are included in the validated code/test snapshot 621864d0d7f2676245383adab86f1dcc6d0f741f according to the current branch's CI handover. The branch head immediately before this tracker update was 23b530560e258667a61bbc1c45ef3a19a9c4c60f.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The last verified combined cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; all historic CI rows still test that exact SHA. The current source base contains a newer WorkPass343 substrate-tick reconciliation update, and WorkPass344 adds fail-closed final release metadata verification. The first WorkPass344 CI run caught an architecture-audit false positive from an import assertion string, now corrected in 3c7d440ab6e3bdd6410816b0605a0dd187c31433. Latest combined exact-head CI is pending; scores remain unchanged and historical PASS rows do not validate this new code. Release ZIP replacement and device/hardware release gates remain open.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -450,10 +450,28 @@
       "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
       "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454",
       "progressPercentagesChanged": false
+    },
+    {
+      "id": "WorkPass343",
+      "date": "2026-10-26",
+      "branch": "work/nk1-final-release-gate-2026-10-26-r2",
+      "summary": "Source base added reconciliation of a future persisted substrate tick to the canonical Core tick.",
+      "codeCommit": "6ec9d696f965bcd7ee46f6560a16a0dd0c15acc1",
+      "validationStatus": "Pending combined-head CI on this fresh release-gate branch.",
+      "progressPercentagesChanged": false
+    },
+    {
+      "id": "WorkPass344",
+      "date": "2026-10-26",
+      "branch": "work/nk1-final-release-gate-2026-10-26-r2",
+      "summary": "Final release verifier now requires release metadata validation; four fail-closed tests and integration CI wiring added.",
+      "codeCommit": "3c7d440ab6e3bdd6410816b0605a0dd187c31433",
+      "validationStatus": "Pending exact-head CI after architecture-audit false-positive correction.",
+      "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "6ec9d696f965bcd7ee46f6560a16a0dd0c15acc1",
-  "branchHeadBeforeTrackerCommit": "23b530560e258667a61bbc1c45ef3a19a9c4c60f",
+  "latestUnverifiedCodeTestHead": "3c7d440ab6e3bdd6410816b0605a0dd187c31433",
+  "branchHeadBeforeTrackerCommit": "3c7d440ab6e3bdd6410816b0605a0dd187c31433",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
