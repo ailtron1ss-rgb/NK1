@@ -1508,7 +1508,7 @@
     "audit:ui-wiring": "node scripts/audit-ui-function-wiring.mjs",
     "audit:pass3": "npm run typecheck && npm run test:lumina-adaptation && npm run test:will-all && npm run audit:ui-wiring && npm run server:smoke",
     "test:hexis-adaptation": "node --experimental-strip-types tests/integration/hexis-adaptation.mjs",
-    "audit:hexis": "npm run test:hexis-adaptation && npm run test:hexis-server-smoke && npm run audit:ui-wiring",
+    "audit:hexis": "npm run test:hexis-adaptation && npm run test:hexis-memory-evidence-lineage && npm run test:hexis-server-smoke && npm run audit:ui-wiring",
     "audit:hexis-release": "npm run typecheck && npm run audit:hexis && npm run server:smoke",
     "test:hexis-server-smoke": "node --experimental-strip-types tests/integration/hexis-server-smoke.mjs",
     "test:server-input-hardening": "node --experimental-strip-types tests/integration/server-input-hardening.mjs",
@@ -1779,6 +1779,7 @@
     "test:cognitive-dependency-runtime-wiring": "node --experimental-strip-types tests/cognitive-dependency-runtime-wiring.mjs",
     "test:cognitive-routing-policy": "node --experimental-strip-types tests/cognitive-routing-policy.mjs",
     "test:cognitive-routing-policy-runtime-wiring": "node tests/cognitive-routing-policy-runtime-wiring.mjs",
-    "test:cognitive-feedback-attribution-wiring": "node --experimental-strip-types tests/cognitive-feedback-attribution-wiring.mjs"
+    "test:cognitive-feedback-attribution-wiring": "node --experimental-strip-types tests/cognitive-feedback-attribution-wiring.mjs",
+    "test:hexis-memory-evidence-lineage": "node --experimental-strip-types tests/integration/hexis-memory-evidence-lineage.mjs"
   }
 }
