@@ -1,4 +1,4 @@
-## Latest checkpoint — WorkPass336 (2026-10-26)
+## Latest checkpoint — WorkPass340 (2026-10-26)
 
 - **Branch:** `work/nk1-unified-substrate-runtime-integration-2026-10-26-r2`; based on the current WorkPass334 source line. This is a separate draft integration; `main` and the release ZIP were not changed.
 - **Runtime:** replaced the 103-line simplified `UnifiedCognitiveSubstrate.ts` with a strict 307-line version from the divergent substrate-wiring branch, then wired it selectively into the existing `OrganismRuntime.ts` rather than overwriting that whole file.
