@@ -1,3 +1,10 @@
+# WorkPass361 — align runtime-wiring regression with resource-feedback import (2026-10-26)
+
+- [FIXED] Update the source-contract assertion for the actual runtime import after WorkPass359 added `resolveUnifiedCognitiveResourceSignals`.
+- [VALIDATION] WorkPass360 exact-head run passed the substrate unit suite and full runtime typecheck, then failed the wiring test only because it asserted the previous import string. Fresh exact-head workflow must verify all downstream runtime/restart checks.
+
+---
+
 # WorkPass360 — make floating-point feedback assertions numerically robust (2026-10-26)
 
 - [FIXED] Change the damaged-feedback regression to use a tight tolerance for the mathematically-one weighted sum (IEEE-754 produced 0.9999999999999999); production normalization remains bounded and unchanged.
