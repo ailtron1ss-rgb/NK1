@@ -196,9 +196,10 @@ const rollbackPromotionApproval = {
 assert.equal(authenticatedRollbackStore.approveAndPromote(rollbackCandidate.candidateId, rollbackPromotionApproval, 3).version, 1);
 const rollbackActiveCandidate = authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId);
 assert.equal(rollbackActiveCandidate.status, 'active');
-assert.equal(authenticatedRollbackStore.rollback(rollbackCandidate.candidateId, {
+assert.throws(() => authenticatedRollbackStore.rollback(rollbackCandidate.candidateId, {
   approvedBy: 'operator-key-1', approvedAt: rollbackClock, expectedActiveVersion: 1,
-}), null, 'unsigned rollback is not accepted even with a configured trusted key');
+}), /rollback approval is not authenticated by the configured authority/,
+  'unsigned rollback is not accepted even with a configured trusted key');
 const rollbackPayload = createSkillRollbackApprovalPayload(
   authenticatedRollbackStore.snapshot().candidates.find(item => item.candidateId === rollbackCandidate.candidateId),
   'operator-key-1', 'rollback-approval-request-1', rollbackClock,
