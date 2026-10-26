@@ -65,6 +65,60 @@ try {
   }
   const applyReplay = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: applyStageRes.stage.stagingId, decision: 'apply' })).json();
   if (!applyReplay.ok || applyReplay.stage?.application?.digest !== applyRes.stage.application.digest) throw new Error('hexis-hmx-apply-replay');
+  const goalExportId='exp_0123456789abcded';
+  const goalMemoryRef=goalExportId+':memory:goal-evidence';
+  const goalRef=goalExportId+':goal:reviewed';
+  const goalDocument=structuredClone(applyDocument);
+  goalDocument.export_id=goalExportId;
+  goalDocument.source.hexis_lineage_id='nk1-server-smoke-goal-lineage';
+  goalDocument.exported_at=new Date().toISOString();
+  goalDocument.sections.memories=[
+    {ref:goalMemoryRef,type:'semantic',status:'active',content:'NK1_HEXIS_GOAL_EVIDENCE_SMOKE',importance:.71,trust_level:.81,provenance:{source_id:'goal-smoke-source',confidence:.81}},
+  ];
+  goalDocument.sections.goals=[
+    {ref:goalRef,title:'Verify an explicitly reviewed Hexis goal',description:'Use imported evidence and verify an outcome before graduation.'},
+  ];
+  goalDocument.sections.relationships=[
+    {ref:goalExportId+':relationship:goal-evidence',source_ref:goalMemoryRef,target_ref:goalRef,edge_type:'supports',properties:{weight:.78}},
+  ];
+  const goalStageRes=await (await post('/api/organism/integration/hexis/hmx/stage',{document:goalDocument,intent:'port',strategy:'additive'})).json();
+  if(!goalStageRes.ok||goalStageRes.stage?.status!=='staged'||goalStageRes.stage?.conflicts?.length) {
+    throw new Error('hexis-goal-stage:'+JSON.stringify(goalStageRes.stage?.conflicts));
+  }
+  const goalAcceptRes=await (await post('/api/organism/integration/hexis/hmx/decide',{stagingId:goalStageRes.stage.stagingId,decision:'accept'})).json();
+  if(!goalAcceptRes.ok||goalAcceptRes.stage?.status!=='accepted') throw new Error('hexis-goal-accept');
+  const goalApplyRes=await (await post('/api/organism/integration/hexis/hmx/decide',{stagingId:goalStageRes.stage.stagingId,decision:'apply'})).json();
+  if(!goalApplyRes.ok||goalApplyRes.stage?.status!=='applied') throw new Error('hexis-goal-apply:'+JSON.stringify(goalApplyRes));
+
+  const preparedGoals=await (await post('/api/organism/integration/hexis/goals/prepare',{stagingId:goalStageRes.stage.stagingId})).json();
+  if(!preparedGoals.ok||preparedGoals.created!==1||preparedGoals.proposals?.[0]?.status!=='pending') {
+    throw new Error('hexis-goal-prepare:'+JSON.stringify(preparedGoals));
+  }
+  const proposalId=preparedGoals.proposals[0].id;
+  const pendingMaterializeResponse=await post('/api/organism/integration/hexis/goals/materialize',{proposalId});
+  if(pendingMaterializeResponse.status!==409) throw new Error('hexis-goal-pending-must-not-materialize:'+pendingMaterializeResponse.status);
+  const goalList=await (await fetch(\`\${base}/api/organism/integration/hexis/goals?status=pending&limit=8\`)).json();
+  if(!goalList.ok||!goalList.proposals?.some(proposal=>proposal.id===proposalId)) throw new Error('hexis-goal-list');
+  const invalidGoalDecisionResponse=await post('/api/organism/integration/hexis/goals/decide',{proposalId,decision:'activate'});
+  if(invalidGoalDecisionResponse.status!==400) throw new Error('hexis-goal-decision-validation');
+
+  const goalApproval=await (await post('/api/organism/integration/hexis/goals/decide',{proposalId,decision:'approve'})).json();
+  if(!goalApproval.ok||goalApproval.proposal?.status!=='approved') throw new Error('hexis-goal-explicit-approval');
+  const materializedGoal=await (await post('/api/organism/integration/hexis/goals/materialize',{proposalId})).json();
+  if(!materializedGoal.ok||materializedGoal.project?.status!=='paused'||
+     materializedGoal.project?.pauseReason!=='hexis-approved-awaiting-explicit-activation') {
+    throw new Error('hexis-goal-paused-materialization:'+JSON.stringify(materializedGoal));
+  }
+  const activatedGoal=await (await post('/api/organism/integration/hexis/goals/activate',{proposalId})).json();
+  if(!activatedGoal.ok||activatedGoal.project?.status!=='active'||activatedGoal.receipt?.projected!==1||
+     activatedGoal.receipt?.deferred!==0||activatedGoal.receipt?.semanticEdgeIds?.length!==1) {
+    throw new Error('hexis-goal-explicit-activation:'+JSON.stringify(activatedGoal));
+  }
+  const activatedGoalReplay=await (await post('/api/organism/integration/hexis/goals/activate',{proposalId})).json();
+  if(!activatedGoalReplay.ok||activatedGoalReplay.receipt?.semanticEdgeIds?.[0]!==activatedGoal.receipt.semanticEdgeIds[0]) {
+    throw new Error('hexis-goal-activation-replay');
+  }
+
   const invalidDecision = await fetch(`${base}/api/organism/integration/hexis/hmx/decide`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ stagingId: applyStageRes.stage.stagingId, decision: 'activate-everything' }),
