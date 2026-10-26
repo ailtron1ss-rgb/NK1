@@ -39,6 +39,10 @@ Every result is labelled advisoryOnly=true, eligibleAsVerifiedEvidence=false, nk
 
 A remote answer is not a verified action receipt, not ground truth, and not an approval. It cannot directly revise NK1 beliefs, activate a skill, replace identity, or silently enter causal learning. Any future import must pass through the existing provenance/verification gates. Portable data should use the existing HMX export → stage → explicit NK1 decision path; protected identity/worldview sections must not be auto-accepted.
 
+**Important scope boundary:** this first pass does not yet upload or validate a QuixiAI HMX document, map imported HMX records into NK1's canonical memory schema, or apply external records to the cognitive core. NK1's existing HMX stage is a governance preview/staging surface; accepting a stage currently changes its stage status and is not, by itself, proof that memories were merged into the core. Do not treat the current stage button as a complete cross-project memory importer. The follow-up pass must implement schema validation against the upstream HMX 1.7 contract, stable reference/provenance mapping, duplicate/conflict handling, protected-section policy, durable transactional apply, and post-import recall/continuity tests before claiming bidirectional memory integration.
+
+The upstream HMX 1.7 format and intent rules are documented in the official [Hexis HMX reference](https://github.com/QuixiAI/Hexis/blob/main/docs/reference/hmx.md) and [mind portability guide](https://github.com/QuixiAI/Hexis/blob/main/docs/guides/mind-portability.md).
+
 The bridge does not directly write the Hexis Postgres database. Its documented belief and memory mutations are database functions / agent tools, not a general-purpose public REST write API.
 
 ## Verification
