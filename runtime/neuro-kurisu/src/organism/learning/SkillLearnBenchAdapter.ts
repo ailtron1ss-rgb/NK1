@@ -376,11 +376,14 @@ export function evaluateSkillLearnBenchCandidate(
   if (!baseline || typeof baseline !== 'object' || !candidate || typeof candidate !== 'object') {
     throw new Error('candidate-evaluation-input-invalid');
   }
+
   const minGain = options.minimumValidationGain01 ?? 0.005;
   const maxRegression = options.maximumHoldoutRegression01 ?? 0.02;
   const minHoldoutTasks = options.minimumHoldoutTasks ?? 2;
   const minValidationTaskSuccess = options.minimumValidationTaskSuccess01 ?? 0.8;
   const minValidationTasks = options.minimumValidationTasks ?? 2;
+  const minFamilyValidationTaskSuccess = options.minimumFamilyValidationTaskSuccess01 ?? minValidationTaskSuccess;
+  const maxFamilyHoldoutRegression = options.maximumFamilyHoldoutRegression01 ?? maxRegression;
   if (!Number.isFinite(minGain) || minGain < 0 || minGain > 1) {
     throw new RangeError('candidate-minimum-validation-gain-invalid');
   }
@@ -396,6 +399,26 @@ export function evaluateSkillLearnBenchCandidate(
   if (!Number.isSafeInteger(minValidationTasks) || minValidationTasks < 1) {
     throw new RangeError('candidate-minimum-validation-tasks-invalid');
   }
+  if (!Number.isFinite(minFamilyValidationTaskSuccess) ||
+      minFamilyValidationTaskSuccess < 0 || minFamilyValidationTaskSuccess > 1) {
+    throw new RangeError('candidate-minimum-family-validation-task-success-invalid');
+  }
+  if (!Number.isFinite(maxFamilyHoldoutRegression) ||
+      maxFamilyHoldoutRegression < 0 || maxFamilyHoldoutRegression > 1) {
+    throw new RangeError('candidate-maximum-family-holdout-regression-invalid');
+  }
+
+  let explicitFamilies: string[] | undefined;
+  if (options.requiredTaskFamilies !== undefined) {
+    if (!Array.isArray(options.requiredTaskFamilies) || options.requiredTaskFamilies.length === 0 ||
+        options.requiredTaskFamilies.some((family) => !isNonEmptyString(family))) {
+      throw new RangeError('candidate-required-task-families-invalid');
+    }
+    explicitFamilies = options.requiredTaskFamilies.map((family) => family.trim()).sort();
+    if (new Set(explicitFamilies).size !== explicitFamilies.length) {
+      throw new RangeError('candidate-required-task-families-duplicate');
+    }
+  }
 
   const baselineValidation = validateCandidateReports(baseline.validation, 'baseline-validation');
   const candidateValidation = validateCandidateReports(candidate.validation, 'candidate-validation');
@@ -406,11 +429,17 @@ export function evaluateSkillLearnBenchCandidate(
   if ([...validationTaskIds].some((taskId) => holdoutTaskIds.has(taskId))) {
     throw new Error('candidate-validation-holdout-task-overlap');
   }
+
   const validation = pairedCandidateMean(baselineValidation, candidateValidation, 'validation');
   const holdout = pairedCandidateMean(baselineHoldout, candidateHoldout, 'holdout');
   const validationGain = validation.candidateMean - validation.baselineMean;
   const holdoutDelta = holdout.candidateMean - holdout.baselineMean;
-  const macroTaskMetric = (reports: SkillLearnBenchTrialReport[], selector: (r: SkillLearnBenchTrialReport) => number) => {
+  const rounded = (value: number) => Number(value.toFixed(6));
+
+  const macroTaskMetric = (
+    reports: SkillLearnBenchTrialReport[],
+    selector: (report: SkillLearnBenchTrialReport) => number,
+  ): number => {
     const byTask = new Map<string, number[]>();
     for (const report of reports) {
       const taskId = report.taskId.trim();
@@ -423,35 +452,143 @@ export function evaluateSkillLearnBenchCandidate(
     );
     return taskMeans.reduce((sum, value) => sum + value, 0) / taskMeans.length;
   };
-  const validationTaskSuccess = macroTaskMetric(validation.candidateReports, (r) => r.taskSuccess.passRate);
+  const familyMetric = (
+    reports: SkillLearnBenchTrialReport[],
+    family: string,
+    selector: (report: SkillLearnBenchTrialReport) => number,
+  ): number | null => {
+    const matching = reports.filter((report) => report.taskFamily === family);
+    return matching.length ? macroTaskMetric(matching, selector) : null;
+  };
+  const familyTaskCount = (reports: SkillLearnBenchTrialReport[], family: string): number =>
+    new Set(reports.filter((report) => report.taskFamily === family).map((report) => report.taskId.trim())).size;
+
+  const validationTaskSuccess = macroTaskMetric(validation.candidateReports, (report) => report.taskSuccess.passRate);
   const reasons: string[] = [];
   const feedback: string[] = [];
-
   if (validationGain < minGain) reasons.push('validation-improvement-below-threshold');
   if (validation.taskCount < minValidationTasks) reasons.push('validation-task-coverage-insufficient');
   if (validationTaskSuccess < minValidationTaskSuccess) reasons.push('validation-task-success-below-threshold');
   if (holdout.taskCount < minHoldoutTasks) reasons.push('holdout-task-coverage-insufficient');
   if (holdoutDelta < -maxRegression) reasons.push('holdout-regression-exceeds-tolerance');
 
-  const allCandidateReports = [...validation.candidateReports, ...holdout.candidateReports];
-  const safetyViolations = allCandidateReports.reduce(
+  const baselineReports = [...baselineValidation.values(), ...baselineHoldout.values()];
+  const candidateReports = [...validation.candidateReports, ...holdout.candidateReports];
+  const allReports = [...baselineReports, ...candidateReports];
+  const reportsWithFamily = allReports.filter((report) => isNonEmptyString(report.taskFamily));
+  if (reportsWithFamily.length !== allReports.length) {
+    reasons.push('task-family-evidence-missing');
+    feedback.push('Attach the canonical task-family label from the trusted task manifest to every baseline and candidate trial.');
+  }
+  const observedFamilies = new Set(reportsWithFamily.map((report) => report.taskFamily!.trim()));
+  const requiredFamilies = [...new Set([...(explicitFamilies ?? []), ...observedFamilies])].sort();
+  if (requiredFamilies.length === 0) {
+    reasons.push('task-family-evidence-missing');
+    feedback.push('No task families are covered; task-family evidence is required before candidate eligibility can be recommended.');
+  }
+
+  let completeFamilyCount = 0;
+  const familyResults: SkillLearnBenchCandidateGateReport['familyResults'] = requiredFamilies.map((family) => {
+    const baseValidationReports = [...baselineValidation.values()].filter((report) => report.taskFamily === family);
+    const candidateValidationReports = validation.candidateReports.filter((report) => report.taskFamily === family);
+    const baseHoldoutReports = [...baselineHoldout.values()].filter((report) => report.taskFamily === family);
+    const candidateHoldoutReports = holdout.candidateReports.filter((report) => report.taskFamily === family);
+    const hasValidation = baseValidationReports.length > 0 && candidateValidationReports.length > 0;
+    const hasHoldout = baseHoldoutReports.length > 0 && candidateHoldoutReports.length > 0;
+    if (!hasValidation) reasons.push('task-family-validation-coverage-insufficient:' + family);
+    if (!hasHoldout) reasons.push('task-family-holdout-coverage-insufficient:' + family);
+    if (hasValidation && hasHoldout) completeFamilyCount += 1;
+
+    const baselineValidation01 = hasValidation
+      ? familyMetric(baseValidationReports, family, candidateComposite)
+      : null;
+    const candidateValidation01 = hasValidation
+      ? familyMetric(candidateValidationReports, family, candidateComposite)
+      : null;
+    const validationGain01 = baselineValidation01 === null || candidateValidation01 === null
+      ? null
+      : rounded(candidateValidation01 - baselineValidation01);
+    const baselineValidationTaskSuccess01 = hasValidation
+      ? familyMetric(baseValidationReports, family, (report) => report.taskSuccess.passRate)
+      : null;
+    const familyValidationTaskSuccess01 = hasValidation
+      ? familyMetric(candidateValidationReports, family, (report) => report.taskSuccess.passRate)
+      : null;
+    const baselineHoldout01 = hasHoldout
+      ? familyMetric(baseHoldoutReports, family, candidateComposite)
+      : null;
+    const candidateHoldout01 = hasHoldout
+      ? familyMetric(candidateHoldoutReports, family, candidateComposite)
+      : null;
+    const holdoutDelta01 = baselineHoldout01 === null || candidateHoldout01 === null
+      ? null
+      : rounded(candidateHoldout01 - baselineHoldout01);
+    const baselineHoldoutTaskSuccess01 = hasHoldout
+      ? familyMetric(baseHoldoutReports, family, (report) => report.taskSuccess.passRate)
+      : null;
+    const familyHoldoutTaskSuccess01 = hasHoldout
+      ? familyMetric(candidateHoldoutReports, family, (report) => report.taskSuccess.passRate)
+      : null;
+    const holdoutSuccessDelta01 = baselineHoldoutTaskSuccess01 === null || familyHoldoutTaskSuccess01 === null
+      ? null
+      : rounded(familyHoldoutTaskSuccess01 - baselineHoldoutTaskSuccess01);
+
+    if (familyValidationTaskSuccess01 !== null &&
+        familyValidationTaskSuccess01 < minFamilyValidationTaskSuccess) {
+      reasons.push('task-family-validation-success-below-threshold:' + family);
+      feedback.push('Family "' + family + '" has independently verified validation task success ' +
+        familyValidationTaskSuccess01.toFixed(3) + ', below the required ' +
+        minFamilyValidationTaskSuccess.toFixed(3) + '.');
+    }
+    if (validationGain01 !== null && validationGain01 < -maxRegression) {
+      reasons.push('task-family-validation-regression-exceeds-tolerance:' + family);
+    }
+    if (holdoutDelta01 !== null && holdoutDelta01 < -maxFamilyHoldoutRegression) {
+      reasons.push('task-family-holdout-regression-exceeds-tolerance:' + family);
+      feedback.push('Family "' + family + '" regresses on the untouched holdout; improve generality and request a fresh independent evaluation.');
+    }
+    if (holdoutSuccessDelta01 !== null && holdoutSuccessDelta01 < -maxFamilyHoldoutRegression) {
+      reasons.push('task-family-holdout-success-regression-exceeds-tolerance:' + family);
+    }
+
+    return {
+      family,
+      validationTaskCount: familyTaskCount(candidateValidationReports, family),
+      baselineValidationTaskSuccess01,
+      validationTaskSuccess01: familyValidationTaskSuccess01,
+      baselineValidation01,
+      candidateValidation01,
+      validationGain01,
+      holdoutTaskCount: familyTaskCount(candidateHoldoutReports, family),
+      baselineHoldoutTaskSuccess01,
+      holdoutTaskSuccess01: familyHoldoutTaskSuccess01,
+      baselineHoldout01,
+      candidateHoldout01,
+      holdoutDelta01,
+    };
+  });
+
+  const safetyViolations = candidateReports.reduce(
     (sum, report) => sum + report.skillQuality.safetyViolationCount, 0,
   );
   if (safetyViolations > 0) reasons.push('candidate-safety-violations-present');
-
-  const validationTrajectory = macroTaskMetric(validation.candidateReports, (r) => r.trajectoryQuality.aggregate);
-  const validationSkill = macroTaskMetric(validation.candidateReports, (r) => r.skillQuality.aggregate);
-  if (validationTaskSuccess < minValidationTaskSuccess) feedback.push('Independent validation task success is below the promotion threshold; improve task success before promotion.');
+  const validationTrajectory = macroTaskMetric(validation.candidateReports, (report) => report.trajectoryQuality.aggregate);
+  const validationSkill = macroTaskMetric(validation.candidateReports, (report) => report.skillQuality.aggregate);
+  if (validationTaskSuccess < minValidationTaskSuccess) {
+    feedback.push('Independent validation task success is below the promotion threshold; improve task success before promotion.');
+  }
   if (validationTrajectory < 0.8) feedback.push('Inspect missing or out-of-order trajectory steps and revise the procedure.');
   if (validationSkill < 0.8) feedback.push('Increase required-capability coverage and confirm the skill remains executable.');
   if (holdoutDelta < 0) feedback.push('Aggregate holdout evaluation indicates regression; revise generality without inspecting holdout examples, then request a fresh independent evaluation.');
   if (safetyViolations > 0) feedback.push('Resolve every safety violation; safety is a hard gate, not a score trade-off.');
   if (feedback.length === 0) feedback.push('No weak dimension crossed the feedback threshold; retain paired holdout evidence for review.');
 
-  const rounded = (value: number) => Number(value.toFixed(6));
+  const totalFamilyReports = allReports.length;
+  const familyMetadataCoverage = totalFamilyReports ? reportsWithFamily.length / totalFamilyReports : 0;
+  const familyCoverageRatio = requiredFamilies.length ? completeFamilyCount / requiredFamilies.length : 0;
   return {
     eligible: reasons.length === 0,
-    reasons,
+    reasons: [...new Set(reasons)],
     baselineValidation01: rounded(validation.baselineMean),
     candidateValidation01: rounded(validation.candidateMean),
     validationGain01: rounded(validationGain),
@@ -461,6 +598,9 @@ export function evaluateSkillLearnBenchCandidate(
     pairedValidationTrials: validation.paired,
     pairedHoldoutTrials: holdout.paired,
     holdoutTaskCount: holdout.taskCount,
+    validationTaskSuccess01: rounded(validationTaskSuccess),
+    taskFamilyCoverage01: rounded(familyMetadataCoverage * familyCoverageRatio),
+    familyResults,
     feedback,
   };
 }
