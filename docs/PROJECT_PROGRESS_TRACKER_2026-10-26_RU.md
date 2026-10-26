@@ -11,12 +11,12 @@
 **Машиночитаемый источник процентов:** [PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json).  
 **Проверка таблицы:** `npm run test:progress-ledger`; **сводный отчёт:** `npm run progress:report`.
 
-## WorkPass344 — strict final release gate (pending exact-head CI)
+## WorkPass344 — final release gate (pending exact-head CI)
 
-- Final verification now requires UI wiring, architecture and metadata checks, and the JSON summary counts tree failures accurately.
-- Default `release:verify` is strict. Post-smoke CI uses `release:verify:ci`, which allows only `.pyc` files inside `__pycache__`, reports them as warnings, and still rejects stray bytecode or other files in those directories.
-- Seven regressions cover metadata, CLI, strict/CI cache policy and attempts to bypass it.
-- Current code/test checkpoint `e446318f56a38597947f71f7e10f8033cae0f34f` includes the fix for the architecture scanner's import-string false positive and the transient-cache path. CI rerun is pending. Scores remain unchanged.
+- `release:verify` requires UI wiring, architecture and metadata checks; JSON summary includes filesystem/tree failures.
+- Default operator mode remains strict. After research smoke, CI mode allows only untracked `.pyc` files below `__pycache__`, reports warnings, and still rejects tracked bytecode, stray bytecode and non-bytecode files in cache directories.
+- Eight regression cases cover metadata, CLI, strict/CI cache policies and attempts to bypass those policies.
+- Current code/test checkpoint `064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6` includes the final tracked-bytecode guard. New exact-head CI is pending; scores remain unchanged.
 
 ## WorkPass344 — fail-closed final release verification (pending current-head CI)
 
