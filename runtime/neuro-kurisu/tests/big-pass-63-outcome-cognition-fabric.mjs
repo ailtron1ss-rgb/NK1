@@ -86,5 +86,15 @@ const restoredMutableEvidence=mutableEvidenceRestored.snapshot();
 assert.deepEqual(restoredMutableEvidence.records[0].externalObservations,originalIndexSnapshot.records[0].externalObservations,'cached index data must not add unobserved external evidence to the canonical record');
 assert.equal(restoredMutableEvidence.records[0].externalEvidenceStatus,originalIndexSnapshot.records[0].externalEvidenceStatus,'cached index data must not upgrade external evidence status');
 assert.deepEqual(restoredMutableEvidence.projectionIndex[0].record.externalObservations,originalIndexSnapshot.records[0].externalObservations,'index cache must be rebuilt from the canonical record when both exist');
+// Corrupt control characters in restored external evidence are rejected instead of becoming replay metadata.
+const controlCharacterSnapshot=structuredClone(originalIndexSnapshot);
+const invalidExternalObservation={observationId:'bad\\u0000observation',verified:true,confidence01:1,at:1,assessment:'match',sourceId:'device-a',sourceClass:'device',independenceKey:'device-bus'};
+controlCharacterSnapshot.records[0].externalObservations=[invalidExternalObservation];
+controlCharacterSnapshot.projectionIndex[0].record.externalObservations=[invalidExternalObservation];
+controlCharacterSnapshot.projectionIndex[0].recordDigest=sha256Stable(controlCharacterSnapshot.projectionIndex[0].record);
+const controlCharacterRestored=new OutcomeCognitionFabric();
+controlCharacterRestored.restore(controlCharacterSnapshot);
+assert.equal(controlCharacterRestored.snapshot().records.length,0,'malformed external observation must not be retained as a canonical outcome record');
+assert.equal(controlCharacterRestored.snapshot().projectionIndex.length,0,'malformed external observation must not survive through the replay index');
 
 console.log('BIG_PASS_63_OUTCOME_COGNITION_FABRIC=PASS records='+f.summary().records+' nodes='+f.summary().causal.nodes+' edges='+f.summary().causal.edges+' external-evidence-contract=fail-closed learning=provenance-gated');

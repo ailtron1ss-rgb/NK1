@@ -96,12 +96,12 @@ export class OutcomeCognitionFabric {
 
   restore(snapshot?:{version?:number; records?:OutcomeCognitionProjection['verificationRecord'][]; projectionIndex?:OutcomeProjectionIndexEntry[]; evidenceRevisions?:OutcomeProjectionEvidenceRevision[]; causal?:CausalAccountabilityState}){
     const validOptionalText=(value:unknown,max:number)=>value===undefined||(
-      typeof value==='string'&&value.length<=max&&!/[\\u0000-\\u001f\\u007f]/.test(value));
+      typeof value==='string'&&value.length<=max&&!/[\u0000-\u001f\u007f]/.test(value));
     const validExternalObservation=(value:unknown):boolean=>{
       if(!value||typeof value!=='object'||Array.isArray(value))return false;
       const row=value as Record<string,unknown>;
       return typeof row.observationId==='string'&&row.observationId.length>0&&row.observationId.length<=180&&
-        !/[\\u0000-\\u001f\\u007f]/.test(row.observationId)&&typeof row.verified==='boolean'&&
+        !/[\u0000-\u001f\u007f]/.test(row.observationId)&&typeof row.verified==='boolean'&&
         typeof row.confidence01==='number'&&Number.isFinite(row.confidence01)&&row.confidence01>=0&&row.confidence01<=1&&
         typeof row.at==='number'&&Number.isFinite(row.at)&&row.at>=0&&
         validOptionalText(row.expectedPostcondition,1024)&&validOptionalText(row.observedPostcondition,1024)&&
