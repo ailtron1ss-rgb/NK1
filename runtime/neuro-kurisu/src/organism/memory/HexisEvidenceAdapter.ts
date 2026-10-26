@@ -54,11 +54,19 @@ function dataSnapshot(value: unknown, allowed: readonly string[]): Record<string
   try {
     if (!isRecord(value)) return null;
     const descriptors = Object.getOwnPropertyDescriptors(value);
+    const allowedKeys = new Set(allowed);
+    const ownKeys = Reflect.ownKeys(descriptors);
+    // Keep this boundary schema-strict: unknown and symbol keys are not silently
+    // discarded, and accessor properties are never evaluated.
+    for (const key of ownKeys) {
+      if (typeof key !== "string" || !allowedKeys.has(key)) return null;
+      const descriptor = descriptors[key];
+      if (!descriptor || !("value" in descriptor)) return null;
+    }
     const result: Record<string, unknown> = Object.create(null);
     for (const key of allowed) {
       const descriptor = descriptors[key];
       if (!descriptor) continue;
-      if (!("value" in descriptor)) return null;
       result[key] = descriptor.value;
     }
     return result;
@@ -135,8 +143,12 @@ export function adaptHexisEvidence(
     protectedMemory: row.protectedMemory === true,
     idempotencyKey: `${row.memoryId.length}:${row.memoryId}${row.evidenceId.length}:${row.evidenceId}`,
   });
-  if (knownEvidenceIds.has(evidence.idempotencyKey) || knownEvidenceIds.has(row.evidenceId)) {
-    return { accepted: true, duplicate: true, evidence };
+  try {
+    if (knownEvidenceIds.has(evidence.idempotencyKey) || knownEvidenceIds.has(row.evidenceId)) {
+      return { accepted: true, duplicate: true, evidence };
+    }
+  } catch {
+    return { accepted: false, reason: "invalid-evidence-dedupe-index" };
   }
   return { accepted: true, duplicate: false, evidence };
 }
