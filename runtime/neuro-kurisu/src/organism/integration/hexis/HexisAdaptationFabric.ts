@@ -1146,6 +1146,13 @@ export class HexisAdaptationFabric {
         if (!reference || reference.length > 512 || /[\u0000-\u001f\u007f]/.test(reference)) {
             throw new Error('outbox-resolution-evidence-required');
         }
+        // HTTP callers may repeat a reconciliation request after the item has
+        // already been retried or acknowledged. Historical evidence makes the
+        // request idempotent; it must return current state without rewinding it.
+        const historicalResolution = (entry.resolutionHistory ?? []).some(row =>
+            row.resolution === resolution && row.evidenceRef === reference
+        );
+        if (historicalResolution) return structuredClone(entry);
         if (entry.status !== 'uncertain') {
             if (entry.resolution === resolution && entry.resolutionEvidenceRef === reference) return structuredClone(entry);
             throw new Error('outbox-resolution-requires-uncertain-state');
