@@ -1,9 +1,10 @@
 ## WorkPass419 — строгая проверка типов HMX metadata до coercion (2026-10-26)
 
-- **Код адаптера:** `718478b8fb815909c4b2c31098921b2a0cac23bf`, `3bc3bee2f68a0c3f99920e1cc1d898cc9797afa3`, `c39fd277fc2e5c79495a92df1d215171502539c0`; **регрессии:** `f6f3ee592273430e787dc2d60f865d0abca0128b`, `693567b8100b83ab0d8ff1ffad8c31fcf3bca8cb`, `f6ff13bb81276752e1500181ea83f9f75f57a657`.
+- **Код адаптера:** `718478b8fb815909c4b2c31098921b2a0cac23bf`, `3bc3bee2f68a0c3f99920e1cc1d898cc9797afa3`, `c39fd277fc2e5c79495a92df1d215171502539c0`; **регрессии:** `f6f3ee592273430e787dc2d60f865d0abca0128b`, `693567b8100b83ab0d8ff1ffad8c31fcf3bca8cb`, `f6ff13bb81276752e1500181ea83f9f75f57a657`, `19afcc0376e55b26511713776a09438bcc4a7e79`.
 - Проверки `export_intent`, privacy policy values и memory `nk1_kind` заменены на явную проверку типов. Metadata перед импортом проверяет confidence/salience/trust числа, массивы `tags`/`entities` и форму context.
 - `normalizeHmxV17Memory` теперь возвращает `null` для неверных типов вместо coercion null-prototype objects в строки/числа; numeric clamp также стал exception-safe. HMX refs ограничены 512 символами, а source-authority валидируется при наличии.
 - Регрессии покрывают null-prototype объекты в export intent, privacy, metadata kind/confidence/tags, type и source-authority; требуется schema issue либо null projection вместо исключения. Ссылка памяти длиной выше лимита отклоняется.
+- Дополнительный stage-level тест требует, чтобы некорректная metadata создавала visible conflict, приводила к атомарному исключению всей секции memories и оставляла стадию недоступной для canonical apply.
 - **Валидация:** PENDING exact-head HMX adaptation, server smoke, runtime typecheck и Unified integration. PASS не заявляется; оценки не повышены, `main` и canonical Release ZIP не изменялись.
 
 ---
