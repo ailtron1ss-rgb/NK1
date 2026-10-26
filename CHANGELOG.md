@@ -1,3 +1,10 @@
+## Preflight required services before startup side effects — 2026-10-26
+
+- `super-start` now resolves the service launch manifest and validates the Python interpreter, runtime/research/gateway entrypoints, the installed Vite executable, and built UI output before creating `.super-state` or launching any child.
+- An absent UI build returns an explicit remediation message (`npm --prefix app run build`) instead of starting a partial stack and relying on asynchronous child-exit shutdown.
+- Added a testable prerequisite resolver and regression coverage for missing build output and the required pre-state-creation ordering.
+- Validation is pending the exact-head Node 24 toolchain workflow.
+
 ## Runtime TypeScript checks must use a pinned compiler — 2026-10-26
 
 - Removed the global `tsc` and Node syntax-only fallbacks from `scripts/typecheck-runtime.mjs`. Missing canonical dependencies now produce `TYPECHECK=BLOCKED` and exit code 2 instead of a false semantic-check PASS.
