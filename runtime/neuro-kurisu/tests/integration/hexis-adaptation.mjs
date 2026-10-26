@@ -293,6 +293,28 @@ assert.deepEqual(ambiguousReferenceStage.conflicts, [],
 assert.equal(ambiguousReferenceStage.stagedSections.relationships.length, 1);
 assert.equal(ambiguousReferenceStage.stagedSections.relationships[0].source_ref, ambiguousRelationship.source_ref);
 
+// Goal IDs are export-global refs too. A slug collision must not collapse two goal
+// proposals into one apparently valid target.
+const goalSlugCollisionExport = normalizeNk1HmxExport({
+  sourceSubjectId: 'goal-slug-collision',
+  sections: {
+    goals: [
+      { id: 'Road Map', title: 'First goal with a colliding slug.' },
+      { id: 'road-map', title: 'Second goal with the same normalized slug.' },
+    ],
+  },
+});
+assert.equal(goalSlugCollisionExport.sections.goals[0].ref, goalSlugCollisionExport.sections.goals[1].ref);
+const goalSlugCollisionStage = new HexisAdaptationFabric().stageHmx({
+  document: goalSlugCollisionExport,
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(goalSlugCollisionStage.conflicts.some(conflict => conflict.kind === 'duplicate-reference'));
+assert.equal(goalSlugCollisionStage.sectionCounts.goals, 2);
+assert.equal(goalSlugCollisionStage.stagedSections.goals, undefined,
+  'a goal-ref collision must exclude the whole goals section before proposal generation');
+
 function makeHmxDocument(exportId, sections) {
   return ({
   hmx_version: '1.7',
