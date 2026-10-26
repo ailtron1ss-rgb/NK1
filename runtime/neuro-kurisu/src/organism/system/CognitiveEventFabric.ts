@@ -449,7 +449,8 @@ export class CognitiveEventFabric {
       const projectedAt=entry.projectedAt;
       if(typeof projectedAt!=='number'||!Number.isFinite(projectedAt)||projectedAt<0)continue;
       if(restoredReceiptProjectionIndex.has(executionId))continue;
-      const action=restoredById.get(entry.actionEventId), outcome=restoredById.get(entry.outcomeEventId), evidence=restoredById.get(entry.evidenceEventId);
+      // Look up only IDs narrowed by canonicalReceiptId above; raw snapshot fields remain unknown.
+      const action=restoredById.get(actionEventId), outcome=restoredById.get(outcomeEventId), evidence=restoredById.get(evidenceEventId);
       // Never restore a replay guard whose three referenced nodes have aged out,
       // been truncated or no longer match the execution identity/stage contract.
       if(action?.stage!=='tool-action' || outcome?.stage!=='tool-outcome' || evidence?.stage!=='tool-evidence') continue;
@@ -497,7 +498,9 @@ export class CognitiveEventFabric {
         };
         if(sha256Stable(reconstructedProjection)!==suppliedProjectionHash)continue;
       }
-      const decodeReceiptRefs=(field:'externalObservations'|'receiptRevisions')=>{
+      function decodeReceiptRefs(field:'externalObservations'):ExternalObservationProjectionRef[]|null;
+      function decodeReceiptRefs(field:'receiptRevisions'):ToolReceiptRevisionProjectionRef[]|null;
+      function decodeReceiptRefs(field:'externalObservations'|'receiptRevisions'):ExternalObservationProjectionRef[]|ToolReceiptRevisionProjectionRef[]|null {
         if(!Object.hasOwn(entry,field))return [];
         const arrayValue=entry[field];
         let isArray=false;
@@ -517,7 +520,8 @@ export class CognitiveEventFabric {
         const length=lengthDescriptor.value;
         const ownKeys=Object.keys(descriptors).filter(key=>key!=='length');
         if(ownKeys.length!==length||ownKeys.some(key=>!/^(0|[1-9]\d*)$/.test(key)||Number(key)>=length))return null;
-        const accepted:Record<string,unknown>[]=[];
+        const acceptedExternal:ExternalObservationProjectionRef[]=[];
+        const acceptedRevisions:ToolReceiptRevisionProjectionRef[]=[];
         for(let index=0;index<length;index+=1){
           const slot=descriptors[String(index)];
           if(!slot||!slot.enumerable||!Object.hasOwn(slot,'value'))return null;
@@ -536,17 +540,17 @@ export class CognitiveEventFabric {
             typeof projectedAt!=='number'||!Number.isFinite(projectedAt)||projectedAt<0)return null;
           const event=restoredById.get(eventId);
           if(field==='externalObservations'){
-            if(event?.stage!=='external-evidence'||event.payload.executionId!==entry.executionId||
+            if(event?.stage!=='external-evidence'||event.payload.executionId!==executionId||
               event.payload.observationId!==identity||event.payload.projectionHash!==projectionHash.toLowerCase())return null;
-            accepted.push({observationId:identity,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt});
+            acceptedExternal.push({observationId:identity,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt});
           }else{
-            if(event?.stage!=='tool-reconciliation'||event.payload.executionId!==entry.executionId||
+            if(event?.stage!=='tool-reconciliation'||event.payload.executionId!==executionId||
               event.payload.revisionId!==identity||event.payload.projectionHash!==projectionHash.toLowerCase())return null;
-            accepted.push({revisionId:identity,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt});
+            acceptedRevisions.push({revisionId:identity,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt});
           }
         }
-        return accepted.slice(-32);
-      };
+        return field==='externalObservations'?acceptedExternal.slice(-32):acceptedRevisions.slice(-32);
+      }
       const externalObservations=decodeReceiptRefs('externalObservations');
       const receiptRevisions=decodeReceiptRefs('receiptRevisions');
       if(externalObservations===null||receiptRevisions===null)continue;
