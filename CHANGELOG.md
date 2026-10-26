@@ -104,6 +104,13 @@
 - Updated P26 learning validation to use Node 24, consistent with the repository pin.
 - Verification status for this change: source edits are committed; local project-wide install/typecheck/runtime tests and GitHub Actions are **not yet verified** in this working environment. No release ZIP was replaced by this source-branch change.
 
+## Feedback delivery idempotence — 2026-10-26
+
+- Added a tick-scoped feedback delivery guard at the entry to both normal and spine-only feedback paths, before any downstream learning/state mutation.
+- The guard rejects concurrent duplicate delivery, persisted same-tick replays after restart, malformed receipts and future-tick clock regression; a failed in-flight delivery remains blocked rather than being replayed against partially updated learners.
+- A dedicated atomic `feedback-delivery-receipt.json` sidecar is durably saved before feedback mutates learners, then atomically replaced by the completed receipt. This avoids forcing a full neural-state projection for each feedback event; if a process crashes mid-feedback, the restored in-progress receipt blocks replay of that tick.
+- `migratePersistedOrganism` also preserves the receipt in the main snapshot. Focused run [#40255558788](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40255558788) passed on the PR merge candidate with zero failed steps: receipt guard, FileStateStore round-trip/recovery, B272 attribution, repository wiring, cognitive graph continuity and routing checks. PR [#156](https://github.com/ailtron1ss-rgb/NK1/pull/156) was squash-merged into this audit branch.
+
 ## Cognitive dependency frame integrity — 2026-10-25
 
 - The runtime cognitive dependency graph now rejects non-increasing/invalid frame ticks and malformed dirty-domain containers before state mutation.

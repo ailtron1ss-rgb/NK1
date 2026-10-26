@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
+import { FeedbackDeliveryGuard } from '../src/organism/core/FeedbackDeliveryGuard.ts';
 
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const b272 = await readFile(new URL('../src/organism/cognition/B272EndogenousGoalGenesis.ts', import.meta.url), 'utf8');
+const stateMigrations = await readFile(new URL('../src/organism/persistence/StateMigrations.ts', import.meta.url), 'utf8');
 
 function requireFeedbackGate(label, startMarker, endMarker, learnerName) {
   const start = core.indexOf(startMarker);
@@ -45,4 +50,121 @@ assert.ok(unselectedMethod.includes('this.state.rejectedGoals++'));
 assert.doesNotMatch(unselectedMethod, /actionPrototypeWeights|goalWeights|goalOutcomeMemory|outcomeHistory/,
   'an unselected proposal must not train action prototypes or pollute executed-action outcome memory');
 
-console.log('Cognitive/B272 feedback attribution wiring: PASS');
+assert.ok(stateMigrations.includes('feedbackDeliveryReceipt?: unknown;'),
+  'PersistedOrganism must type the receipt as an untrusted migration boundary');
+assert.ok(stateMigrations.includes('feedbackDeliveryReceipt: raw.system?.feedbackDeliveryReceipt'),
+  'state migration must preserve the receipt so restart cannot silently reopen feedback replay');
+
+assert.ok(core.includes("private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard()"),
+  'Core must own a feedback delivery guard');
+
+const spineStart = core.indexOf('private async feedbackSpineOnly');
+const spineEnd = core.indexOf('private expectedClosureDomains', spineStart);
+assert.ok(spineStart >= 0 && spineEnd > spineStart, 'spine-only feedback boundary must be discoverable');
+const spineBlock = core.slice(spineStart, spineEnd);
+const spineBegin = spineBlock.indexOf('this.beginFeedbackDelivery(');
+const firstSpineMutation = spineBlock.indexOf('state.lastActionSuccess = success');
+assert.ok(spineBegin >= 0 && spineBegin < firstSpineMutation,
+  'spine-only feedback must reserve its tick before learner/state mutation');
+assert.ok(spineBlock.indexOf('this.completeFeedbackDelivery(feedbackDeliveryToken)') > firstSpineMutation,
+  'spine-only feedback must persist completion after successful learning');
+
+const mainFeedbackStart = core.indexOf('async feedback(outcome:');
+const mainFeedbackEnd = core.indexOf('cameraEvidenceSnapshot()', mainFeedbackStart);
+assert.ok(mainFeedbackStart >= 0 && mainFeedbackEnd > mainFeedbackStart, 'main feedback boundary must be discoverable');
+const mainFeedback = core.slice(mainFeedbackStart, mainFeedbackEnd);
+const mainBegin = mainFeedback.indexOf('this.beginFeedbackDelivery(');
+const firstMainMutation = mainFeedback.indexOf("this.persistence.revisionTokens.touch('critical-kernel'");
+assert.ok(mainBegin >= 0 && mainBegin < firstMainMutation,
+  'main feedback must reserve its tick before subsystem mutation');
+assert.ok(mainFeedback.lastIndexOf('this.completeFeedbackDelivery(feedbackDeliveryToken)') > mainFeedback.lastIndexOf('this.persisted.facets.learning.operationalLife ='),
+  'main feedback must finalize the receipt after all learner updates');
+assert.ok(mainFeedback.lastIndexOf('this.completeFeedbackDelivery(feedbackDeliveryToken)') < mainFeedback.lastIndexOf('await this.checkpoint(false)'),
+  'completion receipt must be included in the final checkpoint');
+
+const guard = new FeedbackDeliveryGuard();
+const input = { tick: 17, decisionId: 'decision-17', action: 'reflect', previousReceipt: null };
+const reservation = guard.begin(input);
+assert.throws(
+  () => guard.begin({ ...input, decisionId: 'different-decision' }),
+  /already in progress/,
+  'concurrent feedback for the same organism tick must fail closed',
+);
+const receipt = guard.complete(reservation);
+assert.deepEqual(receipt, {
+  version: 1, tick: 17, decisionId: 'decision-17', action: 'reflect', status: 'completed',
+});
+assert.throws(
+  () => guard.begin({ ...input, previousReceipt: receipt }),
+  /already been finalized/,
+  'replay after a completed feedback delivery must be rejected',
+);
+assert.throws(
+  () => guard.begin({ ...input, previousReceipt: { version: 7, tick: 17, decisionId: 'forged', action: 'wait', status: 'completed' } }),
+  /malformed/,
+  'a malformed current-tick receipt must not disable the replay guard',
+);
+assert.throws(
+  () => guard.begin({ ...input, previousReceipt: { decisionId: 'missing-tick', action: 'wait', status: 'completed', version: 1 } }),
+  /malformed/,
+  'a malformed receipt without a tick must fail closed rather than being ignored',
+);
+assert.throws(
+  () => guard.begin({ ...input, tick: 16, previousReceipt: receipt }),
+  /future tick/,
+  'feedback cannot regress behind a future persisted receipt',
+);
+const nextTick = guard.begin({ ...input, tick: 18, previousReceipt: receipt });
+assert.equal(guard.complete(nextTick).tick, 18, 'the next organism tick must accept a new outcome');
+
+const helperStart = core.indexOf('private async beginFeedbackDelivery(');
+const helperEnd = core.indexOf('private async feedbackSpineOnly', helperStart);
+assert.ok(helperStart >= 0 && helperEnd > helperStart, 'Core must centralize durable feedback reservations');
+const helperBlock = core.slice(helperStart, helperEnd);
+assert.ok(core.includes("store.siblingPath('feedback-delivery-receipt.json')"),
+  'file-backed runtime must use a dedicated tiny feedback receipt sidecar');
+assert.ok(helperBlock.includes('await this.feedbackDeliveryReceiptStore?.save(pendingReceipt)'),
+  'feedback reservation must be durable before downstream learners run');
+assert.ok(helperBlock.includes('await this.feedbackDeliveryReceiptStore?.save(receipt)'),
+  'completed receipt must be durable even when a full organism projection is deferred');
+assert.ok(core.includes('await this.feedbackDeliveryReceiptStore.load()'),
+  'Core init must restore the durable feedback receipt sidecar');
+
+const receiptDirectory = await mkdtemp(join(tmpdir(), 'nk1-feedback-delivery-'));
+try {
+  const receiptStore = new FileStateStore(join(receiptDirectory, 'receipt.json'), {
+    backupEverySaves: 1, directoryFsyncEverySaves: 1, strictDirectoryFsync: true,
+  });
+  const pendingReceipt = {
+    version: 1, tick: 27, decisionId: 'decision-27', action: 'verify', status: 'in-progress',
+  };
+  await receiptStore.save(pendingReceipt);
+  const recoveredPending = await receiptStore.load();
+  assert.deepEqual(recoveredPending, pendingReceipt, 'pending feedback reservation must survive file-store restart');
+  const resumedGuard = new FeedbackDeliveryGuard();
+  assert.throws(
+    () => resumedGuard.begin({ tick: 27, decisionId: 'decision-27', action: 'verify', previousReceipt: recoveredPending }),
+    /already in progress/,
+    'a crash-recovered in-progress receipt must block replay of its tick',
+  );
+
+  const completedReceipt = { ...pendingReceipt, status: 'completed' };
+  await receiptStore.save(completedReceipt);
+  const recoveredCompleted = await receiptStore.load();
+  assert.deepEqual(recoveredCompleted, completedReceipt, 'completed feedback receipt must survive file-store restart');
+  assert.throws(
+    () => resumedGuard.begin({ tick: 27, decisionId: 'decision-27', action: 'verify', previousReceipt: recoveredCompleted }),
+    /already been finalized/,
+    'a crash-recovered completed receipt must block replay of its tick',
+  );
+  const recoveryGuard = new FeedbackDeliveryGuard();
+  const nextAfterInterruptedTick = recoveryGuard.begin({
+    tick: 28, decisionId: 'decision-28', action: 'reflect', previousReceipt: recoveredPending,
+  });
+  assert.equal(recoveryGuard.complete(nextAfterInterruptedTick).tick, 28,
+    'a stranded older reservation must block its own tick but not permanently disable future ticks');
+} finally {
+  await rm(receiptDirectory, { recursive: true, force: true });
+}
+
+console.log('Cognitive/B272 feedback attribution and durable exactly-once delivery: PASS');
