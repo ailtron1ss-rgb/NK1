@@ -3,10 +3,10 @@
   "snapshotDate": "2026-10-26",
   "project": "Neuro Kurisu / NK1",
   "sourceOfTruth": "https://github.com/ailtron1ss-rgb/NK1",
-  "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
-  "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
+  "sourceBranchAtSnapshot": "work/nk1-release-metadata-lineage-2026-10-26-r1",
+  "sourceHeadAtSnapshot": "55bc8ce13f41d1bb90f766a59d98fdcd2441a107",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open.",
+    "note": "WorkPass349 event-fabric changes passed the exact PR-head integration/learning/evidence workflows on a392e7283aec703cf5c9c1c6bb7e3c77511e1f5a and merged as 2d45e4f5766416fea8b3bcf7f71bb5792a5964b5. A new metadata-lineage candidate (branch work/nk1-release-metadata-lineage-2026-10-26-r1, code commit 55bc8ce13f41d1bb90f766a59d98fdcd2441a107) synchronizes WorkPass349 status and allows the real WorkPass70 published ZIP to be an older baseline. Exact-head CI for this metadata candidate is pending. No WorkPass349 ZIP is built; physical/browser E2E, independent learning uplift, licensing and soak remain open. Weighted score remains the WorkPass70 historical baseline and is not recalculated here.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -461,7 +461,7 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
+  "latestUnverifiedCodeTestHead": "55bc8ce13f41d1bb90f766a59d98fdcd2441a107",
   "branchHeadBeforeTrackerCommit": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
   "additionalChangesInCombinedHead": [
     {
@@ -500,5 +500,16 @@
       "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
       "mergeCommit": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
     }
-  ]
+  ],
+  "latestValidatedCodeHead": "a392e7283aec703cf5c9c1c6bb7e3c77511e1f5a",
+  "latestReleaseMetadataWork": {
+    "candidateBranch": "work/nk1-release-metadata-lineage-2026-10-26-r1",
+    "codeCommit": "55bc8ce13f41d1bb90f766a59d98fdcd2441a107",
+    "releaseGateBase": "2d45e4f5766416fea8b3bcf7f71bb5792a5964b5",
+    "currentPass": 349,
+    "metadataValidation": "pending exact-head CI",
+    "archive": "Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip is last confirmed published asset; WorkPass349 ZIP not built",
+    "officialWeightedScore": 80.1,
+    "scoreBasisDate": "2026-10-19"
+  }
 }

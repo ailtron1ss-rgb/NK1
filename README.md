@@ -17,13 +17,15 @@ npm run start
 
 Локальные endpoints: gateway/UI `http://127.0.0.1:8080`, runtime `127.0.0.1:3310`, Research Bridge `127.0.0.1:8765`. Запускай через root supervisor, не создавай отдельные копии runtime/bridge-процессов. Внешние исследовательские действия требуют явного owner approval и allowlist.
 
-## Последний подтверждённый когнитивный checkpoint
+## Текущий когнитивный checkpoint — WorkPass349 (2026-10-26)
 
-WorkPass340–342 были объединены в source-ветку коммитом `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. На code/test head `621864d0d7f2676245383adab86f1dcc6d0f741f` прошли runtime/app typecheck, Unified Cognitive Substrate wiring/restore, 30-цикловый stop/re-init smoke, supervisor launch, P23/learning gates и owner-approved Research Bridge probes.
-
-Source-база после этого добавила WorkPass343 для сверки будущего persisted substrate tick с canonical Core tick. WorkPass344 добавляет fail-closed metadata check в release verifier. **Оба свежих изменения ожидают combined-head CI; предыдущий PASS не переносится на новый HEAD автоматически.**
-
-**Важно:** source CI не означает, что большой опубликованный GitHub Release ZIP пересобран. ZIP остаётся старым; physical Android/Termux sensor/audio E2E, browser/Live2D hardware E2E, длительный soak и license/provenance review остаются открыты.
+- Release-gate branch: `work/nk1-final-release-gate-2026-10-26-r3`.
+- PR #167 merged at `2d45e4f5766416fea8b3bcf7f71bb5792a5964b5`; exact code/test PR head `a392e7283aec703cf5c9c1c6bb7e3c77511e1f5a` passed unified integration, P26, WorkPass110, verified-outcome, replay, evidence and cognitive-contract workflows.
+- Active `CognitiveEventFabric` now guards the full event envelope, deeply detaches bounded payloads, rejects conflicting stable IDs before mutation and binds receipt replay to expected/observed postcondition fingerprints.
+- These checks do not prove a measured learning uplift or the physical browser/Live2D/Android voice path.
+- The previous confirmed published large asset is `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`. A WorkPass349 ZIP has **not** been built or published.
+- The official 80.1% weighted roadmap figure remains a carried-forward WorkPass70 score; it was not raised by this code pass.
+- Remaining gates: exact-head metadata-lineage CI, selected integration of other useful diverged branches, independent RU/EN memory/learning holdout, real provider/device postcondition and crash recovery, browser/audio/Live2D and Android/Termux tests, license/provenance review, and long-duration soak.
 
 ---
 

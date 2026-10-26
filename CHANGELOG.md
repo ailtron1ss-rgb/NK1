@@ -1,3 +1,13 @@
+## Release metadata lineage correction — 2026-10-26
+
+- The verifier no longer requires `sourceBaseline` to be exactly `currentPass - 1`: actual published archives can lag many engineering passes.
+- The contract requires current WorkPass lineage in `build` and `releaseRoot`, and an earlier valid WorkPass in `sourceBaseline`; the baseline date must remain valid and not later than the release date.
+- Added tests for the real WorkPass70 archive as the baseline of a WorkPass349 candidate and rejection of a newer WorkPass350 baseline even if its date is older.
+- Current status and scorecard explicitly distinguish the historical WorkPass70 ZIP from a not-yet-built WorkPass349 candidate.
+- This metadata change is not yet considered validated until exact-head CI passes. No device/field E2E or learning uplift is claimed.
+
+---
+
 ## WorkPass347 — preserve unlinked decision IDs in receipt replay — 2026-10-26
 
 - **Defect:** `appendToolReceiptTrace()` fingerprints a supplied `decisionId`, but the action event stored `decisionId: null` when that event was not present in the bounded CEF window. Exact replay without the projection index then failed with `tool-receipt-execution-id-conflict`.
