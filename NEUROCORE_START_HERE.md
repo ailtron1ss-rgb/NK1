@@ -1,3 +1,15 @@
+## Latest checkpoint — WorkPass365 live PostgreSQL migration contract (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**CI:** [WorkPass362 clean app build + PostgreSQL integration #40293681029 — success](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293681029) on code/test SHA `53aa78d0a9c04c87db1cff63a0ec35ec9ebd716c`.
+
+- The workflow provisions PostgreSQL 17, runs the real `app/scripts/migrate.mjs` against a unique temporary migration, checks that the table is created and the `_migrations` ledger records exactly one application, then reruns the migrator and checks the data/ledger do not change.
+- It then applies a deliberately broken migration that creates a table before a SQL error; the test requires the migrator to fail, the partially created table to be rolled back, no migration ledger entry to be recorded, and the prior successful migration to remain intact.
+- Exact CI signal: `WORKPASS365_POSTGRES_MIGRATION=PASS apply=1 rerun=idempotent rollback=atomic`. All other workflow steps passed as well: doctor, locked app/runtime installs, 232 app regressions, combined app/runtime typecheck, production Vite client/SSR/Nitro build, UI/API linkage (131 routes/50 runtime atlas links/5 required seams), schema check and canonical assets.
+- **Scope limit:** this tests actual PostgreSQL transaction/idempotency/rollback semantics using temporary CI-only SQL. It does not yet prove a production deployment schema migration because no top-level product SQL migration is currently configured; sign-in auth SQL remains intentionally opt-in under `app/migrations/auth/`. Real production config, browser/Live2D/device E2E, paired held-out learning uplift, long soak and license review remain open.
+
+---
+
 ## Latest checkpoint — WorkPass362–364 clean app build and toolchain (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
