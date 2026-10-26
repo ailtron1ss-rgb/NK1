@@ -253,7 +253,7 @@ export const neuroApi = {
   hexisRetentionApply: (proposalId: string, confirmed=false) => request<Record<string, unknown>>("/api/organism/integration/hexis/retention/apply", { method: "POST", body: JSON.stringify({ proposalId, confirmed }) }),
   hexisHmxExport: () => request<HexisHmxExportResponse>("/api/organism/integration/hexis/hmx/export"),
   hexisHmxStage: (payload: HexisHmxStageInput) => request<HexisHmxStageResponse>("/api/organism/integration/hexis/hmx/stage", { method: "POST", body: JSON.stringify(payload) }),
-  hexisHmxDecide: (stagingId: string, decision: HexisHmxDecision) => request<HexisHmxStageResponse>("/api/organism/integration/hexis/hmx/decide", { method: "POST", body: JSON.stringify({ stagingId, decision }) }),
+  hexisHmxDecide: (stagingId: string, decision: HexisHmxDecision, confirmed=false) => request<HexisHmxStageResponse>("/api/organism/integration/hexis/hmx/decide", { method: "POST", body: JSON.stringify({ stagingId, decision, confirmed }) }),
   hexisGoalPrepare: (stagingId: string) => request<HexisGoalProposalPrepareResponse>("/api/organism/integration/hexis/goals/prepare", { method: "POST", body: JSON.stringify({ stagingId }) }),
   hexisGoalProposals: (status?: HexisGoalProposalStatus, limit=64) => {
     const params = new URLSearchParams();
