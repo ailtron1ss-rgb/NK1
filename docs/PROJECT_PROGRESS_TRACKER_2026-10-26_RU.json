@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "b6f4335b9bdb4bf150d86fc9db1a830fe3041626",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Historical WorkPass335/WorkPass339 PASS evidence remains recorded in CHANGELOG. WorkPass336 combines the signed-outcome artifact trust-boundary patch with the newer evaluator-origin attestation and ledger-preflight base; exact-combined-HEAD CI is pending and prior workflow IDs/tested-head fields are deliberately not reused as current proof. Scores remain unchanged; no empirical learning uplift is claimed.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Historical WorkPass335 and WorkPass339 PASS evidence remains recorded in CHANGELOG. WorkPass336 combines signed-outcome artifact trust-boundary hardening with the evaluator-origin attestation and ledger-preflight base; exact-combined-head CI is still pending. Older workflow IDs/tested heads are not reused as proof for this branch. Scores are unchanged; no empirical learning uplift is claimed.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -312,8 +312,8 @@
       "summary": "Strict canonical Base64 decoding for Ed25519 skill promotion/rollback signatures; exact-head validation pending."
     }
   ],
-  "latestUnverifiedCodeTestHead": "af7460c1a0fe96961d610b48f18ce4baa315788c",
-  "branchHeadBeforeTrackerCommit": "af7460c1a0fe96961d610b48f18ce4baa315788c",
+  "latestUnverifiedCodeTestHead": "2022efe754ec9c2e81b03e4c7cabbf7a3ba3d44b",
+  "branchHeadBeforeTrackerCommit": "2022efe754ec9c2e81b03e4c7cabbf7a3ba3d44b",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
