@@ -1,3 +1,12 @@
+## WorkPass385 — deterministic Hexis smoke cleanup (2026-10-26)
+
+- Test commit: `a9f741deb4cece36459f121f9064cf6cf99069d0`.
+- Unified validation passed the Hexis adapter, memory bridge, review gate and production memory-ingress checks, then exposed a teardown race: the test removed its temporary state directory before the child server had exited (`ENOTEMPTY`).
+- The smoke test now waits for child exit before recursive cleanup and uses a bounded force-exit fallback. Route assertions remain unchanged.
+- Exact-head revalidation is pending; no readiness or retrieval-uplift claim. Main and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass384 — make Hexis rollback tests semantic and complete (2026-10-26)
 
 - **Code/test head:** `d5db1a4f5d509cfe8d122290f1c9e6a8108d479f` on `work/hexis-evidence-adapter-2026-10-26`.
