@@ -146,6 +146,27 @@ const newAfterCorruption = corruptOutboxRestore.enqueueOutbox({
 assert.equal(newAfterCorruption.error, 'idempotency-ledger-saturated',
   'ambiguous outbox restoration must reject previously unseen actions');
 
+const reclaimFlood = new HexisAdaptationFabric();
+for (let i = 0; i < 520; i += 1) {
+  const entry = reclaimFlood.enqueueOutbox({idempotencyKey:`reclaim-${i}`,kind:'notify',channel:'test',payload:{i}});
+  assert.ok(entry.id);
+}
+const stalePublishingSnapshot = reclaimFlood.snapshot();
+for (const row of stalePublishingSnapshot.outbox) {
+  row.status = 'publishing';
+  row.attempts = 3;
+  row.updatedAt = 0;
+}
+const reclaimAfterRestart = new HexisAdaptationFabric();
+reclaimAfterRestart.restore(stalePublishingSnapshot);
+assert.equal(reclaimAfterRestart.reclaimOutbox(1000), 520, 'all stale publishers must be reclaimed');
+assert.equal(reclaimAfterRestart.snapshot().outbox.length, 512, 'bulk reclamation must apply the same terminal-history cap');
+assert.ok(reclaimAfterRestart.snapshot().outbox.every(row => row.status === 'failed'));
+const reclaimedOldKey = reclaimAfterRestart.enqueueOutbox({idempotencyKey:'reclaim-0',kind:'notify',channel:'test',payload:{i:0}});
+assert.equal(reclaimedOldKey.error, 'idempotency-key-history-expired', 'retired reclaimed key must not trigger another delivery');
+
+
+
 
 assert.equal(longHorizonRestored.enqueueOutbox({idempotencyKey:'x'.repeat(257),kind:'notify',channel:'test',payload:{}}).error, 'idempotency-key-too-long');
 
