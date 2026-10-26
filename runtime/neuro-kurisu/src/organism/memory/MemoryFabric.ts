@@ -134,6 +134,7 @@ export class MemoryFabric {
   private lastMaintenanceTick=-1;
   private readonly policyOutcomeLedger=defaultMemoryPolicyOutcomeLedger();
   private readonly mutationReceipts=new Map<string,MemoryLifecycleReceipt>();
+  private readonly protectedSignalReceiptIds=new Set<string>();
   private readonly signalCompensations=new WeakMap<object,{memoryId:string;snapshotToken:object;sourceCommandIds:string[]}>();
   private retiredMutationReceiptBloom=new Uint8Array(RETIRED_RECEIPT_BLOOM_BYTES);
   private retiredMutationReceiptCount=0;
@@ -293,9 +294,15 @@ export class MemoryFabric {
       if(signalCompensation&&outcome==='applied'&&memoryId===signalCompensation.memoryId&&
         !signalCompensation.sourceCommandIds.includes(commandId)){
         signalCompensation.sourceCommandIds.push(commandId);
+        this.protectedSignalReceiptIds.add(commandId);
       }
       while(this.mutationReceipts.size>this.maxMutationReceipts){
-        const oldest=this.mutationReceipts.keys().next().value as string|undefined;
+        // Keep active transaction receipts until compensation or commit. A large
+        // HMX import can create hundreds of rows; evict unrelated old receipts first.
+        let oldest:string|undefined;
+        for(const candidate of this.mutationReceipts.keys()){
+          if(!this.protectedSignalReceiptIds.has(candidate)){oldest=candidate;break;}
+        }
         if(oldest===undefined)break;
         this.retireMutationReceipt(oldest);
         this.mutationReceipts.delete(oldest);
@@ -651,7 +658,7 @@ export class MemoryFabric {
     if(!restored)return false;
     // Consume both token and source receipts. No caller-supplied snapshot can authorize
     // a trust increase, and a second rollback cannot replay this compensation.
-    for(const sourceCommandId of compensation.sourceCommandIds)this.mutationReceipts.delete(sourceCommandId);
+    for(const sourceCommandId of compensation.sourceCommandIds){this.protectedSignalReceiptIds.delete(sourceCommandId);this.mutationReceipts.delete(sourceCommandId);}
     this.signalCompensations.delete(token);
     const tick=Number.isSafeInteger(context.tick)&&Number(context.tick)>=0?Number(context.tick):0;
     this.events.append(makeEvent('memory-lifecycle',tick,{
