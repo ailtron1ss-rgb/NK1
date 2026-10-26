@@ -711,6 +711,8 @@ assert.equal(restoredReceiptReplay.evidenceEventId,receiptTrace.evidenceEventId)
 
 const tamperedReceiptSnapshot = receiptFabric.snapshot();
 tamperedReceiptSnapshot.receiptProjectionIndex[0].projectionHash='f'.repeat(64);
+assert.equal(receiptFabric.appendToolReceiptTrace(receiptInput).replayed,true,
+  'mutating the exported snapshot must not mutate the live receipt replay index');
 const tamperedReceiptRestore = new CognitiveEventFabric(128);
 tamperedReceiptRestore.restore(tamperedReceiptSnapshot);
 assert.equal(tamperedReceiptRestore.hasToolReceiptTrace(receiptInput.executionId),false,
