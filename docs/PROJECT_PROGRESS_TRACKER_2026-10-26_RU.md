@@ -1,3 +1,25 @@
+## WorkPass373 — aggregate payload text budget (2026-10-26)
+
+- **Implementation commit:** `390093223cdb38114827a27beb62d60fb897ac67`.
+- **Regression test commits:** `b98a9f3b364b72c96dfc35cdc0ba29087974243b`, `b2f66402b116362e6a1022b54136dea6ae9c8073`, `2d2ed2eaa6f8335b7c90dd3917f805383e8deafb`.
+- **Documentation commits:** `95681efe30691f7d5752f02abbf4e753e8413cf1` plus subsequent tracker/changelog correction.
+- **Numbering note:** implementation commit subject used provisional WorkPass357; that number is already used by an independent branch. Canonical tracking for this follow-up is WorkPass373; commits were not rewritten.
+- **Change:** count UTF-16 code units across string values and object keys in `CognitiveEventFabric.cleanPayload`; reject payloads exceeding 131,072 units. The existing `test:cognitive-event-payload-envelope` integration gate now tests a single oversized string, aggregate overflow, unchanged ledger state after rejected appends, and restore-time rejection.
+- **Validation status:** **PENDING** for the expanded boundary/key test head. The prior code/test head passed unified integration, WorkPass110, WorkPass108, P26 and progress-ledger integrity; these results do not validate the newly expanded tests. Run runtime typecheck, the focused payload-envelope test, full cognitive integration suite and release gate on the exact latest SHA.
+- **Progress:** implementation and expanded regression coverage committed; no learning score or readiness score increased. Not merged into `main`; no new release ZIP published.
+
+---
+
+## WorkPass356 — strict CEF tool receipt ingress (2026-10-26)
+
+- **Code/test checkpoint:** `c6845a5258a2c3bcdccce1089615cfabbfd4b750`; stacked on WorkPass355 branch head `fce603ecc674887d20ebb2da187103ddce43171a`.
+- **Defect:** public CEF receipt methods read caller input directly; revision/external-observation ingress could stringify values, trim/truncate IDs, coerce booleans and clamp confidence, allowing invalid evidence to alias valid idempotency keys.
+- **Fix:** descriptor-only reads on `appendToolReceiptTrace()`, `appendToolReceiptRevision()` and `appendToolExternalObservation()`; canonical IDs; strict booleans, numeric clocks/counters, valid confidence range and hash/text types; rejected inputs do not enter replay lookup or mutate the event/replay ledgers.
+- **Regression:** `runtime/neuro-kurisu/tests/cognitive-tool-receipt-input-boundary.mjs` covers accessor getters, padding/truncation collisions, invalid flags/confidence/counters, non-string hash and evidence text objects with hostile `toString()`, state preservation and valid revision idempotency. Wired into `test:cognitive-integration-suite`.
+- **Exact-head CI PASS:** PR head `d4ddbbe2495ca6523d4b2c4f04129bf487ab189b` passed Unified project integration [#40290594913](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594913), progress-ledger integrity [#40290595259](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595259), WorkPass110 [#40290594892](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594892), P26 validation [#40290594766](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594766) and nine additional focused workflows. The unified run passed cognitive integration contracts, governed approval E2E, public-gateway/service startup, runtime/research bridge smoke and final release gates without publishing an archive. Code/test checkpoint `c6845a5258a2c3bcdccce1089615cfabbfd4b750`; later PR commit `d4ddbbe2495ca6523d4b2c4f04129bf487ab189b` contains the same validated code/test with checkpoint documentation. Scores and historical `ciSnapshot` rows remain unchanged.
+
+---
+
 ## WorkPass355 — safe and transactional CognitiveEventFabric snapshot restore (2026-10-26)
 
 - **Code/test checkpoint:** `38b17bf610c06de1a23ba5e54d21cb4a1b7ac905`; based on target checkpoint `18afd253dcd7413c02136537ea1acc10b7764768`.

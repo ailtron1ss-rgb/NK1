@@ -1,3 +1,23 @@
+## WorkPass373 — enforce aggregate cognitive payload text budget (2026-10-26)
+
+- **Defect:** the active `CognitiveEventFabric` payload clone bounded depth, node count, array size and key count, but did not count aggregate string/key text. Many individually valid strings could exceed the intended payload memory budget.
+- **Fix:** count UTF-16 code units across string values and object keys; reject payloads above 131,072 units with `cognitive-event-payload-text-limit`. The same `cleanPayload` boundary is used by append and snapshot restoration.
+- **Regression:** extended `cognitive-event-payload-envelope.mjs` with exact-limit acceptance, one-unit overflow, aggregate overflow across many modest values, aggregate key-name overflow, no ledger mutation on rejected append, and rejection of an oversized restored row.
+- **Numbering note:** the first implementation commit used the provisional label WorkPass357, which collides with an existing independent WorkPass357 branch. Canonical project tracking for this follow-up is WorkPass373; history is retained without rewriting commits.
+- **Validation:** the earlier WorkPass357-labeled code/test head passed the unified integration workflow and associated learning/ledger workflows. The expanded boundary/key tests require fresh exact-head validation; no PASS is claimed for the expanded head until those runs finish.
+
+---
+
+## WorkPass356 — strict tool receipt ingress (2026-10-26)
+
+- **Defect:** the public CEF receipt/revision/observation methods read caller fields directly and could execute getters. Revision/external-observation ingress also coerced values to strings/booleans, truncated identifiers and clamped confidence, allowing malformed evidence to alias a valid identity.
+- **Fix:** `appendToolReceiptTrace()` now validates own data fields before replay lookup, requires canonical execution/tool/decision/observation IDs and confidence in `[0, 1]`. `appendToolReceiptRevision()` now rejects non-canonical or overlong IDs, invalid hashes/numbers/statuses, non-boolean outcomes, invalid confidence and malformed text rather than coercing/truncating. `appendToolExternalObservation()` uses the same accessor-safe ingress, validates IDs/booleans/confidence/timestamps and rejects values of the wrong type instead of stringifying or truncating them.
+- **Regression:** `runtime/neuro-kurisu/tests/cognitive-tool-receipt-input-boundary.mjs` exercises accessors, ID normalization collisions, overlong IDs, invalid booleans/confidence, fractional counters, non-string hashes and evidence text with hostile `toString()`; it verifies rejected calls do not mutate the event journal or replay index and that exact valid revision replay remains idempotent.
+- **Integration:** the test is wired into `test:cognitive-integration-suite` and matches the cognitive workflow path filter.
+- **Exact-head CI PASS:** PR head `d4ddbbe2495ca6523d4b2c4f04129bf487ab189b` passed Unified project integration [#40290594913](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594913), project progress-ledger integrity [#40290595259](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290595259), WorkPass110 [#40290594892](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594892), P26 validation [#40290594766](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40290594766) and nine additional focused workflows. The Unified run passed through the final release gate without publishing an archive. Code/test checkpoint `c6845a5258a2c3bcdccce1089615cfabbfd4b750`; later exact-head validated PR commit adds changelog/tracker documentation only. No readiness scores increased.
+
+---
+
 ## WorkPass355 — safe and transactional CognitiveEventFabric snapshot restore (2026-10-26)
 
 - **Defect:** `restore()` directly read snapshot fields and used array spread/iteration, so a corrupt or hostile snapshot could execute getters on the envelope, event rows, parent arrays or receipt projection index. A late exception could leave the live event ledger replaced while its replay index was only partially rebuilt.
