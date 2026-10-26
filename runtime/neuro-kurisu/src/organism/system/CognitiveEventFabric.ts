@@ -138,9 +138,13 @@ function clonePayloadValue(
 }
 
 const cleanPayload=(value:unknown):Record<string,unknown>=>{
-  if(!isRecord(value)) return {};
+  // Missing/null payload is an empty envelope; a supplied non-object is malformed
+  // evidence and must not be silently rewritten as a valid empty payload.
+  if(value===undefined||value===null) return {};
+  if(!isRecord(value)) throw new TypeError('cognitive-event-payload-must-be-object');
   const cloned=clonePayloadValue(value,new Set<object>(),0,{nodes:0});
-  return cloned!==OMIT_PAYLOAD_VALUE&&isRecord(cloned)?cloned:{};
+  if(cloned===OMIT_PAYLOAD_VALUE||!isRecord(cloned)) throw new TypeError('cognitive-event-payload-must-be-object');
+  return cloned;
 };
 
 function cognitiveEventFingerprint(event:Pick<CognitiveEventNode,'tick'|'at'|'stage'|'source'|'parentIds'|'external'|'confidence01'|'payload'>):string {
@@ -255,6 +259,7 @@ export class CognitiveEventFabric {
     const normalizedTick=rawTick;
     if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
 
+    if(input.source!==undefined&&typeof input.source!=='string') throw new TypeError('cognitive-event-source-must-be-string');
     const normalizedSource=typeof input.source==='string'&&input.source.trim()?input.source.trim().slice(0,120):'unknown';
     if(input.parentIds!==undefined&&!Array.isArray(input.parentIds)) throw new TypeError('cognitive-event-parent-ids-must-be-array');
     if(Array.isArray(input.parentIds)&&input.parentIds.some(parent=>typeof parent!=='string')) throw new TypeError('cognitive-event-parent-ids-must-be-strings');
