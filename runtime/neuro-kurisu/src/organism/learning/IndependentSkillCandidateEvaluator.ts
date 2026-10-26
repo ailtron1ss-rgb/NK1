@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import { evaluateSkillLearnBenchCandidate, evaluateSkillLearnBenchTrial, type SkillLearnBenchCandidateGateReport, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { RevisedCandidateEvaluator } from './P23LearningEngine.ts';
 import {
@@ -300,9 +301,9 @@ export function createIndependentSkillCandidateEvaluator(
     };
     const runBindings: Array<{ taskId: string; trialId: string; taskFamily: string | null; runId: string | null; plannedRunId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
     const seenRunIds = new Set<string>();
-    const evaluationDeadlineAt = Date.now() + evaluationTimeoutMs;
+    const evaluationDeadlineAt = performance.now() + evaluationTimeoutMs;
     const remainingEvaluationMs = (): number => {
-      const remaining = evaluationDeadlineAt - Date.now();
+      const remaining = evaluationDeadlineAt - performance.now();
       if (remaining <= 0) throw new Error('independent-candidate-evaluator-total-timeout');
       return remaining;
     };
