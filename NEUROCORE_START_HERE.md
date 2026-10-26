@@ -4,7 +4,7 @@
 - **Code + regression checkpoint:** `02372e4949c2094b5cd1a3c4420aeda86a2fdfa1`. Promotion and rollback approval verifiers require a canonical standard Base64 Ed25519 encoding for exactly 64 bytes before cryptographic verification.
 - **Regression authored:** canonical approval remains accepted; promotion signatures with trailing junk, leading whitespace or truncated padding are denied; rollback signature with trailing junk is denied.
 - **Docs:** `CHANGELOG.md`, `docs/WORKPASS339_STRICT_ED25519_APPROVAL_ENCODING_RU.md`, and progress tracker updated without increasing scored progress.
-- **Validation:** exact-head `npm run test:p23:versioned-skill-candidate-store`, runtime typecheck and Actions CI remain pending. Historical PASS records remain tied to their original tested SHA and do not validate this commit. Local clone/test execution is blocked by DNS resolution for `github.com`.
+- **Validation:** PR merge result `4a41db0` passed the Unified project integration suite (#119), runtime TypeScript (`TYPECHECK=PASS`), P23 versioned skill candidate store (included in WorkPass110 metrics #4641), and progress-ledger integrity (#20). The exact result is recorded in the report/tracker; local clone/test execution remains unavailable due DNS resolution for `github.com`.
 - **Release gates:** independent holdout learning/transfer, external postcondition E2E, browser/Live2D/voice, Android/Termux soak, license review and reproducible release ZIP rebuild remain outstanding.
 
 ---
