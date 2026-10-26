@@ -60,11 +60,17 @@
   function applyEmbodiment(d){
     bodySignal=d||{};
     updateTickerBudget();
-    setCore('ParamAngleX',clamp(bodySignal.gazeX,-1,1)*30);
-    setCore('ParamAngleY',clamp(bodySignal.gazeY,-1,1)*20);
+    const gazeX=clamp(bodySignal.gazeX,-1,1),gazeY=clamp(bodySignal.gazeY,-1,1);
+    const headAngleX=clamp(bodySignal.headAngleX===undefined?gazeX:bodySignal.headAngleX,-1,1);
+    const headAngleY=clamp(bodySignal.headAngleY===undefined?gazeY:bodySignal.headAngleY,-1,1);
+    setCore('ParamAngleX',headAngleX*30);
+    setCore('ParamAngleY',headAngleY*20);
     setCore('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35);
-    setCore('ParamEyeBallX',clamp(bodySignal.gazeX,-1,1));
-    setCore('ParamEyeBallY',clamp(bodySignal.gazeY,-1,1));
+    setCore('ParamEyeBallX',gazeX);
+    setCore('ParamEyeBallY',gazeY);
+    setCore('ParamBodyAngleX',clamp(bodySignal.bodyAngleX,-1,1)*10);
+    setCore('ParamBodyAngleY',clamp(bodySignal.bodyAngleY,-1,1)*10);
+    setCore('ParamBodyAngleZ',clamp(bodySignal.bodyAngleZ,-1,1)*10);
     const mouth=clamp(bodySignal.mouthOpen,0,1), emph=clamp(bodySignal.voiceEmphasis,0,1), intensity=clamp(bodySignal.expressionIntensity,.0,1);
     setCore('ParamMouthOpenY',Math.max(lipTarget,mouth+emph*.08));
     setCore('ParamMouthForm',bodySignal.mouthForm===undefined?(intensity-.5)*.8:clamp(bodySignal.mouthForm,-1,1));
@@ -93,6 +99,10 @@
     if(typeof d.body.headTilt!=='number'||!Number.isFinite(d.body.headTilt)||typeof d.body.gesture!=='boolean')return null;
     if(typeof d.body.motionGroup!=='string'||!ALLOWED_MOTIONS.has(d.body.motionGroup)||!/^[a-zA-Z0-9_-]{1,32}$/.test(d.body.motionGroup))return null;
     if(!Number.isInteger(d.body.motionIndex)||d.body.motionIndex<0||d.body.motionIndex>32||!Number.isSafeInteger(d.body.motionToken)||d.body.motionToken<0)return null;
+    for(const [key,min,max] of [['headAngleX',-1,1],['headAngleY',-1,1],['bodyAngleX',-1,1],['bodyAngleY',-1,1],['bodyAngleZ',-1,1],['breathIntensity',0,1]]){
+      const value=d.body[key];
+      if(value!==undefined&&(typeof value!=='number'||!Number.isFinite(value)||value<min||value>max))return null;
+    }
     if(typeof d.voiceEmphasis!=='number'||!Number.isFinite(d.voiceEmphasis))return null;
     return {
       stateVersion:d.stateVersion,sentAtEpochMs:d.sentAtEpochMs,speechEventId,audioClockId,
@@ -100,6 +110,10 @@
       speaking:d.speechPhase==='speaking',expression:d.expression,expressionIntensity:clamp(d.expressionIntensity,0,1),
       mouthOpen:clamp(d.mouth.open,0,1),mouthForm:clamp(d.mouth.form,-1,1),mouthViseme:d.mouth.viseme,
       gazeX:clamp(d.gaze.x,-1,1),gazeY:clamp(d.gaze.y,-1,1),gazeDriven:d.gaze.driven,
+      headAngleX:clamp(d.body.headAngleX===undefined?d.gaze.x:d.body.headAngleX,-1,1),
+      headAngleY:clamp(d.body.headAngleY===undefined?d.gaze.y:d.body.headAngleY,-1,1),
+      bodyAngleX:clamp(d.body.bodyAngleX,-1,1),bodyAngleY:clamp(d.body.bodyAngleY,-1,1),bodyAngleZ:clamp(d.body.bodyAngleZ,-1,1),
+      breathIntensity:clamp(d.body.breathIntensity===undefined?0.35:d.body.breathIntensity,0,1),
       headTilt:clamp(d.body.headTilt,-.15,.15),gesture:d.body.gesture,motionGroup:d.body.motionGroup,
       motionIndex:d.body.motionIndex,motionToken:d.body.motionToken,voiceEmphasis:clamp(d.voiceEmphasis,0,1),
     };
@@ -155,6 +169,7 @@
       app.ticker.add(() => {
         if(!model)return;
         const now=performance.now();
+        setCore('ParamBreath',0.5+Math.sin(now/1100)*(0.045+clamp(bodySignal.breathIntensity,0,1)*0.08));
         lipCurrent+=(lipTarget-lipCurrent)*.30;
         eyeX+=(targetEyeX-eyeX)*.08;eyeY+=(targetEyeY-eyeY)*.08;
         if(now>=nextBlink){blinkT=1;blinkUntil=now+115;nextBlink=now+6500+Math.random()*7500}
