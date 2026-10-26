@@ -640,7 +640,9 @@ export class MemoryOS2{
     evidenceFreshnessAt:Number.isFinite(Number(m?.evidenceFreshnessAt))?Number(m.evidenceFreshnessAt):Number(m?.observedAt??m?.createdAt??Date.now()),
     evidenceSources:this.normalizeEvidenceSources(m),
     evidenceLineageKeys:[...new Set([...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row))])].slice(-32),
-    evidenceLineageFilter:normalizeEvidenceLineageFilter(m?.evidenceLineageFilter,[...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row))]),
+        evidenceLineageFilter:(m?.evidenceLineageFilter!=null||(Array.isArray(m?.evidenceLineageKeys)&&m.evidenceLineageKeys.length>=32))
+     ? normalizeEvidenceLineageFilter(m?.evidenceLineageFilter,[...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row))])
+     : undefined,
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
   }))};
@@ -679,10 +681,14 @@ export class MemoryOS2{
   return (knownSources??this.normalizeEvidenceSources(item)).some(row=>this.evidenceKey(row)===key);
  }
  private rememberEvidenceKey(item:MemoryItem2,key:string){
-  // The filter was validated during encode/restore; avoid re-parsing all its bitsets per append.
-  if(!item.evidenceLineageFilter)item.evidenceLineageFilter=emptyEvidenceLineageFilter();
-  item.evidenceLineageFilter=addEvidenceLineageBloomKey(item.evidenceLineageFilter,key);
-  item.evidenceLineageKeys=[...new Set([...(Array.isArray(item.evidenceLineageKeys)?item.evidenceLineageKeys:[]),key])].slice(-32);
+  const priorKeys=Array.isArray(item.evidenceLineageKeys)?item.evidenceLineageKeys:[];
+  // Keep ordinary memories lean; initialize the durable filter before the 32-key exact ring rolls over.
+  if(!item.evidenceLineageFilter&&priorKeys.length>=31){
+   const seed=[...new Set([...priorKeys,...this.normalizeEvidenceSources(item).map(row=>this.evidenceKey(row))])];
+   item.evidenceLineageFilter=normalizeEvidenceLineageFilter(undefined,seed);
+  }
+  if(item.evidenceLineageFilter)item.evidenceLineageFilter=addEvidenceLineageBloomKey(item.evidenceLineageFilter,key);
+  item.evidenceLineageKeys=[...new Set([...priorKeys,key])].slice(-32);
  }
  private normalizeEvidenceSources(item:any):MemoryEvidenceSource[]{
   const source=String(item?.source??'unknown').slice(0,240)||'unknown';
@@ -758,7 +764,9 @@ export class MemoryOS2{
   const defaults={device:.95,external:.9,user:.86,agent:.68,derived:.52,simulation:.28,unknown:.5} as Record<MemoryProvenanceClass,number>;
   const evidenceSources=this.normalizeEvidenceSources({...input,sourceAuthority01:input.sourceAuthority01??defaults[provenanceClass],provenanceClass,observedAt:input.observedAt??now,evidenceFreshnessAt:input.evidenceFreshnessAt??input.observedAt??now});
   const evidenceLineageKeys=[...new Set([...(Array.isArray(input.evidenceLineageKeys)?input.evidenceLineageKeys:[]),...evidenceSources.map(row=>this.evidenceKey(row))])].slice(-32);
-  const evidenceLineageFilter=normalizeEvidenceLineageFilter(undefined,[...new Set([...(Array.isArray(input.evidenceLineageKeys)?input.evidenceLineageKeys:[]),...evidenceSources.map(row=>this.evidenceKey(row))])]);
+    const evidenceLineageFilter=evidenceLineageKeys.length>=32
+   ? normalizeEvidenceLineageFilter(undefined,evidenceLineageKeys)
+   : undefined;
   return {
     ...input,
     id:input.id??identity.stableId,
