@@ -157,6 +157,12 @@ try {
     /already been finalized/,
     'a crash-recovered completed receipt must block replay of its tick',
   );
+  const recoveryGuard = new FeedbackDeliveryGuard();
+  const nextAfterInterruptedTick = recoveryGuard.begin({
+    tick: 28, decisionId: 'decision-28', action: 'reflect', previousReceipt: recoveredPending,
+  });
+  assert.equal(recoveryGuard.complete(nextAfterInterruptedTick).tick, 28,
+    'a stranded older reservation must block its own tick but not permanently disable future ticks');
 } finally {
   await rm(receiptDirectory, { recursive: true, force: true });
 }
