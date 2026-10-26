@@ -1,3 +1,15 @@
+## Latest checkpoint — WorkPass335 (2026-10-26)
+
+- **Branch:** `work/nk1-ed25519-approval-encoding-closure-2026-10-26-r3`; intended base is `fix/mega-cognitive-progress-tracking-2026-10-26-r3` (WorkPass334). The branch was recreated from the latest observed base after a concurrent progress-ledger update; `main` and the release ZIP were not changed.
+- **Code + regression checkpoint:** `ad812aa0db98ec1283aaed36d777ce36a8268b13`. Added canonical Base64 validation for 64-byte Ed25519 skill-promotion and rollback signatures in `AuthenticatedSkillPromotionApproval.ts`. Regression cases accept canonical signatures and reject promotion signatures with trailing junk, leading whitespace, or truncated padding, and reject a rollback signature with trailing junk.
+- **Reason:** permissive `Buffer.from(signature, 'base64')` was used directly by both verification paths; the runtime now rejects non-canonical encodings before cryptographic verification.
+- **Documentation:** `CHANGELOG.md`, `docs/WORKPASS335_STRICT_ED25519_APPROVAL_ENCODING_RU.md`, and `docs/PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json` updated. Progress scores were deliberately not increased.
+- **Validation:** exact-head `npm run test:p23:versioned-skill-candidate-store`, runtime typecheck, and GitHub Actions remain **unverified/pending**. Connector lookups returned no check statuses or workflow runs; this is not a pass. Local clone/test execution was blocked by DNS resolution for `github.com`.
+- **Branch interaction:** the base branch is actively updated; the fresh comparison/PR is required before merging. Runtime wiring work in `fix/unified-substrate-runtime-wiring-rebased-2026-10-25` remains a separate integration candidate because its `OrganismRuntime` and `UnifiedCognitiveSubstrate` changes diverge from this base.
+- **Not release-ready:** no production release ZIP was rebuilt; independent held-out learning/transfer, real provider/device postcondition E2E, browser/Live2D/voice, Android/Termux, long soak and source license review remain outstanding.
+
+---
+
 ## Latest checkpoint — WorkPass331 (2026-10-26)
 
 - **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; continue in draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), targeting `work/node24-project-pin-rebased-20261025`. No merge to `main`; no release ZIP update.
