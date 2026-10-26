@@ -72,6 +72,14 @@ function safeInteger(value: unknown, minimum: number, maximum: number): value is
   return Number.isSafeInteger(value) && Number(value) >= minimum && Number(value) <= maximum;
 }
 
+const FORBIDDEN_LEARNING_ENVIRONMENT_KEY = /^(?:NODE_OPTIONS|NODE_PATH|LD_PRELOAD|LD_LIBRARY_PATH|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH|PYTHONPATH|PYTHONHOME|RUBYOPT|PERL5OPT|BASH_ENV|ENV|AWS_PROFILE|AWS_SHARED_CREDENTIALS_FILE|AWS_CONFIG_FILE|GIT_CONFIG_GLOBAL|NPM_CONFIG_USERCONFIG)$/i;
+const SENSITIVE_LEARNING_ENVIRONMENT_KEY = /(?:TOKEN|SECRET|PASSWORD|PASSWD|PRIVATE_KEY|API_KEY|ACCESS_KEY|CREDENTIAL|AUTH|COOKIE|SESSION|DATABASE_URL|USERCONFIG)$/i;
+
+/** Central policy shared by the generic supervisor and host-owned evaluator adapter. */
+export function isForbiddenLearningEnvironmentKey(key: string): boolean {
+  return FORBIDDEN_LEARNING_ENVIRONMENT_KEY.test(key) || SENSITIVE_LEARNING_ENVIRONMENT_KEY.test(key);
+}
+
 interface PrivateStorageDirectory {
   path: string;
   identity: string;
@@ -200,9 +208,11 @@ export async function runLearningProcess(
   const explicitEnvironment = { ...(command.env ?? {}) };
   for (const key of inheritedEnvironment) {
     if (!/^[A-Z_][A-Z0-9_]*$/i.test(key)) throw new Error('invalid inherited environment key');
+    if (isForbiddenLearningEnvironmentKey(key)) throw new Error('forbidden inherited environment key');
   }
   for (const [key, value] of Object.entries(explicitEnvironment)) {
     if (!/^[A-Z_][A-Z0-9_]*$/i.test(key) || typeof value !== 'string') throw new Error('invalid environment entry');
+    if (isForbiddenLearningEnvironmentKey(key)) throw new Error('forbidden explicit environment key');
   }
 
   const configuredRunRoot = path.resolve(command.runRoot);
