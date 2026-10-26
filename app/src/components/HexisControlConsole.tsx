@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import { Archive, Brain, CheckCircle2, Clock3, Download, History, RefreshCw, Send, ShieldCheck, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { neuroApi } from "@/neuro-kurisu/api";
+import type {
+  HexisGoalMaterializeResponse,
+  HexisGoalProposal,
+  HexisGoalProposalDecisionResponse,
+  HexisGoalProposalListResponse,
+  HexisGoalProposalPrepareResponse,
+  HexisGoalProposalStatus,
+  HexisHmxStageResponse,
+} from "@/neuro-kurisu/types";
 
 const fmt = (value: unknown) => JSON.stringify(value, null, 2);
 
@@ -47,9 +56,9 @@ export function HexisControlConsole() {
   const [hmxConfirmed, setHmxConfirmed] = useState(false);
   const [hmxApplyConfirmed, setHmxApplyConfirmed] = useState(false);
   const [hmxAccepted, setHmxAccepted] = useState(false);
-  const [goalProposals, setGoalProposals] = useState<any[]>([]);
+  const [goalProposals, setGoalProposals] = useState<HexisGoalProposal[]>([]);
   const [goalProposalId, setGoalProposalId] = useState("");
-  const [goalProposalStatus, setGoalProposalStatus] = useState<"pending" | "approved" | "rejected" | "materialized">("pending");
+  const [goalProposalStatus, setGoalProposalStatus] = useState<HexisGoalProposalStatus>("pending");
   const [goalMaterializeConfirmed, setGoalMaterializeConfirmed] = useState(false);
   const [placement, setPlacement] = useState("local");
   const [executionAction, setExecutionAction] = useState("tool.execute");
@@ -107,12 +116,12 @@ export function HexisControlConsole() {
   const stageCurrentHmx = async () => {
     const staged = await run("Stage HMX", async () => {
       const exported = await neuroApi.hexisHmxExport();
-      if (!(exported as any)?.document || typeof (exported as any).document !== "object") {
+      if (!exported.document || typeof exported.document !== "object" || Array.isArray(exported.document)) {
         throw new Error("HMX export returned no document.");
       }
-      return neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy });
+      return neuroApi.hexisHmxStage({ document: exported.document, intent: hmxIntent, strategy: hmxStrategy });
     });
-    const nextId = (staged as any)?.stage?.stagingId;
+    const nextId = (staged as HexisHmxStageResponse | null)?.stage?.stagingId;
     if (nextId) {
       setStageId(String(nextId));
       setHmxAccepted(false);
@@ -149,7 +158,7 @@ export function HexisControlConsole() {
     const result = await run("Stage imported HMX", () => neuroApi.hexisHmxStage({
       document: document as Record<string, unknown>, intent: hmxIntent, strategy: hmxStrategy,
     }));
-    const stage = (result as any)?.stage;
+    const stage = (result as HexisHmxStageResponse | null)?.stage;
     if (stage?.stagingId) {
       setStageId(String(stage.stagingId));
       setHmxAccepted(false);
@@ -160,7 +169,7 @@ export function HexisControlConsole() {
 
   const acceptHmx = async () => {
     const result = await run("Accept staged HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"));
-    const stage = (result as any)?.stage;
+    const stage = (result as HexisHmxStageResponse | null)?.stage;
     setHmxAccepted(stage?.status === "accepted");
     // A preselected apply checkbox must not carry across the acceptance boundary.
     setHmxApplyConfirmed(false);
@@ -168,7 +177,7 @@ export function HexisControlConsole() {
 
   const rejectHmx = async () => {
     const result = await run("Reject staged HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"));
-    if ((result as any)?.stage?.status === "rejected") {
+    if ((result as HexisHmxStageResponse | null)?.stage?.status === "rejected") {
       setHmxAccepted(false);
       setHmxApplyConfirmed(false);
     }
@@ -176,15 +185,15 @@ export function HexisControlConsole() {
 
   const applyHmx = async () => {
     const result = await run("Apply canonical HMX", () => neuroApi.hexisHmxDecide(stageId, "apply"));
-    if ((result as any)?.stage?.status === "applied") {
+    if ((result as HexisHmxStageResponse | null)?.stage?.status === "applied") {
       setHmxAccepted(false);
       setHmxApplyConfirmed(false);
     }
   };
 
-  const loadGoalProposals = async (status: typeof goalProposalStatus = goalProposalStatus) => {
+  const loadGoalProposals = async (status: HexisGoalProposalStatus = goalProposalStatus) => {
     const result = await run("Load HMX goal proposals", () => neuroApi.hexisHmxGoalProposals(status, 64));
-    const rows = Array.isArray((result as any)?.proposals) ? (result as any).proposals : [];
+    const rows = (result as HexisGoalProposalListResponse | null)?.proposals ?? [];
     setGoalProposals(rows);
     setGoalProposalId(String(rows[0]?.id ?? ""));
   };
@@ -192,7 +201,7 @@ export function HexisControlConsole() {
   const prepareGoalProposals = async () => {
     if (!stageId.trim()) return;
     const result = await run("Prepare imported goal proposals", () => neuroApi.hexisHmxGoalPrepare(stageId));
-    const rows = Array.isArray((result as any)?.proposals) ? (result as any).proposals : [];
+    const rows = (result as HexisGoalProposalPrepareResponse | null)?.proposals ?? [];
     setGoalProposals(rows);
     setGoalProposalStatus("pending");
     setGoalProposalId(String(rows[0]?.id ?? ""));
@@ -202,7 +211,7 @@ export function HexisControlConsole() {
     if (!goalProposalId) return;
     const result = await run(decision === "approve" ? "Approve HMX goal" : "Reject HMX goal", () =>
       neuroApi.hexisHmxGoalDecide(goalProposalId, decision));
-    const proposal = (result as any)?.proposal;
+    const proposal = (result as HexisGoalProposalDecisionResponse | null)?.proposal;
     if (proposal?.id) {
       // The current queue is filtered by its requested status; reviewed rows leave the pending queue.
       const remaining = goalProposals.filter(row => row.id !== proposal.id);
@@ -215,15 +224,15 @@ export function HexisControlConsole() {
     if (!goalProposalId || !goalMaterializeConfirmed) return;
     const result = await run("Materialize approved HMX goal", () =>
       neuroApi.hexisHmxGoalMaterialize(goalProposalId, true));
-    const proposal = (result as any)?.proposal;
+    const proposal = (result as HexisGoalMaterializeResponse | null)?.proposal;
     if (proposal?.id) {
       setGoalProposalStatus("materialized");
       setGoalMaterializeConfirmed(false);
       try {
         const refreshed = await neuroApi.hexisHmxGoalProposals("materialized", 64);
-        const rows = Array.isArray((refreshed as any)?.proposals) ? (refreshed as any).proposals : [];
+        const rows = refreshed.proposals ?? [];
         setGoalProposals(rows);
-        setGoalProposalId(String(rows.find((row: any) => row.id === proposal.id)?.id ?? rows[0]?.id ?? ""));
+        setGoalProposalId(String(rows.find(row => row.id === proposal.id)?.id ?? rows[0]?.id ?? ""));
       } catch (error) {
         setMessage(`Goal was materialized, but the materialized queue could not refresh: ${error instanceof Error ? error.message : String(error)}`);
       }
