@@ -91,14 +91,16 @@ try {
   const materializeBlocked = await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: false });
   if (materializeBlocked.status !== 403) throw new Error('hexis-hmx-goal-materialization-confirmation:' + materializeBlocked.status);
   const materializedGoal = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: true })).json();
-  if (!materializedGoal.ok || materializedGoal.goal?.status !== 'candidate' || materializedGoal.proposal?.status !== 'materialized') {
+  if (!materializedGoal.ok || materializedGoal.goal?.status !== 'candidate' || materializedGoal.proposal?.status !== 'materialized' ||
+      materializedGoal.goal?.source !== 'external' || materializedGoal.reusedExistingGoal !== false) {
     throw new Error('hexis-hmx-goal-materialization:' + JSON.stringify(materializedGoal));
   }
   if (materializedGoal.relationships?.projected !== 1 || materializedGoal.relationships?.deferred !== 0) {
     throw new Error('hexis-hmx-goal-relationship-projection:' + JSON.stringify(materializedGoal.relationships));
   }
   const materializedReplay = await (await post('/api/organism/integration/hexis/hmx/goals/proposals/materialize', { proposalId: pendingGoal.id, confirmed: true })).json();
-  if (!materializedReplay.ok || materializedReplay.replayed !== true || materializedReplay.goal?.id !== materializedGoal.goal.id) {
+  if (!materializedReplay.ok || materializedReplay.replayed !== true ||
+      materializedReplay.reusedExistingGoal !== false || materializedReplay.goal?.id !== materializedGoal.goal.id) {
     throw new Error('hexis-hmx-goal-materialization-replay:' + JSON.stringify(materializedReplay));
   }
   const invalidDecision = await fetch(`${base}/api/organism/integration/hexis/hmx/decide`, {
