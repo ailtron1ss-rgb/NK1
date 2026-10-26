@@ -127,7 +127,7 @@ assert.ok(helperBlock.includes('await this.feedbackDeliveryReceiptStore?.save(pe
   'feedback reservation must be durable before downstream learners run');
 assert.ok(helperBlock.includes('await this.feedbackDeliveryReceiptStore?.save(receipt)'),
   'completed receipt must be durable even when a full organism projection is deferred');
-assert.ok(core.includes('await this.feedbackDeliveryReceiptStore?.load()'),
+assert.ok(core.includes('await this.feedbackDeliveryReceiptStore.load()'),
   'Core init must restore the durable feedback receipt sidecar');
 
 const receiptDirectory = await mkdtemp(join(tmpdir(), 'nk1-feedback-delivery-'));
