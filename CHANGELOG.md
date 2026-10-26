@@ -1,3 +1,10 @@
+## WorkPass378 — Enforce C1 control rejection in canonical MemoryOS2 (2026-10-26)
+
+- Extended the canonical evidence text boundary to reject C1 controls (U+0080–U+009F) in source kind/reference, label, author and note fields, even when callers bypass the Hexis adapter.
+- Added direct MemoryOS2 regressions for all five text fields, asserting invalid input is rejected and the canonical memory snapshot remains byte-for-byte equivalent.
+- WorkPass377 separately applies the same control policy to Hexis evidence ingress. No new dependency or new memory owner.
+- Validation status: exact-head focused tests, runtime typecheck, unified integration and release verifier must complete successfully before validation is claimed; no retrieval/learning uplift is claimed.
+
 ## WorkPass377 — Reject C1 control characters in Hexis provenance text (2026-10-26)
 
 - Tightened the shared Hexis evidence text validator to reject C1 controls (U+0080–U+009F), in addition to C0 and DEL. These invisible/control-bearing characters must not enter source references, labels, authors or notes where provenance is displayed, hashed and reviewed.
