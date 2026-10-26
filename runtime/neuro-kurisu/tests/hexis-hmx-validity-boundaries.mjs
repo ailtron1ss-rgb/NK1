@@ -169,4 +169,43 @@ assert(importedAssertion);
 assert.equal(importedAssertion.validUntil, 2000);
 assert.equal(hexis.temporalAt(memoryId, 2000), null,
   'Hexis temporal retrieval must not treat an expired HMX memory as current');
+
+// Re-export the same lineage/reference/content with a different export ID. The memory
+// must deduplicate and the already-expired temporal interval must not be appended again.
+const repeatedExportId = 'exp_87654321fedcba08';
+const repeatedStage = hexis.stageHmx({
+  intent: 'port',
+  strategy: 'additive',
+  document: {
+    hmx_version: '1.7',
+    export_id: repeatedExportId,
+    export_intent: 'port',
+    exported_at: '2026-10-27T12:00:00.000Z',
+    source: {
+      instance_id: 'validity-test',
+      schema_version: '1.7',
+      embedding_model: 'test-only',
+      embedding_dimension: 1,
+      hexis_lineage_id: 'validity-test-lineage',
+    },
+    sections: {
+      memories: [{
+        ref: repeatedExportId + ':expiring-memory',
+        type: 'semantic',
+        content: 'This imported statement expires at the explicit timestamp.',
+        valid_from: 1000,
+        valid_until: 2000,
+      }],
+    },
+  },
+});
+assert.deepEqual(repeatedStage.conflicts, []);
+assert.equal(hexis.decideHmx(repeatedStage.stagingId, 'accept')?.status, 'accepted');
+const temporalCountBeforeRepeatedImport = hexis.snapshot().temporal.length;
+const repeatedApplied = hexis.decideHmx(repeatedStage.stagingId, 'apply');
+assert.equal(repeatedApplied?.application?.importedCount, 0);
+assert.equal(repeatedApplied?.application?.deduplicatedCount, 1);
+assert.equal(hexis.snapshot().temporal.length, temporalCountBeforeRepeatedImport,
+  'replaying an already-expired temporal assertion must remain idempotent across export IDs');
+assert.equal(runtime.fabric.canonicalSnapshot().items.filter(item => item.id === memoryId).length, 1);
 console.log('HEXIS_HMX_VALIDITY_BOUNDARIES=PASS');
