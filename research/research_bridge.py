@@ -117,7 +117,7 @@ def authorize_probe(kind: str, approval_id: str | None):
         ticket=created.get("approval") if isinstance(created,dict) else None
         if created.get("ok") and isinstance(ticket,dict):
             return {"allowed":False,"status":403,"body":{"ok":False,"approvalRequired":True,"error":"explicit-approval-required","approvalRequest":ticket}}
-        return {"allowed":False,"status":503,"body":{"ok":False,"error":created.get("error","approval-gateway-unavailable")}}
+        return {"allowed":False,"status":503,"body":{"ok":False,"error":created.get("error","approval-gateway-unavailable"),"detail":str(created.get("detail",""))[:900]}}
     consumed=runtime_post("/api/organism/tools/permissions/consume", {"id":tool_id,"toolInput":tool_input,"approvalId":approval_id})
     if not consumed.get("ok"):
         return {"allowed":False,"status":403,"body":{"ok":False,"error":consumed.get("reason",consumed.get("error","approval-invalid")),"approvalRequired":False}}
