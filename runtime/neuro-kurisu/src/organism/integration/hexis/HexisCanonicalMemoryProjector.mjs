@@ -727,6 +727,12 @@ export class HexisCanonicalMemoryProjector {
       deferredSections,
       warnings,
     };
-    return { ...base, digest: hash(JSON.stringify(base)) };
+    const receipt = { ...base, digest: hash(JSON.stringify(base)) };
+    // Once the receipt is fully constructed, the transaction has completed and its
+    // rollback capabilities must no longer remain usable or occupy the bounded map.
+    for (const revision of revisedSignals) {
+      this.memoryFabric.commitSignalCompensation(revision.compensationToken);
+    }
+    return receipt;
   }
 }

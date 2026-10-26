@@ -1067,6 +1067,9 @@ assert.equal(
 );
 assert.equal(signalRollbackHexis.getHmxStage(failedSignalStage.stagingId)?.status, 'accepted',
   'the compensated HMX stage remains retryable and is not marked applied');
+assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0,
+  'failed-transaction compensation must consume all rollback capabilities');
+
 
 assert.throws(
   () => signalRollbackRuntime.fabric.restoreSignalsForCompensation(
@@ -1082,6 +1085,31 @@ assert.deepEqual(
   beforeSignalRollback,
   'an invalid compensation token must not mutate canonical trust state',
 );
+
+const successfulCapExportId = 'exp_0000000000009203';
+const successfulCapStage = signalRollbackHexis.stageHmx({
+  document: makeHmxDocument(successfulCapExportId, {
+    memories: [{
+      ref: successfulCapExportId + ':memory-existing',
+      type: 'semantic',
+      content: signalRollbackContent,
+      status: 'active',
+      trust_level: 0.45,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(signalRollbackHexis.decideHmx(successfulCapStage.stagingId, 'accept')?.status, 'accepted');
+assert.equal(signalRollbackHexis.decideHmx(successfulCapStage.stagingId, 'apply')?.status, 'applied',
+  'a successful trust reconciliation commits the HMX stage');
+const cappedAfterSuccessfulApply = signalRollbackRuntime.fabric.canonicalSnapshot().items.find(item => item.id === seededSignalMemory.id);
+assert.equal(cappedAfterSuccessfulApply?.confidence, 0.45);
+assert.equal(cappedAfterSuccessfulApply?.sourceAuthority01, 0.45);
+assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0,
+  'successful transaction must revoke rollback tokens rather than leak them');
+
+
 
 const postCompensationMemoryFabricSnapshot = signalRollbackRuntime.fabric.snapshot();
 signalRollbackRuntime.fabric.restore(postCompensationMemoryFabricSnapshot);

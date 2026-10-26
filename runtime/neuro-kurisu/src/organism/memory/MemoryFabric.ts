@@ -680,6 +680,11 @@ export class MemoryFabric {
     }) as MemoryItem2;
   }
 
+  /** Revoke a rollback capability when the surrounding transaction commits successfully. */
+  commitSignalCompensation(compensationToken:string):boolean {
+    return this.signalCompensations.delete(compensationToken);
+  }
+
   updateContext(id:string, patch:Record<string,string|undefined>, context:{tick?:number;commandId?:string}={}){
     return this.applyLifecycleCommand({action:'update-context',id,patch,...context}) as Record<string,string> | null;
   }
@@ -706,6 +711,7 @@ export class MemoryFabric {
       stats:{...this.statsData},
       eventWindow:this.compactRecentEvents(),
       mutationReceiptJournal:{count:this.mutationReceipts.size,capacity:this.maxMutationReceipts,retiredCount:this.retiredMutationReceiptCount,tombstoneBytes:this.retiredMutationReceiptCount?RETIRED_RECEIPT_BLOOM_BYTES:0,corrupt:this.retiredMutationReceiptBloomCorrupt},
+      pendingSignalCompensations:this.signalCompensations.size,
     };
   }
 

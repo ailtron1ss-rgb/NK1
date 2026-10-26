@@ -2613,3 +2613,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [INTEGRITY] The private MemoryOS2 restore primitive is invoked only from MemoryFabric's token-validated lifecycle path; tokens are consumed on use and bounded in memory.
 - [REGRESSION] Assert that a forged compensation token is rejected and leaves canonical trust state unchanged. Persisted receipt validation continues to allow the named compensation lifecycle action.
 - [VALIDATION] Commit-level source checks completed; runtime execution/typecheck remains blocked by GitHub Actions jobs that terminate with `runner_id=0` and `steps=[]`.
+
+## [NK1][Hexis] WorkPass432 — retire completed signal-compensation tokens (2026-10-26)
+
+- [FIX] Revoke every issued HMX signal rollback token when apply receipt construction completes successfully; failed transactions consume tokens during compensation.
+- [DIAGNOSTICS] Expose only the count of outstanding signal-compensation tokens in MemoryFabric inspection, not their snapshots or identifiers.
+- [REGRESSION] Assert both failed-import compensation and successful trust reconciliation leave zero pending rollback tokens.
+- [VALIDATION] Source-level contract checks pass; runtime/typecheck remains unvalidated because GitHub Actions jobs still exit before runner assignment and execute zero steps.
