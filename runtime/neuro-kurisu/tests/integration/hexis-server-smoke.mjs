@@ -29,6 +29,17 @@ try {
   const peerConsultResponse = await post('/api/organism/integration/hexis/peer/consult', { question: 'This must not be sent to any remote peer.', confirmExternalConsult: true });
   const peerConsult = await peerConsultResponse.json();
   if (peerConsultResponse.status !== 503 || peerConsult.error !== 'hexis-remote-disabled' || peerConsult.nk1StateChanged !== false) throw new Error('hexis-peer-disabled-consult');
+  const invalidReviewDecisionResponse = await post('/api/organism/integration/hexis/reviews/decide', {
+    reviewId: 'must-not-be-read-or-mutated',
+    itemId: 'must-not-be-read-or-mutated',
+    decision: 'aprove',
+  });
+  const invalidReviewDecision = await invalidReviewDecisionResponse.json();
+  if (invalidReviewDecisionResponse.status !== 400 ||
+      invalidReviewDecision.error !== 'hexis-review-invalid-decision') {
+    throw new Error('hexis-review-invalid-decision-must-fail-closed');
+  }
+
   const sync = await (await post('/api/organism/integration/hexis/sync-memory', { limit: 16 })).json();
   if (!sync.ok || typeof sync.scanned !== 'number') throw new Error('hexis-sync');
   const memoryIndex = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=8`)).json();
@@ -47,6 +58,16 @@ try {
       Object.keys(exportRes.document?.sections ?? {}).some(key => key !== 'memories')) throw new Error('hexis-hmx-v17-export-contract');
   const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: exportRes.document, intent: 'telepathy', strategy: 'additive' })).json();
   if (!stageRes.ok || stageRes.stage?.status !== 'staged' || stageRes.stage?.applicationMode !== 'memory-merge' || stageRes.stage?.conflicts?.length !== 0) throw new Error('hexis-hmx-stage');
+  const invalidHmxDecisionResponse = await post('/api/organism/integration/hexis/hmx/decide', {
+    stagingId: stageRes.stage.stagingId,
+    decision: 'maybe',
+  });
+  const invalidHmxDecision = await invalidHmxDecisionResponse.json();
+  if (invalidHmxDecisionResponse.status !== 400 || invalidHmxDecision.error !== 'hmx-invalid-decision') {
+    throw new Error('hexis-hmx-invalid-decision-must-fail-closed');
+  }
+  // Invalid decisions must not consume/reject the valid stage; an explicit
+  // follow-up accept should still drive the canonical memory apply path.
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
   if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted' || !['applied', 'skipped'].includes(acceptRes.stage?.importResult?.status)) throw new Error('hexis-hmx-accept-and-apply');
   for (const count of ['created', 'reused', 'skipped']) if (Number(acceptRes.stage?.importResult?.[count] ?? -1) < 0) throw new Error('hexis-hmx-import-counts');
