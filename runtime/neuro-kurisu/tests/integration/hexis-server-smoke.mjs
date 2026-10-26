@@ -119,7 +119,19 @@ try {
   if (!ack.ok || ack.result?.status !== 'published') throw new Error('hexis-outbox-ack');
   console.log('HEXIS_SERVER_SMOKE=PASS');
 } finally {
-  child.kill('SIGTERM');
-  await new Promise(r => setTimeout(r, 300));
-  await rm(stateDir, { recursive: true, force: true });
+  // Stop the server before deleting its state directory. A fixed sleep races
+  // asynchronous flushes and can leave files being created after rm() starts.
+  await new Promise(resolve => {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      resolve();
+      return;
+    }
+    const timeout = setTimeout(() => child.kill('SIGKILL'), 3000);
+    child.once('exit', () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+    child.kill('SIGTERM');
+  });
+  await rm(stateDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
 }
