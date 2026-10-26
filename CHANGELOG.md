@@ -1,3 +1,9 @@
+## WorkPass243 host-owned authority test isolation — 2026-10-26
+
+- Fixed a test-fixture leak in `workpass243-host-owned-independent-evaluation-services.mjs`: after checking that a group/world-writable executor is rejected, the test now restores mode `0700` before the separate run-root identity-replacement case.
+- The production permission guard is unchanged. This ensures the next assertion tests the run-root identity invariant instead of being short-circuited by the earlier executable-permission invariant.
+- Exact-head WorkPass110 validation is pending.
+
 ## P23 durable provenance tamper regression — 2026-10-26
 
 - Added a durable-store tamper case that edits the persisted `revisionProvenance.planFingerprint` without updating the candidate identity.
