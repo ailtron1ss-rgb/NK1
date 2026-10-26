@@ -1049,8 +1049,14 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
+            if (typeof input.proposalId !== 'string' || !input.proposalId.trim()) {
+                return json(res, 400, { ok: false, error: 'hexis-goal-proposal-id-invalid' });
+            }
+            if (input.confirmed !== true) {
+                return json(res, 403, { ok: false, error: 'hexis-goal-activation-confirmation-required' });
+            }
             try {
-                const result=runtime.core.hexisActivateGoalProposal(String(input.proposalId || ''));
+                const result=runtime.core.hexisActivateGoalProposal(input.proposalId);
                 await runtime.core.flush();
                 return json(res,200,{ok:true,...result});
             } catch(error) {
