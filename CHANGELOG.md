@@ -1,3 +1,9 @@
+## [NK1][CI] WorkPass418 — close strict avatar-storage typecheck gap (2026-10-26)
+
+- [FIX] Annotate avatar-storage test helper, Map state and callback parameters for strict checkJs; use Reflect.deleteProperty to remove the temporary window global without violating TypeScript delete-operand rules.
+- [CI] Execute the existing test:avatar-storage regression in the primary WorkPass71 gate before app typecheck.
+- [EVIDENCE] Source-baseline CI run #40061272363 passed all 232 app script tests and then reported six type errors in this test file. Current exact-head Actions jobs fail without executed step details, so this fix is not marked validated until those checks execute.
+
 ## [NK1][Hexis] WorkPass417 — reconcile HMX rollback after post-write exceptions (2026-10-26)
 
 - [ATOMICITY] The canonical HMX projector now compares post-failure canonical memory with the pre-apply ID set and compensates newly inserted records belonging to the same export. This covers a writer/adapter that throws after MemoryFabric has committed but before the projector receives the new ID.
