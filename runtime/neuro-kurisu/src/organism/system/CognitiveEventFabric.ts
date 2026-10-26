@@ -200,13 +200,21 @@ export class CognitiveEventFabric {
     const restored:CognitiveEventNode[]=[];
     for(const value of rows){
       if(!isRecord(value))continue;
-      const id=typeof value.id==='string'?value.id.trim().slice(0,180):'';
+      const id=typeof value.id==='string'?value.id.trim():'';
       const stage=typeof value.stage==='string'?value.stage as CognitiveStage:undefined;
       // Restore strictly typed ticks; do not coerce null/strings into valid causal time.
       const tick=value.tick;
-      if(!id||!COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isFinite(tick)||tick<0||seen.has(id))continue;
+      if(!id||id.length>180||/[\\u0000-\\u001f\\u007f]/.test(id)||
+        !COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isFinite(tick)||tick<0||seen.has(id))continue;
+      if(typeof value.source==='string'&&value.source.length>120)continue;
+      const rawParentIds=value.parentIds;
+      if(rawParentIds!==undefined&&!Array.isArray(rawParentIds))continue;
+      const parentInput=Array.isArray(rawParentIds)?rawParentIds:[];
+      if(parentInput.length>12||parentInput.some(parent=>
+        typeof parent!=='string'||!parent.trim()||parent.length>180||/[\\u0000-\\u001f\\u007f]/.test(parent)
+      ))continue;
       const at=Number(value.at);
-      const parentIds=Array.isArray(value.parentIds)?value.parentIds.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).map(parent=>parent.trim().slice(0,180)).slice(0,12):[];
+      const parentIds=parentInput as string[];
       let payload:Record<string,unknown>;
       try { payload=cleanPayload(value.payload); }
       catch { continue; }
@@ -215,7 +223,7 @@ export class CognitiveEventFabric {
       restored.push({
         id, stage:stage as CognitiveStage, tick:Math.floor(tick),
         at:Number.isFinite(at)&&at>=0?at:0,
-        source:typeof value.source==='string'?value.source.slice(0,120):'restored-unknown',
+        source:typeof value.source==='string'?value.source:'restored-unknown',
         parentIds, external:Boolean(value.external), confidence01:clamp01(Number(value.confidence01??.5)),
         payload,
       });
@@ -309,9 +317,16 @@ export class CognitiveEventFabric {
     }
     if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
     if(typeof input.source!=='string') throw new TypeError('invalid-cognitive-event-source');
+    // Identity-bearing fields must be rejected when oversized, never truncated:
+    // truncation can alias distinct causal envelopes into one replay fingerprint.
+    if(input.source.length>120) throw new RangeError('invalid-cognitive-event-source');
     if(input.parentIds!==undefined&&!Array.isArray(input.parentIds)) throw new TypeError('invalid-cognitive-event-parents');
+    if((input.parentIds?.length??0)>12) throw new RangeError('invalid-cognitive-event-parent-count');
     if(input.parentIds?.some(parent=>typeof parent!=='string'||!parent.trim())) {
       throw new TypeError('invalid-cognitive-event-parent-id');
+    }
+    if(input.parentIds?.some(parent=>parent.length>180||/[\\u0000-\\u001f\\u007f]/.test(parent))) {
+      throw new RangeError('invalid-cognitive-event-parent-id');
     }
     if(input.external!==undefined&&typeof input.external!=='boolean') throw new TypeError('invalid-cognitive-event-external-flag');
     if(input.confidence01!==undefined&&(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01))) {
@@ -319,8 +334,8 @@ export class CognitiveEventFabric {
     }
 
     const normalizedTick=input.tick;
-    const normalizedSource=input.source.slice(0,120)||'unknown';
-    const parentIds=(input.parentIds??[]).map(parent=>parent.slice(0,180)).slice(0,12);
+    const normalizedSource=input.source||'unknown';
+    const parentIds=[...(input.parentIds??[])];
     const external=input.external??false;
     const confidence01=clamp01(input.confidence01??0.5);
     // Deep clone and canonicalize before lookup/mutation: invalid evidence cannot
