@@ -532,7 +532,6 @@ export class HexisAdaptationFabric {
             ...closedRows.slice(0, roomForClosed),
             ...openRows,
         ];
-        this.state.metrics.temporalQueries = Math.max(0, this.state.metrics.temporalQueries);
         return structuredClone(created);
     }
     temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null { this.state.metrics.temporalQueries += 1; const rows = this.state.temporal.filter((x) => x.memoryId === memoryId && x.validFrom <= at && (x.validUntil === null || at < x.validUntil)).sort((a, b) => b.validFrom - a.validFrom); return rows[0] ? structuredClone(rows[0]) : null; }
