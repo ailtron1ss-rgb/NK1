@@ -1,3 +1,7 @@
+## [NK1][Hexis] WorkPass411 — include deliberation in activation rollback (2026-10-26)
+
+- [ATOMICITY] The explicit goal-activation transaction now snapshots and restores the agency deliberation ledger alongside graph, self-project and Hexis state. A failed receipt/decision write can no longer leave a partial “activation occurred” record behind.
+
 ## [NK1][Hexis] WorkPass410 — reject malformed belief stances at the HTTP boundary (2026-10-26)
 
 - [API GUARD] The belief-revision endpoint no longer silently maps an unknown stance to `supports`; only `supports` and `contradicts` are accepted.
