@@ -91,6 +91,15 @@ const importedQuarantined = afterRetry.find(item =>
 assert.ok(importedQuarantined, 'the successful retry must leave its single canonical import');
 assert.equal(importedQuarantined.epistemicStatus, 'quarantined',
   'a successful retry may retain the quarantined record, but only once');
+assert.equal(
+  runtime.fabric.forgetById(importedQuarantined.id, 'ordinary-forget-protection', {
+    commandId: 'wp430:ordinary-forget-protection',
+  }),
+  false,
+  'ordinary forgetting must still refuse quarantined records',
+);
+assert.equal(runtime.fabric.canonicalSnapshot().items.some(item => item.id === importedQuarantined.id), true,
+  'ordinary forgetting must not remove the quarantined HMX row');
 assert.throws(
   () => runtime.fabric.rollbackHmxCreatedMemory(
     importedQuarantined.id, stage.exportId, 'stage-not-the-origin', 2, 'missing-receipt-id',
