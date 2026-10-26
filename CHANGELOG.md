@@ -1,3 +1,10 @@
+## WorkPass400 — guard Hexis routes against non-object JSON bodies (2026-10-26)
+
+- **Server code:** `416c8df040e778c431ac999242d0d339a0a5940f`; **smoke regression:** `6132b9112a398d37d1dc975fe08bff0b48a9d6f5`.
+- Added `isJsonRecord` validation to learning-review decision, retention proposal, HMX staging and HMX decision endpoints. JSON `null`, arrays and primitive values now return HTTP 400 `hexis-invalid-request-body` before route-specific property reads or mutation calls.
+- Server smoke now sends JSON `null` to all four endpoints and requires the same explicit 400 contract. Existing invalid-decision and retention-action cases remain in the smoke.
+- **Validation:** PENDING exact-head runtime typecheck, HMX adaptation, server smoke and Unified integration. No PASS claimed; recent Actions continue to fail without step/log output. Scores remain unchanged; `main` and canonical Release ZIP untouched.
+
 ## WorkPass399 — reject unknown Hexis retention actions (2026-10-26)
 
 - **Server code:** `06f21b03255da079f93ec59e87f35c27e423d2e7`; **smoke regression:** `f27003b53e336ffeca4df1f540691de865701e0f`.
