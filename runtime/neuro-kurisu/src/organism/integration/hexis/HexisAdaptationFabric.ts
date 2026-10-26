@@ -601,12 +601,33 @@ export class HexisAdaptationFabric {
             !stage.importResult || stage.importResult.status !== 'pending') {
             return stage ? structuredClone(stage) : null;
         }
+
+        // Import receipts are part of the persistent trust boundary. Never
+        // coerce NaN/fractions/negative values or accept a count set which
+        // cannot account for every source memory in this stage.
+        if (!result || typeof result !== 'object' ||
+            !['applied', 'partial', 'skipped'].includes(result.status) ||
+            !Number.isSafeInteger(result.created) || result.created < 0 ||
+            !Number.isSafeInteger(result.reused) || result.reused < 0 ||
+            (result.skipped !== undefined && (!Number.isSafeInteger(result.skipped) || result.skipped < 0)) ||
+            (result.reason !== undefined && (typeof result.reason !== 'string' || result.reason.length > 240))) {
+            return structuredClone(stage);
+        }
+        const skipped = result.skipped ?? 0;
+        const expectedSourceCount = stage.sectionCounts?.memories;
+        if (!Number.isSafeInteger(expectedSourceCount) || expectedSourceCount < 0 ||
+            result.created + result.reused + skipped !== expectedSourceCount ||
+            (result.status === 'applied' && skipped !== 0) ||
+            (result.status === 'skipped' && (result.created !== 0 || result.reused !== 0)) ||
+            (result.status === 'partial' && (skipped === 0 || result.created + result.reused === 0))) {
+            return structuredClone(stage);
+        }
         stage.importResult = {
             status: result.status,
-            created: Math.max(0, Math.floor(result.created)),
-            reused: Math.max(0, Math.floor(result.reused)),
-            skipped: Math.max(0, Math.floor(result.skipped ?? 0)),
-            ...(result.reason ? { reason: result.reason.slice(0, 240) } : {}),
+            created: result.created,
+            reused: result.reused,
+            skipped,
+            ...(result.reason ? { reason: result.reason } : {}),
             completedAt: nowMs(),
         };
         return structuredClone(stage);
