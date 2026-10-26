@@ -5,7 +5,7 @@
 - **Restore lineage:** `restore()` now validates nested `parentIds` arrays through a bounded native-array inspector. It does not read proxy-backed `.length` or indexed slots directly; uninspectable rows are skipped before reserving the ID.
 - **Regressions:** `cognitive-tool-receipt-input-boundary.mjs` and `cognitive-event-parent-proxy-restore.mjs`, both wired into `test:cognitive-integration-suite`.
 - **Base preservation:** the newer WorkPass370 cross-ledger cognitive-cycle commit and WorkPass372 unified-cycle input/restore validation are preserved.
-- **Validation:** exact-head CI pending. WorkPass356 and WorkPass357 previously passed on their stacked PR heads, but those earlier results are not considered proof for this integrated latest-base snapshot. Historical CI evidence rows and readiness scores remain unchanged.
+- **Exact-head CI PASS:** PR head `bf2f20b554890babb917ca43ab04c7e9ad8e0ba9` passed Unified project integration [#40293367296](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367296), progress-ledger integrity [#40293367206](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367206), WorkPass110 [#40293367155](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367155), P26 [#40293367156](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367156), and nine additional focused workflows. The unified run passed cognitive integration, governed approval E2E, public gateway/service startup, runtime/research bridge smoke, and final release gates without publishing an archive. Code/test checkpoint `813fdde7361ae1a690cbd690e4e7f4337fa38a4e`; later tracker/changelog commits only record this evidence. Historical CI evidence rows and readiness scores remain unchanged.
 
 ---
 
