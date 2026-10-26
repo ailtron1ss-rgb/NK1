@@ -118,8 +118,8 @@ export class SelfProjectEngine {
     if(!/^hexgoal:[a-f0-9]{32}$/.test(proposalId)) throw new Error('hexis-project-proposal-id-invalid');
     if(!sourceLineageId || sourceLineageId.length>512) throw new Error('hexis-project-lineage-invalid');
     if(!sourceRef || sourceRef.length>512) throw new Error('hexis-project-source-ref-invalid');
-    if(!title || title.length>300 || /[\\u0000-\\u001f\\u007f]/.test(title)) throw new Error('hexis-project-title-invalid');
-    if(description.length>2000 || /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(description)) throw new Error('hexis-project-description-invalid');
+    if(!title || title.length>300 || /[\x00-\x1f\x7f]/.test(title)) throw new Error('hexis-project-title-invalid');
+    if(description.length>2000 || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(description)) throw new Error('hexis-project-description-invalid');
     const id='hexis-project:'+proposalId.slice('hexgoal:'.length);
     const existing=this.state.projects.find(project=>project.hexisProposalId===proposalId || project.id===id);
     if(existing){
