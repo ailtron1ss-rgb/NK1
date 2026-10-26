@@ -88,7 +88,10 @@ const safeCounter=(value:unknown):number=>
 
 const boundedText=(value:unknown,maxLength:number):value is string=>
   typeof value==='string'&&value.length>0&&value.length<=maxLength&&value===value.trim()&&
-  !/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
+  !Array.from(value).some(character=>{
+    const code=character.charCodeAt(0);
+    return code<32||(code>=127&&code<=159);
+  });
 
 export class P26TrueLearningEngine{
   readonly learner=new ParametricPolicyLearner();
@@ -269,16 +272,10 @@ export class P26TrueLearningEngine{
       const metric=ownRequired(needsValue,key);
       if(typeof metric!=='number'||!Number.isFinite(metric)||metric<0||metric>1)throw new TypeError(label+'-state-need-invalid:'+key);
     }
-    for(const key of ['predictionError','attentionBudget','autonomyScore','selfPredictionError','lastPredictionConfidence']){
+    for(const key of ['predictionError','attentionBudget','autonomyScore','selfPredictionError']){
       const metric=ownRequired(value,key);
       if(typeof metric!=='number'||!Number.isFinite(metric)||metric<0||metric>1)throw new TypeError(label+'-state-metric-invalid:'+key);
     }
-    for(const key of ['lastAction','predictedNextAction']){
-      const field=ownRequired(value,key);
-      if(typeof field!=='string'||field.length>128)throw new TypeError(label+'-state-label-invalid:'+key);
-    }
-    const lastSuccess=ownRequired(value,'lastActionSuccess');
-    if(lastSuccess!==null&&typeof lastSuccess!=='boolean')throw new TypeError(label+'-state-last-action-success-invalid');
   }
 
   private prepareInterleavedRows(rows:P26InterleavedRecord[],label:string):PreparedP26InterleavedRecord[]{
