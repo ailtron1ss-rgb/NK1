@@ -4,6 +4,24 @@ import { pathToFileURL } from 'node:url';
 
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isNonEmptyString = value => typeof value === 'string' && value.trim().length > 0;
+async function canonicalPotentialPath(input) {
+  let cursor = path.resolve(input);
+  const suffix = [];
+  for (;;) {
+    try {
+      const actual = await realpath(cursor);
+      return path.resolve(actual, ...suffix);
+    } catch (error) {
+      const code = error?.code;
+      if (code !== 'ENOENT' && code !== 'ENOTDIR') throw error;
+      const parent = path.dirname(cursor);
+      if (parent === cursor) throw new Error('compound-repair-state-path-cannot-be-resolved');
+      suffix.unshift(path.basename(cursor));
+      cursor = parent;
+    }
+  }
+}
+
 
 /**
  * Load the independently configured evaluation authorities from a distinct,
@@ -45,7 +63,10 @@ export async function createIndependentEvaluationConfigFactory(input) {
   }
   // The authority config is executable policy: never load it from the mutable
   // organism state directory where learned data or runtime artifacts may be written.
-  const statePath = path.resolve(input.stateDirectory);
+  // Compare canonical locations, not caller-supplied path strings. A symlink
+  // alias for the mutable state directory must not make a file inside that state
+  // appear external to the trusted evaluator-config boundary.
+  const statePath = await canonicalPotentialPath(input.stateDirectory);
   const stateRelative = path.relative(statePath, evaluationPath);
   if (stateRelative === '' || (!stateRelative.startsWith('..' + path.sep) &&
       stateRelative !== '..' && !path.isAbsolute(stateRelative))) {
