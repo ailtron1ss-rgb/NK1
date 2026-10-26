@@ -23,4 +23,5 @@ The GitHub Actions wrappers report failed runs but expose no job steps and retur
 - The canonical HMX workflow now runs the app dependency install and TypeScript check, plus the existing UI-action-wiring and UI/API/runtime linkage audits.
 - The server, not merely the UI, requires `confirmed: true` for both HMX acceptance and canonical apply. Smoke now verifies unconfirmed acceptance/application is rejected without preventing the later confirmed transition.
 - A mistyped confirmation such as `confirmed: "true"` is rejected with HTTP 400; local checkout/test execution is blocked because this container cannot resolve `github.com`, and Actions job logs currently return `BlobNotFound`.
+- GET memory/goal lists now enforce bounded integer limits and allowlisted goal status filters; temporal GET routes require real, safe-integer timestamp arguments instead of treating missing query values as zero.
 - The operator console now shows the sealed apply receipt (status, imported/deduplicated counts, projected/deferred relationships, completeness and warnings) and per-section stage counts.
