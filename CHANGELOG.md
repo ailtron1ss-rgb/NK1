@@ -1,3 +1,14 @@
+## WorkPass375 — Hexis evidence routed into canonical MemoryOS2 (2026-10-26)
+
+- **Code/test head before documentation:** `61fdb0ad6b098f91bd3b0884bf3b209f4ee514dc` on `work/hexis-evidence-adapter-2026-10-26`.
+- **Canonical memory integration:** `MemoryOS2` now stores a bounded evidence-record trail with evidence ID, digest, stance, source identity, observation time and source confidence. The existing memory store remains the only writable owner; no parallel Hexis database was added.
+- **Replay and conflict rules:** exact evidence ID + matching digest is idempotent; a visible reused ID with changed digest is rejected as a conflict. Older IDs survive detail-ring rotation through a bounded Bloom lineage filter; a retired ID becomes a no-op, never a new belief vote. Digest/source identity are separate from stance and evidence confidence.
+- **Safety:** protected-memory evidence is blocked at ingress pending the existing review path. supports, contradicts and contextualizes are recorded as provenance metadata only; the bridge deliberately does not mutate memory belief confidence, auto-approve a review or promote a skill.
+- **Regression:** `tests/cognitive-hexis-memory-bridge.mjs` covers canonical MemoryOS2 writes, confidence preservation, exact replay, changed-payload ID conflict, protected-memory block, missing memory, restart/restore and replay after 90 evidence items rotate the visible 64-record detail ring.
+- **Validation:** **PENDING** exact-head runtime typecheck, focused bridge regression, unified integration and final release gates. A code commit is not evidence of a passing test. Scores remain unchanged until fresh CI and independent evidence warrant a change.
+- **Still open:** connect accepted evidence to the already-existing Hexis belief-review/appraisal route without duplicating policy or bypassing approval/evaluator boundaries. `main` and the canonical Release ZIP remain unchanged.
+
+---
 ## WorkPass376 — strict Hexis evidence envelope and dedupe boundary (2026-10-26)
 
 - **Defect:** the first adapter revision ignored unknown/symbol fields and trusted the supplied deduplication index's `has()` method; schema-smuggling could be silently normalized and a hostile index could throw out of ingress.
