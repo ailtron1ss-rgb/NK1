@@ -1,3 +1,9 @@
+## [NK1][WorkPass439] Cover C1 controls in restored receipt targets (2026-10-26)
+
+- Extended the existing memory lifecycle regression with an otherwise-valid persisted receipt whose target memoryId contains U+009F.
+- Restore must reject the receipt, mark replay-journal certainty as compromised, and fail closed for subsequent keyed mutations. The canonical integration branch already applies the C0/C1 range to both commandId and memoryId; this pass closes the missing regression case.
+- The test is wired through the existing lifecycle/Hexis package test entry. Runtime execution, typecheck and hosted CI remain unverified; no main or Release ZIP change.
+
 ## [NK1][WorkPass430] Roll back protected HMX records after failed apply (2026-10-26)
 
 - Added a narrowly scoped MemoryOS2 compensation path for records created by a specific Hexis export, staging ID and application attempt. Imported records now carry that stage provenance; rollback cannot delete a record from a different stage/attempt. Unlike ordinary user forgetting, it can undo transaction-created quarantined/identity records without weakening the normal protection against forgetting those records.
