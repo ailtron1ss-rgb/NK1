@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const verifier = path.join(projectRoot, 'tools/verify-final-release.mjs');
 
-async function fixture(t, { metadataExitCode = 0, includeMetadata = true, includePythonCache = false, includeStrayBytecode = false, includeNonBytecodeInCache = false } = {}) {
+async function fixture(t, { metadataExitCode = 0, includeMetadata = true, includePythonCache = false, includeStrayBytecode = false, includeNonBytecodeInCache = false, trackPythonCache = false } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'nk-final-release-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(path.join(root, 'runtime/neuro-kurisu/scripts'), { recursive: true });
@@ -40,6 +40,12 @@ async function fixture(t, { metadataExitCode = 0, includeMetadata = true, includ
   }
   if (includeNonBytecodeInCache) {
     await writeFile(path.join(root, 'research/__pycache__/source.py'), 'must-not-be-ignored');
+  }
+  if (trackPythonCache) {
+    const init = spawnSync('git', ['init', '--quiet'], { cwd: root, encoding: 'utf8' });
+    assert.equal(init.status, 0, init.stderr);
+    const add = spawnSync('git', ['add', 'research/__pycache__/fixture.cpython-312.pyc'], { cwd: root, encoding: 'utf8' });
+    assert.equal(add.status, 0, add.stderr);
   }
   return root;
 }
@@ -135,4 +141,15 @@ test('CI cache override still rejects stray bytecode and non-bytecode files in c
   assert.ok(report.errors.some(error => error.includes('generated-python-artifact:research/stray.cpython-312.pyc')));
   assert.ok(report.errors.some(error => error.includes('generated-python-artifact:research/__pycache__/source.py')));
   assert.ok(report.summary.treeFailures >= 2);
+});
+
+
+test('CI cache override never ignores tracked bytecode', async t => {
+  const root = await fixture(t, { includePythonCache: true, trackPythonCache: true });
+  const result = run(root, ['--allow-generated-python-cache']);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.generatedPythonCachePolicy, 'allow-transient-caches');
+  assert.ok(report.errors.some(error => error.includes('tracked-python-artifact:research/__pycache__/fixture.cpython-312.pyc')));
+  assert.equal(report.summary.treeFailures, 1);
 });
