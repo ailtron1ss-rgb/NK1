@@ -22,7 +22,7 @@ function canonicalPostcondition(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const normalized = value.normalize('NFKC');
   if (/[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
-  const canonical = normalized.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  const canonical = normalized.trim().replace(/\s+/g, ' ').toLowerCase();
   return canonical && canonical.length <= 1024 ? canonical : undefined;
 }
 
