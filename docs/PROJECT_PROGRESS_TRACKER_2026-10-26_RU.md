@@ -1,3 +1,13 @@
+## WorkPass389 — канонический gate для общего review endpoint (2026-10-26)
+
+- **Коммит исправления:** `7c22337ae263f68c568ac398c9af1d68a6af2bf0`; диагностический тест — `62871903fad4f9d19c9235fb061e1f37f010a7cc`.
+- Общий `/reviews/decide` больше не выбирает путь по наличию служебного `pipeline` в публичной review-проекции. Сначала вызывается `decideHexisEvidenceReview`; legacy fallback разрешён только при точном ответе `not-a-valid-hexis-evidence-review`. Прочие отказы закрываются HTTP 409.
+- Smoke-тест печатает результат canonical gate в сообщении об ошибке, чтобы не скрывать причину отказа.
+- Предыдущий Unified run на `ac6d07607977b2280b6d924e0c13dd7c6b332e90` падал на generic-review проверке. Запуски для `62871903fad4f9d19c9235fb061e1f37f010a7cc` и `7c22337ae263f68c568ac398c9af1d68a6af2bf0` завершились до появления шагов и журналов; проверка точного head пока не подтверждена.
+- Метрики готовности/recall не повышались. `main` и Release ZIP не изменялись.
+
+---
+
 ## WorkPass387 — стойкая идемпотентность Hexis receipt-time (2026-10-26)
 
 - Код/тесты: `cf79d537ce44e9bed1bfe3a07001d17f3097d06b`, `67fd5cc3e28c351c5264bf88d6427828eeda8cc6`, `7f7d5f0aae1b2b3e782202d281c0fb25ceed9943`, `b55c45ce65e6a6375ad8b90a55059340b852b900`, `c9e53030623fba87037460c2a3202c9a89ab324f`, `843964cdf0f5b2dc9d770b9fa60c5d294b0f2bad`.
