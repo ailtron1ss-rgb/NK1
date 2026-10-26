@@ -923,6 +923,14 @@ async function route(req, res) {
                 return json(res, 503, { ok: false, error: String(error?.message ?? error) });
             }
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/hmx/stage') {
+            const stagingId = String(url.searchParams.get('stagingId') || '').trim();
+            if (!stagingId) return json(res, 400, { ok: false, error: 'hmx-staging-id-required' });
+            const stages = runtime.core.hexisAdaptationSnapshot?.()?.hmxStages;
+            const stage = Array.isArray(stages) ? stages.find(item => item.stagingId === stagingId) : null;
+            if (!stage) return json(res, 404, { ok: false, error: 'hmx-stage-not-found' });
+            return json(res, 200, { ok: true, stage });
+        }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/stage') {
             const input = await body(req, MAX_HMX_BODY_BYTES);
             try {
