@@ -1,3 +1,10 @@
+## WorkPass390 — Bind Hexis review decisions to the complete canonical evidence receipt (2026-10-26)
+
+- Added one shared canonical evidence digest function and used it for ingress, review payload creation and approval-time validation. Server-generated `observedAtOrigin: "server-receipt"` timestamps use the same normalized digest policy on every path.
+- Before approval, re-run the strict adapter and compare the recomputed digest plus evidence ID, stance, source kind/reference, label, author, note, confidence, timestamp and protected-memory flag against the canonical MemoryOS2 receipt.
+- Added six review-snapshot tampering regressions and a positive server-receipt regression. Added a server smoke assertion that reconciles the review result with persisted MemoryOS2 confidence without assuming confidence must rise at its policy ceiling.
+- Validation status: pending exact-head typecheck, focused evidence/review tests and Unified project integration. No learning/retrieval uplift or production-readiness claim.
+
 ## WorkPass389 — route generic Hexis reviews through the canonical gate first (2026-10-26)
 
 - **Code commit:** `7c22337ae263f68c568ac398c9af1d68a6af2bf0`; diagnostic assertion in the smoke test: `62871903fad4f9d19c9235fb061e1f37f010a7cc`.
