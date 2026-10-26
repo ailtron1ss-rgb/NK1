@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; historical CI rows remain tied to that SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 enforces metadata, UI and architecture checks; the CI-only cache override permits only untracked .pyc under __pycache__ and reports warnings, while tracked bytecode, stray bytecode and non-bytecode cache files still fail. Eight regression tests cover strict and CI modes. Prior run passed the broader integration and release gate before the final tracked-bytecode guard/test was added; a fresh exact-head CI run is pending. Scores unchanged; release archive and physical-device/hardware/soak/licensing gates remain open. WorkPass358 ports WorkPass356 strict receipt ingress and WorkPass357 parent-array proxy safety onto latest target base f38d3189777649da490f8b0dbb3a8d19c7444811, preserving WorkPass370 cross-ledger commit and WorkPass372 unified-cycle restore hardening. Code/test checkpoint 813fdde7361ae1a690cbd690e4e7f4337fa38a4e adds two regression tests and wires them into the cognitive integration suite. Exact-head CI pending; historical ciSnapshot rows and all readiness scores remain unchanged.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -359,38 +359,40 @@
     "rationale": "Family-wise evaluation/provenance gates strengthen the learning evidence path but are not an empirical task-success, transfer, retention or retrieval improvement."
   },
   "latestEngineeringPass": {
-    "id": "WorkPass342",
+    "id": "WorkPass358",
     "date": "2026-10-26",
-    "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
-    "codeCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
-    "summary": "Bound the integration client deadline to each CPU research probe: quick control/approval requests retain 8 seconds; NeuroCore/NOMEGA have 60 seconds; DeepCode CPU smoke has 200 seconds, safely above its 180-second subprocess limit. Revalidated the complete suite with WorkPass340 substrate and WorkPass341 task-family promotion coverage present.",
-    "testsAdded": [
-      "bounded, per-probe timeout config rejects invalid bounds",
-      "full runtime/research bridge smoke completes all post-approval probes within their appropriate finite deadlines",
-      "NeuroCore, NOMEGA and DeepCode approval-denial and explicit-owner-approval paths pass on the same smoke",
-      "UI and runtime typechecks pass after the full integration run"
+    "branch": "fix/workpass356-357-latest-target-2026-10-26",
+    "codeCommit": "813fdde7361ae1a690cbd690e4e7f4337fa38a4e",
+    "baseCommit": "f38d3189777649da490f8b0dbb3a8d19c7444811",
+    "summary": "Ported strict CEF receipt trace/revision/external-observation ingress and proxy-safe parentIds restore to the latest target branch, preserving WorkPass370/372 code. Added two regressions and wired them into cognitive integration suite.",
+    "changes": [
+      "Descriptor-only input ingress for receipt trace, authoritative provider receipt revisions, and external observation; reject non-canonical/overlong IDs, type coercion, invalid flags/counters/timestamps and confidence outside [0,1].",
+      "Bounded native-array inspector for restore parentIds; no direct proxy-backed .length or indexed reads; malformed rows are skipped without reserving IDs.",
+      "Added cognitive-tool-receipt-input-boundary.mjs and cognitive-event-parent-proxy-restore.mjs to cognitive integration suite."
     ],
-    "validationStatus": "PASS on exact combined code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; merged to active source branch as 39af7eb67c9ab05efd45d01cbd4b4d1d44751454. Unified project integration, WorkPass110, WorkPass108, P26 and progress-ledger integrity all passed.",
+    "validationStatus": "pending exact-head CI",
     "progressPercentagesChanged": false,
-    "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
-    "workflowRuns": [
-      40257525157,
-      40257525071,
-      40257525093,
-      40257525095,
-      40257525008,
-      40257525009,
-      40257525022,
-      40257525001,
-      40257525128,
-      40257525003,
-      40257525076,
-      40257525205,
-      40257525121
-    ],
-    "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
+    "testedHeadSha": null,
+    "workflowRuns": []
   },
   "recentEngineeringPasses": [
+    {
+      "id": "WorkPass358",
+      "date": "2026-10-26",
+      "branch": "fix/workpass356-357-latest-target-2026-10-26",
+      "codeCommit": "813fdde7361ae1a690cbd690e4e7f4337fa38a4e",
+      "baseCommit": "f38d3189777649da490f8b0dbb3a8d19c7444811",
+      "summary": "Ported strict CEF receipt trace/revision/external-observation ingress and proxy-safe parentIds restore to the latest target branch, preserving WorkPass370/372 code. Added two regressions and wired them into cognitive integration suite.",
+      "changes": [
+        "Descriptor-only input ingress for receipt trace, authoritative provider receipt revisions, and external observation; reject non-canonical/overlong IDs, type coercion, invalid flags/counters/timestamps and confidence outside [0,1].",
+        "Bounded native-array inspector for restore parentIds; no direct proxy-backed .length or indexed reads; malformed rows are skipped without reserving IDs.",
+        "Added cognitive-tool-receipt-input-boundary.mjs and cognitive-event-parent-proxy-restore.mjs to cognitive integration suite."
+      ],
+      "validationStatus": "pending exact-head CI",
+      "progressPercentagesChanged": false,
+      "testedHeadSha": null,
+      "workflowRuns": []
+    },
     {
       "id": "WorkPass342",
       "date": "2026-10-26",
@@ -461,8 +463,8 @@
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
-  "branchHeadBeforeTrackerCommit": "064a7ac8f2cd91e692d7e7d3905a8a608a6a92b6",
+  "latestUnverifiedCodeTestHead": "813fdde7361ae1a690cbd690e4e7f4337fa38a4e",
+  "branchHeadBeforeTrackerCommit": "813fdde7361ae1a690cbd690e4e7f4337fa38a4e",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
@@ -500,5 +502,37 @@
       "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
       "mergeCommit": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
     }
-  ]
+  ],
+  "previousEngineeringPass": {
+    "id": "WorkPass342",
+    "date": "2026-10-26",
+    "branch": "work/nk1-unified-substrate-runtime-integration-2026-10-26-r4",
+    "codeCommit": "b8bc8316e996700a5562b93f38fd354f1ea5d69b",
+    "summary": "Bound the integration client deadline to each CPU research probe: quick control/approval requests retain 8 seconds; NeuroCore/NOMEGA have 60 seconds; DeepCode CPU smoke has 200 seconds, safely above its 180-second subprocess limit. Revalidated the complete suite with WorkPass340 substrate and WorkPass341 task-family promotion coverage present.",
+    "testsAdded": [
+      "bounded, per-probe timeout config rejects invalid bounds",
+      "full runtime/research bridge smoke completes all post-approval probes within their appropriate finite deadlines",
+      "NeuroCore, NOMEGA and DeepCode approval-denial and explicit-owner-approval paths pass on the same smoke",
+      "UI and runtime typechecks pass after the full integration run"
+    ],
+    "validationStatus": "PASS on exact combined code/test head 621864d0d7f2676245383adab86f1dcc6d0f741f; merged to active source branch as 39af7eb67c9ab05efd45d01cbd4b4d1d44751454. Unified project integration, WorkPass110, WorkPass108, P26 and progress-ledger integrity all passed.",
+    "progressPercentagesChanged": false,
+    "testedHeadSha": "621864d0d7f2676245383adab86f1dcc6d0f741f",
+    "workflowRuns": [
+      40257525157,
+      40257525071,
+      40257525093,
+      40257525095,
+      40257525008,
+      40257525009,
+      40257525022,
+      40257525001,
+      40257525128,
+      40257525003,
+      40257525076,
+      40257525205,
+      40257525121
+    ],
+    "mergedSourceHead": "39af7eb67c9ab05efd45d01cbd4b4d1d44751454"
+  }
 }
