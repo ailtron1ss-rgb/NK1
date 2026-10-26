@@ -158,6 +158,7 @@ async function invokeLanguage(request) {
     }
     return { ...response, preferredBackend, latencyMs: finishedAt - started };
 }
+const hexisRemotePeer = new HexisRemoteApiBridge(process.env);
 const runtime = new OrganismRuntime({
     stateFile,
     worldStateFile: worldFile,
@@ -175,7 +176,6 @@ const runtime = new OrganismRuntime({
     ...(TRUSTED_SHADOW_LEARNING ? { trustedShadowLearning: TRUSTED_SHADOW_LEARNING } : {}),
     ...(COMPOUND_REPAIR_REVISION ? { compoundRepairRevision: COMPOUND_REPAIR_REVISION } : {}),
 });
-const hexisRemotePeer = new HexisRemoteApiBridge(process.env);
 let runtimeReady = false;
 const willSdk = new WillSdkFacade({ step: (message, options) => runtime.step(message, options), snapshot: () => runtime.core.snapshot(), flush: () => runtime.core.flush(), exportWillPma: () => runtime.core.exportWillPma(), validateWillPma: (pma) => runtime.core.validateWillPma(pma) }, { enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() }, 'kurisu');
 const willMcp = new WillMcpJsonRpcServer(willSdk);
