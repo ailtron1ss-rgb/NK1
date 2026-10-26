@@ -1,5 +1,6 @@
 # WorkPass367 — receipt extension lineage and replay verification (2026-10-26)
 
+- [CI-DRIVEN FIX] Initial canonical-kernel run exposed a schema-name mismatch in the new external-evidence lineage guard: observation events store `toolId`, while the base receipt trio stores `tool`. The guard now verifies the actual `toolId` field, and the full exact-head suite is rerun.
 - [INTEGRITY] Validate external-observation lineage against the referenced action/outcome nodes during restore and replay; mismatched parent IDs or receipt-link payload fields cannot be re-adopted by deterministic event ID.
 - [INTEGRITY] Validate provider-revision base outcome, prior-revision edge and tool binding before restoring or replaying the revision.
 - [INTEGRITY] Strengthen `hasToolReceiptTrace()` to check execution ID, tool consistency, action→outcome→evidence edges and event-bound fingerprint agreement.
