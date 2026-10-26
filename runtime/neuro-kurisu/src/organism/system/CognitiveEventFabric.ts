@@ -191,12 +191,12 @@ export class CognitiveEventFabric {
       // Restore strictly typed ticks; do not coerce null/strings into valid causal time.
       const tick=value.tick;
       if(!id||!COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isFinite(tick)||tick<0||seen.has(id))continue;
-      seen.add(id);
       const at=Number(value.at);
       const parentIds=Array.isArray(value.parentIds)?value.parentIds.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).map(parent=>parent.trim().slice(0,180)).slice(0,12):[];
       let payload:Record<string,unknown>;
       try { payload=cleanPayload(value.payload); }
       catch { continue; } // Skip malformed persisted evidence without aborting restoration of healthy events.
+      seen.add(id);
       restored.push({
         id, stage:stage as CognitiveStage, tick:Math.floor(tick),
         at:Number.isFinite(at)&&at>=0?at:0,
