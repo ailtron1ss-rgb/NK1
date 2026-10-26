@@ -1,7 +1,7 @@
 ## Latest checkpoint — WorkPass355 canonical learner environment filtering (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
-**Status:** code and tests committed; exact-head CI pending.
+**Status:** code/tests committed; focused workflow [#40289516633](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40289516633) passed on code/test SHA `295e11f3e9795375f81bbad1b493e2bac842317a` (native provider 10/10, evaluator-config suite 16/16, direct supervisor regression success, runtime typecheck pass).
 
 - The generic process supervisor now applies the shared `isForbiddenLearningEnvironmentKey` policy to inherited and explicit environment variables. The host-owned evaluator adapter imports the same predicate; policy drift between the two layers is removed.
 - Sensitive variables and runtime-injection keys (including API-key suffixes, `NODE_OPTIONS`, loader paths and credential/config variables) are rejected before scratch-root allocation.
