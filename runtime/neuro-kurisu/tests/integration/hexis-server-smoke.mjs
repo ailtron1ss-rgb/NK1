@@ -30,10 +30,23 @@ try {
   const peerConsult = await peerConsultResponse.json();
   if (peerConsultResponse.status !== 503 || peerConsult.error !== 'hexis-remote-disabled' || peerConsult.nk1StateChanged !== false) throw new Error('hexis-peer-disabled-consult');
   const nullBodyCases = [
-    ['/api/organism/integration/hexis/reviews/decide', 'hexis-review-null-body'],
-    ['/api/organism/integration/hexis/retention/propose', 'hexis-retention-null-body'],
+    ['/api/organism/integration/hexis/peer/consult', 'hexis-peer-consult-null-body'],
+    ['/api/organism/integration/hexis/sync-memory', 'hexis-sync-memory-null-body'],
+    ['/api/organism/integration/hexis/belief/revise', 'hexis-belief-revise-null-body'],
+    ['/api/organism/integration/hexis/reviews/create', 'hexis-review-create-null-body'],
+    ['/api/organism/integration/hexis/reviews/decide', 'hexis-review-decide-null-body'],
+    ['/api/organism/integration/hexis/retention/propose', 'hexis-retention-propose-null-body'],
+    ['/api/organism/integration/hexis/retention/apply', 'hexis-retention-apply-null-body'],
     ['/api/organism/integration/hexis/hmx/stage', 'hexis-hmx-stage-null-body'],
     ['/api/organism/integration/hexis/hmx/decide', 'hexis-hmx-decide-null-body'],
+    ['/api/organism/integration/hexis/outbox/enqueue', 'hexis-outbox-enqueue-null-body'],
+    ['/api/organism/integration/hexis/outbox/claim', 'hexis-outbox-claim-null-body'],
+    ['/api/organism/integration/hexis/outbox/ack', 'hexis-outbox-ack-null-body'],
+    ['/api/organism/integration/hexis/outbox/reclaim', 'hexis-outbox-reclaim-null-body'],
+    ['/api/organism/integration/hexis/policy', 'hexis-policy-grant-null-body'],
+    ['/api/organism/integration/hexis/policy/evaluate', 'hexis-policy-evaluate-null-body'],
+    ['/api/organism/integration/hexis/policy/revoke', 'hexis-policy-revoke-null-body'],
+    ['/api/organism/integration/hexis/execution-plan', 'hexis-execution-plan-null-body'],
   ];
   for (const [route, label] of nullBodyCases) {
     const response = await post(route, null);
