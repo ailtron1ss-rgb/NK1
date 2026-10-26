@@ -1019,21 +1019,58 @@ export class CognitiveEventFabric {
    * Raw postcondition text is not copied into CEF; only canonical hashes/presence flags are retained.
    */
   appendToolExternalObservation(input:{tick:number;executionId:string;toolId:string;observationId:string;verified:boolean;confidence01:number;sourceId?:string;sourceClass?:string;channel?:string;independenceKey?:string;expectedPostcondition?:string;observedPostcondition?:string;reason?:string;at?:number}):{resolved:boolean;reason?:string;replayed?:boolean;eventId?:string;archived?:boolean}{
-    const executionId=String(input.executionId??'').trim().slice(0,180);
-    const observationId=String(input.observationId??'').trim().slice(0,180);
-    const toolId=String(input.toolId??'').trim().slice(0,64);
+    const safeInput=readOwnDataFields(input,[
+      'tick','executionId','toolId','observationId','verified','confidence01','sourceId','sourceClass','channel',
+      'independenceKey','expectedPostcondition','observedPostcondition','reason','at',
+    ]);
+    if(!safeInput)return {resolved:false,reason:'observation-input-invalid'};
+    input=safeInput as unknown as typeof input;
+
+    if(typeof input.executionId!=='string')return {resolved:false,reason:'execution-id-invalid'};
+    const executionId=input.executionId;
     if(!executionId)return {resolved:false,reason:'execution-id-required'};
+    if(!isCanonicalCognitiveIdentifier(executionId,180))return {resolved:false,reason:'execution-id-invalid'};
+    if(typeof input.observationId!=='string')return {resolved:false,reason:'observation-id-invalid'};
+    const observationId=input.observationId;
     if(!observationId)return {resolved:false,reason:'observation-id-required'};
+    if(!isCanonicalCognitiveIdentifier(observationId,180))return {resolved:false,reason:'observation-id-invalid'};
+    if(typeof input.toolId!=='string')return {resolved:false,reason:'tool-id-invalid'};
+    const toolId=input.toolId;
     if(!toolId)return {resolved:false,reason:'tool-id-required'};
+    if(!isCanonicalCognitiveIdentifier(toolId,64))return {resolved:false,reason:'tool-id-invalid'};
+    if(typeof input.tick!=='number'||!Number.isSafeInteger(input.tick)||input.tick<0)return {resolved:false,reason:'tick-invalid'};
+    if(typeof input.verified!=='boolean')return {resolved:false,reason:'verified-invalid'};
+    if(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01)||input.confidence01<0||input.confidence01>1)return {resolved:false,reason:'confidence-invalid'};
+    if(input.at!==undefined&&(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0))return {resolved:false,reason:'timestamp-invalid'};
+    const textValue=(value:unknown,key:string,maxLength:number,fallback:string):string=>{
+      if(value===undefined||value===null)return fallback;
+      if(typeof value!=='string'||value.length>maxLength)throw new TypeError('invalid-external-observation-'+key);
+      return value;
+    };
+    let sourceId:string,sourceClass:string,channel:string,independenceKey:string,expectedPostcondition:string,observedPostcondition:string,reason:string;
+    try {
+      sourceId=textValue(input.sourceId,'source-id',80,'unknown');
+      sourceClass=textValue(input.sourceClass,'source-class',32,'unknown');
+      channel=textValue(input.channel,'channel',32,'unknown');
+      independenceKey=textValue(input.independenceKey,'independence-key',120,'');
+      expectedPostcondition=textValue(input.expectedPostcondition,'expected-postcondition',16384,'');
+      observedPostcondition=textValue(input.observedPostcondition,'observed-postcondition',16384,'');
+      reason=textValue(input.reason,'reason',160,'');
+    } catch(error) {
+      return {resolved:false,reason:error instanceof Error?error.message:'observation-text-invalid'};
+    }
+    if((sourceId&&!isCanonicalCognitiveIdentifier(sourceId,80))||
+      (independenceKey&&!isCanonicalCognitiveIdentifier(independenceKey,120)))return {resolved:false,reason:'observation-identity-invalid'};
     const entry=this.receiptProjectionIndex.get(executionId);
     const byId=new Map(this.events.map(event=>[event.id,event] as const));
     const action=entry?byId.get(entry.actionEventId):this.events.find(event=>event.stage==='tool-action'&&event.payload.executionId===executionId);
     const outcome=entry?byId.get(entry.outcomeEventId):this.events.find(event=>event.stage==='tool-outcome'&&event.payload.executionId===executionId);
     if(!action||!outcome||action.stage!=='tool-action'||outcome.stage!=='tool-outcome'||!outcome.parentIds.includes(action.id))return {resolved:false,reason:'no-canonical-tool-receipt'};
-    if(String(action.payload.tool??'')!==toolId||String(outcome.payload.tool??'')!==toolId)return {resolved:false,reason:'execution-tool-mismatch'};
-    const expected=String(input.expectedPostcondition??'').normalize('NFKC').trim();
-    const observed=String(input.observedPostcondition??'').normalize('NFKC').trim();
-    const safePayload={executionId,toolId,observationId,verified:Boolean(input.verified),confidence01:clamp01(input.confidence01),sourceId:String(input.sourceId??'unknown').slice(0,80),sourceClass:String(input.sourceClass??'unknown').slice(0,32),channel:String(input.channel??'unknown').slice(0,32),independenceKey:String(input.independenceKey??'').slice(0,120),expectedPostconditionHash:expected?sha256Stable(expected):null,observedPostconditionHash:observed?sha256Stable(observed):null,expectedPostconditionPresent:Boolean(expected),observedPostconditionPresent:Boolean(observed),reason:String(input.reason??'').slice(0,160)};
+    if(typeof action.payload.tool!=='string'||typeof outcome.payload.tool!=='string'||
+      action.payload.tool!==toolId||outcome.payload.tool!==toolId)return {resolved:false,reason:'execution-tool-mismatch'};
+    const expected=expectedPostcondition.normalize('NFKC').trim();
+    const observed=observedPostcondition.normalize('NFKC').trim();
+    const safePayload={executionId,toolId,observationId,verified:input.verified,confidence01:input.confidence01,sourceId,sourceClass,channel,independenceKey,expectedPostconditionHash:expected?sha256Stable(expected):null,observedPostconditionHash:observed?sha256Stable(observed):null,expectedPostconditionPresent:Boolean(expected),observedPostconditionPresent:Boolean(observed),reason};
     const projectionHash=sha256Stable(safePayload);
     const refs=entry?.externalObservations??[];
     const prior=refs.find(ref=>ref.observationId===observationId);
@@ -1049,7 +1086,7 @@ export class CognitiveEventFabric {
       if(entry)this.receiptProjectionIndex.set(executionId,{...entry,externalObservations:[...refs,ref].slice(-32)});
       return {resolved:true,replayed:true,eventId};
     }
-    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+    const at=input.at===undefined?Date.now():input.at;
     const evidence=this.append({id:eventId,tick:input.tick,stage:'external-evidence',source:'external-observer-fabric',parentIds:[outcome.id],external:true,confidence01:clamp01(input.confidence01),at,payload:{...safePayload,projectionHash,receiptActionEventId:action.id,receiptOutcomeEventId:outcome.id,evidenceStatus:input.verified?'corroborated':expected&&observed&&expected!==observed?'contradicted':'unresolved'}});
     const ref={observationId,eventId:evidence.id,projectionHash,projectedAt:at};
     if(entry)this.receiptProjectionIndex.set(executionId,{...entry,externalObservations:[...refs,ref].slice(-32)});
