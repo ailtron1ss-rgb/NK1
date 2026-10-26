@@ -156,6 +156,12 @@ const validApproval = {
 };
 const signedActive = signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3);
 assert.equal(signedActive.version, 1);
+assert.throws(() => signedApprovalStore.rollback(approvalCandidate.candidateId, {
+  approvedBy: 'operator-key-1', approvedAt: Date.now(), expectedActiveVersion: 1,
+}), /rollback approval is not authenticated by the configured authority/,
+  'caller-supplied rollback identity and active-version fields cannot bypass the default-deny rollback authority');
+assert.equal(signedApprovalStore.snapshot().active.find(item => item.skillId === 'signed-approval-skill').version, 1,
+  'a rejected unauthenticated rollback must leave the currently active skill untouched');
 assert.equal(signedApprovalStore.snapshot().candidates[0].approval.artifact.payload.candidateId, approvalCandidate.candidateId);
 assert.throws(() => signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3),
   /must complete shadow staging/,
