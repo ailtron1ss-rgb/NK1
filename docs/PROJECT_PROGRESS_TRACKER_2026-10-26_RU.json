@@ -6,7 +6,7 @@
   "sourceBranchAtSnapshot": "fix/mega-cognitive-progress-tracking-2026-10-26-r3",
   "sourceHeadAtSnapshot": "621864d0d7f2676245383adab86f1dcc6d0f741f",
   "methodology": {
-    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. Last validated combined cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; all historical CI rows still refer exactly to that SHA. Current source base added WorkPass343 substrate-tick reconciliation; WorkPass344 adds mandatory metadata checking to final release verification. The first WorkPass344 run discovered an architecture-audit false positive from a source assertion string, corrected in 6cf87a07f28b208b809506925f4cbd6fb163636c. The latest combined exact-head CI is pending; scores are unchanged and historic PASS rows do not validate this new code. Release ZIP replacement, physical Android/Termux, browser/Live2D hardware E2E, extended soak and licensing remain open.",
+    "note": "Engineering estimates, not measured intelligence, consciousness, or production availability. The last validated cognitive/runtime head remains 621864d0d7f2676245383adab86f1dcc6d0f741f; all historical CI rows still point to that exact SHA. Current source includes WorkPass343 substrate-tick reconciliation. WorkPass344 adds a fail-closed metadata gate and tests, and separates the strict operator release verifier from an explicit CI-only mode that reports transient research-generated Python caches. The prior two integration runs correctly caught an architecture-scanner false positive and generated __pycache__; both fixes are present in 71176fa2275149a726a3aadeec827866d88a0cc0, but the final combined-head rerun is pending. Scores remain unchanged. The large release ZIP and physical device/hardware/soak/licensing gates remain open.",
     "dimensions": {
       "implementationPercent": "Estimated completeness of the implemented subsystem and its live runtime wiring.",
       "automatedValidationPercent": "Estimated coverage of relevant automated contracts/regressions. It is not the percentage of tests that passed on the current head.",
@@ -455,14 +455,14 @@
       "id": "WorkPass344",
       "date": "2026-10-26",
       "branch": "work/nk1-final-release-gate-2026-10-26-r3",
-      "summary": "Final release verifier requires release metadata validation; four fail-closed regressions, audit wiring and unified CI gate added.",
-      "codeCommit": "6cf87a07f28b208b809506925f4cbd6fb163636c",
-      "validationStatus": "Pending exact-head CI after architecture-audit false-positive correction.",
+      "summary": "Fail-closed final release metadata gate; six regressions; strict operator mode plus explicit CI-only transient Python cache allowance; architecture scanner false-positive correction.",
+      "codeCommit": "71176fa2275149a726a3aadeec827866d88a0cc0",
+      "validationStatus": "Pending exact-head CI after architecture/import-string and transient cache corrections.",
       "progressPercentagesChanged": false
     }
   ],
-  "latestUnverifiedCodeTestHead": "6cf87a07f28b208b809506925f4cbd6fb163636c",
-  "branchHeadBeforeTrackerCommit": "6cf87a07f28b208b809506925f4cbd6fb163636c",
+  "latestUnverifiedCodeTestHead": "71176fa2275149a726a3aadeec827866d88a0cc0",
+  "branchHeadBeforeTrackerCommit": "71176fa2275149a726a3aadeec827866d88a0cc0",
   "additionalChangesInCombinedHead": [
     {
       "id": "WorkPass339",
