@@ -1,3 +1,10 @@
+## Skill revision provenance optional-digest contract — 2026-10-26
+
+- Fixed a production guard mismatch in `VersionedSkillCandidateStore.stageCandidate()`: `evaluationFingerprint` is optional in `SkillRevisionProvenance`, so absence no longer rejects a valid lineage-only revision candidate.
+- A supplied digest must still be a lowercase 64-character SHA-256 hex value; malformed supplied values remain fail-closed.
+- Expanded `p23-versioned-skill-candidate-store.mjs` to cover both accepted omission across durable restart and rejection of a malformed explicit digest.
+- Triggered the existing lifecycle/metrics workflow through the updated source and regression. Validation must be read from the exact new head; the earlier run failed at this contract mismatch.
+
 ## P23 independent evaluator quality-signal correction — 2026-10-26
 
 - Fixed a metrics contract bug in `IndependentSkillCandidateEvaluator`: a valid sandbox execution was marked non-executable whenever the independent verifier failed, despite a separate task-success gate.
