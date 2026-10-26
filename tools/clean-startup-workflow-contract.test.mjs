@@ -20,24 +20,41 @@ const REQUIRED_PATHS = [
   'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs',
 ];
 
-function eventBlock(eventName) {
-  const header = new RegExp(`^  ${eventName}:\\s*$`, 'm').exec(WORKFLOW);
+function eventBlock(source, eventName) {
+  const header = new RegExp(`^  ${eventName}:\\\\s*$`, 'm').exec(source);
   assert.ok(header, `clean-startup workflow must declare ${eventName}`);
-  const rest = WORKFLOW.slice(header.index + header[0].length);
-  const nextEvent = /^  [A-Za-z_][\w-]*:\s*$/m.exec(rest);
+  const rest = source.slice(header.index + header[0].length);
+  const nextEvent = /^  [A-Za-z_][\\w-]*:\\s*$/m.exec(rest);
   return nextEvent ? rest.slice(0, nextEvent.index) : rest;
+}
+
+function assertEventCoverage(source, eventName) {
+  const block = eventBlock(source, eventName);
+  assert.ok(block.includes('paths:'), `${eventName} should retain path-based triggering`);
+  for (const path of REQUIRED_PATHS) {
+    assert.ok(block.includes(`- "${path}"`), `${eventName} paths must include ${path}`);
+  }
 }
 
 for (const eventName of ['pull_request', 'push']) {
   test(`clean-startup smoke covers all runtime launch dependencies on ${eventName}`, () => {
-    const block = eventBlock(eventName);
-    assert.ok(block.includes('paths:'), `${eventName} should retain path-based triggering`);
-    for (const path of REQUIRED_PATHS) {
-      assert.ok(block.includes(`- "${path}"`), `${eventName} paths must include ${path}`);
-    }
+    assertEventCoverage(WORKFLOW, eventName);
   });
 }
 
+test('the pull_request contract fails if a required path only remains in push', () => {
+  const requiredEntry = '      - "tools/supervisor-preflight.mjs"';
+  const index = WORKFLOW.indexOf(requiredEntry);
+  assert.notEqual(index, -1, 'fixture must include the pull_request entry before mutation');
+  const withoutPullRequestEntry = WORKFLOW.slice(0, index) + WORKFLOW.slice(index + requiredEntry.length);
+  assert.throws(
+    () => assertEventCoverage(withoutPullRequestEntry, 'pull_request'),
+    error => error instanceof Error && error.message.includes('pull_request paths must include tools/supervisor-preflight.mjs'),
+    'the pull_request block must not borrow coverage from the push block',
+  );
+  assert.doesNotThrow(() => assertEventCoverage(withoutPullRequestEntry, 'push'));
+});
+
 test('clean-startup smoke remains manually runnable', () => {
-  assert.match(WORKFLOW, /^  workflow_dispatch:\s*$/m);
+  assert.match(WORKFLOW, /^  workflow_dispatch:\\s*$/m);
 });
