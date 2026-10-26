@@ -10,36 +10,109 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export type P65Kind='observation'|'inference'|'belief'|'prediction'|'counterfactual';
 export interface P65Claim {id:string;eventId?:string;tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;resolved:boolean;parentIds:string[];predicted01?:number;actual01?:number;error01?:number;lastSupportedAt:number;supportCount:number;status:'active'|'stale'|'expired'|'resolved';}
 export interface P65EventIdentityIndexEntry {eventId:string;claimId:string;fingerprint:string;}
-export interface P65State {version:2;claims:number;observations:number;inferences:number;beliefs:number;predictions:number;counterfactuals:number;resolvedPredictions:number;meanConfidence01:number;meanPredictionError01:number;unresolved:number;claimsData:P65Claim[];recentIds:string[];eventIdentityIndex?:P65EventIdentityIndexEntry[];beliefHalfLifeMs:number;expiredBeliefs:number;staleBeliefs:number;}
-export const defaultP65=():P65State=>({version:2,claims:0,observations:0,inferences:0,beliefs:0,predictions:0,counterfactuals:0,resolvedPredictions:0,meanConfidence01:.5,meanPredictionError01:.5,unresolved:0,claimsData:[],recentIds:[],beliefHalfLifeMs:7*24*60*60*1000,expiredBeliefs:0,staleBeliefs:0});
+export interface P65State {version:2;claims:number;observations:number;inferences:number;beliefs:number;predictions:number;counterfactuals:number;resolvedPredictions:number;meanConfidence01:number;meanPredictionError01:number;unresolved:number;claimsData:P65Claim[];recentIds:string[];eventIdentityIndex?:P65EventIdentityIndexEntry[];quarantinedEventIds?:string[];beliefHalfLifeMs:number;expiredBeliefs:number;staleBeliefs:number;}
+export const defaultP65=():P65State=>({version:2,claims:0,observations:0,inferences:0,beliefs:0,predictions:0,counterfactuals:0,resolvedPredictions:0,meanConfidence01:.5,meanPredictionError01:.5,unresolved:0,claimsData:[],recentIds:[],quarantinedEventIds:[],beliefHalfLifeMs:7*24*60*60*1000,expiredBeliefs:0,staleBeliefs:0});
 const sourceTrust=(source:string):number=>{ const s=String(source||'unknown').toLowerCase(); if(s==='os'||s==='android'||s==='termux') return .82; if(s==='device'||s==='sensor') return .76; if(s==='user') return .68; if(s==='external-api'||s==='web') return .84; if(s==='world') return .55; if(s==='simulated-world-environment') return .20; if(s==='organism') return .28; return .45; };
 function stableId(tick:number,kind:P65Kind,content:string,source:string){let h=2166136261>>>0;for(const c of `${tick}|${kind}|${source}|${content.slice(0,220)}`)h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;return `p65:${tick}:${kind}:${h.toString(16)}`;}
 const validEventId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&value.normalize('NFKC')===value&&!Array.from(value).some((character)=>{const code=character.charCodeAt(0);return code<=0x1f||(code>=0x7f&&code<=0x9f);});
 function eventFingerprint(value:unknown):string{return createHash('sha256').update(JSON.stringify(value)??'undefined').digest('hex');}
+function claimIdentityPayload(claim:P65Claim){
+ return {
+  tick:claim.tick,
+  kind:claim.kind,
+  content:String(claim.content??'').slice(0,320),
+  confidence01:clamp(claim.confidence01),
+  source:String(claim.source||'unknown'),
+  parentIds:Array.isArray(claim.parentIds)?claim.parentIds.slice(0,8):[],
+  predicted01:claim.kind==='prediction'?clamp(claim.predicted01??claim.confidence01):undefined,
+ };
+}
 export class P65EpistemicLedger{
  private state=defaultP65();
+ private readonly quarantinedEventIds=new Set<string>();
+ private quarantineEventId(eventId:string){
+  this.quarantinedEventIds.add(eventId);
+  while(this.quarantinedEventIds.size>512){
+   const oldest=this.quarantinedEventIds.values().next().value;
+   if(typeof oldest!=='string')break;
+   this.quarantinedEventIds.delete(oldest);
+  }
+  this.state.claimsData=this.state.claimsData.filter(claim=>claim.eventId!==eventId);
+  this.state.eventIdentityIndex=(this.state.eventIdentityIndex??[]).filter(entry=>entry.eventId!==eventId);
+  this.state.quarantinedEventIds=[...this.quarantinedEventIds];
+ }
  restore(raw?:Partial<P65State>|null){
   const d=defaultP65(),r=raw??{};
+  this.quarantinedEventIds.clear();
+  if(Array.isArray(r.quarantinedEventIds))for(const eventId of r.quarantinedEventIds.slice(-512)){
+   if(validEventId(eventId))this.quarantinedEventIds.add(eventId);
+  }
   const claimsData:Array<P65Claim>=Array.isArray(r.claimsData)?r.claimsData.slice(-256).map((c:any)=>{
-    const eventId=validEventId(c?.eventId)?c.eventId:undefined;
-    const claim:any={...c,predicted01:c.predicted01 ?? (c.kind==='prediction'?c.confidence01:undefined),lastSupportedAt:Number(c.lastSupportedAt??c.at??Date.now()),supportCount:Number(c.supportCount??1),status:c.status??(c.resolved?'resolved':'active')};
-    if(eventId)claim.eventId=eventId;else delete claim.eventId;
-    return claim as P65Claim;
+   const eventId=validEventId(c?.eventId)?c.eventId:undefined;
+   const claim:any={...c,predicted01:c.predicted01 ?? (c.kind==='prediction'?c.confidence01:undefined),lastSupportedAt:Number(c.lastSupportedAt??c.at??Date.now()),supportCount:Number(c.supportCount??1),status:c.status??(c.resolved?'resolved':'active')};
+   if(eventId)claim.eventId=eventId;else delete claim.eventId;
+   return claim as P65Claim;
   }):[];
+  const indexCandidates:P65EventIdentityIndexEntry[]=[];
+  if(Array.isArray(r.eventIdentityIndex))for(const entry of r.eventIdentityIndex.slice(0,512) as P65EventIdentityIndexEntry[]){
+   if(!entry||!validEventId(entry.eventId)||typeof entry.claimId!=='string'||!entry.claimId.trim()||entry.claimId.length>256||!/^[a-f0-9]{64}$/.test(String(entry.fingerprint??'')))continue;
+   indexCandidates.push({eventId:entry.eventId,claimId:entry.claimId,fingerprint:entry.fingerprint});
+  }
+  const conflicted=new Set<string>();
+  const claimGroups=new Map<string,P65Claim[]>();
+  for(const claim of claimsData){
+   if(!claim.eventId)continue;
+   const group=claimGroups.get(claim.eventId)??[];
+   group.push(claim);claimGroups.set(claim.eventId,group);
+  }
+  for(const [eventId,group] of claimGroups){
+   const identities=new Set(group.map(claim=>JSON.stringify({claimId:claim.id,fingerprint:eventFingerprint(claimIdentityPayload(claim))})));
+   if(identities.size>1)conflicted.add(eventId);
+  }
+  const indexGroups=new Map<string,P65EventIdentityIndexEntry[]>();
+  for(const entry of indexCandidates){
+   const group=indexGroups.get(entry.eventId)??[];
+   group.push(entry);indexGroups.set(entry.eventId,group);
+  }
+  for(const [eventId,group] of indexGroups){
+   const identities=new Set(group.map(entry=>JSON.stringify({claimId:entry.claimId,fingerprint:entry.fingerprint})));
+   if(identities.size>1)conflicted.add(eventId);
+  }
+  const claimsById=new Map<string,P65Claim[]>();
+  for(const claim of claimsData){
+   const group=claimsById.get(claim.id)??[];
+   group.push(claim);claimsById.set(claim.id,group);
+  }
+  for(const entry of indexCandidates){
+   for(const claim of claimsById.get(entry.claimId)??[]){
+    if(claim.eventId!==entry.eventId||eventFingerprint(claimIdentityPayload(claim))!==entry.fingerprint){
+     conflicted.add(entry.eventId);
+     if(claim.eventId)conflicted.add(claim.eventId);
+    }
+   }
+  }
+  for(const eventId of conflicted)this.quarantinedEventIds.add(eventId);
+  while(this.quarantinedEventIds.size>512){
+   const oldest=this.quarantinedEventIds.values().next().value;
+   if(typeof oldest!=='string')break;
+   this.quarantinedEventIds.delete(oldest);
+  }
+  const acceptedClaims=claimsData.filter(claim=>!claim.eventId||!this.quarantinedEventIds.has(claim.eventId));
   const eventIdentityIndex:P65EventIdentityIndexEntry[]=[];
   const seenEvents=new Set<string>();
-  if(Array.isArray(r.eventIdentityIndex))for(const entry of r.eventIdentityIndex.slice(-512) as P65EventIdentityIndexEntry[]){
-    if(!entry||!validEventId(entry.eventId)||typeof entry.claimId!=='string'||!entry.claimId.trim()||entry.claimId.length>256||!/^[a-f0-9]{64}$/.test(String(entry.fingerprint??''))||seenEvents.has(entry.eventId))continue;
-    eventIdentityIndex.push({eventId:entry.eventId,claimId:entry.claimId,fingerprint:entry.fingerprint});
-    seenEvents.add(entry.eventId);
+  for(const entry of indexCandidates){
+   if(this.quarantinedEventIds.has(entry.eventId)||seenEvents.has(entry.eventId))continue;
+   eventIdentityIndex.push(entry);
+   seenEvents.add(entry.eventId);
   }
-  for(const claim of claimsData){
-    if(!claim.eventId||seenEvents.has(claim.eventId))continue;
-    const payload={tick:claim.tick,kind:claim.kind,content:claim.content,confidence01:clamp(claim.confidence01),source:String(claim.source||'unknown'),parentIds:(claim.parentIds??[]).slice(0,8),predicted01:claim.kind==='prediction'?clamp(claim.predicted01??claim.confidence01):undefined};
-    eventIdentityIndex.unshift({eventId:claim.eventId,claimId:claim.id,fingerprint:eventFingerprint(payload)});
-    seenEvents.add(claim.eventId);
+  // Backward-compatible seeding for retained claims in snapshots created before the
+  // event index. Do not allow a quarantined ID to be reintroduced through this path.
+  for(const claim of acceptedClaims){
+   if(!claim.eventId||this.quarantinedEventIds.has(claim.eventId)||seenEvents.has(claim.eventId))continue;
+   eventIdentityIndex.unshift({eventId:claim.eventId,claimId:claim.id,fingerprint:eventFingerprint(claimIdentityPayload(claim))});
+   seenEvents.add(claim.eventId);
   }
-  const next:any={...d,...r,version:2,claimsData,recentIds:Array.isArray(r.recentIds)?r.recentIds.slice(-512):[]};
+  const next:any={...d,...r,version:2,claimsData:acceptedClaims,recentIds:Array.isArray(r.recentIds)?r.recentIds.slice(-512):[],quarantinedEventIds:[...this.quarantinedEventIds]};
   if(eventIdentityIndex.length)next.eventIdentityIndex=eventIdentityIndex.slice(0,512);else delete next.eventIdentityIndex;
   this.state=next;
  }
@@ -60,12 +133,16 @@ export class P65EpistemicLedger{
   const predicted01=input.kind==='prediction'?clamp(input.predicted01 ?? input.confidence01):undefined;
   const eventId=input.eventId;
   if(eventId!==undefined&&!validEventId(eventId))throw new TypeError('p65-event-identity-invalid');
+  if(eventId&&this.quarantinedEventIds.has(eventId))throw new TypeError('p65-event-identity-quarantined');
   const identityPayload={tick:input.tick,kind:input.kind,content,confidence01,source,parentIds,predicted01};
   const fingerprint=eventFingerprint(identityPayload);
   if(eventId){
     const prior=this.state.eventIdentityIndex?.find(row=>row.eventId===eventId);
     if(prior){
-      if(prior.fingerprint!==fingerprint)throw new TypeError('p65-event-identity-conflict');
+      if(prior.fingerprint!==fingerprint){
+        this.quarantineEventId(eventId);
+        throw new TypeError('p65-event-identity-conflict');
+      }
       return prior.claimId;
     }
   }

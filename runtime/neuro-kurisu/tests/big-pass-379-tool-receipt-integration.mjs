@@ -252,7 +252,7 @@ test('OrganismCore projects a keyed tool receipt into the persisted causal fabri
     'gateway replay cannot add another epistemic claim');
 });
 
-test('P65 event identity survives restore, ignores processing time and rejects changed payloads', () => {
+test('P65 event identity survives restore and ignores processing time', () => {
   const ledger = new P65EpistemicLedger();
   const eventId = realityEvidenceEventId('exec-p65-event-identity-517', 'tool-outcome', 'canonical');
   const input = {
@@ -261,10 +261,38 @@ test('P65 event identity survives restore, ignores processing time and rejects c
   };
   const first = ledger.record(input);
   assert.equal(ledger.record({ ...input, at: input.at + 5000 }), first);
-  assert.throws(() => ledger.record({ ...input, content: input.content + ':changed' }), /p65-event-identity-conflict/);
   const restored = new P65EpistemicLedger();
   restored.restore(ledger.snapshot());
   assert.equal(restored.record({ ...input, at: input.at + 6000 }), first);
   assert.throws(() => restored.record({ ...input, confidence01: 0.99 }), /p65-event-identity-conflict/);
   assert.throws(() => ledger.record({ ...input, eventId: 'bad\nid' }), /p65-event-identity-invalid/);
+});
+
+test('P65 fails closed when an event identity is reused with conflicting evidence', () => {
+  const eventId = realityEvidenceEventId('exec-p65-quarantine-518', 'tool-outcome', 'canonical');
+  const input = {
+    tick: 18, at: 1800000000000, kind: 'inference', content: `outcome:${eventId}:success`,
+    confidence01: 0.51, source: 'organism', parentIds: ['cef:outcome:518'], eventId,
+  };
+  const ledger = new P65EpistemicLedger();
+  const first = ledger.record(input);
+  assert.ok(ledger.snapshot().claimsData.some(claim => claim.id === first));
+  assert.throws(() => ledger.record({ ...input, content: input.content + ':conflict' }), /p65-event-identity-conflict/);
+  assert.ok(ledger.snapshot().quarantinedEventIds.includes(eventId));
+  assert.equal(ledger.snapshot().claimsData.some(claim => claim.eventId === eventId), false);
+  assert.throws(() => ledger.record(input), /p65-event-identity-quarantined/);
+  const restored = new P65EpistemicLedger();
+  restored.restore(ledger.snapshot());
+  assert.throws(() => restored.record(input), /p65-event-identity-quarantined/);
+
+  const corruptedSource = new P65EpistemicLedger();
+  corruptedSource.record(input);
+  const corruptedSnapshot = corruptedSource.snapshot();
+  corruptedSnapshot.claimsData[0].content += ':tampered';
+  const corruptedRestore = new P65EpistemicLedger();
+  corruptedRestore.restore(corruptedSnapshot);
+  assert.ok(corruptedRestore.snapshot().quarantinedEventIds.includes(eventId),
+    'restore must quarantine an event when its retained claim disagrees with the persisted identity index');
+  assert.equal(corruptedRestore.snapshot().claimsData.some(claim => claim.eventId === eventId), false);
+  assert.throws(() => corruptedRestore.record(input), /p65-event-identity-quarantined/);
 });

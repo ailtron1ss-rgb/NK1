@@ -1,3 +1,11 @@
+## NK1 [evidence] — quarantine conflicting P65 event identities (2026-10-26)
+
+- P65 now quarantines an upstream event ID when its semantic payload is rebound, removes that event's claim from active retained claims, and persists the quarantine across restore/restart.
+- Restore detects duplicate event IDs with conflicting claim fingerprints or disagreement between the persisted identity index and its retained claim, rather than silently trusting the first row.
+- Added runtime-conflict and corrupted-snapshot regressions. Exact event replays across different processing times remain idempotent.
+
+---
+
 ## NK1 [validation] — run typed-runtime integration test in transform mode (2026-10-26)
 
 - Corrected the new cross-ledger CI step to use Node.js 24's `--experimental-transform-types --experimental-strip-types` flags; the test imports the canonical OrganismCore graph, which includes TypeScript parameter properties unsupported by strip-only mode.
