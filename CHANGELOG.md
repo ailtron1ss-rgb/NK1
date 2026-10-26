@@ -1,3 +1,11 @@
+## NK1 P23 persistence hardening — reject accessor-backed learning snapshots (2026-10-26)
+
+- Added a bounded recursive data-tree validation step before `P23LearningEngine.restore()` reads persisted state. It rejects getters/setters, exotic prototypes, cyclic/aliased object graphs, sparse/custom arrays, symbols, and over-budget/deep structures before assigning learner state.
+- Added top-level and nested accessor regressions that assert restore rejects the input and leaves the current learner snapshot unchanged. Ordinary persisted JSON data remains the intended input; no dependency was added.
+- This is defensive integrity hardening, not a claim of better learned performance. Focused and broader CI need to validate the exact latest commit.
+
+---
+
 ## NK1 P26 verification — compare transfer metrics with numeric tolerance (2026-10-26)
 
 - Fixed a brittle regression assertion in `p26-continual-transfer-tracker.mjs`: the computed `0.35 - 0.2` can be represented as `0.14999999999999997`, so the test now uses a strict `1e-12` absolute tolerance like the neighboring transfer-metric assertions.
