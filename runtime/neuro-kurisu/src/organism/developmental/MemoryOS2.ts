@@ -52,13 +52,167 @@ independenceKey?: string;
 evidenceFreshnessAt?: number;
 /** Bounded independent provenance trail; canonical MemoryOS2 remains the sole writable owner. */
 evidenceSources?:MemoryEvidenceSource[];
-/** Compact replay guard for lineages trimmed from the visible eight-source trail. */
+/** Compact replay guard for lineages trimmed from the visible evidence trail. */
 evidenceLineageKeys?:string[];
+/** Bounded probabilistic replay guard activated only once the exact ring fills. */
+evidenceLineageFilter?:MemoryEvidenceLineageFilter;
+/** Last 64 full evidence envelopes support conflict detection; older identities fail closed via the lineage filter. */
+evidenceRecords?:MemoryEvidenceRecord[];
 dormant:boolean;
 retrievalCount:number;
 semanticVector:number[];
 residencyTier?: MemoryResidencyTier;
 }
+export type MemoryEvidenceStance = 'supports' | 'contradicts' | 'contextualizes';
+export interface MemoryEvidenceRecord {
+ evidenceId: string;
+ digest: string;
+ stance: MemoryEvidenceStance;
+ sourceKind: string;
+ sourceRef: string;
+ label?: string;
+ author?: string;
+ note?: string;
+ confidence01: number;
+ observedAt: number;
+ protectedMemory: boolean;
+}
+function normalizeMemoryEvidenceRecords(raw: unknown): MemoryEvidenceRecord[] {
+ if (!Array.isArray(raw)) return [];
+ const byId = new Map<string, MemoryEvidenceRecord>();
+ const conflicted = new Set<string>();
+ for (const candidate of raw.slice(-64)) {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+  const row = candidate as Record<string, unknown>;
+  const evidenceId = typeof row.evidenceId === 'string' ? row.evidenceId : '';
+  const digest = typeof row.digest === 'string' ? row.digest : '';
+  const stance = row.stance;
+  const sourceKind = typeof row.sourceKind === 'string' ? row.sourceKind : '';
+  const sourceRef = typeof row.sourceRef === 'string' ? row.sourceRef : '';
+  const confidence01 = row.confidence01;
+  const observedAt = row.observedAt;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,191}$/.test(evidenceId) ||
+      !/^[a-f0-9]{64}$/i.test(digest) ||
+      (stance !== 'supports' && stance !== 'contradicts' && stance !== 'contextualizes') ||
+      !sourceKind.trim() || sourceKind.length > 96 || !sourceRef.trim() || sourceRef.length > 512 ||
+      typeof confidence01 !== 'number' || !Number.isFinite(confidence01) || confidence01 < 0 || confidence01 > 1 ||
+      typeof observedAt !== 'number' || !Number.isFinite(observedAt) || observedAt < 0 ||
+      row.protectedMemory !== false) continue;
+  const prior = byId.get(evidenceId);
+  if (prior && prior.digest !== digest) {
+   byId.delete(evidenceId);
+   conflicted.add(evidenceId);
+   continue;
+  }
+  if (conflicted.has(evidenceId)) continue;
+  const optional = (key: string, max: number): string | undefined => {
+   const value = row[key];
+   return typeof value === 'string' && value.trim() && value.length <= max ? value : undefined;
+  };
+  byId.set(evidenceId, {
+   evidenceId, digest, stance, sourceKind, sourceRef,
+   ...(optional('label', 256) ? { label: optional('label', 256) } : {}),
+   ...(optional('author', 256) ? { author: optional('author', 256) } : {}),
+   ...(optional('note', 2048) ? { note: optional('note', 2048) } : {}),
+   confidence01, observedAt, protectedMemory: false,
+  });
+ }
+ return [...byId.values()].slice(-64);
+}
+type MemoryEvidenceLineageBloomSegment = { bits: string; inserted: number };
+type MemoryEvidenceLineageFilter = { version: 1; segments: MemoryEvidenceLineageBloomSegment[]; saturated: boolean };
+const EVIDENCE_LINEAGE_BLOOM_BITS = 8192;
+const EVIDENCE_LINEAGE_BLOOM_HASHES = 4;
+const EVIDENCE_LINEAGE_BLOOM_SEGMENT_CAPACITY = 128;
+const EVIDENCE_LINEAGE_BLOOM_MAX_SEGMENTS = 128;
+const EVIDENCE_LINEAGE_BLOOM_HEX_LENGTH = EVIDENCE_LINEAGE_BLOOM_BITS / 4;
+const EVIDENCE_LINEAGE_BLOOM_HEX = '0123456789abcdef';
+const emptyEvidenceLineageFilter = (): MemoryEvidenceLineageFilter => ({ version: 1, segments: [], saturated: false });
+
+function evidenceLineageBloomHashes(value: string): [number, number] {
+ const key = String(value).normalize('NFKC').toLocaleLowerCase();
+ let first = 0x811c9dc5;
+ let second = 0x9e3779b9;
+ for (let index = 0; index < key.length; index++) {
+  const code = key.charCodeAt(index);
+  first = Math.imul(first ^ code, 0x01000193);
+  second = Math.imul(second ^ (code + index + 1), 0x85ebca6b);
+  second ^= second >>> 13;
+ }
+ const step = ((second >>> 0) | 1) >>> 0;
+ return [first >>> 0, step];
+}
+
+function evidenceLineageBloomPositions(value: string): number[] {
+ const [first, step] = evidenceLineageBloomHashes(value);
+ return Array.from({ length: EVIDENCE_LINEAGE_BLOOM_HASHES }, (_, index) =>
+  ((first + Math.imul(index, step)) >>> 0) % EVIDENCE_LINEAGE_BLOOM_BITS);
+}
+
+function evidenceLineageBloomSegmentHas(segment: MemoryEvidenceLineageBloomSegment, value: string): boolean {
+ return evidenceLineageBloomPositions(value).every((position) => {
+  const nibble = Number.parseInt(segment.bits[Math.floor(position / 4)] ?? '0', 16);
+  return (nibble & (1 << (position % 4))) !== 0;
+ });
+}
+
+function evidenceLineageBloomMayContain(filter: MemoryEvidenceLineageFilter | undefined, value: string): boolean {
+ if (!filter) return false;
+ if (filter.saturated) return true;
+ return filter.segments.some((segment) => evidenceLineageBloomSegmentHas(segment, value));
+}
+
+function addEvidenceLineageBloomKey(filter: MemoryEvidenceLineageFilter, value: string): MemoryEvidenceLineageFilter {
+ if (!value || filter.saturated || evidenceLineageBloomMayContain(filter, value)) return filter;
+ let segment = filter.segments[filter.segments.length - 1];
+ if (!segment || segment.inserted >= EVIDENCE_LINEAGE_BLOOM_SEGMENT_CAPACITY) {
+  if (filter.segments.length >= EVIDENCE_LINEAGE_BLOOM_MAX_SEGMENTS) {
+   filter.saturated = true;
+   return filter;
+  }
+  segment = { bits: '0'.repeat(EVIDENCE_LINEAGE_BLOOM_HEX_LENGTH), inserted: 0 };
+  filter.segments.push(segment);
+ }
+ const bits = segment.bits.split('');
+ for (const position of evidenceLineageBloomPositions(value)) {
+  const nibbleIndex = Math.floor(position / 4);
+  const current = Number.parseInt(bits[nibbleIndex] ?? '0', 16);
+  bits[nibbleIndex] = EVIDENCE_LINEAGE_BLOOM_HEX[current | (1 << (position % 4))] ?? 'f';
+ }
+ segment.bits = bits.join('');
+ segment.inserted += 1;
+ return filter;
+}
+
+function normalizeEvidenceLineageFilter(raw: unknown, seedKeys: string[] = []): MemoryEvidenceLineageFilter {
+ let filter = emptyEvidenceLineageFilter();
+ if (raw !== undefined && raw !== null) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) || (raw as any).version !== 1 || !Array.isArray((raw as any).segments)) {
+   filter.saturated = true;
+  } else {
+   const source = raw as any;
+   const segments = source.segments as any[];
+   if (segments.length > EVIDENCE_LINEAGE_BLOOM_MAX_SEGMENTS) filter.saturated = true;
+   const normalized: MemoryEvidenceLineageBloomSegment[] = [];
+   for (const item of segments.slice(0, EVIDENCE_LINEAGE_BLOOM_MAX_SEGMENTS)) {
+    if (!item || typeof item.bits !== 'string' || item.bits.length !== EVIDENCE_LINEAGE_BLOOM_HEX_LENGTH ||
+        !/^[0-9a-f]+$/i.test(item.bits) || !Number.isSafeInteger(item.inserted) ||
+        item.inserted < 0 || item.inserted > EVIDENCE_LINEAGE_BLOOM_SEGMENT_CAPACITY) {
+     filter.saturated = true;
+     break;
+    }
+    normalized.push({ bits: item.bits.toLocaleLowerCase(), inserted: item.inserted });
+   }
+   filter.segments = normalized;
+   if (source.saturated === true) filter.saturated = true;
+  }
+ }
+ for (const key of seedKeys) {
+  if (typeof key === 'string' && key) filter = addEvidenceLineageBloomKey(filter, key);
+ }
+ return filter;
+}
+
 export type MemoryQueryIntent='episodic'|'procedural'|'identity'|'goal'|'causal'|'factual'|'general';
 /** Lightweight bilingual intent detection; type preference supplements, never replaces, evidence ranking. */
 export function detectMemoryQueryIntent(query:string):MemoryQueryIntent{
@@ -558,6 +712,10 @@ export class MemoryOS2{
     evidenceFreshnessAt:Number.isFinite(Number(m?.evidenceFreshnessAt))?Number(m.evidenceFreshnessAt):Number(m?.observedAt??m?.createdAt??Date.now()),
     evidenceSources:this.normalizeEvidenceSources(m),
     evidenceLineageKeys:[...new Set([...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row))])].slice(-32),
+    evidenceLineageFilter:(m?.evidenceLineageFilter!=null||(Array.isArray(m?.evidenceLineageKeys)&&m.evidenceLineageKeys.length>=32))
+     ? normalizeEvidenceLineageFilter(m?.evidenceLineageFilter,[...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row)),...(Array.isArray(m?.evidenceRecords)?m.evidenceRecords.filter((row:any)=>row&&typeof row.evidenceId==='string').map((row:any)=>this.evidenceIdKey(row.evidenceId)):[])])
+     : undefined,
+    evidenceRecords:normalizeMemoryEvidenceRecords(m?.evidenceRecords),
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
   }))};
@@ -589,6 +747,21 @@ export class MemoryOS2{
   const independent=String(evidence.independenceKey??'').trim().normalize('NFKC').toLocaleLowerCase();
   if(independent)return `lineage:${independent}`;
   return `source:${String(evidence.provenanceClass)}:${String(evidence.source??'').trim().normalize('NFKC').toLocaleLowerCase()}`;
+ }
+ private evidenceIdKey(evidenceId:string){return `evidence-id:${String(evidenceId).trim().normalize('NFKC').toLocaleLowerCase()}`;}
+ private hasEvidenceKey(item:MemoryItem2,key:string,knownSources?:MemoryEvidenceSource[]):boolean{
+  if(Array.isArray(item.evidenceLineageKeys)&&item.evidenceLineageKeys.includes(key))return true;
+  if(evidenceLineageBloomMayContain(item.evidenceLineageFilter,key))return true;
+  return (knownSources??this.normalizeEvidenceSources(item)).some(row=>this.evidenceKey(row)===key);
+ }
+ private rememberEvidenceKey(item:MemoryItem2,key:string){
+  const priorKeys=Array.isArray(item.evidenceLineageKeys)?item.evidenceLineageKeys:[];
+  if(!item.evidenceLineageFilter&&priorKeys.length>=31){
+   const seed=[...new Set([...priorKeys,...this.normalizeEvidenceSources(item).map(row=>this.evidenceKey(row)),...(item.evidenceRecords??[]).map(row=>this.evidenceIdKey(row.evidenceId))])];
+   item.evidenceLineageFilter=normalizeEvidenceLineageFilter(undefined,seed);
+  }
+  if(item.evidenceLineageFilter)item.evidenceLineageFilter=addEvidenceLineageBloomKey(item.evidenceLineageFilter,key);
+  item.evidenceLineageKeys=[...new Set([...priorKeys,key])].slice(-32);
  }
  private normalizeEvidenceSources(item:any):MemoryEvidenceSource[]{
   const source=String(item?.source??'unknown').slice(0,240)||'unknown';
@@ -1300,6 +1473,76 @@ export class MemoryOS2{
   const errors=totalErrors;
   const warnings=totalWarnings;
   return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1},indexes:index};
+ }
+ hasEvidenceId(id:string,evidenceId:string):boolean{
+  const item=this.itemIndex.get(String(id));
+  const clean=String(evidenceId??'').trim().normalize('NFKC');
+  if(!item||!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,191}$/.test(clean))return false;
+  return this.hasEvidenceKey(item,this.evidenceIdKey(clean));
+ }
+ /**
+  * Commits a canonical evidence envelope without revising the memory's belief
+  * confidence. Policy/evaluator code remains the only authority allowed to
+  * interpret support/contradiction as a belief update.
+  */
+ recordEvidence(id:string,input:{
+  evidenceId:string; digest:string; stance:MemoryEvidenceStance; sourceKind:string; sourceRef:string;
+  label?:string; author?:string; note?:string; confidence01:number; observedAt:number; protectedMemory?:boolean;
+  provenanceClass?:MemoryProvenanceClass; sourceAuthority01?:number; independenceKey:string;
+ }){
+  const memoryId=String(id??'');
+  const item=this.itemIndex.get(memoryId);
+  if(!item)return {ok:false as const,added:false as const,reason:'memory-not-found' as const,memoryId,independentSources:0};
+  const evidenceId=typeof input?.evidenceId==='string'?input.evidenceId:'';
+  const digest=typeof input?.digest==='string'?input.digest:'';
+  const sourceKind=typeof input?.sourceKind==='string'?input.sourceKind:'';
+  const sourceRef=typeof input?.sourceRef==='string'?input.sourceRef:'';
+  const independenceKey=typeof input?.independenceKey==='string'?input.independenceKey:'';
+  const stance=input?.stance;
+  const observedAt=input?.observedAt;
+  const confidence01=input?.confidence01;
+  const optionalText=(value:unknown,max:number)=>typeof value==='string'&&value.trim()===value&&value.length>0&&value.length<=max&&!/[\\u0000-\\u001f\\u007f]/.test(value)?value:undefined;
+  if(!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,191}$/.test(evidenceId)||!/^[a-f0-9]{64}$/i.test(digest)||
+    (stance!=='supports'&&stance!=='contradicts'&&stance!=='contextualizes')||
+    !optionalText(sourceKind,96)||!optionalText(sourceRef,512)||!optionalText(independenceKey,96)||
+    typeof confidence01!=='number'||!Number.isFinite(confidence01)||confidence01<0||confidence01>1||
+    typeof observedAt!=='number'||!Number.isFinite(observedAt)||observedAt<0||
+    (input.protectedMemory!==undefined&&typeof input.protectedMemory!=='boolean')||input.protectedMemory===true){
+   return {ok:false as const,added:false as const,reason:input?.protectedMemory===true?'protected-memory-review-required' as const:'invalid-evidence-record' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  }
+  for(const [value,max] of [[input.label,256],[input.author,256],[input.note,2048]] as Array<[unknown,number]>){
+   if(value!==undefined&&!optionalText(value,max))return {ok:false as const,added:false as const,reason:'invalid-evidence-metadata' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  }
+  const records=Array.isArray(item.evidenceRecords)?item.evidenceRecords:[];
+  const previous=records.find(row=>row.evidenceId===evidenceId);
+  if(previous){
+   if(previous.digest!==digest)return {ok:false as const,added:false as const,reason:'evidence-id-conflict' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+   return {ok:true as const,added:false as const,reason:'duplicate-evidence' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  }
+  const evidenceKey=this.evidenceIdKey(evidenceId);
+  if(this.hasEvidenceKey(item,evidenceKey))return {ok:true as const,added:false as const,reason:'duplicate-retired-evidence' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
+  const now=Date.now();
+  const source=String(input.sourceKind)+':'+String(sourceRef);
+  const provenanceClass=this.provenanceClassFor(source,input.provenanceClass);
+  const sourceAuthority01=typeof input.sourceAuthority01==='number'&&Number.isFinite(input.sourceAuthority01)&&input.sourceAuthority01>=0&&input.sourceAuthority01<=1?input.sourceAuthority01:this.sourceAuthorityDefault(provenanceClass);
+  const freshnessRecord:MemoryEvidenceSource={
+   source:source.slice(0,240),provenanceClass,sourceAuthority01,
+   independenceKey:independenceKey.trim().normalize('NFKC').slice(0,96),
+   observedAt,evidenceFreshnessAt:observedAt,
+  };
+  const previousSources=this.normalizeEvidenceSources(item);
+  const before=estimateMemoryBytes(item);
+  item.evidenceSources=this.normalizeEvidenceSources({...item,evidenceSources:[...previousSources,freshnessRecord]});
+  item.evidenceRecords=[...records,{evidenceId,digest: digest.toLowerCase(),stance,sourceKind,sourceRef,
+   ...(input.label!==undefined?{label:input.label}:{}),...(input.author!==undefined?{author:input.author}:{}),
+   ...(input.note!==undefined?{note:input.note}:{}),confidence01,observedAt,protectedMemory:false}].slice(-64);
+  this.rememberEvidenceKey(item,evidenceKey);
+  this.rememberEvidenceKey(item,this.evidenceKey(freshnessRecord));
+  item.lastAccessAt=Math.max(Number(item.lastAccessAt??0),observedAt);
+  item.temperature01=memoryTemperature(item,now);
+  this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(item));
+  this.state.reconsolidations++;
+  return {ok:true as const,added:true as const,reason:'added' as const,memoryId:item.id,independentSources:this.normalizeEvidenceSources(item).length};
  }
  evidenceTrail(id:string){
   const item=this.itemIndex.get(String(id));if(!item)return null;
