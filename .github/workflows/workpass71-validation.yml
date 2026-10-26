@@ -114,6 +114,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:hexis-projector-idempotent-replay
       - name: Hexis HMX canonical-memory capacity preflight
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/hexis-hmx-capacity-preflight.mjs
+      - name: Hexis HMX aggregate retained staging budget
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/hexis-hmx-retained-stage-budget.mjs
       - name: Hexis HMX temporal validity boundaries
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/hexis-hmx-validity-boundaries.mjs
       - name: Hexis HMX import bounds, atomic staging, and canonical-memory integration
