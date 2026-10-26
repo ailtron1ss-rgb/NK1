@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AtomicFileSkillStorePersistence } from '../src/organism/learning/AtomicFileSkillStorePersistence.ts';
@@ -162,22 +162,23 @@ const signedActive = signedApprovalStore.approveAndPromote(approvalCandidate.can
 assert.equal(signedActive.version, 1);
 assert.equal(signedApprovalStore.snapshot().candidates[0].approval.artifact.payload.candidateId, approvalCandidate.candidateId);
 
-// Rollback is a separate privileged transition from promotion.
+// Rollback is a separate privileged transition: authenticated promotion authority and
+// plausible audit fields do not implicitly authorize rollback.
 assert.throws(() => signedApprovalStore.rollback(approvalCandidate.candidateId, {
   approvedBy: 'operator-key-1', approvedAt: Date.now(), expectedActiveVersion: null,
 }), /signed rollback approval identity, timestamp and active-version guard are required/,
-'rollback without an expected active version fails before mutation');
+'rollback without an expected active version fails before reading or mutating active state');
 assert.throws(() => signedApprovalStore.rollback(approvalCandidate.candidateId, {
   approvedBy: 'operator-key-1', approvedAt: Date.now(), expectedActiveVersion: 1,
 }), /rollback approval is not authenticated by the configured authority/,
-'caller-supplied approval fields do not authorize rollback without a trusted verifier');
+'rollback remains default-deny even when caller-supplied audit fields look plausible');
 const afterDeniedRollback = signedApprovalStore.snapshot();
 assert.equal(afterDeniedRollback.active[0].version, 1,
-  'denied rollback must not replace the active skill');
+  'an unauthenticated rollback cannot replace the active skill');
 assert.equal(afterDeniedRollback.candidates[0].status, 'active',
-  'denied rollback must not change candidate lifecycle state');
+  'a rejected rollback leaves the candidate lifecycle unchanged');
 assert.equal(afterDeniedRollback.candidates[0].rollbackApproval, undefined,
-  'denied rollback must not persist approval-shaped input');
+  'a rejected rollback does not persist caller-supplied approval data');
 assert.throws(() => signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3),
   /must complete shadow staging/,
   'the same signed approval cannot activate the same candidate twice');
@@ -214,6 +215,67 @@ try {
   const afterRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
   assert.equal(afterRestart.snapshot().candidates[0].candidateId, durableCandidate.candidateId,
     'atomic file adapter restores candidate state across store reconstruction');
+  const provenance = {
+    schemaVersion: 1, evaluationFingerprint: 'a'.repeat(64), sourceCandidateId: null,
+    planFingerprint: 'b'.repeat(64), datasetFingerprint: 'c'.repeat(64),
+    sourceEvidenceFingerprint: 'd'.repeat(64), dimensions: ['safety', 'task-success'], createdAt: Date.now(),
+  };
+  const provenanceCandidate = durableStore.stageCandidate(
+    proposal('h'), 'file-backed-provenance-skill', { instruction: 'persisted with provenance' }, provenance,
+  );
+  const afterProvenanceRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
+  assert.equal(afterProvenanceRestart.snapshot().candidates.some(item =>
+    item.candidateId === provenanceCandidate.candidateId && item.revisionProvenance?.planFingerprint === provenance.planFingerprint), true,
+    'atomic file adapter persists and restores provenance-bearing candidate identities');
+  const provenanceWithoutEvaluationDigest = {
+    schemaVersion: 1, sourceCandidateId: provenanceCandidate.candidateId,
+    planFingerprint: 'e'.repeat(64), datasetFingerprint: 'f'.repeat(64),
+    dimensions: ['trajectory', 'executability'], createdAt: Date.now(),
+  };
+  const noEvaluationDigestCandidate = durableStore.stageCandidate(
+    proposal('i'), 'file-backed-provenance-without-evaluation', { instruction: 'lineage-only provenance' },
+    provenanceWithoutEvaluationDigest,
+  );
+  const afterOptionalDigestRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
+  assert.equal(afterOptionalDigestRestart.snapshot().candidates.some(item =>
+    item.candidateId === noEvaluationDigestCandidate.candidateId &&
+    item.revisionProvenance?.evaluationFingerprint === undefined), true,
+    'optional evaluationFingerprint remains optional across durable restart');
+
+  // Provenance is part of the candidate identity; persisted JSON cannot alter
+  // lineage while keeping the original candidateId and still pass restoration.
+  const tamperedProvenancePath = join(tempRoot, 'state', 'tampered-provenance.json');
+  const tamperedProvenanceSnapshot = JSON.parse(readFileSync(filePath, 'utf8'));
+  const persistedProvenanceCandidate = tamperedProvenanceSnapshot.candidates.find(
+    item => item.candidateId === provenanceCandidate.candidateId,
+  );
+  assert.ok(persistedProvenanceCandidate, 'provenance-bearing candidate is present in durable state');
+  persistedProvenanceCandidate.revisionProvenance.planFingerprint = '9'.repeat(64);
+  writeFileSync(tamperedProvenancePath, JSON.stringify(tamperedProvenanceSnapshot));
+  assert.throws(
+    () => new AtomicFileSkillStorePersistence(tamperedProvenancePath).read(),
+    /invalid persisted versioned skill store snapshot/,
+    'tampered provenance cannot be restored under the original candidate identity',
+  );
+
+  const malformedProvenancePath = join(tempRoot, 'state', 'malformed-provenance.json');
+  const malformedProvenanceSnapshot = JSON.parse(readFileSync(filePath, 'utf8'));
+  const noDigestPersistedCandidate = malformedProvenanceSnapshot.candidates.find(
+    item => item.candidateId === noEvaluationDigestCandidate.candidateId,
+  );
+  assert.ok(noDigestPersistedCandidate, 'lineage-only candidate is present in durable state');
+  noDigestPersistedCandidate.revisionProvenance.evaluationFingerprint = 'not-a-sha256-digest';
+  writeFileSync(malformedProvenancePath, JSON.stringify(malformedProvenanceSnapshot));
+  assert.throws(
+    () => new AtomicFileSkillStorePersistence(malformedProvenancePath).read(),
+    /invalid persisted versioned skill store snapshot/,
+    'a malformed optional digest is rejected when injected directly into persisted JSON',
+  );
+  assert.throws(() => durableStore.stageCandidate(
+    proposal('j'), 'file-backed-provenance-invalid-digest', { instruction: 'invalid digest is rejected' },
+    { ...provenanceWithoutEvaluationDigest, evaluationFingerprint: 'not-a-sha256-digest' },
+  ), /invalid reflective skill revision provenance/,
+  'evaluationFingerprint remains optional, but a supplied malformed digest is rejected');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
 } finally {
