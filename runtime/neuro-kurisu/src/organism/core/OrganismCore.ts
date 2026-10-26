@@ -2957,6 +2957,119 @@ export class OrganismCore {
             throw error;
         }
     }
+    /** Materialize an explicitly approved HMX goal as a local candidate; never activate it implicitly. */
+    hexisMaterializeGoalProposal(id: string) {
+        const proposal = this.hexisAdaptation.getGoalProposal(String(id));
+        if (!proposal) throw new Error('hmx-goal-proposal-not-found');
+        if (proposal.status === 'materialized' && proposal.canonicalGoalId) {
+            const existing = this.persisted.goals.find(goal => goal.id === proposal.canonicalGoalId);
+            if (!existing) throw new Error('hmx-goal-materialized-record-missing');
+            return { goal: structuredClone(existing), proposal, replayed: true, relationships: proposal.goalRelationshipReceipt ?? null };
+        }
+        if (proposal.status !== 'approved') throw new Error('hmx-goal-proposal-must-be-approved-before-materialization');
+
+        const goalsBefore = structuredClone(this.persisted.goals);
+        const graphBefore = this.memorySubsystem.semanticMemory.snapshot();
+        const hexisBefore = this.hexisAdaptation.snapshot();
+        try {
+            const lineageHash = createHash('sha256').update(proposal.sourceLineageId).digest('hex').slice(0, 12);
+            const provenanceReason = ('hexis-import:' + lineageHash + ':' + proposal.sourceRef).slice(0, 2000);
+            // addGoal is the existing canonical goal gate: an identical live title is reused rather than duplicated.
+            const goal = this.addGoal({
+                title: proposal.title,
+                reason: provenanceReason,
+                source: 'external',
+                importance: clamp(proposal.importance),
+                urgency: clamp(proposal.urgency),
+                confidence: clamp(proposal.confidence),
+            });
+            const isNewImportedGoal = goal.source === 'external' && goal.reason === provenanceReason;
+            const stage = this.hexisAdaptation.getHmxStage(proposal.stageId);
+            const relationships = Array.isArray(stage?.stagedSections?.relationships)
+                ? stage.stagedSections.relationships.filter((value: any) =>
+                    value && typeof value === 'object' &&
+                    (String(value.source_ref ?? '') === proposal.sourceRef || String(value.target_ref ?? '') === proposal.sourceRef))
+                : [];
+            const semanticEdgeIds: string[] = [];
+            let projected = 0;
+            let deferred = relationships.length;
+
+            if (isNewImportedGoal && relationships.length) {
+                const goalNodeSourceKey = 'hexis-goal:' + lineageHash + ':' + proposal.id;
+                const goalNode = this.memorySubsystem.semanticMemory.upsertNode(goal.title, 'goal', goal.importance, goalNodeSourceKey);
+                const canonicalItems = this.memorySubsystem.fabric.canonicalSnapshot().items ?? [];
+                const graphType = (nativeType: unknown): 'concept' | 'episode' | 'person' => {
+                    const kind = String(nativeType ?? '').toLowerCase();
+                    if (kind === 'episodic' || kind === 'autobiographical') return 'episode';
+                    if (kind === 'social' || kind === 'relationship') return 'person';
+                    return 'concept';
+                };
+                const relationType = (nativeType: unknown): 'supports' | 'contradicts' | 'causes' | 'associated' | 'about' | 'located' => {
+                    const relation = String(nativeType ?? '').toLowerCase();
+                    return ['supports', 'contradicts', 'causes', 'about', 'located', 'associated'].includes(relation)
+                        ? relation as 'supports' | 'contradicts' | 'causes' | 'about' | 'located' | 'associated'
+                        : 'associated';
+                };
+                for (const row of relationships) {
+                    const sourceRef = String(row.source_ref ?? '');
+                    const targetRef = String(row.target_ref ?? '');
+                    const otherRef = sourceRef === proposal.sourceRef ? targetRef : sourceRef;
+                    const memory = canonicalItems.find((item: any) =>
+                        String(item.context?.hexisMemoryRef ?? '') === otherRef &&
+                        String(item.context?.hexisSourceLineageId ?? '') === proposal.sourceLineageId);
+                    if (!memory) continue;
+                    const stableRefKey = otherRef.replace(/^exp_[a-f0-9]{16}:/, '');
+                    const contentHash = createHash('sha256').update(String(memory.content ?? '')).digest('hex');
+                    const graphSourceKey = 'hexis:' + lineageHash + ':' +
+                        createHash('sha256').update(stableRefKey + '\\0' + contentHash).digest('hex').slice(0, 24);
+                    const nodeType = graphType(memory.context?.hexisOriginalType ?? memory.kind);
+                    const priorNode = this.memorySubsystem.semanticMemory.snapshot().nodes.find((node: any) => node.sourceKey === graphSourceKey);
+                    const memoryNode = priorNode
+                        ? { id: priorNode.id }
+                        : this.memorySubsystem.semanticMemory.upsertNode(String(memory.content ?? ''), nodeType, Number(memory.salience ?? 0.5), graphSourceKey);
+                    const from = sourceRef === proposal.sourceRef ? goalNode.id : memoryNode.id;
+                    const to = targetRef === proposal.sourceRef ? goalNode.id : memoryNode.id;
+                    if (from === to) continue;
+                    const relation = relationType(row.edge_type);
+                    const priorEdge = this.memorySubsystem.semanticMemory.snapshot().edges.find((edge: any) => edge.from === from && edge.to === to && edge.relation === relation);
+                    const edge = priorEdge ?? this.memorySubsystem.semanticMemory.connect(from, to, relation, clamp(Number(row.properties?.weight ?? row.properties?.confidence ?? 0.55)));
+                    semanticEdgeIds.push(edge.id);
+                    projected++;
+                }
+                deferred = Math.max(0, relationships.length - projected);
+            }
+
+            const materialized = this.hexisAdaptation.markGoalProposalMaterialized(proposal.id, goal.id);
+            const receipt = {
+                sourceStageFound: Boolean(stage),
+                candidateRelationships: relationships.length,
+                projected,
+                deferred,
+                semanticEdgeIds,
+                at: Date.now(),
+            };
+            const recorded = this.hexisAdaptation.markGoalProposalActivated(proposal.id, goal.id, receipt);
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            this.persisted.facets.memory.semanticGraph = this.memorySubsystem.semanticMemory.snapshot();
+            this.memorySubsystem.events.append(makeEvent('hexis-goal-materialized', this.persisted.state.tick, {
+                proposalId: proposal.id,
+                canonicalGoalId: goal.id,
+                sourceLineageId: proposal.sourceLineageId,
+                sourceRef: proposal.sourceRef,
+                reusedExistingGoal: !isNewImportedGoal,
+                relationshipReceipt: receipt,
+            } as any));
+            this.persisted.facets.memory.eventLog = this.memorySubsystem.events.recent(64);
+            return { goal: structuredClone(goal), proposal: recorded ?? materialized, replayed: false, relationships: receipt };
+        } catch (error) {
+            this.persisted.goals = goalsBefore;
+            this.memorySubsystem.semanticMemory.restore(graphBefore);
+            this.hexisAdaptation.restore(hexisBefore);
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            this.persisted.facets.memory.semanticGraph = graphBefore;
+            throw error;
+        }
+    }
     hexisEnqueueOutbox(input: {
         idempotencyKey: string;
         kind: string;
