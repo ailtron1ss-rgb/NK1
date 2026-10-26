@@ -110,12 +110,15 @@ export function buildAvatarSpeechTimeline(text, rate = 1, language = 'ru-RU') {
   if (typeof text !== 'string') return [];
   // The canonical timeline replaces control whitespace before calculating UTF-16 offsets.
   // Normalize here too so grapheme labels use the exact same source string as the frames.
-  const normalized = text.slice(0, 2000).replace(/[\r\n\t]/gu, ' ');
+  const sourceText = text.slice(0, 2000);
+  const normalized = sourceText.replace(/[\r\n\t]/gu, ' ');
   if (!normalized.trim()) return [];
   return buildVisemeTimeline(normalized, rate, language).map(frame => ({
     ...frame,
     pose: { ...frame.pose },
-    grapheme: normalized.slice(frame.charIndex, frame.endCharIndex),
+    // Keep the original grapheme label while calculating timing against the
+    // normalized text. Control whitespace is one UTF-16 code unit, so offsets align.
+    grapheme: sourceText.slice(frame.charIndex, frame.endCharIndex),
   }));
 }
 
