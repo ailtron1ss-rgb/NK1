@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const verifier = path.join(projectRoot, 'tools/verify-final-release.mjs');
 
-async function fixture(t, { metadataExitCode = 0, includeMetadata = true, includePythonCache = false } = {}) {
+async function fixture(t, { metadataExitCode = 0, includeMetadata = true, includePythonCache = false, includeStrayBytecode = false, includeNonBytecodeInCache = false } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'nk-final-release-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(path.join(root, 'runtime/neuro-kurisu/scripts'), { recursive: true });
@@ -28,9 +28,18 @@ async function fixture(t, { metadataExitCode = 0, includeMetadata = true, includ
       `console.log('metadata fixture exit=${metadataExitCode}'); process.exitCode = ${metadataExitCode};\n`,
     );
   }
-  if (includePythonCache) {
+  if (includePythonCache || includeNonBytecodeInCache) {
     await mkdir(path.join(root, 'research/__pycache__'), { recursive: true });
+  }
+  if (includePythonCache) {
     await writeFile(path.join(root, 'research/__pycache__/fixture.cpython-312.pyc'), Buffer.from([0, 1, 2, 3]));
+  }
+  if (includeStrayBytecode) {
+    await mkdir(path.join(root, 'research'), { recursive: true });
+    await writeFile(path.join(root, 'research/stray.cpython-312.pyc'), Buffer.from([0, 1, 2, 3]));
+  }
+  if (includeNonBytecodeInCache) {
+    await writeFile(path.join(root, 'research/__pycache__/source.py'), 'must-not-be-ignored');
   }
   return root;
 }
@@ -109,4 +118,21 @@ test('CI can ignore only transient Python caches after research smoke', async t 
   assert.equal(report.summary.failed, 0);
   assert.ok(report.warnings.some(warning => warning.includes('generated-python-cache-ignored:research/__pycache__/fixture.cpython-312.pyc')));
   assert.equal(report.checks.find(check => check.id === 'release-metadata')?.pass, true);
+});
+
+
+test('CI cache override still rejects stray bytecode and non-bytecode files in cache directories', async t => {
+  const root = await fixture(t, {
+    includePythonCache: true,
+    includeStrayBytecode: true,
+    includeNonBytecodeInCache: true,
+  });
+  const result = run(root, ['--allow-generated-python-cache']);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.generatedPythonCachePolicy, 'allow-transient-caches');
+  assert.ok(report.warnings.some(warning => warning.includes('generated-python-cache-ignored:research/__pycache__/fixture.cpython-312.pyc')));
+  assert.ok(report.errors.some(error => error.includes('generated-python-artifact:research/stray.cpython-312.pyc')));
+  assert.ok(report.errors.some(error => error.includes('generated-python-artifact:research/__pycache__/source.py')));
+  assert.ok(report.summary.treeFailures >= 2);
 });
