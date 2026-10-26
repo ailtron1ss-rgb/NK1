@@ -1,0 +1,120 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { MemoryOS2 } from '../../src/organism/developmental/MemoryOS2.ts';
+import { HexisAdaptationFabric } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
+
+const memoryOS = new MemoryOS2({ signalFusionProfile: 'balanced' });
+const memory = memoryOS.encode({
+  content: 'A stable fact used to verify evidence provenance.',
+  kind: 'semantic',
+  source: 'hexis-evidence-lineage-regression',
+  tags: ['hexis', 'provenance'],
+  context: { regression: 'hexis-memory-evidence-lineage' },
+  salience: .6,
+  emotionalWeight: .1,
+  identityRelevance: .2,
+  goalRelevance: .4,
+  socialRelevance: .1,
+  predictionError: .1,
+  confidence: .5,
+  epistemicStatus: 'belief',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+}, { clone: false });
+
+const fabric = new HexisAdaptationFabric();
+const sourceRef = 'https://evidence.example/specimen-1';
+const evidence = { ref: sourceRef, trust01: .9, label: 'independent observation' };
+const sourceAuthority01 = Number(memory.sourceAuthority01 ?? .5);
+
+assert.equal(memoryOS.hasEvidenceLineage(memory.id, sourceRef), false);
+fabric.registerOrUpdateBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: sourceAuthority01, at: memory.lastAccessAt });
+
+const priorConfidence = memory.confidence;
+const canonicalDuplicate = memoryOS.hasEvidenceLineage(memory.id, sourceRef);
+const recorded = canonicalDuplicate ? null : memoryOS.recordEvidence(memory.id, {
+  source: sourceRef,
+  provenanceClass: 'external',
+  sourceAuthority01: .9,
+  independenceKey: sourceRef,
+  observedAt: 1000,
+  evidenceFreshnessAt: 1000,
+});
+const firstAudit = fabric.reviseBelief({
+  memoryId: memory.id,
+  confidence01: priorConfidence,
+  trust01: sourceAuthority01,
+  evidence,
+  stance: 'supports',
+  canonicalDuplicate,
+  at: 2000,
+});
+assert.equal(recorded?.added, true);
+assert.equal(firstAudit.applied, true);
+assert.ok(firstAudit.posteriorConfidence01 > priorConfidence);
+memoryOS.updateSignals(memory.id, { confidence: firstAudit.posteriorConfidence01 }, 'hexis-belief-revision');
+
+const duplicateReceipt = memoryOS.recordEvidence(memory.id, {
+  source: sourceRef,
+  provenanceClass: 'external',
+  sourceAuthority01: .9,
+  independenceKey: sourceRef,
+  observedAt: 3000,
+  evidenceFreshnessAt: 3000,
+});
+assert.equal(duplicateReceipt.ok, true);
+assert.equal(duplicateReceipt.added, false);
+assert.equal(duplicateReceipt.reason, 'duplicate-source');
+
+const canonicalAlreadyKnows = memoryOS.hasEvidenceLineage(memory.id, sourceRef);
+fabric.registerOrUpdateBelief({ memoryId: memory.id, confidence01: memoryOS.get(memory.id).confidence, trust01: sourceAuthority01, at: 9999 });
+const beforeReplay = fabric.snapshot().beliefs.find(row => row.memoryId === memory.id);
+const canonicalDuplicateAudit = fabric.reviseBelief({
+  memoryId: memory.id,
+  confidence01: memoryOS.get(memory.id).confidence,
+  trust01: sourceAuthority01,
+  evidence,
+  stance: 'supports',
+  canonicalDuplicate: canonicalAlreadyKnows,
+  at: 12000,
+});
+assert.equal(canonicalDuplicateAudit.applied, false);
+assert.equal(canonicalDuplicateAudit.reason, 'duplicate_source_canonical');
+const afterDuplicate = fabric.snapshot().beliefs.find(row => row.memoryId === memory.id);
+assert.equal(afterDuplicate.confidence01, beforeReplay.confidence01, 'replayed evidence must not change adapter confidence');
+assert.equal(afterDuplicate.trust01, beforeReplay.trust01, 'replayed evidence must not change trust');
+assert.equal(afterDuplicate.updatedAt, beforeReplay.updatedAt, 'a rejected replay must not mutate belief time');
+assert.equal(afterDuplicate.sourceKeys.length, 1, 'only successfully applied evidence contributes a belief vote');
+assert.equal(memoryOS.evidenceTrail(memory.id).independentSources, 2, 'primary and independent source are retained');
+
+const restored = new MemoryOS2({ signalFusionProfile: 'balanced' });
+restored.restore(memoryOS.snapshot());
+assert.equal(restored.hasEvidenceLineage(memory.id, sourceRef), true, 'lineage replay guard survives snapshot/restore');
+assert.equal(restored.recordEvidence(memory.id, {
+  source: sourceRef,
+  provenanceClass: 'external',
+  sourceAuthority01: .99,
+  independenceKey: sourceRef,
+}).added, false, 'restored memory must not count the same source twice');
+assert.equal(restored.indexDiagnostics().pass, true, 'evidence integration must preserve memory indexes');
+
+// Guard the production composition path as well as the isolated policy object.
+const coreSource = await readFile(new URL('../../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
+const revisionStart = coreSource.indexOf('hexisReviseBelief(input: {');
+const revisionEnd = coreSource.indexOf('Temporal views delegate to MemoryOS2', revisionStart);
+assert.ok(revisionStart >= 0 && revisionEnd > revisionStart, 'Hexis belief revision must remain in Core');
+const revisionBody = coreSource.slice(revisionStart, revisionEnd);
+assert.ok(revisionBody.includes('memoryOS.hasEvidenceLineage'), 'Core must consult canonical lineage before revision');
+assert.ok(revisionBody.includes('memoryOS.recordEvidence'), 'Core must write evidence through canonical MemoryOS2');
+assert.ok(revisionBody.includes('canonicalDuplicate: duplicateEvidence'), 'Core must pass canonical duplicate status to the belief policy');
+assert.ok(revisionBody.includes('audit.applied && evidenceReceipt?.added === true'), 'confidence updates require both an applied revision and a new canonical evidence receipt');
+
+console.log('HEXIS_MEMORY_EVIDENCE_LINEAGE=PASS', JSON.stringify({
+  priorConfidence,
+  posteriorConfidence: firstAudit.posteriorConfidence01,
+  independentSources: restored.evidenceTrail(memory.id).independentSources,
+  duplicateGuardRestored: restored.hasEvidenceLineage(memory.id, sourceRef),
+}));
