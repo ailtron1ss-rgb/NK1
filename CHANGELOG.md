@@ -1,3 +1,50 @@
+## WorkPass347 — preserve unlinked decision IDs in receipt replay — 2026-10-26
+
+- **Defect:** `appendToolReceiptTrace()` fingerprints a supplied `decisionId`, but the action event stored `decisionId: null` when that event was not present in the bounded CEF window. Exact replay without the projection index then failed with `tool-receipt-execution-id-conflict`.
+- **Fix:** store the supplied decision identifier separately as `requestedDecisionId`; retain `decisionId` and `decisionLinked` as the actual resolved causal relationship. Replay matching uses the requested ID when present and falls back to the legacy field for older snapshots.
+- **Regression:** the indexless receipt test now asserts that unresolved decisions are not forged into parent links, exact replay succeeds, and changing the requested decision ID is rejected without ledger mutation.
+- **Validation:** exact-head integration suite must complete successfully on the resulting commit; previous failed runs do not count.
+
+---
+## WorkPass349 — correct control-character validation in event IDs (2026-10-26)
+
+- **CI finding:** the first exact-head runtime integration run failed in the new event identity regression because the control-character regex was over-escaped and rejected ordinary IDs containing characters such as `f`.
+- **Fix:** restore the intended literal Unicode control ranges `[\\u0000-\\u001f\\u007f]` in source regex syntax, so normal stable IDs are accepted while control characters are rejected.
+- **Validation:** the failed exact-head run is retained as evidence; a new exact-head CI run is required for this correction.
+
+---
+
+## WorkPass348 — deterministic postcondition identity and legacy receipt replay (2026-10-26)
+
+- **FIXED:** postcondition fingerprinting no longer uses locale-sensitive lowercasing; case-sensitive differences remain distinct across hosts.
+- **COMPATIBILITY:** a legacy restored receipt without event-level postcondition hashes can replay only when its retained projection index contains the exact full-input fingerprint. Without that independent fingerprint, replay still fails closed.
+- **REGRESSION:** added case-only postcondition conflict and legacy-index compatibility coverage.
+- **VALIDATION:** exact-head CI required on this commit.
+
+---
+
+## WorkPass347 — preserve verified postcondition identity across restore (2026-10-26)
+
+- **FIXED:** the active causal event journal now persists hashes of the expected and observed postconditions in the sanitized receipt-evidence event, without storing raw postcondition text.
+- **FIXED:** when the bounded receipt projection index is missing after restore, replay validates the persisted hashes and rejects changed-but-nonempty postconditions before appending any new events.
+- **HARDENED:** payloads now use a bounded recursive JSON-safe clone; circular, unsupported, oversized or excessively deep data is rejected before event mutation, and nested accessors are never invoked.
+- **HARDENED:** invalid explicit timestamps, unsafe ticks and invalid event stages are rejected; non-finite capacity configuration uses the bounded default.
+- **REGRESSION:** extended the active event-fabric contract with invalid-clock, array getter, malformed-restore and indexless receipt replay tests.
+- **VALIDATION:** exact-head CI is required for this commit; no field-device or learning-uplift claim is made.
+
+---
+
+## WorkPass346 — enforce full cognitive-event replay identity — 2026-10-26
+
+- **FIXED:** active `CognitiveEventFabric.append()` compares the full stable-ID envelope (tick, timestamp, stage, source, causal parents, external status, confidence and canonical payload) before mutation.
+- **FIXED:** accepted payloads and returned/snapshot events are deeply detached. Reusing an ID with changed evidence fails closed; exact retries without `at` preserve the original timestamp.
+- **HARDENED:** persisted malformed payload rows do not abort restoration of healthy rows; event and payload size/depth budgets prevent unbounded evidence ingestion.
+- **REGRESSION:** exact replay, field conflicts, key-order equivalence, nested mutation, getter avoidance, circular payloads, clock validation, restore recovery and receipt replay after index loss are covered.
+- **INTEGRATION:** the focused test is part of `test:cognitive-integration-suite` and has explicit workflow path filters.
+- **VALIDATION:** exact-head CI pending; previous SHA results are not treated as proof for this change.
+
+---
+
 ## WorkPass345 — fail-closed release-date contract — 2026-10-26
 
 - **Defect:** `verify-release-metadata.mjs` silently substituted the historical date `2026-10-10` when `SUPER_VERSION.date` was missing or malformed. That fallback could make an incomplete release manifest resolve an old status report instead of failing on the missing date.
