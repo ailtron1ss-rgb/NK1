@@ -96,6 +96,9 @@ export class P65EpistemicLedger{
  record(input:{tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;parentIds?:string[];predicted01?:number}):string{
   const content=String(input.content??'').slice(0,320);if(!content)return '';
   const id=stableId(input.tick,input.kind,content,input.source);if(this.state.recentIds.includes(id))return id;
+  // A pending row may outlive the short replay-ID window. Check durable in-memory
+  // claims before rejecting a full queue, otherwise exact old retries are misreported.
+  if(this.state.claimsData.some(c=>c.id===id)){this.state.recentIds=normalizeP65RecentIds([id,...this.state.recentIds]);return id;}
   if(input.kind==='prediction'&&this.state.claimsData.filter(c=>c.kind==='prediction'&&!c.resolved).length>=MAX_PENDING_PREDICTIONS){this.state.rejectedPredictionAdds++;return '';}
   const claim:P65Claim={id,tick:input.tick,at:input.at,kind:input.kind,content,confidence01:clamp(input.confidence01),source:String(input.source||'unknown'),resolved:false,parentIds:(input.parentIds??[]).slice(0,8),predicted01:input.kind==='prediction'?clamp(input.predicted01 ?? input.confidence01):undefined,lastSupportedAt:input.at,supportCount:1,status:'active'};
   this.state.claims++;
