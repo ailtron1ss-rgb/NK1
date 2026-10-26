@@ -1,3 +1,12 @@
+## WorkPass397 — стабильная идентичность legacy evidence (2026-10-26)
+
+- **Код:** `05a349cdcbff7a8397e29f0ecf4cd8db15ddd8f5`; **регрессионный контракт:** `14f25b449177d7de15824c433ababe5b81233362`.
+- Idempotency key для legacy `hexisReviseBelief` теперь зависит только от canonical memory ID, фиксированного legacy source kind, source reference и content hash. Изменение stance/label/note/confidence при повторной отправке использует тот же evidence ID и должно давать конфликт payload/digest вместо создания новой записи.
+- Добавлен статический контракт, закрепляющий immutable identity tuple и запрещающий включать mutable metadata в idempotency key.
+- **Валидация:** PENDING exact-head typecheck, focused Hexis review test, server smoke и Unified integration. Текущие Actions не отдают шаги/журналы; PASS не заявляется. Оценки прогресса/readiness/recall не изменены; `main` и canonical Release ZIP не менялись.
+
+---
+
 ## WorkPass396 — убрать legacy-обход Hexis review gate (2026-10-26)
 
 - **Код:** `bb38a516fe2b3671dad929a9c756c339428c0ded`; **регрессионный контракт:** `282462422fedb7202f3c35be95541a3cbaff6bd5` в ветке `fix/hexis-review-digest-binding-live-2026-10-26`.
