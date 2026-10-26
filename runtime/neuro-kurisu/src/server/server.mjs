@@ -939,7 +939,8 @@ async function route(req, res) {
             const itemId = String(input.itemId || '');
             const queuedReview = runtime.core.hexisListLearningReviews().find(review => review.id === reviewId);
             const queuedItem = queuedReview?.items?.find(item => item.id === itemId);
-            if (queuedItem?.evidence?.pipeline === 'nk1.hexis-evidence-review.v1') {
+            const queuedEvidence = queuedItem?.evidence;
+            if (queuedEvidence?.pipeline === 'nk1.hexis-evidence-review.v1') {
                 const guarded = await runtime.core.decideHexisEvidenceReview(
                     reviewId, itemId, decision,
                     input.correction === undefined ? undefined : String(input.correction),
@@ -947,6 +948,23 @@ async function route(req, res) {
                 if (guarded.status !== 'decided') return json(res, 409, { ok: false, result: guarded });
                 await runtime.core.flush();
                 return json(res, 200, { ok: true, result: guarded });
+            }
+            // Never let an evidence-shaped semantic-belief item fall through to
+            // the older generic review mutator simply because a persisted or
+            // imported item lost its canonical pipeline marker. Such a record
+            // must be re-ingested through the strict adapter instead.
+            const evidenceLikeReview = queuedItem?.kind === 'semantic_belief' &&
+                Boolean(queuedItem.sourceMemoryId) &&
+                queuedEvidence && typeof queuedEvidence === 'object' &&
+                (
+                    typeof queuedEvidence.evidenceId === 'string' ||
+                    typeof queuedEvidence.stance === 'string' ||
+                    typeof queuedEvidence.digest === 'string' ||
+                    (queuedEvidence.source !== null && typeof queuedEvidence.source === 'object' &&
+                        typeof queuedEvidence.source.ref === 'string')
+                );
+            if (evidenceLikeReview) {
+                return json(res, 409, { ok: false, error: 'canonical-evidence-review-required' });
             }
             const result = runtime.core.hexisDecideLearningReview(
                 reviewId, itemId, decision,
