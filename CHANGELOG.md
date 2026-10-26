@@ -1,3 +1,15 @@
+## [NK1][Hexis] WorkPass428 — semantic receipt integrity on the consolidated integration line (2026-10-26)
+
+- [INTEGRATION] Port the WorkPass426 HMX applicationAttempts type/binding guard and WorkPass427 apply-receipt semantic counters onto the current restore-integrity/Hexis integration branch rather than leaving them only on a parallel stacked branch.
+- [INTEGRITY] The exported isValidHmxApplyReceipt now independently rejects accessor-backed/non-JSON receipt inputs and invalid applied-stage identity/status before inspecting fields.
+- [INTEGRITY] Require nonempty, canonical memory/created-memory/semantic-edge IDs; reject zero or malformed deferred-section counts and require the persisted deferred summary to exactly match the staged sections.
+- [INTEGRITY] When relationships are staged, projectedRelationships + deferredRelationships must account for the full array, and deferredSections.relationships must agree with the deferred count. Relationship counters are rejected when the stage has no relationship section.
+- [FIX] Use a null-prototype deferred-section map so external HMX section names such as __proto__ remain ordinary data instead of disappearing through the object prototype setter.
+- [REGRESSION] Add rehashed-impossible receipt cases, direct accessor-safety checks, a valid deferred-relationship receipt, and a special-key round trip through projector apply/receipt validation.
+- [VALIDATION] Exact-head runtime typecheck, Hexis canonical apply workflow and WorkPass71 validation are pending; this entry does not claim PASS until hosted results are observed.
+- [RELEASE] main and the published Release ZIP remain unchanged.
+
+---
 ## [NK1][Hexis] Typecheck the Hexis frontend in CI (2026-10-26)
 
 - The canonical HMX workflow now triggers for the Hexis UI/API/type contract files and runs pinned frontend install plus `npm run typecheck` before runtime typecheck and HMX integration tests.
