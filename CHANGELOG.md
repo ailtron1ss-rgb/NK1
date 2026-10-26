@@ -1,3 +1,12 @@
+## WorkPass346 — enforce full cognitive-event replay identity — 2026-10-26
+
+- **Defect:** `CognitiveEventFabric.append()` accepted a repeated event ID as idempotent when only tick/stage/source matched, even if payload, timestamp, causal parents, external flag or confidence had changed. Returned and stored payloads were shallow copies, so nested caller mutation could change recorded evidence.
+- **Fix:** normalize and fingerprint the entire event envelope before mutating the ledger; reject ID conflicts before writes; use the original event timestamp when a retry omits `at`; deep-clone accepted payloads and returned nodes; skip top-level getters without executing them.
+- **Regression coverage:** added `tests/workpass345-cognitive-event-fabric-identity.mjs` for exact replay, key-order-equivalent JSON, conflicts across all identity fields, nested mutation isolation, getter non-execution and cyclic payload rejection.
+- **Integration:** wired the regression into `test:cognitive-integration-suite`, immediately after runtime typecheck.
+- **Validation:** exact-head CI is pending for this branch. Green checks from parent SHA `d795bd5513f0a99176c79f10d18c8cb4e69ced23` do not validate this change.
+
+---
 ## WorkPass345 — fail-closed release-date contract — 2026-10-26
 
 - **Defect:** `verify-release-metadata.mjs` silently substituted the historical date `2026-10-10` when `SUPER_VERSION.date` was missing or malformed. That fallback could make an incomplete release manifest resolve an old status report instead of failing on the missing date.
