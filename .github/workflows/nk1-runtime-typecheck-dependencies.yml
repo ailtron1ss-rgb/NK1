@@ -228,8 +228,14 @@ jobs:
                       ".env", ".json", ".js", ".mjs", ".ts", ".tsx", ".md", ".txt", ".yml", ".yaml", ".toml", ".sh", ".conf", ".xml"
                   }:
                       data = z.read(name)
-                      for marker in (b"-----BEGIN PRIVATE KEY-----", b"-----BEGIN RSA PRIVATE KEY-----",
-                                     b"-----BEGIN EC PRIVATE KEY-----", b"-----BEGIN OPENSSH PRIVATE KEY-----"):
+                      begin, end = b"-----BEGIN ", b"-----"
+                      markers = (
+                          begin + b"PRIVATE KEY" + end,
+                          begin + b"RSA PRIVATE KEY" + end,
+                          begin + b"EC PRIVATE KEY" + end,
+                          begin + b"OPENSSH PRIVATE KEY" + end,
+                      )
+                      for marker in markers:
                           if marker in data:
                               errors.append("private-key material in candidate: " + rel)
                               break
