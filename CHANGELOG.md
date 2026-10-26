@@ -1,3 +1,7 @@
+## [NK1][Hexis] WorkPass412 — regression-test full activation rollback after deliberation failure (2026-10-26)
+
+- [TEST] Injects a failure after goal project activation and relationship projection, at the agency deliberation write. Verifies the project returns to paused, no success receipt remains, graph state is restored, and no phantom deliberation decision survives; the normal activation test then retries successfully.
+
 ## [NK1][Hexis] WorkPass411 — include deliberation in activation rollback (2026-10-26)
 
 - [ATOMICITY] The explicit goal-activation transaction now snapshots and restores the agency deliberation ledger alongside graph, self-project and Hexis state. A failed receipt/decision write can no longer leave a partial “activation occurred” record behind.
