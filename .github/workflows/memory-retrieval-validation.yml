@@ -1,0 +1,75 @@
+name: Memory retrieval validation
+
+on:
+  push:
+    branches:
+      - main
+      - integration
+      - feature/visual-embodiment
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
+      - "runtime/neuro-kurisu/tests/workpass87-superseded-current-retrieval.mjs"
+      - "runtime/neuro-kurisu/tests/workpass83-retrieval-benchmark-truth.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs"
+      - "runtime/neuro-kurisu/tests/memory-semantic-embeddings-workpass33.mjs"
+      - "runtime/neuro-kurisu/tests/memory-cognition-retrieval-workpass34.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/memory-retrieval-validation.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
+      - "runtime/neuro-kurisu/tests/workpass87-superseded-current-retrieval.mjs"
+      - "runtime/neuro-kurisu/tests/workpass83-retrieval-benchmark-truth.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs"
+      - "runtime/neuro-kurisu/tests/memory-semantic-embeddings-workpass33.mjs"
+      - "runtime/neuro-kurisu/tests/memory-cognition-retrieval-workpass34.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/memory-retrieval-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: memory-retrieval-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  retrieval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu
+      - name: Typecheck runtime
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Reject tokenless memory retrieval and verify candidate coverage
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-candidate-coverage
+      - name: Verify superseded records are hidden from current recall
+        run: npm --prefix runtime/neuro-kurisu run test:workpass87:superseded-memory
+      - name: Verify benchmark labels, provenance, abstention and holdout gates
+        run: npm --prefix runtime/neuro-kurisu run test:workpass83:retrieval-benchmark-truth
+      - name: Run current-vs-BM25 retrieval quality benchmark
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-benchmark
+      - name: Validate retrieval experiment determinism and paired-seed gates
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-experiment
+      - name: Validate semantic embedding retrieval and lexical fallback
+        run: npm --prefix runtime/neuro-kurisu run test:memory-semantic-embeddings-workpass33
+      - name: Validate retrieval wiring into live cognition
+        run: npm --prefix runtime/neuro-kurisu run test:memory-cognition-retrieval-workpass34
