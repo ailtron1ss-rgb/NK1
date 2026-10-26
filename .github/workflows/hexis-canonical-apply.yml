@@ -1,6 +1,30 @@
 name: NK1 Hexis canonical HMX apply
 
 on:
+  push:
+    branches:
+      - fix/outcome-projection-index-restore-2026-10-26
+    paths:
+      - '.github/workflows/hexis-canonical-apply.yml'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/**'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/AgencySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/evolution/SelfProjectEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/evolution/AgencyDeliberationEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
+      - 'runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+      - 'app/src/components/HexisControlConsole.tsx'
+      - 'app/src/neuro-kurisu/api.ts'
+      - 'app/src/neuro-kurisu/types.ts'
   pull_request:
     branches:
       - workpass70-source
