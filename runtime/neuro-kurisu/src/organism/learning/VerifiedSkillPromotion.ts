@@ -265,21 +265,26 @@ export function proposeVerifiedSkillPromotion(
     seedClusteredEvaluation.bootstrap95CI !== null && seedClusteredEvaluation.bootstrap95CI !== undefined &&
     seedClusteredEvaluation.bootstrap95CI[0] > 0;
   const familyRegression = familyEvaluation.find(row => row.pairedN >= minCompleteSeeds && row.absoluteGain < -maxFamilyRegression);
-  const requiredFamilyFailure = Object.entries(evaluationPolicy.minimumFamilyGainByFamily).map(([family, minimumGain]) => {
+  // Evidence adequacy precedes coverage and gain: without paired measurements,
+  // report missing evidence; with measurements but too few distinct tasks, reject
+  // for inadequate task breadth before interpreting the family's gain estimate.
+  const requiredFamilyEvidenceFailure = Object.keys(evaluationPolicy.minimumFamilyGainByFamily).map(family => {
     const evidence = familyEvaluation.find(row => row.family === family);
-    if (!evidence || evidence.pairedN < minCompleteSeeds) {
-      return { family, reason: `required-family-evidence-insufficient:${family}` };
-    }
-    if (evidence.absoluteGain < minimumGain) {
-      return { family, reason: `required-family-gain-below-threshold:${family}` };
-    }
-    return null;
+    return !evidence || evidence.pairedN < minCompleteSeeds
+      ? { family, reason: `required-family-evidence-insufficient:${family}` }
+      : null;
   }).find((failure): failure is { family: string; reason: string } => failure !== null);
   const requiredFamilyTaskFailure = Object.entries(evaluationPolicy.minimumFamilyTasksByFamily).map(([family, minimumTasks]) =>
     (familyTaskCoverage[family] ?? 0) < minimumTasks
       ? { family, reason: `required-family-task-coverage-insufficient:${family}` }
       : null,
   ).find((failure): failure is { family: string; reason: string } => failure !== null);
+  const requiredFamilyGainFailure = Object.entries(evaluationPolicy.minimumFamilyGainByFamily).map(([family, minimumGain]) => {
+    const evidence = familyEvaluation.find(row => row.family === family);
+    return evidence && evidence.absoluteGain < minimumGain
+      ? { family, reason: `required-family-gain-below-threshold:${family}` }
+      : null;
+  }).find((failure): failure is { family: string; reason: string } => failure !== null);
   const finalGate: SkillRevisionGateResult = unauthenticatedEvidenceRows > 0 ? {
     ...gate, accepted: false, reason: 'unauthenticated-outcome-evidence',
   } : uniquePairedTasks < minPairedTasks ? {
@@ -288,10 +293,12 @@ export function proposeVerifiedSkillPromotion(
     ...gate, accepted: false, reason: 'insufficient-complete-holdout-seed-coverage',
   // Require adequate independent task breadth before interpreting per-family gain.
   // With an under-covered family, the gain estimate is not actionable promotion evidence.
+  } : requiredFamilyEvidenceFailure ? {
+    ...gate, accepted: false, reason: requiredFamilyEvidenceFailure.reason,
   } : requiredFamilyTaskFailure ? {
     ...gate, accepted: false, reason: requiredFamilyTaskFailure.reason,
-  } : requiredFamilyFailure ? {
-    ...gate, accepted: false, reason: requiredFamilyFailure.reason,
+  } : requiredFamilyGainFailure ? {
+    ...gate, accepted: false, reason: requiredFamilyGainFailure.reason,
   } : familyRegression ? {
     ...gate, accepted: false, reason: 'seed-clustered-family-regression',
   } : !seedClusteredGainOkay ? {
