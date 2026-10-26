@@ -230,6 +230,12 @@ assert.equal(verifierFailed.evaluation.validation[0].skillQuality.executability,
   'verifier failure must not mislabel a successfully executed candidate as non-executable');
 assert.equal(verifierFailed.evaluation.validation[0].taskSuccess.passed, false,
   'verifier failure must fail closed for task success');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].executable, true,
+  'a validated sandbox result remains executable evidence even when the independent verifier is unavailable');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].bindingVerified, false,
+  'verifier outage must not fabricate a successful binding');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].runId, null,
+  'unverified run identities remain excluded from trusted provenance');
 
 const duplicateRunId = createIndependentSkillCandidateEvaluator({
   tasks, environmentFingerprint: 'e'.repeat(64),
