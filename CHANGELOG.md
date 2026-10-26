@@ -1,3 +1,13 @@
+## WorkPass413 — prevent a late HMX reject from re-triggering accepted import (2026-10-26)
+
+- **Adapter code commit:** `443d5d83635645e967c7da245f2a75a8af284e03`; **regression commit:** `a4fba62670b3e6a5215b9083853a530b41c5fc79`.
+- Found a decision-order edge case: the core gates canonical import on the returned stage being `accepted + pending`. A later `reject` against a stage already accepted did not change the stage, so it could inadvertently return that same apply-eligible combination.
+- `HexisAdaptationFabric.decideHmx` now converts that late-reject case to terminal `uncertain` with reason `reject-request-after-accept-before-import-receipt`. It preserves the recorded operator acceptance because a reject cannot safely undo unknown prior side effects, but blocks the core's state-based import gate from replaying the batch.
+- Regression covers acceptance, a subsequent reject, the terminal receipt reason and a later accept that remains unable to replay.
+- **Validation:** PENDING exact-head `test:hexis-adaptation`, runtime typecheck, server smoke and Unified integration. No PASS/readiness uplift claimed; `main` and canonical Release ZIP unchanged.
+
+---
+
 ## WorkPass412 — test interrupted HMX recovery through JSON persistence (2026-10-26)
 
 - **Regression commit:** `dccd678206df42ac6ed7c1f057e741619c0d453e`.
