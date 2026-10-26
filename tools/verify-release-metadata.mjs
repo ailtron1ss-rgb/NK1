@@ -74,6 +74,14 @@ if (rootPkg && superVersion) {
     `SUPER_VERSION.json=${superVersion.canonicalRuntime}; runtime package=${runtimePkg?.version}`);
   check('schema-is-valid', Number.isInteger(superVersion.schema) && superVersion.schema > 0,
     `schema=${superVersion.schema}`);
+  const releaseRootDate = String(superVersion.releaseRoot ?? '').match(/_(\\d{4}-\\d{2}-\\d{2})$/)?.[1] ?? '';
+  const sourceBaselineDate = String(superVersion.sourceBaseline ?? '').match(/_(\\d{4}-\\d{2}-\\d{2})\\.zip$/)?.[1] ?? '';
+  check('release-root-date-aligned',
+    statusDateValid && isIsoCalendarDate(releaseRootDate) && releaseRootDate === statusDateCandidate,
+    `releaseDate=${statusDateCandidate || '(missing)'}; releaseRootDate=${releaseRootDate || '(missing/invalid)'}`);
+  check('source-baseline-date-not-after-release-date',
+    statusDateValid && isIsoCalendarDate(sourceBaselineDate) && sourceBaselineDate <= statusDateCandidate,
+    `releaseDate=${statusDateCandidate || '(missing)'}; sourceBaselineDate=${sourceBaselineDate || '(missing/invalid)'}`);
   check('not-marked-release-ready', /implementation-workpass/i.test(superVersion.releaseStatus || '') && !/release.ready/i.test(superVersion.releaseStatus || ''),
     `releaseStatus=${superVersion.releaseStatus}`);
   check('workpass-build-lineage', currentPass >= 1 && new RegExp(`WORKPASS${currentPass}`).test(superVersion.build || '') && new RegExp(`WORKPASS${currentPass}`).test(superVersion.releaseRoot || '') && new RegExp(`WORKPASS${currentPass - 1}`).test(superVersion.sourceBaseline || ''),
