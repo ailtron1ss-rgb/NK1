@@ -2909,7 +2909,6 @@ export class OrganismCore {
             stage.importResult?.status === 'pending') {
             const rows = Array.isArray(stage.stagedSections?.memories) ? stage.stagedSections.memories.slice(0, 256) : [];
             const originalItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
-            const existingKeys = new Set(originalItems.map((memory) => String(memory.kind) + '|' + String(memory.content)));
             const knownIds = new Set(originalItems.map((memory) => String(memory.id)));
             const plannedKeys = new Set<string>();
             const plans: Array<{
@@ -2918,7 +2917,6 @@ export class OrganismCore {
                 input: MemoryLifecycleEncodeInput;
             }> = [];
             let reused = 0;
-            let reusedBeforeTransaction = 0;
             let skipped = 0;
 
             // Validate and deduplicate the full stage before the first mutation.
@@ -2932,11 +2930,9 @@ export class OrganismCore {
                     continue;
                 }
                 const key = projected.kind + '|' + projected.content;
-                if (existingKeys.has(key)) {
-                    reused += 1;
-                    reusedBeforeTransaction += 1;
-                    continue;
-                }
+                // Collapse duplicate rows inside this HMX file, but still send
+                // one row through MemoryFabric when canonical content already
+                // exists so its independent evidence/provenance can be merged.
                 if (plannedKeys.has(key)) {
                     reused += 1;
                     continue;
@@ -3004,11 +3000,12 @@ export class OrganismCore {
             let rollbackSucceeded = transaction.outcome !== 'rollback-incomplete';
 
             if (transaction.outcome === 'rolled-back') {
-                // No newly added/reconsolidated row survived, so only duplicates
-                // that existed before this batch count as reused.
-                reused = reusedBeforeTransaction;
-                skipped += plans.length;
+                // Rollback means no imported provenance/evidence survived, so
+                // report the full source batch as unapplied rather than reused.
+                reused = 0;
+                skipped = rows.length;
             } else if (transaction.outcome === 'rollback-incomplete') {
+                reused += transactionReused;
                 skipped += 1;
             } else {
                 reused += transactionReused;
