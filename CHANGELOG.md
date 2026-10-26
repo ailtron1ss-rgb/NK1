@@ -1,3 +1,12 @@
+## WorkPass339 — исправлена типовая и фактическая связь prediction debt / vision graph (2026-10-26)
+
+- Удалено небезопасное приведение \`PredictionDebtState\` к \`Record<string, unknown>\`: runtime теперь читает типизированные \`openCount\`, \`agingCount\`, \`expiredCount\`, \`meanPriority01\` и нормализует числовые значения перед интеграцией.
+- \`relationCount\` теперь берётся из реального графа \`P41SemanticPerception\` через \`p41PerceptionSnapshot().relations\`, куда поступают связи, извлечённые семантическим vision backend. Поле \`vision\` не выдумывается на \`cycleObservation\`, у которого такой части по контракту нет.
+- Добавлены source-wiring regressions, защищающие typed prediction-debt path и реальный P41 relation graph.
+- Точный runtime typecheck на новом HEAD — обязательный критерий: ранее P26 и WorkPass294 выявили оба дефекта на HEAD \`8237e3a...\`. Старые успешные focused tests не трактуются как доказательство исправления.
+
+---
+
 ## WorkPass337 — исправлен разбор npm --prefix после run в wiring-аудите (2026-10-26)
 
 - **Корневая причина CI-сбоя:** регулярное выражение в `tools/verify-repository-wiring.mjs` поддерживало только `npm --prefix <path> run <script>`, но не эквивалентный вариант `npm run <script> --prefix <path>`. Из-за этого три корректные команды runtime-workspace ошибочно проверялись как scripts корневого package.json.

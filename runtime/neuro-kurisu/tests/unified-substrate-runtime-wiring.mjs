@@ -221,6 +221,15 @@ assert.match(runtime, /FileStateStore<UnifiedCognitiveSubstrateState>\(\x60\$\{c
 assert.match(runtime, /unifiedCognitiveSubstrate\.restore\(await this\.unifiedCognitiveSubstrateStore\.load\(\) \?\? undefined\)/);
 assert.match(runtime, /runtime\.unified-cognitive-substrate\.restore-failed/);
 assert.match(runtime, /memoryPressure01: 1 - resourceAllocation\.memory01/);
+
+
+assert.match(runtime, /const predictionDebt = this\.core\.predictionDebtSnapshot\(\);/);
+assert.doesNotMatch(runtime, /predictionDebtSnapshot\(\)\s+as Record<string, unknown>/);
+assert.match(runtime, /openCount: debtCount\(predictionDebt\.openCount\)/);
+assert.match(runtime, /agingCount: debtCount\(predictionDebt\.agingCount\)/);
+assert.match(runtime, /expiredCount: debtCount\(predictionDebt\.expiredCount\)/);
+assert.match(runtime, /relationCount: this\.core\.p41PerceptionSnapshot\(\)\.relations\.length/);
+assert.doesNotMatch(runtime, /cycleObservation\.vision\?\.relations/);
 const observeAt = runtime.indexOf('const cycle = await this.core.observe(cycleObservation);');
 const integrateAt = runtime.indexOf('this.unifiedCognitiveSubstrate.integrate(', observeAt);
 const routingAt = runtime.indexOf('resolveCognitiveRoutingPolicy(dependencyState', observeAt);
