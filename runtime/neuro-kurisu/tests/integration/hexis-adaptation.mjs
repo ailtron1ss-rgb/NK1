@@ -144,6 +144,64 @@ for (const accessorCase of accessorCases) {
     `${accessorCase.name}: unsafe input must remain ineligible for acceptance`);
 }
 
+// Reject other non-JSON shapes before they can reach schema mapping or memory apply.
+const unsafeShapeCases = [
+  {
+    name: 'sparse-memory-array',
+    create() {
+      const document = structuredClone(validHmx);
+      const sparse = [];
+      sparse.length = 2;
+      sparse[0] = document.sections.memories[0];
+      document.sections.memories = sparse;
+      return document;
+    },
+  },
+  {
+    name: 'cyclic-memory-metadata',
+    create() {
+      const document = structuredClone(validHmx);
+      const cycle = {};
+      cycle.self = cycle;
+      document.sections.memories[0].metadata.context = cycle;
+      return document;
+    },
+  },
+  {
+    name: 'non-finite-number',
+    create() {
+      const document = structuredClone(validHmx);
+      document.source.embedding_dimension = Number.POSITIVE_INFINITY;
+      return document;
+    },
+  },
+  {
+    name: 'non-plain-source-object',
+    create() {
+      const document = structuredClone(validHmx);
+      document.source = Object.assign(Object.create({ inherited: true }), document.source);
+      return document;
+    },
+  },
+];
+for (const unsafeCase of unsafeShapeCases) {
+  const unsafeDocument = unsafeCase.create();
+  const issues = validateHmxV17Document(unsafeDocument, 'telepathy');
+  assert(issues.some(issue => issue.kind === 'unsafe-input'),
+    `${unsafeCase.name}: non-JSON input must be rejected at the snapshot boundary`);
+  const staged = fabric.stageHmx({
+    document: unsafeDocument,
+    intent: 'telepathy',
+    strategy: 'additive',
+  });
+  assert(staged.conflicts.some(issue => issue.kind === 'unsafe-input'),
+    `${unsafeCase.name}: staging must preserve the unsafe-input conflict`);
+  assert.equal(staged.stagedSections.memories, undefined,
+    `${unsafeCase.name}: unsafe input must not leave a partially staged memory section`);
+  assert.equal(fabric.decideHmx(staged.stagingId, 'accept')?.status, 'staged',
+    `${unsafeCase.name}: unsafe input must not be accepted`);
+}
+
 assert.equal(validateHmxV17Document(validHmx, 'port').some(issue => issue.kind === 'intent-mismatch'), true);
 assert.equal(validateHmxV17Document({ ...validHmx, export_id: 'random-uuid' }, 'telepathy').some(issue => issue.path === 'export_id'), true);
 
