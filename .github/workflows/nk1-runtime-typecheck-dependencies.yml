@@ -245,15 +245,15 @@ jobs:
           cat > "$RUNNER_TEMP/$REPORT_NAME" <<EOF
           # Neuro Kurisu — verified source candidate (not an official release)
 
-          - Commit: `$SHA`
-          - Branch: `$GITHUB_REF_NAME`
+          - Commit: $SHA
+          - Branch: $GITHUB_REF_NAME
           - Validation run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-          - Candidate archive: `$ZIP_NAME`
-          - SHA-256 file: `$CHECKSUM_NAME`
+          - Candidate archive: $ZIP_NAME
+          - SHA-256 file: $CHECKSUM_NAME
 
           This archive is packaged only after the workflow's locked-dependency checks, TypeScript checks, production build, cognitive/learning/action regressions, server/security/restart smoke, Compose build/boot, same-origin React UI → runtime test, asset audit and release-safety audit pass. The archive path/secret scan also passed.
 
-          **Not published:** this is a candidate artifact for review. It does not replace the official GitHub Release ZIP, update release metadata, or change `main`. The existing WorkPass70 Release asset remains unchanged.
+          **Not published:** this is a candidate artifact for review. It does not replace the official GitHub Release ZIP, update release metadata, or change main. The existing WorkPass70 Release asset remains unchanged.
           EOF
           echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
           echo "checksum_name=$CHECKSUM_NAME" >> "$GITHUB_OUTPUT"
