@@ -31,4 +31,35 @@ const restored=new P26TrueLearningEngine();
 restored.restore(engine.snapshot());
 assert.equal(restored.metrics().generalizationEvidence01,.05,'independent evidence count should survive persistence');
 assert.equal(restored.recordVerifiedHoldout(evidence).accepted,false,'duplicate guard should survive persistence');
-console.log('P26_HOLDOUT_PROVENANCE=PASS',JSON.stringify({trainingExposure01:restored.metrics().trainingExposure01,generalizationEvidence01:restored.metrics().generalizationEvidence01,independentHoldoutSamples:restored.metrics().independentHoldoutSamples}));
+
+// Restore must repair corrupt counters/diagnostics and preserve newest-first
+// trace guards. Otherwise a restart may suppress old traces but relearn the newest.
+const damaged=engine.snapshot();
+damaged.metrics.outcomeSamples=Number.NaN;
+damaged.metrics.onlineUpdates=Number.POSITIVE_INFINITY;
+damaged.metrics.replayUpdates=-4;
+damaged.metrics.learningDelta01=Number.POSITIVE_INFINITY;
+damaged.metrics.recentLoss01=Number.NaN;
+damaged.metrics.holdoutBaseline01=2;
+damaged.metrics.holdoutLearned01=-1;
+damaged.metrics.holdoutDelta01=Number.NaN;
+damaged.metrics.lastUpdatedAt=Number.NaN;
+damaged.metrics.trainingExposure01=Number.NaN;
+damaged.metrics.independentHoldoutSamples=Number.NaN;
+damaged.metrics.generalizationEvidence01=Number.NaN;
+damaged.processedTraceIds=['trace-newest','trace-newest','', 'trace-older'];
+const repaired=new P26TrueLearningEngine();
+repaired.restore(damaged);
+const m=repaired.metrics();
+assert.ok(Object.values(m).every(value=>typeof value==='number'&&Number.isFinite(value)),'all restored P26 metrics must be finite');
+assert.equal(m.outcomeSamples,0);
+assert.equal(m.onlineUpdates,0);
+assert.equal(m.replayUpdates,0);
+assert.equal(m.learningDelta01,0);
+assert.equal(m.holdoutBaseline01,1);
+assert.equal(m.holdoutLearned01,0);
+assert.equal(m.lastUpdatedAt,0);
+assert.deepEqual(repaired.snapshot().processedTraceIds,['trace-newest','trace-older'],'restore must preserve newest unique trace IDs');
+assert.equal(repaired.observeTrace({id:'trace-newest',selected:{action:'respond'}},state,{success:1,reward:1,surprise:0}).updated,false,
+  'a just-processed trace must remain deduped after restart');
+console.log('P26_HOLDOUT_PROVENANCE=PASS',JSON.stringify({trainingExposure01:restored.metrics().trainingExposure01,generalizationEvidence01:restored.metrics().generalizationEvidence01,independentHoldoutSamples:restored.metrics().independentHoldoutSamples,corruptMetricsRepaired:true,newestTraceGuardPreserved:true}));
