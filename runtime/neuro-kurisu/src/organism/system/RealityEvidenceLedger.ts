@@ -118,13 +118,35 @@ export class RealityEvidenceLedger {
     }
     const conflictedIds=new Set<string>();
     const conflictedEvents=new Set<string>();
-    for(const [id,group] of byId)if(new Set(group.map(serialized)).size>1)conflictedIds.add(id);
-    for(const [eventId,group] of byEventId)if(new Set(group.map(serialized)).size>1)conflictedEvents.add(eventId);
+    // `at` is ingestion/processing metadata for event-bound records, not part of
+    // their immutable payload. Keep live writes and restore conflict checks aligned.
+    const semanticPayload=(record:RealityEvidenceRecord)=>{
+      const {at:_at,...payload}=record;
+      return JSON.stringify(payload);
+    };
+    for(const [id,group] of byId){
+      const identities=group.map(record=>record.eventId?semanticPayload(record):serialized(record));
+      if(new Set(identities).size>1)conflictedIds.add(id);
+    }
+    for(const [eventId,group] of byEventId)if(new Set(group.map(semanticPayload)).size>1)conflictedEvents.add(eventId);
     for(const eventId of conflictedEvents)quarantine.add(eventId);
     const records:RealityEvidenceRecord[]=[];
     const acceptedPayloads=new Set<string>();
+    const acceptedEventIndexes=new Map<string,number>();
     for(const record of parsedRecords){
       if(conflictedIds.has(record.id)||(record.eventId&&(conflictedEvents.has(record.eventId)||quarantine.has(record.eventId))))continue;
+      if(record.eventId){
+        const priorIndex=acceptedEventIndexes.get(record.eventId);
+        if(priorIndex!==undefined){
+          // Same event identity/content retried at different processing times is one
+          // record. Pick the earliest timestamp deterministically, not by row order.
+          if(record.at<records[priorIndex].at)records[priorIndex]=record;
+          continue;
+        }
+        acceptedEventIndexes.set(record.eventId,records.length);
+        records.push(record);
+        continue;
+      }
       const key=serialized(record);
       if(acceptedPayloads.has(key))continue;
       acceptedPayloads.add(key);
@@ -161,9 +183,9 @@ export class RealityEvidenceLedger {
       :stableEvidenceId(identity);
     const prior=this.records.find(row=>row.id===id||(eventId!==undefined&&row.eventId===eventId));
     if(prior){
-      // An explicit observation timestamp is immutable payload. When omitted, `at` is a local
-      // ingestion timestamp, so it must not make a retry of the same upstream event conflict.
-      const samePayload=prior.tick===input.tick&&(input.at===undefined||prior.at===at)&&prior.realityClass===input.realityClass&&
+      // `at` is an ingestion/processing timestamp. Retry time may differ while the
+      // upstream event and all semantic evidence fields remain identical.
+      const samePayload=prior.tick===input.tick&&prior.realityClass===input.realityClass&&
         prior.claim===claim&&prior.confidence01===confidence01&&prior.independenceKey===independenceKey&&
         JSON.stringify(prior.parentIds)===JSON.stringify(parentIds)&&prior.eventId===eventId;
       if(!samePayload){

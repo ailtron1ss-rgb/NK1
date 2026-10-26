@@ -59,24 +59,21 @@ assert.throws(() => ledger.record({
   confidence01: 0.82, independenceKey: 'device:android-battery',
 }), /reality-evidence-event-identity-conflict/);
 
-// Timestamp is immutable evidence payload: reusing an event ID with altered capture
-// time must quarantine that ID, and even its formerly valid payload is then rejected.
+// A repeated upstream event keeps its identity when the local processing timestamp
+// differs; that timestamp must not quarantine otherwise identical evidence.
 const timestampBound = ledger.record({
   tick: 17, at: 1700, eventId: 'execution:device:timestamp',
-  realityClass: 'device-observation', claim: 'A sensor event was captured at its original timestamp.',
+  realityClass: 'device-observation', claim: 'A sensor event was captured.',
   confidence01: 0.8, independenceKey: 'device:timestamp',
 });
-assert.equal(timestampBound.at, 1700);
-assert.throws(() => ledger.record({
+const timestampReplay = ledger.record({
   tick: 17, at: 1701, eventId: 'execution:device:timestamp',
-  realityClass: 'device-observation', claim: 'A sensor event was captured at its original timestamp.',
+  realityClass: 'device-observation', claim: 'A sensor event was captured.',
   confidence01: 0.8, independenceKey: 'device:timestamp',
-}), /reality-evidence-event-identity-conflict/);
-assert.throws(() => ledger.record({
-  tick: 17, at: 1700, eventId: 'execution:device:timestamp',
-  realityClass: 'device-observation', claim: 'A sensor event was captured at its original timestamp.',
-  confidence01: 0.8, independenceKey: 'device:timestamp',
-}), /reality-evidence-event-id-quarantined/);
+});
+assert.deepEqual(timestampReplay, timestampBound);
+assert.equal(ledger.snapshot().total, totalAfterFirst + 1 + 1,
+  'only one record is added for this event identity');
 
 assert.equal(ledger.claimAssessment(first.claim).externalSamples, 1);
 assert.equal(ledger.claimAssessment(first.claim).independentExternalSources, 1);
@@ -147,6 +144,20 @@ for (const rows of [
   collisionRestore.restore({ version: 1, total: rows.length, recent: rows });
   assert.deepEqual(collisionRestore.snapshot().recent.map(row => row.id), [first.id],
     'all rows in a conflicting event-ID group must be removed irrespective of snapshot order');
+}
+
+// A legitimate event replay may carry a different processing time. Restore must
+// collapse it to one event and choose the earliest time regardless of row order.
+for (const rows of [
+  [eventBound, { ...eventBound, at: eventBound.at + 5000 }],
+  [{ ...eventBound, at: eventBound.at + 5000 }, eventBound],
+]) {
+  const timestampRestore = new RealityEvidenceLedger();
+  timestampRestore.restore({ version: 1, total: rows.length, recent: rows });
+  assert.equal(timestampRestore.snapshot().recent.length, 1);
+  assert.equal(timestampRestore.snapshot().recent[0].eventId, eventBound.eventId);
+  assert.equal(timestampRestore.snapshot().recent[0].at, eventBound.at);
+  assert.deepEqual(timestampRestore.snapshot().quarantinedEventIds, []);
 }
 
 // The same order-independence rule applies to one record ID carrying two payloads.

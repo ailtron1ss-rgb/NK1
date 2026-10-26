@@ -1,3 +1,11 @@
+## NK1 [evidence] — align live and restored event replay semantics (2026-10-26)
+
+- Corrected the timestamp rule to match the existing WorkPass510 contract: `at` is ingestion/processing metadata and does not change the identity of an otherwise identical upstream event.
+- Live retries now stay idempotent when processing time differs; restore applies the same semantic-payload comparison and collapses duplicate event IDs deterministically using the earliest recorded timestamp.
+- Added regressions for replay at a different timestamp and restore row-order independence. This entry supersedes the preceding pass's incorrect treatment of explicit `at` changes as an identity conflict.
+
+---
+
 ## NK1 [evidence] — reset quarantine with rejected restore state (2026-10-26)
 
 - Fixed an inconsistent restore failure path: when an unsafe persisted snapshot is rejected, the ledger now clears old records, totals, and in-memory event-ID quarantines together.
