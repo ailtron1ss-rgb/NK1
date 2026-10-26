@@ -1049,9 +1049,56 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/policy') {
             const input = await body(req);
-            const result = runtime.core.hexisGrantConnectorPolicy({ connectorId: String(input.connectorId || ''), actionKind: String(input.actionKind || ''), contexts: Array.isArray(input.contexts) ? input.contexts.map(String) : ['chat'], allowAutonomous: Boolean(input.allowAutonomous), requiresApproval: input.requiresApproval !== false, allowedTargets: Array.isArray(input.allowedTargets) ? input.allowedTargets.map(String) : [], deniedTargets: Array.isArray(input.deniedTargets) ? input.deniedTargets.map(String) : [], maxPerWindow: input.maxPerWindow === undefined ? undefined : Number(input.maxPerWindow), windowMs: input.windowMs === undefined ? undefined : Number(input.windowMs), expiresAt: input.expiresAt === undefined ? undefined : Number(input.expiresAt) });
-            await runtime.core.flush();
-            return json(res, 200, { ok: true, policy: result });
+            // This endpoint carries permissions. Validate the JSON types before any
+            // coercion: Boolean("false") is true and can accidentally grant autonomy.
+            if (!input || typeof input !== 'object' || Array.isArray(input)) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-policy-payload' });
+            }
+            if (typeof input.connectorId !== 'string' || typeof input.actionKind !== 'string' ||
+                !input.connectorId.trim() || !input.actionKind.trim()) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-policy-identity' });
+            }
+            if ((input.allowAutonomous !== undefined && typeof input.allowAutonomous !== 'boolean') ||
+                (input.requiresApproval !== undefined && typeof input.requiresApproval !== 'boolean')) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-policy-boolean' });
+            }
+            const contexts = input.contexts === undefined ? ['chat'] : input.contexts;
+            const allowedTargets = input.allowedTargets === undefined ? [] : input.allowedTargets;
+            const deniedTargets = input.deniedTargets === undefined ? [] : input.deniedTargets;
+            if (!Array.isArray(contexts) || contexts.length > 32 ||
+                !contexts.every((item) => typeof item === 'string') ||
+                !Array.isArray(allowedTargets) || allowedTargets.length > 256 ||
+                !allowedTargets.every((item) => typeof item === 'string') ||
+                !Array.isArray(deniedTargets) || deniedTargets.length > 256 ||
+                !deniedTargets.every((item) => typeof item === 'string')) {
+                return json(res, 400, { ok: false, error: 'invalid-hexis-policy-lists' });
+            }
+            for (const key of ['maxPerWindow', 'windowMs', 'expiresAt']) {
+                if (input[key] !== undefined &&
+                    (typeof input[key] !== 'number' || !Number.isFinite(input[key]))) {
+                    return json(res, 400, { ok: false, error: 'invalid-hexis-policy-number', field: key });
+                }
+            }
+            try {
+                const result = runtime.core.hexisGrantConnectorPolicy({
+                    connectorId: input.connectorId,
+                    actionKind: input.actionKind,
+                    contexts,
+                    allowAutonomous: input.allowAutonomous ?? false,
+                    requiresApproval: input.requiresApproval ?? true,
+                    allowedTargets,
+                    deniedTargets,
+                    maxPerWindow: input.maxPerWindow,
+                    windowMs: input.windowMs,
+                    expiresAt: input.expiresAt,
+                });
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, policy: result });
+            }
+            catch (error) {
+                await runtime.core.flush().catch(() => {});
+                return json(res, 400, { ok: false, error: String(error?.message ?? error) });
+            }
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/policy/evaluate') {
             const input = await body(req);
