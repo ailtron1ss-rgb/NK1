@@ -1,3 +1,19 @@
+## WorkPass356 — canonical memory restore integrity (2026-10-26)
+
+**Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`  
+**Code/test SHA currently under CI:** `8ed25644b3728ae033d7b9696d013804f21df315`.
+
+- [x] Reject non-plain top-level snapshot values before changing the current memory graph.
+- [x] Reject unsupported/future memory-state versions while retaining the versionless/older snapshot migration path.
+- [x] Filter malformed memory rows and remove all records whose IDs collide before index rebuild.
+- [x] Recompute content hashes; normalize confidence, salience and lifecycle fields; clamp unsupported epistemic labels to `unknown`; bound vectors/links/entities; discard non-finite vectors.
+- [x] Add focused MemoryOS2 restore boundary regressions and wire them into the WorkPass349 CI workflow.
+- [ ] Require the exact-head run to pass the restore regression, the existing P23/environment/storage/evaluator regressions and runtime typecheck.
+- [ ] Run a real file-backed organism restart test that writes/reopens memory and proves event/identity/causal retrieval remains accessible after process restart; this is a separate release gate.
+- **Status:** code/test changes committed; focused CI pending. No memory-recall uplift is claimed from state-shape validation alone.
+
+---
+
 ## WorkPass355 — central environment secret/injection policy (2026-10-26)
 
 **Working branch:** `workpass349-native-dataset-path-identity-2026-10-26`
