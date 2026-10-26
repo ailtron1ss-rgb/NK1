@@ -731,12 +731,72 @@ export class CognitiveEventFabric {
   }
 
   hasToolReceiptTrace(executionId:string):boolean{
-    const id=String(executionId??'').trim();
-    if(!id)return false;
-    const entry=this.receiptProjectionIndex.get(id);
-    if(!entry)return false;
+    if(!hasOnlyCanonicalEventId(executionId))return false;
+    const entry=this.receiptProjectionIndex.get(executionId);
+    if(!entry||entry.executionId!==executionId||
+      !hasOnlyCanonicalEventId(entry.actionEventId)||
+      !hasOnlyCanonicalEventId(entry.outcomeEventId)||
+      !hasOnlyCanonicalEventId(entry.evidenceEventId)||
+      typeof entry.projectedAt!=='number'||!Number.isFinite(entry.projectedAt)||entry.projectedAt<0) {
+      return false;
+    }
+    if(entry.projectionHash!==undefined&&!isSha256Hex(entry.projectionHash))return false;
     const byId=new Map(this.events.map(event=>[event.id,event] as const));
-    return byId.get(entry.actionEventId)?.stage==='tool-action'&&byId.get(entry.outcomeEventId)?.stage==='tool-outcome'&&byId.get(entry.evidenceEventId)?.stage==='tool-evidence';
+    const action=byId.get(entry.actionEventId);
+    const outcome=byId.get(entry.outcomeEventId);
+    const evidence=byId.get(entry.evidenceEventId);
+    if(action?.stage!=='tool-action'||outcome?.stage!=='tool-outcome'||evidence?.stage!=='tool-evidence')return false;
+    if(action.id===outcome.id||action.id===evidence.id||outcome.id===evidence.id)return false;
+
+    // Stage names alone are not proof: the three nodes must refer to the same
+    // execution/tool and form the expected causal parent chain.
+    if(ownDataValue(action.payload,'executionId')!==executionId||
+      ownDataValue(outcome.payload,'executionId')!==executionId||
+      ownDataValue(evidence.payload,'executionId')!==executionId||
+      !outcome.parentIds.includes(action.id)||!evidence.parentIds.includes(outcome.id)) {
+      return false;
+    }
+    const toolId=ownDataValue(action.payload,'tool');
+    if(!hasCanonicalBoundedText(toolId,64)||
+      ownDataValue(outcome.payload,'tool')!==toolId||
+      ownDataValue(evidence.payload,'tool')!==toolId) {
+      return false;
+    }
+    const externalObservation=ownDataValue(evidence.payload,'externalObservation');
+    if(typeof externalObservation!=='boolean'||evidence.external!==externalObservation||
+      typeof ownDataValue(outcome.payload,'ok')!=='boolean'||
+      typeof ownDataValue(outcome.payload,'verified')!=='boolean'||
+      typeof ownDataValue(action.payload,'decisionLinked')!=='boolean') {
+      return false;
+    }
+
+    const eventHashValues=[
+      ownDataValue(action.payload,'projectionHash'),
+      ownDataValue(outcome.payload,'projectionHash'),
+      ownDataValue(evidence.payload,'projectionHash'),
+    ];
+    const eventHasHash=[
+      hasOwnField(action.payload,'projectionHash'),
+      hasOwnField(outcome.payload,'projectionHash'),
+      hasOwnField(evidence.payload,'projectionHash'),
+    ];
+    if(eventHasHash.some(Boolean)) {
+      if(!eventHasHash.every(Boolean)||!eventHashValues.every(isSha256Hex)||
+        eventHashValues[0]!==eventHashValues[1]||eventHashValues[1]!==eventHashValues[2]||
+        entry.projectionHash!==eventHashValues[0])return false;
+      const expectedHash=ownDataValue(evidence.payload,'expectedPostconditionHash');
+      const observedHash=ownDataValue(evidence.payload,'observedPostconditionHash');
+      if(!hasOwnField(evidence.payload,'expectedPostconditionHash')||
+        !hasOwnField(evidence.payload,'observedPostconditionHash')||
+        (expectedHash!==null&&!isSha256Hex(expectedHash))||
+        (observedHash!==null&&!isSha256Hex(observedHash))||
+        typeof ownDataValue(evidence.payload,'expectedPostconditionPresent')!=='boolean'||
+        typeof ownDataValue(evidence.payload,'observedPostconditionPresent')!=='boolean') {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
