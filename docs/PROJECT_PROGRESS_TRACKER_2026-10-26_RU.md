@@ -11,12 +11,12 @@
 **Машиночитаемый источник процентов:** [PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json).  
 **Проверка таблицы:** `npm run test:progress-ledger`; **сводный отчёт:** `npm run progress:report`.
 
-## WorkPass344 — fail-closed final release verification (pending CI)
+## WorkPass344 — strict final release gate (pending exact-head CI)
 
-- `npm run release:verify` now runs UI wiring, runtime architecture and release metadata checks as mandatory gates; failure/missing validator blocks a green result.
-- Four focused regressions cover valid metadata, invalid metadata, missing validator and unknown CLI arguments.
-- The first run passed all four focused tests but revealed a false positive in architecture audit because the substrate wiring test held the import as a string literal. The assertion now assembles the string from tokens. The corrected combined head still needs CI.
-- Earlier WorkPass340–342 PASS statuses remain anchored to their historical exact SHA. Current source includes WorkPass343 substrate tick reconciliation; no progress scores have been increased.
+- Final verification now requires UI wiring, architecture and metadata checks, and the JSON summary counts tree failures accurately.
+- Default `release:verify` is strict. Post-smoke CI uses `release:verify:ci`, which allows only `.pyc` files inside `__pycache__`, reports them as warnings, and still rejects stray bytecode or other files in those directories.
+- Seven regressions cover metadata, CLI, strict/CI cache policy and attempts to bypass it.
+- Current code/test checkpoint `e446318f56a38597947f71f7e10f8033cae0f34f` includes the fix for the architecture scanner's import-string false positive and the transient-cache path. CI rerun is pending. Scores remain unchanged.
 
 ## WorkPass344 — fail-closed final release verification (pending current-head CI)
 
