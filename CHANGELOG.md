@@ -1,3 +1,8 @@
+## [NK1][Hexis] Show canonical apply receipt in the console (2026-10-26)
+
+- Replace the remaining untyped HMX conflict rendering with typed conflict data, show section counts for the staged document, and display canonical apply receipt totals, completeness, and warnings directly in the stage card.
+- This makes an applied stage auditable in the operator UI without inferring counts from exported payload or from generic JSON output.
+
 ## [NK1][Hexis] Reject mistyped HMX confirmation flags (2026-10-26)
 
 - Extend the server smoke matrix so `confirmed: "true"` is rejected as a type error rather than being treated as an approval signal.
