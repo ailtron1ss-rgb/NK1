@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { FeedbackDeliveryGuard } from '../src/organism/core/FeedbackDeliveryGuard.ts';
 
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const b272 = await readFile(new URL('../src/organism/cognition/B272EndogenousGoalGenesis.ts', import.meta.url), 'utf8');
@@ -45,4 +46,56 @@ assert.ok(unselectedMethod.includes('this.state.rejectedGoals++'));
 assert.doesNotMatch(unselectedMethod, /actionPrototypeWeights|goalWeights|goalOutcomeMemory|outcomeHistory/,
   'an unselected proposal must not train action prototypes or pollute executed-action outcome memory');
 
-console.log('Cognitive/B272 feedback attribution wiring: PASS');
+assert.ok(core.includes("private readonly feedbackDeliveryGuard = new FeedbackDeliveryGuard()"),
+  'Core must own a feedback delivery guard');
+
+const spineStart = core.indexOf('private async feedbackSpineOnly');
+const spineEnd = core.indexOf('private expectedClosureDomains', spineStart);
+assert.ok(spineStart >= 0 && spineEnd > spineStart, 'spine-only feedback boundary must be discoverable');
+const spineBlock = core.slice(spineStart, spineEnd);
+const spineBegin = spineBlock.indexOf('this.feedbackDeliveryGuard.begin(');
+const firstSpineMutation = spineBlock.indexOf('state.lastActionSuccess = success');
+assert.ok(spineBegin >= 0 && spineBegin < firstSpineMutation,
+  'spine-only feedback must reserve its tick before learner/state mutation');
+assert.ok(spineBlock.indexOf('this.feedbackDeliveryGuard.complete(feedbackDeliveryToken)') > firstSpineMutation,
+  'spine-only feedback must persist completion after successful learning');
+
+const mainFeedbackStart = core.indexOf('async feedback(outcome:');
+const mainFeedbackEnd = core.indexOf('cameraEvidenceSnapshot()', mainFeedbackStart);
+assert.ok(mainFeedbackStart >= 0 && mainFeedbackEnd > mainFeedbackStart, 'main feedback boundary must be discoverable');
+const mainFeedback = core.slice(mainFeedbackStart, mainFeedbackEnd);
+const mainBegin = mainFeedback.indexOf('this.feedbackDeliveryGuard.begin(');
+const firstMainMutation = mainFeedback.indexOf("this.persistence.revisionTokens.touch('critical-kernel'");
+assert.ok(mainBegin >= 0 && mainBegin < firstMainMutation,
+  'main feedback must reserve its tick before subsystem mutation');
+assert.ok(mainFeedback.lastIndexOf('this.feedbackDeliveryGuard.complete(feedbackDeliveryToken)') > mainFeedback.lastIndexOf('this.persisted.facets.learning.operationalLife ='),
+  'main feedback must finalize the receipt after all learner updates');
+assert.ok(mainFeedback.lastIndexOf('this.feedbackDeliveryGuard.complete(feedbackDeliveryToken)') < mainFeedback.lastIndexOf('await this.checkpoint(false)'),
+  'completion receipt must be included in the final checkpoint');
+
+const guard = new FeedbackDeliveryGuard();
+const input = { tick: 17, decisionId: 'decision-17', action: 'reflect', previousReceipt: null };
+const reservation = guard.begin(input);
+assert.throws(
+  () => guard.begin({ ...input, decisionId: 'different-decision' }),
+  /already in progress/,
+  'concurrent feedback for the same organism tick must fail closed',
+);
+const receipt = guard.complete(reservation);
+assert.deepEqual(receipt, {
+  version: 1, tick: 17, decisionId: 'decision-17', action: 'reflect', status: 'completed',
+});
+assert.throws(
+  () => guard.begin({ ...input, previousReceipt: receipt }),
+  /already been finalized/,
+  'replay after a completed feedback delivery must be rejected',
+);
+assert.throws(
+  () => guard.begin({ ...input, previousReceipt: { version: 7, tick: 17, decisionId: 'forged', action: 'wait', status: 'completed' } }),
+  /malformed/,
+  'a malformed current-tick receipt must not disable the replay guard',
+);
+const nextTick = guard.begin({ ...input, tick: 18, previousReceipt: receipt });
+assert.equal(guard.complete(nextTick).tick, 18, 'the next organism tick must accept a new outcome');
+
+console.log('Cognitive/B272 feedback attribution and exactly-once delivery: PASS');
