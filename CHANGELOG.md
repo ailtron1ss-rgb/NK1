@@ -1,3 +1,10 @@
+## [NK1][Memory][Hexis] WorkPass396 — share canonical-memory capacity contract (2026-10-26)
+
+- [FIX] Added `CANONICAL_MEMORY_CAPACITY` as the single capacity contract shared by MemoryOS2 and the HMX projector's capacity preflight. The preflight can no longer silently drift from the store limit and allow an import to evict pre-existing canonical memory.
+- [WIRING] MemoryOS2 insertion/restore/compaction limits and its bounded embedding index now use the shared constant; HMX preflight imports the same constant.
+- [TEST] Made the preflight regression derive its expected boundary from the shared contract rather than hard-coding `1600`.
+- [VALIDATION] Tests and typecheck are wired; exact-head execution remains unconfirmed while GitHub Actions runner allocation is unreliable.
+
 ## [NK1][Hexis] WorkPass395 — enforce export-global entity refs (2026-10-26)
 
 - [SAFETY] HMX staging now tracks entity refs across `memories`, `episodes`, and `goals`, not just duplicates within a single memory array. Duplicate refs across entity sections poison the affected section before review/acceptance.
