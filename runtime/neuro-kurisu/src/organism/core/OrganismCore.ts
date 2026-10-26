@@ -2800,13 +2800,28 @@ export class OrganismCore {
         const memory = this.memorySubsystem.memoryOS.get(String(input.memoryId));
         if (!memory)
             return { ok: false, error: 'memory-not-found', memoryId: String(input.memoryId) };
-        const audit = this.hexisAdaptation.reviseBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: Number(memory.sourceAuthority01 ?? 0.5), evidence: input.evidence, stance: input.stance, context: input.context, protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical', at: Date.now() });
-        if (audit.applied) {
+        // Match Hexis source-key precedence so memory and belief replay guards share one identity.
+        const evidenceSourceKey = String(input.evidence.ref || input.evidence.label || input.evidence.contentHash || sha256Stable(input.evidence, 'legacy')).trim().slice(0, 96);
+        const canonicalDuplicate = this.memorySubsystem.memoryOS.hasEvidenceLineage(memory.id, evidenceSourceKey);
+        // Refresh the adapter projection from canonical memory before applying evidence.
+        this.hexisAdaptation.registerOrUpdateBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: Number(memory.sourceAuthority01 ?? 0.5), at: memory.lastAccessAt });
+        // Keep provenance even when policy refuses to change confidence: evidence seen and accepted belief are different facts.
+        const evidenceReceipt = canonicalDuplicate ? null : this.memorySubsystem.memoryOS.recordEvidence(memory.id, {
+            source: String(input.evidence.ref || input.evidence.label || input.evidence.contentHash || 'hexis-evidence'),
+            provenanceClass: 'external',
+            sourceAuthority01: Number(input.evidence.trust01 ?? 0.5),
+            independenceKey: evidenceSourceKey,
+            observedAt: Date.now(),
+            evidenceFreshnessAt: Date.now(),
+        });
+        const duplicateEvidence = canonicalDuplicate || evidenceReceipt?.ok !== true || evidenceReceipt?.added !== true;
+        const audit = this.hexisAdaptation.reviseBelief({ memoryId: memory.id, confidence01: memory.confidence, trust01: Number(memory.sourceAuthority01 ?? 0.5), evidence: input.evidence, stance: input.stance, context: input.context, protectedBelief: memory.kind === 'identity' || memory.kind === 'autobiographical', canonicalDuplicate: duplicateEvidence, at: Date.now() });
+        if (audit.applied && evidenceReceipt?.added === true) {
             this.memorySubsystem.fabric.updateSignals(memory.id, { confidence: audit.posteriorConfidence01 }, 'hexis-belief-revision', { tick: this.persisted.state.tick });
         }
         this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
-        return { ok: true, audit, memory: this.memorySubsystem.memoryOS.get(memory.id) };
+        return { ok: true, audit, evidence: evidenceReceipt, memory: this.memorySubsystem.memoryOS.get(memory.id) };
     }
     /** Temporal views delegate to MemoryOS2; Hexis temporal rows remain audit/export projections only. */
     hexisTemporalAt(memoryId: string, at: number) {
