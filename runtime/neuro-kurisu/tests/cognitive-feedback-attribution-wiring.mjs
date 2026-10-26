@@ -7,6 +7,7 @@ import { FeedbackDeliveryGuard } from '../src/organism/core/FeedbackDeliveryGuar
 
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const b272 = await readFile(new URL('../src/organism/cognition/B272EndogenousGoalGenesis.ts', import.meta.url), 'utf8');
+const b273 = await readFile(new URL('../src/organism/cognition/B273AutonomousGoalLifecycle.ts', import.meta.url), 'utf8');
 const stateMigrations = await readFile(new URL('../src/organism/persistence/StateMigrations.ts', import.meta.url), 'utf8');
 
 function requireFeedbackGate(label, startMarker, endMarker, learnerName) {
@@ -193,4 +194,26 @@ try {
   await rm(receiptDirectory, { recursive: true, force: true });
 }
 
-console.log('Cognitive/B272 feedback attribution and durable exactly-once delivery: PASS');
+const b273LearnGuard = b273.slice(b273.indexOf('private assertGeneratedDecision'), b273.indexOf('  learnFromOutcome('));
+assert.ok(b273LearnGuard.includes('!this.state.lastActionPlan.includes(input.action)'),
+  'B273 learning must validate that the rewarded action belongs to the generated plan');
+assert.ok(b273.includes('recordUnselectedAction(input:'),
+  'B273 must retain bounded evidence for an unselected proposal without reward credit');
+
+const b273PathStart = core.indexOf('const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();');
+const b273PathEnd = core.indexOf('const b274Diag', b273PathStart);
+const b273Path = core.slice(b273PathStart, b273PathEnd);
+assert.ok(b273Path.includes('b273Current.plan.includes(trace.selected.action)'),
+  'normal feedback must restrict B273 learning to actions offered by the generated plan');
+assert.ok(b273Path.includes('b273Learner.recordUnselectedAction('),
+  'normal feedback must not reward a B273 action that lost arbitration');
+
+const b338PathStart = core.indexOf('const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();');
+const b338PathEnd = core.indexOf('this.persisted.system.autonomousGoalLifecycleB273 = this.developmentalNeural.autonomousGoalLifecycleB273.snapshot();', b338PathStart);
+const b338Path = core.slice(b338PathStart, b338PathEnd);
+assert.ok(b338Path.includes('b338Lifecycle.plan.includes(trace.selected.action)'),
+  'world-transition feedback must restrict B273 learning to actions offered by the generated plan');
+assert.ok(b338Path.includes('b273Learner.recordUnselectedAction('),
+  'world-transition feedback must record rejected B273 proposals without credit');
+
+console.log('Cognitive/B272/B273 feedback attribution and durable exactly-once delivery: PASS');

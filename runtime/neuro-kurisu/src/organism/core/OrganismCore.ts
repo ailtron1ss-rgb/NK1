@@ -9545,7 +9545,19 @@ export class OrganismCore {
                     });
                 this.persisted.system.endogenousGoalGenesisB272 = b272Learner.snapshot();
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
+                const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;
+                const b273Learning = b273Current.plan.includes(trace.selected.action)
+                    ? b273Learner.learnFromOutcome({
+                        tick: state.tick, action: trace.selected.action, plan: b273Current.plan,
+                        reward01: gatedReward01, predictionError01: state.predictionError,
+                        independentGain01: b272IndependentGain,
+                        personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                    })
+                    : b273Learner.recordUnselectedAction({
+                        tick: state.tick, generatedAction: b273Current.action,
+                        selectedAction: trace.selected.action, plan: b273Current.plan,
+                    });
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
                 const b274CandidateId = b274Diag.activeCandidateId;
                 if (b274CandidateId) {
@@ -9838,16 +9850,26 @@ export class OrganismCore {
                     });
                 this.persisted.system.endogenousGoalGenesisB272 = b338Learner.snapshot();
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    plan: b338Lifecycle.plan,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    independentGain01: b338IndependentGain,
-                    personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                });
+                const b273Learner = this.developmentalNeural.autonomousGoalLifecycleB273;
+                if (b338Lifecycle.plan.includes(trace.selected.action)) {
+                    b273Learner.learnFromOutcome({
+                        tick: state.tick,
+                        action: trace.selected.action,
+                        plan: b338Lifecycle.plan,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        independentGain01: b338IndependentGain,
+                        personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                    });
+                } else {
+                    b273Learner.recordUnselectedAction({
+                        tick: state.tick,
+                        generatedAction: b338Lifecycle.action,
+                        selectedAction: trace.selected.action,
+                        plan: b338Lifecycle.plan,
+                    });
+                }
                 this.persisted.system.endogenousGoalGenesisB272 = this.developmentalNeural.endogenousGoalGenesisB272.snapshot();
                 this.persisted.system.autonomousGoalLifecycleB273 = this.developmentalNeural.autonomousGoalLifecycleB273.snapshot();
             }
