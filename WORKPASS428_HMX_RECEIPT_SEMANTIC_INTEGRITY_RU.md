@@ -21,6 +21,9 @@
 
 ## Регрессии
 
+- `isSafeJsonTree` ограничивает вложенность, число узлов, own keys, длину отдельного ключа/строки и совокупный объём строк/ключей; дополнительные аргументы не позволяют изменить бюджет.
+- Регрессии проверяют over-depth tree, forged budget, oversized string и объект с более чем 4096 собственными ключами.
+
 - Некорректные типы известных секций `memories` и `relationships` отклоняются до canonicalSnapshot/encode/revise/forget; будущие неизвестные непустые scalar-секции остаются явно deferred.
 - Failure-injection после canonical write и semantic-node projection должен восстановить baseline трёх хранилищ, после чего retry создаёт ровно один объект на подсистему.
 
