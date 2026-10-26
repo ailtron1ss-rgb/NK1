@@ -1,12 +1,23 @@
 import { createHash } from 'node:crypto';
-import { isValidHmxStageDigest } from './HexisStageIntegrity.mjs';
+import { isSafeJsonTree, isValidHmxStageDigest } from './HexisStageIntegrity.mjs';
 
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const asText = (value, max = 2048) => typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : '';
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
+const isCanonicalReceiptId = value => typeof value === 'string' && value.length > 0 &&
+  value === value.trim() && !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 export const isValidHmxApplyReceipt = (stage, receipt) => {
-  if (!isRecord(stage) || !isRecord(receipt)) return false;
+  // This validator is exported and can be called independently of apply(); reject
+  // accessor-backed or malformed trees before reading receipt/stage fields.
+  if (!isRecord(stage) || !isRecord(receipt) || !isValidHmxStageDigest(stage) ||
+      !isSafeJsonTree(receipt) || !isRecord(stage.stagedSections) ||
+      stage.status !== 'applied' || stage.intent !== 'port' || stage.strategy !== 'additive' ||
+      typeof stage.exportId !== 'string' || !/^exp_[a-f0-9]{16}$/.test(stage.exportId) ||
+      typeof stage.sourceLineageId !== 'string' || !stage.sourceLineageId.trim() || stage.sourceLineageId.length > 512 ||
+      /[\u0000-\u001f\u007f-\u009f]/u.test(stage.sourceLineageId) ||
+      typeof stage.stagingId !== 'string' || !stage.stagingId.trim() || stage.stagingId.length > 512 ||
+      /[\u0000-\u001f\u007f-\u009f]/u.test(stage.stagingId)) return false;
   const keys = [
     'version', 'exportId', 'sourceLineageId', 'stageId', 'stageDigest', 'attempt',
     'appliedAt', 'status', 'complete', 'candidateMemoryRecords', 'uniqueMemoryRecords',
@@ -20,6 +31,8 @@ export const isValidHmxApplyReceipt = (stage, receipt) => {
       receipt.stageId !== stage.stagingId ||
       typeof stage.digest !== 'string' || receipt.stageDigest !== stage.digest ||
       !Number.isSafeInteger(receipt.attempt) || receipt.attempt < 1 ||
+      (Object.hasOwn(stage, 'applicationAttempts') &&
+        (!Number.isSafeInteger(stage.applicationAttempts) || stage.applicationAttempts < 1 || receipt.attempt !== stage.applicationAttempts)) ||
       !Number.isFinite(receipt.appliedAt) || receipt.appliedAt < 0 ||
       !['applied', 'partial', 'noop'].includes(receipt.status) ||
       typeof receipt.complete !== 'boolean') return false;
@@ -32,8 +45,55 @@ export const isValidHmxApplyReceipt = (stage, receipt) => {
   for (const field of ['semanticEdgeIds', 'memoryIds', 'createdMemoryIds', 'warnings']) {
     if (!Array.isArray(receipt[field]) || !receipt[field].every(item => typeof item === 'string')) return false;
   }
+  for (const field of ['semanticEdgeIds', 'memoryIds', 'createdMemoryIds']) {
+    if (receipt[field].some(id => !isCanonicalReceiptId(id))) return false;
+  }
   if (!isRecord(receipt.deferredSections) ||
-      Object.values(receipt.deferredSections).some(count => !Number.isSafeInteger(count) || count < 0)) return false;
+      Object.entries(receipt.deferredSections).some(([name, count]) =>
+        !name || name.length > 128 || /[\u0000-\u001f\u007f-\u009f]/u.test(name) ||
+        !Number.isSafeInteger(count) || count < 1)) return false;
+  // Enforce semantic invariants even when a tampered receipt has been rehashed.
+  const memoryRows = Array.isArray(stage.stagedSections.memories) ? stage.stagedSections.memories : [];
+  if (receipt.candidateMemoryRecords !== memoryRows.length ||
+      receipt.uniqueMemoryRecords > receipt.candidateMemoryRecords ||
+      receipt.importedCount + receipt.deduplicatedCount !== receipt.uniqueMemoryRecords ||
+      receipt.memoryIds.length !== receipt.uniqueMemoryRecords ||
+      receipt.createdMemoryIds.length !== receipt.importedCount ||
+      new Set(receipt.memoryIds).size !== receipt.memoryIds.length ||
+      new Set(receipt.createdMemoryIds).size !== receipt.createdMemoryIds.length ||
+      receipt.createdMemoryIds.some(id => !receipt.memoryIds.includes(id)) ||
+      receipt.semanticEdgeIds.length > receipt.projectedRelationships) return false;
+
+  const stagedRelationships = stage.stagedSections.relationships;
+  if (Array.isArray(stagedRelationships)) {
+    if (receipt.projectedRelationships + receipt.deferredRelationships !== stagedRelationships.length) return false;
+  } else if (Object.hasOwn(stage.stagedSections, 'relationships') ||
+      receipt.projectedRelationships !== 0 || receipt.deferredRelationships !== 0) {
+    return false;
+  }
+
+  // The deferred summary is an exact projection of the staged sections. This prevents
+  // a rehashed receipt from inventing deferred goals, hiding deferred relationships,
+  // or using zero-valued keys to force a false "partial" status.
+  const expectedDeferredSections = deferredSectionCounts(stage.stagedSections);
+  if (Array.isArray(stagedRelationships)) {
+    if (receipt.deferredRelationships > 0) expectedDeferredSections.relationships = receipt.deferredRelationships;
+    else delete expectedDeferredSections.relationships;
+  } else {
+    delete expectedDeferredSections.relationships;
+  }
+  const actualDeferredNames = Object.keys(receipt.deferredSections).sort();
+  const expectedDeferredNames = Object.keys(expectedDeferredSections).sort();
+  if (actualDeferredNames.length !== expectedDeferredNames.length ||
+      actualDeferredNames.some((name, index) =>
+        name !== expectedDeferredNames[index] ||
+        receipt.deferredSections[name] !== expectedDeferredSections[name])) return false;
+
+  const expectedStatus = receipt.uniqueMemoryRecords === 0
+    ? 'noop'
+    : expectedDeferredNames.length > 0 ? 'partial' : 'applied';
+  if (receipt.status !== expectedStatus || receipt.complete !== (expectedStatus === 'applied')) return false;
+
   const { digest: receiptDigest, ...base } = receipt;
   return typeof receiptDigest === 'string' &&
     /^[a-f0-9]{64}$/.test(receiptDigest) &&
@@ -90,7 +150,9 @@ const stableHmxMemoryRef = value => {
 };
 
 function deferredSectionCounts(sections) {
-  const result = {};
+  // Section labels are external input. A null-prototype map makes "__proto__"
+  // and "constructor" ordinary data keys rather than inherited setters/properties.
+  const result = Object.create(null);
   for (const [name, value] of Object.entries(sections ?? {})) {
     if (name === 'memories') continue;
     const count = Array.isArray(value) ? value.length : isRecord(value) ? Object.keys(value).length : 0;
