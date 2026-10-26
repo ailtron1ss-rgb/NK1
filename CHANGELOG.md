@@ -6,7 +6,7 @@
 - [ATOMICITY] Build the next receipt map and sanitized approval state locally; commit both only after validation and expiration processing succeeds.
 - [SAFETY] Preserve a persisted `responseOmitted` marker even when a stale response body is also present; retry remains `idempotency-recovery-required` and never calls the executor again.
 - [REGRESSION] Add `tests/workpass368-action-ledger-restore-boundary.mjs` covering legacy compatibility, schema/version rejection, root/row/permission accessors, bad counters, opaque nested response data, omission tombstones, and no duplicate execution.
-- [CI] Register the focused suite and receipt-integrity/archive regressions in WorkPass331 unified runtime CI. Exact-head validation is pending; no PASS is claimed until hosted Actions completes.
+- [CI] WorkPass331 typecheck and substrate checks passed on the first attempt; the new focused suite correctly exposed a fixture-count assertion (an earlier setup action incremented the shared counter). Isolated the post-setup baseline and pushed a correction; the corrected exact-head CI is pending. No PASS is claimed until hosted Actions completes.
 - [RELEASE] `main` and the published Release ZIP remain unchanged.
 
 ---
