@@ -137,6 +137,18 @@ export async function runLearningProcess(
   if (!safeInteger(maxOutputBytes, 1, MAX_OUTPUT_BYTES)) throw new Error('maxOutputBytes out of bounds');
 
   if (command.signal?.aborted) throw new Error('learning process cancelled before spawn');
+
+  // Reject malformed environment configuration before allocating any per-run
+  // filesystem state; invalid host input must not leave a scratch directory behind.
+  const inheritedEnvironment = [...(command.inheritEnv ?? [])];
+  const explicitEnvironment = { ...(command.env ?? {}) };
+  for (const key of inheritedEnvironment) {
+    if (!/^[A-Z_][A-Z0-9_]*$/i.test(key)) throw new Error('invalid inherited environment key');
+  }
+  for (const [key, value] of Object.entries(explicitEnvironment)) {
+    if (!/^[A-Z_][A-Z0-9_]*$/i.test(key) || typeof value !== 'string') throw new Error('invalid environment entry');
+  }
+
   const executionId = randomUUID();
   const startedAt = Date.now();
   await mkdir(path.resolve(command.runRoot), { recursive: true });
@@ -144,15 +156,11 @@ export async function runLearningProcess(
   const runDirectory = await mkdtemp(path.join(path.resolve(command.runRoot), 'nk1-learning-'));
   const surviveDirectory = path.resolve(command.surviveDir);
   const env: NodeJS.ProcessEnv = {};
-  for (const key of command.inheritEnv ?? []) {
-    if (!/^[A-Z_][A-Z0-9_]*$/i.test(key)) throw new Error('invalid inherited environment key');
+  for (const key of inheritedEnvironment) {
     const value = process.env[key];
     if (value !== undefined) env[key] = value;
   }
-  for (const [key, value] of Object.entries(command.env ?? {})) {
-    if (!/^[A-Z_][A-Z0-9_]*$/i.test(key) || typeof value !== 'string') throw new Error('invalid environment entry');
-    env[key] = value;
-  }
+  for (const [key, value] of Object.entries(explicitEnvironment)) env[key] = value;
   Object.assign(env, {
     NK1_LEARNING_RUN_ID: run.runId,
     NK1_LEARNING_EXECUTION_ID: executionId,
@@ -166,17 +174,23 @@ export async function runLearningProcess(
     NK1_LEARNING_RUN_DIR: runDirectory,
     NK1_LEARNING_SURVIVE_DIR: surviveDirectory,
   });
-  if (trustedShadowRun !== undefined) {
-    if (!nonEmpty(trustedShadowRun.runtimeVersion) || typeof trustedShadowRun.register !== 'function') {
-      throw new Error('invalid trusted shadow run registrar');
+  try {
+    if (trustedShadowRun !== undefined) {
+      if (!nonEmpty(trustedShadowRun.runtimeVersion) || typeof trustedShadowRun.register !== 'function') {
+        throw new Error('invalid trusted shadow run registrar');
+      }
+      // Registration must durably precede spawn, but a rejected registration must
+      // not leak an orphan scratch directory that looks like an unreceipted run.
+      await trustedShadowRun.register({
+        runId: run.runId, taskId: run.taskId, seed: run.seed,
+        manifestFingerprint: run.manifestFingerprint, runtimeVersion: trustedShadowRun.runtimeVersion,
+      });
     }
-    // This call is deliberately before spawn(): a registry outage must prevent the run.
-    await trustedShadowRun.register({
-      runId: run.runId, taskId: run.taskId, seed: run.seed,
-      manifestFingerprint: run.manifestFingerprint, runtimeVersion: trustedShadowRun.runtimeVersion,
-    });
+    if (command.signal?.aborted) throw new Error('learning process cancelled before spawn');
+  } catch (error) {
+    await rm(runDirectory, { recursive: true, force: true });
+    throw error;
   }
-  if (command.signal?.aborted) throw new Error('learning process cancelled before spawn');
   const inheritedEnvKeys = [...(command.inheritEnv ?? [])].sort();
   const explicitEnvKeys = Object.keys(command.env ?? {}).sort();
   // Fingerprint environment values as well as names: values can change execution
