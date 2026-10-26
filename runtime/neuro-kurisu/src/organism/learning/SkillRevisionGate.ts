@@ -90,10 +90,18 @@ export function evaluateSkillRevision(
     pair.set(row.method, row);
     byPair.set(key, pair);
   }
-  const paired = [...byPair.values()].filter(pair => {
-    if (!pair.has(baselineMethod) || !pair.has(candidateMethod)) return false;
-    return pair.get(baselineMethod)!.family === pair.get(candidateMethod)!.family;
-  });
+  const paired: Map<string, RevisionObservation>[] = [];
+  for (const pair of byPair.values()) {
+    const baseline = pair.get(baselineMethod);
+    const candidate = pair.get(candidateMethod);
+    if (!baseline || !candidate) continue;
+    if (baseline.family !== candidate.family) {
+      // Count the rejected mismatch once, consistently with the prior per-conflict metric.
+      rejectedRows++;
+      continue;
+    }
+    paired.push(pair);
+  }
   const n = paired.length;
   const baselinePassRate = n ? paired.reduce((s, p) => s + Number(p.get(baselineMethod)!.passed), 0) / n : 0;
   const candidatePassRate = n ? paired.reduce((s, p) => s + Number(p.get(candidateMethod)!.passed), 0) / n : 0;
@@ -102,7 +110,6 @@ export function evaluateSkillRevision(
   for (const pair of paired) {
     const a = pair.get(baselineMethod)!;
     const b = pair.get(candidateMethod)!;
-    if (a.family !== b.family) { rejectedRows++; continue; }
     const rows = families.get(a.family) ?? [];
     rows.push({ baseline: Number(a.passed), candidate: Number(b.passed) });
     families.set(a.family, rows);
