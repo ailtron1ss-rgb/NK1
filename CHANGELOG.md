@@ -1,3 +1,12 @@
+## WorkPass367 — persist feedback replay barrier across schema migration (2026-10-26)
+
+- **Critical restart gap closed:** `migratePersistedOrganism()` now preserves `feedbackDeliveryReceipt` verbatim in the typed current-state schema. The receipt is intentionally `unknown` at the migration boundary so the runtime guard, not migration coercion, validates it; malformed payloads still fail closed.
+- **Regression:** `cognitive-feedback-attribution-wiring.mjs` asserts both the untrusted receipt type and the raw receipt copy. The test uses Node's type stripping flag in the npm script, and both repository-audit and unified-substrate workflows now watch migration/guard/test paths.
+- **Cross-branch relevance:** this ports the missing persistence half of the feedback guard from the moving audit branch without replacing the evolving cognitive-runtime file. The preceding WorkPass366 workflow passed, but the migration change requires a fresh exact-head run.
+- **Boundary:** this prevents same-tick feedback replay through the persisted system projection; it does not prove the entire organism is production-ready or that external learning has generalized.
+
+---
+
 ## WorkPass366 — integrate exactly-once feedback delivery into the unified runtime line (2026-10-26)
 
 - **Cross-branch integration:** ported `FeedbackDeliveryGuard` from the repository-wiring audit line without replacing the evolved `OrganismCore.ts` from the cognitive-substrate branch. Only the guard import/state owner and the two feedback entry/exit boundaries were added.
