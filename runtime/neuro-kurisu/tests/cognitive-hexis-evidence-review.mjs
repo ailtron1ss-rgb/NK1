@@ -216,6 +216,82 @@ assert.equal(failedReview.reason, "hexis-review-ingress-failed");
 assert.equal(Boolean(target(memoryOS, rollbackMemory.id).evidenceRecords?.some((row) => row.evidenceId === rollbackEvidence.evidenceId)), false);
 assert.equal(rollbackFabric.snapshot().learningReviews.length, 0);
 
+// 7) Persisted review metadata must remain bound to the exact canonical receipt.
+const tamperingCases = [
+  { name: "source-ref", patch: (payload) => ({ source: { ...payload.source, ref: "source:forged-reference" } }) },
+  { name: "source-label", patch: (payload) => ({ source: { ...payload.source, label: "Forged source label" } }) },
+  { name: "note", patch: () => ({ note: "Forged review text that was never in the canonical receipt." }) },
+  { name: "observed-at", patch: () => ({ observedAt: "2026-10-26T11:59:00.000Z" }) },
+  { name: "stance", patch: () => ({ stance: "contradicts" }) },
+  { name: "confidence", patch: () => ({ evidenceConfidence01: 0.99 }) },
+];
+for (const tampering of tamperingCases) {
+  const tamperMemoryOS = new MemoryOS2({ signalFusionProfile: "balanced" });
+  const tamperFabric = new HexisAdaptationFabric();
+  const tamperMemory = createMemory(tamperMemoryOS, `Memory for ${tampering.name} digest-binding tampering.`, 0.62);
+  const tamperEvidence = evidence(
+    tamperMemory.id,
+    `hexis:review:tamper-${tampering.name}`,
+    "supports",
+    `source:tamper-${tampering.name}`,
+  );
+  const tamperPending = ingestHexisEvidenceForReview(tamperMemoryOS, tamperFabric, tamperEvidence);
+  assert.equal(tamperPending.status, "review-pending");
+  if (tamperPending.status !== "review-pending") continue;
+
+  const tamperedSnapshot = tamperFabric.snapshot();
+  const tamperedReview = tamperedSnapshot.learningReviews.find((row) => row.id === tamperPending.reviewId);
+  const tamperedItem = tamperedReview?.items.find((row) => row.id === tamperPending.reviewItemId);
+  assert.ok(tamperedItem, `expected pending review for ${tampering.name}`);
+  const originalPayload = tamperedItem.evidence;
+  tamperedItem.evidence = { ...originalPayload, ...tampering.patch(originalPayload) };
+  tamperFabric.restore(tamperedSnapshot);
+
+  const memoryBeforeDecision = tamperMemoryOS.snapshot();
+  const reviewBeforeDecision = tamperFabric.snapshot();
+  const decision = decideHexisEvidenceReview(
+    tamperMemoryOS,
+    tamperFabric,
+    tamperPending.reviewId,
+    tamperPending.reviewItemId,
+    "approve",
+  );
+  assert.equal(decision.status, "rejected", `${tampering.name} tampering must be rejected`);
+  if (decision.status === "rejected") {
+    assert.equal(decision.reason, "canonical-review-evidence-binding-mismatch");
+  }
+  assert.deepEqual(tamperMemoryOS.snapshot(), memoryBeforeDecision, `${tampering.name} tampering must not mutate canonical memory`);
+  assert.deepEqual(tamperFabric.snapshot(), reviewBeforeDecision, `${tampering.name} tampering must leave review state unchanged`);
+  assert.equal(tamperMemoryOS.get(tamperMemory.id).confidence, 0.62);
+}
+
+// Server-stamped evidence uses a normalized clock in its identity digest, but the
+// pending review still binds the actual receipt time and must remain approvable.
+const serverStampMemoryOS = new MemoryOS2({ signalFusionProfile: "balanced" });
+const serverStampFabric = new HexisAdaptationFabric();
+const serverStampMemory = createMemory(serverStampMemoryOS, "Memory for server-stamped evidence binding.", 0.58);
+const serverStampEvidence = evidence(
+  serverStampMemory.id,
+  "hexis:review:server-stamp",
+  "supports",
+  "source:server-stamp",
+  { observedAt: "2026-10-26T10:31:00.000Z", observedAtOrigin: "server-receipt" },
+);
+const serverStampPending = ingestHexisEvidenceForReview(serverStampMemoryOS, serverStampFabric, serverStampEvidence);
+assert.equal(serverStampPending.status, "review-pending");
+if (serverStampPending.status === "review-pending") {
+  const serverStampPayload = serverStampFabric.getLearningReview(serverStampPending.reviewId)?.items[0]?.evidence;
+  assert.equal(serverStampPayload?.observedAtOrigin, "server-receipt");
+  const approvedServerStamp = decideHexisEvidenceReview(
+    serverStampMemoryOS,
+    serverStampFabric,
+    serverStampPending.reviewId,
+    serverStampPending.reviewItemId,
+    "approve",
+  );
+  assert.equal(approvedServerStamp.status, "decided", "server-receipt digest normalization must survive review");
+}
+
 console.log("Hexis evidence → canonical MemoryOS2 → gated Hexis review: PASS", JSON.stringify({
   approvalChangesCanonicalConfidence: true,
   duplicateReplay: exactReplay.status,
