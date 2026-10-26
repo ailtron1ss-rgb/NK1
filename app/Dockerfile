@@ -8,6 +8,7 @@ RUN npm ci --prefix app --no-audit --no-fund
 
 COPY app ./app
 COPY runtime ./runtime
+COPY contracts ./contracts
 COPY .nvmrc ./.nvmrc
 
 # Build the real React/TanStack UI alongside the canonical runtime asset tree.
