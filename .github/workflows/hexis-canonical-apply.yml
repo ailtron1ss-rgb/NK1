@@ -15,6 +15,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
   workflow_dispatch:
 
