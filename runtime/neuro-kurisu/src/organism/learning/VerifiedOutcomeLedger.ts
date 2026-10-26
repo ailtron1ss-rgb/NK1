@@ -37,7 +37,7 @@ function snapshotPlainDataRecord(value: unknown, expectedFields: readonly string
 /** Clone a dense array from own data descriptors without invoking index accessors. */
 function snapshotPlainArray(value: unknown): unknown[] | null {
   try {
-    if (!Array.isArray(value)) return null;
+    if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
     const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
     if (!lengthDescriptor || !('value' in lengthDescriptor) ||
         !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0) return null;
