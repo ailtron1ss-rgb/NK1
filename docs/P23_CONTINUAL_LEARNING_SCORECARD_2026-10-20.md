@@ -1,3 +1,14 @@
+## WorkPass334 score update (2026-10-26)
+
+- **Learning-effectiveness scores intentionally unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**. The new wall-clock budget improves boundedness, not measured task performance.
+- **What changed:** `IndependentSkillCandidateEvaluator` now applies one monotonic deadline to the complete validation + holdout pass; service calls use the smaller of their individual limit and remaining total budget. A total timeout terminates the experiment rather than being downgraded to one failed task. Regression covers ignored cancellation, no subsequent task launch, and invalid timeout configuration.
+- **Exact-head verification:** all four workflows passed on `b6f4335b9bdb4bf150d86fc9db1a830fe3041626`: P26 Learning Validation, WorkPass108 evidence/promotion gate, WorkPass110 continual-learning metrics, and unified project integration suite. Exact links and scope are in [the progress tracker](PROJECT_PROGRESS_TRACKER_2026-10-26_RU.json).
+- **Engineering tracking:** weighted implementation is **66.6%**, automated-validation coverage **72.4%**, independent field evidence **17.4%**, and release readiness **34.9%**. These project-wide percentages are engineering estimates, not measures of intelligence or consciousness; external task evidence and release gates remain open.
+- **Why no learning uplift:** this change bounds evaluation execution and improves failure semantics. It does not demonstrate stronger tool-use, transfer, retrieval, retention or autonomous self-development. The earlier proxy still showed tool-use and transfer gain at zero.
+- **Release note:** `main` and the published WorkPass70 ZIP remain unchanged. No release archive rebuilt or published.
+
+---
+
 ## WorkPass333 score update (2026-10-26)
 
 - **Scores intentionally unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
