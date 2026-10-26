@@ -212,22 +212,27 @@ export interface HexisHmxConflict {
 }
 
 export interface HexisHmxApplicationReceipt {
-  version?: number;
-  exportId?: string;
-  sourceLineageId?: string;
-  stageId?: string;
+  version: 1;
+  exportId: string;
+  sourceLineageId: string;
+  stageId: string;
+  stageDigest: string;
+  attempt: number;
+  appliedAt: number;
   status: "applied" | "partial" | "noop";
-  importedCount?: number;
-  deduplicatedCount?: number;
-  memoryIds?: string[];
-  createdMemoryIds?: string[];
-  semanticEdgeIds?: string[];
-  projectedRelationships?: number;
-  deferredRelationships?: number;
-  deferredSections?: Record<string, number>;
-  warnings?: string[];
-  digest?: string;
-  at?: number;
+  complete: boolean;
+  candidateMemoryRecords: number;
+  uniqueMemoryRecords: number;
+  importedCount: number;
+  deduplicatedCount: number;
+  projectedRelationships: number;
+  deferredRelationships: number;
+  semanticEdgeIds: string[];
+  memoryIds: string[];
+  createdMemoryIds: string[];
+  deferredSections: Record<string, number>;
+  warnings: string[];
+  digest: string;
 }
 
 export interface HexisHmxStage {
@@ -235,10 +240,17 @@ export interface HexisHmxStage {
   exportId: string;
   intent: HexisHmxIntent;
   strategy: HexisHmxStrategy;
+  sourceSubjectId?: string;
+  sourceLineageId?: string;
+  sectionCounts: Record<string, number>;
+  protectedSections: string[];
   status: HexisHmxStageStatus;
   conflicts: HexisHmxConflict[];
-  sectionCounts?: Record<string, number>;
-  applicationAttempts?: number;
+  createdAt: number;
+  digest: string;
+  lifecycleDigest: string;
+  stagedSections: Record<string, unknown>;
+  applicationAttempts: number;
   application?: HexisHmxApplicationReceipt;
 }
 
