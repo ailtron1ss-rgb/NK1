@@ -167,6 +167,20 @@ assert(malformedMetadataIssues.some(issue => issue.path.endsWith('.metadata.nk1_
 assert(malformedMetadataIssues.some(issue => issue.path.endsWith('.metadata.nk1_confidence') && issue.kind === 'schema'));
 assert(malformedMetadataIssues.some(issue => issue.path.endsWith('.metadata.tags') && issue.kind === 'schema'));
 
+const malformedMetadataStageFabric = new HexisAdaptationFabric();
+const malformedMetadataStage = malformedMetadataStageFabric.stageHmx({
+  document: malformedMetadataHmx,
+  intent: 'telepathy',
+  strategy: 'additive',
+});
+assert(malformedMetadataStage.conflicts.length > 0,
+  'malformed trust metadata must be exposed as stage conflicts');
+assert.equal(malformedMetadataStage.stagedSections.memories, undefined,
+  'the full memory section containing a schema conflict must be omitted atomically');
+assert.equal(malformedMetadataStageFabric.decideHmx(malformedMetadataStage.stagingId, 'accept')?.status, 'staged',
+  'malformed metadata cannot be accepted into canonical memory');
+
+
 const malformedTypeHmx = {
   ...validHmx,
   sections: {
