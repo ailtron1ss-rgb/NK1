@@ -63,6 +63,8 @@ export interface P26InterleavedTrainingResult {
   conflictCandidateCap:number;
   /** Conservative replay-rate bound before context-separation admission. */
   effectiveReplayLearningRate01:number;
+  /** Rate used for rows whose context separation is supported by bounded neighbours. */
+  contextSeparatedReplayLearningRate01:number;
   contextSeparatedReplayRows:number;
   meanLoss01:number;
 }
@@ -214,6 +216,9 @@ export class P26TrueLearningEngine{
     const effectiveReplayLearningRate01 = replayLearningRate01 < currentLearningRate01
       ? Math.min(replayLearningRate01, currentLearningRate01 * 0.1 * replayEveryNCurrent)
       : replayLearningRate01;
+    const contextSeparatedReplayLearningRate01 = replayLearningRate01 >= currentLearningRate01
+      ? replayLearningRate01
+      : Math.min(currentLearningRate01 * 0.35, effectiveReplayLearningRate01 + currentLearningRate01 * 0.1);
 
     const candidatesByActionAndEnergy=new Map<string,P26InterleavedExperience[]>();
     const energyBucket=(state:OrganismState)=>Math.round(readStateNeed(state,'energy')*20);
@@ -281,7 +286,7 @@ export class P26TrueLearningEngine{
       }
       eligibleReplayRows+=1;
       const rowReplayLearningRate01=contextAssessment.contextSeparated
-        ? Math.max(effectiveReplayLearningRate01,currentLearningRate01)
+        ? contextSeparatedReplayLearningRate01
         : effectiveReplayLearningRate01;
       if(contextAssessment.contextSeparated) contextSeparatedReplayRows+=1;
       const replayResult=this.learner.train({
@@ -306,6 +311,7 @@ export class P26TrueLearningEngine{
       onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,
       conflictComparisons,conflictCandidateCap:candidateCap,
       effectiveReplayLearningRate01,
+      contextSeparatedReplayLearningRate01,
       contextSeparatedReplayRows,
       meanLoss01:total?(onlineLoss+replayLoss)/total:0,
     };
