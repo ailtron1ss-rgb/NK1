@@ -384,6 +384,30 @@ assert.equal(importRecorded?.importResult?.status, 'applied');
 assert.equal(importRecorded?.importResult?.created, 1);
 assert.equal(fabric.recordHmxImportResult(stage.stagingId, { status: 'applied', created: 10, reused: 0 })?.importResult?.created, 1, 'completed import receipts cannot be replayed to rewrite counts');
 
+const uncertainStage = fabric.stageHmx({ document: validHmx, intent: 'telepathy', strategy: 'additive' });
+assert.equal(uncertainStage.status, 'staged');
+assert.equal(fabric.decideHmx(uncertainStage.stagingId, 'accept')?.status, 'accepted');
+const uncertainReceipt = fabric.recordHmxImportResult(uncertainStage.stagingId, {
+  // Core may know which encoder calls returned, but an incomplete rollback
+  // makes the final canonical state uncertain even when all counts add up.
+  status: 'partial',
+  created: 0,
+  reused: 0,
+  skipped: 1,
+  reason: 'memory-encode-failed-rollback-incomplete',
+});
+assert.equal(uncertainReceipt?.importResult?.status, 'uncertain',
+  'incomplete rollback must be terminal and must never masquerade as ordinary partial success');
+assert.equal(uncertainReceipt?.importResult?.created, 0);
+assert.equal(uncertainReceipt?.importResult?.reused, 0);
+assert.equal(uncertainReceipt?.importResult?.skipped, 1,
+  'uncertain rollback receipt must still account for every source record');
+const uncertainReplay = fabric.recordHmxImportResult(uncertainStage.stagingId, {
+  status: 'applied', created: 1, reused: 0, skipped: 0,
+});
+assert.equal(uncertainReplay?.importResult?.status, 'uncertain',
+  'a terminal uncertain receipt cannot be replayed into a false applied status');
+
 const emptySnapshot = buildNk1HmxV17Document({ subjectId: 'nk1-empty', memories: [], exportedAt: Date.parse('2026-10-26T10:00:00.000Z') });
 assert.match(String(emptySnapshot.export_id), /^exp_[0-9a-f]{16}$/);
 assert.equal(emptySnapshot.export_intent, 'telepathy');
