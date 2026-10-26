@@ -735,12 +735,20 @@ export class HexisAdaptationFabric {
         this.state.metrics.outboxPublished += 1;
     } if (error)
         entry.lastError = String(error).slice(0, 500); this.state.outbox = retainHexisOutboxRows(this.state.outbox); return structuredClone(entry); }
-    reclaimOutbox(maxAgeMs = 60000): number { const cutoff = nowMs() - Math.max(1000, maxAgeMs); let count = 0; for (const entry of this.state.outbox)
-        if (entry.status === 'publishing' && entry.updatedAt < cutoff) {
+    reclaimOutbox(maxAgeMs = 60000): number {
+        const cutoff = nowMs() - Math.max(1000, maxAgeMs);
+        let count = 0;
+        for (const entry of this.state.outbox) {
+            if (entry.status !== 'publishing' || entry.updatedAt >= cutoff) continue;
             entry.status = entry.attempts >= 3 ? 'failed' : 'pending';
             entry.updatedAt = nowMs();
             count += 1;
-        } return count; }
+        }
+        // Reclaimed rows may become terminal in bulk; apply the same history bound
+        // used by ackOutbox without evicting any outstanding delivery obligation.
+        this.state.outbox = retainHexisOutboxRows(this.state.outbox);
+        return count;
+    }
     grantConnectorPolicy(input: {
         connectorId: string;
         actionKind: string;
