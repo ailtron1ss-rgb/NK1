@@ -33,6 +33,16 @@ export async function createIndependentEvaluationConfigFactory(input) {
   if (process.platform !== 'win32' && (moduleMetadata.mode & 0o022) !== 0) {
     throw new Error('compound-repair-independent-evaluator-module-must-not-be-group-or-world-writable');
   }
+  // File mode alone does not protect executable policy if another account can
+  // rename the file in a writable parent directory. Require the canonical parent
+  // to be private from group/other writes before importing host authority code.
+  const moduleParentMetadata = await stat(path.dirname(evaluationPath));
+  if (!moduleParentMetadata.isDirectory()) {
+    throw new Error('compound-repair-independent-evaluator-module-parent-must-be-directory');
+  }
+  if (process.platform !== 'win32' && (moduleParentMetadata.mode & 0o022) !== 0) {
+    throw new Error('compound-repair-independent-evaluator-module-parent-must-not-be-group-or-world-writable');
+  }
   // The authority config is executable policy: never load it from the mutable
   // organism state directory where learned data or runtime artifacts may be written.
   const statePath = path.resolve(input.stateDirectory);
@@ -43,7 +53,12 @@ export async function createIndependentEvaluationConfigFactory(input) {
   }
   if (input.providerModulePath) {
     const providerPath = await realpath(path.resolve(input.providerModulePath));
-    if (evaluationPath === providerPath) {
+    const providerMetadata = await stat(providerPath);
+    // realpath distinguishes pathnames, not file identity: hard links may expose
+    // the same executable module under two apparently distinct authority paths.
+    const sharesProviderFile = evaluationPath === providerPath ||
+      (moduleMetadata.dev === providerMetadata.dev && moduleMetadata.ino === providerMetadata.ino);
+    if (sharesProviderFile) {
       throw new Error('compound-repair-provider-and-independent-evaluator-modules-must-be-distinct');
     }
   }
