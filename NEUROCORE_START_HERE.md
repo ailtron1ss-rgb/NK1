@@ -1,3 +1,15 @@
+## Latest checkpoint — WorkPass336 (2026-10-26)
+
+- **Branch:** `work/nk1-unified-substrate-runtime-integration-2026-10-26-r2`; based on the current WorkPass334 source line. This is a separate draft integration; `main` and the release ZIP were not changed.
+- **Runtime:** replaced the 103-line simplified `UnifiedCognitiveSubstrate.ts` with a strict 307-line version from the divergent substrate-wiring branch, then wired it selectively into the existing `OrganismRuntime.ts` rather than overwriting that whole file.
+- **Integration:** per-cycle cross-system frame after the canonical Core observation; persistence sidecar `*.cognitive-substrate.json`; guarded restore fallback; periodic persistence on important signals/every 16 ticks; final flush on stop.
+- **Routing contract:** the substrate policy intersects with existing resource/dependency routing and only reduces optional counterfactual branches/matched projections. Core remains the canonical action owner.
+- **Regression:** `tests/unified-substrate-runtime-wiring.mjs` covers state sanitization, version mismatch, malformed/replayed tick behavior, low-evidence work limits, and runtime wiring. The script was added to `test:cognitive-integration-suite` and `test:rebuild-recovered`.
+- **Validation:** implementation and test are committed; exact-head TypeScript typecheck, behavioral test execution and Actions CI remain pending. Existing progress scores and earlier CI statuses are kept anchored to their prior tested baseline; they are not evidence that this branch passes.
+- **Remaining:** add actual runtime restart/step end-to-end coverage, test the composed runtime in CI and on Android/Termux, then continue the independent learning/transfer and real-world postcondition release gates.
+
+---
+
 ## Latest checkpoint — WorkPass331 (2026-10-26)
 
 - **Branch:** `fix/cognitive-interrupt-severity-normalization-2026-10-25`; continue in draft PR [#135](https://github.com/ailtron1ss-rgb/NK1/pull/135), targeting `work/node24-project-pin-rebased-20261025`. No merge to `main`; no release ZIP update.
