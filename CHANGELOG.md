@@ -2219,3 +2219,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **[FIX]** The repository-wiring workflow had the target `audit/b276-execution-attribution-2026-10-26` duplicated under `push`, but missing under `pull_request`. The H1 PR targets that base, so its Hexis gate was not guaranteed to run on pull-request updates.
 - **[FIX]** Added the active H1 branch to the push trigger, removed the duplicate push branch, added the actual PR base branch to pull-request filters, and added explicit Hexis adapter, MemoryOS2, and integration-test paths to both filter sets.
 - **[VALIDATION]** Workflow YAML and path selection have been updated in code; a successful run that executes `test:hexis-memory-evidence-lineage` on the new head is still required before this gate is marked passed.
+
+## NK1 Hexis H1 — long-horizon evidence replay protection (2026-10-26)
+
+- **[FIX]** Added a persisted scalable Bloom filter for canonical evidence-lineage membership. The exact replay ring remains bounded at 32 keys and the visible evidence trail remains bounded at eight sources; the filter adds fixed-size segments rather than silently forgetting earlier lineages.
+- **[FIX]** Wired the durable filter into `MemoryOS2.encode`/`mergeIncomingEvidence`, `recordEvidence`, `hasEvidenceLineage`, restore normalization, and provenance-aware memory byte accounting. Older snapshots seed the filter from their retained exact keys and visible sources.
+- **[SAFETY]** Corrupt filter data fails closed; at the configured segment cap, the memory rejects unverified new lineages rather than allowing a previously seen source to become a new confidence vote.
+- **[REGRESSION]** Added an H1 integration case with 140 distinct lineages, oldest-source replay, snapshot/restore, replay after restart, and index integrity.
+- **[VALIDATION]** The exact-head repository-wiring Actions run is being used for this new path; no pass is claimed until the Hexis-specific step has completed on the final code/test head.
