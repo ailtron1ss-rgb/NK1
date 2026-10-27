@@ -267,6 +267,7 @@ export interface SemanticIndexMaintenanceResult {
 export class MemoryOS2{
  private state=defaultMemoryOS2();
  private readonly signalCompensationSnapshots=new WeakMap<object,{memoryId:string;snapshot:MemoryItem2}>();
+ private readonly statusCompensationSnapshots=new WeakMap<object,{memoryId:string;snapshot:MemoryItem2}>();
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
@@ -1097,6 +1098,47 @@ export class MemoryOS2{
   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(current));
   if(!restoredExactly)return false;
   this.signalCompensationSnapshots.delete(token);
+  return true;
+ }
+ /**
+  * Capture exact pre-revision fields for a failed higher-level HMX transaction.
+  * The opaque token prevents caller-supplied snapshots authorizing status restoration.
+  */
+ captureStatusCompensation(id:string):object|null{
+  const key=String(id);
+  const current=this.itemIndex.get(key);
+  if(!current)return null;
+  const token=Object.freeze({});
+  this.statusCompensationSnapshots.set(token,{memoryId:key,snapshot:structuredClone(current)});
+  return token;
+ }
+ hasStatusCompensation(token:object):boolean{
+  return Boolean(token&&typeof token==='object'&&this.statusCompensationSnapshots.has(token));
+ }
+ discardStatusCompensation(token:object):boolean{
+  if(!this.hasStatusCompensation(token))return false;
+  return this.statusCompensationSnapshots.delete(token);
+ }
+ restoreStatusForCompensation(id:string,token:object):boolean{
+  const key=String(id);
+  if(!token||typeof token!=='object')return false;
+  const captured=this.statusCompensationSnapshots.get(token);
+  if(!captured||captured.memoryId!==key)return false;
+  const current=this.itemIndex.get(key);
+  if(!current)return false;
+  const before=estimateMemoryBytes(current);
+  const fields=['epistemicStatus','lastAccessAt','revisionHistory'];
+  const target=current as unknown as Record<string,unknown>;
+  const source=captured.snapshot as unknown as Record<string,unknown>;
+  for(const field of fields){
+   const value=source[field];
+   if(value===undefined)delete target[field];
+   else target[field]=structuredClone(value);
+  }
+  const restoredExactly=fields.every(field=>JSON.stringify(target[field])===JSON.stringify(source[field]));
+  this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(current));
+  if(!restoredExactly)return false;
+  this.statusCompensationSnapshots.delete(token);
   return true;
  }
  get(id:string){const m=this.state.items.find(x=>x.id===id); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
