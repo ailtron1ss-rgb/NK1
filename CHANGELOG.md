@@ -1,3 +1,11 @@
+## [NK1][WorkPass467] Add bounded conflict-gated interleaved learning (2026-10-27)
+
+- Implemented the `P26TrueLearningEngine.trainInterleaved` API already exercised by the sequential-learning benchmark.
+- The path prevalidates both fresh and replay streams before weight changes, bounds candidate comparisons to at most 64 per considered replay row, blocks replay rows whose near-identical state/action has a contradictory reward, and retains separate counters for online updates, replay updates, blocked rows and eligible rows.
+- Current/replay learning rates and target mode are explicit options; replay candidate caps no longer stop processing the remainder of fresh-task rows.
+- Validation is pending on the newly updated head. Previous Core CI had failed because this method was missing; do not infer benchmark success until its current exact-head run finishes.
+- Previously confirmed P26 holdout provenance now passes, with `trainingExposure01` separate from `generalizationEvidence01`. P23 restore ordering and the signed-shadow candidate-ID expectation remain open blockers.
+
 ## [NK1][WorkPass466] Separate training exposure and independently verified holdout maturity (2026-10-27)
 
 - Added `trainingExposure01` and `independentHoldoutSamples` to P26 learning metrics. Online updates and replay increase exposure without being counted as generalization evidence.
