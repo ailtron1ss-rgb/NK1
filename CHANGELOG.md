@@ -1,3 +1,9 @@
+## [NK1][WorkPass511] Lock retrieval experiment row-order determinism (2026-10-27)
+
+- Add a regression asserting that reversing external label-file row order leaves the canonical dataset fingerprint and paired multi-seed recall/MRR deltas unchanged.
+- This protects reproducibility against harmless JSONL ordering changes; it does not establish real-world retrieval uplift.
+- Validation: test and changelog commits were written to the work branch; the Node test was not executed in this remote GitHub pass, and CI status remains unverified.
+
 ## [NK1][WorkPass510] Close candidate precision@K duplicate-ID regression (2026-10-27)
 
 - Extend the duplicate-corpus-ID regression to assert both BM25 baseline and MemoryOS2 candidate precision@K count a relevant memory ID only once.
