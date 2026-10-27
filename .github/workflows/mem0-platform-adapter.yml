@@ -8,6 +8,7 @@ on:
       - "runtime/neuro-kurisu/tests/mem0-platform-adapter-workpass1.mjs"
       - "runtime/neuro-kurisu/tests/mem0-live-contract-check.mjs"
       - "runtime/neuro-kurisu/tests/mem0-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/mem0-oss-adapter-workpass2.mjs"
       - "runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs"
       - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
