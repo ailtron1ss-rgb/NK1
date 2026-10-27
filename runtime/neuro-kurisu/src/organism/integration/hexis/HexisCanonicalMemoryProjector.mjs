@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { isSafeJsonTree, isValidHmxStageDigest } from './HexisStageIntegrity.mjs';
 
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
@@ -217,19 +217,19 @@ export class HexisCanonicalMemoryProjector {
     this.temporalLedger = temporalLedger;
   }
 
-  ensureSemanticNode(ref, content, nativeType, salience, nodeIdsByRef, sourceKey = '') {
+  ensureSemanticNode(ref, content, nativeType, salience, nodeIdsByRef, sourceKey = '', mutationToken) {
     if (!this.semanticGraph || nodeIdsByRef.has(ref)) return nodeIdsByRef.get(ref) ?? null;
     const label = semanticLabel(content);
     if (!label) return null;
     const type = semanticNodeType(nativeType);
     // Reuse graph nodes instead of reinforcing them on every re-import.
     const existing = this.semanticGraph.snapshot().nodes.find(node => node.label === label && node.type === type && String(node.sourceKey ?? '') === String(sourceKey ?? ''));
-    const node = existing ?? this.semanticGraph.upsertNode(content, type, salience, sourceKey);
+    const node = existing ?? this.semanticGraph.upsertNode(content, type, salience, sourceKey, mutationToken);
     nodeIdsByRef.set(ref, node.id);
     return node.id;
   }
 
-  removeSemanticProjection(sourceKey) {
+  removeSemanticProjection(sourceKey, mutationToken) {
     if (!this.semanticGraph) return;
     const snapshot = this.semanticGraph.snapshot();
     const removed = new Set(snapshot.nodes
@@ -240,7 +240,7 @@ export class HexisCanonicalMemoryProjector {
       ...snapshot,
       nodes: snapshot.nodes.filter(node => !removed.has(node.id)),
       edges: snapshot.edges.filter(edge => !removed.has(edge.from) && !removed.has(edge.to)),
-    });
+    }, mutationToken);
   }
 
   apply(stage) {
@@ -293,8 +293,15 @@ export class HexisCanonicalMemoryProjector {
     }
 
     const existingItems = this.memoryFabric.canonicalSnapshot().items ?? [];
+    const projectionMutationToken = 'hexis-hmx-apply:' + randomUUID();
     const semanticGraphBefore = this.semanticGraph?.snapshot();
+    const semanticGraphMutationCheckpoint = typeof this.semanticGraph?.mutationCheckpoint === 'function'
+      ? this.semanticGraph.mutationCheckpoint()
+      : null;
     const temporalLedgerBefore = this.temporalLedger?.snapshot();
+    const temporalLedgerMutationCheckpoint = typeof this.temporalLedger?.mutationCheckpoint === 'function'
+      ? this.temporalLedger.mutationCheckpoint()
+      : null;
     const semanticNodeIdsByRef = new Map();
     const beforeIds = new Set(existingItems.map(item => item.id));
     const existingImportKeys = new Set(existingItems
@@ -388,9 +395,9 @@ export class HexisCanonicalMemoryProjector {
             );
           }
           const priorGraphSource = asText(prior.context?.hexisGraphSourceKey, 512) || asText(prior.source, 512);
-          if (priorGraphSource) this.removeSemanticProjection(priorGraphSource);
+          if (priorGraphSource) this.removeSemanticProjection(priorGraphSource, projectionMutationToken);
           if (this.temporalLedger && typeof this.temporalLedger.removeBeliefProjection === 'function') {
-            this.temporalLedger.removeBeliefProjection(prior.id);
+            this.temporalLedger.removeBeliefProjection(prior.id, projectionMutationToken);
           }
         }
 
@@ -435,8 +442,8 @@ export class HexisCanonicalMemoryProjector {
                 },
               );
             }
-            if (targetStatus === 'quarantined' || targetStatus === 'unknown') this.removeSemanticProjection(graphSourceKey);
-            else this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
+            if (targetStatus === 'quarantined' || targetStatus === 'unknown') this.removeSemanticProjection(graphSourceKey, projectionMutationToken);
+            else this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey, projectionMutationToken);
 
             if (changesTrustSignals) {
               const cappedMemory = this.memoryFabric.updateSignals(
@@ -542,7 +549,7 @@ export class HexisCanonicalMemoryProjector {
           importedCount++;
         }
         if (epistemicStatus === 'belief' || epistemicStatus === 'hypothesis') {
-          this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
+          this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey, projectionMutationToken);
         }
         existingImportKeys.add(existingKey);
       }
@@ -559,7 +566,7 @@ export class HexisCanonicalMemoryProjector {
         }
         const relation = semanticRelationType(relationship?.edge_type);
         const prior = this.semanticGraph.snapshot().edges.find(edge => edge.from === from && edge.to === to && edge.relation === relation);
-        const edge = prior ?? this.semanticGraph.connect(from, to, relation, clamp01(relationship?.properties?.weight ?? relationship?.properties?.confidence ?? 0.55));
+        const edge = prior ?? this.semanticGraph.connect(from, to, relation, clamp01(relationship?.properties?.weight ?? relationship?.properties?.confidence ?? 0.55), projectionMutationToken);
         semanticEdgeIds.push(edge.id);
         projectedRelationships++;
       }
@@ -586,7 +593,7 @@ export class HexisCanonicalMemoryProjector {
               contentHash: hash(memory.content),
               provenance: inputRow?.provenance ?? inputRow?.source_attribution ?? null,
             },
-          });
+          }, projectionMutationToken);
         }
       }
       // Hexis keeps belief state separately from the canonical memory record. Seed
@@ -603,7 +610,7 @@ export class HexisCanonicalMemoryProjector {
           const memory = canonicalById.get(id);
           if (!memory) throw new Error('hmx-belief-canonical-memory-missing:' + id);
           if (memory.epistemicStatus !== 'belief') {
-            if (typeof this.temporalLedger.removeBeliefProjection === 'function') this.temporalLedger.removeBeliefProjection(id);
+            if (typeof this.temporalLedger.removeBeliefProjection === 'function') this.temporalLedger.removeBeliefProjection(id, projectionMutationToken);
             continue;
           }
           this.temporalLedger.registerOrUpdateBelief({
@@ -611,7 +618,7 @@ export class HexisCanonicalMemoryProjector {
             confidence01: clamp01(memory.confidence),
             trust01: clamp01(memory.sourceAuthority01 ?? memory.confidence),
             at: dateMs(memory.observedAt) ?? appliedAt,
-          });
+          }, projectionMutationToken);
         }
       }
 
@@ -711,14 +718,22 @@ export class HexisCanonicalMemoryProjector {
       // The expected-current guard fails closed rather than overwriting later changes.
       if (this.semanticGraph && semanticGraphBefore) {
         try {
-          this.semanticGraph.restore(semanticGraphBefore);
+          if (semanticGraphMutationCheckpoint === null ||
+              typeof this.semanticGraph.restoreIfUnchanged !== 'function' ||
+              this.semanticGraph.restoreIfUnchanged(semanticGraphBefore, semanticGraphMutationCheckpoint, projectionMutationToken) !== true) {
+            rollbackErrors.push('semantic-graph-conflict');
+          }
         } catch (graphRollbackError) {
           rollbackErrors.push('semantic-graph:' + String(graphRollbackError?.message ?? graphRollbackError).slice(0, 220));
         }
       }
       if (this.temporalLedger && temporalLedgerBefore) {
         try {
-          this.temporalLedger.restore(temporalLedgerBefore);
+          if (temporalLedgerMutationCheckpoint === null ||
+              typeof this.temporalLedger.restoreIfUnchanged !== 'function' ||
+              this.temporalLedger.restoreIfUnchanged(temporalLedgerBefore, temporalLedgerMutationCheckpoint, projectionMutationToken) !== true) {
+            rollbackErrors.push('temporal-ledger-conflict');
+          }
         } catch (temporalRollbackError) {
           rollbackErrors.push('temporal-ledger:' + String(temporalRollbackError?.message ?? temporalRollbackError).slice(0, 220));
         }
