@@ -1,3 +1,9 @@
+## [NK1][WorkPass463] Treat foreign full-state restores as rollback boundaries (2026-10-27)
+
+- Semantic graph and Hexis ledger mutation journals now distinguish global snapshot replacement from source-/record-scoped mutations. Owner undo stops when a foreign full restore occurred later, even if the current row happens to match the stale transaction's post-state.
+- Added regressions proving that later authoritative graph/ledger snapshots are preserved instead of having old owned nodes or beliefs resurrected over them.
+- All new checks are source-level tests; exact-head runtime tests, TypeScript typecheck and CI remain unconfirmed. No changes to `main` or the canonical GitHub Release ZIP.
+
 ## [NK1][WorkPass462] Preserve bounded belief state on rollback conflict (2026-10-27)
 
 - `removeBeliefProjection()` undo now builds a candidate state and refuses restoration when re-inserting a removed row would exceed the 1024-entry bound. It no longer slices off a newer, independent belief to make stale rollback fit.
