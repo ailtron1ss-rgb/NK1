@@ -64,6 +64,9 @@ original.memoryWorldCausalBridge.record({
 });
 
 const before = original.snapshot();
+// Simulate a persisted lifecycle state from a prior run. The compatibility importer
+// must run at this tick, not at the new instance's constructor default.
+before.memoryLifecycleAuthority.lastTick = 1234;
 for (const key of [
   'memoryRetentionEconomy',
   'memoryCausalEconomy',
@@ -74,7 +77,18 @@ for (const key of [
 }
 
 const restored = new MemorySubsystemRuntime();
+let compatibilityImportTick = null;
+const consolidateCompatibility = restored.fabric.consolidateCompatibility.bind(restored.fabric);
+restored.fabric.consolidateCompatibility = (rows, limit, tick) => {
+  compatibilityImportTick = tick;
+  return consolidateCompatibility(rows, limit, tick);
+};
 restored.restoreFromPersisted({ advanced: before });
+assert.equal(
+  compatibilityImportTick,
+  1234,
+  'legacy compatibility import must use the restored lifecycle tick, not reset to zero',
+);
 
 assert.deepEqual(
   restored.memoryRetentionEconomy.snapshot(),
