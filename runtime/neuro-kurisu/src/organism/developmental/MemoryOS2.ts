@@ -788,8 +788,8 @@ export class MemoryOS2{
    // Context belongs to the current query, not a lifetime counter. Using
    // linkUpdates/semanticQueries here made unrelated questions drift into causal
    // or temporal policy buckets after enough ordinary retrievals.
-   const contextCausal=(queryIntentMode==='causal'||/\b(why|cause|causal|because|reason|effect|consequence|причин|почему|следств)/iu.test(query))?1:0;
-   const contextTemporal=(temporalMode!=='current'||queryIntentMode==='episodic'||/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query))?1:0;
+   const contextCausal=(queryIntentMode==='causal'||/\b(why|cause|causal|because|reason|effect|consequence)\b/iu.test(query)||/(причин|почему|следств)/iu.test(query))?1:0;
+   const contextTemporal=(temporalMode!=='current'||queryIntentMode==='episodic'||/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year)\b/iu.test(query)||/(сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query))?1:0;
    this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
    if(this.linkSupportCacheVersion!==this.state.linkUpdates||!this.linkSupportCache){
      const support=new Map<string,number>();
