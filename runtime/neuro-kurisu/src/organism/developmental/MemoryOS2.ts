@@ -760,8 +760,8 @@ export class MemoryOS2{
    const temporalMode:MemoryTemporalMode=temporalOptions.temporalMode??'current';
    const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:wallClockNow;
    this.state.semanticQueries++;
-   const contextCausal=/\\b(why|cause|causal|because|reason|effect|причин|почему|следств)/iu.test(query)?1:clamp(this.state.linkUpdates/100);
-   const contextTemporal=/\\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query)?1:clamp(this.state.semanticQueries/100);
+   const contextCausal=/\b(why|cause|causal|because|reason|effect|причин|почему|следств)/iu.test(query)?1:clamp(this.state.linkUpdates/100);
+   const contextTemporal=/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query)?1:clamp(this.state.semanticQueries/100);
    this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
    this.state.adaptiveMemoryPolicy=this.adaptivePolicy.snapshot();
    const selected:MemoryItem2[]=[];
