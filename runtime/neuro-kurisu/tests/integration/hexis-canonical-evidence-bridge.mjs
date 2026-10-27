@@ -118,6 +118,11 @@ assert.equal(
 
 // Observation time is independently bounded. A valid capture envelope cannot
 // make a future-dated event safe to persist as canonical observedAt.
+const futureBaseline = runtime.fabric.canonicalSnapshot().items.find(row => row.id === memory.id);
+assert(futureBaseline);
+const futureBaselineEvidenceSources = structuredClone(futureBaseline.evidenceSources ?? []);
+const futureBaselineLineageKeys = structuredClone(futureBaseline.evidenceLineageKeys ?? []);
+const futureBaselineConfidence = futureBaseline.confidence;
 const futureAt = Date.now() + 10 * 60_000;
 runtime.sourceMonitor.record({
   id: 'trace-future-observation',
@@ -132,6 +137,14 @@ assert.equal(
   runtime.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-future-observation').reason,
   'observation-time-in-future',
 );
+const afterFutureTrace = runtime.fabric.canonicalSnapshot().items.find(row => row.id === memory.id);
+assert(afterFutureTrace);
+assert.deepEqual(afterFutureTrace.evidenceSources ?? [], futureBaselineEvidenceSources,
+  'a rejected future trace must not append or rewrite canonical evidence sources');
+assert.deepEqual(afterFutureTrace.evidenceLineageKeys ?? [], futureBaselineLineageKeys,
+  'a rejected future trace must not append canonical lineage keys');
+assert.equal(afterFutureTrace.confidence, futureBaselineConfidence,
+  'a rejected future trace must not change canonical confidence');
 const futureP65Id = runtime.p65EpistemicLedger.record({
   tick: 80, at: futureAt, kind: 'observation', content,
   confidence01: .9, source: 'external-api',
@@ -141,6 +154,14 @@ assert.equal(
   runtime.hexisCanonicalEvidenceBridge.recordP65Claim(memory.id, futureP65Id).reason,
   'observation-time-in-future',
 );
+const afterFutureP65 = runtime.fabric.canonicalSnapshot().items.find(row => row.id === memory.id);
+assert(afterFutureP65);
+assert.deepEqual(afterFutureP65.evidenceSources ?? [], futureBaselineEvidenceSources,
+  'a rejected future P65 claim must not append or rewrite canonical evidence sources');
+assert.deepEqual(afterFutureP65.evidenceLineageKeys ?? [], futureBaselineLineageKeys,
+  'a rejected future P65 claim must not append canonical lineage keys');
+assert.equal(afterFutureP65.confidence, futureBaselineConfidence,
+  'a rejected future P65 claim must not change canonical confidence');
 runtime.sourceMonitor.record({
   id: 'trace-model-echo',
   source: 'model',

@@ -1,3 +1,13 @@
+## [NK1][WorkPass505] Prove future Hexis evidence rejection is mutation-free (2026-10-27)
+
+- Strengthened future-dated SourceMonitor and P65 regressions beyond checking the rejection reason: each compares canonical evidence-source rows, lineage keys and confidence against a pre-attempt snapshot.
+- The tests now require both future-dated ingress paths to leave canonical memory unchanged; this verifies fail-closed behavior rather than merely observing an error response.
+
+## [NK1][WorkPass504] Exercise retrieval provenance and semantic routing in core regressions (2026-10-27)
+
+- The recovered-core suite now runs `test:memory-retrieval-experiment` alongside the live semantic-route regression so malformed, duplicate and over-limit bootstrap seeds are actually tested in the recovery suite.
+- These seeds are bootstrap-resampling seeds, not independent retrieval-model training runs. Passing the contract test does not establish recall uplift; an independently sourced holdout remains required.
+
 ## [NK1][WorkPass503] Make Hexis bridge attempt-count assertion monotonic (2026-10-27)
 
 - A parallel regression added explicit same-ID trace replay to verify immutable source-trace identity, raising the bridge's current-instance attempt count from nine to ten.
