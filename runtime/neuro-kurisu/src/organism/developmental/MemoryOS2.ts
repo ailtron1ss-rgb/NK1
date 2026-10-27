@@ -1085,7 +1085,7 @@ export class MemoryOS2{
     // Authority correction is deliberately monotonic: generic signal updates may
     // reduce over-trusted state but can never promote a source's authority.
     const authorityCap=c(patch.sourceAuthority01);
-    m.sourceAuthority01=Math.min(c(m.sourceAuthority01),authorityCap);
+    m.sourceAuthority01=Math.min(c(m.sourceAuthority01??0.45),authorityCap);
     m.evidenceSources=(m.evidenceSources??[]).map(source=>{
      if(source.provenanceClass==='external'&&String(source.source??'').startsWith('hexis:')){
       return {...source,sourceAuthority01:Math.min(c(source.sourceAuthority01),authorityCap)};
