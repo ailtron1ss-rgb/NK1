@@ -34,6 +34,10 @@ assert.equal(experiment.retrievalConfigurationFingerprint.length, 64);
 assert.equal(experiment.datasetFingerprint.length, 64);
 assert.equal(experiment.determinism.retrievalQualityMetricsStableAcrossSeeds, true);
 assert.equal(experiment.determinism.datasetCorpusAndRetrievalConfigurationFingerprintsStableAcrossSeeds, true);
+// Label-file row order must not change the dataset identity or paired results.
+const reorderedExperiment = runMemoryOS2RetrievalExperiment(snapshot, [...examples].reverse(), options);
+assert.equal(reorderedExperiment.datasetFingerprint, experiment.datasetFingerprint, 'dataset fingerprint must be invariant to external label row order');
+assert.deepEqual(reorderedExperiment.runs.map(row => ({ seed: row.seed, recallDelta01: row.recallDelta01, mrrDelta01: row.mrrDelta01 })), experiment.runs.map(row => ({ seed: row.seed, recallDelta01: row.recallDelta01, mrrDelta01: row.mrrDelta01 })), 'paired experiment results must be invariant to external label row order');
 assert.equal(experiment.sensitivity.mrrNonInferioritySupportedAcrossAllSeeds, experiment.runs.every(row => row.mrrConfidenceNonInferioritySupported));
 assert.equal(experiment.runs.every(row => Array.isArray(row.failedPromotionGates)), true);
 assert.equal(experiment.promotion.allowed, false, 'multi-seed experiment must never auto-promote');
