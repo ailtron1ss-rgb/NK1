@@ -438,7 +438,10 @@ export class HexisCanonicalMemoryProjector {
                     : [],
                 },
                 'hexis-import-authority-cap',
-                { commandId: 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48) },
+                {
+                  commandId: 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48),
+                  compensationToken,
+                },
               );
               if (!cappedMemory) throw new Error('hmx-import-authority-cap-memory-missing:' + duplicate.id);
             }
