@@ -370,70 +370,95 @@ export class MemoryFabric {
    * immediately keeps the lexical result while the single in-flight job may warm the
    * derived vector index for subsequent turns.
    */
-  async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}):Promise<MemoryItem2[]> {
-    this.lastCognitiveMemoryQueryAt=Date.now();
-    const safeLimit=Math.max(1,Math.min(16,Math.floor(Number.isFinite(limit)?limit:8)));
-    const fallback=this.retrieve(query,safeLimit,goalRelevance,identityRelevance,{...context,emitEvent:false});
-    const runtimeEnabled=/^(1|true|yes|on)$/i.test(String(process.env.NK_EMBEDDINGS_RUNTIME_ENABLED??''));
-    if(!runtimeEnabled||!String(query??'').trim()||!this.memoryOS.embeddingConfigured()) return fallback;
-
-    // Foreground cognition must not compete with low-priority background indexing;
-    // lexical retrieval stays available while a bounded maintenance batch warms the index.
-    if(this.cognitionSemanticInFlight||this.semanticMaintenanceInFlight) return fallback;
-    const providerTimeout=Math.max(500,Math.min(20000,Number(process.env.NK_EMBEDDINGS_TIMEOUT_MS??5000)||5000));
-    const work=this.memoryOS.previewRetrieveWithEmbeddings(query,safeLimit,goalRelevance,identityRelevance,
-      {temporalMode:context.temporalMode,asOfAt:context.asOfAt},
-      {maxIndexItems:12,maxLexicalPool:24,providerTimeoutMs:providerTimeout});
-    const tracked=work.finally(()=>{if(this.cognitionSemanticInFlight===tracked)this.cognitionSemanticInFlight=null;});
-    this.cognitionSemanticInFlight=tracked;
-    let timer:ReturnType<typeof setTimeout>|undefined;
-    const budgetMs=Math.max(50,Math.min(1000,Number(process.env.NK_EMBEDDINGS_RUNTIME_BUDGET_MS??220)||220));
-    const outcome=await Promise.race([
-      tracked.then(result=>({kind:'complete' as const,result})),
-      new Promise<{kind:'timeout'}>(resolve=>{timer=setTimeout(()=>resolve({kind:'timeout'}),budgetMs);}),
-    ]);
-    if(timer)clearTimeout(timer);
-    if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return fallback;
-    const rows=outcome.result.items.slice(0,safeLimit);
-    for(const row of rows)this.touchHot(row.id);
-    const policy=this.memoryOS.adaptivePolicyDiagnostics();
-    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:this.memoryOS.retrievalDiagnostics().candidateCount/192});
-    this.lastPolicyDecisionId=decision.id;
-    if(context.tick!==undefined) this.events.append(makeEvent('attention',context.tick,{source:'memory-fabric',query:query.slice(0,120),hits:rows.length,touchedMemoryIds:rows.slice(0,8).map(row=>row.id),evidenceMode:'semantic-cognitive-retrieval'} as any));
-    return rows;
-  }
-
-  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
-    const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt},false);
+  private recordRetrievalOutcome(query:string,rows:MemoryItem2[],options:{tick?:number;emitEvent?:boolean;evidenceMode?:string;queryLimit?:number;memoryIdLimit?:number}={}):void {
     this.statsData.retrievals++;
     this.statsData.retrievalHits+=rows.length;
     const policy=this.memoryOS.adaptivePolicyDiagnostics();
     const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:this.memoryOS.retrievalDiagnostics().candidateCount/192});
     this.lastPolicyDecisionId=decision.id;
     for(const row of rows)this.touchHot(row.id);
-    if(context.emitEvent){
-      this.events.append(makeEvent('attention',context.tick??0,{
-        source:'memory-fabric',
-        query:query.slice(0,160),
-        hits:rows.length,
-        touchedMemoryIds:rows.slice(0,12).map(row=>row.id),
-        evidenceMode:'retrieval-audit',
-      }));
-    }
     this.unifiedMemory.recordRetrieval(query,rows.length);
+    if(options.emitEvent){
+      this.events.append(makeEvent('attention',options.tick??0,{
+        source:'memory-fabric',
+        query:query.slice(0,options.queryLimit??160),
+        hits:rows.length,
+        touchedMemoryIds:rows.slice(0,options.memoryIdLimit??12).map(row=>row.id),
+        evidenceMode:options.evidenceMode??'retrieval-audit',
+      } as any));
+    }
+  }
+
+  async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}):Promise<MemoryItem2[]> {
+    this.lastCognitiveMemoryQueryAt=Date.now();
+    const safeLimit=Math.max(1,Math.min(16,Math.floor(Number.isFinite(limit)?limit:8)));
+    // Defer live lexical retrieval until it is actually selected. A speculative
+    // lexical result must never change canonical access counters when semantic recall wins.
+    const accountFallback=()=>{
+      const fallback=this.retrieve(query,safeLimit,goalRelevance,identityRelevance,
+        {...context,emitEvent:false,recordOutcome:false});
+      this.recordRetrievalOutcome(query,fallback);
+      return fallback;
+    };
+    const runtimeEnabled=/^(1|true|yes|on)$/i.test(String(process.env.NK_EMBEDDINGS_RUNTIME_ENABLED??''));
+    if(!runtimeEnabled||!String(query??'').trim()||!this.memoryOS.embeddingConfigured()) return accountFallback();
+
+    // Foreground cognition must not compete with low-priority background indexing;
+    // lexical retrieval stays available while a bounded maintenance batch warms the index.
+    if(this.cognitionSemanticInFlight||this.semanticMaintenanceInFlight) return accountFallback();
+    const providerTimeout=Math.max(500,Math.min(20000,Number(process.env.NK_EMBEDDINGS_TIMEOUT_MS??5000)||5000));
+    // Defer provider invocation into the promise chain so synchronous adapter throws
+    // and asynchronous provider failures share the same lexical-fallback path.
+    const work=Promise.resolve().then(()=>this.memoryOS.previewRetrieveWithEmbeddings(query,safeLimit,goalRelevance,identityRelevance,
+      {temporalMode:context.temporalMode,asOfAt:context.asOfAt},
+      {maxIndexItems:12,maxLexicalPool:24,providerTimeoutMs:providerTimeout}));
+    const tracked=work.finally(()=>{if(this.cognitionSemanticInFlight===tracked)this.cognitionSemanticInFlight=null;});
+    this.cognitionSemanticInFlight=tracked;
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    const budgetMs=Math.max(50,Math.min(1000,Number(process.env.NK_EMBEDDINGS_RUNTIME_BUDGET_MS??220)||220));
+    const outcome=await Promise.race([
+      tracked.then(
+        result=>({kind:'complete' as const,result}),
+        ()=>({kind:'failed' as const}),
+      ),
+      new Promise<{kind:'timeout'}>(resolve=>{timer=setTimeout(()=>resolve({kind:'timeout'}),budgetMs);}),
+    ]);
+    if(timer)clearTimeout(timer);
+    if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return accountFallback();
+    const rows=outcome.result.items.slice(0,safeLimit);
+    const selected=this.memoryOS.recordSelectedRetrieval(query,rows.map(row=>row.id),goalRelevance,identityRelevance,
+      {temporalMode:context.temporalMode,asOfAt:context.asOfAt},
+      outcome.result.semantic.candidateCount??rows.length);
+    this.recordRetrievalOutcome(query,selected,{
+      tick:context.tick,
+      emitEvent:context.tick!==undefined,
+      evidenceMode:'semantic-cognitive-retrieval',
+      queryLimit:120,
+      memoryIdLimit:8,
+    });
+    return selected;
+  }
+
+  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;recordOutcome?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
+    const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt},false);
+    if(context.recordOutcome!==false) this.recordRetrievalOutcome(query,rows,{tick:context.tick,emitEvent:context.emitEvent});
     return rows;
   }
 
   recall(query:string,limit=8):P62Frame {
-    const canonical=this.memoryOS.snapshot({clone:false});
-    const continuum=this.multiTimescale.retrieve(query,Math.min(16,Math.max(1,limit)),false);
+    const safeLimit=Math.max(1,Math.min(12,Math.floor(Number.isFinite(limit)?limit:8)));
+    // Query the canonical owner instead of taking the first 128 insertion-ordered
+    // memories. Preview retrieval is isolated, so recall does not mutate access
+    // counts or adaptive policy merely to construct a candidate packet.
+    const canonical=this.previewRetrieve(query,Math.min(32,Math.max(16,safeLimit*4)));
+    const continuum=this.multiTimescale.retrieve(query,Math.min(16,safeLimit),false);
     const frame=this.p62.recall({
       query,
-      memoryOS:canonical.items.slice(0,128).map(m=>({id:m.id,content:m.content,kind:m.kind,confidence01:m.confidence,salience01:m.salience,source:m.source,status:m.epistemicStatus})),
+      memoryOS:canonical.map(m=>({id:m.id,content:m.content,kind:m.kind,confidence01:m.confidence,salience01:m.salience,source:m.source,status:m.epistemicStatus})),
       multiTimescale:continuum.map(m=>({id:m.id,content:m.summary,kind:m.kind,confidence01:m.confidence,salience01:m.salience,source:'multi-timescale'})),
-      semanticNodes:this.semanticMemory.retrieve(query,Math.min(8,Math.max(1,limit)),false).map(x=>({id:x.id,label:x.label,type:x.type,salience:x.salience})),
+      semanticNodes:this.semanticMemory.retrieve(query,Math.min(8,safeLimit),false).map(x=>({id:x.id,label:x.label,type:x.type,salience:x.salience})),
       beliefs:this.unifiedMemory.snapshot().beliefs,
-      maxItems:Math.max(1,Math.min(12,limit)),
+      maxItems:safeLimit,
     });
     return frame;
   }
