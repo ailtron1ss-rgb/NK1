@@ -233,8 +233,8 @@ try {
     if (tamperedResponse.status !== 400) throw new Error('hexis-live-evidence-fingerprint-guard:' + tamperedResponse.status);
 
     // A caller cannot reuse an existing trace ID to inject a second source
-    // identity. The endpoint must keep the original trace and therefore treat
-    // this request as the already-known canonical lineage, not add new lineage.
+    // identity. The endpoint explicitly rejects conflicting ID reuse; it must
+    // not pretend the spoofed request was accepted as canonical duplicate evidence.
     const conflictingTraceResponse = await post('/api/organism/integration/hexis/evidence/lineage', {
       ...lineagePayload,
       trace: {
@@ -246,10 +246,19 @@ try {
       },
     });
     const conflictingTrace = await conflictingTraceResponse.json();
-    if (conflictingTraceResponse.status !== 200 || !conflictingTrace.ok ||
-        !conflictingTrace.result?.accepted || conflictingTrace.result?.added ||
-        conflictingTrace.result?.reason !== 'duplicate-source-lineage') {
-      throw new Error('hexis-trace-id-conflict-must-not-shadow-original:' + JSON.stringify(conflictingTrace));
+    if (conflictingTraceResponse.status !== 200 || conflictingTrace.ok ||
+        conflictingTrace.result?.accepted !== false || conflictingTrace.result?.added !== false ||
+        conflictingTrace.result?.reason !== 'source-trace-id-conflict') {
+      throw new Error('hexis-conflicting-trace-id-must-fail-closed:' + JSON.stringify(conflictingTrace));
+    }
+
+    // The original source remains readable after the rejected spoofing attempt.
+    const originalAfterConflictResponse = await post('/api/organism/integration/hexis/evidence/lineage', lineagePayload);
+    const originalAfterConflict = await originalAfterConflictResponse.json();
+    if (originalAfterConflictResponse.status !== 200 || !originalAfterConflict.ok ||
+        !originalAfterConflict.result?.accepted || originalAfterConflict.result?.added ||
+        originalAfterConflict.result?.reason !== 'duplicate-source-lineage') {
+      throw new Error('hexis-original-lineage-must-survive-conflict:' + JSON.stringify(originalAfterConflict));
     }
 
     // Flush is part of the endpoint contract. Restart the whole server over the
