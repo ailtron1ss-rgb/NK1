@@ -60,7 +60,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: nk1-hexis-canonical-apply-${{ github.head_ref || github.ref_name }}
+  # Push and pull_request both fire for PR branch commits; keep their groups distinct
+  # so one event does not cancel the other. Newer runs still supersede older runs per event.
+  group: nk1-hexis-canonical-apply-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
