@@ -1,3 +1,10 @@
+## [NK1][WorkPass460] Verify compensation after a post-write exception (2026-10-27)
+
+- Added a failure-injection regression in which `MemoryOS.restoreSignalsForCompensation()` completes the canonical signal restore and an outer adapter throws before the lifecycle receipt is returned. The test requires the error to remain visible, the canonical row to match its exact pre-import snapshot, the one-shot token to be consumed, and the HMX stage to remain retryable.
+- Saturation regressions cover both 8192-entry mutation journals: retained deltas unwind in reverse, history loss is explicit, and the temporal ledger's evicted baseline row is restored when its eviction receipt is still retained.
+- Temporal compensation now removes the transaction's exact new assertion even when the prior row has an independent change; it preserves the conflicting row and reports partial compensation instead of stranding the new assertion.
+- Static checks only. Runtime test/typecheck/hosted CI remain unverified; `main` and the canonical Release ZIP are unchanged.
+
 ## [NK1][WorkPass459] Harden bounded-journal and exception compensation (2026-10-27)
 
 - Temporal assertion writes now capture rows evicted at the 4096-entry bound and can restore those exact rows on owned rollback when no foreign write makes that unsafe. The standard under-capacity undo avoids scanning the full mutation journal.
