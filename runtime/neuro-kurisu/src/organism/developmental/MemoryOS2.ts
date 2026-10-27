@@ -272,7 +272,7 @@ function canonicalRetrievalIdentifier(value:string){
 /** Extract explicit stable IDs so exact-ID recall does not depend on broad query-token coverage. */
 function extractRetrievalIdentifiers(text:string):string[]{
  const normalized=String(text??'').normalize('NFKC').toLocaleUpperCase();
- const matches=normalized.match(/\b[A-Z][A-Z0-9]{0,15}(?:[-_/]?[0-9]{2,}|[-_/][A-Z0-9]{2,})\b|\b[A-F0-9]{8,}\b/gu)??[];
+ const matches=normalized.match(/\b[A-Z][A-Z0-9]{0,15}[-_/]?[0-9]{2,}\b|\b[A-F0-9]{8,}\b/gu)??[];
  return [...new Set(matches.map(canonicalRetrievalIdentifier))];
 }
 function normalizeBm25(score:number,max?:number){if(score<=0)return 0;if(max!==undefined)return max>0?clamp(score/max):0;return clamp(score/(score+1));}
