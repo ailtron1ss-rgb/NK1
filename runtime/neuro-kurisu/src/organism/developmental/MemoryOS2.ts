@@ -969,7 +969,33 @@ export class MemoryOS2{
   m.revisionHistory=normalizeRevisionHistory([entry,...m.revisionHistory]);
   if(tracked)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
  }
- revise(id:string,to:EpistemicStatus,reason:string){const m=this.state.items.find(x=>x.id===id);if(!m||m.epistemicStatus===to)return;const from=m.epistemicStatus;this.recordRevision(m,{at:Date.now(),from,to,reason});m.epistemicStatus=to;m.lastAccessAt=Date.now();this.state.reconsolidations++;if(to==='quarantined')this.state.quarantined++;}
+ private restoreItemInPlace(target:MemoryItem2,snapshot:MemoryItem2):void {
+  const live=target as unknown as Record<string,unknown>;
+  const prior=snapshot as unknown as Record<string,unknown>;
+  for(const key of Object.keys(live))if(!Object.prototype.hasOwnProperty.call(prior,key))delete live[key];
+  Object.assign(live,structuredClone(snapshot));
+ }
+ revise(id:string,to:EpistemicStatus,reason:string){
+  const m=this.state.items.find(x=>x.id===id);if(!m||m.epistemicStatus===to)return;
+  const itemSnapshot=structuredClone(m);
+  const estimatedBytesBefore=this.state.estimatedBytes;
+  const reconsolidationsBefore=this.state.reconsolidations;
+  const quarantinedBefore=this.state.quarantined;
+  try {
+   const from=m.epistemicStatus;
+   this.recordRevision(m,{at:Date.now(),from,to,reason});
+   m.epistemicStatus=to;
+   m.lastAccessAt=Date.now();
+   this.state.reconsolidations++;
+   if(to==='quarantined')this.state.quarantined++;
+  } catch(error) {
+   this.restoreItemInPlace(m,itemSnapshot);
+   this.state.estimatedBytes=estimatedBytesBefore;
+   this.state.reconsolidations=reconsolidationsBefore;
+   this.state.quarantined=quarantinedBefore;
+   throw error;
+  }
+ }
  reviseContent(id:string,newContent:string,options:{reason?:string;validAt?:number;source?:string;epistemicStatus?:EpistemicStatus;salience?:number;confidence?:number}={}){
    const requested=this.itemIndex.get(id); if(!requested||!String(newContent).trim())return null;
    const group=requested.revisionGroupId??requested.id;
@@ -1045,22 +1071,32 @@ export class MemoryOS2{
    throw new Error('memory-signal-compensation-conflict');
   }
 
-  const before=estimateMemoryBytes(m);
-  m.confidence=snapshot.confidence;
-  m.epistemicStatus=snapshot.epistemicStatus;
-  if(snapshot.sourceAuthority01===undefined)delete m.sourceAuthority01;
-  else m.sourceAuthority01=snapshot.sourceAuthority01;
-  if(snapshot.evidenceSources===undefined)delete m.evidenceSources;
-  else m.evidenceSources=structuredClone(snapshot.evidenceSources);
-  if(snapshot.evidenceLineageKeys===undefined)delete m.evidenceLineageKeys;
-  else m.evidenceLineageKeys=[...snapshot.evidenceLineageKeys];
-  m.lastAccessAt=snapshot.lastAccessAt;
-  m.temperature01=snapshot.temperature01;
-  m.revisionHistory=structuredClone(snapshot.revisionHistory);
-  this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
-  // Count compensation as activity; the canonical lifecycle journal retains the rollback event.
-  this.state.reconsolidations++;
-  return structuredClone(m);
+  const itemSnapshot=structuredClone(m);
+  const estimatedBytesBefore=this.state.estimatedBytes;
+  const reconsolidationsBefore=this.state.reconsolidations;
+  try {
+   const before=estimateMemoryBytes(m);
+   m.confidence=snapshot.confidence;
+   m.epistemicStatus=snapshot.epistemicStatus;
+   if(snapshot.sourceAuthority01===undefined)delete m.sourceAuthority01;
+   else m.sourceAuthority01=snapshot.sourceAuthority01;
+   if(snapshot.evidenceSources===undefined)delete m.evidenceSources;
+   else m.evidenceSources=structuredClone(snapshot.evidenceSources);
+   if(snapshot.evidenceLineageKeys===undefined)delete m.evidenceLineageKeys;
+   else m.evidenceLineageKeys=[...snapshot.evidenceLineageKeys];
+   m.lastAccessAt=snapshot.lastAccessAt;
+   m.temperature01=snapshot.temperature01;
+   m.revisionHistory=structuredClone(snapshot.revisionHistory);
+   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
+   // Count compensation as activity; the canonical lifecycle journal retains the rollback event.
+   this.state.reconsolidations++;
+   return structuredClone(m);
+  } catch(error) {
+   this.restoreItemInPlace(m,itemSnapshot);
+   this.state.estimatedBytes=estimatedBytesBefore;
+   this.state.reconsolidations=reconsolidationsBefore;
+   throw error;
+  }
  }
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'|'evidenceSources'|'sourceAuthority01'>>, reason='reconsolidation') {
    const m=this.state.items.find(x=>x.id===id); if(!m) return null;
@@ -1099,6 +1135,18 @@ export class MemoryOS2{
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    this.state.reconsolidations++;
    return structuredClone(m);
+ }});}
+   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
+   this.state.reconsolidations++;
+   return structuredClone(m);
+   } catch(error) {
+    // Evidence merging or revision bookkeeping may throw after some fields have been
+    // changed. Restore the exact item before allowing the lifecycle caller to handle it.
+    this.restoreItemInPlace(m,itemSnapshot);
+    this.state.estimatedBytes=estimatedBytesBefore;
+    this.state.reconsolidations=reconsolidationsBefore;
+    throw error;
+   }
  }
  get(id:string){const m=this.state.items.find(x=>x.id===id); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
  markDormant(id:string,dormant=true,reason='memory-economy'){return this.updateSignals(id,{dormant},reason);}
