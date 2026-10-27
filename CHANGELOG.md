@@ -3,6 +3,7 @@
 - `registerOrUpdateBelief()` previously returned an existing mirror untouched on every re-import. When canonical MemoryOS confidence/source authority was corrected downward, the Hexis mirror could therefore retain stale higher confidence and trust.
 - Existing mirrors now reconcile only downward: confidence and trust use the minimum of stored and incoming values, omitted trust is preserved, and equal values remain a no-op. This path does not add evidence keys or append belief-audit entries, so importing is not treated as independent evidence or a promotion path.
 - The update is recorded under the HMX owner token with an undo closure; the new integration regression proves downward reconciliation, no upward re-import, no invented evidence, and rollback to the exact prior mirror after a failed import. Exact-head runtime tests/typecheck/CI remain unverified.
+- The end-to-end HMX migration fixture also now seeds a stale high-confidence Hexis belief mirror, re-imports the over-trusted canonical row, and asserts that both mirror confidence and trust fall to the same `0.65` authority cap.
 
 ## [NK1][WorkPass457] Undo owned projection deltas after foreign-write conflicts (2026-10-27)
 
