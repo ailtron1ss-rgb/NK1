@@ -87,6 +87,10 @@ runtime.sourceMonitor.record({
   at: now,
 });
 assert.equal(runtime.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-no-provenance').accepted, false);
+assert.equal(
+  runtime.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-missing').reason,
+  'source-trace-not-found',
+);
 
 // Observation time is independently bounded. A valid capture envelope cannot
 // make a future-dated event safe to persist as canonical observedAt.
