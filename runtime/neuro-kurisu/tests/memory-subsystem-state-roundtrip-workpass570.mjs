@@ -52,6 +52,11 @@ original.causalLifeGraph.upsertNode({
   confidence01: .9,
   external01: 1,
 });
+assert.equal(
+  original.causalLifeGraph.snapshot().observedChains,
+  1,
+  'a standalone causal-life node must update derived observed-chain diagnostics before persistence',
+);
 original.memoryWorldCausalBridge.record({
   tick: 8,
   at: 1_700_000_000_008,
