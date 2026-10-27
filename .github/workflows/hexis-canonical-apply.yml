@@ -22,6 +22,7 @@ on:
       - 'runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs'
       - 'runtime/neuro-kurisu/tests/hexis-protected-memory-rollback.mjs'
       - 'runtime/neuro-kurisu/tests/memory-lifecycle-command-workpass31.mjs'
+      - 'runtime/neuro-kurisu/tests/runtime-clocks.mjs'
       - 'app/package.json'
       - 'app/package-lock.json'
       - 'app/src/components/HexisControlConsole.tsx'
@@ -51,6 +52,7 @@ on:
       - 'runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs'
       - 'runtime/neuro-kurisu/tests/hexis-protected-memory-rollback.mjs'
       - 'runtime/neuro-kurisu/tests/memory-lifecycle-command-workpass31.mjs'
+      - 'runtime/neuro-kurisu/tests/runtime-clocks.mjs'
       - 'app/package.json'
       - 'app/package-lock.json'
       - 'app/src/components/HexisControlConsole.tsx'
@@ -87,6 +89,9 @@ jobs:
       - name: Audit frontend action wiring and UI/API/runtime links
         working-directory: runtime/neuro-kurisu
         run: npm run audit:ui-wiring && npm run audit:ui-api-linkage
+      - name: WorkPass451 compound-repair runtime clock registration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:runtime-clocks
       - name: Typecheck the Hexis-to-NK1 runtime contracts
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
