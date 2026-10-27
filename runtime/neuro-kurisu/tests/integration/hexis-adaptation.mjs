@@ -1003,6 +1003,48 @@ const afterSuccessfulRetry = failedApplyRuntime.fabric.canonicalSnapshot().items
 assert.equal(afterSuccessfulRetry?.id, beforeInjectedFailure?.id);
 assert.equal(afterSuccessfulRetry?.epistemicStatus, 'quarantined');
 
+// WorkPass436: a failed HMX import must remove its own protected new rows.
+// General forgetting refuses quarantined/identity/autobiographical memories, so rollback
+// needs a transaction-scoped capability instead of calling forgetById blindly.
+const protectedRollbackRuntime = new MemorySubsystemRuntime();
+const protectedRollbackLedger = new HexisAdaptationFabric();
+const protectedRollbackProjector = new HexisCanonicalMemoryProjector(
+  protectedRollbackRuntime.fabric, protectedRollbackRuntime.semanticMemory, protectedRollbackLedger,
+);
+protectedRollbackLedger.bindCanonicalMemoryApply(stage => protectedRollbackProjector.apply(stage));
+const protectedRollbackContent = 'WP436 archived identity must be removed after a failed import transaction.';
+const protectedRollbackExportId = 'exp_0000000000009103';
+const protectedRollbackStage = protectedRollbackLedger.stageHmx({
+  document: makeHmxDocument(protectedRollbackExportId, {
+    memories: [{
+      ref: protectedRollbackExportId + ':protected-rollback',
+      type: 'identity',
+      content: protectedRollbackContent,
+      status: 'archived',
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(protectedRollbackLedger.decideHmx(protectedRollbackStage.stagingId, 'accept')?.status, 'accepted');
+const protectedRollbackBaselineIds = protectedRollbackRuntime.fabric.canonicalSnapshot().items.map(item => item.id).sort();
+protectedRollbackLedger.removeBeliefProjection = () => { throw new Error('injected-protected-row-rollback-failure'); };
+assert.throws(
+  () => protectedRollbackLedger.decideHmx(protectedRollbackStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-protected-row-rollback-failure/,
+);
+const protectedRollbackAfter = protectedRollbackRuntime.fabric.canonicalSnapshot().items;
+assert.equal(
+  protectedRollbackAfter.some(item => item.content === protectedRollbackContent || item.context?.hexisExportId === protectedRollbackExportId),
+  false,
+  'failed HMX apply must remove its newly-created archived/identity canonical row even though ordinary forget is prohibited',
+);
+assert.deepEqual(
+  protectedRollbackAfter.map(item => item.id).sort(),
+  protectedRollbackBaselineIds,
+  'failed HMX apply must preserve every pre-existing canonical row',
+);
+
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
   const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
