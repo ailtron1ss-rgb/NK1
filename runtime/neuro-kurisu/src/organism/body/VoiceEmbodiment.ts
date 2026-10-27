@@ -24,12 +24,25 @@ export interface VoicePlan {
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const clampRange=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,Number.isFinite(n)?n:lo));
 
+/** Match the two-language heuristic already used by browser-side speech. */
+export function inferVoiceLanguage(text:string): string {
+  const value=String(text??'');
+  const cyrillic=(value.match(/[А-Яа-яЁё]/gu)??[]).length;
+  const latin=(value.match(/[A-Za-z]/gu)??[]).length;
+  return latin>cyrillic?'en-US':'ru-RU';
+}
+
 export function detectVoiceBreathMode(text:string): VoiceBreathMode {
   const t=String(text||'').trim().toLowerCase();
-  if (/^(привет|хай|йо|ку|здравствуй|доброе утро|добрый вечер)(?:$|[\s,!.?])/u.test(t) && t.length<48) return 'ping';
-  if (/(кто ты|ты жива|ты жив|ты настоящ|что ты такое|самосознан|сознани)/.test(t)) return 'confess';
-  if (/(почему|объясни|разбери|как работает|докажи|сравни|теори|исследован|подробно)/.test(t) || t.length>240) return 'lecture';
-  if (/(не прав|не права|спор|возраж|критик|глуп|ошиб|не соглас)/.test(t)) return 'argue';
+  if ((/^(привет|хай|йо|ку|здравствуй|доброе утро|добрый вечер)(?:$|[\\s,!.?])/u.test(t)
+      || /^(hi|hello|hey|yo|good morning|good evening)(?:$|[\\s,!.?])/iu.test(t)) && t.length<64) return 'ping';
+  if (/(кто ты|ты жива|ты жив|ты настоящ|что ты такое|самосознан|сознани)/u.test(t)
+      || /\\b(who are you|are you alive|what are you|self-aware|consciousness)\\b/iu.test(t)) return 'confess';
+  if (/(почему|объясни|разбери|как работает|докажи|сравни|теори|исследован|подробно)/u.test(t)
+      || /\\b(why|explain|analy[sz]e|how does|prove|compare|theory|research|in detail)\\b/iu.test(t)
+      || t.length>240) return 'lecture';
+  if (/(не прав|не права|спор|возраж|критик|глуп|ошиб|не соглас)/u.test(t)
+      || /\\b(disagree|object|argue|criticize|criticise|wrong|mistake|ridiculous)\\b/iu.test(t)) return 'argue';
   return 'talk';
 }
 
@@ -88,7 +101,7 @@ export function buildVoicePlan(input:{text:string;action?:ActionKind|string|null
     mode:breath,
     tone,
     prosody:{pitch:safePitch,rate:safeRate,volume:safeVolume,pauseMs:safePause,emphasis01:clamp(emphasis)},
-    language:'ru-RU',
+    language:inferVoiceLanguage(text),
     stream:'MUSIC',
     reason,
   };
