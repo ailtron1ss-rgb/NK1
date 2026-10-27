@@ -264,7 +264,7 @@ export async function runLearningProcess(
       }
       resolve();
     });
-    child.once('close', (code, childSignal) => {
+    child.once('close', (code: number | null, childSignal: string | null) => {
       childClosed = true;
       exitCode = code;
       signal = childSignal;
