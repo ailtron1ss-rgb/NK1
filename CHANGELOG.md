@@ -1,3 +1,9 @@
+## [NK1][WorkPass444] Complete P26 learning-validation script wiring (2026-10-27)
+
+- Audited every `npm run ...` step in `.github/workflows/p26-learning-validation.yml` against the runtime package scripts.
+- Added the two further missing entries `test:p26:learning-recovery-benchmark` and `test:p26:learning-continual-matrix`, pointing to the existing `tests/p26-learning-recovery-benchmark.mjs` and `tests/p26-learning-continual-matrix.mjs`. Together with WorkPass443's input-integrity script, all six named npm commands in that P26 workflow now exist in `package.json`.
+- The P26 run on the prior head had passed runtime typecheck and failed on the missing first script. The rerun after these fixes is required to establish whether the actual learning regression tests pass.
+
 ## [NK1][WorkPass443] Wire the P26 learning-input integrity regression (2026-10-27)
 
 - Fixed a reproducible CI blocker in `.github/workflows/p26-learning-validation.yml`: the workflow called `npm run test:p26:learning-input-integrity`, but the package script was absent even though `tests/p26-learning-input-integrity.mjs` exists.
