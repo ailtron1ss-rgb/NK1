@@ -1,3 +1,9 @@
+## [NK1][WorkPass457] Undo owned projection deltas after foreign-write conflicts (2026-10-27)
+
+- Added compare-before-undo callbacks to source-scoped semantic node/edge mutations and Hexis temporal/belief projection changes. If a whole-state rollback is blocked by a foreign write, NK1 unwinds its own transaction-owned deltas in reverse order, but only where each row still matches the exact post-state produced by that mutation.
+- The HMX integration regression now verifies both sides of the compensation boundary: an unrelated graph node and temporal assertion survive, while the failed import's own semantic node, temporal assertion, and canonical memory are removed; the stage remains retryable.
+- A failed per-record compare check or lost journal history is reported as partial compensation rather than forcing a stale restore. Runtime tests, typecheck and hosted CI remain unconfirmed; `main` and the canonical GitHub Release ZIP are untouched.
+
 ## [NK1][WorkPass456] Import replay-selection options from their owning module (2026-10-27)
 
 - Fixed a TypeScript export-boundary error in `MultiSourceLearningMechanisms.ts`: `ReplaySelectionOptions` is defined/exported by `ReplaySelectionPolicy.ts`, not re-exported from `P23LearningEngine.ts`. The consumer now imports the type from its actual owner.
