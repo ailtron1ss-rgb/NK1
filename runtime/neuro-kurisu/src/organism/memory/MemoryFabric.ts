@@ -370,16 +370,38 @@ export class MemoryFabric {
    * immediately keeps the lexical result while the single in-flight job may warm the
    * derived vector index for subsequent turns.
    */
+  private recordRetrievalOutcome(query:string,rows:MemoryItem2[],options:{tick?:number;emitEvent?:boolean;evidenceMode?:string;queryLimit?:number;memoryIdLimit?:number}={}):void {
+    this.statsData.retrievals++;
+    this.statsData.retrievalHits+=rows.length;
+    const policy=this.memoryOS.adaptivePolicyDiagnostics();
+    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:this.memoryOS.retrievalDiagnostics().candidateCount/192});
+    this.lastPolicyDecisionId=decision.id;
+    for(const row of rows)this.touchHot(row.id);
+    this.unifiedMemory.recordRetrieval(query,rows.length);
+    if(options.emitEvent){
+      this.events.append(makeEvent('attention',options.tick??0,{
+        source:'memory-fabric',
+        query:query.slice(0,options.queryLimit??160),
+        hits:rows.length,
+        touchedMemoryIds:rows.slice(0,options.memoryIdLimit??12).map(row=>row.id),
+        evidenceMode:options.evidenceMode??'retrieval-audit',
+      } as any));
+    }
+  }
+
   async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}):Promise<MemoryItem2[]> {
     this.lastCognitiveMemoryQueryAt=Date.now();
     const safeLimit=Math.max(1,Math.min(16,Math.floor(Number.isFinite(limit)?limit:8)));
-    const fallback=this.retrieve(query,safeLimit,goalRelevance,identityRelevance,{...context,emitEvent:false});
+    // Obtain a side-effect-free lexical candidate set first. Only the result actually
+    // selected for cognition is allowed to update retrieval statistics/policy signals.
+    const fallback=this.retrieve(query,safeLimit,goalRelevance,identityRelevance,{...context,emitEvent:false,recordOutcome:false});
+    const accountFallback=()=>{this.recordRetrievalOutcome(query,fallback);return fallback;};
     const runtimeEnabled=/^(1|true|yes|on)$/i.test(String(process.env.NK_EMBEDDINGS_RUNTIME_ENABLED??''));
-    if(!runtimeEnabled||!String(query??'').trim()||!this.memoryOS.embeddingConfigured()) return fallback;
+    if(!runtimeEnabled||!String(query??'').trim()||!this.memoryOS.embeddingConfigured()) return accountFallback();
 
     // Foreground cognition must not compete with low-priority background indexing;
     // lexical retrieval stays available while a bounded maintenance batch warms the index.
-    if(this.cognitionSemanticInFlight||this.semanticMaintenanceInFlight) return fallback;
+    if(this.cognitionSemanticInFlight||this.semanticMaintenanceInFlight) return accountFallback();
     const providerTimeout=Math.max(500,Math.min(20000,Number(process.env.NK_EMBEDDINGS_TIMEOUT_MS??5000)||5000));
     // Defer provider invocation into the promise chain so synchronous adapter throws
     // and asynchronous provider failures share the same lexical-fallback path.
@@ -398,34 +420,21 @@ export class MemoryFabric {
       new Promise<{kind:'timeout'}>(resolve=>{timer=setTimeout(()=>resolve({kind:'timeout'}),budgetMs);}),
     ]);
     if(timer)clearTimeout(timer);
-    if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return fallback;
+    if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return accountFallback();
     const rows=outcome.result.items.slice(0,safeLimit);
-    for(const row of rows)this.touchHot(row.id);
-    const policy=this.memoryOS.adaptivePolicyDiagnostics();
-    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:this.memoryOS.retrievalDiagnostics().candidateCount/192});
-    this.lastPolicyDecisionId=decision.id;
-    if(context.tick!==undefined) this.events.append(makeEvent('attention',context.tick,{source:'memory-fabric',query:query.slice(0,120),hits:rows.length,touchedMemoryIds:rows.slice(0,8).map(row=>row.id),evidenceMode:'semantic-cognitive-retrieval'} as any));
+    this.recordRetrievalOutcome(query,rows,{
+      tick:context.tick,
+      emitEvent:context.tick!==undefined,
+      evidenceMode:'semantic-cognitive-retrieval',
+      queryLimit:120,
+      memoryIdLimit:8,
+    });
     return rows;
   }
 
-  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
+  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;recordOutcome?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
     const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt},false);
-    this.statsData.retrievals++;
-    this.statsData.retrievalHits+=rows.length;
-    const policy=this.memoryOS.adaptivePolicyDiagnostics();
-    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:this.memoryOS.retrievalDiagnostics().candidateCount/192});
-    this.lastPolicyDecisionId=decision.id;
-    for(const row of rows)this.touchHot(row.id);
-    if(context.emitEvent){
-      this.events.append(makeEvent('attention',context.tick??0,{
-        source:'memory-fabric',
-        query:query.slice(0,160),
-        hits:rows.length,
-        touchedMemoryIds:rows.slice(0,12).map(row=>row.id),
-        evidenceMode:'retrieval-audit',
-      }));
-    }
-    this.unifiedMemory.recordRetrieval(query,rows.length);
+    if(context.recordOutcome!==false) this.recordRetrievalOutcome(query,rows,{tick:context.tick,emitEvent:context.emitEvent});
     return rows;
   }
 
