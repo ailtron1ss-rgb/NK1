@@ -133,6 +133,7 @@ const duplicatePrecisionReport = runMemoryOS2RetrievalBenchmark(duplicatePrecisi
 ], { now, k: 5, bootstrapSamples: 200, maxExamples: 64 });
 assert.equal(duplicatePrecisionReport.corpusIntegrity.validForPromotion, false, 'duplicate corpus IDs must still block promotion');
 assert.equal(duplicatePrecisionReport.metrics.baseline.precisionAtK01, 0.2, 'precision@K must count the same relevant memory ID once even if duplicated in corpus');
+assert.equal(duplicatePrecisionReport.metrics.candidate.precisionAtK01, 0.2, 'candidate precision@K must not reward duplicate memory IDs either');
 
 
 
