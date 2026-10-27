@@ -29,9 +29,10 @@ One JSON object per line:
 ```json
 {"id":"q-train-001","query":"How did the service recover after reconnect?","relevantIds":["memory-id-1"],"split":"train"}
 {"id":"q-holdout-001","query":"What evidence confirmed delivery after reconnect?","relevantIds":["memory-id-2"],"split":"holdout"}
+{"id":"q-holdout-none-001","query":"Which event has no matching evidence in the snapshot?","relevantIds":[],"split":"holdout","answerable":false}
 ```
 
-Every label must be produced by the declared labeling protocol independently of the candidate retrieval output. Queries must be unique after Unicode/case/punctuation normalization; duplicate prompts or train/holdout overlap block eligibility. Every relevant ID must exist in the supplied snapshot. Do not create labels by asking the candidate system what should be relevant.
+Every label must be produced by the declared labeling protocol independently of the candidate retrieval output. Queries must be unique after Unicode/case/punctuation normalization; duplicate prompts or train/holdout overlap block eligibility. Every relevant ID must exist in the supplied snapshot. For an explicitly unanswerable query, set `answerable: false` and `relevantIds: []`; do not infer that label from the candidate returning no results. The CLI defaults omitted `answerable` to `true` and rejects contradictory rows (for example, `answerable: false` with non-empty relevance IDs). Do not create labels by asking the candidate system what should be relevant.
 
 ### 3. Dataset provenance JSON
 
