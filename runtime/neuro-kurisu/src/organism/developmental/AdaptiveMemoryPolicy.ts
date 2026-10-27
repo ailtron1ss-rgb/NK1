@@ -13,6 +13,7 @@ export interface AdaptiveMemoryPolicyState {
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const names:MemoryPolicyName[]=['semantic','hybrid','causal','temporal','balanced'];
+const isMemoryPolicyName=(value:unknown):value is MemoryPolicyName=>typeof value==='string'&&names.includes(value as MemoryPolicyName);
 const blank=()=>({semantic:0,hybrid:0,causal:0,temporal:0,balanced:0} as Record<MemoryPolicyName,number>);
 const defaults=():AdaptiveMemoryPolicyState=>({version:2,weights:{semantic:.5,hybrid:.5,causal:.5,temporal:.5,balanced:.5},trials:blank(),reward:blank(),contextValue:{},contextTrials:{},cooldownUntil:0,lastPolicy:'balanced',lastContextKey:'default'});
 const MAX_CONTEXTS=512;
@@ -57,7 +58,7 @@ export class AdaptiveMemoryPolicy {
    const lastContextKey=isSafeContextKey(source.lastContextKey)?source.lastContextKey:d.lastContextKey;
    this.state={
      version:2,weights,trials,reward,contextValue,contextTrials,
-     cooldownUntil,lastPolicy:isPolicy(source.lastPolicy)?source.lastPolicy:d.lastPolicy,
+     cooldownUntil,lastPolicy:isMemoryPolicyName(source.lastPolicy)?source.lastPolicy:d.lastPolicy,
      lastContextKey,
    };
  }
@@ -91,16 +92,18 @@ export class AdaptiveMemoryPolicy {
    this.state.lastPolicy=best;return best;
  }
  observe(policy:MemoryPolicyName,reward:number,now=Date.now(),contextKeyOverride=this.state.lastContextKey){
-   const r=clamp(reward); const n=Math.min(10000,this.state.trials[policy]+1); const old=this.state.weights[policy];
-   this.state.trials[policy]=n;this.state.reward[policy]=this.state.reward[policy]+(r-this.state.reward[policy])/n;this.state.weights[policy]=clamp(old+.08*(r-old));
+   const safePolicy=isMemoryPolicyName(policy)?policy:(isMemoryPolicyName(this.state.lastPolicy)?this.state.lastPolicy:'balanced');
+   const r=clamp(reward); const n=Math.min(10000,this.state.trials[safePolicy]+1); const old=this.state.weights[safePolicy];
+   this.state.trials[safePolicy]=n;this.state.reward[safePolicy]=this.state.reward[safePolicy]+(r-this.state.reward[safePolicy])/n;this.state.weights[safePolicy]=clamp(old+.08*(r-old));
    const key=isSafeContextKey(contextKeyOverride)?contextKeyOverride:'default';
    if(!Object.hasOwn(this.state.contextValue,key)&&Object.keys(this.state.contextValue).length>=MAX_CONTEXTS){
      const oldestKey=Object.keys(this.state.contextValue)[0];
      if(oldestKey){delete this.state.contextValue[oldestKey];delete this.state.contextTrials[oldestKey];}
    }
    const cv=this.state.contextValue[key]??blank();const ct=this.state.contextTrials[key]??blank();
-   const cn=Math.min(10000,ct[policy]+1);ct[policy]=cn;cv[policy]=cv[policy]+(r-cv[policy])/cn;this.state.contextValue[key]=cv;this.state.contextTrials[key]=ct;
-   this.state.cooldownUntil=now+250;
+   const cn=Math.min(10000,ct[safePolicy]+1);ct[safePolicy]=cn;cv[safePolicy]=cv[safePolicy]+(r-cv[safePolicy])/cn;this.state.contextValue[key]=cv;this.state.contextTrials[key]=ct;
+   const safeNow=typeof now==='number'&&Number.isFinite(now)?Math.max(0,Math.min(Number.MAX_SAFE_INTEGER-250,Math.floor(now))):Date.now();
+   this.state.cooldownUntil=safeNow+250;
  }
  observeOutcome(policy:MemoryPolicyName,outcome:MemoryPolicyOutcome,now=Date.now(),contextKeyOverride=this.state.lastContextKey){
    const quality=clamp(outcome.quality01),retention=clamp(outcome.retention01??quality),transfer=clamp(outcome.transfer01??quality),interference=clamp(outcome.interference01??quality),cost=clamp(outcome.computeCost01??0),delayed=clamp(outcome.delayed01??quality);
