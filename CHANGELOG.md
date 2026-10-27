@@ -1,3 +1,9 @@
+## [NK1][WorkPass492] Fix causal replay runtime wiring assertion order (2026-10-27)
+
+- Core regression logs showed the causal replay wiring test searched for the feature vector only after the sampler call, although production correctly builds candidate feature vectors before invoking the sampler.
+- Updated the assertion to require the feature vector between `replayPending` and `selectCausalReplayBatch`, preserving the check that candidates are grounded in state/outcome features and the sampler remains in the production path.
+- This is a regression-test correction based on exact-head CI evidence; rerun Core regression and related workflows before treating the branch as green.
+
 ## [NK1][WorkPass491] Correct the overlapping-task replay acceptance criterion (2026-10-27)
 
 - The exact-head Core regression exposed an impossible assertion: the post-hoc replay control trains contradictory task labels over overlapping observable states, then required both old-task recovery and recent-task retention without a distinguishing context feature.
