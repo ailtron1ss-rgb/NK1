@@ -84,3 +84,36 @@ test("requires cognitive CI for pull requests targeting rebuild", () => {
   });
   assert.match(errors.join("\n"), /must run for pull requests targeting rebuild/);
 });
+
+test("separates Hexis push and pull-request cancellation groups", () => {
+  const hexisWorkflow = [
+    "name: Hexis",
+    "on:",
+    "  push:",
+    "    branches: [main]",
+    "  pull_request:",
+    "    branches: [main]",
+    "concurrency:",
+    "  group: nk1-hexis-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}",
+    "  cancel-in-progress: true",
+    "jobs:",
+    "  test:",
+    "    runs-on: ubuntu-latest"
+  ].join("\\n");
+
+  const validErrors = validateCiConfig({
+    workflows: { "hexis-canonical-apply.yml": hexisWorkflow },
+    nodeVersion: "24"
+  });
+  assert.deepEqual(validErrors, []);
+
+  const sharedGroup = hexisWorkflow.replace(
+    "nk1-hexis-${{ github.event_name }}-",
+    "nk1-hexis-"
+  );
+  const invalidErrors = validateCiConfig({
+    workflows: { "hexis-canonical-apply.yml": sharedGroup },
+    nodeVersion: "24"
+  });
+  assert.match(invalidErrors.join("\\n"), /concurrency\\.group must include github\\.event_name/);
+});
