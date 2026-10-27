@@ -1,3 +1,9 @@
+## [NK1][WorkPass439] Remove duplicate cognitive-cycle verifier (2026-10-27)
+
+- Removed the duplicate `verifyOperationalCycle` method from `CognitiveEventFabric`. The retained implementation validates required and supplied optional stage identities, same-tick ownership, per-cycle parent edges, and optional plan ancestry without letting unrelated old ring-buffer links invalidate a valid cycle.
+- Extended the WorkPass41 regression to prove that a valid full trace is accepted and that a forged optional `plan` stage is rejected instead of being silently ignored.
+- Validation boundary: source-level checks confirm one method implementation remains and the regression is wired into the existing workpass audit. Runtime execution and TypeScript typecheck are not claimed; exact-head CI remains required.
+
 ## [NK1][WorkPass432] Prevent lifecycle convenience-wrapper action injection (2026-10-27)
 
 - Extended the same allowlist rule across `MemoryFabric` convenience wrappers for encode, status/content revision, signal/context updates and forgetting. Their caller-controlled context/options can now contribute only the documented execution metadata; they cannot replace the method's fixed action or target payload.
