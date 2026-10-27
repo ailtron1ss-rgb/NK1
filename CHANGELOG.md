@@ -1,3 +1,17 @@
+## [NK1][WorkPass580] Add sample-wise forgetting, recovery, and transfer diagnostics (2026-10-27)
+
+- Extend `ContinualOutcomeMatrix` with sample-level pass-to-fail and fail-to-pass counts, retained pass/fail counts, conditional forgetting/recovery rates, and net pass transitions.
+- Report transitions at aggregate, task, and task-family level using the same independently verified or human-reviewed attempt-1 outcomes and exact matched seed set used by the matrix.
+- Include pre-training-to-first-checkpoint transitions only when a matched baseline method is supplied; zero-denominator rates are null rather than fabricated zeros.
+- Add deterministic fixture checks for one forgotten sample and two recovered samples. These are descriptive per-seed sample transitions, not independent-run confidence intervals or causal proof.
+- Wire the matrix regression into `test:rebuild-recovered`; no real-corpus uplift is claimed.
+
+## [NK1][WorkPass579] Harden transfer evidence and replay verification (2026-10-27)
+
+- Add bounded persistent transfer evidence IDs/fingerprints; exact retries are idempotent and conflicting reuse, malformed scores/IDs, and inconsistent restored deltas are rejected.
+- Make the replay retention regression distinguish trusted service-minted postcondition receipts from deprecated caller-supplied verification booleans.
+- Register transfer-integrity and causal-stream regressions in the recovered test aggregate. This protects metrics from duplicate/malformed evidence; it does not claim higher real-world transfer.
+
 ## [NK1][WorkPass578] Correct escaped cues and bilingual retrieval boundaries (2026-10-27)
 
 - Fix over-escaped English voice-mode regexes and restore intended word-boundary/whitespace matching.
