@@ -1599,7 +1599,7 @@ const goalMemoryRef = goalExportId + ':memory-anchor';
 const goalRef = goalExportId + ':goal-bridge';
 const goalPipelineStage = goalPipelineSystems.hexisAdaptation.stageHmx({
   document: makeHmxDocument(goalExportId, {
-    memories: [{ ref: goalMemoryRef, type: 'semantic', content: 'Imported evidence for the reviewed NK1 goal.', importance: 0.72 }],
+    memories: [{ ref: goalMemoryRef, type: 'semantic', status: 'belief', content: 'Imported evidence for the reviewed NK1 goal.', importance: 0.72 }],
     goals: [{ ref: goalRef, title: 'Validate a reviewed Hexis goal', description: 'Use imported evidence, then confirm progress with independent observations.' }],
     relationships: [
       { source_ref: goalMemoryRef, target_ref: goalRef, edge_type: 'supports', properties: { weight: 0.78 } },
