@@ -94,6 +94,12 @@ assert.equal(importedQuarantined.epistemicStatus, 'quarantined',
 assert.equal(
   runtime.fabric.forgetById(importedQuarantined.id, 'ordinary-forget-protection', {
     commandId: 'wp430:ordinary-forget-protection',
+    // Simulate a JS caller passing out-of-contract keys: they must not turn a
+    // normal forget request into a transaction rollback.
+    action: 'rollback-created',
+    exportId: stage.exportId,
+    stagingId: stage.stagingId,
+    attempt: 2,
   }),
   false,
   'ordinary forgetting must still refuse quarantined records',
