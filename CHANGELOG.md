@@ -1,3 +1,9 @@
+## [NK1][WorkPass454] Prove Hexis ledger rollback respects foreign mutations (2026-10-27)
+
+- Added a focused integration regression for the new mutation-journal checkpoint API: transaction-owned changes may be restored to their checkpoint, but a foreign write after the checkpoint must make `restoreIfUnchanged()` fail closed and preserve that write.
+- This covers the key safety property of the WorkPass453 snapshot guard instead of only checking that checkpoint methods exist. The integration test is in the existing `test:hexis-canonical-apply` script and its path filter.
+- Regression source is committed separately; exact-head runtime/CI execution remains unverified.
+
 ## [NK1][WorkPass453] Use the installed Node type contract for runtime typecheck (2026-10-27)
 
 - The runtime typecheck runs after the workflow installs the app lockfile, which already pins `@types/node`, but `tsconfig.clean.json` only saw the runtime's intentionally partial ambient shims. This caused a broad family of false missing-Node-API diagnostics (`node:fs`, `NodeJS`, `Buffer`, `createPublicKey`, `realpath`, `path.resolve`, and related APIs).
