@@ -1,3 +1,10 @@
+## [NK1][WorkPass471] Enforce adaptive context bounds at runtime and persist canonical policy (2026-10-27)
+
+- The 512-context limit now applies to ordinary `AdaptiveMemoryPolicy.observe()` updates, not only restores. When capacity is reached, the oldest entry is removed from both contextual-value and contextual-trial maps; unsafe/prototype-like caller context IDs are routed to the safe `default` context.
+- `MemoryOS2.restore()` writes the sanitized `AdaptiveMemoryPolicy.snapshot()` back into the canonical `MemoryOSState2`, so malformed persisted weights, counters, context IDs or policy names cannot reappear in later snapshots after the internal policy has been cleaned.
+- Added regressions for runtime context-table saturation/eviction, unsafe runtime context IDs, and MemoryOS2-level normalization of malformed persisted policy state. Source/test wiring is checked; runtime execution, TypeScript typecheck and hosted CI remain unconfirmed.
+- `main` and the canonical GitHub Release ZIP remain unchanged.
+
 ## [NK1][WorkPass470] Normalize restored adaptive policy state (2026-10-27)
 
 - AdaptiveMemoryPolicy.restore() now validates the policy enum and context-key shape, bounds the retained context table to 512 keys, rejects prototype-like context keys, clamps weights/rewards to finite unit values, and bounds trial counts to integers in [0, 10000].
