@@ -233,8 +233,8 @@ try {
     if (tamperedResponse.status !== 400) throw new Error('hexis-live-evidence-fingerprint-guard:' + tamperedResponse.status);
 
     // A caller cannot reuse an existing trace ID to inject a second source
-    // identity. The endpoint must keep the original trace and therefore treat
-    // this request as the already-known canonical lineage, not add new lineage.
+    // identity. The bridge rejects the conflicting identity explicitly; it must
+    // not accept the payload as a harmless duplicate or add new lineage.
     const conflictingTraceResponse = await post('/api/organism/integration/hexis/evidence/lineage', {
       ...lineagePayload,
       trace: {
@@ -246,10 +246,13 @@ try {
       },
     });
     const conflictingTrace = await conflictingTraceResponse.json();
-    if (conflictingTraceResponse.status !== 200 || !conflictingTrace.ok ||
-        !conflictingTrace.result?.accepted || conflictingTrace.result?.added ||
-        conflictingTrace.result?.reason !== 'duplicate-source-lineage') {
-      throw new Error('hexis-trace-id-conflict-must-not-shadow-original:' + JSON.stringify(conflictingTrace));
+    if (conflictingTraceResponse.status < 400 || conflictingTraceResponse.status >= 500 ||
+        conflictingTrace.ok || conflictingTrace.result?.accepted || conflictingTrace.result?.added ||
+        conflictingTrace.result?.reason !== 'source-trace-id-conflict') {
+      throw new Error('hexis-trace-id-conflict-must-fail-closed:' + JSON.stringify({
+        status: conflictingTraceResponse.status,
+        body: conflictingTrace,
+      }));
     }
 
     // Flush is part of the endpoint contract. Restart the whole server over the
