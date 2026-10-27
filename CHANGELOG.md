@@ -1,3 +1,9 @@
+## [NK1][WorkPass442] Fix trusted registrar typing and lineage regression matcher (2026-10-27)
+
+- The actual runtime typecheck on HEAD `53cd565d28d3a22c5d0e7d9a5a4cddda8091d8ae` had narrowed to one error: `OrganismCore` returned the registry's `TrustedSkillShadowRunContext` from a host interface declared as a side-effect registration capability. The method now declares `: void` and performs registration without leaking the registry object.
+- After that typecheck passed on the following HEAD, WorkPass294 failed its *source assertion*, not runtime behavior: the regex used a non-capturing group where it needed a literal opening parenthesis after `...`. Corrected it to match the actual `executionId, ...(typeof context.decisionId` / prior-context form.
+- The source test was already included in WorkPass294's locked runtime verification step. Re-run that workflow to validate the corrected matcher and live correlation regression.
+
 ## [NK1][WorkPass470] Validate HMX receipt against post-transition stage (2026-10-27)
 
 - Fixed first-apply receipt validation to construct the exact applied candidate with the receipt attached and a refreshed lifecycle seal before validation. The prior path validated an accepted stage, contradicting the validator's explicit applied-status invariant and rejecting valid HMX applications after canonical projection had returned a receipt.
