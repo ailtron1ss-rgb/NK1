@@ -1,3 +1,9 @@
+## [NK1][WorkPass485] Route project tool execution through Core-owned wrappers (2026-10-27)
+
+- The recovered-runtime contract check found that fresh project tool execution and receipt reconciliation called ActionGateway directly from OrganismCore's project loop, bypassing the canonical Core wrapper that normalizes legacy tool aliases and owns unkeyed-outcome finalization/checkpointing.
+- Route those two dispatches through `this.executeTool(...)` and `this.reconcileToolExecution(...)`. Existing keyed project operations retain the operation idempotency key, so ActionGateway still owns atomic finalization and retries are not finalized twice.
+- This aligns the production path with the existing WorkPass97 wiring contract; exact-head recovered rebuild and runtime typecheck must pass before the integration is considered closed. `main` and the published Release ZIP remain unchanged.
+
 ## [NK1][WorkPass484] Quarantine corrupted restored action receipts (2026-10-27)
 
 - The broad recovered-runtime suite found that ActionGateway restored a completed ledger row by cloning its response without checking that the response execution ID and tool matched the ledger's canonical identity. A same-key retry could therefore replay a forged success response after restart.
