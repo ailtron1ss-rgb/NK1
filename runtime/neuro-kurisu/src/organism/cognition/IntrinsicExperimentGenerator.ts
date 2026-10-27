@@ -21,10 +21,16 @@ const unit=(value:unknown):number=>typeof value==='number'&&Number.isFinite(valu
 const timestamp=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isFinite(value)&&value>=0?Math.floor(value):fallback;
 
 export class IntrinsicExperimentGenerator {
+  private readonly now:()=>number;
+  private readonly createSuffix:()=>string;
+
   constructor(
-    private readonly now:()=>number=()=>Date.now(),
-    private readonly createSuffix:()=>string=()=>Math.random().toString(16).slice(2),
-  ) {}
+    now:()=>number=()=>Date.now(),
+    createSuffix:()=>string=()=>Math.random().toString(16).slice(2),
+  ) {
+    this.now=now;
+    this.createSuffix=createSuffix;
+  }
 
   private currentTime():number { return timestamp(this.now(),0); }
 
