@@ -77,6 +77,26 @@ assert.ok(
   'exact identifier evidence must survive the answerability gate',
 );
 
+// Long natural-language queries can dilute average fuzzy coverage. A deterministic
+// word-root match must still recover the exact memory when the embedding provider is offline.
+const morphology = new MemoryOS2();
+encode(morphology, {
+  id: 'credential-recovery',
+  kind: 'semantic',
+  content: 'Login credential recovery restores account access when authentication is lost.',
+});
+encode(morphology, {
+  id: 'morphology-decoy',
+  kind: 'semantic',
+  content: 'The avatar palette uses a blue background and compact interface controls.',
+});
+const morphologyResult = morphology.retrieve('I cannot authenticate to my user profile', 4, 0, 0, { temporalMode: 'at', asOfAt: now });
+assert.equal(
+  morphologyResult[0]?.id,
+  'credential-recovery',
+  'a strong deterministic word-root match must survive multi-token query dilution without embeddings',
+);
+
 // Grounded lexical recall should remain ranked ahead of unrelated high-salience data.
 const lexical = new MemoryOS2();
 encode(lexical, {

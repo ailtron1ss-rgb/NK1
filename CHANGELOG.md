@@ -1,3 +1,9 @@
+## [NK1][WorkPass585] Preserve deterministic morphological recall during provider timeouts (2026-10-27)
+
+- Add a deterministic token-root evidence path to the answerability gate. A strong stem-prefix match can ground a memory even when a long query dilutes aggregate fuzzy coverage.
+- Add a regression using the live cognition timeout query `I cannot authenticate to my user profile` against the stored `authentication`/credential-recovery memory; this tests the local lexical fallback independently of external embedding availability.
+- The preceding Core run passed causal and learning paraphrase assertions after lineage-gated concept recall, then found this timeout lexical-retrieval regression. Full rerun is pending.
+
 ## [NK1][WorkPass584] Extend lineage-grounded concept recall to learning episodes (2026-10-27)
 
 - Permit strong concept-bridge recall for non-causal-worded learning questions only when the target is an episodic record with explicit decision ID, observation ID, outcome direction and at least 0.55 concept coverage.

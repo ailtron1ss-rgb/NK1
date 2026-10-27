@@ -975,7 +975,14 @@ export class MemoryOS2{
      const evidence=rawRowsById.get(m.id);
      if(!evidence)return false;
      const exactPhrase=queryPhrase.length>=4&&this.lowerFor(m.id,m.content).includes(queryPhrase);
-     const lexicalEvidence=identifierEvidence||exactPhrase||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
+     // Deterministic morphology fallback: a single strong word-root match must survive
+     // provider timeout even when long natural-language queries dilute average fuzzy coverage.
+     const queryTokenArray=[...qTokens];
+     const memoryTokens=this.tokensFor(m.content);
+     const morphologyEvidence=queryTokenArray.some(queryToken=>queryToken.length>=5&&
+       [...memoryTokens].some(memoryToken=>memoryToken.length>=5&&memoryToken!==queryToken&&
+         (queryToken.startsWith(memoryToken.slice(0,5))||memoryToken.startsWith(queryToken.slice(0,5)))));
+     const lexicalEvidence=identifierEvidence||exactPhrase||morphologyEvidence||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
        (qTokens.size<5&&evidence.fuzzy>=.45)||
        (qTokens.size<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16);
      // A causal paraphrase may have no literal-token overlap with the event text.
