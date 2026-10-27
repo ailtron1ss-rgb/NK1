@@ -1,3 +1,9 @@
+## [NK1][WorkPass581] Ground exact identifier recall without prefix collisions (2026-10-27)
+
+- Add explicit structured-ID evidence to MemoryOS2 candidate pre-ranking and the answerability gate, so exact identifiers do not depend on broad query-token coverage.
+- Add a negative regression for `RUN-501` versus `RUN-5011`; keep the existing Recall@3 acceptance threshold unchanged.
+- The updated head has not produced a fresh Actions run yet. No test pass or retrieval uplift is claimed.
+
 ## [NK1][WorkPass578] Correct escaped cues and bilingual retrieval boundaries (2026-10-27)
 
 - Fix over-escaped English voice-mode regexes and restore intended word-boundary/whitespace matching.
