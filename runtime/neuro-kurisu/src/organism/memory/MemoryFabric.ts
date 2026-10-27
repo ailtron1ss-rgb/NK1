@@ -439,15 +439,19 @@ export class MemoryFabric {
   }
 
   recall(query:string,limit=8):P62Frame {
-    const canonical=this.memoryOS.snapshot({clone:false});
-    const continuum=this.multiTimescale.retrieve(query,Math.min(16,Math.max(1,limit)),false);
+    const safeLimit=Math.max(1,Math.min(12,Math.floor(Number.isFinite(limit)?limit:8)));
+    // Query the canonical owner instead of taking the first 128 insertion-ordered
+    // memories. Preview retrieval is isolated, so recall does not mutate access
+    // counts or adaptive policy merely to construct a candidate packet.
+    const canonical=this.previewRetrieve(query,Math.min(32,Math.max(16,safeLimit*4)));
+    const continuum=this.multiTimescale.retrieve(query,Math.min(16,safeLimit),false);
     const frame=this.p62.recall({
       query,
-      memoryOS:canonical.items.slice(0,128).map(m=>({id:m.id,content:m.content,kind:m.kind,confidence01:m.confidence,salience01:m.salience,source:m.source,status:m.epistemicStatus})),
+      memoryOS:canonical.map(m=>({id:m.id,content:m.content,kind:m.kind,confidence01:m.confidence,salience01:m.salience,source:m.source,status:m.epistemicStatus})),
       multiTimescale:continuum.map(m=>({id:m.id,content:m.summary,kind:m.kind,confidence01:m.confidence,salience01:m.salience,source:'multi-timescale'})),
-      semanticNodes:this.semanticMemory.retrieve(query,Math.min(8,Math.max(1,limit)),false).map(x=>({id:x.id,label:x.label,type:x.type,salience:x.salience})),
+      semanticNodes:this.semanticMemory.retrieve(query,Math.min(8,safeLimit),false).map(x=>({id:x.id,label:x.label,type:x.type,salience:x.salience})),
       beliefs:this.unifiedMemory.snapshot().beliefs,
-      maxItems:Math.max(1,Math.min(12,limit)),
+      maxItems:safeLimit,
     });
     return frame;
   }
