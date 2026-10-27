@@ -497,8 +497,11 @@ export class MemoryOS2{
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }
  }
- restore(s:MemoryOSState2|undefined,options:{allowOverCapacity?:boolean}={}){
-  const restoreLimit=options.allowOverCapacity?Math.max(MAX_CANONICAL_MEMORY_ITEMS,Array.isArray(s?.items)?s!.items.length:0):MAX_CANONICAL_MEMORY_ITEMS;
+ restore(s:MemoryOSState2|undefined){
+  this.restoreInternal(s,false);
+ }
+ private restoreInternal(s:MemoryOSState2|undefined,allowOverCapacity:boolean){
+  const restoreLimit=allowOverCapacity?Math.max(MAX_CANONICAL_MEMORY_ITEMS,Array.isArray(s?.items)?s!.items.length:0):MAX_CANONICAL_MEMORY_ITEMS;
   const rawItems=Array.isArray(s?.items)?s!.items.slice(0,restoreLimit):[];
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
@@ -1187,7 +1190,7 @@ export class MemoryOS2{
   if(!current&&indexed){
    // A failed canonical insert may leave a stale index entry even though the
    // authoritative item array no longer contains the row. Rebuild from authority.
-   this.restore(this.snapshot(),{allowOverCapacity:true});
+   this.restoreInternal(this.snapshot(),true);
    capture.createdIds.delete(key);
    return {removed:true,commandId};
   }
@@ -1196,7 +1199,7 @@ export class MemoryOS2{
   if(current&&indexed!==current){
    // Index construction may have thrown part-way through a new row. Rebuild the
    // derived indexes once after removing it instead of trusting partial postings.
-   this.restore(this.snapshot(),{allowOverCapacity:true});
+   this.restoreInternal(this.snapshot(),true);
   }
   return {removed:true,commandId};
  }
@@ -1209,11 +1212,11 @@ export class MemoryOS2{
   const before=this.state.items.length>MAX_CANONICAL_MEMORY_ITEMS?this.snapshot():null;
   try{
    if(!this.trimCanonicalItemCount()){
-    if(before)this.restore(before,{allowOverCapacity:true});
+    if(before)this.restoreInternal(before,true);
     return false;
    }
   }catch{
-   if(before)this.restore(before,{allowOverCapacity:true});
+   if(before)this.restoreInternal(before,true);
    return false;
   }
   this.hmxImportCompensationSnapshots.delete(token);
@@ -1224,7 +1227,7 @@ export class MemoryOS2{
   if(!capture||capture.createdIds.size!==0)return false;
   // A row insert can fail after it has partially modified the derived indexes.
   // Rebuild once from the canonical array after all token-owned rows are removed.
-  this.restore(this.snapshot(),{allowOverCapacity:true});
+  this.restoreInternal(this.snapshot(),true);
   this.state.reconsolidations=capture.baselineCounters.reconsolidations;
   this.state.quarantined=capture.baselineCounters.quarantined;
   this.state.linkUpdates=capture.baselineCounters.linkUpdates;
