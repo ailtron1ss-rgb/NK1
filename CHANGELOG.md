@@ -1,3 +1,9 @@
+## [NK1][WorkPass434] Prevent Hexis push/PR workflows cancelling each other (2026-10-27)
+
+- Fixed the Hexis canonical-apply workflow concurrency key to include `github.event_name`. The same commit can trigger both `push` and `pull_request`; the previous shared group with `cancel-in-progress: true` allowed one event's run to cancel the other.
+- The new group still cancels superseded runs within the same event/branch, while push and PR validations can run independently. Existing path filters continue to include the WorkPass433 rollback isolation test and MemoryFabric changes.
+- The workflow change is committed; validation is pending. The latest Core regression run has begun returning actual step metadata, so its completion can distinguish real step failures from the previously observed empty-run failures.
+
 ## [NK1][WorkPass453] Restore registered P23 regression commands (2026-10-27)
 
 - Registered the existing WorkPass291 reflective-payload-budget test and WorkPass293 autonomous P23 revision test in `runtime/neuro-kurisu/package.json`; their workflow files already invoked these names, so the jobs were failing immediately with `npm error Missing script` instead of testing runtime behavior.
