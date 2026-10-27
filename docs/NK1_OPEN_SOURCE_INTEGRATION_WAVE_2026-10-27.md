@@ -12,6 +12,7 @@ NK1 retains one canonical memory owner: **MemoryOS2 through MemoryFabric**. Exte
 - [x] Wired bounded remote recall into both normal and autonomous language prompts as low-priority, non-recallable, untrusted data.
 - [x] Kept remote memory writes/deletes disabled by default and gated separately from search.
 - [x] Ported adapter safety tests and the explicit opt-in, read-only live-contract check.
+- [x] Added self-hosted Mem0 OSS REST mode with native endpoint/auth mapping and a separate loopback-HTTP/security contract test.
 - [x] Added a static runtime-wiring contract and an integration CI workflow.
 - [x] Registered test commands and documented limitations in the runtime package and `CHANGELOG.md`.
 - [ ] Execute the newly wired tests on this exact branch head and inspect all workflow steps/logs.
@@ -27,6 +28,8 @@ NK1 retains one canonical memory owner: **MemoryOS2 through MemoryFabric**. Exte
 The current target line already contains Hexis HMX staging/review, canonical memory projection, evidence lineage, source identity/replay protections, and rollback paths. Mem0 does not bypass these capabilities. A Mem0 result enters language context as an external clue only; it is not canonical evidence and cannot change a belief by itself.
 
 ### Mem0
+
+The adapter supports two distinct API dialects: hosted Platform and self-hosted OSS REST. OSS uses `/search`, `/memories`, and `X-API-Key`; Platform uses its versioned endpoints and token authorization. The OSS HTTP default is loopback-only; non-loopback cleartext requires an extra explicit opt-in. Self-hosting does not imply the OSS stack's model/embedding providers are offline.
 
 The imported adapter is opt-in and bounded. Search is isolated to a configured user scope; returned records are labeled `external-unverified`, treated as data rather than instructions, redacted, bounded, and non-canonical. The existing runtime can continue entirely on local memory when Mem0 is disabled, misconfigured, slow, or unavailable. A separate write opt-in and ownership checks protect remote mutations.
 
