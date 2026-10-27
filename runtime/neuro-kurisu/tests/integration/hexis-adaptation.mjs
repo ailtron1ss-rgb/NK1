@@ -1281,6 +1281,55 @@ assert.deepEqual(
 assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0,
   'the convenience helper must not leak a token after successful compensation');
 
+// A status command can commit before an outer adapter throws. If another writer then
+// changes the same memory, rollback must detect the sealed-state conflict and must not
+// use a second status-only path to overwrite that newer signal.
+const conflictedStatusExportId = 'exp_0000000000009205';
+const conflictedStatusStage = signalRollbackHexis.stageHmx({
+  document: makeHmxDocument(conflictedStatusExportId, {
+    memories: [{
+      ref: conflictedStatusExportId + ':memory-existing',
+      type: 'semantic',
+      content: signalRollbackContent,
+      status: 'archived',
+      trust_level: 0.45,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(signalRollbackHexis.decideHmx(conflictedStatusStage.stagingId, 'accept')?.status, 'accepted');
+const originalConflictRevise = signalRollbackRuntime.fabric.revise.bind(signalRollbackRuntime.fabric);
+const originalConflictUpdateSignals = signalRollbackRuntime.fabric.updateSignals.bind(signalRollbackRuntime.fabric);
+let injectConcurrentSignalAfterStatus = true;
+signalRollbackRuntime.fabric.revise = (...args) => {
+  const result = originalConflictRevise(...args);
+  if (injectConcurrentSignalAfterStatus && args[1] === 'quarantined') {
+    injectConcurrentSignalAfterStatus = false;
+    originalConflictUpdateSignals(
+      seededSignalMemory.id,
+      { confidence: 0.31 },
+      'independent-update-after-status-commit',
+      { commandId: 'test:independent-update-after-status-commit' },
+    );
+    throw new Error('injected-hmx-status-after-independent-update');
+  }
+  return result;
+};
+assert.throws(
+  () => signalRollbackHexis.decideHmx(conflictedStatusStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-hmx-status-after-independent-update;rollback-failures=.*memory-signal-compensation-conflict/,
+  'rollback must fail closed when the current row diverges after a committed status mutation',
+);
+signalRollbackRuntime.fabric.revise = originalConflictRevise;
+const conflictedStatusMemory = signalRollbackRuntime.fabric.canonicalSnapshot().items.find(item => item.id === seededSignalMemory.id);
+assert.equal(conflictedStatusMemory?.confidence, 0.31,
+  'conflict handling must preserve the independent confidence written after the status mutation');
+assert.equal(conflictedStatusMemory?.epistemicStatus, 'quarantined',
+  'a status compensation conflict must not be bypassed by an unguarded status-only rollback');
+assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0,
+  'conflicted rollback must consume the one-shot compensation capability');
+
 
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
