@@ -1,3 +1,9 @@
+## [NK1][WorkPass481] Separate candidate execution from verifier trust (2026-10-27)
+
+- A successfully executed candidate was marked non-executable whenever the independent verifier failed, conflating two separate signals.
+- `IndependentSkillCandidateEvaluator` now records well-formed execution under `executability` independently, while unbound/missing verifier evidence still fails task success and does not publish a trusted run ID or observed trace.
+- Existing WorkPass203 regression explicitly checks this distinction. No learning uplift is claimed; exact-head CI remains required.
+
 ## [NK1][WorkPass480] Restore authority-fixture permissions between regressions (2026-10-27)
 
 - The WorkPass243 regression intentionally chmods the executor to a group-writable mode, but left that mode in place before testing run-root replacement. The later call therefore failed on executable permissions before reaching the intended run-root identity guard.
