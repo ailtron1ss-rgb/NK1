@@ -48,8 +48,25 @@ assert.equal(memory.get(target.id)?.confidence, 0.7,
 assert.equal(memory.get(target.id)?.context?.hexisLastEvidenceStance, 'refutes');
 assert.equal(memory.get(target.id)?.evidenceSources?.some(row => row.source.includes('hex-evidence-1')), true);
 
+// A different event ID from the same upstream origin must not count as independent corroboration.
+const sameLineageCopy = {
+  ...evidence,
+  evidenceId: 'hex-evidence-2',
+  sourceRef: 'tool:second-wrapper-for-same-run',
+};
+const sourcesBeforeSameLineageReplay = memory.get(target.id)?.evidenceSources?.length ?? 0;
+const sameLineageResult = applyReviewedHexisEvidence(memory, target.id, sameLineageCopy, { reviewed: true });
+assert.equal(sameLineageResult.status, 'duplicate',
+  'different event IDs from one independenceKey must not count as independent evidence');
+assert.equal(memory.get(target.id)?.evidenceSources?.length ?? 0, sourcesBeforeSameLineageReplay,
+  'same-lineage replay must not append another evidence source');
+
 // A shorter evidence ID must not collide with a longer ID sharing its prefix.
-const longerId = { ...evidence, evidenceId: 'hex-evidence-10' };
+const longerId = {
+  ...evidence,
+  evidenceId: 'hex-evidence-10',
+  independenceKey: 'tool-run:independent-10',
+};
 const longerRecorded = applyReviewedHexisEvidence(memory, target.id, longerId, { reviewed: true });
 assert.equal(longerRecorded.status, 'recorded');
 const shorterTarget = memory.encode({
