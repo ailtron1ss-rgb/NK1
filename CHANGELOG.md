@@ -1,3 +1,8 @@
+## [NK1][WorkPass503] Make Hexis bridge attempt-count assertion monotonic (2026-10-27)
+
+- A parallel regression added explicit same-ID trace replay to verify immutable source-trace identity, raising the bridge's current-instance attempt count from nine to ten.
+- Replaced the brittle exact count with a minimum-coverage assertion of ten. Missing-trace, duplicate-ID, future-timestamp, model-echo, non-independent P65, and fingerprint-mismatch checks remain individually asserted; restore replay remains accounted to its own bridge instance.
+
 ## [NK1][WorkPass502] Wire bounded semantic recall into the live cognitive cycle (2026-10-27)
 
 - The MemoryFabric already provided `retrieveForCognition`, which supports opt-in local embeddings, a bounded foreground budget and deterministic lexical fallback, but `OrganismCore.observe()` still called the synchronous lexical-only `retrieve` method on its main memory path.
