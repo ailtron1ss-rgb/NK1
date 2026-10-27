@@ -382,9 +382,31 @@ export function defaultHexisAdaptationState(): HexisAdaptationState {
 }
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
+    private mutationRevision = 0;
+    private readonly mutationJournal: Array<{ revision: number; ownerToken: string | null }> = [];
+    private recordScopedMutation(ownerToken?: string): void {
+        this.mutationJournal.push({
+            revision: ++this.mutationRevision,
+            ownerToken: typeof ownerToken === 'string' && ownerToken ? ownerToken : null,
+        });
+        if (this.mutationJournal.length > 8192) this.mutationJournal.splice(0, this.mutationJournal.length - 8192);
+    }
+    mutationCheckpoint(): number { return this.mutationRevision; }
+    private hasForeignMutationSince(checkpoint: number, ownerToken: string): boolean {
+        if (!Number.isSafeInteger(checkpoint) || checkpoint < 0 || checkpoint > this.mutationRevision) return true;
+        const earliest = this.mutationJournal[0]?.revision;
+        // A lost journal window is ambiguous; never restore over an unknown mutation.
+        if (earliest !== undefined && checkpoint < earliest - 1) return true;
+        return this.mutationJournal.some(entry => entry.revision > checkpoint && entry.ownerToken !== ownerToken);
+    }
+    restoreIfUnchanged(raw: Partial<HexisAdaptationState> | null | undefined, checkpoint: number, ownerToken: string): boolean {
+        if (this.hasForeignMutationSince(checkpoint, ownerToken)) return false;
+        this.restore(raw, ownerToken);
+        return true;
+    }
     private canonicalMemoryApply?: (stage: HexisHmxStage) => HexisHmxApplyReceipt;
     private canonicalBeliefProjection?: (projection: HexisCanonicalBeliefProjection) => HexisCanonicalBeliefProjectionResult;
-    restore(raw?: Partial<HexisAdaptationState> | null): void {
+    restore(raw?: Partial<HexisAdaptationState> | null, ownerToken?: string): void {
         const defaults = defaultHexisAdaptationState();
         const value = raw ?? {};
         const normalizedPolicies = normalizeHexisConnectorPolicies(value.connectorPolicies);
@@ -409,6 +431,7 @@ export class HexisAdaptationFabric {
             executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
             metrics: { ...defaults.metrics, ...(value.metrics ?? {}) },
         };
+        this.recordScopedMutation(ownerToken);
     }
     snapshot(): HexisAdaptationState { return structuredClone(this.state); }
     bindCanonicalMemoryApply(handler: (stage: HexisHmxStage) => HexisHmxApplyReceipt): void {
@@ -445,19 +468,21 @@ export class HexisAdaptationFabric {
             metrics: this.state.metrics,
         };
     }
-    removeBeliefProjection(memoryId: string): boolean {
+    removeBeliefProjection(memoryId: string, ownerToken?: string): boolean {
         const id = String(memoryId);
         const before = this.state.beliefs.length;
         this.state.beliefs = this.state.beliefs.filter(belief => belief.memoryId !== id);
-        return this.state.beliefs.length !== before;
+        const changed = this.state.beliefs.length !== before;
+        if (changed) this.recordScopedMutation(ownerToken);
+        return changed;
     }
     registerOrUpdateBelief(input: {
         memoryId: string;
         confidence01: number;
         trust01?: number;
         at?: number;
-    }): HexisBeliefState { const id = String(input.memoryId); const existing = this.state.beliefs.find((x) => x.memoryId === id); if (existing)
-        return structuredClone(existing); const created: HexisBeliefState = { memoryId: id, confidence01: clamp(input.confidence01), trust01: clamp(input.trust01 ?? 0.5), sourceKeys: [], contradictingSourceKeys: [], updatedAt: Number.isFinite(input.at) ? Number(input.at) : nowMs() }; this.state.beliefs.push(created); this.state.beliefs = this.state.beliefs.slice(-1024); return structuredClone(created); }
+    }, ownerToken?: string): HexisBeliefState { const id = String(input.memoryId); const existing = this.state.beliefs.find((x) => x.memoryId === id); if (existing)
+        return structuredClone(existing); const created: HexisBeliefState = { memoryId: id, confidence01: clamp(input.confidence01), trust01: clamp(input.trust01 ?? 0.5), sourceKeys: [], contradictingSourceKeys: [], updatedAt: Number.isFinite(input.at) ? Number(input.at) : nowMs() }; this.state.beliefs.push(created); this.state.beliefs = this.state.beliefs.slice(-1024); this.recordScopedMutation(ownerToken); return structuredClone(created); }
     reviseBelief(input: {
         memoryId: string;
         confidence01: number;
@@ -572,6 +597,7 @@ export class HexisAdaptationFabric {
         this.state.beliefAudit.push(audit);
         this.state.beliefAudit = this.state.beliefAudit.slice(-2048);
         this.state.metrics.beliefRevisions += 1;
+        this.recordScopedMutation();
         return structuredClone(audit);
     }
     recordTemporalAssertion(input: {
@@ -581,8 +607,8 @@ export class HexisAdaptationFabric {
         validFrom: number;
         source?: string;
         value?: unknown;
-    }): HexisTemporalAssertion { const existing = this.state.temporal.find((x) => x.memoryId === input.memoryId && x.validUntil === null); const at = nowMs(); if (existing)
-        existing.validUntil = Math.max(existing.validFrom, Number(input.validFrom)); const created: HexisTemporalAssertion = { id: randomUUID(), memoryId: String(input.memoryId), valueHash: digest(input.value ?? input.summary), summary: String(input.summary).slice(0, 2000), confidence01: clamp(input.confidence01), validFrom: Number(input.validFrom), validUntil: null, supersedesId: existing?.id, source: String(input.source ?? 'canonical-memory'), at }; this.state.temporal.push(created); this.state.temporal = this.state.temporal.slice(-4096); return structuredClone(created); }
+    }, ownerToken?: string): HexisTemporalAssertion { const existing = this.state.temporal.find((x) => x.memoryId === input.memoryId && x.validUntil === null); const at = nowMs(); if (existing)
+        existing.validUntil = Math.max(existing.validFrom, Number(input.validFrom)); const created: HexisTemporalAssertion = { id: randomUUID(), memoryId: String(input.memoryId), valueHash: digest(input.value ?? input.summary), summary: String(input.summary).slice(0, 2000), confidence01: clamp(input.confidence01), validFrom: Number(input.validFrom), validUntil: null, supersedesId: existing?.id, source: String(input.source ?? 'canonical-memory'), at }; this.state.temporal.push(created); this.state.temporal = this.state.temporal.slice(-4096); this.recordScopedMutation(ownerToken); return structuredClone(created); }
     temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null { this.state.metrics.temporalQueries += 1; const rows = this.state.temporal.filter((x) => x.memoryId === memoryId && x.validFrom <= at && (x.validUntil === null || at < x.validUntil)).sort((a, b) => b.validFrom - a.validFrom); return rows[0] ? structuredClone(rows[0]) : null; }
     temporalDiff(memoryId: string, fromAt: number, toAt: number) { this.state.metrics.temporalQueries += 1; const from = this.temporalAt(memoryId, fromAt); const to = this.temporalAt(memoryId, toAt); return { memoryId, from, to, changed: (from?.valueHash ?? null) !== (to?.valueHash ?? null) }; }
     createLearningReview(input: {
