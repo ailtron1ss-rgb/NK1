@@ -1,3 +1,10 @@
+## [NK1][WorkPass510] Close candidate precision@K duplicate-ID regression (2026-10-27)
+
+- Extend the duplicate-corpus-ID regression to assert both BM25 baseline and MemoryOS2 candidate precision@K count a relevant memory ID only once.
+- The benchmark already deduplicates relevant hit IDs in precision calculation; this pass makes the candidate-side behavior an explicit regression contract, not just a baseline assertion.
+- Duplicate corpus IDs remain promotion-blocking. No retrieval uplift or runtime-readiness claim is made.
+- Validation: source/test/changelog writes committed; the test suite was not executed in this remote GitHub pass, and CI status must be checked separately.
+
 ## [NK1][WorkPass509] Harden Hexis source-trace identity and future evidence bounds (2026-10-27)
 
 - `SourceMonitor.record` now treats trace IDs as immutable: exact replay is idempotent; conflicting payload reuse increments the conflict counter and cannot replace the first record.
