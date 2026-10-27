@@ -73,6 +73,9 @@ export class CausalLifeGraph {
         n.external01 = clamp(input.external01 ?? n.external01);
         n.metadata = { ...n.metadata, ...(input.metadata ?? {}) };
         this.state.lastAt = at;
+        // Keep tick-derived chain counters coherent with the node index immediately.
+        // Restore recomputes these fields, so leaving them stale here breaks persistence round-trips.
+        this.recompute();
         return options.clone === false ? undefined : structuredClone(n);
       }
     }
@@ -91,6 +94,7 @@ export class CausalLifeGraph {
     if (this.state.nodes.length > 768) { this.state.nodes = this.state.nodes.slice(0, 768); this.rebuildIndex(); } else { this.nodeByRef.set(key, node.id); this.nodeById.set(node.id, node); }
     this.state.totalNodes += 1;
     this.state.lastAt = at;
+    this.recompute();
     return options.clone === false ? undefined : structuredClone(node);
   }
 
