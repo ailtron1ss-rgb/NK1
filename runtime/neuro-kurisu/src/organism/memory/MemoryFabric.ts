@@ -392,10 +392,24 @@ export class MemoryFabric {
   async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}):Promise<MemoryItem2[]> {
     this.lastCognitiveMemoryQueryAt=Date.now();
     const safeLimit=Math.max(1,Math.min(16,Math.floor(Number.isFinite(limit)?limit:8)));
-    // Obtain a side-effect-free lexical candidate set first. Only the result actually
-    // selected for cognition is allowed to update retrieval statistics/policy signals.
-    const fallback=this.retrieve(query,safeLimit,goalRelevance,identityRelevance,{...context,emitEvent:false,recordOutcome:false});
-    const accountFallback=()=>{this.recordRetrievalOutcome(query,fallback);return fallback;};
+    // Build lexical fallback candidates from an isolated preview. Calling live
+    // retrieve() here would increment canonical access counters for provisional rows
+    // even when semantic retrieval later wins.
+    const fallbackCandidates=this.previewRetrieve(query,safeLimit,goalRelevance,identityRelevance,
+      {temporalMode:context.temporalMode,asOfAt:context.asOfAt});
+    const accountSelected=(rows:MemoryItem2[],semantic=false)=>{
+      const selected=this.memoryOS.recordSelectedRetrieval(query,rows.map(row=>row.id),goalRelevance,identityRelevance,
+        {temporalMode:context.temporalMode,asOfAt:context.asOfAt});
+      this.recordRetrievalOutcome(query,selected,semantic?{
+        tick:context.tick,
+        emitEvent:context.tick!==undefined,
+        evidenceMode:'semantic-cognitive-retrieval',
+        queryLimit:120,
+        memoryIdLimit:8,
+      }:{});
+      return selected;
+    };
+    const accountFallback=()=>accountSelected(fallbackCandidates);
     const runtimeEnabled=/^(1|true|yes|on)$/i.test(String(process.env.NK_EMBEDDINGS_RUNTIME_ENABLED??''));
     if(!runtimeEnabled||!String(query??'').trim()||!this.memoryOS.embeddingConfigured()) return accountFallback();
 
@@ -422,14 +436,7 @@ export class MemoryFabric {
     if(timer)clearTimeout(timer);
     if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return accountFallback();
     const rows=outcome.result.items.slice(0,safeLimit);
-    this.recordRetrievalOutcome(query,rows,{
-      tick:context.tick,
-      emitEvent:context.tick!==undefined,
-      evidenceMode:'semantic-cognitive-retrieval',
-      queryLimit:120,
-      memoryIdLimit:8,
-    });
-    return rows;
+    return accountSelected(rows,true);
   }
 
   retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;recordOutcome?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
