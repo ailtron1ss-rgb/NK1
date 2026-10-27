@@ -32,6 +32,62 @@ const runtime = new MemorySubsystemRuntime();
 const seedInput = makeInput('WP31 canonical memory mutation remains replay-safe after restore.');
 const seed = runtime.fabric.encode(seedInput, { commandId: 'wp31:encode:seed', tick: 41 });
 assert.ok(seed?.id);
+
+// WorkPass434: if a status mutation commits but lifecycle-event append throws before
+// the receipt is persisted, its in-flight compensation token must still restore the
+// exact canonical status/timestamp/history rather than being discarded as a no-op.
+const statusCompensationRuntime = new MemorySubsystemRuntime();
+const statusCompensationSeed = statusCompensationRuntime.fabric.encode(
+  makeInput('WP434 status compensation must survive a post-mutation event failure.'),
+  { commandId: 'wp434:status-compensation:seed' },
+);
+const statusCompensationToken = statusCompensationRuntime.fabric.captureStatusCompensation(statusCompensationSeed.id);
+assert.ok(statusCompensationToken);
+const statusBeforeFailure = statusCompensationRuntime.fabric.canonicalSnapshot().items
+  .find(item => item.id === statusCompensationSeed.id);
+assert.ok(statusBeforeFailure);
+const appendLifecycleEvent = statusCompensationRuntime.fabric.events.append.bind(statusCompensationRuntime.fabric.events);
+let injectedLifecycleAppendFailure = false;
+statusCompensationRuntime.fabric.events.append = (...args) => {
+  if (!injectedLifecycleAppendFailure) {
+    injectedLifecycleAppendFailure = true;
+    throw new Error('injected-status-lifecycle-event-append-failure');
+  }
+  return appendLifecycleEvent(...args);
+};
+assert.throws(
+  () => statusCompensationRuntime.fabric.revise(
+    statusCompensationSeed.id,
+    'belief',
+    'workpass434-post-mutation-fault',
+    {
+      commandId: 'hexis-supersede:' + 'a'.repeat(48),
+      compensationToken: statusCompensationToken,
+    },
+  ),
+  /injected-status-lifecycle-event-append-failure/,
+);
+statusCompensationRuntime.fabric.events.append = appendLifecycleEvent;
+assert.equal(injectedLifecycleAppendFailure, true);
+const statusAfterPartialFailure = statusCompensationRuntime.fabric.canonicalSnapshot().items
+  .find(item => item.id === statusCompensationSeed.id);
+assert.equal(statusAfterPartialFailure?.epistemicStatus, 'belief',
+  'fault injection must occur after the canonical status mutation');
+assert.equal(
+  statusCompensationRuntime.fabric.restoreStatusForCompensation(
+    statusCompensationSeed.id,
+    statusCompensationToken,
+    'hexis-hmx-apply-rollback',
+    { commandId: 'hexis-status-rollback:' + 'b'.repeat(48) },
+  ),
+  true,
+  'the in-flight compensation token must remain usable without a persisted mutation receipt',
+);
+const statusAfterCompensation = statusCompensationRuntime.fabric.canonicalSnapshot().items
+  .find(item => item.id === statusCompensationSeed.id);
+assert.equal(statusAfterCompensation?.epistemicStatus, statusBeforeFailure.epistemicStatus);
+assert.equal(statusAfterCompensation?.lastAccessAt, statusBeforeFailure.lastAccessAt);
+assert.deepEqual(statusAfterCompensation?.revisionHistory, statusBeforeFailure.revisionHistory);
 const sizeAfterEncode = runtime.memoryOS.size();
 const createEventCount = runtime.events.list().filter(event => event.type === 'memory-created').length;
 const encodeStatsAfterFirst = runtime.fabric.snapshot().stats.encodes;
