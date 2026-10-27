@@ -16,7 +16,7 @@ export interface RetrievedSkill extends RetrievableSkill {
   score01: number; transferBias01: number; reasons: string[];
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-const n=(x:number,d=0)=>Number.isFinite(x)?x:d;
+const n=(x:unknown,d=0)=>typeof x==='number'&&Number.isFinite(x)?x:d;
 
 /** Six-bucket organism contexts are compared by feature position, not substring. */
 export function contextSimilarity01(a:string,b:string):number {
