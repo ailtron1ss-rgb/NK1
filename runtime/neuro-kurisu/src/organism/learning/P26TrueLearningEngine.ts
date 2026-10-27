@@ -249,6 +249,11 @@ export class P26TrueLearningEngine{
     if(targetMode!=='reward'&&targetMode!=='td')throw new TypeError('invalid-interleaved-target-mode');
     const currentLearningRate01=finiteOption(options.currentLearningRate01,.035,'current-learning-rate');
     const replayLearningRate01=finiteOption(options.replayLearningRate01,.025,'replay-learning-rate');
+    // Keep the aggregate replay pressure per current update bounded. When replay is
+    // scheduled more often than once per four current samples, reduce each replay
+    // update proportionally instead of letting replay dominate the fresh task.
+    const replayRateScale=Math.min(1,replayEveryNCurrent/4);
+    const effectiveReplayLearningRate01=replayLearningRate01*replayRateScale;
     const conflictCandidateCap=Math.max(8,Math.min(128,Math.floor(finiteOption(options.conflictCandidateCap,64,'conflict-candidate-cap'))));
     const bucket=(value:number)=>Math.max(0,Math.min(19,Math.floor(clamp(value)*20)));
     const key=(row:P26InterleavedExperience)=>[
@@ -311,7 +316,7 @@ export class P26TrueLearningEngine{
       eligibleReplayRows++;
       const trained=this.learner.train({
         state:row.state,action:row.action,target01:targetFor(row),
-        learningRate01:replayLearningRate01,
+        learningRate01:effectiveReplayLearningRate01,
       });
       replayUpdates++;lossSum+=trained.loss01;
     };
