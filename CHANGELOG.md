@@ -1,3 +1,10 @@
+## [NK1][WorkPass490] Balance replay plasticity after Core diagnostics — 2026-10-27
+
+- Latest Core run showed replay at 0.25× preserved the recent task at 1.0 but did not move old-task accuracy above zero.
+- Increased the default replay update scale to 0.5× while retaining stored-reward targets and the explicit TD option.
+- The change targets the measured under-replay side of the retention/forgetting trade-off; the existing old-task recovery and new-task retention checks remain unchanged.
+- Validation: fresh Core regression pending.
+
 ## [NK1][WorkPass489] Bound replay update strength to avoid task overwrite — 2026-10-27
 
 - WorkPass488 made replay use stored rewards; Core CI then showed old-task accuracy recovered to 0.50, but recent-task accuracy dropped to 0.5125.
