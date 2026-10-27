@@ -1,3 +1,10 @@
+## [NK1][WorkPass433] Restore exact status metadata after failed HMX apply (2026-10-27)
+
+- Replaced status-label-only rollback with an opaque, one-use MemoryOS2 compensation token restoring the pre-transaction epistemic status, last-access timestamp and revision history.
+- Bound status compensation to the original `revise-status` lifecycle receipt, protected its receipt from bounded-journal eviction during an active HMX transaction, and added combined preflight/commit for status and trust-signal tokens.
+- Added an integration regression asserting that a failed source-version demotion restores `lastAccessAt` and `revisionHistory` byte-for-byte alongside the status.
+- Tests/typecheck have not yet been executed through a runner in this pass; the source changes are pending targeted verification. `main` and the published Release ZIP remain unchanged.
+
 ## [NK1][WorkPass432] Preserve C1 control rejection in restored memory receipts (2026-10-26)
 
 - Aligned persisted MemoryFabric receipt validation with live command ingress: restored commandId and memoryId reject the complete C0/C1 control ranges, including U+0080–U+009F, rather than only C0 plus DEL.
