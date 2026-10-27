@@ -501,8 +501,18 @@ export class HexisAdaptationFabric {
                 return current.length === removed.length &&
                     current.every(row => removed.some(old => JSON.stringify(old) === JSON.stringify(row)));
             }
-            this.state.beliefs.push(...removed.map(row => structuredClone(row)));
-            this.state.beliefs = this.state.beliefs.slice(-1024);
+            const next = this.state.beliefs.slice();
+            for (const prior of removed) {
+                const duplicate = next.find(row => row.memoryId === prior.memoryId);
+                if (duplicate) {
+                    if (JSON.stringify(duplicate) !== JSON.stringify(prior)) return false;
+                    continue;
+                }
+                next.push(structuredClone(prior));
+            }
+            // Never evict a newer belief merely to make an old deletion rollback fit.
+            if (next.length > 1024) return false;
+            this.state.beliefs = next;
             return true;
         });
         return true;
