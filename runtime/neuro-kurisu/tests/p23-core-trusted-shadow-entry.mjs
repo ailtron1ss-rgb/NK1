@@ -80,7 +80,7 @@ try {
   await writeFile(brokenRegistry, '{broken-json', 'utf8');
   const brokenCore = new OrganismCore(new FileStateStore(brokenState));
   const spawnMarker = path.join(root, 'must-not-spawn.txt');
-  await assert.rejects(() => brokenCore.runTrustedSkillShadowLearningProcess({
+  assert.throws(() => brokenCore.runTrustedSkillShadowLearningProcess({
     runtimeVersion: 'nk1-test-runtime-141',
     run: { ...run, runId: 'corrupt-registry-must-not-spawn' },
     planFingerprint: 'c'.repeat(64),
