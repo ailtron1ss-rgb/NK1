@@ -1,3 +1,23 @@
+## [NK1][WorkPass456] Resolve Hexis goal links against export-bound memory references (2026-10-27)
+
+- Fixed the goal activation resolver in `OrganismSystemFabric`: canonical Hexis memory records keep refs namespaced as `exportId:sourceRef`, while imported relationship rows reference the original source ref. The resolver now removes only the matching proposal export prefix and still requires exact export ID + lineage before projecting an edge.
+- This fixes the observed failure where an approved goal had one unique relationship candidate but produced `projected=0`; no acceptance gate or endpoint provenance check was relaxed.
+- Exact-head Hexis canonical apply and core regression workflows must re-run before marking the integration green.
+
+## [NK1][WorkPass455] Install locked runtime type dependencies in verified promotion CI (2026-10-27)
+
+- Added `npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund` before the WorkPass108 runtime typecheck. The workflow previously installed only the app dependency graph, so its clean runtime check failed with `TS2688` when `tsconfig.clean.json` requested the `node` type library.
+- The package and lockfile already declare the pinned `@types/node`; the workflow now installs that exact dependency graph instead of weakening the compiler configuration.
+
+## [NK1][WorkPass454] Keep the seed-arrival-order fixture bound to the manifest verifier (2026-10-27)
+
+- Corrected the reverse-arrival-order fixture in `p23-seed-clustered-outcome-comparison.mjs` to use manifest verifier ID `v1`. It previously used `verify-v1`, so every reversed outcome was correctly rejected by the ledger and the test compared a null bootstrap interval to a populated one.
+- This keeps the actual integrity guard intact and restores the intended determinism check over the same four complete independent seeds.
+
+## [NK1][WorkPass453] Use tolerant comparison for adaptive-window stationary estimates (2026-10-27)
+
+- Changed the ADWIN stationary-stream assertion to compare its estimate with `0.2` within `1e-12`, avoiding a false failure from floating-point accumulation (`0.19999999999999962`). The drift detector implementation and thresholds are unchanged.
+
 ## [NK1][WorkPass452] Assert HMX rollback residue without assuming diagnostic order (2026-10-27)
 
 - Broadened the HMX rollback assertion to require both the rollback-failure prefix and the `canonical-uncompensated` diagnostic, while allowing the new `canonical-remove-unconfirmed` diagnostic to appear first.
