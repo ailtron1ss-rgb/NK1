@@ -120,9 +120,7 @@ export class P26TrueLearningEngine{
   }
 
   private updateTrainingExposure():void {
-    this.state.metrics.trainingExposure01=clamp(
-      (this.state.metrics.onlineUpdates+this.state.metrics.replayUpdates)/160,
-    );
+    this.state.metrics.trainingExposure01=clamp(this.learner.snapshot().updates/160);
   }
 
   restore(raw?:Partial<P26TrueLearningState>|null){
@@ -162,9 +160,13 @@ export class P26TrueLearningEngine{
       holdoutEvidence:restoredEvidence,
     };
     this.learner.restore(this.state.policy);
+    this.sync();
   }
   snapshot():P26TrueLearningState{ this.sync(); return structuredClone(this.state); }
-  sync(){ this.state.policy=this.learner.snapshot(); }
+  sync(){
+    this.state.policy=this.learner.snapshot();
+    this.state.metrics.trainingExposure01=clamp(this.state.policy.updates/160);
+  }
   predict(state:OrganismState,extras?:BodyExtras){return this.learner.predict(state,extras);}
   bias(state:OrganismState,action:ActionKind,baseUtility:number,extras?:BodyExtras){
     const p=this.learner.value(state,action,extras);
@@ -364,6 +366,6 @@ export class P26TrueLearningEngine{
   }
   freeze(){this.learner.setFrozen(true);this.sync();}
   unfreeze(){this.learner.setFrozen(false);this.sync();}
-  metrics():P26LearningMetrics{return {...this.state.metrics};}
+  metrics():P26LearningMetrics{this.sync();return {...this.state.metrics};}
   actionList(){return [...ACTIONS];}
 }
