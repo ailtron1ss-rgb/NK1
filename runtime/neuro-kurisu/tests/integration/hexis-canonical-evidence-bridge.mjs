@@ -109,7 +109,7 @@ const mismatchedId = runtime.p65EpistemicLedger.record({
 assert.equal(runtime.hexisCanonicalEvidenceBridge.recordP65Claim(memory.id, mismatchedId).reason, 'p65-content-fingerprint-mismatch');
 
 const snapshot = runtime.snapshot();
-assert.equal(snapshot.sourceMonitor.traces.find(row => row.id === 'trace-direct-001')?.provenance?.contentFingerprint, fingerprint);
+assert.equal(snapshot.hexisSourceMonitor.traces.find(row => row.id === 'trace-direct-001')?.provenance?.contentFingerprint, fingerprint);
 assert.equal(snapshot.p65.claimsData.find(row => row.id === p65Id)?.provenance?.contentFingerprint, fingerprint);
 const restored = new MemorySubsystemRuntime();
 restored.restoreFromPersisted({
@@ -130,7 +130,7 @@ restored.restoreFromPersisted({
     p59MemoryOperatingSystem: snapshot.p59,
     p62MemoryFabric: snapshot.p62,
     p65EpistemicLedger: snapshot.p65,
-    sourceMonitor: snapshot.sourceMonitor,
+    hexisSourceMonitor: snapshot.hexisSourceMonitor,
     p70MemoryLifecycleGovernor: snapshot.p70,
     p75MemoryContinuumOS: snapshot.p75,
     experienceContinuum: snapshot.experienceContinuum,
