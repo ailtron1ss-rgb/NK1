@@ -83,6 +83,8 @@ on:
       - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/tests/p62-relevance-order.mjs'
       - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
       - 'runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts'
       - 'runtime/neuro-kurisu/tests/memory-semantic-failure-fallback.mjs'
@@ -162,6 +164,8 @@ on:
       - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/tests/p62-relevance-order.mjs'
       - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
       - 'runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts'
       - 'runtime/neuro-kurisu/tests/memory-semantic-failure-fallback.mjs'
@@ -361,6 +365,9 @@ jobs:
       - name: Check endogenous goal genesis
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass292:motivation-to-goal
+      - name: Verify P62 relevance ordering and deep canonical recall
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p62-relevance-order
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
