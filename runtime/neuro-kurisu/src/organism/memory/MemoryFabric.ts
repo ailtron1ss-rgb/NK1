@@ -696,7 +696,12 @@ export class MemoryFabric {
     if(!result.removed)return false;
     if(result.commandId!==expectedCommandId)throw new Error('memory-hmx-import-rollback-receipt-changed');
     this.protectedHmxImportReceiptIds.delete(result.commandId);
-    if(receipt)this.mutationReceipts.delete(result.commandId);
+    if(priorReceipt)this.mutationReceipts.delete(result.commandId);
+    this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(hotId=>hotId!==String(id)));
+    const tick=Number.isSafeInteger(context.tick)&&Number(context.tick)>=0?Number(context.tick):0;
+    this.events.append(makeEvent('memory-lifecycle',tick,{
+      action:'rollback-hmx-import',memoryId:String(id),reason,commandId,sourceCommandId:expectedCommandId,
+    }));
     return true;
   }
 
