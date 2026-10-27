@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "policy": "NK1 source redistribution and dependency license readiness",
+  "status": "pending",
+  "review": {
+    "status": "pending",
+    "reviewerType": null,
+    "reviewer": null,
+    "reviewedAt": null,
+    "evidenceRef": null
+  },
+  "rootProject": {
+    "status": "pending",
+    "licenseExpression": null,
+    "redistributionApproved": false,
+    "reviewerType": null,
+    "reviewer": null,
+    "reviewedAt": null,
+    "evidenceRef": null,
+    "scope": "repository-root",
+    "note": "Choose and document a project-wide license; no root policy is declared in current package metadata."
+  },
+  "runtimeProject": {
+    "status": "pending",
+    "licenseExpression": null,
+    "redistributionApproved": false,
+    "reviewerType": null,
+    "reviewer": null,
+    "reviewedAt": null,
+    "evidenceRef": null,
+    "scope": "runtime/neuro-kurisu",
+    "note": "Confirm the runtime project's redistribution license and its relationship to the repository root."
+  },
+  "lockedNpmDependencies": {
+    "status": "pending",
+    "componentCount": 462,
+    "componentFingerprintSha256": null,
+    "reviewerType": null,
+    "reviewer": null,
+    "reviewedAt": null,
+    "evidenceRef": null,
+    "note": "The fingerprint is intentionally unset until a human review is recorded. Review the full locked dependency inventory; changed packages or license expressions require a fresh review."
+  },
+  "sourceArchives": [
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/NOMEGA_PASS20_CAPABILITY_FORGE.zip",
+      "sha256": "01dfdf650158d29869c87bc0df584d7f9fed56b63feb17f47f9aae887af5079b",
+      "inventoryLicenseReview": "license-not-detected-in-top-level-members",
+      "embeddedLicenseMembers": [],
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/NeuroCore_V126_Consolidation_Decontaminated_2026-09-30.zip",
+      "sha256": "c57561e020593a67ae9bbf248da77cef9dee4b47d45e44c63db80ec05cd3dce0",
+      "inventoryLicenseReview": "license-not-detected-in-top-level-members",
+      "embeddedLicenseMembers": [],
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/NeuroCore_V143_FwPKM_Language_2026-10-01.zip",
+      "sha256": "97cacf02b82d1008ef52f2072a458d3a8467dbc5402408dd2e5733b077885d03",
+      "inventoryLicenseReview": "license-not-detected-in-top-level-members",
+      "embeddedLicenseMembers": [],
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/external-sources/conscio-4.8.2.tar.gz",
+      "sha256": "05cc43c834029a02e841f6318e353af3f7681c4863c176d9396715a7446b1fb6",
+      "inventoryLicenseReview": "license-evidence-found-not-a-legal-conclusion",
+      "embeddedLicenseMembers": [
+        "conscio-4.8.2/LICENSE"
+      ],
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/grok-workspace.zip",
+      "sha256": "75d102549c372d7fed9cdcdcdbe9a3df5f475ca2540360d6be6551c3f2c53ea1",
+      "inventoryLicenseReview": "license-not-detected-in-top-level-members",
+      "embeddedLicenseMembers": [],
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/raw-source-archives/letta-main.zip",
+      "sha256": "5d28f152aba633fcc26fe20125fad28f73c6773e6526fc65249656b2d0c61075",
+      "inventoryLicenseReview": "license-evidence-found-not-a-legal-conclusion",
+      "embeddedLicenseMembers": [
+        "letta-main/LICENSE"
+      ],
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/raw-source-archives/lumina-main.zip",
+      "sha256": "a820cb1b394018451c8ee5863ae0a1f74666bd10519007d6e37e69e42452d467",
+      "inventoryLicenseReview": "license-evidence-found-not-a-legal-conclusion",
+      "embeddedLicenseMembers": [
+        "lumina-main/LICENSE"
+      ],
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/raw-source-archives/will-main.zip",
+      "sha256": "9d0c30277f0981b67104b1e2a07d9c7f025fee60ae57bd470cca898cf0d457a4",
+      "inventoryLicenseReview": "license-evidence-found-not-a-legal-conclusion",
+      "embeddedLicenseMembers": [
+        "will-main/NOTICE",
+        "will-main/LICENSE"
+      ],
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+    }
+  ],
+  "repositoryLicenseFiles": [
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "app/.grok/skills/generate2dmap/LICENSE",
+      "sha256": "d63ddc781bf0d15753fe0ba22c7cd5828dabb7776465ea4d4939558d4909b0fa",
+      "inventoryStatus": "license-text-present-id-needs-review",
+      "spdxIdentifier": null,
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "app/.grok/skills/generate2dsprite/LICENSE",
+      "sha256": "d63ddc781bf0d15753fe0ba22c7cd5828dabb7776465ea4d4939558d4909b0fa",
+      "inventoryStatus": "license-text-present-id-needs-review",
+      "spdxIdentifier": null,
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "app/.grok/skills/video2dsprite/LICENSE",
+      "sha256": "d63ddc781bf0d15753fe0ba22c7cd5828dabb7776465ea4d4939558d4909b0fa",
+      "inventoryStatus": "license-text-present-id-needs-review",
+      "spdxIdentifier": null,
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/hexis-main-2026-10-08/LICENSE",
+      "sha256": "b5138e29f1b4a2ca7f6106af7317efb23d89e255867609b79cd26baef4843308",
+      "inventoryStatus": "license-text-present-id-needs-review",
+      "spdxIdentifier": null,
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/will-main-2026-10-08/LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "inventoryStatus": "identified",
+      "spdxIdentifier": null,
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "legacy/input-archives/will-main-2026-10-08/NOTICE",
+      "sha256": "baedc4a6fccbaaaa9801fde10279a5720e7f58542f3f46a4af9fd0be10e4812c",
+      "inventoryStatus": "identified",
+      "spdxIdentifier": null,
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": null,
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": null,
+      "path": "runtime/neuro-kurisu/LICENSE",
+      "sha256": "4a3eeabf67408063d4b46aada572343348a792c901db1eb0ae08cca30eea42c4",
+      "inventoryStatus": "license-text-present-id-needs-review",
+      "spdxIdentifier": null,
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+    }
+  ],
+  "instructions": {
+    "reviewRequired": true,
+    "approvalRule": "Every row must be explicitly approved by a human reviewer, bound to the current hash/fingerprint, with a license expression, timestamp and evidence reference.",
+    "failClosed": true,
+    "note": "A detected license file is evidence, not legal approval. Do not mark unknown or ambiguous upstream sources approved without reviewing the actual source terms."
+  }
+}
