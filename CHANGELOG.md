@@ -1,3 +1,15 @@
+## [NK1][WorkPass448] Align causal-stream duplicate assertions with trusted outcomes (2026-10-27)
+
+- Corrected the external-ingestion regression to reflect the intended invariant: public external events are retained for review but remain ungrounded, so they do not increment the trusted runtime-outcome aggregate. Exact duplicates and conflicting duplicate retries must leave that aggregate at zero.
+- This matches `CausalExperienceStream.recordExternalLearningEvent()`, which records provenance as `external`, forces `stateGrounded=false`, and does not increment the grounded outcome counter. The prior assertion expected one outcome even though the production path deliberately records none.
+- The updated WorkPass110 regression is present on the branch; current exact-head CI still needs to confirm it passes.
+
+## [NK1][WorkPass447] Restore the HMX document size guard (2026-10-27)
+
+- Repaired a malformed string literal in `HexisAdaptationFabric.stageHmx()` that made the runtime TypeScript typecheck fail at line 633 before tests could run.
+- The UTF-8 document-size boundary now emits a structured `size-limit` conflict at `$` instead of attempting to parse/stage an over-budget HMX payload.
+- Added a regression that supplies a JSON document slightly larger than the 8 MiB byte budget and requires it to remain ineligible for acceptance. Source and test are committed; the updated focused workflow must run on the new head before this is marked validated.
+
 ## [NK1][WorkPass446] Cover wrapper action injection across canonical memory APIs (2026-10-27)
 
 - Expanded the existing memory lifecycle regression to send attacker-controlled `action`, `id`, `reason`, `patch`, `to`, and `newContent` keys through `encode`, `revise`, `updateSignals`, `reviseContent`, and `updateContext` metadata arguments.
