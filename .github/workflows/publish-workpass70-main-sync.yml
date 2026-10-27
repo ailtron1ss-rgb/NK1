@@ -121,6 +121,13 @@ jobs:
           fi
           echo "publish=true" >> "$GITHUB_OUTPUT"
 
+      - name: Set up pinned Node.js for release provenance audit
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
       - name: Run source provenance and release-license gates
         id: release_audit
         if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true'
