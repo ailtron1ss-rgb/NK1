@@ -45,7 +45,8 @@ test('self-hosted Mem0 OSS uses native REST paths, X-API-Key, and preserves scop
   assert.equal(search.memories[0].instructionTreatment, 'data-not-instructions');
   assert.equal(calls[0].url.pathname, '/search');
   assert.equal(calls[0].headers['X-API-Key'], 'm0sk-test-key-never-log');
-  assert.deepEqual(calls[0].body, { query: 'local-first memory', user_id: 'nk1-oss-test-user' });
+  assert.deepEqual(calls[0].body, { query: 'local-first memory', filters: { user_id: 'nk1-oss-test-user' }, limit: 2 });
+  assert.equal(Object.hasOwn(calls[0].body, 'user_id'), false, 'OSS v3 search scope belongs under filters, not top-level');
   assert.equal(calls[0].redirect, 'error');
 
   const added = await adapter.addConversation([{ role: 'user', content: 'I prefer a self-hosted memory service.' }], { approved: true });
