@@ -1,3 +1,9 @@
+## [NK1][WorkPass571] Keep causal-life graph counters coherent (2026-10-27)
+
+- Recompute tick-derived chain coverage after causal graph node insertion/update, keeping live snapshots consistent with restore-time recomputation.
+- Strengthen WorkPass570 persistence regression with an explicit assertion that inserting the first experience node updates `observedChains` immediately.
+- This fixes the real round-trip regression without weakening the persistence assertion or changing the graph's evidence/promotion policy.
+
 ## [NK1][WorkPass571] Restore compatibility memory at the persisted lifecycle tick (2026-10-27)
 
 - Move legacy/multi-timescale compatibility consolidation after restoration of CanonicalMemoryLifecycleAuthority.
