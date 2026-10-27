@@ -72,3 +72,4 @@ export * from './cognition/BoundedRecurrentStateSubstrate.ts';
 export * from './memory/MemoryBudgetCausalHarness.ts';
 
 export * from './integration/HexisEvidenceBridge.ts';
+export * from './integration/HexisEvidenceIngest.ts';
